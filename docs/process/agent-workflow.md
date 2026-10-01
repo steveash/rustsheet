@@ -30,8 +30,9 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- Run at most **2 concurrent workers**, normally `functions` plus one of `engine`, `api` or
-  `harness` (whichever is on the critical path in `milestones.md`).
+- Run at most **2 concurrent workers**: `functions` plus the critical-lane worker, which takes the
+  first ready lane from the `**Critical lane:**` list in `docs/status.md` (allowlist and rules in
+  `routines.md`).
 - Run at most one task in flight per lane.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.
 - Raise concurrency only after a week with a revert rate under 5%.
