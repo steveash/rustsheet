@@ -42,13 +42,14 @@ task `status: blocked` with a "Blocked because" section, push the branch, open t
 and stop.
 
 ## 6. PR & merge
-1. Mark the task `status: done` (plus a short "Outcome" section), `make board`, commit.
+1. Mark the task `status: done` (plus a short "Outcome" section), append one line to the
+   `docs/status.md` log (date, task, eval delta), `make board`, commit.
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
 3. Wait for CI (subscribe to PR activity; do not poll with sleep). Fix failures per the `steward`
    skill. When CI is green and all reviewers approve: **squash-merge**. If `main` moved, merge
    `origin/main` into the branch, re-run `make check`, push, wait for CI again.
-4. Delete the branch. Append one line to `docs/status.md` (date, task, eval delta).
+4. Delete the branch.
 
 ## 7. Report
 Final message: task id, PR link, eval delta, follow-up tasks created.

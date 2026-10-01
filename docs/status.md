@@ -14,7 +14,9 @@ Updated by the steward routine (daily) and by workers (one line per merged task)
 Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicated lines
 9,153 · oversized files 21.
 
-**Critical lane:** harness (oracle bring-up), then api/engine for M1.
+**Critical lane:** harness, api, engine
+
+(Ordered list read by the critical-lane worker; harness first for oracle bring-up, then the M1 API/engine work.)
 
 ## Needs owner
 - Excel oracle credentials: owner has a Microsoft 365 Business tenant (Graph-compatible). Pending:
