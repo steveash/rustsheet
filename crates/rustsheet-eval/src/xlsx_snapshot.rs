@@ -65,6 +65,7 @@ impl CellSnapshot {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SheetSnapshot {
     pub name: String,
+    #[serde(with = "crate::cellref::a1_map")]
     pub cells: BTreeMap<Addr, CellSnapshot>,
 }
 
@@ -80,11 +81,14 @@ pub struct WorkbookSnapshot {
 
 impl WorkbookSnapshot {
     /// Whether the cached values were written by a Microsoft Excel build (desktop, Mac, web, mobile).
+    ///
+    /// XlsxWriter and some other libraries also claim `Microsoft Excel` but with the Excel 2007
+    /// `AppVersion` `12.0000` and placeholder cached values, so that version is rejected.
     #[must_use]
     pub fn is_excel_authored(&self) -> bool {
-        self.application
-            .as_deref()
-            .is_some_and(|a| a.contains("Excel"))
+        let app_ok = self.application.as_deref().is_some_and(|a| a.contains("Excel"));
+        let version_ok = !self.app_version.as_deref().is_some_and(|v| v.starts_with("12."));
+        app_ok && version_ok
     }
 }
 

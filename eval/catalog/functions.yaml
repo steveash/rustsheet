@@ -1,0 +1,150 @@
+# RustSheet function catalog (v0). Machine-readable signatures that drive the synthetic
+# generator, coverage tracking and milestone scoping. Schema: docs/architecture/synthetic-generator.md.
+#
+# Parameter `mode` (how Excel coerces the argument; this matters for parity):
+#   value      scalar; references are dereferenced; text that looks numeric is coerced in arithmetic
+#   aggregate  numbers in ranges counted, text/bools/blanks in ranges ignored; direct scalars coerced
+#   aggregate_a  like aggregate but text counts as 0 and TRUE as 1 (the "A" functions)
+#   range      must be a reference/range (e.g. lookup table, criteria range)
+#   criteria   criteria string or value ("">5"", ""=a*"", 3)
+#   any        any value
+# `repeat: true` marks the trailing repeating group. Types: number | text | bool | any.
+#
+# milestone: the first milestone in which the function is in scope for the gate.
+# prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report).
+
+operators:
+  - { op: "+", args: [number, number], returns: number, milestone: M1, prior: 62 }
+  - { op: "-", args: [number, number], returns: number, milestone: M1, prior: 54 }
+  - { op: "*", args: [number, number], returns: number, milestone: M1, prior: 39 }
+  - { op: "/", args: [number, number], returns: number, milestone: M1, prior: 35 }
+  - { op: "^", args: [number, number], returns: number, milestone: M1, prior: 3 }
+  - { op: "&", args: [text, text], returns: text, milestone: M1, prior: 8 }
+  - { op: "=", args: [any, any], returns: bool, milestone: M1, prior: 6 }
+  - { op: "<>", args: [any, any], returns: bool, milestone: M1, prior: 3 }
+  - { op: "<", args: [any, any], returns: bool, milestone: M1, prior: 4 }
+  - { op: ">", args: [any, any], returns: bool, milestone: M1, prior: 5 }
+  - { op: "<=", args: [any, any], returns: bool, milestone: M1, prior: 2 }
+  - { op: ">=", args: [any, any], returns: bool, milestone: M1, prior: 2 }
+  - { op: "neg", args: [number], returns: number, milestone: M1, prior: 4 }
+  - { op: "%", args: [number], returns: number, milestone: M1, prior: 1 }
+
+functions:
+  - name: SUM
+    category: math
+    milestone: M2
+    prior: 72
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: AVERAGE
+    category: statistical
+    milestone: M2
+    prior: 10
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: MIN
+    category: statistical
+    milestone: M2
+    prior: 6
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: MAX
+    category: statistical
+    milestone: M2
+    prior: 7
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: COUNT
+    category: statistical
+    milestone: M2
+    prior: 6
+    returns: number
+    params: [{ name: value, mode: aggregate, type: any, repeat: true, min: 1, max: 255 }]
+  - name: COUNTA
+    category: statistical
+    milestone: M2
+    prior: 3
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: IF
+    category: logical
+    milestone: M2
+    prior: 20
+    returns: any
+    params:
+      - { name: logical_test, mode: value, type: bool }
+      - { name: value_if_true, mode: value, type: any, optional: true }
+      - { name: value_if_false, mode: value, type: any, optional: true }
+  - name: AND
+    category: logical
+    milestone: M2
+    prior: 3
+    returns: bool
+    params: [{ name: logical, mode: aggregate, type: bool, repeat: true, min: 1, max: 255 }]
+  - name: OR
+    category: logical
+    milestone: M2
+    prior: 3
+    returns: bool
+    params: [{ name: logical, mode: aggregate, type: bool, repeat: true, min: 1, max: 255 }]
+  - name: IFERROR
+    category: logical
+    milestone: M2
+    prior: 4
+    returns: any
+    params:
+      - { name: value, mode: value, type: any }
+      - { name: value_if_error, mode: value, type: any }
+  - name: ROUND
+    category: math
+    milestone: M2
+    prior: 8
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: num_digits, mode: value, type: number, domain: { int: true, min: -6, max: 10 } }
+  - name: ABS
+    category: math
+    milestone: M2
+    prior: 2
+    returns: number
+    params: [{ name: number, mode: value, type: number }]
+  - name: SUMIF
+    category: math
+    milestone: M2
+    prior: 4
+    returns: number
+    params:
+      - { name: range, mode: range, type: any }
+      - { name: criteria, mode: criteria, type: any }
+      - { name: sum_range, mode: range, type: number, optional: true }
+  - name: COUNTIF
+    category: statistical
+    milestone: M2
+    prior: 4
+    returns: number
+    params:
+      - { name: range, mode: range, type: any }
+      - { name: criteria, mode: criteria, type: any }
+  - name: VLOOKUP
+    category: lookup
+    milestone: M2
+    prior: 8.5
+    returns: any
+    params:
+      - { name: lookup_value, mode: value, type: any }
+      - { name: table_array, mode: range, type: any }
+      - { name: col_index_num, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
+      - { name: range_lookup, mode: value, type: bool, optional: true }
+  - name: CONCATENATE
+    category: text
+    milestone: M2
+    prior: 2
+    returns: text
+    params: [{ name: text, mode: value, type: text, repeat: true, min: 1, max: 255 }]
+  - name: LEN
+    category: text
+    milestone: M2
+    prior: 2
+    returns: number
+    params: [{ name: text, mode: value, type: text }]

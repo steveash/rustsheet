@@ -65,6 +65,40 @@ pub fn parse_range(s: &str) -> Option<(Addr, Addr)> {
     }
 }
 
+/// Serde adapter: `BTreeMap<Addr, T>` as a JSON object keyed by A1 strings.
+pub mod a1_map {
+    use std::collections::BTreeMap;
+
+    use serde::de::Error as _;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::Addr;
+
+    /// # Errors
+    /// Propagates serializer errors.
+    pub fn serialize<S: Serializer, T: Serialize>(
+        map: &BTreeMap<Addr, T>,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        s.collect_map(map.iter().map(|(k, v)| (k.to_string(), v)))
+    }
+
+    /// # Errors
+    /// Fails on keys that are not valid A1 addresses.
+    pub fn deserialize<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+        d: D,
+    ) -> Result<BTreeMap<Addr, T>, D::Error> {
+        let raw: BTreeMap<String, T> = BTreeMap::deserialize(d)?;
+        raw.into_iter()
+            .map(|(k, v)| {
+                Addr::parse(&k)
+                    .map(|a| (a, v))
+                    .ok_or_else(|| D::Error::custom(format!("bad cell address {k}")))
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
