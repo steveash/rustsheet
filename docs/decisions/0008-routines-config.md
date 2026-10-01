@@ -8,7 +8,9 @@
   GitHub attached. Their prompts and schedules live in `docs/process/routines.md`. Changing the
   loop's behavior means changing that file (protected path) and the routine together.
 - Agents never create, modify or delete routines (enforced by a permission deny in
-  `.claude/settings.json`); only the owner does, keeping the 2-worker cap of decision 0005.
+  `.claude/settings.json`); only the owner does, keeping the 2-worker cap of decision 0005. The
+  denied tool names (`mcp__claude-code-remote__{create,update,delete,fire}_trigger`) were verified
+  live on 2026-10-01: adding the deny removed exactly those tools from the running session.
 - The work-loop skill records the `docs/status.md` line on the task branch before merging (agents
   cannot push to `main`).
 - The `docs/status.md` "Critical lane" line is an ordered comma-separated lane list; workers accept
