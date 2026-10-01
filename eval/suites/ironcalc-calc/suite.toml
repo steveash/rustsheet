@@ -1,0 +1,13 @@
+name = "ironcalc-calc"
+description = "IronCalc's Excel-authored function workbooks; cached values are the oracle"
+kind = "xlsx"
+# Single source of truth: these files also drive rustsheet_xlsx's generated tests.
+root = "../../../crates/rustsheet-xlsx/tests/calc_tests"
+include = ["**/*.xlsx"]
+license = "MIT OR Apache-2.0"
+origin = "https://github.com/ironcalc/IronCalc/tree/main/xlsx/tests/calc_tests"
+use_cached_values = true
+require_excel_authored = true
+gate = true
+baseline = "cells"
+milestone = ["M0", "M3", "M4"]

@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Relative/absolute refs, ranges, cross-sheet refs, SUM over mixed types",
+  "tags": ["M1", "references"],
+  "expected_source": "hand",
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": { "A1": 1, "A2": 2, "A3": "x", "A4": true, "A5": 4 }
+    },
+    {
+      "name": "Calc Sheet",
+      "cells": {
+        "A1": "=SUM(Data!A1:A5)",
+        "A2": "=Data!$A$1+Data!A$2",
+        "A3": "=COUNT(Data!A1:A5)",
+        "A4": "=COUNTA(Data!A1:A5)",
+        "A5": "=SUM(Data!A1,Data!A4)",
+        "A6": "='Calc Sheet'!A1*2"
+      }
+    }
+  ],
+  "expected": {
+    "'Calc Sheet'!A1": { "t": "n", "v": 7 },
+    "'Calc Sheet'!A2": { "t": "n", "v": 3 },
+    "'Calc Sheet'!A3": { "t": "n", "v": 3 },
+    "'Calc Sheet'!A4": { "t": "n", "v": 5 },
+    "'Calc Sheet'!A5": { "t": "n", "v": 1 },
+    "'Calc Sheet'!A6": { "t": "n", "v": 14 }
+  }
+}

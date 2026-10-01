@@ -1,0 +1,10 @@
+name = "smoke"
+description = "Hand-written spec cases for core semantics (M0/M1). Expected values are hand-entered until the oracle confirms them."
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "hand"
+gate = true
+baseline = "cells"
+milestone = ["M0", "M1"]

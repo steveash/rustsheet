@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Basic arithmetic, operator precedence, coercion of booleans and blanks",
+  "tags": ["M1", "arithmetic"],
+  "expected_source": "hand",
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 2,
+        "A2": 3,
+        "A3": true,
+        "B1": "=A1+A2",
+        "B2": "=A1*A2-1",
+        "B3": "=-A1^2",
+        "B4": "=2^3^2",
+        "B5": "=A1/0",
+        "B6": "=A3+1",
+        "B7": "=Z99+1",
+        "B8": "=10%",
+        "B9": "=(A1+A2)*2"
+      }
+    }
+  ],
+  "expected": {
+    "Sheet1!B1": { "t": "n", "v": 5 },
+    "Sheet1!B2": { "t": "n", "v": 5 },
+    "Sheet1!B3": { "t": "n", "v": 4 },
+    "Sheet1!B4": { "t": "n", "v": 64 },
+    "Sheet1!B5": { "t": "e", "v": "#DIV/0!" },
+    "Sheet1!B6": { "t": "n", "v": 2 },
+    "Sheet1!B7": { "t": "n", "v": 1 },
+    "Sheet1!B8": { "t": "n", "v": 0.1 },
+    "Sheet1!B9": { "t": "n", "v": 10 }
+  }
+}

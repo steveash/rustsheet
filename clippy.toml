@@ -1,0 +1,8 @@
+# Workspace clippy configuration. Lint *levels* live in Cargo.toml [workspace.lints].
+doc-valid-idents = ["RustSheet", "IronCalc", "SpreadsheetML", "OpenXML", "LibreOffice", "PyO3", "UniFFI", "..", "XLOOKUP", "VLOOKUP"]
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-dbg-in-tests = true
+allow-print-in-tests = true
+too-many-lines-threshold = 120

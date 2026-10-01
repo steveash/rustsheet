@@ -13,7 +13,7 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/steveash/rustsheet"
-rust-version = "1.85"
+rust-version = "1.88"
 
 # Workspace-wide lint policy. See docs/process/quality-gates.md.
 # Crates opt in with `[lints] workspace = true`. Forked crates carry a
