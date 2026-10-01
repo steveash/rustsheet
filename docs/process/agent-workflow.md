@@ -30,8 +30,9 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- Run at most **2 concurrent workers**, normally `functions` plus one of `engine`, `api` or
-  `harness` (whichever is on the critical path in `milestones.md`).
+- Run at most **2 concurrent workers**: `functions` plus the critical-lane worker, which takes the
+  first ready lane from the `**Critical lane:**` list in `docs/status.md` (allowlist and rules in
+  `routines.md`).
 - Run at most one task in flight per lane.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.
 - Raise concurrency only after a week with a revert rate under 5%.
@@ -96,19 +97,10 @@ A pending probe is better than a confident wrong implementation.
 
 ## Scheduled routines (how the loop runs unattended)
 
-These are Claude Code cloud routines, each starting a fresh session on `main`:
+The loop runs as Claude Code routines created by the owner. Their prompts, schedules and rules are
+defined in exactly one place: `docs/process/routines.md` (decision 0008). Oracle fills run inside
+the daily steward routine when credentials exist; `.github/workflows/oracle.yml` remains a
+manual-dispatch alternative.
 
-| Routine | Cadence | Prompt |
-|---|---|---|
-| worker-functions | every 3 h | "Run the work-loop skill for lane functions." |
-| worker-critical | every 3 h, offset 90 min | "Run the work-loop skill for lane <engine/api/harness per docs/status.md 'critical lane'>." |
-| steward | daily | "Run `make eval`, the gap-triager and planner agents for the current milestone, triage `scripts/upstream-log.sh`, and write the weekly/daily health section in docs/status.md." |
-| oracle | daily (once credentials exist) | GitHub workflow `oracle.yml` for suites with pending cases |
-
-Health metrics in `docs/status.md`:
-- merged tasks per day
-- reverts
-- blocked tasks
-- eval bit-exact rate per suite
-- known failures
-- lint-debt, duplication and oversized-file counts
+Health metrics in `docs/status.md`: merged tasks/day, reverts, blocked tasks, eval bit-exact rate
+per suite, known failures, lint-debt / duplication / oversized-file counts.

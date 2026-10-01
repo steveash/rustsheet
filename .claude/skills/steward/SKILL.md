@@ -8,6 +8,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   opened it when (a) all required CI jobs are green on the latest head, (b) the `review` skill
   table shows APPROVE from every applicable reviewer, (c) the branch is up to date with `main`.
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
+  Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
+  `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
 - **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch).
 - **Generated files**: never hand-edit `eval/baseline/*.txt`, `quality/*.json`, `docs/tasks/BOARD.md`;
   regenerate with `make eval-baseline`, the `scripts/check_*.py --update` commands, `make board`.
