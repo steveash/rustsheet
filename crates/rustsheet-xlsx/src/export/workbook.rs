@@ -21,7 +21,7 @@
 //!
 //!
 //!
-//! The most important objet of this part is a collection of all the sheets and all the defined names
+//! The most important object of this part is a collection of all the sheets and all the defined names
 //! of the workbook.
 //!
 //! It also may hold state properties like the selected tab

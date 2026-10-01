@@ -1,0 +1,10 @@
+name = "probes"
+description = "Targeted questions about Excel behavior (excel-probe skill). Pending until an Excel oracle fills *.oracle.json."
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "hand (inputs) + Excel oracle (expectations)"
+gate = true
+baseline = "cells"
+milestone = ["M1"]

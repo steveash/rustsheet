@@ -32,7 +32,7 @@
 #![doc = include_str!("../examples/hello_styles.rs")]
 //! ```
 //!
-//! ### Changing column width and row heigh
+//! ### Changing column width and row height
 //!
 //! ```rust,no_run
 #![doc = include_str!("../examples/widths_and_heights.rs")]

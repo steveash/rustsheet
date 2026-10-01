@@ -518,7 +518,7 @@ impl SheetDataReader<'_, '_> {
                     // The reference is the set of cell it spills into.
                     let (row1, column1, row2, column2) = parse_range(&range)
                         .map_err(|_| XlsxError::Xml(format!("Invalid range: {}", range)))?;
-                    // (row1, colum1) has to be this cell. We need to mark all the other ones as part of the array formula
+                    // (row1, column1) has to be this cell. We need to mark all the other ones as part of the array formula
                     if row1 != r_index || column1 != column_index {
                         return Err(XlsxError::Xml(
                             "The first cell of the range of an array formula must be the anchor cell".to_string(),

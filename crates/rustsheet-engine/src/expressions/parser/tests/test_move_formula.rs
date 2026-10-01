@@ -598,7 +598,7 @@ fn test_move_formula_another_sheet() {
 }
 
 #[test]
-fn move_formula_implicit_intersetion() {
+fn move_formula_implicit_intersection() {
     // context is E4
     let row = 4;
     let column = 5;
@@ -635,7 +635,7 @@ fn move_formula_implicit_intersetion() {
 }
 
 #[test]
-fn move_formula_implicit_intersetion_with_ranges() {
+fn move_formula_implicit_intersection_with_ranges() {
     // context is E4
     let row = 4;
     let column = 5;

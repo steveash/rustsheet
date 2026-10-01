@@ -86,8 +86,14 @@ impl WorkbookSnapshot {
     /// `AppVersion` `12.0000` and placeholder cached values, so that version is rejected.
     #[must_use]
     pub fn is_excel_authored(&self) -> bool {
-        let app_ok = self.application.as_deref().is_some_and(|a| a.contains("Excel"));
-        let version_ok = !self.app_version.as_deref().is_some_and(|v| v.starts_with("12."));
+        let app_ok = self
+            .application
+            .as_deref()
+            .is_some_and(|a| a.contains("Excel"));
+        let version_ok = !self
+            .app_version
+            .as_deref()
+            .is_some_and(|v| v.starts_with("12."));
         app_ok && version_ok
     }
 }

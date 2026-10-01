@@ -123,6 +123,10 @@ impl Engine for RustSheetEngine {
                     CellInput::Str(s) if s.starts_with('=') => {
                         model.update_cell_with_formula(idx, row, col, s.clone())?;
                     }
+                    // Mirrors tools/src/rustsheet_tools/spec2xlsx.py: "" is materialized as ="".
+                    CellInput::Str(s) | CellInput::Typed(Value::Text(s)) if s.is_empty() => {
+                        model.update_cell_with_formula(idx, row, col, "=\"\"".to_string())?;
+                    }
                     CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
                         model.update_cell_with_text(idx, row, col, s)?;
                     }

@@ -78,7 +78,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
-            // We need to check wether the II can be automatic or not
+            // We need to check whether the II can be automatic or not
             let mut new_node = child.as_ref().clone();
             add_implicit_intersection(&mut new_node, add);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {

@@ -24,7 +24,7 @@ The order is the order they will appear in the workbook. `sheetId` identifies th
 
 This example has three defined names. Those that have a `localSheetId` attribute are scoped to a sheet. Note that the `localSheetId` refers to the order in the sheet list (0-indexed) and not the `sheetId`.
 
-A sheet can hve one of three states:
+A sheet can have one of three states:
 
 * visible
 * hidden

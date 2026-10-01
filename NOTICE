@@ -11,3 +11,10 @@ Files under crates/rustsheet-engine, crates/rustsheet-xlsx, bindings/python and
 tools/upstream were derived from IronCalc commit
 e29e7b5c5a36b40c8d3b3c49b8731ac426f43606 (2026-09-30) and have since been modified.
 See UPSTREAM.md for details.
+
+Third-party notices carried with the IronCalc-derived code:
+- crates/rustsheet-engine/src/functions/engineering/transcendental/bessel_*.rs contain code derived
+  from fdlibm, Copyright (C) 1993 by Sun Microsystems, Inc. (notice retained in those files).
+- Locale data in crates/rustsheet-engine/src/locale and tools/upstream/generate_locale is derived
+  from the Unicode CLDR project, Copyright © Unicode, Inc., under the Unicode License v3
+  (https://www.unicode.org/license.txt).

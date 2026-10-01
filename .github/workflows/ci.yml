@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  rust:
+    name: rust (fmt, clippy, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: make fmt-check
+      - run: make clippy
+      - run: make test
+
+  eval:
+    name: eval (Excel-compatibility gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97
+      - uses: Swatinem/rust-cache@v2
+      - run: make eval-check
+      - name: Full report (informational)
+        if: always()
+        run: make eval
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval/runs/latest/
+
+  python:
+    name: python (tools + bindings)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v6
+      - run: make py-check
+      - run: make py-bindings
+
+  hygiene:
+    name: hygiene (ratchets, deny, machete, typos, governance)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@1.97
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-machete,typos-cli
+      - run: make hygiene
+      - run: make deny
+      - run: make machete
+      - run: make typos
+      - name: governance
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/check_governance.py origin/${{ github.base_ref }}

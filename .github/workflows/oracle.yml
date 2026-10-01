@@ -1,0 +1,48 @@
+name: Excel oracle
+
+# Computes Excel's answers for cases lacking an oracle sidecar and opens a PR with them.
+# Runs only on demand, in the protected `oracle` environment that holds the Graph secrets.
+# See docs/architecture/oracle.md for the one-time owner setup.
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Suite to fill (e.g. smoke, gen-m2)"
+        required: true
+      backend:
+        description: "excel-graph (GitHub-hosted) or excel-desktop (self-hosted Windows runner)"
+        default: excel-graph
+      limit:
+        description: "Max cases (0 = all)"
+        default: "0"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fill:
+    environment: oracle
+    runs-on: ${{ inputs.backend == 'excel-desktop' && fromJSON('["self-hosted","excel-oracle"]') || 'ubuntu-latest' }}
+    env:
+      RUSTSHEET_ORACLE_TENANT_ID: ${{ secrets.RUSTSHEET_ORACLE_TENANT_ID }}
+      RUSTSHEET_ORACLE_CLIENT_ID: ${{ secrets.RUSTSHEET_ORACLE_CLIENT_ID }}
+      RUSTSHEET_ORACLE_CLIENT_SECRET: ${{ secrets.RUSTSHEET_ORACLE_CLIENT_SECRET }}
+      RUSTSHEET_ORACLE_DRIVE_ID: ${{ secrets.RUSTSHEET_ORACLE_DRIVE_ID }}
+      RUSTSHEET_ORACLE_MSAL_CACHE_B64: ${{ secrets.RUSTSHEET_ORACLE_MSAL_CACHE_B64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97
+      - uses: Swatinem/rust-cache@v2
+      - uses: astral-sh/setup-uv@v6
+      - run: make build py-sync
+      - run: cd tools && uv run rustsheet-oracle status
+      - run: cd tools && uv run rustsheet-oracle fill -b ${{ inputs.backend }} --suite ${{ inputs.suite }} --limit ${{ inputs.limit }}
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: oracle/${{ inputs.suite }}-${{ github.run_id }}
+          title: "oracle: Excel results for suite ${{ inputs.suite }}"
+          commit-message: "oracle: fill ${{ inputs.suite }} via ${{ inputs.backend }}"
+          body: "Automated oracle run (${{ inputs.backend }}). Sidecars only; run `make eval-baseline` in a follow-up to record new coverage."
+          add-paths: eval/suites/${{ inputs.suite }}/**/*.oracle.json

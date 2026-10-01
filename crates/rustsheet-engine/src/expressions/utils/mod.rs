@@ -157,7 +157,7 @@ pub fn parse_reference_a1(r: &str) -> Option<ParsedReference> {
     let mut absolute_row = false;
     let mut row = "".to_string();
     let mut column = "".to_string();
-    let mut state = 1; // 1(colum), 2(row)
+    let mut state = 1; // 1(column), 2(row)
 
     for ch in chars {
         match ch {

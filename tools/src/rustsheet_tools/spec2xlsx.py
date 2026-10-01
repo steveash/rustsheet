@@ -7,6 +7,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     formula typed into current Microsoft 365 Excel (no implicit intersection).
   * Error literals are written as the formula `=#N/A` etc. (xlsx writers cannot emit
     error constants); they behave identically for dependants.
+  * The empty-string text constant "" is written as the formula `=""` (XlsxWriter turns an
+    empty string into a blank cell, which has different semantics).
   * Future functions get their `_xlfn.` prefixes automatically (XlsxWriter use_future_functions).
 """
 
@@ -66,11 +68,15 @@ def _write(ws: Any, row: int, col: int, raw: Any) -> None:
     elif isinstance(raw, str):
         if raw.startswith("="):
             ws.write_dynamic_array_formula(row, col, row, col, raw)
+        elif raw == "":
+            ws.write_formula(row, col, '=""')
         else:
             ws.write_string(row, col, raw)
     elif isinstance(raw, dict):
         tag, value = raw.get("t"), raw.get("v")
-        if tag == "s":
+        if tag == "s" and value == "":
+            ws.write_formula(row, col, '=""')
+        elif tag == "s":
             ws.write_string(row, col, str(value))
         elif tag == "n":
             ws.write_number(row, col, float(value))  # type: ignore[arg-type]

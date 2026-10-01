@@ -2,6 +2,7 @@
 name = "rustsheet_engine"
 description = "RustSheet calculation engine core (forked from IronCalc's ironcalc_base)"
 readme = "README.md"
+publish = false
 version.workspace = true
 edition.workspace = true
 license.workspace = true

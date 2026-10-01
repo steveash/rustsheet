@@ -1,0 +1,41 @@
+[files]
+extend-exclude = [
+  "crates/rustsheet-engine/src/language/",
+  "crates/rustsheet-engine/src/locale/",
+  "crates/rustsheet-engine/src/functions/engineering/",
+  "crates/rustsheet-engine/src/test/",
+  "crates/rustsheet-xlsx/tests/",
+  "tools/upstream/",
+  "eval/baseline/",
+  "eval/suites/",
+  "docs/research/",
+  "*.xlsx",
+  "*.lock",
+]
+
+[default.extend-words]
+# Excel function names and spreadsheet jargon
+ue = "ue"
+iif = "iif"
+# Excel function names / foreign-language function names that look like typos
+Permut = "Permut"
+permut = "permut"
+PERMUT = "PERMUT"
+PERMUTATIONA = "PERMUTATIONA"
+Averageifs = "Averageifs"
+averageifs = "averageifs"
+AVERAGEIFS = "AVERAGEIFS"
+Formattings = "Formattings"
+FALSO = "FALSO"
+ttest = "ttest"
+TTEST = "TTEST"
+Singl = "Singl"
+nd = "nd"
+SEMS = "SEMS"
+Beng = "Beng"
+VALU = "VALU"
+unparseable = "unparseable"
+ment = "ment"
+thm = "thm"
+startd = "startd"
+endd = "endd"
