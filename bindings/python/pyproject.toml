@@ -1,0 +1,33 @@
+[project]
+name = "rustsheet"
+version = "0.1.0"
+description = "Create, edit and evaluate Excel spreadsheets"
+requires-python = ">=3.10"
+keywords = [
+  "xlsx",
+  "spreadsheet",
+]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Office/Business :: Financial :: Spreadsheet",
+]
+authors = [{ name = "RustSheet contributors" }]
+
+[project.urls]
+Source = "https://github.com/steveash/rustsheet"
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "rustsheet._rustsheet"

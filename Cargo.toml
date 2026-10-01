@@ -1,0 +1,49 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/rustsheet-engine",
+  "crates/rustsheet-xlsx",
+  "crates/rustsheet-eval",
+  "bindings/python",
+]
+exclude = ["tools/upstream/generate_language", "tools/upstream/generate_locale"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/steveash/rustsheet"
+rust-version = "1.85"
+
+# Workspace-wide lint policy. See docs/process/quality-gates.md.
+# Crates opt in with `[lints] workspace = true`. Forked crates carry a
+# temporary, explicit allow-list in their lib.rs ("lint debt") that may only shrink.
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+large_stack_arrays = "warn"
+# Pedantic lints we deliberately do not enforce (noise > value for this codebase).
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+similar_names = "allow"
+
+[profile.release]
+lto = true
+
+[profile.bench]
+debug = true

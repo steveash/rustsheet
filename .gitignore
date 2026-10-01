@@ -1,0 +1,17 @@
+/target
+**/target
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.so
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# eval / oracle working dirs (never commit raw run output; baselines live in eval/baseline)
+/eval/.cache/
+/eval/runs/
+/tools/.venv/
+.env
+*.secret

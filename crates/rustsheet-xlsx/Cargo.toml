@@ -1,0 +1,100 @@
+[package]
+name = "rustsheet_xlsx"
+description = "RustSheet xlsx import/export (forked from IronCalc's ironcalc crate)"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+# Compiles the engine with a mocked clock so tests can pin NOW()/TODAY()
+# to the timestamp stored in a workbook's METADATA sheet (see `mock_time.rs`).
+mock_time = ["rustsheet_engine/mock_time"]
+
+[dependencies]
+zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+quick-xml = "0.42"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+rustsheet_engine = { path = "../rustsheet-engine" }
+itertools = "0.12"
+chrono = "0.4"
+bitcode = "0.6.8"
+
+[dev-dependencies]
+uuid = { version = "1.2.2", features = ["serde", "v4"] }
+# Path-only self dependency (stripped when publishing): turns on the mocked
+# clock for this crate's own tests while leaving normal builds untouched.
+rustsheet_xlsx = { path = ".", features = ["mock_time"] }
+
+[lib]
+name = "rustsheet_xlsx"
+path = "src/lib.rs"
+
+[[bin]]
+name = "test"
+path = "src/bin/test.rs"
+
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+# LINT-DEBT-BEGIN (inherited from the IronCalc fork; entries may only be removed, never added — see docs/process/quality-gates.md)
+elided_lifetimes_in_paths = "allow"  # 50 at fork time
+# LINT-DEBT-END
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+large_stack_arrays = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+similar_names = "allow"
+# LINT-DEBT-BEGIN (inherited from the IronCalc fork; entries may only be removed, never added — see docs/process/quality-gates.md)
+assigning_clones = "allow"  # 1 at fork time
+cast_lossless = "allow"  # 4 at fork time
+cast_possible_truncation = "allow"  # 22 at fork time
+cast_possible_wrap = "allow"  # 8 at fork time
+cast_precision_loss = "allow"  # 2 at fork time
+cast_sign_loss = "allow"  # 19 at fork time
+cloned_instead_of_copied = "allow"  # 2 at fork time
+dbg_macro = "allow"  # 2 at fork time
+doc_markdown = "allow"  # 44 at fork time
+float_cmp = "allow"  # 2 at fork time
+format_push_string = "allow"  # 4 at fork time
+if_not_else = "allow"  # 24 at fork time
+implicit_clone = "allow"  # 12 at fork time
+inconsistent_struct_constructor = "allow"  # 2 at fork time
+items_after_statements = "allow"  # 1 at fork time
+manual_assert = "allow"  # 4 at fork time
+manual_assert_eq = "allow"  # 1 at fork time
+manual_let_else = "allow"  # 32 at fork time
+manual_string_new = "allow"  # 48 at fork time
+map_unwrap_or = "allow"  # 14 at fork time
+match_same_arms = "allow"  # 18 at fork time
+needless_pass_by_value = "allow"  # 10 at fork time
+needless_raw_string_hashes = "allow"  # 6 at fork time
+print_stderr = "allow"  # 2 at fork time
+print_stdout = "allow"  # 32 at fork time
+redundant_closure_for_method_calls = "allow"  # 14 at fork time
+redundant_else = "allow"  # 2 at fork time
+ref_option = "allow"  # 4 at fork time
+semicolon_if_nothing_returned = "allow"  # 16 at fork time
+single_match_else = "allow"  # 6 at fork time
+struct_field_names = "allow"  # 2 at fork time
+too_many_lines = "allow"  # 20 at fork time
+uninlined_format_args = "allow"  # 14 at fork time
+unnecessary_join = "allow"  # 4 at fork time
+unnecessary_wraps = "allow"  # 4 at fork time
+wildcard_imports = "allow"  # 1 at fork time
+# LINT-DEBT-END

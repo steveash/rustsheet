@@ -1,0 +1,13 @@
+RustSheet
+Copyright 2026 The RustSheet contributors
+
+This product includes software originally developed as part of IronCalc
+(https://github.com/ironcalc/IronCalc), Copyright the IronCalc authors,
+licensed under "MIT OR Apache-2.0". RustSheet uses that code under the
+Apache License, Version 2.0. The original license texts are preserved in
+tools/upstream/IRONCALC-LICENSE-APACHE and tools/upstream/IRONCALC-LICENSE-MIT.
+
+Files under crates/rustsheet-engine, crates/rustsheet-xlsx, bindings/python and
+tools/upstream were derived from IronCalc commit
+e29e7b5c5a36b40c8d3b3c49b8731ac426f43606 (2026-09-30) and have since been modified.
+See UPSTREAM.md for details.

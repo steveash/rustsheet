@@ -1,0 +1,123 @@
+[package]
+name = "rustsheet_engine"
+description = "RustSheet calculation engine core (forked from IronCalc's ironcalc_base)"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+# Replaces the system clock with the mock in `mock_time.rs` so dependent
+# crates can test volatile functions (NOW, TODAY, ...) deterministically.
+mock_time = []
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+ryu = "1.0"
+chrono = "0.4"
+bitcode = "0.6.8"
+csv = "1.3.0"
+statrs = { version = "0.18.0", default-features = false, features = [] }
+
+[dev-dependencies]
+serde_json = "1.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = { version = "0.3.69" }
+wasm-bindgen = { version = "0.2" }
+regex-lite = { version = "0.1.6" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rand = "0.8.5"
+chrono-tz = "0.10"
+regex = "1.0"
+
+
+
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+# LINT-DEBT-BEGIN (inherited from the IronCalc fork; entries may only be removed, never added — see docs/process/quality-gates.md)
+elided_lifetimes_in_paths = "allow"  # 80 at fork time
+# LINT-DEBT-END
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+large_stack_arrays = "warn"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+similar_names = "allow"
+# LINT-DEBT-BEGIN (inherited from the IronCalc fork; entries may only be removed, never added — see docs/process/quality-gates.md)
+assigning_clones = "allow"  # 30 at fork time
+bool_to_int_with_if = "allow"  # 2 at fork time
+cast_lossless = "allow"  # 313 at fork time
+cast_possible_truncation = "allow"  # 945 at fork time
+cast_possible_wrap = "allow"  # 322 at fork time
+cast_precision_loss = "allow"  # 306 at fork time
+cast_sign_loss = "allow"  # 415 at fork time
+cloned_instead_of_copied = "allow"  # 18 at fork time
+comparison_chain = "allow"  # 2 at fork time
+default_trait_access = "allow"  # 29 at fork time
+doc_link_with_quotes = "allow"  # 4 at fork time
+doc_markdown = "allow"  # 681 at fork time
+elidable_lifetime_names = "allow"  # 232 at fork time
+enum_glob_use = "allow"  # 4 at fork time
+explicit_iter_loop = "allow"  # 36 at fork time
+float_cmp = "allow"  # 145 at fork time
+fn_params_excessive_bools = "allow"  # 2 at fork time
+format_push_string = "allow"  # 2 at fork time
+if_not_else = "allow"  # 66 at fork time
+ignore_without_reason = "allow"  # 7 at fork time
+ignored_unit_patterns = "allow"  # 5 at fork time
+implicit_clone = "allow"  # 109 at fork time
+implicit_hasher = "allow"  # 2 at fork time
+incompatible_msrv = "allow"  # 16 at fork time
+inconsistent_struct_constructor = "allow"  # 15 at fork time
+inline_always = "allow"  # 2 at fork time
+items_after_statements = "allow"  # 40 at fork time
+manual_assert_eq = "allow"  # 1 at fork time
+manual_let_else = "allow"  # 276 at fork time
+manual_midpoint = "allow"  # 20 at fork time
+manual_string_new = "allow"  # 186 at fork time
+many_single_char_names = "allow"  # 72 at fork time
+map_unwrap_or = "allow"  # 38 at fork time
+match_bool = "allow"  # 2 at fork time
+match_same_arms = "allow"  # 315 at fork time
+mut_mut = "allow"  # 6 at fork time
+needless_pass_by_value = "allow"  # 30 at fork time
+needless_raw_string_hashes = "allow"  # 39 at fork time
+range_minus_one = "allow"  # 8 at fork time
+range_plus_one = "allow"  # 104 at fork time
+redundant_closure_for_method_calls = "allow"  # 84 at fork time
+redundant_else = "allow"  # 54 at fork time
+ref_as_ptr = "allow"  # 2 at fork time
+semicolon_if_nothing_returned = "allow"  # 101 at fork time
+single_char_pattern = "allow"  # 4 at fork time
+single_match_else = "allow"  # 38 at fork time
+struct_excessive_bools = "allow"  # 10 at fork time
+struct_field_names = "allow"  # 2 at fork time
+too_many_lines = "allow"  # 127 at fork time
+trivially_copy_pass_by_ref = "allow"  # 4 at fork time
+uninlined_format_args = "allow"  # 122 at fork time
+unnecessary_semicolon = "allow"  # 150 at fork time
+unnecessary_wraps = "allow"  # 21 at fork time
+unnested_or_patterns = "allow"  # 13 at fork time
+unreadable_literal = "allow"  # 471 at fork time
+unused_self = "allow"  # 29 at fork time
+used_underscore_items = "allow"  # 8812 at fork time
+wildcard_imports = "allow"  # 8 at fork time
+# LINT-DEBT-END

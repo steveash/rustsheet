@@ -1,0 +1,31 @@
+[package]
+name = "rustsheet_python"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+
+[lib]
+name = "_rustsheet"
+crate-type = ["cdylib"]
+
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+xlsx = { package = "rustsheet_xlsx", path = "../../crates/rustsheet-xlsx" }
+pyo3 = { version = "0.27.2", features = ["extension-module"] }
+pythonize = "0.27"
+bitcode = "0.6.8"
+
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
+
+[build-dependencies]
+pyo3-build-config = "0.27.2"
+
+[lints]
+workspace = true
