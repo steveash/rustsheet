@@ -57,3 +57,39 @@ def test_numeric_rules_policy() -> None:
     assert not re.search(
         r"-\d+\^", " ".join(f for c in cases for s in c["sheets"] for f in s["cells"].values())
     )
+
+
+M2_ADDED = [
+    "HLOOKUP", "INDEX", "MATCH", "SUMIFS", "COUNTIFS", "ROUNDUP", "ROUNDDOWN", "NOT", "LEFT",
+    "RIGHT", "MID", "TRIM", "UPPER", "LOWER", "CONCAT", "YEAR", "MONTH", "DAY",
+]  # fmt: skip
+VALID_MODES = {"value", "aggregate", "aggregate_a", "range", "criteria", "any"}
+
+
+def test_catalog_schema() -> None:
+    names = [f["name"] for f in catalog().functions]
+    assert len(names) == len(set(names))
+    for f in catalog().functions:
+        assert f["returns"] in {"number", "text", "bool", "any"}, f["name"]
+        assert isinstance(f["prior"], int | float) and f["milestone"].startswith("M"), f["name"]
+        for p in f["params"]:
+            assert p["mode"] in VALID_MODES, (f["name"], p["name"])
+            assert not (p.get("group") and p.get("optional")), f["name"]
+    missing = [n for n in M2_ADDED if n not in names]
+    assert not missing
+
+
+def test_generator_emits_every_m2_function() -> None:
+    cat = catalog().scoped("M2")
+    seen: set[str] = set()
+    for seed in range(60):
+        seen.update(generate_case(cat, seed, milestone="M2", formulas=80)["tags"])
+    assert not [n for n in M2_ADDED if n not in seen]
+
+
+def test_paired_repeat_groups_stay_paired() -> None:
+    cat = catalog().scoped("M2")
+    spec = generate_case(cat, 5, milestone="M2", formulas=300)
+    for f in spec["sheets"][1]["cells"].values():
+        if f.startswith("=COUNTIFS("):
+            assert f.count(",") % 2 == 1  # (range, criteria) pairs: 2n args

@@ -148,3 +148,137 @@ functions:
     prior: 2
     returns: number
     params: [{ name: text, mode: value, type: text }]
+  - name: HLOOKUP
+    category: lookup
+    milestone: M2
+    prior: 1.5
+    returns: any
+    params:
+      - { name: lookup_value, mode: value, type: any }
+      - { name: table_array, mode: range, type: any }
+      - { name: row_index_num, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
+      - { name: range_lookup, mode: value, type: bool, optional: true }
+  - name: INDEX
+    category: lookup
+    milestone: M2
+    prior: 6
+    returns: any
+    params:
+      - { name: array, mode: range, type: any }
+      - { name: row_num, mode: value, type: number, domain: { int: true, min: 0, max: 6 } }
+      - { name: column_num, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+  - name: MATCH
+    category: lookup
+    milestone: M2
+    prior: 5
+    returns: number
+    params:
+      - { name: lookup_value, mode: value, type: any }
+      - { name: lookup_array, mode: range, type: any }
+      - { name: match_type, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 1 } }
+  - name: SUMIFS
+    category: math
+    milestone: M2
+    prior: 3
+    returns: number
+    params:
+      - { name: sum_range, mode: range, type: number }
+      - { name: criteria_range, mode: range, type: any, group: criteria_pair, min: 1, max: 127 }
+      - { name: criteria, mode: criteria, type: any, group: criteria_pair }
+  - name: COUNTIFS
+    category: statistical
+    milestone: M2
+    prior: 2
+    returns: number
+    params:
+      - { name: criteria_range, mode: range, type: any, group: criteria_pair, min: 1, max: 127 }
+      - { name: criteria, mode: criteria, type: any, group: criteria_pair }
+  - name: ROUNDUP
+    category: math
+    milestone: M2
+    prior: 2
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: num_digits, mode: value, type: number, domain: { int: true, min: -6, max: 10 } }
+  - name: ROUNDDOWN
+    category: math
+    milestone: M2
+    prior: 2
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: num_digits, mode: value, type: number, domain: { int: true, min: -6, max: 10 } }
+  - name: NOT
+    category: logical
+    milestone: M2
+    prior: 2
+    returns: bool
+    params: [{ name: logical, mode: value, type: bool }]
+  - name: LEFT
+    category: text
+    milestone: M2
+    prior: 3
+    returns: text
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: num_chars, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 8 } }
+  - name: RIGHT
+    category: text
+    milestone: M2
+    prior: 3
+    returns: text
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: num_chars, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 8 } }
+  - name: MID
+    category: text
+    milestone: M2
+    prior: 2
+    returns: text
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: start_num, mode: value, type: number, domain: { int: true, min: 1, max: 8 } }
+      - { name: num_chars, mode: value, type: number, domain: { int: true, min: 0, max: 8 } }
+  - name: TRIM
+    category: text
+    milestone: M2
+    prior: 2
+    returns: text
+    params: [{ name: text, mode: value, type: text }]
+  - name: UPPER
+    category: text
+    milestone: M2
+    prior: 1
+    returns: text
+    params: [{ name: text, mode: value, type: text }]
+  - name: LOWER
+    category: text
+    milestone: M2
+    prior: 1
+    returns: text
+    params: [{ name: text, mode: value, type: text }]
+  - name: CONCAT
+    category: text
+    milestone: M2
+    prior: 1
+    returns: text
+    params: [{ name: text, mode: aggregate, type: text, repeat: true, min: 1, max: 255 }]
+  - name: YEAR
+    category: date
+    milestone: M2
+    prior: 2
+    returns: number
+    params: [{ name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }]
+  - name: MONTH
+    category: date
+    milestone: M2
+    prior: 2
+    returns: number
+    params: [{ name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }]
+  - name: DAY
+    category: date
+    milestone: M2
+    prior: 2
+    returns: number
+    params: [{ name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }]

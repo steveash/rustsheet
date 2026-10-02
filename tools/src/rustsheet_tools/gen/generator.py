@@ -145,12 +145,22 @@ class Gen:
         self.used.add(fn["name"])
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
-        for i, p in enumerate(params):
+        i = 0
+        while i < len(params):
+            p = params[i]
             # Excel allows omitting trailing optionals only.
             if p.get("optional") and self.rng.random() < 0.4 and all(q.get("optional") for q in params[i:]):
                 break
+            if group := p.get("group"):
+                # Pair-repeat (SUMIFS criteria_range/criteria): the whole group repeats together.
+                members = [q for q in params[i:] if q.get("group") == group]
+                for _ in range(self.rng.randint(1, 3)):
+                    args.extend(self.argument(q, depth) for q in members)
+                i += len(members)
+                continue
             count = self.rng.randint(1, 3) if p.get("repeat") else 1
             args.extend(self.argument(p, depth) for _ in range(count))
+            i += 1
         return f"{fn['name']}({','.join(args)})"
 
     def argument(self, p: dict[str, Any], depth: int) -> str:

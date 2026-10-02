@@ -3,7 +3,7 @@ id: T-0202
 title: "Extend the function catalog to all M2 functions"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 depends_on: []
