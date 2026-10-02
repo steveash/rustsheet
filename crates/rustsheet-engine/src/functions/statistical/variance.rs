@@ -27,43 +27,10 @@ impl<'a> Model<'a> {
                     accumulate(&mut sum, &mut sumsq, &mut count, value);
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-
-                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
-                        Ok((r, c)) => {
-                            row2 = r;
-                            column2 = c;
-                        }
-                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
-                    }
-
-                    for row in row1..row2 + 1 {
-                        for column in column1..(column2 + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    accumulate(&mut sum, &mut sumsq, &mut count, value);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
+                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+                        accumulate(&mut sum, &mut sumsq, &mut count, value);
+                    }) {
+                        return error;
                     }
                 }
                 CalcResult::Array(array) => {
@@ -134,43 +101,10 @@ impl<'a> Model<'a> {
                     accumulate(&mut sum, &mut sumsq, &mut count, value);
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-
-                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
-                        Ok((r, c)) => {
-                            row2 = r;
-                            column2 = c;
-                        }
-                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
-                    }
-
-                    for row in row1..row2 + 1 {
-                        for column in column1..(column2 + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    accumulate(&mut sum, &mut sumsq, &mut count, value);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
+                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+                        accumulate(&mut sum, &mut sumsq, &mut count, value);
+                    }) {
+                        return error;
                     }
                 }
                 CalcResult::Array(array) => {

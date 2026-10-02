@@ -3,9 +3,13 @@ use regex_lite as regex;
 
 use crate::{
     calc_result::CalcResult,
-    expressions::token::{is_english_error_string, Error},
+    expressions::{
+        token::{is_english_error_string, Error},
+        types::CellReferenceIndex,
+    },
     formatter::format::parse_date,
     locale::Locale,
+    model::Model,
     number_format::to_excel_precision,
 };
 
@@ -472,5 +476,54 @@ pub(crate) fn build_criteria<'a>(
         CalcResult::Range { left: _, right: _ } => Box::new(move |_x| false),
         CalcResult::Array(_) | CalcResult::Lambda(_) => Box::new(move |_x| false),
         CalcResult::EmptyCell | CalcResult::EmptyArg => Box::new(result_is_equal_to_empty),
+    }
+}
+
+impl Model<'_> {
+    /// Calls `f` with every number held by the cells of the range
+    /// `left..=right`, in row-major order.
+    ///
+    /// This is the one place that encodes how aggregate functions (SUM, NPV,
+    /// VAR, ...) read a *reference*: numbers count, booleans, text and empty
+    /// cells are skipped (unlike direct arguments, which the callers coerce
+    /// themselves), and the first error cell aborts the walk and is returned
+    /// as `Err`. Ranges spanning two sheets are `#VALUE!`. Whole-row and
+    /// whole-column ranges are clipped to the used area so the walk stays
+    /// proportional to the data.
+    pub(crate) fn for_each_number_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        if left.sheet != right.sheet {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Ranges are in different sheets".to_string(),
+            ));
+        }
+        let (row2, column2) = self
+            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        for row in left.row..=row2 {
+            for column in left.column..=column2 {
+                match self.evaluate_cell(CellReferenceIndex {
+                    sheet: left.sheet,
+                    row,
+                    column,
+                }) {
+                    CalcResult::Number(value) => f(value),
+                    error @ CalcResult::Error { .. } => return Err(error),
+                    // Booleans, text and empty cells in a reference are ignored.
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
     }
 }
