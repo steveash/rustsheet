@@ -3,7 +3,7 @@ id: T-0007
 title: "Crash-only execution of pending cases"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 depends_on: []
