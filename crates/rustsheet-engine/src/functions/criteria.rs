@@ -167,15 +167,12 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     }
 }
 
+// `<>text` matches every cell that is not that text, including numbers, booleans,
+// errors and blanks (same as the number/bool variants above).
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            if target != s.to_lowercase() {
-                return true;
-            }
-            false
-        }
-        _ => false,
+        CalcResult::String(s) => target != s.to_lowercase(),
+        _ => true,
     }
 }
 

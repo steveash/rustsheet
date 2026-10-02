@@ -3,7 +3,7 @@ id: T-0201
 title: "Single criteria/wildcard matcher for *IF(S), D-functions and MATCH"
 milestone: M2
 lane: functions
-status: in-progress
+status: done
 priority: P2
 size: M
 depends_on: []
@@ -16,9 +16,16 @@ Ensure SUMIF/COUNTIF/AVERAGEIF(S), D* and wildcard MATCH/XLOOKUP share one crite
 Search for existing criteria code first; consolidate rather than add.
 
 ## Acceptance criteria
-- [ ] One module owns criteria; all consumers use it; spec cases for the grammar added to `smoke` (hand) and `probes` (oracle-pending).
-- [ ] No eval regressions; duplication not increased.
-- [ ] `make check` green; reviewers approve.
+- [x] One module owns criteria; all consumers use it; spec cases for the grammar added to `smoke` (hand) and `probes` (oracle-pending).
+- [x] No eval regressions; duplication not increased.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Criteria parsing/matching now lives in `functions/criteria.rs` (moved from `util.rs`).
+`wildcard_text_matcher` replaces six copies of the wildcard-regex closure in MATCH, XMATCH,
+XLOOKUP and the D-functions. Fixed `COUNTIF(range,"<>text")` ignoring non-text cells (Excel counts
+numbers/blanks too). Spec cases: `smoke/criteria` (hand), `probes/criteria-grammar` (oracle-pending).
+Follow-up: T-0205 (route D-function criteria through the shared parser).
