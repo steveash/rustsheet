@@ -3,7 +3,7 @@ id: T-0003
 title: "Add Apache POI Excel-authored workbooks as suite `poi`"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 depends_on: [T-0002]
