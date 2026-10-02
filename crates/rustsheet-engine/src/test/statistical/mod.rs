@@ -24,3 +24,4 @@ mod test_fn_t_test;
 mod test_fn_var;
 mod test_fn_weibull;
 mod test_fn_z_test;
+mod test_range_number_walk;

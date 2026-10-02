@@ -1,0 +1,11 @@
+# 0010 — Ratchet files may move down in the PR that pays the debt down
+
+- **Status:** accepted (2026-10-02)
+- **Context:** `quality/*.json` ratchets are protected paths, so any change needs a decision
+  record. T-0200 removed ~400 duplicated lines and shrank `count_and_average.rs` under the size
+  limit, which `scripts/check_duplication.py` and `check_file_size.py` ask to be recorded with `--update`.
+- **Decision:** A PR that lowers a ratchet may update `quality/*.json` using the script's own
+  `--update` (never by hand), and cites this record. Raising a ratchet still needs its own
+  decision record. T-0200: duplicated lines 9153 → 8829; `count_and_average.rs` no longer oversized.
+- **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
+  `quality/` is a decrease.
