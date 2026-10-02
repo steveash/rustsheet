@@ -24,6 +24,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import quote
 
 import requests
 
@@ -89,7 +90,8 @@ class GraphBackend:
 
     Environment:
       RUSTSHEET_ORACLE_TENANT_ID, RUSTSHEET_ORACLE_CLIENT_ID      (required)
-      RUSTSHEET_ORACLE_CLIENT_SECRET + RUSTSHEET_ORACLE_DRIVE_ID   (app-only mode)
+      RUSTSHEET_ORACLE_CLIENT_SECRET + RUSTSHEET_ORACLE_USER        (app-only mode; USER is the
+          work email whose OneDrive holds the scratch files; or RUSTSHEET_ORACLE_DRIVE_ID instead)
       RUSTSHEET_ORACLE_MSAL_CACHE_B64                               (delegated bootstrap cache)
       RUSTSHEET_ORACLE_FOLDER (default /rustsheet-oracle)
     """
@@ -101,14 +103,18 @@ class GraphBackend:
         self.client_id = os.environ.get("RUSTSHEET_ORACLE_CLIENT_ID", "")
         self.secret = os.environ.get("RUSTSHEET_ORACLE_CLIENT_SECRET")
         self.drive_id = os.environ.get("RUSTSHEET_ORACLE_DRIVE_ID")
+        self.user = os.environ.get("RUSTSHEET_ORACLE_USER")
         self.folder = os.environ.get("RUSTSHEET_ORACLE_FOLDER", "/rustsheet-oracle").strip("/")
         self._session = requests.Session()
 
     def available(self) -> tuple[bool, str]:
         if not (self.tenant and self.client_id):
             return False, "set RUSTSHEET_ORACLE_TENANT_ID and RUSTSHEET_ORACLE_CLIENT_ID"
-        if self.secret and not self.drive_id:
-            return False, "app-only mode needs RUSTSHEET_ORACLE_DRIVE_ID"
+        if self.secret and not (self.drive_id or self.user):
+            return (
+                False,
+                "app-only mode needs RUSTSHEET_ORACLE_USER (work email) or RUSTSHEET_ORACLE_DRIVE_ID",
+            )
         if not self.secret and not (
             _cache_path().exists() or os.environ.get("RUSTSHEET_ORACLE_MSAL_CACHE_B64")
         ):
@@ -169,7 +175,11 @@ class GraphBackend:
 
     # -- http
     def _drive(self) -> str:
-        return f"{GRAPH}/drives/{self.drive_id}" if self.drive_id else f"{GRAPH}/me/drive"
+        if self.drive_id:
+            return f"{GRAPH}/drives/{self.drive_id}"
+        if self.user:
+            return f"{GRAPH}/users/{quote(self.user)}/drive"
+        return f"{GRAPH}/me/drive"
 
     def _call(
         self,

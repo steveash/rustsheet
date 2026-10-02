@@ -20,10 +20,10 @@ Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicat
 
 ## Needs owner
 - Excel oracle credentials: owner has a Microsoft 365 Business tenant (Graph-compatible). Pending:
-  app registration + `RUSTSHEET_ORACLE_*` environment variables / GitHub `oracle` environment
-  secrets (`docs/architecture/oracle.md`). Unblocks T-0004 and its dependents.
-- Set `main` as the GitHub default branch (repo Settings → General → Default branch).
-- Create the three routines from `docs/process/routines.md` in the claude.ai routines UI (repo + GitHub attached).
+  app registration + four `RUSTSHEET_ORACLE_*` environment variables (step-by-step guide in
+  `docs/architecture/oracle.md`). Unblocks T-0004 and its dependents.
+- Routines are enabled with the repo attached, but their prompts are the pre-review drafts: replace each
+  routine's prompt with the current text in `docs/process/routines.md`.
 
 ## Log
 - 2026-10-01 — `main` created. Routines must be created in the claude.ai UI with the repo attached (docs/process/routines.md).
