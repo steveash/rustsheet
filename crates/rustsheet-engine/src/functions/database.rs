@@ -1,12 +1,10 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::format::parse_formatted_number,
     Model,
 };
 
-use super::criteria::wildcard_text_matcher;
-use super::util::compare_values;
+use super::criteria::{build_criteria_with, CriteriaFlavor};
 
 impl<'a> Model<'a> {
     // =DAVERAGE(database, field, criteria)
@@ -726,122 +724,9 @@ impl<'a> Model<'a> {
         false
     }
 
-    /// Implements Excel-like criteria matching for a single value.
-    /// Supports prefixes: <>, >=, <=, >, <, = ; wildcards * and ? for string equals.
+    /// Whether a database value satisfies one criteria cell (shared grammar, D-function flavor).
     fn criteria_cell_matches(&self, db_val: &CalcResult, crit_cell: &CalcResult) -> bool {
-        // Convert the criteria cell to a string for operator parsing if possible,
-        // otherwise fall back to equality via compare_values.
-
-        let mut criteria = match crit_cell {
-            CalcResult::String(s) => s.trim().to_string(),
-            CalcResult::Number(n) => {
-                // treat as equality with number
-                return match db_val {
-                    CalcResult::Number(v) => (*v - *n).abs() <= f64::EPSILON,
-                    _ => false,
-                };
-            }
-            CalcResult::Boolean(b) => {
-                // check equality with boolean
-                return match db_val {
-                    CalcResult::Boolean(v) => *v == *b,
-                    _ => false,
-                };
-            }
-            CalcResult::EmptyCell | CalcResult::EmptyArg => "".to_string(),
-            CalcResult::Error { .. } => return false,
-            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                return false
-            }
-        };
-
-        // Detect operator prefix
-        let mut op = "="; // default equality (with wildcard semantics for strings)
-        let prefixes = ["<>", ">=", "<=", ">", "<", "="];
-        for p in prefixes.iter() {
-            if criteria.starts_with(p) {
-                op = p;
-                criteria = criteria[p.len()..].trim().to_string();
-                break;
-            }
-        }
-
-        let formatted_number = parse_formatted_number(&criteria, &[], self.locale);
-
-        match op {
-            ">" | ">=" | "<" | "<=" => {
-                if let Ok((t, _)) = formatted_number {
-                    // numeric comparison
-                    if let CalcResult::Number(n) = db_val {
-                        match op {
-                            ">" => *n > t,
-                            ">=" => *n >= t,
-                            "<" => *n < t,
-                            "<=" => *n <= t,
-                            _ => false,
-                        }
-                    } else {
-                        false
-                    }
-                } else {
-                    // string comparison (case-insensitive) using compare_values semantics
-                    let rhs = CalcResult::String(criteria.to_lowercase());
-                    let lhs = match db_val {
-                        CalcResult::String(s) => CalcResult::String(s.to_lowercase()),
-                        x => x.clone(),
-                    };
-                    let c = compare_values(&lhs, &rhs);
-                    match op {
-                        ">" => c > 0,
-                        ">=" => c >= 0,
-                        "<" => c < 0,
-                        "<=" => c <= 0,
-                        _ => false,
-                    }
-                }
-            }
-            "<>" => {
-                // not equal (with wildcard semantics for strings)
-                // If rhs has wildcards and db_val is string, do regex; else use compare_values != 0
-                if let CalcResult::String(s) = db_val {
-                    if criteria.contains('*') || criteria.contains('?') {
-                        return !wildcard_text_matcher(&criteria)(&CalcResult::String(s.clone()));
-                    }
-                }
-                let rhs = if let Ok((n, _)) = formatted_number {
-                    CalcResult::Number(n)
-                } else {
-                    CalcResult::String(criteria.to_lowercase())
-                };
-                let lhs = match db_val {
-                    CalcResult::String(s) => CalcResult::String(s.to_lowercase()),
-                    x => x.clone(),
-                };
-                compare_values(&lhs, &rhs) != 0
-            }
-            _ => {
-                // equality. For strings, support wildcards (*, ?)
-                if let Ok((n, _)) = formatted_number {
-                    // numeric equals
-                    if let CalcResult::Number(m) = db_val {
-                        (*m - n).abs() <= f64::EPSILON
-                    } else {
-                        compare_values(db_val, &CalcResult::Number(n)) == 0
-                    }
-                } else {
-                    // textual/boolean equals (case-insensitive), wildcard-enabled for strings
-                    if let CalcResult::String(s) = db_val {
-                        if criteria.contains('*') || criteria.contains('?') {
-                            return wildcard_text_matcher(&criteria)(db_val);
-                        }
-                        // This is weird but we only need to check if "starts with" for equality
-                        return s.to_lowercase().starts_with(&criteria.to_lowercase());
-                    }
-                    // Fallback: compare_values equality
-                    compare_values(db_val, &CalcResult::String(criteria.to_lowercase())) == 0
-                }
-            }
-        }
+        build_criteria_with(crit_cell, self.locale, CriteriaFlavor::Database)(db_val)
     }
 
     /// Shared implementation for DMAX/DMIN

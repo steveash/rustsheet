@@ -1,7 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::calc_result::CalcResult;
-use crate::functions::criteria::{build_criteria, wildcard_text_matcher};
+use crate::functions::criteria::{
+    build_criteria, build_criteria_with, wildcard_text_matcher, CriteriaFlavor,
+};
 use crate::locale::{get_locale, Locale};
 
 fn en_locale() -> &'static Locale {
@@ -291,6 +293,21 @@ fn test_build_criteria_not_equal_text_matches_non_text() {
     assert!(f(&CalcResult::Number(1.0)));
     assert!(f(&CalcResult::Boolean(true)));
     assert!(f(&CalcResult::EmptyCell));
+}
+
+// D-functions share the grammar but plain text equality matches by prefix.
+#[test]
+fn test_build_criteria_database_flavor_prefix_equality() {
+    let c = CalcResult::String("ab".to_string());
+    let db = build_criteria_with(&c, en_locale(), CriteriaFlavor::Database);
+    assert!(db(&CalcResult::String("ABc".to_string())));
+    assert!(!db(&CalcResult::String("xab".to_string())));
+    let std = build_criteria(&c, en_locale());
+    assert!(!std(&CalcResult::String("abc".to_string())));
+    // Operators are unaffected by the flavor.
+    let ne = CalcResult::String("<>ab".to_string());
+    let db_ne = build_criteria_with(&ne, en_locale(), CriteriaFlavor::Database);
+    assert!(db_ne(&CalcResult::String("abc".to_string())));
 }
 
 #[test]

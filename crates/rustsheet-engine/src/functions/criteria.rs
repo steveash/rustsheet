@@ -167,6 +167,14 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     }
 }
 
+fn result_starts_with_string(calc_result: &CalcResult, target: &str) -> bool {
+    match calc_result {
+        CalcResult::String(s) => s.to_lowercase().starts_with(target),
+        CalcResult::EmptyCell => target.is_empty(),
+        _ => false,
+    }
+}
+
 // `<>text` matches every cell that is not that text, including numbers, booleans,
 // errors and blanks (same as the number/bool variants above).
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
@@ -258,6 +266,26 @@ pub(crate) fn build_criteria<'a>(
     value: &'a CalcResult,
     locale: &'a Locale,
 ) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
+    build_criteria_with(value, locale, CriteriaFlavor::Standard)
+}
+
+/// Which family of functions a criterion is being compiled for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CriteriaFlavor {
+    /// COUNTIF/SUMIF/AVERAGEIF and the *IFS variants.
+    Standard,
+    /// D-functions (DSUM, DCOUNT, ...): identical grammar, except that plain text
+    /// equality matches by prefix ("ab" matches "abc").
+    // UNVERIFIED: oracle evidence pending via probes/criteria-grammar (C11).
+    Database,
+}
+
+/// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
+pub(crate) fn build_criteria_with<'a>(
+    value: &'a CalcResult,
+    locale: &'a Locale,
+    flavor: CriteriaFlavor,
+) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
@@ -344,6 +372,8 @@ pub(crate) fn build_criteria<'a>(
                     }
                 } else if let Some(f) = parse_date_criterion(v, locale) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
+                } else if flavor == CriteriaFlavor::Database {
+                    Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {
                     Box::new(move |x| result_is_equal_to_string(x, &v.to_lowercase()))
                 }
