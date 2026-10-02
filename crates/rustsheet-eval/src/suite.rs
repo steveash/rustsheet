@@ -1,8 +1,8 @@
 //! Suite manifests (`eval/suites/<name>/suite.toml`) and case discovery.
 
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use serde::Deserialize;
 use walkdir::WalkDir;
@@ -63,7 +63,90 @@ pub struct SuiteManifest {
     /// Milestone tag(s) this suite primarily measures.
     #[serde(default)]
     pub milestone: Vec<String>,
+    /// Pinned external source; when present the cases live in `eval/.cache/suites/<name>`
+    /// (populated by `rustsheet-eval fetch`) instead of next to the manifest.
+    #[serde(default)]
+    pub fetch: Option<FetchSpec>,
 }
+
+/// Pinned download of a suite too large or not redistributable to vendor.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FetchSpec {
+    /// `https://` or `file://` URL of a git repository (with `rev`) or an archive (with `sha256`).
+    pub url: String,
+    /// Full 40-hex commit id; makes the source a git repository.
+    #[serde(default)]
+    pub rev: Option<String>,
+    /// SHA-256 (hex) of the archive; makes the source a `.zip`/`.tar*` archive.
+    #[serde(default)]
+    pub sha256: Option<String>,
+    /// Directory inside the source that becomes the suite root.
+    #[serde(default)]
+    pub subdir: Option<String>,
+    /// Globs (relative to `subdir`) of the files to keep; default everything.
+    #[serde(default = "default_include")]
+    pub include: Vec<String>,
+}
+
+impl FetchSpec {
+    /// The pin that a fetched copy must carry to count as up to date.
+    #[must_use]
+    pub fn pin(&self) -> String {
+        let id = self
+            .rev
+            .as_deref()
+            .or(self.sha256.as_deref())
+            .unwrap_or_default();
+        format!(
+            "{}@{id}#{}",
+            self.url,
+            self.subdir.as_deref().unwrap_or_default()
+        )
+    }
+
+    /// # Errors
+    /// Fails unless the spec is a well-formed, fully pinned source.
+    pub fn validate(&self) -> Result<()> {
+        if !(self.url.starts_with("https://") || self.url.starts_with("file://")) {
+            bail!("fetch.url must start with https:// or file://");
+        }
+        let hex = |s: &str, len: usize| s.len() == len && s.bytes().all(|b| b.is_ascii_hexdigit());
+        match (&self.rev, &self.sha256) {
+            (Some(rev), None) if hex(rev, 40) => {}
+            (None, Some(sha)) if hex(sha, 64) => {}
+            _ => bail!(
+                "fetch needs exactly one pin: a 40-hex `rev` (git) or a 64-hex `sha256` (archive)"
+            ),
+        }
+        if let Some(sub) = &self.subdir {
+            let unsafe_path = Path::new(sub).components().any(|c| {
+                matches!(
+                    c,
+                    Component::ParentDir | Component::RootDir | Component::Prefix(_)
+                )
+            });
+            if unsafe_path {
+                bail!("fetch.subdir must be a relative path without `..`");
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Whether a suite's cases are available locally.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FetchState {
+    /// Vendored next to the manifest.
+    Local,
+    /// External and present at the pinned revision.
+    Fetched,
+    /// External and missing or stale; run `rustsheet-eval fetch`.
+    NotFetched,
+}
+
+/// File inside a fetched suite recording the pin it was fetched at.
+pub const FETCH_MARKER: &str = ".rustsheet-fetched";
 
 fn default_root() -> String {
     "cases".into()
@@ -79,6 +162,8 @@ fn default_true() -> bool {
 pub struct Suite {
     pub manifest: SuiteManifest,
     pub dir: PathBuf,
+    /// Where an external suite is fetched to (`eval/.cache/suites/<name>`).
+    pub cache_dir: PathBuf,
 }
 
 /// A discovered case file.
@@ -89,7 +174,7 @@ pub struct CaseFile {
     pub path: PathBuf,
 }
 
-fn build_globs(patterns: &[String]) -> Result<GlobSet> {
+pub(crate) fn build_globs(patterns: &[String]) -> Result<GlobSet> {
     let mut b = GlobSetBuilder::new();
     for p in patterns {
         b.add(Glob::new(p).with_context(|| format!("bad glob {p}"))?);
@@ -115,7 +200,28 @@ impl Suite {
                     .parent()
                     .map(Path::to_path_buf)
                     .unwrap_or_default();
-                suites.push(Suite { manifest, dir });
+                // The name becomes a cache directory that `fetch` replaces wholesale.
+                if manifest.name.is_empty()
+                    || !manifest
+                        .name
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+                {
+                    bail!(
+                        "{}: suite name must match [A-Za-z0-9_-]+",
+                        entry.path().display()
+                    );
+                }
+                if let Some(f) = &manifest.fetch {
+                    f.validate()
+                        .with_context(|| format!("{}: [fetch]", entry.path().display()))?;
+                }
+                let cache_dir = suites_dir.join("../.cache/suites").join(&manifest.name);
+                suites.push(Suite {
+                    manifest,
+                    dir,
+                    cache_dir,
+                });
             }
         }
         suites.sort_by(|a, b| a.manifest.name.cmp(&b.manifest.name));
@@ -124,7 +230,21 @@ impl Suite {
 
     #[must_use]
     pub fn root(&self) -> PathBuf {
+        if self.manifest.fetch.is_some() {
+            return self.cache_dir.clone();
+        }
         self.dir.join(&self.manifest.root)
+    }
+
+    #[must_use]
+    pub fn fetch_state(&self) -> FetchState {
+        let Some(spec) = &self.manifest.fetch else {
+            return FetchState::Local;
+        };
+        match std::fs::read_to_string(self.cache_dir.join(FETCH_MARKER)) {
+            Ok(m) if m.trim() == spec.pin() => FetchState::Fetched,
+            _ => FetchState::NotFetched,
+        }
     }
 
     /// Lists the case files of this suite in a stable order.
@@ -180,4 +300,103 @@ pub fn oracle_sidecar(path: &Path) -> PathBuf {
         .or_else(|| name.strip_suffix(".xlsx"))
         .unwrap_or(&name);
     path.with_file_name(format!("{stem}.oracle.json"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const REV: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    fn manifest(fetch: &str) -> SuiteManifest {
+        let text = format!("name = \"ext\"\nkind = \"xlsx\"\nlicense = \"GPL-3.0\"\n{fetch}");
+        toml::from_str(&text).expect("manifest parses")
+    }
+
+    fn suite_with(fetch: &str, cache_dir: PathBuf) -> Suite {
+        Suite {
+            manifest: manifest(fetch),
+            dir: PathBuf::from("eval/suites/ext"),
+            cache_dir,
+        }
+    }
+
+    #[test]
+    fn fetch_table_parses_and_validates() {
+        let m = manifest(&format!(
+            "[fetch]\nurl = \"https://example.com/r.git\"\nrev = \"{REV}\"\nsubdir = \"a/b\"\ninclude = [\"**/*.xlsx\"]\n"
+        ));
+        let f = m.fetch.expect("fetch table");
+        assert_eq!(f.subdir.as_deref(), Some("a/b"));
+        assert_eq!(f.include, vec!["**/*.xlsx".to_string()]);
+        assert!(f.validate().is_ok());
+    }
+
+    #[test]
+    fn fetch_requires_exactly_one_well_formed_pin() {
+        let spec = |extra: &str| {
+            manifest(&format!("[fetch]\nurl = \"https://x.org/a\"\n{extra}"))
+                .fetch
+                .expect("fetch table")
+        };
+        assert!(spec("").validate().is_err());
+        assert!(spec("rev = \"main\"").validate().is_err());
+        assert!(spec(&format!("rev = \"{REV}\"\nsha256 = \"{REV}\""))
+            .validate()
+            .is_err());
+        assert!(spec(&format!("sha256 = \"{}\"", "a".repeat(64)))
+            .validate()
+            .is_ok());
+    }
+
+    #[test]
+    fn fetch_rejects_unsafe_url_and_subdir() {
+        let spec = |url: &str, sub: &str| FetchSpec {
+            url: url.into(),
+            rev: Some(REV.into()),
+            sha256: None,
+            subdir: Some(sub.into()),
+            include: default_include(),
+        };
+        assert!(spec("http://x.org/a", "ok").validate().is_err());
+        assert!(spec("-oProxy=x", "ok").validate().is_err());
+        assert!(spec("https://x.org/a", "../up").validate().is_err());
+        assert!(spec("https://x.org/a", "/abs").validate().is_err());
+    }
+
+    #[test]
+    fn unknown_fetch_keys_are_rejected() {
+        let text = "name = \"x\"\nkind = \"xlsx\"\nlicense = \"MIT\"\n[fetch]\nurl = \"https://x\"\nbogus = 1\n";
+        assert!(toml::from_str::<SuiteManifest>(text).is_err());
+    }
+
+    #[test]
+    fn external_suite_root_is_the_cache_and_unfetched_has_no_cases() {
+        let cache = std::env::temp_dir().join(format!("rs-suite-test-{}", std::process::id()));
+        let s = suite_with(
+            &format!("[fetch]\nurl = \"https://x.org/a\"\nrev = \"{REV}\"\n"),
+            cache.clone(),
+        );
+        assert_eq!(s.root(), cache);
+        assert_eq!(s.fetch_state(), FetchState::NotFetched);
+        assert!(s.cases().expect("cases").is_empty());
+
+        std::fs::create_dir_all(&cache).expect("mkdir");
+        std::fs::write(
+            cache.join(FETCH_MARKER),
+            s.manifest.fetch.as_ref().expect("fetch").pin(),
+        )
+        .expect("marker");
+        assert_eq!(s.fetch_state(), FetchState::Fetched);
+        std::fs::write(cache.join(FETCH_MARKER), "stale pin").expect("marker");
+        assert_eq!(s.fetch_state(), FetchState::NotFetched);
+        std::fs::remove_dir_all(&cache).expect("cleanup");
+    }
+
+    #[test]
+    fn local_suite_is_local() {
+        let s = suite_with("", PathBuf::new());
+        assert_eq!(s.fetch_state(), FetchState::Local);
+        assert_eq!(s.root(), PathBuf::from("eval/suites/ext/cases"));
+    }
 }
