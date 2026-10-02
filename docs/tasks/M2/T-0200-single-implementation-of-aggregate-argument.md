@@ -27,4 +27,7 @@ Changing semantics (pure refactor unless a failing eval case proves a bug).
 Added `Model::for_each_number_in_range` (functions/util.rs) and used it at 11 call sites (NPV, SUMSQ,
 PRODUCT, DEVSQ, VAR/STDEV families, AVERAGE-family `for_each_value`). Duplicated lines 9153 → 8829;
 eval unchanged. The `*A` variants (VARA/STDEVA, GCD/LCM) coerce text/booleans in ranges and
-legitimately keep their own walks. Follow-up: a coercing counterpart helper for those.
+legitimately keep their own walks. Follow-up: T-0204 (coercing counterpart helper).
+One deliberate deviation from pure refactor: `for_each_value` (AVERAGE family) now clips whole-row/column
+ranges to the used area like every other site (same results, far fewer cell reads), and the unreachable
+"Unexpected Range" arm is gone. Helper covered by `test_range_number_walk.rs`.
