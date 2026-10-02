@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Criteria grammar edge cases: numeric text vs numbers, blanks, errors, trailing ~, D-function prefix matching",
+  "tags": ["M2", "criteria", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "10",
+        "A2": 10,
+        "A3": "abc",
+        "A4": "",
+        "A5": true,
+        "A6": "#N/A",
+        "B1": "Name",
+        "B2": "ab",
+        "B3": "abc",
+        "B4": "xab",
+        "D1": "Name",
+        "D2": "ab",
+        "C1": "=COUNTIF(A1:A6,10)",
+        "C2": "=COUNTIF(A1:A6,\"10\")",
+        "C3": "=COUNTIF(A1:A6,\"\")",
+        "C4": "=COUNTIF(A1:A6,\"=\")",
+        "C5": "=COUNTIF(A1:A6,\"<>\")",
+        "C6": "=COUNTIF(A1:A6,\"TRUE\")",
+        "C7": "=COUNTIF(A1:A6,\"#N/A\")",
+        "C8": "=COUNTIF(A1:A6,\"abc~\")",
+        "C9": "=COUNTIF(A1:A6,\"*\")",
+        "C10": "=COUNTIF(A1:A6,\"a?c\")",
+        "C11": "=DCOUNTA(B1:B4,\"Name\",D1:D2)",
+        "C12": "=COUNTIF(A1:A6,\">a\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1", "Sheet1!C2", "Sheet1!C3", "Sheet1!C4", "Sheet1!C5", "Sheet1!C6",
+    "Sheet1!C7", "Sheet1!C8", "Sheet1!C9", "Sheet1!C10", "Sheet1!C11", "Sheet1!C12"
+  ]
+}

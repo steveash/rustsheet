@@ -8,7 +8,8 @@ use super::{
         binary_search_descending_or_greater, binary_search_descending_or_smaller,
         binary_search_or_greater, binary_search_or_smaller,
     },
-    util::{compare_values, from_wildcard_to_regex, result_matches_regex},
+    criteria::wildcard_text_matcher,
+    util::compare_values,
 };
 
 #[derive(PartialEq)]
@@ -93,11 +94,7 @@ fn linear_search(
         MatchMode::WildcardMatch => {
             let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
                 if let CalcResult::String(s) = &lookup_value {
-                    if let Ok(reg) = from_wildcard_to_regex(&s.to_lowercase(), true) {
-                        Box::new(move |x| result_matches_regex(x, &reg))
-                    } else {
-                        Box::new(move |_| false)
-                    }
+                    wildcard_text_matcher(s)
                 } else {
                     Box::new(move |x| compare_values(x, lookup_value) == 0)
                 };

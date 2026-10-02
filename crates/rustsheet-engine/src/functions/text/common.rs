@@ -9,8 +9,8 @@ use crate::{
     },
     formatter::format::{format_number, parse_formatted_number},
     functions::{
+        criteria::from_wildcard_to_regex,
         text::util::{substitute, text_after, text_before, Case},
-        util::from_wildcard_to_regex,
     },
     model::Model,
     number_format::to_precision,

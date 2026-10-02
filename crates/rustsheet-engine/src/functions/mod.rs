@@ -1,13 +1,13 @@
-use std::array::IntoIter;
-
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     language::{get_default_language, Functions, Language},
     model::Model,
 };
+use std::array::IntoIter;
 
 pub(crate) mod binary_search;
+pub(crate) mod criteria;
 mod database;
 pub(crate) mod date_and_time;
 mod engineering;

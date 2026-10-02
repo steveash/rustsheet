@@ -1,6 +1,6 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::build_criteria;
+use crate::functions::criteria::build_criteria;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
