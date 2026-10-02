@@ -30,3 +30,4 @@ Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicat
 - 2026-10-01 — `main` created. Routines must be created in the claude.ai UI with the repo attached (docs/process/routines.md).
 - 2026-10-01 — M0 bootstrap: fork, eval harness, oracle client, generator P0, CI, agent process.
 - 2026-10-02 — T-0200: shared range-number iterator; duplicated lines 9153→8829; eval 0 regressions, 0 fixed.
+- 2026-10-02 — T-0002: pinned external suite fetcher (`rustsheet-eval fetch`); eval 0 regressions, 0 fixed.

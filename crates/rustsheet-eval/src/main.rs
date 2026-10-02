@@ -20,9 +20,10 @@ use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
+use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
-use rustsheet_eval::suite::{BaselineMode, Suite};
+use rustsheet_eval::suite::{BaselineMode, FetchState, Suite};
 use rustsheet_eval::xlsx_snapshot::read_snapshot;
 
 #[derive(Parser)]
@@ -55,6 +56,12 @@ struct Selection {
 enum Cmd {
     /// List suites and case counts.
     Suites,
+    /// Download pinned external suites (`[fetch]` in suite.toml) into eval/.cache/suites.
+    Fetch {
+        /// Suites to fetch (repeatable). Default: every external suite.
+        #[arg(long = "suite")]
+        suites: Vec<String>,
+    },
     /// Run suites and write the report to eval/runs/latest.
     Run {
         #[command(flatten)]
@@ -110,6 +117,13 @@ fn select(root: &Path, sel: &Selection, gate_only: bool) -> Result<Vec<Suite>> {
     let chosen: Vec<Suite> = all
         .into_iter()
         .filter(|s| {
+            if s.fetch_state() == FetchState::NotFetched {
+                eprintln!(
+                    "skipping {}: not fetched (run `rustsheet-eval fetch --suite {}`)",
+                    s.manifest.name, s.manifest.name
+                );
+                return false;
+            }
             if sel.suites.is_empty() {
                 !gate_only || s.manifest.gate
             } else {
@@ -258,10 +272,39 @@ fn run() -> Result<ExitCode> {
         Cmd::Suites => {
             for s in Suite::load_all(&root.join("eval/suites"))? {
                 let n = s.cases().map_or(0, |c| c.len());
+                let cases = match s.fetch_state() {
+                    FetchState::NotFetched => "not fetched".to_string(),
+                    _ => format!("{n} cases"),
+                };
                 println!(
-                    "{:<28} {:>6} cases  gate={:<5} license={:<20} {}",
-                    s.manifest.name, n, s.manifest.gate, s.manifest.license, s.manifest.description
+                    "{:<28} {:>12}  gate={:<5} license={:<20} {}",
+                    s.manifest.name,
+                    cases,
+                    s.manifest.gate,
+                    s.manifest.license,
+                    s.manifest.description
                 );
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Fetch { suites } => {
+            let all = Suite::load_all(&root.join("eval/suites"))?;
+            let mut fetched = 0;
+            for s in all.iter().filter(|s| {
+                s.manifest.fetch.is_some()
+                    && (suites.is_empty() || suites.contains(&s.manifest.name))
+            }) {
+                let files =
+                    fetch_suite(s).with_context(|| format!("fetching {}", s.manifest.name))?;
+                println!(
+                    "fetched {} ({files} files) -> {}",
+                    s.manifest.name,
+                    s.cache_dir.display()
+                );
+                fetched += 1;
+            }
+            if fetched == 0 {
+                bail!("no matching external suites");
             }
             Ok(ExitCode::SUCCESS)
         }

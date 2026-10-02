@@ -17,6 +17,12 @@ side by side.
 | `gate` | part of the CI no-regression gate |
 | `baseline` | `cells` (default), `cases` (large corpora) or `none` |
 | `milestone` | which milestone(s) the suite measures |
+| `[fetch]` | optional pinned external source: `url` (`https://` or `file://`), exactly one pin (`rev` = 40-hex git commit, or `sha256` of a `.zip`/`.tar*` archive), optional `subdir` and `include` globs |
+
+External suites (`[fetch]`) live in `eval/.cache/suites/<name>` (gitignored) after `rustsheet-eval fetch`;
+their `root` is that directory. A suite whose cache is missing or stale (marker `.rustsheet-fetched`
+differs from the pin) is listed as `not fetched` and skipped, with a note, by `run`/`check`/`update-baseline`.
+Use this for sources that are too large or not redistributable (GPL / CC-BY-SA); never vendor them.
 
 Current suites:
 - `ironcalc-calc`: 207 Excel-authored workbooks, 71k cells.
@@ -81,7 +87,7 @@ Only `pass` counts as passing. Case statuses:
 
 ## CLI
 ```
-rustsheet-eval suites | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
+rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
                | show <case-id> [--all] | snapshot <file.xlsx>
 ```
 `snapshot` is the **only** xlsx value parser in the repo. Python tools call it.
