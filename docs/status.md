@@ -37,3 +37,4 @@ Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicat
 - 2026-10-02 — T-0007: pending cases now run crash-only (panic/timeout/error reported, per-suite crashes column); eval 0 regressions, 0 fixed.
 - 2026-10-02 — T-0205: D-function criteria routed through shared criteria grammar (CriteriaFlavor::Database); eval 0 regressions, 0 fixed (+1 new smoke case passes).
 - 2026-10-02 — T-0005: transitive volatile skipping + METADATA-pinned clock (NOW/TODAY now scored); NOW() keeps sub-second precision; ironcalc-calc +2 scored cells pass; eval 0 regressions, baseline unchanged.
+- 2026-10-02 — T-0904: blocked (cached #VALUE! is CSE-array context, not dynamic #CALC!); finding in docs/excel-semantics/arrays.md; eval unchanged.

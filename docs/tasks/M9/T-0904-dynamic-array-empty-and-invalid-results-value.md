@@ -3,7 +3,7 @@ id: T-0904
 title: "DROP/TAKE/SEQUENCE/FILTER: Excel returns #VALUE! where we return #CALC!"
 milestone: M9
 lane: functions
-status: in-progress
+status: blocked
 priority: P1
 size: S
 depends_on: []
@@ -35,3 +35,15 @@ cells in the suite expect `#CALC!`, keep those passing and document the distinct
 
 ## Out of scope
 SEQUENCE floating-point step accumulation (T-0905), oracle confirmation of other empty-array cases.
+
+## Blocked because
+Investigation (T-0904 attempt) shows the premise is wrong. The 8 cells are **legacy (CSE) array
+formulas** in the source xlsx (`<f t="array" ref="E1">` single-cell ref, see
+`crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/FILTER_ERRORS.xlsx`): Excel stores
+an empty-array result there as `#VALUE!`, whereas a dynamic-array formula yields `#CALC!`.
+Switching DROP/TAKE/SEQUENCE/FILTER to `#VALUE!` unconditionally clears all 8 baseline lines
+(verified: ironcalc-calc 1909 -> 1901, 0 regressions) but would regress dynamic-array behavior
+(documented `#CALC!`, asserted by `test_spill_functions.rs`). The correct fix needs the engine to
+distinguish CSE array formulas from dynamic spill anchors (an engine/architecture change, needs a
+spec) and oracle confirmation of the dynamic case via `excel-probe`. Re-scope as: SPEC for CSE vs
+dynamic array formula result semantics, then this task.
