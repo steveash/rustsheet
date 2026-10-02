@@ -37,3 +37,13 @@ fn returns_date_time() {
     let text = model._get_text("A1");
     assert_eq!(text, *"3/20/2023, 1:44 PM");
 }
+
+#[test]
+fn keeps_sub_second_precision() {
+    // 13:44:25.208 UTC: Excel's NOW() is not truncated to whole seconds.
+    mock_time::set_mock_time(TIMESTAMP_2023);
+    let mut model = new_empty_model();
+    model._set("A1", "=ROUND((NOW()-INT(NOW()))*86400, 3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"49465.208");
+}

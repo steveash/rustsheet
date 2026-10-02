@@ -95,6 +95,11 @@ impl Engine for RustSheetEngine {
         let workbook = rustsheet_xlsx::import::load_from_xlsx_bytes(bytes, "case", "en", "UTC")
             .map_err(|e| format!("import failed: {e}"))?;
         let mut model = Model::from_workbook(workbook, "en")?;
+        // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
+        // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
+        if let Some(millis) = rustsheet_xlsx::mock_time::get_metadata_timestamp(&model) {
+            rustsheet_engine::mock_time::set_mock_time(millis);
+        }
         model.evaluate();
         let names = model.workbook.get_worksheet_names();
         Ok(Box::new(RustSheetEvaluated { model, names }))
@@ -140,5 +145,48 @@ impl Engine for RustSheetEngine {
         model.evaluate();
         let names = model.workbook.get_worksheet_names();
         Ok(Box::new(RustSheetEvaluated { model, names }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Workbook with `Sheet1!A1 = TODAY()` and an optional `METADATA` NOW row.
+    fn workbook(now_serial: Option<f64>) -> Vec<u8> {
+        let mut model = Model::new_empty("case", "en", "UTC", "en").expect("model");
+        model
+            .update_cell_with_formula(0, 1, 1, "=TODAY()".into())
+            .expect("formula");
+        if let Some(serial) = now_serial {
+            model.add_sheet("METADATA").expect("sheet");
+            model.update_cell_with_text(1, 1, 1, "NOW").expect("label");
+            model
+                .update_cell_with_number(1, 1, 2, serial)
+                .expect("serial");
+        }
+        model.evaluate();
+        let cursor = std::io::Cursor::new(Vec::new());
+        rustsheet_xlsx::export::save_xlsx_to_writer(&model, cursor)
+            .expect("save")
+            .into_inner()
+    }
+
+    fn today(bytes: &[u8]) -> Value {
+        let evaluated = RustSheetEngine.evaluate_xlsx(bytes).expect("evaluate");
+        evaluated
+            .value("Sheet1", Addr { row: 1, col: 1 })
+            .expect("sheet exists")
+    }
+
+    #[test]
+    fn metadata_now_row_pins_the_clock() {
+        assert_eq!(today(&workbook(Some(45000.75))), Value::Number(45000.0));
+    }
+
+    #[test]
+    fn without_metadata_the_clock_is_a_fixed_default() {
+        // 8 November 2022 (the engine's mock default).
+        assert_eq!(today(&workbook(None)), Value::Number(44873.0));
     }
 }

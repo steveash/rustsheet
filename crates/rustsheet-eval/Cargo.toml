@@ -13,8 +13,9 @@ name = "rustsheet-eval"
 path = "src/main.rs"
 
 [dependencies]
-rustsheet_engine = { path = "../rustsheet-engine" }
-rustsheet_xlsx = { path = "../rustsheet-xlsx" }
+# `mock_time` pins the clock per evaluation thread so NOW()/TODAY() are reproducible.
+rustsheet_engine = { path = "../rustsheet-engine", features = ["mock_time"] }
+rustsheet_xlsx = { path = "../rustsheet-xlsx", features = ["mock_time"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 globset = "0.4"
