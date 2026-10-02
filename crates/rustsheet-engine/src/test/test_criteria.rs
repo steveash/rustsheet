@@ -308,6 +308,8 @@ fn test_build_criteria_database_flavor_prefix_equality() {
     let ne = CalcResult::String("<>ab".to_string());
     let db_ne = build_criteria_with(&ne, en_locale(), CriteriaFlavor::Database);
     assert!(db_ne(&CalcResult::String("abc".to_string())));
+    // A blank cell only starts with the empty string.
+    assert!(!db(&CalcResult::EmptyCell));
 }
 
 #[test]

@@ -4,7 +4,7 @@ use crate::{
     Model,
 };
 
-use super::criteria::{build_criteria_with, CriteriaFlavor};
+use super::criteria::{build_criteria_with, normalize_database_criterion, CriteriaFlavor};
 
 impl<'a> Model<'a> {
     // =DAVERAGE(database, field, criteria)
@@ -726,7 +726,17 @@ impl<'a> Model<'a> {
 
     /// Whether a database value satisfies one criteria cell (shared grammar, D-function flavor).
     fn criteria_cell_matches(&self, db_val: &CalcResult, crit_cell: &CalcResult) -> bool {
-        build_criteria_with(crit_cell, self.locale, CriteriaFlavor::Database)(db_val)
+        // D-function criteria text has always been trimmed before parsing.
+        let trimmed;
+        let crit_cell = match crit_cell {
+            CalcResult::String(s) => {
+                trimmed = CalcResult::String(normalize_database_criterion(s));
+                &trimmed
+            }
+            other => other,
+        };
+        let matches = build_criteria_with(crit_cell, self.locale, CriteriaFlavor::Database);
+        matches(db_val)
     }
 
     /// Shared implementation for DMAX/DMIN

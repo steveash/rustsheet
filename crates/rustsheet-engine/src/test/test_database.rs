@@ -462,3 +462,33 @@ fn computed_database_and_criteria_references() {
     assert_eq!(model._get_text("D2"), *"2");
     assert_eq!(model._get_text("D3"), *"2100");
 }
+
+// Criteria text is trimmed, `<>` is exact (non-text cells match), plain text matches by prefix.
+#[test]
+fn criteria_grammar_shared_with_countif() {
+    let mut model = new_empty_model();
+    model._set("A1", "Name");
+    model._set("B1", "Qty");
+    model._set("A2", "ab");
+    model._set("B2", "1");
+    model._set("A3", "abc");
+    model._set("B3", "2");
+    model._set("A4", "xab");
+    model._set("B4", "4");
+    // Criteria blocks (header + one criterion each)
+    model._set("D1", "Name");
+    model._set("D2", "ab");
+    model._set("F1", "Qty");
+    model._set("F2", "  > 1 ");
+    model._set("H1", "Name");
+    model._set("H2", "<>ab");
+
+    model._set("J1", "=DSUM(A1:B4, \"Qty\", D1:D2)");
+    model._set("J2", "=DSUM(A1:B4, \"Qty\", F1:F2)");
+    model._set("J3", "=DSUM(A1:B4, \"Qty\", H1:H2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("J1"), *"3");
+    assert_eq!(model._get_text("J2"), *"6");
+    assert_eq!(model._get_text("J3"), *"6");
+}

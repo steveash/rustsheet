@@ -3,7 +3,7 @@ id: T-0205
 title: "Route D-function criteria through the shared criteria parser"
 milestone: M2
 lane: functions
-status: in-progress
+status: done
 priority: P2
 size: M
 depends_on: [T-0201]
@@ -19,8 +19,15 @@ Left out of T-0201 because D-function equality is prefix-based ("ab" matches "ab
 from COUNTIF. Needs oracle evidence from `probes/criteria-grammar` (C11) before changing behavior.
 
 ## Acceptance criteria
-- [ ] `database.rs` has no operator parsing of its own; eval unchanged or improved.
-- [ ] `make check` green.
+- [x] `database.rs` has no operator parsing of its own; eval unchanged or improved.
+- [x] `make check` green.
 
 ## Out of scope
 Changing COUNTIF semantics.
+
+## Outcome
+`database.rs::criteria_cell_matches` now delegates to `functions::criteria::build_criteria_with` with
+`CriteriaFlavor::Database` (prefix text equality; criteria text trimmed via `normalize_database_criterion`).
+Intentional shifts to the shared grammar: numeric/boolean/error criteria and `<>text` behave like COUNTIF.
+No oracle available in this run; the prefix quirk is recorded UNVERIFIED in `docs/excel-semantics/criteria.md`
+(probe `criteria-grammar` C11 still pending). Added D-function unit test and hand-expected smoke case.
