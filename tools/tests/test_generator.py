@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from rustsheet_tools import repo_root
@@ -48,3 +49,11 @@ def test_numeric_rules_policy() -> None:
         assert all(c["hypotheses"].values())
         assert c["expected"] == {}
         assert build_xlsx(c)[:2] == b"PK"
+    assert probes == 2738
+    snap = cases[0]
+    assert snap["sheets"][1]["cells"]["A1"] == "=Inputs!A1-1"
+    assert snap["hypotheses"]["Calc!A1"] == "snap-addsub/top-level-sub/base=1/sign=+1/k=0"
+    # Excel: unary minus binds tighter than ^, so `-2^20` would silently add instead of subtract.
+    assert not re.search(
+        r"-\d+\^", " ".join(f for c in cases for s in c["sheets"] for f in s["cells"].values())
+    )

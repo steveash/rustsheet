@@ -13,9 +13,10 @@ from __future__ import annotations
 import random
 from typing import Any
 
+# Composite bases are parenthesized: unary minus binds tighter than ^ in Excel (-2^20 = +2^20).
 # Dyadic bases: exact in binary, so `base*(1 ± k*2^-52)` is exact and the only variable is
 # how Excel snaps/compares the result.
-BASES = ["1", "2", "4", "8", "0.5", "0.25", "1024", "2^20", "2^-10", "3", "100.5", "1.5"]
+BASES = ["1", "2", "4", "8", "0.5", "0.25", "1024", "(2^20)", "(2^-10)", "3", "100.5", "1.5"]
 SNAP_K = range(9)
 SNAP_FORMS = {
     "top-level-sub": "={x}-{b}",
@@ -26,7 +27,9 @@ SNAP_FORMS = {
     "sub-then-mul-one": "=({x}-{b})*1",
 }
 CMP_OPS = ["=", "<", ">", "<=", ">=", "<>"]
-# FP-trap expressions for number->text probes (docs: synthetic-generator.md §6.1).
+# FP-trap expressions for the numbers.md hypotheses 'Number -> text uses 15 significant digits'
+# and 'Near-zero snapping' (Microsoft's documented 43.1-43.2 and 1.333+1.225 examples, 15-digit
+# truncation, 2^53 boundaries, overflow/denormal producers).
 TRAPS = [
     "0.1+0.2",
     "0.1+0.2-0.3",
