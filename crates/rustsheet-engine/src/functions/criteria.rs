@@ -259,7 +259,7 @@ pub(crate) enum CriteriaFlavor {
     Standard,
     /// D-functions (DSUM, DCOUNT, ...): identical grammar, except that plain text
     /// equality matches by prefix ("ab" matches "abc").
-    // UNVERIFIED: oracle evidence pending via probes/criteria-grammar (C11).
+    // UNVERIFIED: oracle evidence pending, see T-0206.
     Database,
 }
 
@@ -301,7 +301,7 @@ pub(crate) fn build_criteria_with<'a>(
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
-                // TODO(T-0205): not implementing <= ERROR or <= BOOLEAN
+                // TODO(T-0206): not implementing <= ERROR or <= BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if v.is_empty() {
@@ -312,7 +312,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
-                // TODO(T-0205): not implementing >= ERROR or >= BOOLEAN
+                // TODO(T-0206): not implementing >= ERROR or >= BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if v.is_empty() {
@@ -344,7 +344,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
-                // TODO(T-0205): not implementing < ERROR or < BOOLEAN
+                // TODO(T-0206): not implementing < ERROR or < BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if v.is_empty() {
@@ -355,7 +355,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
-                // TODO(T-0205): not implementing > ERROR or > BOOLEAN
+                // TODO(T-0206): not implementing > ERROR or > BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if v.is_empty() {
