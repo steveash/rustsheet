@@ -1,0 +1,21 @@
+name = "poi"
+description = "Apache POI spreadsheet test workbooks (xlsx/xlsm); Excel's cached values are the oracle"
+kind = "xlsx"
+root = "../../.cache/suites/poi"
+include = ["**/*.xlsx", "**/*.xlsm"]
+# Fuzzer corpus files are deliberately corrupt zips: they test import robustness, not values.
+# The last two sit near the case timeout, so their outcome is nondeterministic: TODO(T-0111) re-include.
+exclude = ["**/clusterfuzz-*", "**/crash-*", "**/VLookupFullColumn.xlsx", "**/StructuredRefs-lots-with-lookups.xlsx"]
+license = "Apache-2.0"
+origin = "https://github.com/apache/poi/tree/trunk/test-data/spreadsheet"
+use_cached_values = true
+require_excel_authored = true
+gate = true
+baseline = "cells"
+milestone = ["M0", "M3", "M4"]
+
+[fetch]
+url = "https://github.com/apache/poi.git"
+rev = "9958a2a216c186064e931af57126ef4410562c02"
+subdir = "test-data/spreadsheet"
+include = ["**/*.xlsx", "**/*.xlsm"]
