@@ -3,7 +3,7 @@ id: T-0201
 title: "Single criteria/wildcard matcher for *IF(S), D-functions and MATCH"
 milestone: M2
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: M
 depends_on: []
