@@ -381,28 +381,27 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             }
         }
     }
+    let formula_text = |input: &CellInput| match input {
+        CellInput::Str(f) => f.strip_prefix('=').map(str::to_string),
+        _ => None,
+    };
     let formula_of = |sheet: &str, a1: &str| {
         spec.sheets
             .iter()
             .find(|s| s.name == sheet)
             .and_then(|s| s.cells.get(a1))
-            .and_then(|c| match c {
-                CellInput::Str(f) if f.starts_with('=') => Some(f[1..].to_string()),
-                _ => None,
-            })
+            .and_then(formula_text)
     };
     let formulas: Vec<FormulaCell> = spec
         .sheets
         .iter()
         .flat_map(|sheet| {
-            sheet.cells.iter().filter_map(|(a1, input)| match input {
-                CellInput::Str(f) if f.starts_with('=') => {
-                    Some((sheet.name.clone(), Addr::parse(a1)?, f[1..].to_string()))
-                }
-                _ => None,
+            sheet.cells.iter().filter_map(|(a1, input)| {
+                Some((sheet.name.clone(), Addr::parse(a1)?, formula_text(input)?))
             })
         })
         .collect();
+    // Spec workbooks have no METADATA sheet, so the clock is never pinned: NOW/TODAY stay skipped.
     let volatile = volatile_cells(&formulas, false);
     let wanted: Vec<String> = if spec.check.is_empty() {
         expected.keys().cloned().collect()
