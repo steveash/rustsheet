@@ -29,3 +29,4 @@ Criteria parsing/matching now lives in `functions/criteria.rs` (moved from `util
 XLOOKUP and the D-functions. Fixed `COUNTIF(range,"<>text")` ignoring non-text cells (Excel counts
 numbers/blanks too). Spec cases: `smoke/criteria` (hand), `probes/criteria-grammar` (oracle-pending).
 Follow-up: T-0205 (route D-function criteria through the shared parser).
+Behavior note: D-function wildcard patterns that fail to compile now match nothing (previously fell through to prefix matching); unreachable in practice since patterns are escaped. Per-row matcher compilation in database.rs is left for T-0205.

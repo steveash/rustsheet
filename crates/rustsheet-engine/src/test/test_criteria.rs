@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::calc_result::CalcResult;
-use crate::functions::criteria::build_criteria;
+use crate::functions::criteria::{build_criteria, wildcard_text_matcher};
 use crate::locale::{get_locale, Locale};
 
 fn en_locale() -> &'static Locale {
@@ -279,4 +279,29 @@ fn test_build_criteria_date_localized_month_name() {
     // falls back to string equality, so no Number cell should match.
     let fn_en = build_criteria(&c, en_locale());
     assert!(!fn_en(&CalcResult::Number(44941.0)));
+}
+
+// `"<>text"` matches everything that is not that text (numbers, booleans, errors, blanks).
+#[test]
+fn test_build_criteria_not_equal_text_matches_non_text() {
+    let c = CalcResult::String("<>Banana".to_string());
+    let f = build_criteria(&c, en_locale());
+    assert!(f(&CalcResult::String("Apple".to_string())));
+    assert!(!f(&CalcResult::String("BANANA".to_string())));
+    assert!(f(&CalcResult::Number(1.0)));
+    assert!(f(&CalcResult::Boolean(true)));
+    assert!(f(&CalcResult::EmptyCell));
+}
+
+#[test]
+fn test_wildcard_text_matcher_escapes_and_case() {
+    let m = wildcard_text_matcher("A~*B?");
+    assert!(m(&CalcResult::String("a*bX".to_string())));
+    assert!(!m(&CalcResult::String("aXbX".to_string())));
+    assert!(!m(&CalcResult::Number(1.0)));
+    let m = wildcard_text_matcher("a~~b");
+    assert!(m(&CalcResult::String("A~B".to_string())));
+    let m = wildcard_text_matcher("a~?");
+    assert!(m(&CalcResult::String("a?".to_string())));
+    assert!(!m(&CalcResult::String("ab".to_string())));
 }

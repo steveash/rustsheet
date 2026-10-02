@@ -1,6 +1,3 @@
-#[cfg(target_arch = "wasm32")]
-use regex_lite as regex;
-
 use crate::{
     calc_result::CalcResult,
     expressions::{token::Error, types::CellReferenceIndex},
