@@ -121,18 +121,13 @@ impl RunReport {
         }
     }
 
-    /// Human/agent-readable gap report.
-    #[must_use]
-    pub fn to_markdown(&self, examples_per_function: usize) -> String {
-        let mut md = String::new();
+    fn write_suites_table(&self, md: &mut String) {
+        let _ = writeln!(md, "## Suites\n");
+        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | cell pass % | ulp | close | mismatch | unsupported | type |");
         let _ = writeln!(
             md,
-            "# RustSheet compatibility report (engine: `{}`)\n",
-            self.engine
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
         );
-        let _ = writeln!(md, "## Suites\n");
-        let _ = writeln!(md, "| suite | cases | pass | fail | pending | errors | cells | cell pass % | ulp | close | mismatch | unsupported | type |");
-        let _ = writeln!(md, "|---|---|---|---|---|---|---|---|---|---|---|---|---|");
         for s in &self.suites {
             let st = |k: CaseStatus| s.statuses.get(&k).copied().unwrap_or(0);
             let v = |k: Verdict| s.verdicts.get(&k).copied().unwrap_or(0);
@@ -140,14 +135,17 @@ impl RunReport {
                 + st(CaseStatus::Panic)
                 + st(CaseStatus::Timeout)
                 + st(CaseStatus::InvalidCase);
+            let crashes =
+                st(CaseStatus::EngineError) + st(CaseStatus::Panic) + st(CaseStatus::Timeout);
             let _ = writeln!(
                 md,
-                "| {} | {} | {} | {} | {} | {} | {} | {:.2} | {} | {} | {} | {} | {} |",
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {} | {} | {} | {} | {} |",
                 s.name,
                 s.cases,
                 st(CaseStatus::Pass),
                 st(CaseStatus::Fail),
                 st(CaseStatus::Pending),
+                crashes,
                 errors,
                 s.cells,
                 100.0 * s.cell_pass_rate(),
@@ -161,6 +159,18 @@ impl RunReport {
                 v(Verdict::TypeMismatch),
             );
         }
+    }
+
+    /// Human/agent-readable gap report.
+    #[must_use]
+    pub fn to_markdown(&self, examples_per_function: usize) -> String {
+        let mut md = String::new();
+        let _ = writeln!(
+            md,
+            "# RustSheet compatibility report (engine: `{}`)\n",
+            self.engine
+        );
+        self.write_suites_table(&mut md);
         let broken: Vec<&CaseResult> = self
             .cases
             .iter()

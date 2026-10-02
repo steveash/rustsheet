@@ -179,9 +179,8 @@ pub fn run_case(
         millis: 0,
         cells: Vec::new(),
     };
-    if prepared.expectations.is_empty() {
-        return result;
-    }
+    // Cases without expectations still run: a panic, timeout or load error is a crash we can
+    // catch before any oracle value exists (T-0007).
     let (tx, rx) = mpsc::channel();
     let engine = Arc::clone(engine);
     let start = Instant::now();
@@ -221,7 +220,9 @@ pub fn run_case(
         Ok(Ok(Ok(cells))) => {
             result.checked = cells.len();
             result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
-            result.status = if result.passed == result.checked {
+            result.status = if result.checked == 0 {
+                CaseStatus::Pending
+            } else if result.passed == result.checked {
                 CaseStatus::Pass
             } else {
                 CaseStatus::Fail
@@ -425,4 +426,81 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         expected_source: source,
         skipped_volatile,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::suite::SuiteManifest;
+    use std::path::PathBuf;
+
+    /// Engine whose behaviour is chosen by the cell text of the spec's first sheet.
+    struct Scripted;
+
+    struct NoValues;
+    impl Evaluated for NoValues {
+        fn value(&self, _: &str, _: Addr) -> Option<Value> {
+            None
+        }
+    }
+
+    impl Engine for Scripted {
+        fn name(&self) -> &'static str {
+            "scripted"
+        }
+        fn evaluate_xlsx(&self, _: &[u8]) -> Result<Box<dyn Evaluated>, String> {
+            Err("unused".into())
+        }
+        fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String> {
+            match spec.description.as_str() {
+                "panic" => panic!("boom"),
+                "error" => Err("cannot materialize".into()),
+                _ => Ok(Box::new(NoValues)),
+            }
+        }
+    }
+
+    fn run_pending(description: &str) -> CaseResult {
+        let dir =
+            std::env::temp_dir().join(format!("rs-runner-{}-{description}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("a.case.json");
+        let json = format!(
+            r#"{{"format":"{CASE_FORMAT}","description":"{description}","sheets":[{{"name":"S","cells":{{"A1":"=1+1"}}}}]}}"#
+        );
+        std::fs::write(&path, json).expect("write case");
+        let manifest: SuiteManifest =
+            toml::from_str("name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\n").expect("manifest");
+        let suite = Suite {
+            manifest,
+            dir: dir.clone(),
+            cache_dir: PathBuf::new(),
+        };
+        let case = CaseFile {
+            id: "t/a".into(),
+            path,
+        };
+        let engine: Arc<dyn Engine + Send> = Arc::new(Scripted);
+        let r = run_case(&engine, &suite, &case, Duration::from_secs(5));
+        let _ = std::fs::remove_dir_all(dir);
+        r
+    }
+
+    #[test]
+    fn pending_case_that_evaluates_cleanly_stays_pending() {
+        assert_eq!(run_pending("ok").status, CaseStatus::Pending);
+    }
+
+    #[test]
+    fn pending_case_that_panics_is_reported_as_panic() {
+        let r = run_pending("panic");
+        assert_eq!(r.status, CaseStatus::Panic);
+        assert_eq!(r.message.as_deref(), Some("boom"));
+    }
+
+    #[test]
+    fn pending_case_with_engine_error_is_reported() {
+        let r = run_pending("error");
+        assert_eq!(r.status, CaseStatus::EngineError);
+    }
 }
