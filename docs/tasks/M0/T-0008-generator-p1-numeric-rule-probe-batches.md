@@ -3,7 +3,7 @@ id: T-0008
 title: "Generator P1: numeric-rule probe batches"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 depends_on: []
