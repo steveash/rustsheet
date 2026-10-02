@@ -26,6 +26,7 @@ Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicat
   routine's prompt with the current text in `docs/process/routines.md`.
 
 ## Log
+- 2026-10-02 — T-0901: blocked (no oracle): annuity ULP fit gains 39 cells but regresses 13; findings in docs/excel-semantics/financial.md; eval unchanged.
 - 2026-10-02 — Owner set `main` as the GitHub default branch and enabled the routines (repo attached).
 - 2026-10-01 — `main` created. Routines must be created in the claude.ai UI with the repo attached (docs/process/routines.md).
 - 2026-10-01 — M0 bootstrap: fork, eval harness, oracle client, generator P0, CI, agent process.
