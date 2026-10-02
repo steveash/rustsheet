@@ -3,7 +3,7 @@ id: T-0005
 title: "Skip cells that transitively depend on volatile functions; inject a fixed clock"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 depends_on: []
