@@ -3,7 +3,7 @@ id: T-0200
 title: "Single implementation of aggregate-argument iteration"
 milestone: M2
 lane: functions
-status: todo
+status: in-progress
 priority: P1
 size: M
 depends_on: []
