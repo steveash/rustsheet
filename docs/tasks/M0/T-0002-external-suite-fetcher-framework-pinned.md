@@ -3,7 +3,7 @@ id: T-0002
 title: "External suite fetcher framework (pinned downloads)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 depends_on: []
