@@ -3,7 +3,7 @@ id: T-0205
 title: "Route D-function criteria through the shared criteria parser"
 milestone: M2
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: M
 depends_on: [T-0201]
