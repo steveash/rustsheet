@@ -8,7 +8,7 @@ workbooks hit Excel. Agents work offline against committed sidecars.
 
 | Backend | Where | Fidelity | Notes |
 |---|---|---|---|
-| `excel-graph` | anywhere (Linux CI, cloud sessions) | Excel for the web (server calc engine) | needs a **work/school** Microsoft 365 tenant; personal/family plans are not supported by the Graph Excel API |
+| `excel-graph` | anywhere (Linux CI, cloud sessions) | Excel for the web (server calc engine) | needs a **work/school** Microsoft 365 tenant; least-privilege setup uses a dedicated SharePoint site (`Sites.Selected`) |
 | `excel-desktop` | Windows machine/VM with Excel, interactive session | highest (desktop-only functions: FILTERXML, WEBSERVICE, CELL/INFO) | COM via pywin32; run as a GitHub self-hosted runner labelled `excel-oracle` |
 | `libreoffice` | anywhere | approximate (~97–99% agreement) | triage only; never produces sidecars |
 | *cached values* | — | exact for Excel-authored files | used automatically by `xlsx` suites with `use_cached_values` |
@@ -22,61 +22,102 @@ uv run rustsheet-oracle recalc -b excel-graph some.xlsx
 ```
 CI: `.github/workflows/oracle.yml` (manual dispatch → PR with new sidecars).
 
-## Owner setup — Microsoft Graph (one time, ~15 minutes)
+## Owner setup — Microsoft Graph (one time, ~20 minutes)
 
 **What this does:** it creates a "robot" identity (an *app registration*) in your Microsoft 365
-tenant that is allowed to put a workbook into your OneDrive, ask Excel to recalculate it, and
-download the result. Agents then use it to get Excel's real answers. Scratch files go in a
-`rustsheet-oracle` folder of the OneDrive belonging to the work account you name, and are
-deleted after each run.
+tenant that can upload a workbook, ask Excel to recalculate it, and download the result. Agents use
+it to get Excel's real answers.
 
-You need: a Microsoft 365 **Business** (work/school) account with admin rights. Personal or
-Family plans don't work with the Graph Excel API.
+**Security model (read this):** the robot's secret is stored where autonomous agents can read it,
+so the robot gets access to **one dedicated SharePoint site and nothing else** (`Sites.Selected`).
+The broader `Files.ReadWrite.All` permission would let it read and write **every user's OneDrive
+and every SharePoint site in the company**; don't grant that unless the tenant holds nothing else
+of value (fallback B below).
 
-1. **Open the Entra admin center.** Go to https://entra.microsoft.com and sign in with your
-   Microsoft 365 business admin account.
-2. **Create the app.** In the left menu go to **Identity → Applications → App registrations**,
-   then click **+ New registration**.
+You need a Microsoft 365 **Business** (work/school) account with admin rights. Personal and Family
+plans don't work with the Graph Excel API.
+
+1. **Create a dedicated site.**
+   1. Open SharePoint (https://www.office.com → SharePoint, or `https://<yourtenant>.sharepoint.com`)
+      and click **+ Create site → Team site**.
+   2. Name it `RustSheet Oracle`, keep it **Private**, and add no other members.
+   3. Note its address, for example `yourtenant.sharepoint.com/sites/RustSheetOracle`.
+2. **Register the app.** Go to https://entra.microsoft.com → **Identity → Applications → App
+   registrations → + New registration**.
    - Name: `rustsheet-oracle`.
-   - Supported account types: **Accounts in this organizational directory only**.
+   - Account types: **Accounts in this organizational directory only**.
    - Redirect URI: leave empty.
    - Click **Register**.
-3. **Copy two IDs.** The app's **Overview** page shows **Application (client) ID** and
-   **Directory (tenant) ID**. Copy both.
-4. **Create a secret.** In the left menu go to **Certificates & secrets → Client secrets →
-   + New client secret**.
-   - Description: `rustsheet`. Expires: 12 months.
-   - Click **Add**, then immediately copy the **Value** column. It is shown only once; the
-     "Secret ID" column is *not* what you want.
-5. **Give it file access.**
-   1. In the left menu go to **API permissions → + Add a permission → Microsoft Graph →
-      Application permissions**.
-   2. Search for `Files.ReadWrite.All`, tick it, and click **Add permissions**.
-   3. Click **Grant admin consent for <your org>** and confirm. The status column turns green.
-6. **Give the values to the agents.** In Claude Code on the web, click the environment name in
-   the session title bar, then **Edit**. Under **Environment variables**, add:
+3. **Copy two IDs** from the app's **Overview** page: **Application (client) ID** and
+   **Directory (tenant) ID**.
+4. **Create a secret.** Go to **Certificates & secrets → Client secrets → + New client secret**
+   and set it to expire in 12 months. Click **Add**, then copy the **Value** column immediately.
+   It is shown only once; the "Secret ID" column is not it.
+5. **Add the narrow permission.** Go to **API permissions → + Add a permission → Microsoft Graph →
+   Application permissions**.
+   - Tick `Sites.Selected` and click **Add permissions**.
+   - Click **Grant admin consent** and confirm.
+   - On its own this permission grants access to *no* sites. Step 6 opens exactly one.
+6. **Allow the app into that one site** (Graph Explorer, about 3 minutes):
+   1. Open https://developer.microsoft.com/graph/graph-explorer and sign in as the admin.
+   2. Run `GET https://graph.microsoft.com/v1.0/sites/yourtenant.sharepoint.com:/sites/RustSheetOracle`
+      and copy the `"id"` from the response (it looks like `yourtenant.sharepoint.com,1234…,5678…`).
+      If you get a permission error, open **Modify permissions**, consent to `Sites.FullControl.All`
+      for Graph Explorer, and run it again.
+   3. Switch the method to **POST**. Set the URL to
+      `https://graph.microsoft.com/v1.0/sites/<that id>/permissions` and the request body to:
+      ```json
+      {"roles": ["write"],
+       "grantedToIdentities": [{"application": {"id": "<Application (client) ID>", "displayName": "rustsheet-oracle"}}]}
+      ```
+      Run it. You should get **201 Created**.
+7. **Give the values to the agents.** In Claude Code on the web, click the environment name in the
+   session title bar, then **Edit → Environment variables**, and add:
    ```
-   RUSTSHEET_ORACLE_TENANT_ID=<Directory (tenant) ID from step 3>
-   RUSTSHEET_ORACLE_CLIENT_ID=<Application (client) ID from step 3>
-   RUSTSHEET_ORACLE_CLIENT_SECRET=<secret Value from step 4>
-   RUSTSHEET_ORACLE_USER=<your work email, e.g. you@yourcompany.com>
+   RUSTSHEET_ORACLE_TENANT_ID=<Directory (tenant) ID>
+   RUSTSHEET_ORACLE_CLIENT_ID=<Application (client) ID>
+   RUSTSHEET_ORACLE_CLIENT_SECRET=<secret Value>
+   RUSTSHEET_ORACLE_SITE=yourtenant.sharepoint.com/sites/RustSheetOracle
    ```
-   Save. New sessions, including the scheduled routines, pick these up. Never paste these values
-   into a chat.
-7. **Done.** The next steward run (or any session) checks the setup with
-   `uv run rustsheet-oracle status` and runs the first Excel calibration (task T-0004).
+   Save. New sessions, including the routines, pick these up.
+   - Never paste these values into a chat.
+   - If the environment uses a restricted network policy, allow `login.microsoftonline.com`,
+     `graph.microsoft.com` and `*.sharepoint.com`.
+8. **Done.** The next steward run (or any session) checks the setup with
+   `uv run rustsheet-oracle status` and runs the first Excel calibration (task T-0004). If the
+   calibration shows the app is refused, T-0004 records why and falls back to option A below.
 
-GitHub Actions secrets (`oracle` environment) are only needed if you want to use the
-manual-dispatch workflow `.github/workflows/oracle.yml`. The routines don't need them.
+**Hygiene:**
+- Rotate the secret before it expires (12 months).
+- If it may have leaked, delete it under Certificates & secrets; the robot loses all access
+  immediately.
+- If you granted `Files.ReadWrite.All` earlier, remove it: API permissions → `…` → Remove
+  permission.
 
-**If app-only access is refused** (Microsoft documents workbook endpoints as delegated-only; most
-tenants allow app-only in practice), T-0004 switches to delegated mode:
+**Fallback A — delegated sign-in.** This is officially the supported mode for workbook endpoints.
+The robot acts as you and can reach your files only.
 - Enable **Authentication → Allow public client flows**.
 - Add the **Delegated** permissions `Files.ReadWrite` and `offline_access`.
-- Run `uv run rustsheet-oracle login` once to sign in with a device code.
+- Leave `RUSTSHEET_ORACLE_CLIENT_SECRET` unset, and run `uv run rustsheet-oracle login` once to
+  sign in with a device code.
+- The token cache is written to `~/.config/rustsheet-oracle/msal_cache.json`. For cloud sessions,
+  base64 it into `RUSTSHEET_ORACLE_MSAL_CACHE_B64`. Refresh tokens rotate and expire after 90 days
+  without use.
 
-Variables read by the tool: `RUSTSHEET_ORACLE_TENANT_ID`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_USER`
-(or `_DRIVE_ID`), `_MSAL_CACHE_B64` (delegated mode), and `_FOLDER` (default `/rustsheet-oracle`).
+**Fallback B — tenant-wide app-only (not recommended).** Grant `Files.ReadWrite.All`
+(Application) instead of `Sites.Selected`, and set `RUSTSHEET_ORACLE_USER=<your work email>`
+instead of `_SITE`. Scratch files then go to that user's OneDrive. This gives the secret access to
+all company files.
+
+**GitHub Actions:** only the manual-dispatch workflow `.github/workflows/oracle.yml` needs
+secrets; the routines don't. To use it, create a GitHub environment named `oracle` (repo
+Settings → Environments) with the same names as secrets.
+
+Variables read by the tool:
+- `RUSTSHEET_ORACLE_TENANT_ID`, `_CLIENT_ID`, `_CLIENT_SECRET`
+- one of `_SITE`, `_DRIVE_ID` or `_USER`
+- `_MSAL_CACHE_B64` (delegated mode)
+- `_FOLDER` (default `/rustsheet-oracle`)
 
 ## Owner setup — Windows desktop backend (later, optional)
 - A Windows 11 machine or VM with Microsoft 365 Apps, signed in, with auto-logon to a dedicated

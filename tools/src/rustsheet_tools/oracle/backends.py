@@ -90,8 +90,12 @@ class GraphBackend:
 
     Environment:
       RUSTSHEET_ORACLE_TENANT_ID, RUSTSHEET_ORACLE_CLIENT_ID      (required)
-      RUSTSHEET_ORACLE_CLIENT_SECRET + RUSTSHEET_ORACLE_USER        (app-only mode; USER is the
-          work email whose OneDrive holds the scratch files; or RUSTSHEET_ORACLE_DRIVE_ID instead)
+      RUSTSHEET_ORACLE_CLIENT_SECRET + a drive target                (app-only mode), one of:
+          RUSTSHEET_ORACLE_SITE      `<tenant>.sharepoint.com/sites/<name>` — dedicated site whose
+                                     document library holds the scratch files (least privilege:
+                                     pairs with the `Sites.Selected` permission)
+          RUSTSHEET_ORACLE_DRIVE_ID  explicit drive id
+          RUSTSHEET_ORACLE_USER      work email whose OneDrive is used (needs Files.ReadWrite.All)
       RUSTSHEET_ORACLE_MSAL_CACHE_B64                               (delegated bootstrap cache)
       RUSTSHEET_ORACLE_FOLDER (default /rustsheet-oracle)
     """
@@ -104,16 +108,17 @@ class GraphBackend:
         self.secret = os.environ.get("RUSTSHEET_ORACLE_CLIENT_SECRET")
         self.drive_id = os.environ.get("RUSTSHEET_ORACLE_DRIVE_ID")
         self.user = os.environ.get("RUSTSHEET_ORACLE_USER")
+        self.site = os.environ.get("RUSTSHEET_ORACLE_SITE", "").strip().strip("/")
         self.folder = os.environ.get("RUSTSHEET_ORACLE_FOLDER", "/rustsheet-oracle").strip("/")
         self._session = requests.Session()
 
     def available(self) -> tuple[bool, str]:
         if not (self.tenant and self.client_id):
             return False, "set RUSTSHEET_ORACLE_TENANT_ID and RUSTSHEET_ORACLE_CLIENT_ID"
-        if self.secret and not (self.drive_id or self.user):
+        if self.secret and not (self.drive_id or self.site or self.user):
             return (
                 False,
-                "app-only mode needs RUSTSHEET_ORACLE_USER (work email) or RUSTSHEET_ORACLE_DRIVE_ID",
+                "app-only mode needs RUSTSHEET_ORACLE_SITE, RUSTSHEET_ORACLE_DRIVE_ID or RUSTSHEET_ORACLE_USER",
             )
         if not self.secret and not (
             _cache_path().exists() or os.environ.get("RUSTSHEET_ORACLE_MSAL_CACHE_B64")
@@ -175,11 +180,23 @@ class GraphBackend:
 
     # -- http
     def _drive(self) -> str:
+        """Graph URL of the drive holding scratch workbooks (precedence: id, site, user, me)."""
         if self.drive_id:
-            return f"{GRAPH}/drives/{self.drive_id}"
-        if self.user:
-            return f"{GRAPH}/users/{quote(self.user)}/drive"
+            return f"{GRAPH}/drives/{quote(self.drive_id, safe='!')}"
+        if self.site:
+            host, _, path = self.site.partition("/")
+            return f"{GRAPH}/sites/{quote(host, safe='')}:/{quote(path)}:/drive"
+        # USER selects whose OneDrive to use in app-only mode; in delegated mode `/me` already
+        # identifies the signed-in user (who may lack rights to another user's drive).
+        if self.user and self.secret:
+            return f"{GRAPH}/users/{quote(self.user, safe='')}/drive"
         return f"{GRAPH}/me/drive"
+
+    def _redact(self, url: str) -> str:
+        """Removes the owner's email from URLs that end up in error messages and logs."""
+        if self.user:
+            url = url.replace(quote(self.user, safe=""), "<user>")
+        return url
 
     def _call(
         self,
@@ -197,9 +214,9 @@ class GraphBackend:
                 time.sleep(float(resp.headers.get("Retry-After", 2**attempt)))
                 continue
             if resp.status_code >= 400:
-                raise OracleError(f"{method} {url} -> {resp.status_code}: {resp.text[:500]}")
+                raise OracleError(f"{method} {self._redact(url)} -> {resp.status_code}: {resp.text[:500]}")
             return resp
-        raise OracleError(f"{method} {url}: retries exhausted")
+        raise OracleError(f"{method} {self._redact(url)}: retries exhausted")
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
         import hashlib  # noqa: PLC0415
