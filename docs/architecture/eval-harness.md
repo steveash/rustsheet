@@ -26,7 +26,7 @@ Use this for sources that are too large or not redistributable (GPL / CC-BY-SA);
 
 Current suites:
 - `ironcalc-calc`: 207 Excel-authored workbooks, 71k cells.
-- `poi`: Apache POI Excel-authored xlsx/xlsm (external, fetched with `rustsheet-eval fetch --suite poi`; 3.8k cells).
+- `poi`: Apache POI Excel-authored xlsx/xlsm (external, fetched with `rustsheet-eval fetch --suite poi`; 3.5k cells).
 - `smoke`: hand-written core semantics.
 - `probes`: Excel-behavior questions awaiting the oracle.
 - `gen-m2`: generator output, pending oracle.

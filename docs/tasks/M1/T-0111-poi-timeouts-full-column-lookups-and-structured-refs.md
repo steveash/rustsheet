@@ -13,7 +13,7 @@ depends_on: []
 `poi/VLookupFullColumn.xlsx` and `poi/StructuredRefs-lots-with-lookups.xlsx` evaluate within the harness timeout.
 
 ## Context
-Found by T-0003. Both exceed the 60s case timeout (`F poi/... !Timeout` in `eval/baseline/poi.txt`). Likely cause: lookup functions evaluate full-column ranges cell by cell (`evaluate_cell` per position) instead of bounding to the used range. Untrusted workbooks must not cause unbounded work (CLAUDE.md directive 5).
+Found by T-0003. Both run at or beyond the 60s case timeout (so they are currently excluded in `eval/suites/poi/suite.toml`). Likely cause: lookup functions evaluate full-column ranges cell by cell (`evaluate_cell` per position) instead of bounding to the used range. Untrusted workbooks must not cause unbounded work (CLAUDE.md directive 5).
 
 ## Acceptance criteria
 - [ ] Both cases finish in under 10s in release mode.
