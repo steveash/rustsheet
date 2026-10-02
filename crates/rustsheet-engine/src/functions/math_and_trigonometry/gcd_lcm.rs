@@ -127,72 +127,32 @@ impl<'a> Model<'a> {
                     };
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
                     has_range = true;
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-
-                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
-                        Ok((r, c)) => {
-                            row2 = r;
-                            column2 = c;
-                        }
-                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
-                    }
-
-                    for row in row1..=row2 {
-                        for column in column1..=column2 {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    if let Some(res) = handle_number(value) {
-                                        return res;
-                                    }
-                                }
-                                CalcResult::String(s) => {
-                                    if let Ok(value) =
-                                        self.cast_to_number(CalcResult::String(s), cell)
-                                    {
-                                        if let Some(res) = handle_number(value) {
-                                            return res;
-                                        }
-                                    } else {
-                                        return CalcResult::Error {
-                                            error: Error::VALUE,
-                                            origin: cell,
-                                            message: "Non-numeric string".to_string(),
-                                        };
-                                    }
-                                }
+                    if let Err(error) =
+                        self.for_each_cell_in_range(left, right, cell, |model, value| {
+                            let number = match value {
+                                CalcResult::Number(value) => value,
+                                CalcResult::String(s) => model
+                                    .cast_to_number(CalcResult::String(s), cell)
+                                    .map_err(|_| CalcResult::Error {
+                                        error: Error::VALUE,
+                                        origin: cell,
+                                        message: "Non-numeric string".to_string(),
+                                    })?,
                                 CalcResult::Boolean(_) => {
-                                    return CalcResult::Error {
+                                    return Err(CalcResult::Error {
                                         error: Error::VALUE,
                                         origin: cell,
                                         message: "Booleans not allowed in GCD".to_string(),
-                                    };
+                                    });
                                 }
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                                    if let Some(res) = handle_number(0.0) {
-                                        return res;
-                                    }
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // accept strings / booleans
-                                }
-                            }
-                        }
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
+                                _ => return Ok(()),
+                            };
+                            handle_number(number).map_or(Ok(()), Err)
+                        })
+                    {
+                        return error;
                     }
                 }
                 CalcResult::Array(array) => {

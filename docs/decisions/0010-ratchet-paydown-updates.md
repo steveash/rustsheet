@@ -7,5 +7,6 @@
 - **Decision:** A PR that lowers a ratchet may update `quality/*.json` using the script's own
   `--update` (never by hand), and cites this record. Raising a ratchet still needs its own
   decision record. T-0200: duplicated lines 9153 → 8829; `count_and_average.rs` no longer oversized.
+  T-0204: duplicated lines 8829 → 8610 (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
