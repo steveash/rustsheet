@@ -1,4 +1,4 @@
-# 0009 — Ratchet files may move down in the PR that pays the debt down
+# 0010 — Ratchet files may move down in the PR that pays the debt down
 
 - **Status:** accepted (2026-10-02)
 - **Context:** `quality/*.json` ratchets are protected paths, so any change needs a decision
