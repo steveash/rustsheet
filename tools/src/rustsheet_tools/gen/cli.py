@@ -58,7 +58,7 @@ def main() -> None:
     args = ap.parse_args()
 
     root = repo_root()
-    if args.policy == "numeric-rules":  # ignores --milestone/--count/--formulas/--depth
+    if args.policy == "numeric-rules":
         write_suite(
             root,
             args.suite or "probes-numeric",

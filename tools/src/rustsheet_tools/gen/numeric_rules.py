@@ -14,8 +14,8 @@ import random
 from typing import Any
 
 # Composite bases are parenthesized: unary minus binds tighter than ^ in Excel (-2^20 = +2^20).
-# Dyadic bases: exact in binary, so `base*(1 ± k*2^-52)` is exact and the only variable is
-# how Excel snaps/compares the result.
+# Powers of two give exact `base*(1 ± k*2^-52)` (k is a true ULP count); 3, 100.5 and 1.5 round
+# in the Inputs cell, so for them k is only nominal. Either way the oracle measures Excel.
 BASES = ["1", "2", "4", "8", "0.5", "0.25", "1024", "(2^20)", "(2^-10)", "3", "100.5", "1.5"]
 SNAP_K = range(9)
 SNAP_FORMS = {
