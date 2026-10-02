@@ -151,10 +151,11 @@ class Gen:
             # Excel allows omitting trailing optionals only.
             if p.get("optional") and self.rng.random() < 0.4 and all(q.get("optional") for q in params[i:]):
                 break
-            if group := p.get("group"):
+            rep = p.get("repeat")
+            if isinstance(rep, dict):
                 # Pair-repeat (SUMIFS criteria_range/criteria): the whole group repeats together.
-                members = [q for q in params[i:] if q.get("group") == group]
-                for _ in range(self.rng.randint(1, 3)):
+                members = [q for q in params if q["name"] in rep["group"]]
+                for _ in range(self.rng.randint(rep.get("min", 1), min(rep.get("max", 3), 3))):
                     args.extend(self.argument(q, depth) for q in members)
                 i += len(members)
                 continue

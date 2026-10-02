@@ -8,7 +8,8 @@
 #   range      must be a reference/range (e.g. lookup table, criteria range)
 #   criteria   criteria string or value ("">5"", ""=a*"", 3)
 #   any        any value
-# `repeat: true` marks the trailing repeating group. Types: number | text | bool | any.
+# `repeat: true` marks the trailing repeating param; `repeat: {group: [a, b], min, max}` on the first
+# member marks a repeating group of params (SUMIFS criteria_range/criteria pairs). Types: number | text | bool | any.
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report).
@@ -183,16 +184,16 @@ functions:
     returns: number
     params:
       - { name: sum_range, mode: range, type: number }
-      - { name: criteria_range, mode: range, type: any, group: criteria_pair, min: 1, max: 127 }
-      - { name: criteria, mode: criteria, type: any, group: criteria_pair }
+      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria, mode: criteria, type: any }
   - name: COUNTIFS
     category: statistical
     milestone: M2
     prior: 2
     returns: number
     params:
-      - { name: criteria_range, mode: range, type: any, group: criteria_pair, min: 1, max: 127 }
-      - { name: criteria, mode: criteria, type: any, group: criteria_pair }
+      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria, mode: criteria, type: any }
   - name: ROUNDUP
     category: math
     milestone: M2
