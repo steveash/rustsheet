@@ -149,9 +149,11 @@ pub fn fetch_suite(suite: &Suite) -> Result<usize> {
     let Some(spec) = &suite.manifest.fetch else {
         bail!("suite {} has no [fetch] table", suite.manifest.name);
     };
-    let stage = suite
-        .cache_dir
-        .with_file_name(format!(".partial-{}", suite.manifest.name));
+    let stage = suite.cache_dir.with_file_name(format!(
+        ".partial-{}-{}",
+        suite.manifest.name,
+        std::process::id()
+    ));
     if stage.exists() {
         fs::remove_dir_all(&stage)?;
     }

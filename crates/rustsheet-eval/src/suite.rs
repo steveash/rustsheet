@@ -200,6 +200,18 @@ impl Suite {
                     .parent()
                     .map(Path::to_path_buf)
                     .unwrap_or_default();
+                // The name becomes a cache directory that `fetch` replaces wholesale.
+                if manifest.name.is_empty()
+                    || !manifest
+                        .name
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
+                {
+                    bail!(
+                        "{}: suite name must match [A-Za-z0-9_-]+",
+                        entry.path().display()
+                    );
+                }
                 if let Some(f) = &manifest.fetch {
                     f.validate()
                         .with_context(|| format!("{}: [fetch]", entry.path().display()))?;
