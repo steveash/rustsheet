@@ -1,0 +1,10 @@
+name = "probes-numeric"
+description = "Floating-point rule probes from rustsheet-gen --policy numeric-rules; pending until the Excel oracle fills expectations"
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "generated"
+gate = false
+baseline = "cells"
+milestone = ["M1"]
