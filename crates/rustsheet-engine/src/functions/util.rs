@@ -118,17 +118,15 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
 }
 
 impl Model<'_> {
-    /// Calls `f` with every number held by the cells of the range
-    /// `left..=right`, in row-major order.
+    /// Calls `f` with the value of every cell of the range `left..=right`, in
+    /// row-major order.
     ///
-    /// This is the one place that encodes how aggregate functions (SUM, NPV,
-    /// VAR, ...) read a *reference*: numbers count, booleans, text and empty
-    /// cells are skipped (unlike direct arguments, which the callers coerce
-    /// themselves), and the first error cell aborts the walk and is returned
-    /// as `Err`. Ranges spanning two sheets are `#VALUE!`. Whole-row and
-    /// whole-column ranges are clipped to the used area so the walk stays
-    /// proportional to the data.
-    pub(crate) fn for_each_number_in_range<F>(
+    /// The one range walk behind every aggregate function. Ranges spanning two
+    /// sheets are `#VALUE!`; whole-row and whole-column ranges are clipped to
+    /// the used area so the walk stays proportional to the data. The first
+    /// error cell aborts the walk and is returned as `Err`, as does an `Err`
+    /// from `f`. `f` never sees `CalcResult::Error`.
+    pub(crate) fn for_each_cell_in_range<F>(
         &mut self,
         left: CellReferenceIndex,
         right: CellReferenceIndex,
@@ -136,7 +134,7 @@ impl Model<'_> {
         mut f: F,
     ) -> Result<(), CalcResult>
     where
-        F: FnMut(f64),
+        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
         if left.sheet != right.sheet {
             return Err(CalcResult::new_error(
@@ -155,13 +153,61 @@ impl Model<'_> {
                     row,
                     column,
                 }) {
-                    CalcResult::Number(value) => f(value),
                     error @ CalcResult::Error { .. } => return Err(error),
-                    // Booleans, text and empty cells in a reference are ignored.
-                    _ => {}
+                    value => f(self, value)?,
                 }
             }
         }
         Ok(())
+    }
+
+    /// Calls `f` with every number held by the cells of the range
+    /// `left..=right`, in row-major order.
+    ///
+    /// This is how aggregate functions (SUM, NPV, VAR, ...) read a
+    /// *reference*: numbers count, booleans, text and empty cells are skipped
+    /// (unlike direct arguments, which the callers coerce themselves). See
+    /// [`Self::for_each_cell_in_range`] for errors and range clipping.
+    pub(crate) fn for_each_number_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        self.for_each_cell_in_range(left, right, cell, |_, value| {
+            // Booleans, text and empty cells in a reference are ignored.
+            if let CalcResult::Number(value) = value {
+                f(value);
+            }
+            Ok(())
+        })
+    }
+
+    /// Like [`Self::for_each_number_in_range`] but with the coercion of the
+    /// *A functions (VARA, STDEVA, ...): text counts as 0, TRUE/FALSE as 1/0,
+    /// empty cells are skipped.
+    pub(crate) fn for_each_coerced_number_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        self.for_each_cell_in_range(left, right, cell, |_, value| {
+            match value {
+                CalcResult::Number(value) => f(value),
+                CalcResult::String(_) => f(0.0),
+                CalcResult::Boolean(value) => f(if value { 1.0 } else { 0.0 }),
+                _ => {}
+            }
+            Ok(())
+        })
     }
 }

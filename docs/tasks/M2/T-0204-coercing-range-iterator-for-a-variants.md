@@ -3,7 +3,7 @@ id: T-0204
 title: "Shared coercing range iterator for the *A variants and GCD/LCM"
 milestone: M2
 lane: functions
-status: todo
+status: done
 priority: P2
 size: S
 depends_on: [T-0200]
@@ -24,3 +24,6 @@ Left out of T-0200 because their coercion differs. Consider moving both helpers 
 
 ## Out of scope
 Changing semantics.
+
+## Outcome
+VARA/VARPA/STDEVA/STDEVPA and GCD/LCM range walks now use `for_each_coerced_number_in_range` / `for_each_cell_in_range` in `functions/util.rs`. No semantic change. Module split into `args.rs` left out (not needed).
