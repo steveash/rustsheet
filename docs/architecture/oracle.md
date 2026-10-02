@@ -62,8 +62,9 @@ plans don't work with the Graph Excel API.
    1. Open https://developer.microsoft.com/graph/graph-explorer and sign in as the admin.
    2. Run `GET https://graph.microsoft.com/v1.0/sites/yourtenant.sharepoint.com:/sites/RustSheetOracle`
       and copy the `"id"` from the response (it looks like `yourtenant.sharepoint.com,1234…,5678…`).
-      If you get a permission error, open **Modify permissions**, consent to `Sites.FullControl.All`
-      for Graph Explorer, and run it again.
+      If you get a permission error, open **Modify permissions** and consent to `Sites.FullControl.All`
+      for Graph Explorer **for yourself only**. Do *not* tick "consent on behalf of your organization".
+      Then run it again.
    3. Switch the method to **POST**. Set the URL to
       `https://graph.microsoft.com/v1.0/sites/<that id>/permissions` and the request body to:
       ```json
@@ -93,6 +94,9 @@ plans don't work with the Graph Excel API.
   immediately.
 - If you granted `Files.ReadWrite.All` earlier, remove it: API permissions → `…` → Remove
   permission.
+- After step 6, remove Graph Explorer's `Sites.FullControl.All` consent: https://myapps.microsoft.com
+  → Graph Explorer → Manage your application → revoke, or Entra → Enterprise applications → Graph
+  Explorer → Permissions.
 
 **Fallback A — delegated sign-in.** This is officially the supported mode for workbook endpoints.
 The robot acts as you and can reach your files only.

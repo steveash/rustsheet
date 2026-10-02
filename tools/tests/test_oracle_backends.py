@@ -58,6 +58,7 @@ def test_errors_redact_the_owner_email(app_only_env: pytest.MonkeyPatch) -> None
     app_only_env.setenv("RUSTSHEET_ORACLE_USER", "me@example.com")
     backend = GraphBackend()
     assert backend._redact(backend._drive() + "/items/1") == f"{GRAPH}/users/<user>/drive/items/1"
+    assert backend._redact('{"error": "no drive for me@example.com"}') == '{"error": "no drive for <user>"}'
 
 
 def test_drive_id_takes_precedence(app_only_env: pytest.MonkeyPatch) -> None:

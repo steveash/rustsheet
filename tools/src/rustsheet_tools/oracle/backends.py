@@ -195,9 +195,9 @@ class GraphBackend:
         return f"{GRAPH}/me/drive"
 
     def _redact(self, url: str) -> str:
-        """Removes the owner's email from URLs that end up in error messages and logs."""
+        """Removes the owner's email (raw or URL-encoded) from text that ends up in errors and logs."""
         if self.user:
-            url = url.replace(quote(self.user, safe=""), "<user>")
+            url = url.replace(quote(self.user, safe=""), "<user>").replace(self.user, "<user>")
         return url
 
     def _call(
@@ -216,7 +216,9 @@ class GraphBackend:
                 time.sleep(float(resp.headers.get("Retry-After", 2**attempt)))
                 continue
             if resp.status_code >= 400:
-                raise OracleError(f"{method} {self._redact(url)} -> {resp.status_code}: {resp.text[:500]}")
+                raise OracleError(
+                    f"{method} {self._redact(url)} -> {resp.status_code}: {self._redact(resp.text[:500])}"
+                )
             return resp
         raise OracleError(f"{method} {self._redact(url)}: retries exhausted")
 
