@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use crate::calc_result::CalcResult;
-use crate::functions::util::build_criteria;
+use crate::functions::criteria::build_criteria;
 use crate::locale::{get_locale, Locale};
 
 fn en_locale() -> &'static Locale {

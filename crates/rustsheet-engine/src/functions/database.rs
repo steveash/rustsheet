@@ -5,7 +5,8 @@ use crate::{
     Model,
 };
 
-use super::util::{compare_values, from_wildcard_to_regex, result_matches_regex};
+use super::criteria::wildcard_text_matcher;
+use super::util::compare_values;
 
 impl<'a> Model<'a> {
     // =DAVERAGE(database, field, criteria)
@@ -804,12 +805,7 @@ impl<'a> Model<'a> {
                 // If rhs has wildcards and db_val is string, do regex; else use compare_values != 0
                 if let CalcResult::String(s) = db_val {
                     if criteria.contains('*') || criteria.contains('?') {
-                        if let Ok(re) = from_wildcard_to_regex(&criteria.to_lowercase(), true) {
-                            return !result_matches_regex(
-                                &CalcResult::String(s.to_lowercase()),
-                                &re,
-                            );
-                        }
+                        return !wildcard_text_matcher(&criteria)(&CalcResult::String(s.clone()));
                     }
                 }
                 let rhs = if let Ok((n, _)) = formatted_number {
@@ -836,12 +832,7 @@ impl<'a> Model<'a> {
                     // textual/boolean equals (case-insensitive), wildcard-enabled for strings
                     if let CalcResult::String(s) = db_val {
                         if criteria.contains('*') || criteria.contains('?') {
-                            if let Ok(re) = from_wildcard_to_regex(&criteria.to_lowercase(), true) {
-                                return result_matches_regex(
-                                    &CalcResult::String(s.to_lowercase()),
-                                    &re,
-                                );
-                            }
+                            return wildcard_text_matcher(&criteria)(db_val);
                         }
                         // This is weird but we only need to check if "starts with" for equality
                         return s.to_lowercase().starts_with(&criteria.to_lowercase());
