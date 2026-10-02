@@ -3,11 +3,10 @@
 use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::mpsc;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use rayon::prelude::*;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::case::{split_qualified, CaseSpec, CellInput, OracleFile, CASE_FORMAT};
@@ -15,13 +14,8 @@ use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
 use crate::suite::{oracle_sidecar, CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
+use crate::volatile::{pinned_clock_serial, volatile_cells, FormulaCell};
 use crate::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
-
-/// Functions whose results legitimately differ between runs; such cells are not scored.
-static VOLATILE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)\b(?:_xlfn\.)?(NOW|TODAY|RAND|RANDBETWEEN|RANDARRAY)\s*\(")
-        .unwrap_or_else(|e| unreachable!("static regex: {e}"))
-});
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -277,10 +271,6 @@ fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
         .map_err(|e| format!("{}: {e}", path.display()))
 }
 
-fn is_volatile(formula: Option<&str>) -> bool {
-    formula.is_some_and(|f| VOLATILE.is_match(f))
-}
-
 fn prepare(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
     match suite.manifest.kind {
         SuiteKind::Xlsx => prepare_xlsx(suite, case),
@@ -320,6 +310,19 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             skipped_volatile: 0,
         });
     };
+    let formulas: Vec<FormulaCell> = snapshot
+        .sheets
+        .iter()
+        .flat_map(|sheet| {
+            sheet.cells.iter().filter_map(|(addr, cell)| {
+                // Shared-formula members carry the master's text unshifted, so their
+                // references may be off (a missed or extra dependency, never a wrong score).
+                let formula = cell.formula.clone().filter(|_| cell.is_formula())?;
+                Some((sheet.name.clone(), *addr, formula))
+            })
+        })
+        .collect();
+    let volatile = volatile_cells(&formulas, pinned_clock_serial(&snapshot.sheets).is_some());
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
     for sheet in &snapshot.sheets {
@@ -327,7 +330,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             if !cell.is_formula() {
                 continue;
             }
-            if is_volatile(cell.formula.as_deref()) {
+            if volatile.contains(&(sheet.name.clone(), *addr)) {
                 skipped_volatile += 1;
                 continue;
             }
@@ -378,16 +381,28 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             }
         }
     }
+    let formula_text = |input: &CellInput| match input {
+        CellInput::Str(f) => f.strip_prefix('=').map(str::to_string),
+        _ => None,
+    };
     let formula_of = |sheet: &str, a1: &str| {
         spec.sheets
             .iter()
             .find(|s| s.name == sheet)
             .and_then(|s| s.cells.get(a1))
-            .and_then(|c| match c {
-                CellInput::Str(f) if f.starts_with('=') => Some(f[1..].to_string()),
-                _ => None,
-            })
+            .and_then(formula_text)
     };
+    let formulas: Vec<FormulaCell> = spec
+        .sheets
+        .iter()
+        .flat_map(|sheet| {
+            sheet.cells.iter().filter_map(|(a1, input)| {
+                Some((sheet.name.clone(), Addr::parse(a1)?, formula_text(input)?))
+            })
+        })
+        .collect();
+    // Spec workbooks have no METADATA sheet, so the clock is never pinned: NOW/TODAY stay skipped.
+    let volatile = volatile_cells(&formulas, false);
     let wanted: Vec<String> = if spec.check.is_empty() {
         expected.keys().cloned().collect()
     } else {
@@ -407,7 +422,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             continue; // pending oracle for this cell
         };
         let formula = formula_of(&sheet, &a1);
-        if is_volatile(formula.as_deref()) {
+        if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;
             continue;
         }

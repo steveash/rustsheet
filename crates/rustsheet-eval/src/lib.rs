@@ -18,4 +18,5 @@ pub mod report;
 pub mod runner;
 pub mod suite;
 pub mod value;
+pub mod volatile;
 pub mod xlsx_snapshot;
