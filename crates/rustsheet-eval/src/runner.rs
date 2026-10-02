@@ -434,7 +434,7 @@ mod tests {
     use crate::suite::SuiteManifest;
     use std::path::PathBuf;
 
-    /// Engine whose behaviour is chosen by the cell text of the spec's first sheet.
+    /// Engine whose behaviour is chosen by the spec's `description` ("panic", "error", else ok).
     struct Scripted;
 
     struct NoValues;
