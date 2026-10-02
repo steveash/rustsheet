@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "D-function criteria share the COUNTIF grammar; plain text equality matches by prefix; criteria text is trimmed",
+  "tags": ["M2", "criteria", "database"],
+  "expected_source": "hand",
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "Name", "B1": "Qty",
+        "A2": "ab", "B2": 1,
+        "A3": "abc", "B3": 2,
+        "A4": "xab", "B4": 4,
+        "D1": "Name", "D2": "ab",
+        "F1": "Qty", "F2": "  > 1 ",
+        "H1": "Name", "H2": "<>ab",
+        "J1": "=DSUM(A1:B4,\"Qty\",D1:D2)",
+        "J2": "=DSUM(A1:B4,\"Qty\",F1:F2)",
+        "J3": "=DSUM(A1:B4,\"Qty\",H1:H2)",
+        "J4": "=DCOUNT(A1:B4,\"Qty\",D1:D2)"
+      }
+    }
+  ],
+  "expected": {
+    "Sheet1!J1": {"t": "n", "v": 3},
+    "Sheet1!J2": {"t": "n", "v": 6},
+    "Sheet1!J3": {"t": "n", "v": 6},
+    "Sheet1!J4": {"t": "n", "v": 2}
+  }
+}

@@ -167,6 +167,14 @@ fn result_is_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
     }
 }
 
+fn result_starts_with_string(calc_result: &CalcResult, target: &str) -> bool {
+    match calc_result {
+        CalcResult::String(s) => s.to_lowercase().starts_with(target),
+        CalcResult::EmptyCell => target.is_empty(),
+        _ => false,
+    }
+}
+
 // `<>text` matches every cell that is not that text, including numbers, booleans,
 // errors and blanks (same as the number/bool variants above).
 fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool {
@@ -244,6 +252,17 @@ fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
     }
 }
 
+/// Which family of functions a criterion is being compiled for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CriteriaFlavor {
+    /// COUNTIF/SUMIF/AVERAGEIF and the *IFS variants.
+    Standard,
+    /// D-functions (DSUM, DCOUNT, ...): identical grammar, except that plain text
+    /// equality matches by prefix ("ab" matches "abc").
+    // UNVERIFIED: oracle evidence pending, see T-0206.
+    Database,
+}
+
 /// This returns a function (closure) of signature fn(&CalcResult) -> bool
 /// It is Boxed because it returns different closures, so the size cannot be known at compile time
 /// The lifetime (a) of value has to be longer or equal to the lifetime of the returned closure
@@ -258,10 +277,31 @@ pub(crate) fn build_criteria<'a>(
     value: &'a CalcResult,
     locale: &'a Locale,
 ) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
+    build_criteria_with(value, locale, CriteriaFlavor::Standard)
+}
+
+/// D-function criteria text is trimmed, also between the operator and its operand
+/// ("  > 5 " means ">5"); the shared grammar itself does not trim.
+pub(crate) fn normalize_database_criterion(text: &str) -> String {
+    let text = text.trim();
+    for op in ["<=", ">=", "<>", "<", ">", "="] {
+        if let Some(rest) = text.strip_prefix(op) {
+            return format!("{op}{}", rest.trim());
+        }
+    }
+    text.to_string()
+}
+
+/// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
+pub(crate) fn build_criteria_with<'a>(
+    value: &'a CalcResult,
+    locale: &'a Locale,
+    flavor: CriteriaFlavor,
+) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
-                // TODO(T-0205): not implementing <= ERROR or <= BOOLEAN
+                // TODO(T-0206): not implementing <= ERROR or <= BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if v.is_empty() {
@@ -272,7 +312,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
-                // TODO(T-0205): not implementing >= ERROR or >= BOOLEAN
+                // TODO(T-0206): not implementing >= ERROR or >= BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if v.is_empty() {
@@ -283,6 +323,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_greater_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
+                // Same for both flavors: `<>ab` is an exact not-equal, never a prefix test.
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
@@ -303,7 +344,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
-                // TODO(T-0205): not implementing < ERROR or < BOOLEAN
+                // TODO(T-0206): not implementing < ERROR or < BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if v.is_empty() {
@@ -314,7 +355,7 @@ pub(crate) fn build_criteria<'a>(
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
-                // TODO(T-0205): not implementing > ERROR or > BOOLEAN
+                // TODO(T-0206): not implementing > ERROR or > BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if v.is_empty() {
@@ -344,6 +385,8 @@ pub(crate) fn build_criteria<'a>(
                     }
                 } else if let Some(f) = parse_date_criterion(v, locale) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
+                } else if flavor == CriteriaFlavor::Database {
+                    Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {
                     Box::new(move |x| result_is_equal_to_string(x, &v.to_lowercase()))
                 }
