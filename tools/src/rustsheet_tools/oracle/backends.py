@@ -185,6 +185,8 @@ class GraphBackend:
             return f"{GRAPH}/drives/{quote(self.drive_id, safe='!')}"
         if self.site:
             host, _, path = self.site.partition("/")
+            if not path:  # tenant root site
+                return f"{GRAPH}/sites/{quote(host, safe='')}/drive"
             return f"{GRAPH}/sites/{quote(host, safe='')}:/{quote(path)}:/drive"
         # USER selects whose OneDrive to use in app-only mode; in delegated mode `/me` already
         # identifies the signed-in user (who may lack rights to another user's drive).

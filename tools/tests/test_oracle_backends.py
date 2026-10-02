@@ -44,6 +44,11 @@ def test_site_targets_the_sites_document_library(app_only_env: pytest.MonkeyPatc
     assert backend._drive() == f"{GRAPH}/sites/contoso.sharepoint.com:/sites/RustSheet%20Oracle:/drive"
 
 
+def test_site_root_without_path(app_only_env: pytest.MonkeyPatch) -> None:
+    app_only_env.setenv("RUSTSHEET_ORACLE_SITE", "contoso.sharepoint.com")
+    assert GraphBackend()._drive() == f"{GRAPH}/sites/contoso.sharepoint.com/drive"
+
+
 def test_user_with_slash_cannot_escape_the_path(app_only_env: pytest.MonkeyPatch) -> None:
     app_only_env.setenv("RUSTSHEET_ORACLE_USER", "x/../../sites/abc")
     assert GraphBackend()._drive() == f"{GRAPH}/users/x%2F..%2F..%2Fsites%2Fabc/drive"
