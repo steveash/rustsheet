@@ -565,8 +565,7 @@ impl<'a> Model<'a> {
                 message: "Divide by 0".to_string(),
             };
         }
-        let result = value - divisor * (value / divisor).floor();
-        CalcResult::Number(result)
+        CalcResult::Number(crate::functions::util::excel_mod(value, divisor))
     }
 
     pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
