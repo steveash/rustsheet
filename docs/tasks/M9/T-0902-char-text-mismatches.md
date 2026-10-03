@@ -16,8 +16,8 @@ Fix the 29 CHAR cells that differ from Excel (likely code-page 1252 mapping for 
 `make eval-show CASE=ironcalc-calc/TEXT/...` (find via report).
 
 ## Acceptance criteria
-- [ ] CHAR known failures → 0; mapping table documented.
-- [ ] `make check` green; reviewers approve.
+- [x] CHAR known failures → 0 (mapping table n/a: root cause was the harness, see Outcome).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -

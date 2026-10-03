@@ -1,7 +1,6 @@
 mod conditional_formatting;
 mod metadata;
 pub(crate) mod shared_strings;
-pub use shared_strings::decode_xlsx_escapes;
 mod sheet_data;
 mod styles;
 mod tables;
@@ -30,6 +29,7 @@ use rustsheet_engine::{
 
 use crate::error::XlsxError;
 
+pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 
 use metadata::load_metadata;
