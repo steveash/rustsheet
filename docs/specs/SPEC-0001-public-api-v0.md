@@ -61,7 +61,7 @@ Engine types never appear in public signatures. Prerequisite T-0101 removes `Mod
 pub struct RangeRef { pub sheet: SheetId, pub top: u32, pub left: u32, pub bottom: u32, pub right: u32 } // inclusive, 0-based
 ```
 - `SheetId` wraps the engine's persistent worksheet `sheet_id` (stable across rename/reorder; unique but not necessarily dense or ordered, as imported files carry their own ids),
-  *not* the positional index. The facade maps id → current index on each call (O(sheets)).
+  *not* the positional index. The facade resolves id → current index through a cached map, invalidated on add/rename/delete/reorder.
 - Rows/cols are bounds-checked (reusing the engine's `LAST_ROW`/`LAST_COLUMN` and column-name helpers, not re-implemented) against the Excel limits (1,048,576 × 16,384) at parse and
   construction time (`RangeRef::new` returns `Result`).
 - `Workbook::cell_ref(&self, a1: &str) -> Result<CellRef, RefError>` and `range_ref` parse
@@ -160,7 +160,7 @@ Semantics:
   formula referencing a sheet added earlier in the same transaction is valid because ops apply to
   the model immediately and only evaluation is deferred. After `f` returns `Ok`, one recalc runs
   and only then does anything observe values.
-- **Atomic, via an undo log.** Each op records the prior stored cell (or sheet) in an undo log
+- **Atomic, via an undo log.** Each op records the prior stored cell (or sheet), plus the side effects of `set_user_input` (spill members it clears, removed `links`), in an undo log
   before applying; on `Err` the log is replayed in reverse (O(touched cells)) and nothing is
   recalculated. Replay goes through the engine's own cell setters so derived state
   (`parsed_formulas`, shared strings, parsed defined names) stays consistent; sheet-level ops
@@ -169,12 +169,13 @@ Semantics:
 - **ChangeSet.** Before applying, the facade captures the `Value` of every *formula* cell plus the
   touched cells (value changes outside the edit can only occur in formula cells); after the
   recalc it compares those. So `values` lists exactly the cells whose `Value` changed (including
-  spill members and cells on added/deleted sheets), sorted by (sheet index, row, col). Memory is
-  O(formula cells + touched cells); time is O(formula cells) for the compare plus the recalc.
+  spill members and cells on added/deleted sheets), sorted by (sheet index, row, col). Text before-values are captured as a compact fingerprint and materialised only for cells that changed (no per-cell allocation). Memory is
+  O(formula cells + touched cells + total spill cells); time is O(formula cells) for the compare plus the recalc.
   `Text` is compared against the engine's string directly (no `Arc` built for unchanged cells);
   an `Arc<str>` is built once only for cells that changed and shared into `ValueChange`. `inputs` lists cells whose stored
   input changed, last write winning within one transaction. Number equality is bitwise
   (`-0.0 != 0.0`, `NaN == NaN`).
+- **Style table.** Interned styles from a rolled-back edit may remain (orphans); accepted for v0 and bounded by the engine's style-table dedup. The rollback test must cover an overwritten spill anchor.
 - **Spills.** Spill members are `SpillCell`s, not formula cells in the engine's storage, so the
   pre-edit capture also includes every cell inside each formula cell's current spill extent, and
   the post-recalc compare walks the new extent too (growth and shrink are both reported). The
@@ -221,7 +222,7 @@ wb["Sheet1!A1"]                              # Value -> float | str | bool | Non
 wb.values("Sheet1!A1:C3")                    # list[list[...]]
 with wb.edit() as tx:                        # commit on clean exit, rollback on exception
     tx["Sheet1!A1"] = 10                     # Input::Parse semantics; rs.Formula("=A1*2") forces formula
-wb.changes                                   # Python-only convenience: ChangeSet of the last edit (the Rust Workbook stores none)
+wb.changes                                   # Python-only convenience: ChangeSet of the last edit, retained until the next edit (the Rust Workbook stores none)
 ```
 `XlError` is a returned value type (equality by kind, `str()` gives the literal), not an
 exception. `RefError`/`EditError`/`LoadError` map to `rs.RefError`, `rs.EditError`,
@@ -243,7 +244,7 @@ release the GIL. The existing `Model`/`UserModel` bindings stay until pytest par
 - Eval: `RustSheetEngine` switches to the facade (T-0102/T-0103); `make eval` results must be
   unchanged (0 regressions, 0 fixes).
 - Python: new pytest suite for the facade (T-0104), GIL-release smoke test.
-- Performance: T-0103 bench (≥100k formulas): one-cell edit and failed-edit rollback, numbers recorded.
+- Performance: T-0102 adds a read-path micro-benchmark (`value`/`values` per cell, string-target parse overhead). Default-on tracking is revisited when M3 makes recalc O(changed). T-0103 bench (≥100k formulas): one-cell edit and failed-edit rollback, numbers recorded.
 - Untrusted input: deeply nested formulas via `Input::Parse`/`Formula` return `EditError` through the engine's parser limits, never panic; `values()` over-limit fails before allocating; fuzz-ish tests for malformed references and huge ranges (`TooLarge`, no allocation blowup).
 
 ## Rollout
