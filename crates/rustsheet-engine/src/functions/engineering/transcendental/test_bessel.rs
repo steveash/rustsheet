@@ -195,9 +195,27 @@ fn excel_bessel_small_args_are_bit_exact() {
     assert_eq!(excel_bessel_y(7, 0.2), -2_295_654_720.157_33);
 }
 
+// Placeholder, not Excel truth: pins the fdlibm fallback until T-0908 finds the real algorithm.
 #[test]
 fn excel_bessel_large_args_use_fdlibm() {
     use super::bessel_excel::excel_bessel_j;
     assert_eq!(excel_bessel_j(0, 27.0), jn(0, 27.0));
     assert_eq!(excel_bessel_j(3, 0.0), 0.0);
+}
+
+#[test]
+fn excel_bessel_huge_order_is_nan_not_panic() {
+    use super::bessel_excel::{excel_bessel_j, excel_bessel_y};
+    assert!(excel_bessel_j(i32::MAX, 1.0).is_nan());
+    assert!(excel_bessel_y(i32::MAX, 1.0).is_nan());
+}
+
+#[test]
+fn excel_bessel_j_odd_order_is_odd_in_x() {
+    use super::bessel_excel::excel_bessel_j;
+    // Covers the forward (n < x) and Miller (n >= x) branches.
+    for (n, x) in [(1, 2.5), (7, 3.5), (7, 6.0), (3, 1.2)] {
+        assert_eq!(excel_bessel_j(n, -x), -excel_bessel_j(n, x));
+        assert_eq!(excel_bessel_j(n + 1, -x), excel_bessel_j(n + 1, x));
+    }
 }

@@ -11,6 +11,10 @@ use super::{bessel_j, bessel_y};
 
 const SMALL_ARG_LIMIT: f64 = 8.0;
 // Numerical Recipes truncates 2/pi; Excel's output bakes in the truncated constant.
+/// Orders above this yield NaN (reported as `#NUM!`): every algorithm here is O(n) per cell and the
+/// formula layer truncates `n` from untrusted input. Excel's own cap is UNVERIFIED; 100_000 is far
+/// beyond any n where results are finite anyway.
+const MAX_ORDER: i32 = 100_000;
 const TWO_OVER_PI: f64 = 636_619_772.0 / 1e9; // == 0.636619772 (correctly rounded)
 
 /// Evaluates `c[0] + c[1]*y + c[2]*y^2 + ...` (Horner).
@@ -157,6 +161,9 @@ fn jn_miller(n: i32, ax: f64) -> f64 {
 
 /// `BESSELJ(x, n)` for integer `n >= 0`.
 pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
+    if n > MAX_ORDER {
+        return f64::NAN;
+    }
     let ax = x.abs();
     // J_0(0) is 1.00000000283141 in Excel (NR numerator/denominator ratio), not exactly 1.
     let small = ax < SMALL_ARG_LIMIT && (ax > 0.0 || n <= 1);
@@ -169,7 +176,7 @@ pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
         _ if ax > f64::from(n) => {
             let (mut a, mut b) = (j0(ax), j1(ax));
             for j in 1..n {
-                (a, b) = (b, (f64::from(2 * j) / ax) * b - a);
+                (a, b) = (b, (2.0 * f64::from(j) / ax) * b - a);
             }
             b
         }
@@ -184,6 +191,9 @@ pub(crate) fn excel_bessel_j(n: i32, x: f64) -> f64 {
 
 /// `BESSELY(x, n)` for integer `n >= 0`.
 pub(crate) fn excel_bessel_y(n: i32, x: f64) -> f64 {
+    if n > MAX_ORDER {
+        return f64::NAN;
+    }
     if !(x > 0.0 && x < SMALL_ARG_LIMIT) {
         return bessel_y(n, x);
     }
@@ -195,7 +205,7 @@ pub(crate) fn excel_bessel_y(n: i32, x: f64) -> f64 {
     let inv_x = 1.0 / x;
     let (mut a, mut b) = (y0(x), y1(x));
     for j in 1..n {
-        (a, b) = (b, b * (f64::from(2 * j) * inv_x) - a);
+        (a, b) = (b, b * (2.0 * f64::from(j) * inv_x) - a);
     }
     b
 }
