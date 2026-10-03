@@ -17,7 +17,8 @@ Implement `Workbook::edit`/`set` with rollback on error and a ChangeSet of input
 Per SPEC-0001; incremental ChangeSet comes in M3.
 
 ## Acceptance criteria
-- [ ] Atomic: a failing op inside edit leaves the workbook unchanged (test).
+- [ ] Atomic via undo log (no whole-model clone): a failing op inside edit leaves the workbook unchanged (test).
+- [ ] Bench recorded: one-cell edit and rollback on >=100k formulas; `set_track_changes(false)` opt-out implemented.
 - [ ] ChangeSet lists exactly the cells whose values changed (property test vs full diff).
 - [ ] Eval spec adapter uses `edit`.
 - [ ] `make check` green; reviewers approve.

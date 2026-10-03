@@ -1,6 +1,6 @@
 # SPEC-0001 — Public API v0 (facade crate `rustsheet`)
 
-- **Status:** accepted
+- **Status:** accepted (on merge of T-0100)
 - **Milestone / lane:** M1 / api
 - **Tasks:** T-0100 (this spec), T-0101, T-0102, T-0103, T-0104, T-0113
 
@@ -60,9 +60,9 @@ Engine types never appear in public signatures. Prerequisite T-0101 removes `Mod
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct RangeRef { pub sheet: SheetId, pub top: u32, pub left: u32, pub bottom: u32, pub right: u32 } // inclusive, 0-based
 ```
-- `SheetId` wraps the engine's persistent worksheet `sheet_id` (stable across rename/reorder),
+- `SheetId` wraps the engine's persistent worksheet `sheet_id` (stable across rename/reorder; unique but not necessarily dense or ordered, as imported files carry their own ids),
   *not* the positional index. The facade maps id → current index on each call (O(sheets)).
-- Rows/cols are bounds-checked against the Excel limits (1,048,576 × 16,384) at parse and
+- Rows/cols are bounds-checked (reusing the engine's `LAST_ROW`/`LAST_COLUMN` and column-name helpers, not re-implemented) against the Excel limits (1,048,576 × 16,384) at parse and
   construction time (`RangeRef::new` returns `Result`).
 - `Workbook::cell_ref(&self, a1: &str) -> Result<CellRef, RefError>` and `range_ref` parse
   `Sheet1!A1`, `'My Sheet'!A1:B2`, `A:A`, `1:3`, absolute `$` markers (ignored). An unqualified
@@ -84,19 +84,24 @@ impl ErrorKind { pub fn literal(self) -> &'static str; pub fn code(self) -> Opti
 
 pub struct Array { /* rows, cols, row-major Vec<Value> */ }   // returned by values()
 ```
-- `XlError.origin` and `Value::Array` from api-design.md are deferred (origin needs engine
-  support; arrays only matter for `eval`). `#[non_exhaustive]` lets them arrive without a major
+- `XlError.origin` and `Value::Array` from api-design.md are deferred (the engine keeps the
+  origin only as a string, `FormulaValue::Error.o`, not a typed `CellRef`; arrays only matter for `eval`). `#[non_exhaustive]` lets them arrive without a major
   bump. `GettingData`, `Field`, `Blocked`, `Connect`, `Busy` are added when the engine can
   produce them.
 - Spill members read as their own scalar, `Empty` if the cell is not part of a spill.
-- `values(range)` is bounded: refuses ranges whose cell count exceeds `Workbook::MAX_READ_CELLS`
-  (default 16M) with `RefError::TooLarge`; callers should intersect with `used_range` first.
+- `values(range)` is bounded: the cell count is computed with checked multiplication *before*
+  any allocation and refused with `RefError::TooLarge` when it exceeds `WorkbookOptions::max_read_cells`
+  (default 1,000,000). The output `Array` is dense, but the scan visits stored cells only
+  (O(stored cells), not O(rectangle)); callers should intersect with `used_range` first.
+- `Value::Text` clones an `Arc<str>` built from the engine's string once per read (a v0 copy
+  cost; the engine stores `String`/shared strings, not `Arc<str>`). Callers in loops should pre-parse
+  references (`cell_ref`/`range_ref`) and hoist `sheet_id`; `SheetId` → index is O(sheets).
 
 ### Workbook
 ```rust
 pub struct Workbook { /* owns engine Model; Send, !Sync */ }
-pub struct WorkbookOptions { pub locale: String /* "en-US" */, pub timezone: String /* "UTC" */, pub language: String /* "en" */ }
-pub struct LoadOptions { pub recalc: bool /* default true */ }
+pub struct WorkbookOptions { pub max_read_cells: u64, pub locale: String /* "en-US" */, pub timezone: String /* "UTC" */, pub language: String /* "en" */ }
+pub struct LoadOptions { pub recalc: bool /* default true */, pub max_uncompressed_bytes: u64, pub max_zip_entries: u32 }
 pub struct SaveOptions {}                                      // placeholder, #[non_exhaustive]
 pub struct SheetMeta { pub id: SheetId, pub name: String, pub index: u32 }
 
@@ -120,6 +125,10 @@ impl Workbook {
 }
 pub struct CellInfo { pub value: Value, pub formula: Option<String>, pub number_format: Option<String> }
 ```
+`LoadOptions` also carries limits for untrusted workbooks (`max_uncompressed_bytes`, `max_zip_entries`);
+violations return `LoadError::Options`. Loading never resolves external-link targets or part
+names against the filesystem. T-0102 adds a zip-bomb test.
+
 Reads never mutate. `open`/`from_xlsx_bytes` recalculate once when `opts.recalc`. Loading and
 saving are the only I/O; formula evaluation performs none (CLAUDE.md prime directive 5).
 Because the engine currently stores computed values in cells, "last computed" equals "current"
@@ -146,19 +155,39 @@ pub struct ValueChange { pub cell: CellRef, pub before: Value, pub after: Value 
 #[non_exhaustive] pub enum SheetChange { Added(SheetId), Renamed { id: SheetId, from: String, to: String }, Deleted { id: SheetId, name: String } }
 ```
 Semantics:
-- **Atomic.** `edit` keeps a copy of the engine's workbook data and restores it if `f` returns
-  `Err` (v0 accepts the O(workbook) copy cost; T-0103 benchmarks it). Ops return errors rather
-  than panic, so no `catch_unwind` is used. Nothing is recalculated until `f` returns `Ok`; then
-  one full recalc runs.
-- **ChangeSet.** `values` is computed by diffing all cells before/after the recalc, so it lists
-  exactly the cells whose `Value` changed (including spill members and cells on added/deleted
-  sheets), sorted by (sheet index, row, col). `inputs` lists cells whose stored input changed,
-  with the *last* write winning when a cell is set several times inside one transaction.
-  `Value` equality for diffing is bitwise on numbers (so `-0.0 != 0.0`, `NaN == NaN`).
+- **`Txn` is write-only.** It has no reads and never exposes stale state: no recalculation
+  happens inside `f`, every op validates against the *structure* (sheet list, bounds) only, and a
+  formula referencing a sheet added earlier in the same transaction is valid because ops apply to
+  the model immediately and only evaluation is deferred. After `f` returns `Ok`, one recalc runs
+  and only then does anything observe values.
+- **Atomic, via an undo log.** Each op records the prior stored cell (or sheet) in an undo log
+  before applying; on `Err` the log is replayed in reverse (O(touched cells)) and nothing is
+  recalculated. Replay goes through the engine's own cell setters so derived state
+  (`parsed_formulas`, shared strings, parsed defined names) stays consistent; sheet-level ops
+  that cannot be replayed that way fall back to restoring a cloned `Workbook` followed by
+  `reset_parsed_structures`. `set` on one cell therefore never clones the workbook. Whole-model cloning is not
+  permitted as the implementation.
+- **ChangeSet.** Before applying, the facade captures the `Value` of every *formula* cell plus the
+  touched cells (value changes outside the edit can only occur in formula cells); after the
+  recalc it compares those. So `values` lists exactly the cells whose `Value` changed (including
+  spill members and cells on added/deleted sheets), sorted by (sheet index, row, col). Memory is
+  O(formula cells + touched cells); time is O(formula cells) for the compare plus the recalc.
+  `Text` is compared by `Arc` pointer first, then contents. `inputs` lists cells whose stored
+  input changed, last write winning within one transaction. Number equality is bitwise
+  (`-0.0 != 0.0`, `NaN == NaN`).
+- **Volatile cells** (NOW, RAND, INDIRECT/OFFSET with changing targets) change value on every
+  recalc and are therefore reported in every `ChangeSet`; this is intended and M3 dirty tracking
+  must preserve it (test with INDIRECT whose target changes).
+- **Opt-out.** `Workbook::set_track_changes(false)` (default true) makes `edit`/`set` return a
+  `ChangeSet` with empty `values`; the eval harness and bulk loads use it so they pay no diff cost.
+- **Size envelope.** v0 targets workbooks up to ~100k formula cells with single-cell edit latency
+  dominated by the recalc. T-0103 records benchmark numbers (one-cell edit and rollback on a
+  workbook of ≥100k formulas) in its Outcome; an O(changed) design (dirty-set `ChangeSet`) is
+  required by M3 and is not blocked by anything in this API. A very large `ChangeSet` (1M
+  dependents → 1M `ValueChange`) is possible by design; callers wanting no diff use the opt-out.
 - Sheet rename rewrites formulas via the engine; the facade reports the rename and any resulting
   value changes only.
-- v0 diffing is O(cells); the contract (not the algorithm) is what T-0103 tests, so M3 can swap
-  in dirty-set tracking unchanged.
+- The contract (not the algorithm) is what T-0103 tests, so M3 can swap in dirty-set tracking unchanged.
 
 ### Errors
 ```rust
@@ -181,7 +210,7 @@ wb["Sheet1!A1"]                              # Value -> float | str | bool | Non
 wb.values("Sheet1!A1:C3")                    # list[list[...]]
 with wb.edit() as tx:                        # commit on clean exit, rollback on exception
     tx["Sheet1!A1"] = 10                     # Input::Parse semantics; rs.Formula("=A1*2") forces formula
-wb.changes                                   # ChangeSet of the last edit (also tx.changes after exit)
+wb.changes                                   # Python-only convenience: ChangeSet of the last edit (the Rust Workbook stores none)
 ```
 `XlError` is a returned value type (equality by kind, `str()` gives the literal), not an
 exception. `RefError`/`EditError`/`LoadError` map to `rs.RefError`, `rs.EditError`,
@@ -196,14 +225,15 @@ release the GIL. The existing `Model`/`UserModel` bindings stay until pytest par
 
 ## Test plan
 - Unit tests: A1 parse/print round-trips (quoted sheet names, `$`, whole row/col, bounds);
-  `ErrorKind` ↔ literal round-trip for every engine error; value conversion from every `Cell` variant.
+  `ErrorKind` ↔ literal round-trip for every engine error (built on the engine's existing literal and ERROR.TYPE tables, with a sync test; no second table); value conversion from every `Cell` variant.
 - Atomicity: a failing op mid-`edit` leaves values, formulas and sheet list byte-identical.
 - Property test (proptest): random edit sequences — `ChangeSet.values` equals the full
   before/after diff, and applying `after` values to a fresh copy is consistent with recalc.
 - Eval: `RustSheetEngine` switches to the facade (T-0102/T-0103); `make eval` results must be
   unchanged (0 regressions, 0 fixes).
 - Python: new pytest suite for the facade (T-0104), GIL-release smoke test.
-- Untrusted input: fuzz-ish tests for malformed references and huge ranges (`TooLarge`, no allocation blowup).
+- Performance: T-0103 bench (≥100k formulas): one-cell edit and failed-edit rollback, numbers recorded.
+- Untrusted input: deeply nested formulas via `Input::Parse`/`Formula` return `EditError` through the engine's parser limits, never panic; `values()` over-limit fails before allocating; fuzz-ish tests for malformed references and huge ranges (`TooLarge`, no allocation blowup).
 
 ## Rollout
 | Task | Lane | Size | Content |
@@ -214,5 +244,4 @@ release the GIL. The existing `Model`/`UserModel` bindings stay until pytest par
 | T-0103 | api | M | `edit`/`set`, `Txn`, rollback, diff-based `ChangeSet`; eval adapter uses `edit` |
 | T-0104 | api | M | PyO3 bindings on the facade |
 
-T-0113 lands before T-0102 only if T-0102 would exceed size M; otherwise T-0102 may absorb it
-(then mark T-0113 dropped). The old `Model` bindings remain until T-0104 reaches parity.
+T-0113 is a hard prerequisite of T-0102. The old `Model` bindings remain until T-0104 reaches parity.
