@@ -3,7 +3,7 @@ id: T-0114
 title: "API v0: SheetId/CellRef/RangeRef types and A1 parsing/printing"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 depends_on: [T-0100]
