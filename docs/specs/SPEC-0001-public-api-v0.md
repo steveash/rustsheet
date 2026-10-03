@@ -92,10 +92,10 @@ pub struct Array { /* rows, cols, row-major Vec<Value> */ }   // returned by val
 - `values(range)` is bounded: the cell count is computed with checked multiplication *before*
   any allocation and refused with `RefError::TooLarge` when it exceeds `WorkbookOptions::max_read_cells`
   (default 1,000,000). The output `Array` is dense, but the scan visits stored cells only
-  (O(stored cells), not O(rectangle)); callers should intersect with `used_range` first.
+  (O(stored cells), not O(rectangle), which assumes the engine's sparse row→column storage; the cap is checked against the rectangle area, so a huge sparse range is refused even though a scan would be cheap; a 1M-cell `Array` is ~24+ MB, with bulk transfer deferred to M12); callers should intersect with `used_range` first.
 - `Value::Text` clones an `Arc<str>` built from the engine's string once per read (a v0 copy
   cost; the engine stores `String`/shared strings, not `Arc<str>`). Callers in loops should pre-parse
-  references (`cell_ref`/`range_ref`) and hoist `sheet_id`; `SheetId` → index is O(sheets).
+  references (`cell_ref`/`range_ref`); `Workbook` caches the `SheetId` → index map and invalidates it on sheet-structure ops.
 
 ### Workbook
 ```rust
@@ -164,20 +164,31 @@ Semantics:
   before applying; on `Err` the log is replayed in reverse (O(touched cells)) and nothing is
   recalculated. Replay goes through the engine's own cell setters so derived state
   (`parsed_formulas`, shared strings, parsed defined names) stays consistent; sheet-level ops
-  that cannot be replayed that way fall back to restoring a cloned `Workbook` followed by
-  `reset_parsed_structures`. `set` on one cell therefore never clones the workbook. Whole-model cloning is not
-  permitted as the implementation.
+  are undone by restoring the moved-out sheet, then `reset_parsed_structures`. `set` on one cell therefore never clones the workbook. Whole-model cloning is not
+  permitted for cell ops; delete-sheet keeps the removed sheet in the log (a move, not a clone).
 - **ChangeSet.** Before applying, the facade captures the `Value` of every *formula* cell plus the
   touched cells (value changes outside the edit can only occur in formula cells); after the
   recalc it compares those. So `values` lists exactly the cells whose `Value` changed (including
   spill members and cells on added/deleted sheets), sorted by (sheet index, row, col). Memory is
   O(formula cells + touched cells); time is O(formula cells) for the compare plus the recalc.
-  `Text` is compared by `Arc` pointer first, then contents. `inputs` lists cells whose stored
+  `Text` is compared against the engine's string directly (no `Arc` built for unchanged cells);
+  an `Arc<str>` is built once only for cells that changed and shared into `ValueChange`. `inputs` lists cells whose stored
   input changed, last write winning within one transaction. Number equality is bitwise
   (`-0.0 != 0.0`, `NaN == NaN`).
+- **Spills.** Spill members are `SpillCell`s, not formula cells in the engine's storage, so the
+  pre-edit capture also includes every cell inside each formula cell's current spill extent, and
+  the post-recalc compare walks the new extent too (growth and shrink are both reported). The
+  claim "changes outside the edit occur only in formula cells or their spill extents" is proven
+  by the proptest below, which must cover spills, volatile functions and INDIRECT/OFFSET.
+- **Deferred recalc.** The engine's `set_user_input` path does not evaluate (verified in
+  `model.rs`), so an N-cell `edit` costs one recalc, not N. T-0103 adds a test asserting a single
+  evaluation per `edit`.
 - **Volatile cells** (NOW, RAND, INDIRECT/OFFSET with changing targets) change value on every
   recalc and are therefore reported in every `ChangeSet`; this is intended and M3 dirty tracking
   must preserve it (test with INDIRECT whose target changes).
+- **Budget gate.** T-0103 must record that the diff costs under 25% of recalc time at 100k
+  formula cells (tracking on, default); if it does not, the default flips to off for v0 and the
+  task notes why.
 - **Opt-out.** `Workbook::set_track_changes(false)` (default true) makes `edit`/`set` return a
   `ChangeSet` with empty `values`; the eval harness and bulk loads use it so they pay no diff cost.
 - **Size envelope.** v0 targets workbooks up to ~100k formula cells with single-cell edit latency
@@ -187,7 +198,7 @@ Semantics:
   dependents → 1M `ValueChange`) is possible by design; callers wanting no diff use the opt-out.
 - Sheet rename rewrites formulas via the engine; the facade reports the rename and any resulting
   value changes only.
-- The contract (not the algorithm) is what T-0103 tests, so M3 can swap in dirty-set tracking unchanged.
+- The contract (not the algorithm) is what T-0103 tests, so M3 can swap in dirty-set tracking unchanged. T-0103 also records the eval run time before/after the adapter moves onto the facade (no >5% regression).
 
 ### Errors
 ```rust
