@@ -1,0 +1,16 @@
+[package]
+name = "rustsheet"
+description = "RustSheet public API: a typed facade over the calculation engine"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+rustsheet_engine = { path = "../rustsheet-engine" }
+thiserror = "1"
+
+[lints]
+workspace = true

@@ -115,6 +115,27 @@ impl fmt::Display for Error {
     }
 }
 impl Error {
+    /// The number `ERROR.TYPE` returns for this error. The single source for that table; the
+    /// `rustsheet` facade's `ErrorKind::code` is built on it.
+    pub fn error_type_code(&self) -> u8 {
+        match self {
+            Error::NULL => 1,
+            Error::DIV => 2,
+            Error::VALUE => 3,
+            Error::REF => 4,
+            Error::NAME => 5,
+            Error::NUM => 6,
+            Error::NA => 7,
+            Error::SPILL => 9,
+            Error::CALC => 14,
+            // RustSheet/IronCalc specific. Excel's #GETTING_DATA (8), #CONNECT (10),
+            // #BLOCKED (11), #UNKNOWN (12), #FIELD (13) and #EXTERNAL (19) are not produced.
+            Error::ERROR => 101,
+            Error::NIMPL => 102,
+            Error::CIRC => 104,
+        }
+    }
+
     pub fn to_localized_error_string(&self, language: &Language) -> String {
         match self {
             Error::NULL => language.errors.null.to_string(),

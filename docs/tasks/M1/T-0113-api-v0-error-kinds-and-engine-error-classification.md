@@ -3,7 +3,7 @@ id: T-0113
 title: "API v0: ErrorKind/XlError conversions and engine error classification"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 depends_on: [T-0100]
