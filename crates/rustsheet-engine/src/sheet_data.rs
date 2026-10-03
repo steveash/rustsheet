@@ -218,6 +218,18 @@ impl SheetData {
         })
     }
 
+    /// The number of the last row that exists, or 0 for an empty sheet. Cheap: it
+    /// looks at whole chunks, so callers can bound whole-column walks by it.
+    pub fn last_row(&self) -> i32 {
+        for (chunk_index, chunk) in self.chunks.iter().enumerate().rev() {
+            let Some(chunk) = chunk else { continue };
+            if let Some(index) = chunk.rows.iter().rposition(Option::is_some) {
+                return ((chunk_index << CHUNK_BITS) | index) as i32;
+            }
+        }
+        0
+    }
+
     /// The rows that exist, in ascending order.
     pub fn rows(&self) -> Vec<i32> {
         self.rows_in_order().map(|(row, _)| row).collect()

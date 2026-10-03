@@ -10,12 +10,14 @@ use crate::{
 use super::binary_search::binary_search_on_array;
 use super::criteria::wildcard_text_matcher;
 use super::util::{compare_values, values_are_equal};
+use lookup_table::LookupTable;
 
 mod address_areas;
 mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod hstack_vstack;
+mod lookup_table;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -34,68 +36,6 @@ fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> Calc
             message: "".to_string(),
         },
         ArrayNode::Empty => CalcResult::EmptyCell,
-    }
-}
-
-/// A two dimensional table for the LOOKUP family of functions. It abstracts over
-/// the two possible sources, a range reference or an in-formula array literal, so
-/// the lookup logic can be written once for both.
-enum LookupTable {
-    Range {
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
-    },
-    Array(Vec<Vec<ArrayNode>>),
-}
-
-impl LookupTable {
-    fn rows(&self) -> i32 {
-        match self {
-            LookupTable::Range { left, right } => right.row - left.row + 1,
-            LookupTable::Array(array) => array.len() as i32,
-        }
-    }
-
-    fn columns(&self) -> i32 {
-        match self {
-            LookupTable::Range { left, right } => right.column - left.column + 1,
-            LookupTable::Array(array) => array.first().map_or(0, |row| row.len()) as i32,
-        }
-    }
-
-    /// Returns the value at the 0-based `(row, column)` offset within the table.
-    /// Callers must ensure the offsets are within bounds.
-    fn get(
-        &self,
-        model: &mut Model,
-        row: i32,
-        column: i32,
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match self {
-            LookupTable::Range { left, .. } => model.evaluate_cell(CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row + row,
-                column: left.column + column,
-            }),
-            LookupTable::Array(array) => {
-                array_node_to_calc_result(&array[row as usize][column as usize], cell)
-            }
-        }
-    }
-
-    /// Materializes the first row of the table (the search vector for HLOOKUP).
-    fn first_row(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
-        (0..self.columns())
-            .map(|column| self.get(model, 0, column, cell))
-            .collect()
-    }
-
-    /// Materializes the first column of the table (the search vector for VLOOKUP).
-    fn first_column(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
-        (0..self.rows())
-            .map(|row| self.get(model, row, 0, cell))
-            .collect()
     }
 }
 
