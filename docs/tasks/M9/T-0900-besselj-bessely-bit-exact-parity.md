@@ -3,7 +3,7 @@ id: T-0900
 title: "BESSELJ/BESSELY bit-exact parity"
 milestone: M9
 lane: functions
-status: in-progress
+status: done
 priority: P2
 size: M
 depends_on: []
@@ -22,3 +22,8 @@ Fix 145 failing BESSELJ/BESSELY cells in ironcalc-calc (dominant verdicts Numeri
 
 ## Out of scope
 -
+
+## Outcome
+Excel uses Numerical Recipes rational approximations for `|x| < 8` (bit-exact now; 119 baseline
+cells fixed, 1880 -> 1761). `|x| >= 8` still differs; split to T-0908. See
+`docs/excel-semantics/engineering.md`.

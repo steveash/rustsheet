@@ -181,3 +181,23 @@ fn bessel_kn_known_values() {
         );
     }
 }
+
+// Expected values are Excel-cached cells from BESSEL.xlsx (ironcalc-calc suite); they must match
+// bit-for-bit, not within a tolerance, because Excel's small-argument algorithm is not fdlibm.
+#[test]
+fn excel_bessel_small_args_are_bit_exact() {
+    use super::bessel_excel::{excel_bessel_j, excel_bessel_y};
+    assert_eq!(excel_bessel_j(0, 0.0), 1.000_000_002_831_41);
+    assert_eq!(excel_bessel_y(0, 0.8), -0.086_802_273_855_431_45);
+    assert_eq!(excel_bessel_y(10, 2.9), -3_564.032_241_223_704);
+    assert_eq!(excel_bessel_y(7, 3.5), -7.848_865_602_729_761);
+    assert_eq!(excel_bessel_y(1, 0.2), -3.323_824_986_221_588_5);
+    assert_eq!(excel_bessel_y(7, 0.2), -2_295_654_720.157_33);
+}
+
+#[test]
+fn excel_bessel_large_args_use_fdlibm() {
+    use super::bessel_excel::excel_bessel_j;
+    assert_eq!(excel_bessel_j(0, 27.0), jn(0, 27.0));
+    assert_eq!(excel_bessel_j(3, 0.0), 0.0);
+}
