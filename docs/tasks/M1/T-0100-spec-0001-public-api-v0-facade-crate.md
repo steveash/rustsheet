@@ -3,7 +3,7 @@ id: T-0100
 title: "SPEC-0001: public API v0 (facade crate `rustsheet`)"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P0
 size: M
 depends_on: []
