@@ -84,6 +84,7 @@ C	ironcalc-calc/LOOKUP_AND_REFERENCE/FILTER_ERRORS.xlsx	7
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/HSTACK_VSTACK.xlsx	36
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/HVLOOKUP.xlsx	103
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/INDEX.xlsx	20
+C	ironcalc-calc/LOOKUP_AND_REFERENCE/INDIRECT.xlsx	114
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/MATCH.xlsx	34
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/MATCH_LOOKUP_arrays.xlsx	23
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/ROW_COLUM.xlsx	196
@@ -181,6 +182,7 @@ C	ironcalc-calc/TEXT/CONCATENATE.xlsx	31
 C	ironcalc-calc/TEXT/DOLLARs.xlsx	36
 C	ironcalc-calc/TEXT/EXACT.xlsx	13
 C	ironcalc-calc/TEXT/FIND_SEARCH.xlsx	62
+C	ironcalc-calc/TEXT/MID_LEFT_RIGHT_arrays.xlsx	197
 C	ironcalc-calc/TEXT/PROPER.xlsx	11
 C	ironcalc-calc/TEXT/REGEX.xlsx	7
 C	ironcalc-calc/TEXT/REPT.xlsx	17

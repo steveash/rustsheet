@@ -826,50 +826,50 @@ impl<'a> Model<'a> {
         }
     }
 
-    // INDIRECT(ref_tex)
-    // Returns the reference specified by 'ref_text'
+    // INDIRECT(ref_text, [a1])
+    // Returns the reference specified by 'ref_text'. It is read in A1 notation
+    // unless 'a1' is FALSE, in which case it is read in R1C1 notation.
     pub(crate) fn fn_indirect(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = self.get_string(&args[0], cell);
-        match value {
-            Ok(s) => {
-                if args.len() == 2 {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Not implemented".to_string(),
-                    };
-                }
-
-                let parsed_reference = ParsedReference::parse_reference_formula(
-                    Some(cell.sheet),
-                    &s,
-                    self.locale,
-                    |name| self.get_sheet_index_by_name(name),
-                );
-
-                let parsed_reference = match parsed_reference {
-                    Ok(reference) => reference,
-                    Err(message) => {
-                        return CalcResult::Error {
-                            error: Error::REF,
-                            origin: cell,
-                            message,
-                        };
-                    }
-                };
-
-                match parsed_reference {
-                    ParsedReference::CellReference(reference) => CalcResult::Range {
-                        left: reference,
-                        right: reference,
-                    },
-                    ParsedReference::Range(left, right) => CalcResult::Range { left, right },
-                }
+        let ref_text = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(v) => return v,
+        };
+        let a1 = if args.len() == 2 {
+            match self.get_boolean(&args[1], cell) {
+                Ok(b) => b,
+                Err(v) => return v,
             }
-            Err(v) => v,
+        } else {
+            true
+        };
+
+        let parsed_reference = if a1 {
+            ParsedReference::parse_reference_formula(
+                Some(cell.sheet),
+                &ref_text,
+                self.locale,
+                |name| self.get_sheet_index_by_name(name),
+            )
+        } else {
+            ParsedReference::parse_r1c1_reference(cell, &ref_text, |name| {
+                self.get_sheet_index_by_name(name)
+            })
+        };
+
+        match parsed_reference {
+            Ok(ParsedReference::CellReference(reference)) => CalcResult::Range {
+                left: reference,
+                right: reference,
+            },
+            Ok(ParsedReference::Range(left, right)) => CalcResult::Range { left, right },
+            Err(message) => CalcResult::Error {
+                error: Error::REF,
+                origin: cell,
+                message,
+            },
         }
     }
 
