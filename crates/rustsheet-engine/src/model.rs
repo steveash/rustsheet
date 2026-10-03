@@ -866,11 +866,8 @@ impl<'a> Model<'a> {
                     format!("Error with Spill Range Operator in cell {cell:?}"),
                 ),
             },
-            ImplicitIntersection {
-                automatic: _,
-                child,
-            } => {
-                let result = self.evaluate_node_with_reference(child, cell);
+            ImplicitIntersection { child, .. } => {
+                let result = self.evaluate_implicit_intersection_operand(child, cell);
                 self.implicit_intersection_to_value(result, cell)
             }
             LambdaDefKind { parameters, body } => {
