@@ -196,6 +196,9 @@ fn read_app(zip: &mut Zip) -> Result<(Option<String>, Option<String>), SnapshotE
     Ok((app, ver))
 }
 
+/// Longest text Excel allows in one cell.
+const MAX_CELL_TEXT_CHARS: usize = 32_767;
+
 fn read_shared_strings(zip: &mut Zip) -> Result<Vec<String>, SnapshotError> {
     let Some(xml) = read_part(zip, "xl/sharedStrings.xml")? else {
         return Ok(Vec::new());
@@ -221,7 +224,17 @@ fn read_shared_strings(zip: &mut Zip) -> Result<Vec<String>, SnapshotError> {
             }
             Event::GeneralRef(r) if in_t && !in_phonetic => cur.push_str(&resolve_entity(&r)),
             Event::End(e) => match e.local_name().as_ref() {
-                "si" => out.push(decode_xlsx_escapes(&std::mem::take(&mut cur))),
+                "si" => {
+                    // Excel caps cell text at 32,767 characters. Snapshot cells copy their shared
+                    // string, so an oversized one referenced by many cells would expand without
+                    // bound (poi poc-shared-strings: 1 MB x 12,000 cells, T-0118).
+                    if cur.chars().count() > MAX_CELL_TEXT_CHARS {
+                        return Err(SnapshotError::Malformed(format!(
+                            "shared string longer than {MAX_CELL_TEXT_CHARS} characters"
+                        )));
+                    }
+                    out.push(decode_xlsx_escapes(&std::mem::take(&mut cur)));
+                }
                 "t" => in_t = false,
                 "rPh" => in_phonetic = false,
                 _ => {}
