@@ -909,9 +909,9 @@ impl<'a> Model<'a> {
     single_number_fn!(fn_sin, |f| Ok(f64::sin(f)));
     single_number_fn!(fn_cos, |f| Ok(f64::cos(f)));
     single_number_fn!(fn_tan, |f| Ok(f64::tan(f)));
-    single_number_fn!(fn_sinh, |f| Ok(f64::sinh(f)));
-    single_number_fn!(fn_cosh, |f| Ok(f64::cosh(f)));
-    single_number_fn!(fn_tanh, |f| Ok(f64::tanh(f)));
+    single_number_fn!(fn_sinh, |f| Ok(super::hyperbolic::sinh(f)));
+    single_number_fn!(fn_cosh, |f| Ok(super::hyperbolic::cosh(f)));
+    single_number_fn!(fn_tanh, |f| Ok(super::hyperbolic::tanh(f)));
     single_number_fn!(fn_asin, |f| Ok(f64::asin(f)));
     single_number_fn!(fn_acos, |f| Ok(f64::acos(f)));
     single_number_fn!(fn_atan, |f| Ok(f64::atan(f)));
