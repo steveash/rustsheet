@@ -69,7 +69,9 @@ pub struct RangeRef { pub sheet: SheetId, pub top: u32, pub left: u32, pub botto
   reference resolves against the first sheet. Defined names and structured references are not
   accepted in v0 (`RefError::Unsupported`).
 - Methods take `impl Into<Target>` where `Target` is `CellRef | RangeRef | &str`; strings are
-  parsed per call. `CellRef`/`RangeRef` implement `Display` (A1 with sheet name quoted as needed).
+  parsed per call. `CellRef`/`RangeRef` implement `Display` (A1 without sheet, since `SheetId` carries no name) and
+  `to_a1_in(sheet_name)` (A1 with the sheet name quoted as needed). Pure parsing lives in `parse_cell`/`parse_range` taking a
+  sheet lookup closure (`resolve_sheet_by_name` is the case-insensitive default), so `Workbook::cell_ref` only supplies the lookup.
 
 ### Values and errors
 ```rust

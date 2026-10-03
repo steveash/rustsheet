@@ -6,7 +6,11 @@
 #![forbid(unsafe_code)]
 
 mod error;
+mod refs;
 mod value;
 
 pub use error::{EditError, LoadError, RefError, SaveError};
+pub use refs::{
+    parse_cell, parse_range, resolve_sheet_by_name, CellRef, RangeRef, SheetId, Target,
+};
 pub use value::{ErrorKind, XlError};

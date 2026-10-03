@@ -19,10 +19,10 @@ pub(crate) const DEFAULT_WINDOW_HEIGHT: i64 = 600;
 pub(crate) const DEFAULT_WINDOW_WIDTH: i64 = 800;
 
 /// Maximum number of columns
-pub(crate) const LAST_COLUMN: i32 = 16_384;
+pub const LAST_COLUMN: i32 = 16_384;
 
 /// Maximum number of rows
-pub(crate) const LAST_ROW: i32 = 1_048_576;
+pub const LAST_ROW: i32 = 1_048_576;
 
 /// Excel uses 15 significant digits of precision for all numeric calculations.
 pub(crate) const EXCEL_PRECISION: usize = 15;
