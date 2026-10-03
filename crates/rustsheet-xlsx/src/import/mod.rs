@@ -29,6 +29,7 @@ use rustsheet_engine::{
 
 use crate::error::XlsxError;
 
+pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 
 use metadata::load_metadata;

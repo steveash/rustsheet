@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
+use rustsheet_xlsx::import::decode_xlsx_escapes;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SnapshotError {
@@ -220,7 +221,7 @@ fn read_shared_strings(zip: &mut Zip) -> Result<Vec<String>, SnapshotError> {
             }
             Event::GeneralRef(r) if in_t && !in_phonetic => cur.push_str(&resolve_entity(&r)),
             Event::End(e) => match e.local_name().as_ref() {
-                "si" => out.push(std::mem::take(&mut cur)),
+                "si" => out.push(decode_xlsx_escapes(&std::mem::take(&mut cur))),
                 "t" => in_t = false,
                 "rPh" => in_phonetic = false,
                 _ => {}
@@ -496,14 +497,14 @@ fn decode_value(
     shared: &[String],
 ) -> Value {
     match (t.unwrap_or("n"), v) {
-        ("inlineStr", _) => Value::Text(inline.unwrap_or_default().to_string()),
+        ("inlineStr", _) => Value::Text(decode_xlsx_escapes(inline.unwrap_or_default())),
         ("s", Some(v)) => v
             .trim()
             .parse::<usize>()
             .ok()
             .and_then(|i| shared.get(i))
             .map_or(Value::Empty, |s| Value::Text(s.clone())),
-        ("str", v) => Value::Text(v.unwrap_or_default().to_string()),
+        ("str", v) => Value::Text(decode_xlsx_escapes(v.unwrap_or_default())),
         ("b", Some(v)) => Value::Bool(v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")),
         ("e", Some(v)) => Value::Error(v.trim().to_string()),
         (_, Some(v)) if !v.trim().is_empty() => v
@@ -554,5 +555,18 @@ mod tests {
             })
         );
         assert!(get("C4").is_none(), "styled empty cells are dropped");
+    }
+
+    #[test]
+    fn decodes_xlsx_control_char_escapes_in_text_values() {
+        // CHAR.xlsx stores CHAR(1) as `_x0001_`.
+        let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="str"><f>CHAR(1)</f><v>_x0001_</v></c></row></sheetData></worksheet>"#;
+        let cells = parse_sheet(sheet, "sheet1.xml", &[]).unwrap_or_default();
+        let get = |s: &str| {
+            Addr::parse(s)
+                .and_then(|a| cells.get(&a))
+                .map(|c| c.value.clone())
+        };
+        assert_eq!(get("A1"), Some(Value::Text("\u{1}".into())));
     }
 }
