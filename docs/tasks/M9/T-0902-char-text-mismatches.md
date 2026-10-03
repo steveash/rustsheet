@@ -3,7 +3,7 @@ id: T-0902
 title: "CHAR text mismatches"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: S
 depends_on: []
