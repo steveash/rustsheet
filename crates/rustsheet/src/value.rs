@@ -233,6 +233,7 @@ impl Value {
 
     fn from_formula(value: &FormulaValue) -> Self {
         match value {
+            // Message mirrors rustsheet-engine `model.rs` ("Unevaluated formula").
             FormulaValue::Unevaluated => Self::Error(XlError::with_detail(
                 ErrorKind::Unknown,
                 "Unevaluated formula",
