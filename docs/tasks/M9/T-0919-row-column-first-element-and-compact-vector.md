@@ -4,7 +4,7 @@ title: "ROW/COLUMN of whole-column references: avoid materialising 1M-row arrays
 milestone: M9
 lane: functions
 status: todo
-priority: P3
+priority: P2
 size: M
 depends_on: [T-0911]
 ---

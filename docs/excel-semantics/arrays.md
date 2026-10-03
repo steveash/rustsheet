@@ -1,3 +1,4 @@
+# Arrays and implicit intersection
 
 ## ROW / COLUMN of a multi-cell reference (T-0911)
 Evidence: Excel-authored `ROW_COLUM.xlsx` (ironcalc-calc suite, cached values).
