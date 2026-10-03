@@ -16,7 +16,7 @@ Split: this task covers ROW/COLUMN only; INDIRECT and the triage list moved to T
 
 ## Acceptance criteria
 - [x] ROW/COLUMN of a multi-cell reference return a vector; evidence is the Excel-authored
-  `ROW_COLUM.xlsx` cached values (21 new checked cells, all pass).
+  the upstream `ROW_*` workbook (LOOKUP_AND_REFERENCE) cached values (21 new checked cells, all pass).
 - [x] Spec/unit cases added (`test_fn_row_column.rs`, implicit-intersection cases); `make check` green.
 - [x] Commit carries `Ported-From: ironcalc@b6d34abc`.
 
