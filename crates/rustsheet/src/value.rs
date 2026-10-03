@@ -24,7 +24,7 @@ pub enum ErrorKind {
     Spill,
     /// `#CALC!`
     Calc,
-    /// `#CIRC!` (engine-specific: Excel reports a circular reference as 0 or a warning)
+    /// `#CIRC!` (engine-specific)
     Circ,
     /// `#N/IMPL!` (engine-specific: feature not implemented)
     NotImplemented,
@@ -91,7 +91,7 @@ impl ErrorKind {
         }
     }
 
-    /// Parses an en-US error literal (case-insensitive, as the engine does).
+    /// Parses an en-US error literal (case-insensitive, as the engine's parser is; not oracle-verified for Excel).
     #[must_use]
     pub fn from_literal(literal: &str) -> Option<Self> {
         let language = rustsheet_engine::language::get_default_language();

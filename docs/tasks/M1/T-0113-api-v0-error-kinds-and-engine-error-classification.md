@@ -3,7 +3,7 @@ id: T-0113
 title: "API v0: ErrorKind/XlError conversions and engine error classification"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P1
 size: S
 depends_on: [T-0100]
@@ -24,3 +24,10 @@ SPEC-0001 "Values and errors" and "Errors". Engine `token::Error` has 12 variant
 
 ## Out of scope
 Workbook methods (T-0102), edits (T-0103).
+
+## Outcome
+- New crate `rustsheet` (`crates/rustsheet`) with `ErrorKind`, `XlError`, `RefError`, `EditError`, `LoadError`, `SaveError`.
+- `Error::error_type_code` is now the single ERROR.TYPE table in the engine; `ErrorKind::code` and `ERROR.TYPE` both use it.
+- Deliberate, tested deviations from SPEC-0001: `ErrorKind::literal` is a static mirror of the engine's literals (guarded by `literals_match_engine`); engine `#ERROR!` maps to `Unknown`; `EditError::InvalidInput` has no `cell` yet (needs `CellRef`, T-0102); literal parsing is `ErrorKind::from_literal` (no `FromStr`).
+- Engine `Display` prints `#N/IMPL` without `!` (its parser requires `!`); left as is.
+- Eval: 0 regressions, 0 fixed.
