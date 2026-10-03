@@ -3,7 +3,7 @@ id: T-0919
 title: "ROW/COLUMN of whole-column references: avoid materialising 1M-row arrays"
 milestone: M9
 lane: functions
-status: todo
+status: done
 priority: P2
 size: M
 depends_on: [T-0911]
@@ -23,6 +23,12 @@ Also from T-0911 review: `fn_row`/`fn_column` share min/max/single-or-vector log
 helper, and the other private `ArrayNode`->`CalcResult` copies were already consolidated.
 
 ## Acceptance criteria
-- [ ] `@ROW(A:A)` evaluates without allocating the full array.
-- [ ] Measurements recorded for `ROW(A:A)` before and after.
-- [ ] `make check` green.
+- [x] `@ROW(A:A)` evaluates without allocating the full array.
+- [x] Measurements recorded for `ROW(A:A)` before and after.
+- [x] `make check` green.
+
+## Outcome
+`@ROW(...)`/`@COLUMN(...)` now evaluate through `Model::evaluate_implicit_intersection_operand`, which
+returns the first number directly; ROW and COLUMN share one `row_or_column` helper. Timing (debug
+build, `cargo test`, `ROW(A:A)`): `=SUM(ROW(A:A))` (full vector, same cost as the old `@ROW(A:A)`)
+164.9 ms; `=@ROW(A:A)` 0.17 ms. Un-intersected `ROW(A:A)` still builds the vector (Excel spills it).

@@ -182,3 +182,22 @@ fn wrong_arguments() {
     assert_eq!(model._get_text("A3"), *"#VALUE!");
     assert_eq!(model._get_text("A4"), *"#VALUE!");
 }
+
+#[test]
+fn implicit_intersection_of_row_column_keeps_first_number() {
+    let mut model = new_empty_model();
+    model._set("A1", "=@ROW(C2:E4)");
+    model._set("B1", "=@COLUMN(C2:E4)");
+    model._set("C1", "=@ROW(A:A)");
+    model._set("D1", "=@COLUMN(A:XFD)");
+    model._set("E1", "=@ROW(F9)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("B1"), *"3");
+    assert_eq!(model._get_text("C1"), *"1");
+    assert_eq!(model._get_text("D1"), *"1");
+    assert_eq!(model._get_text("E1"), *"9");
+    // No spill from a scalar result
+    assert_eq!(model._get_text("A2"), *"");
+}
