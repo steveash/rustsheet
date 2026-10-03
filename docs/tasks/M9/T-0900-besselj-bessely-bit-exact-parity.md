@@ -3,7 +3,7 @@ id: T-0900
 title: "BESSELJ/BESSELY bit-exact parity"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: M
 depends_on: []
