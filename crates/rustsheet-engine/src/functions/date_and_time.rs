@@ -327,7 +327,7 @@ fn parse_time_string(text: &str) -> Option<f64> {
     ];
     for p in patterns_dt {
         if let Ok(dt) = NaiveDateTime::parse_from_str(text, p) {
-            return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
+            return Some(crate::utils::time_of_day_from_datetime(dt));
         }
     }
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {

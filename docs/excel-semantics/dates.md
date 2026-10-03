@@ -12,3 +12,11 @@ Evidence: eval/suites/ironcalc-calc DATE_AND_TIME/NOW_TODAY.xlsx cached `=NOW()`
 (59002.58 s into the day). The engine truncated to whole seconds before T-0005; fixed in `tz/os_tz.rs`
 (the wasm `tz/browser_tz.rs` path still truncates).
 Status: VERIFIED (Excel-cached values)
+
+## TIMEVALUE of "date time" text keeps serial-subtraction error
+Rule: for text carrying a date and a time, Excel builds the full serial and returns its fractional
+part, so `TIMEVALUE("7/7/2026 4:35 PM")` = 0.69097222221898846 (46210.6909… minus 46210), not the
+exact 16:35/24 = 0.69097222222222221. Time-only text is exact.
+Evidence: ironcalc-calc DATE_AND_TIME/TIMEVALUE.xlsx B18 (Excel-cached).
+Fractional seconds (`"10:11:12.5"`) remain UNVERIFIED (T-0910 stays open for that).
+Status: VERIFIED (Excel-cached value, one cell)
