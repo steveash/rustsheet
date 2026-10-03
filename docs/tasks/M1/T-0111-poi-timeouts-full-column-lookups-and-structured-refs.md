@@ -3,7 +3,7 @@ id: T-0111
 title: "Fix 60s timeouts on POI full-column VLOOKUP and structured-reference workbooks"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: M
 depends_on: []
