@@ -1,22 +1,9 @@
+use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
-
-fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match node {
-        ArrayNode::Number(n) => CalcResult::Number(*n),
-        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
-        ArrayNode::String(s) => CalcResult::String(s.clone()),
-        ArrayNode::Error(e) => CalcResult::Error {
-            error: e.clone(),
-            origin: cell,
-            message: String::new(),
-        },
-        ArrayNode::Empty => CalcResult::EmptyCell,
-    }
-}
 
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {

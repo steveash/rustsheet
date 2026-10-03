@@ -2,6 +2,7 @@ use crate::cast::{calc_result_to_array_node, NumberOrArray};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -23,21 +24,6 @@ mod transpose;
 mod trimrange;
 mod wrapcols_wraprows;
 mod xmatch;
-
-/// Converts a single array element into a scalar [`CalcResult`].
-fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match node {
-        ArrayNode::Number(n) => CalcResult::Number(*n),
-        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
-        ArrayNode::String(s) => CalcResult::String(s.clone()),
-        ArrayNode::Error(e) => CalcResult::Error {
-            error: e.clone(),
-            origin: cell,
-            message: "".to_string(),
-        },
-        ArrayNode::Empty => CalcResult::EmptyCell,
-    }
-}
 
 /// Finds the 0-based index of `lookup_value` within `search_vector`.
 /// When `is_sorted` is true a binary search is used (assuming ascending order)

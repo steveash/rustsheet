@@ -5,15 +5,22 @@ use crate::{
     number_format::to_excel_precision,
 };
 
+/// Converts a single array element into a scalar [`CalcResult`].
+pub(crate) fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
+    match node {
+        ArrayNode::Number(n) => CalcResult::Number(*n),
+        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
+        ArrayNode::String(s) => CalcResult::String(s.clone()),
+        ArrayNode::Error(e) => CalcResult::new_error(e.clone(), cell, String::new()),
+        ArrayNode::Empty => CalcResult::EmptyCell,
+    }
+}
+
 /// The top left element of an array, which is what the implicit intersection
 /// operator makes of it.
 pub(crate) fn top_left_of_array(array: &[Vec<ArrayNode>], cell: CellReferenceIndex) -> CalcResult {
     match array.first().and_then(|row| row.first()) {
-        Some(ArrayNode::Number(n)) => CalcResult::Number(*n),
-        Some(ArrayNode::Boolean(b)) => CalcResult::Boolean(*b),
-        Some(ArrayNode::String(s)) => CalcResult::String(s.clone()),
-        Some(ArrayNode::Error(error)) => CalcResult::new_error(error.clone(), cell, String::new()),
-        Some(ArrayNode::Empty) => CalcResult::EmptyCell,
+        Some(node) => array_node_to_calc_result(node, cell),
         None => CalcResult::new_error(Error::CALC, cell, "Empty array".to_string()),
     }
 }
