@@ -6,7 +6,7 @@ lane: api
 status: todo
 priority: P1
 size: M
-depends_on: [T-0100, T-0101]
+depends_on: [T-0100, T-0101, T-0113]
 spec: docs/specs/SPEC-0001-public-api-v0.md
 ---
 
