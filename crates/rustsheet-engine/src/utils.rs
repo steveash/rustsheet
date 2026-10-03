@@ -138,6 +138,20 @@ pub fn get_all_timezones() -> Vec<String> {
     crate::tz::get_all_timezone_names()
 }
 
+/// Time of day Excel returns for "date time" text.
+///
+/// Excel parses the text to a full serial and keeps only the fractional part, so the result carries
+/// the float error of the subtraction: `TIMEVALUE("7/7/2026 4:35 PM")` = 0.69097222221898846, not
+/// 16:35 / 24 (TIMEVALUE.xlsx B18, Excel-cached). Only the "date time" patterns have this evidence;
+/// time-only and RFC 3339 text keep the exact fraction.
+pub(crate) fn time_of_day_from_datetime(dt: chrono::NaiveDateTime) -> f64 {
+    use chrono::{Datelike, Timelike};
+    let days = dt.date().num_days_from_ce() - crate::constants::EXCEL_DATE_BASE;
+    let seconds = dt.time().num_seconds_from_midnight();
+    let serial = f64::from(days) + f64::from(seconds) / 86_400.0;
+    serial - serial.floor()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::expect_used)]
