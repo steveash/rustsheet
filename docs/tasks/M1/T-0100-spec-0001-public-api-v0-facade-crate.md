@@ -3,7 +3,7 @@ id: T-0100
 title: "SPEC-0001: public API v0 (facade crate `rustsheet`)"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P0
 size: M
 depends_on: []
@@ -22,3 +22,6 @@ IronCalc exposes Model<'a>/UserModel with Result<_, String> and positional sheet
 
 ## Out of scope
 Implementation.
+
+## Outcome
+Spec merged as docs/specs/SPEC-0001-public-api-v0.md; filed T-0113; T-0102 now depends on it.
