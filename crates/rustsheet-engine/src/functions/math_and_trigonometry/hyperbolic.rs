@@ -11,6 +11,8 @@
 const SINH_SERIES_LIMIT: f64 = 0.5;
 /// `exp(x)` overflows near here; defer to libm so the finite/infinite boundary is unchanged.
 const EXP_SAFE_LIMIT: f64 = 700.0;
+/// |tanh(x)| rounds to 1.0 in f64 beyond this.
+const TANH_SATURATION: f64 = 20.0;
 
 fn sinh_series(x: f64) -> f64 {
     let x2 = x * x;
@@ -42,7 +44,7 @@ pub(super) fn cosh(x: f64) -> f64 {
 }
 
 pub(super) fn tanh(x: f64) -> f64 {
-    if x.abs() > 20.0 {
+    if x.abs() > TANH_SATURATION {
         // exact in f64 (as the existing COTH shortcut)
         x.signum()
     } else if x.abs() < 1.0 {

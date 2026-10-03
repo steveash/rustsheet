@@ -17,5 +17,6 @@ T-0914 found SINH/COSH/TANH fit exp formulas (see `docs/excel-semantics/numbers.
 
 ## Acceptance criteria
 - [ ] At least 40 F lines for the listed functions leave the baseline, no new ones.
+- [ ] Oracle-probe (T-0004) the fitted SINH 0.5 / TANH 1.0 switchover thresholds and confirm the formulas between cached points.
 - [ ] Findings (including negative results) in `docs/excel-semantics/numbers.md`.
 - [ ] `make check` green.
