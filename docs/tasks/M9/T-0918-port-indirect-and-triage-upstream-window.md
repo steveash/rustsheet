@@ -3,7 +3,7 @@ id: T-0918
 title: "Port IronCalc INDIRECT (R1C1) fixes and triage remaining 2026-10-01..02 upstream commits"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P3
 size: M
 depends_on: [T-0911]
