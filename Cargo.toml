@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "crates/rustsheet-engine",
+  "crates/rustsheet",
   "crates/rustsheet-xlsx",
   "crates/rustsheet-eval",
   "bindings/python",

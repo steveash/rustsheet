@@ -197,28 +197,7 @@ impl<'a> Model<'a> {
         }
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Error { error, .. } => {
-                match error {
-                    Error::NULL => CalcResult::Number(1.0),
-                    Error::DIV => CalcResult::Number(2.0),
-                    Error::VALUE => CalcResult::Number(3.0),
-                    Error::REF => CalcResult::Number(4.0),
-                    Error::NAME => CalcResult::Number(5.0),
-                    Error::NUM => CalcResult::Number(6.0),
-                    Error::NA => CalcResult::Number(7.0),
-                    Error::SPILL => CalcResult::Number(9.0),
-                    Error::CALC => CalcResult::Number(14.0),
-                    // IronCalc specific
-                    Error::ERROR => CalcResult::Number(101.0),
-                    Error::NIMPL => CalcResult::Number(102.0),
-                    Error::CIRC => CalcResult::Number(104.0),
-                    // Missing from Excel
-                    // #GETTING_DATA => 8
-                    // #CONNECT => 10
-                    // #BLOCKED => 11
-                    // #UNKNOWN => 12
-                    // #FIELD => 13
-                    // #EXTERNAL => 19
-                }
+                CalcResult::Number(f64::from(error.error_type_code()))
             }
             _ => CalcResult::Error {
                 error: Error::NA,
