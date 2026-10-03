@@ -146,7 +146,12 @@ impl fmt::Display for RangeRef {
             f.write_str(":")?;
             write_col(f, self.right)
         } else if self.whole_rows() && !self.whole_cols() {
-            write!(f, "{}:{}", self.top + 1, self.bottom + 1)
+            write!(
+                f,
+                "{}:{}",
+                self.top.saturating_add(1),
+                self.bottom.saturating_add(1)
+            )
         } else if self.top == self.bottom && self.left == self.right {
             write_cell(f, self.top, self.left)
         } else {
@@ -355,6 +360,8 @@ fn is_cell_token(token: &str) -> bool {
     (1..=3).contains(&letters) && !rest.is_empty() && rest.chars().all(|c| c.is_ascii_digit())
 }
 
+// The engine's `parse_reference_a1` is not reused: it is uppercase-only, takes no ranges and
+// returns `Option`, so it cannot classify OutOfBounds vs Unsupported vs Invalid.
 fn parse_part(token: &str, in_range: bool) -> Result<Part, RefError> {
     let invalid = || RefError::Invalid(token.chars().take(64).collect());
     if token.contains('[') {
@@ -375,6 +382,10 @@ fn parse_part(token: &str, in_range: bool) -> Result<Part, RefError> {
         // e.g. `ABCD1` is a legal defined name
         return Err(RefError::Unsupported);
     }
+    if letters > 3 {
+        // Reject before `column_to_number`, whose arithmetic overflows on long letter runs.
+        return Err(RefError::OutOfBounds);
+    }
     let col = if letter_part.is_empty() {
         None
     } else {
@@ -385,11 +396,8 @@ fn parse_part(token: &str, in_range: bool) -> Result<Part, RefError> {
     let row = if digits.is_empty() {
         None
     } else {
-        // Saturate so absurdly long digit runs report OutOfBounds rather than overflowing.
-        let n = digits.chars().fold(0u64, |acc, c| {
-            acc.saturating_mul(10)
-                .saturating_add(u64::from(c.to_digit(10).unwrap_or(0)))
-        });
+        // Digits are validated above; only an absurdly long run can fail to parse.
+        let n = digits.parse::<u64>().map_err(|_| RefError::OutOfBounds)?;
         if n == 0 || n > u64::from(MAX_ROW) + 1 {
             return Err(RefError::OutOfBounds);
         }
@@ -406,8 +414,9 @@ fn parse_part(token: &str, in_range: bool) -> Result<Part, RefError> {
 }
 
 fn write_col(f: &mut fmt::Formatter<'_>, col: u32) -> fmt::Result {
-    let name = i32::try_from(col + 1)
-        .ok()
+    let name = col
+        .checked_add(1)
+        .and_then(|c| i32::try_from(c).ok())
         .and_then(number_to_column)
         .ok_or(fmt::Error)?;
     f.write_str(&name)
@@ -415,7 +424,7 @@ fn write_col(f: &mut fmt::Formatter<'_>, col: u32) -> fmt::Result {
 
 fn write_cell(f: &mut fmt::Formatter<'_>, row: u32, col: u32) -> fmt::Result {
     write_col(f, col)?;
-    write!(f, "{}", row + 1)
+    write!(f, "{}", row.saturating_add(1))
 }
 
 #[cfg(test)]
@@ -439,48 +448,14 @@ mod tests {
 
     #[test]
     fn parses_cells() {
-        assert_eq!(
-            cell("A1").unwrap(),
-            CellRef {
-                sheet: S1,
-                row: 0,
-                col: 0
-            }
-        );
-        assert_eq!(
-            cell("$B$3").unwrap(),
-            CellRef {
-                sheet: S1,
-                row: 2,
-                col: 1
-            }
-        );
-        assert_eq!(
-            cell("b3").unwrap(),
-            CellRef {
-                sheet: S1,
-                row: 2,
-                col: 1
-            }
-        );
+        let at = |sheet, row, col| CellRef { sheet, row, col };
+        assert_eq!(cell("A1").unwrap(), at(S1, 0, 0));
+        assert_eq!(cell("$B$3").unwrap(), at(S1, 2, 1));
+        assert_eq!(cell("b3").unwrap(), at(S1, 2, 1));
         assert_eq!(cell("sheet1!A1").unwrap().sheet, S1);
-        assert_eq!(
-            cell("'my sheet'!C2").unwrap(),
-            CellRef {
-                sheet: S2,
-                row: 1,
-                col: 2
-            }
-        );
+        assert_eq!(cell("'my sheet'!C2").unwrap(), at(S2, 1, 2));
         assert_eq!(cell("'It''s'!A1").unwrap().sheet, SheetId(11));
-        assert_eq!(
-            cell("XFD1048576").unwrap(),
-            CellRef {
-                sheet: S1,
-                row: MAX_ROW,
-                col: MAX_COL
-            }
-        );
+        assert_eq!(cell("XFD1048576").unwrap(), at(S1, MAX_ROW, MAX_COL));
     }
 
     #[test]
@@ -525,6 +500,17 @@ mod tests {
             cell("A99999999999999999999999"),
             Err(RefError::OutOfBounds)
         ));
+        for n in [8, 12, 500] {
+            let l = "A".repeat(n);
+            assert!(matches!(
+                range(&format!("{l}:A")),
+                Err(RefError::OutOfBounds)
+            ));
+            assert!(matches!(
+                range(&format!("A:{l}")),
+                Err(RefError::OutOfBounds)
+            ));
+        }
         assert!(matches!(cell("MyName"), Err(RefError::Unsupported)));
         assert!(matches!(cell("ABCD1"), Err(RefError::Unsupported)));
         assert!(matches!(cell("Table1[Col]"), Err(RefError::Unsupported)));
