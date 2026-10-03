@@ -6,7 +6,7 @@ lane: harness
 status: blocked
 priority: P1
 size: S
-depends_on: [T-0004]
+depends_on: [T-0004, T-0117]
 ---
 
 ## Goal

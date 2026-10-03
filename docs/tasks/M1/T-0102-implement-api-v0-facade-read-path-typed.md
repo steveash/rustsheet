@@ -6,12 +6,12 @@ lane: api
 status: todo
 priority: P1
 size: M
-depends_on: [T-0100, T-0101, T-0113]
+depends_on: [T-0100, T-0101, T-0113, T-0114, T-0115]
 spec: docs/specs/SPEC-0001-public-api-v0.md
 ---
 
 ## Goal
-Create crate `crates/rustsheet` with Workbook open/new/save, SheetId, CellRef/RangeRef parsing, `value`/`values`/`cell`, typed `Value` with `ErrorKind` (no string-flattened errors).
+Wire the facade `Workbook` (open/new/save, `value`/`values`/`cell`, `used_range`) onto the engine `Model`, using the ref types (T-0114) and `Value` conversion (T-0115) already in crate `rustsheet`.
 
 ## Context
 Per SPEC-0001. The eval harness engine adapter should switch to the facade once available.

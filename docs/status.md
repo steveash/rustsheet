@@ -2,21 +2,27 @@
 
 Updated by the steward routine (daily) and by workers (one line per merged task).
 
-## Snapshot — 2026-10-01 (M0 bootstrap)
+## Snapshot — 2026-10-03 (M1 in progress)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 207 | 71,387 | 97.33% | 1,909 |
-| smoke | 3 | 23 | 100% | 0 |
-| probes | 2 | pending oracle | — | — |
+| ironcalc-calc | 207 | 71,390 | 97.53% | 1,761 |
+| poi | 334 | 3,526 | 82.25% (last fetched run; not fetched in steward run) | 718 baseline lines |
+| smoke | 5 | 38 | 100% | 0 |
+| probes | 3 | pending oracle | — | — |
+| probes-numeric | 4 | pending oracle | — | — |
 | gen-m2 | 3 | pending oracle | — | — |
 
-Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicated lines
-9,153 · oversized files 21.
+Hygiene: lint-debt 99 allow entries · duplicated lines 8,610 · oversized files 20.
 
-**Critical lane:** harness, api, engine
+Since 2026-10-02: 14 PRs merged (T-0002/3/5/7/8, T-0100, T-0113, T-0200–0205, T-0900, T-0902, T-0004
+setup docs); 0 reverted; 0 blocked-by-failure on main. CI on `main` (b8cfe40): green. Open PRs: #13
+(T-0901 blocked, draft, >24 h) and #11 (T-0904 blocked, draft, >24 h), both docs-only blocked reports.
 
-(Ordered list read by the critical-lane worker; harness first for oracle bring-up, then the M1 API/engine work.)
+**Critical lane:** api, engine, harness
+
+(Ordered list read by the critical-lane worker. M1 exit needs API v0 (T-0101 → T-0102…) and engine
+parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is still pending.)
 
 ## Needs owner
 - Excel oracle credentials: owner has a Microsoft 365 Business tenant (Graph-compatible). Pending:
@@ -43,3 +49,4 @@ Hygiene: lint-debt 99 allow entries (engine 59, xlsx 37, bindings 3) · duplicat
 - 2026-10-03 — T-0100: SPEC-0001 public API v0 (facade crate) accepted; filed T-0113; docs only, eval unchanged.
 - 2026-10-03 — T-0900: BESSELJ/BESSELY bit-exact for |x|<8 via NR approximations (ironcalc-calc known failures 1880 -> 1761); |x|>=8 filed as T-0908
 - 2026-10-03 — T-0113: new `rustsheet` facade crate with typed ErrorKind/XlError/RefError and single ERROR.TYPE table; eval 0 regressions, 0 fixed.
+- 2026-10-03 — steward: health snapshot; filed T-0114..T-0117 (api/harness ready queues), T-0910/T-0911 (IronCalc ports); UPSTREAM.md triaged through 9b1ae3fd. Open PRs #11, #13 are blocked docs-only drafts from other sessions (left untouched).
