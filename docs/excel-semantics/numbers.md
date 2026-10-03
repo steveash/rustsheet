@@ -34,3 +34,10 @@ Rule (hypothesis): numeric literals, `"text"+0` and `VALUE("text")` keep only 15
 digits; digits 16+ are dropped.
 Evidence: suite probes-numeric `literal-15-digit/*` (pending).
 Status: UNVERIFIED (probe pending)
+
+## MOD is an exact remainder
+Rule: `MOD(n,d)` = exact `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`.
+Not `n - d*INT(n/d)` (which loses precision: `MOD(5,1E-10)` would give 0).
+Evidence: ironcalc-calc MOD_QUOTIENT.xlsx (Excel Online cached) C20 `MOD(10.0000000001,0.1)`=9.999945316252479e-11,
+C21 (d=-0.1) =-0.09999999990000055, C25 `MOD(5,1E-10)`=9.999981783901343e-11, C26 (d=-1E-10)=-1.821609865774887e-16.
+Status: VERIFIED (Excel-cached)
