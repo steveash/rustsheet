@@ -1,6 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
+use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::{ArrayNode, Node},
@@ -10,22 +11,6 @@ use crate::{
 
 /// A compiled criterion predicate, as returned by `build_criteria`.
 type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
-
-/// Converts a single array element into the equivalent scalar `CalcResult`,
-/// used to feed `build_criteria` from an inline-array criteria argument.
-fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match node {
-        ArrayNode::Number(n) => CalcResult::Number(*n),
-        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
-        ArrayNode::String(s) => CalcResult::String(s.clone()),
-        ArrayNode::Error(e) => CalcResult::Error {
-            error: e.clone(),
-            origin: cell,
-            message: "".to_string(),
-        },
-        ArrayNode::Empty => CalcResult::EmptyCell,
-    }
-}
 
 impl<'a> Model<'a> {
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

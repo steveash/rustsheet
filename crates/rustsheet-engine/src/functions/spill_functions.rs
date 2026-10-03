@@ -1,3 +1,4 @@
+use crate::functions::util::array_node_to_calc_result;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
@@ -42,20 +43,6 @@ fn sort_key_cmp(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-fn array_node_to_calc_result(node: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
-    match node {
-        ArrayNode::Number(n) => CalcResult::Number(*n),
-        ArrayNode::Boolean(b) => CalcResult::Boolean(*b),
-        ArrayNode::String(s) => CalcResult::String(s.clone()),
-        ArrayNode::Error(e) => CalcResult::Error {
-            error: e.clone(),
-            origin: cell,
-            message: "".to_string(),
-        },
-        ArrayNode::Empty => CalcResult::EmptyCell,
-    }
-}
 
 fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     match result {

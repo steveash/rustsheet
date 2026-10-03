@@ -1,6 +1,6 @@
-use crate::functions::Function;
-
 use super::Node;
+use crate::functions::Function;
+mod row_column;
 
 #[cfg(target_arch = "wasm32")]
 use regex_lite as regex;
@@ -1674,7 +1674,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
             StaticResult::Array(n, m) => StaticResult::Range(n, m),
             other => other,
         },
-        Function::Column => not_implemented(args),
+        Function::Column => row_column::static_analysis_row_column(args, false),
         Function::Columns => not_implemented(args),
         Function::Cos => scalar_arguments(args),
         Function::Cosh => scalar_arguments(args),
@@ -1728,7 +1728,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Lookup => not_implemented(args),
         Function::Match => not_implemented(args),
         Function::Offset => static_analysis_offset(args),
-        Function::Row => StaticResult::Scalar,
+        Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
         Function::Vlookup => not_implemented(args),
         Function::Vstack => StaticResult::Unknown,

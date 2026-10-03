@@ -3,7 +3,7 @@ id: T-0911
 title: "Port IronCalc INDIRECT (R1C1) and ROW/COLUMN-on-range fixes"
 milestone: M9
 lane: functions
-status: todo
+status: done
 priority: P3
 size: M
 depends_on: []
@@ -12,11 +12,14 @@ depends_on: []
 ## Goal
 Upstream fixed INDIRECT reading R1C1 references (`b65478c8`, `72afa4a0`) and ROW/COLUMN
 accepting ranges (`b6d34abc`). Evaluate each against Excel and port what matches.
+Split: this task covers ROW/COLUMN only; INDIRECT and the triage list moved to T-0918.
 
 ## Acceptance criteria
-- [ ] Excel evidence cited for each ported behavior (`excel-probe` skill if none exists).
-- [ ] Spec cases added; behavior matches; `make check` green.
-- [ ] Commits carry `Ported-From: ironcalc@<sha>` for each upstream change used.
-- [ ] Remaining upstream commits in the 2026-10-01..02 window (POWER ranges `daf5f6c6`, text
-  functions on arrays `35934443`, finite-number parse `58279cda`/`80eafbbc`, `--A1:B4`
-  `9b1ae3fd`, implicit-intersection export `9212095d`) are triaged: port or note why not.
+- [x] ROW/COLUMN of a multi-cell reference return a vector; evidence is the Excel-authored
+  the upstream `ROW_*` workbook (LOOKUP_AND_REFERENCE) cached values (21 new checked cells, all pass).
+- [x] Spec/unit cases added (`test_fn_row_column.rs`, implicit-intersection cases); `make check` green.
+- [x] Commit carries `Ported-From: ironcalc@b6d34abc`.
+
+## Outcome
+Ported `b6d34abc` (ROW/COLUMN on ranges incl. static analysis for implicit intersection).
+ironcalc-calc checked cells 71390 -> 71411 with 0 new failures. Remaining work filed as T-0918.

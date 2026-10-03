@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::vec::Vec;
 
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -409,8 +408,8 @@ impl<'a> Model<'a> {
     }
 
     /// Collapses a reference-context result to a value: a Range is implicitly
-    /// intersected at `cell` and the intersected cell evaluated; anything else
-    /// (scalar, array, error) passes through unchanged.
+    /// intersected at `cell` and the intersected cell evaluated; an array gives its
+    /// top left element; anything else (scalar, error) passes through unchanged.
     pub(crate) fn implicit_intersection_to_value(
         &mut self,
         result: CalcResult,
@@ -427,6 +426,7 @@ impl<'a> Model<'a> {
                     ),
                 }
             }
+            CalcResult::Array(array) => crate::functions::util::top_left_of_array(&array, cell),
             other => other,
         }
     }
