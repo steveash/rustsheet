@@ -3,7 +3,7 @@ id: T-0114
 title: "API v0: SheetId/CellRef/RangeRef types and A1 parsing/printing"
 milestone: M1
 lane: api
-status: todo
+status: done
 priority: P1
 size: S
 depends_on: [T-0100]
@@ -25,3 +25,9 @@ SPEC-0001 "Identities and references". Not blocked by T-0101 because nothing her
 
 ## Out of scope
 `Workbook` methods (`cell_ref`, `value`; T-0102), `values()` size cap (T-0102).
+
+## Outcome
+`crates/rustsheet/src/refs.rs` adds `SheetId`, `CellRef`, `RangeRef`, `Target`, `parse_cell`/`parse_range`
+and `resolve_sheet_by_name`. Column/quote helpers come from the engine (`column_to_number`,
+`number_to_column`, `quote_name`); `LAST_ROW`/`LAST_COLUMN` are now re-exported from the engine crate.
+`Display` omits the sheet (no name on `SheetId`); `to_a1_in(name)` prints the qualified form (SPEC-0001 updated).
