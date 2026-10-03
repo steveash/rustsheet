@@ -3,7 +3,7 @@ id: T-0115
 title: "API v0: typed Value, Array and engine cell/value conversion"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: S
 depends_on: [T-0113]
