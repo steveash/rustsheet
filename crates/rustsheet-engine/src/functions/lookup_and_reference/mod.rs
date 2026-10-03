@@ -3,6 +3,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -665,26 +666,64 @@ impl<'a> Model<'a> {
     // Otherwise returns the row number of reference. A reference that spans
     // several rows gives a column with the number of each of them.
     pub(crate) fn fn_row(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.row_or_column(args, cell, true, false)
+    }
+
+    /// Shared body of ROW and COLUMN. With `first_only` a multi-cell reference yields just its
+    /// first number, which is what implicit intersection (`@ROW(A:A)`) keeps, so the vector over
+    /// up to a million rows is never built.
+    fn row_or_column(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        by_row: bool,
+        first_only: bool,
+    ) -> CalcResult {
         if args.len() > 1 {
             return CalcResult::new_args_number_error(cell);
         }
         if args.is_empty() {
-            return CalcResult::Number(cell.row as f64);
+            return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
         match self.get_reference(&args[0], cell) {
-            Ok(c) => {
-                let first = c.left.row.min(c.right.row);
-                let last = c.left.row.max(c.right.row);
-                if first == last {
+            Ok(range) => {
+                let (a, b) = if by_row {
+                    (range.left.row, range.right.row)
+                } else {
+                    (range.left.column, range.right.column)
+                };
+                let (first, last) = (a.min(b), a.max(b));
+                if first == last || first_only {
                     return CalcResult::Number(first as f64);
                 }
-                CalcResult::Array(
-                    (first..=last)
-                        .map(|row| vec![ArrayNode::Number(row as f64)])
-                        .collect(),
-                )
+                let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
+                CalcResult::Array(if by_row {
+                    numbers.map(|n| vec![n]).collect()
+                } else {
+                    vec![numbers.collect()]
+                })
             }
             Err(s) => s,
+        }
+    }
+
+    /// Evaluates the operand of `@`. `@ROW(A:A)` and `@COLUMN(A1:Z1)` take a fast path that skips
+    /// materialising the whole vector; everything else is evaluated normally.
+    pub(crate) fn evaluate_implicit_intersection_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Row,
+                args,
+            } => self.row_or_column(args, cell, true, true),
+            Node::FunctionKind {
+                kind: Function::Column,
+                args,
+            } => self.row_or_column(args, cell, false, true),
+            _ => self.evaluate_node_with_reference(node, cell),
         }
     }
 
@@ -705,26 +744,7 @@ impl<'a> Model<'a> {
     // Otherwise returns the column number of reference. A reference that spans
     // several columns gives a row with the number of each of them.
     pub(crate) fn fn_column(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() > 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        if args.is_empty() {
-            return CalcResult::Number(cell.column as f64);
-        }
-
-        match self.get_reference(&args[0], cell) {
-            Ok(range) => {
-                let first = range.left.column.min(range.right.column);
-                let last = range.left.column.max(range.right.column);
-                if first == last {
-                    return CalcResult::Number(first as f64);
-                }
-                CalcResult::Array(vec![(first..=last)
-                    .map(|column| ArrayNode::Number(column as f64))
-                    .collect()])
-            }
-            Err(s) => s,
-        }
+        self.row_or_column(args, cell, false, false)
     }
 
     /// CHOOSE(index_num, value1, [value2], ...)
