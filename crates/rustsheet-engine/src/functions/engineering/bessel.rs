@@ -6,7 +6,7 @@ use crate::{
     model::Model,
 };
 
-use super::transcendental::{bessel_i, bessel_j, bessel_k, bessel_y};
+use super::transcendental::{bessel_i, bessel_k, excel_bessel_j, excel_bessel_y};
 // https://root.cern/doc/v610/TMath_8cxx_source.html
 
 // Notice that the parameters for Bessel functions in Excel and here have inverted order
@@ -57,7 +57,7 @@ impl<'a> Model<'a> {
                 message: "Invalid parameter for Bessel function".to_string(),
             };
         }
-        let result = bessel_j(n, x);
+        let result = excel_bessel_j(n, x);
         if result.is_infinite() || result.is_nan() {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -113,7 +113,7 @@ impl<'a> Model<'a> {
                 message: "Invalid parameter for Bessel function".to_string(),
             };
         }
-        let result = bessel_y(n, x);
+        let result = excel_bessel_y(n, x);
         if result.is_infinite() || result.is_nan() {
             return CalcResult::Error {
                 error: Error::NUM,

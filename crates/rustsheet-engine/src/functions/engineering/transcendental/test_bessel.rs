@@ -181,3 +181,41 @@ fn bessel_kn_known_values() {
         );
     }
 }
+
+// Expected values are Excel-cached cells from BESSEL.xlsx (ironcalc-calc suite); they must match
+// bit-for-bit, not within a tolerance, because Excel's small-argument algorithm is not fdlibm.
+#[test]
+fn excel_bessel_small_args_are_bit_exact() {
+    use super::bessel_excel::{excel_bessel_j, excel_bessel_y};
+    assert_eq!(excel_bessel_j(0, 0.0), 1.000_000_002_831_41);
+    assert_eq!(excel_bessel_y(0, 0.8), -0.086_802_273_855_431_45);
+    assert_eq!(excel_bessel_y(10, 2.9), -3_564.032_241_223_704);
+    assert_eq!(excel_bessel_y(7, 3.5), -7.848_865_602_729_761);
+    assert_eq!(excel_bessel_y(1, 0.2), -3.323_824_986_221_588_5);
+    assert_eq!(excel_bessel_y(7, 0.2), -2_295_654_720.157_33);
+}
+
+// Placeholder, not Excel truth: pins the fdlibm fallback until T-0908 finds the real algorithm.
+#[test]
+fn excel_bessel_large_args_use_fdlibm() {
+    use super::bessel_excel::excel_bessel_j;
+    assert_eq!(excel_bessel_j(0, 27.0), jn(0, 27.0));
+    assert_eq!(excel_bessel_j(3, 0.0), 0.0);
+}
+
+#[test]
+fn excel_bessel_huge_order_is_nan_not_panic() {
+    use super::bessel_excel::{excel_bessel_j, excel_bessel_y};
+    assert!(excel_bessel_j(i32::MAX, 1.0).is_nan());
+    assert!(excel_bessel_y(i32::MAX, 1.0).is_nan());
+}
+
+#[test]
+fn excel_bessel_j_odd_order_is_odd_in_x() {
+    use super::bessel_excel::excel_bessel_j;
+    // Covers the forward (n < x) and Miller (n >= x) branches.
+    for (n, x) in [(1, 2.5), (7, 3.5), (7, 6.0), (3, 1.2)] {
+        assert_eq!(excel_bessel_j(n, -x), -excel_bessel_j(n, x));
+        assert_eq!(excel_bessel_j(n + 1, -x), excel_bessel_j(n + 1, x));
+    }
+}
