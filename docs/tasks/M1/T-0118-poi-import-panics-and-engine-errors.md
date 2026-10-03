@@ -3,7 +3,7 @@ id: T-0118
 title: "Importer: no panics on POI workbooks (!Panic) and resource limits for xmlbomb/external-link files"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: M
 depends_on: []
