@@ -1,6 +1,7 @@
 mod conditional_formatting;
 mod metadata;
 pub(crate) mod shared_strings;
+pub use shared_strings::decode_xlsx_escapes;
 mod sheet_data;
 mod styles;
 mod tables;

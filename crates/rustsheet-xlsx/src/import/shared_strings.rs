@@ -38,7 +38,7 @@ fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> 
 
 /// Decodes Excel's `_xXXXX_` escape sequences for characters that are invalid in XML 1.0.
 /// For example, `_x0001_` → U+0001 (SOH).
-pub(crate) fn decode_xlsx_escapes(s: &str) -> String {
+pub fn decode_xlsx_escapes(s: &str) -> String {
     if !s.contains("_x") {
         return s.to_string();
     }
