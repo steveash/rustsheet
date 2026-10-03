@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use rustsheet_engine::expressions::token::Error as EngineError;
+use rustsheet_engine::types::{Cell, FormulaValue, SpillValue};
 
 /// The kind of an Excel error value (`#DIV/0!`, `#N/A`, ...).
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -153,6 +154,180 @@ impl std::fmt::Display for XlError {
     }
 }
 
+/// A cell's value as Excel would show it.
+///
+/// `PartialEq` is the derived one, so `Number` compares as `f64` (`NaN != NaN`, `0.0 == -0.0`).
+/// Bitwise comparison for change detection is `ChangeSet`'s job (T-0103), not this type's.
+#[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub enum Value {
+    /// A blank cell.
+    Empty,
+    /// A number (dates are serial numbers).
+    Number(f64),
+    /// Text.
+    Text(Arc<str>),
+    /// A boolean.
+    Bool(bool),
+    /// An error value.
+    Error(XlError),
+}
+
+impl From<f64> for Value {
+    fn from(n: f64) -> Self {
+        Self::Number(n)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Self::Bool(b)
+    }
+}
+
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        Self::Text(s.into())
+    }
+}
+
+impl From<XlError> for Value {
+    fn from(e: XlError) -> Self {
+        Self::Error(e)
+    }
+}
+
+impl Value {
+    /// The value of an engine cell. `shared_strings` is the workbook's shared-string table.
+    ///
+    /// Exhaustive on purpose (no wildcard arms): a new engine `Cell`, `FormulaValue` or
+    /// `SpillValue` variant must be mapped here. A shared-string index outside the table reads as
+    /// `Empty`, as the eval adapter does. A formula that is still `Unevaluated` reads as the
+    /// engine's own `#ERROR!`, matching `Model::get_cell_value_by_index`.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "first caller is Workbook::value in T-0102; the expectation fails once it exists"
+        )
+    )]
+    pub(crate) fn from_cell(cell: &Cell, shared_strings: &[String]) -> Self {
+        match cell {
+            Cell::EmptyCell { .. } => Self::Empty,
+            Cell::BooleanCell { v, .. } => Self::Bool(*v),
+            Cell::NumberCell { v, .. } => Self::Number(*v),
+            Cell::ErrorCell { ei, .. } => Self::Error(XlError::new(ErrorKind::from_engine(ei))),
+            Cell::SharedString { si, .. } => usize::try_from(*si)
+                .ok()
+                .and_then(|i| shared_strings.get(i))
+                .map_or(Self::Empty, |s| Self::Text(s.as_str().into())),
+            Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. } => Self::from_formula(v),
+            Cell::SpillCell { v, .. } => match v {
+                SpillValue::Boolean(b) => Self::Bool(*b),
+                SpillValue::Number(n) => Self::Number(*n),
+                SpillValue::Text(s) => Self::Text(s.as_str().into()),
+                SpillValue::Error(ei) => Self::Error(XlError::new(ErrorKind::from_engine(ei))),
+            },
+        }
+    }
+
+    fn from_formula(value: &FormulaValue) -> Self {
+        match value {
+            // Message mirrors rustsheet-engine `model.rs` ("Unevaluated formula").
+            FormulaValue::Unevaluated => Self::Error(XlError::with_detail(
+                ErrorKind::Unknown,
+                "Unevaluated formula",
+            )),
+            FormulaValue::Boolean(b) => Self::Bool(*b),
+            FormulaValue::Number(n) => Self::Number(*n),
+            FormulaValue::Text(s) => Self::Text(s.as_str().into()),
+            FormulaValue::Error { ei, m, .. } => Self::Error(XlError {
+                kind: ErrorKind::from_engine(ei),
+                detail: (!m.is_empty()).then(|| m.as_str().into()),
+            }),
+        }
+    }
+}
+
+/// `rows * cols` does not fit in memory-addressable size, or does not match the value count.
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum ArrayShapeError {
+    /// `rows * cols` overflows `usize`.
+    #[error("array dimensions {rows} x {cols} overflow")]
+    Overflow {
+        /// Requested rows.
+        rows: usize,
+        /// Requested columns.
+        cols: usize,
+    },
+    /// The number of values is not `rows * cols`.
+    #[error("array of {rows} x {cols} needs {expected} values, got {actual}")]
+    LengthMismatch {
+        /// Requested rows.
+        rows: usize,
+        /// Requested columns.
+        cols: usize,
+        /// `rows * cols`.
+        expected: usize,
+        /// Values supplied.
+        actual: usize,
+    },
+}
+
+/// A dense, row-major rectangle of values (the result of reading a range).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Array {
+    rows: usize,
+    cols: usize,
+    values: Vec<Value>,
+}
+
+impl Array {
+    /// Builds an array from row-major `values`.
+    ///
+    /// # Errors
+    /// [`ArrayShapeError::Overflow`] if `rows * cols` overflows (checked before anything is
+    /// allocated or compared), [`ArrayShapeError::LengthMismatch`] if `values.len()` differs.
+    pub fn new(rows: usize, cols: usize, values: Vec<Value>) -> Result<Self, ArrayShapeError> {
+        let expected = rows
+            .checked_mul(cols)
+            .ok_or(ArrayShapeError::Overflow { rows, cols })?;
+        if values.len() != expected {
+            return Err(ArrayShapeError::LengthMismatch {
+                rows,
+                cols,
+                expected,
+                actual: values.len(),
+            });
+        }
+        Ok(Self { rows, cols, values })
+    }
+
+    /// Number of rows.
+    #[must_use]
+    pub fn rows(&self) -> usize {
+        self.rows
+    }
+
+    /// Number of columns.
+    #[must_use]
+    pub fn cols(&self) -> usize {
+        self.cols
+    }
+
+    /// The value at zero-based (`row`, `col`), or `None` outside the array.
+    #[must_use]
+    pub fn get(&self, row: usize, col: usize) -> Option<&Value> {
+        if row < self.rows && col < self.cols {
+            // `rows * cols` was checked in `new`, so this index cannot overflow.
+            self.values.get(row * self.cols + col)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,5 +387,154 @@ mod tests {
         let e = XlError::with_detail(ErrorKind::Div0, "Divide by zero");
         assert_eq!(e.to_string(), "#DIV/0!");
         assert_eq!(XlError::from(ErrorKind::NA), XlError::new(ErrorKind::NA));
+    }
+
+    fn from_cell(cell: &Cell) -> Value {
+        Value::from_cell(cell, &["shared".to_string()])
+    }
+
+    #[test]
+    fn every_engine_cell_variant_converts() {
+        let s = 0;
+        let formula = |v| Cell::CellFormula { f: 0, s, v };
+        let array = |v| Cell::ArrayFormula {
+            f: 0,
+            s,
+            r: (1, 1),
+            kind: rustsheet_engine::types::ArrayKind::Dynamic,
+            v,
+        };
+        let cases = [
+            (Cell::EmptyCell { s }, Value::Empty),
+            (Cell::BooleanCell { v: true, s }, Value::Bool(true)),
+            (Cell::NumberCell { v: 1.5, s }, Value::Number(1.5)),
+            (
+                Cell::ErrorCell {
+                    ei: EngineError::NA,
+                    s,
+                },
+                Value::Error(XlError::new(ErrorKind::NA)),
+            ),
+            (Cell::SharedString { si: 0, s }, Value::from("shared")),
+            (Cell::SharedString { si: 7, s }, Value::Empty),
+            (Cell::SharedString { si: -1, s }, Value::Empty),
+            (formula(FormulaValue::Boolean(false)), Value::Bool(false)),
+            (formula(FormulaValue::Number(2.0)), Value::Number(2.0)),
+            (formula(FormulaValue::Text("t".into())), Value::from("t")),
+            (
+                formula(FormulaValue::Unevaluated),
+                Value::Error(XlError::with_detail(
+                    ErrorKind::Unknown,
+                    "Unevaluated formula",
+                )),
+            ),
+            (array(FormulaValue::Number(3.0)), Value::Number(3.0)),
+            (
+                Cell::SpillCell {
+                    s,
+                    a: (1, 1),
+                    v: SpillValue::Boolean(true),
+                },
+                Value::Bool(true),
+            ),
+            (
+                Cell::SpillCell {
+                    s,
+                    a: (1, 1),
+                    v: SpillValue::Number(4.0),
+                },
+                Value::Number(4.0),
+            ),
+            (
+                Cell::SpillCell {
+                    s,
+                    a: (1, 1),
+                    v: SpillValue::Text("x".into()),
+                },
+                Value::from("x"),
+            ),
+            (
+                Cell::SpillCell {
+                    s,
+                    a: (1, 1),
+                    v: SpillValue::Error(EngineError::VALUE),
+                },
+                Value::Error(XlError::new(ErrorKind::Value)),
+            ),
+        ];
+        for (cell, expected) in cases {
+            assert_eq!(from_cell(&cell), expected, "{cell:?}");
+        }
+    }
+
+    #[test]
+    fn formula_errors_keep_kind_and_message() {
+        for (ei, kind, literal) in [
+            (EngineError::DIV, ErrorKind::Div0, "#DIV/0!"),
+            (EngineError::NA, ErrorKind::NA, "#N/A"),
+            (EngineError::SPILL, ErrorKind::Spill, "#SPILL!"),
+            (EngineError::CALC, ErrorKind::Calc, "#CALC!"),
+        ] {
+            let cell = Cell::CellFormula {
+                f: 0,
+                s: 0,
+                v: FormulaValue::Error {
+                    ei,
+                    o: "Sheet1!A1".into(),
+                    m: "why".into(),
+                },
+            };
+            let Value::Error(e) = from_cell(&cell) else {
+                panic!("not an error");
+            };
+            assert_eq!(e, XlError::with_detail(kind, "why"));
+            assert_eq!(e.to_string(), literal);
+        }
+        let blank = Cell::CellFormula {
+            f: 0,
+            s: 0,
+            v: FormulaValue::Error {
+                ei: EngineError::NA,
+                o: String::new(),
+                m: String::new(),
+            },
+        };
+        assert_eq!(from_cell(&blank), Value::Error(XlError::new(ErrorKind::NA)));
+    }
+
+    #[test]
+    fn value_from_primitives_and_number_equality() {
+        assert_eq!(Value::from(1.0), Value::Number(1.0));
+        assert_eq!(Value::from(true), Value::Bool(true));
+        assert_eq!(Value::from("a"), Value::Text("a".into()));
+        assert_eq!(Value::Number(0.0), Value::Number(-0.0));
+        assert_ne!(Value::Number(f64::NAN), Value::Number(f64::NAN));
+    }
+
+    #[test]
+    fn array_shape_is_checked() {
+        let a = Array::new(2, 2, vec![1.0.into(), 2.0.into(), 3.0.into(), 4.0.into()]).unwrap();
+        assert_eq!((a.rows(), a.cols()), (2, 2));
+        assert_eq!(a.get(1, 0), Some(&Value::Number(3.0)));
+        assert_eq!(a.get(0, 1), Some(&Value::Number(2.0)));
+        assert_eq!(a.get(2, 0), None);
+        assert_eq!(a.get(0, 2), None);
+        assert_eq!(
+            Array::new(usize::MAX, 2, vec![]),
+            Err(ArrayShapeError::Overflow {
+                rows: usize::MAX,
+                cols: 2
+            })
+        );
+        assert_eq!(
+            Array::new(2, 2, vec![Value::Empty]),
+            Err(ArrayShapeError::LengthMismatch {
+                rows: 2,
+                cols: 2,
+                expected: 4,
+                actual: 1
+            })
+        );
+        assert_eq!(Array::new(0, 5, vec![]).unwrap().get(0, 0), None);
     }
 }

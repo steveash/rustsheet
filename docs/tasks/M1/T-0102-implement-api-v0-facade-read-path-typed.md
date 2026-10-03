@@ -22,5 +22,7 @@ Per SPEC-0001. The eval harness engine adapter should switch to the facade once 
 - [ ] Unit tests for reference parsing and value conversion.
 - [ ] `make check` green; reviewers approve.
 
+- [ ] Remove the `expect(dead_code)` on `Value::from_cell` (T-0115) and the eval adapter's duplicate cell-to-value mapping.
+
 ## Out of scope
 Edits/ChangeSet (T-0103).
