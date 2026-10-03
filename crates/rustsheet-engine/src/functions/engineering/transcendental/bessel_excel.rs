@@ -10,11 +10,11 @@
 use super::{bessel_j, bessel_y};
 
 const SMALL_ARG_LIMIT: f64 = 8.0;
-// Numerical Recipes truncates 2/pi; Excel's output bakes in the truncated constant.
 /// Orders above this yield NaN (reported as `#NUM!`): every algorithm here is O(n) per cell and the
 /// formula layer truncates `n` from untrusted input. Excel's own cap is UNVERIFIED; 100_000 is far
 /// beyond any n where results are finite anyway.
 const MAX_ORDER: i32 = 100_000;
+// Numerical Recipes truncates 2/pi; Excel's output bakes in the truncated constant.
 const TWO_OVER_PI: f64 = 636_619_772.0 / 1e9; // == 0.636619772 (correctly rounded)
 
 /// Evaluates `c[0] + c[1]*y + c[2]*y^2 + ...` (Horner).

@@ -17,6 +17,8 @@ values, differing from fdlibm and from NR's asymptotic branch).
 ## Notes
 Once settled, drop the fdlibm fallback for |x| >= 8 in `bessel_excel.rs` if Excel never uses it.
 
+Also probe Excel's real cap on the order `n` (currently UNVERIFIED: > 100_000 returns #NUM!).
+
 ## Acceptance criteria
 - [ ] Identify Excel's large-argument algorithm from the cached values (fit candidate asymptotic
   expansions; use the oracle for more points via `excel-probe` if available).
