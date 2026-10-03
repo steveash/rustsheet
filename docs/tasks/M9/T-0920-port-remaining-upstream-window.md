@@ -24,3 +24,9 @@ single port exceeds size S.
 ## Acceptance criteria
 - [ ] Each commit ported or a note on why not.
 - [ ] Upstream Excel-authored workbooks (POWER.xlsx, MINUS_MINUS.xlsx) cited as evidence; `make check` green.
+
+## Follow-ups from T-0918 review (minor)
+- Oracle-confirm INDIRECT's `a1` coercions (`0`, `""`, `"x"`) and text-function array broadcasting
+  for EXACT/FIND/LEN/REPT/SEARCH/SUBSTITUTE/TRIM/CLEAN/PROPER/REPLACE (only LEFT/MID/RIGHT have
+  Excel-authored evidence); add `docs/excel-semantics/` entry for R1C1 offset wrapping.
+- Explicit `is_finite` check in `rept_element`; fold `parse_reference_r1c1` and the new R1C1 parser together.
