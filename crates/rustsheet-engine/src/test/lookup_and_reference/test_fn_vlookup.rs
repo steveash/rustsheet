@@ -85,3 +85,25 @@ fn test_vlookup_array_sorted_largest_smaller() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
 }
+
+#[test]
+fn test_vlookup_full_column_bounded_by_used_rows() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("B1", "a");
+    model._set("B2", "b");
+    model._set("B3", "c");
+    // Sorted lookups past the last row return the last row; exact misses stay #N/A.
+    model._set("D1", "=VLOOKUP(99,A:B,2)");
+    model._set("D2", "=VLOOKUP(20,A:B,2,FALSE)");
+    model._set("D3", "=VLOOKUP(99,A:B,2,FALSE)");
+    // Range that starts below all data is entirely empty.
+    model._set("E1", "=VLOOKUP(1,A100:B200,2,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "c");
+    assert_eq!(model._get_text("D2"), "b");
+    assert_eq!(model._get_text("D3"), "#N/A");
+    assert_eq!(model._get_text("E1"), "#N/A");
+}
