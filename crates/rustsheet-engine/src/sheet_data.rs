@@ -220,7 +220,7 @@ impl SheetData {
 
     /// The number of the last row that exists, or 0 for an empty sheet. Cheap: it
     /// looks at whole chunks, so callers can bound whole-column walks by it.
-    pub fn last_row(&self) -> i32 {
+    pub(crate) fn last_row(&self) -> i32 {
         for (chunk_index, chunk) in self.chunks.iter().enumerate().rev() {
             let Some(chunk) = chunk else { continue };
             if let Some(index) = chunk.rows.iter().rposition(Option::is_some) {
@@ -314,6 +314,20 @@ mod test {
 
     fn number(v: f64) -> Cell {
         Cell::NumberCell { v, s: 0 }
+    }
+
+    #[test]
+    fn last_row_spans_chunks() {
+        let mut data = SheetData::new();
+        assert_eq!(data.last_row(), 0);
+        data.set_cell(1, 1, number(1.0));
+        assert_eq!(data.last_row(), 1);
+        data.set_cell(1024, 1, number(1.0)); // first row of the second chunk
+        assert_eq!(data.last_row(), 1024);
+        data.set_cell(5000, 3, number(1.0));
+        assert_eq!(data.last_row(), 5000);
+        data.remove_cell(5000, 3);
+        assert_eq!(data.last_row(), 1024);
     }
 
     #[test]

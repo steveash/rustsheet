@@ -27,7 +27,12 @@ General dependency-graph rewrite (M3).
 VLOOKUP's search column is no longer materialized past the sheet's last used row (new cheap
 `SheetData::last_row`), so `A:B`-style lookups cost O(used rows), not 1M cell evaluations. Both POI
 cases now run (VLookupFullColumn 0.02s, StructuredRefs-lots-with-lookups ~3.6s, release) and are
-un-excluded; `LookupTable` moved to its own module (file-size ratchet). `main` carried a poi
-regression from T-0914 (TANH(-0.99505…) is 1 ULP off); fixed with an `e^2x` form for 0.9 ≤ |x| < 1,
-which fits that cell and SINH_COSH_TANH!D15/D17. Follow-up: HLOOKUP/MATCH still walk whole rows/columns
-(TODO(T-0111) not filed; M3 dependency-graph work).
+un-excluded; `LookupTable` moved to its own module (file-size ratchet).
+
+Second change: `main` carried a poi regression from T-0914 (TANH(-0.99505…) is 1 ULP off); TANH uses
+an `e^2x` form for 0.9 <= |x| < 1, which fits that cell and SINH_COSH_TANH!D15/D17.
+
+Baseline: besides the two re-included cases (24 newly scored cells failing), `eval/baseline/poi.txt`
+gained ~26 crash-only `C`/`F` lines. These cases already existed in the fetched suite but the T-0003
+baseline predates T-0007's crash-only reporting, so they were never recorded; none is caused by this
+change. Filed T-0118 (panics, xmlbomb limits) and T-0119 (HLOOKUP/MATCH/XMATCH/LOOKUP bounds).

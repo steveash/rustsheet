@@ -671,7 +671,7 @@ impl Worksheet {
 
     /// The last row that holds anything (0 when the sheet is empty). Unlike
     /// `dimension` this does not visit every cell.
-    pub fn last_used_row(&self) -> i32 {
+    pub(crate) fn last_used_row(&self) -> i32 {
         self.sheet_data.last_row()
     }
 

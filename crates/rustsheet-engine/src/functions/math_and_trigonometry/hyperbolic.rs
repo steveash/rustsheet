@@ -77,6 +77,9 @@ mod tests {
         assert_eq!(sinh(1e-12), 1e-12); // B18
         assert_eq!(tanh(1e-12), 1e-12); // D18
         assert_eq!(tanh(0.5), 0.462_117_157_260_009_8_f64); // D11 sign-flipped
+                                                            // poi FormulaEvalTestData_Copy.xlsx EverythingTests!G1360; SINH_COSH_TANH!D15
+        assert_eq!(tanh(-0.995_054_655_025_377_2), -0.759_509_403_050_760_8);
+        assert_eq!(tanh(0.999_999_999_9), 0.761_594_155_913_767_4);
         assert_eq!(tanh(100.0), 1.0);
         assert_eq!(tanh(-100.0), -1.0);
     }
