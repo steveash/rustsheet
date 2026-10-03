@@ -200,11 +200,11 @@ mod tests {
 
     #[test]
     fn codes_follow_error_type() {
-        assert_eq!(ErrorKind::Null.code(), Some(1));
-        assert_eq!(ErrorKind::NA.code(), Some(7));
-        assert_eq!(ErrorKind::Spill.code(), Some(9));
-        assert_eq!(ErrorKind::Calc.code(), Some(14));
-        assert_eq!(ErrorKind::Unknown.code(), Some(101));
+        // Excel's ERROR.TYPE numbers; 101/102/104 are engine-specific.
+        let expected = [1, 2, 3, 4, 5, 6, 7, 9, 14, 104, 102, 101];
+        for (kind, code) in ALL.into_iter().zip(expected) {
+            assert_eq!(kind.code(), Some(code), "{kind:?}");
+        }
     }
 
     #[test]
