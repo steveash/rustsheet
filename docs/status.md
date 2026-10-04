@@ -9,8 +9,8 @@ Updated by the steward routine (daily) and by workers (one line per merged task)
 | ironcalc-calc | 210 | 71,773 | 97.59% | 1,727 |
 | poi | 334 | 3,526 | not fetched in steward run (baseline 750 lines) | — |
 | smoke | 5 | 38 | 100% | 0 |
-| probes | 3 | pending oracle | — | — |
-| probes-numeric | 4 | pending oracle | — | — |
+| probes | 3 | 45 | 71.11% | 13 |
+| probes-numeric | 4 | 2,738 | 60.19% | not gated |
 | gen-m2 | 3 | pending oracle | — | — |
 
 Hygiene: lint-debt 99 allow entries · duplicated lines 8,420 · oversized files 20.
@@ -72,3 +72,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-000
 - 2026-10-04 — T-0928: EXPON.DIST cumulative uses -expm1; ironcalc-calc known failures 1632 -> 1626 (6 fixed), 0 regressions
 - 2026-10-04 — T-0930: API edit follow-ups (diff split into edit/diff.rs, sheet-position map, error classifier next to RefError, engine take/restore tests, evaluation counter, bench moved); eval 0 regressions, 0 fixed.
 - 2026-10-04 — T-0004 (partial): excel-graph oracle live (app-only, `Sites.Selected` site); fixed site drive addressing; T-0004, T-0106..T-0110, T-0203 unblocked.
+- 2026-10-04 — T-0009: excel-graph sidecars for probes (3) and probes-numeric (4); probes 71.11% (13 new-coverage known failures), probes-numeric 60.19% (not gated); 0 regressions; excel-semantics: 9 entries VERIFIED (snapping corrected), 4 new; inputs with ≥1E+308 literals fixed (Excel rejects them). T-0106/7/8/10 now ready.

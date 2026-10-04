@@ -6,34 +6,66 @@ some extra rounding rules. Microsoft documents a few of them
 but the exact rules must be measured.
 
 ## Near-zero snapping in addition and subtraction
-Rule (hypothesis): when the result of a final `+`/`-` is within a few ULP of zero relative to the
-operands, Excel returns exactly 0 (e.g. `=0.1+0.2-0.3` → 0), but not inside parentheses
-(`=(0.1+0.2)-0.3`) and not in SUM.
-Evidence: probes/precision-and-rounding.case.json A2, A3, A4, A15 (pending); suite probes-numeric `snap-addsub/*` (pending).
-Status: UNVERIFIED (probe pending)
+Rule: when the formula's **outermost** operation is `+`/`-`, or the formula is `SUM(...)`, and the
+result is within a few ULP of zero relative to the operands, Excel returns exactly 0.
+`=0.1+0.2-0.3`, `=(0.1+0.2)-0.3`, `=SUM(0.1,0.2,-0.3)` and `=1-0.9-0.1` all give 0. Snapping does
+**not** happen when the whole formula is parenthesized (`=(X-b)`) or another operation follows
+(`=X-b+0`, `=(X-b)*1`). For X = b·(1±k·2^-52): k ≤ 3 always snaps, k = 4–7 snaps for some bases only
+(15, 9, 9, 9 of 24), k = 8 never; identical for `X-b`, `X+(-b)` and `SUM(X,-b)`. The exact
+threshold is left to T-0110. The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
+Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
+`snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED (corrected)
 
 ## ROUND uses decimal-correct half-away-from-zero
 Rule (hypothesis): `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 in Excel, even though the
 binary values are slightly below the half. IronCalc returns 1 for the first.
-Evidence: probes/precision-and-rounding.case.json A6, A7 (pending).
-Status: UNVERIFIED (probe pending)
+Evidence: probes/precision-and-rounding.case.json A6 (1.01), A7 (2.68), A8 (`ROUND(-2.5,0)` = -3).
+Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
 
 ## Number → text conversion uses 15 significant digits
-Rule (hypothesis): `=CONCAT(0.1+0.2)` → "0.3" (IronCalc gives "0.30000000000000004").
-Evidence: probes/precision-and-rounding.case.json A9 (pending); suite probes-numeric `number-to-text/*` (pending).
-Status: UNVERIFIED (probe pending)
+Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 135
+`CONCAT` probes equal C's `%.15g`; `(a/b*b)&""` round-trips to the integer in 100 of 100). The
+mismatches are notation only: the exponent is uppercase (`-2.22044604925031E-16`), `1e-15` is
+written in full (`0.000000000000001`, `LEN` 17), and subnormal results print `0` (see below).
+Where Excel switches to E notation is not yet measured. `TEXT(x,"0.000…")` also pads after 15
+significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
+Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
+`number-to-text/*`. Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
 
 ## Comparison tolerance
 Rule (hypothesis): `=`, `<`, `>`, `<=`, `>=`, `<>` treat operands that differ by a few ULP (e.g.
 `1+k*2^-52`, k 0..8) as equal, like the +/- snapping.
-Evidence: suite probes-numeric `compare-tolerance/*` (pending).
-Status: UNVERIFIED (probe pending)
+Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
+k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
+uninformative here because X ≥ b in every probe. The threshold is left to the implementing task.
+Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED (threshold not yet derived)
 
 ## 15-digit literal parsing
-Rule (hypothesis): numeric literals, `"text"+0` and `VALUE("text")` keep only 15 significant
-digits; digits 16+ are dropped.
-Evidence: suite probes-numeric `literal-15-digit/*` (pending).
-Status: UNVERIFIED (probe pending)
+Rule: numeric literals, `"text"+0` and `VALUE("text")` keep only 15 significant digits;
+digits 16+ are **truncated**, not rounded: `VALUE("9307149050110945.41")` = 9307149050110940,
+`=1234567890.12345678` = 1234567890.12345. Truncation matched 450 of 450 probes.
+Evidence: probes-numeric/23733e52a2ff91ab `literal-15-digit/*`; probes/precision-and-rounding A11.
+Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
+
+## Subnormal results become 0
+Rule: a result below the smallest normal double is returned as 0: `=2^-1074` → 0,
+`=CONCAT(1e-307/10)` → "0".
+Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e-307/10`.
+Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
+
+## Formula literals of 1E+308 or more are invalid
+Rule: Excel's largest typeable number is 9.99999999999999E+307. A workbook whose formula text
+contains a literal ≥ 1E+308 (`=1E+308`, `=A2-1E+308`) is rejected on load by Excel for the web
+("unsupportedWorkbook"); compute such values instead (`=10^308`, `=1E+307*10`). Probe and
+generator inputs avoid these literals for that reason.
+Evidence: T-0009 oracle runs, 2026-10-04 (excel-graph createSession → 501 FileCorruptTryRepair).
+Status: VERIFIED
 
 ## MOD is an exact remainder
 Rule: `MOD(n,d)` = exact `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`.
