@@ -862,3 +862,21 @@ fn test_second_function() {
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
 }
+
+#[test]
+fn test_month_year_and_format_of_serial_60() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MONTH(60)");
+    model._set("A2", "=YEAR(60)");
+    model._set("A3", "=DAY(59)");
+    model._set("A4", "=DATE(1900,2,29)");
+    model._set("A5", "=DATE(1900,3,0)");
+    model.evaluate();
+
+    // Excel's fictitious 1900-02-29 (probes/dates-and-blanks A1, A3)
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"1900");
+    assert_eq!(model._get_text("A3"), *"28");
+    assert_eq!(model._get_text("A4"), *"2/29/1900");
+    assert_eq!(model._get_text("A5"), *"2/29/1900");
+}

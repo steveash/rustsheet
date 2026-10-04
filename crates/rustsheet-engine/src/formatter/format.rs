@@ -56,6 +56,14 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
     false
 }
 
+fn invalid_date(value: f64) -> Formatted {
+    Formatted {
+        text: "#VALUE!".to_owned(),
+        color: None,
+        error: Some(format!("Invalid date value: '{value}'")),
+    }
+}
+
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
@@ -200,29 +208,15 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     }
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
-                    TextToken::Day => match date {
-                        Some(_) => {
-                            let day = ymd_day as usize;
-                            text = format!("{text}{day}");
+                    TextToken::Day => {
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
-                        None => {
-                            return Formatted {
-                                text: "#VALUE!".to_owned(),
-                                color: None,
-                                error: Some(format!("Invalid date value: '{value}'")),
-                            }
-                        }
-                    },
+                        text = format!("{text}{ymd_day}");
+                    }
                     TextToken::DayPadded => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         let day = ymd_day as usize;
                         text = format!("{text}{day:02}");
@@ -262,99 +256,50 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{}{}", text, locale.dates.day_names[day]);
                     }
                     TextToken::Month => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{text}{month}");
                     }
                     TextToken::MonthPadded => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{text}{month:02}");
                     }
                     TextToken::MonthNameShort => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{}{}", text, locale.dates.months_short[month - 1]);
                     }
                     TextToken::MonthName => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{}{}", text, locale.dates.months[month - 1]);
                     }
                     TextToken::MonthLetter => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         let months_letter = &locale.dates.months_letter[month - 1];
                         text = format!("{text}{months_letter}");
                     }
                     TextToken::YearShort => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         text = format!("{text}{:02}", ymd_year % 100);
                     }
                     TextToken::Year => {
-                        match date {
-                            Some(_) => {}
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
+                        if date.is_none() {
+                            return invalid_date(value);
                         }
                         text = format!("{}{}", text, ymd_year);
                     }

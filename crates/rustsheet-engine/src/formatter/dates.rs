@@ -28,7 +28,9 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 /// Maps an Excel date serial (date part) to the `(year, month, day)` Excel shows for it,
 /// including the fictitious 1900-02-29 (serial 60). `None` outside `1..=MAXIMUM_DATE_SERIAL_NUMBER`.
 pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
-    if !(MINIMUM_DATE_SERIAL_NUMBER as i64..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial) {
+    if !(i64::from(MINIMUM_DATE_SERIAL_NUMBER)..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER))
+        .contains(&serial)
+    {
         return None;
     }
     if serial == 60 {
@@ -63,8 +65,7 @@ pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
     // NOTE: this is the weekday-faithful stand-in calendar, not Excel's DAY/MONTH/YEAR view: Excel
     // numbers weekdays as if serial 1 were a Sunday, so serials below 60 map one day early here
     // (serial 1 = 1899-12-31). Use `excel_serial_to_ymd` for the exact date components.
-    let offset = days - 2;
-    Ok(dt + Duration::days(offset))
+    Ok(dt + Duration::days(days - 2))
 }
 
 pub fn date_to_serial_number(day: u32, month: u32, year: i32) -> Result<i32, String> {
@@ -130,6 +131,27 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_excel_serial_to_ymd_early_1900() {
+        assert_eq!(excel_serial_to_ymd(0), None);
+        assert_eq!(excel_serial_to_ymd(1), Some((1900, 1, 1)));
+        assert_eq!(excel_serial_to_ymd(59), Some((1900, 2, 28)));
+        assert_eq!(excel_serial_to_ymd(60), Some((1900, 2, 29)));
+        assert_eq!(excel_serial_to_ymd(61), Some((1900, 3, 1)));
+        assert_eq!(excel_serial_to_ymd(2_958_465), Some((9999, 12, 31)));
+        assert_eq!(excel_serial_to_ymd(2_958_466), None);
+    }
+
+    #[test]
+    fn test_permissive_date_early_1900_serials() {
+        assert_eq!(permissive_date_to_serial_number(1, 1, 1900), Ok(1));
+        assert_eq!(permissive_date_to_serial_number(28, 2, 1900), Ok(59));
+        assert_eq!(permissive_date_to_serial_number(29, 2, 1900), Ok(60));
+        assert_eq!(permissive_date_to_serial_number(1, 3, 1900), Ok(61));
+        // Days wrap linearly from the first of the month (engine behavior, not oracle-checked).
+        assert_eq!(permissive_date_to_serial_number(30, 2, 1900), Ok(61));
+    }
 
     #[test]
     fn test_permissive_date_to_serial_number() {

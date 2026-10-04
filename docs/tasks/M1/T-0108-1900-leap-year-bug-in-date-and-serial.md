@@ -24,4 +24,4 @@ docs/excel-semantics/dates.md.
 -
 
 ## Outcome
-DATE, DAY/MONTH/YEAR, text-date parsing and number formatting follow Excel serials 1..60 (probes/dates-and-blanks A1-A3 fixed). `from_excel_date` stays a weekday-faithful stand-in; remaining early-1900 gaps are in T-0125.
+DATE, DAY/MONTH/YEAR, text-date parsing and number formatting follow Excel serials 1..60 (probes/dates-and-blanks A1-A3 fixed; A4 already passed). `from_excel_date` stays a weekday-faithful stand-in; remaining early-1900 gaps are in T-0125.

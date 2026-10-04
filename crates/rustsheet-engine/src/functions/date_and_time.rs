@@ -120,8 +120,9 @@ fn seconds_of_day(v: f64) -> i64 {
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
 // ---------------------------------------------------------------------------
 
-// Generate DAY / MONTH / YEAR helpers – simply convert the serial number to a
-// NaiveDate and return the requested component as a number.
+// Generate DAY / MONTH / YEAR helpers – convert the serial number with
+// `excel_serial_to_ymd` and return the component at tuple index `$part`
+// (0 = year, 1 = month, 2 = day) as a number.
 macro_rules! date_part_fn {
     ($name:ident, $part:tt) => {
         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
