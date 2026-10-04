@@ -24,6 +24,7 @@ Implemented in: functions::criteria::wildcard_text_matcher
 
 ## D-function plain-text equality matches by prefix
 Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF.
+An explicit leading `=` (`"=ab"`) turns the prefix match into an exact match (probes/criteria-operands D18).
 Evidence: probes/criteria-grammar C11 (`DCOUNTA` with criterion "ab" over ab, abc, xab → 2).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
@@ -46,4 +47,22 @@ Rule: `COUNTIF(range,"=")` does not count a cell holding the empty string, while
 `COUNTIF(range,"")` does. (That `"="` counts truly blank cells is not covered yet: the probe range has none; T-0011.)
 Evidence: probes/criteria-grammar C3 (`""` → 1), C4 (`"="` → 0) over a range with one empty-string
 cell and no blank cells. Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
+
+## `<`, `>`, `<=`, `>=` with a boolean or error operand
+Rule: `COUNTIF(r,">TRUE")`, `"<TRUE"`, `">#N/A"` and `"<#N/A"` match nothing, even over TRUE or
+#N/A cells; `"<=TRUE"`/`">=TRUE"` (and `<=`/`>=` with `#N/A`) behave as equality and count exactly
+the matching boolean / error cells. The operand is never compared as text ("abc" is not <= TRUE).
+Evidence: probes/criteria-operands C1-C8 over 10, "abc", TRUE, #N/A, "abd", 5: 0,0,1,1,0,0,1,1.
+Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
+Implemented in: functions::criteria::bool_or_error_operand_matcher
+
+## Criteria kinds in COUNTIF and D-functions (more evidence)
+Rule: `"<>abc"`, `"<>TRUE"`, `"<>#N/A"` count every non-matching cell (6 of 7, blank included);
+`"=TRUE"` / `"=#N/A"` count the boolean / error cells; `">abc"`/`"<abd"` compare text. In
+D-functions (DCOUNTA) `"<>ab"`, `"a*"`, `"ab?"`, a numeric criterion cell, a boolean criterion
+cell and `"<>3"` follow the shared grammar; an explicit `"=ab"` is exact, not a prefix (1 over ab, abc, xab, 3, TRUE, where plain `ab` gives
+2), while an error criterion cell (`=NA()`) matches nothing.
+Evidence: probes/criteria-operands C9-C16, D17-D25. Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
