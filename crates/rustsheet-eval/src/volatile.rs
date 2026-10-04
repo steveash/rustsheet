@@ -8,7 +8,7 @@ use regex::Regex;
 
 use crate::cellref::Addr;
 use crate::value::Value;
-use crate::xlsx_snapshot::SheetSnapshot;
+use crate::xlsx_snapshot::{CellSnapshot, SheetSnapshot};
 
 /// Functions that read the wall clock. Scorable when the workbook pins the clock (see
 /// [`pinned_clock_serial`]).
@@ -51,6 +51,31 @@ pub fn formula_cells(sheets: &[SheetSnapshot]) -> Vec<FormulaCell> {
             })
         })
         .collect()
+}
+
+/// The formula cells that can be scored: every formula cell not tainted by a volatile function
+/// (directly or through precedents), with the number of formula cells skipped as volatile.
+#[must_use]
+pub fn scorable_cells(
+    sheets: &[SheetSnapshot],
+    clock_pinned: bool,
+) -> (Vec<(&str, Addr, &CellSnapshot)>, usize) {
+    let volatile = volatile_cells(&formula_cells(sheets), clock_pinned);
+    let mut cells = Vec::new();
+    let mut skipped = 0;
+    for sheet in sheets {
+        for (addr, cell) in &sheet.cells {
+            if !cell.is_formula() {
+                continue;
+            }
+            if volatile.contains(&(sheet.name.clone(), *addr)) {
+                skipped += 1;
+            } else {
+                cells.push((sheet.name.as_str(), *addr, cell));
+            }
+        }
+    }
+    (cells, skipped)
 }
 
 /// Whether the formula itself calls a volatile function.

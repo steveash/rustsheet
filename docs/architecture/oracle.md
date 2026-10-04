@@ -90,14 +90,14 @@ Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downlo
 
 ## Known divergences: where the oracle is not desktop Excel
 
-Calibration against 206 desktop-Excel-saved ironcalc workbooks (70,561 cells, 99.96% bit-exact;
+Calibration against 206 desktop-Excel-saved ironcalc workbooks (71,765 cells, 99.96% bit-exact;
 docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs:
 
 - **References to missing sheets.** `INDIRECT("NoSuchSheet!A1")` is a reference to an empty cell
   in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never
   use oracle values as evidence here (docs/excel-semantics/lookup.md).
 - **Last-digit floating point.** In ATAN2, IMARGUMENT, IMREAL/IMSQRT, IMCOS, IMTAN, ERFC,
-  BESSELJ/BESSELY, MIRR and IRR, 15 cells differ from desktop by a few ULPs or by near-zero
+  BESSELJ/BESSELY, MIRR, IRR and SIN, 18 cells differ from desktop by a few ULPs or by near-zero
   residue (2.2e-16 vs 0). Both are "Excel"; for ULP-sensitive work on these functions, prefer
   desktop evidence (Excel-authored workbooks) and say which one a golden comes from.
 - **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
@@ -225,7 +225,7 @@ Variables read by the tool:
    takes ~10 s. But see "Is Excel really calculating?": without an edit Excel may never save.
 3. Does app-only auth work for workbook endpoints in this tenant? **Yes** (2026-10-04, `Sites.Selected`
    on a dedicated site), although Microsoft documents those endpoints as delegated-only.
-4. Calibration: on how many ironcalc-calc cells do Graph and cached values disagree? **26 of
-   70,561** (2026-10-04): 7 are day-first date text in the workbooks' authoring Excel (the
-   oracle is right for en-US), 4 are the missing-sheet `INDIRECT` divergence, 15 are last-digit
+4. Calibration: on how many ironcalc-calc cells do Graph and cached values disagree? **29 of
+   71,765** (2026-10-04): 7 are day-first date text in the workbooks' authoring Excel (the
+   oracle is right for en-US), 4 are the missing-sheet `INDIRECT` divergence, 18 are last-digit
    floating point. See "Known divergences" and docs/research/oracle-calibration.md.

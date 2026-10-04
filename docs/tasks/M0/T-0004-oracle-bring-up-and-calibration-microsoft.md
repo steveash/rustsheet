@@ -35,10 +35,10 @@ Windows desktop backend. Probe-suite fills and their excel-semantics flips (T-00
 
 ## Outcome
 - Calibration (docs/research/oracle-calibration.md): 206 Excel-saved ironcalc-calc workbooks,
-  70,561 formula cells, 99.96% bit-exact agreement. The 26 disagreements: 7 day-first date text
+  71,765 formula cells, 99.96% bit-exact agreement. The 29 disagreements: 7 day-first date text
   in the authoring Excel (oracle right for en-US; probes/date-text-locale, dates.md, T-0024),
   4 missing-sheet INDIRECT where Excel for the web diverges from desktop (lookup.md, oracle.md
-  "Known divergences"), 15 last-digit floating point.
+  "Known divergences"), 18 last-digit floating point.
 - New tooling: `rustsheet-eval compare`, `rustsheet-oracle calibrate`; the canary now also pins
   the oracle to en-US.
 - PRs: #47 (canary), #48 (smoke fill), and this one.

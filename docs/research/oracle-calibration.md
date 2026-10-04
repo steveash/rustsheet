@@ -10,7 +10,7 @@ agree with the values desktop Excel stored? This bounds how far the oracle can b
 - Inputs: every workbook of suite `ironcalc-calc` (`crates/rustsheet-xlsx/tests/calc_tests`,
   210 files), each recalculated through the oracle with the embedded canary (every result proven
   recalculated, en-US locale pinned; docs/architecture/oracle.md).
-- Comparison: `rustsheet-eval compare` (crates/rustsheet-eval/src/calibrate.rs), i.e. the eval
+- Comparison (every formula cell, including array-formula spill cells): `rustsheet-eval compare` (crates/rustsheet-eval/src/calibrate.rs), i.e. the eval
   harness's own rules (`value::compare`: bit-exact pass, `numeric_ulp` ≤ 4 ULPs, `numeric_close`
   ≤ 1e-9 relative, ...), volatile-cell skipping and function attribution.
 - Like the suite (`require_excel_authored`), workbooks not saved by Excel are skipped: their
@@ -22,13 +22,13 @@ agree with the values desktop Excel stored? This bounds how far the oracle can b
 ## Result
 
 - Workbooks compared: 206; refused: 1; skipped as not saved by Excel: GEOMEAN.xlsx, XMATCH_arrays.xlsx, array_in_scalar_repro.xlsx
-- Formula cells compared: 70561; agree bit-exact: 70535 (99.96%); volatile cells skipped: 3
+- Formula cells compared: 71765; agree bit-exact: 71736 (99.96%); volatile cells skipped: 3
 
 | verdict | cells |
 |---|---|
-| pass | 70535 |
+| pass | 71736 |
+| numeric_ulp | 11 |
 | type_mismatch | 9 |
-| numeric_ulp | 8 |
 | numeric_mismatch | 5 |
 | numeric_close | 4 |
 
@@ -36,6 +36,7 @@ Functions with disagreements (a cell counts once for each function it calls):
 
 | function | cells | disagree | verdicts |
 |---|---|---|---|
+| (array member) | 1204 | 3 | numeric_ulp 3 |
 | IMARGUMENT | 24 | 3 | numeric_ulp 3 |
 | IMREAL | 417 | 3 | numeric_close 1, numeric_mismatch 2 |
 | INDIRECT | 174 | 3 | type_mismatch 3 |
@@ -66,13 +67,13 @@ Refused workbooks:
 
 - `SHEET_SHEETS.xlsx`: refusing to recalculate: xl/worksheets/sheet1.xml uses SHEETS() or INFO(), whose answer the canary sheet would change
 
-## What the 26 disagreements are
+## What the 29 disagreements are
 
 | group | cells | functions | who is right for en-US Microsoft 365 |
 |---|---|---|---|
 | Day-first date text in the workbooks' authoring Excel | 7 | DATEVALUE, VALUE (2), DAYS, DAYS360, NETWORKDAYS, NETWORKDAYS.INTL | **the oracle** |
 | `INDIRECT` to a sheet that does not exist | 4 | INDIRECT, its dependant `=A5`, ROW(INDIRECT(…)), COLUMN(INDIRECT(…)) | **desktop Excel** (#REF!) |
-| Last-digit floating point / near-zero residue | 15 | ATAN2 (2), IMARGUMENT (3), IMREAL∘IMSQRT (2), IMCOS, IMTAN, ERFC + ERFC.PRECISE (2), BESSELJ, BESSELY, MIRR, IRR | both are Excel |
+| Last-digit floating point / near-zero residue | 18 | ATAN2 (2), IMARGUMENT (3), IMREAL∘IMSQRT (2), IMCOS, IMTAN, ERFC + ERFC.PRECISE (2), BESSELJ, BESSELY, MIRR, IRR, spilled SIN(4) (3 array cells) | both are Excel |
 
 1. **Locale of the ironcalc authoring Excel.** `DATEVALUE("26-01-01")` is cached as 36917
    (26 Jan 2001) and `VALUE("2/3/2023")` as 44987 (2 Mar); "July 1, 2026" is cached as #VALUE!
@@ -89,14 +90,15 @@ Refused workbooks:
    treats the missing sheet as an empty one (0, 3, 23). A direct probe confirmed it (`ISREF` is
    TRUE). The engine follows desktop; the oracle must not be used as evidence here
    (docs/excel-semantics/lookup.md).
-3. **Floating point.** 8 cells are within 4 ULPs, 4 within 1e-9 relative, and 3 are residues
+3. **Floating point.** 11 cells are within 4 ULPs (including spilled `SIN(4)`: desktop
+   -0.7568024953079283, oracle -0.7568024953079282, the correctly rounded value), 4 within 1e-9 relative, and 3 are residues
    around 1e-16 where one side's rounding leaves a tiny value (`IMREAL(IMSQRT(-x))` 2.121e-16
    vs 2.122e-16; two-flow IRR 2.2e-16 vs 0). Excel for the web and desktop evidently use
    slightly different math libraries or evaluation orders. Oracle goldens for these functions
    may therefore disagree with desktop-Excel-cached values by a few ULPs; eval scores both
    strictly, so cite which one a golden comes from.
 
-Everything else (397 functions, 70,535 cells, including every financial, statistical, text,
+Everything else (397 functions, 71,736 cells, including every financial, statistical, text,
 lookup and date function in the suite beyond the cells above) agrees bit-exact.
 
 ## Refused and skipped
@@ -129,6 +131,9 @@ formula column can name a neighbouring input; the analysis above uses the real i
 | DAYS_DAYS360.xlsx | Sheet1!D71 | `=DAYS360(B71,A71)` | '#VALUE!' | 30.0 | type_mismatch |
 | ERFs.xlsx | Sheet1!E8 | `=ERFC(A3)` | 2.1519736712498925e-17 | 2.151973671249892e-17 | numeric_ulp |
 | ERFs.xlsx | Sheet1!G8 | `=_xlfn.ERFC.PRECISE(A3)` | 2.1519736712498925e-17 | 2.151973671249892e-17 | numeric_ulp |
+| IF_ARRAY.xlsx | Sheet1!C11 | (array member) | -0.7568024953079283 | -0.7568024953079282 | numeric_ulp |
+| IF_ARRAY.xlsx | Sheet1!C4 | (array member) | -0.7568024953079283 | -0.7568024953079282 | numeric_ulp |
+| IF_ARRAY.xlsx | Sheet1!E4 | (array member) | -0.7568024953079283 | -0.7568024953079282 | numeric_ulp |
 | INDIRECT.xlsx | r1c1_in_other_sheets!A5 | `=INDIRECT("Sheet7!R2C2", FALSE)` | '#REF!' | 0.0 | type_mismatch |
 | INDIRECT.xlsx | r1c1_in_other_sheets!L6 | `=A5` | '#REF!' | 0.0 | type_mismatch |
 | IRR.xlsx | Two Values!C4 | `=IRR(A3:B3)` | 2.220446049250313e-16 | 0.0 | numeric_mismatch |

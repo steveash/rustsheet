@@ -20,6 +20,8 @@ from typing import Any
 from rustsheet_tools.oracle.backends import OracleError
 
 NO_FUNCTION = "(operators only)"
+ARRAY_MEMBER = "(array member)"
+"""Spill/array cells other than the anchor: formula results without formula text of their own."""
 
 
 @dataclass
@@ -55,7 +57,7 @@ class Calibration:
             verdict = cell["verdict"] or "missing"
             self.total.cells += 1
             self.total.verdicts[verdict] += 1
-            for name in cell["functions"] or [NO_FUNCTION]:
+            for name in cell["functions"] or [NO_FUNCTION if cell["formula"] else ARRAY_MEMBER]:
                 stats = self.by_function[name]
                 stats.cells += 1
                 stats.verdicts[verdict] += 1
@@ -79,7 +81,7 @@ def calibrate(
             comparison = compare(path, recalculated(path))
         except OracleError as e:
             with lock:
-                result.refused[path.name] = str(e).splitlines()[0]
+                result.refused[path.name] = (str(e).splitlines() or [repr(e)])[0]
             return
         with lock:
             result.add(path.name, comparison)
@@ -133,9 +135,9 @@ def to_markdown(cal: Calibration, examples: int = 50) -> str:
         "|---|---|---|---|---|---|",
     ]
     for d in cal.disagreements[:examples]:
-        formula = d["formula"].replace("|", "\\|")
+        formula = f"`={d['formula']}`".replace("|", "\\|") if d["formula"] else ARRAY_MEMBER
         lines.append(
-            f"| {d['workbook']} | {d['sheet']}!{d['cell']} | `={formula}` | {_value(d['cached'])} "
+            f"| {d['workbook']} | {d['sheet']}!{d['cell']} | {formula} | {_value(d['cached'])} "
             f"| {_value(d['recalculated'])} | {d['verdict'] or 'missing'} |"
         )
     return "\n".join(lines) + "\n"

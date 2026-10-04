@@ -25,7 +25,7 @@ use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite};
-use rustsheet_eval::xlsx_snapshot::read_snapshot;
+use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
 #[command(
@@ -267,11 +267,15 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn load_snapshot(path: &Path) -> Result<WorkbookSnapshot> {
+    let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
+    Ok(read_snapshot(&bytes)?)
+}
+
 fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
     if let Cmd::Snapshot { path } = &cli.cmd {
-        let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
-        println!("{}", serde_json::to_string_pretty(&read_snapshot(&bytes)?)?);
+        println!("{}", serde_json::to_string_pretty(&load_snapshot(path)?)?);
         return Ok(ExitCode::SUCCESS);
     }
     if let Cmd::Compare {
@@ -279,11 +283,7 @@ fn run() -> Result<ExitCode> {
         recalculated,
     } = &cli.cmd
     {
-        let load = |p: &Path| -> Result<_> {
-            let bytes = std::fs::read(p).with_context(|| p.display().to_string())?;
-            Ok(read_snapshot(&bytes)?)
-        };
-        let comparison = compare_snapshots(&load(cached)?, &load(recalculated)?);
+        let comparison = compare_snapshots(&load_snapshot(cached)?, &load_snapshot(recalculated)?);
         println!("{}", serde_json::to_string(&comparison)?);
         return Ok(ExitCode::SUCCESS);
     }

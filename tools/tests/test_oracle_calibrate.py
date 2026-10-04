@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from rustsheet_tools.oracle.backends import OracleError
-from rustsheet_tools.oracle.calibrate import NO_FUNCTION, calibrate, to_markdown
+from rustsheet_tools.oracle.calibrate import ARRAY_MEMBER, NO_FUNCTION, calibrate, to_markdown
 
 
 def _cell(
@@ -35,6 +35,7 @@ COMPARISONS = {
             _cell("A1", ["SUM"], "pass"),
             _cell("A2", ["SUM", "ROUND"], "numeric_ulp", 0.1, 0.10000000000000002),
             _cell("A3", [], "pass"),
+            {**_cell("A4", [], "numeric_ulp"), "formula": ""},  # spill member: no formula text
         ],
     },
     "b.xlsx": {
@@ -66,25 +67,28 @@ def test_totals_and_functions_are_aggregated() -> None:
     assert cal.not_excel_authored == ["hand.xlsx"]  # counted nowhere else
     assert "GEOMEAN" not in cal.by_function
     assert cal.volatile_skipped == 2
-    assert cal.total.cells == 5
-    assert dict(cal.total.verdicts) == {"pass": 2, "numeric_ulp": 1, "type_mismatch": 1, "missing": 1}
+    assert cal.total.cells == 6
+    assert dict(cal.total.verdicts) == {"pass": 2, "numeric_ulp": 2, "type_mismatch": 1, "missing": 1}
     assert (cal.by_function["SUM"].cells, cal.by_function["SUM"].disagreements) == (2, 1)
     assert cal.by_function["ROUND"].disagreements == 1
     assert cal.by_function[NO_FUNCTION].disagreements == 0
+    assert cal.by_function[ARRAY_MEMBER].disagreements == 1
     assert [(d["workbook"], d["cell"]) for d in cal.disagreements] == [
         ("a.xlsx", "A2"),
+        ("a.xlsx", "A4"),
         ("b.xlsx", "B1"),
         ("b.xlsx", "B2"),
     ]
 
 
 def test_markdown_report() -> None:
-    md = to_markdown(_run(), examples=2)
+    md = to_markdown(_run(), examples=3)
     assert "skipped as not saved by Excel: hand.xlsx" in md
-    assert "- Formula cells compared: 5; agree bit-exact: 2 (40.00%); volatile cells skipped: 2" in md
+    assert "- Formula cells compared: 6; agree bit-exact: 2 (33.33%); volatile cells skipped: 2" in md
     assert "| DATEVALUE | 1 | 1 | type_mismatch 1 |" in md
     assert "| SUM | 2 | 1 | numeric_ulp 1 |" in md
     assert "Functions agreeing on every cell: 1." in md  # only "(operators only)"
     assert "- `refused.xlsx`: refusing to recalculate" in md
     assert "| b.xlsx | S!B1 |" in md
+    assert "| a.xlsx | S!A4 | (array member) |" in md
     assert "S!B2" not in md  # beyond the example limit

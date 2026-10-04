@@ -4,22 +4,24 @@
 //! Uses the harness's own comparison rules ([`compare`]), volatile analysis and function
 //! attribution, so calibration numbers mean the same thing as eval scores.
 
-use std::collections::HashMap;
-
 use serde::Serialize;
 
 use crate::report::functions_in;
 use crate::value::{compare, Value, Verdict};
-use crate::volatile::{formula_cells, volatile_cells};
+use crate::volatile::scorable_cells;
 use crate::xlsx_snapshot::WorkbookSnapshot;
 
 /// One formula cell of the cached workbook and what the recalculation produced for it.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CellComparison {
     pub sheet: String,
+    /// A1 address.
     pub cell: String,
+    /// Formula text without `=` (for shared-formula members, the group master's text).
     pub formula: String,
+    /// Functions the formula calls ([`functions_in`]), for per-function attribution.
     pub functions: Vec<String>,
+    /// The value Excel stored when it last saved the workbook.
     pub cached: Value,
     /// `None` when the recalculated workbook has no such cell.
     pub recalculated: Option<Value>,
@@ -27,6 +29,7 @@ pub struct CellComparison {
     pub verdict: Option<Verdict>,
 }
 
+/// Calibration result for one workbook: its cached values against an oracle recalculation.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Comparison {
     /// Whether `cached` was last saved by Excel; otherwise its cached values are not Excel's
@@ -42,38 +45,24 @@ pub struct Comparison {
 /// Cells only present in `recalculated` (e.g. an embedded canary sheet) are ignored.
 #[must_use]
 pub fn compare_snapshots(cached: &WorkbookSnapshot, recalculated: &WorkbookSnapshot) -> Comparison {
-    let volatile = volatile_cells(&formula_cells(&cached.sheets), false);
-    let recalculated: HashMap<&str, _> = recalculated
-        .sheets
-        .iter()
-        .map(|s| (s.name.as_str(), &s.cells))
-        .collect();
-    let mut cells = Vec::new();
-    let mut volatile_skipped = 0;
-    for sheet in &cached.sheets {
-        for (addr, cell) in &sheet.cells {
-            let Some(formula) = cell.formula.as_ref().filter(|_| cell.is_formula()) else {
-                continue;
-            };
-            if volatile.contains(&(sheet.name.clone(), *addr)) {
-                volatile_skipped += 1;
-                continue;
-            }
-            let other = recalculated
-                .get(sheet.name.as_str())
-                .and_then(|cells| cells.get(addr))
-                .map(|c| c.value.clone());
-            cells.push(CellComparison {
-                sheet: sheet.name.clone(),
+    let (scorable, volatile_skipped) = scorable_cells(&cached.sheets, false);
+    let others = recalculated.values();
+    let cells = scorable
+        .into_iter()
+        .map(|(sheet, addr, cell)| {
+            let formula = cell.formula.clone().unwrap_or_default();
+            let other = others.get(&(sheet.to_string(), addr)).cloned();
+            CellComparison {
+                sheet: sheet.to_string(),
                 cell: addr.to_string(),
-                formula: formula.clone(),
-                functions: functions_in(formula).into_iter().collect(),
+                functions: functions_in(&formula).into_iter().collect(),
+                formula,
                 verdict: other.as_ref().map(|o| compare(&cell.value, o)),
                 cached: cell.value.clone(),
                 recalculated: other,
-            });
-        }
-    }
+            }
+        })
+        .collect();
     Comparison {
         excel_authored: cached.is_excel_authored(),
         volatile_skipped,
