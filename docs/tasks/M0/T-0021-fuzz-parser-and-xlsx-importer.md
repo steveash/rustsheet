@@ -22,4 +22,5 @@ M12; the 2026-10-04 review moved it forward.
 - [ ] Seed corpora from eval/suites and crates/rustsheet-xlsx/tests; dictionary of formula tokens.
 - [ ] Nightly workflow runs each target for a fixed time budget; a crash uploads the input and fails the job; the steward files a task per distinct crash.
 - [ ] Any crash found while building this is fixed or filed.
+- [ ] The workflow uses least-privilege `permissions:`, never `pull_request_target`, and uploads only the crashing input (no secrets or environment).
 - [ ] Decision record for the protected-path change (CI); `make check` green; reviewers approve.
