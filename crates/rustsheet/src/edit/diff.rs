@@ -5,7 +5,7 @@
 use std::collections::{HashMap, HashSet};
 
 use rustsheet_engine::types::{Cell, Worksheet};
-use rustsheet_engine::Model;
+use rustsheet_engine::{KeyBuild, Model};
 
 use super::{InputChange, ValueChange};
 use crate::refs::{CellRef, SheetId};
@@ -15,37 +15,8 @@ use crate::workbook::sheet_metas;
 /// `(sheet id, 1-based row, 1-based column)`.
 pub(super) type Key = (u32, i32, i32);
 
-/// Cheap multiplicative hasher for [`Key`]s: the keys are small integers we produce ourselves, so
-/// `SipHash`'s collision resistance buys nothing and costs a large share of the diff.
-#[derive(Default, Clone, Copy)]
-pub(super) struct KeyHasher(u64);
-
-impl std::hash::Hasher for KeyHasher {
-    fn finish(&self) -> u64 {
-        self.0
-    }
-
-    fn write(&mut self, bytes: &[u8]) {
-        for &b in bytes {
-            self.write_u64(u64::from(b));
-        }
-    }
-
-    fn write_u32(&mut self, n: u32) {
-        self.write_u64(u64::from(n));
-    }
-
-    fn write_i32(&mut self, n: i32) {
-        self.write_u64(u64::from(n.cast_unsigned()));
-    }
-
-    fn write_u64(&mut self, n: u64) {
-        self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x517c_c1b7_2722_0a95);
-    }
-}
-
-pub(super) type KeyMap<V> = HashMap<Key, V, std::hash::BuildHasherDefault<KeyHasher>>;
-pub(super) type KeySet = HashSet<Key, std::hash::BuildHasherDefault<KeyHasher>>;
+pub(super) type KeyMap<V> = HashMap<Key, V, KeyBuild>;
+pub(super) type KeySet = HashSet<Key, KeyBuild>;
 
 /// A captured cell value. Text lives in a shared arena so capturing a text cell allocates
 /// nothing per cell.
