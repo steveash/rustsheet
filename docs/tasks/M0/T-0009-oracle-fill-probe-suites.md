@@ -3,7 +3,7 @@ id: T-0009
 title: "Oracle-fill suites probes and probes-numeric (excel-graph)"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P0
 size: S
 depends_on: []
