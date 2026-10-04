@@ -8,7 +8,8 @@ returns a **recalculated xlsx**, and every workbook carries a canary that proves
 recalculated (see "Is Excel really calculating?" below). Values are extracted with
 `rustsheet-eval snapshot`, the single parser, with full 17-digit precision, and stored as
 `*.oracle.json` sidecars next to the case. Results are cached by input sha256 in
-`eval/.cache/oracle/<backend>/`, so only new or changed workbooks hit Excel. Agents work offline against committed sidecars.
+`eval/.cache/oracle/<backend>/`, so only new or changed workbooks hit Excel. Agents work
+offline against committed sidecars.
 
 | Backend | Where | Fidelity | Notes |
 |---|---|---|---|
