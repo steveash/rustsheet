@@ -22,5 +22,7 @@ verdict table goes into the PR body.
 ## Keeping reviewers honest
 - Each reviewer must cite `path:line` and a concrete fix. Findings without them are ignored.
 - The steward run spot-audits merged PRs weekly: it samples 3 merged PRs, re-reviews them with a
-  stronger prompt, and records missed issues in `docs/status.md`. Repeated misses lead to
-  reviewer prompt updates (via a decision record).
+  stronger prompt, every reviewer on Opus, and records each missed issue in `docs/status.md` with
+  the reviewer that missed it and the model it ran on. Repeated misses lead to reviewer prompt
+  updates (via a decision record); a miss traced to a Sonnet reviewer reverts that reviewer to
+  Opus (decision 0015).
