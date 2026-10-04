@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -66,7 +67,6 @@ def test_skip_reason(
 
 
 def test_unreadable_workbook_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
-    import subprocess
 
     def boom(_: Path) -> dict[str, Any]:
         raise subprocess.CalledProcessError(1, ["rustsheet-eval"], stderr="missing workbook rels")
