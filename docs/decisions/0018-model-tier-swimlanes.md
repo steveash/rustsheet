@@ -19,7 +19,8 @@
   - Claims: the first commit on `agent/<lane>/T-XXXX-*` is pushed at once, and `make next-task`
     skips a task with such a branch younger than 24 h, so overlapping hourly runs cannot start the
     same task. `next-task` also reads `## Handoff` sections from the pushed branches, so a handoff
-    counts as `opus` before it merges. A sonnet session starts no new task after 45 minutes.
+    counts as `opus` before it merges. The resuming opus run renames the heading to
+    `## Handoff (resumed)` and pushes it, which ends the exemption and makes the branch a claim. A sonnet session starts no new task after 45 minutes.
   - Escalation (work-loop step 5b): a sonnet run that fails `make check` twice on one cause, gets
     changes requested twice, or judges the task beyond it pushes its branch, writes a `## Handoff`
     section, sets `tier: opus` / `status: todo`, and stops.

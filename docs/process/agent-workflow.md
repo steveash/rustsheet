@@ -63,7 +63,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 ## The loop (summary)
 
 1. **Sync:** `main` up to date. Resume lane work if any exists.
-2. **Pick:** `make next-task LANE=x`. If empty, run the gap triager (functions lane) or the
+2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; handoffs first). If empty, run the gap triager (functions lane) or the
    planner (other lanes).
 3. **Understand:**
    - Read the task, its spec, the code, `docs/excel-semantics/`, and the failing cases (`make eval-show`).

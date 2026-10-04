@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -142,6 +143,14 @@ class Tiers(unittest.TestCase):
             self.assertEqual(self.run_next(root, "opus", claims), "T-0002")
             self.assertEqual(self.run_next(root, "sonnet", claims), "T-0003")
 
+    def test_resumed_handoff_is_no_longer_a_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="opus")
+            write_task(root, "T-0002", tier="opus", body="\n## Handoff (resumed)\nopus run picked it up\n")
+            # Resumed: its fresh branch is a claim again, so the next opus run skips it.
+            self.assertEqual(self.run_next(root, "opus", ({"T-0002"}, set())), "T-0001")
+
     def test_claimed_task_is_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -152,8 +161,6 @@ class Tiers(unittest.TestCase):
 
 class BranchClaims(unittest.TestCase):
     def test_recent_branches_claim_old_ones_only_count_with_a_handoff(self) -> None:
-        import time
-
         now = int(time.time())
         refs = (
             f"refs/remotes/origin/agent/engine/T-0001-new {now - 60}\n"

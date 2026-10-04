@@ -30,7 +30,8 @@ LANES = ["harness", "engine", "functions", "api", "perf", "quality", "research"]
 PRIORITIES = ["P0", "P1", "P2", "P3"]
 SIZES = ["S", "M", "L"]
 TIERS = ["sonnet", "opus"]  # model tier that works the task (decision 0018)
-OPEN = ("todo", "in-progress", "blocked")  # not done or dropped; the first two are "active"
+OPEN = ("todo", "in-progress", "blocked")  # not done or dropped
+ACTIVE = ("todo", "in-progress")
 MILESTONE = re.compile(r"^M\d+$")
 TASK_FILE = re.compile(r"(?:^|/)(T-\d{4})-[^/]*\.md$")
 
@@ -88,7 +89,7 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: tier={t.get('tier')!r} not in {TIERS} (open tasks need a tier)")
         if "TODO(fill)" in path_of(t).read_text():
             errors.append(f"{where}: template placeholders `TODO(fill)` left in the task file")
-        if t.get("size") == "L" and t.get("status") in OPEN[:2]:
+        if t.get("size") == "L" and t.get("status") in ACTIVE:
             errors.append(f"{where}: size L tasks must be split before work starts")
     for t in tasks:
         for dep in t.get("depends_on", []) or []:  # type: ignore[union-attr]
@@ -199,6 +200,7 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
 
 
 AGENT_BRANCH = re.compile(r"^refs/remotes/origin/agent/[^/]+/(T-\d{4})(?:-|$)")
+# An unresumed handoff; the opus run that picks it up renames it "## Handoff (resumed)".
 HANDOFF = re.compile(r"^## Handoff\s*$", re.M)
 CLAIM_TTL_SECONDS = 24 * 3600  # a pushed agent/* branch younger than this claims its task
 
