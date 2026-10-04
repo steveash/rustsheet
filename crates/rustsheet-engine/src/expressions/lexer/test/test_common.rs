@@ -11,7 +11,7 @@ use crate::expressions::{
     types::ParsedReference,
 };
 
-fn new_lexer(formula: &str, a1_mode: bool) -> Lexer<'_> {
+fn new_lexer(formula: &str, a1_mode: bool) -> Lexer {
     let locale = get_locale("en").unwrap();
     let language = get_language("en").unwrap();
     let mode = if a1_mode {

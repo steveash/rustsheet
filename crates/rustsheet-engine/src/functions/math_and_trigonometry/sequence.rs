@@ -5,7 +5,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     /// `=SEQUENCE(rows, [cols], [start], [step])`
     ///
     /// Returns a 2-D array of sequential numbers.

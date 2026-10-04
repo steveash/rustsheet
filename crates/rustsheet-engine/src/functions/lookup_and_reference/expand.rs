@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── EXPAND ────────────────────────────────────────────────────────────────
 
     /// `=EXPAND(array, rows, [columns], [pad_with])`

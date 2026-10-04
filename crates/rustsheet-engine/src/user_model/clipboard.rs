@@ -45,7 +45,7 @@ pub struct Clipboard {
     pub(crate) range: (i32, i32, i32, i32),
 }
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     // Applies the merge containment rule to a paste into `target_area`
     // (whose top-left cell is the paste anchor). The paste footprint is the
     // target rectangle plus `pasted_merges`, the translated merges of the

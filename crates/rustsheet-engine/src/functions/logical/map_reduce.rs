@@ -16,7 +16,7 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// `=MAP(array1, [array2, ...], lambda)`
     ///
     /// Applies the lambda element-wise across one or more arrays of equal dimensions.

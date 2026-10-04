@@ -119,7 +119,7 @@ fn index_from_array(
     CalcResult::Array(result)
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Materializes a value that is expected to be a vector (a single row or a
     /// single column) into a flat list of values. Accepts both range references
     /// and in-formula array literals. Used by the vector-based lookup functions

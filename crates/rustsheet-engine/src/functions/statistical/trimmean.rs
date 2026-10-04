@@ -3,7 +3,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // TRIMMEAN(array, percent)
     // Returns the mean of the interior of a data set, after removing percent/2 from each tail.
     pub(crate) fn fn_trimmean(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

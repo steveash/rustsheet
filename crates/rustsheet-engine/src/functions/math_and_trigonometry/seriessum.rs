@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── SERIESSUM ─────────────────────────────────────────────────────────────
 
     /// `=SERIESSUM(x, n, m, coefficients)`

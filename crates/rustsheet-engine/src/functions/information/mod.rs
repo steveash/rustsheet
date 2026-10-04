@@ -22,7 +22,7 @@ fn get_system() -> String {
     "browser".to_string()
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             match self.evaluate_node_in_context(&args[0], cell) {

@@ -231,7 +231,7 @@ fn displace_cf_sqref(sqref: &str, data: &DisplaceData, sheet: u32) -> String {
 /// CF formulas are stored in English (see [Model::user_formula_to_internal]),
 /// so the caller must have the parser in the default (English) locale/language.
 fn displace_cf_formula_str(
-    parser: &mut ExprParser<'_>,
+    parser: &mut ExprParser,
     formula: &str,
     context: &CellReferenceRC,
     data: &DisplaceData,
@@ -255,7 +255,7 @@ fn displace_cf_formula_str(
 }
 
 fn displace_cfvo(
-    parser: &mut ExprParser<'_>,
+    parser: &mut ExprParser,
     cfvo: Cfvo,
     context: &CellReferenceRC,
     data: &DisplaceData,
@@ -269,7 +269,7 @@ fn displace_cfvo(
 
 /// Displaces all formula fields inside a `CfRule`.
 fn displace_cf_rule_formulas(
-    parser: &mut ExprParser<'_>,
+    parser: &mut ExprParser,
     rule: CfRule,
     context: &CellReferenceRC,
     data: &DisplaceData,
@@ -353,7 +353,7 @@ fn displace_cf_rule_formulas(
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     fn shift_cell_formula(
         &mut self,
         sheet: u32,

@@ -4,11 +4,11 @@ use crate::expressions::types::{Area, CellReferenceIndex};
 use crate::model::Model;
 use crate::types::Cell;
 
-pub fn new_empty_model<'a>() -> Model<'a> {
+pub fn new_empty_model() -> Model {
     Model::new_empty("model", "en", "UTC", "en").unwrap()
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub fn _parse_reference(&self, cell: &str) -> CellReferenceIndex {
         if cell.contains('!') {
             self.parse_reference(cell).unwrap()

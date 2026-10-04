@@ -7,7 +7,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── TRANSPOSE ─────────────────────────────────────────────────────────────
 
     /// `=TRANSPOSE(array)`

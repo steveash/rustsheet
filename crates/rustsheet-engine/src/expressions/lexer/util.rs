@@ -60,8 +60,8 @@ pub fn get_tokens(formula: &str) -> Vec<MarkedToken> {
 /// Returns a list of marked tokens for a formula using the given locale and language
 pub fn get_tokens_with_locale(
     formula: &str,
-    locale: &Locale,
-    language: &Language,
+    locale: &'static Locale,
+    language: &'static Language,
 ) -> Vec<MarkedToken> {
     let mut tokens = Vec::new();
     let mut lexer = Lexer::new(formula, LexerMode::A1, locale, language);
@@ -217,8 +217,8 @@ pub fn cycle_reference(
     value: &str,
     start: usize,
     end: usize,
-    locale: &Locale,
-    language: &Language,
+    locale: &'static Locale,
+    language: &'static Language,
 ) -> Result<(String, i32, i32), String> {
     let chars: Vec<char> = value.chars().collect();
     if start > chars.len() || end > chars.len() {

@@ -4,7 +4,7 @@ use crate::{
     UserModel,
 };
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     /// Returns the list of all named style names.
     pub fn get_named_style_list(&self) -> Vec<String> {
         self.model.get_named_style_list()

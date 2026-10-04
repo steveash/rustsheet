@@ -13,7 +13,7 @@ use crate::{area, cell_value_to_py, from_python, py_to_color, to_py_err, to_pyth
 /// undo/redo history and no diffs are produced.
 #[pyclass(name = "Model")]
 pub struct PyModel {
-    pub(crate) model: Model<'static>,
+    pub(crate) model: Model,
 }
 
 #[pymethods]

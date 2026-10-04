@@ -32,7 +32,7 @@ impl ParsedReference {
     pub(crate) fn parse_reference_formula<F: Fn(&str) -> Option<u32>>(
         sheet_index_context: Option<u32>,
         reference: &str,
-        locale: &Locale,
+        locale: &'static Locale,
         get_sheet_index_by_name: F,
     ) -> Result<ParsedReference, String> {
         #[allow(clippy::expect_used)]

@@ -33,7 +33,7 @@ fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     fn gcd_lcm_impl<F>(
         &mut self,
         args: &[Node],

@@ -687,7 +687,7 @@ where
 // ============================================================
 
 fn parse_coupon_args(
-    model: &mut Model<'_>,
+    model: &mut Model,
     args: &[Node],
     cell: CellReferenceIndex,
 ) -> Result<(i64, i64, u32, u32), CalcResult> {
@@ -731,7 +731,7 @@ fn parse_coupon_args(
 // Model implementations
 // ============================================================
 
-impl<'a> Model<'a> {
+impl Model {
     // DURATION(settlement, maturity, coupon, yld, frequency, [basis])
     pub(crate) fn fn_duration(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();

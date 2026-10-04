@@ -16,7 +16,7 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// `=SCAN([initial_value], array, lambda)`
     ///
     /// Like REDUCE but returns an array of all intermediate accumulated values

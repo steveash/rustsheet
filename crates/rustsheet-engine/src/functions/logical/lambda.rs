@@ -10,7 +10,7 @@ use crate::{
 
 use super::r#let::assign_variable_ids;
 
-impl<'a> Model<'a> {
+impl Model {
     /// Evaluates the body of a named lambda with the given call-site argument nodes.
     /// Optional parameters not covered by call_args receive EmptyArg.
     pub(crate) fn call_lambda(

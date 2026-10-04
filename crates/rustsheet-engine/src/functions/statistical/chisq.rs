@@ -7,7 +7,7 @@ use crate::{
 };
 const MAX_DEGREES_OF_FREEDOM: f64 = 10_000_000_000.0;
 
-impl<'a> Model<'a> {
+impl Model {
     // CHISQ.DIST(x, deg_freedom, cumulative)
     pub(crate) fn fn_chisq_dist(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {

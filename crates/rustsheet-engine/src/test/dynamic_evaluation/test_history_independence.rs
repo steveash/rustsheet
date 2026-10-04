@@ -176,7 +176,7 @@ fn apply(model: &mut UserModel, edit: &Edit) -> Option<((u32, i32, i32), Option<
     }
 }
 
-fn fresh(contents: &BTreeMap<(u32, i32, i32), Content>) -> Model<'static> {
+fn fresh(contents: &BTreeMap<(u32, i32, i32), Content>) -> Model {
     let mut model = new_empty_model();
     model.add_sheet("Sheet2").unwrap();
     // CSE areas first: an input that lands inside one is refused by the user

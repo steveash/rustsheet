@@ -58,7 +58,7 @@ fn icon_set_rule() -> CfRuleInput {
     }
 }
 
-fn model_with_values() -> crate::Model<'static> {
+fn model_with_values() -> crate::Model {
     let mut model = new_empty_model();
     for i in 1i32..=5 {
         model.set_user_input(0, i, 1, i.to_string()).unwrap();
@@ -277,7 +277,7 @@ fn test_higher_priority_icon_set_wins() {
 
 // Helper: returns the priority of every rule keyed by its index in the
 // `conditional_formatting` list (the same order rules were added in).
-fn priorities(model: &crate::Model<'static>) -> Vec<u32> {
+fn priorities(model: &crate::Model) -> Vec<u32> {
     model
         .workbook
         .worksheet(0)

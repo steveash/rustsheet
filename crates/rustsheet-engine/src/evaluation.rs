@@ -475,7 +475,7 @@ impl Default for Evaluation {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Evaluates every formula in the workbook.
     ///
     /// Runs passes until one completes without a restart. `RestartLog` learns

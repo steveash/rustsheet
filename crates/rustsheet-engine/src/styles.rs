@@ -503,7 +503,7 @@ impl Styles {
 }
 
 // TODO: Try to find a better spot for styles setters
-impl<'a> Model<'a> {
+impl Model {
     pub fn set_cell_style(
         &mut self,
         sheet: u32,

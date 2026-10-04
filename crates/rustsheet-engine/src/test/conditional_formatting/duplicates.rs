@@ -17,7 +17,7 @@ use crate::{cf_types::CfRuleInput, test::util::new_empty_model};
 //   row 3 → "rust"   (duplicate)
 //   row 4 → "python" (unique)
 
-fn model_with_mixed() -> crate::Model<'static> {
+fn model_with_mixed() -> crate::Model {
     let mut model = new_empty_model();
     // Column A — numbers
     for (row, v) in [(1, 10), (2, 20), (3, 10), (4, 30), (5, 20), (6, 40)] {
@@ -45,7 +45,7 @@ fn unique_rule() -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32, col: i32) -> bool {
+fn is_red(model: &crate::Model, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()

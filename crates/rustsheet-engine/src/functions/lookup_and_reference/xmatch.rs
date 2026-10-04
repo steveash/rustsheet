@@ -130,7 +130,7 @@ fn linear_search(
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// `=XMATCH(lookup_value, lookup_array, [match_mode], [search_mode])`
     ///
     /// Returns the relative position (1-based) of an item in a row or column array.

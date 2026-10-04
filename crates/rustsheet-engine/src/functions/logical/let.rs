@@ -90,7 +90,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_let(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
         if args.len() < 3 || args.len().is_multiple_of(2) {

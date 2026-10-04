@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── MMULT ─────────────────────────────────────────────────────────────────
 
     /// `=MMULT(array1, array2)`

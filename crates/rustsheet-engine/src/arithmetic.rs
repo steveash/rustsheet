@@ -76,7 +76,7 @@ fn is_one_over_an_odd_integer(y: f64) -> bool {
     (inverse - integer).abs() <= integer.abs() * TOLERANCE && integer % 2.0 != 0.0
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
         &mut self,

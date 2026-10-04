@@ -4,7 +4,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── CHOOSECOLS ────────────────────────────────────────────────────────────
 
     /// `=CHOOSECOLS(array, col_num1, [col_num2], ...)`

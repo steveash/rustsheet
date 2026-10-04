@@ -4,7 +4,7 @@ use crate::types::{Cell, MergedCell};
 
 use super::{common::UserModel, history::Diff};
 
-impl UserModel<'_> {
+impl UserModel {
     /// Merges the cells of `range` into a single merged cell anchored at its
     /// top-left corner. At most one cell of the range may have content: its
     /// content, link and style move to the anchor and the style is copied to

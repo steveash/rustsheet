@@ -6,7 +6,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn for_each_value<F>(
         &mut self,
         args: &[Node],

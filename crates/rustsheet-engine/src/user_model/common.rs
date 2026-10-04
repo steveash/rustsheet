@@ -209,8 +209,8 @@ fn update_style(old_value: &Style, style_path: &str, value: &str) -> Result<Styl
 /// # Ok(())
 /// # }
 /// ```
-pub struct UserModel<'a> {
-    pub(crate) model: Model<'a>,
+pub struct UserModel {
+    pub(crate) model: Model,
     history: History,
     send_queue: Vec<QueueDiffs>,
     pause_evaluation: bool,
@@ -237,13 +237,13 @@ pub(crate) fn selected_sheet_after_move(selected: u32, from: u32, to: u32) -> u3
     }
 }
 
-impl<'a> Debug for UserModel<'a> {
+impl Debug for UserModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserModel").finish()
     }
 }
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     /// Creates a user model from an existing model
     pub fn from_model(model: Model) -> UserModel {
         UserModel {
@@ -259,11 +259,11 @@ impl<'a> UserModel<'a> {
     /// See also:
     /// * [Model::new_empty]
     pub fn new_empty(
-        name: &'a str,
-        locale_id: &'a str,
-        timezone: &'a str,
-        language_id: &'a str,
-    ) -> Result<UserModel<'a>, String> {
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<UserModel, String> {
         let model = Model::new_empty(name, locale_id, timezone, language_id)?;
         Ok(UserModel {
             model,
@@ -277,7 +277,7 @@ impl<'a> UserModel<'a> {
     ///
     /// See also:
     /// * [Model::from_bytes]
-    pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<UserModel<'a>, String> {
+    pub fn from_bytes(s: &[u8], language_id: &str) -> Result<UserModel, String> {
         let model = Model::from_bytes(s, language_id)?;
         Ok(UserModel {
             model,
@@ -296,7 +296,7 @@ impl<'a> UserModel<'a> {
     }
 
     /// Returns the internal model
-    pub fn get_model(&self) -> &Model<'_> {
+    pub fn get_model(&self) -> &Model {
         &self.model
     }
 

@@ -3,7 +3,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn collect_sorted_values(
         &mut self,
         arg: &Node,

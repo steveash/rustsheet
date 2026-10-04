@@ -8,7 +8,7 @@ use crate::{cf_types::CfRuleInput, test::util::new_empty_model};
 //             Values below the mean: 10–50  (rows 1–5).
 const VALUES: [i32; 10] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
-fn model_with_values() -> crate::Model<'static> {
+fn model_with_values() -> crate::Model {
     let mut model = new_empty_model();
     for (i, &v) in VALUES.iter().enumerate() {
         model
@@ -33,7 +33,7 @@ fn below_average_rule() -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()

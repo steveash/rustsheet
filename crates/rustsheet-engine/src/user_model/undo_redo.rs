@@ -11,7 +11,7 @@ use crate::{
 use crate::user_model::common::selected_sheet_after_move;
 use crate::user_model::history::{Diff, DiffList};
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     pub(super) fn apply_undo_diff_list(&mut self, diff_list: &DiffList) -> Result<(), String> {
         let mut needs_evaluation = false;
         for diff in diff_list.iter().rev() {

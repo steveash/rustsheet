@@ -137,7 +137,7 @@ pub(crate) fn binary_search_descending_or_greater<T: Ord>(target: &T, array: &[T
     Some((n - r - 1) as i32)
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Returns an array with the list of cell values in the range
     pub(crate) fn prepare_array(
         &mut self,

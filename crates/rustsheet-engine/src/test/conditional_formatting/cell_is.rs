@@ -16,7 +16,7 @@ use crate::{
 //   row 7 → 64  (Threadripper 3990X)
 const CORES: [i32; 7] = [1, 2, 4, 8, 16, 32, 64];
 
-fn model_with_cores() -> crate::Model<'static> {
+fn model_with_cores() -> crate::Model {
     let mut model = new_empty_model();
     for (i, &v) in CORES.iter().enumerate() {
         model
@@ -37,7 +37,7 @@ fn cell_is(operator: ValueOperator, formula: &str, formula2: Option<&str>) -> Cf
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()

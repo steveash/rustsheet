@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── HSTACK ────────────────────────────────────────────────────────────────
 
     /// `=HSTACK(array1, [array2], ...)`

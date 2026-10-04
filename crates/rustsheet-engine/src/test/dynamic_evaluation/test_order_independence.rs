@@ -118,7 +118,7 @@ fn shuffled(cells: &[(String, String)], seed: u64) -> Vec<(String, String)> {
     result
 }
 
-pub(super) fn build(cells: &[(String, String)]) -> Model<'static> {
+pub(super) fn build(cells: &[(String, String)]) -> Model {
     let mut model = new_empty_model();
     for (reference, content) in cells {
         model._set(reference, content);

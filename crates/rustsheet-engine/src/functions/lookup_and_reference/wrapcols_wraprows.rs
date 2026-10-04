@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── WRAPCOLS ──────────────────────────────────────────────────────────────
 
     /// `=WRAPCOLS(vector, wrap_count, [pad_with])`

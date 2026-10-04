@@ -55,7 +55,7 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match s.trim().parse::<f64>() {
             Ok(f) => Some(f),

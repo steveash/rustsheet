@@ -34,7 +34,7 @@ pub trait Engine: Sync {
 pub struct RustSheetEngine;
 
 struct RustSheetEvaluated {
-    model: Model<'static>,
+    model: Model,
     names: Vec<String>,
 }
 

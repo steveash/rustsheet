@@ -5,7 +5,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // =POISSON.DIST(x, mean, cumulative)
     pub(crate) fn fn_poisson_dist(
         &mut self,

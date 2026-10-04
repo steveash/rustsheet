@@ -275,7 +275,7 @@ pub(crate) enum CriteriaFlavor {
 /// *IFS variants) match date-serial cells with date-string criteria.
 pub(crate) fn build_criteria<'a>(
     value: &'a CalcResult,
-    locale: &'a Locale,
+    locale: &'static Locale,
 ) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
     build_criteria_with(value, locale, CriteriaFlavor::Standard)
 }
@@ -295,7 +295,7 @@ pub(crate) fn normalize_database_criterion(text: &str) -> String {
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
 pub(crate) fn build_criteria_with<'a>(
     value: &'a CalcResult,
-    locale: &'a Locale,
+    locale: &'static Locale,
     flavor: CriteriaFlavor,
 ) -> Box<dyn Fn(&CalcResult) -> bool + 'a> {
     match value {

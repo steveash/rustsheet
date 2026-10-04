@@ -200,7 +200,7 @@ fn compute_ppmt(
 // All, except for rate are easily solvable in terms of the others.
 // In these formulas the payment (pmt) is normally negative
 
-impl<'a> Model<'a> {
+impl Model {
     fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,

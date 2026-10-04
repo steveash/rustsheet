@@ -129,7 +129,7 @@ fn cell_value_key(v: &crate::cell::CellValue) -> Option<String> {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Evaluates all conditional formatting rules for the workbook.
     ///
     /// Iterates every worksheet's CF rules in priority order (lowest priority number,

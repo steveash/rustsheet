@@ -21,7 +21,7 @@ pub struct SelectedView {
     pub left_column: i32,
 }
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     // The UI renders every row and column at a whole number of pixels
     // (the canvas rounds each size before drawing), so all the scroll and
     // visibility arithmetic in this module must accumulate the rounded

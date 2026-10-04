@@ -88,7 +88,7 @@ fn get_units_from_format_string(num_fmt: &str) -> Option<Units> {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     fn compute_cell_units(&self, cell_reference: &CellReferenceIndex) -> Option<Units> {
         let cell_style_res = &self.get_style_for_cell(
             cell_reference.sheet,
