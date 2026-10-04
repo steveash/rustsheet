@@ -45,6 +45,11 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   └──────────── (unblocked) ◀── blocked ◀──(3 failed review/CI rounds, or needs oracle)
 ```
 
+- **Unblocking is an agent's job** (decision 0013). The steward run checks every `blocked` task;
+  a worker whose lane has no ready task checks its lane's. If the blocker is gone (the capability
+  check passes, or the blocking task is `done`): set `status: todo`, delete the "Blocked because"
+  section, drop dependencies that stood only for the capability, run `make board`, remove the
+  resolved "Needs owner" entry and log it in `docs/status.md`. Land it in that run's PR.
 - Tasks live in `docs/tasks/<milestone>/T-XXXX-slug.md` (format: `task-format.md`).
 - A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`. There is one worker per
   lane, so claims don't race. Workers resume their lane's open branch or PR before starting new work.
@@ -93,7 +98,8 @@ A pending probe is better than a confident wrong implementation.
 | Eval regression found later | file a P0 task in the owning lane with the regressing case ids; bisect with `git bisect run make eval-check` |
 | Reviewer disagreement you believe is wrong | answer in the PR with evidence; if still blocked after 3 rounds, mark blocked and let the steward run decide |
 | Task turns out to be bigger than M | stop, commit the analysis to the task file, ask the planner to split it |
-| Missing capability (oracle, credentials, network) | mark blocked with the exact need; record it in `docs/status.md` under "Needs owner" |
+| Missing capability (oracle, credentials, network) | mark blocked with the exact need and the command that proves it is available (oracle: `rustsheet-oracle status` shows `excel-graph OK`); record it in `docs/status.md` under "Needs owner" |
+| A blocking capability is now available | unblock it (see "Unblocking" under Task lifecycle); never wait for the owner to edit task files |
 
 ## Scheduled routines (how the loop runs unattended)
 
