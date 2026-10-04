@@ -3,7 +3,7 @@ id: T-0928
 title: "EXPON.DIST cumulative: use -expm1 for small lambda*x (6 known failures)"
 milestone: M9
 lane: functions
-status: in-progress
+status: done
 priority: P3
 size: S
 depends_on: []
@@ -22,3 +22,6 @@ Cause: `exponential.rs` computes `1.0 - (-lambda*x).exp()` (catastrophic cancell
 
 ## Out of scope
 FISHERINV small-x (Excel itself is inexact there; needs oracle).
+
+## Outcome
+CDF now uses `-exp_m1`; all 6 EXPONDIST.xlsx known failures (incl. D37) fixed, 0 regressions (ironcalc-calc 1632 -> 1626).

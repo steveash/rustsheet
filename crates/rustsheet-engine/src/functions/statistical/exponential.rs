@@ -34,8 +34,8 @@ impl Model {
         }
 
         let result = if cumulative {
-            // CDF
-            1.0 - (-lambda * x).exp()
+            // CDF: expm1 avoids 1 - exp(-t) cancellation for tiny lambda*x (EXPONDIST.xlsx D15/D16)
+            -(-lambda * x).exp_m1()
         } else {
             // PDF
             lambda * (-lambda * x).exp()
