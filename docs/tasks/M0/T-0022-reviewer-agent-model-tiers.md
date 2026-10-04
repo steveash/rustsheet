@@ -3,7 +3,7 @@ id: T-0022
 title: "Run routine reviewer agents on Sonnet; keep Excel-fidelity and performance on Opus"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: S
 depends_on: []
