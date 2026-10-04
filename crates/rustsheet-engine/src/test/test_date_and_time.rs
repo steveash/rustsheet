@@ -133,8 +133,8 @@ fn test_year_booleans() {
 
     model.evaluate();
 
-    // We start counting from Dec 31, 1899 (serial 1)
-    assert_eq!(model._get_text("A1"), *"1899");
+    // Serial 1 is 1900-01-01
+    assert_eq!(model._get_text("A1"), *"1900");
     assert_eq!(model._get_text("A2"), *"#NUM!");
 }
 
@@ -146,8 +146,8 @@ fn test_month_booleans() {
 
     model.evaluate();
 
-    // We start counting from Dec 31, 1899 (serial 1)
-    assert_eq!(model._get_text("A1"), *"12");
+    // Serial 1 is 1900-01-01
+    assert_eq!(model._get_text("A1"), *"1");
     assert_eq!(model._get_text("A2"), *"#NUM!");
 }
 
@@ -159,8 +159,8 @@ fn test_day_booleans() {
 
     model.evaluate();
 
-    // We start counting from Dec 31, 1899 (serial 1)
-    assert_eq!(model._get_text("A1"), *"31");
+    // Serial 1 is 1900-01-01
+    assert_eq!(model._get_text("A1"), *"1");
     assert_eq!(model._get_text("A2"), *"#NUM!");
 }
 
@@ -177,8 +177,8 @@ fn test_day_small_serial() {
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("A2"), *"#NUM!");
-    // Excel thinks is Feb 29, 1900
-    assert_eq!(model._get_text("A3"), *"28");
+    // Excel's fictitious Feb 29, 1900 (probes/dates-and-blanks A3)
+    assert_eq!(model._get_text("A3"), *"29");
 
     // From now on everyone agrees
     assert_eq!(model._get_text("A4"), *"1");
@@ -234,24 +234,22 @@ fn test_date_early_dates() {
 
     model.evaluate();
 
-    // This is 1 in Excel, we agree with Google Docs
+    // Excel serials (probes/dates-and-blanks): 1900-01-01 is 1 and the fictitious
+    // 1900-02-29 is 60.
     assert_eq!(model._get_text("A1"), *"1/1/1900");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
-        Ok(CellValue::Number(2.0))
+        Ok(CellValue::Number(1.0))
     );
-
-    // 1900 was not a leap year, this is a bug in EXCEL
-    // This would be 60 in Excel
     assert_eq!(model._get_text("A2"), *"2/28/1900");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A2"),
+        Ok(CellValue::Number(59.0))
+    );
+    assert_eq!(
+        model.get_cell_value_by_ref("Sheet1!B2"),
         Ok(CellValue::Number(60.0))
     );
-
-    // This does not agree with Excel, instead of mistakenly allowing
-    // for Feb 29, it will auto-wrap to the next day after Feb 28.
-    assert_eq!(model._get_text("B2"), *"3/1/1900");
 
     // This agrees with Excel from he onward
     assert_eq!(model._get_text("A3"), *"3/1/1900");
@@ -863,4 +861,36 @@ fn test_second_function() {
     // Wrong argument count
     assert_eq!(model._get_text("A7"), *"#ERROR!");
     assert_eq!(model._get_text("A8"), *"#ERROR!");
+}
+
+#[test]
+fn test_month_year_and_format_of_serial_60() {
+    let mut model = new_empty_model();
+    model._set("A1", "=MONTH(60)");
+    model._set("A2", "=YEAR(60)");
+    model._set("A3", "=DAY(59)");
+    model._set("A4", "=DATE(1900,2,29)");
+    model._set("A5", "=DATE(1900,3,0)");
+    model.evaluate();
+
+    // Excel's fictitious 1900-02-29 (probes/dates-and-blanks A1, A3)
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"1900");
+    assert_eq!(model._get_text("A3"), *"28");
+    assert_eq!(model._get_text("A4"), *"2/29/1900");
+    assert_eq!(model._get_text("A5"), *"2/29/1900");
+}
+
+#[test]
+fn test_eomonth_early_1900_serials() {
+    let mut model = new_empty_model();
+    model._set("A1", "=EOMONTH(1,0)");
+    model._set("A2", "=EOMONTH(31,0)");
+    model._set("A3", "=EOMONTH(61,0)");
+    model.evaluate();
+
+    // End of January 1900 is serial 31 in Excel's numbering (probes/dates-early-1900 A8)
+    assert_eq!(model._get_text("A1"), *"31");
+    assert_eq!(model._get_text("A2"), *"31");
+    assert_eq!(model._get_text("A3"), *"91");
 }
