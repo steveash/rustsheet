@@ -19,17 +19,14 @@ Since 2026-10-03: 13 PRs merged to `main` (T-0910/0912/0114/0115/0914/0111/0911/
 0 reverted; 0 blocked. CI on `main` (dc8dba7): green. Open PRs: #13 (T-0901 blocked, draft) and #11 (T-0904 blocked,
 draft), both docs-only drafts from other sessions, >24 h; #11 is superseded by T-0913 (merged) and can be closed by the owner.
 Ready queues: functions 9 (no triage needed), engine/api/harness ≥2 each (no planning needed). Upstream IronCalc: nothing new
-since 9b1ae3fd. Oracle credentials absent, so no `fill` run. Spot-audit not run this session.
+since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pending T-0009 (probes) and T-0004 (smoke, calibration). Spot-audit not run this session.
 
 **Critical lane:** api, engine, harness
 
 (Ordered list read by the critical-lane worker. M1 exit needs API v0 (T-0101 → T-0102…) and engine
-parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is still pending.)
+parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-0004) are pending.)
 
 ## Needs owner
-- Excel oracle credentials: owner has a Microsoft 365 Business tenant (Graph-compatible). Pending:
-  dedicated SharePoint site + app registration (`Sites.Selected`) + four `RUSTSHEET_ORACLE_*`
-  environment variables (step-by-step guide in `docs/architecture/oracle.md`). Unblocks T-0004 and its dependents.
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 - Routines are enabled with the repo attached, but their prompts are the pre-review drafts: replace each
   routine's prompt with the current text in `docs/process/routines.md`.
@@ -75,3 +72,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is stil
 - 2026-10-04 — T-0928: EXPON.DIST cumulative uses -expm1; ironcalc-calc known failures 1632 -> 1626 (6 fixed), 0 regressions
 - 2026-10-04 — T-0930: API edit follow-ups (diff split into edit/diff.rs, sheet-position map, error classifier next to RefError, engine take/restore tests, evaluation counter, bench moved); eval 0 regressions, 0 fixed.
 - 2026-10-04 — T-0926: GAMMALN/GAMMALN.PRECISE via libm lgamma; ironcalc-calc known failures 1626 -> 1578 (48 fixed), 0 regressions; 12 cells need oracle
+- 2026-10-04 — T-0004 (partial): excel-graph oracle live (app-only, `Sites.Selected` site); fixed site drive addressing; T-0004, T-0106..T-0110, T-0203 unblocked.

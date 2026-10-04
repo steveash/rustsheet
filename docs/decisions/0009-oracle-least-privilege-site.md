@@ -20,3 +20,5 @@
   - A leaked secret reaches only the scratch site.
   - Whether Excel workbook endpoints accept `Sites.Selected` app-only tokens is unverified; T-0004
     measures it, and falls back to delegated mode if they don't.
+- **Update (2026-10-04):** they do; a live app-only round trip succeeded
+  (`docs/architecture/oracle.md`, open question 3).

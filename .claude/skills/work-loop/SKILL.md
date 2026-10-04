@@ -14,7 +14,11 @@ Read `docs/process/agent-workflow.md` once per session if you have not.
    per lane.
 
 ## 1. Pick
-`make next-task LANE=<lane>`. If none is ready: for `functions`, launch the `gap-triager` agent;
+`make next-task LANE=<lane>`. If none is ready, first check the lane's blocked tasks
+(`make tasks LANE=<lane> STATUS=blocked`): if a blocker is gone (e.g. `rustsheet-oracle status`
+now shows `excel-graph OK`), unblock it per the "Unblocking is an agent's job" rule under Task lifecycle in
+`docs/process/agent-workflow.md` and
+pick again. Otherwise: for `functions`, launch the `gap-triager` agent;
 otherwise launch the `planner` agent for the current milestone (docs/milestones.md). Then pick
 again. If still nothing, write a short note in `docs/status.md` and stop.
 

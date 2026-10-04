@@ -3,10 +3,10 @@ id: T-0109
 title: "Generate and oracle-fill suite gen-m1 (operators and references only)"
 milestone: M1
 lane: harness
-status: blocked
+status: todo
 priority: P1
 size: S
-depends_on: [T-0004, T-0117]
+depends_on: [T-0117]
 ---
 
 ## Goal
@@ -21,6 +21,3 @@ depends_on: [T-0004, T-0117]
 
 ## Out of scope
 -
-
-## Blocked because
-Needs the Excel oracle (T-0004) — owner must provide Graph credentials (docs/architecture/oracle.md).

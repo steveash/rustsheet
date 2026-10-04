@@ -3,10 +3,10 @@ id: T-0110
 title: "Near-zero snapping in final addition/subtraction"
 milestone: M1
 lane: engine
-status: blocked
+status: todo
 priority: P2
 size: S
-depends_on: [T-0004]
+depends_on: [T-0009]
 ---
 
 ## Goal
@@ -21,6 +21,3 @@ Probe cells A2–A4, A15.
 
 ## Out of scope
 -
-
-## Blocked because
-Needs the Excel oracle (T-0004) — owner must provide Graph credentials (docs/architecture/oracle.md).

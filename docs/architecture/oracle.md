@@ -1,5 +1,8 @@
 # Excel oracle
 
+**In use:** `excel-graph` is the oracle for now (real Excel, verified live 2026-10-04). The other
+backends below are not set up.
+
 The oracle answers "what does Microsoft 365 Excel compute for this workbook?" Every backend
 returns a **recalculated xlsx**. Values are extracted with `rustsheet-eval snapshot`, the single
 parser, with full 17-digit precision, and stored as `*.oracle.json` sidecars next to the case.
@@ -138,5 +141,6 @@ Variables read by the tool:
 1. Does Graph persist full-precision values in the downloaded file after `calculate(FullRebuild)`?
    This needs measuring; we never rely on Graph's JSON values.
 2. How long is the delay before the downloaded file reflects the recalculation (eTag polling)?
-3. Does app-only auth work for workbook endpoints in this tenant?
+3. Does app-only auth work for workbook endpoints in this tenant? **Yes** (2026-10-04, `Sites.Selected`
+   on a dedicated site; a full upload → calculate → download round trip takes ~11 s).
 4. Calibration: on how many ironcalc-calc cells do Graph and cached values disagree?

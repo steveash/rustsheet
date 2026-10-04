@@ -37,5 +37,6 @@ PR link, eval delta, follow-ups.
 Rules:
 - One task produces exactly one PR. If it needs more, split it.
 - Acceptance criteria must be checkable by a reviewer agent without guessing.
-- `blocked` tasks get a `## Blocked because` section naming the precise need.
+- `blocked` tasks get a `## Blocked because` section naming the precise need and, for a missing
+  capability, the command that proves it is available (decision 0013).
 - Ids are sequential; take the next free id (`python3 scripts/tasks.py list | sort`).

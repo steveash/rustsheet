@@ -3,10 +3,10 @@ id: T-0108
 title: "1900 leap-year bug in DATE and serial conversions"
 milestone: M1
 lane: engine
-status: blocked
+status: todo
 priority: P1
 size: S
-depends_on: [T-0004]
+depends_on: [T-0009]
 ---
 
 ## Goal
@@ -21,6 +21,3 @@ docs/excel-semantics/dates.md.
 
 ## Out of scope
 -
-
-## Blocked because
-Needs the Excel oracle (T-0004) — owner must provide Graph credentials (docs/architecture/oracle.md).
