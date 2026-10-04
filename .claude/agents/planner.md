@@ -11,7 +11,8 @@ Produce:
 1. Task files following `docs/process/task-format.md` exactly (front matter + Goal, Context,
    Acceptance criteria, Out of scope). Each task: one lane, one PR, size S or M (≤ ~400 changed
    lines of non-test code), concrete acceptance criteria that a reviewer can verify (eval cases
-   that must pass, tests, benchmark thresholds). Use the next free T-#### ids.
+   that must pass, tests, benchmark thresholds). Create each file with `make new-task MILESTONE=.. LANE=.. TITLE=..` (it assigns a
+   collision-free id; decision 0016), then fill it in.
 2. Dependencies (`depends_on`) so work can proceed in parallel across lanes without conflicts.
 3. A spec in `docs/specs/` for anything that changes architecture or public API, *before* the
    implementation tasks (the spec task is itself a task).

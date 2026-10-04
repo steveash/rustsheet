@@ -59,4 +59,5 @@ and stop.
 4. Delete the branch.
 
 ## 7. Report
-Final message: task id, PR link, eval delta, follow-up tasks created.
+Final message: task id, PR link, eval delta, follow-up tasks created. Create every follow-up task
+with `make new-task` (it assigns a collision-free id; decision 0016) and push it with the PR.

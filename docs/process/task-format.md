@@ -39,4 +39,8 @@ Rules:
 - Acceptance criteria must be checkable by a reviewer agent without guessing.
 - `blocked` tasks get a `## Blocked because` section naming the precise need and, for a missing
   capability, the command that proves it is available (decision 0013).
-- Ids are sequential; take the next free id (`python3 scripts/tasks.py list | sort`).
+- Create tasks with `make new-task MILESTONE=.. LANE=.. TITLE=..`, never by picking an id by hand.
+  It takes the next id after the highest one used in the milestone's block, counting the tasks on
+  every pushed `origin/*` branch, so parallel sessions cannot collide (decision 0016). Fill in the
+  `TODO(fill)` lines (`tasks.py validate` rejects them), then commit and push the file right away:
+  the push is the claim.

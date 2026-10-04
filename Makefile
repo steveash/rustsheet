@@ -61,6 +61,7 @@ hygiene: ## Lint-debt, file-size, duplication, tasks and governance ratchets
 	$(PY) scripts/check_file_size.py
 	$(PY) scripts/check_duplication.py
 	$(PY) scripts/tasks.py validate
+	$(PY) -m unittest discover -s scripts -p 'test_*.py' -q
 
 deny: ## License/advisory/source policy (needs cargo-deny)
 	$(CARGO) deny check
@@ -81,12 +82,15 @@ check: fmt-check clippy test eval-check py-check py-bindings hygiene ## Everythi
 ci: check deny machete typos
 
 # ---------------------------------------------------------------- Tasks
-.PHONY: tasks next-task board
+.PHONY: tasks next-task board new-task
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
 next-task: ## Highest-priority ready task: make next-task LANE=functions
 	$(PY) scripts/tasks.py next $(if $(LANE),--lane $(LANE))
+
+new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 LANE=engine TITLE="..." [PRIORITY=P1] [SIZE=S] (fetches origin)
+	$(PY) scripts/tasks.py new --milestone "$(MILESTONE)" --lane "$(LANE)" --title "$(TITLE)" $(if $(PRIORITY),--priority $(PRIORITY)) $(if $(SIZE),--size $(SIZE))
 
 board: ## Regenerate docs/tasks/BOARD.md
 	$(PY) scripts/tasks.py board
