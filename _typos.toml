@@ -41,3 +41,6 @@ startd = "startd"
 # Upstream ironcalc test workbook name (ROW_COLUM.xlsx), cited in docs
 COLUM = "COLUM"
 endd = "endd"
+# Data identifiers cited in docs: a defined-name prefix in poi/46535.xlsx and a probe test string
+HSI = "HSI"
+abd = "abd"
