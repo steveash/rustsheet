@@ -226,7 +226,7 @@ fn sheet_errors_are_typed() {
         Err(EditError::SheetName(_))
     ));
     assert!(matches!(
-        wb.edit(|tx| tx.set(SheetId::new(999).into_cell(), 1.0)),
+        wb.edit(|tx| tx.set(CellRef::new(SheetId::new(999), 0, 0).unwrap(), 1.0)),
         Err(EditError::Ref(RefError::UnknownSheet(_)))
     ));
     assert!(matches!(
@@ -234,15 +234,6 @@ fn sheet_errors_are_typed() {
         Err(EditError::Ref(RefError::Unsupported))
     ));
     assert!(matches!(wb.set("Nope!A1", 1.0), Err(EditError::Ref(_))));
-}
-
-trait IntoCell {
-    fn into_cell(self) -> CellRef;
-}
-impl IntoCell for SheetId {
-    fn into_cell(self) -> CellRef {
-        CellRef::new(self, 0, 0).unwrap()
-    }
 }
 
 #[test]

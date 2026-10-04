@@ -537,17 +537,7 @@ impl Model {
     ///   * The sheet does not exists
     ///   * It is the last sheet
     pub fn delete_sheet(&mut self, sheet_index: u32) -> Result<(), String> {
-        let worksheets = &self.workbook.worksheets;
-        let sheet_count = worksheets.len() as u32;
-        if sheet_count == 1 {
-            return Err("Cannot delete only sheet".to_string());
-        };
-        if sheet_index >= sheet_count {
-            return Err("Sheet index too large".to_string());
-        };
-        self.workbook.worksheets.remove(sheet_index as usize);
-        self.reset_parsed_structures();
-        Ok(())
+        self.take_sheet(sheet_index).map(drop)
     }
 
     /// Moves the worksheet at `sheet_index` to `new_index`, shifting the other
