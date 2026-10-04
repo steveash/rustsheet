@@ -130,6 +130,16 @@ mod tests {
     }
 
     #[test]
+    fn nan_and_series_cf_boundary() {
+        assert!(erf(f64::NAN).is_nan());
+        assert!(erfc(f64::NAN).is_nan());
+        // erf/erfc switch algorithm at |x| = 1; both sides must agree with erf + erfc = 1.
+        for x in [0.999_999, 1.0, 1.000_001] {
+            assert!((erf(x) + erfc(x) - 1.0).abs() < 4.0 * f64::EPSILON);
+        }
+    }
+
+    #[test]
     fn normal_kernels() {
         close(normal_cdf(1.0, 0.0, 1.0), 0.841_344_746_068_542_9);
         close(normal_pdf(0.0, 0.0, 1.0), 0.398_942_280_401_432_7);

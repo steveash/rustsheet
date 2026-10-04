@@ -43,6 +43,8 @@ impl Model {
         let result = if cumulative {
             normal_cdf(x.ln(), mean, std_dev)
         } else {
+            // Same kernel as `normal_pdf` with the extra `x` factor; this order reproduces
+            // the cached last digits in LOGNORM.xlsx.
             let d = (x.ln() - mean) / std_dev;
             (-0.5 * d * d).exp() / (x * SQRT_2PI * std_dev)
         };
