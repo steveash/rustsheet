@@ -30,8 +30,9 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- Run at most **2 concurrent workers**: `functions` plus the critical-lane worker, which takes the
-  first ready lane from the `**Critical lane:**` list in `docs/status.md` (allowlist and rules in
+- Run at most **2 concurrent workers**, one per model tier (decision 0018): the sonnet worker
+  takes `tier: sonnet` tasks and the opus worker `tier: opus` tasks (handed-off ones first). Both
+  walk the `**Critical lane:**` list in `docs/status.md`, then `functions` (allowlist and rules in
   `routines.md`).
 - Run at most one task in flight per lane.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.

@@ -6,6 +6,7 @@ lane: harness
 status: todo
 priority: P1
 size: S
+tier: sonnet
 depends_on: [T-0117]
 ---
 

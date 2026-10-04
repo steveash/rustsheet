@@ -2,13 +2,13 @@
 """Task board for autonomous agents. Tasks are markdown files with front matter in docs/tasks/.
 
   scripts/tasks.py list [--lane L] [--status S] [--milestone M]
-  scripts/tasks.py next --lane L         # highest-priority ready task (deps done) in a lane
+  scripts/tasks.py next --lane L [--tier T]  # highest-priority ready task (deps done); handoffs first
   scripts/tasks.py validate              # schema + dependency checks (CI)
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
 
-Front matter keys: id, title, milestone, lane, status, priority, size, depends_on, spec.
+Front matter keys: id, title, milestone, lane, status, priority, size, tier, depends_on, spec.
 See docs/process/task-format.md.
 """
 
@@ -26,6 +26,8 @@ STATUSES = ["todo", "in-progress", "blocked", "done", "dropped"]
 LANES = ["harness", "engine", "functions", "api", "perf", "quality", "research"]
 PRIORITIES = ["P0", "P1", "P2", "P3"]
 SIZES = ["S", "M", "L"]
+TIERS = ["sonnet", "opus"]  # model tier that works the task (decision 0018)
+OPEN = ("todo", "in-progress", "blocked")
 MILESTONE = re.compile(r"^M\d+$")
 TASK_FILE = re.compile(r"(?:^|/)(T-\d{4})-[^/]*\.md$")
 
@@ -79,6 +81,8 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
             errors.append(f"{where}: missing title")
+        if t.get("status") in OPEN and t.get("tier") not in TIERS:
+            errors.append(f"{where}: tier={t.get('tier')!r} not in {TIERS} (open tasks need a tier)")
         if "TODO(fill)" in path_of(t).read_text():
             errors.append(f"{where}: template placeholders `TODO(fill)` left in the task file")
         if t.get("size") == "L" and t.get("status") in ("todo", "in-progress"):
@@ -151,6 +155,7 @@ lane: {lane}
 status: todo
 priority: {priority}
 size: {size}
+tier: {tier}
 depends_on: []
 ---
 
@@ -172,22 +177,27 @@ TODO(fill): why; failing case ids; semantics notes; code paths.
 def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
     milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
-    priority, size = arg("--priority") or "P2", arg("--size") or "S"
+    priority, size, tier = arg("--priority") or "P2", arg("--size") or "S", arg("--tier") or "opus"
     if not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and title) or "\n" in title:
         print("usage: tasks.py new --milestone M<n> --lane <lane> --title <one-line title> "
               "[--priority P2] [--size S] [--no-fetch]")
         return 2
-    if priority not in PRIORITIES or size not in SIZES or size == "L":
-        print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks)")
+    if priority not in PRIORITIES or size not in SIZES or size == "L" or tier not in TIERS:
+        print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks); tier one of {TIERS}")
         return 2
     taken = {str(t["id"]) for t in tasks} | git_task_ids(fetch)
     tid = next_id(milestone, tasks, taken)
     path = TASKS / milestone / f"{tid}-{slug(title)}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(TEMPLATE.format(id=tid, title=title.replace('"', "'"), milestone=milestone,
-                                    lane=lane, priority=priority, size=size))
+                                    lane=lane, priority=priority, size=size, tier=tier))
     print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
     return 0
+
+
+def handed_off(t: dict[str, object]) -> bool:
+    """A cheaper run escalated this task (work-loop skill: Handoff); the opus worker takes it first."""
+    return "\n## Handoff" in path_of(t).read_text()
 
 
 def arg(name: str) -> str | None:
@@ -207,9 +217,20 @@ def main() -> int:
     if cmd == "new":
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
     if cmd == "next":
-        lane = arg("--lane")
-        cands = [t for t in tasks if ready(t, by_id) and (lane is None or t.get("lane") == lane)]
-        cands.sort(key=lambda t: (str(t.get("milestone"))[1:].zfill(3), str(t.get("priority")), str(t["id"])))
+        lane, tier = arg("--lane"), arg("--tier")
+        cands = [
+            t
+            for t in tasks
+            if ready(t, by_id) and (lane is None or t.get("lane") == lane) and (tier is None or t.get("tier") == tier)
+        ]
+        cands.sort(
+            key=lambda t: (
+                not handed_off(t),
+                str(t.get("milestone"))[1:].zfill(3),
+                str(t.get("priority")),
+                str(t["id"]),
+            )
+        )
         if not cands:
             print("no ready task")
             return 1
@@ -235,7 +256,10 @@ def main() -> int:
         if (lane and t.get("lane") != lane) or (status and t.get("status") != status) or (ms and t.get("milestone") != ms):
             continue
         mark = "*" if ready(t, by_id) else " "
-        print(f"{mark} {t['id']} [{t.get('status'):<11}] {t.get('milestone'):<4} {t.get('lane'):<9} {t.get('priority')} {t.get('title')}")
+        print(
+            f"{mark} {t['id']} [{t.get('status'):<11}] {t.get('milestone'):<4} {t.get('lane'):<9} "
+            f"{t.get('priority')} {str(t.get('tier', '-')):<6} {t.get('title')}"
+        )
     return 0
 
 

@@ -84,6 +84,48 @@ class NewTask(unittest.TestCase):
             self.assertEqual((code, files), (2, []), argv)
 
 
+def write_task(root: Path, tid: str, status: str = "todo", tier: str | None = "opus", body: str = "") -> Path:
+    path = root / "docs/tasks/M0" / f"{tid}-x.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tier_line = f"tier: {tier}\n" if tier else ""
+    path.write_text(
+        f"---\nid: {tid}\ntitle: \"x\"\nmilestone: M0\nlane: harness\nstatus: {status}\npriority: P1\n"
+        f"size: S\n{tier_line}depends_on: []\n---\n{body}"
+    )
+    return path
+
+
+class Tiers(unittest.TestCase):
+    def test_open_tasks_need_a_valid_tier_done_ones_do_not(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root):
+                parsed = [
+                    tasks.parse(write_task(root, "T-0001", tier=None)),
+                    tasks.parse(write_task(root, "T-0002", tier="haiku")),
+                    tasks.parse(write_task(root, "T-0003", status="done", tier=None)),
+                    tasks.parse(write_task(root, "T-0004", tier="sonnet")),
+                ]
+                errors = tasks.validate(parsed)
+        self.assertEqual(sum("tier=" in e for e in errors), 2)
+        self.assertTrue(any("T-0001" in e for e in errors) and any("T-0002" in e for e in errors))
+
+    def test_next_filters_by_tier_and_takes_handoffs_first(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="opus")
+            write_task(root, "T-0002", tier="opus", body="\n## Handoff\nsonnet run stuck on X\n")
+            write_task(root, "T-0003", tier="sonnet")
+            out = []
+            for tier in ("opus", "sonnet"):
+                with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                        mock.patch.object(tasks.sys, "argv", ["tasks.py", "next", "--tier", tier]), \
+                        mock.patch("builtins.print") as printed:
+                    tasks.main()
+                out.append(printed.call_args[0][0].split()[0])
+        self.assertEqual(out, ["T-0002", "T-0003"])
+
+
 class Slug(unittest.TestCase):
     def test_slug(self) -> None:
         self.assertEqual(tasks.slug("Parser: bound `nesting` depth!"), "parser-bound-nesting-depth")
