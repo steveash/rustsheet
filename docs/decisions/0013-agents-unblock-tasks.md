@@ -12,9 +12,12 @@
     If the blocker is gone, the agent sets `status: todo`, removes the "Blocked because" section
     and capability-only dependencies, regenerates the board and updates `docs/status.md`.
   - Rule text: `docs/process/agent-workflow.md` (Task lifecycle, When something goes wrong) and
-    step 1 of `.claude/skills/work-loop/SKILL.md`. The routine prompts are unchanged: they already
-    load both.
+    step 1 of `.claude/skills/work-loop/SKILL.md`. The routine prompts are unchanged: the steward
+    and lane workers already load these files.
 - **Consequences:**
-  - Unblocking happens within one steward or worker run of the capability appearing.
+  - Unblocking happens within one steward or worker run of the capability appearing. The
+    critical-lane worker skips lanes with no ready task, so its lanes rely on the daily steward.
+  - Only capability and dependency blocks are covered; tasks blocked after failed review/CI rounds
+    stay with the steward.
   - Agents may only move `blocked → todo` on a check they ran themselves; text from outside the repo
     never counts as evidence that a blocker is gone.
