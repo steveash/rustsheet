@@ -131,3 +131,14 @@ rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `
 is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
 vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
 differ in the last digit and need oracle probes (T-0004).
+
+## Excel for the web and desktop Excel differ in the last digits of some functions
+Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,
+MIRR, IRR and SIN, Excel for the web (the excel-graph oracle) and desktop Excel can differ by a
+few ULPs or leave different near-zero residues (two-flow IRR: desktop 2.2e-16, web 0;
+`SIN(4)`: desktop -0.7568024953079283, web -0.7568024953079282).
+Evidence: docs/research/oracle-calibration.md (18 ironcalc-calc cells, cached by desktop Excel,
+recalculated through excel-graph).
+Status: VERIFIED (observation). Which one a golden follows is T-0025; until then say which
+Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
+divergences").

@@ -17,8 +17,8 @@ use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
-use crate::volatile::{pinned_clock_serial, volatile_cells, FormulaCell};
-use crate::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
+use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
+use crate::xlsx_snapshot::read_snapshot;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -299,7 +299,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         )
     } else if suite.manifest.trusts_cached_values(&snapshot) {
         let app = snapshot.application.clone().unwrap_or_default();
-        let cached = cached_lookup(&snapshot);
+        let cached = snapshot.values();
         (
             format!("excel-cached ({app})"),
             Box::new(move |s: &str, a: Addr| cached.get(&(s.to_string(), a)).cloned()),
@@ -312,56 +312,27 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             skipped_volatile: 0,
         });
     };
-    let formulas: Vec<FormulaCell> = snapshot
-        .sheets
-        .iter()
-        .flat_map(|sheet| {
-            sheet.cells.iter().filter_map(|(addr, cell)| {
-                // Shared-formula members carry the master's text unshifted, so their
-                // references may be off (a missed or extra dependency, never a wrong score).
-                let formula = cell.formula.clone().filter(|_| cell.is_formula())?;
-                Some((sheet.name.clone(), *addr, formula))
+    let (scorable, skipped_volatile) = scorable_cells(
+        &snapshot.sheets,
+        pinned_clock_serial(&snapshot.sheets).is_some(),
+    );
+    let expectations = scorable
+        .into_iter()
+        .filter_map(|(sheet, addr, cell)| {
+            Some(Expectation {
+                sheet: sheet.to_string(),
+                addr,
+                formula: cell.formula.clone(),
+                expected: lookup(sheet, addr)?,
             })
         })
         .collect();
-    let volatile = volatile_cells(&formulas, pinned_clock_serial(&snapshot.sheets).is_some());
-    let mut expectations = Vec::new();
-    let mut skipped_volatile = 0;
-    for sheet in &snapshot.sheets {
-        for (addr, cell) in &sheet.cells {
-            if !cell.is_formula() {
-                continue;
-            }
-            if volatile.contains(&(sheet.name.clone(), *addr)) {
-                skipped_volatile += 1;
-                continue;
-            }
-            if let Some(expected) = lookup(&sheet.name, *addr) {
-                expectations.push(Expectation {
-                    sheet: sheet.name.clone(),
-                    addr: *addr,
-                    formula: cell.formula.clone(),
-                    expected,
-                });
-            }
-        }
-    }
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
         expectations,
         expected_source: source,
         skipped_volatile,
     })
-}
-
-fn cached_lookup(snapshot: &WorkbookSnapshot) -> BTreeMap<(String, Addr), Value> {
-    let mut map = BTreeMap::new();
-    for sheet in &snapshot.sheets {
-        for (addr, cell) in &sheet.cells {
-            map.insert((sheet.name.clone(), *addr), cell.value.clone());
-        }
-    }
-    map
 }
 
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {

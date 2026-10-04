@@ -20,12 +20,13 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
+use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
-use rustsheet_eval::xlsx_snapshot::read_snapshot;
+use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
 #[command(
@@ -100,6 +101,12 @@ enum Cmd {
     /// and, for xlsx cases, what an oracle fill needs to know (tools call this instead of
     /// re-implementing discovery).
     Cases { suite: String },
+    /// Oracle calibration: compare an Excel-authored xlsx's cached values with the same
+    /// workbook recalculated by an oracle backend; prints per-cell verdicts as JSON.
+    Compare {
+        cached: PathBuf,
+        recalculated: PathBuf,
+    },
 }
 
 /// One line of `rustsheet-eval cases`.
@@ -136,10 +143,7 @@ fn cmd_cases(root: &Path, name: &str) -> Result<ExitCode> {
             unreadable: None,
         };
         if xlsx {
-            match std::fs::read(&listing.path)
-                .map_err(anyhow::Error::from)
-                .and_then(|b| read_snapshot(&b).map_err(anyhow::Error::from))
-            {
+            match load_snapshot(&listing.path) {
                 Ok(snap) => {
                     listing.formula_cells = Some(
                         snap.sheets
@@ -322,12 +326,24 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn load_snapshot(path: &Path) -> Result<WorkbookSnapshot> {
+    let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
+    Ok(read_snapshot(&bytes)?)
+}
+
 fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
     if let Cmd::Snapshot { path } = &cli.cmd {
-        let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
-        let snapshot = read_snapshot(&bytes)?;
-        println!("{}", serde_json::to_string_pretty(&snapshot)?);
+        println!("{}", serde_json::to_string_pretty(&load_snapshot(path)?)?);
+        return Ok(ExitCode::SUCCESS);
+    }
+    if let Cmd::Compare {
+        cached,
+        recalculated,
+    } = &cli.cmd
+    {
+        let comparison = compare_snapshots(&load_snapshot(cached)?, &load_snapshot(recalculated)?);
+        println!("{}", serde_json::to_string(&comparison)?);
         return Ok(ExitCode::SUCCESS);
     }
     let root = find_root(cli.root)?;
@@ -393,7 +409,7 @@ fn run() -> Result<ExitCode> {
         } => cmd_check(&root, &sel, Some(allow_regressions)),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
         Cmd::Cases { suite } => cmd_cases(&root, &suite),
-        Cmd::Snapshot { .. } => unreachable!("handled above"),
+        Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
     }
 }
 

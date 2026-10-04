@@ -30,6 +30,7 @@ import re
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -82,12 +83,17 @@ CELLS = (
     CanaryCell("A3", "ROUND(2.675,2)", -1, "2.68", _number(lambda v: v == 2.68)),
     # Bit-exact: also proves the saved file keeps all 17 significant digits.
     CanaryCell("A4", "SQRT(2)", 0, repr(math.sqrt(2)), _number(lambda v: v == math.sqrt(2))),
+    # The oracle must calculate as en-US (it follows the SharePoint site's regional settings):
+    # month-first date text and a dot decimal separator. A day-first Excel reads "1/2/2001" as
+    # 1 Feb 2001 (36923); the ironcalc workbooks were saved by one (oracle-calibration.md).
+    CanaryCell("A5", 'DATEVALUE("1/2/2001")', -2, "36893 (2 Jan 2001)", _number(lambda v: v == 36893)),
+    CanaryCell("A6", 'VALUE("1.5")', -3, "1.5", _number(lambda v: v == 1.5)),
 )
 
 
 def _sheet_xml(namespace: str) -> str:
     rows = "".join(
-        f'<row r="{i}"><c r="{c.a1}"><f>{c.formula}</f><v>{c.poison}</v></c></row>'
+        f'<row r="{i}"><c r="{c.a1}"><f>{escape(c.formula, quote=False)}</f><v>{c.poison}</v></c></row>'
         for i, c in enumerate(CELLS, start=1)
     )
     return (

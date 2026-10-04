@@ -34,10 +34,11 @@ CI: `.github/workflows/oracle.yml` (manual dispatch → PR with new sidecars).
 
 **Every oracle result is canary-verified.** Before upload, `oracle/canary.py` appends a sheet
 `RustSheetCanary` to *each* workbook. Its formulas (`=1+1`, `=RAND()`, `=ROUND(2.675,2)`,
-`=SQRT(2)`) carry deliberately wrong cached values (999, 7, -1, 0). After the round trip the
-canary must hold Excel's answers (2, a value in [0, 1), 2.68, 1.4142135623730951 bit-exact); if
-any planted value survives, *that workbook* was not recalculated and its results are refused
-(`fill` writes no sidecar, `recalc` errors). The canary sheet is stripped before values reach a
+`=SQRT(2)`, plus the en-US locale checks `=DATEVALUE("1/2/2001")` and `=VALUE("1.5")`) carry
+deliberately wrong cached values. After the round trip the canary must hold Excel's answers (2,
+a value in [0, 1), 2.68, 1.4142135623730951 bit-exact, 36893, 1.5); if any planted value
+survives, *that workbook* was not recalculated and its results are refused (`fill` writes no
+sidecar, `recalc` errors). The canary sheet is stripped before values reach a
 sidecar, and cached results in `eval/.cache/oracle/` are re-verified on every read. It rides in
 the same workbook on purpose: it costs no extra round trip, and it proves recalculation per
 workbook rather than "the service worked once today".
@@ -91,6 +92,28 @@ Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downlo
 `Application = Microsoft Excel Online, AppVersion 16.0300`, Excel rewrites `calcId` to 191028,
 `RAND()` differs on every run, `NOW()` is the run's UTC time, and `ROUND(2.675,2)` is 2.68
 (binary-float rounding gives 2.67). `INFO("release")` returns `#VALUE!` (Excel for the web).
+
+## Known divergences: where the oracle is not desktop Excel
+
+Calibration against 206 desktop-Excel-saved ironcalc workbooks (71,765 cells, 99.96% bit-exact;
+docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs (which one
+decides goldens when they disagree: T-0025):
+
+- **References to missing sheets.** `INDIRECT("NoSuchSheet!A1")` is a reference to an empty cell
+  in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never
+  use oracle values as evidence here (docs/excel-semantics/lookup.md).
+- **Last-digit floating point.** In ATAN2, IMARGUMENT, IMREAL/IMSQRT, IMCOS, IMTAN, ERFC,
+  BESSELJ/BESSELY, MIRR, IRR and SIN, 18 cells differ from desktop by a few ULPs or by near-zero
+  residue (2.2e-16 vs 0). Both are "Excel"; for ULP-sensitive work on these functions, prefer
+  desktop evidence (Excel-authored workbooks) and say which one a golden comes from.
+- **TEXT formats and CELL (poi, T-0019).** Lowercase-`e` scientific formats give `#VALUE!` on the
+  web where Mac Excel cached strings; an elapsed token after a plain `s` gives different hours;
+  `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)
+  and refuses `CELL("width")` workbooks; docs/excel-semantics/number-formats.md lists them as
+  CONFLICTING (decision 0019).
+- **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
+  settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")` = 36893, `VALUE("1.5")` = 1.5);
+  if the site is changed, every fill fails rather than returning another locale's answers.
 
 ## Owner setup — Microsoft Graph (one time, ~20 minutes)
 
@@ -213,4 +236,7 @@ Variables read by the tool:
    takes ~10 s. But see "Is Excel really calculating?": without an edit Excel may never save.
 3. Does app-only auth work for workbook endpoints in this tenant? **Yes** (2026-10-04, `Sites.Selected`
    on a dedicated site), although Microsoft documents those endpoints as delegated-only.
-4. Calibration: on how many ironcalc-calc cells do Graph and cached values disagree?
+4. Calibration: on how many ironcalc-calc cells do Graph and cached values disagree? **29 of
+   71,765** (2026-10-04): 7 are day-first date text in the workbooks' authoring Excel (the
+   oracle is right for en-US), 4 are the missing-sheet `INDIRECT` divergence, 18 are last-digit
+   floating point. See "Known divergences" and docs/research/oracle-calibration.md.
