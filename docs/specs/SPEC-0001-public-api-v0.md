@@ -103,7 +103,7 @@ pub struct Array { /* rows, cols, row-major Vec<Value> */ }   // returned by val
 ```rust
 pub struct Workbook { /* owns engine Model; Send, !Sync */ }
 pub struct WorkbookOptions { pub max_read_cells: u64, pub locale: String /* "en-US" */, pub timezone: String /* "UTC" */, pub language: String /* "en" */ }
-pub struct LoadOptions { pub recalc: bool /* default true */, pub max_uncompressed_bytes: u64, pub max_zip_entries: u32 }
+pub struct LoadOptions { pub recalc: bool /* default true */, pub workbook: WorkbookOptions, pub max_uncompressed_bytes: u64, pub max_zip_entries: u32 }
 pub struct SaveOptions {}                                      // placeholder, #[non_exhaustive]
 pub struct SheetMeta { pub id: SheetId, pub name: String, pub index: u32 }
 
@@ -114,6 +114,7 @@ impl Workbook {
     pub fn save_xlsx(&self, path: impl AsRef<Path>, opts: SaveOptions) -> Result<(), SaveError>;
     pub fn to_xlsx_bytes(&self, opts: SaveOptions) -> Result<Vec<u8>, SaveError>;
 
+    pub fn recalculate(&mut self);
     pub fn sheets(&self) -> Vec<SheetMeta>;
     pub fn sheet_id(&self, name: &str) -> Result<SheetId, RefError>;
     pub fn cell_ref(&self, a1: &str) -> Result<CellRef, RefError>;
@@ -130,6 +131,8 @@ pub struct CellInfo { pub value: Value, pub formula: Option<String>, pub number_
 `LoadOptions` also carries limits for untrusted workbooks (`max_uncompressed_bytes`, `max_zip_entries`);
 violations return `LoadError::Options`. Loading never resolves external-link targets or part
 names against the filesystem. T-0102 adds a zip-bomb test.
+
+Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo features (harness only): `mock_time` adds `Workbook::pin_clock_from_metadata`; `engine-model` adds `Workbook::from_engine_model` until T-0103. In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
 
 Reads never mutate. `open`/`from_xlsx_bytes` recalculate once when `opts.recalc`. Loading and
 saving are the only I/O; formula evaluation performs none (CLAUDE.md prime directive 5).

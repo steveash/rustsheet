@@ -21,20 +21,11 @@ pub trait Engine: Sync {
     ///
     /// # Errors
     /// Returns a human-readable message if the workbook cannot be loaded.
-    fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {
-        let opts = LoadOptions {
-            recalc: false,
-            ..LoadOptions::default()
-        };
-        let mut workbook =
-            Workbook::from_xlsx_bytes(bytes, &opts).map_err(|e| format!("import failed: {e}"))?;
-        // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
-        // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
-        workbook.pin_clock_from_metadata();
-        workbook.recalculate();
-        Ok(Box::new(RustSheetEvaluated { workbook }))
-    }
-
+    fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String>;
+    /// Builds a workbook from a spec, recalculates, and returns the result.
+    ///
+    /// # Errors
+    /// Returns a human-readable message if the spec cannot be materialized.
     fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String>;
 }
 
@@ -70,16 +61,16 @@ impl Engine for RustSheetEngine {
     }
 
     fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {
-        let workbook = rustsheet_xlsx::import::load_from_xlsx_bytes(bytes, "case", "en", "UTC")
-            .map_err(|e| format!("import failed: {e}"))?;
-        let mut model = Model::from_workbook(workbook, "en")?;
+        let opts = LoadOptions {
+            recalc: false,
+            ..LoadOptions::default()
+        };
+        let mut workbook =
+            Workbook::from_xlsx_bytes(bytes, &opts).map_err(|e| format!("import failed: {e}"))?;
         // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
         // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
-        if let Some(millis) = rustsheet_xlsx::mock_time::get_metadata_timestamp(&model) {
-            rustsheet_engine::mock_time::set_mock_time(millis);
-        }
-        model.evaluate();
-        let workbook = Workbook::from_engine_model(model, &WorkbookOptions::default());
+        workbook.pin_clock_from_metadata();
+        workbook.recalculate();
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
 

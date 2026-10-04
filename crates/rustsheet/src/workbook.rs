@@ -1,6 +1,6 @@
 //! [`Workbook`]: the facade over the engine `Model` (open/new/save and the read path).
 
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 use std::path::Path;
 
 use rustsheet_engine::{Model, LAST_COLUMN, LAST_ROW};
@@ -56,8 +56,8 @@ impl Default for LoadOptions {
     fn default() -> Self {
         Self {
             recalc: true,
-            max_uncompressed_bytes: 1 << 30,
-            max_zip_entries: 10_000,
+            max_uncompressed_bytes: 256 << 20,
+            max_zip_entries: 5_000,
             workbook: WorkbookOptions::default(),
         }
     }
@@ -100,7 +100,11 @@ fn engine_load_error(message: impl std::fmt::Display) -> LoadError {
     LoadError::Format(message.to_string())
 }
 
-/// Rejects zip containers whose directory declares more than the options allow.
+/// Rejects zip containers that list too many entries or inflate past the byte limit.
+///
+/// The declared sizes are only a fast reject (an attacker controls them); the limit is enforced
+/// on the bytes actually produced by inflating every entry into a sink, so the importer later
+/// decompresses at most the same bounded amount.
 fn check_zip_limits(bytes: &[u8], opts: &LoadOptions) -> Result<(), LoadError> {
     let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(engine_load_error)?;
     if u64::try_from(archive.len()).map_or(true, |n| n > u64::from(opts.max_zip_entries)) {
@@ -110,16 +114,31 @@ fn check_zip_limits(bytes: &[u8], opts: &LoadOptions) -> Result<(), LoadError> {
             opts.max_zip_entries
         )));
     }
-    let mut total: u64 = 0;
+    let too_big = || {
+        LoadError::Options(format!(
+            "zip inflates to more than {} bytes",
+            opts.max_uncompressed_bytes
+        ))
+    };
+    let mut declared: u64 = 0;
     for i in 0..archive.len() {
-        let entry = archive.by_index_raw(i).map_err(engine_load_error)?;
-        total = total.saturating_add(entry.size());
-        if total > opts.max_uncompressed_bytes {
-            return Err(LoadError::Options(format!(
-                "zip declares more than {} uncompressed bytes",
-                opts.max_uncompressed_bytes
-            )));
+        declared =
+            declared.saturating_add(archive.by_index_raw(i).map_err(engine_load_error)?.size());
+    }
+    if declared > opts.max_uncompressed_bytes {
+        return Err(too_big());
+    }
+    let mut remaining = opts.max_uncompressed_bytes;
+    for i in 0..archive.len() {
+        let entry = archive.by_index(i).map_err(engine_load_error)?;
+        // Read one byte past the budget so an overrun is distinguishable from an exact fit.
+        let limit = remaining.saturating_add(1);
+        let copied = std::io::copy(&mut entry.take(limit), &mut std::io::sink())
+            .map_err(engine_load_error)?;
+        if copied > remaining {
+            return Err(too_big());
         }
+        remaining -= copied;
     }
     Ok(())
 }
@@ -151,6 +170,12 @@ impl Workbook {
     /// # Errors
     /// [`LoadError::Io`] if the file cannot be read, otherwise as [`Self::from_xlsx_bytes`].
     pub fn open(path: impl AsRef<Path>, opts: &LoadOptions) -> Result<Self, LoadError> {
+        // The file is read whole; cap it with the same budget as the inflated size.
+        if std::fs::metadata(path.as_ref())?.len() > opts.max_uncompressed_bytes {
+            return Err(LoadError::Options(
+                "file larger than max_uncompressed_bytes".into(),
+            ));
+        }
         let bytes = std::fs::read(path)?;
         Self::from_xlsx_bytes(&bytes, opts)
     }
@@ -195,7 +220,7 @@ impl Workbook {
 
     /// Wraps an engine model directly.
     // TODO(T-0103): remove once the eval adapter builds spec workbooks through `edit`.
-    #[doc(hidden)]
+    #[cfg(feature = "engine-model")]
     #[must_use]
     pub fn from_engine_model(model: Model, opts: &WorkbookOptions) -> Self {
         Self {
@@ -277,10 +302,18 @@ impl Workbook {
             Target::Cell(c) => RangeRef::new(c.sheet, c.row, c.col, c.row, c.col),
             Target::Range(r) => Ok(r),
             Target::A1(text) => self.range_ref(text),
-            // `Target` is non-exhaustive: forms added later are not readable yet.
-            #[allow(unreachable_patterns)]
-            _ => Err(RefError::Unsupported),
         }
+    }
+
+    /// Resolves `target` to its sheet index and the top-left cell in engine (1-based) coordinates.
+    fn top_left<'a>(
+        &self,
+        target: impl Into<Target<'a>>,
+    ) -> Result<(RangeRef, u32, i32, i32), RefError> {
+        let range = self.resolve_range(target.into())?;
+        let sheet = self.sheet_index(range.sheet)?;
+        let (row, col) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        Ok((range, sheet, row, col))
     }
 
     fn sheet_index(&self, id: SheetId) -> Result<u32, RefError> {
@@ -310,8 +343,8 @@ impl Workbook {
     /// # Errors
     /// [`RefError`] when the target does not resolve.
     pub fn value<'a>(&self, r: impl Into<Target<'a>>) -> Result<Value, RefError> {
-        let range = self.resolve_range(r.into())?;
-        self.cell_at(self.sheet_index(range.sheet)?, range.top, range.left)
+        let (range, sheet, _, _) = self.top_left(r)?;
+        self.cell_at(sheet, range.top, range.left)
     }
 
     /// The values of a range as a dense row-major [`Array`].
@@ -344,9 +377,7 @@ impl Workbook {
     /// # Errors
     /// [`RefError`] when the target does not resolve.
     pub fn cell<'a>(&self, r: impl Into<Target<'a>>) -> Result<CellInfo, RefError> {
-        let range = self.resolve_range(r.into())?;
-        let sheet = self.sheet_index(range.sheet)?;
-        let (row, col) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let (range, sheet, row, col) = self.top_left(r)?;
         let formula = self
             .model
             .get_cell_formula(sheet, row, col)
@@ -368,9 +399,7 @@ impl Workbook {
     /// # Errors
     /// [`RefError`] when the target does not resolve.
     pub fn formatted<'a>(&self, r: impl Into<Target<'a>>) -> Result<String, RefError> {
-        let range = self.resolve_range(r.into())?;
-        let sheet = self.sheet_index(range.sheet)?;
-        let (row, col) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let (_, sheet, row, col) = self.top_left(r)?;
         self.model
             .get_formatted_cell_value(sheet, row, col)
             .map_err(RefError::Invalid)
@@ -517,6 +546,57 @@ mod tests {
             Workbook::from_xlsx_bytes(&bytes, &small),
             Err(LoadError::Options(_))
         ));
+    }
+
+    fn zip_of_zeros(len: usize) -> Vec<u8> {
+        use std::io::Write;
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        zip.start_file("bomb.xml", zip::write::FileOptions::default())
+            .unwrap();
+        zip.write_all(&vec![0u8; len]).unwrap();
+        zip.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn zip_bomb_is_rejected_by_actual_inflated_size() {
+        let opts = LoadOptions {
+            max_uncompressed_bytes: 1 << 20,
+            ..LoadOptions::default()
+        };
+        let bomb = zip_of_zeros(20 << 20);
+        assert!(bomb.len() < 100_000, "test zip must be tiny");
+        assert!(matches!(
+            Workbook::from_xlsx_bytes(&bomb, &opts),
+            Err(LoadError::Options(_))
+        ));
+        // Understate the declared size in the central directory (offset 24 of its header).
+        let mut lying = bomb;
+        let at = lying
+            .windows(4)
+            .position(|w| w == b"PK\x01\x02")
+            .expect("central directory");
+        lying[at + 24..at + 28].copy_from_slice(&10u32.to_le_bytes());
+        assert!(matches!(
+            Workbook::from_xlsx_bytes(&lying, &opts),
+            Err(LoadError::Options(_))
+        ));
+    }
+
+    #[cfg(feature = "mock_time")]
+    #[test]
+    fn pin_clock_reads_the_metadata_now_row() {
+        let mut model = Model::new_empty("w", "en", "UTC", "en").expect("model");
+        model.add_sheet("METADATA").expect("sheet");
+        model.update_cell_with_text(1, 1, 1, "NOW").expect("label");
+        model
+            .update_cell_with_number(1, 1, 2, 45000.5)
+            .expect("serial");
+        let bytes = rustsheet_xlsx::export::save_xlsx_to_writer(&model, Cursor::new(Vec::new()))
+            .expect("save")
+            .into_inner();
+        let pinned = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).unwrap();
+        assert!(pinned.pin_clock_from_metadata());
+        assert!(!sample().pin_clock_from_metadata());
     }
 
     #[test]
