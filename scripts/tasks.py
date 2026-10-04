@@ -4,7 +4,9 @@
   scripts/tasks.py list [--lane L] [--status S] [--milestone M]
   scripts/tasks.py next --lane L         # highest-priority ready task (deps done) in a lane
   scripts/tasks.py validate              # schema + dependency checks (CI)
-  scripts/tasks.py board                 # regenerate docs/tasks/BOARD.md
+  scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
+  scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S] [--no-fetch]
+                                         # write a task file with the next free id (decision 0016)
 
 Front matter keys: id, title, milestone, lane, status, priority, size, depends_on, spec.
 See docs/process/task-format.md.
@@ -13,7 +15,9 @@ See docs/process/task-format.md.
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,6 +27,7 @@ LANES = ["harness", "engine", "functions", "api", "perf", "quality", "research"]
 PRIORITIES = ["P0", "P1", "P2", "P3"]
 SIZES = ["S", "M", "L"]
 MILESTONE = re.compile(r"^M\d+$")
+TASK_FILE = re.compile(r"(?:^|/)(T-\d{4})-[^/]*\.md$")
 
 
 def parse(path: Path) -> dict[str, object]:
@@ -43,6 +48,11 @@ def parse(path: Path) -> dict[str, object]:
     return meta
 
 
+def path_of(t: dict[str, object]) -> Path:
+    """The task file a parsed task came from (`parse` stores it under "path")."""
+    return Path(str(t["path"]))
+
+
 def load() -> list[dict[str, object]]:
     return [parse(p) for p in sorted(TASKS.glob("*/*.md")) if p.name != "README.md"]
 
@@ -56,7 +66,11 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         if not re.match(r"^T-\d{4}$", tid):
             errors.append(f"{where}: bad id {tid!r}")
         if tid in ids:
-            errors.append(f"{where}: duplicate id {tid}")
+            first = path_of(ids[tid]).relative_to(ROOT)
+            errors.append(
+                f"{where}: duplicate id {tid} (also {first}); renumber the newer task with "
+                "`make new-task` (decision 0016)"
+            )
         ids[tid] = t
         for key, allowed in (("status", STATUSES), ("lane", LANES), ("priority", PRIORITIES), ("size", SIZES)):
             if t.get(key) not in allowed:
@@ -65,6 +79,8 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
             errors.append(f"{where}: missing title")
+        if "TODO(fill)" in path_of(t).read_text():
+            errors.append(f"{where}: template placeholders `TODO(fill)` left in the task file")
         if t.get("size") == "L" and t.get("status") in ("todo", "in-progress"):
             errors.append(f"{where}: size L tasks must be split before work starts")
     for t in tasks:
@@ -77,6 +93,101 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
 def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
     deps = t.get("depends_on", []) or []
     return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps)  # type: ignore[union-attr]
+
+
+def git_task_ids(fetch: bool = True) -> set[str]:
+    """Task ids in docs/tasks/ on every `origin/*` branch: work that other sessions have pushed.
+
+    Best effort: without git or a network the working tree alone decides, and `validate` in CI
+    still catches a collision.
+    """
+
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout
+
+    try:
+        if fetch:
+            git("fetch", "-q", "origin")
+        refs = git("for-each-ref", "--format=%(refname)", "refs/remotes/origin").split()
+        found: set[str] = set()
+        for ref in refs:
+            for name in git("ls-tree", "-r", "--name-only", ref, "--", "docs/tasks").splitlines():
+                m = TASK_FILE.search(name)
+                if m:
+                    found.add(m.group(1))
+        return found
+    except (OSError, subprocess.CalledProcessError) as e:
+        print(f"warning: could not read origin branches ({e}); ids checked against the working tree only",
+              file=sys.stderr)
+        return set()
+
+
+def next_id(milestone: str, tasks: list[dict[str, object]], taken: set[str]) -> str:
+    """Next id after the highest taken one in the hundred-block the milestone uses most
+    (M0 -> T-00xx, M1 -> T-01xx). Ids only grow, so gaps are never reused.
+
+    A milestone with no tasks, or whose block is full, gets the next id above every taken one.
+    """
+    used = {int(i[2:]) for i in taken}
+    blocks = Counter(int(str(t["id"])[2:]) // 100 for t in tasks if t.get("milestone") == milestone)
+    if blocks:
+        block = blocks.most_common(1)[0][0]
+        n = max((u for u in used if u // 100 == block), default=block * 100) + 1
+        if n < block * 100 + 100:
+            return f"T-{n:04d}"
+    return f"T-{max(used, default=0) + 1:04d}"
+
+
+def slug(title: str) -> str:
+    words = re.sub(r"[^a-z0-9]+", " ", title.lower()).split()
+    return "-".join(words[:8]) or "task"
+
+
+TEMPLATE = """---
+id: {id}
+title: "{title}"
+milestone: {milestone}
+lane: {lane}
+status: todo
+priority: {priority}
+size: {size}
+depends_on: []
+---
+
+## Goal
+TODO(fill): the outcome, not the implementation.
+
+## Context
+TODO(fill): why; failing case ids; semantics notes; code paths.
+
+## Acceptance criteria
+- [ ] TODO(fill): verifiable statements.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
+"""
+
+
+def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
+    """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
+    milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
+    priority, size = arg("--priority") or "P2", arg("--size") or "S"
+    if not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and title) or "\n" in title:
+        print("usage: tasks.py new --milestone M<n> --lane <lane> --title <one-line title> "
+              "[--priority P2] [--size S] [--no-fetch]")
+        return 2
+    if priority not in PRIORITIES or size not in SIZES or size == "L":
+        print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks)")
+        return 2
+    taken = {str(t["id"]) for t in tasks} | git_task_ids(fetch)
+    tid = next_id(milestone, tasks, taken)
+    path = TASKS / milestone / f"{tid}-{slug(title)}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(TEMPLATE.format(id=tid, title=title.replace('"', "'"), milestone=milestone,
+                                    lane=lane, priority=priority, size=size))
+    print(f"wrote {path.relative_to(ROOT)}: fill in the TODO(fill) lines, then commit and push it now to claim {tid}")
+    return 0
 
 
 def arg(name: str) -> str | None:
@@ -93,6 +204,8 @@ def main() -> int:
             print(f"FAIL {e}")
         print(f"{len(tasks)} tasks, {len(errors)} errors")
         return 1 if errors else 0
+    if cmd == "new":
+        return new_task(tasks, fetch="--no-fetch" not in sys.argv)
     if cmd == "next":
         lane = arg("--lane")
         cands = [t for t in tasks if ready(t, by_id) and (lane is None or t.get("lane") == lane)]
@@ -104,7 +217,7 @@ def main() -> int:
         print(f"{t['id']}  {t['title']}  ({t['path'].relative_to(ROOT)})")  # type: ignore[union-attr]
         return 0
     if cmd == "board":
-        lines = ["# Task board", "", "Generated by `scripts/tasks.py board`. Do not edit by hand.", ""]
+        lines = ["# Task board", "", "Generated by `make board` (git-ignored; decision 0017). Do not edit or commit it.", ""]
         for status in STATUSES:
             group = [t for t in tasks if t.get("status") == status]
             if not group:

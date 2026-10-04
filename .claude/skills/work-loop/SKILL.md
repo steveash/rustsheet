@@ -50,7 +50,7 @@ and stop.
 
 ## 6. PR & merge
 1. Mark the task `status: done` (plus a short "Outcome" section), append one line to the
-   `docs/status.md` log (date, task, eval delta), `make board`, commit.
+   `docs/status.md` log (date, task, eval delta), commit.
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
 3. Wait for CI (subscribe to PR activity; do not poll with sleep). Fix failures per the `steward`
@@ -59,4 +59,5 @@ and stop.
 4. Delete the branch.
 
 ## 7. Report
-Final message: task id, PR link, eval delta, follow-up tasks created.
+Final message: task id, PR link, eval delta, follow-up tasks created. Create every follow-up task
+with `make new-task` (it assigns a collision-free id; decision 0016) and push it with the PR.

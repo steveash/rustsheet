@@ -48,7 +48,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 - **Unblocking is an agent's job** (decision 0013). The steward run checks every `blocked` task;
   a worker whose lane has no ready task checks its lane's. If the blocker is gone (the capability
   check passes, or the blocking task is `done`): set `status: todo`, delete the "Blocked because"
-  section, drop dependencies that stood only for the capability, run `make board`, remove the
+  section, drop dependencies that stood only for the capability, remove the
   resolved "Needs owner" entry and log it in `docs/status.md`. Land it in that run's PR.
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
@@ -73,7 +73,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
    when debt went down.
 7. **Review:** `review` skill. All applicable reviewers must APPROVE. At most 3 rounds, then mark
    the task blocked.
-8. **PR:** use the template. Set the task to `done` with an Outcome note, then `make board`.
+8. **PR:** use the template. Set the task to `done` with an Outcome note.
 9. **Merge:** once CI is green and reviews are approved, squash-merge. Then append a line to `docs/status.md`.
 
 ## Specs before architecture
