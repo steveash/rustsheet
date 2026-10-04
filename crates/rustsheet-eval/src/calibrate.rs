@@ -17,7 +17,8 @@ pub struct CellComparison {
     pub sheet: String,
     /// A1 address.
     pub cell: String,
-    /// Formula text without `=` (for shared-formula members, the group master's text).
+    /// Formula text without `=` (for shared-formula members, the group master's text); empty
+    /// for array/spill members, which have no formula text of their own.
     pub formula: String,
     /// Functions the formula calls ([`functions_in`]), for per-function attribution.
     pub functions: Vec<String>,
@@ -117,6 +118,21 @@ mod tests {
             ("B3", Some("RAND()"), Value::Number(0.9)),
             ("B4", Some("B3*2"), Value::Number(1.8)),
         ]);
+        let mut cached = cached;
+        let mut recalculated = recalculated;
+        // A spilled value: a formula result without formula text of its own.
+        for (wb, v) in [(&mut cached, 0.25), (&mut recalculated, 0.25)] {
+            wb.sheets[0].cells.insert(
+                Addr::parse("C1").expect("addr"),
+                CellSnapshot {
+                    formula: None,
+                    formula_kind: Some(FormulaKind::ArrayMember {
+                        anchor: "B1".into(),
+                    }),
+                    value: Value::Number(v),
+                },
+            );
+        }
         let got = compare_snapshots(&cached, &recalculated);
         assert!(!got.excel_authored); // no <Application> in docProps/app.xml
         assert_eq!(got.volatile_skipped, 2); // RAND() and its dependant
@@ -129,10 +145,13 @@ mod tests {
             verdicts,
             vec![
                 ("B1", Some(Verdict::Pass)),
+                ("C1", Some(Verdict::Pass)), // row order: C1 before B2
                 ("B2", Some(Verdict::NumericMismatch)),
                 ("B5", None), // missing from the recalculation
             ]
         );
-        assert_eq!(got.cells[1].functions, vec!["ROUND".to_string()]);
+        let member = got.cells.iter().find(|c| c.cell == "C1").expect("C1");
+        assert_eq!((member.formula.as_str(), member.functions.len()), ("", 0));
+        assert_eq!(got.cells[2].functions, vec!["ROUND".to_string()]);
     }
 }
