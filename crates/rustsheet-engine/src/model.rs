@@ -2203,7 +2203,9 @@ impl Model {
     // - Part of a dynamic array formula => we delete the formula and we clear the spill
     // - Anchor of a dynamic array formula
     //     => we clear the spill and we set an unevaluated dynamic formula.
-    pub(crate) fn prepare_cell_for_user_input(
+    /// Checks that a cell can be written (not merged-covered, not inside an array formula) and
+    /// clears the dynamic spill it belongs to, as every user-input setter does first.
+    pub fn prepare_cell_for_user_input(
         &mut self,
         sheet: u32,
         row: i32,

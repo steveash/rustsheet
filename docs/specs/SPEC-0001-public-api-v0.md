@@ -132,7 +132,7 @@ pub struct CellInfo { pub value: Value, pub formula: Option<String>, pub number_
 violations return `LoadError::Options`. Loading never resolves external-link targets or part
 names against the filesystem. T-0102 adds a zip-bomb test.
 
-Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo features (harness only): `mock_time` adds `Workbook::pin_clock_from_metadata`; `engine-model` adds `Workbook::from_engine_model` until T-0103. In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
+Zip limits are enforced on the bytes actually inflated (declared sizes are only a fast reject); the defaults are 256 MiB and 5,000 entries. `open` refuses files larger than `max_uncompressed_bytes`. Cargo feature (harness only): `mock_time` adds `Workbook::pin_clock_from_metadata`. In v0 `values()` does a per-cell lookup over the rectangle (O(area), bounded by `max_read_cells`) and sheet lookups scan the sheet list (no cached id-to-index map yet).
 
 Reads never mutate. `open`/`from_xlsx_bytes` recalculate once when `opts.recalc`. Loading and
 saving are the only I/O; formula evaluation performs none (CLAUDE.md prime directive 5).
@@ -153,6 +153,7 @@ impl Txn<'_> {
     pub fn add_sheet(&mut self, name: &str) -> Result<SheetId, EditError>;
     pub fn rename_sheet(&mut self, id: SheetId, new_name: &str) -> Result<(), EditError>;
     pub fn delete_sheet(&mut self, id: SheetId) -> Result<(), EditError>;
+    pub fn first_sheet(&self) -> Result<SheetId, EditError>;
 }
 pub struct ChangeSet { pub inputs: Vec<InputChange>, pub values: Vec<ValueChange>, pub sheets: Vec<SheetChange> }
 pub struct InputChange { pub cell: CellRef, pub before: Option<String>, pub after: Option<String> } // formula or literal text as the user sees it
@@ -202,6 +203,7 @@ Semantics:
   workbook of ≥100k formulas) in its Outcome; an O(changed) design (dirty-set `ChangeSet`) is
   required by M3 and is not blocked by anything in this API. A very large `ChangeSet` (1M
   dependents → 1M `ValueChange`) is possible by design; callers wanting no diff use the opt-out.
+- **Implementation notes (T-0103).** `Txn::set` takes a single cell (a larger range is `RefError::Unsupported`). Typed `Input::Value` goes through the engine's typed setters after `prepare_cell_for_user_input`; `Parse`/`Formula` through `set_user_input`. The pre-edit capture is a vector in engine storage order merged against the post-recalc walk (no per-cell hashing); text is captured in one arena. Sheet-level engine ops (`add`/`rename`/`delete`) reparse and evaluate on their own, so they cost one recalc each and a rollback that undid one re-evaluates once. Deleting a sheet moves it into the undo log via `Model::take_sheet`/`restore_sheet`. Cells of a deleted sheet appear in `values` (sorted last) but not in `inputs`. The deterministic randomized test replaces proptest (not in the offline dependency set).
 - Sheet rename rewrites formulas via the engine; the facade reports the rename and any resulting
   value changes only.
 - The contract (not the algorithm) is what T-0103 tests, so M3 can swap in dirty-set tracking unchanged. T-0103 also records the eval run time before/after the adapter moves onto the facade (no >5% regression).
