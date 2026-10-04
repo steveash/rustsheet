@@ -11,13 +11,13 @@ depends_on: []
 ---
 
 ## Goal
-Early-1900 serials behave as in Excel everywhere: `TEXT` of serial 60 and `DATE(1900,1,0)` are oracle-confirmed, EDATE/EOMONTH and friends agree below serial 61, and `DAY/MONTH/YEAR(0)` return 0/1/1900.
+The four known failures in probes/dates-early-1900 (A9, A10, A12, A16) pass: `EOMONTH(31,1)` and `EDATE(31,1)` (59), `TEXT(0,"m/d/yyyy")` ("1/0/1900"), `WEEKNUM(1)` (1); DAY/MONTH/YEAR(0) also match Excel.
 
 ## Context
-T-0108 fixed DATE, DAY/MONTH/YEAR and number formatting for serials 1..60 but left `from_excel_date` as a weekday-faithful stand-in calendar (see docs/excel-semantics/dates.md). Needs oracle probes first (excel-probe skill) for each function.
+T-0108 fixed DATE, DAY/MONTH/YEAR and number formatting for serials 1..60 but left `from_excel_date` as a weekday-faithful stand-in calendar (see docs/excel-semantics/dates.md). Oracle values are already in probes/dates-early-1900.
 
 ## Acceptance criteria
-- [ ] Probe case with oracle values for the functions above; engine matches them with no eval regressions.
+- [ ] The probe cells above leave eval/baseline/probes.txt with no regressions.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

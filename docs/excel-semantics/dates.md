@@ -7,13 +7,18 @@ Evidence: probes/dates-and-blanks.case.json A1 (60), A2 (`DATE(1900,3,1)-DATE(19
 A3 (`DAY(60)` = 29). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED. Implemented for DATE, DAY/MONTH/YEAR, text date parsing and number formatting
 (T-0108): `DATE(1900,1,1)` = 1, days wrap linearly from the first of the month so
-`DATE(1900,2,30)` = 61. Excel numbers WEEKDAY below serial 60 as if serial 1 were a Sunday, so
+`DATE(1900,2,30)` = 61. Excel is believed to number WEEKDAY below serial 60 as if serial 1 were a Sunday (UNVERIFIED, needs
+a probe; the Excel-authored calendar templates in ironcalc-calc depend on it), so
 `from_excel_date` stays a weekday-faithful stand-in calendar (serial 1 = 1899-12-31) for WEEKDAY,
 WORKDAY etc.; exact components come from `formatter::dates::excel_serial_to_ymd`.
-Number formatting shows serial 60 as 2/29/1900 (engine behavior, no oracle probe yet).
-UNVERIFIED and still approximate: `DATE(1900,2,30)` = 61 and `DATE(1900,1,0)` (the engine returns
-#NUM!; Excel is believed to give 0), EDATE, EOMONTH and EDATE-family results below serial 61, and DAY/MONTH/YEAR(0) (Excel gives 0/1/1900;
-the engine returns #NUM!) (follow-up task).
+Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,1,1)` = 1,
+`DATE(1900,2,30)` = 61, `DATE(1900,3,0)` = 60, `DATE(1900,1,0)` = 0, `YEAR(1)` = 1900,
+`MONTH(60)` = 2, `DAY(59)` = 28, `EOMONTH(1,0)` = 31, `EOMONTH(31,1)` = `EDATE(31,1)` = 59,
+`TEXT(60,"m/d/yyyy")` = "2/29/1900", `TEXT(0,"m/d/yyyy")` = "1/0/1900", `DATEVALUE("1/1/1900")` = 1,
+`WEEKDAY(1)` = 1, `WEEKDAY(60)` = 4, `WEEKNUM(1)` = 1.
+Engine still differs on `EOMONTH(31,1)`, `EDATE(31,1)`, `TEXT(0,...)` and `WEEKNUM(1)` (T-0125).
+Still approximate below serial 61: EDATE/EOMONTH month arithmetic, `TEXT(0,...)`, WEEKNUM, and DAY/MONTH/YEAR(0)
+(Excel gives 0/1/1900; the engine returns #NUM!) (T-0125).
 
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.

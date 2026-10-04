@@ -880,3 +880,17 @@ fn test_month_year_and_format_of_serial_60() {
     assert_eq!(model._get_text("A4"), *"2/29/1900");
     assert_eq!(model._get_text("A5"), *"2/29/1900");
 }
+
+#[test]
+fn test_eomonth_early_1900_serials() {
+    let mut model = new_empty_model();
+    model._set("A1", "=EOMONTH(1,0)");
+    model._set("A2", "=EOMONTH(31,0)");
+    model._set("A3", "=EOMONTH(61,0)");
+    model.evaluate();
+
+    // End of January 1900 is serial 31 in Excel's numbering (engine behavior, no oracle probe yet)
+    assert_eq!(model._get_text("A1"), *"31");
+    assert_eq!(model._get_text("A2"), *"31");
+    assert_eq!(model._get_text("A3"), *"90");
+}

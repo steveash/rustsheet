@@ -84,10 +84,6 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     // This function applies that same logic to dates. And does it in the most compatible way as
     // possible.
 
-    // Special case for the minimum date
-    if year == 1899 && month == 12 && day == 31 {
-        return Ok(MINIMUM_DATE_SERIAL_NUMBER);
-    }
     let Some(mut date) = NaiveDate::from_ymd_opt(year, 1, 1) else {
         return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
     };
@@ -122,7 +118,8 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
     // Days wrap linearly from the first of the month in Excel serials, so the fictitious
     // 1900-02-29 is reachable: DATE(1900,2,29) = 60 and DATE(1900,2,30) = 61.
     let serial = i64::from(convert_to_serial_number(date)) + i64::from(day) - 1;
-    if serial < MINIMUM_DATE_SERIAL_NUMBER as i64 || serial > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+    // Excel returns 0 for DATE(1900,1,0) (probes/dates-early-1900 A4).
+    if serial < 0 || serial > i64::from(MAXIMUM_DATE_SERIAL_NUMBER) {
         return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
     }
     Ok(serial as i32)

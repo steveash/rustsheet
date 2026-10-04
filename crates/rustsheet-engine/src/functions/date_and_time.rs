@@ -639,10 +639,9 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
+        if let Err(e) = self.excel_date(serial_number, cell) {
+            return e;
+        }
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -650,6 +649,18 @@ impl Model {
                 message: "Function DAY parameter 1 value is too large.".to_string(),
             };
         }
+        // Take year and month from Excel's exact view of the serial so the round trip through
+        // `date_to_serial_number` stays on one calendar (the stand-in `date` is a day early below
+        // serial 60).
+        let Some(date) = excel_serial_to_ymd(serial_number)
+            .and_then(|(y, m, _)| chrono::NaiveDate::from_ymd_opt(y, m, 1))
+        else {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            };
+        };
 
         let months = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => {

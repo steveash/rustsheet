@@ -1,0 +1,34 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Early-1900 serials (before and around the fictitious 1900-02-29): DATE, DAY/MONTH/YEAR, EOMONTH, TEXT, DATEVALUE",
+  "tags": ["M1", "dates", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=DATE(1900,1,1)",
+        "A2": "=DATE(1900,2,30)",
+        "A3": "=DATE(1900,3,0)",
+        "A4": "=DATE(1900,1,0)",
+        "A5": "=YEAR(1)",
+        "A6": "=MONTH(60)",
+        "A7": "=DAY(59)",
+        "A8": "=EOMONTH(1,0)",
+        "A9": "=EOMONTH(31,1)",
+        "A10": "=EDATE(31,1)",
+        "A11": "=TEXT(60,\"m/d/yyyy\")",
+        "A12": "=TEXT(0,\"m/d/yyyy\")",
+        "A13": "=DATEVALUE(\"1/1/1900\")",
+        "A14": "=WEEKDAY(1)",
+        "A15": "=WEEKDAY(60)",
+        "A16": "=WEEKNUM(1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1", "Sheet1!A2", "Sheet1!A3", "Sheet1!A4", "Sheet1!A5", "Sheet1!A6", "Sheet1!A7",
+    "Sheet1!A8", "Sheet1!A9", "Sheet1!A10", "Sheet1!A11", "Sheet1!A12", "Sheet1!A13",
+    "Sheet1!A14", "Sheet1!A15", "Sheet1!A16"
+  ]
+}
