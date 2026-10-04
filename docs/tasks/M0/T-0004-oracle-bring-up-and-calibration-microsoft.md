@@ -19,7 +19,7 @@ Credentials are configured (app-only, `Sites.Selected` on a dedicated SharePoint
 ## Acceptance criteria
 - [ ] `rustsheet-oracle fill -b excel-graph` produces sidecars for suite `smoke`; committed (`probes`/`probes-numeric` are T-0009, `gen-m2` is T-0203).
 - [ ] Calibration: recalc every ironcalc-calc workbook through Graph; report agreement with cached values (cells, by function) in docs/research/oracle-calibration.md.
-- [ ] Open questions answered (precision of persisted values, persistence lag, app-only support).
+- [ ] Open questions answered (precision of persisted values, persistence lag); app-only support already confirmed 2026-10-04.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -22,4 +22,4 @@ follow-up test cleanup `13dbb103`). Port it, but only after confirming Excel's b
 ## Progress
 Partial (2026-10-03): the "date time" text case (TIMEVALUE.xlsx B18) is fixed with Excel-cached
 evidence. Fractional seconds are still open: no Excel evidence exists in-repo and the oracle
-(T-0004) is blocked.
+had not been set up (it is live since 2026-10-04; use `excel-probe`).

@@ -19,12 +19,12 @@ Since 2026-10-03: 13 PRs merged to `main` (T-0910/0912/0114/0115/0914/0111/0911/
 0 reverted; 0 blocked. CI on `main` (dc8dba7): green. Open PRs: #13 (T-0901 blocked, draft) and #11 (T-0904 blocked,
 draft), both docs-only drafts from other sessions, >24 h; #11 is superseded by T-0913 (merged) and can be closed by the owner.
 Ready queues: functions 9 (no triage needed), engine/api/harness ≥2 each (no planning needed). Upstream IronCalc: nothing new
-since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first `fill` pending T-0004. Spot-audit not run this session.
+since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pending T-0009 (probes) and T-0004 (smoke, calibration). Spot-audit not run this session.
 
 **Critical lane:** api, engine, harness
 
 (Ordered list read by the critical-lane worker. M1 exit needs API v0 (T-0101 → T-0102…) and engine
-parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0004) are pending.)
+parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-0004) are pending.)
 
 ## Needs owner
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
