@@ -28,8 +28,6 @@ parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-000
 
 ## Needs owner
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
-- Routines are enabled with the repo attached, but their prompts are the pre-review drafts: replace each
-  routine's prompt with the current text in `docs/process/routines.md`.
 
 ## Log
 - 2026-10-02 — Owner set `main` as the GitHub default branch and enabled the routines (repo attached).
@@ -74,3 +72,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-000
 - 2026-10-04 — T-0926: GAMMALN/GAMMALN.PRECISE via libm lgamma; ironcalc-calc known failures 1626 -> 1578 (48 fixed), 0 regressions; 12 cells need oracle
 - 2026-10-04 — T-0004 (partial): excel-graph oracle live (app-only, `Sites.Selected` site); fixed site drive addressing; T-0004, T-0106..T-0110, T-0203 unblocked.
 - 2026-10-04 — T-0009: excel-graph sidecars for probes (3) and probes-numeric (4); probes 71.11% (13 new-coverage known failures), probes-numeric 60.19% (not gated); 0 regressions; excel-semantics: 9 entries VERIFIED (snapping corrected), 4 new; inputs with ≥1E+308 literals fixed (Excel rejects them). T-0106/7/8/10 now ready.
+- 2026-10-04 — Owner updated the routine prompts to the text in `docs/process/routines.md` (verified identical). Decision 0014: Excel is always right; every quirk found is recorded in docs/excel-semantics/.

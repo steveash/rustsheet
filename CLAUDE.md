@@ -6,9 +6,12 @@ same rounding, same quirks — including behavior Excel never documented. The pr
 **autonomously by agents with no human code review**, so the rules below are the safety system.
 
 ## Prime directives
-1. **Excel is the spec.** Behavior is decided by oracle evidence (Excel-computed values in
-   `eval/`), never by memory, documentation alone, or "what is mathematically right". If you
-   cannot cite evidence, use the `excel-probe` skill.
+1. **Excel is the spec, and Excel is always right.** Behavior is decided by oracle evidence
+   (Excel-computed values in `eval/`), never by memory, documentation alone, or "what is
+   mathematically right". Match Excel exactly even when it looks wrong, arbitrary or
+   inconsistent; never "fix" or tidy up Excel's behavior. If you cannot cite evidence, use the
+   `excel-probe` skill. The only exception is a resource limit that directive 5 requires, and
+   it needs a decision record (see `docs/excel-semantics/README.md`).
 2. **Never regress, never weaken gates.** `make check` must pass. Never hand-edit
    `eval/baseline/`, `quality/*.json` or `docs/tasks/BOARD.md`; never add lint-debt entries,
    blanket `#[allow]`s, skipped/deleted tests, or `--allow-regressions` (except via a decision
@@ -19,7 +22,9 @@ same rounding, same quirks — including behavior Excel never documented. The pr
    changes need a spec in `docs/specs/` first (written as its own task).
 5. **Untrusted input.** Workbooks and formulas are untrusted: no panics, no unbounded
    recursion/allocation, no I/O from formula evaluation.
-6. **Leave knowledge behind.** Excel quirks → `docs/excel-semantics/`; decisions →
+6. **Leave knowledge behind.** Every Excel quirk you find goes into `docs/excel-semantics/`, the
+   canonical list of known, accepted quirks, in the same PR that found it, even if nothing
+   implements it yet; decisions →
    `docs/decisions/`; progress → `docs/status.md`.
 
 ## Repository map

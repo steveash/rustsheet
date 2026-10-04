@@ -1,10 +1,23 @@
 # Excel semantics knowledge base
 
-Curated, evidence-backed rules for how Microsoft 365 Excel behaves, especially where
-documentation is silent or wrong. **Every rule cites evidence**: an eval case id with oracle
-values (`probes/...`, an Excel-authored workbook cell), never memory. Rules marked
-**UNVERIFIED** are hypotheses with a pending probe case and must not be implemented until
-confirmed.
+The **canonical list of Excel behaviors we know about and accept**, especially the surprising,
+arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exactly (decision 0014).
+
+## Rules
+- **Excel is always right.** An entry records what Excel does, not what it should do. Never
+  soften, "correct" or delete an entry because the behavior looks like a bug, and never
+  implement a nicer variant. If Excel is inconsistent between two cases, record both.
+- **Record every quirk you find, when you find it.** Whatever surfaced it (an oracle probe, an
+  Excel-authored workbook's cached values, triaging an eval failure, reading a reviewer's
+  finding), add or update the entry in the same PR, even if no task implements it yet.
+- **Every rule cites evidence**: an eval case id with oracle values (`probes/...`, an
+  Excel-authored workbook cell), never memory. Rules marked **UNVERIFIED** are hypotheses with
+  a pending probe case and must not be implemented until confirmed. When the oracle disproves a
+  hypothesis, rewrite the rule from the evidence and say what was wrong.
+- **Deliberate deviations** are allowed only where CLAUDE.md directive 5 (untrusted input)
+  requires a resource limit Excel does not have. Each one needs a decision record in
+  `docs/decisions/` and an entry here with `Status: DEVIATION (decision NNNN)` that states the
+  Excel behavior and ours. Example: BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`).
 
 Files by area: `numbers.md`, `dates.md`, `coercion.md`, `errors.md`, `criteria.md`,
 `arrays.md`, `lookup.md`, … (create as needed). Format per rule:
@@ -13,6 +26,6 @@ Files by area: `numbers.md`, `dates.md`, `coercion.md`, `errors.md`, `criteria.m
 ## <short rule name>
 Rule: one sentence.
 Evidence: <suite/case> <Sheet!A1> (oracle: excel-graph 16.0.xxxx) …
-Status: VERIFIED | UNVERIFIED (probe pending)
+Status: VERIFIED | UNVERIFIED (probe pending) | DEVIATION (decision NNNN)
 Implemented in: path::fn (once implemented)
 ```
