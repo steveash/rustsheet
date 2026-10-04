@@ -29,6 +29,9 @@ pub struct CellComparison {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Comparison {
+    /// Whether `cached` was last saved by Excel; otherwise its cached values are not Excel's
+    /// answers and calibration (like suites with `require_excel_authored`) should skip it.
+    pub excel_authored: bool,
     /// Formula cells left out because they depend on RAND/NOW/TODAY-like functions: a
     /// recalculation at another time legitimately differs (the oracle clock is never pinned).
     pub volatile_skipped: usize,
@@ -72,6 +75,7 @@ pub fn compare_snapshots(cached: &WorkbookSnapshot, recalculated: &WorkbookSnaps
         }
     }
     Comparison {
+        excel_authored: cached.is_excel_authored(),
         volatile_skipped,
         cells,
     }
@@ -125,6 +129,7 @@ mod tests {
             ("B4", Some("B3*2"), Value::Number(1.8)),
         ]);
         let got = compare_snapshots(&cached, &recalculated);
+        assert!(!got.excel_authored); // no <Application> in docProps/app.xml
         assert_eq!(got.volatile_skipped, 2); // RAND() and its dependant
         let verdicts: Vec<_> = got
             .cells

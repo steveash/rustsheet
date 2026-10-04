@@ -21,8 +21,15 @@ def _cell(
     }
 
 
+HAND_WRITTEN = {
+    "excel_authored": False,
+    "volatile_skipped": 0,
+    "cells": [_cell("H1", ["GEOMEAN"], "type_mismatch")],
+}
+
 COMPARISONS = {
     "a.xlsx": {
+        "excel_authored": True,
         "volatile_skipped": 2,
         "cells": [
             _cell("A1", ["SUM"], "pass"),
@@ -31,6 +38,7 @@ COMPARISONS = {
         ],
     },
     "b.xlsx": {
+        "excel_authored": True,
         "volatile_skipped": 0,
         "cells": [_cell("B1", ["DATEVALUE"], "type_mismatch"), _cell("B2", ["X"], None)],
     },
@@ -44,9 +52,9 @@ def _run(jobs: int = 1) -> Any:
         return path
 
     return calibrate(
-        [Path("a.xlsx"), Path("b.xlsx"), Path("refused.xlsx")],
+        [Path("a.xlsx"), Path("b.xlsx"), Path("refused.xlsx"), Path("hand.xlsx")],
         recalculated,
-        lambda cached, _: COMPARISONS[cached.name],
+        lambda cached, _: COMPARISONS.get(cached.name, HAND_WRITTEN),
         jobs,
     )
 
@@ -55,6 +63,8 @@ def test_totals_and_functions_are_aggregated() -> None:
     cal = _run(jobs=3)
     assert cal.workbooks == 2
     assert cal.refused == {"refused.xlsx": "refusing to recalculate: uses SHEETS()"}
+    assert cal.not_excel_authored == ["hand.xlsx"]  # counted nowhere else
+    assert "GEOMEAN" not in cal.by_function
     assert cal.volatile_skipped == 2
     assert cal.total.cells == 5
     assert dict(cal.total.verdicts) == {"pass": 2, "numeric_ulp": 1, "type_mismatch": 1, "missing": 1}
@@ -70,6 +80,7 @@ def test_totals_and_functions_are_aggregated() -> None:
 
 def test_markdown_report() -> None:
     md = to_markdown(_run(), examples=2)
+    assert "skipped as not saved by Excel: hand.xlsx" in md
     assert "- Formula cells compared: 5; agree bit-exact: 2 (40.00%); volatile cells skipped: 2" in md
     assert "| DATEVALUE | 1 | 1 | type_mismatch 1 |" in md
     assert "| SUM | 2 | 1 | numeric_ulp 1 |" in md

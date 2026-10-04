@@ -37,6 +37,8 @@ class Calibration:
     workbooks: int = 0
     refused: dict[str, str] = field(default_factory=dict)
     """Workbook → why no oracle result exists (canary refusal, unsupported workbook, ...)."""
+    not_excel_authored: list[str] = field(default_factory=list)
+    """Workbooks skipped because Excel did not save them (their cached values are not Excel's)."""
     volatile_skipped: int = 0
     total: FunctionStats = field(default_factory=FunctionStats)
     by_function: dict[str, FunctionStats] = field(default_factory=lambda: defaultdict(FunctionStats))
@@ -44,6 +46,9 @@ class Calibration:
 
     def add(self, workbook: str, comparison: dict[str, Any]) -> None:
         """Folds one workbook's `rustsheet-eval compare` output into the totals."""
+        if not comparison["excel_authored"]:
+            self.not_excel_authored.append(workbook)
+            return
         self.workbooks += 1
         self.volatile_skipped += comparison["volatile_skipped"]
         for cell in comparison["cells"]:
@@ -82,6 +87,7 @@ def calibrate(
     with cf.ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
         list(pool.map(one, workbooks))
     result.disagreements.sort(key=lambda d: (d["workbook"], d["sheet"], d["cell"]))
+    result.not_excel_authored.sort()
     return result
 
 
@@ -93,7 +99,8 @@ def to_markdown(cal: Calibration, examples: int = 50) -> str:
     """Tables for the calibration report: totals, verdicts, functions with disagreements."""
     t = cal.total
     lines = [
-        f"- Workbooks compared: {cal.workbooks}; refused: {len(cal.refused)}",
+        f"- Workbooks compared: {cal.workbooks}; refused: {len(cal.refused)}; "
+        f"skipped as not saved by Excel: {', '.join(cal.not_excel_authored) or 'none'}",
         f"- Formula cells compared: {t.cells}; agree bit-exact: {t.verdicts['pass']} "
         f"({_pct(t.verdicts['pass'], t.cells)}); volatile cells skipped: {cal.volatile_skipped}",
         "",
