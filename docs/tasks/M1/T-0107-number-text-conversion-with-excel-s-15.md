@@ -6,7 +6,7 @@ lane: engine
 status: todo
 priority: P1
 size: S
-depends_on: []
+depends_on: [T-0009]
 ---
 
 ## Goal

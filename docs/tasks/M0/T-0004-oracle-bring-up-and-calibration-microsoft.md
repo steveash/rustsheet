@@ -4,7 +4,7 @@ title: "Oracle bring-up and calibration (Microsoft Graph)"
 milestone: M0
 lane: research
 status: todo
-priority: P0
+priority: P1
 size: M
 depends_on: []
 ---
@@ -17,11 +17,10 @@ Credentials are configured (app-only, `Sites.Selected` on a dedicated SharePoint
 `rustsheet-oracle recalc -b excel-graph` round trip succeeded on 2026-10-04 (~11 s per workbook).
 
 ## Acceptance criteria
-- [ ] `rustsheet-oracle fill -b excel-graph` produces sidecars for suites `probes`, `smoke`, `gen-m2`; committed.
+- [ ] `rustsheet-oracle fill -b excel-graph` produces sidecars for suite `smoke`; committed (`probes`/`probes-numeric` are T-0009, `gen-m2` is T-0203).
 - [ ] Calibration: recalc every ironcalc-calc workbook through Graph; report agreement with cached values (cells, by function) in docs/research/oracle-calibration.md.
 - [ ] Open questions answered (precision of persisted values, persistence lag, app-only support).
-- [ ] docs/excel-semantics entries for every probe flipped from UNVERIFIED to VERIFIED/corrected.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Windows desktop backend.
+Windows desktop backend. Probe-suite fills and their excel-semantics flips (T-0009).
