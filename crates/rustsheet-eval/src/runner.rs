@@ -16,7 +16,7 @@ use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
 use crate::suite::{oracle_sidecar, CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
-use crate::volatile::{pinned_clock_serial, volatile_cells, FormulaCell};
+use crate::volatile::{formula_cells, pinned_clock_serial, volatile_cells, FormulaCell};
 use crate::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -312,18 +312,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             skipped_volatile: 0,
         });
     };
-    let formulas: Vec<FormulaCell> = snapshot
-        .sheets
-        .iter()
-        .flat_map(|sheet| {
-            sheet.cells.iter().filter_map(|(addr, cell)| {
-                // Shared-formula members carry the master's text unshifted, so their
-                // references may be off (a missed or extra dependency, never a wrong score).
-                let formula = cell.formula.clone().filter(|_| cell.is_formula())?;
-                Some((sheet.name.clone(), *addr, formula))
-            })
-        })
-        .collect();
+    let formulas = formula_cells(&snapshot.sheets);
     let volatile = volatile_cells(&formulas, pinned_clock_serial(&snapshot.sheets).is_some());
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;

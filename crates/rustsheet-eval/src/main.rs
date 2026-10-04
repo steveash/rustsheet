@@ -19,6 +19,7 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
+use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
@@ -95,6 +96,12 @@ enum Cmd {
     },
     /// Print the stored formulas/values of an xlsx as JSON.
     Snapshot { path: PathBuf },
+    /// Oracle calibration: compare an Excel-authored xlsx's cached values with the same
+    /// workbook recalculated by an oracle backend; prints per-cell verdicts as JSON.
+    Compare {
+        cached: PathBuf,
+        recalculated: PathBuf,
+    },
 }
 
 fn find_root(explicit: Option<PathBuf>) -> Result<PathBuf> {
@@ -267,6 +274,19 @@ fn run() -> Result<ExitCode> {
         println!("{}", serde_json::to_string_pretty(&read_snapshot(&bytes)?)?);
         return Ok(ExitCode::SUCCESS);
     }
+    if let Cmd::Compare {
+        cached,
+        recalculated,
+    } = &cli.cmd
+    {
+        let load = |p: &Path| -> Result<_> {
+            let bytes = std::fs::read(p).with_context(|| p.display().to_string())?;
+            Ok(read_snapshot(&bytes)?)
+        };
+        let comparison = compare_snapshots(&load(cached)?, &load(recalculated)?);
+        println!("{}", serde_json::to_string(&comparison)?);
+        return Ok(ExitCode::SUCCESS);
+    }
     let root = find_root(cli.root)?;
     match cli.cmd {
         Cmd::Suites => {
@@ -329,7 +349,7 @@ fn run() -> Result<ExitCode> {
             allow_regressions,
         } => cmd_check(&root, &sel, Some(allow_regressions)),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
-        Cmd::Snapshot { .. } => unreachable!("handled above"),
+        Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
     }
 }
 

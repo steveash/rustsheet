@@ -36,6 +36,23 @@ static REFERENCE: LazyLock<Regex> = LazyLock::new(|| {
 /// A formula cell: (sheet name, address, formula text without `=`).
 pub type FormulaCell = (String, Addr, String);
 
+/// Every formula cell of a workbook snapshot, as input for [`volatile_cells`].
+///
+/// Shared-formula members carry the master's text unshifted, so their references may be off
+/// (a missed or extra dependency, never a wrong score).
+#[must_use]
+pub fn formula_cells(sheets: &[SheetSnapshot]) -> Vec<FormulaCell> {
+    sheets
+        .iter()
+        .flat_map(|sheet| {
+            sheet.cells.iter().filter_map(|(addr, cell)| {
+                let formula = cell.formula.clone().filter(|_| cell.is_formula())?;
+                Some((sheet.name.clone(), *addr, formula))
+            })
+        })
+        .collect()
+}
+
 /// Whether the formula itself calls a volatile function.
 #[must_use]
 pub fn is_volatile(formula: &str, clock_pinned: bool) -> bool {

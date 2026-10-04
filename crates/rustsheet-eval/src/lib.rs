@@ -10,6 +10,7 @@
 //! See `docs/architecture/eval-harness.md`.
 
 pub mod baseline;
+pub mod calibrate;
 pub mod case;
 pub mod cellref;
 pub mod engine;

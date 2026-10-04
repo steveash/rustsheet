@@ -44,6 +44,22 @@ def snapshot(xlsx: Path) -> dict[str, Any]:
     return data
 
 
+def compare_workbooks(cached: Path, recalculated: Path) -> dict[str, Any]:
+    """Per-cell verdicts of `cached`'s formula cells against `recalculated`.
+
+    Delegates to `rustsheet-eval compare` (crates/rustsheet-eval/src/calibrate.rs), so the
+    comparison rules, volatile skipping and function attribution are the harness's own.
+    """
+    out = subprocess.run(
+        [str(eval_binary()), "compare", str(cached), str(recalculated)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    data: dict[str, Any] = json.loads(out.stdout)
+    return data
+
+
 def formula_values(snap: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """Maps sheet → A1 → value for every formula cell (incl. array members) in a snapshot."""
     result: dict[str, dict[str, Any]] = {}
