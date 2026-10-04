@@ -129,8 +129,9 @@ def test_fill_writes_no_sidecar_when_the_canary_fails(
     case.write_text('{"sheets": [{"name": "Sheet1", "cells": {"A1": "=1+1"}}]}')
     monkeypatch.setattr(cli, "GOLDEN_BACKENDS", {"echo"})
     monkeypatch.setattr(cli, "_backend", lambda _: EchoBackend())
-    monkeypatch.setattr(cli, "_suite_cases", lambda _: ({}, [case]))
-    assert cli.cmd_fill(SimpleNamespace(backend="echo", suite="s", force=False, limit=0)) == 1
+    monkeypatch.setattr(cli, "_suite_cases", lambda _: ({}, [(case, tmp_path / "x.oracle.json")]))
+    args = SimpleNamespace(backend="echo", suite="s", force=False, limit=0, include_cached=False)
+    assert cli.cmd_fill(args) == 1
     assert not (tmp_path / "x.oracle.json").exists()
 
 

@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -14,7 +15,7 @@ use crate::case::{
 };
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
-use crate::suite::{oracle_sidecar, CaseFile, Suite, SuiteKind};
+use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, volatile_cells, FormulaCell};
 use crate::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
@@ -124,6 +125,7 @@ pub fn run_suites(
                 CaseFile {
                     id: format!("{}/<discovery>", suite.manifest.name),
                     path: suite.root().join(format!("<error: {e}>")),
+                    sidecar: PathBuf::new(),
                 },
             )),
         }
@@ -263,11 +265,11 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
 }
 
 fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
-    let path = oracle_sidecar(&case.path);
+    let path = &case.sidecar;
     if !path.exists() {
         return Ok(None);
     }
-    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
     serde_json::from_str(&text)
         .map(Some)
         .map_err(|e| format!("{}: {e}", path.display()))
@@ -454,8 +456,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
 mod tests {
     use super::*;
     use crate::case::ORACLE_FORMAT;
-    use crate::suite::SuiteManifest;
-    use std::path::PathBuf;
+    use crate::suite::{oracle_sidecar, SuiteManifest};
 
     /// Engine whose behaviour is chosen by the spec's `description` ("panic", "error", else ok).
     struct Scripted;
@@ -501,6 +502,7 @@ mod tests {
         };
         let case = CaseFile {
             id: "t/a".into(),
+            sidecar: oracle_sidecar(&path),
             path,
         };
         let engine: Arc<dyn Engine + Send> = Arc::new(Scripted);
@@ -543,6 +545,7 @@ mod tests {
         std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
         let prepared = prepare_spec(&CaseFile {
             id: "t/a".into(),
+            sidecar: oracle_sidecar(&path),
             path,
         });
         let _ = std::fs::remove_dir_all(&dir);
@@ -578,6 +581,7 @@ mod tests {
         let file = CaseFile {
             id: "t/a".into(),
             path: path.clone(),
+            sidecar: oracle_sidecar(&path),
         };
         std::fs::write(
             &path,

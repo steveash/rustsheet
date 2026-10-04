@@ -63,6 +63,12 @@ pub struct SuiteManifest {
     /// Milestone tag(s) this suite primarily measures.
     #[serde(default)]
     pub milestone: Vec<String>,
+    /// Directory (relative to the manifest) holding oracle sidecars in a tree mirroring the cases:
+    /// `<oracle_dir>/<case path relative to the suite root, extension → .oracle.json>`. Needed when
+    /// the cases live outside the repository (fetched suites) so the sidecars can be committed.
+    /// When absent, a sidecar sits next to its case (`foo.xlsx` → `foo.oracle.json`).
+    #[serde(default)]
+    pub oracle_dir: Option<String>,
     /// Pinned external source; when present the cases live in `eval/.cache/suites/<name>`
     /// (populated by `rustsheet-eval fetch`) instead of next to the manifest.
     #[serde(default)]
@@ -172,6 +178,8 @@ pub struct CaseFile {
     /// `<suite>/<path relative to suite root>`.
     pub id: String,
     pub path: PathBuf,
+    /// Where this case's oracle sidecar lives (see `SuiteManifest::oracle_dir`).
+    pub sidecar: PathBuf,
 }
 
 pub(crate) fn build_globs(patterns: &[String]) -> Result<GlobSet> {
@@ -211,6 +219,15 @@ impl Suite {
                         "{}: suite name must match [A-Za-z0-9_-]+",
                         entry.path().display()
                     );
+                }
+                if let Some(d) = &manifest.oracle_dir {
+                    if d.is_empty() || Path::new(d).is_absolute() || d.split('/').any(|c| c == "..")
+                    {
+                        bail!(
+                            "{}: oracle_dir must be a relative path inside the suite directory",
+                            entry.path().display()
+                        );
+                    }
                 }
                 if let Some(f) = &manifest.fetch {
                     f.validate()
@@ -278,9 +295,14 @@ impl Suite {
                 continue;
             }
             if include.is_match(&rel) && !exclude.is_match(&rel) {
+                let sidecar = match &self.manifest.oracle_dir {
+                    Some(d) => oracle_sidecar(&self.dir.join(d).join(&rel)),
+                    None => oracle_sidecar(entry.path()),
+                };
                 out.push(CaseFile {
                     id: format!("{}/{rel}", self.manifest.name),
                     path: entry.path().to_path_buf(),
+                    sidecar,
                 });
             }
         }
@@ -288,7 +310,8 @@ impl Suite {
     }
 }
 
-/// Path of the oracle sidecar for a case file (`foo.xlsx` → `foo.oracle.json`).
+/// The sidecar path for a case path: same directory, `foo.xlsx` / `foo.xlsm` / `foo.case.json`
+/// → `foo.oracle.json`. With `oracle_dir`, `path` is the case's mirror path under that directory.
 #[must_use]
 pub fn oracle_sidecar(path: &Path) -> PathBuf {
     let name = path
@@ -298,6 +321,7 @@ pub fn oracle_sidecar(path: &Path) -> PathBuf {
     let stem = name
         .strip_suffix(".case.json")
         .or_else(|| name.strip_suffix(".xlsx"))
+        .or_else(|| name.strip_suffix(".xlsm"))
         .unwrap_or(&name);
     path.with_file_name(format!("{stem}.oracle.json"))
 }
@@ -391,6 +415,57 @@ mod tests {
         std::fs::write(cache.join(FETCH_MARKER), "stale pin").expect("marker");
         assert_eq!(s.fetch_state(), FetchState::NotFetched);
         std::fs::remove_dir_all(&cache).expect("cleanup");
+    }
+
+    #[test]
+    fn oracle_dir_mirrors_the_case_tree_under_the_suite_dir() {
+        let base = std::env::temp_dir().join(format!("rs-suite-oracle-{}", std::process::id()));
+        let cache = base.join("cache");
+        std::fs::create_dir_all(cache.join("sub")).expect("mkdir");
+        std::fs::write(cache.join("sub/b.xlsx"), b"").expect("case");
+        let mut s = suite_with(
+            &format!(
+                "oracle_dir = \"oracle\"\n[fetch]\nurl = \"https://x.org/a\"\nrev = \"{REV}\"\n"
+            ),
+            cache.clone(),
+        );
+        s.dir = base.join("suite");
+        let cases = s.cases().expect("cases");
+        std::fs::remove_dir_all(&base).expect("cleanup");
+        assert_eq!(cases.len(), 1);
+        assert_eq!(cases[0].id, "ext/sub/b.xlsx");
+        assert_eq!(
+            cases[0].sidecar,
+            base.join("suite/oracle/sub/b.oracle.json")
+        );
+    }
+
+    #[test]
+    fn oracle_dir_must_stay_inside_the_suite() {
+        let base = std::env::temp_dir().join(format!("rs-suite-bad-oracle-{}", std::process::id()));
+        for (i, bad) in ["../x", "/abs", ""].iter().enumerate() {
+            let dir = base.join(format!("s{i}"));
+            std::fs::create_dir_all(dir.join("s")).expect("mkdir");
+            std::fs::write(
+                dir.join("s/suite.toml"),
+                format!(
+                    "name = \"s\"\nkind = \"spec\"\nlicense = \"MIT\"\noracle_dir = \"{bad}\"\n"
+                ),
+            )
+            .expect("manifest");
+            assert!(Suite::load_all(&dir).is_err(), "{bad:?} accepted");
+        }
+        std::fs::remove_dir_all(&base).expect("cleanup");
+    }
+
+    #[test]
+    fn sidecar_name_strips_every_case_extension() {
+        for case in ["a.xlsx", "a.xlsm", "a.case.json"] {
+            assert_eq!(
+                oracle_sidecar(Path::new(case)),
+                PathBuf::from("a.oracle.json")
+            );
+        }
     }
 
     #[test]

@@ -264,7 +264,17 @@ fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
     if let Cmd::Snapshot { path } = &cli.cmd {
         let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
-        println!("{}", serde_json::to_string_pretty(&read_snapshot(&bytes)?)?);
+        let snapshot = read_snapshot(&bytes)?;
+        // Tools decide "would the suite trust these cached values?" from this flag rather than
+        // re-implementing the rule (CLAUDE.md: tools never re-implement xlsx value parsing).
+        let mut json = serde_json::to_value(&snapshot)?;
+        if let Some(obj) = json.as_object_mut() {
+            obj.insert(
+                "excel_authored".into(),
+                serde_json::Value::Bool(snapshot.is_excel_authored()),
+            );
+        }
+        println!("{}", serde_json::to_string_pretty(&json)?);
         return Ok(ExitCode::SUCCESS);
     }
     let root = find_root(cli.root)?;
