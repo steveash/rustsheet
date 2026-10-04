@@ -209,9 +209,9 @@ fn changes_to_py<'py>(
     Ok(out)
 }
 
-fn lock(m: &Mutex<Workbook>) -> MutexGuard<'_, Workbook> {
-    // A poisoned lock only means an earlier call panicked; the workbook itself is consistent
-    // because edits roll back on failure.
+fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    // A poisoned lock only means an earlier call panicked; the guarded state is still usable
+    // (edits roll back on failure, `last_changes` is replaced wholesale).
     m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
@@ -255,10 +255,7 @@ impl PyWorkbook {
             })
             .map_err(|e: EditError| edit_err(&e))?;
         let d = changes_to_py(py, names, &changes)?;
-        *self
-            .last_changes
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(d.unbind());
+        *lock(&self.last_changes) = Some(d.unbind());
         Ok(())
     }
 }
@@ -409,11 +406,7 @@ impl PyWorkbook {
     /// retained until the next edit (the Rust `Workbook` stores none), `None` before any edit.
     #[getter]
     fn changes(&self, py: Python<'_>) -> Option<Py<PyDict>> {
-        self.last_changes
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .as_ref()
-            .map(|d| d.clone_ref(py))
+        lock(&self.last_changes).as_ref().map(|d| d.clone_ref(py))
     }
 }
 
