@@ -9,7 +9,9 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::case::{split_qualified, CaseSpec, CellInput, OracleFile, CASE_FORMAT};
+use crate::case::{
+    canonical_key, cell_key, split_qualified, CaseSpec, CellInput, OracleFile, CASE_FORMAT,
+};
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
 use crate::suite::{oracle_sidecar, CaseFile, Suite, SuiteKind};
@@ -362,17 +364,6 @@ fn cached_lookup(snapshot: &WorkbookSnapshot) -> BTreeMap<(String, Addr), Value>
     map
 }
 
-/// The canonical expectation key for a cell: `'Sheet'!A1` (sheet always quoted, `'` doubled).
-fn cell_key(sheet: &str, addr: Addr) -> String {
-    format!("'{}'!{addr}", sheet.replace('\'', "''"))
-}
-
-/// Canonicalises a `Sheet!A1` / `'Sheet'!$A$1` key; `None` if it is not a cell reference.
-fn canonical_key(key: &str) -> Option<String> {
-    let (sheet, a1) = split_qualified(key)?;
-    Some(cell_key(&sheet, Addr::parse(&a1)?))
-}
-
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     let text = std::fs::read_to_string(&case.path).map_err(|e| e.to_string())?;
     let spec: CaseSpec = serde_json::from_str(&text).map_err(|e| e.to_string())?;
@@ -381,11 +372,13 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     }
     // Hand keys may be written `Sheet1!B1` or `'Sheet1'!B1`; canonicalise them so an oracle value
     // for the same cell *replaces* the hand value (the oracle wins) instead of being scored beside it.
-    let mut expected: BTreeMap<String, Value> = spec
-        .expected
-        .iter()
-        .map(|(k, v)| (canonical_key(k).unwrap_or_else(|| k.clone()), v.clone()))
-        .collect();
+    let mut expected: BTreeMap<String, Value> = BTreeMap::new();
+    for (key, value) in &spec.expected {
+        let canonical = canonical_key(key).ok_or_else(|| format!("bad cell key {key}"))?;
+        if expected.insert(canonical, value.clone()).is_some() {
+            return Err(format!("duplicate expectation for cell {key}"));
+        }
+    }
     let mut source = spec
         .expected_source
         .clone()
@@ -394,9 +387,9 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         source.clone_from(&o.source.kind);
         for (sheet, cells) in o.sheets {
             for (a1, v) in cells {
-                let key = Addr::parse(&a1)
-                    .map_or_else(|| format!("'{sheet}'!{a1}"), |a| cell_key(&sheet, a));
-                expected.insert(key, v);
+                let addr = Addr::parse(&a1)
+                    .ok_or_else(|| format!("bad cell key {sheet}!{a1} in oracle sidecar"))?;
+                expected.insert(cell_key(&sheet, addr), v);
             }
         }
     }
@@ -432,12 +425,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     for q in wanted {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
-        let normalized = cell_key(&sheet, addr);
-        let Some(value) = expected
-            .get(&q)
-            .or_else(|| expected.get(&normalized))
-            .cloned()
-        else {
+        let Some(value) = expected.get(&cell_key(&sheet, addr)).cloned() else {
             continue; // pending oracle for this cell
         };
         let formula = formula_of(&sheet, &a1);
@@ -575,6 +563,37 @@ mod tests {
             ]
         );
         assert_eq!(prepared.expected_source, "excel-graph");
+    }
+
+    #[test]
+    fn duplicate_hand_keys_and_bad_oracle_keys_are_errors() {
+        let dir = std::env::temp_dir().join(format!("rs-runner-{}-bad-keys", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("a.case.json");
+        let case_with = |expected: &str| {
+            format!(
+                r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=1"}}}}],"expected":{{{expected}}}}}"#
+            )
+        };
+        let file = CaseFile {
+            id: "t/a".into(),
+            path: path.clone(),
+        };
+        std::fs::write(
+            &path,
+            case_with(r#""S!A1":{"t":"n","v":1},"'S'!$A$1":{"t":"n","v":2}"#),
+        )
+        .expect("write case");
+        let duplicate = prepare_spec(&file).err();
+        std::fs::write(&path, case_with(r#""S!A1":{"t":"n","v":1}"#)).expect("write case");
+        let oracle = format!(
+            r#"{{"format":"{ORACLE_FORMAT}","source":{{"kind":"k","application":"x"}},"sheets":{{"S":{{"nope":{{"t":"n","v":1}}}}}}}}"#
+        );
+        std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
+        let bad_oracle = prepare_spec(&file).err();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(duplicate.is_some_and(|e| e.contains("duplicate expectation")));
+        assert!(bad_oracle.is_some_and(|e| e.contains("in oracle sidecar")));
     }
 
     #[test]

@@ -18,7 +18,7 @@ such cell); the escapes / case / trailing-tilde entry is a hypothesis; D-functio
 entry does not cover truly blank cells (the probe range has none).
 
 ## Acceptance criteria
-- [ ] New cells in a probes case (new case or extension of criteria-grammar) covering: `COUNTIF(r,"<>abc")` over mixed numbers/booleans/errors/blanks/text; `"~*"`, `"~?"`, `"~~"`, and `"abc~"` against a cell holding "abc~"; D-function criteria with leading/trailing spaces (trimming); mixed-case wildcard and equality; `"="` over a range with a truly blank cell.
+- [ ] New cells in a probes case (new case or extension of criteria-grammar) covering: `COUNTIF(r,"<>abc")` over mixed numbers/booleans/errors/blanks/text; `"~*"`, `"~?"`, `"~~"`, and `"abc~"` against a cell holding "abc~"; D-function criteria with leading-only / trailing-only spaces and a padded operand after the operator (`">"&" 1 "`, i.e. `> 1 `), to tell "no trimming" from "trim, but a padded operand stays text"; mixed-case wildcard and equality; `"="` over a range with a truly blank cell.
 - [ ] `rustsheet-oracle fill -b excel-graph --suite probes` sidecar committed; new known failures recorded via `make eval-baseline`.
 - [ ] criteria.md entries updated (VERIFIED or corrected) citing the cells.
 - [ ] `make check` green; reviewers approve.

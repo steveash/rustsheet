@@ -29,14 +29,16 @@ Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Database)
 
-## D-function criteria text is not trimmed
-Rule: DSUM/DCOUNT/... use criteria text exactly as written; with surrounding spaces, `"  > 1 "`
-is not the operator `>` (if Excel stripped the leading spaces, the operand `" 1 "` would parse as
-1 and match), so it matches nothing (DSUM over Qty 1, 2, 4 → 0, not 6). Disproves the earlier
-"criteria text is trimmed first" hypothesis, which the engine had implemented.
+## D-function criteria are not trimmed into an operator criterion
+Rule: a D-function criterion padded on both sides, `"  > 1 "`, does not act as `>1`: DSUM over
+Qty 1, 2, 4 returns 0, not 6. This disproves the earlier "criteria text is trimmed first"
+hypothesis (which the engine had implemented). The evidence fits two explanations, still to be
+told apart: no trimming at all (the text is a plain-text criterion), or leading spaces trimmed
+but the operand `" 1 "` kept as text (matching no number). The engine implements "no trimming".
 Evidence: smoke/d-function-criteria Sheet1!J2 (`=DSUM(A1:B4,"Qty",F1:F2)`, F2 = `"  > 1 "` → 0).
 Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED (only the both-sides-padded case; leading-only / trailing-only spaces: T-0011)
+Status: VERIFIED for the both-sides-padded case; which explanation holds (and leading-only /
+trailing-only padding, `">"&" 1 "`) is UNVERIFIED (probe pending, T-0011)
 Implemented in: functions::database::criteria_cell_matches (no trimming)
 
 ## "=" does not match an empty-string cell
