@@ -3,8 +3,8 @@ id: T-0004
 title: "Oracle bring-up and calibration (Microsoft Graph)"
 milestone: M0
 lane: research
-status: blocked
-priority: P0
+status: todo
+priority: P1
 size: M
 depends_on: []
 ---
@@ -13,17 +13,14 @@ depends_on: []
 Prove the Excel oracle end to end and answer the open questions in docs/architecture/oracle.md.
 
 ## Context
-Requires owner-provided credentials (RUSTSHEET_ORACLE_* environment variables, work/school tenant).
+Credentials are configured (app-only, `Sites.Selected` on a dedicated SharePoint site). A live
+`rustsheet-oracle recalc -b excel-graph` round trip succeeded on 2026-10-04 (~11 s per workbook).
 
 ## Acceptance criteria
-- [ ] `rustsheet-oracle fill -b excel-graph` produces sidecars for suites `probes`, `smoke`, `gen-m2`; committed.
+- [ ] `rustsheet-oracle fill -b excel-graph` produces sidecars for suite `smoke`; committed (`probes`/`probes-numeric` are T-0009, `gen-m2` is T-0203).
 - [ ] Calibration: recalc every ironcalc-calc workbook through Graph; report agreement with cached values (cells, by function) in docs/research/oracle-calibration.md.
-- [ ] Open questions answered (precision of persisted values, persistence lag, app-only support).
-- [ ] docs/excel-semantics entries for every probe flipped from UNVERIFIED to VERIFIED/corrected.
+- [ ] Open questions answered (precision of persisted values, persistence lag); app-only support already confirmed 2026-10-04.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Windows desktop backend.
-
-## Blocked because
-Needs owner-provided Microsoft 365 work/school tenant credentials (docs/architecture/oracle.md, docs/status.md 'Needs owner').
+Windows desktop backend. Probe-suite fills and their excel-semantics flips (T-0009).
