@@ -193,8 +193,10 @@ mod tests {
             Ok(MAXIMUM_DATE_SERIAL_NUMBER),
         );
         assert_eq!(
-            permissive_date_to_serial_number(31, 12, 1899),
+            permissive_date_to_serial_number(1, 1, 1900),
             Ok(MINIMUM_DATE_SERIAL_NUMBER),
         );
+        // DATE adds 1900 to years below 1900, so 1899 only reaches here from direct callers.
+        assert!(permissive_date_to_serial_number(31, 12, 1899).is_err());
     }
 }

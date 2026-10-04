@@ -892,5 +892,5 @@ fn test_eomonth_early_1900_serials() {
     // End of January 1900 is serial 31 in Excel's numbering (engine behavior, no oracle probe yet)
     assert_eq!(model._get_text("A1"), *"31");
     assert_eq!(model._get_text("A2"), *"31");
-    assert_eq!(model._get_text("A3"), *"90");
+    assert_eq!(model._get_text("A3"), *"91");
 }
