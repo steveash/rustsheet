@@ -14,7 +14,7 @@ Each PR's review fan-out costs less without weakening review where judgment matt
 
 ## Context
 Every PR runs 3-5 reviewer agents; on 2026-10-04 each used 20k-70k tokens. Per-MTok prices:
-Sonnet 5.5 $2/$10, Opus 5.5 $4/$20. The backlog PR for T-0015..T-0021 was reviewed by
+Sonnet 5.5 $2/$10, Opus 5.5 $4/$20. The backlog PR for T-0016..T-0023 was reviewed by
 security, architecture and quality on Sonnet (~21k tokens each) and their findings were sound.
 
 ## Acceptance criteria
@@ -23,4 +23,4 @@ security, architecture and quality on Sonnet (~21k tokens each) and their findin
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Worker model tiers (T-0015).
+Worker model tiers (T-0023).

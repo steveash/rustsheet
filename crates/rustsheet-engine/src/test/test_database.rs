@@ -463,7 +463,8 @@ fn computed_database_and_criteria_references() {
     assert_eq!(model._get_text("D3"), *"2100");
 }
 
-// Criteria text is trimmed, `<>` is exact (non-text cells match), plain text matches by prefix.
+// Criteria text is not trimmed ("  > 1 " matches nothing: smoke/d-function-criteria J2, excel-graph),
+// `<>` is exact (non-text cells match), plain text matches by prefix.
 #[test]
 fn criteria_grammar_shared_with_countif() {
     let mut model = new_empty_model();
@@ -489,6 +490,6 @@ fn criteria_grammar_shared_with_countif() {
     model.evaluate();
 
     assert_eq!(model._get_text("J1"), *"3");
-    assert_eq!(model._get_text("J2"), *"6");
+    assert_eq!(model._get_text("J2"), *"0");
     assert_eq!(model._get_text("J3"), *"6");
 }

@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::cellref::Addr;
 use crate::value::Value;
 
 pub const CASE_FORMAT: &str = "rustsheet-case/v1";
@@ -88,6 +89,19 @@ pub fn split_qualified(s: &str) -> Option<(String, String)> {
         .and_then(|x| x.strip_suffix('\''))
         .map_or_else(|| sheet.to_string(), |x| x.replace("''", "'"));
     Some((sheet, cell.to_string()))
+}
+
+/// The canonical expectation key for a cell: `'Sheet'!A1` (sheet always quoted, `'` doubled).
+#[must_use]
+pub fn cell_key(sheet: &str, addr: Addr) -> String {
+    format!("'{}'!{addr}", sheet.replace('\'', "''"))
+}
+
+/// Canonicalises a `Sheet!A1` / `'Sheet'!$A$1` key; `None` if it is not a cell reference.
+#[must_use]
+pub fn canonical_key(key: &str) -> Option<String> {
+    let (sheet, a1) = split_qualified(key)?;
+    Some(cell_key(&sheet, Addr::parse(&a1)?))
 }
 
 #[cfg(test)]

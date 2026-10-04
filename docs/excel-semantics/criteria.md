@@ -23,12 +23,23 @@ Status: UNVERIFIED (probe pending)
 Implemented in: functions::criteria::wildcard_text_matcher
 
 ## D-function plain-text equality matches by prefix
-Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF. (That criteria text is trimmed first
-is still a hypothesis; T-0011 probes it.)
+Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF.
 Evidence: probes/criteria-grammar C11 (`DCOUNTA` with criterion "ab" over ab, abc, xab → 2).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Database)
+
+## D-function criteria are not trimmed into an operator criterion
+Rule: a D-function criterion padded on both sides, `"  > 1 "`, does not act as `>1`: DSUM over
+Qty 1, 2, 4 returns 0, not 6. This disproves the earlier "criteria text is trimmed first"
+hypothesis (which the engine had implemented). The evidence fits two explanations, still to be
+told apart: no trimming at all (the text is a plain-text criterion), or leading spaces trimmed
+but the operand `" 1 "` kept as text (matching no number). The engine implements "no trimming".
+Evidence: smoke/d-function-criteria Sheet1!J2 (`=DSUM(A1:B4,"Qty",F1:F2)`, F2 = `"  > 1 "` → 0).
+Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED for the both-sides-padded case; which explanation holds (and leading-only /
+trailing-only padding, `">"&" 1 "`) is UNVERIFIED (probe pending, T-0011)
+Implemented in: functions::database::criteria_cell_matches (no trimming)
 
 ## "=" does not match an empty-string cell
 Rule: `COUNTIF(range,"=")` does not count a cell holding the empty string, while
