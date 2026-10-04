@@ -116,6 +116,13 @@ desktop Excel that saved the workbook agree.
 Evidence: poi/47813.xlsx Numbers!C92, B182, C272, B362, C452, B542, C632 (oracle sidecar
 `eval/suites/poi/oracle/47813.oracle.json` and the workbook's cached values). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Tasks: T-0915
+
+## ACOS(0.5) is the double nearest π/3
+Rule: `ACOS(0.5)` = 1.0471975511965976 (the double nearest π/3); libm returns 1.0471975511965979.
+Evidence: poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+Status: VERIFIED
+Tasks: T-0939
 
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 

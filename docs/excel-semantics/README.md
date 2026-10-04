@@ -23,7 +23,7 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   deviation needs its own decision record.
 
 Files by area: `numbers.md`, `dates.md`, `coercion.md`, `errors.md`, `criteria.md`,
-`arrays.md`, `lookup.md`, … (create as needed). Format per rule:
+`arrays.md`, `lookup.md`, `number-formats.md`, `references.md`, … (create as needed). Format per rule:
 
 ```
 ## <short rule name>
