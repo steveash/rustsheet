@@ -4,7 +4,7 @@ title: "Generate and oracle-fill gen-m2 (≥ 10k cells)"
 milestone: M2
 lane: harness
 status: todo
-priority: P1
+priority: P0
 size: S
 depends_on: [T-0202]
 ---

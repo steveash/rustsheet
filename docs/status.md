@@ -21,10 +21,11 @@ draft), both docs-only drafts from other sessions, >24 h; #11 is superseded by T
 Ready queues: functions 9 (no triage needed), engine/api/harness ≥2 each (no planning needed). Upstream IronCalc: nothing new
 since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pending T-0009 (probes) and T-0004 (smoke, calibration). Spot-audit not run this session.
 
-**Critical lane:** api, engine, harness
+**Critical lane:** engine, harness, research, perf
 
-(Ordered list read by the critical-lane worker. M1 exit needs API v0 (T-0101 → T-0102…) and engine
-parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-0004) are pending.)
+(Ordered list read by the critical-lane worker. API v0 is done; M1 exit needs the engine parity fixes
+(T-0931, T-0106..T-0110); harness has the throughput fixes (T-0016, T-0017, T-0022, T-0023) and gen-m1/gen-m2 (T-0117,
+T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baseline before M3 (T-0400, T-0402).)
 
 ## Needs owner
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
@@ -76,3 +77,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-000
 - 2026-10-04 — Owner updated the routine prompts to the text in `docs/process/routines.md` (verified identical). Decision 0014: Excel is always right; every quirk found is recorded in docs/excel-semantics/.
 - 2026-10-04 — T-0013 (+ T-0010): every oracle workbook carries an embedded canary (poisoned cached values) and is refused unless Excel recalculated it; canary exposed that Excel-authored workbooks were never saved by the Graph session (old flow returned cached values) — fixed with a post-calculate no-trace edit; Graph calls retry dropped connections (T-0010); eval delta none
 - 2026-10-04 — T-0004 (partial): smoke oracle-filled (canary-verified); Excel disproved D-function criteria trimming (engine fixed, criteria.md entry); eval now lets oracle values replace hand values keyed without sheet quotes; smoke 38/38 vs Excel, 0 regressions
+- 2026-10-04 — Owner review: filed T-0016..T-0023, T-0402 (model tiers, board conflicts, task ids, milestone-order triage, POI oracle fill, evidence coverage, fuzzing, reviewer models, perf gate); T-0203 and T-0004 raised to P0; critical lane engine, harness, research, perf (API v0 done, api lane empty).

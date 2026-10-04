@@ -4,7 +4,7 @@ title: "Oracle bring-up and calibration (Microsoft Graph)"
 milestone: M0
 lane: research
 status: todo
-priority: P1
+priority: P0
 size: M
 depends_on: []
 ---
