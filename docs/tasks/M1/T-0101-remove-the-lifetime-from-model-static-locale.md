@@ -3,7 +3,7 @@ id: T-0101
 title: "Remove the lifetime from Model (static locale/language data)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 depends_on: []
@@ -22,3 +22,8 @@ docs/research/ironcalc-assessment.md §6/§8: Model<'a> borrows &'a Locale/Langu
 
 ## Out of scope
 Other API changes.
+
+## Outcome
+`Model`, `UserModel`, `Parser` and `Lexer` no longer carry a lifetime; locale/language references are
+`&'static` (the data was already static). The Python binding's `leak_str` helper is removed. Eval unchanged
+(0 fixed, 0 regressions).
