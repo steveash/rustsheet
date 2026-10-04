@@ -192,14 +192,14 @@ impl Txn<'_> {
     /// Records the input text, the undo entry and the pre-edit values for a write to `key`.
     fn log_cell(&mut self, sheet: u32, key: Key, cell: CellRef) -> Result<(), EditError> {
         let (sheet_id, row, col) = key;
+        if self.input_seen.insert(key) {
+            let text = self.input_text(sheet, row, col);
+            self.inputs.push((key, text));
+        }
         // Rollback replays the first snapshot last, so a cell already logged needs no second
         // one; a sheet-level op re-evaluates and can reshape spills, so it voids that.
         if self.logged.contains(&key) && !self.sheet_op {
             return Ok(());
-        }
-        if self.input_seen.insert(key) {
-            let text = self.input_text(sheet, row, col);
-            self.inputs.push((key, text));
         }
         let ws = self
             .model

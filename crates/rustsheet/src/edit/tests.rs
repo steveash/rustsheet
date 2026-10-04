@@ -412,6 +412,20 @@ fn repeated_writes_to_one_cell_roll_back_to_the_original() {
 }
 
 #[test]
+fn footprint_cells_written_after_their_anchor_report_input_changes() {
+    let mut wb = book();
+    wb.set("A1", "=SEQUENCE(3)").expect("spill");
+    let (_, changes) = wb
+        .edit(|tx| {
+            tx.set("A1", 1.0)?;
+            tx.set("A2", 5.0)
+        })
+        .expect("edit");
+    let a2 = cell(&wb, "A2");
+    assert!(changes.inputs.iter().any(|c| c.cell == a2), "{changes:?}");
+}
+
+#[test]
 fn oversized_spill_footprints_are_rejected() {
     use rustsheet_engine::types::Cell;
     let mut wb = book();
