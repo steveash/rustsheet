@@ -3,7 +3,7 @@ id: T-0925
 title: "Inverse normal (Wichura AS241) for NORM.S.INV/NORM.INV/LOGNORM.INV/CONFIDENCE.NORM (~120 known failures)"
 milestone: M9
 lane: functions
-status: in-progress
+status: blocked
 priority: P1
 size: S
 depends_on: []
@@ -26,3 +26,15 @@ Code: `functions/statistical/{normal,log_normal}.rs`. Implement AS241 (PPND16) o
 
 ## Out of scope
 erf/CDF accuracy (T-0924); T.INV/GAMMA.INV/BETA.INV iterations.
+
+## Blocked because
+Plain AS241 (PPND16, tried on branch commit reverted in this PR) fixes 57 of ~120 cells
+(ironcalc-calc known failures 1632 -> 1580) but REGRESSES 5 cells that statrs matched by luck:
+`CONFIDENCE.xlsx CONFIDENCE.NORM CONFIDENCE.T!D8`, `LOGNORM.xlsx LOGNORM.INV!F72`,
+`NORM_DIST.xlsx NORM.INV!F28`, `NORM.S.INV!D11` (expected -2.0000000000000004) and `D13`
+(expected exactly -3.0, AS241 gives -2.999999999999999). The gate forbids regressions.
+One Newton or Halley refinement step against the T-0924 CDF is worse (fixed 38, 9 regressions).
+Excel's last digits (e.g. `NORM.S.INV(C2)` -> 1.3333330000000008) look like iteration against
+Excel's own CDF, so exact parity likely needs that CDF bit-for-bit (several NORM.S.DIST cells,
+e.g. `NORM.S.INV!C3`, are still NumericUlp) plus oracle probes of the iteration. Unblock with
+oracle evidence (T-0004) for NORM.S.INV at p = NORM.S.DIST(k) for integer k.

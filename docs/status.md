@@ -71,3 +71,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is stil
 - 2026-10-04 — T-0102: API v0 `Workbook` read path + xlsx load/save with zip-bomb limits; eval adapter on the facade; eval 0 regressions, 0 fixed.
 - 2026-10-04 — T-0924: shared accurate erf/erfc + normal CDF/PDF kernel (ERF*, NORM.DIST/S.DIST, LOGNORM.DIST, GAUSS, Z.TEST); ironcalc-calc known failures 1720 -> 1632 (88 fixed), 0 regressions
 - 2026-10-04 — T-0103: API v0 `Workbook::edit`/`set` with undo-log rollback and diff-based `ChangeSet`; eval adapter builds specs via `edit`; eval 0 regressions, 0 fixed.
+- 2026-10-04 — T-0925: blocked — AS241 inverse normal fixes 57 cells but regresses 5 (no oracle); findings in task file; eval delta none
