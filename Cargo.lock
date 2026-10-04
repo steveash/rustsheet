@@ -798,7 +798,9 @@ name = "rustsheet"
 version = "0.1.0"
 dependencies = [
  "rustsheet_engine",
+ "rustsheet_xlsx",
  "thiserror",
+ "zip",
 ]
 
 [[package]]
@@ -830,6 +832,7 @@ dependencies = [
  "quick-xml",
  "rayon",
  "regex",
+ "rustsheet",
  "rustsheet_engine",
  "rustsheet_xlsx",
  "serde",

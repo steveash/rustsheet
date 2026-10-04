@@ -204,13 +204,6 @@ impl Value {
     /// `SpillValue` variant must be mapped here. A shared-string index outside the table reads as
     /// `Empty`, as the eval adapter does. A formula that is still `Unevaluated` reads as the
     /// engine's own `#ERROR!`, matching `Model::get_cell_value_by_index`.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "first caller is Workbook::value in T-0102; the expectation fails once it exists"
-        )
-    )]
     pub(crate) fn from_cell(cell: &Cell, shared_strings: &[String]) -> Self {
         match cell {
             Cell::EmptyCell { .. } => Self::Empty,

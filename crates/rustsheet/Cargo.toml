@@ -10,7 +10,13 @@ rust-version.workspace = true
 
 [dependencies]
 rustsheet_engine = { path = "../rustsheet-engine" }
+rustsheet_xlsx = { path = "../rustsheet-xlsx" }
 thiserror = "1"
+zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+
+[features]
+# Lets the eval harness pin NOW()/TODAY() (see `Workbook::pin_clock_from_metadata`).
+mock_time = ["rustsheet_engine/mock_time", "rustsheet_xlsx/mock_time"]
 
 [lints]
 workspace = true

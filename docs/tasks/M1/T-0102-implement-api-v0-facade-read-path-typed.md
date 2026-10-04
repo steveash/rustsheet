@@ -3,7 +3,7 @@ id: T-0102
 title: "Implement API v0 facade (read path + typed values)"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: M
 depends_on: [T-0100, T-0101, T-0113, T-0114, T-0115]
