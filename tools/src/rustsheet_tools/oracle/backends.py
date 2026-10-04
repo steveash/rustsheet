@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import uuid
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -217,7 +218,15 @@ class GraphBackend:
     ) -> requests.Response:
         for attempt in range(8):
             all_headers = {"Authorization": f"Bearer {self._token()}", **(headers or {})}
-            resp = self._session.request(method, url, headers=all_headers, json=json, data=data, timeout=120)
+            try:
+                resp = self._session.request(
+                    method, url, headers=all_headers, json=json, data=data, timeout=120
+                )
+            except (requests.ConnectionError, requests.Timeout):
+                # Dropped tunnels happen (seen through the agent proxy); a repeated non-idempotent
+                # call can at worst fail this one workbook with an OracleError.
+                time.sleep(2**attempt)
+                continue
             if resp.status_code in (429, 503, 504):
                 time.sleep(float(resp.headers.get("Retry-After", 2**attempt)))
                 continue
@@ -248,14 +257,29 @@ class GraphBackend:
                 json={"calculationType": "FullRebuild"},
                 headers=sid,
             )
+            # Excel only persists a session that *edited* the workbook: after a bare recalculation
+            # of a file last saved by current Excel, closeSession saves nothing and the download is
+            # the upload, cached values and all (observed 2026-10-04 on ironcalc's arithmetic.xlsx;
+            # files from other writers happen to be saved because Excel rewrites them on open).
+            # Adding and deleting a scratch sheet is an edit that leaves no trace in the result.
+            # It comes *after* calculate so that any save Excel takes already holds the full
+            # rebuild (editing first also persisted in tests, but an autosave between the edit and
+            # the rebuild would capture cached values). The scratch sheet is appended last and
+            # removed, so the recalc it triggers can only re-roll volatiles (RAND, NOW), which
+            # eval never scores. Structure-protected workbooks reject the edit and are refused.
+            touch = f"rustsheet-touch-{uuid.uuid4().hex[:8]}"
+            sheets = f"{item_url}/workbook/worksheets"
+            self._call("POST", f"{sheets}/add", json={"name": touch}, headers=sid)
+            self._call("DELETE", f"{sheets}('{touch}')", headers=sid)
             self._call("POST", f"{item_url}/workbook/closeSession", headers=sid)
             # Persisting is asynchronous: poll until the eTag moves, then download.
             etag = item.get("eTag")
             for _ in range(30):
-                meta = self._call("GET", item_url).json()
-                if meta.get("eTag") != etag:
+                if self._call("GET", item_url).json().get("eTag") != etag:
                     break
                 time.sleep(2)
+            else:
+                raise OracleError("Excel never saved the recalculated workbook (eTag unchanged after 60 s)")
             content = self._call("GET", f"{item_url}/content").content
         finally:
             with contextlib.suppress(OracleError):
