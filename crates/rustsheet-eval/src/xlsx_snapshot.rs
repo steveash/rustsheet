@@ -139,6 +139,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes.to_vec()))?;
     let (application, app_version) = read_app(&mut zip)?;
     let shared = read_shared_strings(&mut zip)?;
+    let rich_errors = read_rich_errors(&mut zip)?;
     let rels = read_workbook_rels(&mut zip)?;
     let workbook = read_part(&mut zip, "xl/workbook.xml")?
         .ok_or_else(|| SnapshotError::Malformed("missing xl/workbook.xml".into()))?;
@@ -152,7 +153,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         let Some(xml) = read_part(&mut zip, &path)? else {
             continue; // chartsheets / missing parts are not scored
         };
-        let cells = parse_sheet(&xml, &path, &shared)?;
+        let cells = parse_sheet(&xml, &path, &shared, &rich_errors)?;
         sheets.push(SheetSnapshot { name, cells });
     }
     Ok(WorkbookSnapshot {
@@ -255,6 +256,76 @@ fn resolve_entity(r: &quick_xml::events::BytesRef<'_>) -> String {
         .unwrap_or_default()
 }
 
+/// The error each value-metadata entry (`vm`, 1-based) stands for, if it is a rich-value error.
+///
+/// `xl/metadata.xml` lists `<rc v=N>` per entry; `v` indexes `xl/richData/rdrichvalue.xml`, whose
+/// first field is the `errorType`. Evidence: ironcalc-calc/ERROR.TYPE.xlsx (errorType 13 is
+/// `#CALC!` with ERROR.TYPE 14; 8 is `#SPILL!` with ERROR.TYPE 9).
+fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, SnapshotError> {
+    let (Some(meta), Some(rich)) = (
+        read_part(zip, "xl/metadata.xml")?,
+        read_part(zip, "xl/richData/rdrichvalue.xml")?,
+    ) else {
+        return Ok(Vec::new());
+    };
+    // First `<v>` of every `<rv>`.
+    let mut rv_errors: Vec<Option<&'static str>> = Vec::new();
+    let mut reader = Reader::from_str(&rich);
+    let (mut in_rv, mut seen_first, mut in_v) = (false, false, false);
+    loop {
+        match reader
+            .read_event()
+            .map_err(|e| xml_err("xl/richData/rdrichvalue.xml", e))?
+        {
+            Event::Start(e) => match e.local_name().as_ref() {
+                "rv" => (in_rv, seen_first) = (true, false),
+                "v" if in_rv && !seen_first => (in_v, seen_first) = (true, true),
+                _ => {}
+            },
+            Event::Text(t) if in_v => {
+                let code = t.xml_content(XmlVersion::Implicit1_0);
+                rv_errors.push(match code.trim() {
+                    "13" => Some("#CALC!"),
+                    "8" => Some("#SPILL!"),
+                    _ => None,
+                });
+            }
+            Event::End(e) => match e.local_name().as_ref() {
+                "v" => in_v = false,
+                "rv" => in_rv = false,
+                _ => {}
+            },
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    // `<valueMetadata>` blocks, one `<rc v=..>` each.
+    let mut out = Vec::new();
+    let mut reader = Reader::from_str(&meta);
+    let mut in_value_metadata = false;
+    loop {
+        match reader
+            .read_event()
+            .map_err(|e| xml_err("xl/metadata.xml", e))?
+        {
+            Event::Start(e) | Event::Empty(e) => match e.local_name().as_ref() {
+                "valueMetadata" => in_value_metadata = true,
+                "rc" if in_value_metadata => {
+                    let idx = attr(&e, "v").and_then(|v| v.parse::<usize>().ok());
+                    out.push(idx.and_then(|i| rv_errors.get(i).copied().flatten()));
+                }
+                _ => {}
+            },
+            Event::End(e) if e.local_name().as_ref() == "valueMetadata" => {
+                in_value_metadata = false
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
 fn read_workbook_rels(zip: &mut Zip) -> Result<HashMap<String, String>, SnapshotError> {
     let xml = read_part(zip, "xl/_rels/workbook.xml.rels")?
         .ok_or_else(|| SnapshotError::Malformed("missing workbook rels".into()))?;
@@ -308,6 +379,8 @@ fn parse_workbook(xml: &str) -> Result<(Vec<(String, String)>, bool), SnapshotEr
 struct PendingCell {
     addr: Option<Addr>,
     t: Option<String>,
+    /// The `vm` attribute: 1-based index into the workbook's value metadata.
+    vm: Option<usize>,
     f_text: String,
     f_attrs: Option<(Option<String>, Option<String>, Option<String>)>, // (t, si, ref)
     v_text: Option<String>,
@@ -326,6 +399,7 @@ fn parse_sheet(
     xml: &str,
     part: &str,
     shared: &[String],
+    rich_errors: &[Option<&'static str>],
 ) -> Result<BTreeMap<Addr, CellSnapshot>, SnapshotError> {
     let mut reader = Reader::from_str(xml);
     let mut cells = BTreeMap::new();
@@ -363,6 +437,7 @@ fn parse_sheet(
                     finish_cell(
                         c,
                         shared,
+                        rich_errors,
                         &mut shared_masters,
                         &mut array_ranges,
                         &mut cells,
@@ -390,6 +465,7 @@ fn parse_sheet(
                     finish_cell(
                         c,
                         shared,
+                        rich_errors,
                         &mut shared_masters,
                         &mut array_ranges,
                         &mut cells,
@@ -438,6 +514,7 @@ fn start_cell(e: &BytesStart<'_>, row_num: u32, next_col: &mut u32) -> PendingCe
     PendingCell {
         addr,
         t: attr(e, "t"),
+        vm: attr(e, "vm").and_then(|v| v.parse().ok()),
         ..PendingCell::default()
     }
 }
@@ -454,6 +531,7 @@ fn push_field(cur: &mut PendingCell, field: Field, text: &str) {
 fn finish_cell(
     c: PendingCell,
     shared: &[String],
+    rich_errors: &[Option<&'static str>],
     masters: &mut HashMap<u32, String>,
     arrays: &mut Vec<(Addr, Addr, Addr)>,
     out: &mut BTreeMap<Addr, CellSnapshot>,
@@ -484,12 +562,20 @@ fn finish_cell(
             }
         }
     };
-    let value = decode_value(
+    let mut value = decode_value(
         c.t.as_deref(),
         c.v_text.as_deref(),
         c.is_text.as_deref(),
         shared,
     );
+    // Excel stores `#CALC!`/`#SPILL!` as `#VALUE!` plus a rich-value `vm`; recover the real error.
+    if let (Value::Error(e), Some(vm)) = (&value, c.vm) {
+        if e == "#VALUE!" {
+            if let Some(Some(real)) = rich_errors.get(vm.wrapping_sub(1)) {
+                value = Value::Error((*real).to_string());
+            }
+        }
+    }
     if formula_kind.is_none() && value == Value::Empty {
         return; // styled-but-empty cell: irrelevant for scoring
     }
@@ -541,7 +627,7 @@ mod tests {
 
     #[test]
     fn parses_values_formulas_shared_and_arrays() {
-        let cells = parse_sheet(SHEET, "sheet1.xml", &["hi".to_string()]).unwrap_or_default();
+        let cells = parse_sheet(SHEET, "sheet1.xml", &["hi".to_string()], &[]).unwrap_or_default();
         let get = |s: &str| Addr::parse(s).and_then(|a| cells.get(&a)).cloned();
         assert_eq!(get("A1").map(|c| c.value), Some(Value::Number(1.5)));
         assert_eq!(get("B1").map(|c| c.value), Some(Value::Text("hi".into())));
@@ -571,10 +657,26 @@ mod tests {
     }
 
     #[test]
+    fn rich_value_errors_replace_the_cached_value_error() {
+        let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="e" vm="1"><f>1</f><v>#VALUE!</v></c><c r="B1" t="e" vm="2"><f>1</f><v>#VALUE!</v></c><c r="C1" t="e"><f>1</f><v>#VALUE!</v></c></row></sheetData></worksheet>"#;
+        // errorType 13 = #CALC!, 8 = #SPILL! (ERROR.TYPE.xlsx)
+        let rich = [Some("#CALC!"), Some("#SPILL!")];
+        let cells = parse_sheet(sheet, "sheet1.xml", &[], &rich).unwrap_or_default();
+        let get = |s: &str| {
+            Addr::parse(s)
+                .and_then(|a| cells.get(&a))
+                .map(|c| c.value.clone())
+        };
+        assert_eq!(get("A1"), Some(Value::Error("#CALC!".into())));
+        assert_eq!(get("B1"), Some(Value::Error("#SPILL!".into())));
+        assert_eq!(get("C1"), Some(Value::Error("#VALUE!".into())));
+    }
+
+    #[test]
     fn decodes_xlsx_control_char_escapes_in_text_values() {
         // CHAR.xlsx stores CHAR(1) as `_x0001_`.
         let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="str"><f>CHAR(1)</f><v>_x0001_</v></c></row></sheetData></worksheet>"#;
-        let cells = parse_sheet(sheet, "sheet1.xml", &[]).unwrap_or_default();
+        let cells = parse_sheet(sheet, "sheet1.xml", &[], &[]).unwrap_or_default();
         let get = |s: &str| {
             Addr::parse(s)
                 .and_then(|a| cells.get(&a))
