@@ -3,7 +3,7 @@ id: T-0206
 title: "Oracle-confirm criteria grammar (D-function prefix/trim, error/boolean operands)"
 milestone: M2
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: S
 depends_on: [T-0205]
