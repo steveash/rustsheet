@@ -26,6 +26,11 @@ Microsoft 365 Excel (en-US, 1900 date system, dynamic arrays) — including undo
    algorithm choice matches Excel's results to the last ulp on the oracle cases; iteration limits
    and convergence tolerances match Excel's observable behavior (e.g. IRR #NUM! conditions).
 5. **Tests**: new behavior has eval cases (spec cases under eval/suites/...) not only unit tests.
+6. **Quirk record**: every Excel behavior the change implements or uncovers has an entry in
+   `docs/excel-semantics/` (missing entry → MAJOR). Code that "corrects" Excel, picks a nicer
+   result than the evidence shows, or deviates for any reason other than CLAUDE.md directive 5
+   → BLOCKING. A directive-5 deviation (limit, no I/O, no panic) is correct even though Excel
+   differs; if its `DEVIATION (decision 0014)` entry is missing → MAJOR, never BLOCKING.
 
 ## Output
 ```

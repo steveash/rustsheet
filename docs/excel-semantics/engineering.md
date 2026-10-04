@@ -16,5 +16,11 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   used there. UNRESOLVED; tracked in T-0908. fdlibm is kept for `|x| >= 8`.
 
 Provenance: the coefficients are the published Numerical Recipes (2nd ed., §6.5) rational
-approximations, reproduced only because Excel's output matches them bit-for-bit. Orders above
-100_000 return `#NUM!` (Excel's real cap is UNVERIFIED) to bound per-cell work on untrusted input.
+approximations, reproduced only because Excel's output matches them bit-for-bit.
+
+## BESSEL order cap
+Rule: RustSheet returns `#NUM!` for BESSELJ and BESSELY orders above 100,000 to bound per-cell work on
+untrusted input (CLAUDE.md directive 5). Excel's real cap is not measured.
+Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
+Status: DEVIATION (decision 0014)
+Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`)
