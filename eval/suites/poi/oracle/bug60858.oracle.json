@@ -1,0 +1,30 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Arbeitszeitcheck_2.3": {
+   "F2": {
+    "t": "n",
+    "v": 0.0
+   },
+   "G2": {
+    "t": "n",
+    "v": 0.0
+   },
+   "I2": {
+    "t": "s",
+    "v": " "
+   },
+   "L2": {
+    "t": "s",
+    "v": " "
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "4a5dcfb4fa3406cecf7bdb52d5794a0660ca691c9dfebe94f48818e6cc091d67",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-04T22:11:21+00:00",
+  "version": null
+ }
+}

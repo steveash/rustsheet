@@ -63,3 +63,14 @@ def test_skip_reason(
     monkeypatch.setattr(cli, "snapshot", lambda _: _snap(formula, excel))
     manifest = {"use_cached_values": True, "require_excel_authored": True}
     assert (cli._skip_reason(manifest, Path("x.xlsx"), include_cached) is not None) is skipped
+
+
+def test_unreadable_workbook_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+    import subprocess
+
+    def boom(_: Path) -> dict[str, Any]:
+        raise subprocess.CalledProcessError(1, ["rustsheet-eval"], stderr="missing workbook rels")
+
+    monkeypatch.setattr(cli, "snapshot", boom)
+    reason = cli._skip_reason({}, Path("x.xlsx"), include_cached=False)
+    assert reason is not None and "missing workbook rels" in reason

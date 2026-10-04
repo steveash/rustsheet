@@ -1,0 +1,20 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B10": {
+    "t": "n",
+    "v": 4995.0
+   }
+  },
+  "Sheet3": {},
+  "rich test": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "7c88883ea9ff72d8f90239cb1a5f5d9744014b611d9b1588a090ba7629a381de",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-04T22:11:49+00:00",
+  "version": null
+ }
+}

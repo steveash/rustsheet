@@ -19,6 +19,7 @@ import datetime as dt
 import fnmatch
 import hashlib
 import json
+import subprocess
 import sys
 import tempfile
 import tomllib
@@ -122,8 +123,11 @@ def _sidecar(path: Path) -> Path:
 
 
 def _skip_reason(manifest: dict[str, Any], case: Path, include_cached: bool) -> str | None:
-    """Why an xlsx case needs no oracle run: nothing to score, or cached values already trusted."""
-    snap = snapshot(case)
+    """Why an xlsx case needs no oracle run: unreadable, nothing to score, or cached values trusted."""
+    try:
+        snap = snapshot(case)
+    except subprocess.CalledProcessError as e:  # the harness cannot read it either (import bug)
+        return f"rustsheet-eval cannot snapshot it ({(e.stderr or '').strip()[:120]})"
     if not any(c.get("formula") for sheet in snap["sheets"] for c in sheet["cells"].values()):
         return "no formula cells"
     trusted = manifest.get("use_cached_values") and (

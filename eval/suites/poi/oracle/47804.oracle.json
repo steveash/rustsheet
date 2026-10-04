@@ -1,0 +1,50 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "B2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "C2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "E2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "F2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "G2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "H2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "I2": {
+    "t": "e",
+    "v": "#VALUE!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "35eaa8a561cdc57f6eda13ef97006391103b4d424cab7ab82fc369a4a9367a36",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-04T22:03:28+00:00",
+  "version": null
+ }
+}
