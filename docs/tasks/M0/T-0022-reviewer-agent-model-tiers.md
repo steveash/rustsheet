@@ -18,7 +18,7 @@ Sonnet 5.5 $2/$10, Opus 5.5 $4/$20. The backlog PR for T-0016..T-0023 was review
 security, architecture and quality on Sonnet (~21k tokens each) and their findings were sound.
 
 ## Acceptance criteria
-- [x] `model: sonnet` in the frontmatter of reviewer-security, reviewer-architecture and reviewer-quality; reviewer-excel-fidelity and reviewer-performance keep the session model (Opus).
+- [x] `model: sonnet` in the frontmatter of reviewer-security, reviewer-architecture and reviewer-quality; reviewer-excel-fidelity and reviewer-performance pinned to `model: opus` (so a Sonnet worker cannot downgrade them).
 - [x] The decision record says why and sets a check: after a week, the steward's spot-audit compares misses by reviewer; any miss attributable to the cheaper model reverts that reviewer to Opus.
 - [x] `make check` green; reviewers approve.
 
