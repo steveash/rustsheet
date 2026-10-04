@@ -1,5 +1,5 @@
 use super::*;
-use crate::value::XlError;
+use crate::value::{ErrorKind, XlError};
 use crate::WorkbookOptions;
 
 fn book() -> Workbook {
@@ -379,47 +379,51 @@ fn same(a: &Value, b: &Value) -> bool {
     }
 }
 
-/// Records timings for SPEC-0001's size envelope and budget gate.
-/// `cargo test --release -p rustsheet -- --ignored --nocapture edit_bench`
 #[test]
-#[ignore = "benchmark; run with --release --ignored --nocapture"]
-fn edit_bench() {
-    use std::time::Instant;
+fn one_evaluation_per_edit() {
     let mut wb = book();
-    let n = 100_000u32;
-    wb.set_track_changes(false);
+    let before = wb.model.evaluation_count();
     wb.edit(|tx| {
-        tx.set("A1", 1.0)?;
-        for r in 2..=n {
-            tx.set(
-                format!("A{r}").as_str(),
-                Input::Formula(format!("=A{}+1", r - 1)),
-            )?;
+        for r in 1..=20 {
+            tx.set(format!("A{r}").as_str(), f64::from(r))?;
         }
         Ok(())
     })
-    .unwrap();
-    let t = Instant::now();
-    wb.recalculate();
-    let recalc = t.elapsed();
-    let t = Instant::now();
-    wb.set("B1", 1.0).unwrap();
-    let untracked = t.elapsed();
-    wb.set_track_changes(true);
-    let t = Instant::now();
-    let cs = wb.set("B1", 2.0).unwrap();
-    let tracked = t.elapsed();
-    let t = Instant::now();
+    .expect("edit");
+    assert_eq!(wb.model.evaluation_count(), before + 1);
+    wb.set("A1", 2.0).expect("set");
+    assert_eq!(wb.model.evaluation_count(), before + 2);
+}
+
+#[test]
+fn repeated_writes_to_one_cell_roll_back_to_the_original() {
+    let mut wb = book();
+    wb.set("A1", "=SEQUENCE(3)").expect("spill");
+    let original = dump(&wb);
     let r: Result<((), ChangeSet), _> = wb.edit(|tx| {
-        tx.set("A1", 5.0)?;
+        tx.set("A2", 7.0)?;
+        tx.set("A2", 8.0)?;
+        tx.set("A1", 1.0)?;
+        tx.set("A1", 2.0)?;
         Err(EditError::Engine("x".into()))
     });
-    let rollback = t.elapsed();
     assert!(r.is_err());
-    println!(
-        "formulas={n} recalc={recalc:?} set(untracked)={untracked:?} set(tracked)={tracked:?} \
-         diff_overhead={:?} failed_edit_rollback={rollback:?} changes={}",
-        tracked.saturating_sub(untracked),
-        cs.values.len()
-    );
+    assert_eq!(dump(&wb), original);
+}
+
+#[test]
+fn oversized_spill_footprints_are_rejected() {
+    use rustsheet_engine::types::Cell;
+    let mut wb = book();
+    wb.set("A1", "=SEQUENCE(2)").expect("spill");
+    // Imported array ranges are untrusted: stretch the anchor's extent past the cap.
+    let ws = wb.model.workbook.worksheet_mut(0).expect("sheet");
+    let mut anchor = ws.cell(1, 1).cloned().expect("anchor");
+    let Cell::ArrayFormula { r, .. } = &mut anchor else {
+        panic!("not an array formula: {anchor:?}");
+    };
+    *r = (1 << 12, (1 << 12) + 1);
+    ws.sheet_data.set_cell(1, 1, anchor);
+    let err = wb.set("A1", 1.0).unwrap_err();
+    assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
 }

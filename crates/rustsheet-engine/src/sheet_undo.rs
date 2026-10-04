@@ -3,6 +3,13 @@
 use crate::{model::Model, types::Worksheet};
 
 impl Model {
+    /// How many times [`Model::evaluate`] has run on this model. Lets a caller (the facade's
+    /// edit transactions) pin that it recalculates once per batch of edits.
+    #[must_use]
+    pub fn evaluation_count(&self) -> u64 {
+        self.evaluation.evaluations
+    }
+
     /// Removes the sheet at `sheet_index` and hands it back, so a caller can undo the delete
     /// with [`Model::restore_sheet`]. Fails like [`Model::delete_sheet`].
     pub fn take_sheet(&mut self, sheet_index: u32) -> Result<Worksheet, String> {
@@ -35,5 +42,70 @@ impl Model {
         self.workbook.worksheets.insert(sheet_index as usize, sheet);
         self.reset_parsed_structures();
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Model;
+
+    fn model() -> Model {
+        let mut model = Model::new_empty("book", "en", "UTC", "en").expect("model");
+        model.add_sheet("Two").expect("sheet");
+        model
+            .set_user_input(0, 1, 1, "=Two!A1+1".to_string())
+            .expect("input");
+        model
+            .set_user_input(1, 1, 1, "41".to_string())
+            .expect("input");
+        model.evaluate();
+        model
+    }
+
+    #[test]
+    fn take_then_restore_round_trips() {
+        let mut model = model();
+        let sheet = model.take_sheet(1).expect("take");
+        assert_eq!(model.workbook.worksheets.len(), 1);
+        model.restore_sheet(1, sheet).expect("restore");
+        model.evaluate();
+        assert_eq!(model.workbook.worksheets.len(), 2);
+        assert_eq!(
+            model.get_formatted_cell_value(0, 1, 1).expect("value"),
+            "42"
+        );
+    }
+
+    #[test]
+    fn take_sheet_rejects_the_only_sheet_and_bad_indexes() {
+        let mut model = model();
+        assert_eq!(model.take_sheet(5).unwrap_err(), "Sheet index too large");
+        model.take_sheet(1).expect("take");
+        assert_eq!(model.take_sheet(0).unwrap_err(), "Cannot delete only sheet");
+    }
+
+    #[test]
+    fn restore_sheet_rejects_bad_index_and_duplicates() {
+        let mut model = model();
+        let sheet = model.take_sheet(1).expect("take");
+        let copy = sheet.clone();
+        assert_eq!(
+            model.restore_sheet(9, sheet.clone()).unwrap_err(),
+            "Sheet index out of range"
+        );
+        model.restore_sheet(1, sheet).expect("restore");
+        assert_eq!(
+            model.restore_sheet(1, copy).unwrap_err(),
+            "A worksheet already exists with that name"
+        );
+    }
+
+    #[test]
+    fn evaluation_count_counts_evaluate_calls() {
+        let mut model = model();
+        let before = model.evaluation_count();
+        model.evaluate();
+        model.evaluate();
+        assert_eq!(model.evaluation_count(), before + 2);
     }
 }
