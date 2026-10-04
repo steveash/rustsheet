@@ -12,6 +12,26 @@ use crate::error::XlsxError;
 
 use super::util::{get_attribute, get_bool, get_bool_false, get_color_indexed, get_number};
 
+/// The first `<tag>` child of the stylesheet root; a file without one is malformed input, so
+/// it is a typed error rather than an index panic (T-0118, poi 47889 and friends).
+fn required_section<'a>(style_sheet: &'a XmlNode, tag: &str) -> Result<&'a XmlNode, XlsxError> {
+    style_sheet
+        .children()
+        .find(|n| n.has_tag_name(tag))
+        .ok_or_else(|| XlsxError::Xml(format!("Missing <{tag}> section in styles.xml")))
+}
+
+/// Entries of an optional `<tag>` section. The OOXML schema makes `fonts`, `fills`, `borders`,
+/// `cellStyleXfs` and `cellStyles` optional and Excel opens such files (poi bug60858,
+/// 65016, link-external-workbook-a: no `cellStyles`), so absence is an empty list (T-0118).
+fn optional_section_children<'a>(style_sheet: &'a XmlNode, tag: &str) -> Vec<&'a XmlNode> {
+    style_sheet
+        .children()
+        .find(|n| n.has_tag_name(tag))
+        .map(|section| section.children().collect())
+        .unwrap_or_default()
+}
+
 /// Reads the workbook's `<colors><indexedColors>` palette override (OOXML §18.8.27) from the
 /// styleSheet root as `#RRGGBB` strings positioned by index. Returns `None` when the file
 /// supplies no override (the common case), so callers keep the legacy default indexed palette.
@@ -117,11 +137,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut fonts = Vec::new();
-    let font_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("fonts"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for font in font_nodes.children() {
+    let font_nodes = optional_section_children(style_sheet, "fonts");
+    for font in font_nodes {
         let mut sz = 11;
         let mut name = "Inter".to_string();
         // NOTE: In Excel you can have simple underline or double underline
@@ -203,11 +220,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut fills = Vec::new();
-    let fill_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("fills"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for fill in fill_nodes.children() {
+    let fill_nodes = optional_section_children(style_sheet, "fills");
+    for fill in fill_nodes {
         let pattern_fill = fill
             .children()
             .filter(|n| n.has_tag_name("patternFill"))
@@ -247,11 +261,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut borders = Vec::new();
-    let border_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("borders"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for border in border_nodes.children() {
+    let border_nodes = optional_section_children(style_sheet, "borders");
+    for border in border_nodes {
         let diagonal_up = get_bool_false(border, "diagonal_up");
         let diagonal_down = get_bool_false(border, "diagonal_down");
         let left = get_border(border, "left", theme, indexed)?;
@@ -271,11 +282,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut cell_style_xfs = Vec::new();
-    let cell_style_xfs_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellStyleXfs"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for xfs in cell_style_xfs_nodes.children() {
+    let cell_style_xfs_nodes = optional_section_children(style_sheet, "cellStyleXfs");
+    for xfs in cell_style_xfs_nodes {
         let num_fmt_id = get_number(xfs, "numFmtId");
         let font_id = get_number(xfs, "fontId");
         let fill_id = get_number(xfs, "fillId");
@@ -303,11 +311,8 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
 
     let mut cell_styles = Vec::new();
     let mut style_names = HashMap::new();
-    let cell_style_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellStyles"))
-        .collect::<Vec<&XmlNode>>()[0];
-    for cell_style in cell_style_nodes.children() {
+    let cell_style_nodes = optional_section_children(style_sheet, "cellStyles");
+    for cell_style in cell_style_nodes {
         let name = get_attribute(cell_style, "name")?.to_string();
         let xf_id = get_number(cell_style, "xfId");
         let builtin_id = get_number(cell_style, "builtinId");
@@ -326,10 +331,7 @@ pub(super) fn load_styles<R: Read + std::io::Seek>(
     }
 
     let mut cell_xfs = Vec::new();
-    let cell_xfs_nodes = style_sheet
-        .children()
-        .filter(|n| n.has_tag_name("cellXfs"))
-        .collect::<Vec<&XmlNode>>()[0];
+    let cell_xfs_nodes = required_section(style_sheet, "cellXfs")?;
     for xfs in cell_xfs_nodes.children() {
         // `xfId` is optional on a cellXfs <xf> (it references cellStyleXfs;
         // many Excel/LibreOffice files omit it). Default to 0 when absent.

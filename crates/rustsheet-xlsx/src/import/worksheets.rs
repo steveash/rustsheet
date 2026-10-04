@@ -31,7 +31,7 @@ use super::{
     shared_strings::decode_xlsx_escapes,
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
-    util::{get_attribute, get_bool_false, get_color, get_number},
+    util::{get_attribute, get_bool_false, get_color, get_number, get_relationship},
 };
 
 pub(crate) struct Sheet {
@@ -981,7 +981,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     // load comments, tables and hyperlink relationships
     let mut sheet_rels = HashMap::new();
     for sheet in &workbook.worksheets {
-        let rel = &rels[&sheet.id];
+        let rel = get_relationship(rels, &sheet.id)?;
         if rel.rel_type.ends_with("worksheet") {
             let path = &rel.target;
             let path = if let Some(p) = path.strip_prefix('/') {
@@ -1008,7 +1008,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         let sheet_name = &sheet.name;
         let rel_id = &sheet.id;
         let state = &sheet.state;
-        let rel = &rels[rel_id];
+        let rel = get_relationship(rels, rel_id)?;
         if rel.rel_type.ends_with("worksheet") {
             let path = &rel.target;
             let path = if let Some(p) = path.strip_prefix('/') {

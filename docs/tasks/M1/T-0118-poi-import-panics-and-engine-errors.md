@@ -3,7 +3,7 @@ id: T-0118
 title: "Importer: no panics on POI workbooks (!Panic) and resource limits for xmlbomb/external-link files"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P0
 size: M
 depends_on: []
@@ -22,3 +22,6 @@ Found by T-0111's baseline update: these crash-only cases were recorded in `eval
 
 ## Out of scope
 Making the cases evaluate correctly (see T-0112 for missing rels / Strict OOXML).
+
+## Outcome
+No `!Panic` remains for `poi/*`. Stylesheets without `fonts`/`fills`/`borders`/`cellStyleXfs`/`cellStyles` import (schema-optional); missing relationships, bad refs and missing required sections are typed errors; XML-bomb files are rejected by the existing unknown-entity error (no expansion); the snapshot reader bounds shared strings to 32,767 chars. Importer-level resource limits and a few residual panics are filed as T-0121. poi known failures 655 -> 647 (8 cases now load or were removed from crash lines); 4 relabels recorded via decision 0012.

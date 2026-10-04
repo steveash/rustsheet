@@ -5,7 +5,6 @@
 C	poi/47889.xlsx	0
 C	poi/49609.xlsx	0
 C	poi/49783.xlsx	3
-C	poi/52348.xlsx	0
 C	poi/53101.xlsx	2
 C	poi/53105.xlsx	1
 C	poi/54206.xlsx	176
@@ -47,12 +46,10 @@ C	poi/61652.xlsx	13
 C	poi/61869.xlsx	3
 C	poi/62834.xlsx	3
 C	poi/63934.xlsx	1
-C	poi/65016.xlsx	0
 C	poi/CVLKRA-KYC_Download_File_Structure_V3.1.xlsx	103
 C	poi/ConditionalFormattingSamples.xlsx	352
 C	poi/DataTableCities.xlsx	14
 C	poi/DataValidationEvaluations.xlsx	1
-C	poi/DataValidationListTooLong.xlsx	0
 C	poi/DateFormatNumberTests.xlsx	10
 C	poi/DateFormatTests.xlsx	45
 C	poi/FormatConditionTests.xlsx	38
@@ -77,8 +74,6 @@ C	poi/ValueFunctionOfBlank.xlsx	5
 C	poi/WithConditionalFormatting.xlsx	1
 C	poi/XSSFSheet.copyRows.xlsx	10
 C	poi/bug60848_sumproduct_unary_minus.xlsx	1
-C	poi/bug60858.xlsx	0
-C	poi/bug62181.xlsx	0
 C	poi/bug65306.xlsx	2
 C	poi/bug65464.xlsx	17
 C	poi/bug66215.xlsx	10
@@ -90,8 +85,6 @@ C	poi/deep-data.xlsx	0
 C	poi/evaluate_formula_with_structured_table_references.xlsx	1
 C	poi/formula-eval.xlsx	1
 C	poi/invalid_cell_reference.xlsx	0
-C	poi/link-external-workbook-a.xlsx	0
-C	poi/link-external-workbook-b.xlsx	0
 C	poi/poc-shared-strings.xlsx	0
 C	poi/poc-xmlbomb-empty.xlsx	0
 C	poi/poc-xmlbomb.xlsx	0
@@ -108,11 +101,9 @@ C	poi/testSharedFormulasRangeSetBlankBug.xlsx	83
 C	poi/testSharedFormulasSetBlank.xlsx	10
 C	poi/test_conditional_formatting.xlsx	1
 C	poi/xlookup.xlsx	5
-C	poi/xlsx-jdbc.xlsx	0
-F	poi/47889.xlsx	!Panic
+F	poi/47889.xlsx	!EngineError
 F	poi/49609.xlsx	!InvalidCase
 F	poi/49783.xlsx	Sheet1!A2
-F	poi/52348.xlsx	!Panic
 F	poi/54288.xlsx	!EngineError
 F	poi/54436.xlsx	Sheet1!A14
 F	poi/54764-2.xlsx	!EngineError
@@ -147,7 +138,7 @@ F	poi/59021.xlsx	!EngineError
 F	poi/59106.xlsx	Test!A2
 F	poi/59106.xlsx	Test!B2
 F	poi/59746_NoRowNums.xlsx	!EngineError
-F	poi/60825.xlsx	!Panic
+F	poi/60825.xlsx	!EngineError
 F	poi/61063.xlsx	Tabelle1!A4
 F	poi/61652.xlsx	IRPPCalc!A2
 F	poi/61652.xlsx	IRPPCalc!N12
@@ -156,8 +147,6 @@ F	poi/61652.xlsx	Model!A6
 F	poi/61652.xlsx	Model!B4
 F	poi/61652.xlsx	Model!C4
 F	poi/63934.xlsx	Sheet1!B2
-F	poi/65016.xlsx	!Panic
-F	poi/DataValidationListTooLong.xlsx	!Panic
 F	poi/DateFormatNumberTests.xlsx	Tests!A10
 F	poi/DateFormatNumberTests.xlsx	Tests!A11
 F	poi/DateFormatNumberTests.xlsx	Tests!A2
@@ -694,8 +683,6 @@ F	poi/StructuredReferences.xlsx	Table!A4
 F	poi/StructuredReferences.xlsx	Table!A5
 F	poi/StructuredReferences.xlsx	Table!A6
 F	poi/StructuredReferences.xlsx	Table!A7
-F	poi/bug60858.xlsx	!Panic
-F	poi/bug62181.xlsx	!Panic
 F	poi/clone_sheet.xlsx	Arkusz1!H10
 F	poi/clone_sheet.xlsx	Arkusz1!H11
 F	poi/clone_sheet.xlsx	Arkusz1!H13
@@ -737,10 +724,8 @@ F	poi/clone_sheet.xlsx	Arkusz1!M8
 F	poi/clone_sheet.xlsx	Arkusz1!M9
 F	poi/customIndexedColors.xlsx	_TGK_HIDDEN!B1
 F	poi/deep-data.xlsx	!InvalidCase
-F	poi/invalid_cell_reference.xlsx	!Panic
-F	poi/link-external-workbook-a.xlsx	!Panic
-F	poi/link-external-workbook-b.xlsx	!Panic
-F	poi/poc-shared-strings.xlsx	!EngineError
+F	poi/invalid_cell_reference.xlsx	!EngineError
+F	poi/poc-shared-strings.xlsx	!InvalidCase
 F	poi/poc-xmlbomb-empty.xlsx	!EngineError
 F	poi/poc-xmlbomb.xlsx	!EngineError
 F	poi/protected_passtika.xlsx	!InvalidCase
@@ -763,4 +748,3 @@ F	poi/simple-table-named-range.xlsx	Sheet1!B7
 F	poi/style-alternate-content.xlsx	!EngineError
 F	poi/xlookup.xlsx	Sheet1!C2
 F	poi/xlookup.xlsx	Sheet1!D2
-F	poi/xlsx-jdbc.xlsx	!Panic
