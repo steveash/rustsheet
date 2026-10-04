@@ -1,4 +1,4 @@
-use super::bound_variables::prefix_bound_variables;
+mod bound_variables;
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
@@ -7,6 +7,7 @@ use crate::expressions::token::{OpSum, OpUnary};
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
+use bound_variables::prefix_bound_variables;
 
 pub enum DisplaceData {
     Column {
