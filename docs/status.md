@@ -2,22 +2,24 @@
 
 Updated by the steward routine (daily) and by workers (one line per merged task).
 
-## Snapshot — 2026-10-03 (M1 in progress)
+## Snapshot — 2026-10-04 (M1 in progress)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 207 | 71,390 | 97.53% | 1,761 |
-| poi | 334 | 3,526 | 82.25% (last fetched run; not fetched in steward run) | 718 baseline lines |
+| ironcalc-calc | 210 | 71,773 | 97.59% | 1,727 |
+| poi | 334 | 3,526 | not fetched in steward run (baseline 750 lines) | — |
 | smoke | 5 | 38 | 100% | 0 |
 | probes | 3 | pending oracle | — | — |
 | probes-numeric | 4 | pending oracle | — | — |
 | gen-m2 | 3 | pending oracle | — | — |
 
-Hygiene: lint-debt 99 allow entries · duplicated lines 8,610 · oversized files 20.
+Hygiene: lint-debt 99 allow entries · duplicated lines 8,420 · oversized files 20.
 
-Since 2026-10-02: 14 PRs merged (T-0002/3/5/7/8, T-0100, T-0113, T-0200–0205, T-0900, T-0902, T-0004
-setup docs); 0 reverted; 0 blocked-by-failure on main. CI on `main` (b8cfe40): green. Open PRs: #13
-(T-0901 blocked, draft, >24 h) and #11 (T-0904 blocked, draft, >24 h), both docs-only blocked reports.
+Since 2026-10-03: 13 PRs merged to `main` (T-0910/0912/0114/0115/0914/0111/0911/0919/0918/0920/0118/0913/0101);
+0 reverted; 0 blocked. CI on `main` (dc8dba7): green. Open PRs: #13 (T-0901 blocked, draft) and #11 (T-0904 blocked,
+draft), both docs-only drafts from other sessions, >24 h; #11 is superseded by T-0913 (merged) and can be closed by the owner.
+Ready queues: functions 9 (no triage needed), engine/api/harness ≥2 each (no planning needed). Upstream IronCalc: nothing new
+since 9b1ae3fd. Oracle credentials absent, so no `fill` run. Spot-audit not run this session.
 
 **Critical lane:** api, engine, harness
 
@@ -28,6 +30,7 @@ parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is stil
 - Excel oracle credentials: owner has a Microsoft 365 Business tenant (Graph-compatible). Pending:
   dedicated SharePoint site + app registration (`Sites.Selected`) + four `RUSTSHEET_ORACLE_*`
   environment variables (step-by-step guide in `docs/architecture/oracle.md`). Unblocks T-0004 and its dependents.
+- PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 - Routines are enabled with the repo attached, but their prompts are the pre-review drafts: replace each
   routine's prompt with the current text in `docs/process/routines.md`.
 
@@ -63,3 +66,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is stil
 - 2026-10-04 — T-0118: importer no longer panics on POI workbooks (typed errors, optional style sections); poi known failures 655 -> 647, 0 regressions beyond 4 crash-kind relabels (decision 0012); duplicated lines 8610->8420.
 - 2026-10-04 — T-0913: eval snapshot reader decodes rich-value `vm` errors (#CALC!/#SPILL! cached as #VALUE!); ironcalc-calc known failures 1735 -> 1727 (8 fixed), 0 regressions; engine unchanged
 - 2026-10-04 — T-0101: removed lifetime from Model/UserModel/Parser/Lexer and the Python binding's leak helper; eval delta none (0 fixed, 0 regressions)
+- 2026-10-04 — steward: health snapshot; queues healthy, no new upstream commits, no oracle credentials.
