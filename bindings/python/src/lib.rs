@@ -13,6 +13,7 @@ use xlsx::base::types::{Color, Workbook};
 use xlsx::base::{Model, UserModel};
 use xlsx::import;
 
+mod facade;
 mod raw_model;
 mod types;
 mod user_model;
@@ -251,6 +252,7 @@ fn _rustsheet(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add("WorkbookError", m.py().get_type::<WorkbookError>())?;
 
+    facade::register(m)?;
     m.add_class::<PyModel>()?;
     m.add_class::<PyUserModel>()?;
     m.add_class::<PyCellType>()?;

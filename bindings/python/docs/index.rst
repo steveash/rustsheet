@@ -7,6 +7,7 @@ IronCalc
 
    installation
    usage_examples
+   facade_api_reference
    top_level_methods
    raw_api_reference
    user_api_reference

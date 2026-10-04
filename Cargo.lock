@@ -852,6 +852,7 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "pythonize",
+ "rustsheet",
  "rustsheet_xlsx",
  "serde",
 ]
