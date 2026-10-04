@@ -33,3 +33,19 @@ Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
 `TIME(24,2,3)` = 0.0014236111111110006, `TIME(34,1,2)` = 0.41738425925925915.
 Evidence: ironcalc-calc DATE_AND_TIME/TIME_HOUR_MINUTE_SECOND.xlsx D3/D14/D17, DATE.xlsx D4 (Excel-cached).
 Status: VERIFIED (Excel-cached values)
+
+## Date text is parsed month-first (en-US); month names are accepted
+Rule: in en-US Excel, text dates in DATEVALUE/VALUE and in date arguments (DAYS, DAYS360,
+NETWORKDAYS, NETWORKDAYS.INTL) are read month-first and long forms with a month name parse:
+`VALUE("2/3/2023")` = 44960 (3 Feb), `VALUE("10-12-1999")` = 36445 (12 Oct),
+`DATEVALUE("1/2/2001")` = 36893 (2 Jan), `DATEVALUE("26-01-01")` = #VALUE! (no month 26),
+`DAYS("July 1, 2026","June 1, 2026")` = 30, `NETWORKDAYS("June 1, 2026","July 1, 2026")` = 23.
+Day-first readings belong to other locales: several ironcalc-calc workbooks were saved by a
+day-first Excel, so their cached values for these cells are NOT en-US evidence
+(docs/research/oracle-calibration.md).
+Evidence: probes/date-text-locale B1–B10.
+Oracle: excel-graph, 2026-10-04 (the canary pins the oracle to en-US). Evidence is Excel for
+the web only; desktop en-US is not yet confirmed (notably `"26-01-01"`, a possible yy-mm-dd
+reading), since web and desktop differ in places (docs/architecture/oracle.md).
+Status: VERIFIED. The engine still reads `"26-01-01"` day-first and rejects month-name text in
+date arguments (T-0024).

@@ -12,14 +12,21 @@ import pytest
 
 from rustsheet_tools.oracle import cli
 from rustsheet_tools.oracle.backends import OracleError, OracleInfo
-from rustsheet_tools.oracle.canary import SHEET, canary_problems, checked_values, embed_canary
+from rustsheet_tools.oracle.canary import CELLS, SHEET, canary_problems, checked_values, embed_canary
 from rustsheet_tools.snapshot import formula_values, snapshot
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 INFO = OracleInfo(kind="fake", application="fake")
 SPEC = {"sheets": [{"name": "Sheet1", "cells": {"A1": 2, "B1": "=A1*3"}}]}
 # What Excel for the web computed for the canary on 2026-10-04 (RAND is any value in [0, 1)).
-EXCEL = {"999": "2", "7": "0.54520464311930006", "-1": "2.68", "0": repr(math.sqrt(2))}
+EXCEL = {
+    "999": "2",
+    "7": "0.54520464311930006",
+    "-1": "2.68",
+    "0": repr(math.sqrt(2)),
+    "-2": "36893",
+    "-3": "1.5",
+}
 
 
 def _parts(xlsx: bytes) -> dict[str, str]:
@@ -80,7 +87,7 @@ def test_embedding_appends_a_poisoned_sheet_and_keeps_the_case(tmp_path: Path) -
     assert sheets == [("Sheet1", "1"), (SHEET, "2")]  # last, so sheet indexes don't shift
     values = _values(embedded, tmp_path)
     assert values["Sheet1"] == _values(raw, tmp_path)["Sheet1"]
-    assert len(canary_problems(values)) == 4
+    assert len(canary_problems(values)) == len(CELLS)
 
 
 def test_uncalculated_workbook_is_refused(tmp_path: Path) -> None:
@@ -88,7 +95,7 @@ def test_uncalculated_workbook_is_refused(tmp_path: Path) -> None:
     path.write_bytes(embed_canary(build_xlsx(SPEC)))
     with pytest.raises(OracleError, match="not recalculated") as e:
         checked_values(path)
-    assert str(e.value).count("the uploaded cached value") == 4
+    assert str(e.value).count("the uploaded cached value") == len(CELLS)
 
 
 @pytest.fixture
@@ -162,6 +169,8 @@ def test_not_an_xlsx_is_an_oracle_error() -> None:
         ("A2", {"t": "n", "v": 1.0}),  # RAND() is < 1
         ("A3", {"t": "n", "v": 2.67}),  # binary-float rounding, not Excel's
         ("A4", {"t": "n", "v": 1.4142135623731}),  # 15-digit JSON precision, not the file's 17
+        ("A5", {"t": "n", "v": 36923.0}),  # day-first locale: 1 Feb 2001
+        ("A6", {"t": "e", "v": "#VALUE!"}),  # comma-decimal locale
         ("A1", {"t": "s", "v": "2"}),
         ("A1", None),
     ],
@@ -172,6 +181,8 @@ def test_each_wrong_canary_value_is_reported(a1: str, got: Any) -> None:
         "A2": {"t": "n", "v": 0.5},
         "A3": {"t": "n", "v": 2.68},
         "A4": {"t": "n", "v": math.sqrt(2)},
+        "A5": {"t": "n", "v": 36893.0},
+        "A6": {"t": "n", "v": 1.5},
     }
     assert canary_problems({SHEET: good}) == []
     good[a1] = got
@@ -192,4 +203,4 @@ def test_namespace_prefixed_package_parts(tmp_path: Path) -> None:
     )
     embedded = embed_canary(_repack(parts))
     assert '<ns0:Relationship Id="rIdRustSheetCanary"' in _parts(embedded)[rels]
-    assert len(canary_problems(_values(embedded, tmp_path))) == 4
+    assert len(canary_problems(_values(embedded, tmp_path))) == len(CELLS)

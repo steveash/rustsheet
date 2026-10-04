@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "en-US parsing of date text (month-first; day-first readings are other locales). Inputs are the ironcalc-calc cells whose cached values came from a day-first Excel (docs/research/oracle-calibration.md)",
+  "tags": ["M1", "dates", "locale", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "26-01-01",
+        "A2": "2/3/2023",
+        "A3": "10-12-1999",
+        "A4": "July 1, 2026",
+        "A5": "June 1, 2026",
+        "A6": "1/2/2001",
+        "B1": "=DATEVALUE(A1)",
+        "B2": "=VALUE(A2)",
+        "B3": "=VALUE(A3)",
+        "B4": "=DAYS(A4,A5)",
+        "B5": "=DAYS360(A5,A4)",
+        "B6": "=NETWORKDAYS(A5,A4)",
+        "B7": "=NETWORKDAYS.INTL(A5,A4)",
+        "B8": "=DATEVALUE(A6)",
+        "B9": "=DATEVALUE(A2)",
+        "B10": "=VALUE(A1)"
+      }
+    }
+  ]
+}

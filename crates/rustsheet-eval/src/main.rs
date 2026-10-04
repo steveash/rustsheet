@@ -19,12 +19,13 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
+use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite};
-use rustsheet_eval::xlsx_snapshot::read_snapshot;
+use rustsheet_eval::xlsx_snapshot::{read_snapshot, WorkbookSnapshot};
 
 #[derive(Parser)]
 #[command(
@@ -95,6 +96,12 @@ enum Cmd {
     },
     /// Print the stored formulas/values of an xlsx as JSON.
     Snapshot { path: PathBuf },
+    /// Oracle calibration: compare an Excel-authored xlsx's cached values with the same
+    /// workbook recalculated by an oracle backend; prints per-cell verdicts as JSON.
+    Compare {
+        cached: PathBuf,
+        recalculated: PathBuf,
+    },
 }
 
 fn find_root(explicit: Option<PathBuf>) -> Result<PathBuf> {
@@ -260,11 +267,24 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
+fn load_snapshot(path: &Path) -> Result<WorkbookSnapshot> {
+    let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
+    Ok(read_snapshot(&bytes)?)
+}
+
 fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
     if let Cmd::Snapshot { path } = &cli.cmd {
-        let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
-        println!("{}", serde_json::to_string_pretty(&read_snapshot(&bytes)?)?);
+        println!("{}", serde_json::to_string_pretty(&load_snapshot(path)?)?);
+        return Ok(ExitCode::SUCCESS);
+    }
+    if let Cmd::Compare {
+        cached,
+        recalculated,
+    } = &cli.cmd
+    {
+        let comparison = compare_snapshots(&load_snapshot(cached)?, &load_snapshot(recalculated)?);
+        println!("{}", serde_json::to_string(&comparison)?);
         return Ok(ExitCode::SUCCESS);
     }
     let root = find_root(cli.root)?;
@@ -329,7 +349,7 @@ fn run() -> Result<ExitCode> {
             allow_regressions,
         } => cmd_check(&root, &sel, Some(allow_regressions)),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
-        Cmd::Snapshot { .. } => unreachable!("handled above"),
+        Cmd::Snapshot { .. } | Cmd::Compare { .. } => unreachable!("handled above"),
     }
 }
 

@@ -38,4 +38,6 @@ unparseable = "unparseable"
 ment = "ment"
 thm = "thm"
 startd = "startd"
+# Upstream ironcalc test workbook name (ROW_COLUM.xlsx), cited in docs
+COLUM = "COLUM"
 endd = "endd"

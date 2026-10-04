@@ -4,6 +4,7 @@
   rustsheet-oracle login                          one-time device-code login (Graph, delegated)
   rustsheet-oracle recalc -b BACKEND in.xlsx      recalc one workbook, print formula values as JSON
   rustsheet-oracle fill -b BACKEND --suite S      write <case>.oracle.json for cases lacking one
+  rustsheet-oracle calibrate -b BACKEND --suite S compare the oracle with an xlsx suite's cached values
 
 Every workbook is sent with an embedded canary sheet (oracle/canary.py) whose poisoned cached
 values must come back recalculated; otherwise that workbook's results are refused.
@@ -20,13 +21,16 @@ import hashlib
 import json
 import sys
 import tempfile
+import threading
 import tomllib
 from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
+from rustsheet_tools.oracle.calibrate import calibrate, to_markdown
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
+from rustsheet_tools.snapshot import compare_workbooks
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -38,13 +42,20 @@ def _backend(name: str) -> Any:
     return BACKENDS[name]()
 
 
-def _recalc_cached(backend: Any, xlsx: bytes) -> tuple[dict[str, dict[str, Any]], OracleInfo, str]:
-    """Formula values of `xlsx` as recalculated by `backend`, canary-verified (see canary.py)."""
-    sha = hashlib.sha256(xlsx).hexdigest()
+def _cache_paths(backend: Any, sha: str) -> tuple[Path, Path]:
+    """(recalculated xlsx, metadata) cache files for the input with this sha256."""
     cache_dir = repo_root() / "eval" / ".cache" / "oracle" / backend.name
     cache_dir.mkdir(parents=True, exist_ok=True)
-    out = cache_dir / f"{sha}.xlsx"
-    meta = cache_dir / f"{sha}.meta.json"
+    return cache_dir / f"{sha}.xlsx", cache_dir / f"{sha}.meta.json"
+
+
+def _recalc_cached(backend: Any, xlsx: bytes) -> tuple[dict[str, dict[str, Any]], OracleInfo, str]:
+    """Formula values of `xlsx` as recalculated by `backend`, canary-verified (see canary.py).
+
+    The recalculated workbook stays in the cache at `_cache_paths(backend, sha)[0]`.
+    """
+    sha = hashlib.sha256(xlsx).hexdigest()
+    out, meta = _cache_paths(backend, sha)
     if out.exists() and meta.exists():
         with contextlib.suppress(OracleError):  # entries without a passing canary are recomputed
             return checked_values(out), OracleInfo(**json.loads(meta.read_text())), sha
@@ -138,6 +149,30 @@ def cmd_fill(args: argparse.Namespace) -> int:
     return 1 if failed else 0
 
 
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    manifest, workbooks = _suite_cases(args.suite)
+    if manifest["kind"] != "xlsx":
+        sys.exit(
+            f"calibrate needs an xlsx suite of Excel-authored workbooks; {args.suite} is {manifest['kind']}"
+        )
+    ok, why = _backend(args.backend).available()
+    if not ok:
+        sys.exit(f"{args.backend} unavailable: {why}")
+    local = threading.local()  # one backend (HTTP session) per worker thread
+
+    def recalculated(path: Path) -> Path:
+        if not hasattr(local, "backend"):
+            local.backend = _backend(args.backend)
+        _, _, sha = _recalc_cached(local.backend, path.read_bytes())
+        return _cache_paths(local.backend, sha)[0]
+
+    result = calibrate(workbooks[: args.limit or None], recalculated, compare_workbooks, args.jobs)
+    if args.json:
+        args.json.write_text(json.dumps(result.disagreements, indent=1) + "\n")
+    print(to_markdown(result, args.examples), end="")
+    return 0
+
+
 def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[str, dict[str, Any]]) -> None:
     for key, hand in spec.get("expected", {}).items():
         sheet, _, a1 = key.rpartition("!")
@@ -162,6 +197,14 @@ def main() -> None:
     p.add_argument("--force", action="store_true")
     p.add_argument("--limit", type=int, default=0)
     p.set_defaults(fn=cmd_fill)
+    p = sub.add_parser("calibrate")
+    p.add_argument("-b", "--backend", required=True)
+    p.add_argument("--suite", required=True)
+    p.add_argument("--jobs", type=int, default=4)
+    p.add_argument("--limit", type=int, default=0)
+    p.add_argument("--examples", type=int, default=50, help="disagreeing cells listed in the report")
+    p.add_argument("--json", type=Path, help="also write every disagreeing cell as JSON here")
+    p.set_defaults(fn=cmd_calibrate)
     args = ap.parse_args()
     with tempfile.TemporaryDirectory():
         sys.exit(args.fn(args))
