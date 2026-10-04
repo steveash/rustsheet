@@ -1,6 +1,7 @@
-use statrs::distribution::{Continuous, ContinuousCDF, Normal, StudentsT};
+use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::{normal_cdf, normal_pdf};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -38,18 +39,11 @@ impl Model {
             };
         }
 
-        let dist = match Normal::new(mean, std_dev) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameters for NORM.DIST".to_string(),
-                }
-            }
+        let result = if cumulative {
+            normal_cdf(x, mean, std_dev)
+        } else {
+            normal_pdf(x, mean, std_dev)
         };
-
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
 
         if !result.is_finite() {
             return CalcResult::Error {
@@ -128,18 +122,11 @@ impl Model {
             Err(e) => return e,
         };
 
-        let dist = match Normal::new(0.0, 1.0) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::ERROR,
-                    origin: cell,
-                    message: "Failed to construct standard normal distribution".to_string(),
-                }
-            }
+        let result = if cumulative {
+            normal_cdf(z, 0.0, 1.0)
+        } else {
+            normal_pdf(z, 0.0, 1.0)
         };
-
-        let result = if cumulative { dist.cdf(z) } else { dist.pdf(z) };
 
         if !result.is_finite() {
             return CalcResult::Error {

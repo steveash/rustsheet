@@ -13,7 +13,8 @@ impl Model {
             Err(e) => return e,
         };
 
-        // Standard normal PDF: (1 / sqrt(2π)) * exp(-x^2 / 2)
+        // Standard normal PDF: (1 / sqrt(2π)) * exp(-x^2 / 2). This operation order reproduces
+        // Excel's cached last digits in PHI.xlsx; `normal_pdf`'s statrs-style order does not.
         let result = (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt();
 
         CalcResult::Number(result)

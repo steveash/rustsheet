@@ -1,4 +1,4 @@
-use statrs::distribution::{ContinuousCDF, Normal};
+use crate::functions::statistical::special::normal_cdf;
 
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
@@ -144,19 +144,7 @@ impl Model {
 
         let z = (mean - x_value) / denom;
 
-        // Standard normal CDF
-        let dist = match Normal::new(0.0, 1.0) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Cannot create standard normal distribution in Z.TEST".to_string(),
-                );
-            }
-        };
-
-        let mut p = 1.0 - dist.cdf(z);
+        let mut p = 1.0 - normal_cdf(z, 0.0, 1.0);
 
         // clamp tiny FP noise
         if p < 0.0 && p > -1e-15 {

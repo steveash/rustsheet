@@ -8,5 +8,6 @@
   `--update` (never by hand), and cites this record. Raising a ratchet still needs its own
   decision record. T-0200: duplicated lines 9153 → 8829; `count_and_average.rs` no longer oversized.
   T-0204: duplicated lines 8829 → 8610 (`check_duplication.py --update`).
+  T-0924: duplicated lines 8420 → 8360 (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

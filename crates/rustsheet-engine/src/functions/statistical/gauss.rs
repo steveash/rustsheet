@@ -1,7 +1,6 @@
-use statrs::distribution::{ContinuousCDF, Normal};
-
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::normal_cdf;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
@@ -13,18 +12,7 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let dist = match Normal::new(0.0, 1.0) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::ERROR,
-                    origin: cell,
-                    message: "Failed to construct standard normal distribution".to_string(),
-                }
-            }
-        };
-
-        let result = dist.cdf(z) - 0.5;
+        let result = normal_cdf(z, 0.0, 1.0) - 0.5;
 
         if !result.is_finite() {
             return CalcResult::Error {
