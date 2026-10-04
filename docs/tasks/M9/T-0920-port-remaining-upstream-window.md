@@ -30,3 +30,15 @@ single port exceeds size S.
   for EXACT/FIND/LEN/REPT/SEARCH/SUBSTITUTE/TRIM/CLEAN/PROPER/REPLACE (only LEFT/MID/RIGHT have
   Excel-authored evidence); add `docs/excel-semantics/` entry for R1C1 offset wrapping.
 - Explicit `is_finite` check in `rept_element`; fold `parse_reference_r1c1` and the new R1C1 parser together.
+
+## Progress
+Partial (2026-10-04): ported `daf5f6c6` (POWER accepts ranges; evidence: Excel-authored POWER.xlsx, now
+in calc_tests) and `9212095d` (implicit-intersection export; needed for the POWER.xlsx round-trip).
+POWER.xlsx adds 51 checked cells; 4 are NumericUlp (Sheet1!D3, F9, inside_a_lambda!C3/C4: `powf` vs
+Excel's pow) and are baselined as new coverage. Still open: `58279cda`+`80eafbbc` (finite-number
+parse) and `9b1ae3fd` (`--A1:B4`, MINUS_MINUS.xlsx; conflicts in `cast.rs`, `date_and_time.rs`),
+plus the T-0918 follow-ups above.
+
+Review follow-ups (2026-10-04): match Excel's 1-ulp result for odd roots (`-1.9999999999999998`, not
+`-2`) in `arithmetic::power`; oracle-probe POWER overflow (#NUM! vs #DIV/0!), the odd-root tolerance
+(`POWER(-8,0.333333333333333)`) and the `^` operator (see `docs/excel-semantics/numbers.md`).

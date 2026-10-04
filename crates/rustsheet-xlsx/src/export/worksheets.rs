@@ -26,7 +26,11 @@ use itertools::Itertools;
 
 use rustsheet_engine::{
     expressions::{
-        parser::{static_analysis::StaticResult, stringify::to_excel_string, Node},
+        parser::{
+            static_analysis::StaticResult,
+            stringify::{to_excel_array_formula_string, to_excel_string},
+            Node,
+        },
         types::CellReferenceRC,
         utils::number_to_column,
     },
@@ -144,18 +148,21 @@ pub(crate) fn get_worksheet_xml_rels(worksheet: &Worksheet) -> Option<String> {
     ))
 }
 
+/// `to_formula_string` is `to_excel_array_formula_string` for the formula of an array, CSE or
+/// dynamic: it keeps every implicit intersection, as nothing puts them back on import.
 fn get_formula_attribute(
     sheet_name: String,
     row: i32,
     column: i32,
     parsed_formula: &Node,
+    to_formula_string: fn(&Node, &CellReferenceRC) -> String,
 ) -> String {
     let cell_ref = CellReferenceRC {
         sheet: sheet_name,
         row,
         column,
     };
-    let formula = &to_excel_string(parsed_formula, &cell_ref);
+    let formula = &to_formula_string(parsed_formula, &cell_ref);
     escape_xml(formula).to_string()
 }
 
@@ -202,6 +209,15 @@ pub(crate) fn get_worksheet_xml(
     for row_index in worksheet.sheet_data.rows() {
         let mut row_data_str: Vec<String> = vec![];
         for (column_index, cell) in worksheet.sheet_data.cells_in_row(row_index) {
+            let formula_attribute = |node: &Node, to_formula_string| {
+                get_formula_attribute(
+                    worksheet.get_name(),
+                    row_index,
+                    column_index,
+                    node,
+                    to_formula_string,
+                )
+            };
             let column_name = number_to_column(column_index).unwrap();
             let cell_name = format!("{column_name}{row_index}");
             match cell {
@@ -282,12 +298,8 @@ pub(crate) fn get_worksheet_xml(
                     //   <v>1</v>
                     // </c>
                     let style = get_cell_style_attribute(*s);
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &parsed_formulas[*f as usize].0,
-                    );
+                    let formula =
+                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let b = i32::from(*v);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"b\"{style}><f>{formula}</f><v>{b}</v></c>"
@@ -303,12 +315,8 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>A5+C3</f>
                     //   <v>123</v>
                     // </c>
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &parsed_formulas[*f as usize].0,
-                    );
+                    let formula =
+                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\"{style}><f>{formula}</f><v>{v}</v></c>"
@@ -323,12 +331,8 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>CONCATENATE(A1, A2)</f>
                     //   <v>Hello world!</v>
                     // </c>
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &parsed_formulas[*f as usize].0,
-                    );
+                    let formula =
+                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let style = get_cell_style_attribute(*s);
                     let escaped_v = escape_xml(v);
                     row_data_str.push(format!(
@@ -344,12 +348,8 @@ pub(crate) fn get_worksheet_xml(
                     //   <f>A1/A3<f/>
                     //   <v>#DIV/0!</v>
                     // </c>
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &parsed_formulas[*f as usize].0,
-                    );
+                    let formula =
+                        formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
                         "<c r=\"{cell_name}\" t=\"e\"{style}><f>{formula}</f><v>{ei}</v></c>"
@@ -390,12 +390,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &node.0,
-                    );
+                    let formula = formula_attribute(&node.0, to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
@@ -430,12 +425,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &node.0,
-                    );
+                    let formula = formula_attribute(&node.0, to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
@@ -469,12 +459,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &node.0,
-                    );
+                    let formula = formula_attribute(&node.0, to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,
@@ -509,12 +494,7 @@ pub(crate) fn get_worksheet_xml(
                         Some(node) => node,
                         None => continue,
                     };
-                    let formula = get_formula_attribute(
-                        worksheet.get_name(),
-                        row_index,
-                        column_index,
-                        &node.0,
-                    );
+                    let formula = formula_attribute(&node.0, to_excel_array_formula_string);
                     let style = get_cell_style_attribute(*s);
                     let range = match get_range_str(row_index, column_index, r.0, r.1) {
                         Some(range) => range,

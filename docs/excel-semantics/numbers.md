@@ -55,3 +55,13 @@ it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x
 (poi `FormulaEvalTestData_Copy.xlsx` `EverythingTests!G1360`, sinh/cosh and the exp quotient both
 1 ulp high; libm and `e^2x` fit). The 0.9 cutoff is a guess between 0.604 (sinh/cosh fits) and 0.995;
 confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
+
+## POWER and `^`: odd roots of negatives, zero and overflow
+Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
+`POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
+Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx (Excel-authored): Sheet1!D2 (#DIV/0!),
+D3 and F9 (-1.9999999999999998 — we return -2, a 1-ulp NumericUlp known failure), sheets 2-8 for ranges.
+Status: UNVERIFIED for (a) overflow of a non-zero base being #NUM! (not #DIV/0!), (b) the 2^-48
+relative tolerance that decides whether an exponent "is" 1/odd (only exactly 1/3 is evidenced; probe
+`POWER(-8,0.333333333333333)`), (c) the operator `^` sharing all of the above.
+Implemented in: `arithmetic::power` (POWER and `^`).
