@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "D-function criteria share the COUNTIF grammar; plain text equality matches by prefix; criteria text is trimmed",
+  "description": "D-function criteria share the COUNTIF grammar; plain text equality matches by prefix; criteria text is NOT trimmed (Excel: \"  > 1 \" matches nothing)",
   "tags": ["M2", "criteria", "database"],
   "expected_source": "hand",
   "sheets": [
@@ -23,7 +23,7 @@
   ],
   "expected": {
     "Sheet1!J1": {"t": "n", "v": 3},
-    "Sheet1!J2": {"t": "n", "v": 6},
+    "Sheet1!J2": {"t": "n", "v": 0},
     "Sheet1!J3": {"t": "n", "v": 6},
     "Sheet1!J4": {"t": "n", "v": 2}
   }

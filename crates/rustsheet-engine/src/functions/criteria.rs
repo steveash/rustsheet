@@ -280,18 +280,6 @@ pub(crate) fn build_criteria<'a>(
     build_criteria_with(value, locale, CriteriaFlavor::Standard)
 }
 
-/// D-function criteria text is trimmed, also between the operator and its operand
-/// ("  > 5 " means ">5"); the shared grammar itself does not trim.
-pub(crate) fn normalize_database_criterion(text: &str) -> String {
-    let text = text.trim();
-    for op in ["<=", ">=", "<>", "<", ">", "="] {
-        if let Some(rest) = text.strip_prefix(op) {
-            return format!("{op}{}", rest.trim());
-        }
-    }
-    text.to_string()
-}
-
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
 pub(crate) fn build_criteria_with<'a>(
     value: &'a CalcResult,

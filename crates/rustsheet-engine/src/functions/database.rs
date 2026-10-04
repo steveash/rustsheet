@@ -4,7 +4,7 @@ use crate::{
     Model,
 };
 
-use super::criteria::{build_criteria_with, normalize_database_criterion, CriteriaFlavor};
+use super::criteria::{build_criteria_with, CriteriaFlavor};
 
 impl Model {
     // =DAVERAGE(database, field, criteria)
@@ -726,15 +726,9 @@ impl Model {
 
     /// Whether a database value satisfies one criteria cell (shared grammar, D-function flavor).
     fn criteria_cell_matches(&self, db_val: &CalcResult, crit_cell: &CalcResult) -> bool {
-        // D-function criteria text has always been trimmed before parsing.
-        let trimmed;
-        let crit_cell = match crit_cell {
-            CalcResult::String(s) => {
-                trimmed = CalcResult::String(normalize_database_criterion(s));
-                &trimmed
-            }
-            other => other,
-        };
+        // Criteria text is used as-is, not trimmed: Excel's DSUM with criterion "  > 1 " matches
+        // nothing (smoke/d-function-criteria J2 = 0, excel-graph 2026-10-04; see
+        // docs/excel-semantics/criteria.md).
         let matches = build_criteria_with(crit_cell, self.locale, CriteriaFlavor::Database);
         matches(db_val)
     }
