@@ -108,9 +108,9 @@ pub struct SaveOptions {}                                      // placeholder, #
 pub struct SheetMeta { pub id: SheetId, pub name: String, pub index: u32 }
 
 impl Workbook {
-    pub fn new(opts: WorkbookOptions) -> Result<Self, LoadError>;
-    pub fn open(path: impl AsRef<Path>, opts: LoadOptions) -> Result<Self, LoadError>;
-    pub fn from_xlsx_bytes(bytes: &[u8], opts: LoadOptions) -> Result<Self, LoadError>;
+    pub fn new(opts: &WorkbookOptions) -> Result<Self, LoadError>;
+    pub fn open(path: impl AsRef<Path>, opts: &LoadOptions) -> Result<Self, LoadError>;
+    pub fn from_xlsx_bytes(bytes: &[u8], opts: &LoadOptions) -> Result<Self, LoadError>;
     pub fn save_xlsx(&self, path: impl AsRef<Path>, opts: SaveOptions) -> Result<(), SaveError>;
     pub fn to_xlsx_bytes(&self, opts: SaveOptions) -> Result<Vec<u8>, SaveError>;
 

@@ -137,7 +137,7 @@ impl Workbook {
     ///
     /// # Errors
     /// [`LoadError::Options`] when the locale, timezone or language is unknown.
-    pub fn new(opts: WorkbookOptions) -> Result<Self, LoadError> {
+    pub fn new(opts: &WorkbookOptions) -> Result<Self, LoadError> {
         let model = Model::new_empty("workbook", &opts.locale, &opts.timezone, &opts.language)
             .map_err(LoadError::Options)?;
         Ok(Self {
@@ -150,7 +150,7 @@ impl Workbook {
     ///
     /// # Errors
     /// [`LoadError::Io`] if the file cannot be read, otherwise as [`Self::from_xlsx_bytes`].
-    pub fn open(path: impl AsRef<Path>, opts: LoadOptions) -> Result<Self, LoadError> {
+    pub fn open(path: impl AsRef<Path>, opts: &LoadOptions) -> Result<Self, LoadError> {
         let bytes = std::fs::read(path)?;
         Self::from_xlsx_bytes(&bytes, opts)
     }
@@ -160,8 +160,8 @@ impl Workbook {
     /// # Errors
     /// [`LoadError::Options`] when the zip exceeds the limits or the locale is unknown,
     /// [`LoadError::Format`] when the bytes are not a valid workbook.
-    pub fn from_xlsx_bytes(bytes: &[u8], opts: LoadOptions) -> Result<Self, LoadError> {
-        check_zip_limits(bytes, &opts)?;
+    pub fn from_xlsx_bytes(bytes: &[u8], opts: &LoadOptions) -> Result<Self, LoadError> {
+        check_zip_limits(bytes, opts)?;
         let w = &opts.workbook;
         let book =
             rustsheet_xlsx::import::load_from_xlsx_bytes(bytes, "workbook", &w.locale, &w.timezone)
@@ -429,7 +429,7 @@ mod tests {
         let bytes = rustsheet_xlsx::export::save_xlsx_to_writer(&model, Cursor::new(Vec::new()))
             .expect("save")
             .into_inner();
-        Workbook::from_xlsx_bytes(&bytes, LoadOptions::default()).expect("load")
+        Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).expect("load")
     }
 
     #[test]
@@ -481,7 +481,7 @@ mod tests {
         assert_eq!((used.top, used.left, used.bottom, used.right), (0, 0, 1, 1));
         let used = wb.used_range(sheets[1].id).unwrap().unwrap();
         assert_eq!((used.top, used.left), (2, 2));
-        let empty = Workbook::new(WorkbookOptions::default()).unwrap();
+        let empty = Workbook::new(&WorkbookOptions::default()).unwrap();
         let id = empty.sheets()[0].id;
         assert_eq!(empty.used_range(id).unwrap(), None);
     }
@@ -490,14 +490,14 @@ mod tests {
     fn xlsx_round_trip_keeps_values() {
         let wb = sample();
         let bytes = wb.to_xlsx_bytes(SaveOptions::default()).unwrap();
-        let again = Workbook::from_xlsx_bytes(&bytes, LoadOptions::default()).unwrap();
+        let again = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).unwrap();
         assert_eq!(again.value("B1").unwrap(), Value::Number(5.0));
     }
 
     #[test]
     fn rejects_garbage_and_zip_limits() {
         assert!(matches!(
-            Workbook::from_xlsx_bytes(b"not a zip", LoadOptions::default()),
+            Workbook::from_xlsx_bytes(b"not a zip", &LoadOptions::default()),
             Err(LoadError::Format(_))
         ));
         let bytes = sample().to_xlsx_bytes(SaveOptions::default()).unwrap();
@@ -506,7 +506,7 @@ mod tests {
             ..LoadOptions::default()
         };
         assert!(matches!(
-            Workbook::from_xlsx_bytes(&bytes, few),
+            Workbook::from_xlsx_bytes(&bytes, &few),
             Err(LoadError::Options(_))
         ));
         let small = LoadOptions {
@@ -514,7 +514,7 @@ mod tests {
             ..LoadOptions::default()
         };
         assert!(matches!(
-            Workbook::from_xlsx_bytes(&bytes, small),
+            Workbook::from_xlsx_bytes(&bytes, &small),
             Err(LoadError::Options(_))
         ));
     }
@@ -525,6 +525,6 @@ mod tests {
             locale: "xx".into(),
             ..WorkbookOptions::default()
         };
-        assert!(matches!(Workbook::new(opts), Err(LoadError::Options(_))));
+        assert!(matches!(Workbook::new(&opts), Err(LoadError::Options(_))));
     }
 }

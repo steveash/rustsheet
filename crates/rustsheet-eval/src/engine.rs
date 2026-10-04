@@ -27,7 +27,7 @@ pub trait Engine: Sync {
             ..LoadOptions::default()
         };
         let mut workbook =
-            Workbook::from_xlsx_bytes(bytes, opts).map_err(|e| format!("import failed: {e}"))?;
+            Workbook::from_xlsx_bytes(bytes, &opts).map_err(|e| format!("import failed: {e}"))?;
         // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
         // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
         workbook.pin_clock_from_metadata();
