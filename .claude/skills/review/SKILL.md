@@ -18,7 +18,8 @@ description: Run RustSheet's multi-agent code review on the current branch versu
      edits, or bulk APIs)
    Each reviewer runs on the model set in its agent frontmatter (decision 0015: security,
    architecture and quality on Sonnet; Excel fidelity and performance on Opus). Do not override it
-   per call.
+   per call, with one exception: the steward's weekly spot-audit launches every reviewer with
+   `model: opus`, so a cheaper reviewer's miss is re-checked by the stronger model.
 4. Consolidate into a table: reviewer | verdict | blocking findings. A PR is mergeable only when
    every reviewer returned `APPROVE` (MINOR findings may be deferred as follow-up tasks).
 5. For each MINOR finding you choose not to fix, create a follow-up task or note why it is moot.

@@ -17,6 +17,7 @@
 - **Consequences:**
   - Review cost per PR drops roughly by half for the three routine reviewers; no gate changes:
     every applicable reviewer must still APPROVE.
-  - Check after one week: the steward's spot-audit (routines step 6) records, per reviewer, any
-    defect a re-review finds that the original review missed. A miss attributable to the cheaper
+  - Check after one week: the steward's spot-audit (routines step 6) re-reviews with every reviewer
+    on Opus (the one exception to the frontmatter model) and records each miss with the reviewer
+    and model (docs/process/review-policy.md). A miss attributable to the cheaper
     model reverts that reviewer to `model: opus` via a follow-up decision.
