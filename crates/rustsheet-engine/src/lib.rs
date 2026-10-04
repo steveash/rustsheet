@@ -39,6 +39,7 @@ pub mod locale;
 pub mod new_empty;
 pub mod number_format;
 pub mod sheet_data;
+pub(crate) mod sheet_undo;
 pub mod themes;
 pub mod types;
 pub mod worksheet;
