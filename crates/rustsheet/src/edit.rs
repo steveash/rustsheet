@@ -7,16 +7,17 @@
 //!
 //! The [`ChangeSet`] is computed by diffing (SPEC-0001): before the closure runs the facade
 //! captures every formula and spill cell, ops add the cells they touch, and after the recalc
-//! the captured values are compared with the current ones.
+//! the captured values are compared with the current ones (see `diff`).
 
-use std::collections::{HashMap, HashSet};
+mod diff;
 
 use rustsheet_engine::types::{Cell, Link, Worksheet};
 use rustsheet_engine::Model;
 
+use self::diff::{capture_derived, input_changes, value_changes, Before, Key, KeySet};
 use crate::error::{EditError, RefError};
 use crate::refs::{CellRef, SheetId, Target};
-use crate::value::{CellView, ErrorKind, Value};
+use crate::value::Value;
 use crate::workbook::{engine_rc, resolve_range, sheet_index, sheet_metas, Workbook};
 
 /// What to store in a cell.
@@ -123,40 +124,6 @@ pub struct ChangeSet {
     pub sheets: Vec<SheetChange>,
 }
 
-/// `(sheet id, 1-based row, 1-based column)`.
-type Key = (u32, i32, i32);
-
-/// Cheap multiplicative hasher for [`Key`]s: the keys are small integers we produce ourselves, so
-/// `SipHash`'s collision resistance buys nothing and costs a large share of the diff.
-#[derive(Default, Clone, Copy)]
-struct KeyHasher(u64);
-
-impl std::hash::Hasher for KeyHasher {
-    fn finish(&self) -> u64 {
-        self.0
-    }
-
-    fn write(&mut self, bytes: &[u8]) {
-        for &b in bytes {
-            self.write_u64(u64::from(b));
-        }
-    }
-
-    fn write_u32(&mut self, n: u32) {
-        self.write_u64(u64::from(n));
-    }
-
-    fn write_i32(&mut self, n: i32) {
-        self.write_u64(u64::from(n.cast_unsigned()));
-    }
-
-    fn write_u64(&mut self, n: u64) {
-        self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x517c_c1b7_2722_0a95);
-    }
-}
-
-type KeyMap<V> = HashMap<Key, V, std::hash::BuildHasherDefault<KeyHasher>>;
-
 /// Largest rectangle a single `set` snapshots for its spill footprint. Imported array ranges are
 /// untrusted, so the loop must not follow them blindly.
 const MAX_FOOTPRINT_CELLS: i64 = 1 << 22;
@@ -179,144 +146,6 @@ enum Undo {
     },
 }
 
-/// A captured cell value. Text lives in a shared arena so capturing a text cell allocates
-/// nothing per cell.
-enum Snap {
-    Empty,
-    Number(u64),
-    Bool(bool),
-    Text(usize, usize),
-    Error(ErrorKind, Option<Box<str>>),
-}
-
-/// `(position of the sheet at capture time, row, column)`: the order cells are stored in.
-type Rank = (usize, i32, i32);
-
-/// The pre-edit values of every cell that can change without being written.
-#[derive(Default)]
-struct Before {
-    /// Sheet ids in capture-time order; ranks refer to positions in this list.
-    sheets: Vec<u32>,
-    /// Every formula and spill cell, in storage order (sorted by rank), so the post-edit diff
-    /// can merge against the engine's own iteration order instead of hashing every cell.
-    derived: Vec<(Rank, Key, Snap)>,
-    /// Cells a write touched that were not derived before; the flag marks the ones the diff
-    /// already compared.
-    extra: KeyMap<(Snap, bool)>,
-    arena: String,
-}
-
-impl Before {
-    fn snap(&mut self, view: CellView<'_>) -> Snap {
-        match view {
-            CellView::Empty => Snap::Empty,
-            CellView::Number(n) => Snap::Number(n.to_bits()),
-            CellView::Bool(b) => Snap::Bool(b),
-            CellView::Text(s) => {
-                let start = self.arena.len();
-                self.arena.push_str(s);
-                Snap::Text(start, s.len())
-            }
-            CellView::Error(kind, detail) => Snap::Error(kind, detail.map(Into::into)),
-        }
-    }
-
-    fn rank(&self, key: Key) -> Rank {
-        let sheet = self.sheets.iter().position(|&id| id == key.0);
-        (sheet.unwrap_or(usize::MAX), key.1, key.2)
-    }
-
-    /// Captures the cell at `key` unless it already is.
-    fn touch(&mut self, key: Key, ws: &Worksheet, model: &Model) {
-        let rank = self.rank(key);
-        if self.derived.binary_search_by_key(&rank, |e| e.0).is_ok()
-            || self.extra.contains_key(&key)
-        {
-            return;
-        }
-        let snap = self.snap(view_at(ws, model, key.1, key.2));
-        self.extra.insert(key, (snap, false));
-    }
-
-    /// Bitwise number equality (`-0.0 != 0.0`, `NaN == NaN`), exact text equality.
-    fn unchanged(arena: &str, snap: &Snap, now: CellView<'_>) -> bool {
-        match (snap, now) {
-            (Snap::Empty, CellView::Empty) => true,
-            (Snap::Number(bits), CellView::Number(n)) => *bits == n.to_bits(),
-            (Snap::Bool(a), CellView::Bool(b)) => *a == b,
-            (Snap::Text(start, len), CellView::Text(s)) => {
-                arena.get(*start..start + len) == Some(s)
-            }
-            (Snap::Error(kind, detail), CellView::Error(k, d)) => {
-                *kind == k && detail.as_deref() == d
-            }
-            _ => false,
-        }
-    }
-
-    fn value(arena: &str, snap: &Snap) -> Value {
-        match snap {
-            Snap::Empty => Value::Empty,
-            Snap::Number(bits) => Value::Number(f64::from_bits(*bits)),
-            Snap::Bool(b) => Value::Bool(*b),
-            Snap::Text(start, len) => {
-                Value::Text(arena.get(*start..start + len).unwrap_or_default().into())
-            }
-            Snap::Error(kind, detail) => Value::Error(crate::value::XlError {
-                kind: *kind,
-                detail: detail.as_deref().map(Into::into),
-            }),
-        }
-    }
-}
-
-fn view_at<'a>(ws: &'a Worksheet, model: &'a Model, row: i32, col: i32) -> CellView<'a> {
-    ws.cell(row, col).map_or(CellView::Empty, |cell| {
-        CellView::of(cell, &model.workbook.shared_strings)
-    })
-}
-
-/// Cells whose value can change without being written: formulas and their spill members.
-fn is_derived(cell: &Cell) -> bool {
-    matches!(
-        cell,
-        Cell::CellFormula { .. } | Cell::ArrayFormula { .. } | Cell::SpillCell { .. }
-    )
-}
-
-fn capture_derived(model: &Model) -> Before {
-    let mut before = Before {
-        sheets: model
-            .workbook
-            .worksheets
-            .iter()
-            .map(Worksheet::get_sheet_id)
-            .collect(),
-        ..Before::default()
-    };
-    for (position, ws) in model.workbook.worksheets.iter().enumerate() {
-        let sheet = ws.get_sheet_id();
-        for (row, col, cell) in ws.sheet_data.cells() {
-            if is_derived(cell) {
-                let snap = before.snap(CellView::of(cell, &model.workbook.shared_strings));
-                before
-                    .derived
-                    .push(((position, row, col), (sheet, row, col), snap));
-            }
-        }
-    }
-    before
-}
-
-fn to_cell_ref(key: Key) -> CellRef {
-    // Engine coordinates are 1-based and in range; the facade's are 0-based.
-    CellRef {
-        sheet: SheetId::new(key.0),
-        row: u32::try_from(key.1 - 1).unwrap_or(0),
-        col: u32::try_from(key.2 - 1).unwrap_or(0),
-    }
-}
-
 /// The write-only handle passed to [`Workbook::edit`].
 pub struct Txn<'a> {
     model: &'a mut Model,
@@ -324,29 +153,12 @@ pub struct Txn<'a> {
     before: Option<Before>,
     /// First-seen input text of each written cell, in first-write order.
     inputs: Vec<(Key, Option<String>)>,
-    input_seen: HashSet<Key>,
+    input_seen: KeySet,
+    /// Cells a `set` already snapshotted for undo; a repeat write skips the footprint walk.
+    logged: KeySet,
     sheets: Vec<SheetChange>,
     /// A sheet-level engine op reparses and evaluates, so rollback must re-evaluate.
     sheet_op: bool,
-}
-
-fn engine_edit_error(message: String, cell: Option<CellRef>) -> EditError {
-    if message.starts_with("Invalid name for a sheet")
-        || message.contains("already exists")
-        || message.starts_with("Sheet already exists")
-    {
-        return EditError::SheetName(message);
-    }
-    if message.starts_with("Cannot delete only sheet") {
-        return EditError::LastSheet;
-    }
-    let Some(cell) = cell else {
-        return EditError::Engine(message);
-    };
-    match RefError::from_engine_message(&message, &cell.to_string()) {
-        Some(e) => EditError::Ref(e),
-        None => EditError::InvalidInput { cell, message },
-    }
 }
 
 impl Txn<'_> {
@@ -384,6 +196,11 @@ impl Txn<'_> {
             let text = self.input_text(sheet, row, col);
             self.inputs.push((key, text));
         }
+        // Rollback replays the first snapshot last, so a cell already logged needs no second
+        // one; a sheet-level op re-evaluates and can reshape spills, so it voids that.
+        if self.logged.contains(&key) && !self.sheet_op {
+            return Ok(());
+        }
         let ws = self
             .model
             .workbook
@@ -418,6 +235,8 @@ impl Txn<'_> {
             .map(|&(r, c)| (r, c, ws.cell(r, c).cloned()))
             .collect();
         let link = ((row, col), ws.links.get(&(row, col)).cloned());
+        self.logged
+            .extend(positions.iter().map(|&(r, c)| (sheet_id, r, c)));
         if let Some(before) = &mut self.before {
             for &(r, c) in &positions {
                 before.touch((sheet_id, r, c), ws, self.model);
@@ -479,7 +298,7 @@ impl Txn<'_> {
                     })
             }
         };
-        result.map_err(|m| engine_edit_error(m, Some(cell)))
+        result.map_err(|m| EditError::from_engine_message(m, Some(cell)))
     }
 
     /// The first sheet in workbook order.
@@ -504,7 +323,7 @@ impl Txn<'_> {
     pub fn add_sheet(&mut self, name: &str) -> Result<SheetId, EditError> {
         self.model
             .add_sheet(name)
-            .map_err(|m| engine_edit_error(m, None))?;
+            .map_err(|m| EditError::from_engine_message(m, None))?;
         self.sheet_op = true;
         let id = self
             .model
@@ -527,7 +346,7 @@ impl Txn<'_> {
         let old_name = sheet_name(self.model, index);
         self.model
             .rename_sheet_by_index(index, new_name)
-            .map_err(|m| engine_edit_error(m, None))?;
+            .map_err(|m| EditError::from_engine_message(m, None))?;
         self.sheet_op = true;
         self.undo.push(Undo::Renamed {
             sheet_id: id.get(),
@@ -558,7 +377,7 @@ impl Txn<'_> {
         let sheet = self
             .model
             .take_sheet(index)
-            .map_err(|m| engine_edit_error(m, None))?;
+            .map_err(|m| EditError::from_engine_message(m, None))?;
         self.sheet_op = true;
         self.undo.push(Undo::DeletedSheet {
             index,
@@ -578,7 +397,8 @@ fn sheet_name(model: &Model, index: u32) -> String {
 }
 
 /// Replays `undo` in reverse. Failures cannot be reported past the original error and the
-/// entries only restore state they themselves captured, so they are ignored.
+/// entries only restore state they themselves captured, so release builds ignore them and debug
+/// builds assert.
 fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
     for entry in undo.into_iter().rev() {
         match entry {
@@ -621,9 +441,8 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                     .iter()
                     .position(|w| w.get_sheet_id() == id)
                 {
-                    model
-                        .delete_sheet(u32::try_from(index).unwrap_or(u32::MAX))
-                        .ok();
+                    let undone = model.delete_sheet(u32::try_from(index).unwrap_or(u32::MAX));
+                    debug_assert!(undone.is_ok(), "undo of add_sheet failed: {undone:?}");
                 }
             }
             Undo::Renamed { sheet_id, old_name } => {
@@ -633,13 +452,14 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                     .iter()
                     .position(|w| w.get_sheet_id() == sheet_id)
                 {
-                    model
-                        .rename_sheet_by_index(u32::try_from(index).unwrap_or(u32::MAX), &old_name)
-                        .ok();
+                    let undone = model
+                        .rename_sheet_by_index(u32::try_from(index).unwrap_or(u32::MAX), &old_name);
+                    debug_assert!(undone.is_ok(), "undo of rename_sheet failed: {undone:?}");
                 }
             }
             Undo::DeletedSheet { index, sheet } => {
-                model.restore_sheet(index, *sheet).ok();
+                let undone = model.restore_sheet(index, *sheet);
+                debug_assert!(undone.is_ok(), "undo of delete_sheet failed: {undone:?}");
             }
         }
     }
@@ -670,7 +490,8 @@ impl Workbook {
             undo: Vec::new(),
             before,
             inputs: Vec::new(),
-            input_seen: HashSet::new(),
+            input_seen: KeySet::default(),
+            logged: KeySet::default(),
             sheets: Vec::new(),
             sheet_op: false,
         };
@@ -711,129 +532,6 @@ impl Workbook {
         self.edit(|tx| tx.set(r, input))
             .map(|((), changes)| changes)
     }
-}
-
-/// The sort key of a sheet: its position now, deleted sheets last.
-fn sheet_order(model: &Model) -> HashMap<u32, u32> {
-    sheet_metas(model)
-        .into_iter()
-        .map(|s| (s.id.get(), s.index))
-        .collect()
-}
-
-fn input_changes(model: &Model, inputs: Vec<(Key, Option<String>)>) -> Vec<InputChange> {
-    let order = sheet_order(model);
-    let mut changes: Vec<(u32, InputChange)> = Vec::new();
-    for (key, before) in inputs {
-        // A deleted sheet is reported by `SheetChange::Deleted`.
-        let Some(&index) = order.get(&key.0) else {
-            continue;
-        };
-        let after = model
-            .get_localized_cell_content(index, key.1, key.2)
-            .ok()
-            .filter(|s| !s.is_empty());
-        if after != before {
-            changes.push((
-                index,
-                InputChange {
-                    cell: to_cell_ref(key),
-                    before,
-                    after,
-                },
-            ));
-        }
-    }
-    changes.sort_by_key(|(index, c)| (*index, c.cell.row, c.cell.col));
-    changes.into_iter().map(|(_, c)| c).collect()
-}
-
-fn value_changes(model: &Model, before: &mut Before) -> Vec<ValueChange> {
-    let order = sheet_order(model);
-    let mut changes: Vec<(u32, ValueChange)> = Vec::new();
-    let mut push = |key: Key, was: Value, now: CellView<'_>| {
-        changes.push((
-            order.get(&key.0).copied().unwrap_or(u32::MAX),
-            ValueChange {
-                cell: to_cell_ref(key),
-                before: was,
-                after: now.to_value(),
-            },
-        ));
-    };
-    let Before {
-        sheets,
-        derived,
-        extra,
-        arena,
-    } = before;
-    // Pass 1 merges the current derived cells with the captured ones; both are in storage order
-    // (sheet, row, column). Entries the merge steps over no longer exist as derived cells.
-    let mut gone: Vec<usize> = Vec::new();
-    let mut next = 0;
-    for ws in &model.workbook.worksheets {
-        let id = ws.get_sheet_id();
-        let position = sheets.iter().position(|&s| s == id).unwrap_or(usize::MAX);
-        for (row, col, cell) in ws.sheet_data.cells() {
-            if !is_derived(cell) {
-                continue;
-            }
-            let rank = (position, row, col);
-            while next < derived.len() && derived[next].0 < rank {
-                gone.push(next);
-                next += 1;
-            }
-            let now = CellView::of(cell, &model.workbook.shared_strings);
-            let key = (id, row, col);
-            if next < derived.len() && derived[next].0 == rank {
-                let snap = &derived[next].2;
-                if !Before::unchanged(arena, snap, now) {
-                    push(key, Before::value(arena, snap), now);
-                }
-                next += 1;
-            } else if let Some((snap, seen)) = extra.get_mut(&key) {
-                // Written literal that is now a formula.
-                *seen = true;
-                if !Before::unchanged(arena, snap, now) {
-                    push(key, Before::value(arena, snap), now);
-                }
-            } else if !matches!(now, CellView::Empty) {
-                // New formula or grown spill.
-                push(key, Value::Empty, now);
-            }
-        }
-    }
-    gone.extend(next..derived.len());
-    // Pass 2: captured cells pass 1 did not reach (written literals, cleared cells, shrunk
-    // spills, deleted sheets) are looked up directly.
-    let sheet_map: HashMap<u32, &Worksheet> = model
-        .workbook
-        .worksheets
-        .iter()
-        .map(|ws| (ws.get_sheet_id(), ws))
-        .collect();
-    let now_at = |key: Key| {
-        sheet_map
-            .get(&key.0)
-            .map_or(CellView::Empty, |ws| view_at(ws, model, key.1, key.2))
-    };
-    for index in gone {
-        let (_, key, snap) = &derived[index];
-        let now = now_at(*key);
-        if !Before::unchanged(arena, snap, now) {
-            push(*key, Before::value(arena, snap), now);
-        }
-    }
-    for (&key, (snap, seen)) in extra.iter() {
-        if !*seen {
-            let now = now_at(key);
-            if !Before::unchanged(arena, snap, now) {
-                push(key, Before::value(arena, snap), now);
-            }
-        }
-    }
-    changes.sort_by_key(|(index, c)| (*index, c.cell.row, c.cell.col));
-    changes.into_iter().map(|(_, c)| c).collect()
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+use crate::refs::CellRef;
+
 /// A reference (sheet, cell or range) could not be resolved.
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
@@ -72,6 +74,32 @@ pub enum EditError {
     Engine(String),
 }
 
+impl EditError {
+    /// Classifies an engine `String` error from a write: sheet-name and last-sheet failures, then
+    /// reference errors (when `cell` is the write's target), else the catch-all variants.
+    ///
+    /// `tests::edit_messages_are_classified` triggers the real engine paths so a reworded
+    /// message fails there.
+    pub(crate) fn from_engine_message(message: String, cell: Option<CellRef>) -> Self {
+        if message.starts_with("Invalid name for a sheet")
+            || message.contains("already exists")
+            || message.starts_with("Sheet already exists")
+        {
+            return Self::SheetName(message);
+        }
+        if message.starts_with("Cannot delete only sheet") {
+            return Self::LastSheet;
+        }
+        let Some(cell) = cell else {
+            return Self::Engine(message);
+        };
+        match RefError::from_engine_message(&message, &cell.to_string()) {
+            Some(e) => Self::Ref(e),
+            None => Self::InvalidInput { cell, message },
+        }
+    }
+}
+
 /// A workbook could not be loaded.
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
@@ -104,6 +132,7 @@ mod tests {
     use rustsheet_engine::Model;
 
     use super::*;
+    use crate::refs::SheetId;
 
     #[test]
     fn engine_messages_are_classified() {
@@ -139,6 +168,42 @@ mod tests {
             Some(RefError::Invalid(s)) if s == "A$"
         ));
         assert!(RefError::from_engine_message("Cannot edit a cell", "A1").is_none());
+    }
+
+    #[test]
+    fn edit_messages_are_classified() {
+        let mut model = Model::new_empty("book", "en", "UTC", "en").unwrap();
+        let classify = |m: Result<(), String>| EditError::from_engine_message(m.unwrap_err(), None);
+        assert!(matches!(
+            classify(model.add_sheet("bad/name")),
+            EditError::SheetName(_)
+        ));
+        assert!(matches!(
+            classify(model.add_sheet("Sheet1")),
+            EditError::SheetName(_)
+        ));
+        assert!(matches!(
+            classify(model.rename_sheet_by_index(0, "")),
+            EditError::SheetName(_)
+        ));
+        assert!(matches!(
+            classify(model.delete_sheet(0)),
+            EditError::LastSheet
+        ));
+        // Without a target cell anything else is the catch-all; with one it is the input's fault.
+        assert!(matches!(
+            EditError::from_engine_message("boom".into(), None),
+            EditError::Engine(m) if m == "boom"
+        ));
+        let cell = CellRef::new(SheetId::new(0), 0, 0).unwrap();
+        assert!(matches!(
+            EditError::from_engine_message("boom".into(), Some(cell)),
+            EditError::InvalidInput { .. }
+        ));
+        assert!(matches!(
+            EditError::from_engine_message("Invalid sheet".into(), Some(cell)),
+            EditError::Ref(RefError::UnknownSheet(_))
+        ));
     }
 
     #[test]

@@ -22,6 +22,12 @@ RustSheet started as a fork of [IronCalc](https://github.com/ironcalc/IronCalc)
 Modifications at import: crate/package renames, workspace-level lint policy,
 lint-debt allow-lists in each forked crate's `Cargo.toml`, `cargo fmt`.
 
+## RustSheet-only engine additions
+
+Not in upstream IronCalc; keep when porting nearby code: `Model::prepare_cell_for_user_input`
+(typed setters run the spill/array/merge checks), `Model::take_sheet` / `Model::restore_sheet`
+(`sheet_undo.rs`, undoable sheet delete) and `Model::evaluation_count`.
+
 ## Tracking upstream
 
 We do **not** merge upstream. Upstream fixes are *ported* deliberately:

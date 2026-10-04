@@ -119,41 +119,37 @@ impl FormulaCell {
     }
 }
 
-/// The state of a formula cell within the current pass. Absent means it has
-/// not been evaluated yet.
+/// The state of a formula cell within the current pass; absent means not evaluated yet.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum CellState {
     Evaluating,
     Evaluated,
 }
 
-/// What a formula found at a position when it read it, as far as spills are
-/// concerned. A spill written into a position seen `Empty`, or a spill cell
-/// removed from a position seen `Occupied`, contradicts the reader.
+/// What a formula found at a position when it read it, as far as spills are concerned. A spill
+/// written into a position seen `Empty`, or a spill cell removed from one seen `Occupied`,
+/// contradicts the reader.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum Seen {
     Empty,
     Occupied,
 }
 
-/// What was seen at one position in the current pass: the root of the
-/// recursion that first read it as empty, and the root of the recursion on
-/// whose behalf an array was first blocked by it. Both can be set for the
-/// same position: a leftover spill cell of the anchor being evaluated is read
-/// as empty on its behalf, and then blocks an array evaluated on demand
-/// inside it. Keeping only the first record would let the anchor remove the
-/// cell without contradicting the blocked array.
+/// What was seen at one position in the current pass: the root of the recursion that first read
+/// it as empty, and the root of the recursion on whose behalf an array was first blocked by it.
+/// Both can be set for the same position: a leftover spill cell of the anchor being evaluated is
+/// read as empty on its behalf, and then blocks an array evaluated on demand inside it. Keeping
+/// only the first record would let the anchor remove the cell without contradicting the blocked
+/// array.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub(crate) struct SeenRecord {
     pub(crate) empty: Option<CellReferenceIndex>,
     pub(crate) occupied: Option<CellReferenceIndex>,
 }
 
-/// A rectangle read as empty on behalf of `root`, in one go. A function that
-/// walks a whole column or row visits only the sheet's used area; the rest of
-/// the range holds nothing, and the formula depends on it all the same. That
-/// remainder is one record, not one per cell, so a whole-column read costs a
-/// single entry beyond the cells it visits.
+/// A rectangle read as empty on behalf of `root`, in one go. A function that walks a whole
+/// column or row visits only the sheet's used area; the rest holds nothing, and the formula
+/// depends on it all the same. That remainder is one record, not one per cell.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) struct SeenRange {
     pub(crate) root: CellReferenceIndex,
@@ -404,6 +400,8 @@ pub(crate) struct Evaluation {
     pub(crate) in_pass: bool,
     /// Number of restarts the last `evaluate()` needed. For tests and tuning.
     pub(crate) restarts_in_last_evaluation: u32,
+    /// Number of `evaluate()` calls so far.
+    pub(crate) evaluations: u64,
     /// Number of formulas running right now, that is the depth of the
     /// recursion. It can be smaller than `stack.len()`: see `unwinding`.
     pub(crate) depth: usize,
@@ -466,6 +464,7 @@ impl Default for Evaluation {
             restart: None,
             in_pass: false,
             restarts_in_last_evaluation: 0,
+            evaluations: 0,
             depth: 0,
             max_depth: default_max_depth(),
             max_stack: DEFAULT_MAX_STACK,
@@ -484,6 +483,7 @@ impl Model {
     /// `#CIRC!` and keeps no spill cells: its stale cells are dropped when it
     /// is marked, so there is nothing of it to read or to contradict.
     pub fn evaluate(&mut self) {
+        self.evaluation.evaluations += 1;
         self.sync_anchor_order();
         // Every pass starts from the same sheet: what an abandoned pass wrote
         // is undone. This is what makes a pass a function of the anchor order.
