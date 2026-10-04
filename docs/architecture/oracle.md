@@ -7,7 +7,10 @@ The oracle answers "what does Microsoft 365 Excel compute for this workbook?" Ev
 returns a **recalculated xlsx**, and every workbook carries a canary that proves it was
 recalculated (see "Is Excel really calculating?" below). Values are extracted with
 `rustsheet-eval snapshot`, the single parser, with full 17-digit precision, and stored as
-`*.oracle.json` sidecars next to the case. Results are cached by input sha256 in
+`*.oracle.json` sidecars next to the case (or under the suite's `oracle_dir` for fetched suites).
+`fill` lists cases with `rustsheet-eval cases`, skips those with nothing to score or whose cached
+values the suite trusts, and leaves pending every cell where the web result contradicts a value
+Microsoft Excel cached in the workbook (printed as `CONFLICT`; decision 0019). Results are cached by input sha256 in
 `eval/.cache/oracle/<backend>/`, so only new or changed workbooks hit Excel. Agents work
 offline against committed sidecars.
 
@@ -42,6 +45,8 @@ workbook rather than "the service worked once today".
 Limits of the canary:
 - A trailing sheet is invisible to formulas except via the sheet count, so workbooks using
   `SHEETS()` or `INFO()` are **refused**, never answered (2 of 591 suite workbooks today).
+- Excel for the web does not implement `CELL("width")` (it returns `#VALUE!`; desktop returns the
+  column width, poi/47804.xlsx), so workbooks using it are **refused** too.
 - Malformed packages that cannot take the extra sheet (21 of 591: fuzzer files, backslash part
   names) are refused too; Excel could not open most of them either.
 - Workbooks with workbook-structure protection reject the scratch-sheet edit (403) and are

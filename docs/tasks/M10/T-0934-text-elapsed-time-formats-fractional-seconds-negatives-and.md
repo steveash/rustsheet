@@ -32,20 +32,15 @@ Root causes:
 3. **Plain h/s after an elapsed token of the same unit is also elapsed** (A10, A11, A21): A10
    expected "It was 75 [yes, 75] hours and 23:53" (actual "[yes, 3]"); A11
    `[s]" [yes, "ss"] seconds"` expected "271433 [yes, 271433] seconds" (actual "[yes, 53]").
-4. **Elapsed token after a plain `s`** (10 cells: A8, A9, A18, A19, A28, A29, A38, A39, A48, A49).
-   Expected values: `s:m" @ hour "[hh]` gives "53:23 @ hour 1293" (3.14159), "4:3 @ hour 108"
-   (2:03:04), "0:0 @ hour 12" (0), "-4:3 @ hour 108", "-53:23 @ hour 1293";
-   `s" secs and "[m]" mins"` gives "53 secs and 77581 mins", "4 secs and 6480 mins", "0 secs and 720 mins".
-   Hypothesis that fits all 10: the elapsed token here measures the *seconds component* (53.376,
-   4, 0) as if it were days, plus half a day: hours = (sec + 0.5)·24 (53.376 → 1293.02 h →
-   77581 min; 4 → 108 h → 6480 min; 0 → 12 h → 720 min). Check this against every cell before
-   implementing it. Excel is right even though this looks like a bug.
+4. **Elapsed token after a plain `s`** (A8, A9, A18, A19, A28, A29, A38, A39, A48, A49) is
+   **CONFLICTING**: Excel for the web gives "53:23 @ hour 1293", desktop Excel cached
+   "53:23 @ hour 75" (see number-formats.md, decision 0019). These cells are not scored and are
+   out of scope until an excel-desktop probe on current Microsoft 365 decides; do not implement
+   either variant here.
 
 ## Acceptance criteria
 - [ ] The 37 lines for root causes 1-3 (A2:A7, A10:A17, A21:A27, A32:A37, A40:A47, A50, A51)
       disappear from eval/baseline/poi.txt with no new F lines.
-- [ ] The 10 root-cause-4 lines disappear too; if the rule cannot be fitted to all 10, they stay
-      and a follow-up task with the fitted hypothesis is filed.
 - [ ] Each rule is recorded in `docs/excel-semantics/number-formats.md` with the cells above.
 - [ ] `make check` green; reviewers approve.
 

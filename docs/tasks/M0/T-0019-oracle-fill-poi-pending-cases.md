@@ -29,14 +29,17 @@ safely. Expect refusals (SHEETS/INFO, protected or corrupt packages); those stay
 Engine fixes for what the new evidence shows.
 
 ## Outcome
-- Fill: 41 excel-graph sidecars, committed under `eval/suites/poi/oracle/` (new suite key `oracle_dir`: fetched
+- Fill: 40 excel-graph sidecars, committed under `eval/suites/poi/oracle/` (new suite key `oracle_dir`: fetched
   suites keep their sidecars in the repo, mirroring the case path). Skipped 292: 208 workbooks without formulas,
   79 Excel-authored ones whose cached values are already trusted, 5 the importer cannot read. Refused by Excel for the
-  web (`unsupportedWorkbook` / `FileCorruptTryRepair`): 52575_main.xlsx, bug67784.xlsx, sample-beta.xlsx; they stay
-  pending. poi pending 237 -> 197 (the rest have no formulas to score).
+  web (`unsupportedWorkbook` / `FileCorruptTryRepair`): 52575_main.xlsx, bug67784.xlsx, sample-beta.xlsx (and 47804.xlsx by the CELL("width") refusal); they stay
+  pending. poi pending 237 -> 198 (the rest have no formulas to score).
 - Harness bug found: sidecar JSON floats parsed up to 1 ulp off (serde_json without `float_roundtrip`); fixed with a
   regression test. ~294 would-be failures were artefacts; probes-numeric 60.19% -> 68.08%. Re-audit filed as T-0026.
-- Baseline: poi known failures 647 -> 969 (322 new coverage, 0 regressions).
+- Baseline: poi known failures 647 -> 959 (new coverage only, 0 regressions).
+- Web vs desktop (decision 0019): 257 cells where Excel for the web contradicts the values desktop Excel cached are
+  left pending and printed as `CONFLICT` (NumberFormatApproxTests 238 lowercase-e formats, ElapsedFormatTests 10,
+  47804 9); `CELL("width")` workbooks are now refused (47804). Fill discovery comes from `rustsheet-eval cases`.
 - Quirks recorded: numbers.md (SIN/COS at multiples of 90°, ACOS(0.5)), new number-formats.md (TEXT: empty format,
   text section, elapsed tokens, conditions, scientific literals, General 11 chars), new references.md (3-D refs,
   backslash names, uncached external refs), criteria.md (COUNTIFS array criteria).

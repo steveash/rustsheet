@@ -7,7 +7,7 @@ Updated by the steward routine (daily) and by workers (one line per merged task)
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
 | ironcalc-calc | 210 | 71,773 | 97.59% | 1,727 |
-| poi | 336 | 27,544 | 96.57% (41 workbooks oracle-scored, T-0019) | 969 |
+| poi | 336 | 27,287 | 96.57% (40 workbooks oracle-scored, T-0019) | 959 |
 | smoke | 5 | 38 | 100% | 0 |
 | probes | 3 | 45 | 71.11% | 13 |
 | probes-numeric | 4 | 2,738 | 60.19% | not gated |
@@ -85,4 +85,4 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-04 — T-0017: `make new-task` assigns collision-free ids (all origin/* branches counted; decision 0016); eval delta none.
 - 2026-10-04 — T-0016: docs/tasks/BOARD.md no longer committed (git-ignored, `make board` renders locally; decision 0017); eval delta none.
 - 2026-10-04 — T-0023: tasks carry `tier: sonnet | opus`; sonnet (hourly) and opus (2-hourly) workers replace the lane workers; stuck sonnet runs hand off (decision 0018). Needs owner: re-apply docs/process/routines.md. Eval delta none.
-- 2026-10-04 — T-0019: excel-graph sidecars for 41 POI workbooks (`oracle_dir`, committed in eval/suites/poi/oracle); poi pending 237 -> 197, known failures 647 -> 969 (322 new coverage, 0 regressions); harness now parses JSON floats exactly (serde_json `float_roundtrip`; oracle values had read 1 ulp off, probes-numeric 60.19% -> 68.08%); quirk: SIN/COS at multiples of 90°.
+- 2026-10-04 — T-0019: excel-graph sidecars for 40 POI workbooks (`oracle_dir`, committed in eval/suites/poi/oracle); poi pending 237 -> 198, known failures 647 -> 959 (new coverage, 0 regressions; 257 web-vs-desktop conflicts left pending, decision 0019); harness now parses JSON floats exactly (serde_json `float_roundtrip`; oracle values had read 1 ulp off, probes-numeric 60.19% -> 68.08%); quirk: SIN/COS at multiples of 90°.

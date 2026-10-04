@@ -12,7 +12,8 @@ depends_on: []
 
 ## Goal
 A formula that references another workbook with no usable cached values gives Excel's error
-(`#VALUE!` per the excel-graph oracle) instead of `#REF!`.
+(`#VALUE!` per the excel-graph oracle) instead of `#REF!`. The workbook was written by Apache POI,
+so this is web-only evidence: confirm on desktop Excel (excel-probe skill) before implementing.
 
 ## Context
 Evidence: `poi/link-external-workbook-b.xlsx` (POI-written, excel-graph sidecar from T-0019)
