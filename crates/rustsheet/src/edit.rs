@@ -127,7 +127,7 @@ pub struct ChangeSet {
 type Key = (u32, i32, i32);
 
 /// Cheap multiplicative hasher for [`Key`]s: the keys are small integers we produce ourselves, so
-/// SipHash's collision resistance buys nothing and costs a large share of the diff.
+/// `SipHash`'s collision resistance buys nothing and costs a large share of the diff.
 #[derive(Default, Clone, Copy)]
 struct KeyHasher(u64);
 
@@ -850,8 +850,11 @@ mod tests {
         wb.cell_ref(a1).expect("ref")
     }
 
+    /// `(sheet name, sheet id, [(formula, value)])` per sheet.
+    type Dump = (String, String, Vec<(Option<String>, Value)>);
+
     /// Everything observable through the facade, for before/after equality.
-    fn dump(wb: &Workbook) -> Vec<(String, String, Vec<(Option<String>, Value)>)> {
+    fn dump(wb: &Workbook) -> Vec<Dump> {
         wb.sheets()
             .iter()
             .map(|s| {
@@ -985,7 +988,7 @@ mod tests {
         let mut wb = book();
         wb.set("A1", 3.0).unwrap();
         let first = wb.sheets()[0].id;
-        let ((added, moved), changes) = wb
+        let (added, changes) = wb
             .edit(|tx| {
                 let added = tx.add_sheet("Data")?;
                 tx.set(
@@ -993,10 +996,9 @@ mod tests {
                     Input::Formula("=Sheet1!A1+1".into()),
                 )?;
                 tx.rename_sheet(first, "Main")?;
-                Ok((added, ()))
+                Ok(added)
             })
             .unwrap();
-        let _ = moved;
         assert_eq!(
             wb.value(CellRef::new(added, 0, 0).unwrap()).unwrap(),
             Value::Number(4.0)
@@ -1033,7 +1035,7 @@ mod tests {
         let (data, _) = wb.edit(|tx| tx.add_sheet("Data")).unwrap();
         wb.set("Data!A1", 8.0).unwrap();
         wb.set("A1", Input::Formula("=Data!A1".into())).unwrap();
-        let (_, changes) = wb.edit(|tx| tx.delete_sheet(data)).unwrap();
+        let ((), changes) = wb.edit(|tx| tx.delete_sheet(data)).unwrap();
         assert!(
             matches!(&changes.sheets[..], [SheetChange::Deleted { name, .. }] if name == "Data")
         );
@@ -1134,26 +1136,29 @@ mod tests {
     /// Deterministic generator (no proptest in the offline dependency set).
     struct Rng(u64);
     impl Rng {
-        fn next(&mut self, n: u64) -> u64 {
+        fn next(&mut self, n: u32) -> u32 {
             self.0 ^= self.0 << 13;
             self.0 ^= self.0 >> 7;
             self.0 ^= self.0 << 17;
-            self.0 % n
+            u32::try_from(self.0 % u64::from(n)).unwrap_or(0)
+        }
+
+        fn cell(&mut self) -> String {
+            let col = ["A", "B", "C", "D"][usize::try_from(self.next(4)).unwrap_or(0)];
+            format!("{col}{}", 1 + self.next(4))
         }
     }
 
     fn random_input(rng: &mut Rng) -> Input {
-        let cols = ["A", "B", "C", "D"];
-        let pick = |rng: &mut Rng| format!("{}{}", cols[rng.next(4) as usize], 1 + rng.next(4));
         match rng.next(9) {
             0 => Input::Clear,
-            1 => Input::from(rng.next(5) as f64),
+            1 => Input::from(f64::from(rng.next(5))),
             2 => Input::from("text"),
-            3 => Input::Formula(format!("={}+{}", pick(rng), pick(rng))),
+            3 => Input::Formula(format!("={}+{}", rng.cell(), rng.cell())),
             4 => Input::Formula(format!("=SEQUENCE({})", 1 + rng.next(3))),
             5 => Input::Formula("=RAND()".into()),
-            6 => Input::Formula(format!("=INDIRECT({})", pick(rng))),
-            7 => Input::Formula(format!("=SUM({}:{})", pick(rng), pick(rng))),
+            6 => Input::Formula(format!("=INDIRECT({})", rng.cell())),
+            7 => Input::Formula(format!("=SUM({}:{})", rng.cell(), rng.cell())),
             _ => Input::from(rng.next(2) == 0),
         }
     }
@@ -1169,13 +1174,9 @@ mod tests {
         for round in 0..300 {
             let before_values = grid(&wb);
             let before_dump = dump(&wb);
-            let ops: Vec<(String, Input)> = (0..1 + rng.next(3))
+            let ops: Vec<(String, Input)> = (0..=rng.next(3))
                 .map(|_| {
-                    let a1 = format!(
-                        "{}{}",
-                        ["A", "B", "C", "D"][rng.next(4) as usize],
-                        1 + rng.next(4)
-                    );
+                    let a1 = rng.cell();
                     (a1, random_input(&mut rng))
                 })
                 .collect();
@@ -1194,7 +1195,7 @@ mod tests {
                 assert_eq!(dump(&wb), before_dump, "round {round}: rollback");
                 continue;
             }
-            let (_, changes) = result.unwrap();
+            let ((), changes) = result.unwrap();
             let after = grid(&wb);
             let mut expected = vec![];
             for row in 0..12u32 {
