@@ -30,8 +30,9 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- Run at most **2 concurrent workers**: `functions` plus the critical-lane worker, which takes the
-  first ready lane from the `**Critical lane:**` list in `docs/status.md` (allowlist and rules in
+- Run at most **2 concurrent workers**, one per model tier (decision 0018): the sonnet worker
+  takes `tier: sonnet` tasks and the opus worker `tier: opus` tasks (handed-off ones first). Both
+  walk the `**Critical lane:**` list in `docs/status.md`, then `functions` (allowlist and rules in
   `routines.md`).
 - Run at most one task in flight per lane.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.
@@ -48,7 +49,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 - **Unblocking is an agent's job** (decision 0013). The steward run checks every `blocked` task;
   a worker whose lane has no ready task checks its lane's. If the blocker is gone (the capability
   check passes, or the blocking task is `done`): set `status: todo`, delete the "Blocked because"
-  section, drop dependencies that stood only for the capability, run `make board`, remove the
+  section, drop dependencies that stood only for the capability, remove the
   resolved "Needs owner" entry and log it in `docs/status.md`. Land it in that run's PR.
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
@@ -62,7 +63,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 ## The loop (summary)
 
 1. **Sync:** `main` up to date. Resume lane work if any exists.
-2. **Pick:** `make next-task LANE=x`. If empty, run the gap triager (functions lane) or the
+2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; handoffs first). If empty, run the gap triager (functions lane) or the
    planner (other lanes).
 3. **Understand:**
    - Read the task, its spec, the code, `docs/excel-semantics/`, and the failing cases (`make eval-show`).
@@ -73,7 +74,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
    when debt went down.
 7. **Review:** `review` skill. All applicable reviewers must APPROVE. At most 3 rounds, then mark
    the task blocked.
-8. **PR:** use the template. Set the task to `done` with an Outcome note, then `make board`.
+8. **PR:** use the template. Set the task to `done` with an Outcome note.
 9. **Merge:** once CI is green and reviews are approved, squash-merge. Then append a line to `docs/status.md`.
 
 ## Specs before architecture

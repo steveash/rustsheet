@@ -32,16 +32,25 @@ def eval_binary() -> Path:
     return candidate
 
 
-def snapshot(xlsx: Path) -> dict[str, Any]:
-    """Returns the WorkbookSnapshot JSON (see xlsx_snapshot.rs) for an xlsx file."""
-    out = subprocess.run(
-        [str(eval_binary()), "snapshot", str(xlsx)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+def _eval_json(*args: str) -> dict[str, Any]:
+    """Runs `rustsheet-eval <args>` and parses its JSON output."""
+    out = subprocess.run([str(eval_binary()), *args], check=True, capture_output=True, text=True)
     data: dict[str, Any] = json.loads(out.stdout)
     return data
+
+
+def snapshot(xlsx: Path) -> dict[str, Any]:
+    """Returns the WorkbookSnapshot JSON (see xlsx_snapshot.rs) for an xlsx file."""
+    return _eval_json("snapshot", str(xlsx))
+
+
+def compare_workbooks(cached: Path, recalculated: Path) -> dict[str, Any]:
+    """Per-cell verdicts of `cached`'s formula cells against `recalculated`.
+
+    Delegates to `rustsheet-eval compare` (crates/rustsheet-eval/src/calibrate.rs), so the
+    comparison rules, volatile skipping and function attribution are the harness's own.
+    """
+    return _eval_json("compare", str(cached), str(recalculated))
 
 
 def formula_values(snap: dict[str, Any]) -> dict[str, dict[str, Any]]:

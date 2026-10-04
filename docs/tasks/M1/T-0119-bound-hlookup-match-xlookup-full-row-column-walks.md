@@ -6,6 +6,7 @@ lane: engine
 status: todo
 priority: P1
 size: S
+tier: sonnet
 depends_on: []
 ---
 

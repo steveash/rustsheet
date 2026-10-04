@@ -3,7 +3,7 @@ id: T-0017
 title: "`make new-task` allocates task ids so parallel sessions cannot collide"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P0
 size: S
 depends_on: []
@@ -17,7 +17,13 @@ Two sessions creating tasks at the same time cannot pick the same id.
 (duplicate ids fail `scripts/tasks.py validate`). Ids are chosen by hand today.
 
 ## Acceptance criteria
-- [ ] `make new-task MILESTONE=.. LANE=.. TITLE=..` writes a task file from the template with the next free id, computed against `origin/main` as well as the working tree (fetch first).
-- [ ] CI's `tasks.py validate` reports a duplicate id with both file paths and the fix (`make new-task` or renumber).
-- [ ] Planner, gap-triager and the work-loop skill say to use it.
-- [ ] Decision record for the protected-path change; `make check` green; reviewers approve.
+- [x] `make new-task MILESTONE=.. LANE=.. TITLE=..` writes a task file from the template with the next free id, computed against `origin/main` as well as the working tree (fetch first).
+- [x] CI's `tasks.py validate` reports a duplicate id with both file paths and the fix (`make new-task` or renumber).
+- [x] Planner, gap-triager and the work-loop skill say to use it.
+- [x] Decision record for the protected-path change; `make check` green; reviewers approve.
+
+## Outcome
+`make new-task` / `tasks.py new`: id = next after the highest in the milestone's block, counting
+every `origin/*` branch (fetched) plus the working tree; template with fill-in placeholders
+that `validate` rejects; duplicate errors name both files. `scripts/test_tasks.py` runs in
+`make hygiene`. Planner, gap-triager, the work-loop skill and task-format.md point at it; a failed fetch warns on stderr. Decision 0016. Eval delta: none.

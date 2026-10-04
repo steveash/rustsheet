@@ -81,6 +81,18 @@ pub struct WorkbookSnapshot {
 }
 
 impl WorkbookSnapshot {
+    /// Every stored cell value (formula results and constants), keyed by (sheet, address).
+    #[must_use]
+    pub fn values(&self) -> BTreeMap<(String, Addr), Value> {
+        let mut map = BTreeMap::new();
+        for sheet in &self.sheets {
+            for (addr, cell) in &sheet.cells {
+                map.insert((sheet.name.clone(), *addr), cell.value.clone());
+            }
+        }
+        map
+    }
+
     /// Whether the cached values were written by a Microsoft Excel build (desktop, Mac, web, mobile).
     ///
     /// XlsxWriter and some other libraries also claim `Microsoft Excel` but with the Excel 2007

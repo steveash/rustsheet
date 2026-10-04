@@ -6,6 +6,7 @@ lane: functions
 status: done
 priority: P2
 size: S
+tier: opus
 depends_on: [T-0205]
 ---
 

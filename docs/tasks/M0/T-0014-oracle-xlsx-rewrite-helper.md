@@ -6,6 +6,7 @@ lane: quality
 status: todo
 priority: P3
 size: S
+tier: sonnet
 depends_on: [T-0013]
 ---
 
