@@ -3,7 +3,7 @@ id: T-0925
 title: "Inverse normal (Wichura AS241) for NORM.S.INV/NORM.INV/LOGNORM.INV/CONFIDENCE.NORM (~120 known failures)"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P1
 size: S
 depends_on: []
