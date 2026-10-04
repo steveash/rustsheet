@@ -15,8 +15,8 @@ use pyo3::types::{PyBool, PyDict, PyList};
 use pyo3::{create_exception, IntoPyObjectExt};
 
 use rustsheet::{
-    ChangeSet, EditError, ErrorKind, Input, LoadOptions, RefError, SaveOptions, SheetChange,
-    SheetId, Txn, Value, Workbook, WorkbookOptions, XlError,
+    resolve_sheet_by_name, ChangeSet, EditError, ErrorKind, Input, LoadOptions, RefError,
+    SaveOptions, SheetChange, SheetId, Txn, Value, Workbook, WorkbookOptions, XlError,
 };
 
 create_exception!(_rustsheet, RustSheetError, PyException);
@@ -104,6 +104,7 @@ pub struct PyFormula {
 
 #[pymethods]
 impl PyFormula {
+    /// Wraps `text` (with its leading `=`) as a formula.
     #[new]
     fn new(text: String) -> Self {
         Self { text }
@@ -121,7 +122,9 @@ fn value_to_py(py: Python<'_>, value: Value) -> PyResult<Py<PyAny>> {
         Value::Text(s) => (&*s).into_py_any(py),
         Value::Bool(b) => b.into_py_any(py),
         Value::Error(inner) => PyXlError { inner }.into_py_any(py),
-        _ => Err(RustSheetError::new_err("unsupported value kind")),
+        other => Err(RustSheetError::new_err(format!(
+            "unsupported value kind: {other:?}"
+        ))),
     }
 }
 
@@ -157,8 +160,8 @@ fn changes_to_py<'py>(
             names.push((*id, name.clone()));
         }
     }
-    let a1 = |cell: rustsheet::CellRef| match names.iter().find(|(id, _)| *id == cell.sheet) {
-        Some((_, name)) => cell.to_a1_in(name),
+    let a1 = |cell: rustsheet::CellRef| match name_of(&names, cell.sheet) {
+        Some(name) => cell.to_a1_in(name),
         None => format!("#{}!{cell}", cell.sheet.get()),
     };
 
@@ -184,7 +187,7 @@ fn changes_to_py<'py>(
         match s {
             SheetChange::Added(id) => {
                 d.set_item("kind", "added")?;
-                d.set_item("name", names.iter().find(|(i, _)| i == id).map(|(_, n)| n))?;
+                d.set_item("name", name_of(&names, *id))?;
             }
             SheetChange::Renamed { from, to, .. } => {
                 d.set_item("kind", "renamed")?;
@@ -234,6 +237,13 @@ impl PyWorkbook {
         }
     }
 
+    /// Runs `f` on the workbook. The mutex is taken with the GIL released: a thread that holds
+    /// the mutex inside `detach` needs the GIL back to finish, so blocking on the mutex while
+    /// holding the GIL would deadlock.
+    fn read<T: Send>(&self, py: Python<'_>, f: impl FnOnce(&Workbook) -> T + Send) -> T {
+        py.detach(|| f(&lock(&self.wb)))
+    }
+
     /// Applies `ops` as one atomic edit with the GIL released and retains the change set.
     fn run_edit(&self, py: Python<'_>, ops: Vec<Op>) -> PyResult<()> {
         let (changes, names) = py
@@ -251,6 +261,11 @@ impl PyWorkbook {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(d.unbind());
         Ok(())
     }
+}
+
+/// The name of `id` in a `(id, name)` list.
+fn name_of(names: &[(SheetId, String)], id: SheetId) -> Option<&String> {
+    names.iter().find(|(i, _)| *i == id).map(|(_, n)| n)
 }
 
 fn sheet_names(wb: &Workbook) -> Vec<(SheetId, String)> {
@@ -306,17 +321,15 @@ impl PyWorkbook {
 
     /// Sheet names in tab order.
     #[getter]
-    fn sheet_names(&self) -> Vec<String> {
-        lock(&self.wb)
-            .sheets()
-            .into_iter()
-            .map(|s| s.name)
-            .collect()
+    fn sheet_names(&self, py: Python<'_>) -> Vec<String> {
+        self.read(py, |wb| {
+            sheet_names(wb).into_iter().map(|(_, n)| n).collect()
+        })
     }
 
     /// The value of a cell (the top-left cell of a range), e.g. `wb.value("Sheet1!A1")`.
     fn value(&self, py: Python<'_>, r: &str) -> PyResult<Py<PyAny>> {
-        let v = lock(&self.wb).value(r).map_err(|e| ref_err(&e))?;
+        let v = self.read(py, |wb| wb.value(r)).map_err(|e| ref_err(&e))?;
         value_to_py(py, v)
     }
 
@@ -326,7 +339,7 @@ impl PyWorkbook {
 
     /// The values of a range as a list of rows.
     fn values<'py>(&self, py: Python<'py>, r: &str) -> PyResult<Bound<'py, PyList>> {
-        let arr = lock(&self.wb).values(r).map_err(|e| ref_err(&e))?;
+        let arr = self.read(py, |wb| wb.values(r)).map_err(|e| ref_err(&e))?;
         let rows = PyList::empty(py);
         for row in 0..arr.rows() {
             let out = PyList::empty(py);
@@ -340,40 +353,40 @@ impl PyWorkbook {
     }
 
     /// The formula of a cell (with leading `=`), or `None`.
-    fn formula(&self, r: &str) -> PyResult<Option<String>> {
-        Ok(lock(&self.wb).cell(r).map_err(|e| ref_err(&e))?.formula)
+    fn formula(&self, py: Python<'_>, r: &str) -> PyResult<Option<String>> {
+        Ok(self
+            .read(py, |wb| wb.cell(r))
+            .map_err(|e| ref_err(&e))?
+            .formula)
     }
 
     /// The number format code of a cell, `None` for General.
-    fn number_format(&self, r: &str) -> PyResult<Option<String>> {
-        Ok(lock(&self.wb)
-            .cell(r)
+    fn number_format(&self, py: Python<'_>, r: &str) -> PyResult<Option<String>> {
+        Ok(self
+            .read(py, |wb| wb.cell(r))
             .map_err(|e| ref_err(&e))?
             .number_format)
     }
 
     /// The cell as Excel displays it.
-    fn formatted(&self, r: &str) -> PyResult<String> {
-        lock(&self.wb).formatted(r).map_err(|e| ref_err(&e))
+    fn formatted(&self, py: Python<'_>, r: &str) -> PyResult<String> {
+        self.read(py, |wb| wb.formatted(r)).map_err(|e| ref_err(&e))
     }
 
     /// The used range of a sheet as an A1 string (with sheet name), `None` if empty.
-    fn used_range(&self, sheet: &str) -> PyResult<Option<String>> {
-        let wb = lock(&self.wb);
-        let id = wb.sheet_id(sheet).map_err(|e| ref_err(&e))?;
-        let range = wb.used_range(id).map_err(|e| ref_err(&e))?;
-        let name = wb
-            .sheets()
-            .into_iter()
-            .find(|s| s.id == id)
-            .map(|s| s.name)
-            .unwrap_or_default();
-        Ok(range.map(|r| r.to_a1_in(&name)))
+    fn used_range(&self, py: Python<'_>, sheet: &str) -> PyResult<Option<String>> {
+        self.read(py, |wb| {
+            let id = wb.sheet_id(sheet)?;
+            let range = wb.used_range(id)?;
+            let name = name_of(&sheet_names(wb), id).cloned().unwrap_or_default();
+            Ok(range.map(|r| r.to_a1_in(&name)))
+        })
+        .map_err(|e: RefError| ref_err(&e))
     }
 
     /// Turns the per-edit value diff on or off (off: `changes["values"]` stays empty).
-    fn set_track_changes(&self, on: bool) {
-        lock(&self.wb).set_track_changes(on);
+    fn set_track_changes(&self, py: Python<'_>, on: bool) {
+        py.detach(|| lock(&self.wb).set_track_changes(on));
     }
 
     /// Stores one cell as a one-op transaction; see [`PyTransaction`] for accepted inputs.
@@ -431,11 +444,13 @@ impl PyTransaction {
     }
 }
 
-/// Resolves a sheet name (case-insensitively, as Excel does) against `sheets`.
+/// Position of `name` in `sheets`, resolved with the facade's own case-insensitive rule. The
+/// facade's `Workbook::sheet_id` cannot be used because the transaction's ops are not applied
+/// yet, so sheets added or renamed earlier in the same block exist only in this list.
 fn find_sheet(sheets: &[(SheetId, String)], name: &str) -> Result<usize, EditError> {
-    sheets
-        .iter()
-        .position(|(_, n)| n.eq_ignore_ascii_case(name))
+    let pairs: Vec<(SheetId, &str)> = sheets.iter().map(|(id, n)| (*id, n.as_str())).collect();
+    resolve_sheet_by_name(&pairs, Some(name))
+        .and_then(|id| sheets.iter().position(|(i, _)| *i == id))
         .ok_or_else(|| EditError::Ref(RefError::UnknownSheet(name.to_owned())))
 }
 

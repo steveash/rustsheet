@@ -192,7 +192,7 @@ def test_from_bytes_garbage_is_load_error():
 
 
 def test_gil_released_during_recalculate(wb):
-    """A second Python thread keeps running while a long recalculation holds the engine."""
+    """Another Python thread keeps ticking *during* a long recalculation (GIL released)."""
     with wb.edit() as tx:
         tx["A1"] = 1
         for r in range(2, 20001):
@@ -209,9 +209,64 @@ def test_gil_released_during_recalculate(wb):
     t = threading.Thread(target=spin)
     t.start()
     try:
-        for _ in range(5):
+        time.sleep(0.05)
+        before = ticks
+        start = time.monotonic()
+        while time.monotonic() - start < 0.5:
             wb.recalculate()
+        during = ticks - before
     finally:
         stop.set()
         t.join()
-    assert ticks > 0
+    # A ticker starved by a GIL-holding recalculation would count ~0 ticks over 0.5s.
+    assert during >= 20
+
+
+def test_xlerror_detail_and_deleted_sheet_changes(wb):
+    wb.set("A1", "=1/0")
+    assert wb["A1"].detail is None or isinstance(wb["A1"].detail, str)
+    with wb.edit() as tx:
+        tx.add_sheet("Tmp")
+    with wb.edit() as tx:
+        tx.delete_sheet("Tmp")
+    assert wb.changes["sheets"] == [{"kind": "deleted", "name": "Tmp"}]
+
+
+def test_moderately_nested_formula(wb):
+    # TODO(T-0931): the parser overflows the stack at a few hundred levels; once it has a depth
+    # limit, add a test that 10_000 levels raises EditError.
+    wb.set("A1", rs.Formula("=" + "(" * 100 + "1" + ")" * 100))
+    assert wb["A1"] == 1.0
+
+
+def test_reads_do_not_deadlock_with_concurrent_recalc_and_save(wb, tmp_path):
+    """Reads in one thread while another recalculates/saves must finish (GIL vs mutex order)."""
+    with wb.edit() as tx:
+        tx["A1"] = 1
+        for r in range(2, 5001):
+            tx[f"A{r}"] = rs.Formula(f"=A{r - 1}+1")
+    path = str(tmp_path / "busy.xlsx")
+    errors = []
+
+    def writer():
+        try:
+            for _ in range(5):
+                wb.recalculate()
+                wb.save_xlsx(path)
+        except Exception as e:  # noqa: BLE001
+            errors.append(e)
+
+    t = threading.Thread(target=writer, daemon=True)
+    t.start()
+    for _ in range(200):
+        assert wb["Sheet1!A1"] == 1.0
+        wb.values("A1:A3")
+        wb.sheet_names
+    t.join(timeout=60)
+    assert not t.is_alive(), "deadlock between GIL and workbook mutex"
+    assert not errors
+
+
+def test_huge_int_is_type_error(wb):
+    with pytest.raises(TypeError):
+        wb.set("A1", 10**400)

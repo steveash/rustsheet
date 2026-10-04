@@ -57,7 +57,7 @@ from rustsheet._rustsheet import (
 )
 
 
-def open(path: str, recalc: bool = True) -> Workbook:  # noqa: A001
+def open(path: str, recalc: bool = True) -> Workbook:
     """Open an xlsx file as a :class:`Workbook` (shorthand for ``Workbook.open``)."""
     return Workbook.open(path, recalc)
 
