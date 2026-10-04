@@ -35,3 +35,13 @@ fn test_fn_expon_dist_smoke() {
     assert_eq!(model._get_text("A7"), *"#NUM!");
     assert_eq!(model._get_text("A8"), *"#NUM!");
 }
+
+#[test]
+fn test_fn_expon_dist_cdf_tiny_argument_keeps_precision() {
+    // Excel (EXPONDIST.xlsx D16) gives 9.999999999500002e-11 for lambda*x = 1e-10.
+    // The residual vs lambda*x is -5e-21 only if 1 - exp(-t) cancellation is avoided.
+    let mut model = new_empty_model();
+    model._set("A1", "=EXPON.DIST(1E-10, 1, TRUE)-1E-10");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"-5E-21");
+}
