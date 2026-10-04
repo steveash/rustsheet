@@ -1,5 +1,4 @@
 use chrono::Datelike;
-use chrono::Days;
 use chrono::Duration;
 use chrono::Months;
 use chrono::NaiveDate;
@@ -10,9 +9,37 @@ use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 
 pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
 
+/// Excel serial of the first real date after the fictitious 1900-02-29 (serial 60).
+const FIRST_SERIAL_AFTER_LEAP_BUG: i32 = 61;
+
+/// Excel's serial for a real calendar date. Excel counts a non-existent 1900-02-29 as serial 60,
+/// so real dates before 1900-03-01 sit one lower than the plain day count from `EXCEL_DATE_BASE`.
+/// Evidence: probes/dates-and-blanks A1-A3 (docs/excel-semantics/dates.md).
 #[inline]
 fn convert_to_serial_number(date: NaiveDate) -> i32 {
-    date.num_days_from_ce() - EXCEL_DATE_BASE
+    let serial = date.num_days_from_ce() - EXCEL_DATE_BASE;
+    if serial < FIRST_SERIAL_AFTER_LEAP_BUG {
+        serial - 1
+    } else {
+        serial
+    }
+}
+
+/// Maps an Excel date serial (date part) to the `(year, month, day)` Excel shows for it,
+/// including the fictitious 1900-02-29 (serial 60). `None` outside `1..=MAXIMUM_DATE_SERIAL_NUMBER`.
+pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
+    if !(MINIMUM_DATE_SERIAL_NUMBER as i64..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial) {
+        return None;
+    }
+    if serial == 60 {
+        return Some((1900, 2, 29));
+    }
+    let date = if serial < 60 {
+        NaiveDate::from_ymd_opt(1900, 1, 1)? + Duration::days(serial - 1)
+    } else {
+        from_excel_date(serial).ok()?
+    };
+    Some((date.year(), date.month(), date.day()))
 }
 
 fn is_date_within_range(date: NaiveDate) -> bool {
@@ -33,7 +60,11 @@ pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
     };
     #[allow(clippy::expect_used)]
     let dt = NaiveDate::from_ymd_opt(1900, 1, 1).expect("problem with chrono::NaiveDate");
-    Ok(dt + Duration::days(days - 2))
+    // NOTE: this is the weekday-faithful stand-in calendar, not Excel's DAY/MONTH/YEAR view: Excel
+    // numbers weekdays as if serial 1 were a Sunday, so serials below 60 map one day early here
+    // (serial 1 = 1899-12-31). Use `excel_serial_to_ymd` for the exact date components.
+    let offset = days - 2;
+    Ok(dt + Duration::days(offset))
 }
 
 pub fn date_to_serial_number(day: u32, month: u32, year: i32) -> Result<i32, String> {
@@ -87,21 +118,13 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
         date
     };
 
-    date = {
-        let day_diff = day - 1;
-        let abs_day = day_diff.unsigned_abs() as u64;
-        if day_diff <= 0 {
-            date = date - Days::new(abs_day);
-        } else {
-            date = date + Days::new(abs_day);
-        }
-        if !is_date_within_range(date) {
-            return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
-        }
-        date
-    };
-
-    Ok(convert_to_serial_number(date))
+    // Days wrap linearly from the first of the month in Excel serials, so the fictitious
+    // 1900-02-29 is reachable: DATE(1900,2,29) = 60 and DATE(1900,2,30) = 61.
+    let serial = i64::from(convert_to_serial_number(date)) + i64::from(day) - 1;
+    if serial < MINIMUM_DATE_SERIAL_NUMBER as i64 || serial > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
+        return Err(DATE_OUT_OF_RANGE_MESSAGE.to_string());
+    }
+    Ok(serial as i32)
 }
 
 #[cfg(test)]

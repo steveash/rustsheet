@@ -5,7 +5,14 @@ Rule: Excel treats 1900 as a leap year for compatibility with Lotus 1-2-3.
 `DATE(1900,2,29)` = 60 and `DATE(1900,3,1)` = 61. IronCalc returns 61 for `DATE(1900,2,29)`.
 Evidence: probes/dates-and-blanks.case.json A1 (60), A2 (`DATE(1900,3,1)-DATE(1900,2,28)` = 2),
 A3 (`DAY(60)` = 29). Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED
+Status: VERIFIED. Implemented for DATE, DAY/MONTH/YEAR, text date parsing and number formatting
+(T-0108): `DATE(1900,1,1)` = 1, days wrap linearly from the first of the month so
+`DATE(1900,2,30)` = 61. Excel numbers WEEKDAY below serial 60 as if serial 1 were a Sunday, so
+`from_excel_date` stays a weekday-faithful stand-in calendar (serial 1 = 1899-12-31) for WEEKDAY,
+WORKDAY etc.; exact components come from `formatter::dates::excel_serial_to_ymd`.
+UNVERIFIED and still approximate: TEXT/format of serial 60 (shows 2/28/1900 in the engine), EDATE,
+EOMONTH and EDATE-family results below serial 61, and DAY/MONTH/YEAR(0) (Excel gives 0/1/1900;
+the engine returns #NUM!) (follow-up task).
 
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.
