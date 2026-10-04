@@ -3,7 +3,7 @@ id: T-0920
 title: "Port remaining IronCalc fixes: POWER ranges, finite-number parse, --A1:B4, implicit-intersection export"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P3
 size: M
 depends_on: [T-0918]
