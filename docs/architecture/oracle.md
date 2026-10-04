@@ -4,8 +4,9 @@
 backends below are not set up.
 
 The oracle answers "what does Microsoft 365 Excel compute for this workbook?" Every backend
-returns a **recalculated xlsx**. Values are extracted with `rustsheet-eval snapshot`, the single
-parser, with full 17-digit precision, and stored as `*.oracle.json` sidecars next to the case.
+returns a **recalculated xlsx**, and every workbook carries a canary that proves it was
+recalculated (see "Is Excel really calculating?" below). Values are extracted with
+`rustsheet-eval snapshot`, the single parser, with full 17-digit precision, and stored as `*.oracle.json` sidecars next to the case.
 Results are cached by input sha256 in `eval/.cache/oracle/<backend>/`, so only new or changed
 workbooks hit Excel. Agents work offline against committed sidecars.
 
@@ -24,6 +25,60 @@ uv run rustsheet-oracle fill -b excel-graph --suite probes
 uv run rustsheet-oracle recalc -b excel-graph some.xlsx
 ```
 CI: `.github/workflows/oracle.yml` (manual dispatch → PR with new sidecars).
+
+## Is Excel really calculating? (read before trusting or changing the oracle)
+
+**Every oracle result is canary-verified.** Before upload, `oracle/canary.py` appends a sheet
+`RustSheetCanary` to *each* workbook. Its formulas (`=1+1`, `=RAND()`, `=ROUND(2.675,2)`,
+`=SQRT(2)`) carry deliberately wrong cached values (999, 7, -1, 0). After the round trip the
+canary must hold Excel's answers (2, a value in [0, 1), 2.68, 1.4142135623730951 bit-exact); if
+any planted value survives, *that workbook* was not recalculated and its results are refused
+(`fill` writes no sidecar, `recalc` errors). The canary sheet is stripped before values reach a
+sidecar, and cached results in `eval/.cache/oracle/` are re-verified on every read. It rides in
+the same workbook on purpose: it costs no extra round trip, and it proves recalculation per
+workbook rather than "the service worked once today".
+
+Limits of the canary:
+- A trailing sheet is invisible to formulas except via the sheet count, so workbooks using
+  `SHEETS()` or `INFO()` are **refused**, never answered (2 of ~800 suite workbooks today).
+- Malformed packages that cannot take the extra sheet (fuzzer files, backslash part names) are
+  refused too; Excel could not open most of them either.
+
+**Why this matters: three ways to get cached values that look like Excel's answers.**
+1. *Uploading does not recalculate.* SharePoint stores the file as-is (it only adds
+   `customXml/` metadata). Values come from Excel only via a workbook session.
+2. *Excel saves a session only if it edited the workbook.* After `calculate(FullRebuild)` on a
+   file last saved by current Excel (`AppVersion` 16.x, `calcId` 191028/191029), `closeSession`
+   persists nothing: Excel computed the right values in-session (the Graph JSON shows them), but
+   the file never changes (eTag stays at version 1). Files from other writers (xlsxwriter, older
+   Excel) are saved only because Excel upgrades them on open. Observed 2026-10-04 with the
+   canary, without the fix:
+
+   | workbook | last saved by | `calcId` | saved? |
+   |---|---|---|---|
+   | ironcalc `arithmetic.xlsx`, `DAVERAGE.xlsx`, `CELL.xlsx` | Excel 16 / Excel Online | 191028–191029 | **no, stale** |
+   | POI `testSharedFormulasRangeSetBlankBug.xlsx` | Excel 16 | 191029 | **no, stale** |
+   | POI `workbookProtection-sheet_password-2013.xlsx` | Excel 15 | 152511 | yes |
+   | our spec cases (xlsxwriter) | "Excel 12" | 124519 | yes |
+
+   Resetting or removing `calcId` in the upload does *not* make Excel save. The backend therefore
+   adds and deletes a scratch sheet in the session **after** calculating; that edit makes
+   `closeSession` persist the recalculated workbook, and leaves no trace in it.
+3. *A wait that times out silently.* The backend polls the eTag for up to 60 s after
+   `closeSession`. Before 2026-10-04 it then downloaded the file anyway, which handed back the
+   upload. It now raises `OracleError` instead.
+
+**Unsupported territory.** Microsoft documents the workbook endpoints (sessions, `calculate`) as
+**delegated-only**; app-only (client-credentials) use works in this tenant but is undocumented
+and may change without notice. Nothing documents when Excel for the web persists a session
+either (point 2 was found empirically). This is why the canary exists: if Microsoft changes
+any of this, fills fail loudly instead of committing wrong goldens. If app-only stops working,
+switch to Fallback A (delegated).
+
+Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downloaded files say
+`Application = Microsoft Excel Online, AppVersion 16.0300`, Excel rewrites `calcId` to 191028,
+`RAND()` differs on every run, `NOW()` is the run's UTC time, and `ROUND(2.675,2)` is 2.68
+(binary-float rounding gives 2.67). `INFO("release")` returns `#VALUE!` (Excel for the web).
 
 ## Owner setup — Microsoft Graph (one time, ~20 minutes)
 
@@ -139,8 +194,11 @@ Variables read by the tool:
 
 ## Open questions (first oracle session, task T-0004)
 1. Does Graph persist full-precision values in the downloaded file after `calculate(FullRebuild)`?
-   This needs measuring; we never rely on Graph's JSON values.
+   **Yes**, 17 significant digits (`SQRT(2)` = 1.4142135623730951 in the file; the Graph JSON
+   rounds to 15, which is why we never use it). The canary checks this on every workbook.
 2. How long is the delay before the downloaded file reflects the recalculation (eTag polling)?
+   **Usually none**: the eTag has moved by the first poll after `closeSession`; a full round trip
+   takes ~10 s. But see "Is Excel really calculating?": without an edit Excel may never save.
 3. Does app-only auth work for workbook endpoints in this tenant? **Yes** (2026-10-04, `Sites.Selected`
-   on a dedicated site; a full upload → calculate → download round trip takes ~11 s).
+   on a dedicated site), although Microsoft documents those endpoints as delegated-only.
 4. Calibration: on how many ironcalc-calc cells do Graph and cached values disagree?
