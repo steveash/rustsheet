@@ -91,7 +91,8 @@ Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downlo
 ## Known divergences: where the oracle is not desktop Excel
 
 Calibration against 206 desktop-Excel-saved ironcalc workbooks (71,765 cells, 99.96% bit-exact;
-docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs:
+docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs (which one
+decides goldens when they disagree: T-0025):
 
 - **References to missing sheets.** `INDIRECT("NoSuchSheet!A1")` is a reference to an empty cell
   in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never

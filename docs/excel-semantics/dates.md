@@ -44,6 +44,8 @@ Day-first readings belong to other locales: several ironcalc-calc workbooks were
 day-first Excel, so their cached values for these cells are NOT en-US evidence
 (docs/research/oracle-calibration.md).
 Evidence: probes/date-text-locale B1–B10.
-Oracle: excel-graph, 2026-10-04 (the canary pins the oracle to en-US).
+Oracle: excel-graph, 2026-10-04 (the canary pins the oracle to en-US). Evidence is Excel for
+the web only; desktop en-US is not yet confirmed (notably `"26-01-01"`, a possible yy-mm-dd
+reading), since web and desktop differ in places (docs/architecture/oracle.md).
 Status: VERIFIED. The engine still reads `"26-01-01"` day-first and rejects month-name text in
 date arguments (T-0024).

@@ -11,4 +11,4 @@ Implemented in: the engine already returns #REF! (those cells pass).
 Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the same formulas give
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
 2026-10-04. Never take oracle values as evidence for references to missing sheets
-(docs/architecture/oracle.md, "Known divergences").
+(docs/architecture/oracle.md, "Known divergences"; which Excel wins is T-0025).
