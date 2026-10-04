@@ -16,4 +16,5 @@ criteria "these N known-failure lines disappear from eval/baseline/<suite>.txt w
 Prioritize by (failing cells × real-world function frequency prior from eval/catalog/functions.yaml).
 When the Excel values in a group reveal a quirk (expected values that look wrong, arbitrary or
 inconsistent are still correct: Excel is always right), add or update its entry in
-`docs/excel-semantics/` citing the cells, and link it from the task. Skip groups already covered by an open task. Validate and regenerate the board when done.
+`docs/excel-semantics/` citing the cells, and link it from the task.
+Skip groups already covered by an open task. Validate and regenerate the board when done.

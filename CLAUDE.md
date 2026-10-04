@@ -10,8 +10,9 @@ same rounding, same quirks — including behavior Excel never documented. The pr
    (Excel-computed values in `eval/`), never by memory, documentation alone, or "what is
    mathematically right". Match Excel exactly even when it looks wrong, arbitrary or
    inconsistent; never "fix" or tidy up Excel's behavior. If you cannot cite evidence, use the
-   `excel-probe` skill. The only exception is a resource limit that directive 5 requires, and
-   it needs a decision record (see `docs/excel-semantics/README.md`).
+   `excel-probe` skill. The only exception is what directive 5 requires (resource, recursion and
+   allocation limits, no I/O, no panics): directive 5 wins over directive 1, and each such
+   deviation gets a `DEVIATION` entry (see `docs/excel-semantics/README.md`, decision 0014).
 2. **Never regress, never weaken gates.** `make check` must pass. Never hand-edit
    `eval/baseline/`, `quality/*.json` or `docs/tasks/BOARD.md`; never add lint-debt entries,
    blanket `#[allow]`s, skipped/deleted tests, or `--allow-regressions` (except via a decision

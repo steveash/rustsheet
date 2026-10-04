@@ -15,9 +15,12 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   a pending probe case and must not be implemented until confirmed. When the oracle disproves a
   hypothesis, rewrite the rule from the evidence and say what was wrong.
 - **Deliberate deviations** are allowed only where CLAUDE.md directive 5 (untrusted input)
-  requires a resource limit Excel does not have. Each one needs a decision record in
-  `docs/decisions/` and an entry here with `Status: DEVIATION (decision NNNN)` that states the
-  Excel behavior and ours. Example: BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`).
+  requires one: resource, recursion or allocation limits Excel does not have, no I/O from
+  formulas (e.g. WEBSERVICE, external links), no panics. Directive 5 wins over fidelity.
+  Decision 0014 is the standing record for these; each one needs an entry here with
+  `Status: DEVIATION (decision 0014)` stating Excel's behavior and ours. Example:
+  BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`). Any other kind of
+  deviation needs its own decision record.
 
 Files by area: `numbers.md`, `dates.md`, `coercion.md`, `errors.md`, `criteria.md`,
 `arrays.md`, `lookup.md`, … (create as needed). Format per rule:

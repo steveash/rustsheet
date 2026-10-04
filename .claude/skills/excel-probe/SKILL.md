@@ -23,5 +23,5 @@ right: if the answer looks wrong, arbitrary or inconsistent, record it and match
      workflow (`.github/workflows/oracle.yml`) fills pending cases.
 4. **Record the finding** in `docs/excel-semantics/<area>.md` (the canonical quirk list): the
    rule in one sentence, the probe case id as evidence, and any surprising consequences. Record
-   every finding, including ones that look like Excel bugs and ones no task implements yet. Cite it in code comments where
-   the quirk is implemented (`// Excel: see docs/excel-semantics/rounding.md#round-half`).
+   every finding, including ones that look like Excel bugs and ones no task implements yet.
+   Cite it in code comments where the quirk is implemented (`// Excel: see docs/excel-semantics/rounding.md#round-half`).
