@@ -33,21 +33,21 @@ fn assert_import_error(bytes: &[u8], needle: &str) {
 }
 
 #[test]
-fn styles_without_fonts_section_is_an_error() -> TestResult {
+fn styles_without_cell_xfs_section_is_an_error() -> TestResult {
     let bytes = rewrite(|name, content| {
         let span = (name == "xl/styles.xml")
-            .then(|| content.find("<fonts").zip(content.find("</fonts>")))
+            .then(|| content.find("<cellXfs").zip(content.find("</cellXfs>")))
             .flatten();
         match span {
             Some((start, end)) => format!(
                 "{}{}",
                 &content[..start],
-                &content[end + "</fonts>".len()..]
+                &content[end + "</cellXfs>".len()..]
             ),
             None => content,
         }
     })?;
-    assert_import_error(&bytes, "<fonts>");
+    assert_import_error(&bytes, "<cellXfs>");
     Ok(())
 }
 

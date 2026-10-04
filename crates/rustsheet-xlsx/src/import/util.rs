@@ -17,6 +17,16 @@ pub(super) fn get_attribute<'a>(node: &'a XmlNode, attr_name: &str) -> Result<&'
         .ok_or_else(|| XlsxError::Xml(format!("Missing \"{attr_name}\" XML attribute")))
 }
 
+/// Looks up a relationship by id; a missing one is malformed input, so it is a typed error
+/// rather than a map-index panic (T-0118, poi 60825).
+pub(super) fn get_relationship<'a>(
+    rels: &'a std::collections::HashMap<String, super::Relationship>,
+    id: &str,
+) -> Result<&'a super::Relationship, XlsxError> {
+    rels.get(id)
+        .ok_or_else(|| XlsxError::Workbook(format!("Missing relationship \"{id}\" for worksheet")))
+}
+
 pub(super) fn get_value_or_default(node: &XmlNode, tag_name: &str, default: &str) -> String {
     let application_nodes = node
         .children()
