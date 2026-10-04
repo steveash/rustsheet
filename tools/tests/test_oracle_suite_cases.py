@@ -63,3 +63,12 @@ def test_non_excel_cached_values_never_conflict(monkeypatch: pytest.MonkeyPatch)
     web = {"S": {"A1": {"t": "n", "v": 5.0}}}
     assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 0
     assert web == {"S": {"A1": {"t": "n", "v": 5.0}}}
+
+
+def test_unreadable_workbook_is_never_filled_unchecked(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(_: Path) -> dict[str, Any]:
+        raise subprocess.CalledProcessError(1, ["rustsheet-eval"], stderr="missing workbook rels")
+
+    monkeypatch.setattr(cli, "snapshot", boom)
+    with pytest.raises(cli.OracleError, match="missing workbook rels"):
+        cli._drop_desktop_conflicts(Path("x.xlsx"), {"S": {}})

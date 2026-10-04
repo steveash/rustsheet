@@ -116,22 +116,25 @@ def cmd_fill(args: argparse.Namespace) -> int:
     ok, why = backend.available()
     if not ok:
         sys.exit(f"{backend.name} unavailable: {why}")
-    done = failed = skipped = 0
+    done = failed = skipped = conflicts = 0
     for entry in _suite_cases(args.suite)[: args.limit or None]:
         case, sidecar = Path(entry["path"]), Path(entry["sidecar"])
+        is_spec = case.name.endswith(".case.json")
         if sidecar.exists() and not args.force:
             continue
-        if not case.name.endswith(".case.json"):
+        if not is_spec:
             reason = _skip_reason(entry, args.include_cached)
             if reason:
                 skipped += 1
                 print(f"skip {case.name}: {reason}", file=sys.stderr)
                 continue
         raw = case.read_bytes()
-        spec = json.loads(raw) if case.name.endswith(".case.json") else None
+        spec = json.loads(raw) if is_spec else None
         xlsx = build_xlsx(spec) if spec else raw
         try:
             values, info, sha = _recalc_cached(backend, xlsx)
+            if not spec:
+                conflicts += _drop_desktop_conflicts(case, values)
         except OracleError as e:
             failed += 1
             print(f"FAIL {case}: {e}", file=sys.stderr)
@@ -149,12 +152,13 @@ def cmd_fill(args: argparse.Namespace) -> int:
         }
         if spec:
             _report_hand_disagreements(case, spec, values)
-        else:
-            _drop_desktop_conflicts(case, values)
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps(oracle, indent=1, sort_keys=True) + "\n")
         done += 1
-    print(f"wrote {done} oracle sidecars ({failed} failures, {skipped} skipped)")
+    print(
+        f"wrote {done} oracle sidecars ({failed} failures, {skipped} skipped, "
+        f"{conflicts} web-vs-desktop conflicts left pending)"
+    )
     return 1 if failed else 0
 
 
@@ -168,7 +172,10 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
 
 
 def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
-    """Coarse filter, not scoring: last-digit float noise between Excel builds is not a conflict."""
+    """Coarse filter, not scoring: last-digit float noise between Excel builds is not a conflict.
+
+    1e-9 relative sits far above the few-ulp web/desktop differences seen in calibration and far
+    below any real disagreement found so far (wrong type, wrong text, wrong count)."""
     if a.get("t") == b.get("t") == "n":
         x, y = float(a["v"]), float(b["v"])
         return abs(x - y) > 1e-9 * max(abs(x), abs(y), 1e-300)
@@ -178,11 +185,16 @@ def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
 def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> int:
     """Removes cells where Excel for the web contradicts the values Microsoft Excel cached in the
     workbook, so they stay pending until an excel-desktop probe decides (T-0019 review: lowercase-e
-    TEXT formats and elapsed tokens after `s` give #VALUE!/odd values on the web only)."""
+    TEXT formats and elapsed tokens after `s` give #VALUE!/odd values on the web only).
+
+    Any Microsoft application counts as evidence here, deliberately broader than
+    `is_excel_authored` (which rejects AppVersion 12.0 because XlsxWriter fakes it): the
+    lowercase-e conflicts come from a real Mac Excel 2008 (12.0) file, and a false conflict only
+    leaves a cell pending."""
     try:
         snap = snapshot(case)
-    except subprocess.CalledProcessError:
-        return 0
+    except subprocess.CalledProcessError as e:  # never write web values we could not check
+        raise OracleError(f"cannot check against cached values: {(e.stderr or '').strip()[:120]}") from e
     if not (snap.get("application") or "").startswith("Microsoft"):
         return 0  # cached by POI, LibreOffice, a generator...: no Excel evidence to conflict with
     cached = formula_values(snap)

@@ -43,6 +43,7 @@ _WORKSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.wor
 _SHEET_COUNT_FUNCTIONS = re.compile(r"\b(?:_xlfn\.)?(?:SHEETS|INFO)\s*\(", re.IGNORECASE)
 # Excel for the web does not implement CELL("width") and returns #VALUE!, where desktop Excel
 # returns the column width (poi/47804.xlsx: desktop cached 10 and 11). Not Excel semantics.
+# Only a literal "width" argument is caught; the fill's desktop-conflict check is the backstop.
 _WEB_UNSUPPORTED = re.compile(r"\bCELL\s*\(\s*(?:\"|&quot;)width", re.IGNORECASE)
 
 _REFUSALS = (
