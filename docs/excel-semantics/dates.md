@@ -7,8 +7,8 @@ Evidence: probes/dates-and-blanks.case.json A1 (60), A2 (`DATE(1900,3,1)-DATE(19
 A3 (`DAY(60)` = 29). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED. Implemented for DATE, DAY/MONTH/YEAR, text date parsing and number formatting
 (T-0108): `DATE(1900,1,1)` = 1, days wrap linearly from the first of the month so
-`DATE(1900,2,30)` = 61. Excel is believed to number WEEKDAY below serial 60 as if serial 1 were a Sunday (UNVERIFIED, needs
-a probe; the Excel-authored calendar templates in ironcalc-calc depend on it), so
+`DATE(1900,2,30)` = 61. Excel is believed to number WEEKDAY below serial 60 as if serial 1 were a Sunday (VERIFIED by probes/dates-early-1900 A14/A15; the
+Excel-authored calendar templates in ironcalc-calc depend on it), so
 `from_excel_date` stays a weekday-faithful stand-in calendar (serial 1 = 1899-12-31) for WEEKDAY,
 WORKDAY etc.; exact components come from `formatter::dates::excel_serial_to_ymd`.
 Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,1,1)` = 1,

@@ -146,7 +146,7 @@ mod tests {
         assert_eq!(permissive_date_to_serial_number(28, 2, 1900), Ok(59));
         assert_eq!(permissive_date_to_serial_number(29, 2, 1900), Ok(60));
         assert_eq!(permissive_date_to_serial_number(1, 3, 1900), Ok(61));
-        // Days wrap linearly from the first of the month (engine behavior, not oracle-checked).
+        // Days wrap linearly from the first of the month (oracle-confirmed: probes/dates-early-1900 A2).
         assert_eq!(permissive_date_to_serial_number(30, 2, 1900), Ok(61));
     }
 

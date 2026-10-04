@@ -889,7 +889,7 @@ fn test_eomonth_early_1900_serials() {
     model._set("A3", "=EOMONTH(61,0)");
     model.evaluate();
 
-    // End of January 1900 is serial 31 in Excel's numbering (engine behavior, no oracle probe yet)
+    // End of January 1900 is serial 31 in Excel's numbering (probes/dates-early-1900 A8)
     assert_eq!(model._get_text("A1"), *"31");
     assert_eq!(model._get_text("A2"), *"31");
     assert_eq!(model._get_text("A3"), *"91");
