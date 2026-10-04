@@ -111,6 +111,7 @@ class GraphBackend:
         self.site = os.environ.get("RUSTSHEET_ORACLE_SITE", "").strip().strip("/")
         self.folder = os.environ.get("RUSTSHEET_ORACLE_FOLDER", "/rustsheet-oracle").strip("/")
         self._session = requests.Session()
+        self._drive_url: str | None = None
 
     def available(self) -> tuple[bool, str]:
         if not (self.tenant and self.client_id):
@@ -187,7 +188,12 @@ class GraphBackend:
             host, _, path = self.site.partition("/")
             if not path:  # tenant root site
                 return f"{GRAPH}/sites/{quote(host, safe='')}/drive"
-            return f"{GRAPH}/sites/{quote(host, safe='')}:/{quote(path)}:/drive"
+            # Graph rejects a second `:/…:` path segment after `/sites/{host}:/{path}:`
+            # ("Resource not found for the segment 'root:'"), so resolve the site id once.
+            if self._drive_url is None:
+                site = self._call("GET", f"{GRAPH}/sites/{quote(host, safe='')}:/{quote(path)}").json()
+                self._drive_url = f"{GRAPH}/sites/{quote(site['id'], safe='')}/drive"
+            return self._drive_url
         # USER selects whose OneDrive to use in app-only mode; in delegated mode `/me` already
         # identifies the signed-in user (who may lack rights to another user's drive).
         if self.user and self.secret:

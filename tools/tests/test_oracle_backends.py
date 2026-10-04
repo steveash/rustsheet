@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+from typing import Any
+
 import pytest
 
 from rustsheet_tools.oracle.backends import GRAPH, GraphBackend
@@ -41,7 +44,17 @@ def test_site_targets_the_sites_document_library(app_only_env: pytest.MonkeyPatc
     app_only_env.setenv("RUSTSHEET_ORACLE_SITE", "contoso.sharepoint.com/sites/RustSheet Oracle/")
     backend = GraphBackend()
     assert backend.available() == (True, "app-only")
-    assert backend._drive() == f"{GRAPH}/sites/contoso.sharepoint.com:/sites/RustSheet%20Oracle:/drive"
+    calls: list[str] = []
+
+    def fake_call(method: str, url: str, **_: Any) -> Any:
+        calls.append(f"{method} {url}")
+        return SimpleNamespace(json=lambda: {"id": "contoso.sharepoint.com,a1,b2"})
+
+    app_only_env.setattr(backend, "_call", fake_call)
+    drive = f"{GRAPH}/sites/contoso.sharepoint.com%2Ca1%2Cb2/drive"
+    assert backend._drive() == drive
+    assert backend._drive() == drive  # resolved once, then cached
+    assert calls == [f"GET {GRAPH}/sites/contoso.sharepoint.com:/sites/RustSheet%20Oracle"]
 
 
 def test_site_root_without_path(app_only_env: pytest.MonkeyPatch) -> None:
