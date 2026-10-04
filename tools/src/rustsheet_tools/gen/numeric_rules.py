@@ -61,7 +61,7 @@ TRAPS = [
     "2^0.5",
     "10/3",
     "-1/3",
-    "1e308*10",
+    "1e307*100",  # 1e308+ literals make Excel reject the workbook (max typeable 9.99999999999999E+307)
     "1e-307/10",
     "0.1^2",
     "100*1.1",
