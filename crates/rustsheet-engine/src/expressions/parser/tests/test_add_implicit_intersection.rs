@@ -65,6 +65,10 @@ fn simple_test() {
             "SUM(CHOOSE(2,A1:A10,B1:B10))",
         ),
         ("CHOOSE(2,A1,B1)", "CHOOSE(2,A1,B1)"),
+        // INDIRECT takes one text and gives a reference
+        ("INDIRECT(A1:A10)", "@INDIRECT(@A1:A10)"),
+        ("INDIRECT(A1:A10,FALSE)", "@INDIRECT(@A1:A10,FALSE)"),
+        ("SUM(INDIRECT(A1,FALSE))", "SUM(INDIRECT(A1,FALSE))"),
         // ROW and COLUMN of a range are vectors: the whole call is wrapped in
         // a scalar position, and nothing is wrapped in a range position.
         ("ROW(A1:A10)", "@ROW(A1:A10)"),
