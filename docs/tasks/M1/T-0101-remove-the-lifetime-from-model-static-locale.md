@@ -3,7 +3,7 @@ id: T-0101
 title: "Remove the lifetime from Model (static locale/language data)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 depends_on: []
