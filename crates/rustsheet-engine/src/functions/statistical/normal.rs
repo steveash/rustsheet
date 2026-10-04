@@ -1,7 +1,7 @@
-use statrs::distribution::{ContinuousCDF, StudentsT};
+use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::statistical::special::{normal_cdf, normal_inv_std, normal_pdf};
+use crate::functions::statistical::special::{normal_cdf, normal_pdf};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -83,7 +83,18 @@ impl Model {
             };
         }
 
-        let x = mean + std_dev * normal_inv_std(p);
+        let dist = match Normal::new(mean, std_dev) {
+            Ok(d) => d,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::NUM,
+                    origin: cell,
+                    message: "Invalid parameters for NORM.INV".to_string(),
+                }
+            }
+        };
+
+        let x = dist.inverse_cdf(p);
 
         if !x.is_finite() {
             return CalcResult::Error {
@@ -147,7 +158,18 @@ impl Model {
             };
         }
 
-        let z = normal_inv_std(p);
+        let dist = match Normal::new(0.0, 1.0) {
+            Ok(d) => d,
+            Err(_) => {
+                return CalcResult::Error {
+                    error: Error::ERROR,
+                    origin: cell,
+                    message: "Failed to construct standard normal distribution".to_string(),
+                }
+            }
+        };
+
+        let z = dist.inverse_cdf(p);
 
         if !z.is_finite() {
             return CalcResult::Error {
@@ -197,7 +219,18 @@ impl Model {
             };
         }
 
-        let quantile = normal_inv_std(1.0 - alpha / 2.0);
+        let normal = match Normal::new(0.0, 1.0) {
+            Ok(d) => d,
+            Err(_) => {
+                return CalcResult::new_error(
+                    Error::ERROR,
+                    cell,
+                    "Failed to construct normal distribution".to_string(),
+                )
+            }
+        };
+
+        let quantile = normal.inverse_cdf(1.0 - alpha / 2.0);
         if !quantile.is_finite() {
             return CalcResult::Error {
                 error: Error::NUM,
