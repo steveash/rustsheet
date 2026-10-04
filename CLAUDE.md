@@ -14,9 +14,9 @@ same rounding, same quirks — including behavior Excel never documented. The pr
    allocation limits, no I/O, no panics): directive 5 wins over directive 1, and each such
    deviation gets a `DEVIATION` entry (see `docs/excel-semantics/README.md`, decision 0014).
 2. **Never regress, never weaken gates.** `make check` must pass. Never hand-edit
-   `eval/baseline/` or `quality/*.json`, and never commit `docs/tasks/BOARD.md` (generated, git-ignored); never add lint-debt entries,
-   blanket `#[allow]`s, skipped/deleted tests, or `--allow-regressions` (except via a decision
-   record in `docs/decisions/` that reviewers approve).
+   `eval/baseline/` or `quality/*.json`, and never commit `docs/tasks/BOARD.md` (generated,
+   git-ignored); never add lint-debt entries, blanket `#[allow]`s, skipped/deleted tests, or
+   `--allow-regressions` (except via a decision record in `docs/decisions/` that reviewers approve).
 3. **One definition per concept.** Before writing any helper, search for an existing one (`rg`).
    Reuse or extend; never copy. `scripts/check_duplication.py` ratchets duplicated lines down.
 4. **Small, focused PRs**: one task (`docs/tasks/`), one lane, size S/M. Big or architectural
