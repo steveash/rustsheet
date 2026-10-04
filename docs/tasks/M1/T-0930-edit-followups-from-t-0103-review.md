@@ -3,7 +3,7 @@ id: T-0930
 title: "API edit follow-ups from the T-0103 review"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P3
 size: S
 depends_on: [T-0103]
