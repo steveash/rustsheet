@@ -3,7 +3,7 @@ id: T-0926
 title: "GAMMALN/GAMMALN.PRECISE: accurate ln-gamma (66 known failures)"
 milestone: M9
 lane: functions
-status: todo
+status: done
 priority: P2
 size: S
 depends_on: []
@@ -25,3 +25,6 @@ Code: `functions/statistical/gamma.rs` uses `statrs::function::gamma::ln_gamma` 
 
 ## Out of scope
 GAMMA function (Gamma(x) itself), incomplete gamma/beta kernels.
+
+## Outcome
+`ln_gamma` in `statistical/special.rs` now wraps `libm::lgamma` (fdlibm/musl); GAMMALN and GAMMALN.PRECISE use it. ironcalc-calc known failures 1626 -> 1578 (48 fixed, 0 regressions). 12 cells remain in `GAMMALN_GAMMALNPRECISE.xlsx` (B/C rows 5, 9, 15, 23, 24, 26); Excel's last digits there differ from the correctly rounded value and need oracle probes. `BETA_GAMMA.xlsx` GAMMALN lines are gone. Other `ln_gamma` users (GAMMA.DIST etc.) go through statrs and were left unchanged.

@@ -1,5 +1,7 @@
 use statrs::distribution::{Continuous, ContinuousCDF, Gamma};
-use statrs::function::gamma::{gamma, ln_gamma};
+use statrs::function::gamma::gamma;
+
+use super::special::ln_gamma;
 
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
