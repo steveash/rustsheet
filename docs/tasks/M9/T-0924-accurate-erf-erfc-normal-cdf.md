@@ -3,7 +3,7 @@ id: T-0924
 title: "Accurate erf/erfc and standard-normal CDF/PDF shared kernel (~120 known failures)"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P1
 size: M
 depends_on: []
