@@ -93,8 +93,8 @@ pub struct Array { /* rows, cols, row-major Vec<Value> */ }   // returned by val
 - Spill members read as their own scalar, `Empty` if the cell is not part of a spill.
 - `values(range)` is bounded: the cell count is computed with checked multiplication *before*
   any allocation and refused with `RefError::TooLarge` when it exceeds `WorkbookOptions::max_read_cells`
-  (default 1,000,000). The output `Array` is dense, but the scan visits stored cells only
-  (O(stored cells), not O(rectangle), which assumes the engine's sparse row→column storage; the cap is checked against the rectangle area, so a huge sparse range is refused even though a scan would be cheap; a 1M-cell `Array` is ~24+ MB, with bulk transfer deferred to M12); callers should intersect with `used_range` first.
+  (default 1,000,000). The output `Array` is dense, but the v0 scan is a per-cell lookup
+  (O(area); an O(stored cells) scan is a later optimisation over the engine's sparse row→column storage; the cap is checked against the rectangle area, so a huge sparse range is refused even though a scan would be cheap; a 1M-cell `Array` is ~24+ MB, with bulk transfer deferred to M12); callers should intersect with `used_range` first.
 - `Value::Text` clones an `Arc<str>` built from the engine's string once per read (a v0 copy
   cost; the engine stores `String`/shared strings, not `Arc<str>`). Callers in loops should pre-parse
   references (`cell_ref`/`range_ref`); `Workbook` caches the `SheetId` → index map and invalidates it on sheet-structure ops.

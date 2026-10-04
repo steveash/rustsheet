@@ -38,8 +38,7 @@ impl Default for WorkbookOptions {
 
 /// Options for [`Workbook::open`] and [`Workbook::from_xlsx_bytes`].
 ///
-/// The size limits are checked against the sizes the zip directory declares, before any
-/// part is parsed.
+/// The size limits are enforced on the bytes actually inflated, before any part is parsed.
 #[derive(Clone, Debug)]
 pub struct LoadOptions {
     /// Recalculate once after loading.
@@ -170,13 +169,17 @@ impl Workbook {
     /// # Errors
     /// [`LoadError::Io`] if the file cannot be read, otherwise as [`Self::from_xlsx_bytes`].
     pub fn open(path: impl AsRef<Path>, opts: &LoadOptions) -> Result<Self, LoadError> {
-        // The file is read whole; cap it with the same budget as the inflated size.
-        if std::fs::metadata(path.as_ref())?.len() > opts.max_uncompressed_bytes {
+        // Bound the read itself (special files report length 0): a larger file cannot be a
+        // workbook within `max_uncompressed_bytes` anyway.
+        let mut bytes = Vec::new();
+        std::fs::File::open(path)?
+            .take(opts.max_uncompressed_bytes.saturating_add(1))
+            .read_to_end(&mut bytes)?;
+        if u64::try_from(bytes.len()).map_or(true, |n| n > opts.max_uncompressed_bytes) {
             return Err(LoadError::Options(
                 "file larger than max_uncompressed_bytes".into(),
             ));
         }
-        let bytes = std::fs::read(path)?;
         Self::from_xlsx_bytes(&bytes, opts)
     }
 
@@ -355,6 +358,14 @@ impl Workbook {
     pub fn values<'a>(&self, r: impl Into<Target<'a>>) -> Result<Array, RefError> {
         let range = self.resolve_range(r.into())?;
         let sheet = self.sheet_index(range.sheet)?;
+        // Re-validate: `RangeRef` has public fields, so a caller can build an inverted literal.
+        let range = RangeRef::new(
+            range.sheet,
+            range.top,
+            range.left,
+            range.bottom,
+            range.right,
+        )?;
         let rows = u64::from(range.bottom - range.top) + 1;
         let cols = u64::from(range.right - range.left) + 1;
         let area = rows.checked_mul(cols).ok_or(RefError::TooLarge)?;

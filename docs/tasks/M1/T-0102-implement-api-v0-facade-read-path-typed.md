@@ -3,7 +3,7 @@ id: T-0102
 title: "Implement API v0 facade (read path + typed values)"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P1
 size: M
 depends_on: [T-0100, T-0101, T-0113, T-0114, T-0115]
@@ -26,3 +26,6 @@ Per SPEC-0001. The eval harness engine adapter should switch to the facade once 
 
 ## Out of scope
 Edits/ChangeSet (T-0103).
+
+## Outcome
+Facade `Workbook` (new/open/from_xlsx_bytes/save, `value`/`values`/`cell`/`formatted`/`used_range`, `sheets`, `recalculate`) in `crates/rustsheet/src/workbook.rs`; zip limits enforced on actually inflated bytes (zip-bomb tests incl. lying central directory). Eval adapter reads and loads xlsx through the facade; `Value::from_cell` is live and the adapter's duplicate mapping is gone. Eval: 0 regressions, 0 fixed. `evaluate_spec` still builds via the engine behind the temporary `engine-model` feature (removal added to T-0103). Deferred: read-path micro-benchmark (SPEC-0001 test plan), single bounded inflate shared with the importer (zip is inflated twice on load), cached sheet-id map.
