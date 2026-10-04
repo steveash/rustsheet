@@ -1,3 +1,5 @@
+use crate::refs::CellRef;
+
 /// A reference (sheet, cell or range) could not be resolved.
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
@@ -78,7 +80,7 @@ impl EditError {
     ///
     /// `tests::edit_messages_are_classified` triggers the real engine paths so a reworded
     /// message fails there.
-    pub(crate) fn from_engine_message(message: String, cell: Option<crate::refs::CellRef>) -> Self {
+    pub(crate) fn from_engine_message(message: String, cell: Option<CellRef>) -> Self {
         if message.starts_with("Invalid name for a sheet")
             || message.contains("already exists")
             || message.starts_with("Sheet already exists")
@@ -130,6 +132,7 @@ mod tests {
     use rustsheet_engine::Model;
 
     use super::*;
+    use crate::refs::SheetId;
 
     #[test]
     fn engine_messages_are_classified() {
@@ -192,7 +195,7 @@ mod tests {
             EditError::from_engine_message("boom".into(), None),
             EditError::Engine(m) if m == "boom"
         ));
-        let cell = crate::refs::CellRef::new(crate::refs::SheetId::new(0), 0, 0).unwrap();
+        let cell = CellRef::new(SheetId::new(0), 0, 0).unwrap();
         assert!(matches!(
             EditError::from_engine_message("boom".into(), Some(cell)),
             EditError::InvalidInput { .. }

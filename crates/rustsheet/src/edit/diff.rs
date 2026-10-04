@@ -138,7 +138,7 @@ impl Before {
     }
 }
 
-pub(super) fn view_at<'a>(ws: &'a Worksheet, model: &'a Model, row: i32, col: i32) -> CellView<'a> {
+fn view_at<'a>(ws: &'a Worksheet, model: &'a Model, row: i32, col: i32) -> CellView<'a> {
     ws.cell(row, col).map_or(CellView::Empty, |cell| {
         CellView::of(cell, &model.workbook.shared_strings)
     })

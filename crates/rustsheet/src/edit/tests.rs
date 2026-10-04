@@ -415,7 +415,7 @@ fn repeated_writes_to_one_cell_roll_back_to_the_original() {
 fn footprint_cells_written_after_their_anchor_report_input_changes() {
     let mut wb = book();
     wb.set("A1", "=SEQUENCE(3)").expect("spill");
-    let (_, changes) = wb
+    let ((), changes) = wb
         .edit(|tx| {
             tx.set("A1", 1.0)?;
             tx.set("A2", 5.0)
