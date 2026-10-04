@@ -27,9 +27,6 @@ since 9b1ae3fd. Oracle credentials absent, so no `fill` run. Spot-audit not run 
 parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is still pending.)
 
 ## Needs owner
-- Excel oracle credentials: owner has a Microsoft 365 Business tenant (Graph-compatible). Pending:
-  dedicated SharePoint site + app registration (`Sites.Selected`) + four `RUSTSHEET_ORACLE_*`
-  environment variables (step-by-step guide in `docs/architecture/oracle.md`). Unblocks T-0004 and its dependents.
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 - Routines are enabled with the repo attached, but their prompts are the pre-review drafts: replace each
   routine's prompt with the current text in `docs/process/routines.md`.
@@ -74,3 +71,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is stil
 - 2026-10-04 — T-0104: Python bindings on API v0 (`rs.Workbook`, `edit()` transactions, `XlError`, typed exceptions, GIL released); eval unaffected; filed T-0931 (parser nesting stack overflow).
 - 2026-10-04 — T-0928: EXPON.DIST cumulative uses -expm1; ironcalc-calc known failures 1632 -> 1626 (6 fixed), 0 regressions
 - 2026-10-04 — T-0930: API edit follow-ups (diff split into edit/diff.rs, sheet-position map, error classifier next to RefError, engine take/restore tests, evaluation counter, bench moved); eval 0 regressions, 0 fixed.
+- 2026-10-04 — T-0004 (partial): excel-graph oracle live (app-only, `Sites.Selected` site); fixed site drive addressing; T-0004, T-0106..T-0110, T-0203 unblocked.

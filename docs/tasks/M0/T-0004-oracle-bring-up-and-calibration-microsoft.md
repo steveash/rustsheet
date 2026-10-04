@@ -3,7 +3,7 @@ id: T-0004
 title: "Oracle bring-up and calibration (Microsoft Graph)"
 milestone: M0
 lane: research
-status: blocked
+status: todo
 priority: P0
 size: M
 depends_on: []
@@ -13,7 +13,8 @@ depends_on: []
 Prove the Excel oracle end to end and answer the open questions in docs/architecture/oracle.md.
 
 ## Context
-Requires owner-provided credentials (RUSTSHEET_ORACLE_* environment variables, work/school tenant).
+Credentials are configured (app-only, `Sites.Selected` on a dedicated SharePoint site). A live
+`rustsheet-oracle recalc -b excel-graph` round trip succeeded on 2026-10-04 (~11 s per workbook).
 
 ## Acceptance criteria
 - [ ] `rustsheet-oracle fill -b excel-graph` produces sidecars for suites `probes`, `smoke`, `gen-m2`; committed.
@@ -24,6 +25,3 @@ Requires owner-provided credentials (RUSTSHEET_ORACLE_* environment variables, w
 
 ## Out of scope
 Windows desktop backend.
-
-## Blocked because
-Needs owner-provided Microsoft 365 work/school tenant credentials (docs/architecture/oracle.md, docs/status.md 'Needs owner').
