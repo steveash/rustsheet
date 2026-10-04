@@ -1,4 +1,4 @@
-use statrs::function::erf::{erf, erfc};
+use crate::functions::statistical::special::{erf, erfc};
 
 use crate::{
     calc_result::CalcResult,

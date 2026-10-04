@@ -1,6 +1,5 @@
-use statrs::distribution::{Continuous, ContinuousCDF, LogNormal};
-
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::{normal_cdf, SQRT_2PI};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -41,18 +40,12 @@ impl Model {
             };
         }
 
-        let dist = match LogNormal::new(mean, std_dev) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameter for LOGNORM.DIST".to_string(),
-                }
-            }
+        let result = if cumulative {
+            normal_cdf(x.ln(), mean, std_dev)
+        } else {
+            let d = (x.ln() - mean) / std_dev;
+            (-0.5 * d * d).exp() / (x * SQRT_2PI * std_dev)
         };
-
-        let result = if cumulative { dist.cdf(x) } else { dist.pdf(x) };
 
         if !result.is_finite() {
             return CalcResult::Error {

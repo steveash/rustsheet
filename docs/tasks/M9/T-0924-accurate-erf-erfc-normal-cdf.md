@@ -3,7 +3,7 @@ id: T-0924
 title: "Accurate erf/erfc and standard-normal CDF/PDF shared kernel (~120 known failures)"
 milestone: M9
 lane: functions
-status: in-progress
+status: done
 priority: P1
 size: M
 depends_on: []
@@ -27,3 +27,6 @@ Suggested approach: port fdlibm/musl `erf`/`erfc` (public-domain rational approx
 
 ## Out of scope
 Inverse normal (T-0925); gamma/beta kernels.
+
+## Outcome
+New `functions/statistical/special.rs` is the single erf/erfc/normal CDF+PDF kernel (Maclaurin series for |x|<1, bottom-up continued fraction beyond; no `statrs` erf/Normal cdf/pdf left outside the inverse functions, which stay with T-0925). ironcalc-calc known failures 1720 -> 1632 (88 fixed, 0 regressions); ERFs.xlsx 51 -> 17 lines, GAUSS.xlsx 14 -> 6, NORM_DIST.xlsx 129 -> 88, LOGNORM.xlsx 61 -> 56. Remaining lines are NORM.*.INV/LOGNORM.INV (T-0925) and 1e-15-relative or 1-ulp noise in Excel's own cached values (e.g. ERFC(5) cached ...034e-12 vs correctly rounded ...035e-12), which cannot be matched without Excel's exact algorithm. PHI and Z.TEST keep their original operation order because it reproduces the cached last digits.
