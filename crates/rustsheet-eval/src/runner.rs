@@ -362,13 +362,30 @@ fn cached_lookup(snapshot: &WorkbookSnapshot) -> BTreeMap<(String, Addr), Value>
     map
 }
 
+/// The canonical expectation key for a cell: `'Sheet'!A1` (sheet always quoted, `'` doubled).
+fn cell_key(sheet: &str, addr: Addr) -> String {
+    format!("'{}'!{addr}", sheet.replace('\'', "''"))
+}
+
+/// Canonicalises a `Sheet!A1` / `'Sheet'!$A$1` key; `None` if it is not a cell reference.
+fn canonical_key(key: &str) -> Option<String> {
+    let (sheet, a1) = split_qualified(key)?;
+    Some(cell_key(&sheet, Addr::parse(&a1)?))
+}
+
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     let text = std::fs::read_to_string(&case.path).map_err(|e| e.to_string())?;
     let spec: CaseSpec = serde_json::from_str(&text).map_err(|e| e.to_string())?;
     if spec.format != CASE_FORMAT {
         return Err(format!("unsupported case format {:?}", spec.format));
     }
-    let mut expected = spec.expected.clone();
+    // Hand keys may be written `Sheet1!B1` or `'Sheet1'!B1`; canonicalise them so an oracle value
+    // for the same cell *replaces* the hand value (the oracle wins) instead of being scored beside it.
+    let mut expected: BTreeMap<String, Value> = spec
+        .expected
+        .iter()
+        .map(|(k, v)| (canonical_key(k).unwrap_or_else(|| k.clone()), v.clone()))
+        .collect();
     let mut source = spec
         .expected_source
         .clone()
@@ -377,7 +394,9 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         source.clone_from(&o.source.kind);
         for (sheet, cells) in o.sheets {
             for (a1, v) in cells {
-                expected.insert(format!("'{}'!{a1}", sheet.replace('\'', "''")), v);
+                let key = Addr::parse(&a1)
+                    .map_or_else(|| format!("'{sheet}'!{a1}"), |a| cell_key(&sheet, a));
+                expected.insert(key, v);
             }
         }
     }
@@ -413,7 +432,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     for q in wanted {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
-        let normalized = format!("'{}'!{addr}", sheet.replace('\'', "''"));
+        let normalized = cell_key(&sheet, addr);
         let Some(value) = expected
             .get(&q)
             .or_else(|| expected.get(&normalized))
@@ -446,6 +465,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::case::ORACLE_FORMAT;
     use crate::suite::SuiteManifest;
     use std::path::PathBuf;
 
@@ -511,6 +531,50 @@ mod tests {
         let r = run_pending("panic");
         assert_eq!(r.status, CaseStatus::Panic);
         assert_eq!(r.message.as_deref(), Some("boom"));
+    }
+
+    /// An oracle sidecar replaces the hand expectation for the same cell, however the hand key
+    /// was written; it is never scored next to it (smoke/d-function-criteria J2, 2026-10-04).
+    #[test]
+    fn oracle_value_replaces_hand_value_for_the_same_cell() {
+        let dir =
+            std::env::temp_dir().join(format!("rs-runner-{}-oracle-wins", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("a.case.json");
+        let case = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=6","A2":"=7","B1":"=8"}}}},
+               {{"name":"My S","cells":{{"A1":"=9"}}}}],
+               "expected":{{"S!A1":{{"t":"n","v":6}},"'S'!$A$2":{{"t":"n","v":7}},"S!B1":{{"t":"n","v":8}},
+                            "'My S'!A1":{{"t":"n","v":9}}}}}}"#
+        );
+        std::fs::write(&path, case).expect("write case");
+        let oracle = format!(
+            r#"{{"format":"{ORACLE_FORMAT}","source":{{"kind":"excel-graph","application":"x"}},
+               "sheets":{{"S":{{"A1":{{"t":"n","v":0}},"A2":{{"t":"n","v":1}}}},"My S":{{"A1":{{"t":"n","v":2}}}}}}}}"#
+        );
+        std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
+        let prepared = prepare_spec(&CaseFile {
+            id: "t/a".into(),
+            path,
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+        let prepared = prepared.expect("prepare");
+        let mut got: Vec<(String, String, Value)> = prepared
+            .expectations
+            .into_iter()
+            .map(|e| (e.sheet, e.addr.to_string(), e.expected))
+            .collect();
+        got.sort_by(|a, b| (&a.0, &a.1).cmp(&(&b.0, &b.1)));
+        assert_eq!(
+            got,
+            vec![
+                ("My S".into(), "A1".into(), Value::Number(2.0)),
+                ("S".into(), "A1".into(), Value::Number(0.0)),
+                ("S".into(), "A2".into(), Value::Number(1.0)),
+                ("S".into(), "B1".into(), Value::Number(8.0)), // no oracle value: hand stays
+            ]
+        );
+        assert_eq!(prepared.expected_source, "excel-graph");
     }
 
     #[test]

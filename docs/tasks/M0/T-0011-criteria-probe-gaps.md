@@ -14,7 +14,7 @@ Oracle evidence for the criteria rules T-0009 could not verify from the existing
 
 ## Context
 docs/excel-semantics/criteria.md: `"<>text"` is still UNVERIFIED (probes/criteria-grammar has no
-such cell); the escapes / case / trailing-tilde entry is a hypothesis; D-function criteria trimming is unprobed; the `"="`
+such cell); the escapes / case / trailing-tilde entry is a hypothesis; D-function criteria trimming: the both-sides-padded case is settled (not trimmed; smoke/d-function-criteria J2, T-0004 smoke fill), leading-only / trailing-only spaces are unprobed; the `"="`
 entry does not cover truly blank cells (the probe range has none).
 
 ## Acceptance criteria
