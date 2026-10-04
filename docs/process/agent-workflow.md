@@ -30,8 +30,9 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- Run at most **2 concurrent workers**: `functions` plus the critical-lane worker, which takes the
-  first ready lane from the `**Critical lane:**` list in `docs/status.md` (allowlist and rules in
+- Run at most **2 concurrent workers**, one per model tier (decision 0018): the sonnet worker
+  takes `tier: sonnet` tasks and the opus worker `tier: opus` tasks (handed-off ones first). Both
+  walk the `**Critical lane:**` list in `docs/status.md`, then `functions` (allowlist and rules in
   `routines.md`).
 - Run at most one task in flight per lane.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.
@@ -62,7 +63,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 ## The loop (summary)
 
 1. **Sync:** `main` up to date. Resume lane work if any exists.
-2. **Pick:** `make next-task LANE=x`. If empty, run the gap triager (functions lane) or the
+2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; handoffs first). If empty, run the gap triager (functions lane) or the
    planner (other lanes).
 3. **Understand:**
    - Read the task, its spec, the code, `docs/excel-semantics/`, and the failing cases (`make eval-show`).

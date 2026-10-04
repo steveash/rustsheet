@@ -6,6 +6,7 @@ lane: engine
 status: todo
 priority: P0
 size: S
+tier: opus
 depends_on: []
 spec: docs/specs/SPEC-0001-public-api-v0.md
 ---

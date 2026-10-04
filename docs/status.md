@@ -23,11 +23,14 @@ since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pend
 
 **Critical lane:** engine, harness, research, perf
 
-(Ordered list read by the critical-lane worker. API v0 is done; M1 exit needs the engine parity fixes
+(Ordered list read by both tier workers, which then fall back to `functions`. API v0 is done; M1 exit needs the engine parity fixes
 (T-0931, T-0106..T-0110); harness has the throughput fixes (T-0016, T-0017, T-0022, T-0023) and gen-m1/gen-m2 (T-0117,
 T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baseline before M3 (T-0400, T-0402).)
 
 ## Needs owner
+- Re-apply docs/process/routines.md (T-0023): replace the two worker routines with "rustsheet worker: sonnet"
+  (model Sonnet 5.5, hourly) and "rustsheet worker: opus" (model Opus 5.5, every 2 h) using the prompts there; keep the
+  steward (its step 6 text also changed in T-0022). Then delete this line.
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 
 ## Log
@@ -81,3 +84,4 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-04 — T-0022: security/architecture/quality reviewers on Sonnet, fidelity/performance pinned to Opus (decision 0015); eval delta none.
 - 2026-10-04 — T-0017: `make new-task` assigns collision-free ids (all origin/* branches counted; decision 0016); eval delta none.
 - 2026-10-04 — T-0016: docs/tasks/BOARD.md no longer committed (git-ignored, `make board` renders locally; decision 0017); eval delta none.
+- 2026-10-04 — T-0023: tasks carry `tier: sonnet | opus`; sonnet (hourly) and opus (2-hourly) workers replace the lane workers; stuck sonnet runs hand off (decision 0018). Needs owner: re-apply docs/process/routines.md. Eval delta none.

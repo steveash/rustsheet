@@ -6,6 +6,7 @@ lane: research
 status: todo
 priority: P0
 size: M
+tier: opus
 depends_on: []
 ---
 
