@@ -49,12 +49,12 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::model::Model;
 use crate::types::{ArrayKind, Cell};
 
-/// The hasher of the maps the evaluation keeps about positions. Their keys are
-/// three small integers and every formula looks several of them up, which
-/// made the default hasher, built to resist chosen keys, a fifth of the cost
-/// of an evaluation. This one multiplies and rotates, a word at a time.
+/// The hasher of the maps the evaluation (and the facade's diff) keep about positions. Their
+/// keys are three small integers we produce ourselves, and every formula looks several up, which
+/// made the default hasher, built to resist chosen keys, a fifth of the cost of an evaluation.
+/// This one multiplies and rotates, a word at a time.
 #[derive(Default, Clone, Copy)]
-pub(crate) struct KeyHasher(u64);
+pub struct KeyHasher(u64);
 
 impl std::hash::Hasher for KeyHasher {
     fn write(&mut self, bytes: &[u8]) {
@@ -76,7 +76,7 @@ impl std::hash::Hasher for KeyHasher {
     }
 }
 
-pub(crate) type KeyBuild = std::hash::BuildHasherDefault<KeyHasher>;
+pub type KeyBuild = std::hash::BuildHasherDefault<KeyHasher>;
 
 /// `(sheet, row, column)`: a position in the workbook.
 pub(crate) type CellKey = (u32, i32, i32);

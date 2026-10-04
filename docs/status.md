@@ -9,8 +9,8 @@ Updated by the steward routine (daily) and by workers (one line per merged task)
 | ironcalc-calc | 210 | 71,773 | 97.59% | 1,727 |
 | poi | 334 | 3,526 | not fetched in steward run (baseline 750 lines) | — |
 | smoke | 5 | 38 | 100% | 0 |
-| probes | 3 | pending oracle | — | — |
-| probes-numeric | 4 | pending oracle | — | — |
+| probes | 3 | 45 | 71.11% | 13 |
+| probes-numeric | 4 | 2,738 | 60.19% | not gated |
 | gen-m2 | 3 | pending oracle | — | — |
 
 Hygiene: lint-debt 99 allow entries · duplicated lines 8,420 · oversized files 20.
@@ -28,8 +28,6 @@ parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-000
 
 ## Needs owner
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
-- Routines are enabled with the repo attached, but their prompts are the pre-review drafts: replace each
-  routine's prompt with the current text in `docs/process/routines.md`.
 
 ## Log
 - 2026-10-02 — Owner set `main` as the GitHub default branch and enabled the routines (repo attached).
@@ -73,4 +71,7 @@ parity fixes; harness has gen-m1 prep (T-0117) while oracle fills (T-0009, T-000
 - 2026-10-04 — T-0930: API edit follow-ups (diff split into edit/diff.rs, sheet-position map, error classifier next to RefError, engine take/restore tests, evaluation counter, bench moved); eval 0 regressions, 0 fixed.
 - 2026-10-04 — T-0926: GAMMALN/GAMMALN.PRECISE via libm lgamma; ironcalc-calc known failures 1626 -> 1578 (48 fixed), 0 regressions; 12 cells need oracle
 - 2026-10-04 — T-0004 (partial): excel-graph oracle live (app-only, `Sites.Selected` site); fixed site drive addressing; T-0004, T-0106..T-0110, T-0203 unblocked.
-- 2026-10-04 — T-0010: every oracle workbook carries an embedded canary (poisoned cached values) and is refused unless Excel recalculated it; canary exposed that Excel-authored workbooks were never saved by the Graph session (old flow returned cached values) — fixed with a post-calculate no-trace edit; eval delta none
+- 2026-10-04 — T-0932: eval wall time 72.5 s → 71.1 s across T-0930; edit bench median baseline (100k formulas): recalc 13.4 ms, tracked set 16.5 ms, diff overhead 3.0 ms; KeyHasher deduplicated; eval 0 regressions, 0 fixed.
+- 2026-10-04 — T-0009: excel-graph sidecars for probes (3) and probes-numeric (4); probes 71.11% (13 new-coverage known failures), probes-numeric 60.19% (not gated); 0 regressions; excel-semantics: 9 entries VERIFIED (snapping corrected), 4 new; inputs with ≥1E+308 literals fixed (Excel rejects them). T-0106/7/8/10 now ready.
+- 2026-10-04 — Owner updated the routine prompts to the text in `docs/process/routines.md` (verified identical). Decision 0014: Excel is always right; every quirk found is recorded in docs/excel-semantics/.
+- 2026-10-04 — T-0013 (+ T-0010): every oracle workbook carries an embedded canary (poisoned cached values) and is refused unless Excel recalculated it; canary exposed that Excel-authored workbooks were never saved by the Graph session (old flow returned cached values) — fixed with a post-calculate no-trace edit; Graph calls retry dropped connections (T-0010); eval delta none

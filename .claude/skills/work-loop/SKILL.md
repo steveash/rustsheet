@@ -30,6 +30,9 @@ again. If still nothing, write a short note in `docs/status.md` and stop.
 Read the task, linked spec, related code (search for existing helpers — never re-implement),
 relevant `docs/excel-semantics/` entries, and failing eval cases (`make eval-show CASE=...`).
 If the task needs Excel behavior you cannot evidence, use the `excel-probe` skill.
+Excel is always right: implement exactly what the evidence shows, however odd. Every Excel quirk
+you discover while working (in this task or in passing) gets an entry in `docs/excel-semantics/`
+in this PR, even if it is not this task's to implement.
 If the task is bigger than size M, split it (planner) instead of doing it.
 
 ## 4. Implement (test-first where possible)

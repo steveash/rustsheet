@@ -152,3 +152,21 @@ def test_dropped_connections_are_retried(graph: GraphBackend, monkeypatch: pytes
     monkeypatch.setattr("rustsheet_tools.oracle.backends.time.sleep", lambda _: None)
     assert graph._call("GET", "https://x").status_code == 200
     assert len(attempts) == 3
+
+
+def test_dropped_connections_raise_oracle_error_when_exhausted(
+    app_only_env: pytest.MonkeyPatch,
+) -> None:
+    app_only_env.setenv("RUSTSHEET_ORACLE_USER", "me@example.com")
+    backend = GraphBackend()
+
+    def dead(*_: Any, **__: Any) -> Any:
+        raise requests.ConnectionError("reset by peer")
+
+    app_only_env.setattr(backend, "_token", lambda: "t")
+    app_only_env.setattr(backend._session, "request", dead)
+    app_only_env.setattr("rustsheet_tools.oracle.backends.time.sleep", lambda _: None)
+    with pytest.raises(OracleError, match="retries exhausted") as e:
+        backend._call("GET", backend._drive())
+    assert "me@example.com" not in str(e.value)
+    assert "me%40example.com" not in str(e.value)

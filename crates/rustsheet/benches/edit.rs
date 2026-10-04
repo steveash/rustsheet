@@ -1,19 +1,32 @@
 //! Timings for SPEC-0001's size envelope and budget gate (100k chained formulas).
 //! `cargo bench -p rustsheet --bench edit`
+//!
+//! One warm-up run, then `RUNS` measured runs on fresh workbooks; each figure is the median.
 
 use std::error::Error;
 use std::io::Write;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use rustsheet::{ChangeSet, EditError, Input, Workbook, WorkbookOptions};
 
-fn main() -> Result<(), Box<dyn Error>> {
+const FORMULAS: u32 = 100_000;
+const RUNS: usize = 5;
+
+/// One run's timings and the number of changes the tracked edit reported.
+struct Sample {
+    recalc: Duration,
+    untracked: Duration,
+    tracked: Duration,
+    rollback: Duration,
+    changes: usize,
+}
+
+fn run() -> Result<Sample, Box<dyn Error>> {
     let mut wb = Workbook::new(&WorkbookOptions::default())?;
-    let n = 100_000u32;
     wb.set_track_changes(false);
     wb.edit(|tx| {
         tx.set("A1", 1.0)?;
-        for r in 2..=n {
+        for r in 2..=FORMULAS {
             tx.set(
                 format!("A{r}").as_str(),
                 Input::Formula(format!("=A{}+1", r - 1)),
@@ -38,12 +51,34 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
     let rollback = t.elapsed();
     assert!(r.is_err());
+    Ok(Sample {
+        recalc,
+        untracked,
+        tracked,
+        rollback,
+        changes: cs.values.len(),
+    })
+}
+
+fn median(samples: &[Sample], f: impl Fn(&Sample) -> Duration) -> Duration {
+    let mut v: Vec<Duration> = samples.iter().map(f).collect();
+    v.sort();
+    v[v.len() / 2]
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    run()?; // warm-up
+    let samples = (0..RUNS).map(|_| run()).collect::<Result<Vec<_>, _>>()?;
+    let untracked = median(&samples, |s| s.untracked);
+    let tracked = median(&samples, |s| s.tracked);
     writeln!(
         std::io::stdout(),
-        "formulas={n} recalc={recalc:?} set(untracked)={untracked:?} set(tracked)={tracked:?} \
-         diff_overhead={:?} failed_edit_rollback={rollback:?} changes={}",
+        "formulas={FORMULAS} runs={RUNS} (median) recalc={:?} set(untracked)={untracked:?} \
+         set(tracked)={tracked:?} diff_overhead={:?} failed_edit_rollback={:?} changes={}",
+        median(&samples, |s| s.recalc),
         tracked.saturating_sub(untracked),
-        cs.values.len()
+        median(&samples, |s| s.rollback),
+        samples[0].changes
     )?;
     Ok(())
 }

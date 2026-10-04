@@ -5,7 +5,8 @@ description: How to establish exactly what Microsoft 365 Excel does for a formul
 # Establishing Excel behavior
 
 Never implement Excel semantics from memory or from function documentation alone — Excel's
-observable behavior (including bugs and undocumented edge cases) is the spec.
+observable behavior (including bugs and undocumented edge cases) is the spec. Excel is always
+right: if the answer looks wrong, arbitrary or inconsistent, record it and match it anyway.
 
 1. **Search existing evidence**
    - `docs/excel-semantics/` (curated findings), `rg -n "<FUNC>\(" eval/suites` (cases),
@@ -20,6 +21,7 @@ observable behavior (including bugs and undocumented edge cases) is the spec.
    - Otherwise leave the case pending (it shows as "pending" in reports), mark the task
      `blocked` on oracle with a link to the case, and pick other work. The scheduled oracle
      workflow (`.github/workflows/oracle.yml`) fills pending cases.
-4. **Record the finding** in `docs/excel-semantics/<area>.md`: the rule in one sentence, the
-   probe case id as evidence, and any surprising consequences. Cite it in code comments where
-   the quirk is implemented (`// Excel: see docs/excel-semantics/rounding.md#round-half`).
+4. **Record the finding** in `docs/excel-semantics/<area>.md` (the canonical quirk list): the
+   rule in one sentence, the probe case id as evidence, and any surprising consequences. Record
+   every finding, including ones that look like Excel bugs and ones no task implements yet.
+   Cite it in code comments where the quirk is implemented (`// Excel: see docs/excel-semantics/rounding.md#round-half`).

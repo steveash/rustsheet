@@ -1,12 +1,12 @@
 ---
-id: T-0011
+id: T-0014
 title: "Oracle tooling: one xlsx part-rewrite helper; rels-based formula-part scan"
 milestone: M0
 lane: quality
 status: todo
 priority: P3
 size: S
-depends_on: [T-0010]
+depends_on: [T-0013]
 ---
 
 ## Goal
@@ -14,7 +14,7 @@ One definition for "rewrite parts of an xlsx package" in tools/oracle, and a can
 that cannot miss worksheets stored at nonstandard paths.
 
 ## Context
-Review follow-ups from T-0010:
+Review follow-ups from T-0013:
 - `force_full_calc_on_load` (oracle/backends.py) and `embed_canary` (oracle/canary.py) both
   unzip, patch and rezip a package; the former hardcodes `xl/workbook.xml`, the latter resolves
   the workbook part from `_rels/.rels`. Share one helper and one workbook-part lookup.
