@@ -5,13 +5,16 @@
   rustsheet-oracle recalc -b BACKEND in.xlsx      recalc one workbook, print formula values as JSON
   rustsheet-oracle fill -b BACKEND --suite S      write <case>.oracle.json for cases lacking one
 
-Results are cached under eval/.cache/oracle/<backend>/<sha256>.xlsx so re-runs only hit
-the network for new or changed workbooks. See docs/architecture/oracle.md.
+Every workbook is sent with an embedded canary sheet (oracle/canary.py) whose poisoned cached
+values must come back recalculated; otherwise that workbook's results are refused.
+Results are cached under eval/.cache/oracle/<backend>/<sha256>.xlsx (re-verified on every read)
+so re-runs only hit the network for new or changed workbooks. See docs/architecture/oracle.md.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -23,7 +26,7 @@ from typing import Any
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
-from rustsheet_tools.snapshot import formula_values, snapshot
+from rustsheet_tools.oracle.canary import checked_values, embed_canary
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -35,19 +38,25 @@ def _backend(name: str) -> Any:
     return BACKENDS[name]()
 
 
-def _recalc_cached(backend: Any, xlsx: bytes) -> tuple[Path, OracleInfo, str]:
+def _recalc_cached(backend: Any, xlsx: bytes) -> tuple[dict[str, dict[str, Any]], OracleInfo, str]:
+    """Formula values of `xlsx` as recalculated by `backend`, canary-verified (see canary.py)."""
     sha = hashlib.sha256(xlsx).hexdigest()
     cache_dir = repo_root() / "eval" / ".cache" / "oracle" / backend.name
     cache_dir.mkdir(parents=True, exist_ok=True)
     out = cache_dir / f"{sha}.xlsx"
     meta = cache_dir / f"{sha}.meta.json"
     if out.exists() and meta.exists():
-        info = OracleInfo(**json.loads(meta.read_text()))
-        return out, info, sha
-    data, info = backend.recalc(xlsx)
+        with contextlib.suppress(OracleError):  # entries without a passing canary are recomputed
+            return checked_values(out), OracleInfo(**json.loads(meta.read_text())), sha
+    data, info = backend.recalc(embed_canary(xlsx))
     out.write_bytes(data)
+    try:
+        values = checked_values(out)
+    except OracleError:
+        out.unlink()
+        raise
     meta.write_text(json.dumps(info.__dict__))
-    return out, info, sha
+    return values, info, sha
 
 
 def cmd_status(_: argparse.Namespace) -> int:
@@ -70,8 +79,7 @@ def cmd_recalc(args: argparse.Namespace) -> int:
     raw = args.input.read_bytes()
     if args.input.name.endswith(".case.json"):
         raw = build_xlsx(json.loads(raw))
-    path, info, sha = _recalc_cached(backend, raw)
-    values = formula_values(snapshot(path))
+    values, info, sha = _recalc_cached(backend, raw)
     print(json.dumps({"source": {**info.__dict__, "input_sha256": sha}, "sheets": values}, indent=2))
     return 0
 
@@ -106,12 +114,11 @@ def cmd_fill(args: argparse.Namespace) -> int:
         spec = json.loads(raw) if case.name.endswith(".case.json") else None
         xlsx = build_xlsx(spec) if spec else raw
         try:
-            path, info, sha = _recalc_cached(backend, xlsx)
+            values, info, sha = _recalc_cached(backend, xlsx)
         except OracleError as e:
             failed += 1
             print(f"FAIL {case}: {e}", file=sys.stderr)
             continue
-        values = formula_values(snapshot(path))
         oracle = {
             "format": "rustsheet-oracle/v1",
             "source": {

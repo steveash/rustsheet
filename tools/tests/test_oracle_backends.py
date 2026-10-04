@@ -4,8 +4,10 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import requests
 
-from rustsheet_tools.oracle.backends import GRAPH, GraphBackend
+from rustsheet_tools.oracle.backends import GRAPH, GraphBackend, OracleError
+from rustsheet_tools.spec2xlsx import build_xlsx
 
 VARS = ("TENANT_ID", "CLIENT_ID", "CLIENT_SECRET", "DRIVE_ID", "USER", "SITE", "MSAL_CACHE_B64")
 
@@ -83,3 +85,88 @@ def test_drive_id_takes_precedence(app_only_env: pytest.MonkeyPatch) -> None:
 def test_delegated_mode_uses_me_even_when_user_is_set(clean_env: pytest.MonkeyPatch) -> None:
     clean_env.setenv("RUSTSHEET_ORACLE_USER", "me@example.com")
     assert GraphBackend()._drive() == f"{GRAPH}/me/drive"
+
+
+class FakeGraph:
+    """Records Graph calls; the item's eTag moves only once the session is closed (Excel saved)."""
+
+    def __init__(self, *, saves: bool = True) -> None:
+        self.calls: list[str] = []
+        self.closed = False
+        self.saves = saves
+
+    def __call__(self, method: str, url: str, **_: Any) -> Any:
+        tail = url.rsplit("/items/1", 1)[-1] or "<item>"
+        self.calls.append(f"{method} {tail}")
+        if tail == "/workbook/closeSession":
+            self.closed = True
+        etag = "v2" if self.closed and self.saves else "v1"
+        return SimpleNamespace(json=lambda: {"id": "1", "eTag": etag}, content=b"saved")
+
+
+@pytest.fixture
+def graph(app_only_env: pytest.MonkeyPatch) -> GraphBackend:
+    app_only_env.setenv("RUSTSHEET_ORACLE_DRIVE_ID", "b!x")
+    return GraphBackend()
+
+
+def test_recalc_edits_after_calculating_so_excel_saves(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeGraph()
+    monkeypatch.setattr(graph, "_call", fake)
+    content, _ = graph.recalc(build_xlsx({"sheets": [{"name": "S", "cells": {"A1": "=1"}}]}))
+    assert content == b"saved"
+    session = [c.split(" ", 1)[1].split("('")[0] for c in fake.calls[1:6]]
+    assert session == [
+        "/workbook/createSession",
+        "/workbook/application/calculate",
+        "/workbook/worksheets/add",  # the edit that makes closeSession persist
+        "/workbook/worksheets",  # ...undone, so the result has no extra sheet
+        "/workbook/closeSession",
+    ]
+    assert fake.calls[-1] == "DELETE <item>"
+
+
+def test_recalc_fails_when_excel_never_saves(graph: GraphBackend, monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeGraph(saves=False)
+    monkeypatch.setattr(graph, "_call", fake)
+    monkeypatch.setattr("rustsheet_tools.oracle.backends.time.sleep", lambda _: None)
+    with pytest.raises(OracleError, match="never saved"):
+        graph.recalc(build_xlsx({"sheets": [{"name": "S", "cells": {"A1": "=1"}}]}))
+    assert "GET /content" not in fake.calls  # never hands back the upload
+    assert fake.calls[-1] == "DELETE <item>"
+
+
+def test_dropped_connections_are_retried(graph: GraphBackend, monkeypatch: pytest.MonkeyPatch) -> None:
+    attempts: list[int] = []
+
+    def flaky(*_: Any, **__: Any) -> Any:
+        attempts.append(1)
+        if len(attempts) < 3:
+            raise requests.ConnectionError("reset by peer")
+        return SimpleNamespace(status_code=200)
+
+    monkeypatch.setattr(graph, "_token", lambda: "t")
+    monkeypatch.setattr(graph._session, "request", flaky)
+    monkeypatch.setattr("rustsheet_tools.oracle.backends.time.sleep", lambda _: None)
+    assert graph._call("GET", "https://x").status_code == 200
+    assert len(attempts) == 3
+
+
+def test_dropped_connections_raise_oracle_error_when_exhausted(
+    app_only_env: pytest.MonkeyPatch,
+) -> None:
+    app_only_env.setenv("RUSTSHEET_ORACLE_USER", "me@example.com")
+    backend = GraphBackend()
+
+    def dead(*_: Any, **__: Any) -> Any:
+        raise requests.ConnectionError("reset by peer")
+
+    app_only_env.setattr(backend, "_token", lambda: "t")
+    app_only_env.setattr(backend._session, "request", dead)
+    app_only_env.setattr("rustsheet_tools.oracle.backends.time.sleep", lambda _: None)
+    with pytest.raises(OracleError, match="retries exhausted") as e:
+        backend._call("GET", backend._drive())
+    assert "me@example.com" not in str(e.value)
+    assert "me%40example.com" not in str(e.value)
