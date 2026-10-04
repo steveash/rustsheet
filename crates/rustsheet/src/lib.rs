@@ -8,9 +8,11 @@
 mod error;
 mod refs;
 mod value;
+mod workbook;
 
 pub use error::{EditError, LoadError, RefError, SaveError};
 pub use refs::{
     parse_cell, parse_range, resolve_sheet_by_name, CellRef, RangeRef, SheetId, Target,
 };
 pub use value::{Array, ArrayShapeError, ErrorKind, Value, XlError};
+pub use workbook::{CellInfo, LoadOptions, SaveOptions, SheetMeta, Workbook, WorkbookOptions};

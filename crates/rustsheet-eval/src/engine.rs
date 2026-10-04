@@ -2,8 +2,7 @@
 //! directly, so other engines (e.g. upstream IronCalc, a future rewritten core)
 //! can be plugged in and compared side by side.
 
-use rustsheet_engine::expressions::token::Error as EngineError;
-use rustsheet_engine::types::{Cell, FormulaValue, SpillValue};
+use rustsheet::{CellRef, LoadOptions, Value as ApiValue, Workbook, WorkbookOptions};
 use rustsheet_engine::Model;
 
 use crate::case::{CaseSpec, CellInput};
@@ -34,54 +33,24 @@ pub trait Engine: Sync {
 pub struct RustSheetEngine;
 
 struct RustSheetEvaluated {
-    model: Model,
-    names: Vec<String>,
-}
-
-fn error_literal(e: &EngineError) -> String {
-    e.to_string()
+    workbook: Workbook,
 }
 
 impl Evaluated for RustSheetEvaluated {
     fn value(&self, sheet: &str, addr: Addr) -> Option<Value> {
-        let idx = self
-            .names
-            .iter()
-            .position(|n| n.eq_ignore_ascii_case(sheet))?;
-        let ws = self
-            .model
-            .workbook
-            .worksheet(u32::try_from(idx).ok()?)
-            .ok()?;
-        let row = i32::try_from(addr.row).ok()?;
-        let col = i32::try_from(addr.col).ok()?;
-        let shared = &self.model.workbook.shared_strings;
-        let text = |si: i32| {
-            usize::try_from(si)
-                .ok()
-                .and_then(|i| shared.get(i))
-                .map_or(Value::Empty, |s| Value::Text(s.clone()))
-        };
-        let from_formula = |v: &FormulaValue| match v {
-            FormulaValue::Unevaluated => Value::Empty,
-            FormulaValue::Boolean(b) => Value::Bool(*b),
-            FormulaValue::Number(n) => Value::Number(*n),
-            FormulaValue::Text(s) => Value::Text(s.clone()),
-            FormulaValue::Error { ei, .. } => Value::Error(error_literal(ei)),
-        };
-        Some(match ws.cell(row, col) {
-            None | Some(Cell::EmptyCell { .. }) => Value::Empty,
-            Some(Cell::BooleanCell { v, .. }) => Value::Bool(*v),
-            Some(Cell::NumberCell { v, .. }) => Value::Number(*v),
-            Some(Cell::ErrorCell { ei, .. }) => Value::Error(error_literal(ei)),
-            Some(Cell::SharedString { si, .. }) => text(*si),
-            Some(Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. }) => from_formula(v),
-            Some(Cell::SpillCell { v, .. }) => match v {
-                SpillValue::Boolean(b) => Value::Bool(*b),
-                SpillValue::Number(n) => Value::Number(*n),
-                SpillValue::Text(s) => Value::Text(s.clone()),
-                SpillValue::Error(ei) => Value::Error(error_literal(ei)),
-            },
+        let cell = CellRef::new(
+            self.workbook.sheet_id(sheet).ok()?,
+            addr.row.checked_sub(1)?,
+            addr.col.checked_sub(1)?,
+        )
+        .ok()?;
+        Some(match self.workbook.value(cell).ok()? {
+            ApiValue::Number(n) => Value::Number(n),
+            ApiValue::Text(s) => Value::Text(s.to_string()),
+            ApiValue::Bool(b) => Value::Bool(b),
+            ApiValue::Error(e) => Value::Error(e.kind.literal().to_string()),
+            // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
+            _ => Value::Empty,
         })
     }
 }
@@ -92,17 +61,17 @@ impl Engine for RustSheetEngine {
     }
 
     fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {
-        let workbook = rustsheet_xlsx::import::load_from_xlsx_bytes(bytes, "case", "en", "UTC")
-            .map_err(|e| format!("import failed: {e}"))?;
-        let mut model = Model::from_workbook(workbook, "en")?;
+        let opts = LoadOptions {
+            recalc: false,
+            ..LoadOptions::default()
+        };
+        let mut workbook =
+            Workbook::from_xlsx_bytes(bytes, &opts).map_err(|e| format!("import failed: {e}"))?;
         // The mock clock is thread-local and defaults to a fixed instant; a METADATA `NOW` row
         // (IronCalc convention, mirrored by `volatile::pinned_clock_serial`) overrides it.
-        if let Some(millis) = rustsheet_xlsx::mock_time::get_metadata_timestamp(&model) {
-            rustsheet_engine::mock_time::set_mock_time(millis);
-        }
-        model.evaluate();
-        let names = model.workbook.get_worksheet_names();
-        Ok(Box::new(RustSheetEvaluated { model, names }))
+        workbook.pin_clock_from_metadata();
+        workbook.recalculate();
+        Ok(Box::new(RustSheetEvaluated { workbook }))
     }
 
     fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String> {
@@ -143,8 +112,8 @@ impl Engine for RustSheetEngine {
             }
         }
         model.evaluate();
-        let names = model.workbook.get_worksheet_names();
-        Ok(Box::new(RustSheetEvaluated { model, names }))
+        let workbook = Workbook::from_engine_model(model, &WorkbookOptions::default());
+        Ok(Box::new(RustSheetEvaluated { workbook }))
     }
 }
 

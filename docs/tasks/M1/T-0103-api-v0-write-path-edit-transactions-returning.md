@@ -23,5 +23,7 @@ Per SPEC-0001; incremental ChangeSet comes in M3.
 - [ ] Eval spec adapter uses `edit`.
 - [ ] `make check` green; reviewers approve.
 
+- [ ] Remove `Workbook::from_engine_model` and the `engine-model` feature (T-0102): the eval adapter's `evaluate_spec` builds spec workbooks through `edit`.
+
 ## Out of scope
 Undo/redo, structural edits.
