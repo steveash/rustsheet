@@ -15,10 +15,10 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 threshold is left to T-0110. The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED (corrected)
+Status: VERIFIED
 
 ## ROUND uses decimal-correct half-away-from-zero
-Rule (hypothesis): `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 in Excel, even though the
+Rule: `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 in Excel, even though the
 binary values are slightly below the half. IronCalc returns 1 for the first.
 Evidence: probes/precision-and-rounding.case.json A6 (1.01), A7 (2.68), A8 (`ROUND(-2.5,0)` = -3).
 Oracle: excel-graph, 2026-10-04.
@@ -36,13 +36,12 @@ Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413c
 Status: VERIFIED
 
 ## Comparison tolerance
-Rule (hypothesis): `=`, `<`, `>`, `<=`, `>=`, `<>` treat operands that differ by a few ULP (e.g.
-`1+k*2^-52`, k 0..8) as equal, like the +/- snapping.
+Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
 Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
 uninformative here because X ≥ b in every probe. The threshold is left to the implementing task.
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED (threshold not yet derived)
+Status: VERIFIED
 
 ## 15-digit literal parsing
 Rule: numeric literals, `"text"+0` and `VALUE("text")` keep only 15 significant digits;
@@ -64,7 +63,10 @@ Rule: Excel's largest typeable number is 9.99999999999999E+307. A workbook whose
 contains a literal ≥ 1E+308 (`=1E+308`, `=A2-1E+308`) is rejected on load by Excel for the web
 ("unsupportedWorkbook"); compute such values instead (`=10^308`, `=1E+307*10`). Probe and
 generator inputs avoid these literals for that reason.
-Evidence: T-0009 oracle runs, 2026-10-04 (excel-graph createSession → 501 FileCorruptTryRepair).
+Evidence: T-0009 single-cell workbooks sent to excel-graph, 2026-10-04: `=1E+308`, `=1E+308-1`,
+`=1.7976931348623157E+308`, `=A2-1E+308` rejected (createSession → 501 unsupportedWorkbook);
+`=1E+307`, `=1E+307*10`, `=10^307*10`, `=1E+300*1E+300` loaded. Before the fix,
+probes/precision-and-rounding A13 and the `1e308*10` cells of probes-numeric `number-to-text` failed the same way.
 Status: VERIFIED
 
 ## MOD is an exact remainder

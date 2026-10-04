@@ -39,4 +39,4 @@ Engine fixes for the probed behavior (T-0106, T-0107, T-0108, T-0110); calibrati
   comparison tolerance, 15-digit truncation, 1900-02-29, wildcards, D-function prefix VERIFIED;
   new entries for subnormal → 0, ≥1E+308 literals, DATE years < 1900, and `"="` vs "".
   `"<>text"` stays UNVERIFIED (no probe cell).
-- Follow-up: T-0010 (oracle client retries connection resets).
+- Follow-ups: T-0010 (oracle client retries connection resets), T-0011 (remaining criteria probe gaps).
