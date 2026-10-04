@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import tasks  # noqa: E402
+import tasks  # noqa: E402 (the sys.path line above must run first)
 
 
 def task(tid: str, milestone: str) -> dict[str, object]:
@@ -57,6 +57,32 @@ class GitTaskIds(unittest.TestCase):
     def test_without_git_falls_back_to_nothing(self) -> None:
         with mock.patch.object(tasks.subprocess, "run", side_effect=OSError("no git")):
             self.assertEqual(tasks.git_task_ids(fetch=False), set())
+
+
+class NewTask(unittest.TestCase):
+    def run_new(self, *argv: str) -> tuple[int, list[Path]]:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", ["tasks.py", "new", *argv]), \
+                    mock.patch.object(tasks, "git_task_ids", return_value={"T-0003"}):
+                code = tasks.new_task([task("T-0002", "M0")], fetch=False)
+                return code, sorted(p.relative_to(root) for p in root.rglob("*.md"))
+
+    def test_writes_the_next_free_id_from_the_template(self) -> None:
+        code, files = self.run_new("--milestone", "M0", "--lane", "harness", "--title", "Do a thing")
+        self.assertEqual(code, 0)
+        self.assertEqual(files, [Path("docs/tasks/M0/T-0004-do-a-thing.md")])
+
+    def test_rejects_bad_arguments(self) -> None:
+        for argv in (("--milestone", "M0x", "--lane", "harness", "--title", "x"),
+                     ("--milestone", "M0", "--lane", "nope", "--title", "x"),
+                     ("--milestone", "M0", "--lane", "harness", "--title", "a\nstatus: done"),
+                     ("--milestone", "M0", "--lane", "harness", "--title", "x", "--size", "L")):
+            code, files = self.run_new(*argv)
+            self.assertEqual((code, files), (2, []), argv)
 
 
 class Slug(unittest.TestCase):

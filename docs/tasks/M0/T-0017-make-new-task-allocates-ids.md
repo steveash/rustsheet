@@ -26,4 +26,4 @@ Two sessions creating tasks at the same time cannot pick the same id.
 `make new-task` / `tasks.py new`: id = next after the highest in the milestone's block, counting
 every `origin/*` branch (fetched) plus the working tree; template with fill-in placeholders
 that `validate` rejects; duplicate errors name both files. `scripts/test_tasks.py` (7 tests) runs in
-`make hygiene`. Planner, gap-triager and task-format.md point at it. Decision 0016. Eval delta: none.
+`make hygiene`. Planner, gap-triager, the work-loop skill and task-format.md point at it; a failed fetch warns on stderr. Decision 0016. Eval delta: none.

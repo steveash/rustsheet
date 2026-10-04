@@ -5,7 +5,7 @@
   scripts/tasks.py next --lane L         # highest-priority ready task (deps done) in a lane
   scripts/tasks.py validate              # schema + dependency checks (CI)
   scripts/tasks.py board                 # regenerate docs/tasks/BOARD.md
-  scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
+  scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S] [--no-fetch]
                                          # write a task file with the next free id (decision 0016)
 
 Front matter keys: id, title, milestone, lane, status, priority, size, depends_on, spec.
@@ -48,6 +48,11 @@ def parse(path: Path) -> dict[str, object]:
     return meta
 
 
+def path_of(t: dict[str, object]) -> Path:
+    """The task file a parsed task came from (`parse` stores it under "path")."""
+    return Path(str(t["path"]))
+
+
 def load() -> list[dict[str, object]]:
     return [parse(p) for p in sorted(TASKS.glob("*/*.md")) if p.name != "README.md"]
 
@@ -61,7 +66,7 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         if not re.match(r"^T-\d{4}$", tid):
             errors.append(f"{where}: bad id {tid!r}")
         if tid in ids:
-            first = ids[tid]["path"].relative_to(ROOT)  # type: ignore[union-attr]
+            first = path_of(ids[tid]).relative_to(ROOT)
             errors.append(
                 f"{where}: duplicate id {tid} (also {first}); renumber the newer task with "
                 "`make new-task` (decision 0016)"
@@ -74,7 +79,7 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
             errors.append(f"{where}: missing title")
-        if "TODO(fill)" in t["path"].read_text():  # type: ignore[union-attr]
+        if "TODO(fill)" in path_of(t).read_text():
             errors.append(f"{where}: template placeholders `TODO(fill)` left in the task file")
         if t.get("size") == "L" and t.get("status") in ("todo", "in-progress"):
             errors.append(f"{where}: size L tasks must be split before work starts")
@@ -111,7 +116,9 @@ def git_task_ids(fetch: bool = True) -> set[str]:
                 if m:
                     found.add(m.group(1))
         return found
-    except (OSError, subprocess.CalledProcessError):
+    except (OSError, subprocess.CalledProcessError) as e:
+        print(f"warning: could not read origin branches ({e}); ids checked against the working tree only",
+              file=sys.stderr)
         return set()
 
 
@@ -163,10 +170,12 @@ TODO(fill): why; failing case ids; semantics notes; code paths.
 
 
 def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
+    """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
     milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
     priority, size = arg("--priority") or "P2", arg("--size") or "S"
-    if not (milestone and MILESTONE.match(milestone) and lane in LANES and title):
-        print("usage: tasks.py new --milestone M<n> --lane <lane> --title <title> [--priority P2] [--size S]")
+    if not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and title) or "\n" in title:
+        print("usage: tasks.py new --milestone M<n> --lane <lane> --title <one-line title> "
+              "[--priority P2] [--size S] [--no-fetch]")
         return 2
     if priority not in PRIORITIES or size not in SIZES or size == "L":
         print(f"priority must be one of {PRIORITIES}; size one of S, M (split L tasks)")
