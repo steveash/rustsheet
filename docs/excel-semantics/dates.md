@@ -20,3 +20,10 @@ exact 16:35/24 = 0.69097222222222221. Time-only text is exact.
 Evidence: ironcalc-calc DATE_AND_TIME/TIMEVALUE.xlsx B18 (Excel-cached).
 Fractional seconds (`"10:11:12.5"`) remain UNVERIFIED (T-0910 stays open for that).
 Status: VERIFIED (Excel-cached value, one cell)
+
+## TIME divides by 86400 first, then drops whole days
+Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
+`(total % 86400)/86400`; they differ in the last bits when the total exceeds a day, e.g.
+`TIME(24,2,3)` = 0.0014236111111110006, `TIME(34,1,2)` = 0.41738425925925915.
+Evidence: ironcalc-calc DATE_AND_TIME/TIME_HOUR_MINUTE_SECOND.xlsx D3/D14/D17, DATE.xlsx D4 (Excel-cached).
+Status: VERIFIED (Excel-cached values)

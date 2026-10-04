@@ -67,3 +67,4 @@ parity fixes; harness has gen-m1 prep (T-0117) while the oracle (T-0004) is stil
 - 2026-10-04 — T-0913: eval snapshot reader decodes rich-value `vm` errors (#CALC!/#SPILL! cached as #VALUE!); ironcalc-calc known failures 1735 -> 1727 (8 fixed), 0 regressions; engine unchanged
 - 2026-10-04 — T-0101: removed lifetime from Model/UserModel/Parser/Lexer and the Python binding's leak helper; eval delta none (0 fixed, 0 regressions)
 - 2026-10-04 — steward: health snapshot; queues healthy, no new upstream commits, no oracle credentials.
+- 2026-10-04 — T-0923: TIME divides before dropping whole days (+7 cells, ironcalc-calc 97.60%); triaged T-0922..T-0929 (no oracle needed)

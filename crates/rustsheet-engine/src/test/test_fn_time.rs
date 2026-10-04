@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use crate::cell::CellValue;
 use crate::test::util::new_empty_model;
 
 // Helper constants for common time values with detailed documentation
@@ -552,4 +553,21 @@ fn test_performance_stress_with_extreme_values() {
         (0.0..1.0).contains(&time_d1),
         "TIME result should be valid fraction"
     );
+}
+
+#[test]
+fn time_over_24_hours_divides_before_dropping_days() {
+    // Excel-cached values: DATE_AND_TIME/TIME_HOUR_MINUTE_SECOND.xlsx D3, D14, D17.
+    let mut model = new_empty_model();
+    model._set("A1", "=TIME(24,2,3)");
+    model._set("A2", "=TIME(34,1,2)");
+    model._set("A3", "=TIME(32767,32767,32767)");
+    model.evaluate();
+    let bits = |c: &str| match model.get_cell_value_by_ref(&format!("Sheet1!{c}")) {
+        Ok(CellValue::Number(n)) => n.to_bits(),
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(bits("A1"), 0.0014236111111110006_f64.to_bits());
+    assert_eq!(bits("A2"), 0.41738425925925915_f64.to_bits());
+    assert_eq!(bits("A3"), 0.4257754629629744_f64.to_bits());
 }
