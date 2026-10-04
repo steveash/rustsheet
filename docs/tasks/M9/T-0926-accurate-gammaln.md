@@ -3,7 +3,7 @@ id: T-0926
 title: "GAMMALN/GAMMALN.PRECISE: accurate ln-gamma (66 known failures)"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: S
 depends_on: []
