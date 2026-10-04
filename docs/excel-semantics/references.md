@@ -21,5 +21,5 @@ cached data returns `#VALUE!`, not `#REF!`. Seen on Excel for the web only (the 
 written by Apache POI, so it holds no desktop evidence); needs excel-desktop confirmation before
 anyone relies on it.
 Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (oracle: excel-graph, 2026-10-04).
-Status: VERIFIED (web)
+Status: UNVERIFIED (excel-desktop probe pending; web: #VALUE!)
 Tasks: T-0124

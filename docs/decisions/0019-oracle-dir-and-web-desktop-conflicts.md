@@ -23,3 +23,6 @@
 - **Consequences:** fewer scored cells, but no parity claim rests on web-only behavior that desktop
   Excel contradicts. A general policy for web-vs-desktop disagreements without desktop cached values
   (e.g. last-digit float differences) is out of scope here.
+  Any producer whose `application` starts with "Microsoft" counts as desktop evidence, including
+  generators such as XlsxWriter that cache placeholder values; that can only leave extra cells
+  pending (a false conflict), never score a wrong value.
