@@ -3,7 +3,7 @@ id: T-0103
 title: "API v0 write path: edit() transactions returning ChangeSet"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P1
 size: M
 depends_on: [T-0102]
