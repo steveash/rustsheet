@@ -54,8 +54,10 @@ pub enum EditError {
     #[error(transparent)]
     Ref(#[from] RefError),
     /// The input could not be applied to the cell (e.g. an unparseable formula).
-    #[error("invalid input: {message}")]
+    #[error("invalid input for {cell}: {message}")]
     InvalidInput {
+        /// The cell being written.
+        cell: crate::refs::CellRef,
         /// What the engine said.
         message: String,
     },

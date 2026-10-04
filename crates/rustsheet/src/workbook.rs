@@ -91,8 +91,10 @@ pub struct CellInfo {
 
 /// An open workbook. Owns its engine model; reads never mutate it.
 pub struct Workbook {
-    model: Model,
+    pub(crate) model: Model,
     max_read_cells: u64,
+    /// Whether `edit` diffs formula values into [`crate::ChangeSet::values`].
+    pub(crate) track_changes: bool,
 }
 
 fn engine_load_error(message: impl std::fmt::Display) -> LoadError {
@@ -142,8 +144,50 @@ fn check_zip_limits(bytes: &[u8], opts: &LoadOptions) -> Result<(), LoadError> {
     Ok(())
 }
 
+/// All sheets of a model in workbook order.
+pub(crate) fn sheet_metas(model: &Model) -> Vec<SheetMeta> {
+    model
+        .workbook
+        .worksheets
+        .iter()
+        .enumerate()
+        .map(|(i, ws)| SheetMeta {
+            id: SheetId::new(ws.get_sheet_id()),
+            name: ws.get_name(),
+            index: u32::try_from(i).unwrap_or(u32::MAX),
+        })
+        .collect()
+}
+
+/// A sheet by case-insensitive name; `None` selects the first sheet.
+pub(crate) fn lookup_sheet(model: &Model, name: Option<&str>) -> Option<SheetId> {
+    let sheets = sheet_metas(model);
+    let pairs: Vec<(SheetId, &str)> = sheets.iter().map(|s| (s.id, s.name.as_str())).collect();
+    resolve_sheet_by_name(&pairs, name)
+}
+
+/// The positional index of a sheet id.
+pub(crate) fn sheet_index(model: &Model, id: SheetId) -> Result<u32, RefError> {
+    model
+        .workbook
+        .worksheets
+        .iter()
+        .position(|ws| ws.get_sheet_id() == id.get())
+        .and_then(|i| u32::try_from(i).ok())
+        .ok_or_else(|| RefError::UnknownSheet(id.get().to_string()))
+}
+
+/// A target as a rectangle, resolving A1 text against the model's sheets.
+pub(crate) fn resolve_range(model: &Model, target: Target<'_>) -> Result<RangeRef, RefError> {
+    match target {
+        Target::Cell(c) => RangeRef::new(c.sheet, c.row, c.col, c.row, c.col),
+        Target::Range(r) => Ok(r),
+        Target::A1(text) => parse_range(text, |name| lookup_sheet(model, name)),
+    }
+}
+
 /// Engine coordinates are 1-based `i32`; the facade's are 0-based `u32` already bounds-checked.
-fn engine_rc(row: u32, col: u32) -> Option<(i32, i32)> {
+pub(crate) fn engine_rc(row: u32, col: u32) -> Option<(i32, i32)> {
     Some((
         i32::try_from(row).ok()?.checked_add(1)?,
         i32::try_from(col).ok()?.checked_add(1)?,
@@ -158,10 +202,15 @@ impl Workbook {
     pub fn new(opts: &WorkbookOptions) -> Result<Self, LoadError> {
         let model = Model::new_empty("workbook", &opts.locale, &opts.timezone, &opts.language)
             .map_err(LoadError::Options)?;
-        Ok(Self {
+        Ok(Self::from_model(model, opts.max_read_cells))
+    }
+
+    fn from_model(model: Model, max_read_cells: u64) -> Self {
+        Self {
             model,
-            max_read_cells: opts.max_read_cells,
-        })
+            max_read_cells,
+            track_changes: true,
+        }
     }
 
     /// Opens an xlsx file.
@@ -195,10 +244,7 @@ impl Workbook {
             rustsheet_xlsx::import::load_from_xlsx_bytes(bytes, "workbook", &w.locale, &w.timezone)
                 .map_err(engine_load_error)?;
         let model = Model::from_workbook(book, &w.language).map_err(LoadError::Format)?;
-        let mut workbook = Self {
-            model,
-            max_read_cells: w.max_read_cells,
-        };
+        let mut workbook = Self::from_model(model, w.max_read_cells);
         if opts.recalc {
             workbook.recalculate();
         }
@@ -219,17 +265,6 @@ impl Workbook {
         };
         rustsheet_engine::mock_time::set_mock_time(millis);
         true
-    }
-
-    /// Wraps an engine model directly.
-    // TODO(T-0103): remove once the eval adapter builds spec workbooks through `edit`.
-    #[cfg(feature = "engine-model")]
-    #[must_use]
-    pub fn from_engine_model(model: Model, opts: &WorkbookOptions) -> Self {
-        Self {
-            model,
-            max_read_cells: opts.max_read_cells,
-        }
     }
 
     /// Serializes to xlsx bytes.
@@ -255,17 +290,7 @@ impl Workbook {
     /// All sheets in workbook order.
     #[must_use]
     pub fn sheets(&self) -> Vec<SheetMeta> {
-        self.model
-            .workbook
-            .worksheets
-            .iter()
-            .enumerate()
-            .map(|(i, ws)| SheetMeta {
-                id: SheetId::new(ws.get_sheet_id()),
-                name: ws.get_name(),
-                index: u32::try_from(i).unwrap_or(u32::MAX),
-            })
-            .collect()
+        sheet_metas(&self.model)
     }
 
     /// Looks a sheet up by name, case-insensitively.
@@ -278,9 +303,7 @@ impl Workbook {
     }
 
     fn lookup_sheet(&self, name: Option<&str>) -> Option<SheetId> {
-        let sheets = self.sheets();
-        let pairs: Vec<(SheetId, &str)> = sheets.iter().map(|s| (s.id, s.name.as_str())).collect();
-        resolve_sheet_by_name(&pairs, name)
+        lookup_sheet(&self.model, name)
     }
 
     /// Parses an A1 cell reference (`Sheet1!A1`, `'My Sheet'!$B$2`); unqualified references
@@ -301,11 +324,7 @@ impl Workbook {
     }
 
     fn resolve_range(&self, target: Target<'_>) -> Result<RangeRef, RefError> {
-        match target {
-            Target::Cell(c) => RangeRef::new(c.sheet, c.row, c.col, c.row, c.col),
-            Target::Range(r) => Ok(r),
-            Target::A1(text) => self.range_ref(text),
-        }
+        resolve_range(&self.model, target)
     }
 
     /// Resolves `target` to its sheet index and the top-left cell in engine (1-based) coordinates.
@@ -320,13 +339,7 @@ impl Workbook {
     }
 
     fn sheet_index(&self, id: SheetId) -> Result<u32, RefError> {
-        self.model
-            .workbook
-            .worksheets
-            .iter()
-            .position(|ws| ws.get_sheet_id() == id.get())
-            .and_then(|i| u32::try_from(i).ok())
-            .ok_or_else(|| RefError::UnknownSheet(id.get().to_string()))
+        sheet_index(&self.model, id)
     }
 
     fn cell_at(&self, sheet: u32, row: u32, col: u32) -> Result<Value, RefError> {

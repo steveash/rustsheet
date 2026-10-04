@@ -2,8 +2,7 @@
 //! directly, so other engines (e.g. upstream IronCalc, a future rewritten core)
 //! can be plugged in and compared side by side.
 
-use rustsheet::{CellRef, LoadOptions, Value as ApiValue, Workbook, WorkbookOptions};
-use rustsheet_engine::Model;
+use rustsheet::{CellRef, Input, LoadOptions, Value as ApiValue, Workbook, WorkbookOptions};
 
 use crate::case::{CaseSpec, CellInput};
 use crate::cellref::Addr;
@@ -75,50 +74,58 @@ impl Engine for RustSheetEngine {
     }
 
     fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String> {
-        let mut model = Model::new_empty("case", "en", "UTC", "en")?;
-        for (i, sheet) in spec.sheets.iter().enumerate() {
-            let idx = u32::try_from(i).map_err(|e| e.to_string())?;
-            if i == 0 {
-                model.rename_sheet_by_index(0, &sheet.name)?;
-            } else {
-                model.add_sheet(&sheet.name)?;
-            }
-            for (a1, input) in &sheet.cells {
-                let addr = Addr::parse(a1).ok_or_else(|| format!("bad address {a1}"))?;
-                let row = i32::try_from(addr.row).map_err(|e| e.to_string())?;
-                let col = i32::try_from(addr.col).map_err(|e| e.to_string())?;
-                match input {
-                    CellInput::Number(n) | CellInput::Typed(Value::Number(n)) => {
-                        model.update_cell_with_number(idx, row, col, *n)?;
+        let mut workbook = Workbook::new(&WorkbookOptions::default()).map_err(|e| e.to_string())?;
+        // The harness only reads final values: skip the per-edit value diff.
+        workbook.set_track_changes(false);
+        workbook
+            .edit(|tx| {
+                for (i, sheet) in spec.sheets.iter().enumerate() {
+                    let id = if i == 0 {
+                        let first = tx.first_sheet()?;
+                        tx.rename_sheet(first, &sheet.name)?;
+                        first
+                    } else {
+                        tx.add_sheet(&sheet.name)?
+                    };
+                    for (a1, input) in &sheet.cells {
+                        let addr = Addr::parse(a1).ok_or_else(|| {
+                            rustsheet::EditError::Engine(format!("bad address {a1}"))
+                        })?;
+                        let cell = CellRef::new(id, addr.row - 1, addr.col - 1)?;
+                        if let Some(input) = spec_input(input) {
+                            tx.set(cell, input)?;
+                        }
                     }
-                    CellInput::Bool(b) | CellInput::Typed(Value::Bool(b)) => {
-                        model.update_cell_with_bool(idx, row, col, *b)?;
-                    }
-                    CellInput::Str(s) if s.starts_with('=') => {
-                        model.update_cell_with_formula(idx, row, col, s.clone())?;
-                    }
-                    // Mirrors tools/src/rustsheet_tools/spec2xlsx.py: "" is materialized as ="".
-                    CellInput::Str(s) | CellInput::Typed(Value::Text(s)) if s.is_empty() => {
-                        model.update_cell_with_formula(idx, row, col, "=\"\"".to_string())?;
-                    }
-                    CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
-                        model.update_cell_with_text(idx, row, col, s)?;
-                    }
-                    CellInput::Typed(Value::Error(e)) => {
-                        model.set_user_input(idx, row, col, e.clone())?;
-                    }
-                    CellInput::Typed(Value::Empty) => {}
                 }
-            }
-        }
-        model.evaluate();
-        let workbook = Workbook::from_engine_model(model, &WorkbookOptions::default());
+                Ok(())
+            })
+            .map_err(|e| e.to_string())?;
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
 }
 
+/// The facade input for a spec cell; `None` leaves the cell empty.
+fn spec_input(input: &CellInput) -> Option<Input> {
+    Some(match input {
+        CellInput::Number(n) | CellInput::Typed(Value::Number(n)) => Input::from(*n),
+        CellInput::Bool(b) | CellInput::Typed(Value::Bool(b)) => Input::from(*b),
+        CellInput::Str(s) if s.starts_with('=') => Input::Formula(s.clone()),
+        // Mirrors tools/src/rustsheet_tools/spec2xlsx.py: "" is materialized as ="".
+        CellInput::Str(s) | CellInput::Typed(Value::Text(s)) if s.is_empty() => {
+            Input::Formula("=\"\"".to_string())
+        }
+        CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
+            Input::Value(ApiValue::Text(s.as_str().into()))
+        }
+        CellInput::Typed(Value::Error(e)) => Input::Parse(e.clone()),
+        CellInput::Typed(Value::Empty) => return None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
+    use rustsheet_engine::Model;
+
     use super::*;
 
     /// Workbook with `Sheet1!A1 = TODAY()` and an optional `METADATA` NOW row.

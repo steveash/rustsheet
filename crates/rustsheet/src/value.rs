@@ -200,43 +200,76 @@ impl From<XlError> for Value {
 impl Value {
     /// The value of an engine cell. `shared_strings` is the workbook's shared-string table.
     ///
+    /// See [`CellView::of`] for how engine cells map to values.
+    pub(crate) fn from_cell(cell: &Cell, shared_strings: &[String]) -> Self {
+        CellView::of(cell, shared_strings).to_value()
+    }
+}
+
+/// A cell's value borrowed from the engine, so unchanged cells can be compared without
+/// building an owned [`Value`] (no `Arc<str>` per text cell).
+#[derive(Copy, Clone, Debug)]
+pub(crate) enum CellView<'a> {
+    Empty,
+    Number(f64),
+    Bool(bool),
+    Text(&'a str),
+    Error(ErrorKind, Option<&'a str>),
+}
+
+impl<'a> CellView<'a> {
+    /// The view of an engine cell.
+    ///
     /// Exhaustive on purpose (no wildcard arms): a new engine `Cell`, `FormulaValue` or
     /// `SpillValue` variant must be mapped here. A shared-string index outside the table reads as
     /// `Empty`, as the eval adapter does. A formula that is still `Unevaluated` reads as the
     /// engine's own `#ERROR!`, matching `Model::get_cell_value_by_index`.
-    pub(crate) fn from_cell(cell: &Cell, shared_strings: &[String]) -> Self {
+    pub(crate) fn of(cell: &'a Cell, shared_strings: &'a [String]) -> Self {
         match cell {
             Cell::EmptyCell { .. } => Self::Empty,
             Cell::BooleanCell { v, .. } => Self::Bool(*v),
             Cell::NumberCell { v, .. } => Self::Number(*v),
-            Cell::ErrorCell { ei, .. } => Self::Error(XlError::new(ErrorKind::from_engine(ei))),
+            Cell::ErrorCell { ei, .. } => Self::Error(ErrorKind::from_engine(ei), None),
             Cell::SharedString { si, .. } => usize::try_from(*si)
                 .ok()
                 .and_then(|i| shared_strings.get(i))
-                .map_or(Self::Empty, |s| Self::Text(s.as_str().into())),
-            Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. } => Self::from_formula(v),
+                .map_or(Self::Empty, |s| Self::Text(s.as_str())),
+            Cell::CellFormula { v, .. } | Cell::ArrayFormula { v, .. } => Self::of_formula(v),
             Cell::SpillCell { v, .. } => match v {
                 SpillValue::Boolean(b) => Self::Bool(*b),
                 SpillValue::Number(n) => Self::Number(*n),
-                SpillValue::Text(s) => Self::Text(s.as_str().into()),
-                SpillValue::Error(ei) => Self::Error(XlError::new(ErrorKind::from_engine(ei))),
+                SpillValue::Text(s) => Self::Text(s.as_str()),
+                SpillValue::Error(ei) => Self::Error(ErrorKind::from_engine(ei), None),
             },
         }
     }
 
-    fn from_formula(value: &FormulaValue) -> Self {
+    fn of_formula(value: &'a FormulaValue) -> Self {
         match value {
             // Message mirrors rustsheet-engine `model.rs` ("Unevaluated formula").
-            FormulaValue::Unevaluated => Self::Error(XlError::with_detail(
-                ErrorKind::Unknown,
-                "Unevaluated formula",
-            )),
+            FormulaValue::Unevaluated => {
+                Self::Error(ErrorKind::Unknown, Some("Unevaluated formula"))
+            }
             FormulaValue::Boolean(b) => Self::Bool(*b),
             FormulaValue::Number(n) => Self::Number(*n),
-            FormulaValue::Text(s) => Self::Text(s.as_str().into()),
-            FormulaValue::Error { ei, m, .. } => Self::Error(XlError {
-                kind: ErrorKind::from_engine(ei),
-                detail: (!m.is_empty()).then(|| m.as_str().into()),
+            FormulaValue::Text(s) => Self::Text(s.as_str()),
+            FormulaValue::Error { ei, m, .. } => Self::Error(
+                ErrorKind::from_engine(ei),
+                (!m.is_empty()).then_some(m.as_str()),
+            ),
+        }
+    }
+
+    /// The owned value.
+    pub(crate) fn to_value(self) -> Value {
+        match self {
+            Self::Empty => Value::Empty,
+            Self::Number(n) => Value::Number(n),
+            Self::Bool(b) => Value::Bool(b),
+            Self::Text(s) => Value::Text(s.into()),
+            Self::Error(kind, detail) => Value::Error(XlError {
+                kind,
+                detail: detail.map(Into::into),
             }),
         }
     }
