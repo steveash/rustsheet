@@ -6,6 +6,7 @@ lane: functions
 status: todo
 priority: P3
 size: M
+tier: opus
 depends_on: [T-0914]
 ---
 

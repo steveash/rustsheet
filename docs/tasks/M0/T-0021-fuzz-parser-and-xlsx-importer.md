@@ -6,6 +6,7 @@ lane: quality
 status: todo
 priority: P1
 size: M
+tier: opus
 depends_on: []
 ---
 

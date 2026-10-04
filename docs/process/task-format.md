@@ -12,6 +12,7 @@ lane: functions            # harness | engine | functions | api | perf | quality
 status: todo               # todo | in-progress | blocked | done | dropped
 priority: P1               # P0 (blocking) .. P3 (nice to have)
 size: M                    # S (≤150 lines) | M (≤400) | L (must be split)
+tier: opus                 # sonnet | opus: model tier that works it (decision 0018)
 depends_on: [T-0100]
 spec: docs/specs/SPEC-0002-criteria.md   # optional
 ---
@@ -33,6 +34,11 @@ What not to do in this task (file follow-ups instead).
 ## Outcome            <!-- filled when done -->
 PR link, eval delta, follow-ups.
 ```
+
+Tier rubric (decision 0018): `sonnet` when the task is size S, its acceptance criteria are
+mechanical to check, the Excel evidence already exists (or it needs none), it needs no spec, no
+protected path and no numeric fitting (ulp/iteration/tolerance work). Everything else is `opus`.
+When unsure, `opus`. A sonnet run that gets stuck hands the task up (work-loop step 5b).
 
 Rules:
 - One task produces exactly one PR. If it needs more, split it.
