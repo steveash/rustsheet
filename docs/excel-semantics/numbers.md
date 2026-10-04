@@ -65,3 +65,11 @@ Status: UNVERIFIED for (a) overflow of a non-zero base being #NUM! (not #DIV/0!)
 relative tolerance that decides whether an exponent "is" 1/odd (only exactly 1/3 is evidenced; probe
 `POWER(-8,0.333333333333333)`), (c) the operator `^` sharing all of the above.
 Implemented in: `arithmetic::power` (POWER and `^`).
+
+## GAMMALN / GAMMALN.PRECISE (T-0926)
+
+Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are the correctly
+rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `statrs::ln_gamma`
+is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
+vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
+differ in the last digit and need oracle probes (T-0004).

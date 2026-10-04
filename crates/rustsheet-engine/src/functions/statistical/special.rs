@@ -1,5 +1,5 @@
-//! Accurate error function and standard-normal kernels shared by ERF*, NORM*, LOGNORM*, GAUSS, PHI
-//! and Z.TEST.
+//! Accurate error function, standard-normal kernels and ln-gamma shared by ERF*, NORM*, LOGNORM*,
+//! GAUSS, PHI, Z.TEST and GAMMALN.
 //!
 //! Excel's cached results for these functions equal the correctly rounded mathematical values
 //! (T-0924 eval evidence: `ERFs.xlsx`, `GAUSS.xlsx`, `NORM_DIST.xlsx`); `statrs`' erf is only
@@ -102,6 +102,15 @@ pub(crate) fn normal_pdf(x: f64, mean: f64, std_dev: f64) -> f64 {
     (-0.5 * d * d).exp() / (SQRT_2PI * std_dev)
 }
 
+/// ln|Gamma(x)| from the fdlibm/musl `lgamma` (< 1 ulp, exactly 0 at x = 1 and x = 2).
+///
+/// Excel's cached GAMMALN values are the correctly rounded ones (T-0926 eval evidence:
+/// `GAMMALN_GAMMALNPRECISE.xlsx`, e.g. GAMMALN(1) = 0, GAMMALN(4) = ln 6), which the Lanczos
+/// approximation in `statrs` misses by a few ulp.
+pub(crate) fn ln_gamma(x: f64) -> f64 {
+    libm::lgamma(x)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,25 +153,15 @@ mod tests {
         close(normal_cdf(1.0, 0.0, 1.0), 0.841_344_746_068_542_9);
         close(normal_pdf(0.0, 0.0, 1.0), 0.398_942_280_401_432_7);
     }
-}
-
-/// ln|Gamma(x)| from the fdlibm/musl `lgamma` (< 1 ulp, exactly 0 at x = 1 and x = 2).
-///
-/// Excel's cached GAMMALN values are the correctly rounded ones (T-0926 eval evidence:
-/// `GAMMALN_GAMMALNPRECISE.xlsx`, e.g. GAMMALN(1) = 0, GAMMALN(4) = ln 6), which the Lanczos
-/// approximation in `statrs` misses by a few ulp.
-pub(crate) fn ln_gamma(x: f64) -> f64 {
-    libm::lgamma(x)
-}
-
-#[cfg(test)]
-mod ln_gamma_tests {
-    use super::ln_gamma;
 
     #[test]
-    fn exact_at_one_and_two_and_ln_factorials() {
+    fn ln_gamma_exact_points() {
         assert_eq!(ln_gamma(1.0), 0.0);
         assert_eq!(ln_gamma(2.0), 0.0);
         assert_eq!(ln_gamma(4.0).to_bits(), 6.0_f64.ln().to_bits());
+        // Gamma(1/2) = sqrt(pi)
+        close(ln_gamma(0.5), 0.572_364_942_924_700_1);
+        // ln(170!) = ln Gamma(171), a large argument
+        close(ln_gamma(171.0), 706.573_062_245_787_5);
     }
 }
