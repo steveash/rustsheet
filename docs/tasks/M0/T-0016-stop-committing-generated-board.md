@@ -13,7 +13,7 @@ depends_on: []
 PRs no longer conflict on `docs/tasks/BOARD.md`.
 
 ## Context
-On 2026-10-04 most merged PRs (#44, #46, the T-0015 tasks PR) hit a BOARD.md conflict because the
+On 2026-10-04 most merged PRs (#44, #46, and the PR that filed this task) hit a BOARD.md conflict because the
 generated file is committed and every task change rewrites its counts. Each conflict costs a
 merge, a regenerate, a `make check` and a CI cycle.
 

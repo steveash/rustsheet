@@ -23,9 +23,9 @@ Gates do not change by tier: `make check`, CI and every applicable reviewer must
 - [ ] Task front matter gains `tier: sonnet | opus` (default `opus`), validated by `scripts/tasks.py`; `make next-task TIER=<tier>` filters on it; docs/process/task-format.md documents the rubric (sonnet: size S, clear acceptance criteria, evidence already exists, no spec, no protected paths, no numeric fitting; else opus).
 - [ ] Every open task gets a tier (planner/gap-triager assign it for new tasks).
 - [ ] Escalation protocol in the work-loop skill: a sonnet run that fails `make check` twice on the same cause, gets REQUEST_CHANGES twice, or judges the task beyond it pushes its branch, appends a `## Handoff` section (what was tried, what failed, next step), sets `tier: opus`, and stops. Opus runs prefer handed-off tasks.
-- [ ] Reviewer agents get explicit `model:` frontmatter: security, quality and architecture on Sonnet; Excel-fidelity and performance on Opus (decision record says why; revisit after a week).
 - [ ] docs/process/routines.md defines a sonnet worker and an opus worker (replacing the functions/critical-lane pair; both use the critical-lane order, one task in flight per lane), and a sonnet run may take up to 3 tier-sonnet tasks per session.
 - [ ] Decision record for the protected-path changes; `make check` green; reviewers approve.
 
 ## Out of scope
-Changing gates; creating or editing routines (the owner updates them from routines.md).
+Changing gates. Creating or editing routines: after merge the owner re-applies
+docs/process/routines.md (prompt, model and schedule per routine). Reviewer model choice is T-0022.
