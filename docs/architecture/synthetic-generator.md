@@ -475,10 +475,12 @@ Every pool entry has an `edge_class` id. A literal is drawn as
 - **Integers at boundaries**: `2^31−1`, `2^31`, `2^32`, `2^53−1`, `2^53`, `2^53+1` (not
   representable), `1e15`, `999999999999999` (15 nines), `9999999999999999` (16 nines,
   display and rounding), `1e21` (display switches to scientific).
-- **Extremes** [20]: `1.79769313486232E+308` (Excel's documented max),
+- **Extremes** [20]: `1.79769313486232E+308` (Excel's documented max; compute it or store it as a
+  cell value: a formula *literal* ≥ 1E+308 makes Excel reject the workbook, see
+  `docs/excel-semantics/numbers.md`),
   `2.2250738585072E-308` (min positive normal; Excel does **not** support denormals),
   `1e-307`, `5e-324` (if it can be produced by computation: must flush to 0), and
-  overflow producers (`1e308*10` → `#NUM!`).
+  overflow producers (`1e307*100` → `#NUM!`).
 - **FP traps**: `0.1`, `0.2`, `0.3`, `1.1`, `43.1-43.2` (the Microsoft example: displays
   `0.899999999999999` for `=(43.1-43.2)+1`), `0.000123456789012345` (the 15-significant-
   digit truncation example), `1.333+1.225-1.333-1.225` (close-to-zero compensation since
