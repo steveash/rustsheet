@@ -3,7 +3,7 @@ id: T-0913
 title: "DROP/TAKE/FILTER/SEQUENCE: empty or invalid dynamic-array results are #VALUE!, not #CALC!"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P2
 size: S
 depends_on: []
