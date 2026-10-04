@@ -25,11 +25,16 @@ Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 
 ## Number → text conversion uses 15 significant digits
-Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 135
+Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 136
 `CONCAT` probes equal C's `%.15g`; `(a/b*b)&""` round-trips to the integer in 100 of 100). The
-mismatches are notation only: the exponent is uppercase (`-2.22044604925031E-16`), `1e-15` is
-written in full (`0.000000000000001`, `LEN` 17), and subnormal results print `0` (see below).
-Where Excel switches to E notation is not yet measured. `TEXT(x,"0.000…")` also pads after 15
+12 others: `1e307*100` → `#NUM!`; subnormals print `0` (`1e-307/10`, `2^-1074`, see below); the
+exponent is uppercase (`-2.22044604925031E-16`, `5.55111512312578E-17`, `1E+21`); and Excel stays
+in fixed notation where `%.15g` would switch: `123456789012345678` → "123456789012345000",
+`1e15+0.3` → "1000000000000000", `9999999999999999` → "9999999999999990" and `2^53+1` →
+"9007199254740990" (digits past 15 are zeros), `1e-5` → "0.00001", `1e-15` → "0.000000000000001"
+(`LEN` 17). So the switch to E notation lies between 1.23E+17 and 1E+21 for large values and
+between 2.22E-16 and 1E-15 for small ones. Snapping does not apply inside the CONCAT argument:
+`CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
 significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
 Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04.
@@ -61,6 +66,7 @@ Status: VERIFIED
 ## Formula literals of 1E+308 or more are invalid
 Rule: Excel's largest typeable number is 9.99999999999999E+307. A workbook whose formula text
 contains a literal ≥ 1E+308 (`=1E+308`, `=A2-1E+308`) is rejected on load by Excel for the web
+(observed there only; the inputs are not committed because Excel cannot load them)
 ("unsupportedWorkbook"); compute such values instead (`=10^308`, `=1E+307*10`). Probe and
 generator inputs avoid these literals for that reason.
 Evidence: T-0009 single-cell workbooks sent to excel-graph, 2026-10-04: `=1E+308`, `=1E+308-1`,

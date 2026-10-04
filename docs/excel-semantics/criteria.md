@@ -3,23 +3,28 @@
 ## "<>text" counts non-text cells
 Rule: `COUNTIF(range,"<>x")` counts every cell not equal to `x`: numbers, booleans, errors and blanks included.
 Evidence: smoke/criteria Sheet1!C6 (hand-computed, well-known Excel behavior). probes/criteria-grammar
-has no `"<>text"` cell, so this is still unprobed (T-0011 adds one) (its C5 `"<>"` = 6 counts every non-blank cell,
-the empty-string cell included).
+has no `"<>text"` cell, so this is still unprobed; T-0011 adds one. (Its C5 `"<>"` = 6 counts
+every non-blank cell, the empty-string cell included.)
 Status: UNVERIFIED (probe pending)
 Implemented in: functions::criteria::result_is_not_equal_to_string
 
 ## Wildcard text matching
-Rule: `*`, `?` and `~` escapes (`~*`, `~?`, `~~`) match whole text values, case-insensitively; non-text never matches.
-A trailing lone `~` is a literal tilde (`"abc~"` does not match "abc").
-Evidence: smoke/criteria Sheet1!C1,C3,C4,C10,C11 (hand); probes/criteria-grammar C8 (`"abc~"` → 0),
-C9 (`"*"` → 4: the four text cells including "" and the text "#N/A"; the number and TRUE excluded),
-C10 (`"a?c"` → 1). `~*`/`~?` escapes and case-insensitivity are not covered yet (T-0011).
-Oracle: excel-graph, 2026-10-04.
+Rule: `*` and `?` match whole text values; non-text never matches; the pattern `"abc~"` does not
+match "abc".
+Evidence: probes/criteria-grammar C8 (`"abc~"` → 0), C9 (`"*"` → 4: the four text cells including
+"" and the text "#N/A"; the number and TRUE excluded), C10 (`"a?c"` → 1). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+
+## Wildcard escapes, case and trailing tilde
+Rule (hypothesis): `~*`, `~?`, `~~` escape the wildcard characters, matching is case-insensitive,
+and a trailing lone `~` is a literal tilde (so `"abc~"` would match the text "abc~").
+Evidence: smoke/criteria Sheet1!C1,C3,C4,C10,C11 (hand). Probe cells: T-0011.
+Status: UNVERIFIED (probe pending)
 Implemented in: functions::criteria::wildcard_text_matcher
 
 ## D-function plain-text equality matches by prefix
-Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF. Criteria text is trimmed first.
+Rule: in DSUM/DCOUNT/DGET/... a plain text criterion (no operator, no wildcard) matches cells that *start with* it ("ab" matches "abc"); every other part of the grammar is shared with COUNTIF. (That criteria text is trimmed first
+is still a hypothesis; T-0011 probes it.)
 Evidence: probes/criteria-grammar C11 (`DCOUNTA` with criterion "ab" over ab, abc, xab → 2).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
