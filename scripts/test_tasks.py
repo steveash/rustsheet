@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -61,8 +62,6 @@ class GitTaskIds(unittest.TestCase):
 
 class NewTask(unittest.TestCase):
     def run_new(self, *argv: str) -> tuple[int, list[Path]]:
-        import tempfile
-
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
