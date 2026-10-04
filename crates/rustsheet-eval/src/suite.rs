@@ -7,6 +7,8 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use serde::Deserialize;
 use walkdir::WalkDir;
 
+use crate::xlsx_snapshot::WorkbookSnapshot;
+
 /// What kind of files a suite contains.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -162,6 +164,15 @@ fn default_include() -> Vec<String> {
 }
 fn default_true() -> bool {
     true
+}
+
+impl SuiteManifest {
+    /// Whether an xlsx case without an oracle sidecar is scored against its own cached values.
+    /// The runner and `rustsheet-eval cases` (used by the oracle fill) share this one rule.
+    #[must_use]
+    pub fn trusts_cached_values(&self, snapshot: &WorkbookSnapshot) -> bool {
+        self.use_cached_values && (!self.require_excel_authored || snapshot.is_excel_authored())
+    }
 }
 
 #[derive(Debug, Clone)]

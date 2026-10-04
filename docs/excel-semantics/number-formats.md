@@ -1,7 +1,8 @@
 # Number formats (`TEXT` and cell formats)
 
 All evidence below is from Apache POI's format test workbooks, scored by the excel-graph oracle
-(sidecars in `eval/suites/poi/oracle/`, 2026-10-04). In each workbook `Tests!An` is
+(sidecars in `eval/suites/poi/oracle/`, 2026-10-04) and checked against the values desktop Excel
+cached in the same workbooks where it saved them. In each workbook `Tests!An` is
 `=TEXT(Cn, Bn)` (TextFormatTests: `=TEXT(Cn, ";;;"&Bn)`), so `Bn` is the format and `Cn` the value.
 
 ## An empty format string returns empty text
@@ -27,15 +28,40 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
-- An elapsed token after a plain `s` gives values that look wrong but are Excel's:
-  `s:m" @ hour "[hh]` → "53:23 @ hour 1293" (A8), "4:3 @ hour 108" (A18), "0:0 @ hour 12" (A28);
-  `s" secs and "[m]" mins"` → "53 secs and 77581 mins" (A9), A19 and A29 likewise. A hypothesis
-  that fits all 10 cells: the elapsed token then measures the seconds component as days plus
-  half a day (hours = (sec + 0.5)·24; 53.376 → 1293.02 h = 77581 min). The mechanism is
-  UNVERIFIED; the cell values are verified.
-Evidence: poi/ElapsedFormatTests.xlsx A2:A51.
-Status: VERIFIED (values); UNVERIFIED (the `s`-then-elapsed mechanism)
+Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
+workbook agree).
+Status: VERIFIED
 Tasks: T-0934
+
+## CONFLICTING: elapsed token after a plain `s`
+Excel for the web and desktop Excel disagree; neither is golden until an excel-desktop probe on
+current Microsoft 365 decides (decision 0019). `s:m" @ hour "[hh]` and `s" secs and "[m]" mins"`:
+
+| cell | Excel for the web | desktop Excel (cached in the workbook) |
+|---|---|---|
+| A8 | "53:23 @ hour 1293" | "53:23 @ hour 75" |
+| A9 | "53 secs and 77581 mins" | "53 secs and 4523 mins" |
+| A18 | "4:3 @ hour 108" | "4:3 @ hour 02" |
+| A19 | "4 secs and 6480 mins" | "4 secs and 123 mins" |
+| A28 | "0:0 @ hour 12" | "0:0 @ hour 00" |
+| A29 | "0 secs and 720 mins" | "0 secs and 0 mins" |
+
+A38/A39 and A48/A49 are the negated A18/A19 and A8/A9. The desktop values are the ordinary
+elapsed totals; the web values fit hours = (sec + 0.5)·24, which looks like a web renderer bug.
+The cells stay pending (dropped from the sidecar by the fill's conflict check).
+Evidence: poi/ElapsedFormatTests.xlsx A8:A49 (oracle: excel-graph 2026-10-04; workbook cached values).
+Status: CONFLICTING (web vs desktop; excel-desktop probe pending)
+Tasks: T-0934
+
+## CONFLICTING: lowercase `e` exponent in a format
+Excel for the web returns `#VALUE!` for `TEXT` with a lowercase-`e` scientific format; the Mac Excel
+2008 (12.0) that saved the workbook cached real strings: `|#,e-#|` on 123456.789 → "|1e5|" (A2),
+`|#,######.####|e-|#|` → "|123,456.789|e|0|" (A10), `|#,e-#|` on 1.23456789E-05 → "|1e-5|" (A42).
+238 of the workbook's 249 cells are of this kind and stay pending. Uppercase `E` formats agree
+(see below).
+Evidence: poi/NumberFormatApproxTests.xlsx Tests!A2:A39, A42 onward (oracle: excel-graph
+2026-10-04; workbook cached values).
+Status: CONFLICTING (web vs desktop; excel-desktop probe pending)
 
 ## Conditional sections
 Rule: a format with a single `[cond]` section that does not match prints the number in General

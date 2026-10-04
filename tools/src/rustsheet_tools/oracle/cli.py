@@ -16,20 +16,18 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime as dt
-import fnmatch
 import hashlib
 import json
 import subprocess
 import sys
 import tempfile
-import tomllib
 from pathlib import Path
 from typing import Any
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
-from rustsheet_tools.snapshot import snapshot
+from rustsheet_tools.snapshot import eval_binary, formula_values, snapshot
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -48,10 +46,11 @@ def _recalc_cached(backend: Any, xlsx: bytes) -> tuple[dict[str, dict[str, Any]]
     cache_dir.mkdir(parents=True, exist_ok=True)
     out = cache_dir / f"{sha}.xlsx"
     meta = cache_dir / f"{sha}.meta.json"
+    canaried = embed_canary(xlsx)  # first, so refusals also apply to results cached before them
     if out.exists() and meta.exists():
         with contextlib.suppress(OracleError):  # entries without a passing canary are recomputed
             return checked_values(out), OracleInfo(**json.loads(meta.read_text())), sha
-    data, info = backend.recalc(embed_canary(xlsx))
+    data, info = backend.recalc(canaried)
     out.write_bytes(data)
     try:
         values = checked_values(out)
@@ -87,53 +86,25 @@ def cmd_recalc(args: argparse.Namespace) -> int:
     return 0
 
 
-def _glob_match(rel: str, pattern: str) -> bool:
-    """Approximates the harness's globset match for the `**/x` and `x` patterns suites use."""
-    return fnmatch.fnmatch(rel, pattern) or (
-        pattern.startswith("**/") and fnmatch.fnmatch(rel.rsplit("/", 1)[-1], pattern[3:])
+def _suite_cases(suite: str) -> list[dict[str, Any]]:
+    """The suite's cases as the harness discovers them (`rustsheet-eval cases`, see main.rs)."""
+    out = subprocess.run(
+        [str(eval_binary()), "--root", str(repo_root()), "cases", suite],
+        check=True,
+        capture_output=True,
+        text=True,
     )
+    cases: list[dict[str, Any]] = json.loads(out.stdout)
+    return cases
 
 
-def _suite_cases(suite: str) -> tuple[dict[str, Any], list[tuple[Path, Path]]]:
-    """(manifest, [(case, sidecar)]) the way `rustsheet-eval` discovers them (suite.rs `cases`)."""
-    sdir = repo_root() / "eval" / "suites" / suite
-    manifest = tomllib.loads((sdir / "suite.toml").read_text())
-    if "fetch" in manifest:  # fetched suites live in the cache, like Suite::root()
-        root = repo_root() / "eval" / ".cache" / "suites" / manifest["name"]
-    else:
-        root = (sdir / manifest.get("root", "cases")).resolve()
-    ext = ".xlsx" if manifest["kind"] == "xlsx" else ".case.json"
-    include, exclude = manifest.get("include", ["**/*"]), manifest.get("exclude", [])
-    out = []
-    for case in sorted(root.rglob(f"*{ext}")):
-        rel = case.relative_to(root).as_posix()
-        if case.name.startswith("~$") or not any(_glob_match(rel, p) for p in include):
-            continue
-        if any(_glob_match(rel, p) for p in exclude):
-            continue
-        mirror = sdir / manifest["oracle_dir"] / rel if manifest.get("oracle_dir") else case
-        out.append((case, _sidecar(mirror)))
-    return manifest, out
-
-
-def _sidecar(path: Path) -> Path:
-    """`foo.xlsx` / `foo.xlsm` / `foo.case.json` → `foo.oracle.json` (suite.rs `oracle_sidecar`)."""
-    stem = path.name.removesuffix(".case.json").removesuffix(".xlsx").removesuffix(".xlsm")
-    return path.with_name(f"{stem}.oracle.json")
-
-
-def _skip_reason(manifest: dict[str, Any], case: Path, include_cached: bool) -> str | None:
+def _skip_reason(case: dict[str, Any], include_cached: bool) -> str | None:
     """Why an xlsx case needs no oracle run: unreadable, nothing to score, or cached values trusted."""
-    try:
-        snap = snapshot(case)
-    except subprocess.CalledProcessError as e:  # the harness cannot read it either (import bug)
-        return f"rustsheet-eval cannot snapshot it ({(e.stderr or '').strip()[:120]})"
-    if not any(c.get("formula") for sheet in snap["sheets"] for c in sheet["cells"].values()):
+    if case.get("unreadable"):
+        return f"rustsheet-eval cannot read it ({case['unreadable'][:120]})"
+    if case.get("formula_cells") == 0:
         return "no formula cells"
-    trusted = manifest.get("use_cached_values") and (
-        snap.get("excel_authored") or not manifest.get("require_excel_authored", True)
-    )
-    if trusted and not include_cached:
+    if case.get("trusts_cached_values") and not include_cached:
         return "cached values already trusted (Excel-authored); use --include-cached to override"
     return None
 
@@ -145,13 +116,13 @@ def cmd_fill(args: argparse.Namespace) -> int:
     ok, why = backend.available()
     if not ok:
         sys.exit(f"{backend.name} unavailable: {why}")
-    manifest, cases = _suite_cases(args.suite)
     done = failed = skipped = 0
-    for case, sidecar in cases[: args.limit or None]:
+    for entry in _suite_cases(args.suite)[: args.limit or None]:
+        case, sidecar = Path(entry["path"]), Path(entry["sidecar"])
         if sidecar.exists() and not args.force:
             continue
         if not case.name.endswith(".case.json"):
-            reason = _skip_reason(manifest, case, args.include_cached)
+            reason = _skip_reason(entry, args.include_cached)
             if reason:
                 skipped += 1
                 print(f"skip {case.name}: {reason}", file=sys.stderr)
@@ -178,6 +149,8 @@ def cmd_fill(args: argparse.Namespace) -> int:
         }
         if spec:
             _report_hand_disagreements(case, spec, values)
+        else:
+            _drop_desktop_conflicts(case, values)
         sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps(oracle, indent=1, sort_keys=True) + "\n")
         done += 1
@@ -192,6 +165,39 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
         got = values.get(sheet, {}).get(a1)
         if got is not None and got != hand:
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
+
+
+def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """Coarse filter, not scoring: last-digit float noise between Excel builds is not a conflict."""
+    if a.get("t") == b.get("t") == "n":
+        x, y = float(a["v"]), float(b["v"])
+        return abs(x - y) > 1e-9 * max(abs(x), abs(y), 1e-300)
+    return a != b
+
+
+def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> int:
+    """Removes cells where Excel for the web contradicts the values Microsoft Excel cached in the
+    workbook, so they stay pending until an excel-desktop probe decides (T-0019 review: lowercase-e
+    TEXT formats and elapsed tokens after `s` give #VALUE!/odd values on the web only)."""
+    try:
+        snap = snapshot(case)
+    except subprocess.CalledProcessError:
+        return 0
+    if not (snap.get("application") or "").startswith("Microsoft"):
+        return 0  # cached by POI, LibreOffice, a generator...: no Excel evidence to conflict with
+    cached = formula_values(snap)
+    dropped = 0
+    for sheet, cells in values.items():
+        for a1 in list(cells):
+            mine = cached.get(sheet, {}).get(a1)
+            if mine is not None and _materially_differ(cells[a1], mine):
+                print(
+                    f"CONFLICT {case.name} {sheet}!{a1}: web={cells[a1]} desktop={mine} (left pending)",
+                    file=sys.stderr,
+                )
+                del cells[a1]
+                dropped += 1
+    return dropped
 
 
 def main() -> None:

@@ -7,6 +7,7 @@
 //! rustsheet-eval update-baseline                # ratchet baselines up (refuses regressions)
 //! rustsheet-eval show <case-id> [--all]         # per-cell detail for one case
 //! rustsheet-eval snapshot <file.xlsx>           # dump stored formulas/values as JSON
+//! rustsheet-eval cases <suite>                  # cases + sidecar paths as JSON (for tools)
 //! ```
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
@@ -23,7 +24,7 @@ use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
-use rustsheet_eval::suite::{BaselineMode, FetchState, Suite};
+use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
 use rustsheet_eval::xlsx_snapshot::read_snapshot;
 
 #[derive(Parser)]
@@ -95,6 +96,67 @@ enum Cmd {
     },
     /// Print the stored formulas/values of an xlsx as JSON.
     Snapshot { path: PathBuf },
+    /// Print one suite's cases as JSON, as the harness discovers them: case and sidecar paths
+    /// and, for xlsx cases, what an oracle fill needs to know (tools call this instead of
+    /// re-implementing discovery).
+    Cases { suite: String },
+}
+
+/// One line of `rustsheet-eval cases`.
+#[derive(serde::Serialize)]
+struct CaseListing {
+    id: String,
+    path: PathBuf,
+    sidecar: PathBuf,
+    /// xlsx only: number of formula cells (0 = nothing to score).
+    formula_cells: Option<usize>,
+    /// xlsx only: the suite scores this case against its own cached values when it has no sidecar.
+    trusts_cached_values: Option<bool>,
+    /// xlsx only: why the workbook could not be read.
+    unreadable: Option<String>,
+}
+
+fn cmd_cases(root: &Path, name: &str) -> Result<ExitCode> {
+    let suites = Suite::load_all(&root.join("eval/suites"))?;
+    let Some(suite) = suites.iter().find(|s| s.manifest.name == name) else {
+        bail!("suite {name} not found");
+    };
+    if suite.fetch_state() == FetchState::NotFetched {
+        bail!("suite {name} is not fetched (run `rustsheet-eval fetch --suite {name}`)");
+    }
+    let xlsx = suite.manifest.kind == SuiteKind::Xlsx;
+    let mut out = Vec::new();
+    for case in suite.cases()? {
+        let mut listing = CaseListing {
+            id: case.id,
+            path: case.path,
+            sidecar: case.sidecar,
+            formula_cells: None,
+            trusts_cached_values: None,
+            unreadable: None,
+        };
+        if xlsx {
+            match std::fs::read(&listing.path)
+                .map_err(anyhow::Error::from)
+                .and_then(|b| read_snapshot(&b).map_err(anyhow::Error::from))
+            {
+                Ok(snap) => {
+                    listing.formula_cells = Some(
+                        snap.sheets
+                            .iter()
+                            .flat_map(|s| s.cells.values())
+                            .filter(|c| c.formula.is_some())
+                            .count(),
+                    );
+                    listing.trusts_cached_values = Some(suite.manifest.trusts_cached_values(&snap));
+                }
+                Err(e) => listing.unreadable = Some(e.to_string()),
+            }
+        }
+        out.push(listing);
+    }
+    println!("{}", serde_json::to_string_pretty(&out)?);
+    Ok(ExitCode::SUCCESS)
 }
 
 fn find_root(explicit: Option<PathBuf>) -> Result<PathBuf> {
@@ -265,16 +327,7 @@ fn run() -> Result<ExitCode> {
     if let Cmd::Snapshot { path } = &cli.cmd {
         let bytes = std::fs::read(path).with_context(|| path.display().to_string())?;
         let snapshot = read_snapshot(&bytes)?;
-        // Tools decide "would the suite trust these cached values?" from this flag rather than
-        // re-implementing the rule (CLAUDE.md: tools never re-implement xlsx value parsing).
-        let mut json = serde_json::to_value(&snapshot)?;
-        if let Some(obj) = json.as_object_mut() {
-            obj.insert(
-                "excel_authored".into(),
-                serde_json::Value::Bool(snapshot.is_excel_authored()),
-            );
-        }
-        println!("{}", serde_json::to_string_pretty(&json)?);
+        println!("{}", serde_json::to_string_pretty(&snapshot)?);
         return Ok(ExitCode::SUCCESS);
     }
     let root = find_root(cli.root)?;
@@ -339,6 +392,7 @@ fn run() -> Result<ExitCode> {
             allow_regressions,
         } => cmd_check(&root, &sel, Some(allow_regressions)),
         Cmd::Show { case_id, all } => cmd_show(&root, &case_id, all),
+        Cmd::Cases { suite } => cmd_cases(&root, &suite),
         Cmd::Snapshot { .. } => unreachable!("handled above"),
     }
 }

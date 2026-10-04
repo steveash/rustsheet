@@ -8,7 +8,6 @@ C	poi/45544.xlsx	104
 C	poi/46535.xlsx	342
 C	poi/46536.xlsx	3
 C	poi/47737.xlsx	11
-C	poi/47804.xlsx	9
 C	poi/47813.xlsx	1440
 C	poi/47889.xlsx	0
 C	poi/48539.xlsx	27
@@ -73,7 +72,7 @@ C	poi/DataTableCities.xlsx	14
 C	poi/DataValidationEvaluations.xlsx	1
 C	poi/DateFormatNumberTests.xlsx	10
 C	poi/DateFormatTests.xlsx	45
-C	poi/ElapsedFormatTests.xlsx	234
+C	poi/ElapsedFormatTests.xlsx	224
 C	poi/ExcelTables.xlsx	6
 C	poi/ForShifting.xlsx	31
 C	poi/FormatChoiceTests.xlsx	51
@@ -90,7 +89,7 @@ C	poi/LIBRE_OFFICE-128382-0.xlsx	0
 C	poi/MatrixFormulaEvalTestData.xlsx	266
 C	poi/NewStyleConditionalFormattings.xlsx	304
 C	poi/NewlineInFormulas.xlsx	9
-C	poi/NumberFormatApproxTests.xlsx	249
+C	poi/NumberFormatApproxTests.xlsx	11
 C	poi/NumberFormatTests.xlsx	325
 C	poi/SampleSS.strict.xlsx	0
 C	poi/SampleSS.xlsx	1
@@ -349,7 +348,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A176
 F	poi/ElapsedFormatTests.xlsx	Tests!A177
 F	poi/ElapsedFormatTests.xlsx	Tests!A178
 F	poi/ElapsedFormatTests.xlsx	Tests!A179
-F	poi/ElapsedFormatTests.xlsx	Tests!A18
 F	poi/ElapsedFormatTests.xlsx	Tests!A180
 F	poi/ElapsedFormatTests.xlsx	Tests!A181
 F	poi/ElapsedFormatTests.xlsx	Tests!A182
@@ -360,7 +358,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A186
 F	poi/ElapsedFormatTests.xlsx	Tests!A187
 F	poi/ElapsedFormatTests.xlsx	Tests!A188
 F	poi/ElapsedFormatTests.xlsx	Tests!A189
-F	poi/ElapsedFormatTests.xlsx	Tests!A19
 F	poi/ElapsedFormatTests.xlsx	Tests!A190
 F	poi/ElapsedFormatTests.xlsx	Tests!A191
 F	poi/ElapsedFormatTests.xlsx	Tests!A192
@@ -395,8 +392,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A24
 F	poi/ElapsedFormatTests.xlsx	Tests!A25
 F	poi/ElapsedFormatTests.xlsx	Tests!A26
 F	poi/ElapsedFormatTests.xlsx	Tests!A27
-F	poi/ElapsedFormatTests.xlsx	Tests!A28
-F	poi/ElapsedFormatTests.xlsx	Tests!A29
 F	poi/ElapsedFormatTests.xlsx	Tests!A3
 F	poi/ElapsedFormatTests.xlsx	Tests!A32
 F	poi/ElapsedFormatTests.xlsx	Tests!A33
@@ -404,8 +399,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A34
 F	poi/ElapsedFormatTests.xlsx	Tests!A35
 F	poi/ElapsedFormatTests.xlsx	Tests!A36
 F	poi/ElapsedFormatTests.xlsx	Tests!A37
-F	poi/ElapsedFormatTests.xlsx	Tests!A38
-F	poi/ElapsedFormatTests.xlsx	Tests!A39
 F	poi/ElapsedFormatTests.xlsx	Tests!A4
 F	poi/ElapsedFormatTests.xlsx	Tests!A40
 F	poi/ElapsedFormatTests.xlsx	Tests!A41
@@ -415,8 +408,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A44
 F	poi/ElapsedFormatTests.xlsx	Tests!A45
 F	poi/ElapsedFormatTests.xlsx	Tests!A46
 F	poi/ElapsedFormatTests.xlsx	Tests!A47
-F	poi/ElapsedFormatTests.xlsx	Tests!A48
-F	poi/ElapsedFormatTests.xlsx	Tests!A49
 F	poi/ElapsedFormatTests.xlsx	Tests!A5
 F	poi/ElapsedFormatTests.xlsx	Tests!A50
 F	poi/ElapsedFormatTests.xlsx	Tests!A51
@@ -450,7 +441,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A76
 F	poi/ElapsedFormatTests.xlsx	Tests!A77
 F	poi/ElapsedFormatTests.xlsx	Tests!A78
 F	poi/ElapsedFormatTests.xlsx	Tests!A79
-F	poi/ElapsedFormatTests.xlsx	Tests!A8
 F	poi/ElapsedFormatTests.xlsx	Tests!A80
 F	poi/ElapsedFormatTests.xlsx	Tests!A81
 F	poi/ElapsedFormatTests.xlsx	Tests!A82
@@ -461,7 +451,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A86
 F	poi/ElapsedFormatTests.xlsx	Tests!A87
 F	poi/ElapsedFormatTests.xlsx	Tests!A88
 F	poi/ElapsedFormatTests.xlsx	Tests!A89
-F	poi/ElapsedFormatTests.xlsx	Tests!A9
 F	poi/ElapsedFormatTests.xlsx	Tests!A90
 F	poi/ElapsedFormatTests.xlsx	Tests!A91
 F	poi/ElapsedFormatTests.xlsx	Tests!A92

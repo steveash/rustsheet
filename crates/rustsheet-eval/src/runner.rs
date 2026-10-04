@@ -297,9 +297,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                     .cloned()
             }),
         )
-    } else if suite.manifest.use_cached_values
-        && (!suite.manifest.require_excel_authored || snapshot.is_excel_authored())
-    {
+    } else if suite.manifest.trusts_cached_values(&snapshot) {
         let app = snapshot.application.clone().unwrap_or_default();
         let cached = cached_lookup(&snapshot);
         (

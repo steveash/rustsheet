@@ -17,7 +17,9 @@ Tasks: T-0123
 
 ## External reference with no cached data is `#VALUE!`
 Rule: `SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)` whose externalBook part holds no
-cached data returns `#VALUE!`, not `#REF!`. Seen on Excel for the web only.
+cached data returns `#VALUE!`, not `#REF!`. Seen on Excel for the web only (the workbook was
+written by Apache POI, so it holds no desktop evidence); needs excel-desktop confirmation before
+anyone relies on it.
 Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (oracle: excel-graph, 2026-10-04).
 Status: VERIFIED (web)
 Tasks: T-0124

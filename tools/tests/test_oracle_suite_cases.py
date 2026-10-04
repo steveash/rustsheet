@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -9,68 +10,56 @@ import pytest
 from rustsheet_tools.oracle import cli
 
 
-def _suite(root: Path, toml: str, files: list[str]) -> None:
-    sdir = root / "eval" / "suites" / "s"
-    sdir.mkdir(parents=True)
-    (sdir / "suite.toml").write_text(toml)
-    for f in files:
-        p = root / f
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_bytes(b"")
+def test_suite_cases_come_from_the_harness(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    listing = [{"id": "s/a.xlsx", "path": "/c/a.xlsx", "sidecar": "/s/oracle/a.oracle.json"}]
+    seen: list[list[str]] = []
 
+    def fake_run(cmd: list[str], **_: Any) -> subprocess.CompletedProcess[str]:
+        seen.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(listing))
 
-@pytest.fixture
-def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(cli, "repo_root", lambda: tmp_path)
-    return tmp_path
-
-
-def test_local_suite_sidecar_sits_next_to_the_case(repo: Path) -> None:
-    _suite(repo, 'name = "s"\nkind = "spec"\nroot = "cases"\n', ["eval/suites/s/cases/a.case.json"])
-    _, cases = cli._suite_cases("s")
-    case = repo / "eval/suites/s/cases/a.case.json"
-    assert cases == [(case, case.with_name("a.oracle.json"))]
-
-
-def test_fetched_suite_uses_the_cache_and_oracle_dir_mirror(repo: Path) -> None:
-    toml = (
-        'name = "s"\nkind = "xlsx"\nexclude = ["**/crash-*"]\noracle_dir = "oracle"\n'
-        '[fetch]\nurl = "u"\nrev = "r"\n'
-    )
-    _suite(repo, toml, ["eval/.cache/suites/s/sub/b.xlsx", "eval/.cache/suites/s/crash-1.xlsx"])
-    _, cases = cli._suite_cases("s")
-    assert cases == [
-        (repo / "eval/.cache/suites/s/sub/b.xlsx", repo / "eval/suites/s/oracle/sub/b.oracle.json")
-    ]
-
-
-def _snap(formula: bool, excel: bool) -> dict[str, Any]:
-    cell = {"formula": "=1" if formula else None, "value": {"t": "n", "v": 1}}
-    return {"excel_authored": excel, "sheets": [{"name": "S", "cells": {"A1": cell}}]}
+    monkeypatch.setattr(cli, "eval_binary", lambda: Path("rustsheet-eval"))
+    monkeypatch.setattr(cli.subprocess, "run", fake_run)
+    assert cli._suite_cases("s") == listing
+    assert seen == [["rustsheet-eval", "--root", str(tmp_path), "cases", "s"]]
 
 
 @pytest.mark.parametrize(
-    ("formula", "excel", "include_cached", "skipped"),
+    ("entry", "include_cached", "skipped"),
     [
-        (False, False, False, True),  # nothing to score
-        (True, True, False, True),  # cached values already trusted
-        (True, True, True, False),  # calibration run
-        (True, False, False, False),  # the pending case the oracle exists for
+        ({"formula_cells": 0, "trusts_cached_values": False}, False, True),  # nothing to score
+        ({"formula_cells": 3, "trusts_cached_values": True}, False, True),  # cached values trusted
+        ({"formula_cells": 3, "trusts_cached_values": True}, True, False),  # calibration run
+        ({"formula_cells": 3, "trusts_cached_values": False}, False, False),  # what the oracle is for
+        ({"unreadable": "missing workbook rels"}, True, True),  # the harness cannot read it either
     ],
 )
-def test_skip_reason(
-    monkeypatch: pytest.MonkeyPatch, formula: bool, excel: bool, include_cached: bool, skipped: bool
-) -> None:
-    monkeypatch.setattr(cli, "snapshot", lambda _: _snap(formula, excel))
-    manifest = {"use_cached_values": True, "require_excel_authored": True}
-    assert (cli._skip_reason(manifest, Path("x.xlsx"), include_cached) is not None) is skipped
+def test_skip_reason(entry: dict[str, Any], include_cached: bool, skipped: bool) -> None:
+    assert (cli._skip_reason(entry, include_cached) is not None) is skipped
 
 
-def test_unreadable_workbook_is_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+def _cached(app: str, a1: dict[str, Any]) -> dict[str, Any]:
+    cells = {k: {"formula": "=X()", "formula_kind": {"kind": "normal"}, "value": v} for k, v in a1.items()}
+    return {"application": app, "sheets": [{"name": "S", "cells": cells}]}
 
-    def boom(_: Path) -> dict[str, Any]:
-        raise subprocess.CalledProcessError(1, ["rustsheet-eval"], stderr="missing workbook rels")
 
-    monkeypatch.setattr(cli, "snapshot", boom)
-    reason = cli._skip_reason({}, Path("x.xlsx"), include_cached=False)
-    assert reason is not None and "missing workbook rels" in reason
+def test_web_values_that_contradict_desktop_excel_are_left_pending(monkeypatch: pytest.MonkeyPatch) -> None:
+    desktop = {"A1": {"t": "s", "v": "|1e5|"}, "A2": {"t": "n", "v": 0.1}, "A3": {"t": "n", "v": 1.0}}
+    monkeypatch.setattr(cli, "snapshot", lambda _: _cached("Microsoft Macintosh Excel", desktop))
+    web = {
+        "S": {
+            "A1": {"t": "e", "v": "#VALUE!"},
+            "A2": {"t": "n", "v": 0.1 + 1e-17},
+            "A3": {"t": "n", "v": 2.0},
+        }
+    }
+    assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 2
+    assert web == {"S": {"A2": {"t": "n", "v": 0.1 + 1e-17}}}  # last-digit noise is kept
+
+
+def test_non_excel_cached_values_never_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "snapshot", lambda _: _cached("Apache POI", {"A1": {"t": "n", "v": 0}}))
+    web = {"S": {"A1": {"t": "n", "v": 5.0}}}
+    assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 0
+    assert web == {"S": {"A1": {"t": "n", "v": 5.0}}}

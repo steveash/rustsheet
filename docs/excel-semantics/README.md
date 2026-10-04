@@ -14,6 +14,9 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   Excel-authored workbook cell), never memory. Rules marked **UNVERIFIED** are hypotheses with
   a pending probe case and must not be implemented until confirmed. When the oracle disproves a
   hypothesis, rewrite the rule from the evidence and say what was wrong.
+- **Excel for the web vs desktop.** When the excel-graph oracle contradicts values desktop Excel
+  cached in the same workbook, the entry is `Status: CONFLICTING` with both sets of values, the
+  cells stay pending, and nothing is implemented until an excel-desktop probe decides (decision 0019).
 - **Deliberate deviations** are allowed only where CLAUDE.md directive 5 (untrusted input)
   requires one: resource, recursion or allocation limits Excel does not have, no I/O from
   formulas (e.g. WEBSERVICE, external links), no panics. Directive 5 wins over fidelity.
@@ -29,6 +32,6 @@ Files by area: `numbers.md`, `dates.md`, `coercion.md`, `errors.md`, `criteria.m
 ## <short rule name>
 Rule: one sentence.
 Evidence: <suite/case> <Sheet!A1> (oracle: excel-graph 16.0.xxxx) …
-Status: VERIFIED | UNVERIFIED (probe pending) | DEVIATION (decision NNNN)
+Status: VERIFIED | UNVERIFIED (probe pending) | CONFLICTING (web vs desktop) | DEVIATION (decision NNNN)
 Implemented in: path::fn (once implemented)
 ```

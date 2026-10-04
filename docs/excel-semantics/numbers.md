@@ -107,7 +107,7 @@ relative tolerance that decides whether an exponent "is" 1/odd (only exactly 1/3
 Implemented in: `arithmetic::power` (POWER and `^`).
 
 ## SIN / COS at multiples of 90° return k·6.1257422745431E-17
-Rule: where the exact answer is 0, `SIN`/`COS` of k·π/2 return ±k·6.1257422745431E-17 (15
+Rule: where the exact answer is 0, `SIN`/`COS` of k·π/2 return ±k·6.1257422745431E-17 (14
 significant digits), not IEEE/libm's ±k·6.123233995736766E-17: `COS(RADIANS(90))` =
 6.1257422745431E-17, `SIN(RADIANS(180))` = 1.22514845490862E-16, `COS(RADIANS(270))` =
 -1.83772268236293E-16, `SIN(RADIANS(360))` = -2.45029690981724E-16, and so on up to k = 7 (630°). Of the workbook's
