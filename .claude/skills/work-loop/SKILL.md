@@ -25,8 +25,9 @@ otherwise launch the `planner` agent for the current milestone (docs/milestones.
 again. If still nothing, write a short note in `docs/status.md` and stop.
 
 ## 2. Branch & claim
-`git checkout -b agent/<lane>/T-XXXX-<slug>`. Set the task's `status: in-progress` in its file
-(commit it as the first commit on the branch).
+`git checkout -b agent/<lane>/T-XXXX-<slug>`. Set the task's `status: in-progress` in its file,
+commit it as the first commit on the branch and **push it at once**: the pushed branch is the claim
+that keeps other workers off this task (`make next-task` skips claimed tasks; decision 0018).
 
 ## 3. Understand before coding
 Read the task, linked spec, related code (search for existing helpers — never re-implement),
@@ -54,7 +55,8 @@ and stop.
 Stop and hand the task to `opus` when `make check` fails twice on the same cause, a reviewer
 requests changes twice, or you judge the task beyond you (numeric fitting, unclear evidence, a
 design question). Then: push the branch; append a `## Handoff` section to the task file (what you
-tried, what failed with the exact error or finding, what you would do next); set `tier: opus` and
+tried, what failed with the relevant error or finding, what you would do next; redact secrets and
+never paste environment or oracle-credential output); set `tier: opus` and
 `status: todo`; commit and push that to the branch; open the PR as draft if one does not exist;
 stop. Do not keep retrying: a handoff costs less than a third failed attempt. Opus runs never
 escalate; they block per step 5 instead.

@@ -32,7 +32,7 @@ Changing gates. Creating or editing routines: after merge the owner re-applies
 docs/process/routines.md (prompt, model and schedule per routine). Reviewer model choice is T-0022.
 
 ## Outcome
-`tier` field (required on open tasks; 17 backfilled `sonnet`, 24 `opus`), `make next-task TIER=`
+`tier` field (required on open tasks; 13 backfilled `sonnet`, 28 `opus`), `make next-task TIER=`
 with handoffs first, `make new-task TIER=`; tier rubric in task-format.md; work-loop step 5b
 (escalate by Handoff); routines.md defines the sonnet worker (hourly, up to 3 tasks) and opus worker
 (every 2 h, handoffs first, runs planner/gap-triager); reviewer models are T-0022. Decision 0018.

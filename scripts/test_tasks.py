@@ -75,6 +75,12 @@ class NewTask(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(files, [Path("docs/tasks/M0/T-0004-do-a-thing.md")])
 
+    def test_tier_is_written_and_validated(self) -> None:
+        code, files = self.run_new("--milestone", "M0", "--lane", "harness", "--title", "t", "--tier", "sonnet")
+        self.assertEqual((code, len(files)), (0, 1))
+        code, files = self.run_new("--milestone", "M0", "--lane", "harness", "--title", "t", "--tier", "haiku")
+        self.assertEqual((code, files), (2, []))
+
     def test_rejects_bad_arguments(self) -> None:
         for argv in (("--milestone", "M0x", "--lane", "harness", "--title", "x"),
                      ("--milestone", "M0", "--lane", "nope", "--title", "x"),
@@ -110,20 +116,63 @@ class Tiers(unittest.TestCase):
         self.assertEqual(sum("tier=" in e for e in errors), 2)
         self.assertTrue(any("T-0001" in e for e in errors) and any("T-0002" in e for e in errors))
 
+    def run_next(self, root: Path, tier: str, claims: tuple[set[str], set[str]] = (set(), set())) -> str:
+        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                mock.patch.object(tasks.sys, "argv", ["tasks.py", "next", "--tier", tier]), \
+                mock.patch.object(tasks, "branch_claims", return_value=claims), \
+                mock.patch("builtins.print") as printed:
+            tasks.main()
+        return str(printed.call_args[0][0]).split()[0]
+
     def test_next_filters_by_tier_and_takes_handoffs_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_task(root, "T-0001", tier="opus")
             write_task(root, "T-0002", tier="opus", body="\n## Handoff\nsonnet run stuck on X\n")
             write_task(root, "T-0003", tier="sonnet")
-            out = []
-            for tier in ("opus", "sonnet"):
-                with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
-                        mock.patch.object(tasks.sys, "argv", ["tasks.py", "next", "--tier", tier]), \
-                        mock.patch("builtins.print") as printed:
-                    tasks.main()
-                out.append(printed.call_args[0][0].split()[0])
-        self.assertEqual(out, ["T-0002", "T-0003"])
+            self.assertEqual([self.run_next(root, "opus"), self.run_next(root, "sonnet")], ["T-0002", "T-0003"])
+
+    def test_handoff_seen_only_on_its_branch_moves_the_task_to_opus(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="opus")
+            write_task(root, "T-0002", tier="sonnet")  # main still says sonnet
+            write_task(root, "T-0003", tier="sonnet")
+            claims = ({"T-0002"}, {"T-0002"})  # pushed branch with a Handoff
+            self.assertEqual(self.run_next(root, "opus", claims), "T-0002")
+            self.assertEqual(self.run_next(root, "sonnet", claims), "T-0003")
+
+    def test_claimed_task_is_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="sonnet")
+            write_task(root, "T-0002", tier="sonnet")
+            self.assertEqual(self.run_next(root, "sonnet", ({"T-0001"}, set())), "T-0002")
+
+
+class BranchClaims(unittest.TestCase):
+    def test_recent_branches_claim_old_ones_only_count_with_a_handoff(self) -> None:
+        import time
+
+        now = int(time.time())
+        refs = (
+            f"refs/remotes/origin/agent/engine/T-0001-new {now - 60}\n"
+            f"refs/remotes/origin/agent/engine/T-0002-stale {now - 9 * 86400}\n"
+            f"refs/remotes/origin/agent/harness/T-0003-handed {now - 9 * 86400}\n"
+        )
+
+        def fake_run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            if args[0] == "for-each-ref":
+                return mock.Mock(stdout=refs)
+            if args[0] == "ls-tree":
+                tid = args[3].rsplit("/", 1)[-1][:6]
+                return mock.Mock(stdout=f"docs/tasks/M0/{tid}-x.md\n")
+            body = "\n## Handoff\nstuck\n" if "T-0003" in args[1] else "plain\n"
+            return mock.Mock(stdout=body)
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
+            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}))
 
 
 class Slug(unittest.TestCase):

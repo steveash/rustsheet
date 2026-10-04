@@ -6,7 +6,7 @@ lane: quality
 status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
