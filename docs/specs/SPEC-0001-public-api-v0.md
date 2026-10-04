@@ -236,6 +236,8 @@ exception. `RefError`/`EditError`/`LoadError` map to `rs.RefError`, `rs.EditErro
 `rs.LoadError` (all subclass `rs.RustSheetError`). `Workbook.open`, `edit` exit and `save_xlsx`
 release the GIL. The existing `Model`/`UserModel` bindings stay until pytest parity (T-0104).
 
+As implemented (T-0104): `wb.changes` is a plain dict (`inputs`/`values`/`sheets`); `edit()` buffers ops and applies them as one `Workbook::edit` at `__exit__`, so op errors surface at the end of the `with` block (sheet ops address sheets by name); `rs.SaveError`, `Workbook.from_bytes` and `to_xlsx_bytes` are additions.
+
 ## Alternatives considered
 - **Wrap `UserModel`:** brings selection/clipboard/undo UI concerns and its own diff queue; rejected (api-design principle 7).
 - **Positional sheet indexes:** simpler, but unstable across delete/reorder and unsafe for bindings; rejected.
