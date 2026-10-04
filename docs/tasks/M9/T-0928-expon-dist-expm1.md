@@ -3,7 +3,7 @@ id: T-0928
 title: "EXPON.DIST cumulative: use -expm1 for small lambda*x (6 known failures)"
 milestone: M9
 lane: functions
-status: todo
+status: in-progress
 priority: P3
 size: S
 depends_on: []
