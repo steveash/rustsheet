@@ -1256,8 +1256,8 @@ impl Model {
                 message: "Invalid time".to_string(),
             };
         }
-        let secs = total_seconds.rem_euclid(SECONDS_PER_DAY_F64);
-        CalcResult::Number(secs / SECONDS_PER_DAY_F64)
+        // Excel divides, then drops whole days (TIME_HOUR_MINUTE_SECOND.xlsx D3/D14).
+        CalcResult::Number((total_seconds / SECONDS_PER_DAY_F64) % 1.0)
     }
 
     // -----------------------------------------------------------------------
