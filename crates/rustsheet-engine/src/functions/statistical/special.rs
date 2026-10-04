@@ -145,3 +145,24 @@ mod tests {
         close(normal_pdf(0.0, 0.0, 1.0), 0.398_942_280_401_432_7);
     }
 }
+
+/// ln|Gamma(x)| from the fdlibm/musl `lgamma` (< 1 ulp, exactly 0 at x = 1 and x = 2).
+///
+/// Excel's cached GAMMALN values are the correctly rounded ones (T-0926 eval evidence:
+/// `GAMMALN_GAMMALNPRECISE.xlsx`, e.g. GAMMALN(1) = 0, GAMMALN(4) = ln 6), which the Lanczos
+/// approximation in `statrs` misses by a few ulp.
+pub(crate) fn ln_gamma(x: f64) -> f64 {
+    libm::lgamma(x)
+}
+
+#[cfg(test)]
+mod ln_gamma_tests {
+    use super::ln_gamma;
+
+    #[test]
+    fn exact_at_one_and_two_and_ln_factorials() {
+        assert_eq!(ln_gamma(1.0), 0.0);
+        assert_eq!(ln_gamma(2.0), 0.0);
+        assert_eq!(ln_gamma(4.0).to_bits(), 6.0_f64.ln().to_bits());
+    }
+}
