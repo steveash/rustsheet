@@ -21,34 +21,15 @@ fn last_day_of_feb(year: i32) -> u32 {
     }
 }
 
-// Maps a date serial number (date part only) to the Excel (year, month, day) it
-// represents, replicating Excel's fictional 29 February 1900 (the "1900
-// leap-year bug") so DAYS360 matches Excel for early-1900 serials. Returns
-// `None` when the serial is outside `0..=MAXIMUM_DATE_SERIAL_NUMBER`, which Excel
-// reports as `#NUM!`.
-fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
-    if !(0..=MAXIMUM_DATE_SERIAL_NUMBER as i64).contains(&serial) {
-        return None;
-    }
-    // Excel renders serial 0 as "0 January 1900"; DAYS360 reads it as day 0 of
-    // January 1900 (not 31 December 1899), which is what makes it antisymmetric.
+// DAYS360's view of a date serial: the shared Excel mapping (with the fictitious
+// 29 February 1900) plus serial 0, which Excel renders as "0 January 1900" and DAYS360
+// reads as day 0 of January 1900 (not 31 December 1899), which is what makes it
+// antisymmetric. `None` outside `0..=MAXIMUM_DATE_SERIAL_NUMBER`, which Excel reports as `#NUM!`.
+fn days360_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
     if serial == 0 {
         return Some((1900, 1, 0));
     }
-    // Excel's non-existent 29 February 1900 (serial 60).
-    if serial == 60 {
-        return Some((1900, 2, 29));
-    }
-    let date = if serial < 60 {
-        // Below the fictional leap day Excel counts serial 1 as 1900-01-01, so
-        // serial N is N days after 1899-12-31 (serial 0).
-        let base = chrono::NaiveDate::from_ymd_opt(1899, 12, 31)?;
-        base + chrono::Duration::days(serial)
-    } else {
-        // From 1900-03-01 (serial 61) onwards IronCalc's serials match Excel.
-        from_excel_date(serial).ok()?
-    };
-    Some((date.year(), date.month(), date.day()))
+    excel_serial_to_ymd(serial)
 }
 
 // Converts a raw numeric argument to a date serial (date part) for DAYS360,
@@ -139,10 +120,11 @@ fn seconds_of_day(v: f64) -> i64 {
 // functions (DAY, MONTH, YEAR, HOUR, MINUTE, SECOND).
 // ---------------------------------------------------------------------------
 
-// Generate DAY / MONTH / YEAR helpers – simply convert the serial number to a
-// NaiveDate and return the requested component as a number.
+// Generate DAY / MONTH / YEAR helpers – convert the serial number with
+// `excel_serial_to_ymd` and return the component at tuple index `$part`
+// (0 = year, 1 = month, 2 = day) as a number.
 macro_rules! date_part_fn {
-    ($name:ident, $method:ident) => {
+    ($name:ident, $part:tt) => {
         pub(crate) fn $name(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
             if args.len() != 1 {
                 return CalcResult::new_args_number_error(cell);
@@ -150,14 +132,12 @@ macro_rules! date_part_fn {
             // Convert the serial number to a NaiveDate and return the requested
             // component. Broadcasts element-wise over ranges/arrays. Uses the free
             // function from_excel_date to avoid borrowing self in the closure.
-            self.apply_number_unary(
-                &args[0],
-                cell,
-                |f| match from_excel_date(f.floor() as i64) {
-                    Ok(date) => Ok(date.$method() as f64),
-                    Err(_) => Err(Error::NUM),
-                },
-            )
+            self.apply_number_unary(&args[0], cell, |f| {
+                match excel_serial_to_ymd(f.floor() as i64) {
+                    Some(ymd) => Ok(f64::from(ymd.$part)),
+                    None => Err(Error::NUM),
+                }
+            })
         }
     };
 }
@@ -199,7 +179,7 @@ use crate::{
     constants::EXCEL_DATE_BASE,
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
-    formatter::dates::from_excel_date,
+    formatter::dates::{excel_serial_to_ymd, from_excel_date},
     model::Model,
 };
 
@@ -636,9 +616,9 @@ impl Model {
     // -----------------------------------------------------------------------
     // Auto-generated DATE part helpers (DAY / MONTH / YEAR)
     // -----------------------------------------------------------------------
-    date_part_fn!(fn_day, day);
-    date_part_fn!(fn_month, month);
-    date_part_fn!(fn_year, year);
+    date_part_fn!(fn_day, 2);
+    date_part_fn!(fn_month, 1);
+    date_part_fn!(fn_year, 0);
 
     pub(crate) fn fn_eomonth(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
@@ -659,10 +639,9 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
+        if let Err(e) = self.excel_date(serial_number, cell) {
+            return e;
+        }
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -670,6 +649,18 @@ impl Model {
                 message: "Function DAY parameter 1 value is too large.".to_string(),
             };
         }
+        // Take year and month from Excel's exact view of the serial so the round trip through
+        // `date_to_serial_number` stays on one calendar (the stand-in `date` is a day early below
+        // serial 60).
+        let Some(date) = excel_serial_to_ymd(serial_number)
+            .and_then(|(y, m, _)| chrono::NaiveDate::from_ymd_opt(y, m, 1))
+        else {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Invalid date".to_string(),
+            };
+        };
 
         let months = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => {
@@ -1515,11 +1506,11 @@ impl Model {
                 "Out of range parameters for date".to_string(),
             )
         };
-        let start = match excel_serial_to_ymd(start_serial) {
+        let start = match days360_serial_to_ymd(start_serial) {
             Some(ymd) => ymd,
             None => return out_of_range(),
         };
-        let end = match excel_serial_to_ymd(end_serial) {
+        let end = match days360_serial_to_ymd(end_serial) {
             Some(ymd) => ymd,
             None => return out_of_range(),
         };
