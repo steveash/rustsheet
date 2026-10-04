@@ -317,7 +317,7 @@ fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, Snapshot
                 _ => {}
             },
             Event::End(e) if e.local_name().as_ref() == "valueMetadata" => {
-                in_value_metadata = false
+                in_value_metadata = false;
             }
             Event::Eof => break,
             _ => {}
