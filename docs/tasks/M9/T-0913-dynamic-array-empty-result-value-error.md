@@ -28,6 +28,7 @@ Suspected root cause: a shared "empty array" path emits `Error::CALC`; the cache
 SEQUENCE numeric ULP cells (I9..M14) in the same workbook.
 
 ## Outcome
+Follow-up: T-0921 (unify vm decoding). T-0904 is superseded by this finding.
 Root cause was the eval snapshot reader, not the engine: Excel caches `#CALC!` as `#VALUE!` + rich-value
 `vm`; the engine's `#CALC!` was already correct. `xlsx_snapshot` now decodes `vm` (errorType 13/8).
 8 cells fixed, 0 regressions. Recorded in `docs/excel-semantics/arrays.md`. T-0904 (blocked, premise

@@ -299,7 +299,9 @@ fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, Snapshot
             _ => {}
         }
     }
-    // `<valueMetadata>` blocks, one `<rc v=..>` each.
+    // `<valueMetadata>` blocks, one `<rc v=..>` each. Shortcut: `rc v` is used directly as the
+    // `<rv>` index, skipping futureMetadata's `rvb i` hop; they coincide in every evidence workbook.
+    // TODO(T-0921): resolve through futureMetadata and share one decoder with the importer.
     let mut out = Vec::new();
     let mut reader = Reader::from_str(&meta);
     let mut in_value_metadata = false;
