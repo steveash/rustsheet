@@ -5,7 +5,7 @@ use crate::test::util::new_empty_model;
 // Data used by most tests:
 //   A1:A5 = 1,2,3,4,5     (criteria range)
 //   B1:B5 = 10,20,30,40,50 (sum range)
-fn numeric_model() -> crate::model::Model<'static> {
+fn numeric_model() -> crate::model::Model {
     let mut model = new_empty_model();
     for (i, (a, b)) in [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50)]
         .iter()

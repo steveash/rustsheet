@@ -10,7 +10,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_findb(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.fn_find(args, cell)
     }

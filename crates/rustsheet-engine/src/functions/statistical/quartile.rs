@@ -5,7 +5,7 @@ use crate::{
 
 use super::percentile::percentile_inc_impl;
 
-impl<'a> Model<'a> {
+impl Model {
     // QUARTILE.INC(array, quart) — quart: 0..4 → 0%, 25%, 50%, 75%, 100%
     pub(crate) fn fn_quartile_inc(
         &mut self,

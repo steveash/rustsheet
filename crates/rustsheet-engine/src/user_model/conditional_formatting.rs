@@ -5,7 +5,7 @@ use crate::{
 
 use super::{common::UserModel, history::Diff};
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     /// Returns all CF rules for the given sheet, sorted by priority descending.
     ///
     /// Each entry carries its storage `index`; see

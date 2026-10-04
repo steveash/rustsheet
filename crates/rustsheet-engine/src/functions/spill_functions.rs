@@ -129,7 +129,7 @@ fn extract_key_column(data: &[Vec<ArrayNode>], expected_len: usize) -> Option<Ve
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Evaluate a node and convert the result to a 2-D array of ArrayNodes.
     /// Handles Range references, inline Arrays, and scalar values.
     pub(crate) fn eval_to_array(

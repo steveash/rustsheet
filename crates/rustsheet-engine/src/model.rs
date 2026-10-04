@@ -173,7 +173,7 @@ fn formula_value_to_spill_value(v: &FormulaValue) -> SpillValue {
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
-pub struct Model<'a> {
+pub struct Model {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
     /// A list of parsed formulas. They are shared, not owned, so that the
@@ -185,11 +185,11 @@ pub struct Model<'a> {
     /// An optimization to lookup strings faster
     pub(crate) shared_strings: HashMap<String, usize>,
     /// An instance of the parser
-    pub(crate) parser: Parser<'a>,
+    pub(crate) parser: Parser,
     /// The locale of the model
-    pub(crate) locale: &'a Locale,
+    pub(crate) locale: &'static Locale,
     /// The language used
-    pub(crate) language: &'a Language,
+    pub(crate) language: &'static Language,
     /// The timezone used to evaluate the model
     pub(crate) tz: Tz,
     /// The view id. A view consists of a selected sheet and ranges.
@@ -253,7 +253,7 @@ pub struct CellIndex {
     pub column: i32,
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
         self.last_variable_id += 1;
@@ -1585,7 +1585,7 @@ impl<'a> Model<'a> {
     ///
     /// See also:
     /// * [Model::to_bytes]
-    pub fn from_bytes(s: &[u8], language_id: &'a str) -> Result<Model<'a>, String> {
+    pub fn from_bytes(s: &[u8], language_id: &str) -> Result<Model, String> {
         let workbook: Workbook =
             bitcode::decode(s).map_err(|e| format!("Error parsing workbook: {e}"))?;
         Model::from_workbook(workbook, language_id)
@@ -1609,7 +1609,7 @@ impl<'a> Model<'a> {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model<'_>, String> {
+    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model, String> {
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 

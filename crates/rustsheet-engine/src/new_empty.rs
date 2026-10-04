@@ -40,7 +40,7 @@ fn is_valid_sheet_name(name: &str) -> bool {
     !name.is_empty() && name.chars().count() <= 31 && !name.contains(&invalid[..])
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Creates a new worksheet. Note that it does not check if the name or the sheet_id exists
     fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
         let mut views = HashMap::new();
@@ -613,11 +613,11 @@ impl<'a> Model<'a> {
 
     /// Creates a new workbook with one empty sheet
     pub fn new_empty(
-        name: &'a str,
-        locale_id: &'a str,
-        timezone: &'a str,
-        language_id: &'a str,
-    ) -> Result<Model<'a>, String> {
+        name: &str,
+        locale_id: &str,
+        timezone: &str,
+        language_id: &str,
+    ) -> Result<Model, String> {
         let tz = Tz::parse(timezone)?;
         let locale = match get_locale(locale_id) {
             Ok(l) => l,

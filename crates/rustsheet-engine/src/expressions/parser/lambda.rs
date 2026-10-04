@@ -1,7 +1,7 @@
 use crate::expressions::parser::{ExpectedTokens, NamedVariable, Node, Parser};
 use crate::expressions::token::TokenType;
 
-impl<'a> Parser<'a> {
+impl Parser {
     // Called after `LAMBDA` and the opening `(` have been consumed.
     // Parses:  (param | '[' param ']')*, body ')' ['(' call_args ')']
     // Returns LambdaDefKind, or LambdaCallKind if immediately invoked.

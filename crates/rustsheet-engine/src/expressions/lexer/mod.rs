@@ -101,24 +101,24 @@ pub enum LexerMode {
 
 /// Tokenize an input
 #[derive(Clone)]
-pub struct Lexer<'a> {
+pub struct Lexer {
     position: usize,
     next_token_position: Option<usize>,
     len: usize,
     chars: Vec<char>,
     mode: LexerMode,
-    locale: &'a Locale,
-    language: &'a Language,
+    locale: &'static Locale,
+    language: &'static Language,
 }
 
-impl<'a> Lexer<'a> {
+impl Lexer {
     /// Creates a new `Lexer` that returns the tokens of a formula.
     pub fn new(
         formula: &str,
         mode: LexerMode,
-        locale: &'a Locale,
-        language: &'a Language,
-    ) -> Lexer<'a> {
+        locale: &'static Locale,
+        language: &'static Language,
+    ) -> Lexer {
         let chars: Vec<char> = formula.chars().collect();
         let len = chars.len();
         Lexer {
@@ -138,12 +138,12 @@ impl<'a> Lexer<'a> {
     }
 
     /// Sets the locale
-    pub fn set_locale(&mut self, locale: &'a Locale) {
+    pub fn set_locale(&mut self, locale: &'static Locale) {
         self.locale = locale;
     }
 
     /// Sets the language
-    pub fn set_language(&mut self, language: &'a Language) {
+    pub fn set_language(&mut self, language: &'static Language) {
         self.language = language;
     }
 

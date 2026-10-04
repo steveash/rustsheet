@@ -113,12 +113,12 @@ trait SequenceDetector {
     fn detect(&self, values: &[String]) -> Option<Progression>;
 }
 
-struct NumericProgressionDetector<'a> {
-    locale: &'a Locale,
+struct NumericProgressionDetector {
+    locale: &'static Locale,
 }
 
-impl<'a> NumericProgressionDetector<'a> {
-    fn new(locale: &'a Locale) -> Self {
+impl NumericProgressionDetector {
+    fn new(locale: &'static Locale) -> Self {
         Self { locale }
     }
 
@@ -180,7 +180,7 @@ impl<'a> NumericProgressionDetector<'a> {
     }
 }
 
-impl SequenceDetector for NumericProgressionDetector<'_> {
+impl SequenceDetector for NumericProgressionDetector {
     fn detect(&self, values: &[String]) -> Option<Progression> {
         let numbers = &self.locale.numbers;
 
@@ -243,11 +243,11 @@ impl SequenceDetector for NumericProgressionDetector<'_> {
     }
 }
 
-struct SuffixedNumberDetector<'a> {
-    locale: &'a Locale,
+struct SuffixedNumberDetector {
+    locale: &'static Locale,
 }
 
-impl SuffixedNumberDetector<'_> {
+impl SuffixedNumberDetector {
     fn suffix_index(value: &str) -> usize {
         let digits = value
             .chars()
@@ -262,7 +262,7 @@ impl SuffixedNumberDetector<'_> {
     }
 }
 
-impl SequenceDetector for SuffixedNumberDetector<'_> {
+impl SequenceDetector for SuffixedNumberDetector {
     fn detect(&self, values: &[String]) -> Option<Progression> {
         if values.len() < 2 {
             return None;
@@ -308,12 +308,12 @@ impl SequenceDetector for SuffixedNumberDetector<'_> {
     }
 }
 
-struct DateProgressionDetector<'a> {
-    locale: &'a Locale,
+struct DateProgressionDetector {
+    locale: &'static Locale,
     case_style: DateCaseStyle,
 }
 
-impl<'a> DateProgressionDetector<'a> {
+impl DateProgressionDetector {
     fn normalize(s: &str) -> String {
         let s = s.trim_matches(['.', ' ']);
         let mut result = String::with_capacity(s.len());
@@ -355,7 +355,7 @@ impl<'a> DateProgressionDetector<'a> {
     }
 }
 
-impl<'a> SequenceDetector for DateProgressionDetector<'a> {
+impl SequenceDetector for DateProgressionDetector {
     fn detect(&self, values: &[String]) -> Option<Progression> {
         if values.len() < 2 {
             return None;
@@ -380,7 +380,7 @@ impl<'a> SequenceDetector for DateProgressionDetector<'a> {
 
 pub(crate) fn detect_progression(
     values: &[String],
-    locale: &Locale,
+    locale: &'static Locale,
     case_seed: &str,
 ) -> Option<Progression> {
     if let Some(progression) = NumericProgressionDetector::new(locale).detect(values) {

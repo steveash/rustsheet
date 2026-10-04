@@ -259,14 +259,14 @@ pub enum Node {
 }
 
 #[derive(Clone)]
-pub struct Parser<'a> {
-    lexer: lexer::Lexer<'a>,
+pub struct Parser {
+    lexer: lexer::Lexer,
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
     context: CellReferenceRC,
     tables: HashMap<String, Table>,
-    locale: &'a Locale,
-    language: &'a Language,
+    locale: &'static Locale,
+    language: &'static Language,
     /// Completion hint for the position currently being parsed. The deepest
     /// frame that hits EOF stamps this onto its error. See `parse_at_cursor`.
     expecting_here: Vec<ExpectedTokens>,
@@ -278,24 +278,24 @@ pub struct Parser<'a> {
     trailing_name: Option<(String, usize)>,
 }
 
-pub fn new_parser_english<'a>(
+pub fn new_parser_english(
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
     tables: HashMap<String, Table>,
-) -> Parser<'a> {
+) -> Parser {
     let locale = get_default_locale();
     let language = get_default_language();
     Parser::new(worksheets, defined_names, tables, locale, language)
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn new(
         worksheets: Vec<String>,
         defined_names: Vec<DefinedNameS>,
         tables: HashMap<String, Table>,
-        locale: &'a Locale,
-        language: &'a Language,
-    ) -> Parser<'a> {
+        locale: &'static Locale,
+        language: &'static Language,
+    ) -> Parser {
         let lexer = lexer::Lexer::new("", lexer::LexerMode::A1, locale, language);
         let context = CellReferenceRC {
             sheet: worksheets.first().map_or("", |v| v).to_string(),
@@ -318,12 +318,12 @@ impl<'a> Parser<'a> {
         self.lexer.set_lexer_mode(mode)
     }
 
-    pub fn set_locale(&mut self, locale: &'a Locale) {
+    pub fn set_locale(&mut self, locale: &'static Locale) {
         self.locale = locale;
         self.lexer.set_locale(locale);
     }
 
-    pub fn set_language(&mut self, language: &'a Language) {
+    pub fn set_language(&mut self, language: &'static Language) {
         self.language = language;
         self.lexer.set_language(language);
     }

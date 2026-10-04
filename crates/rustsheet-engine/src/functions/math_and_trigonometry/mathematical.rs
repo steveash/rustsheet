@@ -10,7 +10,7 @@ use crate::{
 };
 use std::f64::consts::PI;
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {

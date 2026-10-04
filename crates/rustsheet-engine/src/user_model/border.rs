@@ -7,7 +7,7 @@ use super::{
     border_utils::is_max_border, common::BorderType, history::Diff, BorderArea, UserModel,
 };
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     fn update_single_cell_border(
         &mut self,
         border_area: &BorderArea,

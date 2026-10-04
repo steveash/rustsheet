@@ -74,7 +74,7 @@ pub enum MergeStructure {
     },
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// Merges the cells in `range` into a single merged cell anchored at its
     /// top-left corner:
     /// * at most one cell of the range may have content; if more than one does

@@ -10,11 +10,11 @@ use crate::language::get_language;
 use crate::locale::get_locale;
 use crate::types::Table;
 
-pub fn new_parser<'a>(
+pub fn new_parser(
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
     tables: HashMap<String, Table>,
-) -> Parser<'a> {
+) -> Parser {
     let locale = get_locale("fr").unwrap();
     let language = get_language("en").unwrap();
     Parser::new(worksheets, defined_names, tables, locale, language)

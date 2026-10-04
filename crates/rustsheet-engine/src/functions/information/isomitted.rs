@@ -4,7 +4,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_isomitted(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);

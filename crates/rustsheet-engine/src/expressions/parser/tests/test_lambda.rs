@@ -13,7 +13,7 @@ fn cell() -> CellReferenceRC {
     }
 }
 
-fn parser() -> crate::expressions::parser::Parser<'static> {
+fn parser() -> crate::expressions::parser::Parser {
     new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new())
 }
 

@@ -23,7 +23,7 @@ fn restarts(model: &Model) -> u32 {
     model.evaluation.restarts_in_last_evaluation
 }
 
-impl Model<'_> {
+impl Model {
     fn _cell_name(&self, cell: CellReferenceIndex) -> String {
         let column = (b'A' + (cell.column - 1) as u8) as char;
         format!("{column}{}", cell.row)

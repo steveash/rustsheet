@@ -16,7 +16,7 @@ fn random() -> f64 {
     Math::random()
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_rand(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if !args.is_empty() {
             return CalcResult::new_args_number_error(cell);

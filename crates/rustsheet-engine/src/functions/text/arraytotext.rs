@@ -6,7 +6,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     /// ARRAYTOTEXT(array, [format])
     /// format=0 (default, concise): values joined with "," (columns) and ";" (rows)
     /// format=1 (strict): same but wrapped in {} and strings are quoted

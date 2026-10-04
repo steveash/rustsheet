@@ -8,7 +8,7 @@ use crate::export::save_to_icalc;
 use crate::import::load_from_icalc;
 use crate::{export::save_to_xlsx, import::load_from_xlsx};
 
-pub fn new_empty_model<'a>() -> Model<'a> {
+pub fn new_empty_model() -> Model {
     Model::new_empty("model", "en", "UTC", "en").unwrap()
 }
 

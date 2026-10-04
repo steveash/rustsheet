@@ -150,7 +150,7 @@ pub(crate) fn cf_sqref_anchor(sqref: &str) -> Option<(i32, i32)> {
 // Model methods
 // ---------------------------------------------------------------------------
 
-impl<'a> Model<'a> {
+impl Model {
     /// Returns updated formula strings for all cells whose formulas reference
     /// cells inside `area`, excluding cells that are themselves inside `area`.
     /// Used during cut-paste to propagate the move to external observers.

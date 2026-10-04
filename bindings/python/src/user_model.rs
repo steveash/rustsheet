@@ -7,7 +7,7 @@ use xlsx::export::{save_to_icalc, save_to_xlsx};
 use xlsx::import;
 
 use crate::types::PyCellType;
-use crate::{area, cell_value_to_py, from_python, leak_str, py_to_color, to_py_err, to_python};
+use crate::{area, cell_value_to_py, from_python, py_to_color, to_py_err, to_python};
 
 use serde::Serialize;
 
@@ -29,7 +29,7 @@ struct NamedStyleEntry {
 /// undo/redo history and produces diffs for collaboration.
 #[pyclass(name = "UserModel")]
 pub struct PyUserModel {
-    pub model: UserModel<'static>,
+    pub model: UserModel,
 }
 
 #[pymethods]
@@ -37,10 +37,6 @@ impl PyUserModel {
     #[new]
     #[pyo3(signature = (name, locale="en", tz="UTC", language_id="en"))]
     pub fn new(name: &str, locale: &str, tz: &str, language_id: &str) -> PyResult<Self> {
-        let name = leak_str(name);
-        let locale = leak_str(locale);
-        let tz = leak_str(tz);
-        let language_id = leak_str(language_id);
         let model = UserModel::new_empty(name, locale, tz, language_id).map_err(to_py_err)?;
         Ok(PyUserModel { model })
     }
@@ -49,7 +45,6 @@ impl PyUserModel {
     #[staticmethod]
     #[pyo3(signature = (bytes, language_id="en"))]
     pub fn from_bytes(bytes: &[u8], language_id: &str) -> PyResult<Self> {
-        let language_id = leak_str(language_id);
         let model = UserModel::from_bytes(bytes, language_id).map_err(to_py_err)?;
         Ok(PyUserModel { model })
     }
@@ -58,7 +53,6 @@ impl PyUserModel {
     #[staticmethod]
     #[pyo3(signature = (file_path, locale="en", tz="UTC", language_id="en"))]
     pub fn from_xlsx(file_path: &str, locale: &str, tz: &str, language_id: &str) -> PyResult<Self> {
-        let language_id = leak_str(language_id);
         let model =
             import::load_from_xlsx(file_path, locale, tz, language_id).map_err(to_py_err)?;
         Ok(PyUserModel {
@@ -70,7 +64,6 @@ impl PyUserModel {
     #[staticmethod]
     #[pyo3(signature = (file_name, language_id="en"))]
     pub fn from_icalc(file_name: &str, language_id: &str) -> PyResult<Self> {
-        let language_id = leak_str(language_id);
         let model = import::load_from_icalc(file_name, language_id).map_err(to_py_err)?;
         Ok(PyUserModel {
             model: UserModel::from_model(model),

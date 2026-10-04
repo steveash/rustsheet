@@ -6,7 +6,7 @@ use crate::{
 
 use super::criteria::{build_criteria_with, normalize_database_criterion, CriteriaFlavor};
 
-impl<'a> Model<'a> {
+impl Model {
     // =DAVERAGE(database, field, criteria)
     pub(crate) fn fn_daverage(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 3 {

@@ -2,7 +2,7 @@
 
 use crate::Model;
 
-pub fn new_empty_model<'a>() -> Model<'a> {
+pub fn new_empty_model() -> Model {
     Model::new_empty("model", "de", "UTC", "de").unwrap()
 }
 

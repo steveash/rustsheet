@@ -125,9 +125,9 @@ struct CellXml {
     formula: Option<FormulaXml>,
 }
 
-struct SheetDataReader<'a, 'p> {
+struct SheetDataReader<'a> {
     sheet_name: &'a str,
-    parser: &'a mut Parser<'p>,
+    parser: &'a mut Parser,
     shared_strings: &'a mut Vec<String>,
 
     sheet_data: SheetData,
@@ -146,7 +146,7 @@ struct SheetDataReader<'a, 'p> {
     cell: Option<CellXml>,
 }
 
-impl SheetDataReader<'_, '_> {
+impl SheetDataReader<'_> {
     fn process(&mut self, event: &Event) -> Result<(), XlsxError> {
         match event {
             Event::Start(element) => {

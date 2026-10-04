@@ -26,7 +26,7 @@ fn red_fill() -> Dxf {
     }
 }
 
-fn is_red(model: &Model<'static>, row: i32, col: i32) -> bool {
+fn is_red(model: &Model, row: i32, col: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, col)
         .unwrap()
@@ -37,7 +37,7 @@ fn is_red(model: &Model<'static>, row: i32, col: i32) -> bool {
 }
 
 /// The formula stored internally for the (single) CF rule on sheet 0.
-fn stored_cf_formula(model: &Model<'static>) -> String {
+fn stored_cf_formula(model: &Model) -> String {
     match &model.workbook.worksheets[0].conditional_formatting[0].cf_rule {
         CfRule::Formula { formula, .. } => formula.clone(),
         other => panic!("expected a Formula rule, got {other:?}"),
@@ -45,7 +45,7 @@ fn stored_cf_formula(model: &Model<'static>) -> String {
 }
 
 /// The formula shown to the user for the (single) CF rule on sheet 0.
-fn displayed_cf_formula(model: &Model<'static>) -> String {
+fn displayed_cf_formula(model: &Model) -> String {
     let list = model.get_conditional_formatting_list(0).unwrap();
     match &list[0].cf_rule {
         CfRule::Formula { formula, .. } => formula.clone(),
@@ -53,7 +53,7 @@ fn displayed_cf_formula(model: &Model<'static>) -> String {
     }
 }
 
-fn model_with_column_a() -> Model<'static> {
+fn model_with_column_a() -> Model {
     let mut model = new_empty_model();
     for row in 1..=10 {
         model.set_user_input(0, row, 1, row.to_string()).unwrap();

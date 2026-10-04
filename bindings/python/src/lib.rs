@@ -90,10 +90,6 @@ pub(crate) fn area(
     }
 }
 
-pub(crate) fn leak_str(s: &str) -> &'static str {
-    Box::leak(s.to_owned().into_boxed_str())
-}
-
 // Local mirror of `rustsheet_engine::FmtSettings`, which does not implement Serialize
 #[derive(Serialize)]
 pub(crate) struct FmtSettings {
@@ -165,7 +161,6 @@ pub fn load_from_xlsx(
     tz: &str,
     language_id: &str,
 ) -> PyResult<PyModel> {
-    let language_id = leak_str(language_id);
     let model = import::load_from_xlsx(file_path, locale, tz, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
@@ -174,7 +169,6 @@ pub fn load_from_xlsx(
 #[pyfunction]
 #[pyo3(signature = (file_name, language_id="en"))]
 pub fn load_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyModel> {
-    let language_id = leak_str(language_id);
     let model = import::load_from_icalc(file_name, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
@@ -185,7 +179,6 @@ pub fn load_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyModel> 
 #[pyo3(signature = (bytes, language_id="en"))]
 pub fn load_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyModel> {
     let workbook: Workbook = bitcode::decode(bytes).map_err(to_py_err)?;
-    let language_id = leak_str(language_id);
     let model = Model::from_workbook(workbook, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
@@ -194,10 +187,6 @@ pub fn load_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyModel> {
 #[pyfunction]
 #[pyo3(signature = (name, locale="en", tz="UTC", language_id="en"))]
 pub fn create(name: &str, locale: &str, tz: &str, language_id: &str) -> PyResult<PyModel> {
-    let name = leak_str(name);
-    let locale = leak_str(locale);
-    let tz = leak_str(tz);
-    let language_id = leak_str(language_id);
     let model = Model::new_empty(name, locale, tz, language_id).map_err(to_py_err)?;
     Ok(PyModel { model })
 }
@@ -213,10 +202,6 @@ pub fn create_user_model(
     tz: &str,
     language_id: &str,
 ) -> PyResult<PyUserModel> {
-    let name = leak_str(name);
-    let locale = leak_str(locale);
-    let tz = leak_str(tz);
-    let language_id = leak_str(language_id);
     let model = UserModel::new_empty(name, locale, tz, language_id).map_err(to_py_err)?;
     Ok(PyUserModel { model })
 }
@@ -230,7 +215,6 @@ pub fn create_user_model_from_xlsx(
     tz: &str,
     language_id: &str,
 ) -> PyResult<PyUserModel> {
-    let language_id = leak_str(language_id);
     let model = import::load_from_xlsx(file_path, locale, tz, language_id).map_err(to_py_err)?;
     let model = UserModel::from_model(model);
     Ok(PyUserModel { model })
@@ -240,7 +224,6 @@ pub fn create_user_model_from_xlsx(
 #[pyfunction]
 #[pyo3(signature = (file_name, language_id="en"))]
 pub fn create_user_model_from_icalc(file_name: &str, language_id: &str) -> PyResult<PyUserModel> {
-    let language_id = leak_str(language_id);
     let model = import::load_from_icalc(file_name, language_id).map_err(to_py_err)?;
     let model = UserModel::from_model(model);
     Ok(PyUserModel { model })
@@ -252,7 +235,6 @@ pub fn create_user_model_from_icalc(file_name: &str, language_id: &str) -> PyRes
 #[pyo3(signature = (bytes, language_id="en"))]
 pub fn create_user_model_from_bytes(bytes: &[u8], language_id: &str) -> PyResult<PyUserModel> {
     let workbook: Workbook = bitcode::decode(bytes).map_err(to_py_err)?;
-    let language_id = leak_str(language_id);
     let model = Model::from_workbook(workbook, language_id).map_err(to_py_err)?;
     let user_model = UserModel::from_model(model);
     Ok(PyUserModel { model: user_model })

@@ -42,7 +42,7 @@ fn merge_is_contained(m: &MergedCell, row1: i32, column1: i32, row2: i32, column
         && m.column + m.width - 1 <= column2
 }
 
-impl<'a> UserModel<'a> {
+impl UserModel {
     // Validates the fill of `target` from `source` (both closed rectangles
     // `(first_row, first_column, last_row, last_column)` on `sheet`) against
     // the merged cells of the sheet and returns the resulting plan:

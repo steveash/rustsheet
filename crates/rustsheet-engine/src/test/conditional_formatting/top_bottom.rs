@@ -9,7 +9,7 @@ use crate::{cf_types::CfRuleInput, test::util::new_empty_model};
 // Bottom-3 threshold: 30 (rows 1–3  match  v <= 30)
 const VALUES: [i32; 10] = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
-fn model_with_values() -> crate::Model<'static> {
+fn model_with_values() -> crate::Model {
     let mut model = new_empty_model();
     for (i, &v) in VALUES.iter().enumerate() {
         model
@@ -38,7 +38,7 @@ fn bottom_n(rank: u32, percent: bool) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()

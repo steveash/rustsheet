@@ -79,7 +79,7 @@ fn check_valid_cell(row: i32, column: i32) -> Result<(), String> {
     Ok(())
 }
 
-impl Model<'_> {
+impl Model {
     /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.
     /// Only links in the worksheet are returned: they are the editable ones.
     /// Dynamic links created by formulas like HYPERLINK are not included (they

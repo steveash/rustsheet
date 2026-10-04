@@ -2304,7 +2304,7 @@ impl Function {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn evaluate_function(
         &mut self,
         kind: &Function,

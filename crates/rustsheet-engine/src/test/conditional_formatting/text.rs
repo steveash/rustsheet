@@ -26,7 +26,7 @@ const LANGS: [&str; 7] = [
     "Prolog",
 ];
 
-fn model_with_langs() -> crate::Model<'static> {
+fn model_with_langs() -> crate::Model {
     let mut model = new_empty_model();
     for (i, &lang) in LANGS.iter().enumerate() {
         model
@@ -46,7 +46,7 @@ fn text_rule(operator: TextOperator, value: &str) -> CfRuleInput {
     }
 }
 
-fn is_red(model: &crate::Model<'static>, row: i32) -> bool {
+fn is_red(model: &crate::Model, row: i32) -> bool {
     model
         .get_extended_style_for_cell(0, row, 1)
         .unwrap()

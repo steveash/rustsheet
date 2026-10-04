@@ -98,7 +98,7 @@ fn lu_decompose(mat: &mut [f64], n: usize) -> Result<(f64, Vec<usize>), ()> {
     Ok((sign, swaps))
 }
 
-impl<'a> Model<'a> {
+impl Model {
     // ── MDETERM ───────────────────────────────────────────────────────────────
 
     /// `=MDETERM(array)`

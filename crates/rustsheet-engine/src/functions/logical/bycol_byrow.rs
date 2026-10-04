@@ -20,7 +20,7 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     /// `=BYCOL(array, lambda)`
     ///
     /// Applies a LAMBDA to each column of `array`, returning a 1-row array of results.

@@ -137,7 +137,7 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     }
 }
 
-impl Model<'_> {
+impl Model {
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///

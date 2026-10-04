@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── TOCOL ─────────────────────────────────────────────────────────────────
 
     /// `=TOCOL(array, [ignore], [scan_by_col])`

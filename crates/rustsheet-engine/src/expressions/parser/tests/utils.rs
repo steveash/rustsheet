@@ -18,11 +18,11 @@ pub fn to_english_localized_string(t: &Node, cell_reference: &CellReferenceRC) -
     to_localized_string(t, cell_reference, locale, language)
 }
 
-pub fn new_parser<'a>(
+pub fn new_parser(
     worksheets: Vec<String>,
     defined_names: Vec<DefinedNameS>,
     tables: HashMap<String, Table>,
-) -> Parser<'a> {
+) -> Parser {
     let locale = get_default_locale();
     let language = get_default_language();
     Parser::new(worksheets, defined_names, tables, locale, language)

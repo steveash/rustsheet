@@ -594,7 +594,7 @@ pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
     }
 }
 
-impl<'a> Model<'a> {
+impl Model {
     fn get_date_serial(
         &mut self,
         node: &Node,

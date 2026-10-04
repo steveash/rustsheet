@@ -4,7 +4,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ENCODEURL(text)
     // Percent-encodes every byte of the UTF-8 representation of `text` except
     // the RFC 3986 unreserved characters: A-Z, a-z, 0-9, '-', '.', '_' and '~'.

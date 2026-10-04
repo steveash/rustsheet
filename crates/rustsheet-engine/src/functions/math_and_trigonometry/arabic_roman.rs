@@ -204,7 +204,7 @@ fn to_roman_with_form(n: u32, form: i32) -> Result<String, String> {
     Ok(s)
 }
 
-impl<'a> Model<'a> {
+impl Model {
     pub(crate) fn fn_roman(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);

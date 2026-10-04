@@ -13,7 +13,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     /// REGEXEXTRACT(text, regular_expression, [return_all])
     ///
     /// Returns the first substring of `text` that matches `regular_expression`.

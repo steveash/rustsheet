@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-impl<'a> Model<'a> {
+impl Model {
     // ── SUMPRODUCT ────────────────────────────────────────────────────────────
 
     /// `=SUMPRODUCT(array1, [array2], ...)`

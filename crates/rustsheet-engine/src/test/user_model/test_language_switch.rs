@@ -24,7 +24,7 @@ fn red_fill() -> Dxf {
     }
 }
 
-fn stored_cf_formula(model: &UserModel<'static>) -> String {
+fn stored_cf_formula(model: &UserModel) -> String {
     match &model.model.workbook.worksheets[0].conditional_formatting[0].cf_rule {
         CfRule::Formula { formula, .. } => formula.clone(),
         other => panic!("expected a Formula rule, got {other:?}"),
@@ -339,7 +339,7 @@ fn cf_formula_created_in_spanish_undo_redo() {
     };
     assert_eq!(formula, "=SI($A1>5,VERDADERO,FALSO)");
 
-    let is_red = |m: &UserModel<'static>, row: i32| {
+    let is_red = |m: &UserModel, row: i32| {
         m.model
             .get_extended_style_for_cell(0, row, 1)
             .unwrap()

@@ -277,7 +277,7 @@ fn compute_accrint(
     Ok(par * rate / freq * acc)
 }
 
-impl<'a> Model<'a> {
+impl Model {
     // ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])
     //
     // Canonical specification: Mayle, *Standard Securities Calculation Methods*

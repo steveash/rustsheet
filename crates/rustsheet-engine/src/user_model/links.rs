@@ -5,7 +5,7 @@ use crate::types::{Cell, Color, Link};
 
 use super::{common::UserModel, history::Diff};
 
-impl UserModel<'_> {
+impl UserModel {
     /// Returns the link attached to cell (`row`, `column`) or `None` if there isn't one.
     pub fn get_cell_link(&self, sheet: u32, row: i32, column: i32) -> Result<Option<Link>, String> {
         self.model.get_cell_link(sheet, row, column)
