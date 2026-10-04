@@ -10,6 +10,10 @@ answers; if any poisoned value survives, that workbook was not calculated and it
 rejected. The canary sheet is stripped before values reach a sidecar. Riding along in each
 workbook costs nothing extra and covers each result individually (no separate probe run).
 
+`embed_canary` is deliberately a package-*structure* writer (one sheet entry, relationship and
+content-type override), not a value parser: values are still decoded only by the Rust snapshot
+(decision 0006). Package shapes it does not recognise are refused, never guessed at.
+
 An extra sheet is invisible to formulas except through the sheet count, so workbooks using
 SHEETS() or INFO() (`INFO("numfile")`) are refused rather than answered wrongly.
 
@@ -41,7 +45,12 @@ _SHEET_COUNT_FUNCTIONS = re.compile(r"\b(?:_xlfn\.)?(?:SHEETS|INFO)\s*\(", re.IG
 
 def _number(pred: Callable[[float], bool]) -> Callable[[Any], bool]:
     def check(value: Any) -> bool:
-        return isinstance(value, dict) and value.get("t") == "n" and pred(float(value["v"]))
+        if not (isinstance(value, dict) and value.get("t") == "n"):
+            return False
+        try:
+            return pred(float(value["v"]))
+        except (KeyError, TypeError, ValueError):  # malformed snapshot: a failed canary, not a crash
+            return False
 
     return check
 

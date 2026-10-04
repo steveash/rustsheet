@@ -262,6 +262,11 @@ class GraphBackend:
             # the upload, cached values and all (observed 2026-10-04 on ironcalc's arithmetic.xlsx;
             # files from other writers happen to be saved because Excel rewrites them on open).
             # Adding and deleting a scratch sheet is an edit that leaves no trace in the result.
+            # It comes *after* calculate so that any save Excel takes already holds the full
+            # rebuild (editing first also persisted in tests, but an autosave between the edit and
+            # the rebuild would capture cached values). The scratch sheet is appended last and
+            # removed, so the recalc it triggers can only re-roll volatiles (RAND, NOW), which
+            # eval never scores. Structure-protected workbooks reject the edit and are refused.
             touch = f"rustsheet-touch-{uuid.uuid4().hex[:8]}"
             sheets = f"{item_url}/workbook/worksheets"
             self._call("POST", f"{sheets}/add", json={"name": touch}, headers=sid)

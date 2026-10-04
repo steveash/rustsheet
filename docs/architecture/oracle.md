@@ -6,9 +6,9 @@ backends below are not set up.
 The oracle answers "what does Microsoft 365 Excel compute for this workbook?" Every backend
 returns a **recalculated xlsx**, and every workbook carries a canary that proves it was
 recalculated (see "Is Excel really calculating?" below). Values are extracted with
-`rustsheet-eval snapshot`, the single parser, with full 17-digit precision, and stored as `*.oracle.json` sidecars next to the case.
-Results are cached by input sha256 in `eval/.cache/oracle/<backend>/`, so only new or changed
-workbooks hit Excel. Agents work offline against committed sidecars.
+`rustsheet-eval snapshot`, the single parser, with full 17-digit precision, and stored as
+`*.oracle.json` sidecars next to the case. Results are cached by input sha256 in
+`eval/.cache/oracle/<backend>/`, so only new or changed workbooks hit Excel. Agents work offline against committed sidecars.
 
 | Backend | Where | Fidelity | Notes |
 |---|---|---|---|
@@ -40,9 +40,12 @@ workbook rather than "the service worked once today".
 
 Limits of the canary:
 - A trailing sheet is invisible to formulas except via the sheet count, so workbooks using
-  `SHEETS()` or `INFO()` are **refused**, never answered (2 of ~800 suite workbooks today).
-- Malformed packages that cannot take the extra sheet (fuzzer files, backslash part names) are
-  refused too; Excel could not open most of them either.
+  `SHEETS()` or `INFO()` are **refused**, never answered (2 of 591 suite workbooks today).
+- Malformed packages that cannot take the extra sheet (21 of 591: fuzzer files, backslash part
+  names) are refused too; Excel could not open most of them either.
+- Workbooks with workbook-structure protection reject the scratch-sheet edit (403) and are
+  refused. Some others Excel for the web cannot open at all (`WorkbookNotSupported`, e.g. POI's
+  revision-protected workbooks); those need the desktop backend.
 
 **Why this matters: three ways to get cached values that look like Excel's answers.**
 1. *Uploading does not recalculate.* SharePoint stores the file as-is (it only adds
@@ -63,7 +66,10 @@ Limits of the canary:
 
    Resetting or removing `calcId` in the upload does *not* make Excel save. The backend therefore
    adds and deletes a scratch sheet in the session **after** calculating; that edit makes
-   `closeSession` persist the recalculated workbook, and leaves no trace in it.
+   `closeSession` persist the recalculated workbook, and leaves no trace in it. (Editing before
+   calculating also persisted in 3/3 live runs, but an autosave between the edit and the rebuild
+   would capture cached values, so the edit goes last; appending and deleting a trailing sheet
+   can only re-roll volatiles, which eval never scores.)
 3. *A wait that times out silently.* The backend polls the eTag for up to 60 s after
    `closeSession`. Before 2026-10-04 it then downloaded the file anyway, which handed back the
    upload. It now raises `OracleError` instead.
