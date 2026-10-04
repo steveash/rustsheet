@@ -1,7 +1,7 @@
 # Task format
 
 Tasks are markdown files under `docs/tasks/<milestone>/T-XXXX-<slug>.md`. `scripts/tasks.py`
-parses them and `docs/tasks/BOARD.md` is generated from them (`make board`).
+parses them; `make board` writes a local, git-ignored `docs/tasks/BOARD.md` view (decision 0017).
 
 ```markdown
 ---

@@ -92,5 +92,5 @@ next-task: ## Highest-priority ready task: make next-task LANE=functions
 new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 LANE=engine TITLE="..." [PRIORITY=P1] [SIZE=S] (fetches origin)
 	$(PY) scripts/tasks.py new --milestone "$(MILESTONE)" --lane "$(LANE)" --title "$(TITLE)" $(if $(PRIORITY),--priority $(PRIORITY)) $(if $(SIZE),--size $(SIZE))
 
-board: ## Regenerate docs/tasks/BOARD.md
+board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board

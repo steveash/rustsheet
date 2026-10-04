@@ -11,8 +11,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
 - **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch).
-- **Generated files**: never hand-edit `eval/baseline/*.txt`, `quality/*.json`, `docs/tasks/BOARD.md`;
-  regenerate with `make eval-baseline`, the `scripts/check_*.py --update` commands, `make board`.
+- **Generated files**: never hand-edit `eval/baseline/*.txt` or `quality/*.json`; regenerate with
+  `make eval-baseline` and the `scripts/check_*.py --update` commands. `docs/tasks/BOARD.md` is
+  git-ignored and never committed (decision 0017).
 - **CI failures**: reproduce locally with the same `make` target first. A failing test is never
   "flaky" without proof; fix the root cause. Never skip/disable/quarantine tests, never add lint
   allows or lint-debt entries, never use `--allow-regressions` without a decision record.

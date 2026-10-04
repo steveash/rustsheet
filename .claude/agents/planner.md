@@ -17,4 +17,4 @@ Produce:
 3. A spec in `docs/specs/` for anything that changes architecture or public API, *before* the
    implementation tasks (the spec task is itself a task).
 Never create vague tasks ("improve X"). Never duplicate an existing task. Run
-`python3 scripts/tasks.py validate` and `python3 scripts/tasks.py board` when done.
+`python3 scripts/tasks.py validate` when done.
