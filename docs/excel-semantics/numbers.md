@@ -106,6 +106,17 @@ relative tolerance that decides whether an exponent "is" 1/odd (only exactly 1/3
 `POWER(-8,0.333333333333333)`), (c) the operator `^` sharing all of the above.
 Implemented in: `arithmetic::power` (POWER and `^`).
 
+## SIN / COS at multiples of 90° return k·6.1257422745431E-17
+Rule: where the exact answer is 0, `SIN`/`COS` of k·π/2 return ±k·6.1257422745431E-17 (15
+significant digits), not IEEE/libm's ±k·6.123233995736766E-17: `COS(RADIANS(90))` =
+6.1257422745431E-17, `SIN(RADIANS(180))` = 1.22514845490862E-16, `COS(RADIANS(270))` =
+-1.83772268236293E-16, `SIN(RADIANS(360))` = -2.45029690981724E-16, and so on up to k = 7 (630°). Of the workbook's
+other 1,433 scored cells, 5 differ from libm by a few ulp and the rest are bit-exact. The excel-graph oracle and the
+desktop Excel that saved the workbook agree.
+Evidence: poi/47813.xlsx Numbers!C92, B182, C272, B362, C452, B542, C632 (oracle sidecar
+`eval/suites/poi/oracle/47813.oracle.json` and the workbook's cached values). Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED
+
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 
 Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are the correctly
