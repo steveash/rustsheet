@@ -3,7 +3,7 @@ id: T-0932
 title: "Record eval run time and a clean edit-bench baseline"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P3
 size: S
 depends_on: [T-0930]
