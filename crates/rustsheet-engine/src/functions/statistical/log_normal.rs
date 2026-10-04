@@ -1,5 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::statistical::special::{normal_cdf, SQRT_2PI};
+use crate::functions::statistical::special::{normal_cdf, normal_inv_std, SQRT_2PI};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -65,8 +65,6 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        use statrs::distribution::{ContinuousCDF, LogNormal};
-
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -93,18 +91,7 @@ impl Model {
             };
         }
 
-        let dist = match LogNormal::new(mean, std_dev) {
-            Ok(d) => d,
-            Err(_) => {
-                return CalcResult::Error {
-                    error: Error::NUM,
-                    origin: cell,
-                    message: "Invalid parameter for LOGNORM.INV".to_string(),
-                }
-            }
-        };
-
-        let result = dist.inverse_cdf(p);
+        let result = (mean + std_dev * normal_inv_std(p)).exp();
 
         if !result.is_finite() {
             return CalcResult::Error {
