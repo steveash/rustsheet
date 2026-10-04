@@ -1113,7 +1113,7 @@ impl<'a> Model<'a> {
                 let message = if x == 0.0 && y == 0.0 {
                     "Arguments can't be both zero"
                 } else if error == Error::DIV {
-                    "POWER returned infinity"
+                    "Zero to a negative power"
                 } else {
                     // This might happen for some combinations of negative base and exponent
                     "Invalid arguments for POWER"

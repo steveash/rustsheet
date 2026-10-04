@@ -47,13 +47,16 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
         // An odd root of a negative number is a real number: the cube root of
-        // -8 is -2. `powf` cannot tell, a third is just another fraction to it.
+        // -8 is -2 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
+        // docs/excel-semantics/numbers.md). `powf` cannot tell, a third is just another fraction to it.
         -(-x).powf(y)
     } else {
         x.powf(y)
     };
     if result.is_infinite() {
-        return Err(Error::DIV);
+        // POWER(0,-1) is #DIV/0! (POWER.xlsx Sheet1!D2); overflow of any other
+        // base is #NUM! (UNVERIFIED, see docs/excel-semantics/numbers.md).
+        return Err(if x == 0.0 { Error::DIV } else { Error::NUM });
     }
     if result.is_nan() {
         // A negative number to a power that is not an integer nor an odd root

@@ -38,3 +38,7 @@ POWER.xlsx adds 51 checked cells; 4 are NumericUlp (Sheet1!D3, F9, inside_a_lamb
 Excel's pow) and are baselined as new coverage. Still open: `58279cda`+`80eafbbc` (finite-number
 parse) and `9b1ae3fd` (`--A1:B4`, MINUS_MINUS.xlsx; conflicts in `cast.rs`, `date_and_time.rs`),
 plus the T-0918 follow-ups above.
+
+Review follow-ups (2026-10-04): match Excel's 1-ulp result for odd roots (`-1.9999999999999998`, not
+`-2`) in `arithmetic::power`; oracle-probe POWER overflow (#NUM! vs #DIV/0!), the odd-root tolerance
+(`POWER(-8,0.333333333333333)`) and the `^` operator (see `docs/excel-semantics/numbers.md`).
