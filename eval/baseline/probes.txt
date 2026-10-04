@@ -12,10 +12,7 @@ F	probes/date-text-locale.case.json	Sheet1!B4
 F	probes/date-text-locale.case.json	Sheet1!B5
 F	probes/date-text-locale.case.json	Sheet1!B6
 F	probes/date-text-locale.case.json	Sheet1!B7
-F	probes/dates-and-blanks.case.json	Sheet1!A1
 F	probes/dates-and-blanks.case.json	Sheet1!A15
-F	probes/dates-and-blanks.case.json	Sheet1!A2
-F	probes/dates-and-blanks.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A11
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
