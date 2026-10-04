@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from rustsheet_tools.oracle import cli
+from rustsheet_tools.oracle import canary, cli
 from rustsheet_tools.oracle.backends import OracleError, OracleInfo
 from rustsheet_tools.oracle.canary import CELLS, SHEET, canary_problems, checked_values, embed_canary
 from rustsheet_tools.snapshot import formula_values, snapshot
@@ -128,6 +128,20 @@ def test_cache_entry_without_a_passing_canary_is_recomputed(cache_root: Path) ->
     assert backend.calls == 2
 
 
+def test_refusals_apply_to_results_cached_before_them(
+    cache_root: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    del cache_root
+    raw = build_xlsx({"sheets": [{"name": "Sheet1", "cells": {"A1": '=CELL("width",A:A)'}}]})
+    backend = ExcelLikeBackend()
+    with monkeypatch.context() as m:
+        m.setattr(canary, "_REFUSALS", ())  # cached while CELL("width") was still accepted
+        cli._recalc_cached(backend, raw)
+    with pytest.raises(OracleError, match="width"):
+        cli._recalc_cached(backend, raw)
+    assert backend.calls == 1
+
+
 def test_fill_writes_no_sidecar_when_the_canary_fails(
     cache_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -136,8 +150,10 @@ def test_fill_writes_no_sidecar_when_the_canary_fails(
     case.write_text('{"sheets": [{"name": "Sheet1", "cells": {"A1": "=1+1"}}]}')
     monkeypatch.setattr(cli, "GOLDEN_BACKENDS", {"echo"})
     monkeypatch.setattr(cli, "_backend", lambda _: EchoBackend())
-    monkeypatch.setattr(cli, "_suite_cases", lambda _: ({}, [case]))
-    assert cli.cmd_fill(SimpleNamespace(backend="echo", suite="s", force=False, limit=0)) == 1
+    entry = {"path": str(case), "sidecar": str(tmp_path / "x.oracle.json")}
+    monkeypatch.setattr(cli, "_suite_cases", lambda _: [entry])
+    args = SimpleNamespace(backend="echo", suite="s", force=False, limit=0, include_cached=False)
+    assert cli.cmd_fill(args) == 1
     assert not (tmp_path / "x.oracle.json").exists()
 
 
@@ -146,6 +162,17 @@ def test_sheet_count_functions_are_refused(formula: str) -> None:
     spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": formula}}]}
     with pytest.raises(OracleError, match=r"SHEETS\(\) or INFO\(\)"):
         embed_canary(build_xlsx(spec))
+
+
+@pytest.mark.parametrize("formula", ['=CELL("width",A:A )', '=cell( "Width",B1)'])
+def test_web_unsupported_cell_width_is_refused(formula: str) -> None:
+    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": formula}}]}
+    with pytest.raises(OracleError, match=r"CELL\(\"width\"\)"):
+        embed_canary(build_xlsx(spec))
+
+
+def test_cell_with_other_info_types_is_not_refused() -> None:
+    embed_canary(build_xlsx({"sheets": [{"name": "Sheet1", "cells": {"A1": '=CELL("row",A1)'}}]}))
 
 
 def test_new_sheet_id_follows_the_largest_and_names_cannot_collide() -> None:

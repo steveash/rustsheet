@@ -19,6 +19,8 @@ Suspected cause: x87-style reduction using a pi approximated to ~66 bits (the ra
 
 ## Acceptance criteria
 - [ ] The 11 NumericMismatch SIN/COS/TAN cells above plus SEC/CSC cells on the same inputs leave eval/baseline/ironcalc-calc.txt, with no new F lines (NumericClose cells may remain; list them in Outcome).
+- [ ] The 12 poi/47813.xlsx lines (Numbers!C92, B182, C272, B362, C452, B542, C632 at multiples of 90°, and the few-ulp
+  cells B185, B299, C451, C683, B721 at 183/297/449/681/719°) leave eval/baseline/poi.txt (oracle: excel-graph sidecar).
 - [ ] The reduction lives in one helper shared by SIN, COS, TAN, SEC, CSC, COT.
 - [ ] Quirk and evidence recorded in docs/excel-semantics/numbers.md.
 - [ ] `make check` green.

@@ -47,3 +47,10 @@ Rule: `COUNTIF(range,"=")` does not count a cell holding the empty string, while
 Evidence: probes/criteria-grammar C3 (`""` → 1), C4 (`"="` → 0) over a range with one empty-string
 cell and no blank cells. Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+
+## COUNTIFS lifts an array criterion
+Rule: an array constant as a criterion makes COUNTIFS return an array of counts, one per element:
+`SUM(COUNTIFS(A1:F1,{"bar","baz"}))` = 3 and `{"foo","bar"}` = 4.
+Evidence: poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
+Status: VERIFIED
+Tasks: T-0207

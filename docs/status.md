@@ -7,7 +7,7 @@ Updated by the steward routine (daily) and by workers (one line per merged task)
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
 | ironcalc-calc | 210 | 71,773 | 97.59% | 1,727 |
-| poi | 334 | 3,526 | not fetched in steward run (baseline 750 lines) | — |
+| poi | 336 | 27,287 | 96.57% (40 workbooks oracle-scored, T-0019) | 959 |
 | smoke | 5 | 38 | 100% | 0 |
 | probes | 3 | 45 | 71.11% | 13 |
 | probes-numeric | 4 | 2,738 | 60.19% | not gated |
@@ -88,3 +88,4 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-04 — T-0004 done: oracle calibration over ironcalc-calc (71,765 cells, 99.96% bit-exact; 7 day-first-locale cached cells, 4 web-vs-desktop INDIRECT, 18 last-digit float); canary pins en-US; probes/date-text-locale added (probes known failures 13 -> 18, new coverage); filed T-0024
 - 2026-10-04 — T-0108: Excel 1900 leap-year serials in DATE/DAY/MONTH/YEAR/formatting; probes known failures 18 -> 15 (A1-A3 fixed), ironcalc-calc 1578 -> 1578, 0 regressions; filed T-0125
 - 2026-10-04 — T-0108 follow-up: added probes/dates-early-1900 (oracle-filled, 16 cells, 4 known failures -> T-0125); fixed EOMONTH early serials and DATE(1900,1,0)
+- 2026-10-04 — T-0019: excel-graph sidecars for 40 POI workbooks (`oracle_dir`, committed in eval/suites/poi/oracle); poi pending 237 -> 198, known failures 647 -> 959 (new coverage, 0 regressions; 257 web-vs-desktop conflicts left pending, decision 0019); harness now parses JSON floats exactly (serde_json `float_roundtrip`; oracle values had read 1 ulp off, probes-numeric 60.19% -> 68.08%); quirk: SIN/COS at multiples of 90°.
