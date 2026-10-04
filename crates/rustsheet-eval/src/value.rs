@@ -229,8 +229,8 @@ mod tests {
         assert_eq!(back, v);
     }
 
-    /// Oracle sidecars hold shortest-round-trip doubles. Without serde_json's `float_roundtrip`
-    /// feature these parsed 1 ulp off, so every oracle-scored cell near them read as NumericUlp
+    /// Oracle sidecars hold shortest-round-trip doubles. Without `serde_json`'s `float_roundtrip`
+    /// feature these parsed 1 ulp off, so every oracle-scored cell near them read as `NumericUlp`
     /// (poi/45544.xlsx Profile of Class!B15, 2026-10-04).
     #[test]
     fn json_numbers_parse_to_the_exact_double() {
