@@ -50,10 +50,12 @@ impl Model {
     pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let arguments = vec![args[0].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
+            self.average_ifs(&arguments, cell, false)
         } else if args.len() == 3 {
+            // Unlike AVERAGEIFS, a differently shaped average_range is not an
+            // error (probes/ifs-shape-mismatch F9–F11; resizing is T-0214).
             let arguments = vec![args[2].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
+            self.average_ifs(&arguments, cell, false)
         } else {
             CalcResult::new_args_number_error(cell)
         }
@@ -475,6 +477,16 @@ impl Model {
     }
 
     pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.average_ifs(args, cell, true)
+    }
+
+    /// The AVERAGEIFS walk; AVERAGEIF passes `strict_shape: false`.
+    fn average_ifs(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        strict_shape: bool,
+    ) -> CalcResult {
         let mut total = 0.0;
         let mut count = 0.0;
 
@@ -482,7 +494,7 @@ impl Model {
             total += value;
             count += 1.0;
         };
-        if let Err(e) = self.apply_ifs(args, cell, true, average) {
+        if let Err(e) = self.apply_ifs(args, cell, strict_shape, average) {
             return e;
         }
 

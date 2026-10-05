@@ -8,7 +8,7 @@ C	probes/date-text-locale.case.json	10
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16
 C	probes/error-operand-broadcast.case.json	15
-C	probes/ifs-shape-mismatch.case.json	8
+C	probes/ifs-shape-mismatch.case.json	11
 C	probes/precision-and-rounding.case.json	18
 F	probes/criteria-grammar.case.json	Sheet1!C4
 F	probes/date-text-locale.case.json	Sheet1!B1
@@ -27,6 +27,9 @@ F	probes/error-operand-broadcast.case.json	Sheet1!C3
 F	probes/error-operand-broadcast.case.json	Sheet1!C6
 F	probes/error-operand-broadcast.case.json	Sheet1!C7
 F	probes/error-operand-broadcast.case.json	Sheet1!C8
+F	probes/ifs-shape-mismatch.case.json	Sheet1!F10
+F	probes/ifs-shape-mismatch.case.json	Sheet1!F11
+F	probes/ifs-shape-mismatch.case.json	Sheet1!F9
 F	probes/precision-and-rounding.case.json	Sheet1!A11
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15

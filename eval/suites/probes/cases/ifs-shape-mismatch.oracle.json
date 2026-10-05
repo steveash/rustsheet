@@ -6,6 +6,14 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "F10": {
+    "t": "n",
+    "v": 2.5
+   },
+   "F11": {
+    "t": "n",
+    "v": 5.5
+   },
    "F2": {
     "t": "e",
     "v": "#VALUE!"
@@ -33,14 +41,18 @@
    "F8": {
     "t": "n",
     "v": 6.0
+   },
+   "F9": {
+    "t": "n",
+    "v": 3.5
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "3e91ee7e611e7fd0672237d479bfa1f50941b1cc12ea758f994c823985496508",
+  "input_sha256": "91f0b8002f23410fd70ca0690e6eb9a8b130c39f6e5437da5b458c42d233b85b",
   "kind": "excel-graph",
-  "produced_at": "2026-10-05T07:39:16+00:00",
+  "produced_at": "2026-10-05T07:56:27+00:00",
   "version": null
  }
 }

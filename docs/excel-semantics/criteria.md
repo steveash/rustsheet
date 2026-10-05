@@ -84,7 +84,8 @@ Evidence: gen-m2/04cfd82f54dbc2b2 Calc!A150 (3x2 vs 3x4), 1b6ceed7489e0800 Calc!
 2x4 vs 4x2, same size). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 AVERAGEIFS, MINIFS and MAXIFS follow the same rule (`=MINIFS(A1:B2,A1:D1,"<9")` and
 `=AVERAGEIFS(A1:D2,A1:B4,"<99")` are `#VALUE!`; probes/ifs-shape-mismatch F1–F8, excel-graph 2026-10-05).
-SUMIF (T-0214) never errors.
+SUMIF and AVERAGEIF never error: they resize the sum/average range (probes/ifs-shape-mismatch F9–F11,
+`=AVERAGEIF(A1:D1,"<99",A1)` = 2.5; T-0214).
 Status: VERIFIED
 Implemented in: `fn_countifs` and `apply_ifs` (`strict_shape`) in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0209

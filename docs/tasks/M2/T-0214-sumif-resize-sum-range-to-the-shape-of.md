@@ -25,6 +25,9 @@ gen-m2 (T-0203): 59 failing cells (NumericMismatch). Evidence (excel-graph):
 Code: `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs::sumif` (delegates to `fn_sumifs`
 with sum_range first, so the walk follows sum_range). AVERAGEIF is documented by Microsoft to resize the
 same way. Probe it with the excel-probe skill and include it only if the evidence agrees.
+Probed by T-0209 (excel-graph, 2026-10-05): AVERAGEIF resizes the same way and never errors:
+probes/ifs-shape-mismatch F9 `=AVERAGEIF(A1:B2,"<99",A1:D1)` = 3.5, F10 `=AVERAGEIF(A1:D1,"<99",A1)` = 2.5,
+F11 `=AVERAGEIF(A1:B2,"<99",C1:C4)` = 5.5 (known failures in eval/baseline/probes.txt today).
 
 Cells whose only gen-m2 root cause is this one (59):
 - `gen-m2/04cfd82f54dbc2b2.case.json`: A106 A344

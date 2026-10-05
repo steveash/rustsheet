@@ -108,5 +108,6 @@ first (the last three confirmed by the new probe `probes/ifs-shape-mismatch`); S
 The handoff's one regression (gen-m2/dd99be1f2454159f Calc!A56) was a separate Excel rule: a scalar error
 operand of `+ - * / ^` broadcasts against an array operand (probe `probes/error-operand-broadcast`,
 docs/excel-semantics/arrays.md), now implemented in `handle_arithmetic`. Eval: gen-m2 known failures
-1518 -> 1065 (453 fixed, 0 regressions); probes gain 23 checked cells, 6 known failures (ROWS/COLUMNS over
-an array expression, follow-up T-0228).
+1518 -> 1065 (453 fixed, 0 regressions); probes gain 26 checked cells, 9 known failures (6 ROWS/COLUMNS over
+an array expression, follow-up T-0228; 3 AVERAGEIF resizing, which stays lenient here and is resized by
+T-0214). Follow-up T-0231: probe the same broadcast for comparison and `&`.

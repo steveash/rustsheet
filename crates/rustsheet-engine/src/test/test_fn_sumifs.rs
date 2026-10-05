@@ -198,3 +198,19 @@ fn test_averageifs_minifs_maxifs_shape_mismatch_is_value_error() {
     assert_eq!(model._get_text("F3"), *"#VALUE!");
     assert_eq!(model._get_text("F4"), *"6");
 }
+
+// Excel: AVERAGEIF never errors on a differently shaped average_range, unlike
+// AVERAGEIFS (probes/ifs-shape-mismatch F9; resizing itself is T-0214).
+#[test]
+fn test_averageif_shape_mismatch_is_not_an_error() {
+    let mut model = new_empty_model();
+    for (i, cell) in ["A1", "B1", "C1", "D1", "A2", "B2", "C2", "D2"]
+        .iter()
+        .enumerate()
+    {
+        model._set(cell, &(i + 1).to_string());
+    }
+    model._set("F1", "=AVERAGEIF(A1:B2,\"<99\",A1:D1)");
+    model.evaluate();
+    assert_ne!(model._get_text("F1"), *"#VALUE!");
+}
