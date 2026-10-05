@@ -120,7 +120,6 @@ C	poi/deep-data.xlsx	0
 C	poi/evaluate_formula_with_structured_table_references.xlsx	1
 C	poi/formula-eval.xlsx	1
 C	poi/invalid_cell_reference.xlsx	0
-C	poi/link-external-workbook-b.xlsx	1
 C	poi/poc-shared-strings.xlsx	0
 C	poi/poc-xmlbomb-empty.xlsx	0
 C	poi/poc-xmlbomb.xlsx	0
@@ -1067,7 +1066,6 @@ F	poi/clone_sheet.xlsx	Arkusz1!M9
 F	poi/customIndexedColors.xlsx	_TGK_HIDDEN!B1
 F	poi/deep-data.xlsx	!InvalidCase
 F	poi/invalid_cell_reference.xlsx	!EngineError
-F	poi/link-external-workbook-b.xlsx	Sheet0!A1
 F	poi/poc-shared-strings.xlsx	!InvalidCase
 F	poi/poc-xmlbomb-empty.xlsx	!EngineError
 F	poi/poc-xmlbomb.xlsx	!EngineError

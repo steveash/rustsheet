@@ -19,6 +19,9 @@ Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,
 Engine still differs on `EOMONTH(31,1)`, `EDATE(31,1)`, `TEXT(0,...)` and `WEEKNUM(1)` (T-0125).
 Still approximate below serial 61: EDATE/EOMONTH month arithmetic, `TEXT(0,...)`, WEEKNUM, and DAY/MONTH/YEAR(0)
 (Excel gives 0/1/1900; the engine returns #NUM!) (T-0125).
+The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
+`DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
+04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
 
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.
