@@ -3,7 +3,7 @@ id: T-0227
 title: "COUNTIF: a bare = criterion does not match an empty-string cell (1 probes known failure)"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -39,3 +39,8 @@ match nothing that is an empty string.
 - Whether `"="` matches a truly blank cell: there is no evidence yet (T-0011 probes it). Keep
   today's blank-cell behavior unchanged.
 - D-function (`CriteriaFlavor::Database`) criteria: no evidence for `"="` there. Leave it unchanged.
+
+## Outcome
+Standard-flavor `"="` criterion now matches blank cells only, not empty-string cells
+(`build_criteria_with`). Unit test added; criteria.md has the `Implemented in:` line.
+Eval delta: probes known failures 135 -> 134 (`criteria-grammar` Sheet1!C4 fixed), no regressions.
