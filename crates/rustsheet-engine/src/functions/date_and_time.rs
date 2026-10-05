@@ -2,7 +2,7 @@ use crate::tz::Tz;
 use chrono::Datelike;
 use chrono::Months;
 
-mod time_text;
+pub(crate) mod time_text;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;

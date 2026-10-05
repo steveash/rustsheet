@@ -107,7 +107,8 @@ impl Model {
                 {
                     return Some(v);
                 }
-                None
+                // Time and date-time text (`0+"10:11:12.5"`); probes/timevalue-*.
+                crate::functions::date_and_time::time_text::parse_time_serial(s)
             }
         }
     }

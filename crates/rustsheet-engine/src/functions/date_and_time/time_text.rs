@@ -70,6 +70,30 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
     None
 }
 
+/// The serial a time or date-time text coerces to where text becomes a number (`0+"10:11"`,
+/// `--"12:00"`, VALUE): clock text, hour-only AM/PM and "date clock" text, unwrapped (`0+"25:00"`
+/// is 1.0416666666666667, unlike TIMEVALUE which keeps the fraction). Surrounding spaces make
+/// the text invalid here although TIMEVALUE trims them (probes/timevalue-fractional-seconds2
+/// C11). Excel: see docs/excel-semantics/dates.md#time-text.
+pub(crate) fn parse_time_serial(text: &str) -> Option<f64> {
+    if text != text.trim() {
+        return None;
+    }
+    if let Some(serial) = parse_clock_text(text) {
+        return Some(serial);
+    }
+    if let Some((hour_str, is_pm)) = parse_simple_am_pm(text) {
+        let hour = hour_str.parse::<u32>().ok()?;
+        if (1..=12).contains(&hour) {
+            let time = NaiveTime::from_hms_opt(hour_from_12h(hour, is_pm), 0, 0)?;
+            return Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
+        }
+    }
+    let (date_part, clock_part) = text.split_once(char::is_whitespace)?;
+    let days = parse_datevalue_text(date_part).ok()?;
+    Some(f64::from(days) + parse_clock_text(clock_part)?)
+}
+
 /// Largest value of one clock component: Excel takes at most four digits
 /// (`TIMEVALUE("9999:59:59")` parses, `"10000:00:00"` is #VALUE!).
 const MAX_CLOCK_COMPONENT: u32 = 9_999;
