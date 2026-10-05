@@ -2,7 +2,7 @@
 id: T-0920
 title: "Port remaining IronCalc fixes: POWER ranges, finite-number parse, --A1:B4, implicit-intersection export"
 milestone: M9
-lane: functions
+lane: functions-math
 status: todo
 priority: P3
 size: M

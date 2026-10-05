@@ -2,7 +2,7 @@
 id: T-0907
 title: "Engineering: IM* complex-function last-digit precision (COMPLEXs.xlsx)"
 milestone: M9
-lane: functions
+lane: functions-engineering
 status: todo
 priority: P2
 size: M

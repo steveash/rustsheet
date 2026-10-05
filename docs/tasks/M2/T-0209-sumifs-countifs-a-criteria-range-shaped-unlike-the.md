@@ -2,7 +2,7 @@
 id: T-0209
 title: "SUMIFS/COUNTIFS: a criteria range shaped unlike the first range is #VALUE! (442 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-criteria
 status: todo
 priority: P1
 size: S

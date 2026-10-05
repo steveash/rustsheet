@@ -22,7 +22,15 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | Lane | Typical paths | Examples |
 |---|---|---|
 | `engine` | `crates/rustsheet-engine/src/{evaluation,model,expressions,graph,storage}` | DAG, coercion rules, references, structural edits |
-| `functions` | `crates/rustsheet-engine/src/functions/**`, `eval/suites/**` | gap fixes per function family |
+| `functions-math` | `functions/math_and_trigonometry/`, `functions/subtotal.rs` | ROUND, trig, COMBIN, SEQUENCE |
+| `functions-stat` | `functions/statistical/` (not `if_ifs.rs`) | distributions, MIN/MAX, AVERAGE |
+| `functions-criteria` | `functions/criteria.rs`, `functions/statistical/if_ifs.rs`, `functions/database.rs` | SUMIF(S), COUNTIF(S), D-functions |
+| `functions-financial` | `functions/financial/` | PV/PMT, IRR/RATE |
+| `functions-engineering` | `functions/engineering/` | BESSEL, IM*, CONVERT |
+| `functions-text` | `functions/text/`, TEXT number formats | TEXT, LEFT/MID, VALUE |
+| `functions-lookup` | `functions/lookup_and_reference/`, `xlookup.rs`, `binary_search.rs`, `spill_functions.rs` | VLOOKUP, MATCH, INDEX |
+| `functions-date` | `functions/date_and_time.rs` | DATEVALUE, DAYS, NETWORKDAYS |
+| `functions-logic` | `functions/logical/`, `functions/information/` | AND/OR, IF, IS* |
 | `api` | public facade, `bindings/python` | API v0/v1, Python/Java bindings |
 | `harness` | `crates/rustsheet-eval`, `tools/`, `eval/` (non-baseline), CI | suites, fetchers, generator phases, oracle |
 | `perf` | `benches/`, hot paths | benchmark suite, profiling-driven fixes |
@@ -30,16 +38,21 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | `research` | `docs/research`, `docs/excel-semantics` | probes, calibration, algorithm studies |
 
 **Concurrency policy (Max-subscription friendly):**
-- Run at most **2 concurrent workers**, one per model tier (decision 0018): the sonnet worker
-  takes `tier: sonnet` tasks and the opus worker `tier: opus` tasks (handed-off ones first). Both
-  walk the `**Critical lane:**` list in `docs/status.md`, then `functions` (allowlist and rules in
-  `routines.md`).
-- Run at most one task in flight per lane.
+- The workers are the routines in `routines.md`: by default one sonnet and one opus worker, each
+  looping over tasks of its tier for up to ~100 minutes per run (decision 0022), plus an optional
+  second sonnet worker. Each walks the `**Critical lane:**` list in `docs/status.md`, then
+  `functions` (every `functions-*` lane; allowlist and rules in `routines.md`).
+- One task in flight per lane. `make next-task` enforces it: it skips tasks claimed by a pushed
+  branch and lanes with a branch that moved in the last 2 hours (handoffs excepted).
+- The functions work is split into the nine `functions-*` lanes above so several workers can fix
+  functions at once; plain `functions` is retired for open tasks (`scripts/tasks.py validate`).
+  Pick the lane by the module the fix touches; a fix spanning families takes the lane of its main
+  module.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.
 - **Sonnet buffer** (decision 0021): keep at least 10 ready, unclaimed `tier: sonnet` tasks
   (`make ready-tasks TIER=sonnet`). The steward and the opus worker (work-loop
   step 6.5) top it up with the gap-triager or planner, cutting sonnet-sized tasks by the tier rubric.
-- Raise concurrency only after a week with a revert rate under 5%.
+- Add the optional worker only after a week with a revert rate under 5%.
 
 ## Task lifecycle
 
@@ -58,15 +71,15 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
 - Tasks live in `docs/tasks/<milestone>/T-XXXX-slug.md` (format: `task-format.md`).
-- A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`. There is one worker per
-  lane, so claims don't race. Workers resume their lane's open branch or PR before starting new work.
+- A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`, pushed at once; `make
+  next-task` skips claimed tasks and busy lanes, so parallel workers don't race. Workers resume their lane's open branch or PR before starting new work.
 - Sizing: S ≤ ~150 changed lines, M ≤ ~400 (excluding tests, fixtures and generated files).
   L tasks must be split by the planner before work starts (`scripts/tasks.py validate` enforces this).
 
 ## The loop (summary)
 
 1. **Sync:** `main` up to date. Resume lane work if any exists.
-2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; handoffs first). If empty, run the gap triager (functions lane) or the
+2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; handoffs first). If empty, run the gap triager (functions lanes) or the
    planner (other lanes).
 3. **Understand:**
    - Read the task, its spec, the code, `docs/excel-semantics/`, and the failing cases (`make eval-show`).

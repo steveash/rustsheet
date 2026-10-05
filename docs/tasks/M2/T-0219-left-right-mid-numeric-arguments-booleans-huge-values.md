@@ -2,7 +2,7 @@
 id: T-0219
 title: "LEFT/RIGHT/MID numeric arguments: booleans, huge values and near-integers (9 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-text
 status: todo
 priority: P3
 size: S

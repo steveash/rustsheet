@@ -4,7 +4,8 @@ description: One full autonomous iteration on RustSheet - pick the next ready ta
 ---
 # Work loop (one task, end to end)
 
-Arguments: a lane (`engine`, `functions`, `harness`, `api`, `perf`, `quality`, `research`) and the
+Arguments: a lane (`engine`, `harness`, `api`, `perf`, `quality`, `research`, or `functions` for
+any of the nine `functions-*` lanes; decision 0022) and the
 tier you run as (`sonnet` or `opus`; decision 0018). Take only tasks of your tier.
 Read `docs/process/agent-workflow.md` once per session if you have not.
 
@@ -20,12 +21,12 @@ Read `docs/process/agent-workflow.md` once per session if you have not.
 (`make tasks LANE=<lane> STATUS=blocked`): if a blocker is gone (e.g. `rustsheet-oracle status`
 now shows `excel-graph OK`), unblock it per the "Unblocking is an agent's job" rule under Task lifecycle in
 `docs/process/agent-workflow.md` and
-pick again. Otherwise: for `functions`, launch the `gap-triager` agent;
+pick again. Otherwise: for `functions` (any `functions-*` lane), launch the `gap-triager` agent;
 otherwise launch the `planner` agent for the current milestone (docs/milestones.md). Then pick
 again. If still nothing, write a short note in `docs/status.md` and stop.
 
 ## 2. Branch & claim
-`git checkout -b agent/<lane>/T-XXXX-<slug>`. Set the task's `status: in-progress` in its file,
+`git checkout -b agent/<lane>/T-XXXX-<slug>` (use the task's own `lane:`, e.g. `functions-text`). Set the task's `status: in-progress` in its file,
 commit it as the first commit on the branch and **push it at once**: the pushed branch is the claim
 that keeps other workers off this task (`make next-task` skips claimed tasks; decision 0018).
 

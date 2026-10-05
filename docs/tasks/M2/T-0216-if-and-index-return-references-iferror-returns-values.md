@@ -2,7 +2,7 @@
 id: T-0216
 title: "IF and INDEX return references, IFERROR returns values, in aggregate arguments (8 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-logic
 status: todo
 priority: P2
 size: S

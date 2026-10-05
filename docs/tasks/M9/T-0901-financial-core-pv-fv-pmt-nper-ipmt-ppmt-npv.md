@@ -2,7 +2,7 @@
 id: T-0901
 title: "Financial core (PV/FV/PMT/NPER/IPMT/PPMT/NPV) bit-exact parity"
 milestone: M9
-lane: functions
+lane: functions-financial
 status: todo
 priority: P1
 size: M

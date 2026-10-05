@@ -2,7 +2,7 @@
 id: T-0935
 title: "TEXT on text and booleans: apply the format's text section (28 known failures)"
 milestone: M10
-lane: functions
+lane: functions-text
 status: todo
 priority: P2
 size: S
