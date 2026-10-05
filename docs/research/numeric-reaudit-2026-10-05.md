@@ -38,10 +38,13 @@ Not affected (evidence is xlsx cached values, which never went through the JSON 
 engineering.md has no sidecar-float evidence and is unchanged. Also unaffected:
 SINH/COSH/TANH including the T-0111 TANH 0.9 cutoff (poi FormulaEvalTestData_Copy.xlsx has no
 oracle sidecar), MOD, POWER, BESSEL (engineering.md), GAMMALN. ROUND with huge num_digits is
-already UNVERIFIED (T-0218). The criteria and date probes are integers, booleans and text.
+already UNVERIFIED (T-0218). "Formula literals of 1E+308 or more are invalid" rests on load rejections, not values.
+"Excel for the web and desktop Excel differ in the last digits" (11 numeric_ulp verdicts from
+T-0004, such as SIN(4)) predates T-0019 but is unaffected: `calibrate.rs` compares two xlsx
+snapshots and never reads a JSON sidecar. The criteria and date probes are integers, booleans and text.
 
 ## Engine fits
 
-T-0914 (done) was fitted to xlsx cached values, so it is unaffected. T-0110 and T-0917 are not
-implemented yet, and their probe evidence is confirmed above. No engine fit is contradicted, so no
+T-0914 (done) and T-0917 (open) rest on xlsx cached values (TRIGONOMETRIC.xlsx), so they are
+unaffected. T-0110 is not implemented yet, and its probe evidence (snapping) is confirmed above. No engine fit is contradicted, so no
 task was filed.
