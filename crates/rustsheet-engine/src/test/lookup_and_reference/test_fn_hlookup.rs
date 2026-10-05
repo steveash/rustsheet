@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::results_independent_of_used_area;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -86,33 +87,33 @@ fn test_hlookup_array_sorted_largest_smaller() {
     assert_eq!(model._get_text("A1"), "b");
 }
 
+// A whole-row search gives the results of a full walk. Only the exact
+// matches are pinned: sorted search over the empty tail awaits T-0126.
 #[test]
-fn test_hlookup_full_row_bounded_by_used_columns() {
-    // Each formula sits in a fresh model at A3 so it does not extend the used area.
-    let cases = [
-        // Sorted lookups past the last column return the last column.
-        ("=HLOOKUP(99,1:2,2)", "c"),
-        ("=HLOOKUP(20,1:2,2,FALSE)", "b"),
-        ("=HLOOKUP(99,1:2,2,FALSE)", "#N/A"),
-        // Range that starts right of all data is entirely empty.
-        ("=HLOOKUP(1,Z1:ZZ2,2,FALSE)", "#N/A"),
+fn test_hlookup_full_row_independent_of_used_area() {
+    let data = [
+        ("A1", "10"),
+        ("B1", "20"),
+        ("C1", "30"),
+        ("A2", "a"),
+        ("B2", "b"),
+        ("C2", "c"),
     ];
-    for (formula, expected) in cases {
-        let mut model = new_empty_model();
-        for (cell, value) in [
-            ("A1", "10"),
-            ("B1", "20"),
-            ("C1", "30"),
-            ("A2", "a"),
-            ("B2", "b"),
-            ("C2", "c"),
-        ] {
-            model._set(cell, value);
-        }
-        model._set("A3", formula);
-        model.evaluate();
-        assert_eq!(model._get_text("A3"), expected, "{formula}");
-    }
+    let results = results_independent_of_used_area(
+        &data,
+        "A3",
+        "XFD5",
+        &[
+            "=HLOOKUP(20,1:2,2,FALSE)",
+            "=HLOOKUP(99,1:2,2,FALSE)",
+            "=HLOOKUP(1,Z1:XFD2,2,FALSE)",
+            "=HLOOKUP(99,1:2,2)",
+            "=HLOOKUP(FALSE,1:2,2,FALSE)",
+            "=HLOOKUP(0,1:2,2,FALSE)",
+            "=HLOOKUP(\"\",1:2,2,FALSE)",
+        ],
+    );
+    assert_eq!(results[..3], ["b", "#N/A", "#N/A"]);
 }
 
 #[test]

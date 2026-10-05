@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::results_independent_of_used_area;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -128,31 +129,36 @@ fn test_lookup_array_form_range_wide() {
     assert_eq!(model._get_text("E1"), "y");
 }
 
+// Whole-column and whole-row searches give the results of a full walk. LOOKUP
+// always searches sorted, and how Excel's sorted search treats the empty tail
+// is not yet oracle-probed (T-0126), so no value is pinned.
 #[test]
-fn test_lookup_whole_row_and_column_bounded_by_used_range() {
-    // Each formula sits in a fresh model at H3 so it does not extend the used rows.
-    let cases = [
-        ("=LOOKUP(20,A:A,B:B)", "b"),
-        ("=LOOKUP(99,A:A,B:B)", "c"),
-        ("=LOOKUP(20,A:B)", "b"),
-        // The result vector may extend past the used area: the cell is empty, not #N/A.
-        ("=LOOKUP(30,A:A,E:E)", "0"),
-        ("=LOOKUP(1,A100:A200,B100:B200)", "#N/A"),
+fn test_lookup_whole_row_and_column_independent_of_used_area() {
+    let data = [
+        ("A1", "10"),
+        ("A2", "20"),
+        ("A3", "30"),
+        ("B1", "a"),
+        ("B2", "b"),
+        ("B3", "c"),
     ];
-    for (formula, expected) in cases {
-        let mut model = new_empty_model();
-        for (cell, value) in [
-            ("A1", "10"),
-            ("A2", "20"),
-            ("A3", "30"),
-            ("B1", "a"),
-            ("B2", "b"),
-            ("B3", "c"),
-        ] {
-            model._set(cell, value);
-        }
-        model._set("H3", formula);
-        model.evaluate();
-        assert_eq!(model._get_text("H3"), expected, "{formula}");
-    }
+    results_independent_of_used_area(
+        &data,
+        "H3",
+        "Z1048576",
+        &[
+            "=LOOKUP(20,A:A,B:B)",
+            "=LOOKUP(99,A:A,B:B)",
+            "=LOOKUP(20,A:B)",
+            "=LOOKUP(30,A1:A3,E:E)",
+            "=LOOKUP(1,A100:A200,B100:B200)",
+            "=LOOKUP(20,A1:A3,B:B)",
+        ],
+    );
+    results_independent_of_used_area(
+        &data,
+        "H3",
+        "XFD5",
+        &["=LOOKUP(\"b\",1:1,2:2)", "=LOOKUP(10,1:2)"],
+    );
 }

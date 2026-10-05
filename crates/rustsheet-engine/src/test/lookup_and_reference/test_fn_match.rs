@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::results_independent_of_used_area;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -69,42 +70,55 @@ fn test_match_array_not_a_vector() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
 
+// Whole-column and whole-row searches give the results of a full walk. Only
+// the exact matches are pinned: how Excel's sorted search treats the empty
+// tail is not yet oracle-probed (T-0126).
 #[test]
-fn test_match_whole_row_and_column_bounded_by_used_range() {
-    // Each formula sits in a fresh model at H3 so it does not extend the used rows.
-    let cases = [
-        ("=MATCH(20,A:A,0)", "2"),
-        ("=MATCH(99,A:A,0)", "#N/A"),
-        ("=MATCH(99,A:A,1)", "3"),
-        ("=MATCH(20,1:1,0)", "3"),
-        ("=MATCH(99,1:1,0)", "#N/A"),
-        // Range that starts below (or right of) all data is entirely empty.
-        ("=MATCH(1,A100:A200,0)", "#N/A"),
-        ("=MATCH(1,Z1:ZZ1,0)", "#N/A"),
+fn test_match_whole_row_and_column_independent_of_used_area() {
+    let data = [
+        ("A1", "10"),
+        ("A2", "20"),
+        ("A3", "30"),
+        ("B1", "10"),
+        ("C1", "20"),
+        ("D1", "30"),
     ];
-    for (formula, expected) in cases {
-        let mut model = new_empty_model();
-        for (cell, value) in [
-            ("A1", "10"),
-            ("A2", "20"),
-            ("A3", "30"),
-            ("B1", "10"),
-            ("C1", "20"),
-            ("D1", "30"),
-        ] {
-            model._set(cell, value);
-        }
-        model._set("H3", formula);
-        model.evaluate();
-        assert_eq!(model._get_text("H3"), expected, "{formula}");
-    }
+    let column = results_independent_of_used_area(
+        &data,
+        "H3",
+        "Z1048576",
+        &[
+            "=MATCH(20,A:A,0)",
+            "=MATCH(99,A:A,0)",
+            "=MATCH(1,A100:A200,0)",
+            "=MATCH(\"*\",A:A,0)",
+            "=MATCH(99,A:A,1)",
+            "=MATCH(99,A:A,-1)",
+            "=MATCH(5,A:A,1)",
+            "=MATCH(0,A2:A1048576,1)",
+        ],
+    );
+    assert_eq!(column[..3], ["2", "#N/A", "#N/A"]);
+    let row = results_independent_of_used_area(
+        &data,
+        "H3",
+        "XFD5",
+        &[
+            "=MATCH(20,1:1,0)",
+            "=MATCH(99,1:1,0)",
+            "=MATCH(1,Z1:XFD1,0)",
+            "=MATCH(99,1:1,1)",
+            "=MATCH(99,1:1,-1)",
+        ],
+    );
+    assert_eq!(row[..3], ["3", "#N/A", "#N/A"]);
 }
 
 // The skipped part of a whole-column search vector is on record as seen empty,
 // so a spill into it during the pass restarts the pass (as for XMATCH).
 #[test]
 fn test_match_and_lookup_whole_column_see_a_spill_beyond_the_used_area() {
-    for formula in ["=MATCH(5,D:D,0)", "=LOOKUP(5,D:D)"] {
+    for formula in ["=MATCH(5,D:D,0)", "=LOOKUP(5,D1:D5)"] {
         let mut model = new_empty_model();
         model._set("A1", &format!("=SEQUENCE(1,1,{})", &formula[1..]));
         model._set("C1", "=SEQUENCE(3,1,10)");

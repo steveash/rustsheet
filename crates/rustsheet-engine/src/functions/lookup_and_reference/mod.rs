@@ -9,10 +9,9 @@ use crate::{
     utils::ParsedReference,
 };
 
-use super::binary_search::binary_search_on_array;
 use super::criteria::wildcard_text_matcher;
 use super::util::{compare_values, values_are_equal};
-use lookup_table::LookupTable;
+use lookup_table::{LookupTable, SearchVector};
 
 mod address_areas;
 mod choosecols_chooserows;
@@ -33,14 +32,11 @@ mod xmatch;
 /// Returns `None` when the value is not found.
 fn lookup_index(
     lookup_value: &CalcResult,
-    search_vector: &[CalcResult],
+    search_vector: &SearchVector,
     is_sorted: bool,
 ) -> Option<usize> {
     if is_sorted {
-        match binary_search_on_array(lookup_value, search_vector) {
-            -2 => None,
-            l => Some(l as usize),
-        }
+        search_vector.binary_search(lookup_value)
     } else {
         let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
             if let CalcResult::String(s) = lookup_value {
@@ -49,7 +45,7 @@ fn lookup_index(
                 let lookup_value = lookup_value.clone();
                 Box::new(move |x| compare_values(x, &lookup_value) == 0)
             };
-        search_vector.iter().position(result_matches)
+        search_vector.position(result_matches)
     }
 }
 
@@ -125,17 +121,11 @@ impl Model {
     /// and in-formula array literals. Used by the vector-based lookup functions
     /// (MATCH, LOOKUP). Returns the appropriate error `CalcResult` when the value
     /// is not a vector or not a valid source.
-    ///
-    /// With `search` set the vector is a search vector: the part of a range
-    /// beyond the sheet's last used row/column is dropped, as empty cells never
-    /// match and a whole-column reference would otherwise evaluate a million
-    /// of them. Result vectors keep their full length.
     fn as_vector(
         &mut self,
         value: CalcResult,
-        search: bool,
         cell: CellReferenceIndex,
-    ) -> Result<Vec<CalcResult>, CalcResult> {
+    ) -> Result<SearchVector, CalcResult> {
         match value {
             CalcResult::Range { left, right } => {
                 let is_row_vector = if left.row == right.row {
@@ -149,21 +139,7 @@ impl Model {
                         message: "Argument must be a vector".to_string(),
                     });
                 };
-                let mut right = right;
-                if search {
-                    if is_row_vector {
-                        right.row =
-                            self.clip_search_rows(left.sheet, left.row, right.row, left.column);
-                    } else {
-                        right.column = self.clip_search_columns(
-                            left.sheet,
-                            left.column,
-                            right.column,
-                            left.row,
-                        );
-                    }
-                }
-                Ok(self.prepare_array(&left, &right, is_row_vector))
+                Ok(self.range_search_vector(&left, &right, is_row_vector))
             }
             CalcResult::Array(array) => {
                 // An array is a vector if it is a single row or a single column.
@@ -175,11 +151,13 @@ impl Model {
                         message: "Argument must be a vector".to_string(),
                     });
                 }
-                Ok(array
-                    .iter()
-                    .flatten()
-                    .map(|node| array_node_to_calc_result(node, cell))
-                    .collect())
+                Ok(SearchVector::new(
+                    array
+                        .iter()
+                        .flatten()
+                        .map(|node| array_node_to_calc_result(node, cell))
+                        .collect(),
+                ))
             }
             error @ CalcResult::Error { .. } => Err(error),
             _ => Err(CalcResult::Error {
@@ -357,7 +335,7 @@ impl Model {
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match self.as_vector(match_range, true, cell) {
+        let values = match self.as_vector(match_range, cell) {
             Ok(values) => values,
             Err(error) => return error,
         };
@@ -369,7 +347,7 @@ impl Model {
                 let mut r = values.len();
                 while l < r {
                     let m = (l + r) / 2;
-                    if compare_values(&values[m], &target) >= 0 {
+                    if compare_values(values.get(m), &target) >= 0 {
                         l = m + 1;
                     } else {
                         r = m;
@@ -395,30 +373,23 @@ impl Model {
                     } else {
                         Box::new(move |x| values_are_equal(x, &target))
                     };
-                for (l, value) in values.iter().enumerate() {
-                    if result_matches(value) {
-                        return CalcResult::Number(l as f64 + 1.0);
-                    }
-                }
-                CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Not found".to_string(),
-                }
-            }
-            _ => {
-                // l is the number of elements less than target in the vector
-                let l = binary_search_on_array(&target, &values);
-                if l == -2 {
-                    return CalcResult::Error {
+                match values.position(result_matches) {
+                    Some(l) => CalcResult::Number(l as f64 + 1.0),
+                    None => CalcResult::Error {
                         error: Error::NA,
                         origin: cell,
                         message: "Not found".to_string(),
-                    };
+                    },
                 }
-
-                CalcResult::Number(l as f64 + 1.0)
             }
+            _ => match values.binary_search(&target) {
+                Some(l) => CalcResult::Number(l as f64 + 1.0),
+                None => CalcResult::Error {
+                    error: Error::NA,
+                    origin: cell,
+                    message: "Not found".to_string(),
+                },
+            },
         }
     }
 
@@ -583,7 +554,7 @@ impl Model {
             // Vector form: search the lookup vector, return from the result
             // vector at the same position.
             let value = self.evaluate_node_in_context(&args[1], cell);
-            let lookup_vector = match self.as_vector(value, true, cell) {
+            let lookup_vector = match self.as_vector(value, cell) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
@@ -601,11 +572,11 @@ impl Model {
                     right.row = right.row.min(left.row.saturating_add(l as i32));
                 }
             }
-            let result_vector = match self.as_vector(result, false, cell) {
+            let result_vector = match self.as_vector(result, cell) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
-            return result_vector.into_iter().nth(l).unwrap_or(not_found);
+            return result_vector.into_value(l).unwrap_or(not_found);
         }
 
         // Array form (also covers a plain vector, where the first and last

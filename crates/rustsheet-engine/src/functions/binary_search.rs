@@ -2,8 +2,6 @@ use std::cmp::Ordering;
 
 use crate::{calc_result::CalcResult, expressions::types::CellReferenceIndex, model::Model};
 
-use super::util::compare_values;
-
 // NOTE: We don't know how Excel exactly implements binary search internally.
 // This means that if the values on the lookup range are not in order our results and Excel's will differ
 
@@ -170,33 +168,4 @@ impl Model {
         }
         result
     }
-}
-
-/// Old style binary search over an already materialized vector of values.
-/// Returns the index of the matching element or the largest element smaller
-/// than `target`. Returns `-2` if `target` is smaller than every element.
-pub(crate) fn binary_search_on_array(target: &CalcResult, array: &[CalcResult]) -> i32 {
-    // We apply binary search leftmost for value in the array
-    let mut l = 0;
-    let mut r = array.len();
-    while l < r {
-        let m = (l + r) / 2;
-        match compare_values(&array[m], target) {
-            -1 => {
-                l = m + 1;
-            }
-            1 => {
-                r = m;
-            }
-            _ => {
-                return m as i32;
-            }
-        }
-    }
-    // If target is less than the minimum return #N/A
-    if l == 0 {
-        return -2;
-    }
-    // Now l points to the leftmost element
-    (l - 1) as i32
 }
