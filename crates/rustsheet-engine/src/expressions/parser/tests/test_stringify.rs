@@ -79,3 +79,21 @@ fn correct_parenthesis() {
     let t = parser.parse("1 + (3<5)", &cell_reference);
     assert_eq!(to_english_localized_string(&t, &cell_reference), "1+(3<5)");
 }
+
+#[test]
+fn names_with_backslash_round_trip() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for formula in [
+        "IF(HSI\\10_1___val<>\"\",HSI\\10_1___val,\"\")",
+        "A\\B+1",
+        "\\name",
+    ] {
+        let t = parser.parse(formula, &cell_reference);
+        assert_eq!(to_english_localized_string(&t, &cell_reference), formula);
+    }
+}

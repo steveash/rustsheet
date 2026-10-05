@@ -17,5 +17,7 @@ Produce:
 2. Dependencies (`depends_on`) so work can proceed in parallel across lanes without conflicts.
 3. A spec in `docs/specs/` for anything that changes architecture or public API, *before* the
    implementation tasks (the spec task is itself a task).
+When refilling the sonnet queue (decision 0021), split work so that mechanical pieces meet the
+`sonnet` rubric and stay independently mergeable; never relabel a task to reach the target.
 Never create vague tasks ("improve X"). Never duplicate an existing task. Run
 `python3 scripts/tasks.py validate` when done.
