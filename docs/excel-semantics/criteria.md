@@ -48,6 +48,7 @@ Rule: `COUNTIF(range,"=")` does not count a cell holding the empty string, while
 Evidence: probes/criteria-grammar C3 (`""` → 1), C4 (`"="` → 0) over a range with one empty-string
 cell and no blank cells. Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Tasks: T-0227
 
 ## `<`, `>`, `<=`, `>=` with a boolean or error operand
 Rule: `COUNTIF(r,">TRUE")`, `"<TRUE"`, `">#N/A"` and `"<#N/A"` match nothing, even over TRUE or

@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-0900]
+depends_on: [T-0900, T-0942]
 ---
 
 ## Goal
@@ -19,6 +19,9 @@ values, differing from fdlibm and from NR's asymptotic branch).
 Once settled, drop the fdlibm fallback for |x| >= 8 in `bessel_excel.rs` if Excel never uses it.
 
 Also probe Excel's real cap on the order `n` (currently UNVERIFIED: > 100_000 returns #NUM!).
+
+**Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
+cached workbooks give. Fit against the T-0942 sweep, never blind.
 
 ## Acceptance criteria
 - [ ] Identify Excel's large-argument algorithm from the cached values (fit candidate asymptotic

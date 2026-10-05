@@ -41,3 +41,50 @@ Evidence: gen-m2/96a0952412cefa6c A88, 942bdade381b7537 A212, dd99be1f2454159f A
 04cfd82f54dbc2b2 A182 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
 Tasks: T-0216
+
+## Intersection operator (space)
+Rule: `A B` (a space between two references) gives the reference to the cells both contain. In a
+value context a single-cell result gives that cell's value, its error (`#DIV/0!`, `#N/A`) or, for an
+empty cell, 0 (`""` under `&`). It works with three operands, whole rows and columns, `$` corners,
+reversed corners (`Data!C8:B3`) and range-of-ranges (`Data!A7:A7:Data!C11`).
+`Data!A1:C7 Data!C7:E12` = 0.5 (Data!C7); `Data!C1:D7 Data!C1:C12 Data!A6:E6` = TRUE (Data!C6);
+`Data!Z:Z Data!290:290` = 0; `(Data!D:D Data!2:2)&""` = ""; `Data!C8:B3 Data!B8` = "a";
+`(Data!C2:C11 Data!C6:E6)+0.1` = 1.1; `Data!D2:E8 Data!E8:E12` = `#DIV/0!`.
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A5, A2, A3, A16; gen-m1/7cb99acdd82402f1 Calc!A25, A4;
+gen-m1/1ce5b2467b3b19fd Calc!A9, A25 (oracle: excel-graph, 2026-10-05; 632 cells across the three cases, T-0109).
+Status: VERIFIED
+Tasks: T-0105
+
+## Disjoint intersection is #NULL!
+Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
+`Data!A3:D4 Data!Z99` → `#NULL!`, `Data!B4:E11 Data!A1:A3` → `#NULL!`.
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A6, A10 (oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED
+Tasks: T-0105
+
+## Cross-sheet intersection is #VALUE!
+Rule: an intersection of references on two different sheets is `#VALUE!`, not `#NULL!`, even where
+the coordinates overlap (all 43 `intersection/cross-sheet` cells): `Data!C5:C10 'My Data'!C9:D9` → `#VALUE!`.
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A4, A17, A29 (oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED
+Tasks: T-0105
+
+## Union (comma) reference in a value context is #VALUE!
+Rule: a parenthesized union `(ref1,ref2)` is `#VALUE!` as a cell result, as an operand of
+arithmetic or `&`, and nested. This holds even when both areas are the same cell. An intersection that cuts
+the union down to one cell gives that cell's value. `(Data!E4,Data!E4)` → `#VALUE!`;
+`(Data!E12,Data!A9)/1` → `#VALUE!`; `(Data!C12,Data!E9)&""` → `#VALUE!`;
+`((Data!A2,Data!E8),Data!B6)` → `#VALUE!`; `(Data!D1:D12,Data!A1:A12) Data!D11` = "a" (Data!D11).
+Evidence: gen-m1/c940d3cfb0d3b083 Calc!A1, A2, A14, A25, A12; all 218 value-context cells are
+`#VALUE!` and all 32 `union/cut-by-cell` cells give the cell (oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED
+Tasks: T-0134
+
+## Range corners may both carry the sheet prefix
+Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
+(Data!B12) and `Data!C2:Data!E4 Data!C4` = 100. A single-cell range can also start a range-of-ranges:
+`Data!A7:A7:Data!C11 Data!A11` = 1.
+Evidence: gen-m1/1ce5b2467b3b19fd Calc!A10, A16, A25 (41 `range/ref-colon-ref` and 53
+`range/range-of-ranges` cells; oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED
+Tasks: T-0130, T-0105

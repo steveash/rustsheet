@@ -43,6 +43,11 @@ pattern, or share its branch-listing part, rather than copying it (CLAUDE.md dir
   branch, so other sessions see the number. A decision record notes the change.
 - [ ] `make check` green; reviewers approve.
 
+Note (decision 0028): allocation alone cannot prevent duplicates, because a session can allocate
+before it pushes. The guarantee is the merge-time up-to-date check, and this task only makes
+collisions rarer. Share the allocator with `make new-task` so task ids and decision numbers follow
+one rule.
+
 ## Out of scope
 - A merge queue or other branch-protection changes (owner settings).
 - Renumbering existing records.

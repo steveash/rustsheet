@@ -16,3 +16,17 @@ DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was
 wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was already right.)
 Implemented in: `read_rich_errors` in `crates/rustsheet-eval/src/xlsx_snapshot.rs` (eval expected values).
+
+## NOT and CONCATENATE lift over array arguments
+Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the
+`&` operator and TRIM. They do not return a scalar `#VALUE!`. When the result cannot spill (the
+next cell is occupied) the cell shows `#SPILL!`. `CONCAT`, by contrast, joins a whole range into
+one string.
+Evidence (oracle: excel-graph, 2026-10-04, gen-m2 sidecars as decoded by T-0208; each argument is a
+multi-cell column from `INDEX(range,0,…)` and the row below is occupied, so the cell is `#SPILL!`):
+gen-m2/75840b9c71a50596 Calc!A29 `=NOT(INDEX(Data!B2:E8,Data!C$10,3))` (C10 = FALSE);
+gen-m2/f7e6d351c8538ef5 Calc!A106 `=NOT(INDEX(Data!B3:E9,(Data!B$10-0.1),4))` (B10 = 0.2);
+gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12,0),("#N/A"&Data!D4)))`;
+gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
+Status: VERIFIED
+Tasks: T-0225 (NOT), T-0226 (CONCATENATE)

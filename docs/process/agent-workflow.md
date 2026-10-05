@@ -93,7 +93,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 7. **Review:** `review` skill. All applicable reviewers must APPROVE. At most 3 rounds, then mark
    the task blocked.
 8. **PR:** use the template. Set the task to `done` with an Outcome note.
-9. **Merge:** once CI is green and reviews are approved, squash-merge. The squash commit title and the
+9. **Merge:** once CI is green and reviews are approved, and the PR head contains the current
+   `origin/main` (the steward skill's mechanical check, decision 0028), squash-merge. The squash commit title and the
    task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
    (decision 0024), so PRs do not edit its log.
 
