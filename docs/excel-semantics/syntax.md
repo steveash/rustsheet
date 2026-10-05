@@ -28,4 +28,4 @@ on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parenth
 the process.
 Evidence: none for Excel's behavior beyond the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/mod.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
