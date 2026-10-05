@@ -102,6 +102,42 @@ pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
     index
 }
 
+/// Parses decimal number text the way Excel reads literals and numeric text: only the first 15
+/// significant digits are kept, later digits are truncated (not rounded), so
+/// `123456789012345678` reads as `123456789012345000` and `12345.6789012345678` as
+/// `12345.6789012345` (docs/excel-semantics/numbers.md "15-digit literal parsing").
+/// Accepts what `str::parse::<f64>` accepts; `None` when that fails.
+pub fn parse_excel_number(text: &str) -> Option<f64> {
+    let (mantissa, exp) = match text.find(['e', 'E']) {
+        Some(i) => text.split_at(i),
+        None => (text, ""),
+    };
+    let mut out = String::with_capacity(text.len());
+    let mut sig = 0usize;
+    let mut in_fraction = false;
+    for c in mantissa.chars() {
+        match c {
+            '.' => {
+                in_fraction = true;
+                out.push(c);
+            }
+            '0'..='9' => {
+                if sig > 0 || c != '0' {
+                    sig += 1;
+                }
+                if sig <= 15 {
+                    out.push(c);
+                } else if !in_fraction {
+                    out.push('0');
+                }
+            }
+            _ => out.push(c),
+        }
+    }
+    out.push_str(exp);
+    out.parse::<f64>().ok()
+}
+
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {
         return value;

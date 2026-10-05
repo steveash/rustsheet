@@ -1,6 +1,9 @@
 use chrono::Datelike;
 
-use crate::{locale::Locale, number_format::to_precision};
+use crate::{
+    locale::Locale,
+    number_format::{parse_excel_number, to_precision},
+};
 
 use super::{
     dates::{date_to_serial_number, excel_serial_to_ymd, from_excel_date},
@@ -943,9 +946,9 @@ fn parse_number(
     if position != len {
         return Err("Could not parse number".to_string());
     };
-    match chars.parse::<f64>() {
-        Err(_) => Err("Failed to parse to double".to_string()),
-        Ok(v) => Ok((
+    match parse_excel_number(&chars) {
+        None => Err("Failed to parse to double".to_string()),
+        Some(v) => Ok((
             sign * v,
             NumberOptions {
                 has_commas: !group_separator_index.is_empty(),
