@@ -1,4 +1,5 @@
 use crate::cast::MAX_TEXT_CHARS;
+
 pub(crate) enum Case {
     Sensitive,
     Insensitive,

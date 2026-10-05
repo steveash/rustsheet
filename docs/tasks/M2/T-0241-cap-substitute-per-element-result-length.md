@@ -24,4 +24,4 @@ Found by the T-0232 security review: `substitute_element` in `crates/rustsheet-e
 -
 
 ## Outcome
-SUBSTITUTE results over 32,767 chars are `#VALUE!` (excel-graph, probes/text-result-limit C1-C7), sized before building via `substituted_chars` (text/util.rs). New probe cells C8/C9 show CONCAT/TEXTJOIN give `#CALC!`: baselined as 2 new-coverage failures (probes 47 -> 49), follow-up T-0243. excel-desktop not used.
+SUBSTITUTE results over 32,767 chars are `#VALUE!` (excel-graph, probes/text-result-limit C1-C7, C11-C14), sized before building via `substituted_chars` (text/util.rs). Probe cells C11-C13 confirm a non-matching SUBSTITUTE is unchanged. C8/C9 show CONCAT/TEXTJOIN give `#CALC!`: baselined as 2 new-coverage failures (probes 47 -> 49), follow-up T-0243. excel-desktop not used.

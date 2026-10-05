@@ -200,6 +200,7 @@ fn substitute_element(
     }
     let text_chars = text.chars().count();
     let result_chars = substituted_chars(&text, text_chars, &old_text, &new_text, instance_num);
+    // A result that does not grow passes even from over-limit input (text.md "Open").
     if result_chars > MAX_TEXT_CHARS && result_chars > text_chars {
         return Err(Error::VALUE);
     }

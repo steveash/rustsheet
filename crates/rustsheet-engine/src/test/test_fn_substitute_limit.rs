@@ -2,7 +2,7 @@
 
 use crate::test::util::new_empty_model;
 
-// Oracle: probes/text-result-limit C1-C7 (excel-graph): a SUBSTITUTE result over 32767 chars is
+// Oracle: probes/text-result-limit C1-C7, C11 (excel-graph): a SUBSTITUTE result over 32767 chars is
 // #VALUE!, exactly 32767 is fine.
 #[test]
 fn substitute_result_over_32767_chars_is_value_error() {

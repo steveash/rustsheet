@@ -8,10 +8,19 @@ Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text
 
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
-replace-all and for a given instance number alike; exactly 32,767 is fine, and a non-matching instance leaves
-the text unchanged. `CONCAT` and `TEXTJOIN` past the limit give `#CALC!` in excel-graph (not implemented).
-Evidence: probes/text-result-limit C1-C7 (SUBSTITUTE), C8-C9 (CONCAT/TEXTJOIN `#CALC!`) (excel-graph, 2026-10-05;
-excel-desktop not used).
-Status: VERIFIED for SUBSTITUTE; CONCAT/TEXTJOIN `#CALC!` unverified on desktop
-Implemented in: `substitute_element` in functions/text/common.rs sizes the result before building it (T-0241)
+replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the
+inputs: when nothing matches the text is returned unchanged even if text plus new_text would exceed it.
+Evidence: probes/text-result-limit C1-C7, C14 (over limit, `#VALUE!`), C11-C13 (no match, unchanged) (excel-graph,
+2026-10-05; excel-desktop not used).
+Open: Excel may count UTF-16 code units (the code counts `chars()`); input text already over the limit (only reachable
+through an oversized xlsx string) passes through when the result does not grow, an unprobed engine choice.
+Status: VERIFIED
+Implemented in: `substituted_chars` in functions/text/util.rs sizes the result before building it (T-0241)
 Tasks: T-0241
+
+## CONCAT and TEXTJOIN past 32,767 characters
+Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
+Evidence: probes/text-result-limit C8-C9 (excel-graph, 2026-10-05; excel-desktop not used).
+Status: VERIFIED (web only)
+Implemented in: not yet (T-0243)
+Tasks: T-0243
