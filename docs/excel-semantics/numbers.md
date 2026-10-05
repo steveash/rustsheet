@@ -252,10 +252,16 @@ Values are from Excel for the web, which can differ from desktop in the last dig
 Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
 
 ## GCD / LCM argument bound
-Rule: Excel accepts an argument equal to 2^53: `GCD(2^53,2)` = 2, `LCM(2^53,1)` = 9007199254740992
-(and 2^53-1). RustSheet rejects arguments `>= 2^53` with `#NUM!`. Excel's real upper bound is unprobed.
-Evidence: probes/resource-limits C1–C4 (excel-graph, 2026-10-05; C1 and C3 are known failures).
-Status: VERIFIED (the 2^53 cells); bound UNVERIFIED (probe pending, T-0239)
+Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
+`GCD(2^53,2)` = 2, `GCD(2^53+1,2)` = 2 (2^53+1 reads as 2^53), `GCD(2^53+2,2)`, `GCD(2^54,2)`,
+`GCD(1E+16,2)`, `GCD(-2^53,2)` are `#NUM!`. An LCM result is bounded the same way, on the rounded
+double: `LCM(2^53,1)` = `LCM(2^53,2)` = 2^53; `LCM(3,3002399751580330+1)` (exactly 2^53+1) = 2^53;
+`LCM(2^53,3)`, `LCM(2^52+1,2)` (2^53+2) and `LCM(3037000500,3037000501)` are `#NUM!`.
+Microsoft documents `>= 2^53 -> #NUM!`; Excel (web) contradicts that. Desktop Excel was not available
+to confirm (decision 0019), so the entry is web-only evidence.
+Evidence: probes/resource-limits C1-C4, probes/gcd-lcm-bounds, lcm-result-bound, lcm-result-edge
+(excel-graph, 2026-10-05).
+Status: VERIFIED (excel-graph only)
 Implemented in: functions/math_and_trigonometry/gcd_lcm.rs (`MAX_LCM_GCD`)
 Tasks: T-0239
 

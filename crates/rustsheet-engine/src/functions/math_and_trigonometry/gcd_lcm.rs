@@ -5,7 +5,8 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
-// Excel accepts 2^53 itself (docs/excel-semantics/numbers.md, T-0239).
+// Excel accepts 2^53 itself as an argument and as an LCM result; anything above is `#NUM!`
+// (probes/gcd-lcm-bounds, lcm-result-bound, lcm-result-edge; docs/excel-semantics/numbers.md).
 const MAX_LCM_GCD: i64 = 2_i64.pow(53);
 
 // Euclidean gcd for i64 (non-negative inputs expected)
@@ -19,14 +20,16 @@ fn gcd_i64(mut a: i64, mut b: i64) -> i64 {
 }
 
 // lcm(a, b) = a / gcd(a, b) * b
-// we do it in i128 to reduce overflow risk, then back to i64/f64
+// done in i128: both inputs are at most 2^53, so the product is at most 2^106
 fn lcm_i64(a: i64, b: i64) -> Option<i64> {
     if a == 0 || b == 0 {
         return Some(0);
     }
     let g = gcd_i64(a, b);
     let a_div_g = (a / g) as i128;
-    let prod = a_div_g * (b as i128);
+    // The limit applies to the rounded double: a product of 2^53+1 reads as 2^53 and is accepted
+    // (probes/lcm-result-edge C1), while 2^53+2 is `#NUM!`.
+    let prod = ((a_div_g * (b as i128)) as f64) as i128;
     if prod > MAX_LCM_GCD as i128 {
         None
     } else {
@@ -69,7 +72,7 @@ impl Model {
                     cell,
                     format!("{} only accepts non-negative integers", fn_name),
                 ));
-            } else if n >= MAX_LCM_GCD {
+            } else if n > MAX_LCM_GCD {
                 return Some(CalcResult::new_error(
                     Error::NUM,
                     cell,
