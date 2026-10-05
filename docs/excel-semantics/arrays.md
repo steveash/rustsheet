@@ -76,3 +76,14 @@ and H30 `MDETERM(B30:D32)` (all blank / only B30 = 1) are `#VALUE!`; H14:J16 `MI
 H34:J36 `MINVERSE(B34:D36)` are `#VALUE!` in every cell; H50 `MDETERM(B50)` = 1.
 Status: VERIFIED (Excel-cached)
 Tasks: T-0943
+
+## Legacy (CSE) array formula over a larger range
+Rule: a legacy array formula entered over a range larger than its result fills the range: a 1x1
+result is repeated into every cell, a single-row result is repeated down and a single-column result
+across, and every other cell is `#N/A`.
+Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1: `TRANSPOSE(B46)` over
+H46:J48 is 1 in all 9 cells (also `MINVERSE(B54)` H54:J56, `MMULT(B58,E58)` H58:J60);
+`B62:C62+E62:F62` over H62:J64 repeats the row down with J62:J64 `#N/A`; `TRANSPOSE(B66:C66)` over
+H66:J68 has row 68 `#N/A` (94 `#N/A` cells in H46:J136).
+Status: VERIFIED (Excel-cached)
+Tasks: T-0950

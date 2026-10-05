@@ -42,5 +42,5 @@ helper exists rather than adding a second one.
 ## Out of scope
 - The other 95 failing cells of the same workbook (H46:J136): a legacy array formula whose result is
   smaller than its range (a 1x1 or single row/column result is repeated, other cells are `#N/A`).
-  That is CSE range filling, an engine change; see T-0913.
+  That is CSE range filling, an engine change; T-0950 (rule in docs/excel-semantics/arrays.md).
 - Text or boolean cells inside the matrix (no evidence in this workbook).
