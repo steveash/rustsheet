@@ -1,11 +1,12 @@
 # Criteria (COUNTIF/SUMIF family, D-functions, wildcard lookups)
 
 ## "<>text" counts non-text cells
-Rule: `COUNTIF(range,"<>x")` counts every cell not equal to `x`: numbers, booleans, errors and blanks included.
-Evidence: smoke/criteria Sheet1!C6 (hand-computed, well-known Excel behavior). probes/criteria-grammar
-has no `"<>text"` cell, so this is still unprobed; T-0011 adds one. (Its C5 `"<>"` = 6 counts
-every non-blank cell, the empty-string cell included.)
-Status: UNVERIFIED (probe pending)
+Rule: `COUNTIF(range,"<>x")` counts every cell not equal to `x` (case-insensitive): numbers,
+booleans, errors and truly blank cells included.
+Evidence: probes/criteria-gaps C1 (`"<>abc"` → 10 of 12 cells: 10, TRUE, #N/A, a blank and the
+other texts; "abc" and "ABC" excluded), C12 (`"<>ABC"` → 10); probes/criteria-operands C9.
+Oracle: excel-graph, 2026-10-05 (T-0011).
+Status: VERIFIED
 Implemented in: functions::criteria::result_is_not_equal_to_string
 
 ## Wildcard text matching
@@ -16,10 +17,15 @@ Evidence: probes/criteria-grammar C8 (`"abc~"` → 0), C9 (`"*"` → 4: the four
 Status: VERIFIED
 
 ## Wildcard escapes, case and trailing tilde
-Rule (hypothesis): `~*`, `~?`, `~~` escape the wildcard characters, matching is case-insensitive,
-and a trailing lone `~` is a literal tilde (so `"abc~"` would match the text "abc~").
-Evidence: smoke/criteria Sheet1!C1,C3,C4,C10,C11 (hand). Probe cells: T-0011.
-Status: UNVERIFIED (probe pending)
+Rule: `~` escapes only `*` and `?` (`"~*"` matches the text "*", `"a~*c"` "a*c", `"a~?c"` "a?c").
+Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a trailing lone `~`
+is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
+does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
+wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
+Verified with COUNTIF only; MATCH/XLOOKUP wildcard mode and D-functions are unprobed for `~~`.
+Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
+*, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
+Status: VERIFIED
 Implemented in: functions::criteria::wildcard_text_matcher
 
 ## D-function plain-text equality matches by prefix
@@ -31,22 +37,25 @@ Status: VERIFIED
 Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Database)
 
 ## D-function criteria are not trimmed into an operator criterion
-Rule: a D-function criterion padded on both sides, `"  > 1 "`, does not act as `>1`: DSUM over
-Qty 1, 2, 4 returns 0, not 6. This disproves the earlier "criteria text is trimmed first"
-hypothesis (which the engine had implemented). The evidence fits two explanations, still to be
-told apart: no trimming at all (the text is a plain-text criterion), or leading spaces trimmed
-but the operand `" 1 "` kept as text (matching no number). The engine implements "no trimming".
-Evidence: smoke/d-function-criteria Sheet1!J2 (`=DSUM(A1:B4,"Qty",F1:F2)`, F2 = `"  > 1 "` → 0).
-Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED for the both-sides-padded case; which explanation holds (and leading-only /
-trailing-only padding, `">"&" 1 "`) is UNVERIFIED (probe pending, T-0011)
+Rule: leading spaces stop a criterion from being an operator criterion: `"  > 1 "` and `" >1"` are
+plain-text criteria (DSUM over Qty 1, 2, 4 → 0). After the operator, though, the operand is read as
+a number with surrounding spaces ignored: `">1 "`, `"> 1"` and `">"&" 1 "` (`"> 1 "`) all act as
+`>1` (→ 6) in D-functions; COUNTIF was probed with `"> 1"` only (`COUNTIF(r,"> 1")` → 2 over
+1, 2, 4; T-0238 probes the trailing-space forms there). Plain-text
+D-function criteria keep their spaces in the prefix match: `" ab"` matches only " ab", `"ab "`
+only "ab " (over ab, "ab ", " ab"), and the prefix match is case-insensitive (`"AB"` → 2).
+Evidence: smoke/d-function-criteria Sheet1!J2 (`"  > 1 "` → 0); probes/criteria-gaps C15 (`" >1"`
+→ 0), C16–C18 (→ 6), C22 (→ 2), C19–C21 (1, 1, 2). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
+Status: VERIFIED
 Implemented in: functions::database::criteria_cell_matches (no trimming)
+Tasks: T-0238 (padded numeric operand; criteria-gaps C16–C18, C22 are known failures)
 
-## "=" does not match an empty-string cell
-Rule: `COUNTIF(range,"=")` does not count a cell holding the empty string, while
-`COUNTIF(range,"")` does. (That `"="` counts truly blank cells is not covered yet: the probe range has none; T-0011.)
+## "=" matches blank cells, not an empty-string cell
+Rule: `COUNTIF(range,"=")` counts truly blank cells but not a cell holding the empty string, while
+`COUNTIF(range,"")` counts both.
 Evidence: probes/criteria-grammar C3 (`""` → 1), C4 (`"="` → 0) over a range with one empty-string
-cell and no blank cells. Oracle: excel-graph, 2026-10-04.
+cell and no blank cells; probes/criteria-gaps C2 (`"="` → 1), C3 (`""` → 1) over a range with one
+blank cell and no empty string. Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
 Status: VERIFIED
 Tasks: T-0227
 
