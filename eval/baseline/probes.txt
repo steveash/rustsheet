@@ -26,6 +26,7 @@ C	probes/mod-quotient-threshold2.case.json	36
 C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
+C	probes/number-to-text-notation.case.json	52
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-calc.case.json	10
@@ -53,13 +54,14 @@ F	probes/literal-digits.case.json	Sheet1!C3
 F	probes/literal-digits.case.json	Sheet1!C4
 F	probes/literal-digits.case.json	Sheet1!C5
 F	probes/literal-digits.case.json	Sheet1!C6
+F	probes/number-to-text-notation.case.json	Sheet1!A22
+F	probes/number-to-text-notation.case.json	Sheet1!A29
 F	probes/precision-and-rounding.case.json	Sheet1!A11
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
-F	probes/precision-and-rounding.case.json	Sheet1!A9
 F	probes/resource-limits.case.json	Sheet1!C10
 F	probes/resource-limits.case.json	Sheet1!C12
 F	probes/resource-limits.case.json	Sheet1!C14
