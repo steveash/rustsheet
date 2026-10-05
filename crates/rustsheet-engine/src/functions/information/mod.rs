@@ -9,15 +9,23 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
+    functions::math_and_trigonometry::array_size::check_array_size,
     get_all_timezones,
     model::{Model, ParsedDefinedName},
 };
 
 /// Applies a boolean test to every element of a 2-D array.
-fn map_array(values: &[Vec<ArrayNode>], test: &impl Fn(&ArrayNode) -> bool) -> Vec<Vec<ArrayNode>> {
+fn map_array(
+    values: Vec<Vec<ArrayNode>>,
+    test: &impl Fn(&ArrayNode) -> bool,
+) -> Vec<Vec<ArrayNode>> {
     values
-        .iter()
-        .map(|row| row.iter().map(|v| ArrayNode::Boolean(test(v))).collect())
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|v| ArrayNode::Boolean(test(&v)))
+                .collect()
+        })
         .collect()
 }
 
@@ -49,10 +57,17 @@ impl Model {
         }
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Range { left, right } => {
+                // DEVIATION (decision 0014): Excel spills any range that fits the grid; the
+                // shared allocation bound applies (docs/excel-semantics/arrays.md).
+                let rows = (right.row - left.row + 1).max(0) as usize;
+                let columns = (right.column - left.column + 1).max(0) as usize;
+                if let Some((error, message)) = check_array_size(rows, columns) {
+                    return CalcResult::new_error(error, cell, message);
+                }
                 let values = self.evaluate_range(left, right);
-                CalcResult::Array(map_array(&values, &test))
+                CalcResult::Array(map_array(values, &test))
             }
-            CalcResult::Array(values) => CalcResult::Array(map_array(&values, &test)),
+            CalcResult::Array(values) => CalcResult::Array(map_array(values, &test)),
             other => CalcResult::Boolean(test(&calc_result_to_array_node(other))),
         }
     }

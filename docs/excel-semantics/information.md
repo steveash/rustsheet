@@ -19,3 +19,12 @@ Evidence: probes/is-functions-array-lift (removed cells I1/J1; excel-graph oracl
 T-0247 run, 2026-10-05).
 Status: UNVERIFIED
 Tasks: T-0247
+
+## Resource bound on lifted IS* ranges
+Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. RustSheet returns
+`#ERROR!` for a lifted IS* range above 1,000,000 cells, to bound allocation on untrusted input
+(CLAUDE.md directive 5); whole-column arguments therefore also fail.
+Evidence: none for Excel at this size; resource limit, see arrays.md "Array results above 1,000,000 cells".
+Status: DEVIATION (decision 0014)
+Implemented in: functions/information/mod.rs (`is_predicate`, `check_array_size`)
+Tasks: T-0247
