@@ -90,6 +90,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 5. **Implement:** the smallest change. Run `make fmt && make check`.
 6. **Ratchet:** run `make eval-baseline` when cells newly pass, and `scripts/check_*.py --update`
    when debt went down.
+   A protected-path change needs a decision record: create it with `make new-decision TITLE="..."`
+   (it takes a number no pushed branch uses; decision 0029) and push it with your next commit.
 7. **Review:** `review` skill. All applicable reviewers must APPROVE. At most 3 rounds, then mark
    the task blocked.
 8. **PR:** use the template. Set the task to `done` with an Outcome note.

@@ -83,7 +83,7 @@ check: fmt-check clippy test eval-check py-check py-bindings hygiene typos ## Ev
 ci: check deny machete
 
 # ---------------------------------------------------------------- Tasks
-.PHONY: tasks next-task ready-tasks board new-task
+.PHONY: tasks next-task ready-tasks board new-task new-decision
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
@@ -95,6 +95,9 @@ ready-tasks: ## Every task next-task could pick, then "N ready": make ready-task
 
 new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 LANE=engine TITLE="..." [PRIORITY=P1] [SIZE=S] [TIER=opus] (fetches origin)
 	$(PY) scripts/tasks.py new --milestone "$(MILESTONE)" --lane "$(LANE)" --title "$(TITLE)" $(if $(PRIORITY),--priority $(PRIORITY)) $(if $(SIZE),--size $(SIZE)) $(if $(TIER),--tier $(TIER))
+
+new-decision: ## New decision record with a collision-free number: make new-decision TITLE="..." (fetches origin; decision 0029)
+	$(PY) scripts/new_decision.py --title "$(TITLE)"
 
 board: ## Write docs/tasks/BOARD.md locally (git-ignored; decision 0017)
 	$(PY) scripts/tasks.py board
