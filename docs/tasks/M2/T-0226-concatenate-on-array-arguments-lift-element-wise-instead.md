@@ -3,7 +3,7 @@ id: T-0226
 title: "CONCATENATE on array arguments: lift element-wise instead of #VALUE! (2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
