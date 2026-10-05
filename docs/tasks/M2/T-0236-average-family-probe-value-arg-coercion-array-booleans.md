@@ -3,7 +3,7 @@ id: T-0236
 title: "AVERAGE family: probe value-arg coercion (array booleans, empty args) and align for_each_value"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
