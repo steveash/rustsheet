@@ -1,3 +1,4 @@
+use crate::functions::date_and_time::time_text::parse_date_clock_serial;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
@@ -1124,26 +1125,21 @@ impl Model {
                 {
                     return CalcResult::Number(value);
                 };
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid number".to_string(),
+                // Date text with a clock suffix is the date serial plus the time
+                // (probes/date-text-grammar C30, C31, C53, C55, C63).
+                if let Some(serial) = parse_date_clock_serial(text.trim(), self.locale) {
+                    return CalcResult::Number(serial);
                 }
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::Number(f) => CalcResult::Number(f),
-            CalcResult::Boolean(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid number".to_string(),
-            },
+            CalcResult::Boolean(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
+            }
             error @ CalcResult::Error { .. } => error,
             CalcResult::Range { .. } => {
                 // TODO Implicit Intersection
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid number".to_string(),
-                }
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
             CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
