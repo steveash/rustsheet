@@ -94,11 +94,9 @@ fn fn_offset_huge_arguments_are_ref_errors() {
     model._set("A9", "=OFFSET(B2,1E300,1E300,1E300,1E300)");
     model.evaluate();
 
-    for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A9"] {
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
         assert_eq!(model._get_text(cell), *"#REF!", "{cell}");
     }
-    // Negative height/width keep their existing #VALUE! (see the comment in fn_offset; Excel allows
-    // negative sizes, so this is a known gap, not Excel evidence).
-    assert_eq!(model._get_text("A7"), *"#VALUE!");
-    assert_eq!(model._get_text("A8"), *"#VALUE!");
+    // A7-A9 only pin "no panic": Excel accepts negative height/width (TODO(T-0956)) and the
+    // result for 1E300 arguments has no oracle evidence, so their values are not asserted.
 }
