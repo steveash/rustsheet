@@ -74,7 +74,7 @@ These cells also need another task:
 ## Out of scope
 - INDEX returning references in aggregates (T-0216). Spill/`#SPILL!` decoding (T-0208).
 
-## Handoff
+## Handoff (resumed)
 Tried: in `fn_index` (Range branch) added `|| (two_arg && num_rows > 1 && num_cols > 1)` to the `#REF!` condition
 (arrays untouched; unverified); folded the duplicated negative-index error into a closure so `lookup_and_reference/mod.rs`
 stays at 1021 lines (ratchet). Unit test `test_index_single_index_into_2d_range_is_ref_error` passes.
