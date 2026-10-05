@@ -3,7 +3,7 @@ id: T-0130
 title: "Lexer: range with both corners sheet-qualified (Data!B8:Data!E12)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
