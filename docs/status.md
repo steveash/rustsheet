@@ -18,9 +18,9 @@ merged since its last run.
 
 Hygiene: lint-debt 99 allow entries · duplicated lines 8,360 · oversized files 19 (formatter/format.rs is now under the limit; the ratchet file is protected, so the next PR touching it records the drop).
 
-Since the 2026-10-04 steward run (#33): 41 PRs merged to `main` (T-0004/0009/0013/0015/0016/0017/0019/0022/0023/0027/0028/0029/0031/0032/0033/0034/0035/0036/0037,
+Since the 2026-10-04 steward run (#33): 44 PRs merged to `main` (T-0004/0009/0013/0015/0016/0017/0019/0022/0023/0027/0028/0029/0031/0032/0033/0034/0035/0036/0037,
 T-0102/0103/0104/0108/0116/0119/0123, T-0203/0206, T-0923/0924/0926/0928/0930/0932, decision 0014, task filings); 0 reverted; 0 tasks blocked.
-In flight: T-0931 (engine, P0), T-0117 (harness, gen-m1). CI on `main` (c2b8a31): green. Open PRs: #68 (T-0125 draft, handed off to opus, <24 h).
+Merged during this run: T-0931 (parser nesting limit), T-0117 (gen-m1 generator); in flight: T-0109 (gen-m1 oracle fill). CI on `main` (e684703): green. Open PRs: #68 (T-0125 draft, handed off to opus, <24 h).
 Ready queues: functions 31, sonnet 11 (buffer ≥10 met); engine 1 ready because T-0931 holds the lane (10 more todo), harness 4, research 6,
 quality 3 — no triage or planning needed. Upstream IronCalc: 7 new commits through 4deab8f6, filed T-0129 (error broadcasting), T-0223
 (MAX/MIN), T-0940 (ISREF). Oracle: excel-graph OK; fill on poi wrote 0 sidecars (292 skipped, 4 workbooks failed, as in T-0019) and on ironcalc-calc wrote 3
