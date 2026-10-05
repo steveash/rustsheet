@@ -30,6 +30,25 @@ gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
 Status: VERIFIED
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
+Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226).
+
+## CONCATENATE with a scalar error argument returns that error, not an array
+Rule: if any CONCATENATE argument is a scalar error, the result is that one error, even when another
+argument is an array; Excel does not spill an array of errors.
+Evidence: gen-m2/ce315bb699e1be6f Calc!A313
+`=MID(CONCATENATE(INDEX(Data!B8:E11,1),"x~*",HLOOKUP(-0.5,Data!B2:E2,4)),Data!A$3,1)` gives `#REF!`, not `#SPILL!`;
+gen-m2/207a5753da48c7e0 Calc!A95 (VLOOKUP over `CONCATENATE(INDEX(..,0.1),INDEX(Data!D3:D4,4,1))`) gives `#REF!`.
+Status: VERIFIED
+Implemented in: `fn_concatenate` (early return of the first argument error, T-0226)
+
+## CONCATENATE result longer than 32767 characters
+Rule: a CONCATENATE result (per element for arrays) longer than 32767 characters is `#VALUE!`; this also
+bounds the allocation of array broadcasts (CLAUDE.md directive 5). Applies to scalar results too.
+Evidence: none from the oracle (Microsoft documents the limit). Open: exactly 32767 vs 32768, per-element in
+arrays, and whether Excel counts UTF-16 code units (the code counts `chars()`).
+Status: UNVERIFIED (probe pending, T-0233)
+Implemented in: `fn_concatenate` (T-0226)
+
 
 ## A scalar error operand broadcasts against an array operand
 Rule: an arithmetic operator (`+ - * / ^`) whose one operand is a scalar error (or text that is
