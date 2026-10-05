@@ -19,6 +19,7 @@ Every rich-value `errorType` that Excel writes is mapped to its error by oracle 
 ## Acceptance criteria
 - [ ] A probe case (excel-probe skill) returns `ERROR.TYPE` and `ISERROR` of each error Excel stores as a rich value (`#SPILL!`, `#CALC!`, `#FIELD!`, `#BLOCKED!`, `#CONNECT!`, `#BUSY!`, `#UNKNOWN!`, uncached external ref) next to the cell itself; its cached oracle workbook gives each cell's errorType/subType.
 - [ ] `rich_value_errors` maps every probed errorType; docs/excel-semantics/arrays.md lists the table with the probe as evidence.
+- [ ] A `t="e"` cell whose `vm` cannot be resolved (rc out of range, no `errorType` key, missing field) also reads as `#UNDECODED!`, never the cached `#VALUE!`; unit test (T-0203 review).
 - [ ] poi/link-external-workbook-b is refilled and scored (references.md entry updated).
 - [ ] `make check` green; reviewers approve.
 

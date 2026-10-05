@@ -15,8 +15,8 @@ a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...
 
 ## MATCH on a 2-D lookup_array is #N/A; argument errors win
 Rule: `MATCH` with a lookup_array of more than one row and column returns `#N/A` even when the value
-is in it (`=MATCH(Data!C$5,Data!A5:C9,1)` with C5 = 2 inside A5:C9 → `#N/A`; none of the 76
-top-level 2-D MATCH calls in gen-m2 returns a number), but an error in lookup_value is returned first
+is in it (`=MATCH(Data!C$5,Data!A5:C9,1)` with C5 = 2 inside A5:C9 → `#N/A`; no top-level 2-D MATCH
+call in gen-m2 returns a number), but an error in lookup_value is returned first
 (`=MATCH(MAX(MONTH(-0.5)),Data!A7:C9)` → `#NUM!`).
 Evidence: gen-m2/cbdabe32a32a4012 Calc!A227, ce315bb699e1be6f Calc!A135, 629e6e8b76fab8b9 Calc!A313. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
