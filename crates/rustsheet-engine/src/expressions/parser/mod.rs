@@ -50,10 +50,14 @@ use super::utils::number_to_column;
 
 use token::OpCompare;
 
+mod depth;
 mod lambda;
+mod lists;
 pub mod move_formula;
 pub mod static_analysis;
 pub mod stringify;
+
+pub use depth::{MAX_FORMULA_DEPTH, TOO_DEEP_MESSAGE};
 
 #[cfg(test)]
 mod tests;
@@ -276,6 +280,13 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
+    /// Primaries (operands) open on the current parse path. Checked before
+    /// descending so the parser's own recursion stays bounded.
+    nesting: usize,
+    /// Depth of the tree the last `parse_*` call returned.
+    depth: usize,
+    /// Deepest subexpression parsed so far inside the primary being parsed.
+    inner_depth: usize,
 }
 
 pub fn new_parser_english(
@@ -312,6 +323,9 @@ impl Parser {
             language,
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
+            nesting: 0,
+            depth: 0,
+            inner_depth: 0,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -343,6 +357,9 @@ impl Parser {
         // At the top level a formula may start with an expression or a range.
         self.expecting_here = vec![ExpectedTokens::Range, ExpectedTokens::Other];
         self.trailing_name = None;
+        self.nesting = 0;
+        self.depth = 0;
+        self.inner_depth = 0;
         self.parse_expr()
     }
 
@@ -445,6 +462,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        let mut depth = self.depth;
         let mut next_token = self.lexer.peek_token();
         while let TokenType::Compare(op) = next_token {
             self.lexer.advance_token();
@@ -452,6 +470,10 @@ impl Parser {
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
             t = Node::CompareKind {
                 kind: op,
                 left: Box::new(t),
@@ -459,6 +481,7 @@ impl Parser {
             };
             next_token = self.lexer.peek_token();
         }
+        self.inner_depth = self.inner_depth.max(depth);
         t
     }
 
@@ -467,6 +490,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        let mut depth = self.depth;
         let mut next_token = self.lexer.peek_token();
         while next_token == TokenType::And {
             self.lexer.advance_token();
@@ -474,6 +498,10 @@ impl Parser {
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
             t = Node::OpConcatenateKind {
                 left: Box::new(t),
                 right: Box::new(p),
@@ -488,6 +516,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        let mut depth = self.depth;
         let mut next_token = self.lexer.peek_token();
         while let TokenType::Addition(op) = next_token {
             self.lexer.advance_token();
@@ -495,6 +524,10 @@ impl Parser {
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
             t = Node::OpSumKind {
                 kind: op,
                 left: Box::new(t),
@@ -511,6 +544,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        let mut depth = self.depth;
         let mut next_token = self.lexer.peek_token();
         while let TokenType::Product(op) = next_token {
             self.lexer.advance_token();
@@ -518,6 +552,10 @@ impl Parser {
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
             t = Node::OpProductKind {
                 kind: op,
                 left: Box::new(t),
@@ -533,6 +571,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        let mut depth = self.depth;
         let mut next_token = self.lexer.peek_token();
         while next_token == TokenType::Power {
             self.lexer.advance_token();
@@ -540,6 +579,10 @@ impl Parser {
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
             t = Node::OpPowerKind {
                 left: Box::new(t),
                 right: Box::new(p),
@@ -565,6 +608,9 @@ impl Parser {
             return t;
         }
         if sign == -1 {
+            if let Err(error) = self.grow(self.depth, 0) {
+                return error;
+            }
             t = Node::UnaryKind {
                 kind: token::OpUnary::Minus,
                 right: Box::new(t),
@@ -573,6 +619,9 @@ impl Parser {
         next_token = self.lexer.peek_token();
         while next_token == TokenType::Percent {
             self.lexer.advance_token();
+            if let Err(error) = self.grow(self.depth, 0) {
+                return error;
+            }
             t = Node::UnaryKind {
                 kind: token::OpUnary::Percentage,
                 right: Box::new(t),
@@ -587,12 +636,16 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        let depth = self.depth;
         let next_token = self.lexer.peek_token();
         if next_token == TokenType::Colon {
             self.lexer.advance_token();
             let p = self.parse_primary();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
+            }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
             }
             return Node::OpRangeKind {
                 left: Box::new(t),
@@ -610,6 +663,9 @@ impl Parser {
             if let Node::ParseErrorKind { .. } = t {
                 return t;
             }
+            if let Err(error) = self.grow(self.depth, 0) {
+                return error;
+            }
             return Node::ImplicitIntersection {
                 automatic: false,
                 child: Box::new(t),
@@ -622,6 +678,9 @@ impl Parser {
         let next_token = self.lexer.peek_token();
         if next_token == TokenType::Spill {
             self.lexer.advance_token();
+            if let Err(error) = self.grow(self.depth, 0) {
+                return error;
+            }
             return Node::SpillRangeOperator {
                 child: Box::new(primary),
             };
@@ -629,82 +688,7 @@ impl Parser {
         primary
     }
 
-    fn parse_array_row(&mut self) -> Result<Vec<ArrayNode>, Node> {
-        let mut row = Vec::new();
-        let column_separator_token = self.get_argument_separator_token();
-        // and array can only have numbers, string or booleans
-        // otherwise it is a syntax error
-        let first_element = match self.parse_expr() {
-            Node::BooleanKind(s) => ArrayNode::Boolean(s),
-            Node::NumberKind(s) => ArrayNode::Number(s),
-            Node::StringKind(s) => ArrayNode::String(s),
-            Node::ErrorKind(kind) => ArrayNode::Error(kind),
-            Node::UnaryKind {
-                kind: OpUnary::Minus,
-                right,
-            } => {
-                if let Node::NumberKind(n) = *right {
-                    ArrayNode::Number(-n)
-                } else {
-                    return Err(Node::ParseErrorKind {
-                        formula: self.lexer.get_formula(),
-                        expecting: vec![ExpectedTokens::Other],
-                        message: "Invalid value in array".to_string(),
-                        position: self.lexer.get_position() as usize,
-                    });
-                }
-            }
-            error @ Node::ParseErrorKind { .. } => return Err(error),
-            _ => {
-                return Err(Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    message: "Invalid value in array".to_string(),
-                    position: self.lexer.get_position() as usize,
-                });
-            }
-        };
-        row.push(first_element);
-        let mut next_token = self.lexer.peek_token();
-        while next_token == column_separator_token {
-            self.lexer.advance_token();
-            let value = match self.parse_expr() {
-                Node::BooleanKind(s) => ArrayNode::Boolean(s),
-                Node::NumberKind(s) => ArrayNode::Number(s),
-                Node::StringKind(s) => ArrayNode::String(s),
-                Node::ErrorKind(kind) => ArrayNode::Error(kind),
-                Node::UnaryKind {
-                    kind: OpUnary::Minus,
-                    right,
-                } => {
-                    if let Node::NumberKind(n) = *right {
-                        ArrayNode::Number(-n)
-                    } else {
-                        return Err(Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            message: "Invalid value in array".to_string(),
-                            position: self.lexer.get_position() as usize,
-                        });
-                    }
-                }
-                error @ Node::ParseErrorKind { .. } => return Err(error),
-                _ => {
-                    return Err(Node::ParseErrorKind {
-                        formula: self.lexer.get_formula(),
-                        expecting: vec![ExpectedTokens::Other],
-                        message: "Invalid value in array".to_string(),
-                        position: self.lexer.get_position() as usize,
-                    });
-                }
-            };
-            row.push(value);
-            next_token = self.lexer.peek_token();
-        }
-        Ok(row)
-    }
-
-    fn parse_primary(&mut self) -> Node {
+    fn parse_operand(&mut self) -> Node {
         let next_token = self.lexer.next_token();
         match next_token {
             TokenType::LeftParenthesis => {
@@ -1316,59 +1300,5 @@ impl Parser {
                 }
             }
         }
-    }
-
-    fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
-        let arg_separator_token = &self.get_argument_separator_token();
-        let mut args: Vec<Node> = Vec::new();
-        let mut next_token = self.lexer.peek_token();
-        if next_token == TokenType::RightParenthesis {
-            return Ok(args);
-        }
-        // The cursor is currently in the first argument of `fn_name`.
-        self.set_argument_hint(fn_name, 1);
-        if &self.lexer.peek_token() == arg_separator_token {
-            args.push(Node::EmptyArgKind);
-        } else {
-            let t = self.parse_expr();
-            if let Node::ParseErrorKind { .. } = t {
-                return Err(t);
-            }
-            args.push(t);
-        }
-        next_token = self.lexer.peek_token();
-        let mut arg_index = 1;
-        while &next_token == arg_separator_token {
-            self.lexer.advance_token();
-            arg_index += 1;
-            self.set_argument_hint(fn_name, arg_index);
-            if &self.lexer.peek_token() == arg_separator_token {
-                args.push(Node::EmptyArgKind);
-                next_token = arg_separator_token.clone();
-            } else if self.lexer.peek_token() == TokenType::RightParenthesis {
-                args.push(Node::EmptyArgKind);
-                return Ok(args);
-            } else {
-                let p = self.parse_expr();
-                if let Node::ParseErrorKind { .. } = p {
-                    return Err(p);
-                }
-                next_token = self.lexer.peek_token();
-                args.push(p);
-            }
-        }
-        Ok(args)
-    }
-
-    /// Records that the position currently being parsed *starts* argument
-    /// `index` (1-based) of `fn_name`: a fresh operand goes here, so a `Range`
-    /// is a valid completion. Reported if an EOF lands on this empty slot (e.g.
-    /// `SUM(` or `SUM(A1,`). Once the argument is complete the unclosed-call
-    /// path in `parse_primary` reports the argument context without `Range`.
-    fn set_argument_hint(&mut self, fn_name: &str, index: u32) {
-        self.expecting_here = vec![
-            ExpectedTokens::Argument(fn_name.to_string(), index),
-            ExpectedTokens::Range,
-        ];
     }
 }
