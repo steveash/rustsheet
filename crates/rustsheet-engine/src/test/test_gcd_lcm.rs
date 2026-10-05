@@ -2,8 +2,6 @@
 
 use crate::test::util::new_empty_model;
 
-const MAX_LCM_GCD: i64 = 2_i64.pow(53);
-
 #[test]
 fn arguments() {
     let mut model = new_empty_model();
@@ -46,27 +44,18 @@ fn invalid_inputs() {
     model._set("A7", "=GCD({1, 2, 3}, {4, -5, 6})");
     model._set("A8", "=GCD({1, 2, 3}, {4, \"-5\", 6})");
 
-    model._set("B1", &format!("=LCM({}, 6)", MAX_LCM_GCD + 2));
-    model._set("B2", &format!("=LCM(\"{}\", 6)", MAX_LCM_GCD + 2));
-    model._set("B3", &format!("=GCD({}, 6)", MAX_LCM_GCD + 2));
-    model._set("B4", &format!("=GCD(\"{}\", 6)", MAX_LCM_GCD + 2));
+    model._set("B1", "=LCM(1E+16, 6)");
+    model._set(
+        "B2", // 16-digit text is cut to 15 digits (T-0143), so use a value past the limit that survives
+        "=LCM(\"1E+16\", 6)",
+    );
+    model._set("B3", "=GCD(1E+16, 6)");
+    model._set("B4", "=GCD(\"1E+16\", 6)");
 
-    model._set(
-        "B5",
-        &format!("=LCM({{1, 2, 3}}, {{4, {}, 6}})", MAX_LCM_GCD + 2),
-    );
-    model._set(
-        "B6",
-        &format!("=LCM({{1, 2, 3}}, {{4, \"{}\", 6}})", MAX_LCM_GCD + 2),
-    );
-    model._set(
-        "B7",
-        &format!("=GCD({{1, 2, 3}}, {{4, {}, 6}})", MAX_LCM_GCD + 2),
-    );
-    model._set(
-        "B8",
-        &format!("=GCD({{1, 2, 3}}, {{4, \"{}\", 6}})", MAX_LCM_GCD + 2),
-    );
+    model._set("B5", "=LCM({1, 2, 3}, {4, 1E+16, 6})");
+    model._set("B6", "=LCM({1, 2, 3}, {4, \"1E+16\", 6})");
+    model._set("B7", "=GCD({1, 2, 3}, {4, 1E+16, 6})");
+    model._set("B8", "=GCD({1, 2, 3}, {4, \"1E+16\", 6})");
 
     model.evaluate();
 

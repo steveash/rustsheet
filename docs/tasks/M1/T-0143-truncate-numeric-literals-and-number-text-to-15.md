@@ -3,7 +3,7 @@ id: T-0143
 title: "Truncate numeric literals and number text to 15 significant digits on parse"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Code paths: the formula lexer's number token and the text→number coercion (`ca
 
 ## Out of scope
 -
+
+## Outcome
+Added `parse_excel_number` (truncates to 15 significant digits) shared by the lexer and `cast_number`. probes known failures 135 -> 127 (8 fixed), no regressions.

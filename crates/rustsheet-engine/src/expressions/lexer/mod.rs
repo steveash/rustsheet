@@ -46,8 +46,8 @@ use std::mem;
 
 use serde::{Deserialize, Serialize};
 
-use crate::number_format::parse_excel_number;
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
+use crate::number_format::parse_excel_number;
 
 use crate::language::Language;
 use crate::locale::Locale;

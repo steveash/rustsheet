@@ -63,7 +63,7 @@ Rule: a numeric literal in a formula is rounded to 15 significant digits when pa
 `MOD(2,1.7763568394002505E-12)` equals the 15-digit-literal result 1.1089014151366425E-12.
 Evidence: probes/literal-digits C1-C6 (found by T-0141); excel-graph, 2026-10-05.
 Status: VERIFIED
-Implemented in: not implemented
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs (lexer number token and `cast_number`; digits 16+ are truncated, not rounded) (T-0143)
 
 ## Number → text conversion uses 15 significant digits
 Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 136
