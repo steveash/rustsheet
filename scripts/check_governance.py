@@ -11,8 +11,11 @@ Usage: scripts/check_governance.py [BASE_REF]   (default: origin/main)
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
+from collections import Counter
+from pathlib import Path
 
 PROTECTED = (
     ".github/",
@@ -27,6 +30,12 @@ PROTECTED = (
     "quality/",
     "docs/process/",
 )
+
+
+def duplicate_decision_numbers(names: list[str]) -> list[str]:
+    """Decision numbers used by more than one record (two parallel PRs both took the next one)."""
+    numbers = Counter(m.group(1) for n in names if (m := re.match(r"(\d{4})-", n)))
+    return sorted(n for n, k in numbers.items() if k > 1)
 
 
 def git(*args: str) -> str:
@@ -63,6 +72,12 @@ def main() -> int:
         if decisions:
             failed = False
             print("  (decision record present — allowed; reviewers must confirm)")
+    records = [p.name for p in Path("docs/decisions").glob("*.md")]
+    if dupes := duplicate_decision_numbers(records):
+        failed = True
+        print("FAIL governance: decision numbers used twice (renumber the newer record and its references):")
+        for n in dupes:
+            print(f"  {n}: " + ", ".join(sorted(r for r in records if r.startswith(n))))
     if not failed:
         print(f"governance ok ({len(paths)} files changed, {len(protected)} protected)")
     return 1 if failed else 0

@@ -1,4 +1,4 @@
-# 0021 — PRs no longer append to docs/status.md; union merge for it
+# 0024 — PRs no longer append to docs/status.md; union merge for it
 
 - **Status:** accepted (2026-10-05, owner request; T-0033)
 - **Context:** every PR was required to append one log line to the end of `docs/status.md`

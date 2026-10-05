@@ -12,7 +12,7 @@
   denied tool names (`mcp__claude-code-remote__{create,update,delete,fire}_trigger`) were verified
   live on 2026-10-01: adding the deny removed exactly those tools from the running session.
 - The work-loop skill records the `docs/status.md` line on the task branch before merging (agents
-  cannot push to `main`). *Superseded by decision 0021: PRs no longer add status.md log lines.*
+  cannot push to `main`). *Superseded by decision 0024: PRs no longer add status.md log lines.*
 - The `docs/status.md` "Critical lane" line is an ordered comma-separated lane list; workers accept
   only allow-listed lane names.
 - **Consequences:** The loop's instructions are reviewable and versioned like code. Agent-workflow

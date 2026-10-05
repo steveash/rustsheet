@@ -27,7 +27,7 @@ same rounding, same quirks — including behavior Excel never documented. The pr
    canonical list of known, accepted quirks, in the same PR that found it, even if nothing
    implements it yet; decisions →
    `docs/decisions/`; progress → the task's Outcome note (the steward rolls it up into
-   `docs/status.md` daily; PRs do not append to its log, decision 0021).
+   `docs/status.md` daily; PRs do not append to its log, decision 0024).
 
 ## Repository map
 | Path | What |

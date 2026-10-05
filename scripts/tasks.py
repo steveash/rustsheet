@@ -301,7 +301,8 @@ def available(
     tier: str | None,
     fetch: bool = True,
 ) -> list[dict[str, object]]:
-    """Ready tasks a worker of `tier` may start in `lane`, best first (handoffs, milestone, priority)."""
+    """Ready tasks a worker of `tier` may start in `lane`, best first: P0, then handoffs, then
+    milestone and priority (a P0 never waits behind an escalated lower-priority task; decision 0023)."""
     claimed, on_branches, active = branch_claims(fetch=fetch)
     # One task in flight per lane. A branch whose task is already done on main (merged, branch not
     # yet deleted) leaves its lane free, so a looping worker can take the next task at once.
@@ -324,6 +325,7 @@ def available(
     ]
     cands.sort(
         key=lambda t: (
+            str(t.get("priority")) != "P0",
             not handed_off(t, on_branches),
             str(t.get("milestone"))[1:].zfill(3),
             str(t.get("priority")),
