@@ -3,7 +3,7 @@ id: T-0131
 title: "Array arithmetic: coerce text elements with cast_number (Data!D7:D7/1)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
