@@ -3,7 +3,7 @@ id: T-0214
 title: "SUMIF: resize sum_range to the shape of range from its top-left cell (59 gen-m2 known failures)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
