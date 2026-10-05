@@ -20,3 +20,23 @@ Unary minus also binds tighter than `&` (`-0&1.5` = "01.5", see numbers.md "Nega
 Evidence: gen-m1/6462bf910ef9f28f Calc!A66, A130; gen-m1/10f579127ffb6d9b Calc!A13, A162, A156,
 A153 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+
+## Formula nesting depth cap
+Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
+error ("Formula is nested too deeply"); typed into a cell through the API it is refused
+(`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
+(number, reference, parenthesis, function call, array) costs two levels and each operator one, so
+up to 127 nested parentheses or function calls and up to 255 terms in one operator chain
+(`=A1+A2+...`) are accepted. Excel caps function nesting at 64 levels (Microsoft, "Excel
+specifications and limits": "Nested levels of functions: 64") and formula text at 8,192
+characters, so every formula within Excel's nesting cap fits; but Excel accepts longer operator
+chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its paren-nesting
+cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses
+per its published limit (UNVERIFIED: no oracle probe yet).
+This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
+on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
+the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
+re-measured against this limit (the at-limit tests run on a 1 MiB stack in release builds).
+Evidence: none for Excel's behavior beyond the published limits; this is a resource limit.
+Status: DEVIATION (decision 0014)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
