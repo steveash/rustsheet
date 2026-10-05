@@ -49,6 +49,21 @@ Evidence: smoke/d-function-criteria Sheet1!J2 (`"  > 1 "` → 0); probes/criteri
 Status: VERIFIED
 Implemented in: functions::database::criteria_cell_matches (no trimming before the operator), functions::criteria::parse_criterion_number (spaces around the numeric operand)
 
+## Numeric criteria against text cells and non-ASCII spaces
+Rule: a numeric criterion (`"1"`, `"1 "`, `" 1"`, `"= 1"`, `"=1 "`) matches number cells and text cells
+whose ASCII-space-trimmed text parses to that number (`"1"`, `"1 "`, `" 1"`). CHAR(160) is not
+ignored: `"1"&CHAR(160)` and `CHAR(160)&"1"` (and `"="&CHAR(160)&"1"`) are text criteria that match
+only the cell with exactly that text, and CHAR(160)-padded text cells never match a numeric
+criterion. `"<> 1"` / `"<>1 "` count every cell except number 1 (text "1" still counts, 5 of 6).
+`">= 1"`, `"> 0 "` match number cells only (→ 1). `"<>"&CHAR(160)&"1"` → 5 (all but the exact text).
+Open: `">"&CHAR(160)&"0"` (a text comparison) matched 4 of the 5 text cells; the string ordering
+Excel uses around CHAR(160)/space is not implemented (engine gives 1), see the follow-up task.
+Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
+"1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
+Status: VERIFIED (C13 string ordering unimplemented)
+Implemented in: functions::criteria::result_is_equal_to_number
+Tasks: T-0242
+
 ## "=" matches blank cells, not an empty-string cell
 Rule: `COUNTIF(range,"=")` counts truly blank cells but not a cell holding the empty string, while
 `COUNTIF(range,"")` counts both.

@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "COUNTIF space-padded and CHAR(160) numeric criteria against text cells (T-0242)",
+  "tags": [
+    "M2",
+    "criteria",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=\"1\"",
+        "A2": "=\"1 \"",
+        "A3": "=\" 1\"",
+        "A4": "=CHAR(160)&\"1\"",
+        "A5": "=\"1\"&CHAR(160)",
+        "A6": 1,
+        "C1": "=COUNTIF(A1:A6,\"1\")",
+        "C2": "=COUNTIF(A1:A6,\"1 \")",
+        "C3": "=COUNTIF(A1:A6,\" 1\")",
+        "C4": "=COUNTIF(A1:A6,\"= 1\")",
+        "C5": "=COUNTIF(A1:A6,\"=1 \")",
+        "C6": "=COUNTIF(A1:A6,\"<> 1\")",
+        "C7": "=COUNTIF(A1:A6,\"<>1 \")",
+        "C8": "=COUNTIF(A1:A6,\"> 0 \")",
+        "C9": "=COUNTIF(A1:A6,\">= 1\")",
+        "C10": "=COUNTIF(A1:A6,\"1\"&CHAR(160))",
+        "C11": "=COUNTIF(A1:A6,CHAR(160)&\"1\")",
+        "C12": "=COUNTIF(A1:A6,\"=\"&CHAR(160)&\"1\")",
+        "C13": "=COUNTIF(A1:A6,\">\"&CHAR(160)&\"0\")",
+        "C14": "=COUNTIF(A1:A6,\"<>\"&CHAR(160)&\"1\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!C2",
+    "Sheet1!C3",
+    "Sheet1!C4",
+    "Sheet1!C5",
+    "Sheet1!C6",
+    "Sheet1!C7",
+    "Sheet1!C8",
+    "Sheet1!C9",
+    "Sheet1!C10",
+    "Sheet1!C11",
+    "Sheet1!C12",
+    "Sheet1!C13",
+    "Sheet1!C14"
+  ]
+}
