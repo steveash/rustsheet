@@ -270,3 +270,29 @@ fn fn_or_xor_missing_arguments() {
         assert_eq!(model._get_text("A5"), *"FALSE");
     }
 }
+
+// AND/OR evaluate every argument: an error after a decisive value still wins
+// (T-0215; docs/excel-semantics/coercion.md).
+#[test]
+fn test_and_or_do_not_short_circuit_past_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OR(TRUE,1/0)");
+    model._set("A2", "=AND(FALSE,1/0)");
+    model._set("A3", "=OR(TRUE,NA())");
+    model._set("A4", "=AND(FALSE,NA())");
+    model._set("B1", "1");
+    model._set("B2", "=1/0");
+    model._set("A5", "=OR(B1:B2)");
+    model._set("A6", "=OR(TRUE,B1:B2)");
+    model._set("A7", "=AND(FALSE,TRUE)");
+    model._set("A8", "=OR(TRUE,FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#DIV/0!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+    assert_eq!(model._get_text("A7"), *"FALSE");
+    assert_eq!(model._get_text("A8"), *"TRUE");
+}
