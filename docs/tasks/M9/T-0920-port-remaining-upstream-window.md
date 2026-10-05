@@ -3,7 +3,7 @@ id: T-0920
 title: "Port remaining IronCalc fixes: POWER ranges, finite-number parse, --A1:B4, implicit-intersection export"
 milestone: M9
 lane: engine
-status: todo
+status: done
 priority: P3
 size: M
 tier: opus
@@ -25,8 +25,8 @@ hunks by hand. Port each as its own commit with `Ported-From: ironcalc@<sha>`; s
 single port exceeds size S.
 
 ## Acceptance criteria
-- [ ] Each commit ported or a note on why not.
-- [ ] Upstream Excel-authored workbooks (POWER.xlsx, MINUS_MINUS.xlsx) cited as evidence; `make check` green.
+- [x] Each commit ported or a note on why not.
+- [x] Upstream Excel-authored workbooks (POWER.xlsx, MINUS_MINUS.xlsx) cited as evidence; `make check` green.
 
 ## Follow-ups from T-0918 review (minor)
 - Oracle-confirm INDIRECT's `a1` coercions (`0`, `""`, `"x"`) and text-function array broadcasting
@@ -49,3 +49,16 @@ parse) and the T-0918 follow-ups.
 Review follow-ups (2026-10-04): match Excel's 1-ulp result for odd roots (`-1.9999999999999998`, not
 `-2`) in `arithmetic::power`; oracle-probe POWER overflow (#NUM! vs #DIV/0!), the odd-root tolerance
 (`POWER(-8,0.333333333333333)`) and the `^` operator (see `docs/excel-semantics/numbers.md`).
+
+## Outcome
+All five upstream commits are in. `58279cda` + `80eafbbc` (finite-number parse) ported here:
+`parse_finite_number` for criteria, COUNT/AVERAGE text, NUMBERVALUE, CF date bounds, format
+conditions, quoting and autofill; `parse_excel_number` also rejects |x| >= 1E+308 (Excel's
+typeable limit, so "1e308", "1e400", "inf", "NaN" text is #VALUE!); non-finite array elements
+become #NUM!; `Worksheet::set_cell_with_number` refuses non-finite numbers; the xlsx importer reads
+non-finite `<v>` as 0. Evidence: new probe probes/text-number-words (61 cells, excel-graph), which
+also covers T-0140 (closed). `9b1ae3fd` had been ported by T-0132; its Excel-authored MINUS_MINUS.xlsx
+is added by T-0153 (it needed T-0146's time-text coercion; the generated xlsx tests require every cell to pass).
+Eval: ironcalc-calc unchanged; probes +61
+checked cells, 46 pass, 15 known failures (tiny magnitudes, T-0154; array ISERROR F12:H12, T-0247);
+0 regressions. Follow-ups: T-0154, T-0247, T-0959 (POWER review items), T-0957, T-0958 (T-0918 items).

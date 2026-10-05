@@ -9,6 +9,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    number_format::parse_finite_number,
 };
 
 use super::common::broadcast_text;
@@ -185,14 +186,14 @@ impl Model {
             );
         }
 
-        match cleaned.parse::<f64>() {
-            Ok(mut v) => {
+        match parse_finite_number(&cleaned) {
+            Some(mut v) => {
                 for _ in 0..pct_count {
                     v /= 100.0;
                 }
                 CalcResult::Number(v)
             }
-            Err(_) => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
+            None => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
         }
     }
 
