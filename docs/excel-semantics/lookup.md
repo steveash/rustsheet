@@ -24,10 +24,11 @@ Status: VERIFIED (Excel for the web only; the engine matches all of these)
 ## INDIRECT R1C1 relative offsets
 Rule: `INDIRECT("R[-1]C[6]",FALSE)` is relative to the cell holding the formula (`R[-1]C[6]` in B11 reads
 H10; `R[-11]C[6]` in B12 reads H1). An offset that leaves the sheet is not `#REF!` (`R[-20]C` in B15 is 0, an
-empty cell), as if wrapping modulo 1,048,576 rows; a result row exactly at the last row (`R[1048560]C` in B16)
-is also fine. The probe cannot distinguish wrapping from clamping because the wrapped cell is empty.
+empty cell); whether it wraps or clamps is unknown, because the probe's target cell is empty. A result row exactly at the last row (`R[1048560]C` in B16)
+is also fine.
 Evidence: indirect-text-broadcast.case.json B11:B16 (oracle: excel-graph, 2026-10-05, T-0957).
-Status: UNVERIFIED for the wrap-around itself (needs a non-empty cell at the wrapped address)
+Status: UNVERIFIED for the wrap-around itself (T-0960)
+Tasks: T-0960
 
 ## MATCH on a 2-D lookup_array is #N/A; argument errors win
 Rule: `MATCH` with a lookup_array of more than one row and column returns `#N/A` even when the value
