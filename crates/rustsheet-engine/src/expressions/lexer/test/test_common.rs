@@ -734,3 +734,21 @@ fn test_backslash_separates_array_columns_with_comma_decimal() {
     assert_eq!(lx.next_token(), Number(1.0));
     assert_eq!(lx.next_token(), Backslash);
 }
+
+#[test]
+fn test_whitespace_follows_the_last_token() {
+    // Between two references whitespace is the intersection operator, so the lexer reports it.
+    let mut lx = new_lexer("A1:B2  B1 +1", true);
+    assert!(matches!(lx.next_token(), Range { .. }));
+    assert!(lx.whitespace_follows());
+    // Peeking does not consume the token or the whitespace before it.
+    assert!(matches!(lx.peek_token(), Reference { .. }));
+    assert!(lx.whitespace_follows());
+    lx.advance_token();
+    assert!(lx.whitespace_follows());
+    assert_eq!(lx.next_token(), Addition(OpSum::Add));
+    assert!(!lx.whitespace_follows());
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert!(!lx.whitespace_follows());
+    assert_eq!(lx.next_token(), EOF);
+}

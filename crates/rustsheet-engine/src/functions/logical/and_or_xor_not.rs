@@ -22,25 +22,15 @@ impl Model {
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.logical_nary(
-            args,
-            cell,
-            |acc, value| acc.unwrap_or(true) && value,
-            Some(false),
-        )
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(true) && value)
     }
 
     pub(crate) fn fn_or(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.logical_nary(
-            args,
-            cell,
-            |acc, value| acc.unwrap_or(false) || value,
-            Some(true),
-        )
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) || value)
     }
 
     pub(crate) fn fn_xor(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) ^ value, None)
+        self.logical_nary(args, cell, |acc, value| acc.unwrap_or(false) ^ value)
     }
 
     /// Base function for AND, OR, XOR. These are all n-ary functions that perform a boolean operation on a series of
@@ -60,13 +50,13 @@ impl Model {
     /// **`fold_fn`:** The function that combines the running result with the next value boolean value. The running result
     /// starts as `None`.
     ///
-    /// **`short_circuit_value`:** If the running result reaches `short_circuit_value`, the function returns early.
+    /// Every argument is evaluated: Excel does not short-circuit, so an error after a decisive
+    /// FALSE (AND) or TRUE (OR) still wins (T-0215, docs/excel-semantics/coercion.md).
     fn logical_nary(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         fold_fn: fn(Option<bool>, bool) -> bool,
-        short_circuit_value: Option<bool>,
     ) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -109,13 +99,6 @@ impl Model {
                                     }
                                 }
                             }
-                            if let (Some(current_result), Some(short_circuit_value)) =
-                                (result, short_circuit_value)
-                            {
-                                if current_result == short_circuit_value {
-                                    return CalcResult::Boolean(current_result);
-                                }
-                            }
                         }
                     }
                 }
@@ -152,13 +135,6 @@ impl Model {
                                 }
                                 ArrayNode::String(_) | ArrayNode::Empty => {}
                             }
-                            if let (Some(current_result), Some(short_circuit_value)) =
-                                (result, short_circuit_value)
-                            {
-                                if current_result == short_circuit_value {
-                                    return CalcResult::Boolean(current_result);
-                                }
-                            }
                         }
                     }
                 }
@@ -168,13 +144,6 @@ impl Model {
                         origin: cell,
                         message: "Lambdas not supported".to_string(),
                     }
-                }
-            }
-
-            if let (Some(current_result), Some(short_circuit_value)) = (result, short_circuit_value)
-            {
-                if current_result == short_circuit_value {
-                    return CalcResult::Boolean(current_result);
                 }
             }
         }

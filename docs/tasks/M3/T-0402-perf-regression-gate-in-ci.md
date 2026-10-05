@@ -3,7 +3,7 @@ id: T-0402
 title: "Performance regression gate in CI"
 milestone: M3
 lane: perf
-status: todo
+status: blocked
 priority: P1
 size: S
 tier: opus
@@ -24,3 +24,7 @@ counts, e.g. iai-callgrind, or medians with a generous threshold).
 - [ ] A committed baseline (quality/perf.json or similar) ratchets like the other quality files: >10% regression fails, improvements are recorded with `--update`.
 - [ ] docs/process/quality-gates.md documents the gate and how to update the baseline legitimately.
 - [ ] Decision record for the protected-path change; `make check` green; reviewers approve.
+
+## Blocked because
+Deferred to Phase 2 (decision 0027): the dependency-graph, storage and performance work waits until
+Phase 1 parity exits. Unblock when docs/status.md has the line `**Phase 1:** exited <date>`.

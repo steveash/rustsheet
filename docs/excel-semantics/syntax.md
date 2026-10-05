@@ -40,3 +40,17 @@ re-measured against this limit (the at-limit tests run on a 1 MiB stack in relea
 Evidence: none for Excel's behavior beyond the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
+
+## Input left over after a complete formula is a syntax error
+Rule: text after a complete expression (`=1 2`, `=SUM(A1))`, `="a" "b"`, `=SIN(x)(3)`) makes the
+formula invalid. Excel refuses such a formula when it is typed; RustSheet stores it as a parse error,
+whose value is `#ERROR!`. Before T-0105 the parser stopped after the first expression and silently
+dropped the rest (`=A1:B2 B1:B3` was stored as `=A1:B2`). A space between two operands that may be
+references is not left over input but the intersection operator (references.md); after a literal it
+is (`=1 A1` and `=A1 1` are both invalid in RustSheet).
+Evidence: none from the oracle yet. smoke/trailing-input.case.json holds hand expectations (no
+oracle sidecar); Excel for the web may refuse the whole workbook, as it does for `=IF(TRUE)`.
+Status: UNVERIFIED (Excel's handling of `=1 A1` and of a line break used in place of the space
+are not probed)
+Implemented in: expressions/parser/reference_operators.rs (`Parser::expect_end`, `Parser::parse_intersection`)
+Tasks: T-0105
