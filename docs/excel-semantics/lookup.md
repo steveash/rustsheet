@@ -47,8 +47,13 @@ Tasks: T-0212
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:
 `=INDEX(Data!A1:B2,0)`, `=INDEX(Data!A1:D8,1e-15)` (85 of 90 calls; the rest are argument errors).
 `INDEX(column,0)` on a single column spills (`#SPILL!` when blocked).
+An array (constant or array-valued expression) is different: one index selects the whole row,
+`INDEX({1,2;3,4},1)` spills `{1,2}`, `SUM(INDEX(A1:B2*1,2))` = 7, `SUM(INDEX({1,2;3,4},0))` = 10, and
+an index past the last row is `#REF!`. So `INDEX(A1:B2,2)` is `#REF!` but `INDEX(A1:B2*1,2)` is `{3,4}`.
 Evidence: gen-m2/60a543744fc4a8f7 Calc!A106, 893302d6c5b99e2e Calc!A265, 78bc88199fc96650 Calc!A61. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Arrays: probes/index-single-index D1–D6 (excel-graph, 2026-10-05).
 Status: VERIFIED
+Implemented in: `fn_index` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs`
 Tasks: T-0213
 
 ## Whole-column / whole-row search vectors: blank tail

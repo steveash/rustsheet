@@ -196,6 +196,8 @@ impl Model {
                 };
             }
         }
+        let negative_index =
+            || CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 0".to_string());
         // A missing or empty argument evaluates to 0, which means "the whole
         // row/column". A negative index is an error.
         let row_num = match self.get_number(&args[1], cell) {
@@ -203,11 +205,7 @@ impl Model {
             Err(s) => return s,
         };
         if row_num < 0.0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Argument must be >= 0".to_string(),
-            };
+            return negative_index();
         }
         let two_arg = args.len() == 2;
         let col_num = if two_arg {
@@ -219,11 +217,7 @@ impl Model {
             }
         };
         if col_num < 0.0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Argument must be >= 0".to_string(),
-            };
+            return negative_index();
         }
         let row_num = row_num.floor() as usize;
         let col_num = col_num.floor() as usize;
@@ -234,7 +228,12 @@ impl Model {
                 let (row_eff, col_eff) =
                     index_effective_indices(num_rows, row_num, col_num, two_arg);
                 let num_cols = (right.column - left.column + 1) as usize;
-                if row_eff > num_rows || col_eff > num_cols {
+                // Excel: one index into a 2-D range is #REF!, while an array
+                // gives the row (docs/excel-semantics/lookup.md).
+                if row_eff > num_rows
+                    || col_eff > num_cols
+                    || (two_arg && num_rows > 1 && num_cols > 1)
+                {
                     return CalcResult::Error {
                         error: Error::REF,
                         origin: cell,

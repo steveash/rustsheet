@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDEX with a single index into a 2-D array constant or array expression (a 2-D range gives #REF!)",
+  "tags": ["M2", "lookup", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1, "B1": 2,
+        "A2": 3, "B2": 4,
+        "D1": "=SUM(INDEX({1,2;3,4},2))",
+        "D2": "=INDEX({1,2;3,4},1)",
+        "D3": "=SUM(INDEX({1,2;3,4},0))",
+        "D4": "=SUM(INDEX(A1:B2*1,2))",
+        "D5": "=INDEX({1,2;3,4},3)",
+        "D6": "=INDEX(A1:B2,2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": ["Sheet1!D1", "Sheet1!D2", "Sheet1!D3", "Sheet1!D4", "Sheet1!D5", "Sheet1!D6"]
+}
