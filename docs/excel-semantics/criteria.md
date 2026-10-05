@@ -109,11 +109,13 @@ Status: VERIFIED
 Implemented in: `resize_to` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0214
 
-### Open (UNVERIFIED, probe pending): SUMIF/AVERAGEIF resize past the sheet edge, single-cell ranges
-When the resized sum_range would run past XFD1048576 the engine clamps it to the sheet edge; Excel's
-behavior (clamp vs `#REF!`) has no oracle evidence. The engine also treats a single-cell first range of
-the *IFS family (`SUMIFS(A1,B1:B1,...)`) as a 1x1 range and, for criteria ranges, still returns `#VALUE!`
-for a single cell (`=SUMIF(A1,">0")`); both are unevidenced. The test grid-edge assertion in
-test_fn_sumifs.rs is hand-written.
-Status: UNVERIFIED
+### SUMIF/AVERAGEIF resize clamps at the sheet edge; single-cell ranges are 1x1
+Rule: when the resized sum_range would run past XFD1048576 Excel clamps it to the sheet edge (no `#REF!`):
+`SUMIF(A1:B2,">0",XFD1)` sums XFD1:XFD2. After clamping, AVERAGEIF averages only the cells inside the clamped range (`AVERAGEIF(A1:B2,">0",XFD1048576)` = 30/1, not 30/4).
+A single-cell range is a 1x1 range (probed for SUMIF, SUMIFS, MINIFS, MAXIFS, COUNTIF; AVERAGEIF/COUNTIFS/MAXIFS share the code paths but are not probed): as the first range of
+SUMIFS/MINIFS/MAXIFS (`SUMIFS(D1,A1:A1,">0")`) and as a criteria range (`=SUMIF(A1,">0",D1)`,
+`SUMIFS(D1:D1,A1,">0")`, `COUNTIF(A1,">0")`, `SUMIF(A1,{">0"},D1)`), none of them `#VALUE!`.
+Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph)
+Status: VERIFIED
+Implemented in: `resize_to`, `apply_ifs`, `fn_countifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0234

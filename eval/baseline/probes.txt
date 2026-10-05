@@ -15,7 +15,7 @@ C	probes/isref-function-results.case.json	6
 C	probes/min-max-value-args.case.json	16
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
-C	probes/round-family.case.json	50
+C	probes/sumif-edge-single-cell.case.json	15
 F	probes/criteria-gaps.case.json	Sheet1!C16
 F	probes/criteria-gaps.case.json	Sheet1!C17
 F	probes/criteria-gaps.case.json	Sheet1!C18
@@ -38,6 +38,7 @@ F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
+F	probes/precision-and-rounding.case.json	Sheet1!A6
 F	probes/precision-and-rounding.case.json	Sheet1!A9
 F	probes/resource-limits.case.json	Sheet1!C1
 F	probes/resource-limits.case.json	Sheet1!C10
@@ -45,4 +46,3 @@ F	probes/resource-limits.case.json	Sheet1!C12
 F	probes/resource-limits.case.json	Sheet1!C14
 F	probes/resource-limits.case.json	Sheet1!C3
 F	probes/resource-limits.case.json	Sheet1!C9
-F	probes/round-family.case.json	Sheet1!A20
