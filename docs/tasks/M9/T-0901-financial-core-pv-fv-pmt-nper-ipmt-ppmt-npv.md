@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-0942]
 ---
 
 ## Goal
@@ -15,6 +15,9 @@ Remove ULP-level and close mismatches in the annuity family; they likely share a
 
 ## Context
 Gap report: PV 47, NPV 40, PPMT 34, PMT 26, NPER 26, IPMT 21, FV 20 failing cells.
+
+**Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
+cached workbooks give. Fit against the T-0942 sweep, never blind.
 
 ## Acceptance criteria
 - [ ] Known failures for these functions drop by ≥ 90% with no new failures; root cause documented in docs/excel-semantics/financial.md.
