@@ -25,8 +25,8 @@
     and probes on a backend we do not have yet.
   - *Web wins.* This is simple and fully automatable. But it would make the engine copy web-only
     behavior, such as INDIRECT to a missing sheet, that desktop users never see. It would also
-    turn the 4 INDIRECT cells and 238 TEXT cells that pass today against desktop values into
-    targets for "fixing".
+    turn the 4 INDIRECT cells (lookup.md) and the 238 lowercase-`e` TEXT cells (decision 0019,
+    number-formats.md), where the engine follows desktop, into targets for "fixing".
   - *Accept either* for the listed divergences. This needs a two-golden scoring mode in the
     harness. For behavior it is wrong: one formula cannot be both #REF! and 0.
 - **Decision:**
@@ -49,7 +49,8 @@
      only by a near-zero residue below 1e-15 absolute, stays a scored known failure in the
      baseline. It is not a target for further fitting, and it is not a regression signal. The
      harness keeps scoring strictly, because accepting either value would need two goldens per
-     cell; this rule only says which value to fit.
+     cell; this rule only says which value to fit. The 4-ULP and 1e-15 bands are the widest
+     differences calibration measured (11 cells within 4 ULPs, residues around 2.2e-16).
 - **Consequences:**
   - *Sidecars.* `rustsheet-oracle fill` keeps decision 0019's rule unchanged: a cell where the
     web contradicts a cached desktop value by more than 1e-9 relative stays pending. Smaller
@@ -60,7 +61,10 @@
   - *Baselines.* A cell that becomes a known failure because the engine follows desktop instead
     of web, under rule 1 or rule 4, is recorded with `make eval-baseline` like any other known
     failure, and the PR cites this decision. That is not a regression allowance, because the
-    cell never passed against desktop evidence.
+    cell never passed against desktop evidence. The PR must cite that desktop evidence (an
+    Excel-authored workbook cell or an excel-desktop probe). `make eval-baseline` still refuses
+    regressions: a cell that passes in the current baseline and starts failing needs a decision
+    record like any other regression allowance (CLAUDE.md directive 2).
   - *Probes.* A probe whose answer could fall in a known divergence is not answered by the web
     alone. Its entry stays `UNVERIFIED` or `CONFLICTING` until desktop evidence exists: an
     Excel-authored workbook in the repo, or the excel-desktop backend.
