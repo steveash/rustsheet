@@ -5,7 +5,7 @@ Each milestone has a **scope**, **exit criteria** (measurable; checked by agents
 CI gate for synthetic suites once they are in scope. Later milestones can start in parallel
 lanes when they don't depend on earlier ones, but exit criteria are checked in order.
 
-## Phase order (decision 0026)
+## Phase order (decision 0027)
 
 Milestones are worked in this order, not in numeric order. The *current milestone* (used by
 the planner, the gap-triager and the steward's critical lanes) is the first one in this order
@@ -23,7 +23,7 @@ reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a 
 `DEVIATION` entry. The exit criteria of M1, M2, M5–M10 and M11 are met.
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
-services, external data servers, code and add-ins; list in decision 0026).
+services, external data servers, code and add-ins; list in decision 0027).
 
 When all of this holds, the steward adds the line `**Phase 1:** exited <YYYY-MM-DD>` to
 docs/status.md. Until then, the M3, M4 and M13 tasks stay `blocked`. Parity behavior that
@@ -70,7 +70,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 **Exit criteria:**
 - `smoke`, `probes` and `gen-m1` (≥ 3,000 oracle cells, operators and references only) at 100% bit-exact.
   Measured by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left, in T-0105,
-  T-0107, T-0130–T-0132, T-0135 and T-0221; T-0221 is an M2 task that also blocks M1).
+  T-0107, T-0130–T-0132, T-0134 and T-0221; T-0221 is an M2 task that also blocks M1).
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
   `DATE(1900,2,29)`, and the parser accepting trailing garbage.
 - API v0 spec merged and implemented. Python `rustsheet.Workbook` passes binding tests.
@@ -214,7 +214,7 @@ with no crash.
 
 ## M13 — Performance at scale (Phase 2)
 
-Split out of M11 by decision 0026.
+Split out of M11 by decision 0027.
 
 **Scope:**
 - Enron/VEnron performance models.

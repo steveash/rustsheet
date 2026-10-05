@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-0135]
+depends_on: [T-0134]
 ---
 
 ## Goal
@@ -16,7 +16,7 @@ can reach functions that take them (`SUM((A1,B2))`, `AREAS`, `INDEX(…,area_num
 redesign.
 
 ## Context
-T-0135 implements only what gen-m1 measures: a union in a value context gives `#VALUE!`, and an
+T-0134 implements only what gen-m1 measures: a union in a value context gives `#VALUE!`, and an
 intersection that cuts it down to one cell gives that cell. It deliberately leaves out a general
 multi-area value. CLAUDE.md directive 4 asks for a spec before that architectural step. The spec
 should decide:

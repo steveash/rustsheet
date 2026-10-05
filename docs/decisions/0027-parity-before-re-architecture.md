@@ -1,4 +1,4 @@
-# 0026 — Parity before re-architecture
+# 0027 — Parity before re-architecture
 
 - **Status:** accepted (2026-10-05, owner request; T-0039)
 - **Context:**

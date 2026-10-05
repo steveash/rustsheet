@@ -12,11 +12,11 @@ depends_on: [T-0039]
 
 ## Goal
 `eval/catalog/functions.yaml` lists every function in current Microsoft 365 Excel (en-US),
-not only the 49 M1/M2 ones, so Phase 1 parity (decision 0026) has a definite denominator.
+not only the 49 M1/M2 ones, so Phase 1 parity (decision 0027) has a definite denominator.
 Each function records whether it is in parity scope and whether the oracle can evaluate it.
 
 ## Context
-Decision 0026: Phase 1 exits when every in-scope function has comprehensive oracle-backed
+Decision 0027: Phase 1 exits when every in-scope function has comprehensive oracle-backed
 coverage and passes it. The catalog today stops at M2, so "every function" cannot be measured.
 Out of scope are functions whose result depends on systems outside the workbook (see the
 decision's list). Some in-scope functions may not run in Excel for the web, the oracle we use

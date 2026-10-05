@@ -78,7 +78,7 @@ the union down to one cell gives that cell's value. `(Data!E4,Data!E4)` → `#VA
 Evidence: gen-m1/c940d3cfb0d3b083 Calc!A1, A2, A14, A25, A12; all 218 value-context cells are
 `#VALUE!` and all 32 `union/cut-by-cell` cells give the cell (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
-Tasks: T-0135
+Tasks: T-0134
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15

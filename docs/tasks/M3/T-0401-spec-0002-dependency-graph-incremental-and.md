@@ -25,5 +25,5 @@ docs/research/research-plan WS5; docs/research/api-landscape.md §4.5; Formualiz
 Implementation.
 
 ## Blocked because
-Deferred to Phase 2 (decision 0026): the dependency-graph, storage and performance work waits until
+Deferred to Phase 2 (decision 0027): the dependency-graph, storage and performance work waits until
 Phase 1 parity exits. Unblock when docs/status.md has the line `**Phase 1:** exited <date>`.
