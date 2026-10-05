@@ -3,7 +3,7 @@ id: T-0147
 title: "Probe unary signs in array constants: {--1}, {+1}, {-+1}"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ excel-graph oracle.
 
 ## Out of scope
 - Unary signs outside array constants (T-0132).
+
+## Outcome
+Probe `array-constant-signs` (oracle-filled) plus rejected-form workbook probes recorded in `docs/excel-semantics/syntax.md`: Excel accepts one sign attached to a number; every other sign form is rejected on load. Engine disagrees on plus-sign forms; follow-up T-0156. No eval delta.
