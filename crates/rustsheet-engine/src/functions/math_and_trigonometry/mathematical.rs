@@ -251,42 +251,10 @@ impl Model {
         }
 
         let mut result = 0.0;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result += value * value,
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        result += value * value;
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    result += value * value;
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
+        if let Err(error) =
+            self.for_each_value_skip_empty(args, cell, |value| result += value * value)
+        {
+            return error;
         }
         CalcResult::Number(result)
     }
