@@ -1,5 +1,6 @@
-use std::io::{BufReader, Read};
+use std::io::Read;
 
+use super::package::{ImportLimits, Package};
 use super::xml::XmlNode;
 
 use crate::error::XlsxError;
@@ -8,20 +9,24 @@ use crate::error::XlsxError;
 /// Note than in IronCalc we lose _internal_ styling of a string
 /// See Section 18.4
 pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
 ) -> Result<Vec<String>, XlsxError> {
-    match archive.by_name("xl/sharedStrings.xml") {
-        Ok(file) => read_shared_strings_from_xml(XmlNode::parse(BufReader::new(file))?),
-        Err(_e) => Ok(Vec::new()),
+    let limits = archive.limits().clone();
+    match archive.open_optional("xl/sharedStrings.xml")? {
+        Some(file) => read_shared_strings_from_xml(XmlNode::parse(file)?, &limits),
+        None => Ok(Vec::new()),
     }
 }
 
 #[cfg(test)]
 fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError> {
-    read_shared_strings_from_xml(XmlNode::parse(text.as_bytes())?)
+    read_shared_strings_from_xml(XmlNode::parse(text.as_bytes())?, &ImportLimits::default())
 }
 
-fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> {
+fn read_shared_strings_from_xml(
+    doc: XmlNode,
+    limits: &ImportLimits,
+) -> Result<Vec<String>, XlsxError> {
     let mut shared_strings = Vec::new();
     let nodes: Vec<&XmlNode> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
     for node in nodes {
@@ -31,6 +36,7 @@ fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> 
             .map(|n| decode_xlsx_escapes(n.text().unwrap_or("")))
             .collect::<Vec<String>>()
             .join("");
+        limits.check_text(&text)?;
         shared_strings.push(text);
     }
     Ok(shared_strings)

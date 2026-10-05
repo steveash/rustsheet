@@ -1,5 +1,6 @@
 mod conditional_formatting;
 mod metadata;
+mod package;
 pub(crate) mod shared_strings;
 mod sheet_data;
 mod styles;
@@ -13,7 +14,7 @@ mod xml;
 use std::{
     collections::HashMap,
     fs,
-    io::{BufReader, Cursor, Read},
+    io::{BufReader, Cursor, Read, Seek},
 };
 
 use xml::XmlNode;
@@ -29,20 +30,22 @@ use rustsheet_engine::{
 
 use crate::error::XlsxError;
 
+pub use package::ImportLimits;
 pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 
 use metadata::load_metadata;
+use package::{resolve_target, Package};
 use styles::load_styles;
 use util::get_attribute;
 use workbook::load_workbook;
 use worksheets::{load_sheets, Relationship};
 
-fn load_relationships<R: Read + std::io::Seek>(
-    archive: &mut zip::ZipArchive<R>,
+fn load_relationships<R: Read + Seek>(
+    archive: &mut Package<R>,
 ) -> Result<HashMap<String, Relationship>, XlsxError> {
-    let file = archive.by_name("xl/_rels/workbook.xml.rels")?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open("xl/_rels/workbook.xml.rels")?;
+    let doc = XmlNode::parse(file)?;
     let nodes: Vec<&XmlNode> = doc
         .descendants()
         .filter(|n| n.has_tag_name("Relationship"))
@@ -61,16 +64,11 @@ fn load_relationships<R: Read + std::io::Seek>(
 }
 
 fn resolve_theme_path(rels: &HashMap<String, Relationship>) -> Option<String> {
-    let target = rels
+    let target = &rels
         .values()
         .find(|r| r.rel_type.ends_with("/theme"))?
-        .target
-        .clone();
-    Some(if let Some(absolute) = target.strip_prefix('/') {
-        absolute.to_string()
-    } else {
-        format!("xl/{target}")
-    })
+        .target;
+    Some(resolve_target("xl", target))
 }
 
 // FIXME: This is a bit of a HACK. We basically re-parse all the defined names assuming the context is `A1`
@@ -89,26 +87,41 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
     Ok(to_english_string(&t, &cell_reference))
 }
 
-fn load_xlsx_from_reader<R: Read + std::io::Seek>(
+fn load_xlsx_from_reader<R: Read + Seek>(
     name: String,
     reader: R,
     locale: &str,
     tz: &str,
+    limits: &ImportLimits,
 ) -> Result<Workbook, XlsxError> {
-    let mut archive = zip::ZipArchive::new(reader)?;
+    let mut archive = Package::new(reader, limits.clone())?;
+    let workbook = load_package(&mut archive, name, locale, tz);
+    // A part that ran over the byte budget may have been skipped as optional or surfaced as an
+    // XML error; either way the overrun is what is reported.
+    match archive.overrun() {
+        Some(overrun) => Err(overrun),
+        None => workbook,
+    }
+}
 
-    let mut shared_strings = read_shared_strings(&mut archive)?;
-    let mut workbook = load_workbook(&mut archive)?;
-    let rels = load_relationships(&mut archive)?;
+fn load_package<R: Read + Seek>(
+    archive: &mut Package<R>,
+    name: String,
+    locale: &str,
+    tz: &str,
+) -> Result<Workbook, XlsxError> {
+    let mut shared_strings = read_shared_strings(archive)?;
+    let mut workbook = load_workbook(archive)?;
+    let rels = load_relationships(archive)?;
     let theme_path = resolve_theme_path(&rels);
-    let theme = theme::load(&mut archive, theme_path.as_deref());
+    let theme = theme::load(archive, theme_path.as_deref());
     let mut tables = HashMap::new();
     // Styles must be loaded before the worksheets: conditional-formatting rules
     // stored in x14 `extLst` extensions carry inline `<x14:dxf>` formats that we
     // append to `styles.dxfs`, referencing them back by index from the rule.
-    let mut styles = load_styles(&mut archive, &theme)?;
+    let mut styles = load_styles(archive, &theme)?;
     let (worksheets, selected_sheet) = load_sheets(
-        &mut archive,
+        archive,
         &rels,
         &workbook,
         &mut tables,
@@ -124,7 +137,7 @@ fn load_xlsx_from_reader<R: Read + std::io::Seek>(
     for dn in &mut workbook.defined_names {
         dn.formula = reparse_formula_hack(&dn.formula, &worksheet_names)?;
     }
-    let metadata = match load_metadata(&mut archive) {
+    let metadata = match load_metadata(archive) {
         Ok(metadata) => metadata,
         Err(_) => {
             // In case there is no metadata, add some
@@ -174,10 +187,10 @@ fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, 
         .ok_or_else(|| XlsxError::IO("Could not extract workbook name".to_string()))?
         .to_string_lossy()
         .to_string();
-    load_xlsx_from_reader(name, reader, locale, tz)
+    load_xlsx_from_reader(name, reader, locale, tz, &ImportLimits::default())
 }
 
-/// Loads a [Workbook] from the bytes of an xlsx file.
+/// Loads a [Workbook] from the bytes of an xlsx file, under the default [ImportLimits].
 /// This is useful, for instance, when bytes are transferred over the network
 pub fn load_from_xlsx_bytes(
     bytes: &[u8],
@@ -185,9 +198,19 @@ pub fn load_from_xlsx_bytes(
     locale: &str,
     tz: &str,
 ) -> Result<Workbook, XlsxError> {
-    let cursor = Cursor::new(bytes);
-    let reader = BufReader::new(cursor);
-    load_xlsx_from_reader(name.to_string(), reader, locale, tz)
+    load_from_xlsx_bytes_with_limits(bytes, name, locale, tz, &ImportLimits::default())
+}
+
+/// Loads a [Workbook] from the bytes of an xlsx file, rejecting it with
+/// [XlsxError::Limit] if it exceeds `limits`.
+pub fn load_from_xlsx_bytes_with_limits(
+    bytes: &[u8],
+    name: &str,
+    locale: &str,
+    tz: &str,
+    limits: &ImportLimits,
+) -> Result<Workbook, XlsxError> {
+    load_xlsx_from_reader(name.to_string(), Cursor::new(bytes), locale, tz, limits)
 }
 
 /// Loads a [Model] from an xlsx file
