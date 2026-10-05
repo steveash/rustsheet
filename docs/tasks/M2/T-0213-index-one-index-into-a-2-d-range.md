@@ -23,7 +23,7 @@ gen-m2 (T-0203): 164 failing cells, under INDEX, IF, SUM, `&` and other callers.
 - Of 90 top-level 2-arg INDEX calls on 2-D ranges, 85 are `#REF!`. The rest are argument errors
   (`#DIV/0!` `gen-m2/d0c29dd5c530e28c` Calc!A27, `#N/A`, `#VALUE!`).
 - One-row and one-column ranges keep today's behavior: the single index selects along the vector.
-  0 spills (Excel's `#SPILL!` in these sheets reads as `#VALUE!` until T-0208), and out of range is `#REF!`.
+  0 spills (`#SPILL!` when blocked; read correctly since T-0208), and out of range is `#REF!`.
 
 Code: `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (`fn_index` and the
 index-resolution helper above it).

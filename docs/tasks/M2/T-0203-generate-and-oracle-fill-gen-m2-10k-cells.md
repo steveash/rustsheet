@@ -24,4 +24,4 @@ Oracle-backed coverage for all M2 functions.
 -
 
 ## Outcome
-30 cases (seed 1, 400 formulas each), 12,000 scored cells (12,108 oracle cells), 85.62% bit-exact; `gate = true`; baseline 1,726 known failures (new coverage). The old catalog let `IF` take one argument, which Excel rejects for the whole workbook: catalog fixed, `tools/tests/test_catalog_arity.py` added, rule in excel-semantics/syntax.md. T-0208 (oracle `#SPILL!` decoding) fixed here too. Gap-triager: 15 tasks (T-0208..T-0222), T-0125/T-0106/T-0107 extended; 13 quirks recorded (criteria, lookup, references, numbers, coercion, dates).
+30 cases (seed 1, 400 formulas each), 12,000 scored cells (12,108 oracle cells), 85.62% bit-exact; `gate = true`; baseline 1,726 known failures (new coverage). The old catalog let `IF` take one argument, which Excel rejects for the whole workbook: catalog fixed, `tools/tests/test_catalog_arity.py` added, rule in excel-semantics/syntax.md. T-0208 (oracle `#SPILL!` decoding) fixed here too. Gap-triager: T-0208 (fixed here) and 14 gap tasks (T-0209..T-0222), T-0125/T-0106/T-0107 extended; 13 quirks recorded (criteria, lookup, references, numbers, coercion, dates).

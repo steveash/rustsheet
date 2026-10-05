@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -33,7 +34,7 @@ EXCEL_MIN_ARGS = {
 }
 
 
-def _required(fn: dict) -> int:  # type: ignore[type-arg]
+def _required(fn: dict[str, Any]) -> int:
     total = 0
     for p in fn["params"]:
         if p.get("optional"):
@@ -45,6 +46,5 @@ def _required(fn: dict) -> int:  # type: ignore[type-arg]
 @pytest.mark.parametrize("name", sorted(EXCEL_MIN_ARGS))
 def test_catalog_requires_at_least_excels_minimum(name: str) -> None:
     catalog = {f["name"]: f for f in yaml.safe_load(CATALOG.read_text())["functions"]}
-    if name not in catalog:
-        pytest.skip(f"{name} not in the catalog")
+    assert name in catalog, f"{name} disappeared from the catalog; update EXCEL_MIN_ARGS"
     assert _required(catalog[name]) == EXCEL_MIN_ARGS[name]
