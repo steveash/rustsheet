@@ -74,6 +74,7 @@ mod test_sheets;
 mod test_statistical_functions;
 mod test_styles;
 mod test_sumsq;
+mod test_sumx_pairing;
 mod test_trigonometric;
 mod test_true_false;
 mod test_weekday_return_types;
