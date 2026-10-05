@@ -31,11 +31,11 @@ Code: `crates/rustsheet-engine/src/functions/logical/mod.rs` (`fn_if`, `fn_iferr
 add a second classification).
 
 ## Acceptance criteria
-- [ ] `=INDEX(A1:A2,2) A1:A2` intersects the returned reference -> moved to T-0233.
+- [ ] `=INDEX(A1:A2,2) A1:A2` intersects the returned reference -> moved to T-0235.
 - [x] `ISREF(INDEX(A1:A2,2))` is TRUE.
 - [x] gen-m2 96a0952412cefa6c A88, 1b6ceed7489e0800 A206, 942bdade381b7537 A212, caa981b0753f455c A300,
       f0d1bacec5de8146 A183 leave eval/baseline/gen-m2.txt with no new F lines. 7469c3e920e1ade4 A351 and
-      60a543744fc4a8f7 A200 -> T-0233; fa437879253827be A372 -> T-0218.
+      60a543744fc4a8f7 A200 -> T-0235; fa437879253827be A372 -> T-0218.
 - [x] docs/excel-semantics/references.md entry with the evidence (IF/INDEX reference, IFERROR value).
 - [x] `make check` green; reviewers approve.
 
@@ -52,7 +52,7 @@ ad-hoc ReferenceKind→RangeKind rewrite is gone. `ISREF(INDEX(…))` is TRUE un
 Eval (on main after T-0213): gen-m2 880 -> 875, 5 fixed (96a0952412cefa6c A88, 1b6ceed7489e0800 A206, 942bdade381b7537 A212,
 f0d1bacec5de8146 A183, caa981b0753f455c A300), 0 regressions. Not done here:
 7469c3e920e1ade4 A351 (IFERROR blank as an empty value), 60a543744fc4a8f7 A200 (HLOOKUP passes a
-reference) and the INDEX intersection item. They are follow-up T-0233; fa437879253827be A372 waits on T-0218.
+reference) and the INDEX intersection item. They are follow-up T-0235; fa437879253827be A372 waits on T-0218.
 
 ## Findings (opus run, 2026-10-05)
 A first attempt was reverted because it regressed 21 gen-m2 cells and fixed only 7. It
