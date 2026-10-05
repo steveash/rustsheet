@@ -3,7 +3,7 @@ id: T-0247
 title: "IS* functions (ISERROR, ISNUMBER, ...) lift over array arguments and spill"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
