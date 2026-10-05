@@ -71,8 +71,10 @@ fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
             }
             false
         }
+        // Excel: text cells are parsed with the same ASCII-space trimming as the criterion
+        // operand (docs/excel-semantics/criteria.md, probes/criteria-padded-text).
         CalcResult::String(s) => {
-            if let Ok(f) = s.parse::<f64>() {
+            if let Ok(f) = parse_criterion_number(s) {
                 if (f - target).abs() < f64::EPSILON {
                     return true;
                 }
