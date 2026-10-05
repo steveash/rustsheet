@@ -19,18 +19,7 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
     if let Some((hour_str, is_pm)) = parse_simple_am_pm(text) {
         if let Ok(hour) = hour_str.parse::<u32>() {
             if (1..=12).contains(&hour) {
-                let hour_24 = if is_pm {
-                    if hour == 12 {
-                        12
-                    } else {
-                        hour + 12
-                    }
-                } else if hour == 12 {
-                    0
-                } else {
-                    hour
-                };
-                let time = NaiveTime::from_hms_opt(hour_24, 0, 0)?;
+                let time = NaiveTime::from_hms_opt(hour_from_12h(hour, is_pm), 0, 0)?;
                 return Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
             }
         }
@@ -154,11 +143,7 @@ fn parse_clock_text(text: &str) -> Option<f64> {
             if hour > 12 || minute > 59 || second > 59 {
                 return None;
             }
-            match (is_pm, hour) {
-                (false, 12) => 0,
-                (true, h) if h < 12 => h + 12,
-                (_, h) => h,
-            }
+            hour_from_12h(hour, is_pm)
         }
         None => hour,
     };
@@ -170,7 +155,18 @@ fn parse_clock_text(text: &str) -> Option<f64> {
     Some(seconds / SECONDS_PER_DAY_F64)
 }
 
-// Helper function to parse simple "N PM" / "N AM" formats (case-insensitive)
+/// 24-hour value of a 12-hour clock hour (0-12): PM adds 12 to hours below 12 (`"0:11:12.5 PM"`
+/// is 12:11:12.5, probes/timevalue-component-limits B16), AM maps 12 to 0.
+fn hour_from_12h(hour: u32, is_pm: bool) -> u32 {
+    match (is_pm, hour) {
+        (false, 12) => 0,
+        (true, h) if h < 12 => h + 12,
+        (_, h) => h,
+    }
+}
+
+/// Splits hour-only "N PM" / "N AM" text (case-insensitive, optional trailing `.`) into the hour
+/// digits and whether it is PM.
 fn parse_simple_am_pm(text: &str) -> Option<(&str, bool)> {
     let (hour_part, suffix) = text.rsplit_once(char::is_whitespace)?;
 

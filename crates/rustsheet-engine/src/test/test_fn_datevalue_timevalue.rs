@@ -41,7 +41,7 @@ fn timevalue_of_datetime_text_is_serial_fraction() {
 // Clock text grammar, oracle values from probes/timevalue-*.case.json (excel-graph).
 #[test]
 fn timevalue_clock_text_grammar() {
-    let cases: [(&str, Option<f64>); 12] = [
+    let cases: [(&str, Option<f64>); 13] = [
         ("10:11:12.5", Some(0.424_450_231_481_481_5)),
         ("10:11:12.4995", Some(0.424_450_231_481_481_5)), // half-up on the decimal digits
         ("11:12.5", Some(0.007_783_564_814_814_815)),     // two parts + fraction = M:S
@@ -50,6 +50,7 @@ fn timevalue_clock_text_grammar() {
         ("24:00:00.5", Some(5.787_037_037_130_46e-6)), // frac of 1.0000057870370371
         ("23:59:59.9995", Some(0.0)),
         ("1/2/2020 10:11:12.5", Some(0.424_450_231_483_206_15)),
+        ("1/2/2020 25:00", Some(0.041_666_666_664_241_35)), // date + clock past 23 h
         ("10:61 PM", None),
         ("010:11:12", None),
         ("10000:00:00", None),

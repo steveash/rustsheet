@@ -37,5 +37,5 @@ from the oracle rather than applying the upstream patch, which handles fractiona
 Two upstream unit tests that asserted non-Excel #VALUE! results (`25:00`, `14:70`, milliseconds)
 were corrected to the oracle values. Rules: `docs/excel-semantics/dates.md#time-text`.
 Eval: probes +4 cases; 112/113 TIMEVALUE cells pass (`"10:11.5:12"` oddity baselined); the 89
-text-to-number coercion cells (`0+A1`, `--A1`) are new-coverage known failures → T-0145 (and
+text-to-number coercion cells (`0+A1`, `--A1`) are new-coverage known failures → T-0146 (and
 T-0920 for the `--x` parser fold). No change in other suites.

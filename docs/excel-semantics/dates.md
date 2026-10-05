@@ -76,8 +76,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
 - Oddity not implemented: `TIMEVALUE("10:11.5:12")` = 0.424369212962963 (36665.5 s); the engine
   returns #VALUE! (timevalue-component-limits B26, baselined).
 Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_text::parse_clock_text`
-(T-0910); text-to-number coercion of time text is T-0145.
-
+(T-0910); text-to-number coercion of time text is T-0146.
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
