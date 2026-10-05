@@ -67,7 +67,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   a worker whose lane has no ready task checks its lane's. If the blocker is gone (the capability
   check passes, or the blocking task is `done`): set `status: todo`, delete the "Blocked because"
   section, drop dependencies that stood only for the capability, remove the
-  resolved "Needs owner" entry and log it in `docs/status.md`. Land it in that run's PR.
+  resolved "Needs owner" entry from `docs/status.md`, and note the unblock in the PR (no log line;
+  decision 0021). Land it in that run's PR.
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
@@ -92,7 +93,9 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 7. **Review:** `review` skill. All applicable reviewers must APPROVE. At most 3 rounds, then mark
    the task blocked.
 8. **PR:** use the template. Set the task to `done` with an Outcome note.
-9. **Merge:** once CI is green and reviews are approved, squash-merge. Then append a line to `docs/status.md`.
+9. **Merge:** once CI is green and reviews are approved, squash-merge. The squash commit title and the
+   task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
+   (decision 0021), so PRs do not edit its log.
 
 ## Specs before architecture
 
