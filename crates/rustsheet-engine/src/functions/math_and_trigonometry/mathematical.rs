@@ -11,6 +11,9 @@ use crate::{
 };
 use std::f64::consts::PI;
 
+/// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`.
+const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -438,6 +441,15 @@ impl Model {
                 error: Error::DIV,
                 origin: cell,
                 message: "Divide by 0".to_string(),
+            };
+        }
+        // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
+        // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
+        if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Quotient too large".to_string(),
             };
         }
         CalcResult::Number(crate::functions::util::excel_mod(value, divisor))

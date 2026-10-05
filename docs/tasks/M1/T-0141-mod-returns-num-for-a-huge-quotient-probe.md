@@ -3,7 +3,7 @@ id: T-0141
 title: "MOD returns #NUM! for a huge quotient: probe the threshold and match it"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient". Code:
 
 ## Out of scope
 -
+
+## Outcome
+Bisected with the oracle: MOD is #NUM! iff |n/d| >= 1.1259E+12 (probes/mod-huge-quotient, mod-quotient-threshold 1-5, mod-quotient-boundary). fn_mod now returns #NUM! past that; round-family A20 passes. numbers.md VERIFIED.
