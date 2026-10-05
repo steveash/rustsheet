@@ -30,4 +30,9 @@ When you are refilling the sonnet queue (decision 0021), prefer cutting groups i
 meet the `sonnet` rubric (size S, mechanical acceptance criteria, Excel evidence already in
 `eval/`, no numeric fitting), e.g. one function or one verdict class per task; keep anything
 needing fitting, a spec or new evidence as `opus`. Never relabel a task to reach the target.
+Evidence gaps (decision 0031): also read report.md's "Excel evidence per function" section.
+For functions in scope for the current milestone (catalog `milestone`) that are flagged below the
+threshold, or listed as implemented with no Excel evidence, file probe or generator tasks
+(research lane: an `excel-probe` case or an oracle-filled generator run), earliest milestone first,
+then by `prior`. A function with no Excel evidence is unverified, however many hand-written cases it passes.
 Skip groups already covered by an open task. Validate and regenerate the board when done.

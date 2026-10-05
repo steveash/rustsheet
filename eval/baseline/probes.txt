@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+C	probes/arith-range-error-precedence.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
@@ -16,6 +17,9 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
+C	probes/intersection-function-operands.case.json	5
+C	probes/intersection-operands.case.json	16
+C	probes/intersection-whitespace.case.json	8
 C	probes/isref-function-results.case.json	6
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
@@ -53,6 +57,12 @@ F	probes/dates-early-1900.case.json	Sheet1!A10
 F	probes/dates-early-1900.case.json	Sheet1!A12
 F	probes/dates-early-1900.case.json	Sheet1!A16
 F	probes/dates-early-1900.case.json	Sheet1!A9
+F	probes/intersection-function-operands.case.json	Sheet1!H5
+F	probes/intersection-operands.case.json	Sheet1!H10
+F	probes/intersection-operands.case.json	Sheet1!H11
+F	probes/intersection-operands.case.json	Sheet1!H12
+F	probes/intersection-operands.case.json	Sheet1!H13
+F	probes/intersection-whitespace.case.json	Sheet1!H7
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/literal-digits.case.json	Sheet1!C4

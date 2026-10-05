@@ -455,6 +455,9 @@ mod tests {
                 _ => Ok(Box::new(NoValues)),
             }
         }
+        fn implemented_functions(&self) -> Vec<String> {
+            Vec::new()
+        }
     }
 
     fn run_pending(description: &str) -> CaseResult {
