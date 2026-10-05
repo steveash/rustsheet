@@ -3,11 +3,11 @@ id: T-0213
 title: "INDEX: one index into a 2-D range is #REF! (164 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: todo
 priority: P1
 size: S
-tier: sonnet
-depends_on: []
+tier: opus
+depends_on: [T-0209]
 ---
 
 ## Goal
@@ -73,3 +73,15 @@ These cells also need another task:
 
 ## Out of scope
 - INDEX returning references in aggregates (T-0216). Spill/`#SPILL!` decoding (T-0208).
+
+## Handoff
+Tried: in `fn_index` (Range branch) added `|| (two_arg && num_rows > 1 && num_cols > 1)` to the `#REF!` condition
+(arrays untouched; unverified); folded the duplicated negative-index error into a closure so `lookup_and_reference/mod.rs`
+stays at 1021 lines (ratchet). Unit test `test_index_single_index_into_2d_range_is_ref_error` passes.
+`make eval-baseline`: gen-m2 1518 -> 1352 (167 fixed) but refuses on **1 regression**:
+`gen-m2/78bc88199fc96650` Calc!A301 `=HLOOKUP(0.5,Data!E2:E5,0.1,INDEX(Data!B2:E12,COUNTIFS(Data!E9:E12,"",Data!A2:C2,">0",Data!D1:E10,"<5")))`
+expected `#VALUE!`, actual `#REF!`. Excel's COUNTIFS is `#VALUE!` (mismatched shapes, T-0209) and wins as INDEX's row argument;
+we return a number, so INDEX now gives `#REF!`. It passed before only by accident. Next: land T-0209 first (it has its own
+handoff: SUMIFS/COUNTIFS shape check implemented on branch `agent/functions-criteria/T-0209-ifs-shape-mismatch`, one
+unresolved regression about error-with-array broadcast giving `#SPILL!`), then rebase this on it and re-run `make eval-baseline`.
+Do not use --allow-regressions without a decision record.
