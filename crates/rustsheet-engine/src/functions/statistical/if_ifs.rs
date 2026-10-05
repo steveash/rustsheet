@@ -428,7 +428,7 @@ impl Model {
             _ => {
                 // Single criterion: delegate to SUMIFS, which returns a scalar.
                 let arguments = vec![sum_range.clone(), criteria_range.clone(), criteria.clone()];
-                return self.fn_sumifs(&arguments, cell);
+                return self.sum_ifs(&arguments, cell, false);
             }
         };
 
