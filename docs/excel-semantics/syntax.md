@@ -25,7 +25,8 @@ characters, so every formula within Excel's nesting cap fits; but Excel accepts 
 chains (about 4,000 terms fit in 8,192 characters) and its paren-nesting cap is not measured.
 This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
 on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
-the process.
+the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
+re-measured against this limit (the at-limit tests run on a 1 MiB stack in release builds).
 Evidence: none for Excel's behavior beyond the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
