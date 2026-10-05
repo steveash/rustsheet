@@ -185,14 +185,15 @@ differ in the last digit and need oracle probes (T-0004).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,
-MIRR, IRR and SIN, Excel for the web (the excel-graph oracle) and desktop Excel can differ by a
-few ULPs or leave different near-zero residues (two-flow IRR: desktop 2.2e-16, web 0;
+MIRR, IRR and SIN, Excel for the web (the excel-graph oracle) and desktop Excel can differ by up
+to 4 ULPs (11 cells), within 1e-9 relative (4 cells), or leave different near-zero residues (3 cells) (two-flow IRR: desktop 2.2e-16, web 0;
 `SIN(4)`: desktop -0.7568024953079283, web -0.7568024953079282).
 Evidence: docs/research/oracle-calibration.md (18 ironcalc-calc cells, cached by desktop Excel,
 recalculated through excel-graph).
-Status: VERIFIED (observation). Which one a golden follows is T-0025; until then say which
-Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
-divergences").
+Status: VERIFIED (observation). Decision 0030 (rule 4): engine fits target desktop values where
+they exist; a web golden that is already a known failure and is missed within 1e-9 relative (or by
+a residue below 1e-15) is not a fitting target. Sidecar goldens that differ from desktop below
+1e-9 are web values until T-0142. Say which Excel a value comes from when working on these functions.
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
@@ -200,7 +201,7 @@ divergences").
 a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
 formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
-Values are from Excel for the web, which can differ from desktop in the last digit (T-0025).
+Values are from Excel for the web, which can differ from desktop in the last digit (decision 0030).
 Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
 
 ## GCD / LCM argument bound
