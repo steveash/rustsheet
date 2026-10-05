@@ -66,15 +66,7 @@ F	probes/intersection-operands.case.json	Sheet1!H13
 F	probes/intersection-whitespace.case.json	Sheet1!H7
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
-F	probes/literal-digits.case.json	Sheet1!C1
-F	probes/literal-digits.case.json	Sheet1!C2
-F	probes/literal-digits.case.json	Sheet1!C3
 F	probes/literal-digits.case.json	Sheet1!C4
-F	probes/literal-digits.case.json	Sheet1!C5
-F	probes/literal-digits.case.json	Sheet1!C6
-F	probes/number-to-text-notation.case.json	Sheet1!A22
-F	probes/number-to-text-notation.case.json	Sheet1!A29
-F	probes/precision-and-rounding.case.json	Sheet1!A11
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2

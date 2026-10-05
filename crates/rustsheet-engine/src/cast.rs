@@ -1,4 +1,4 @@
-use crate::number_format::number_to_text;
+use crate::number_format::{number_to_text, parse_excel_number};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -94,8 +94,8 @@ impl Model {
     }
 
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
-        match s.trim().parse::<f64>() {
-            Ok(f) => Some(f),
+        match parse_excel_number(s.trim()) {
+            Some(f) => Some(f),
             _ => {
                 let currency = &self.locale.currency.symbol;
                 let mut currencies = vec!["$", "€"];
