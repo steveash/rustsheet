@@ -5,7 +5,7 @@ milestone: M1
 lane: engine
 status: todo
 priority: P1
-size: S
+size: M
 tier: opus
 depends_on: []
 ---

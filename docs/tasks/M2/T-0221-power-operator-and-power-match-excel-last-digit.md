@@ -40,6 +40,9 @@ plus a probe sweep (excel-probe skill), as T-0914 did for the hyperbolics. Check
 
 Code: `arithmetic::power` (POWER and `^`).
 
+M1 exit blocker: 8 of its cells are in gen-m1 (`gen-m1/6462bf910ef9f28f`, `57fe331cb7611dbf`),
+and M1 needs gen-m1 at 100%. Take it before other M2 work, or split out the gen-m1 part.
+
 ## Acceptance criteria
 - [ ] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
 - [ ] The 15 gen-m2 cells above disappear from eval/baseline/gen-m2.txt and the 8 gen-m1 cells from eval/baseline/gen-m1.txt, with no new F lines in any suite.

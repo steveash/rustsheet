@@ -24,7 +24,7 @@ depends_on: [T-0117]
   operands. Any form Excel rejects is fixed in the generator first. Any surprise goes to
   docs/excel-semantics/ (syntax.md or references.md).
 - [x] Suite gen-m1 with sidecars committed; gate = true once filled; baseline recorded; gap tasks filed by gap-triager.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -40,7 +40,7 @@ before the bulk fill.
 
 The gap-triager split the 978 failures into these tasks:
 - T-0105, intersection: 632 cells.
-- T-0129, union: 250.
+- T-0129, union: 250 (value-context `#VALUE!`; general multi-area design in spec T-0133).
 - T-0130, range with both corners sheet-qualified: 41.
 - T-0107, number→text in `&`: 34.
 - T-0131, text in range arithmetic: 10.

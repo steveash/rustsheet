@@ -27,12 +27,12 @@ fail. The engine gives `#ERROR!` (parse error) for every union. Forms and Excel'
   `#N/A` (the cell's own error). This form needs the space operator (T-0105).
 Semantics: docs/excel-semantics/references.md "Union (comma) reference in a value context is #VALUE!".
 
-Design points (hence opus, M): the lexer and parser must tell a union comma inside parentheses
-apart from a function-argument separator (`SUM((A1,B2))` vs `SUM(A1,B2)`), and in comma-decimal
-locales the union operator is a different character. A multi-area reference has no `CalcResult`
-representation today. Choose one deliberately (a new node and result variant, or a value-context
-`#VALUE!` plus an intersection-only path) and keep it reusable for AREAS/INDEX area_num and
-SUM((A1,B2)) later.
+Scope (opus, M): the lexer and parser must tell a union comma inside parentheses apart from a
+function-argument separator (`(A1,B2)` vs `SUM(A1,B2)`). Evaluation stays narrow: a union in a
+value context is `#VALUE!`, and an intersection that leaves one cell of one area gives that cell.
+No general multi-area `CalcResult` is added here. That representation, needed for
+`SUM((A1,B2))`, AREAS and INDEX area_num, is decided by the spec in T-0133 first (CLAUDE.md
+directive 4).
 
 Code: `expressions/parser/mod.rs` `parse_primary` (the `LeftParenthesis` branch expects `)`);
 `expressions/parser/stringify.rs`; `model.rs` `evaluate_node_in_context`, `cast.rs`.
@@ -44,5 +44,5 @@ Code: `expressions/parser/mod.rs` `parse_primary` (the `LeftParenthesis` branch 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- Unions as function arguments (`SUM((A1,B2))`, `AREAS`, `INDEX(…,area_num)`): no gen-m1 evidence;
-  file a follow-up with an excel-probe if the representation chosen makes it cheap.
+- Unions as function arguments (`SUM((A1,B2))`, `AREAS`, `INDEX(…,area_num)`) and any general
+  multi-area value: spec T-0133.

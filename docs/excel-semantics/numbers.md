@@ -144,8 +144,9 @@ Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-
 0.7071067811865475 (pow: …476), `=100^100` = 1.0000000000000005E+200.
 Integer exponents are affected too: with x = 1E-15, `x^3` = 1.0000000000000001E-45 (pow: …03E-45);
 `3^-0.5` = 0.5773502691896258 (pow: …257).
-Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-gen-m1/6462bf910ef9f28f Calc!A33, A41, A48, A57, A86, A207 (oracle: excel-graph, 2026-10-05, T-0109).
+Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196 (oracle: excel-graph,
+2026-10-04, T-0203); gen-m1/6462bf910ef9f28f Calc!A33, A41, A48, A57, A86, A207 (oracle:
+excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 Tasks: T-0221
 
