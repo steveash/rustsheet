@@ -28,7 +28,6 @@ since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pend
 T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baseline before M3 (T-0400, T-0402).)
 
 ## Needs owner
-- PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 
 ## Log
 - 2026-10-02 — Owner set `main` as the GitHub default branch and enabled the routines (repo attached).
