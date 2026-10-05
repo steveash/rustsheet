@@ -756,7 +756,7 @@
    },
    "A269": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A27": {
     "t": "e",
@@ -1412,7 +1412,7 @@
    },
    "A56": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A57": {
     "t": "n",
@@ -1627,9 +1627,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "c30d5eba7f85953051f05819be623013aa23cbef4b65257f36875f3ff77f853f",
+  "input_sha256": "8ce95e663dd8787db478f98dc30114fdf95ad6f7ca63b5dc39f3ecfd605f5239",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:21:22+00:00",
+  "produced_at": "2026-10-05T00:45:34+00:00",
   "version": null
  }
 }

@@ -10,9 +10,26 @@ CATALOG = Path(__file__).resolve().parents[2] / "eval" / "catalog" / "functions.
 # Excel's minimum argument counts. A formula with fewer is a syntax error, and Excel for the web
 # then rejects the whole workbook (T-0203: one `=IF(x)` cell failed every gen-m2 case).
 EXCEL_MIN_ARGS = {
-    "IF": 2, "IFERROR": 2, "ROUND": 2, "ROUNDUP": 2, "ROUNDDOWN": 2, "VLOOKUP": 3, "HLOOKUP": 3,
-    "INDEX": 2, "MATCH": 2, "SUMIF": 2, "COUNTIF": 2, "LEFT": 1, "RIGHT": 1, "MID": 3, "LEN": 1,
-    "YEAR": 1, "MONTH": 1, "DAY": 1, "NOT": 1, "ABS": 1,
+    "IF": 2,
+    "IFERROR": 2,
+    "ROUND": 2,
+    "ROUNDUP": 2,
+    "ROUNDDOWN": 2,
+    "VLOOKUP": 3,
+    "HLOOKUP": 3,
+    "INDEX": 2,
+    "MATCH": 2,
+    "SUMIF": 2,
+    "COUNTIF": 2,
+    "LEFT": 1,
+    "RIGHT": 1,
+    "MID": 3,
+    "LEN": 1,
+    "YEAR": 1,
+    "MONTH": 1,
+    "DAY": 1,
+    "NOT": 1,
+    "ABS": 1,
 }
 
 

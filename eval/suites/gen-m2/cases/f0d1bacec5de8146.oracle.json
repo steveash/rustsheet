@@ -700,7 +700,7 @@
    },
    "A256": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A257": {
     "t": "e",
@@ -912,7 +912,7 @@
    },
    "A303": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A304": {
     "t": "e",
@@ -1000,7 +1000,7 @@
    },
    "A323": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A324": {
     "t": "b",
@@ -1615,9 +1615,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "f9dfd6150ec5170a2eb7db3f0a57ce4e9c3f984b7f27fbdf0073f310f0207ff5",
+  "input_sha256": "a384dcd8b9df320f8d94e7e62da787acc5cc6bbd4757913ecb81d4b7a4c5704a",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:21:49+00:00",
+  "produced_at": "2026-10-05T00:46:01+00:00",
   "version": null
  }
 }

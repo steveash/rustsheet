@@ -23,3 +23,12 @@ anyone relies on it.
 Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (oracle: excel-graph, 2026-10-04).
 Status: UNVERIFIED (excel-desktop probe pending; web: #VALUE!)
 Tasks: T-0124
+
+## IF and INDEX return references to aggregates; IFERROR returns values
+Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
+it are skipped like any range cell: `=ABS(SUM(IF(FALSE,-2.5,Data!E10),Data!D4:D7))` with E10 = "abc"
+→ 123456799.623; `=SUM(Data!E7:E7,INDEX(Data!B11:C11,1))` → 0.1. IFERROR returns a value: AVERAGE
+counts `IFERROR(<blank>)` as 0, and skips `IF(…,"x")` text.
+Evidence: gen-m2/96a0952412cefa6c A88, 942bdade381b7537 A212, caa981b0753f455c A300 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Status: VERIFIED
+Tasks: T-0216

@@ -28,7 +28,7 @@
    },
    "A104": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A105": {
     "t": "n",
@@ -224,7 +224,7 @@
    },
    "A149": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A15": {
     "t": "e",
@@ -276,7 +276,7 @@
    },
    "A160": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A161": {
     "t": "n",
@@ -460,7 +460,7 @@
    },
    "A201": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A202": {
     "t": "e",
@@ -968,7 +968,7 @@
    },
    "A316": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A317": {
     "t": "n",
@@ -1623,9 +1623,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "6cafcec14754f865cc062d2428cd9ae5d2ae9c5dafd2bf6a83e356076c14a11a",
+  "input_sha256": "ec55bdb73da3ce30470404f72dafea152941c430e5c9575564d693839c7a9a0c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:20:10+00:00",
+  "produced_at": "2026-10-05T00:44:22+00:00",
   "version": null
  }
 }

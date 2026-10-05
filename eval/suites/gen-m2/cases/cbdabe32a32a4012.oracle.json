@@ -1368,7 +1368,7 @@
    },
    "A46": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A47": {
     "t": "n",
@@ -1611,9 +1611,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "bb44b0e2683238cd965aedffacc50513ac0419b3d154e1b6f026b4d323dbc737",
+  "input_sha256": "5e74c091324ccbda35533f380239bdf3610b4958379200799cf852e6db162409",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:20:36+00:00",
+  "produced_at": "2026-10-05T00:44:50+00:00",
   "version": null
  }
 }

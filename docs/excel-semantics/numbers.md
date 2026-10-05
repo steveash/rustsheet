@@ -124,6 +124,22 @@ Evidence: poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/Fo
 Status: VERIFIED
 Tasks: T-0939
 
+## `^` / POWER are not correctly rounded
+Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
+0.7071067811865475 (pow: …476), `=100^100` = 1.0000000000000005E+200.
+Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Status: VERIFIED
+Tasks: T-0221
+
+## ROUND family with huge num_digits
+Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
+unchanged (`=ROUNDDOWN(Data!E3,123456789.123)` → 0.5; `ROUND(Data!$B3,123456789.123)` keeps 1E-15;
+`ROUNDDOWN(0.5, 1000000000000005.8)` → 0.5), yet `ROUND(1000000000000000.0,Data!$D$7)` evaluates to 0
+(it is the divisor in caa981b0753f455c A270, which is `#DIV/0!`; dd99be1f2454159f A159 is similar).
+Evidence: gen-m2/f7e6d351c8538ef5 A35, 893302d6c5b99e2e A136, 7469c3e920e1ade4 A336 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Status: UNVERIFIED (the rule separating the two outcomes needs a probe before implementing; T-0218)
+Tasks: T-0218
+
 ## GAMMALN / GAMMALN.PRECISE (T-0926)
 
 Excel's cached values in `ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx` are the correctly

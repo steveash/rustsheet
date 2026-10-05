@@ -1180,7 +1180,7 @@
    },
    "A364": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A365": {
     "t": "s",
@@ -1611,9 +1611,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "4af1fb1ba588efbfa177644b71fea045b51a517d83d0f982f0abb3195b2428bb",
+  "input_sha256": "5b162381b0d7f8c457533dd004a1005ae4feb6195b47a4d809d203b4dfef9851",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:18:42+00:00",
+  "produced_at": "2026-10-05T00:42:50+00:00",
   "version": null
  }
 }

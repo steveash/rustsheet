@@ -632,7 +632,7 @@
    },
    "A240": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A241": {
     "t": "s",
@@ -1611,9 +1611,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "4f52f29e2b9198728cfb2458b22656d6d2bc2e999ba5c31f773c6c46905a88e0",
+  "input_sha256": "520dfdd88bbf2083fe38acbe44beaf7c9124e520c3eebb8a88e5c6e909fc9e16",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:19:26+00:00",
+  "produced_at": "2026-10-05T00:43:35+00:00",
   "version": null
  }
 }

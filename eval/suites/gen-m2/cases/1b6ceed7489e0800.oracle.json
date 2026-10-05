@@ -160,7 +160,7 @@
    },
    "A134": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A135": {
     "t": "e",
@@ -424,7 +424,7 @@
    },
    "A194": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A195": {
     "t": "n",
@@ -440,7 +440,7 @@
    },
    "A198": {
     "t": "e",
-    "v": "#VALUE!"
+    "v": "#SPILL!"
    },
    "A199": {
     "t": "e",
@@ -1615,9 +1615,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "47c354332087b8a8ddc0d42864cb6dbf2299aaf217a95f120b5b675f4dc990bf",
+  "input_sha256": "b7447461510ded9577bb01d650acf6e701745cf6c72f627cdd7301a182027ed9",
   "kind": "excel-graph",
-  "produced_at": "2026-10-04T22:18:07+00:00",
+  "produced_at": "2026-10-05T00:42:15+00:00",
   "version": null
  }
 }
