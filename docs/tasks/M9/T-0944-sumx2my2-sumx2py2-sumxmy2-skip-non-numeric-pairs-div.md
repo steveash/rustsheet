@@ -3,7 +3,7 @@ id: T-0944
 title: "SUMX2MY2/SUMX2PY2/SUMXMY2: skip non-numeric pairs, #DIV/0! when none remain, pair by element count (17 poi known failures)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
