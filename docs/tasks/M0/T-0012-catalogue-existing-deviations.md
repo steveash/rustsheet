@@ -3,7 +3,7 @@ id: T-0012
 title: "Catalogue existing directive-5 deviations as DEVIATION entries"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
