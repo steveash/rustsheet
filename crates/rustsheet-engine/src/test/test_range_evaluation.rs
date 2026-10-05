@@ -116,3 +116,53 @@ fn test_mixed_absolute_2d_range() {
     assert_eq!(model._get_text("Data!A4"), "45");
     assert_eq!(model._get_text("Data!E4"), "45");
 }
+
+#[test]
+fn test_range_with_both_corners_sheet_qualified() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "Data").unwrap();
+    model._set("Data!B2", "1");
+    model._set("Data!B3", "2");
+    model._set("Data!C2", "3");
+    model._set("Data!C3", "4");
+    model._set("Data!E1", "=SUM(Data!B2:Data!C3)");
+    model._set("Data!E2", "=SUM(Data!B2:C3)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("Data!E1"), "10");
+    assert_eq!(model._get_text("Data!E2"), "10");
+    // The formula round-trips through stringify unchanged.
+    assert_eq!(model._get_formula("Data!E1"), "=SUM(Data!B2:Data!C3)");
+}
+
+#[test]
+fn test_range_with_both_corners_quoted_sheet_qualified() {
+    let mut model = new_empty_model();
+    model.new_sheet();
+    model.rename_sheet("Sheet2", "It's data").unwrap();
+    model.set_user_input(1, 2, 2, "1".to_string()).unwrap();
+    model.set_user_input(1, 3, 3, "4".to_string()).unwrap();
+    model._set("A1", "=SUM('It''s data'!B2:'It''s data'!C3)");
+    model._set("A2", "=SUM('It''s data'!B2:C3)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("A2"), "5");
+}
+
+#[test]
+fn test_range_with_both_corners_reversed() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "Data").unwrap();
+    model._set("Data!A1", "1");
+    model._set("Data!B1", "2");
+    model._set("Data!A2", "3");
+    model._set("Data!B2", "4");
+    model._set("Data!E1", "=SUM(Data!B2:Data!A1)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("Data!E1"), "10");
+}
