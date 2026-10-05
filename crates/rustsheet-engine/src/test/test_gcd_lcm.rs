@@ -44,11 +44,10 @@ fn invalid_inputs() {
     model._set("A7", "=GCD({1, 2, 3}, {4, -5, 6})");
     model._set("A8", "=GCD({1, 2, 3}, {4, \"-5\", 6})");
 
+    // Numbers are cut to 15 significant digits on parse (T-0143), so 2^53+2 would no longer be
+    // past the limit; 1E+16 is.
     model._set("B1", "=LCM(1E+16, 6)");
-    model._set(
-        "B2", // 16-digit text is cut to 15 digits (T-0143), so use a value past the limit that survives
-        "=LCM(\"1E+16\", 6)",
-    );
+    model._set("B2", "=LCM(\"1E+16\", 6)");
     model._set("B3", "=GCD(1E+16, 6)");
     model._set("B4", "=GCD(\"1E+16\", 6)");
 
