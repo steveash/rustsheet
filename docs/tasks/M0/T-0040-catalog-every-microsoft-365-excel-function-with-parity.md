@@ -3,7 +3,7 @@ id: T-0040
 title: "Catalog every Microsoft 365 Excel function with parity scope and oracle availability"
 milestone: M0
 lane: harness
-status: in-progress
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -38,3 +38,27 @@ or an explicit scope decision.
 
 ## Out of scope
 - Implementing any function.
+
+## Blocked because
+Tried 2026-10-05 (opus run). Two blockers, both outside what one session can fix:
+1. **No en-US function list is reachable from the sandbox.** The egress proxy rejects
+   support.microsoft.com and learn.microsoft.com (CONNECT 403, "organization policy"), so the
+   Microsoft "Excel functions (alphabetical)" list cannot be fetched. What is reachable locally:
+   openpyxl `FORMULAE` (355 names, Excel 2007 era) plus XlsxWriter's `_xlfn.` future-function list
+   (154) — 508 names in union — but both miss every recent function (GROUPBY, PIVOTBY, PERCENTOF,
+   REGEXTEST/REGEXEXTRACT/REGEXREPLACE, TRIMRANGE, IMAGE, COPILOT, TRANSLATE, DETECTLANGUAGE, PY,
+   STOCKHISTORY, FIELDVALUE, ...). A list typed from memory would not meet "sourced from the
+   en-US function list".
+2. **Availability cannot be probed with zero-argument calls.** A pilot probe case with
+   `=ERROR.TYPE(ABS())`, `SUM()`, `NOSUCHFN()`, `XLOOKUP()`, ... made Excel for the web reject the
+   whole workbook (Graph `createSession` → 501 `FileCorruptTryRepair` / `unsupportedWorkbook`). An
+   arity-invalid call anywhere poisons the file, so each probed name needs a call with a valid
+   argument count, i.e. per-function minimum arity — which itself needs the documentation.
+
+Unblock options (owner or steward): allow `support.microsoft.com` / `learn.microsoft.com` in the
+environment's network policy (docs: https://code.claude.com/docs/en/claude-code-on-the-web), or
+commit a vetted en-US name + minimum-arity list into the repo. Then split this task: (a) catalog
+names, `scope`, `oracle` availability (probe with valid-arity calls, in batches so one bad call
+cannot hide the rest); (b) `make eval` gap report and T-0020 read `scope` from the catalog (the
+eval crate has no YAML reader today, so (b) needs a small design choice: serde_yaml vs a
+generated JSON view).
