@@ -238,8 +238,9 @@ Evidence: docs/research/oracle-calibration.md (18 ironcalc-calc cells, cached by
 recalculated through excel-graph).
 Status: VERIFIED (observation). Decision 0030 (rule 4): engine fits target desktop values where
 they exist; a web golden that is already a known failure and is missed within 1e-9 relative (or by
-a residue below 1e-15) is not a fitting target. Sidecar goldens that differ from desktop below
-1e-9 are web values until T-0142. Say which Excel a value comes from when working on these functions.
+a residue below 1e-15) is not a fitting target. Sidecar numbers within 1e-9 of a 16.x desktop
+cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); near-zero residues
+(2.2e-16 vs 0) and pre-16 caches stay pending or web. Say which Excel a value comes from when working on these functions.
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
