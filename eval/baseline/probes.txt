@@ -35,6 +35,7 @@ C	probes/rich-errors-image.case.json	15
 C	probes/rich-errors-stockhistory.case.json	5
 C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
+C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sumif-edge-single-cell.case.json	15
 F	probes/criteria-grammar.case.json	Sheet1!C4
 F	probes/date-text-locale.case.json	Sheet1!B1
@@ -79,3 +80,9 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!A1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!B1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
+F	probes/sheet-qualified-both-corners.case.json	Calc!A1
+F	probes/sheet-qualified-both-corners.case.json	Calc!A11
+F	probes/sheet-qualified-both-corners.case.json	Calc!A12
+F	probes/sheet-qualified-both-corners.case.json	Calc!A5
+F	probes/sheet-qualified-both-corners.case.json	Calc!A6
+F	probes/sheet-qualified-both-corners.case.json	Calc!A7
