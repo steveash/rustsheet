@@ -3,7 +3,7 @@ id: T-0161
 title: "Probe which functions Excel accepts as intersection operands"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
