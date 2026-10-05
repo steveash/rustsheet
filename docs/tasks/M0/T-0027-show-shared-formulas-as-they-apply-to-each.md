@@ -3,7 +3,7 @@ id: T-0027
 title: "Show shared formulas as they apply to each cell in eval show/snapshot"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
