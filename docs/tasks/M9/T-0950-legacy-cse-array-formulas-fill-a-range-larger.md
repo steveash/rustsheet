@@ -17,7 +17,7 @@ result across, and every other extra cell is `#N/A`.
 
 ## Context
 poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16), Sheet1 H46:J136: 95 known failures
-(eval/baseline/poi.txt), 94 of them `#N/A` cells. Examples: `TRANSPOSE(B46)` over H46:J48 is 1 in
+(eval/baseline/poi.txt), a mix of repeated-value cells and 47 `#N/A` fill cells. Examples: `TRANSPOSE(B46)` over H46:J48 is 1 in
 all 9 cells (also `MINVERSE(B54)` H54:J56, `MMULT(B58,E58)` H58:J60); `B62:C62+E62:F62` over
 H62:J64 repeats the row down with J62:J64 `#N/A`; `TRANSPOSE(B66:C66)` over H66:J68 has row 68
 `#N/A`. Rule recorded in docs/excel-semantics/arrays.md "Legacy (CSE) array formula over a larger
