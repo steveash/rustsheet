@@ -3,7 +3,7 @@ id: T-0030
 title: "Probe the rich-value errorType to error mapping (ERROR.TYPE of each)"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
