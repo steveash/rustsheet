@@ -103,9 +103,13 @@ Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12`
 Evidence: gen-m1/1ce5b2467b3b19fd Calc!A10, A16, A25 (41 `range/ref-colon-ref` and 53
 `range/range-of-ranges` cells; oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
-Corner order and unprobed forms (hand-written, no oracle evidence yet): corners are ordered whichever way
+Implemented in: `sheet_prefix_after_colon` (crates/rustsheet-engine/src/expressions/lexer/ranges.rs)
+Tasks: T-0130, T-0105
+
+## Sheet-qualified range corners: order and unprobed forms
+Rule: corners are ordered whichever way
 they are written (`Data!B2:Data!A1` is `Data!A1:B2`; implemented in `get_range`); the formula text
 round-trips as written; `Data!A1:Other!B2` (corners on different sheets) gives `#VALUE!` in the engine;
 `Data!A:Data!B`, `Data!1:Data!2` and `Data!A1:Data!B` still fail to parse (T-0139).
-Implemented in: `sheet_prefix_after_colon` (crates/rustsheet-engine/src/expressions/lexer/ranges.rs)
-Tasks: T-0130, T-0105
+Status: UNVERIFIED (probe pending, T-0139)
+Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs)
