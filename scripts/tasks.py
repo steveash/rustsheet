@@ -127,11 +127,12 @@ def ready(t: dict[str, object], by_id: dict[str, dict[str, object]]) -> bool:
     return t.get("status") == "todo" and all(by_id.get(d, {}).get("status") == "done" for d in deps)  # type: ignore[union-attr]
 
 
-def git_task_ids(fetch: bool = True) -> set[str]:
-    """Task ids in docs/tasks/ on every `origin/*` branch: work that other sessions have pushed.
+def git_branch_names(directory: str, pattern: re.Pattern[str], fetch: bool = True) -> set[str]:
+    """`pattern`'s first group for every file name under `directory` on every `origin/*` branch:
+    ids that other sessions have pushed (task ids, decision numbers; decisions 0016, 0029).
 
-    Best effort: without git or a network the working tree alone decides, and `validate` in CI
-    still catches a collision.
+    Best effort: without git or a network the working tree alone decides, and the validators in
+    CI still catch a collision.
     """
 
     def git(*args: str) -> str:
@@ -143,8 +144,8 @@ def git_task_ids(fetch: bool = True) -> set[str]:
         refs = git("for-each-ref", "--format=%(refname)", "refs/remotes/origin").split()
         found: set[str] = set()
         for ref in refs:
-            for name in git("ls-tree", "-r", "--name-only", ref, "--", "docs/tasks").splitlines():
-                m = TASK_FILE.search(name)
+            for name in git("ls-tree", "-r", "--name-only", ref, "--", directory).splitlines():
+                m = pattern.search(name.rsplit("/", 1)[-1])
                 if m:
                     found.add(m.group(1))
         return found
@@ -152,6 +153,11 @@ def git_task_ids(fetch: bool = True) -> set[str]:
         print(f"warning: could not read origin branches ({e}); ids checked against the working tree only",
               file=sys.stderr)
         return set()
+
+
+def git_task_ids(fetch: bool = True) -> set[str]:
+    """Task ids in docs/tasks/ on every `origin/*` branch."""
+    return git_branch_names("docs/tasks", TASK_FILE, fetch)
 
 
 def next_id(milestone: str, tasks: list[dict[str, object]], taken: set[str]) -> str:
@@ -170,9 +176,10 @@ def next_id(milestone: str, tasks: list[dict[str, object]], taken: set[str]) -> 
     return f"T-{max(used, default=0) + 1:04d}"
 
 
-def slug(title: str) -> str:
+def slug(title: str, default: str = "task") -> str:
+    """At most 8 lowercase ASCII words of `title` joined by `-` (matches `[a-z0-9-]+`)."""
     words = re.sub(r"[^a-z0-9]+", " ", title.lower()).split()
-    return "-".join(words[:8]) or "task"
+    return "-".join(words[:8]) or default
 
 
 TEMPLATE = """---

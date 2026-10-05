@@ -28,12 +28,23 @@ def problems(names: list[str]) -> list[str]:
     return out
 
 
+# Placeholder that every `make new-decision` template field starts with (scripts/new_decision.py);
+# the colon keeps prose that names the placeholder, as decision 0016 does, from matching.
+UNFILLED = "TODO(fill):"
+
+
+def unfilled(texts: dict[str, str]) -> list[str]:
+    """Records that still hold a template placeholder, as human-readable lines."""
+    return [f"{n} still has `{UNFILLED}` lines from `make new-decision`" for n, t in sorted(texts.items()) if UNFILLED in t]
+
+
 def main() -> int:
     names = [p.name for p in DECISIONS.glob("*.md")]
     if len(names) <= 1:
         print(f"FAIL decisions: no records found in {DECISIONS}")
         return 1
-    if found := problems(names):
+    texts = {p.name: p.read_text() for p in DECISIONS.glob("*.md") if p.name != "README.md"}
+    if found := problems(names) + unfilled(texts):
         for line in found:
             print(f"FAIL decisions: {line}")
         return 1

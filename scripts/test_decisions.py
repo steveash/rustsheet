@@ -22,6 +22,11 @@ class DecisionRecords(unittest.TestCase):
     def test_unique_well_named_records_pass(self) -> None:
         self.assertEqual(dec.problems(["0001-a.md", "0002-b-c.md", "README.md"]), [])
 
+    def test_unfilled_template_lines_are_reported(self) -> None:
+        texts = {"0001-a.md": "- **Context:** done.\n", "0002-b.md": "- **Context:** TODO(fill): why.\n"}
+        (line,) = dec.unfilled(texts)
+        self.assertIn("0002-b.md", line)
+
     def test_repository_records_pass(self) -> None:
         self.assertEqual(dec.main(), 0)
 
