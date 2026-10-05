@@ -20,7 +20,7 @@ Every PR appended a log line to the end of docs/status.md (work-loop step 6, age
 - [x] work-loop and agent-workflow no longer ask PRs to append to status.md; CLAUDE.md directive 6 points progress at the task Outcome.
 - [x] `.gitattributes`: `docs/status.md merge=union` (tested: two branches appending at the same spot merge cleanly); not for excel-semantics (reason in decision 0021).
 - [x] status.md header says so; its log ends with a pointer.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Routine prompts (the steward prompt already lists merged work in step 1; no re-apply needed).
