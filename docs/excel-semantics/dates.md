@@ -142,8 +142,7 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
 Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
 UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
 for month-year), which the engine assigns to typed input.
-Status: VERIFIED. Not implemented: VALUE of text with a clock suffix (C30, C31, C53, C55, C63
-are known failures; DATEVALUE and number coercion handle it), and the year-less current-year
-forms, which the engine rejects (#VALUE!).
+Status: VERIFIED. Not implemented: the year-less current-year forms, which the engine rejects
+(#VALUE!).
 Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,
-`functions::date_and_time::time_text::parse_date_clock_serial` (T-0024)
+`functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
