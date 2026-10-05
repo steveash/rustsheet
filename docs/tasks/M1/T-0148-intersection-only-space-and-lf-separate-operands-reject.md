@@ -54,8 +54,7 @@ Done and pushed: separators (space/LF only; CR/TAB/NBSP are parse errors), value
 unverified rest tracked by T-0161). Excel-fidelity reviewer REQUESTED_CHANGES, remaining item:
 U+3000 currently makes `Parser::parse_intersection` replace the whole intersection by `Node::ErrorKind(NAME)`
 (see the `name_error` branch of that function at commit "fix U+3000 as name error"), so the cell value is
-right (#NAME?) but the formula text is stored as `=#NAME?` (FORMULATEXT, export). Wait: that branch is in
-the pushed commit, not in the working tree after this handoff commit's parent. I tried making U+3000 a name
+right (#NAME?) but the formula text is stored as `=#NAME?` (FORMULATEXT, export). I tried making U+3000 a name
 start character in the lexer (so the operand becomes a real undefined name that keeps the text); it failed
 because `utils::is_valid_a1_identifier` (shared with defined-name validation) rejects the name, and widening
 it would let users define U+3000 names. Next: keep the formula text in a node that evaluates to #NAME?
