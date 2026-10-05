@@ -3,7 +3,7 @@ id: T-0910
 title: "Port IronCalc TIMEVALUE fractional-seconds fix"
 milestone: M9
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
