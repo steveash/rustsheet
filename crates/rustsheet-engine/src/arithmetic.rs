@@ -76,6 +76,18 @@ fn is_one_over_an_odd_integer(y: f64) -> bool {
     (inverse - integer).abs() <= integer.abs() * TOLERANCE && integer % 2.0 != 0.0
 }
 
+/// A 1x1 array holding the error of `result`, which broadcasts against any
+/// array operand.
+fn error_as_array(result: CalcResult) -> NumberOrArray {
+    let error = match result {
+        CalcResult::Error { error, .. } => error,
+        // `get_number_or_array` only fails with an error value; anything else
+        // is not a number, which is #VALUE! like any failed coercion.
+        _ => Error::VALUE,
+    };
+    NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]])
+}
+
 impl Model {
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
@@ -85,19 +97,22 @@ impl Model {
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        let l = match self.get_number_or_array(left, cell) {
-            Ok(f) => f,
-            Err(s) => {
-                return s;
+        let l = self.get_number_or_array(left, cell);
+        let r = self.get_number_or_array(right, cell);
+        match (l, r) {
+            (Ok(l), Ok(r)) => self.arithmetic_on_values(l, r, cell, op),
+            // A scalar error against an array operand is lifted element-wise like
+            // any other scalar: `#VALUE!-{1;2}` is `{#VALUE!;#VALUE!}`, so the
+            // result keeps the array's size (gen-m2/dd99be1f2454159f Calc!A56 is
+            // #SPILL!, not #VALUE!; docs/excel-semantics/arrays.md).
+            (Err(e), Ok(NumberOrArray::Array(a))) => {
+                self.arithmetic_on_values(error_as_array(e), NumberOrArray::Array(a), cell, op)
             }
-        };
-        let r = match self.get_number_or_array(right, cell) {
-            Ok(f) => f,
-            Err(s) => {
-                return s;
+            (Ok(NumberOrArray::Array(a)), Err(e)) => {
+                self.arithmetic_on_values(NumberOrArray::Array(a), error_as_array(e), cell, op)
             }
-        };
-        self.arithmetic_on_values(l, r, cell, op)
+            (Err(e), _) | (_, Err(e)) => e,
+        }
     }
 
     /// Applies `op` element‐wise to operands that are already evaluated.

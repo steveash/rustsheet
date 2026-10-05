@@ -151,3 +151,28 @@ fn test_index_range_missing_row_spills_column() {
     assert_eq!(model._get_text("D1"), "30");
     assert_eq!(model._get_text("D2"), "40");
 }
+
+// One index into a 2-D range is #REF!, also for 0 and fractions; vectors keep
+// selecting along the vector (T-0213; docs/excel-semantics/lookup.md).
+#[test]
+fn test_index_single_index_into_2d_range_is_ref_error() {
+    let mut model = new_empty_model();
+    for (i, cell) in ["A1", "B1", "A2", "B2"].iter().enumerate() {
+        model._set(cell, &(i + 1).to_string());
+    }
+    model._set("D1", "=INDEX(A1:B2,1)");
+    model._set("D2", "=INDEX(A1:B2,0)");
+    model._set("D3", "=INDEX(A1:B2,1E-15)");
+    model._set("D4", "=INDEX(A1:B2,1/0)");
+    model._set("D5", "=INDEX(A1:B2,1,2)");
+    model._set("D6", "=INDEX(A1:A2,2)");
+    model._set("D7", "=INDEX(A1:B1,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), *"#REF!");
+    assert_eq!(model._get_text("D2"), *"#REF!");
+    assert_eq!(model._get_text("D3"), *"#REF!");
+    assert_eq!(model._get_text("D4"), *"#DIV/0!");
+    assert_eq!(model._get_text("D5"), *"2");
+    assert_eq!(model._get_text("D6"), *"3");
+    assert_eq!(model._get_text("D7"), *"2");
+}

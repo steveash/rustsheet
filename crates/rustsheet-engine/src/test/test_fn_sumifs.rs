@@ -150,3 +150,67 @@ fn test_fn_sumifs_whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// Excel: a range shaped unlike the first is #VALUE!, even when the cell
+// counts match (T-0209; docs/excel-semantics/criteria.md).
+#[test]
+fn test_sumifs_countifs_shape_mismatch_is_value_error() {
+    let mut model = new_empty_model();
+    for (i, cell) in ["A1", "B1", "C1", "D1", "A2", "B2", "C2", "D2"]
+        .iter()
+        .enumerate()
+    {
+        model._set(cell, &(i + 1).to_string());
+    }
+    model._set("F1", "=SUMIFS(A1:B2,A1:D2,\"<5\")");
+    model._set("F2", "=SUMIFS(A1:D1,A1:A4,\"<5\")");
+    model._set("F3", "=COUNTIFS(A1:D2,\"<5\",A1:B4,\"<5\")");
+    model._set("F4", "=COUNTIFS(A1:D2,1,A1:B4,1)");
+    model._set("F5", "=SUMIFS(A1:B2,A1:B2,\"<5\")");
+    model._set("F6", "=COUNTIFS(A1:D2,\"<5\",A2:D3,\"<9\")");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("F2"), *"#VALUE!");
+    assert_eq!(model._get_text("F3"), *"#VALUE!");
+    assert_eq!(model._get_text("F4"), *"#VALUE!");
+    assert_eq!(model._get_text("F5"), *"3");
+    assert_eq!(model._get_text("F6"), *"4");
+}
+
+// Excel: AVERAGEIFS/MINIFS/MAXIFS share the shape rule
+// (probes/ifs-shape-mismatch; docs/excel-semantics/criteria.md).
+#[test]
+fn test_averageifs_minifs_maxifs_shape_mismatch_is_value_error() {
+    let mut model = new_empty_model();
+    for (i, cell) in ["A1", "B1", "C1", "D1", "A2", "B2", "C2", "D2"]
+        .iter()
+        .enumerate()
+    {
+        model._set(cell, &(i + 1).to_string());
+    }
+    model._set("F1", "=AVERAGEIFS(A1:B2,A1:D1,\"<9\")");
+    model._set("F2", "=MINIFS(A1:D2,A1:B4,\"<99\")");
+    model._set("F3", "=MAXIFS(A1:B2,A1:B2,\"<99\",A2:D2,\"<99\")");
+    model._set("F4", "=MAXIFS(A1:B2,A1:B2,\"<99\",C1:D2,\"<99\")");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("F2"), *"#VALUE!");
+    assert_eq!(model._get_text("F3"), *"#VALUE!");
+    assert_eq!(model._get_text("F4"), *"6");
+}
+
+// Excel: AVERAGEIF never errors on a differently shaped average_range, unlike
+// AVERAGEIFS (probes/ifs-shape-mismatch F9; resizing itself is T-0214).
+#[test]
+fn test_averageif_shape_mismatch_is_not_an_error() {
+    let mut model = new_empty_model();
+    for (i, cell) in ["A1", "B1", "C1", "D1", "A2", "B2", "C2", "D2"]
+        .iter()
+        .enumerate()
+    {
+        model._set(cell, &(i + 1).to_string());
+    }
+    model._set("F1", "=AVERAGEIF(A1:B2,\"<99\",A1:D1)");
+    model.evaluate();
+    assert_ne!(model._get_text("F1"), *"#VALUE!");
+}
