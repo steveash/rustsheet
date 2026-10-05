@@ -34,6 +34,7 @@ Building the Windows desktop backend.
 ## Outcome
 Decision 0030: desktop en-US Microsoft 365 Excel wins when it and Excel for the web disagree;
 web-only values are goldens except for the listed known divergences; non-en-US desktop workbooks
-are no evidence for locale-dependent behavior; last-digit web goldens (≤ 4 ULPs) in the listed
-functions stay known failures rather than fitting targets. oracle.md, excel-semantics README,
+are no evidence for locale-dependent behavior; a known-failure web golden in the listed last-digit
+functions missed within 1e-9 relative (or by a residue below 1e-15) is not a fitting target; no
+regression allowance is granted (replace the golden first, T-0142). "Desktop" = AppVersion 16.x. oracle.md, excel-semantics README,
 lookup.md and numbers.md point to it. No code or eval change (eval delta: none).

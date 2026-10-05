@@ -23,10 +23,11 @@ last-digit web/desktop differences (poi, any `oracle_dir` suite) are scored agai
 
 ## Acceptance criteria
 - [ ] When the web value of a number differs at all from a value cached by a Microsoft Excel
-      application, the fill writes the desktop cached value into the sidecar (with a per-cell
+      application with AppVersion 16.x (decision 0030 rule 1/2; older builds and placeholder
+      caches such as XlsxWriter never replace a web golden), the fill writes the desktop cached value into the sidecar (with a per-cell
       marker or a printed `DESKTOP` line) instead of the web value; differences above 1e-9 stay
       pending as before (decision 0019).
-- [ ] Unit test in tools/ for the three cases (equal, below 1e-9, above 1e-9).
+- [ ] Unit test in tools/ for the three cases (equal, below 1e-9, above 1e-9) and for a non-16.x producer.
 - [ ] Re-filling the poi sidecars changes no scored cell from pass to fail (or the PR shows each
       changed cell with its desktop evidence).
 - [ ] `make check` green; reviewers approve.
