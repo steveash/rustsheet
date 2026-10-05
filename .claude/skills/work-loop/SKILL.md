@@ -50,7 +50,7 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
 re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked, set the
 task `status: blocked` with a "Blocked because" section, push the branch, open the PR as draft,
-and stop.
+and stop work on this task (pick the next one at step 1 while the session budget allows).
 
 ## 5b. Escalate (sonnet runs only)
 Stop and hand the task to `opus` when `make check` fails twice on the same cause, a reviewer
@@ -60,7 +60,7 @@ design question). Then: push the branch; append a `## Handoff` section to the ta
 tried, what failed with the relevant error or finding, what you would do next; redact secrets and
 never paste environment or oracle-credential output); set `tier: opus` and
 `status: todo`; commit and push that to the branch; open the PR as draft if one does not exist;
-stop. Do not keep retrying: a handoff costs less than a third failed attempt. Opus runs never
+stop work on this task and pick the next one at step 1 while the budget allows. Do not keep retrying: a handoff costs less than a third failed attempt. Opus runs never
 escalate; they block per step 5 instead.
 
 An opus run resuming a handoff first renames the heading to `## Handoff (resumed)`, commits and
@@ -89,8 +89,8 @@ and/or the `planner` agent for the current milestone, telling it to cut sonnet-s
 tier rubric, until 10–15 are ready or no sonnet-sized work remains. Land the new task files in
 their own PR (task-only PRs need no task id of their own; title `tasks: refill sonnet queue`) or
 with your next PR. Never mark a task `sonnet` just to reach the number.
-This planning is part of the same session, not a second task: the opus worker still completes
-exactly one task per run.
+This planning is part of the same session and does not count as a task. Then go back to step 1
+for the next task while the session budget allows (110 minutes, 10 tasks; decision 0025).
 
 ## 7. Report
 Final message: task id, PR link, eval delta, follow-up tasks created. Create every follow-up task
