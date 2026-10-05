@@ -18,7 +18,7 @@ use crate::{
             stringify::{
                 rename_defined_name_in_node, to_english_string, to_localized_string, to_rc_format,
             },
-            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
+            ArrayNode, CompletionContext, NamedVariable, Node, Parser, TOO_DEEP_MESSAGE,
         },
         token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
         types::*,
@@ -2595,6 +2595,34 @@ impl Model {
         Ok(index)
     }
 
+    /// Parses a formula typed into a cell. A formula that fails to parse is
+    /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
+    /// otherwise kept as a parse error, except one nested deeper than the
+    /// parser allows, which is rejected: the cell could never hold it.
+    fn parse_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<Node, String> {
+        let sheet = self.workbook.worksheet(sheet)?.get_name();
+        let cell_reference = &CellReferenceRC { sheet, row, column };
+        let mut node = self.parser.parse(formula, cell_reference);
+        if let Node::ParseErrorKind { .. } = node {
+            let retry = self.parser.parse(&format!("{formula})"), cell_reference);
+            if !matches!(retry, Node::ParseErrorKind { .. }) {
+                node = retry;
+            }
+        }
+        match node {
+            Node::ParseErrorKind { message, .. } if message == TOO_DEEP_MESSAGE => {
+                Err(format!("Formula: {TOO_DEEP_MESSAGE}"))
+            }
+            node => Ok(node),
+        }
+    }
+
     fn set_cell_with_formula(
         &mut self,
         sheet: u32,
@@ -2603,22 +2631,7 @@ impl Model {
         formula: &str,
         style: i32,
     ) -> Result<i32, String> {
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        let cell_reference = CellReferenceRC {
-            sheet: worksheet.get_name(),
-            row,
-            column,
-        };
-        let mut parsed_formula = self.parser.parse(formula, &cell_reference);
-        // If the formula fails to parse try adding a parenthesis
-        // SUM(A1:A3  => SUM(A1:A3)
-        if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
-            match new_parsed_formula {
-                Node::ParseErrorKind { .. } => {}
-                _ => parsed_formula = new_parsed_formula,
-            }
-        }
+        let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
         let static_result = run_static_analysis_on_node(&parsed_formula);
         let is_dynamic = !matches!(static_result, StaticResult::Scalar);
 
@@ -2644,22 +2657,7 @@ impl Model {
         width: i32,
         height: i32,
     ) -> Result<i32, String> {
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        let cell_reference = CellReferenceRC {
-            sheet: worksheet.get_name(),
-            row,
-            column,
-        };
-        let mut parsed_formula = self.parser.parse(formula, &cell_reference);
-        // If the formula fails to parse try adding a parenthesis
-        // SUM(A1:A3  => SUM(A1:A3)
-        if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
-            match new_parsed_formula {
-                Node::ParseErrorKind { .. } => {}
-                _ => parsed_formula = new_parsed_formula,
-            }
-        }
+        let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
         let static_result = run_static_analysis_on_node(&parsed_formula);
 
         let formula_index = self.shared_formula_index(sheet, parsed_formula, static_result)?;

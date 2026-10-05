@@ -441,3 +441,54 @@ fn oversized_spill_footprints_are_rejected() {
     let err = wb.set("A1", 1.0).unwrap_err();
     assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
 }
+
+/// Runs `f` on a 1 MiB stack (the smallest common one, WebAssembly's) in an optimized build, the
+/// stack the engine's formula depth limit is sized for; an unoptimized build spends about ten
+/// times more stack per nesting level, so it gets 16 MiB.
+fn on_small_stack(f: impl FnOnce() + Send + 'static) {
+    let stack = if cfg!(debug_assertions) {
+        16 << 20
+    } else {
+        1 << 20
+    };
+    let handle = std::thread::Builder::new().stack_size(stack).spawn(f);
+    assert!(handle.is_ok_and(|h| h.join().is_ok()));
+}
+
+#[test]
+fn over_nested_formula_is_rejected_not_a_crash() {
+    // T-0931: deep nesting used to overflow the parser's stack.
+    on_small_stack(|| {
+        let mut wb = book();
+        wb.set("A1", 1.0).unwrap();
+        for formula in [
+            format!("={}1{}", "(".repeat(10_000), ")".repeat(10_000)),
+            format!("={}1{}", "ABS(".repeat(10_000), ")".repeat(10_000)),
+            format!("={}1{}", "{".repeat(10_000), "}".repeat(10_000)),
+            format!("={}1", "-(".repeat(10_000)),
+            format!("={}", vec!["1"; 10_000].join("+")),
+            format!("=1{}", "%".repeat(10_000)),
+        ] {
+            let err = wb.set("A1", Input::Formula(formula)).unwrap_err();
+            assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
+            assert_eq!(wb.value("A1").unwrap(), Value::Number(1.0));
+        }
+    });
+}
+
+#[test]
+fn formulas_at_the_depth_limit_evaluate() {
+    on_small_stack(|| {
+        let mut wb = book();
+        // 127 nested calls (Excel itself allows 64) and a 255-term chain are the deepest accepted.
+        let calls = format!("={}1{}", "ABS(".repeat(127), ")".repeat(127));
+        wb.set("A1", Input::Formula(calls)).unwrap();
+        assert_eq!(wb.value("A1").unwrap(), Value::Number(1.0));
+        wb.set(
+            "A2",
+            Input::Formula(format!("={}", vec!["1"; 255].join("+"))),
+        )
+        .unwrap();
+        assert_eq!(wb.value("A2").unwrap(), Value::Number(255.0));
+    });
+}
