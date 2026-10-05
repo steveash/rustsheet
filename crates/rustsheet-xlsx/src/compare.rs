@@ -289,9 +289,18 @@ fn cell_display(cell: &Cell) -> String {
     }
 }
 
-pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
+/// Compares the models, ignoring the `Sheet!A1` cells in `skip`: cached values known not to be
+/// en-US Excel evidence (decision 0032; `build.rs` reads them from the eval suite's
+/// `cached_overrides` file).
+pub(crate) fn compare_models(m1: &Model, m2: &Model, skip: &[&str]) -> Result<(), String> {
+    let skipped = |diff: &Diff| {
+        number_to_column(diff.column).is_some_and(|col| {
+            skip.contains(&format!("{}!{col}{}", diff.sheet_name, diff.row).as_str())
+        })
+    };
     match compare(m1, m2) {
-        Ok(diffs) => {
+        Ok(mut diffs) => {
+            diffs.retain(|diff| !skipped(diff));
             if diffs.is_empty() {
                 Ok(())
             } else {
@@ -318,7 +327,7 @@ pub(crate) fn compare_models(m1: &Model, m2: &Model) -> Result<(), String> {
 }
 
 /// Tests that file in file_path produces the same results in Excel and in IronCalc.
-pub fn test_file(file_path: &str) -> Result<(), String> {
+pub fn test_file(file_path: &str, skip: &[&str]) -> Result<(), String> {
     // FIXME: we need to load the model twice :S
     let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
     let locale = get_workbook_metadata(&model1);
@@ -329,11 +338,15 @@ pub fn test_file(file_path: &str) -> Result<(), String> {
     let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
     let mut model2 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
-    compare_models(&model1, &model2)
+    compare_models(&model1, &model2, skip)
 }
 
 /// Tests that file in file_path can be converted to xlsx and read again
-pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(), String> {
+pub fn test_load_and_saving(
+    file_path: &str,
+    temp_dir_name: &Path,
+    skip: &[&str],
+) -> Result<(), String> {
     // FIXME: we need to evaluate the model twice :S
     let model1 = load_from_xlsx(file_path, "en", "UTC", "en").unwrap();
     let locale = get_workbook_metadata(&model1);
@@ -353,7 +366,7 @@ pub fn test_load_and_saving(file_path: &str, temp_dir_name: &Path) -> Result<(),
     // test can open
     let mut model2 = load_from_xlsx(temp_file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
-    compare_models(&model1, &model2)
+    compare_models(&model1, &model2, skip)
 }
 
 #[cfg(test)]

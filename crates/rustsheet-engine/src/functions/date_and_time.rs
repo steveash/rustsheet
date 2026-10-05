@@ -169,9 +169,11 @@ use crate::arithmetic::bcast_idx;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
+use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
+use crate::locale::Locale;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -243,168 +245,19 @@ impl WeekendPattern {
     }
 }
 
-fn parse_day_simple(day_str: &str) -> Result<u32, String> {
-    let bytes_len = day_str.len();
-    if bytes_len == 0 || bytes_len > 2 {
-        return Err("Not a valid day".to_string());
+/// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the date
+/// of [`parse_date`] text, or of "date clock" text the day its clock time lands on
+/// (probes/date-text-grammar B53: `DATEVALUE("1/2/2020 25:00")` is 43833, 3 Jan).
+/// Excel: see docs/excel-semantics/dates.md ("Date text is parsed month-first").
+pub(crate) fn parse_datevalue_text(value: &str, locale: &Locale) -> Option<i32> {
+    let text = value.trim();
+    if let Ok((serial, _)) = parse_date(text, locale) {
+        return Some(serial);
     }
-    match day_str.parse::<u32>() {
-        Ok(y) => Ok(y),
-        Err(_) => Err("Not a valid day".to_string()),
-    }
-}
-
-fn parse_month_simple(month_str: &str) -> Result<u32, String> {
-    let bytes_len = month_str.len();
-    if bytes_len == 0 {
-        return Err("Not a valid month".to_string());
-    }
-    if bytes_len <= 2 {
-        // Numeric month representation. Ensure it is within the valid range 1-12.
-        return match month_str.parse::<u32>() {
-            Ok(m) if (1..=12).contains(&m) => Ok(m),
-            _ => Err("Not a valid month".to_string()),
-        };
-    }
-
-    // Textual month representations.
-    // Use standard 3-letter abbreviations (e.g. "Sep") but also accept the legacy "Sept".
-    let month_names_short = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let month_names_long = [
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
-    ];
-    if let Some(m) = month_names_short
-        .iter()
-        .position(|&r| r.eq_ignore_ascii_case(month_str))
-    {
-        return Ok(m as u32 + 1);
-    }
-    // Special-case the non-standard abbreviation "Sept" so older inputs still work.
-    if month_str.eq_ignore_ascii_case("Sept") {
-        return Ok(9);
-    }
-
-    if let Some(m) = month_names_long
-        .iter()
-        .position(|&r| r.eq_ignore_ascii_case(month_str))
-    {
-        return Ok(m as u32 + 1);
-    }
-    Err("Not a valid month".to_string())
-}
-
-fn parse_year_simple(year_str: &str) -> Result<i32, String> {
-    let bytes_len = year_str.len();
-    if bytes_len != 2 && bytes_len != 4 {
-        return Err("Not a valid year".to_string());
-    }
-    let y = year_str
-        .parse::<i32>()
-        .map_err(|_| "Not a valid year".to_string())?;
-    if y < 30 && bytes_len == 2 {
-        Ok(2000 + y)
-    } else if y < 100 && bytes_len == 2 {
-        Ok(1900 + y)
-    } else {
-        Ok(y)
-    }
-}
-
-pub(crate) fn parse_datevalue_text(value: &str) -> Result<i32, String> {
-    // Trim whitespace and discard any time component (e.g., "2024-02-29 06:00" -> "2024-02-29")
-    let mut date_str = value.trim();
-    if let Some(idx) = date_str.find('T') {
-        date_str = &date_str[..idx];
-    }
-    if let Some(idx) = date_str.find(' ') {
-        date_str = &date_str[..idx];
-    }
-
-    let separator = if date_str.contains('/') {
-        '/'
-    } else if date_str.contains('-') {
-        '-'
-    } else {
-        return Err("Not a valid date".to_string());
-    };
-
-    let mut parts: Vec<&str> = date_str.split(separator).map(|s| s.trim()).collect();
-    if parts.len() != 3 {
-        return Err("Not a valid date".to_string());
-    }
-
-    // Identify the year: prefer the one that is four-digit numeric, otherwise assume the third part.
-    let mut year_idx: usize = 2;
-    for (idx, p) in parts.iter().enumerate() {
-        if p.len() == 4 && p.chars().all(char::is_numeric) {
-            year_idx = idx;
-            break;
-        }
-    }
-
-    let year_str = parts[year_idx];
-    let year_is_first = year_idx == 0;
-    // Remove the year from the remaining vector to process day / month.
-    parts.remove(year_idx);
-    let part1 = parts[0];
-    let part2 = parts[1];
-
-    // Helper closures
-    let is_numeric = |s: &str| s.chars().all(char::is_numeric);
-
-    // Determine month and day.
-    let (month_str, day_str) = if year_is_first {
-        // Year-first dates use the unambiguous YYYY-MM-DD order.
-        (part1, part2)
-    } else if !is_numeric(part1) {
-        // textual month in first
-        (part1, part2)
-    } else if !is_numeric(part2) {
-        // textual month in second
-        (part2, part1)
-    } else {
-        // Both numeric – apply disambiguation rules
-        let v1: u32 = part1.parse().unwrap_or(0);
-        let v2: u32 = part2.parse().unwrap_or(0);
-        match (v1 > 12, v2 > 12) {
-            (true, false) => (part2, part1), // first cannot be month
-            (false, true) => (part1, part2), // second cannot be month
-            _ => (part1, part2),             // ambiguous -> assume MM/DD
-        }
-    };
-
-    let day = parse_day_simple(day_str)?;
-    let month = parse_month_simple(month_str)?;
-    let year = parse_year_simple(year_str)?;
-
-    // Excel 1900 leap-year bug: 29-Feb-1900 is treated as serial 60
-    if year == 1900 && month == 2 && day == 29 {
-        return Ok(60);
-    }
-
-    match date_to_serial_number(day, month, year) {
-        Ok(n) => {
-            if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&n) {
-                Err("Not a valid date".to_string())
-            } else {
-                Ok(n)
-            }
-        }
-        Err(_) => Err("Not a valid date".to_string()),
-    }
+    let serial = time_text::parse_date_clock_serial(text, locale)?.floor();
+    (f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
+        .contains(&serial)
+        .then_some(serial as i32)
 }
 
 impl Model {
@@ -416,9 +269,9 @@ impl Model {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
             CalcResult::Number(f) => Ok(f.floor() as i64),
-            CalcResult::String(s) => match parse_datevalue_text(&s) {
-                Ok(n) => Ok(n as i64),
-                Err(_) => Err(CalcResult::Error {
+            CalcResult::String(s) => match parse_datevalue_text(&s, self.locale) {
+                Some(n) => Ok(i64::from(n)),
+                None => Err(CalcResult::Error {
                     error: Error::VALUE,
                     origin: cell,
                     message: "Invalid date".to_string(),
@@ -1103,7 +956,7 @@ impl Model {
             Ok(s) => s,
             Err(e) => return e,
         };
-        match time_text::parse_time_string(&text) {
+        match time_text::parse_time_string(&text, self.locale) {
             Some(value) => CalcResult::Number(value),
             None => CalcResult::Error {
                 error: Error::VALUE,
@@ -1118,9 +971,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(s) => match parse_datevalue_text(&s) {
-                Ok(n) => CalcResult::Number(n as f64),
-                Err(_) => CalcResult::Error {
+            CalcResult::String(s) => match parse_datevalue_text(&s, self.locale) {
+                Some(n) => CalcResult::Number(f64::from(n)),
+                None => CalcResult::Error {
                     error: Error::VALUE,
                     origin: cell,
                     message: "Invalid date".to_string(),

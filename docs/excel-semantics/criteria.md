@@ -88,6 +88,17 @@ Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: functions::criteria::bool_or_error_operand_matcher
 
+## Text `<=` / `>=` criteria, and dotted dates are text in en-US
+Rule: `"<=text"` and `">=text"` compare the cell text with the operand, case-insensitively, like
+`"<"` and `">"`: over "10.1.2026", "10.3.2026", "10.6.2026", `">=10.3.2026"` counts 2,
+`"<=10.3.2026"` 2, `">=1.3.2026"` 3 and `"<=1.3.2026"` 0. Dotted text is not a date in en-US
+(dates.md, "The en-US date-text grammar"), so these criteria are text comparisons, and DMIN, DMAX,
+DSUM, DCOUNT, SUMIF and DGET over that table follow them (900, 2100, 4200, 3, 4200, 1200).
+Evidence: probes/date-text-dotted-criteria E1–E13. Oracle: excel-graph, 2026-10-05.
+Status: VERIFIED
+Implemented in: `functions::criteria::result_is_less_or_equal_than_string`,
+`result_is_greater_or_equal_than_string` (T-0024; they compared the wrong way round before)
+
 ## Criteria kinds in COUNTIF and D-functions (more evidence)
 Rule: `"<>abc"`, `"<>TRUE"`, `"<>#N/A"` count every non-matching cell (6 of 7, blank included);
 `"=TRUE"` / `"=#N/A"` count the boolean / error cells; `">abc"`/`"<abd"` compare text. In
