@@ -71,6 +71,16 @@ pub struct SheetSnapshot {
     pub cells: BTreeMap<Addr, CellSnapshot>,
 }
 
+/// A `<definedName>` of `xl/workbook.xml`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DefinedName {
+    pub name: String,
+    /// Name of the sheet the name is scoped to (`localSheetId`); `None` for a global name.
+    pub sheet: Option<String>,
+    /// The name's formula text, without `=`.
+    pub body: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WorkbookSnapshot {
     /// `docProps/app.xml` `<Application>` (e.g. "Microsoft Excel").
@@ -79,6 +89,9 @@ pub struct WorkbookSnapshot {
     /// `true` when the workbook uses the 1904 date system.
     pub date1904: bool,
     pub sheets: Vec<SheetSnapshot>,
+    /// Defined names; absent in snapshots written before T-0045.
+    #[serde(default)]
+    pub defined_names: Vec<DefinedName>,
 }
 
 impl WorkbookSnapshot {
@@ -175,7 +188,16 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
     let rels = read_workbook_rels(&mut zip)?;
     let workbook = read_part(&mut zip, "xl/workbook.xml")?
         .ok_or_else(|| SnapshotError::Malformed("missing xl/workbook.xml".into()))?;
-    let (sheet_list, date1904) = parse_workbook(&workbook)?;
+    let (sheet_list, date1904, defined_names) = parse_workbook(&workbook)?;
+    let sheet_names: Vec<String> = sheet_list.iter().map(|(n, _)| n.clone()).collect();
+    let defined_names = defined_names
+        .into_iter()
+        .map(|(name, local, body)| DefinedName {
+            name,
+            sheet: local.and_then(|i| sheet_names.get(i).cloned()),
+            body,
+        })
+        .collect();
     let mut sheets = Vec::new();
     for (name, rid) in sheet_list {
         let Some(target) = rels.get(&rid) else {
@@ -193,6 +215,7 @@ pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
         app_version,
         date1904,
         sheets,
+        defined_names,
     })
 }
 
@@ -456,10 +479,18 @@ fn read_workbook_rels(zip: &mut Zip) -> Result<HashMap<String, String>, Snapshot
     Ok(map)
 }
 
-fn parse_workbook(xml: &str) -> Result<(Vec<(String, String)>, bool), SnapshotError> {
+/// `(name, localSheetId, body)` per `<definedName>`.
+type RawName = (String, Option<usize>, String);
+
+/// `(sheet name, relationship id)` per `<sheet>`.
+type SheetRef = (String, String);
+
+fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), SnapshotError> {
     let mut reader = Reader::from_str(xml);
     let mut sheets = Vec::new();
+    let mut names: Vec<RawName> = Vec::new();
     let mut date1904 = false;
+    let mut in_name = false;
     loop {
         match reader
             .read_event()
@@ -474,13 +505,31 @@ fn parse_workbook(xml: &str) -> Result<(Vec<(String, String)>, bool), SnapshotEr
                 "workbookPr" => {
                     date1904 = matches!(attr(&e, "date1904").as_deref(), Some("1" | "true"));
                 }
+                "definedName" => {
+                    if let Some(name) = attr(&e, "name") {
+                        let local = attr(&e, "localSheetId").and_then(|v| v.parse().ok());
+                        names.push((name, local, String::new()));
+                        in_name = true;
+                    }
+                }
                 _ => {}
             },
+            Event::Text(t) if in_name => {
+                if let Some(last) = names.last_mut() {
+                    last.2.push_str(&t.xml_content(XmlVersion::Implicit1_0));
+                }
+            }
+            Event::GeneralRef(r) if in_name => {
+                if let Some(last) = names.last_mut() {
+                    last.2.push_str(&resolve_entity(&r));
+                }
+            }
+            Event::End(e) if e.local_name().as_ref() == "definedName" => in_name = false,
             Event::Eof => break,
             _ => {}
         }
     }
-    Ok((sheets, date1904))
+    Ok((sheets, date1904, names))
 }
 
 #[derive(Default)]

@@ -314,6 +314,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     };
     let (scorable, skipped_volatile) = scorable_cells(
         &snapshot.sheets,
+        &snapshot.defined_names,
         pinned_clock_serial(&snapshot.sheets).is_some(),
     );
     let expectations = scorable
@@ -385,7 +386,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         })
         .collect();
     // Spec workbooks have no METADATA sheet, so the clock is never pinned: NOW/TODAY stay skipped.
-    let volatile = volatile_cells(&formulas, false);
+    let volatile = volatile_cells(&formulas, &[], false);
     let wanted: Vec<String> = if spec.check.is_empty() {
         expected.keys().cloned().collect()
     } else {

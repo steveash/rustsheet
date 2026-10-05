@@ -3,7 +3,7 @@ id: T-0045
 title: "Volatile analysis follows defined names (poi/56688_4.xlsx scores a TODAY-dependent cell)"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -50,3 +50,6 @@ Suggested shape (keep it small):
 ## Out of scope
 - Evaluating defined names in the engine (T-0152 covers `Sheet1!#REF!` bodies). Following
   INDIRECT/OFFSET or 3-D references in the volatile analysis.
+
+## Outcome
+The snapshot now carries `defined_names` (`localSheetId` resolved to a sheet name; `serde(default)`, additive). `volatile.rs` appends the bodies of every defined name a formula mentions (transitively, once each, sheet scope before global, `Name(` and string literals ignored) before taking precedents and checking for volatile calls. Eval: `poi/56688_4.xlsx` Sheet1!B2 is now skipped as volatile; its case drops out of the poi baseline (poi known failures 917 -> 916). No other suite changed.
