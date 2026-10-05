@@ -28,3 +28,21 @@ Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE
 Evidence: gen-m2/2cfe279fe77a000d Calc!A318, 96a0952412cefa6c Calc!A284. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED (two cells; the full collation table needs probes, T-0220)
 Tasks: T-0220
+
+## Double unary minus coerces to a number
+Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
+`--("">1.5)` = 1, `--""` (a cell holding empty text) = `#VALUE!`, `--100` = 100.
+Evidence: gen-m1/6462bf910ef9f28f Calc!A49 (`--Data!C4`, C4 = FALSE), A84 (`--Data!$A11`, A11 = ""),
+A17; gen-m1/57fe331cb7611dbf Calc!A167 (oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED
+Tasks: T-0132
+
+## Text in a range operand of arithmetic is coerced
+Rule: arithmetic on a range coerces a numeric text cell to a number, so `Data!D7:D7/1` with
+D7 = " 2 " (spaces around the digit) is 2 and `Data!D3:D3/0` with the same text is `#DIV/0!`. Every
+observed number-producing text cell is " 2 ". That this is the same routine as scalar text
+coercion is an inference for T-0131's probe to confirm.
+Evidence: gen-m1/1ce5b2467b3b19fd Calc!A14, A79, A99; gen-m1/9646257ac139cd1e Calc!A25, A81 (oracle:
+excel-graph, 2026-10-05, T-0109). The scalar form `-" 2 "*2` = -4 (gen-m1/10f579127ffb6d9b A106).
+Status: VERIFIED
+Tasks: T-0131
