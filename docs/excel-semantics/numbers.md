@@ -56,6 +56,17 @@ gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 Tasks: T-0107
 
+## Overflow in `*` is #NUM! where it happens
+Rule: a product beyond the double range is the error `#NUM!` at that point, so it propagates
+through `&`, CONCAT, TEXT and LEN as an error. It never becomes an "infinite" number that is
+formatted later: `CONCAT(1e307*100)`, `(1e307*100)&""`, `TEXT(1e307*100,"0.000000000000000000")`
+and `LEN((1e307*100)&"")` are all `#NUM!`. A result of exactly 1e308 is finite:
+`=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
+Evidence: probes-numeric/4f413cc257ce15c4 Calc!A121-A124; probes/precision-and-rounding A12, A13.
+Oracle: excel-graph, 2026-10-04.
+Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet).
+Tasks: T-0136
+
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
 Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
