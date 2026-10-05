@@ -3,7 +3,7 @@ id: T-0146
 title: "Text-to-number coercion of time and date-time text (0+'10:11:12.5', VALUE)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,14 @@ plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Exc
 
 ## Out of scope
 - DATEVALUE month-first parsing (T-0024).
+
+## Outcome
+`cast_number` falls back to the new `time_text::parse_time_serial` (clock text, hour-only AM/PM,
+"date clock" text, unwrapped serial; text with surrounding spaces stays #VALUE!), so `0+`, `--`,
+and array arithmetic read time text (VALUE does not: `fn_value` has its own path, see T-0153). Restored the time assertions in
+`test_unary_operators.rs`. Eval delta: probes known failures 132 -> 47 (85 of the 89 cells fixed);
+gen-m1/gen-m2/ironcalc-calc/poi unchanged, no regressions. Not done: the oddity
+`"10:11.5:12"` (timevalue-component-limits B26/C26, see dates.md "Open") and the upstream
+`TEXT/MINUS_MINUS.xlsx` calc_test, which needs a clone of the IronCalc repo (outside this session's
+repository scope); filed as a follow-up. The unprobed edges (4-digit leading-zero components,
+hour-only `"10 P"`) were not probed.

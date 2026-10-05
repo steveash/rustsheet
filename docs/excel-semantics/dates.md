@@ -76,7 +76,13 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
 - Oddity not implemented: `TIMEVALUE("10:11.5:12")` = 0.424369212962963 (36665.5 s); the engine
   returns #VALUE! (timevalue-component-limits B26, baselined).
 Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_text::parse_clock_text`
-(T-0910); text-to-number coercion of time text is T-0146.
+(T-0910); text-to-number coercion (`cast_number`) uses `time_text::parse_time_serial` (T-0146).
+Open: `0+"10:11.5:12"` (timevalue-component-limits C26) has the same unimplemented oddity as B26.
+Unverified (no oracle evidence yet, T-0153): hour-only AM/PM coercion (`--"6 PM"` = 0.75 is only an
+upstream IronCalc unit test; `"6 PM."`, `"10 P"`, `"0 PM"`, `"1/2/2020 6 PM"`), date-clock text with a
+month name (`"Jan 2, 2020 10:00"` stays #VALUE!), VALUE of time text (`VALUE("10:11")` is #VALUE!
+here, not probed), every other `cast_number` caller (direct arguments of aggregates, LARGE/SMALL and date functions such
+as `HOUR("10:11")`, array math), and `+10:00` typed into a cell (stored as text now).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not

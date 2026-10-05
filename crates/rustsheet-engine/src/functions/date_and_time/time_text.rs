@@ -16,13 +16,8 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
     }
 
     // "N PM" / "N AM" (no minutes)
-    if let Some((hour_str, is_pm)) = parse_simple_am_pm(text) {
-        if let Ok(hour) = hour_str.parse::<u32>() {
-            if (1..=12).contains(&hour) {
-                let time = NaiveTime::from_hms_opt(hour_from_12h(hour, is_pm), 0, 0)?;
-                return Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
-            }
-        }
+    if let Some(serial) = parse_hour_only_am_pm(text) {
+        return Some(serial);
     }
 
     let patterns_dt = [
@@ -55,19 +50,46 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
     // "date clock" text the patterns above do not cover (fractional seconds, hours past 23,
     // M:S.f): date serial plus clock serial, then the fractional part (probe
     // timevalue-ampm-limits: TIMEVALUE("1/2/2020 25:00") is 0.04166666666424135).
-    if let Some((date_part, clock_part)) = text.split_once(char::is_whitespace) {
-        if let (Ok(days), Some(clock)) = (
-            parse_datevalue_text(date_part),
-            parse_clock_text(clock_part),
-        ) {
-            let serial = f64::from(days) + clock;
-            return Some(serial - serial.floor());
-        }
+    if let Some(serial) = parse_date_clock_serial(text) {
+        return Some(serial - serial.floor());
     }
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {
         return Some(dt.time().num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64);
     }
     None
+}
+
+/// The serial a time or date-time text coerces to where `cast_number` reads text as a number
+/// (`0+"10:11"`, `--"12:00"`): clock text, hour-only AM/PM and "date clock" text, unwrapped (`0+"25:00"`
+/// is 1.0416666666666667, unlike TIMEVALUE which keeps the fraction). Surrounding spaces make
+/// the text invalid here although TIMEVALUE trims them (probes/timevalue-fractional-seconds2
+/// C11). Excel: see docs/excel-semantics/dates.md#time-text.
+pub(crate) fn parse_time_serial(text: &str) -> Option<f64> {
+    if text != text.trim() {
+        return None;
+    }
+    if let Some(serial) = parse_clock_text(text) {
+        return Some(serial);
+    }
+    parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text))
+}
+
+/// Hour-only "N AM" / "N PM" text (hour 1-12, no minutes) as a time-of-day serial.
+fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
+    let (hour_str, is_pm) = parse_simple_am_pm(text)?;
+    let hour = hour_str.parse::<u32>().ok()?;
+    if !(1..=12).contains(&hour) {
+        return None;
+    }
+    let time = NaiveTime::from_hms_opt(hour_from_12h(hour, is_pm), 0, 0)?;
+    Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64)
+}
+
+/// "Date clock" text (`"1/2/2020 10:11:12.5"`) as the unwrapped serial: date serial plus clock serial.
+fn parse_date_clock_serial(text: &str) -> Option<f64> {
+    let (date_part, clock_part) = text.split_once(char::is_whitespace)?;
+    let days = parse_datevalue_text(date_part).ok()?;
+    Some(f64::from(days) + parse_clock_text(clock_part)?)
 }
 
 /// Largest value of one clock component: Excel takes at most four digits
