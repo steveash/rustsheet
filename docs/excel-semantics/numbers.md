@@ -20,12 +20,32 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 
-## ROUND uses decimal-correct half-away-from-zero
-Rule: `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 in Excel, even though the
-binary values are slightly below the half. IronCalc returns 1 for the first.
-Evidence: probes/precision-and-rounding.case.json A6 (1.01), A7 (2.68), A8 (`ROUND(-2.5,0)` = -3).
-Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED
+## ROUND family rounds in two decimal stages
+Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
+binary value to 15 significant digits, then (2) round that decimal at `num_digits` (ROUND: half
+away from zero; ROUNDUP: away from zero; ROUNDDOWN: toward zero) and return the nearest double.
+Stage 1 rounds to nearest, but an **exact tie at the 16th digit** goes toward zero for ROUND and
+away from zero for ROUNDUP/ROUNDDOWN (inconsistent; Excel is right):
+`ROUND(999999999999957.5,0)` = 999999999999957 and `ROUND(999999999999956.5,0)` = …956, yet
+`ROUNDUP(…957.5,0)` = `ROUNDDOWN(…957.5,0)` = 999999999999958; `ROUND(1E+15+5,0)` = 1E+15 but
+`ROUNDDOWN(1E+15+5,0)` = 1000000000000010; `ROUND(12345678901234.75,2)` = 12345678901234.7.
+Consequences: `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 (the binary values are just below
+the half, but 15 digits read 1.00500000000000); `ROUNDDOWN(1-2^-53,0)` = 1; `ROUNDUP(1E+15+1,0)` =
+1E+15; `ROUND(1E+15+86,2)` = 1000000000000090; `ROUNDDOWN(123456789.123,-5)` = 123400000 exactly;
+a tie at a coarser digit is half away (`ROUND(12345678901234.5,0)` = 12345678901235, `ROUND(-2.5,0)`
+= -3). Large `num_digits` returns the 15-digit value (`ROUND(1.5,400)` = 1.5), very negative ones
+give 0 for ROUND (`ROUND(1.5,-400)`) and `#NUM!` for ROUNDUP (`ROUNDUP(1.5,-400)`, the result
+overflows). `ROUND(1.23456789012345E+300,-299)` = 1.2E+300.
+Evidence: probes/round-family A1–A50 (except A20); probes/precision-and-rounding A6 (1.01),
+A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
+Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+
+## MOD is #NUM! for a huge quotient
+Rule: `=MOD(999999999999957+0.5,1)` is `#NUM!`, not 0.5. The threshold on number/divisor is not
+measured yet.
+Evidence: probes/round-family A20. Oracle: excel-graph, 2026-10-05 (T-0106).
+Status: UNVERIFIED (threshold unknown)
+Tasks: T-0141
 
 ## Number → text conversion uses 15 significant digits
 Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 136
