@@ -27,8 +27,16 @@ plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Exc
   needs it (`parse_formatted_number` is the natural hook; it also returns a number format).
 - Quirk: `0+" 10:11:12.5 "` (spaces around) is #VALUE! although TIMEVALUE trims it
   (timevalue-fractional-seconds2 C11); padded plain numbers do coerce (`" 2 "/1` = 2).
-- The `--A1` column of probes/timevalue-fractional-seconds is blocked by the parser folding `--x`
-  to `x` (`=--"1"` returns the text "1"); that is T-0920's `9b1ae3fd` port, not this task.
+- The `--x` parser fold was fixed by T-0132, so the `--A1` column of
+  probes/timevalue-fractional-seconds now depends only on this task.
+- Add upstream IronCalc's Excel-authored `TEXT/MINUS_MINUS.xlsx` (`git show
+  9b1ae3fd:xlsx/tests/calc_tests/TEXT/MINUS_MINUS.xlsx` in the upstream clone from
+  `scripts/upstream-log.sh`) to `crates/rustsheet-xlsx/tests/calc_tests/TEXT/`: 72 of 73 cells pass
+  since T-0132, and C12 `--"12:00"` = 0.5 needs this task (calc_tests workbooks must pass whole).
+  Also restore the time assertions T-0132 dropped from `test/test_unary_operators.rs`
+  (`--"12:00"` = 0.5, `--"6:00:00"` = 0.25, `--"6 PM"` = 0.75, `"12:00"+1` = 1.5).
+- Unprobed edges (fidelity review of T-0910): a 4-digit minute or second with a leading zero
+  (`"10:0100:00"`) and hour-only AM/PM forms (`"10 P"`, `"0 PM"`); probe them before relying on them.
 
 ## Acceptance criteria
 - [ ] Every `C` cell of the four probes above passes (except any whose `0+` form depends on
@@ -37,4 +45,4 @@ plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Exc
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- The `--x` parser fold (T-0920). DATEVALUE month-first parsing (T-0024).
+- DATEVALUE month-first parsing (T-0024).
