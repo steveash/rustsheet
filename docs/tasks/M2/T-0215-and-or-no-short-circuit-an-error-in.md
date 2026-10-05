@@ -3,7 +3,7 @@ id: T-0215
 title: "AND/OR: no short-circuit, an error in any argument wins (20 gen-m2 known failures)"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
