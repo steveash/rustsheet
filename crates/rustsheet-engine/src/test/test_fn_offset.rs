@@ -51,3 +51,52 @@ fn fn_rows_of_at_offset() {
 
     assert_eq!(model._get_text("D2"), *"1");
 }
+
+// An empty height or width argument keeps the reference's size
+// (poi/FormulaEvalTestData_Copy.xlsx EverythingTests row 1008).
+#[test]
+fn fn_offset_empty_height_width() {
+    let mut model = new_empty_model();
+    model._set("K7", "1");
+    model._set("L7", "1.001");
+    model._set("K8", "2");
+    model._set("L8", "2.9999");
+    model._set("A1", "=SUM(OFFSET(K7:L8, 0,0,1,))");
+    model._set("A2", "=SUM(OFFSET(K7:L8, 0,0,,1))");
+    model._set("A3", "=SUM(OFFSET(K7:L8, 0,0,,))");
+    model._set("A4", "=SUM(OFFSET(K7:L8, 0,0,))");
+    model._set("A5", "=SUM(OFFSET(K7:L8, 0,0,1,1))");
+    model._set("A6", "=SUM(OFFSET(K7:L8, 0,0,1))");
+    model._set("A7", "=SUM(OFFSET(K7:L8, 0,0))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2.001");
+    assert_eq!(model._get_text("A2"), *"3");
+    assert_eq!(model._get_text("A3"), *"7.0009");
+    assert_eq!(model._get_text("A4"), *"7.0009");
+    assert_eq!(model._get_text("A5"), *"1");
+    assert_eq!(model._get_text("A6"), *"2.001");
+    assert_eq!(model._get_text("A7"), *"7.0009");
+}
+
+// Huge arguments saturate instead of overflowing i32 (untrusted input must not panic).
+#[test]
+fn fn_offset_huge_arguments_are_ref_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OFFSET(B2,1E10,0)");
+    model._set("A2", "=OFFSET(B2,-1E10,0)");
+    model._set("A3", "=OFFSET(B2,0,1E10)");
+    model._set("A4", "=OFFSET(B2,0,-1E10)");
+    model._set("A5", "=OFFSET(B2,1,0,1E10)");
+    model._set("A6", "=OFFSET(B2,1,0,1,1E10)");
+    model._set("A7", "=OFFSET(B2,1,0,-1E10)");
+    model._set("A8", "=OFFSET(B2,1,0,1,-1E10)");
+    model._set("A9", "=OFFSET(B2,1E300,1E300,1E300,1E300)");
+    model.evaluate();
+
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), *"#REF!", "{cell}");
+    }
+    // A7-A9 only pin "no panic": Excel accepts negative height/width (TODO(T-0956)) and the
+    // result for 1E300 arguments has no oracle evidence, so their values are not asserted.
+}

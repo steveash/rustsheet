@@ -76,6 +76,26 @@ impl Model {
         Ok(())
     }
 
+    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0.
+    /// DEVSQ, AVEDEV and SUMSQ ignored them before they moved onto `for_each_value` and there is
+    /// no Excel evidence either way yet. TODO(T-0236): probe empty arguments and fold this into `for_each_value`.
+    pub(crate) fn for_each_value_skip_empty<F>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        for arg in args {
+            if !matches!(arg, Node::EmptyArgKind) {
+                self.for_each_value(std::slice::from_ref(arg), cell, &mut f)?;
+            }
+        }
+        Ok(())
+    }
+
     fn for_each_value_a<F>(
         &mut self,
         args: &[Node],
@@ -459,49 +479,16 @@ impl Model {
             *count += 1;
         }
 
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    accumulate(&mut values, &mut sum, &mut count, value);
-                }
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        accumulate(&mut values, &mut sum, &mut count, value);
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    accumulate(&mut values, &mut sum, &mut count, value);
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
-            }
+        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+            accumulate(&mut values, &mut sum, &mut count, value);
+        }) {
+            return error;
         }
 
         if count == 0 {
+            // Excel: #NUM!, not #DIV/0! (docs/excel-semantics/coercion.md, poi EverythingTests!F176).
             return CalcResult::new_error(
-                Error::DIV,
+                Error::NUM,
                 cell,
                 "AVEDEV with no numeric data".to_string(),
             );

@@ -864,6 +864,27 @@ impl Model {
         }
     }
 
+    /// Height or width argument of OFFSET as a zero-based span; `default` when the argument is
+    /// missing or empty.
+    fn offset_size(
+        &mut self,
+        arg: Option<&Node>,
+        default: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<i32, CalcResult> {
+        match arg {
+            None | Some(Node::EmptyArgKind) => Ok(default),
+            Some(node) => {
+                let c = self.get_number(node, cell)?;
+                Ok(if c < 1.0 {
+                    (c.ceil() as i32).saturating_sub(1)
+                } else {
+                    (c.floor() as i32).saturating_sub(1)
+                })
+            }
+        }
+    }
+
     // OFFSET(reference, rows, cols, [height], [width])
     // Returns a reference to a range that is a specified number of rows and columns from a cell or range of cells.
     // The reference that is returned can be a single cell or a range of cells.
@@ -897,47 +918,25 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let row_start = reference.left.row + rows;
-        let column_start = reference.left.column + cols;
-        let width;
-        let height;
-        if l == 4 {
-            height = match self.get_number(&args[3], cell) {
-                Ok(c) => {
-                    if c < 1.0 {
-                        c.ceil() as i32 - 1
-                    } else {
-                        c.floor() as i32 - 1
-                    }
-                }
-                Err(s) => return s,
+        // `as i32` saturates, so sums saturate too (untrusted input must not overflow): any such
+        // result is outside the sheet and falls through to #REF!.
+        let row_start = reference.left.row.saturating_add(rows);
+        let column_start = reference.left.column.saturating_add(cols);
+        // A missing or empty height/width keeps the reference's size
+        // (poi/FormulaEvalTestData_Copy.xlsx EverythingTests!I1008, J1008, M1008, N1008).
+        let height =
+            match self.offset_size(args.get(3), reference.right.row - reference.left.row, cell) {
+                Ok(h) => h,
+                Err(e) => return e,
             };
-            width = reference.right.column - reference.left.column;
-        } else if l == 5 {
-            height = match self.get_number(&args[3], cell) {
-                Ok(c) => {
-                    if c < 1.0 {
-                        c.ceil() as i32 - 1
-                    } else {
-                        c.floor() as i32 - 1
-                    }
-                }
-                Err(s) => return s,
-            };
-            width = match self.get_number(&args[4], cell) {
-                Ok(c) => {
-                    if c < 1.0 {
-                        c.ceil() as i32 - 1
-                    } else {
-                        c.floor() as i32 - 1
-                    }
-                }
-                Err(s) => return s,
-            };
-        } else {
-            width = reference.right.column - reference.left.column;
-            height = reference.right.row - reference.left.row;
-        }
+        let width = match self.offset_size(
+            args.get(4),
+            reference.right.column - reference.left.column,
+            cell,
+        ) {
+            Ok(w) => w,
+            Err(e) => return e,
+        };
         // This is what Excel does
         if width == -1 || height == -1 {
             return CalcResult::Error {
@@ -956,8 +955,8 @@ impl Model {
             };
         }
 
-        let column_end = column_start + width;
-        let row_end = row_start + height;
+        let column_end = column_start.saturating_add(width);
+        let row_end = row_start.saturating_add(height);
         if row_start < 1 || row_end > LAST_ROW || column_start < 1 || column_end > LAST_COLUMN {
             return CalcResult::Error {
                 error: Error::REF,

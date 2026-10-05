@@ -3,7 +3,7 @@ id: T-0146
 title: "Text-to-number coercion of time and date-time text (0+'10:11:12.5', VALUE)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -16,10 +16,6 @@ a number (`0+A1`, `-A1`, `VALUE`, arithmetic on array elements): today `cast_num
 plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Excel 0.4243055…).
 
 ## Context
-- Excel-authored evidence too: upstream IronCalc's `xlsx/tests/calc_tests/TEXT/MINUS_MINUS.xlsx`
-  (ironcalc@9b1ae3fd); add it to crates/rustsheet-xlsx/tests/calc_tests/TEXT/ in this task. T-0920
-  checked it: 72 of 73 cells pass, Sheet1!C12 (`=--"12:00"` is 0.5) is this task's, and the
-  generated xlsx tests need every cell to pass, so it could not land before this fix.
 - Evidence (excel-graph oracle, column C of each): `eval/suites/probes/cases/timevalue-fractional-seconds.case.json`,
   `timevalue-fractional-seconds2`, `timevalue-component-limits`, `timevalue-ampm-limits`. These are
   the probes' known failures (89 cells) recorded as new coverage by T-0910.
@@ -50,3 +46,14 @@ plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Exc
 
 ## Out of scope
 - DATEVALUE month-first parsing (T-0024).
+
+## Outcome
+`cast_number` falls back to the new `time_text::parse_time_serial` (clock text, hour-only AM/PM,
+"date clock" text, unwrapped serial; text with surrounding spaces stays #VALUE!), so `0+`, `--`,
+and array arithmetic read time text (VALUE does not: `fn_value` has its own path, see T-0153). Restored the time assertions in
+`test_unary_operators.rs`. Eval delta: probes known failures 132 -> 47 (85 of the 89 cells fixed);
+gen-m1/gen-m2/ironcalc-calc/poi unchanged, no regressions. Not done: the oddity
+`"10:11.5:12"` (timevalue-component-limits B26/C26, see dates.md "Open") and the upstream
+`TEXT/MINUS_MINUS.xlsx` calc_test, which needs a clone of the IronCalc repo (outside this session's
+repository scope); filed as a follow-up. The unprobed edges (4-digit leading-zero components,
+hour-only `"10 P"`) were not probed.
