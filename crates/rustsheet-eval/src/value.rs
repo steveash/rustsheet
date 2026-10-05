@@ -228,4 +228,19 @@ mod tests {
         let back: Vec<Value> = serde_json::from_str(&s).unwrap_or_default();
         assert_eq!(back, v);
     }
+
+    /// Oracle sidecars hold shortest-round-trip doubles. Without `serde_json`'s `float_roundtrip`
+    /// feature these parsed 1 ulp off, so every oracle-scored cell near them read as `NumericUlp`
+    /// (poi/45544.xlsx Profile of Class!B15, 2026-10-04).
+    #[test]
+    fn json_numbers_parse_to_the_exact_double() {
+        for (text, want) in [
+            ("0.010582010582010581", 0.010_582_010_582_010_581_f64),
+            ("0.16390423572744015", 0.163_904_235_727_440_15),
+        ] {
+            let json = format!(r#"{{"t":"n","v":{text}}}"#);
+            let got: Option<Value> = serde_json::from_str(&json).ok();
+            assert_eq!(got, Some(Value::Number(want)), "{text}");
+        }
+    }
 }

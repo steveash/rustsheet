@@ -11,6 +11,8 @@ use_cached_values = true
 require_excel_authored = true
 gate = true
 baseline = "cells"
+# Oracle sidecars for the fetched (out-of-repo) workbooks live here, mirroring the case tree.
+oracle_dir = "oracle"
 milestone = ["M0", "M3", "M4"]
 
 [fetch]

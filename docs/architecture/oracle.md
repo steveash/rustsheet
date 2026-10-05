@@ -7,7 +7,10 @@ The oracle answers "what does Microsoft 365 Excel compute for this workbook?" Ev
 returns a **recalculated xlsx**, and every workbook carries a canary that proves it was
 recalculated (see "Is Excel really calculating?" below). Values are extracted with
 `rustsheet-eval snapshot`, the single parser, with full 17-digit precision, and stored as
-`*.oracle.json` sidecars next to the case. Results are cached by input sha256 in
+`*.oracle.json` sidecars next to the case (or under the suite's `oracle_dir` for fetched suites).
+`fill` lists cases with `rustsheet-eval cases`, skips those with nothing to score or whose cached
+values the suite trusts, and leaves pending every cell where the web result contradicts a value
+Microsoft Excel cached in the workbook (printed as `CONFLICT`; decision 0019). Results are cached by input sha256 in
 `eval/.cache/oracle/<backend>/`, so only new or changed workbooks hit Excel. Agents work
 offline against committed sidecars.
 
@@ -43,6 +46,8 @@ workbook rather than "the service worked once today".
 Limits of the canary:
 - A trailing sheet is invisible to formulas except via the sheet count, so workbooks using
   `SHEETS()` or `INFO()` are **refused**, never answered (2 of 591 suite workbooks today).
+- Excel for the web does not implement `CELL("width")` (it returns `#VALUE!`; desktop returns the
+  column width, poi/47804.xlsx), so workbooks using it are **refused** too.
 - Malformed packages that cannot take the extra sheet (21 of 591: fuzzer files, backslash part
   names) are refused too; Excel could not open most of them either.
 - Workbooks with workbook-structure protection reject the scratch-sheet edit (403) and are
@@ -101,6 +106,11 @@ decides goldens when they disagree: T-0025):
   BESSELJ/BESSELY, MIRR, IRR and SIN, 18 cells differ from desktop by a few ULPs or by near-zero
   residue (2.2e-16 vs 0). Both are "Excel"; for ULP-sensitive work on these functions, prefer
   desktop evidence (Excel-authored workbooks) and say which one a golden comes from.
+- **TEXT formats and CELL (poi, T-0019).** Lowercase-`e` scientific formats give `#VALUE!` on the
+  web where Mac Excel cached strings; an elapsed token after a plain `s` gives different hours;
+  `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)
+  and refuses `CELL("width")` workbooks; docs/excel-semantics/number-formats.md lists them as
+  CONFLICTING (decision 0019).
 - **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
   settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")` = 36893, `VALUE("1.5")` = 1.5);
   if the site is changed, every fill fails rather than returning another locale's answers.

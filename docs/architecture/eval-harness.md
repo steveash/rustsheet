@@ -14,6 +14,7 @@ side by side.
 | `root`, `include`, `exclude` | where the cases are (globs relative to `root`) |
 | `use_cached_values` | for xlsx: Excel's cached `<v>` values are the oracle (when no sidecar exists) |
 | `require_excel_authored` | only trust caches written by Microsoft Excel (`docProps/app.xml`; XlsxWriter's fake `12.0000` rejected) |
+| `oracle_dir` | optional, relative path inside the suite directory: sidecars live there, mirroring the case path, instead of next to the case (for fetched suites, whose cases sit in the git-ignored cache; decision 0019) |
 | `gate` | part of the CI no-regression gate |
 | `baseline` | `cells` (default), `cases` (large corpora) or `none` |
 | `milestone` | which milestone(s) the suite measures |
@@ -56,9 +57,11 @@ The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and
 
 JSON numbers are written shortest-round-trip, so they are exact.
 
-**`rustsheet-oracle/v1`** sidecar (`<case>.oracle.json`): `{format, source{kind, application,
-version, produced_at, input_sha256}, sheets{Sheet:{A1:value}}}`. Oracle values override hand
-expectations. `libreoffice` results are never written as sidecars.
+**`rustsheet-oracle/v1`** sidecar (`<case>.oracle.json`, next to the case or under `oracle_dir`):
+`{format, source{kind, application, version, produced_at, input_sha256}, sheets{Sheet:{A1:value}}}`.
+Oracle values override hand expectations. `libreoffice` results are never written as sidecars.
+Tools never re-derive case discovery: `rustsheet-eval cases <suite>` prints each case's path,
+sidecar path, formula-cell count and whether the suite trusts its cached values.
 
 ## Scoring
 Every formula cell (including array-formula members) that has an expectation is checked.

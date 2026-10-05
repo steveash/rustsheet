@@ -19,10 +19,10 @@ import contextlib
 import datetime as dt
 import hashlib
 import json
+import subprocess
 import sys
 import tempfile
 import threading
-import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +30,7 @@ from rustsheet_tools import repo_root
 from rustsheet_tools.oracle.backends import BACKENDS, OracleError, OracleInfo
 from rustsheet_tools.oracle.calibrate import calibrate, to_markdown
 from rustsheet_tools.oracle.canary import checked_values, embed_canary
-from rustsheet_tools.snapshot import compare_workbooks
+from rustsheet_tools.snapshot import compare_workbooks, eval_binary, formula_values, snapshot
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 GOLDEN_BACKENDS = {"excel-graph", "excel-desktop"}
@@ -56,10 +56,11 @@ def _recalc_cached(backend: Any, xlsx: bytes) -> tuple[dict[str, dict[str, Any]]
     """
     sha = hashlib.sha256(xlsx).hexdigest()
     out, meta = _cache_paths(backend, sha)
+    canaried = embed_canary(xlsx)  # first, so refusals also apply to results cached before them
     if out.exists() and meta.exists():
         with contextlib.suppress(OracleError):  # entries without a passing canary are recomputed
             return checked_values(out), OracleInfo(**json.loads(meta.read_text())), sha
-    data, info = backend.recalc(embed_canary(xlsx))
+    data, info = backend.recalc(canaried)
     out.write_bytes(data)
     try:
         values = checked_values(out)
@@ -95,17 +96,27 @@ def cmd_recalc(args: argparse.Namespace) -> int:
     return 0
 
 
-def _suite_cases(suite: str) -> tuple[dict[str, Any], list[Path]]:
-    sdir = repo_root() / "eval" / "suites" / suite
-    manifest = tomllib.loads((sdir / "suite.toml").read_text())
-    root = (sdir / manifest.get("root", "cases")).resolve()
-    ext = ".xlsx" if manifest["kind"] == "xlsx" else ".case.json"
-    return manifest, sorted(p for p in root.rglob(f"*{ext}") if not p.name.startswith("~$"))
+def _suite_cases(suite: str) -> list[dict[str, Any]]:
+    """The suite's cases as the harness discovers them (`rustsheet-eval cases`, see main.rs)."""
+    out = subprocess.run(
+        [str(eval_binary()), "--root", str(repo_root()), "cases", suite],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    cases: list[dict[str, Any]] = json.loads(out.stdout)
+    return cases
 
 
-def _sidecar(case: Path) -> Path:
-    stem = case.name.removesuffix(".case.json").removesuffix(".xlsx")
-    return case.with_name(f"{stem}.oracle.json")
+def _skip_reason(case: dict[str, Any], include_cached: bool) -> str | None:
+    """Why an xlsx case needs no oracle run: unreadable, nothing to score, or cached values trusted."""
+    if case.get("unreadable"):
+        return f"rustsheet-eval cannot read it ({case['unreadable'][:120]})"
+    if case.get("formula_cells") == 0:
+        return "no formula cells"
+    if case.get("trusts_cached_values") and not include_cached:
+        return "cached values already trusted (Excel-authored); use --include-cached to override"
+    return None
 
 
 def cmd_fill(args: argparse.Namespace) -> int:
@@ -115,17 +126,25 @@ def cmd_fill(args: argparse.Namespace) -> int:
     ok, why = backend.available()
     if not ok:
         sys.exit(f"{backend.name} unavailable: {why}")
-    _, cases = _suite_cases(args.suite)
-    done = failed = 0
-    for case in cases[: args.limit or None]:
-        sidecar = _sidecar(case)
+    done = failed = skipped = conflicts = 0
+    for entry in _suite_cases(args.suite)[: args.limit or None]:
+        case, sidecar = Path(entry["path"]), Path(entry["sidecar"])
+        is_spec = case.name.endswith(".case.json")
         if sidecar.exists() and not args.force:
             continue
+        if not is_spec:
+            reason = _skip_reason(entry, args.include_cached)
+            if reason:
+                skipped += 1
+                print(f"skip {case.name}: {reason}", file=sys.stderr)
+                continue
         raw = case.read_bytes()
-        spec = json.loads(raw) if case.name.endswith(".case.json") else None
+        spec = json.loads(raw) if is_spec else None
         xlsx = build_xlsx(spec) if spec else raw
         try:
             values, info, sha = _recalc_cached(backend, xlsx)
+            if not spec:
+                conflicts += _drop_desktop_conflicts(case, values)
         except OracleError as e:
             failed += 1
             print(f"FAIL {case}: {e}", file=sys.stderr)
@@ -143,18 +162,20 @@ def cmd_fill(args: argparse.Namespace) -> int:
         }
         if spec:
             _report_hand_disagreements(case, spec, values)
+        sidecar.parent.mkdir(parents=True, exist_ok=True)
         sidecar.write_text(json.dumps(oracle, indent=1, sort_keys=True) + "\n")
         done += 1
-    print(f"wrote {done} oracle sidecars ({failed} failures)")
+    print(
+        f"wrote {done} oracle sidecars ({failed} failures, {skipped} skipped, "
+        f"{conflicts} web-vs-desktop conflicts left pending)"
+    )
     return 1 if failed else 0
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
-    manifest, workbooks = _suite_cases(args.suite)
-    if manifest["kind"] != "xlsx":
-        sys.exit(
-            f"calibrate needs an xlsx suite of Excel-authored workbooks; {args.suite} is {manifest['kind']}"
-        )
+    workbooks = [Path(e["path"]) for e in _suite_cases(args.suite)]
+    if not workbooks or any(p.name.endswith(".case.json") for p in workbooks):
+        sys.exit(f"calibrate needs an xlsx suite of Excel-authored workbooks; {args.suite} is not one")
     ok, why = _backend(args.backend).available()
     if not ok:
         sys.exit(f"{args.backend} unavailable: {why}")
@@ -182,6 +203,47 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
 
 
+def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """Coarse filter, not scoring: last-digit float noise between Excel builds is not a conflict.
+
+    1e-9 relative sits far above the few-ulp web/desktop differences seen in calibration and far
+    below any real disagreement found so far (wrong type, wrong text, wrong count)."""
+    if a.get("t") == b.get("t") == "n":
+        x, y = float(a["v"]), float(b["v"])
+        return abs(x - y) > 1e-9 * max(abs(x), abs(y), 1e-300)
+    return a != b
+
+
+def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> int:
+    """Removes cells where Excel for the web contradicts the values Microsoft Excel cached in the
+    workbook, so they stay pending until an excel-desktop probe decides (T-0019 review: lowercase-e
+    TEXT formats and elapsed tokens after `s` give #VALUE!/odd values on the web only).
+
+    Any Microsoft application counts as evidence here, deliberately broader than
+    `is_excel_authored` (which rejects AppVersion 12.0 because XlsxWriter fakes it): the
+    lowercase-e conflicts come from a real Mac Excel 2008 (12.0) file, and a false conflict only
+    leaves a cell pending."""
+    try:
+        snap = snapshot(case)
+    except subprocess.CalledProcessError as e:  # never write web values we could not check
+        raise OracleError(f"cannot check against cached values: {(e.stderr or '').strip()[:120]}") from e
+    if not (snap.get("application") or "").startswith("Microsoft"):
+        return 0  # cached by POI, LibreOffice, a generator...: no Excel evidence to conflict with
+    cached = formula_values(snap)
+    dropped = 0
+    for sheet, cells in values.items():
+        for a1 in list(cells):
+            mine = cached.get(sheet, {}).get(a1)
+            if mine is not None and _materially_differ(cells[a1], mine):
+                print(
+                    f"CONFLICT {case.name} {sheet}!{a1}: web={cells[a1]} desktop={mine} (left pending)",
+                    file=sys.stderr,
+                )
+                del cells[a1]
+                dropped += 1
+    return dropped
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="rustsheet-oracle", description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -196,6 +258,11 @@ def main() -> None:
     p.add_argument("--suite", required=True)
     p.add_argument("--force", action="store_true")
     p.add_argument("--limit", type=int, default=0)
+    p.add_argument(
+        "--include-cached",
+        action="store_true",
+        help="also recalc xlsx cases whose cached values the suite already trusts (calibration)",
+    )
     p.set_defaults(fn=cmd_fill)
     p = sub.add_parser("calibrate")
     p.add_argument("-b", "--backend", required=True)

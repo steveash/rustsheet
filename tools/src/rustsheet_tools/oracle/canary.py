@@ -42,6 +42,15 @@ _PART = "worksheets/rustsheet-canary.xml"
 _REL_ID = "rIdRustSheetCanary"
 _WORKSHEET_CT = "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"
 _SHEET_COUNT_FUNCTIONS = re.compile(r"\b(?:_xlfn\.)?(?:SHEETS|INFO)\s*\(", re.IGNORECASE)
+# Excel for the web does not implement CELL("width") and returns #VALUE!, where desktop Excel
+# returns the column width (poi/47804.xlsx: desktop cached 10 and 11). Not Excel semantics.
+# Only a literal "width" argument is caught; the fill's desktop-conflict check is the backstop.
+_WEB_UNSUPPORTED = re.compile(r"\bCELL\s*\(\s*(?:\"|&quot;)width", re.IGNORECASE)
+
+_REFUSALS = (
+    (_SHEET_COUNT_FUNCTIONS, "uses SHEETS() or INFO(), whose answer the canary sheet would change"),
+    (_WEB_UNSUPPORTED, 'uses CELL("width"), which Excel for the web does not implement'),
+)
 
 
 def _number(pred: Callable[[float], bool]) -> Callable[[Any], bool]:
@@ -129,11 +138,10 @@ def embed_canary(xlsx: bytes) -> bytes:
     formula_parts = (n for n in parts if n == wb_path or n.startswith(posixpath.join(wb_dir, "worksheets/")))
     for name in formula_parts:
         data = parts[name]
-        if _SHEET_COUNT_FUNCTIONS.search(data.decode("utf-8", "replace")):
-            raise OracleError(
-                f"refusing to recalculate: {name} uses SHEETS() or INFO(), whose answer the canary "
-                "sheet would change"
-            )
+        text = data.decode("utf-8", "replace")
+        for pattern, why in _REFUSALS:
+            if pattern.search(text):
+                raise OracleError(f"refusing to recalculate: {name} {why}")
 
     workbook = parts[wb_path].decode("utf-8")
     sheets = re.search(r"<((?:\w+:)?)sheets\b[^>]*>(.*?)</\1sheets>", workbook, re.S)

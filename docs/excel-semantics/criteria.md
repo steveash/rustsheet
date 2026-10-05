@@ -66,3 +66,10 @@ cell and `"<>3"` follow the shared grammar; an explicit `"=ab"` is exact, not a 
 2), while an error criterion cell (`=NA()`) matches nothing.
 Evidence: probes/criteria-operands C9-C16, D17-D25. Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+
+## COUNTIFS lifts an array criterion
+Rule: an array constant as a criterion makes COUNTIFS return an array of counts, one per element:
+`SUM(COUNTIFS(A1:F1,{"bar","baz"}))` = 3 and `{"foo","bar"}` = 4.
+Evidence: poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
+Status: VERIFIED
+Tasks: T-0207

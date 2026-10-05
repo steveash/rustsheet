@@ -1,0 +1,123 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Flags": {},
+  "Tests": {
+   "A10": {
+    "t": "s",
+    "v": "-jello-jello-"
+   },
+   "A12": {
+    "t": "s",
+    "v": "TRUE"
+   },
+   "A13": {
+    "t": "s",
+    "v": "hi"
+   },
+   "A14": {
+    "t": "s",
+    "v": "hI"
+   },
+   "A15": {
+    "t": "s",
+    "v": "hi"
+   },
+   "A16": {
+    "t": "s",
+    "v": "@TRUE@"
+   },
+   "A17": {
+    "t": "s",
+    "v": "-TRUE-"
+   },
+   "A18": {
+    "t": "s",
+    "v": "-TRUE"
+   },
+   "A19": {
+    "t": "s",
+    "v": "TRUE-"
+   },
+   "A2": {
+    "t": "s",
+    "v": "jello"
+   },
+   "A20": {
+    "t": "s",
+    "v": "-TRUE-TRUE-"
+   },
+   "A21": {
+    "t": "s",
+    "v": "FALSE"
+   },
+   "A22": {
+    "t": "s",
+    "v": "hi"
+   },
+   "A23": {
+    "t": "s",
+    "v": "hI"
+   },
+   "A24": {
+    "t": "s",
+    "v": "hi"
+   },
+   "A25": {
+    "t": "s",
+    "v": "@FALSE@"
+   },
+   "A26": {
+    "t": "s",
+    "v": "-FALSE-"
+   },
+   "A27": {
+    "t": "s",
+    "v": "-FALSE"
+   },
+   "A28": {
+    "t": "s",
+    "v": "FALSE-"
+   },
+   "A29": {
+    "t": "s",
+    "v": "-FALSE-FALSE-"
+   },
+   "A3": {
+    "t": "s",
+    "v": "hi"
+   },
+   "A4": {
+    "t": "s",
+    "v": "hI"
+   },
+   "A5": {
+    "t": "s",
+    "v": "hi"
+   },
+   "A6": {
+    "t": "s",
+    "v": "@jello@"
+   },
+   "A7": {
+    "t": "s",
+    "v": "-jello-"
+   },
+   "A8": {
+    "t": "s",
+    "v": "-jello"
+   },
+   "A9": {
+    "t": "s",
+    "v": "jello-"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "c224c784e77f321c59c90f6d93380ff74a0e0013f0346e4b2cdf0a5ff5e3840b",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-04T22:10:46+00:00",
+  "version": null
+ }
+}
