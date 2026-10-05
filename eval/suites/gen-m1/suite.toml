@@ -1,0 +1,10 @@
+name = "gen-m1"
+description = "M1 operator and reference probes from rustsheet-gen --policy operators-refs; expectations from the Excel oracle (T-0109)"
+kind = "spec"
+root = "cases"
+include = ["**/*.case.json"]
+license = "Apache-2.0"
+origin = "generated"
+gate = true
+baseline = "cells"
+milestone = ["M1"]
