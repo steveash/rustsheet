@@ -78,6 +78,9 @@ Evidence: probes/intersection-whitespace H1:H8 (oracle: excel-graph, 2026-10-05,
 workbooks come from scratch runs of `rustsheet-oracle recalc` on one formula each (T-0138); a refused workbook
 has no values to commit.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); expressions/lexer/mod.rs (`Lexer::separator`)
+The engine turns a U+3000 intersection into one undefined name holding its text; where Excel's name
+begins and ends, and so how references inside it update on row/column inserts, is UNVERIFIED.
 Tasks: T-0138, T-0148
 
 ## Intersection operands must be references
@@ -103,7 +106,8 @@ between two error operands. Accepted forms:
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5 (oracle:
 excel-graph, 2026-10-05, T-0138). The refused workbooks come from scratch runs of one formula each (T-0138).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
-Tasks: T-0138, T-0148, T-0149, T-0042
+Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`; only SUM and NA, the evidenced value functions, are refused: any other function is accepted as an operand, UNVERIFIED until probed (T-0161); value operators (`+ - * / ^ & =`, unary minus, percent) are refused by inference, since only `(1/0)` among them is evidenced, also T-0161; `@` and union operands are T-0149)
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =

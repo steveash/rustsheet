@@ -7,6 +7,7 @@
 
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, TokenType};
+use crate::functions::Function;
 
 impl Parser {
     /// `intersect => range (' ' range)*`, left associative.
@@ -16,19 +17,37 @@ impl Parser {
     /// (`A1:B2 B1:B3`, `(A1) B1`, `A1 OFFSET(...)`). Everywhere else it keeps its meaning
     /// of nothing at all: `= 1 + 2`, `SUM( A1 , B1 )`, `A1 -B1`, `{ 1 , 2 }`.
     pub(super) fn parse_intersection(&mut self) -> Node {
+        let start = self.lexer.get_position_index();
         let mut t = self.parse_range();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
         let mut depth = self.depth;
+        let mut as_name = false;
         while !is_constant(&t)
             && self.lexer.whitespace_follows()
             && starts_reference(&self.lexer.peek_token())
         {
+            // Excel refuses the formula (load-time `FileCorruptTryRepair`, so no oracle value)
+            // on CR, TAB, NBSP and the like as separator, and on a value as an operand.
+            let separator = self.lexer.separator();
+            // U+3000 starts a name for Excel, and no such name is defined: `#NAME?`
+            // (probes/intersection-whitespace H7).
+            let name_error = separator.contains(&'\u{3000}');
+            let separator_ok = separator
+                .iter()
+                .all(|c| matches!(c, ' ' | '\n' | '\u{3000}'));
             let p = self.parse_range();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
+            if !separator_ok
+                || !(name_error || is_reference_operand(&t))
+                || !is_reference_operand(&p)
+            {
+                return self.intersection_error();
+            }
+            as_name |= name_error;
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
             }
@@ -38,7 +57,25 @@ impl Parser {
                 right: Box::new(p),
             };
         }
+        if as_name {
+            // A synthetic undefined name holding the source text: evaluates to `#NAME?` and
+            // prints as written, so FORMULATEXT and export keep the formula. Built once, after
+            // the chain, which the depth cap bounds like any intersection.
+            return Node::NamedVariableKind {
+                name: self.lexer.source_since(start),
+                id: None,
+            };
+        }
         t
+    }
+
+    fn intersection_error(&self) -> Node {
+        Node::ParseErrorKind {
+            formula: self.lexer.get_formula(),
+            expecting: vec![ExpectedTokens::Range],
+            position: self.lexer.get_position() as usize,
+            message: "Intersection needs references separated by spaces or line feeds".to_string(),
+        }
     }
 
     pub(super) fn parse_range(&mut self) -> Node {
@@ -121,6 +158,31 @@ fn is_constant(node: &Node) -> bool {
         node,
         Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) | Node::ArrayKind(_)
     )
+}
+
+/// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
+/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// references"): values, value operators, error literals other than `#REF!` and value
+/// functions (`SUM`, `NA`) make Excel refuse the formula. Reference-returning calls are
+/// INDEX, OFFSET and IF (probes/intersection-function-operands). Only the value functions
+/// with evidence (SUM, NA) are refused; every other call is accepted until probed
+/// (UNVERIFIED, docs/excel-semantics/references.md; T-0161).
+fn is_reference_operand(node: &Node) -> bool {
+    match node {
+        Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::BooleanKind(_)
+        | Node::ArrayKind(_)
+        | Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. }
+        | Node::UnaryKind { .. } => false,
+        Node::ErrorKind(error) => *error == Error::REF,
+        Node::FunctionKind { kind, .. } => !matches!(kind, Function::Sum | Function::Na),
+        _ => true,
+    }
 }
 
 /// Whether `token` can start the right operand of an intersection: a reference, a name or

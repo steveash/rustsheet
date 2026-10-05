@@ -70,7 +70,6 @@ F	probes/intersection-function-operands.case.json	Sheet1!H5
 F	probes/intersection-operands.case.json	Sheet1!H10
 F	probes/intersection-operands.case.json	Sheet1!H11
 F	probes/intersection-operands.case.json	Sheet1!H13
-F	probes/intersection-whitespace.case.json	Sheet1!H7
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/literal-digits.case.json	Sheet1!C4

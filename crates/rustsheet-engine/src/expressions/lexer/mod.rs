@@ -204,6 +204,31 @@ impl Lexer {
             .is_some_and(|c| c.is_whitespace())
     }
 
+    /// The whitespace right after the last token. Spaces and line feeds are the only separators
+    /// Excel accepts in an intersection; CR, TAB and NBSP make it refuse the formula, and
+    /// U+3000 is part of a name (docs/excel-semantics/references.md "Intersection operator:
+    /// separators").
+    pub fn separator(&self) -> &[char] {
+        let rest = &self.chars[self.position.min(self.len)..];
+        let end = rest
+            .iter()
+            .position(|c| !c.is_whitespace())
+            .unwrap_or(rest.len());
+        &rest[..end]
+    }
+
+    /// The lexer's position as a char index.
+    pub fn get_position_index(&self) -> usize {
+        self.position
+    }
+
+    /// The formula text from char index `start` to the current position, trimmed.
+    pub fn source_since(&self, start: usize) -> String {
+        let end = self.position.min(self.len);
+        let text: String = self.chars[start.min(end)..end].iter().collect();
+        text.trim().to_string()
+    }
+
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
     /// It is a noop if the has not been a previous peek_token
     pub fn advance_token(&mut self) {
