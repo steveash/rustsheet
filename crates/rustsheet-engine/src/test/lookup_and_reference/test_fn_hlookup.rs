@@ -114,3 +114,13 @@ fn test_hlookup_full_row_bounded_by_used_columns() {
         assert_eq!(model._get_text("A3"), expected, "{formula}");
     }
 }
+
+#[test]
+fn test_hlookup_whole_row_sees_a_spill_beyond_the_used_area() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(1,1,HLOOKUP(5,4:4,1,FALSE))");
+    model._set("A3", "=SEQUENCE(1,3,10)");
+    model._set("A4", "=SEQUENCE(1,5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+}

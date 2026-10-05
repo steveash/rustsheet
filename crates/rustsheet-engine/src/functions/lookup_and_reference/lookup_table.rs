@@ -58,12 +58,10 @@ impl LookupTable {
     /// so they are not materialized (see `first_column`).
     pub(super) fn first_row(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
         let columns = match self {
-            LookupTable::Range { left, .. } => {
-                let last_used = model
-                    .workbook
-                    .worksheet(left.sheet)
-                    .map_or(LAST_COLUMN, |ws| ws.last_used_column());
-                self.columns().min(last_used - left.column + 1).max(0)
+            LookupTable::Range { left, right } => {
+                let last =
+                    model.clip_search_columns(left.sheet, left.column, right.column, left.row);
+                (last - left.column + 1).max(0)
             }
             LookupTable::Array(_) => self.columns(),
         };
@@ -83,15 +81,56 @@ impl LookupTable {
         cell: CellReferenceIndex,
     ) -> Vec<CalcResult> {
         let rows = match self {
-            LookupTable::Range { left, .. } => {
-                let last_used = model
-                    .workbook
-                    .worksheet(left.sheet)
-                    .map_or(LAST_ROW, |ws| ws.last_used_row());
-                self.rows().min(last_used - left.row + 1).max(0)
+            LookupTable::Range { left, right } => {
+                let last = model.clip_search_rows(left.sheet, left.row, right.row, left.column);
+                (last - left.row + 1).max(0)
             }
             LookupTable::Array(_) => self.rows(),
         };
         (0..rows).map(|row| self.get(model, row, 0, cell)).collect()
+    }
+}
+
+impl Model {
+    /// The last row of `row1..=row2` worth walking down `column`: rows below
+    /// the sheet's last used row are empty and never match. The skipped cells
+    /// are recorded as seen empty, so a later spill into them restarts the
+    /// pass (as `clip_to_used_area` does).
+    pub(super) fn clip_search_rows(
+        &mut self,
+        sheet: u32,
+        row1: i32,
+        row2: i32,
+        column: i32,
+    ) -> i32 {
+        let last_used = self
+            .workbook
+            .worksheet(sheet)
+            .map_or(LAST_ROW, |ws| ws.last_used_row());
+        let last = row2.min(last_used);
+        self.record_seen_empty_range(sheet, last.max(row1 - 1) + 1, column, row2, column);
+        last
+    }
+
+    /// The column counterpart of `clip_search_rows`, walking along `row`. Only
+    /// ranges that run to the last column are clipped: finding the last used
+    /// column visits every row, which would dominate a short range.
+    pub(super) fn clip_search_columns(
+        &mut self,
+        sheet: u32,
+        column1: i32,
+        column2: i32,
+        row: i32,
+    ) -> i32 {
+        if column2 < LAST_COLUMN {
+            return column2;
+        }
+        let last_used = self
+            .workbook
+            .worksheet(sheet)
+            .map_or(LAST_COLUMN, |ws| ws.last_used_column());
+        let last = column2.min(last_used);
+        self.record_seen_empty_range(sheet, row, last.max(column1 - 1) + 1, row, column2);
+        last
     }
 }

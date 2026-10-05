@@ -99,3 +99,18 @@ fn test_match_whole_row_and_column_bounded_by_used_range() {
         assert_eq!(model._get_text("H3"), expected, "{formula}");
     }
 }
+
+// The skipped part of a whole-column search vector is on record as seen empty,
+// so a spill into it during the pass restarts the pass (as for XMATCH).
+#[test]
+fn test_match_and_lookup_whole_column_see_a_spill_beyond_the_used_area() {
+    for formula in ["=MATCH(5,D:D,0)", "=LOOKUP(5,D:D)"] {
+        let mut model = new_empty_model();
+        model._set("A1", &format!("=SEQUENCE(1,1,{})", &formula[1..]));
+        model._set("C1", "=SEQUENCE(3,1,10)");
+        model._set("D1", "=SEQUENCE(5)");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "5", "{formula}");
+        assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
+    }
+}

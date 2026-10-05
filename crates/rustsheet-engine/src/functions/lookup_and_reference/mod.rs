@@ -151,12 +151,16 @@ impl Model {
                 };
                 let mut right = right;
                 if search {
-                    if let Ok(ws) = self.workbook.worksheet(left.sheet) {
-                        if is_row_vector {
-                            right.row = right.row.min(ws.last_used_row());
-                        } else {
-                            right.column = right.column.min(ws.last_used_column());
-                        }
+                    if is_row_vector {
+                        right.row =
+                            self.clip_search_rows(left.sheet, left.row, right.row, left.column);
+                    } else {
+                        right.column = self.clip_search_columns(
+                            left.sheet,
+                            left.column,
+                            right.column,
+                            left.row,
+                        );
                     }
                 }
                 Ok(self.prepare_array(&left, &right, is_row_vector))
