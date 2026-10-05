@@ -11,7 +11,8 @@ use crate::{
 };
 use std::f64::consts::PI;
 
-/// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`.
+/// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`: a decimal limit, not a
+/// power of two (probes/mod-quotient-threshold5).
 const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
 impl Model {

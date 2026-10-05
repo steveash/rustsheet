@@ -41,5 +41,6 @@ fn huge_quotient_is_num() {
     assert_eq!(model._get_text("A4"), *"1");
     assert_eq!(model._get_text("A5"), *"#NUM!");
     assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_ne!(model._get_text("A7"), *"#NUM!");
     assert_eq!(model._get_text("A8"), *"#NUM!");
 }
