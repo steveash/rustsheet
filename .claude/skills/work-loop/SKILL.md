@@ -79,7 +79,8 @@ file and its acceptance criteria.
    so resolve conflicts immediately per the `steward` skill ("Merge conflicts are never waiting
    on CI"). Then wait for CI (subscribe to PR activity and arm a check-in; do not poll with
    sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
-   **squash-merge**. If `main` moved, merge `origin/main` into the branch, re-run `make check`,
+   **squash-merge**, after the `steward` skill's mechanical up-to-date check (decision 0028:
+   the PR head must contain the current `origin/main`). If `main` moved, merge `origin/main` into the branch, re-run `make check`,
    push, and check mergeability and CI again.
 4. Delete the branch.
 5. Go back to step 1 for the next task while the session budget allows (110 minutes, 10 tasks;

@@ -7,6 +7,12 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Merge policy**: no human approval is required. A PR may be squash-merged by the agent that
   opened it when (a) all required CI jobs are green on the latest head, (b) the `review` skill
   table shows APPROVE from every applicable reviewer, (c) the branch is up to date with `main`.
+  Check (c) mechanically right before every merge call (decision 0028): `git fetch origin main`
+  then `git merge-base --is-ancestor origin/main origin/<branch>`. If it fails, `main` moved since
+  the last CI run, and the green CI does not cover the merged result. GitHub's `mergeable_state:
+  clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
+  never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
+  CI is green on that new head. Always pass `expectedHeadSha`.
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
