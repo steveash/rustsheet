@@ -36,6 +36,35 @@ pub struct SuiteSummary {
     pub cells: usize,
     pub cells_passed: usize,
     pub verdicts: BTreeMap<Verdict, usize>,
+    /// Total wall time of the suite's cases (informational; never part of the gate).
+    #[serde(default)]
+    pub millis: u64,
+}
+
+/// Number of slowest cases kept in the report.
+const SLOWEST_CASES: usize = 10;
+
+/// A case id with its wall time, for the report's slowest-cases table.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SlowCase {
+    /// `suite/case` id.
+    pub id: String,
+    /// Wall time of the case in milliseconds.
+    pub millis: u64,
+}
+
+/// The `n` slowest cases, slowest first; ties are broken by case id so output is deterministic.
+fn slowest(results: &[CaseResult], n: usize) -> Vec<SlowCase> {
+    let mut all: Vec<SlowCase> = results
+        .iter()
+        .map(|r| SlowCase {
+            id: r.id.clone(),
+            millis: r.millis,
+        })
+        .collect();
+    all.sort_by(|a, b| b.millis.cmp(&a.millis).then_with(|| a.id.cmp(&b.id)));
+    all.truncate(n);
+    all
 }
 
 impl SuiteSummary {
@@ -66,6 +95,9 @@ pub struct RunReport {
     pub functions: Vec<FunctionStat>,
     /// Cases with only their *failing* cells retained.
     pub cases: Vec<CaseResult>,
+    /// Slowest cases of the run (informational; never part of the gate).
+    #[serde(default)]
+    pub slowest: Vec<SlowCase>,
 }
 
 impl RunReport {
@@ -84,6 +116,7 @@ impl RunReport {
             *s.statuses.entry(r.status).or_default() += 1;
             s.cells += r.checked;
             s.cells_passed += r.passed;
+            s.millis += r.millis;
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 for f in c.formula.as_deref().map(functions_in).unwrap_or_default() {
@@ -118,6 +151,7 @@ impl RunReport {
             suites: suites.into_values().collect(),
             functions,
             cases,
+            slowest: slowest(results, SLOWEST_CASES),
         }
     }
 
@@ -161,6 +195,19 @@ impl RunReport {
         }
     }
 
+    fn write_timing(&self, md: &mut String) {
+        let _ = writeln!(md, "\n## Timing\n");
+        let _ = writeln!(md, "| suite | total ms |\n|---|---|");
+        for s in &self.suites {
+            let _ = writeln!(md, "| {} | {} |", s.name, s.millis);
+        }
+        let _ = writeln!(md, "\nSlowest {} cases:\n", self.slowest.len());
+        let _ = writeln!(md, "| case | ms |\n|---|---|");
+        for c in &self.slowest {
+            let _ = writeln!(md, "| {} | {} |", c.id, c.millis);
+        }
+    }
+
     /// Human/agent-readable gap report.
     #[must_use]
     pub fn to_markdown(&self, examples_per_function: usize) -> String {
@@ -171,6 +218,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        self.write_timing(&mut md);
         let broken: Vec<&CaseResult> = self
             .cases
             .iter()
@@ -276,6 +324,58 @@ impl RunReport {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn case(id: &str, millis: u64) -> CaseResult {
+        CaseResult {
+            id: id.to_string(),
+            suite: id.split('/').next().unwrap_or(id).to_string(),
+            status: CaseStatus::Pass,
+            message: None,
+            expected_source: String::new(),
+            checked: 1,
+            passed: 1,
+            skipped_volatile: 0,
+            millis,
+            cells: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn slowest_cases_are_ordered_by_time_then_id() {
+        let results = [
+            case("s/b", 5),
+            case("s/a", 5),
+            case("s/c", 9),
+            case("s/d", 1),
+        ];
+        let ids: Vec<String> = slowest(&results, 3).into_iter().map(|c| c.id).collect();
+        assert_eq!(ids, ["s/c", "s/a", "s/b"]);
+    }
+
+    #[test]
+    fn report_sums_suite_time_and_renders_timing() {
+        let report = RunReport::build("e", &[case("s/a", 5), case("s/b", 7), case("t/c", 1)]);
+        assert_eq!(report.suites[0].millis, 12);
+        let md = report.to_markdown(1);
+        assert!(
+            md.contains("## Timing") && md.contains("| s/b | 7 |"),
+            "{md}"
+        );
+    }
+
+    #[test]
+    fn timing_does_not_change_the_gate() {
+        use crate::baseline::{diff, Baseline};
+        use crate::suite::BaselineMode;
+        let fast = [case("s/a", 1), case("s/b", 2)];
+        let slow = [case("s/a", 900), case("s/b", 5000)];
+        let base = |r: &[CaseResult]| {
+            let refs: Vec<&CaseResult> = r.iter().collect();
+            Baseline::from_results(BaselineMode::Cells, &refs)
+        };
+        assert_eq!(base(&fast), base(&slow));
+        assert!(!diff(&base(&fast), &base(&slow)).is_dirty());
+    }
 
     #[test]
     fn extracts_function_names() {
