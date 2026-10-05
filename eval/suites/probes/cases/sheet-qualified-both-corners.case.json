@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Ranges whose corners both carry the sheet prefix: the forms Excel stores in a workbook (T-0139). Data!1:Data!2, Data!A1:Data!2 and Data!$A:Data!$B make the workbook unloadable (createSession 501 FileCorruptTryRepair)",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 4,
+        "A2": 8,
+        "B2": 16,
+        "C2": 32,
+        "A3": 64,
+        "B3": 128,
+        "C3": 256
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Data!A:Data!B)",
+        "A2": "=SUM(Data!A:B)",
+        "A4": "=SUM(Data!1:2)",
+        "A5": "=SUM(Data!A1:Data!B)",
+        "A6": "=SUM(Data!A1:B)",
+        "A7": "=SUM(Data!A:Data!B1)",
+        "A9": "=SUM(Data!A1:Data!B2)",
+        "A11": "=SUM(Data!A:Data!A)",
+        "A12": "=SUM(Data!B:Data!A)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!A4",
+    "Calc!A5",
+    "Calc!A6",
+    "Calc!A7",
+    "Calc!A9",
+    "Calc!A11",
+    "Calc!A12"
+  ]
+}
