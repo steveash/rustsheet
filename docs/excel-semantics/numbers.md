@@ -149,6 +149,30 @@ Evidence: T-0009 single-cell workbooks sent to excel-graph, 2026-10-04: `=1E+308
 probes/precision-and-rounding A13 and the `1e308*10` cells of probes-numeric `number-to-text` failed the same way.
 Status: VERIFIED
 
+## Number text of 1E+308 or more is not a number
+Rule: text read as a number (`"x"+0`, `--"x"`, `VALUE`, `COUNT`/`SUM`/`AVERAGE` text arguments,
+array elements, criteria operands) is a number only below 1E+308 in magnitude, the same limit
+as formula literals: `="1e308"*1`, `="1.7976931348623157e308"*1`, `="1e400"*1`, `="-1e400"+0`,
+`VALUE("1e400")`, `SUM("1e400",1)` are #VALUE!, while `="9.99999999999999e307"*1` and
+`="0.01e309"+0` (1E+307) are numbers. The words "inf", "NaN", "infinity" (any case or sign) are
+text, never numbers (NUMBERVALUE too: `NUMBERVALUE("1e308")` and `NUMBERVALUE("inf")` are
+#VALUE!; `COUNT("1e308",1)` is 1): `="inf"*1`, `=--"Infinity"`, `VALUE("NaN")` are #VALUE!, `COUNT("inf","NaN",
+"1e400","+1")` is 1 (only "+1" counts), and `COUNTIF(r,"inf")` / `">1e400"` compare as text. A
+`TEXT` format condition whose number is out of range (`[>1e400]`) makes the format invalid
+(#VALUE!), `[>1e308]` included.
+Small magnitudes are not yet matched (follow-up T-0154): a nonzero value below about 1E-309
+is #VALUE! (`"1e-310"+0`, `"1e-323"+0`, `"4.9e-324"+0`, `VALUE("1e-400")`), values from about
+1E-309 up to at least the smallest normal double read as 0 (`"1e-309"`, `"1e-308"`,
+`"2.2250738585072014e-308"` → 0; `"1e-307"` stays 1E-307), and a zero mantissa with an exponent
+above 308 is #VALUE! (`"0e309"`, `"0e400"`) while `"0e308"` is 0.
+Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8).
+Oracle: excel-graph, 2026-10-05.
+Status: VERIFIED
+Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
+lexer) and `parse_finite_number` (criteria, COUNT/AVERAGE text, NUMBERVALUE, format conditions),
+in crates/rustsheet-engine/src/number_format.rs.
+Tasks: T-0920, T-0140, T-0154
+
 ## MOD is an exact remainder
 Rule: `MOD(n,d)` = exact `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`.
 Not `n - d*INT(n/d)` (which loses precision: `MOD(5,1E-10)` would give 0).
