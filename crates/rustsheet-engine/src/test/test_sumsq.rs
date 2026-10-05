@@ -36,3 +36,18 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "55");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+#[test]
+fn typed_text_and_booleans_count_but_range_ones_do_not() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUMSQ(TRUE,TRUE,FALSE)");
+    model._set("A2", "=SUMSQ(\"2\",\"3\",4)");
+    model._set("B1", "=TRUE");
+    model._set("B2", "x");
+    model._set("B3", "5");
+    model._set("A3", "=SUMSQ(B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"29");
+    assert_eq!(model._get_text("A3"), *"25");
+}
