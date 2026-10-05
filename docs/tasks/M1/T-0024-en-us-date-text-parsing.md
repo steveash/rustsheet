@@ -3,7 +3,7 @@ id: T-0024
 title: "en-US date text: month-first DATEVALUE and month-name dates in date arguments"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
