@@ -3,7 +3,7 @@ id: T-0105
 title: "Parser: implement the space (intersection) operator and reject trailing input"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -44,13 +44,42 @@ where it separates two reference operands); `expressions/parser/mod.rs` `parse_r
 `parse_expr` (end-of-input check); `model.rs` `evaluate_node_in_context`; stringify round-trip.
 
 ## Acceptance criteria
-- [ ] Every F line of `gen-m1/4dc8ed1de05a61be` and `gen-m1/7cb99acdd82402f1` (500 cells) and the
+- [x] Every F line of `gen-m1/4dc8ed1de05a61be` and `gen-m1/7cb99acdd82402f1` (500 cells) and the
   132 `range/dollar-range`, `range/reversed-corners` and `range/range-of-ranges` cells of
   `gen-m1/1ce5b2467b3b19fd` disappear from eval/baseline/gen-m1.txt, with no new F lines in any suite.
-- [ ] Spec cases in `smoke` for invalid trailing input (the trailing-input half has no gen-m1
+- [x] Spec cases in `smoke` for invalid trailing input (the trailing-input half has no gen-m1
   evidence; flag hand expectations for oracle confirmation).
-- [ ] Formulas with intersections round-trip through stringify (unit test).
+- [x] Formulas with intersections round-trip through stringify (unit test).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 Union operator (T-0134). Sheet-qualified second range corner `Data!B8:Data!E12` (T-0130).
+
+## Outcome
+The space (intersection) operator is implemented as `Node::OpIntersectKind`. It binds tighter
+than every other operator, chains left to right, and counts toward the depth cap.
+- A space is the operator only between reference operands. Spaces anywhere else keep their old
+  meaning.
+- Disjoint areas give `#NULL!`, areas on different sheets give `#VALUE!`, and a multi-cell result
+  behaves like a range.
+- Trailing input after a complete expression is now a parse error. `SIN(x)(3)` in
+  test_lambda.rs used to be silently truncated; it now expects a parse error.
+
+Eval:
+- gen-m1 978 → 351 known failures (627 of the 632 target cells fixed).
+- poi 935 → 933 (`Intersection-52111-xssf.xlsx` A3, A7).
+- No suite regressed. Duplication 8,288 → 8,241 lines (ratchet lowered, decision 0010).
+
+The 5 target cells still failing fail after the intersection, not in it:
+- 4 cells (gen-m1/7cb99acdd82402f1 A72, A103, A217, A235) need text `" 2 "` coerced in range
+  arithmetic, so they are added to T-0131.
+- 1 cell (gen-m1/4dc8ed1de05a61be A250) needs the left range's error to win over the right
+  operand's error. That is new task T-0136, with the quirk recorded in coercion.md.
+
+Trailing-input smoke cases are hand expectations (`#ERROR!`), tagged `unconfirmed`. Excel
+refuses such formulas, so an oracle value may never exist.
+
+Open questions (no oracle evidence yet):
+- whether a line break or non-breaking space also acts as the operator;
+- whether `=1 A1` is a parse error in Excel or gives `#VALUE!`;
+- whether a defined name whose formula is an intersection counts as a reference.

@@ -7,3 +7,4 @@ C	smoke/criteria.case.json	11
 C	smoke/d-function-criteria.case.json	4
 C	smoke/references.case.json	6
 C	smoke/text-and-logic.case.json	8
+C	smoke/trailing-input.case.json	8
