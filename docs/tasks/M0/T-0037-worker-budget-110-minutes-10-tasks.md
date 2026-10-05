@@ -23,7 +23,8 @@ opus worker completes "exactly one task per run". Decision 0025.
   agent-workflow note and decision 0022 point to decision 0025.
 - [x] The work-loop skill loops back to step 1 after a merge, and a blocked or handed-off task
   ends work on that task only.
-- [ ] `make check` green; reviewers approve.
+- [x] The prompts' resume step skips stale branches of `status: blocked` tasks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Re-applying the routines (the owner does that; agents never modify routines).

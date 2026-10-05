@@ -13,8 +13,9 @@
     The rubric (docs/process/task-format.md): `sonnet` only for size S, mechanically checkable,
     evidence already present, no spec, no protected path, no numeric fitting; otherwise `opus`.
   - Two workers replace the functions-lane and critical-lane workers (docs/process/routines.md):
-    sonnet hourly, up to 3 sonnet tasks per session; opus every 2 hours, one task, handoffs first (P0 first since decision 0023),
-    and it (with the steward) runs the planner and gap-triager. Both walk the critical-lane list then
+    sonnet hourly, up to 3 sonnet tasks per session; opus every 2 hours, one task, handoffs first
+    (P0 first since decision 0023; schedules and session budgets superseded by decisions 0022
+    and 0025), and it (with the steward) runs the planner and gap-triager. Both walk the critical-lane list then
     `functions`, one task in flight per lane (busy = branch commit < 2 h, except handed-off branches).
   - Claims: the first commit on `agent/<lane>/T-XXXX-*` is pushed at once, and `make next-task`
     skips a task with such a branch younger than 24 h, so overlapping hourly runs cannot start the

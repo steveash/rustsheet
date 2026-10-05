@@ -10,8 +10,11 @@
   - Both worker prompts (docs/process/routines.md) keep taking tasks until 110 minutes into the
     session or 10 started tasks, whichever comes first. They then start nothing new and push
     what is in flight.
-  - The work-loop skill says: after a merge (and any queue top-up), go back to step 1 while the
-    budget allows. Blocking or handing off a task ends work on that task only, not the run.
+  - The work-loop skill says (step 6, both tiers): after a merge (and, for opus, the
+    queue top-up), go back to step 1 while the budget allows. Blocking or handing off a task ends
+    work on that task only, not the run.
+  - The prompts' resume step skips stale branches whose task is `status: blocked`: with more
+    tasks per run, a blocked draft would otherwise be retried by every later run.
 - **Consequences:**
   - A run can finish in-flight work after the 2-hour mark, overlapping the next run of the same
     worker. That is safe: the in-flight branch holds its claim and makes its lane busy
