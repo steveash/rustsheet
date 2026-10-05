@@ -19,11 +19,11 @@ Three docs-only draft PRs from other sessions (2026-10-02..04) were blocked on t
 ## Acceptance criteria
 - [x] T-0905 restored; T-0907 restored for IM* only (CONVERT is T-0922); T-0906 dropped (covered by T-0914 done, T-0915, T-0917, T-0939).
 - [x] #13's findings in docs/excel-semantics/financial.md and T-0901; #38's in T-0925; both tasks stay `todo` (oracle exists, decision 0013).
-- [x] PRs #11, #13, #38 closed with a pointer to this PR.
-- [ ] `make check` green; reviewers approve.
+- [ ] PRs #11, #13, #38 closed with a pointer to this PR (done right after this PR merges).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing any of the salvaged tasks.
 
 ## Outcome
-Salvaged as above in one docs PR; the three draft PRs closed.
+Salvaged as above in one docs PR; the three draft PRs are closed once it merges.

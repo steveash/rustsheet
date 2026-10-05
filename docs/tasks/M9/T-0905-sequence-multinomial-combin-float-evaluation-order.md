@@ -29,9 +29,9 @@ Code: `crates/rustsheet-engine/src/functions/math_and_trigonometry/{sequence,mul
 If one function cannot be fit with the existing evidence, split it out and leave its lines in baseline.
 
 ## Acceptance criteria
-- [ ] 16 known-failure lines (7 SEQUENCE minus the 2 error cells owned by T-0904 = 5; 6 MULTINOMIAL; 5 COMBIN_COMBINA)
+- [ ] 16 known-failure lines (5 SEQUENCE: I9, I10, I11, L14, M14; 6 MULTINOMIAL; 5 COMBIN_COMBINA)
       disappear from eval/baseline/ironcalc-calc.txt with no new ones.
 - [ ] Algorithms documented in docs/excel-semantics/; `make check` green.
 
 ## Out of scope
-SEQUENCE `#VALUE!` vs `#CALC!` (T-0904); trig functions (T-0906).
+SEQUENCE `#VALUE!` (done, T-0913); trig/hyperbolic (T-0914, T-0915, T-0917, T-0939).
