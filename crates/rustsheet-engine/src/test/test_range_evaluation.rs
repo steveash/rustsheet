@@ -184,3 +184,20 @@ fn test_array_arithmetic_coerces_text_elements() {
     assert_eq!(model._get_text("A3"), "#DIV/0!");
     assert_eq!(model._get_text("A4"), "#VALUE!");
 }
+
+// gen-m1/4dc8ed1de05a61be Calc!A250: the error in the left range operand wins
+// over the right operand's error (docs/excel-semantics/coercion.md, T-0137).
+#[test]
+fn test_range_operand_error_wins_over_right_scalar_error() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "Data").unwrap();
+    model._set("Data!C9", "=NA()");
+    model._set("Data!D5", "=1/0");
+    model._set("A1", "=(Data!C1:C10 Data!B9:D9)/Data!D$5");
+    model._set("A2", "=Data!C9:C9/Data!D$5");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+}
