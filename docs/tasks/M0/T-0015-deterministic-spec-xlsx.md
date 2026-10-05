@@ -30,4 +30,4 @@ for any other run-dependent bytes, e.g. zip timestamps).
 Changing the case format or re-filling sidecars (values do not depend on the hash).
 
 ## Outcome
-spec2xlsx pins `created` via `set_properties`; test asserts the pinned date and identical rebuilds. Existing sidecar hashes are documented as legacy in `docs/architecture/eval-harness.md`. Eval delta none.
+spec2xlsx pins `created` via `set_properties`; test asserts the pinned date and identical rebuilds. Zip entry timestamps were checked (all fixed at 1980-01-01). Existing sidecar hashes are documented as legacy in `docs/architecture/eval-harness.md`. Eval delta none.
