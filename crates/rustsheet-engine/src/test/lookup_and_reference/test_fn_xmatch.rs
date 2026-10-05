@@ -263,3 +263,20 @@ fn test_xmatch_whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "5");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+#[test]
+fn test_xmatch_whole_row_and_column_bounded_by_used_range() {
+    let mut model = new_empty_model();
+    model._set("A1", "10");
+    model._set("A2", "20");
+    model._set("A3", "30");
+    model._set("C1", "=XMATCH(20,A:A)");
+    model._set("C2", "=XMATCH(99,A:A)");
+    model._set("C3", "=XMATCH(20,1:1)");
+    model._set("C4", "=XMATCH(1,A100:A200)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "2");
+    assert_eq!(model._get_text("C2"), "#N/A");
+    assert_eq!(model._get_text("C3"), "#N/A");
+    assert_eq!(model._get_text("C4"), "#N/A");
+}

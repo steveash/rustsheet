@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::results_independent_of_used_area;
 use crate::test::util::new_empty_model;
 
 #[test]
@@ -84,4 +85,43 @@ fn test_hlookup_array_sorted_largest_smaller() {
     model._set("A1", "=HLOOKUP(25,{10,20,30;\"a\",\"b\",\"c\"},2)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
+}
+
+// A whole-row search gives the results of a full walk. Only the exact
+// matches are pinned: sorted search over the empty tail awaits T-0126.
+#[test]
+fn test_hlookup_full_row_independent_of_used_area() {
+    let data = [
+        ("A1", "10"),
+        ("B1", "20"),
+        ("C1", "30"),
+        ("A2", "a"),
+        ("B2", "b"),
+        ("C2", "c"),
+    ];
+    let results = results_independent_of_used_area(
+        &data,
+        "A3",
+        "XFD5",
+        &[
+            "=HLOOKUP(20,1:2,2,FALSE)",
+            "=HLOOKUP(99,1:2,2,FALSE)",
+            "=HLOOKUP(1,Z1:XFD2,2,FALSE)",
+            "=HLOOKUP(99,1:2,2)",
+            "=HLOOKUP(FALSE,1:2,2,FALSE)",
+            "=HLOOKUP(0,1:2,2,FALSE)",
+            "=HLOOKUP(\"\",1:2,2,FALSE)",
+        ],
+    );
+    assert_eq!(results[..3], ["b", "#N/A", "#N/A"]);
+}
+
+#[test]
+fn test_hlookup_whole_row_sees_a_spill_beyond_the_used_area() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SEQUENCE(1,1,HLOOKUP(5,4:4,1,FALSE))");
+    model._set("A3", "=SEQUENCE(1,3,10)");
+    model._set("A4", "=SEQUENCE(1,5)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
 }

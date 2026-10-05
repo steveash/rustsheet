@@ -49,3 +49,21 @@ Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF
 Evidence: gen-m2/60a543744fc4a8f7 Calc!A106, 893302d6c5b99e2e Calc!A265, 78bc88199fc96650 Calc!A61. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
 Tasks: T-0213
+
+## Whole-column / whole-row search vectors: blank tail
+Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
+column with data in A1:A3 behaves like A1:A3 for an approximate lookup (`MATCH(99,A:A,1)` is
+expected to be 3, not 1048576).
+Evidence: inferred from the VERIFIED type-skipping entry (bounded gen-m2 ranges); whole-column
+probes with a blank tail are T-0126.
+Status: UNVERIFIED (probe pending, T-0126)
+Engine today (until T-0212): each probed blank compares as 0 / "" / FALSE, so `MATCH(99,A:A,1)`
+= 1048576 and `VLOOKUP(99,A:B,2)` = 0, and exact `VLOOKUP(0,A:B,2,FALSE)` matches the first blank.
+
+Performance invariant (T-0119, not an Excel rule): MATCH, LOOKUP, HLOOKUP and VLOOKUP evaluate a
+search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
+is a virtual run of blanks of the full length (`SearchVector`,
+`functions/lookup_and_reference/lookup_table.rs`), so results are those of a full walk whatever
+the used area (unit tests compare against a sheet whose used area reaches the last row/column).
+T-0212's "skip upwards past other types" step must jump over that tail in O(1) (every index
+from the evaluated length on is blank), not walk it. XMATCH still truncates instead (T-0127).

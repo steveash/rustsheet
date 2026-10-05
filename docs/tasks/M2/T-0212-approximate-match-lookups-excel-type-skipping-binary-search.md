@@ -51,8 +51,8 @@ Evidence cells (expected / actual today):
   `gen-m2/60a543744fc4a8f7` Calc!A280 (`"?b"` key) and `gen-m2/a339ea84ef64382e` Calc!A246, which the
   emulation (Python code-point order) gets wrong.
 
-Code: `crates/rustsheet-engine/src/functions/binary_search.rs::binary_search_on_array` (VLOOKUP/HLOOKUP
-via `lookup_index`, MATCH 1), the inline -1 loop in `fn_match`, the exact branch of `lookup_index`.
+Code: `SearchVector::binary_search` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs` (T-0119; VLOOKUP/HLOOKUP
+via `lookup_index`, MATCH 1), the inline -1 loop in `fn_match`, the exact branch of `lookup_index` (`SearchVector::position`).
 Keep one search helper (CLAUDE.md directive 3). XLOOKUP/XMATCH have their own Excel semantics and stay
 out unless evidence says they share this one.
 
