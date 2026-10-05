@@ -3,7 +3,7 @@ id: T-0146
 title: "Text-to-number coercion of time and date-time text (0+'10:11:12.5', VALUE)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
