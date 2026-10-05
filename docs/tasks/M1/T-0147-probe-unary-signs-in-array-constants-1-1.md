@@ -3,7 +3,7 @@ id: T-0147
 title: "Probe unary signs in array constants: {--1}, {+1}, {-+1}"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
