@@ -632,7 +632,8 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     Ok((comments, hyperlinks))
 }
 
-/// Maximum number of cells a single `<hyperlink>` range is expanded to
+/// Maximum number of cells a single `<hyperlink>` range is expanded to (a DEVIATION from Excel:
+/// docs/excel-semantics/xlsx-storage.md, "A hyperlink range above 10,000 cells").
 const MAX_HYPERLINK_RANGE_CELLS: i64 = 10_000;
 
 /// Loads the `<hyperlinks>` element of a worksheet:

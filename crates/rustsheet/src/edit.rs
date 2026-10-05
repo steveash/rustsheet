@@ -125,7 +125,8 @@ pub struct ChangeSet {
 }
 
 /// Largest rectangle a single `set` snapshots for its spill footprint. Imported array ranges are
-/// untrusted, so the loop must not follow them blindly.
+/// untrusted, so the loop must not follow them blindly. A DEVIATION from Excel:
+/// docs/excel-semantics/arrays.md ("The edit API refuses a cell inside a spill extent").
 const MAX_FOOTPRINT_CELLS: i64 = 1 << 22;
 
 enum Undo {

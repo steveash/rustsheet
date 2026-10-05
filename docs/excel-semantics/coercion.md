@@ -66,3 +66,13 @@ elements are only looked at after the right operand's error has already been ret
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105).
 Status: VERIFIED (one cell; the multi-cell case is unprobed)
 Tasks: T-0137
+
+## Text longer than 32,767 characters
+Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
+`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767. REPT with a
+longer result is `#VALUE!` (`REPT("a",32768)`). RustSheet gives `#VALUE!` for the CONCATENATE case
+and does not bound `&` at all (32768).
+Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05; C9 and C10 are known failures).
+Status: VERIFIED
+Implemented in: functions/text/concatenate.rs (`MAX_TEXT_CHARS`)
+Tasks: T-0240

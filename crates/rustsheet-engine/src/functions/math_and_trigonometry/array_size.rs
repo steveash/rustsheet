@@ -1,7 +1,8 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 
-// Arbitrary limit to prevent creating huge arrays that would crash the program.
+// Arbitrary limit to prevent creating huge arrays that would crash the program. Excel has no such
+// limit: DEVIATION, see docs/excel-semantics/arrays.md ("Array results above 1,000,000 cells").
 // A better way would be to look at the memory available
 const MAX_SIZE: usize = 1_000_000;
 
