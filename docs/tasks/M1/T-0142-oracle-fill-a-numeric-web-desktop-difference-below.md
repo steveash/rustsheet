@@ -3,7 +3,7 @@ id: T-0142
 title: "Oracle fill: a numeric web/desktop difference below 1e-9 keeps the desktop value (decision 0030)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
