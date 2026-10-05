@@ -34,7 +34,16 @@
         "F20": "=GEOMEAN({\"a\",4})",
         "F21": "=VAR(1,3,)",
         "F22": "=VARP(1,3,)",
-        "F23": "=STDEVP(1,3,)"
+        "F23": "=STDEVP(1,3,)",
+        "F24": "=HARMEAN({TRUE,4})",
+        "F25": "=HARMEAN(4,)",
+        "F26": "=SKEW({TRUE,1,2,4})",
+        "F27": "=SKEW(1,2,4,)",
+        "F28": "=SKEW.P({TRUE,1,2,4})",
+        "F29": "=SKEW.P(1,2,4,)",
+        "F30": "=KURT({TRUE,1,2,3,5})",
+        "F31": "=KURT(1,2,3,5,)",
+        "F32": "=COUNT({TRUE,5})"
       }
     }
   ],
@@ -62,6 +71,15 @@
     "Sheet1!F20",
     "Sheet1!F21",
     "Sheet1!F22",
-    "Sheet1!F23"
+    "Sheet1!F23",
+    "Sheet1!F24",
+    "Sheet1!F25",
+    "Sheet1!F26",
+    "Sheet1!F27",
+    "Sheet1!F28",
+    "Sheet1!F29",
+    "Sheet1!F30",
+    "Sheet1!F31",
+    "Sheet1!F32"
   ]
 }

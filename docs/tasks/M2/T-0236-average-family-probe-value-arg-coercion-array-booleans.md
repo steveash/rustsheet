@@ -33,4 +33,4 @@ unprobed: write a probe (excel-probe skill) for `AVERAGE({TRUE,5})`, `AVERAGE(5,
 - MIN/MAX (T-0217).
 
 ## Outcome
-Probe `probes/average-value-args` (23 cells, excel-graph oracle). AVERAGE/MEDIAN/GEOMEAN/STDEV/VAR (and COUNT) ignore booleans inside arrays and count an empty argument as 0 (`COUNT(5,)` = 2), exactly like MIN/MAX. `for_each_value`, `fn_count`, `fn_stdev_s/p`, `fn_var_s/p` aligned. Eval delta: new case 23/23 pass, 0 regressions; coercion.md entry VERIFIED.
+Probe `probes/average-value-args` (32 cells, excel-graph oracle). AVERAGE/MEDIAN/GEOMEAN/STDEV/VAR (and COUNT) ignore booleans inside arrays and count an empty argument as 0 (`COUNT(5,)` = 2), exactly like MIN/MAX. `for_each_value`, `fn_count`, `fn_stdev_s/p`, `fn_var_s/p` aligned. Eval delta: new case 32/32 pass, 0 regressions; coercion.md entry VERIFIED.

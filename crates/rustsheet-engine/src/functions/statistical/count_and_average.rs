@@ -24,7 +24,7 @@ impl Model {
                     f(value);
                 }
                 // An empty argument (`AVERAGE(5,)`) counts as 0
-                // (probes/average-value-args F2, F6, F9, F11, F17).
+                // (probes/average-value-args F2, F6, F9, F15, F17).
                 CalcResult::EmptyArg => f(0.0),
                 CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     f(if value { 1.0 } else { 0.0 });
@@ -313,10 +313,8 @@ impl Model {
                 CalcResult::Boolean(_) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     result += 1.0;
                 }
-                // COUNT(5,) is 2: the empty argument counts as a number (probes/average-value-args F16).
-                CalcResult::EmptyArg => {
-                    result += 1.0;
-                }
+                // COUNT(5,) is 2 (probes/average-value-args F16).
+                CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s)
                     if !matches!(arg, Node::ReferenceKind { .. }) && s.parse::<f64>().is_ok() =>
                 {
@@ -341,6 +339,13 @@ impl Model {
                             }
                         }
                     }
+                }
+                // Only an array's numbers count (probes/average-value-args F32).
+                CalcResult::Array(array) => {
+                    let numbers = array.iter().flatten();
+                    result += numbers
+                        .filter(|v| matches!(v, ArrayNode::Number(_)))
+                        .count() as f64;
                 }
                 _ => {
                     // Ignore everything else
