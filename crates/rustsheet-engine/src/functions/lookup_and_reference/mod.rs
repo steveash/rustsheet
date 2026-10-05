@@ -171,6 +171,17 @@ impl Model {
     // At the moment IronCalc does not support references with multiple areas,
     // so area_num = 1 (or missing).
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.index_impl(args, cell, false)
+    }
+
+    /// INDEX; `as_reference` keeps a single selected cell as a 1x1 range, as an
+    /// aggregate argument sees it (T-0216; docs/excel-semantics/references.md).
+    pub(crate) fn index_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -182,18 +193,10 @@ impl Model {
                 Err(s) => return s,
             };
             if area_num < 1 {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Argument must be >= 1".to_string(),
-                };
+                return CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 1".into());
             }
             if area_num != 1 {
-                return CalcResult::Error {
-                    error: Error::REF,
-                    origin: cell,
-                    message: "Area out of range".to_string(),
-                };
+                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
             }
         }
         // A missing or empty argument evaluates to 0, which means "the whole
@@ -253,7 +256,7 @@ impl Model {
                     let c = left.column + col_eff as i32 - 1;
                     (c, c)
                 };
-                if row_start == row_end && col_start == col_end {
+                if !as_reference && row_start == row_end && col_start == col_end {
                     self.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row: row_start,

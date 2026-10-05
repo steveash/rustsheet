@@ -17,7 +17,7 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => {
                     f(value);
                 }
@@ -300,7 +300,7 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(_) => {
                     result += 1.0;
                 }
