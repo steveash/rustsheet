@@ -22,7 +22,7 @@ Probe cases (each with the data above, and again with an unrelated far cell such
 
 ## Acceptance criteria
 - [ ] Probe cases in eval/suites/probes with oracle values; docs/excel-semantics/lookup.md records the rules (VERIFIED) and the engine matches them, keeping `SearchVector`'s bounded evaluation.
-- [ ] The unit tests in test_fn_match/vlookup/hlookup/lookup.rs pin the probed values.
+- [ ] The unit tests in test_fn_match/vlookup/hlookup/lookup/xmatch.rs pin the probed values.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
