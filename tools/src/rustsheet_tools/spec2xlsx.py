@@ -18,10 +18,15 @@ import argparse
 import io
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import xlsxwriter
+
+# XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
+# byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
+_FIXED_CREATED = datetime(2000, 1, 1)
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -51,6 +56,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             "strings_to_urls": False,
         },
     )
+    wb.set_properties({"created": _FIXED_CREATED})
     for sheet in spec["sheets"]:
         ws = wb.add_worksheet(sheet["name"])
         for a1, raw in sheet["cells"].items():
