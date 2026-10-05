@@ -22,8 +22,11 @@ picked, and the opus queue fell through to M0 leftovers. `available()` already f
 branch's task is `done` on main (T-0034). A blocked task is the same case, except that its
 `status: blocked` lives on the branch, not on main.
 
-Code: `scripts/tasks.py::branch_claims` reads each agent branch's task file already (for
-`## Handoff`); also read its `status:` there and leave blocked tasks out of `active`. Keep blocked
+Code: `scripts/tasks.py::branch_claims` already reads each agent branch's task file at the branch
+tip (the `ls-tree`/`show` loop for `## Handoff`). Read its `status:` there with the existing
+front-matter parser (`parse`, not a new regex; directive 3), and leave blocked tasks out of
+`active`. A branch that is blocked and also has an unresumed `## Handoff` is already outside
+`active`, so the new test only needs the plain-blocked case. Keep blocked
 tasks claimed, so nobody restarts them: unblocking is decision 0013's job.
 
 ## Acceptance criteria
