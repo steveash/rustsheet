@@ -186,6 +186,18 @@
     "t": "n",
     "v": 1234567890123.45
    },
+   "A51": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A52": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A53": {
+    "t": "s",
+    "v": "0"
+   },
    "A6": {
     "t": "n",
     "v": 1000000000000000.0
@@ -206,9 +218,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "05b64c5f92d566c5ae2ea3464e52e4a2d1c3fec06254c65a2d006d641e30a90a",
+  "input_sha256": "f3337a20e12d1a1842d2c37dc75f800e525f70f75ae13b116da1b6a4658cd2f1",
   "kind": "excel-graph",
-  "produced_at": "2026-10-05T11:33:06+00:00",
+  "produced_at": "2026-10-05T12:01:48+00:00",
   "version": null
  }
 }

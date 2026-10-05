@@ -30,6 +30,6 @@ then round at `num_digits`, converting the decimal result to the nearest double.
 probe (probes/round-family, 50 cells) showed the 16th-digit tie rule differs by function (ROUND
 toward zero, ROUNDUP/ROUNDDOWN away) and that a ROUNDUP overflow is `#NUM!`; numbers.md records
 both. Eval delta: gen-m2 known failures 807 → 785 (22 fixed, every listed cell except
-dd99be1f2454159f A14), probes A6 fixed and round-family 49/50; no regressions in any suite.
+dd99be1f2454159f A14), probes A6 fixed and round-family 52/53; no regressions in any suite.
 dd99be1f2454159f A14 is `ROUND(97.5,1)^-2.5`: ROUND is exact there; the last-digit miss is `^`
 (T-0221). Follow-up: T-0141 (round-family A20, MOD of a huge quotient is `#NUM!`).
