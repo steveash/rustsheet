@@ -1,7 +1,7 @@
 # Quality gates
 
 Every gate is automated and runs in CI (`.github/workflows/ci.yml`). `make check` runs the same
-gates locally. Gates are **ratchets**: a number that may only improve. Lowering a bar requires a
+gates locally, except `cargo deny` and `cargo machete` (`make ci`). Gates are **ratchets**: a number that may only improve. Lowering a bar requires a
 decision record in `docs/decisions/` (enforced by `scripts/check_governance.py`).
 
 | Gate | Command | Rule |

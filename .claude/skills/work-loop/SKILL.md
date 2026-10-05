@@ -72,9 +72,12 @@ file and its acceptance criteria.
    `docs/status.md` log (date, task, eval delta), commit.
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
-3. Wait for CI (subscribe to PR activity; do not poll with sleep). Fix failures per the `steward`
-   skill. When CI is green and all reviewers approve: **squash-merge**. If `main` moved, merge
-   `origin/main` into the branch, re-run `make check`, push, wait for CI again.
+3. Check the PR's `mergeable_state` at once and after every push: a conflicting PR gets no CI,
+   so resolve conflicts immediately per the `steward` skill ("Merge conflicts are never waiting
+   on CI"). Then wait for CI (subscribe to PR activity and arm a check-in; do not poll with
+   sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
+   **squash-merge**. If `main` moved, merge `origin/main` into the branch, re-run `make check`,
+   push, and check mergeability and CI again.
 4. Delete the branch.
 
 ## 7. Report
