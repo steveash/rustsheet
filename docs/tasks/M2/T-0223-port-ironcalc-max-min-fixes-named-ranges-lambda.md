@@ -24,7 +24,8 @@ test workbook `16987342` (`MIN_MAX_extras.xlsx`). Lane `functions-math` by its m
 paths `base/`→`crates/rustsheet-engine/`, `xlsx/`→`crates/rustsheet-xlsx/`, `git apply --reject`).
 The model no longer has a lifetime (T-0101): `impl<'a> Model<'a>` hunks need hand-editing.
 Reuse the shared aggregate-argument iterator (T-0200) instead of upstream's local loops if they
-duplicate it (directive 3).
+duplicate it (directive 3). If T-0940 finds that the ISREF/FILTER fix `29ee0601` depends on the
+FILTER hunk of `d7b09c33`, port `29ee0601` (and its `test_spill_functions.rs` case) here.
 
 ## Acceptance criteria
 - [ ] `d7b09c33` and the MAX/MIN/LAMBDA parts of `c4641f0f` ported, each commit with `Ported-From: ironcalc@<sha>`.

@@ -16,7 +16,7 @@ merged since its last run.
 | probes | 6 | 96 | 80.21% | 19 |
 | probes-numeric | 4 | 2,738 | 68.08% | not gated |
 
-Hygiene: lint-debt 99 allow entries · duplicated lines 8,360 · oversized files 19 (formatter/format.rs dropped below the limit; ratchet updated).
+Hygiene: lint-debt 99 allow entries · duplicated lines 8,360 · oversized files 19 (formatter/format.rs is now under the limit; the ratchet file is protected, so the next PR touching it records the drop).
 
 Since the 2026-10-04 steward run (#33): 41 PRs merged to `main` (T-0004/0009/0013/0015/0016/0017/0019/0022/0023/0027/0028/0029/0031/0032/0033/0034/0035/0036/0037,
 T-0102/0103/0104/0108/0116/0119/0123, T-0203/0206, T-0923/0924/0926/0928/0930/0932, decision 0014, task filings); 0 reverted; 0 tasks blocked.
