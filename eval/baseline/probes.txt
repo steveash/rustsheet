@@ -11,8 +11,8 @@ C	probes/criteria-ifs-bare-equals.case.json	12
 C	probes/criteria-operands.case.json	25
 C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
-C	probes/date-text-dotted-criteria.case.json	13
-C	probes/date-text-grammar.case.json	126
+C	probes/date-text-dotted-criteria.case.json	16
+C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16

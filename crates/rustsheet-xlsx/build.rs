@@ -129,7 +129,9 @@ fn collect_xlsx(
 }
 
 /// Cells to skip per workbook path (`<dir>/<case>`), from a `cached_overrides` file: tab-separated
-/// lines `case<TAB>Sheet!A1<TAB>...`, `#` comments (format: crates/rustsheet-eval/src/overrides.rs).
+/// lines `case<TAB>Sheet!A1<TAB>...`, `#` comments. The format's definition is
+/// crates/rustsheet-eval/src/overrides.rs; this reads only its first two fields, deliberately
+/// without depending on the eval crate (a build script of this crate cannot).
 fn read_cached_overrides(dir: &str, file: &str) -> BTreeMap<String, Vec<String>> {
     println!("cargo:rerun-if-changed={file}");
     // Like a missing workbook folder, a missing file (crate built outside the repository) just

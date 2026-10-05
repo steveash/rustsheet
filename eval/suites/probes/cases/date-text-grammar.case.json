@@ -199,7 +199,24 @@
         "C62": "=VALUE(A62)",
         "A63": "1/2/2020 6 PM",
         "B63": "=DATEVALUE(A63)",
-        "C63": "=VALUE(A63)"
+        "C63": "=VALUE(A63)",
+        "A64": "1/Jul/26",
+        "B64": "=DATEVALUE(A64)",
+        "C64": "=VALUE(A64)",
+        "A65": "Ju 1, 2026",
+        "B65": "=DATEVALUE(A65)",
+        "C65": "=VALUE(A65)",
+        "A66": "Jul 1, 29",
+        "B66": "=DATEVALUE(A66)",
+        "C66": "=VALUE(A66)",
+        "A67": "1 July 26",
+        "B67": "=DATEVALUE(A67)",
+        "C67": "=VALUE(A67)",
+        "A68": "Augu 1, 2026",
+        "B68": "=DATEVALUE(A68)",
+        "C68": "=VALUE(A68)",
+        "D30": "=TIMEVALUE(A30)",
+        "D55": "=TIMEVALUE(A55)"
       }
     }
   ]

@@ -20,27 +20,36 @@ fn is_digits(s: &str, lengths: std::ops::RangeInclusive<usize>) -> bool {
     lengths.contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit())
 }
 
-/// A numeric day: one or two digits ("1", "01").
-fn parse_day(day_str: &str) -> Result<(u32, &'static str), String> {
-    if !is_digits(day_str, 1..=2) {
-        return Err("Not a valid day".to_string());
+/// A numeric day or month: one or two digits, with its format token (`d`/`dd`, `m`/`mm`).
+fn parse_day_or_month(
+    part: &str,
+    [short, padded]: [&'static str; 2],
+) -> Result<(u32, &'static str), String> {
+    if !is_digits(part, 1..=2) {
+        return Err(format!("Not a valid {short} part"));
     }
-    let day = day_str.parse::<u32>().map_err(|e| e.to_string())?;
-    Ok((day, if day_str.len() == 2 { "dd" } else { "d" }))
+    let value = part.parse::<u32>().map_err(|e| e.to_string())?;
+    Ok((value, if part.len() == 2 { padded } else { short }))
 }
 
-/// A numeric month: one or two digits ("7", "07").
-fn parse_month_number(month_str: &str) -> Result<(u32, &'static str), String> {
-    if !is_digits(month_str, 1..=2) {
-        return Err("Not a valid month".to_string());
-    }
-    let month = month_str.parse::<u32>().map_err(|e| e.to_string())?;
-    Ok((month, if month_str.len() == 2 { "mm" } else { "m" }))
+fn parse_day(day_str: &str) -> Result<(u32, &'static str), String> {
+    parse_day_or_month(day_str, ["d", "dd"])
 }
+
+fn parse_month_number(month_str: &str) -> Result<(u32, &'static str), String> {
+    parse_day_or_month(month_str, ["m", "mm"])
+}
+
+/// Longest text that can be a month name; longer words are rejected before any lowercasing,
+/// since this runs on every text-to-number coercion.
+const MAX_MONTH_NAME_BYTES: usize = 32;
 
 /// A month name, ignoring case: the locale's short name, or any prefix of at least three letters
 /// of its full name ("Sept" and "Septem" are September; probes/date-text-grammar A23-A25).
 fn parse_month_name(name: &str, locale: &Locale) -> Option<(u32, &'static str)> {
+    if name.len() > MAX_MONTH_NAME_BYTES || name.bytes().any(|b| b.is_ascii_digit()) {
+        return None;
+    }
     let lower = name.to_lowercase();
     let month = |m: usize| u32::try_from(m + 1).ok();
     if let Some(m) = locale
@@ -65,7 +74,7 @@ fn parse_month_name(name: &str, locale: &Locale) -> Option<(u32, &'static str)> 
 /// A two- or four-digit year; two-digit years below 30 are 20xx, the rest 19xx
 /// (probes/date-text-grammar A21/A22: "Jul 1, 26" is 2026, "Jul 1, 30" is 1930).
 fn parse_year(year_str: &str) -> Result<(i32, &'static str), String> {
-    if !is_digits(year_str, 2..=2) && !is_digits(year_str, 4..=4) {
+    if !matches!(year_str.len(), 2 | 4) || !is_digits(year_str, 2..=4) {
         return Err("Not a valid year".to_string());
     }
     let year = year_str.parse::<i32>().map_err(|e| e.to_string())?;
@@ -115,7 +124,8 @@ fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String>
         .filter(|&s| s != '.' || short_format.contains('.'))
         .find(|&s| word.contains(s))
         .ok_or("Not a valid date")?;
-    let parts: Vec<&str> = word.split(separator).collect();
+    // At most 4 parts: enough to reject longer text without splitting all of it.
+    let parts: Vec<&str> = word.splitn(4, separator).collect();
     let (day_str, month_str, year_str) = match parts.as_slice() {
         [name, year] => return parse_month_year(name, year, locale),
         // Year first is numeric only: "2023/Jan/15" is #VALUE! (probes/date-text-grammar A20).
@@ -128,7 +138,7 @@ fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String>
                 format!("yyyy{separator}{month_format}{separator}{day_format}"),
             ));
         }
-        [day, name, year] if parse_month_name(name, locale).is_some() => {
+        [day, name, year] if !is_digits(name, 1..=2) => {
             let (day, day_format) = parse_day(day)?;
             let (month, month_format) =
                 parse_month_name(name, locale).ok_or("Not a valid month")?;
@@ -174,30 +184,22 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
     if value.trim() != value {
         return Err("Not a valid date".to_string());
     }
-    let words: Vec<&str> = value.split_whitespace().collect();
-    match words.as_slice() {
-        [word] => parse_separated(word, locale),
-        [name, year] => parse_month_year(name, year, locale),
-        [name, day, year] if day.ends_with(',') => {
-            let (month, _) = parse_month_name(name, locale).ok_or("Not a valid month")?;
-            let (day, _) = parse_day(&day[..day.len() - 1])?;
-            let (year, _) = parse_year(year)?;
-            Ok((
-                serial_of(day, month, year)?,
-                DAY_MONTH_NAME_YEAR_FORMAT.to_string(),
-            ))
-        }
-        [day, name, year] => {
-            let (day, _) = parse_day(day)?;
-            let (month, _) = parse_month_name(name, locale).ok_or("Not a valid month")?;
-            let (year, _) = parse_year(year)?;
-            Ok((
-                serial_of(day, month, year)?,
-                DAY_MONTH_NAME_YEAR_FORMAT.to_string(),
-            ))
-        }
-        _ => Err("Not a valid date".to_string()),
-    }
+    // At most 4 words: enough to reject longer text without splitting all of it.
+    let words: Vec<&str> = value.split_whitespace().take(4).collect();
+    let (day, name, year) = match words.as_slice() {
+        [word] => return parse_separated(word, locale),
+        [name, year] => return parse_month_year(name, year, locale),
+        [name, day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
+        [day, name, year] => (*day, *name, *year),
+        _ => return Err("Not a valid date".to_string()),
+    };
+    let (day, _) = parse_day(day)?;
+    let (month, _) = parse_month_name(name, locale).ok_or("Not a valid month")?;
+    let (year, _) = parse_year(year)?;
+    Ok((
+        serial_of(day, month, year)?,
+        DAY_MONTH_NAME_YEAR_FORMAT.to_string(),
+    ))
 }
 
 #[cfg(test)]

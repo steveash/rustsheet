@@ -22,6 +22,18 @@
     "t": "n",
     "v": 1.0
    },
+   "E14": {
+    "t": "n",
+    "v": 2.0
+   },
+   "E15": {
+    "t": "n",
+    "v": 1.0
+   },
+   "E16": {
+    "t": "n",
+    "v": 1.0
+   },
    "E2": {
     "t": "n",
     "v": 2100.0
@@ -58,9 +70,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "fa5eac9c09cd8a28ce4bcae51628a92f192c760c04a817a17dba2c016d1bad97",
+  "input_sha256": "f5ab14d858b1c6d89664ecc98f0e90b015add3bfdb2944e1bf6169b4a16439f7",
   "kind": "excel-graph",
-  "produced_at": "2026-10-05T21:40:43+00:00",
+  "produced_at": "2026-10-05T22:14:38+00:00",
   "version": null
  }
 }

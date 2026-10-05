@@ -3,7 +3,7 @@ id: T-0024
 title: "en-US date text: month-first DATEVALUE and month-name dates in date arguments"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -33,10 +33,23 @@ override with its evidence is better than accepting baseline regressions. Propos
 record if it changes gate semantics) before using `--allow-regressions`.
 
 ## Acceptance criteria
-- [ ] probes/date-text-locale B1, B4, B5, B6, B7 pass; their baseline lines are removed.
-- [ ] The ironcalc-calc cells above are handled by the agreed mechanism, with the evidence cited; no unexplained regressions.
-- [ ] Unit tests for the date-text parser (month-first numeric forms, month names, rejecting day-first-only forms).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/date-text-locale B1, B4, B5, B6, B7 pass; their baseline lines are removed.
+- [x] The ironcalc-calc cells above are handled by the agreed mechanism, with the evidence cited; no unexplained regressions.
+- [x] Unit tests for the date-text parser (month-first numeric forms, month names, rejecting day-first-only forms).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Locales other than en-US; VALUE's percent and d-Mon-yyyy gaps (T-0929).
+
+## Outcome
+- One en-US date-text grammar, `formatter::date_text::parse_date`, now serves VALUE, DATEVALUE,
+  date arguments (`cast_number`), criteria and typed input. DATEVALUE's separate grammar is
+  gone: it reads that grammar plus a clock suffix (`time_text::parse_date_clock_serial`). The
+  rules come from two new oracle probes, `probes/date-text-grammar` (63 forms, DATEVALUE and
+  VALUE) and `probes/date-text-dotted-criteria`, and are recorded in dates.md and criteria.md.
+- Found while doing this: criteria text `<=`/`>=` compared the wrong way round. Fixed, with evidence.
+- Mechanism for the day-first ironcalc-calc cells: decision 0032. `cached-overrides.tsv`
+  scores 7 cells against en-US probe values, and `rustsheet_xlsx`'s generated tests skip them.
+- Eval: ironcalc-calc known failures 1580 → 1577 (T_VALUE C15, I5, I7 fixed), 0 regressions;
+  probes: date-text-locale B1/B4–B7 fixed. 5 new-coverage known failures (VALUE of date+clock
+  text: T-0159). Year-less "current year" forms: T-0160.

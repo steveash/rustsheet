@@ -9,8 +9,8 @@
 //! <case path relative to the suite root>  <Sheet!A1>  <oracle sidecar, relative to eval/suites>  <Sheet!A1>
 //! ```
 //!
-//! The replacement must come from a golden oracle sidecar (`excel-graph` or `excel-desktop`): an override never
-//! carries a hand-written value. The same file tells `rustsheet_xlsx`'s generated tests which
+//! The replacement must come from a golden oracle sidecar (`excel-graph` or `excel-desktop`):
+//! an override never carries a hand-written value. The same file tells `rustsheet_xlsx`'s generated tests which
 //! cached values not to compare (its `build.rs`).
 
 use std::path::{Component, Path};

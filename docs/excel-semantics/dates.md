@@ -116,7 +116,8 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   (`"13/1/2026"`, `"31/12/99"`, `"15-01-2023"`, `"29/02/2020"`). Dots are not separators
   (`"1.7.2026"`, `"7.1.2026"`, ironcalc `DATEVALUE("2026.01.01")` are #VALUE!).
 - **Month names**, case-insensitive: the short name or any prefix of at least 3 letters of the
-  full name (`"Sept 1, 2026"` and `"Septem 1, 2026"` are 1 Sep). Accepted shapes:
+  full name (`"Sept 1, 2026"`, `"Septem 1, 2026"` are 1 Sep, `"Augu 1, 2026"` 1 Aug; `"Ju 1, 2026"`
+  is #VALUE!). Accepted shapes:
   `"July 1, 2026"` (comma right after the day, then a space; `"July 1 2026"`, `"July 1,2026"`,
   `"July, 1 2026"` are #VALUE!), `"1 July 2026"` (no comma; `"1 July, 2026"` is #VALUE!),
   `"1-Jul-2026"`, `"1/Jul/26"`, and month-year `"Jul-2026"`, `"July 2026"` = the 1st. A month
@@ -124,7 +125,7 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   `"2023/Jan/15"`, `"2023-Jan-15"` are #VALUE!), and `"Jul. 1, 2026"`, `"July 1st, 2026"`,
   `"Wednesday, July 1, 2026"`, `"2026 July 1"` are #VALUE!.
 - **Years**: 2 or 4 digits; 2-digit years below 30 are 20xx (`"Jul 1, 26"` = 2026,
-  `"Jul 1, 30"` = 1930). The date must exist and lie in 1900-01-01..9999-12-31
+  `"Jul 1, 29"` = 2029, `"Jul 1, 30"` = 1930; also `"1 July 26"`, `"1/Jul/26"`). The date must exist and lie in 1900-01-01..9999-12-31
   (`"Feb 29, 2025"`, `"July 32, 2026"`, `"Jan 1, 1899"`, `"Jan 1, 10000"` are #VALUE!;
   `"Feb 29, 1900"` = 60).
 - **Spaces**: VALUE and DATEVALUE trim surrounding spaces and treat a run of inner spaces as one
@@ -132,12 +133,15 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   (`MROUND(" 2024-01-10 ",7)` is #VALUE!; ironcalc-calc MROUND_TRUNC_INT.xlsx MROUND!C32).
 - **Clock suffix**: date text may end in a clock time (`"July 1, 2026 10:00"`,
   `"Jul 1, 2026 4:35 PM"`, `"July 1, 2026 6 PM"`): VALUE adds it, DATEVALUE returns the day the
-  sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan). Anything else after the date is
+  sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
+  (D30, D55: 0.41666666666424135, 0.6909722222189885, with the serial-subtraction error). Anything else after the date is
   #VALUE! (`"2026-01-01 garbage"`, ISO `"2026-07-01T10:00"`).
 - **Current year**: `"Jul-26"` is 26 July *of the current year*, not July 2026 (46229, seen in a
   first fill of probes/date-text-grammar on 2026-10-05 and then dropped from the case because
   it depends on the clock, as every year-less form does).
-Evidence: probes/date-text-grammar A1–A63 (B/C). Oracle: excel-graph, 2026-10-05.
+Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
+UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
+for month-year), which the engine assigns to typed input.
 Status: VERIFIED. Not implemented: VALUE of text with a clock suffix (C30, C31, C53, C55, C63
 are known failures; DATEVALUE and number coercion handle it), and the year-less current-year
 forms, which the engine rejects (#VALUE!).
