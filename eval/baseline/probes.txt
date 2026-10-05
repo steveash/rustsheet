@@ -14,6 +14,7 @@ C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
 C	probes/isref-function-results.case.json	6
 C	probes/min-max-value-args.case.json	16
+C	probes/number-to-text-notation.case.json	44
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
 C	probes/round-family.case.json	53
@@ -35,13 +36,14 @@ F	probes/dates-early-1900.case.json	Sheet1!A16
 F	probes/dates-early-1900.case.json	Sheet1!A9
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
+F	probes/number-to-text-notation.case.json	Sheet1!A22
+F	probes/number-to-text-notation.case.json	Sheet1!A29
 F	probes/precision-and-rounding.case.json	Sheet1!A11
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
-F	probes/precision-and-rounding.case.json	Sheet1!A9
 F	probes/resource-limits.case.json	Sheet1!C1
 F	probes/resource-limits.case.json	Sheet1!C10
 F	probes/resource-limits.case.json	Sheet1!C12
