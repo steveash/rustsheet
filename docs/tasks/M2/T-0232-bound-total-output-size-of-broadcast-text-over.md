@@ -3,7 +3,7 @@ id: T-0232
 title: "Bound total output size of broadcast_text over large ranges"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
