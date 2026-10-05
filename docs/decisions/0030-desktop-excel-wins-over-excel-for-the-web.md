@@ -11,9 +11,12 @@
        cell on the web (docs/excel-semantics/lookup.md). POI adds lowercase-`e` TEXT formats,
        elapsed tokens and `CELL("width")` (decision 0019).
     2. **Last-digit floating point.** In ATAN2, IM*, ERFC, BESSEL, MIRR, IRR and SIN, results
-       differ by up to 4 ULPs or by a near-zero residue (docs/excel-semantics/numbers.md).
+       differ by up to 4 ULPs (11 cells), within 1e-9 relative (4 cells) or by a near-zero
+       residue around 2e-16 (3 cells) (docs/excel-semantics/numbers.md).
   - Calibration also showed that some desktop evidence is not en-US. The ironcalc workbooks were
-    saved by a day-first Excel, so their cached values for date text are wrong for en-US.
+    saved by a day-first Excel, so their cached values for date text are wrong for en-US. Much of
+    the desktop evidence is Mac Excel (ironcalc: Microsoft Macintosh Excel, AppVersion 16.x;
+    poi NumberFormatApproxTests: Mac Excel 2008, 12.0).
   - Decision 0019 already leaves cells pending where the web contradicts a cached desktop value
     by more than 1e-9 relative. It explicitly left two questions open: who wins in general, and
     what happens to differences below 1e-9.
@@ -25,19 +28,23 @@
     and probes on a backend we do not have yet.
   - *Web wins.* This is simple and fully automatable. But it would make the engine copy web-only
     behavior, such as INDIRECT to a missing sheet, that desktop users never see. It would also
-    turn the 4 INDIRECT cells (lookup.md) and the 238 lowercase-`e` TEXT cells (decision 0019,
-    number-formats.md), where the engine follows desktop, into targets for "fixing".
+    turn the 4 INDIRECT cells (lookup.md), which pass today against desktop cached values, into
+    targets for "fixing".
   - *Accept either* for the listed divergences. This needs a two-golden scoring mode in the
     harness. For behavior it is wrong: one formula cannot be both #REF! and 0.
 - **Decision:**
   1. **Desktop Microsoft 365 Excel (en-US, current channel) is the reference.** When desktop
      and web evidence for the same formula disagree, desktop decides. That applies to the
-     engine, to the semantics entries, and to which golden a cell is scored against.
+     engine, to the semantics entries, and to which golden a cell is scored against. Windows and
+     Mac count alike: "desktop" is any Microsoft Excel application whose `docProps/app.xml`
+     AppVersion is 16.x (the Microsoft 365 / 2016+ line).
   2. **Desktop evidence counts only for what it is.** Cached values from a workbook saved under a
      non-en-US locale are not evidence for locale-dependent behavior: date or number text, list
      separators, month and day names. There the en-US web oracle wins. An older desktop build
-     does not outrank current web behavior that a current excel-desktop probe has not checked:
-     record such a conflict as `CONFLICTING` (decision 0019).
+     (AppVersion below 16, e.g. Mac Excel 2008 = 12.0) does not outrank current web behavior:
+     record such a conflict as `CONFLICTING` (decision 0019) until an excel-desktop probe or a
+     16.x workbook decides. That is the status of the lowercase-`e` TEXT formats (238 cells,
+     pending and unscored; number-formats.md).
   3. **Web-only evidence is golden.** If no desktop evidence exists, oracle values are goldens
      and agents cite them as Excel for the web. Exception: for a behavior listed as a known
      divergence (docs/architecture/oracle.md, "Known divergences"), web values are never
@@ -45,26 +52,31 @@
      after `s`, and `CELL("width")`.
   4. **Last-digit divergences.** For the functions in numbers.md "Excel for the web and desktop
      Excel differ in the last digits", an engine fit targets desktop cached values where they
-     exist. A web golden for those functions that the fitted engine misses by at most 4 ULPs, or
-     only by a near-zero residue below 1e-15 absolute, stays a scored known failure in the
-     baseline. It is not a target for further fitting, and it is not a regression signal. The
-     harness keeps scoring strictly, because accepting either value would need two goldens per
-     cell; this rule only says which value to fit. The 4-ULP and 1e-15 bands are the widest
-     differences calibration measured (11 cells within 4 ULPs, residues around 2.2e-16).
+     exist. A web golden for those functions that is already a known failure and that the
+     desktop-fitted engine misses within 1e-9 relative, or only by a near-zero residue below
+     1e-15 absolute, is not a target for further fitting. These bands cover every last-digit
+     cell calibration measured (11 within 4 ULPs, 4 within 1e-9 relative, 3 residues around
+     2e-16). The harness keeps scoring strictly, because accepting either value would need two
+     goldens per cell; this rule only says which value to fit. It never turns a passing cell
+     into an accepted failure (see Baselines).
 - **Consequences:**
-  - *Sidecars.* `rustsheet-oracle fill` keeps decision 0019's rule unchanged: a cell where the
-    web contradicts a cached desktop value by more than 1e-9 relative stays pending. Smaller
-    differences are written as web goldens, but suites that trust cached values score the
-    desktop value, so for those suites desktop already wins (rule 1). When the excel-desktop
-    backend exists, its values replace web sidecar values that disagree with them, and those
-    replacements are not regressions.
-  - *Baselines.* A cell that becomes a known failure because the engine follows desktop instead
-    of web, under rule 1 or rule 4, is recorded with `make eval-baseline` like any other known
-    failure, and the PR cites this decision. That is not a regression allowance, because the
-    cell never passed against desktop evidence. The PR must cite that desktop evidence (an
-    Excel-authored workbook cell or an excel-desktop probe). `make eval-baseline` still refuses
-    regressions: a cell that passes in the current baseline and starts failing needs a decision
-    record like any other regression allowance (CLAUDE.md directive 2).
+  - *Sidecars, today.* A sidecar replaces a workbook's cached values entirely
+    (`prepare_xlsx` in crates/rustsheet-eval/src/runner.rs). `rustsheet-oracle fill` leaves a
+    cell pending when the web contradicts a cached desktop value by more than 1e-9 relative
+    (decision 0019), but writes the web value when the difference is smaller. So in sidecar-backed
+    workbooks (poi, any `oracle_dir` suite) last-digit differences are scored against the web,
+    against rule 1. Workbooks without a sidecar (ironcalc-calc) score the desktop cached value.
+  - *Sidecars, to do.* T-0142 makes the fill keep the desktop cached value wherever a web number
+    differs at all from it. When the excel-desktop backend exists, its values likewise replace
+    web sidecar values that disagree with them. Both are changes of golden, made in their own PR
+    with the evidence listed per cell.
+  - *Baselines.* This record authorizes no regression allowance. `make eval-baseline` still
+    refuses regressions, and `--allow-regressions` still needs its own decision record (CLAUDE.md
+    directive 2). If following desktop would turn a cell that passes against a web golden into a
+    failure, first replace that golden with the desktop value (T-0142 or the desktop backend),
+    then fit the engine. A cell that newly enters the baseline as a known failure (new coverage)
+    under rule 1 or rule 4 is recorded with `make eval-baseline` as usual, and the PR cites the
+    desktop evidence (an Excel-authored workbook cell or an excel-desktop probe).
   - *Probes.* A probe whose answer could fall in a known divergence is not answered by the web
     alone. Its entry stays `UNVERIFIED` or `CONFLICTING` until desktop evidence exists: an
     Excel-authored workbook in the repo, or the excel-desktop backend.

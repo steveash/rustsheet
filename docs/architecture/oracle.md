@@ -103,10 +103,11 @@ decides goldens when they disagree: decision 0030, desktop Excel wins):
   in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never
   use oracle values as evidence here (docs/excel-semantics/lookup.md).
 - **Last-digit floating point.** In ATAN2, IMARGUMENT, IMREAL/IMSQRT, IMCOS, IMTAN, ERFC,
-  BESSELJ/BESSELY, MIRR, IRR and SIN, 18 cells differ from desktop by a few ULPs or by near-zero
-  residue (2.2e-16 vs 0). Both are "Excel"; engine fits target desktop evidence (Excel-authored
-  workbooks), and a web golden missed by at most 4 ULPs stays a known failure (decision 0030,
-  rule 4). Say which one a golden comes from.
+  BESSELJ/BESSELY, MIRR, IRR and SIN, 18 cells differ from desktop by up to 4 ULPs (11), within 1e-9
+  relative (4) or by near-zero residue (3; 2.2e-16 vs 0). Desktop wins (decision 0030): engine
+  fits target desktop evidence (Excel-authored workbooks); a known-failure web golden missed
+  within 1e-9 is not a fitting target (rule 4). The fill still writes web values for differences
+  below 1e-9 (T-0142). Say which one a golden comes from.
 - **TEXT formats and CELL (poi, T-0019).** Lowercase-`e` scientific formats give `#VALUE!` on the
   web where Mac Excel cached strings; an elapsed token after a plain `s` gives different hours;
   `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)
