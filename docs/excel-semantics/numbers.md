@@ -43,11 +43,27 @@ A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-1
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
 
 ## MOD is #NUM! for a huge quotient
-Rule: `=MOD(999999999999957+0.5,1)` is `#NUM!`, not 0.5. The threshold on number/divisor is not
-measured yet.
-Evidence: probes/round-family A20. Oracle: excel-graph, 2026-10-05 (T-0106).
-Status: UNVERIFIED (threshold unknown)
+Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
+`MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
+the magnitude of `n` or `d` and not on signs: `MOD(-1125900000000,-1)`, `MOD(1125900000000,-1)` and
+`MOD(2251800000000,2)` are `#NUM!` while `MOD(2251799999999,2)` = 1, `MOD(1E+15+7,1000000)` = 7 and
+`MOD(1,1E-12)` (quotient 1E+12) is 2.01E-17 but `MOD(1.2,1E-12)` is `#NUM!`; a fractional quotient
+just below the limit works (`MOD(562949999999.5,0.5)` = 0, `MOD(562950000000.5,0.5)` = `#NUM!`).
+The older documented limit 2^27 does not apply (`MOD(2^40,1)` = 0).
+Evidence: probes/mod-huge-quotient, mod-quotient-threshold (1-5), mod-quotient-boundary (bisected with
+excel-graph, 2026-10-05); probes/round-family A20 (T-0106).
+Status: VERIFIED
+Implemented in: `fn_mod` in crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs
 Tasks: T-0141
+
+## Formula number literals are read at 15 significant digits
+Rule: a numeric literal in a formula is rounded to 15 significant digits when parsed:
+`1.7763568394002505E-12-1.77635683940025E-12` = 0, `1.00000000000000049-1` = 0 and
+`1.0000000000000009-1` = 0 (a full double parse would leave 4.9E-16 and 8.9E-16), and
+`MOD(2,1.7763568394002505E-12)` equals the 15-digit-literal result 1.1089014151366425E-12.
+Evidence: probes/literal-digits C1-C6 (found by T-0141); excel-graph, 2026-10-05.
+Status: VERIFIED
+Implemented in: not implemented
 
 ## Number → text conversion uses 15 significant digits
 Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 136
