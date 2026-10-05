@@ -3,7 +3,7 @@ id: T-0137
 title: "Arithmetic: a range operand's error wins over the other operand's error"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
