@@ -29,6 +29,7 @@ The same for `last_row` (already chunk-based and cheap).
 columns), and every write (`set_cell`, `remove_cell`, `remove_row`, `set_row`) keeps it in step, so
 removals never rescan rows (the first design did and the security review rightly flagged it as
 quadratic for deletes/clears). Tests cover set, replace, remove, row removal/replacement and
-clearing a 20k-row sheet. Timing (release, 100k rows, first design, O(1) read): 1,000 reads took
-25 ns in total; the old scan visited every row per call and no clean "before" figure was taken, and
-the `MATCH(x,1:1,0)` end-to-end timing was not measured. No eval delta (no function behaviour changed).
+clearing a 20k-row sheet. Timing (release, throwaway test, 100k rows of column A plus 30 header cells, 1,000 `=MATCH(n,1:1,0)`,
+one `evaluate()`): 477 ms on `main`, 17 ms on this branch. A structural-edit timing was not taken;
+removals are O(log columns) per cell, so deletes/clears stay linear in cells. No eval delta (no
+function behaviour changed).
