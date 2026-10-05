@@ -3,7 +3,7 @@ id: T-0138
 title: "Probe intersection operator edge cases: whitespace, literal and error operands"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -37,10 +37,22 @@ Probe in one workbook per group, since Excel for the web may reject a whole work
 load.
 
 ## Acceptance criteria
-- [ ] Each of the 8 groups has oracle evidence recorded in docs/excel-semantics/ (VERIFIED or
+- [x] Each of the 8 groups has oracle evidence recorded in docs/excel-semantics/ (VERIFIED or
   corrected), and the UNVERIFIED entry is removed or narrowed.
-- [ ] Every engine mismatch found has a fix task filed.
-- [ ] `make check` green; reviewers approve.
+- [x] Every engine mismatch found has a fix task filed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the engine (those are the follow-up tasks).
+
+## Outcome
+All 8 groups were probed on excel-graph (2026-10-05). Four new probe cases with oracle sidecars:
+intersection-whitespace, intersection-operands, intersection-function-operands and
+arith-range-error-precedence. When Excel for the web cannot parse a formula in an xlsx, it refuses the
+whole workbook (`FileCorruptTryRepair`). Those formulas were probed one per scratch workbook and are
+recorded in docs. The UNVERIFIED entry in references.md is replaced by verified entries on separators,
+operands, trailing input and defined names; coercion.md's range-error entry now covers the
+multi-cell case. Group 6 (defined names) has scratch evidence only, because the case format has no names (T-0043).
+Mismatches filed: T-0148 (separators, non-reference operands), T-0149 (`@`, union, `(A1)(A2)`),
+T-0042 (spec2xlsx spill references). Eval delta: +4 probe cases, 40 new oracle cells, 34 pass and
+6 fail (new coverage, baselined).

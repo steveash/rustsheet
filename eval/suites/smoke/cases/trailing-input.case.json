@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Input left over after a complete formula is a syntax error, not silently dropped (T-0105). UNCONFIRMED hand expectations, not yet checked against Excel: Excel refuses such formulas when typed, so no oracle value exists yet and #ERROR! is RustSheet's value for a formula it cannot parse. Kept in its own case so an oracle fill that rejects this workbook does not block the other smoke cases.",
+  "description": "Input left over after a complete formula is a syntax error, not silently dropped (T-0105). Hand expectations: Excel for the web refuses a workbook holding B1:B5 (T-0138, docs/excel-semantics/references.md \"Trailing input after a complete formula\"), so no oracle value exists and #ERROR! is RustSheet's value for a formula it cannot parse. B6 is wrong: Excel loads =(A1)(A2) and gives #REF! (fix and expectation change in T-0149). Kept in its own case so an oracle fill that rejects this workbook does not block the other smoke cases.",
   "tags": ["M1", "syntax", "trailing-input", "unconfirmed"],
   "expected_source": "hand",
   "sheets": [
