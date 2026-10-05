@@ -77,9 +77,9 @@ governance: ## Protected-path changes need a decision record
 
 # ---------------------------------------------------------------- Aggregates
 .PHONY: check ci
-check: fmt-check clippy test eval-check py-check py-bindings hygiene ## Everything an agent must pass before a PR
+check: fmt-check clippy test eval-check py-check py-bindings hygiene typos ## Everything an agent must pass before a PR (typos too: CI fails on it)
 
-ci: check deny machete typos
+ci: check deny machete
 
 # ---------------------------------------------------------------- Tasks
 .PHONY: tasks next-task board new-task
