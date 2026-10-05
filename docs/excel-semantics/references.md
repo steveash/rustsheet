@@ -22,11 +22,13 @@ Tasks: T-0123
 Rule: `SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)` whose externalBook part holds no cached
 data is `#BLOCKED!`, not `#REF!`. Excel for the web writes it as a vm-coded rich-value error,
 errorType 10 / subType 2, cached as `#VALUE!`; errorType 10 is `#BLOCKED!` (ERROR.TYPE 11,
-docs/excel-semantics/arrays.md table, probes/rich-errors-image).
+docs/excel-semantics/arrays.md table, probes/rich-errors-image). Inferred from that mapping: no
+ERROR.TYPE or VALUETOTEXT was taken next to the external reference itself (subType 2 there, 12 for
+IMAGE).
 Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (excel-graph, refilled 2026-10-05, T-0030).
 The workbook was written by Apache POI, so there is no desktop evidence (decision 0030: web-only
 values are goldens).
-Status: VERIFIED (Excel for the web)
+Status: VERIFIED (Excel for the web; error name inferred from errorType 10)
 Tasks: T-0124
 
 ## IF and INDEX return references to aggregates; IFERROR returns values

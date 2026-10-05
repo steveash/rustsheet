@@ -20,9 +20,11 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 | 12 | `#FIELD!` | 13 | `FIELDVALUE` of a plain number (rich-errors-field A1; extra `Price` field) |
 | 13 | `#CALC!` | 14 | FILTER with no match (rich-errors-calc A4, subType 3) |
 
-A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType with subType 1. The
+A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType in a different
+`_error` structure, `errorType, propagated` (`propagated` = 1, a boolean; no subType). The
 error names come from `VALUETOTEXT(cell)` (a text "#BLOCKED!" etc.), which also matches for
-`#SPILL!`, `#CALC!` and `#DIV/0!`. `#BUSY!`, `#UNKNOWN!` and other codes were not produced; the
+`#SPILL!`, `#CALC!` and `#DIV/0!`. `#BUSY!`, `#UNKNOWN!` and other codes (11, 14+) were not
+produced (no formula was found that yields them in a recalculated, saved workbook; none was tried); the
 harness reads unmapped codes, and a `vm` that resolves to no errorType, as `#UNDECODED!` and never
 scores them.
 Evidence: probes/rich-errors-calc, -field, -image, -stockhistory (excel-graph, 2026-10-05, T-0030:

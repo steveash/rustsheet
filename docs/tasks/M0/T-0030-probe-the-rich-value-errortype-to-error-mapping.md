@@ -17,7 +17,7 @@ Every rich-value `errorType` that Excel writes is mapped to its error by oracle 
 `crates/rustsheet-eval/src/xlsx_snapshot.rs::rich_value_errors` decodes only errorType 8 (`#SPILL!`) and 13 (`#CALC!`), evidenced by ironcalc-calc/ERROR.TYPE.xlsx (errorType = ERROR.TYPE - 1 there). Anything else becomes `#UNDECODED!` and is left unscored (T-0203 review). Known case: poi/link-external-workbook-b.xlsx Sheet0!A1 (uncached external reference), errorType 10 / subType 2 in the excel-graph result; by the pattern this may be `#BLOCKED!` (ERROR.TYPE 11), but that is a guess.
 
 ## Acceptance criteria
-- [x] A probe case (excel-probe skill) returns `ERROR.TYPE` and `ISERROR` of each error Excel stores as a rich value (`#SPILL!`, `#CALC!`, `#FIELD!`, `#BLOCKED!`, `#CONNECT!`, `#BUSY!`, `#UNKNOWN!`, uncached external ref) next to the cell itself; its cached oracle workbook gives each cell's errorType/subType.
+- [x] A probe case (excel-probe skill) returns `ERROR.TYPE` and `ISERROR` of each error Excel stores as a rich value (`#SPILL!`, `#CALC!`, `#FIELD!`, `#BLOCKED!`, `#CONNECT!`, `#BUSY!`, `#UNKNOWN!`, uncached external ref) — `#BUSY!` and `#UNKNOWN!` could not be produced (see Outcome); they stay `#UNDECODED!` next to the cell itself; its cached oracle workbook gives each cell's errorType/subType.
 - [x] `rich_value_errors` maps every probed errorType; docs/excel-semantics/arrays.md lists the table with the probe as evidence.
 - [x] A `t="e"` cell whose `vm` cannot be resolved (rc out of range, no `errorType` key, missing field) also reads as `#UNDECODED!`, never the cached `#VALUE!`; unit test (T-0203 review).
 - [x] poi/link-external-workbook-b is refilled and scored (references.md entry updated).
