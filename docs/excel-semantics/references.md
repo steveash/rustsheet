@@ -68,18 +68,53 @@ Status: VERIFIED
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
-## Intersection operator: implementation choices (UNVERIFIED)
-Rule: RustSheet's choices where gen-m1 (single U+0020 spaces between references) has no evidence:
-- Any Unicode whitespace between two reference operands is the operator: LF, CR, TAB, NBSP and
-  U+3000 (`char::is_whitespace`, `Lexer::whitespace_follows`).
-- A literal operand on the left (`=1 A1`, `=(1) A1`) or TRUE/FALSE, `@x` or an error other than
-  `#REF!` on the right is a parse error; a parenthesized non-reference on the right (`=A1 (1)`)
-  is `#VALUE!`; `#N/A` on the left and `#REF!` on the right are accepted and propagate.
-- An operand's error wins over `#VALUE!`/`#NULL!` (`=(1/0) A1` = `#DIV/0!`).
-- The cross-sheet check runs before the disjoint check (`=Data!A1 Other!Z99` = `#VALUE!`).
-Evidence: none from Excel; the engine's results come from a scratch-suite run in the T-0105 review (2026-10-05).
-Status: UNVERIFIED
-Tasks: T-0138
+## Intersection operator: separators
+Rule: one or more spaces (U+0020) and line feeds (LF), in any mix, separate the two operands of an
+intersection: `=A1:A3  A2:B2`, `=A1:A3<LF>A2:B2`, `=A1:A3 <LF> A2:B2` and `=A1:A3<LF><LF>A2:B2` all give 2.
+Excel for the web refuses a workbook holding CR, CR+LF, TAB or NBSP (U+00A0) there
+(`FileCorruptTryRepair`), even when the CR or TAB is written as a character entity. With U+3000 it loads, and
+`=A1:A3<U+3000>A2:B2` is `#NAME?`.
+Evidence: probes/intersection-whitespace H1:H8 (oracle: excel-graph, 2026-10-05, T-0138). The refused
+workbooks come from scratch runs of `rustsheet-oracle recalc` on one formula each (T-0138); a refused workbook
+has no values to commit.
+Status: VERIFIED (load-time refusal observed in Excel for the web only)
+Tasks: T-0138, T-0148
+
+## Intersection operands must be references
+Rule: Excel decides when it parses the formula whether each operand of an intersection is a
+reference expression. A reference, a parenthesized reference, `#REF!`, `@ref`, a union and a call to a
+reference-returning function (INDEX, OFFSET, IF, ANCHORARRAY) are accepted. Number, string, boolean and
+error literals other than `#REF!`, a parenthesized value (`(1)`, `(1/0)`) and value functions (SUM, NA) make
+Excel for the web refuse the workbook: `=1 A1`, `=(1) A1`, `=A1 (1)`, `=A1 TRUE`, `=A1 "a"`,
+`=#N/A A1`, `=A1 #N/A`, `=A1 #DIV/0!`, `=(1/0) A1`, `=A1 (1/0)`, `=(1/0) (NA())`, `=(1/0) Z99`,
+`=#REF! #N/A`, `=A1 SUM(A1:A2)`, `=A1 NA()`, `=SUM(A1:A2) A1`. So "which error wins" never arises
+between two error operands. Accepted forms:
+- `=A1 #REF!` and `=#REF! A1` are `#REF!`; `=C1:C2 C2` with C2 = `#N/A` is `#N/A` (the cell's value);
+  `=C1 C2` is `#NULL!` even when both cells hold errors.
+- `=A1 @A1` = 1. `=@A1:A3 A2:B2` = 2 in row 11, where `=@A1:A3` alone is `#VALUE!` (I11): the space
+  binds tighter than `@`.
+- `=A1:A3 INDEX(A1:B3,2,0)`, `OFFSET(A2,0,0,1,2)` and `IF(TRUE,A2:B2)` give 2, on either side.
+- A spill reference intersects: `=J1# J2:K2` = 2 with `J1 = SEQUENCE(3)`, stored as
+  `_xlfn.ANCHORARRAY(J1)` (a literal `J1#` in the file is refused).
+- `=A1:A3 (A2:B2,A2)` is `#VALUE!` (a two-area union is left over).
+- `=(A1)(A2)`, with no space, is `#REF!`, not a syntax error. The reason is not known (syntax.md, trailing input).
+- `=Data!A1 Other!Z99` (different sheets, no shared coordinates) is `#VALUE!`, like overlapping cross-sheet
+  operands: the sheet check comes before the disjoint check.
+Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5 (oracle:
+excel-graph, 2026-10-05, T-0138). The refused workbooks come from scratch runs of one formula each (T-0138).
+Status: VERIFIED (load-time refusal observed in Excel for the web only)
+Tasks: T-0138, T-0148, T-0149, T-0042
+
+## A defined name may be an intersection
+Rule: a defined name whose formula is an intersection is a reference. With `isect` =
+`Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2` and `wide` = `Sheet1!$A$1:$B$3 Sheet1!$A$2:$B$3`: `=isect` = 2,
+`=ISREF(isect)` = TRUE, `=isect A1:B3` = 2, `=ROWS(wide)` = 2, `=COLUMNS(wide)` = 2, `=SUM(wide)` = 55,
+`=INDEX(wide,2,2)` = 30. A disjoint one, `disj` = `Sheet1!$A$1 Sheet1!$B$2`, is `#NULL!` and `ISREF(disj)` = FALSE.
+Evidence: scratch xlsx built with xlsxwriter: Sheet1 A1:A3 = 1, 2, 3, B1:B3 = 10, 20, 30, the three
+names above via `define_name`, each formula in column H. Recalculated by excel-graph (2026-10-05, T-0138);
+the case format has no defined names yet (T-0043).
+Status: UNVERIFIED (scratch evidence from Excel for the web only; committed case pending T-0043)
+Tasks: T-0138, T-0043
 
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):

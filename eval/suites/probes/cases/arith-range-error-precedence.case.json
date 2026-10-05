@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Multi-cell range arithmetic with errors on both sides: which error each element shows (T-0138, open question from T-0137).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "C8": 7,
+        "C9": "=NA()",
+        "C10": "x",
+        "D5": "=1/0",
+        "D6": 4
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=Data!C8:C9/Data!D5",
+        "B1": "=Data!C9:C10/Data!D5",
+        "C1": "=Data!D5/Data!C8:C9",
+        "D1": "=Data!C9:C10+Data!D5",
+        "E1": "=Data!C9/Data!D5",
+        "F1": "=Data!C8:C10*Data!D6"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!B1",
+    "Calc!B2",
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!D1",
+    "Calc!D2",
+    "Calc!E1",
+    "Calc!F1",
+    "Calc!F2",
+    "Calc!F3"
+  ]
+}
