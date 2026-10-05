@@ -71,6 +71,7 @@ Evidence: probes/criteria-grammar C3 (`""` → 1), C4 (`"="` → 0) over a range
 cell and no blank cells; probes/criteria-gaps C2 (`"="` → 1), C3 (`""` → 1) over a range with one
 blank cell and no empty string. Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
 Status: VERIFIED
+Implemented in: `build_criteria_with` (`crates/rustsheet-engine/src/functions/criteria.rs`), Standard flavor.
 Tasks: T-0227
 
 ## `<`, `>`, `<=`, `>=` with a boolean or error operand
