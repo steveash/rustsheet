@@ -15,4 +15,4 @@ a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...
 
 ## Whole-row / whole-column search vectors (T-0119)
 
-Empty cells never match an exact lookup, so MATCH/LOOKUP/HLOOKUP/VLOOKUP/XMATCH search only up to the sheet's last used row/column of a `A:A` / `1:1` reference. For approximate (sorted) search this also means the empty tail is ignored; the sorted-tail behaviour on an unbounded range has not been oracle-probed (TODO: probe `MATCH(99,A:A,1)` with trailing blanks).
+Empty cells never match an exact lookup, so MATCH/LOOKUP/HLOOKUP/VLOOKUP/XMATCH search only up to the sheet's last used row/column of a `A:A` / `1:1` reference. For approximate (sorted) search this also means the empty tail is ignored; the sorted-tail behaviour on an unbounded range has not been oracle-probed (needs an oracle probe of `MATCH(99,A:A,1)` with trailing blanks).
