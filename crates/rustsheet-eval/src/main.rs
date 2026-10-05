@@ -243,7 +243,11 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     }
     let suites = select(root, sel, true)?;
     let results = execute(&suites, sel);
-    let report = RunReport::build(RustSheetEngine.name(), &results);
+    let report = RunReport::build(
+        RustSheetEngine.name(),
+        &results,
+        &RustSheetEngine.implemented_functions(),
+    );
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -390,7 +394,11 @@ fn run() -> Result<ExitCode> {
         Cmd::Run { sel, out, examples } => {
             let suites = select(&root, &sel, false)?;
             let results = execute(&suites, &sel);
-            let report = RunReport::build(RustSheetEngine.name(), &results);
+            let report = RunReport::build(
+                RustSheetEngine.name(),
+                &results,
+                &RustSheetEngine.implemented_functions(),
+            );
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
