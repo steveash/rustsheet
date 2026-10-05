@@ -22,6 +22,7 @@ Before any other character, `~` is a literal tilde: `"a~c"` matches "a~c", and a
 is literal (`"abc~"` matches "abc~", not "abc"). `~~` is **not** an escape for one tilde: `"~~"`
 does not match the text "~" and `"a~~c"` does not match "a~c". Matching, with or without
 wildcards, is case-insensitive (`"ABC"` → abc and ABC; `"A?C"`, `"*C"` → 5).
+Verified with COUNTIF only; MATCH/XLOOKUP wildcard mode and D-functions are unprobed for `~~`.
 Evidence: probes/criteria-gaps C4–C14 over 10, abc, TRUE, #N/A, blank, ABC, abc~, a*c, a?c, a~c,
 *, ~: 1, 1, 1, 0, 0, 1, 2, 5, 10, 5, 1; probes/criteria-grammar C8. Oracle: excel-graph, 2026-10-05 (T-0011).
 Status: VERIFIED
@@ -39,7 +40,8 @@ Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Databa
 Rule: leading spaces stop a criterion from being an operator criterion: `"  > 1 "` and `" >1"` are
 plain-text criteria (DSUM over Qty 1, 2, 4 → 0). After the operator, though, the operand is read as
 a number with surrounding spaces ignored: `">1 "`, `"> 1"` and `">"&" 1 "` (`"> 1 "`) all act as
-`>1` (→ 6), in D-functions and in COUNTIF (`COUNTIF(r,"> 1")` → 2 over 1, 2, 4). Plain-text
+`>1` (→ 6) in D-functions; COUNTIF was probed with `"> 1"` only (`COUNTIF(r,"> 1")` → 2 over
+1, 2, 4; T-0238 probes the trailing-space forms there). Plain-text
 D-function criteria keep their spaces in the prefix match: `" ab"` matches only " ab", `"ab "`
 only "ab " (over ab, "ab ", " ab"), and the prefix match is case-insensitive (`"AB"` → 2).
 Evidence: smoke/d-function-criteria Sheet1!J2 (`"  > 1 "` → 0); probes/criteria-gaps C15 (`" >1"`

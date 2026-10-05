@@ -25,7 +25,8 @@ docs/excel-semantics/criteria.md "D-function criteria are not trimmed into an op
 Code: the shared criteria parser in `crates/rustsheet-engine/src/functions/criteria.rs`
 (`build_criteria_with`; the operand after the operator is parsed as a number, which must
 tolerate surrounding spaces — check how `cast_number` handles `" 1 "` before adding any trim).
-Probably also `"= 1"` / `"<> 1"`: add those cells to the probe if you change the shared parser.
+Add probe cells for COUNTIF with `">1 "` and `"> 1 "` (only `"> 1"` was probed there) and for
+`"= 1"` / `"<> 1"` before changing the shared parser.
 
 ## Acceptance criteria
 - [ ] `probes/criteria-gaps` C16, C17, C18, C22 disappear from eval/baseline/probes.txt with no new F lines.
