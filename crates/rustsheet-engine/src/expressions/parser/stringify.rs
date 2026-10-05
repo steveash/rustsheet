@@ -600,12 +600,7 @@ fn stringify(
         }
         CompareKind { kind, left, right } => {
             // Comparisons chain left to right, so only a comparison on the right needs parentheses.
-            let right_str = if matches!(**right, CompareKind { .. }) {
-                format!("({})", sub(right))
-            } else {
-                sub(right)
-            };
-            format!("{}{kind}{right_str}", sub(left))
+            format!("{}{kind}{}", sub(left), compare_in_parens(right))
         }
         OpSumKind { kind, left, right } => {
             // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
