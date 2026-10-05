@@ -413,7 +413,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if flavor == CriteriaFlavor::Standard && explicit_equals && v.is_empty() {
                     // Excel: a bare "=" does not match an empty-string cell (probes/criteria-grammar
-                    // Sheet1!C4); blank cells keep matching (no evidence otherwise yet, T-0011).
+                    // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
                     Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                 } else if flavor == CriteriaFlavor::Database && !explicit_equals {
                     Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
