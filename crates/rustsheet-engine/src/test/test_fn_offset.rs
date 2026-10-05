@@ -78,3 +78,25 @@ fn fn_offset_empty_height_width() {
     assert_eq!(model._get_text("A6"), *"2.001");
     assert_eq!(model._get_text("A7"), *"7.0009");
 }
+
+// Huge arguments saturate instead of overflowing i32 (untrusted input must not panic).
+#[test]
+fn fn_offset_huge_arguments_are_ref_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OFFSET(B2,1E10,0)");
+    model._set("A2", "=OFFSET(B2,-1E10,0)");
+    model._set("A3", "=OFFSET(B2,0,1E10)");
+    model._set("A4", "=OFFSET(B2,0,-1E10)");
+    model._set("A5", "=OFFSET(B2,1,0,1E10)");
+    model._set("A6", "=OFFSET(B2,1,0,1,1E10)");
+    model._set("A7", "=OFFSET(B2,1,0,-1E10)");
+    model._set("A8", "=OFFSET(B2,1,0,1,-1E10)");
+    model._set("A9", "=OFFSET(B2,1E300,1E300,1E300,1E300)");
+    model.evaluate();
+
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), *"#REF!", "{cell}");
+    }
+    // A7-A9 only pin "no panic": Excel accepts negative height/width (TODO(T-0956)) and the
+    // result for 1E300 arguments has no oracle evidence, so their values are not asserted.
+}
