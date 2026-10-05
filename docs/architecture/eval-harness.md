@@ -59,6 +59,7 @@ JSON numbers are written shortest-round-trip, so they are exact.
 
 **`rustsheet-oracle/v1`** sidecar (`<case>.oracle.json`, next to the case or under `oracle_dir`):
 `{format, source{kind, application, version, produced_at, input_sha256}, sheets{Sheet:{A1:value}}}`.
+`input_sha256` hashes the `spec2xlsx` output, which is deterministic since T-0015 (creation time pinned in `docProps/core.xml`). Sidecars filled before T-0015 carry hashes of non-reproducible bytes: treat them as legacy; they refresh on the next fill, and values do not depend on the hash.
 Oracle values override hand expectations. `libreoffice` results are never written as sidecars.
 Tools never re-derive case discovery: `rustsheet-eval cases <suite>` prints each case's path,
 sidecar path, formula-cell count and whether the suite trusts its cached values.

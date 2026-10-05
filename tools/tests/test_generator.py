@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import re
+import zipfile
 from pathlib import Path
 
 from rustsheet_tools import repo_root
@@ -98,3 +100,12 @@ def test_paired_repeat_groups_stay_paired() -> None:
     bare = [f for f in spec["sheets"][1]["cells"].values() if re.fullmatch(r"=COUNTIFS\([^()]*\)", f)]
     assert bare
     assert all(f.count(",") % 2 == 1 for f in bare)
+
+
+def test_build_xlsx_pins_the_creation_time() -> None:
+    # Without the pin, docProps/core.xml carries the wall clock and the bytes differ per run.
+    spec = generate_case(catalog(), 11, milestone="M2", formulas=10)
+    first = build_xlsx(spec)
+    with zipfile.ZipFile(io.BytesIO(first)) as z:
+        assert b"2000-01-01T00:00:00Z" in z.read("docProps/core.xml")
+    assert build_xlsx(spec) == first

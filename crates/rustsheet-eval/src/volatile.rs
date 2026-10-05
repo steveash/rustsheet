@@ -38,8 +38,8 @@ pub type FormulaCell = (String, Addr, String);
 
 /// Every formula cell of a workbook snapshot, as input for [`volatile_cells`].
 ///
-/// Shared-formula members carry the master's text unshifted, so their references may be off
-/// (a missed or extra dependency, never a wrong score).
+/// Shared-formula members carry the master's text shifted to their own cell (T-0027), so their
+/// precedents are the ones Excel computes with.
 #[must_use]
 pub fn formula_cells(sheets: &[SheetSnapshot]) -> Vec<FormulaCell> {
     sheets
