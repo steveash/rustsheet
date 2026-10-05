@@ -18,6 +18,7 @@ T-0214 resizes SUMIF/AVERAGEIF sum_range to the criteria range's shape. Reviewer
 - When the resized range runs past XFD1048576, `resize_to` clamps to the sheet edge; Excel's behavior (clamp vs `#REF!`) is unevidenced.
 - `apply_ifs` now evaluates the first range by reference, so `SUMIFS(A1,B1:B1,...)` / MINIFS etc. with a single-cell sum range compute a value instead of `#VALUE!`; no oracle cell covers it.
 - Criteria ranges are still evaluated in context, so a single-cell criteria range (`=SUMIF(A1,">0")`, `SUMIFS(A1:A1,B1,">0")`) returns `#VALUE!`; Excel likely treats it as a 1x1 range.
+  Note the split: the array/range-criteria SUMIF path (`node_to_range`) already takes criteria ranges by reference, so `=SUMIF(A1,{">0"},B1)` treats A1 as 1x1 while the scalar path errors; make both match the oracle.
 Code: `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`; rule in docs/excel-semantics/criteria.md.
 
 ## Acceptance criteria
