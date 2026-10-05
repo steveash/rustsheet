@@ -3,7 +3,7 @@ id: T-0239
 title: "GCD/LCM accept arguments up to 2^53 (Excel gives GCD(2^53,2)=2)"
 milestone: M2
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ The evidence is excel-graph (web) only; for GCD/LCM it contradicts Microsoft's d
 
 ## Out of scope
 - Other integer-argument limits.
+
+## Outcome
+Probed the bounds (probes/gcd-lcm-bounds, lcm-result-bound, lcm-result-edge): arguments and LCM results are accepted up to 2^53 on the rounded double, #NUM! above. gcd_lcm.rs now uses `>` for the argument and checks the rounded product. resource-limits C1/C3 fixed; web-only evidence (desktop unavailable).
