@@ -3,7 +3,7 @@ id: T-0159
 title: "VALUE: date text with a clock suffix (\"July 1, 2026 10:00\")"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
