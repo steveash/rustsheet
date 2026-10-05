@@ -3,7 +3,7 @@ id: T-0403
 title: "Cache or track the sheet's last used column for whole-row lookups"
 milestone: M3
 lane: perf
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
