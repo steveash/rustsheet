@@ -1130,26 +1130,16 @@ impl Model {
                 if let Some(serial) = parse_date_clock_serial(text.trim(), self.locale) {
                     return CalcResult::Number(serial);
                 }
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid number".to_string(),
-                }
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::Number(f) => CalcResult::Number(f),
-            CalcResult::Boolean(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid number".to_string(),
-            },
+            CalcResult::Boolean(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
+            }
             error @ CalcResult::Error { .. } => error,
             CalcResult::Range { .. } => {
                 // TODO Implicit Intersection
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid number".to_string(),
-                }
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
             CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {
