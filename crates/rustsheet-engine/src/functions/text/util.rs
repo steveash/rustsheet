@@ -108,10 +108,21 @@ fn text_sensitive_reverse(
     None
 }
 
+/// Cap on the total bytes of text one broadcast may produce. Excel has no such
+/// limit that we have measured; this bounds allocation on untrusted input
+/// (DEVIATION, decision 0014; docs/excel-semantics/text.md).
+const MAX_BROADCAST_TEXT_BYTES: usize = 64 * 1024 * 1024;
+
+/// Adds `len` to the running `total`; false once it exceeds the broadcast cap.
+pub(crate) fn within_text_budget(total: &mut usize, len: usize) -> bool {
+    *total = total.saturating_add(len);
+    *total <= MAX_BROADCAST_TEXT_BYTES
+}
+
 #[cfg(test)]
 mod tests {
 
-    use super::{text_after, text_before, Case};
+    use super::{text_after, text_before, within_text_budget, Case};
     #[test]
     fn test_text_after_sensitive() {
         assert_eq!(
@@ -191,5 +202,12 @@ mod tests {
             text_before("長壽相等！", "相", 1, Case::Insensitive),
             Some("長壽".to_string())
         );
+    }
+
+    #[test]
+    fn budget_is_exceeded_by_a_million_long_results() {
+        let mut total = 0;
+        let ok = (0..1_000_000).all(|_| within_text_budget(&mut total, 32767));
+        assert!(!ok);
     }
 }
