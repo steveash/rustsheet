@@ -3,7 +3,7 @@ id: T-0206
 title: "Oracle-confirm criteria grammar (D-function prefix/trim, error/boolean operands)"
 milestone: M2
 lane: functions
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,5 +24,8 @@ smoke case `d-function-criteria` is hand-expected. Four `TODO(T-0206)` markers i
 the unimplemented `<`/`>` ERROR/BOOLEAN operands.
 
 ## Acceptance criteria
-- [ ] Probe expected values come from the oracle; discrepancies fixed or baselined.
-- [ ] Semantics entries updated with evidence.
+- [x] Probe expected values come from the oracle; discrepancies fixed or baselined.
+- [x] Semantics entries updated with evidence.
+
+## Outcome
+New probe case `probes/criteria-operands` (25 cells, oracle-filled via excel-graph, canary-verified). Excel: `<`/`>` with a boolean or error operand match nothing, `<=`/`>=` act as equality; explicit `=ab` in a D-function criterion is exact, not a prefix. Both fixed in `functions/criteria.rs` (the four `TODO(T-0206)` markers removed); `<>text`, `=TRUE`, `=#N/A`, wildcard and numeric/boolean/error D-function criteria already matched. criteria.md updated (VERIFIED). Eval: ironcalc-calc 1578 -> 1578, probes 13 -> 13, 0 regressions; probes-criteria-operands 25/25.
