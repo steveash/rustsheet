@@ -3,7 +3,7 @@ id: T-0227
 title: "COUNTIF: a bare = criterion does not match an empty-string cell (1 probes known failure)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
