@@ -280,6 +280,34 @@ pub(crate) fn build_criteria<'a>(
     build_criteria_with(value, locale, CriteriaFlavor::Standard)
 }
 
+/// A compiled criterion: the predicate a cell value must satisfy.
+type CriteriaMatcher<'a> = Box<dyn Fn(&CalcResult) -> bool + 'a>;
+
+/// Matcher for `<`, `>`, `<=`, `>=` followed by a boolean or error operand.
+/// Excel: `<TRUE`, `>TRUE`, `<#N/A` and `>#N/A` match nothing, while `<=` and `>=` behave as
+/// equality (`COUNTIF` over 10, "abc", TRUE, #N/A, "abd", 5 gives 0 for `>TRUE`/`<TRUE`/`>#N/A`/
+/// `<#N/A` and 1 for `>=TRUE`/`<=TRUE`/`>=#N/A`/`<=#N/A`; probes/criteria-operands C1-C8).
+fn bool_or_error_operand_matcher<'a>(
+    operand: &'a str,
+    inclusive: bool,
+) -> Option<CriteriaMatcher<'a>> {
+    if let Ok(b) = operand.to_lowercase().parse::<bool>() {
+        Some(if inclusive {
+            Box::new(move |x| result_is_equal_to_bool(x, b))
+        } else {
+            Box::new(|_| false)
+        })
+    } else if is_english_error_string(operand) {
+        Some(if inclusive {
+            Box::new(move |x| result_is_equal_to_error(x, operand))
+        } else {
+            Box::new(|_| false)
+        })
+    } else {
+        None
+    }
+}
+
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
 pub(crate) fn build_criteria_with<'a>(
     value: &'a CalcResult,
@@ -289,9 +317,10 @@ pub(crate) fn build_criteria_with<'a>(
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
-                // TODO(T-0206): not implementing <= ERROR or <= BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
+                } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
+                    m
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
                 } else if let Some(f) = parse_date_criterion(v, locale) {
@@ -300,9 +329,10 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
-                // TODO(T-0206): not implementing >= ERROR or >= BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
+                } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
+                    m
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
                 } else if let Some(f) = parse_date_criterion(v, locale) {
@@ -332,9 +362,10 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
-                // TODO(T-0206): not implementing < ERROR or < BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_less_than_number(x, f))
+                } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
+                    m
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
                 } else if let Some(f) = parse_date_criterion(v, locale) {
@@ -343,9 +374,10 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
-                // TODO(T-0206): not implementing > ERROR or > BOOLEAN
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_greater_than_number(x, f))
+                } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
+                    m
                 } else if v.is_empty() {
                     Box::new(move |_x| false)
                 } else if let Some(f) = parse_date_criterion(v, locale) {
@@ -354,11 +386,8 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_greater_than_string(x, &v.to_lowercase()))
                 }
             } else {
-                let v = if let Some(a) = s.strip_prefix('=') {
-                    a
-                } else {
-                    s
-                };
+                let explicit_equals = s.starts_with('=');
+                let v = s.strip_prefix('=').unwrap_or(s);
                 if let Ok(f) = v.parse::<f64>() {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
@@ -373,7 +402,7 @@ pub(crate) fn build_criteria_with<'a>(
                     }
                 } else if let Some(f) = parse_date_criterion(v, locale) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
-                } else if flavor == CriteriaFlavor::Database {
+                } else if flavor == CriteriaFlavor::Database && !explicit_equals {
                     Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {
                     Box::new(move |x| result_is_equal_to_string(x, &v.to_lowercase()))
