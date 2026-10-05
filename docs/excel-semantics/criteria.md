@@ -93,7 +93,18 @@ Tasks: T-0209
 ## SUMIF resizes sum_range from its top-left cell and never errors
 Rule: SUMIF sums the range of the criteria range's shape that starts at sum_range's top-left cell,
 whatever sum_range's own shape: `=SUMIF(Data!C2:E2,"<>1",Data!B4:B10)` sums B4:D4 (123456831.123).
-71 of 71 mismatched calls in gen-m2 return numbers.
-Evidence: gen-m2/629e6e8b76fab8b9 Calc!A217. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+71 of 71 mismatched calls in gen-m2 return numbers. AVERAGEIF resizes its average_range the same way.
+Evidence: gen-m2/629e6e8b76fab8b9 Calc!A217, 04cfd82f54dbc2b2 Calc!A344 (`=SUMIF(Data!C3:C5,"?b?",Data!C10:C10)`
+= 0.5, C10:C12 is used), f0d1bacec5de8146 Calc!A127; probes/ifs-shape-mismatch F9-F11. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
+Implemented in: `resize_to` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0214
+
+### Open (UNVERIFIED, probe pending): SUMIF/AVERAGEIF resize past the sheet edge, single-cell ranges
+When the resized sum_range would run past XFD1048576 the engine clamps it to the sheet edge; Excel's
+behavior (clamp vs `#REF!`) has no oracle evidence. The engine also treats a single-cell first range of
+the *IFS family (`SUMIFS(A1,B1:B1,...)`) as a 1x1 range and, for criteria ranges, still returns `#VALUE!`
+for a single cell (`=SUMIF(A1,">0")`); both are unevidenced. The test grid-edge assertion in
+test_fn_sumifs.rs is hand-written.
+Status: UNVERIFIED
+Tasks: T-0234

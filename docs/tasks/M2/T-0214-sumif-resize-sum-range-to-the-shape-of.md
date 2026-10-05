@@ -3,7 +3,7 @@ id: T-0214
 title: "SUMIF: resize sum_range to the shape of range from its top-left cell (59 gen-m2 known failures)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -69,3 +69,6 @@ Also needs T-0209:
 
 ## Out of scope
 - SUMIFS/COUNTIFS shape errors (T-0209).
+
+## Outcome
+SUMIF and AVERAGEIF now resize sum_range/average_range to the criteria range's shape from its top-left cell (`resize_to` in if_ifs.rs; single-cell ranges are taken by reference). gen-m2 known failures 1049 -> 988 (61 fixed, 0 regressions); probes 28 -> 25 (F9-F11). Rule recorded in docs/excel-semantics/criteria.md.
