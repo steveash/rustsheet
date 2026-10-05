@@ -239,7 +239,7 @@ pub fn is_valid_a1_identifier(name: &str) -> bool {
         return false;
     }
     for ch in chars {
-        if !(ch.is_alphanumeric() || ch == '_' || ch == '.') {
+        if !(ch.is_alphanumeric() || ch == '_' || ch == '.' || ch == '\\') {
             return false;
         }
     }
