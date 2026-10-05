@@ -85,14 +85,22 @@ impl Engine for RustSheetEngine {
         workbook.set_track_changes(false);
         workbook
             .edit(|tx| {
+                let mut ids = Vec::with_capacity(spec.sheets.len());
                 for (i, sheet) in spec.sheets.iter().enumerate() {
-                    let id = if i == 0 {
+                    ids.push(if i == 0 {
                         let first = tx.first_sheet()?;
                         tx.rename_sheet(first, &sheet.name)?;
                         first
                     } else {
                         tx.add_sheet(&sheet.name)?
-                    };
+                    });
+                }
+                // Names need their sheets; each reparses the workbook, so define them before
+                // any cell is set.
+                for (name, formula) in &spec.names {
+                    tx.define_name(name, formula)?;
+                }
+                for (sheet, &id) in spec.sheets.iter().zip(&ids) {
                     for (a1, input) in &sheet.cells {
                         let addr = Addr::parse(a1).ok_or_else(|| {
                             rustsheet::EditError::Engine(format!("bad address {a1}"))
@@ -170,5 +178,32 @@ mod tests {
     fn without_metadata_the_clock_is_a_fixed_default() {
         // 8 November 2022 (the engine's mock default).
         assert_eq!(today(&workbook(None)), Value::Number(44873.0));
+    }
+
+    fn spec(json: &str) -> CaseSpec {
+        serde_json::from_str(json).expect("spec")
+    }
+
+    #[test]
+    fn spec_names_are_defined_before_cells() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","names":{"src":"=Data!$A$1"},
+                "sheets":[{"name":"Calc","cells":{"A1":"=src*2"}},
+                          {"name":"Data","cells":{"A1":5}}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        assert_eq!(
+            evaluated.value("Calc", Addr { row: 1, col: 1 }),
+            Some(Value::Number(10.0))
+        );
+    }
+
+    #[test]
+    fn a_bad_spec_name_fails_the_case() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","names":{"A1":"=1"},
+                "sheets":[{"name":"Sheet1","cells":{}}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
     }
 }

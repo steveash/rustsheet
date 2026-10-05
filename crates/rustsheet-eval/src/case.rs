@@ -43,6 +43,9 @@ pub struct CaseSpec {
     #[serde(default)]
     pub tags: Vec<String>,
     pub sheets: Vec<SheetSpec>,
+    /// Workbook-scoped defined names: name → formula (e.g. `"=Sheet1!$A$1:$B$2"`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub names: BTreeMap<String, String>,
     /// Cells to score: `Sheet!A1` → expected value. Missing/empty means "pending oracle"
     /// (unless a sidecar oracle file supplies them).
     #[serde(default)]

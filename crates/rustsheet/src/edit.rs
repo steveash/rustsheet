@@ -145,6 +145,8 @@ enum Undo {
         index: u32,
         sheet: Box<Worksheet>,
     },
+    /// A workbook-scoped defined name added by `define_name`.
+    DefinedName(String),
 }
 
 /// The write-only handle passed to [`Workbook::edit`].
@@ -387,6 +389,26 @@ impl Txn<'_> {
         self.sheets.push(SheetChange::Deleted { id, name });
         Ok(())
     }
+
+    /// Adds a workbook-scoped defined name. `formula` may be any formula that parses, with or
+    /// without a leading `=` (e.g. `=Sheet1!$A$1:$B$3 Sheet1!$A$2:$B$3`, an intersection). Like a
+    /// sheet-level op it reparses and re-evaluates the workbook, so define names before setting
+    /// many cells. Names are not reported in the [`ChangeSet`]; cells whose value they change are.
+    ///
+    /// # Errors
+    /// [`EditError::DefinedName`] when the name is not a valid identifier, already exists, or the
+    /// formula does not parse.
+    pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError> {
+        // Stored without the `=`, as xlsx `definedName` text is: the engine reads a name body as
+        // a reference only in that form.
+        let body = formula.trim();
+        self.model
+            .define_name(name, None, body.strip_prefix('=').unwrap_or(body))
+            .map_err(EditError::DefinedName)?;
+        self.sheet_op = true;
+        self.undo.push(Undo::DefinedName(name.to_string()));
+        Ok(())
+    }
 }
 
 fn sheet_name(model: &Model, index: u32) -> String {
@@ -461,6 +483,10 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
             Undo::DeletedSheet { index, sheet } => {
                 let undone = model.restore_sheet(index, *sheet);
                 debug_assert!(undone.is_ok(), "undo of delete_sheet failed: {undone:?}");
+            }
+            Undo::DefinedName(name) => {
+                let undone = model.delete_defined_name(&name, None);
+                debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
             }
         }
     }
