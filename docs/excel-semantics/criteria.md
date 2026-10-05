@@ -99,3 +99,12 @@ Evidence: gen-m2/629e6e8b76fab8b9 Calc!A217, 04cfd82f54dbc2b2 Calc!A344 (`=SUMIF
 Status: VERIFIED
 Implemented in: `resize_to` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0214
+
+### Open (UNVERIFIED, probe pending): SUMIF/AVERAGEIF resize past the sheet edge, single-cell ranges
+When the resized sum_range would run past XFD1048576 the engine clamps it to the sheet edge; Excel's
+behavior (clamp vs `#REF!`) has no oracle evidence. The engine also treats a single-cell first range of
+the *IFS family (`SUMIFS(A1,B1:B1,...)`) as a 1x1 range and, for criteria ranges, still returns `#VALUE!`
+for a single cell (`=SUMIF(A1,">0")`); both are unevidenced. The test grid-edge assertion in
+test_fn_sumifs.rs is hand-written.
+Status: UNVERIFIED
+Tasks: T-0234
