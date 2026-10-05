@@ -239,7 +239,7 @@ fn test_sumif_resizes_sum_range() {
     model._set("F3", "=SUMIF(A1:B2,\"<99\",B1)");
     // Array criteria path resizes too.
     model._set("F4", "=SUMIF(A2:B2,{\"<99\"},A1:A4)");
-    // Resized range runs off the grid: clamped to it (hand-written, no Excel evidence; T-0234 probes it).
+    // Resized range runs off the grid: clamped to it (probes/sumif-edge-single-cell F5, F6).
     model._set("XFD1048576", "5");
     model._set("F5", "=SUMIF(A1:B2,\"<99\",XFD1048576)");
     model.evaluate();

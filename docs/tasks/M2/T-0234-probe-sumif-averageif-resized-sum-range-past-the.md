@@ -3,7 +3,7 @@ id: T-0234
 title: "Probe SUMIF/AVERAGEIF resized sum_range past the sheet edge and single-cell ranges in *IFS"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ Code: `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`; rule in doc
 
 ## Out of scope
 - Shape-mismatch rules (T-0209, T-0214).
+
+## Outcome
+Probe `probes/sumif-edge-single-cell` (15 cells, excel-graph oracle). Excel clamps a resized sum_range at the sheet edge, and treats single-cell ranges as 1x1 everywhere. The engine already matched on the first two; criteria ranges in COUNTIF/COUNTIFS/SUMIF/SUMIFS/AVERAGEIF/MINIFS/MAXIFS are now evaluated by reference so a single cell is a 1x1 range (was `#VALUE!`). Eval delta: new case 15/15 pass, 0 regressions; criteria.md entry now VERIFIED.

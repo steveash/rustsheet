@@ -92,7 +92,9 @@ impl Model {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2], cell);
+            // By reference: a single-cell criteria range (`A1`) is a 1x1 range
+            // (probes/sumif-edge-single-cell F11-F15).
+            let result = self.evaluate_node_with_reference(&args[case_index * 2], cell);
             if result.is_error() {
                 return result;
             }
@@ -265,7 +267,8 @@ impl Model {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2 - 1], cell);
+            // By reference, as above (probes/sumif-edge-single-cell F11-F15).
+            let result = self.evaluate_node_with_reference(&args[case_index * 2 - 1], cell);
             if result.is_error() {
                 return Err(result);
             }
