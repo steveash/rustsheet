@@ -150,3 +150,12 @@ Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J888, F912.
 Status: VERIFIED (Excel-cached)
 Tasks: T-0949
+
+## "inf", "NaN" and out-of-range number text are text
+Rule: the words "inf", "infinity", "NaN" (any case, any sign) and number text of 1E+308 or more
+are never read as numbers: arithmetic, `--`, VALUE and COUNT/SUM/AVERAGE text arguments give
+#VALUE! or skip them, criteria compare them as text; `"+1"` is the number 1.
+Evidence: probes/text-number-words; full rule in numbers.md "Number text of 1E+308 or more is not a number".
+Oracle: excel-graph, 2026-10-05.
+Status: VERIFIED
+Tasks: T-0920, T-0140

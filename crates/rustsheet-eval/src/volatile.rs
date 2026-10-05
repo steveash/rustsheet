@@ -1,6 +1,7 @@
 //! Decides which formula cells cannot be scored because their value depends on a volatile
 //! function, directly or through (statically visible) precedents.
 
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -8,7 +9,7 @@ use regex::Regex;
 
 use crate::cellref::Addr;
 use crate::value::Value;
-use crate::xlsx_snapshot::{CellSnapshot, SheetSnapshot};
+use crate::xlsx_snapshot::{CellSnapshot, DefinedName, SheetSnapshot};
 
 /// Functions that read the wall clock. Scorable when the workbook pins the clock (see
 /// [`pinned_clock_serial`]).
@@ -31,6 +32,11 @@ static REFERENCE: LazyLock<Regex> = LazyLock::new(|| {
         r"(?:(?:'((?:[^']|'')+)'|([A-Za-z_][A-Za-z0-9_.]*))!)?(\$?[A-Za-z]{1,3}\$?[0-9]+)(?::(\$?[A-Za-z]{1,3}\$?[0-9]+))?",
     )
     .unwrap_or_else(|e| unreachable!("{e}"))
+});
+
+/// A name token; whether it is a defined name is decided by lookup.
+static WORD: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"[A-Za-z_\\][A-Za-z0-9_.\\]*").unwrap_or_else(|e| unreachable!("{e}"))
 });
 
 /// A formula cell: (sheet name, address, formula text without `=`).
@@ -56,11 +62,12 @@ pub fn formula_cells(sheets: &[SheetSnapshot]) -> Vec<FormulaCell> {
 /// The formula cells that can be scored: every formula cell not tainted by a volatile function
 /// (directly or through precedents), with the number of formula cells skipped as volatile.
 #[must_use]
-pub fn scorable_cells(
-    sheets: &[SheetSnapshot],
+pub fn scorable_cells<'a>(
+    sheets: &'a [SheetSnapshot],
+    names: &[DefinedName],
     clock_pinned: bool,
-) -> (Vec<(&str, Addr, &CellSnapshot)>, usize) {
-    let volatile = volatile_cells(&formula_cells(sheets), clock_pinned);
+) -> (Vec<(&'a str, Addr, &'a CellSnapshot)>, usize) {
+    let volatile = volatile_cells(&formula_cells(sheets), names, clock_pinned);
     let mut cells = Vec::new();
     let mut skipped = 0;
     for sheet in sheets {
@@ -103,8 +110,52 @@ pub fn pinned_clock_serial(sheets: &[SheetSnapshot]) -> Option<f64> {
     })
 }
 
-/// Static precedents of a formula as `(lowercased sheet, top-left, bottom-right)`. Names,
-/// `INDIRECT`/`OFFSET`, whole-row/column references and 3-D references are not followed.
+/// The formula text followed by the body of every defined name it mentions, transitively, so
+/// that precedents and volatile calls reached through names are seen (T-0045). A sheet-scoped
+/// name shadows a global one; each name is expanded once, which ends reference cycles.
+fn with_names<'a>(sheet: &str, formula: &'a str, names: &[DefinedName]) -> Cow<'a, str> {
+    if names.is_empty() {
+        return Cow::Borrowed(formula);
+    }
+    let find = |word: &str| {
+        let by = |scoped: bool| {
+            names.iter().find(|n| {
+                n.name.eq_ignore_ascii_case(word)
+                    && match &n.sheet {
+                        Some(s) => scoped && s.eq_ignore_ascii_case(sheet),
+                        None => !scoped,
+                    }
+            })
+        };
+        by(true).or_else(|| by(false))
+    };
+    let mut out = formula.to_string();
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut scan_from = 0;
+    while scan_from < out.len() {
+        let text = STRING_LITERAL
+            .replace_all(&out[scan_from..], "\"\"")
+            .into_owned();
+        scan_from = out.len();
+        let mut added = String::new();
+        for m in WORD.find_iter(&text) {
+            if text.as_bytes().get(m.end()) == Some(&b'(') {
+                continue;
+            }
+            if let Some(name) = find(m.as_str()) {
+                if seen.insert(m.as_str().to_lowercase()) {
+                    added.push(' ');
+                    added.push_str(&name.body);
+                }
+            }
+        }
+        out.push_str(&added);
+    }
+    Cow::Owned(out)
+}
+
+/// Static precedents of a formula as `(lowercased sheet, top-left, bottom-right)`. Names
+/// are expanded beforehand by [`with_names`]; `INDIRECT`/`OFFSET`, whole-row/column references and 3-D references are not followed.
 fn precedents(sheet: &str, formula: &str) -> Vec<(String, Addr, Addr)> {
     let text = STRING_LITERAL.replace_all(formula, "\"\"");
     let bytes = text.as_bytes();
@@ -151,10 +202,18 @@ fn unquote(name: &str) -> String {
 /// Returns every formula cell (as `(sheet, addr)`) that is volatile or transitively reads a
 /// volatile cell through static references.
 #[must_use]
-pub fn volatile_cells(cells: &[FormulaCell], clock_pinned: bool) -> HashSet<(String, Addr)> {
+pub fn volatile_cells(
+    cells: &[FormulaCell],
+    names: &[DefinedName],
+    clock_pinned: bool,
+) -> HashSet<(String, Addr)> {
+    let expanded: Vec<Cow<'_, str>> = cells
+        .iter()
+        .map(|(sheet, _, formula)| with_names(sheet, formula, names))
+        .collect();
     let mut single: HashMap<(String, Addr), Vec<usize>> = HashMap::new();
     let mut ranges: Vec<(String, Addr, Addr, usize)> = Vec::new();
-    for (idx, (sheet, _, formula)) in cells.iter().enumerate() {
+    for (idx, ((sheet, _, _), formula)) in cells.iter().zip(&expanded).enumerate() {
         for (target, lo, hi) in precedents(sheet, formula) {
             if lo == hi {
                 single.entry((target, lo)).or_default().push(idx);
@@ -165,7 +224,7 @@ pub fn volatile_cells(cells: &[FormulaCell], clock_pinned: bool) -> HashSet<(Str
     }
     let mut tainted = vec![false; cells.len()];
     let mut queue: Vec<usize> = Vec::new();
-    for (idx, (_, _, formula)) in cells.iter().enumerate() {
+    for (idx, formula) in expanded.iter().enumerate() {
         if is_volatile(formula, clock_pinned) {
             tainted[idx] = true;
             queue.push(idx);
@@ -211,7 +270,7 @@ mod tests {
     }
 
     fn tainted(cells: &[FormulaCell], pinned: bool) -> Vec<String> {
-        let set = volatile_cells(cells, pinned);
+        let set = volatile_cells(cells, &[], pinned);
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         keys
@@ -268,5 +327,59 @@ mod tests {
         );
         assert_eq!(pinned_clock_serial(&[sheet("METADATA", "EPS")]), None);
         assert_eq!(pinned_clock_serial(&[sheet("Other", "NOW")]), None);
+    }
+
+    fn name(name: &str, sheet: Option<&str>, body: &str) -> DefinedName {
+        DefinedName {
+            name: name.into(),
+            sheet: sheet.map(Into::into),
+            body: body.into(),
+        }
+    }
+
+    fn tainted_with(cells: &[FormulaCell], names: &[DefinedName]) -> Vec<String> {
+        let set = volatile_cells(cells, names, false);
+        let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
+        keys.sort();
+        keys
+    }
+
+    #[test]
+    fn names_pointing_at_volatile_cells_or_calls_taint_users() {
+        let cells = vec![
+            cell("S", "A1", "TODAY()"),
+            cell("S", "B1", "EDATE(DATE_CELL,2)+\"DATE_CELL\""),
+            cell("S", "B2", "NOWISH+1"),
+            cell("S", "B3", "Plain+1"),
+            cell("S", "B4", "DATE_CELL(1)"),
+        ];
+        let names = [
+            name("date_cell", None, "S!$A$1"),
+            name("NowIsh", None, "NOW()"),
+            name("Plain", None, "S!$Z$9"),
+        ];
+        assert_eq!(
+            tainted_with(&cells, &names),
+            ["S!A1", "S!B1", "S!B2"],
+            "a name inside a string or followed by ( is not a use"
+        );
+    }
+
+    #[test]
+    fn sheet_scoped_name_shadows_global() {
+        let cells = vec![
+            cell("S", "A1", "RAND()"),
+            cell("S", "B1", "N"),
+            cell("T", "B1", "N"),
+        ];
+        let names = [name("N", None, "S!$A$1"), name("N", Some("T"), "S!$Z$9")];
+        assert_eq!(tainted_with(&cells, &names), ["S!A1", "S!B1"]);
+    }
+
+    #[test]
+    fn names_referring_to_each_other_terminate() {
+        let cells = vec![cell("S", "A1", "X"), cell("S", "A2", "Y")];
+        let names = [name("X", None, "Y+1"), name("Y", None, "X+RAND()")];
+        assert_eq!(tainted_with(&cells, &names), ["S!A1", "S!A2"]);
     }
 }

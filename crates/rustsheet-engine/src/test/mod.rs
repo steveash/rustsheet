@@ -137,6 +137,7 @@ mod test_locale;
 mod test_log;
 mod test_log10;
 mod test_mod_quotient;
+mod test_nan_inf;
 mod test_networkdays;
 mod test_now;
 mod test_percentage;

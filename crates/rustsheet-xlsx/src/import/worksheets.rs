@@ -31,7 +31,9 @@ use super::{
     shared_strings::decode_xlsx_escapes,
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
-    util::{get_attribute, get_bool_false, get_color, get_number, get_relationship},
+    util::{
+        get_attribute, get_bool_false, get_color, get_number, get_relationship, parse_cell_number,
+    },
 };
 
 pub(crate) struct Sheet {
@@ -400,15 +402,13 @@ pub(super) fn get_cell_from_excel(
             "n" => {
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
-                        v: SpillValue::Number(
-                            cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
-                        ),
+                        v: SpillValue::Number(parse_cell_number(cell_value)),
                         s: cell_style,
                         a: anchor,
                     }
                 } else {
                     Cell::NumberCell {
-                        v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                        v: parse_cell_number(cell_value),
                         s: cell_style,
                     }
                 }
@@ -515,9 +515,7 @@ pub(super) fn get_cell_from_excel(
         };
         match cell_type {
             "b" => make_cell(FormulaValue::Boolean(cell_value == Some("1"))),
-            "n" => make_cell(FormulaValue::Number(
-                cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
-            )),
+            "n" => make_cell(FormulaValue::Number(parse_cell_number(cell_value))),
             "e" => {
                 // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
                 // Older engines would just import #VALUE!
