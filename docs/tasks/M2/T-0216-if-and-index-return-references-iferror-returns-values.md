@@ -47,9 +47,10 @@ There is now one aggregate-argument evaluator, `Model::evaluate_aggregate_arg` (
 returns a `Range` for a cell reference, and for an IF (scalar condition) or INDEX that selects one, through
 `if_impl`/`index_impl` with `as_reference`. Everything else stays a value, so VLOOKUP/arithmetic/`&`
 consumers are unchanged. SUM, COUNT, MIN, MAX and the AVERAGE family (`for_each_value`) use it; SUM's
-ad-hoc ReferenceKind→RangeKind rewrite is gone. `ISREF(INDEX(…))` is TRUE.
-Eval: gen-m2 5 fixed (96a0952412cefa6c A88, 1b6ceed7489e0800 A206, 942bdade381b7537 A212,
-f0d1bacec5de8146 A183, and a sibling), 0 regressions. caa981b0753f455c A300 already passed. Not done here:
+ad-hoc ReferenceKind→RangeKind rewrite is gone. `ISREF(INDEX(…))` is TRUE unless the INDEX fails
+(`ISREF(INDEX(A1,1,2,2))` stays FALSE, ironcalc ISREF_ISFORMULA!F9).
+Eval (on main after T-0213): gen-m2 880 -> 875, 5 fixed (96a0952412cefa6c A88, 1b6ceed7489e0800 A206, 942bdade381b7537 A212,
+f0d1bacec5de8146 A183, caa981b0753f455c A300), 0 regressions. Not done here:
 7469c3e920e1ade4 A351 (IFERROR blank as an empty value), 60a543744fc4a8f7 A200 (HLOOKUP passes a
 reference) and the INDEX intersection item. They are follow-up T-0233; fa437879253827be A372 waits on T-0218.
 

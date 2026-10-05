@@ -2300,7 +2300,7 @@ impl Function {
     }
 
     pub(crate) fn returns_reference(&self) -> bool {
-        matches!(self, Function::Indirect | Function::Offset | Function::Index)
+        matches!(self, Function::Indirect | Function::Offset)
     }
 }
 
