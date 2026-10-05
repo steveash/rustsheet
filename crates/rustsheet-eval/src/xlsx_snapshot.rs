@@ -114,12 +114,14 @@ impl WorkbookSnapshot {
 
 type Zip = zip::ZipArchive<Cursor<Vec<u8>>>;
 
-/// Largest decompressed size accepted for one package part (zip-bomb guard,
-/// CLAUDE.md directive 5). `rustsheet-xlsx` has no equivalent limit to reuse.
-const MAX_PART_BYTES: u64 = 256 * 1024 * 1024;
-
+/// Zip-bomb guard (CLAUDE.md directive 5): one part may not inflate past the
+/// public API's default whole-package limit, so the harness reads what the API would.
 fn read_part(zip: &mut Zip, name: &str) -> Result<Option<String>, SnapshotError> {
-    read_part_capped(zip, name, MAX_PART_BYTES)
+    read_part_capped(
+        zip,
+        name,
+        rustsheet::LoadOptions::default().max_uncompressed_bytes,
+    )
 }
 
 fn read_part_capped(

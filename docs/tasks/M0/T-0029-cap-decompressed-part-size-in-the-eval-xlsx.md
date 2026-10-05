@@ -26,4 +26,4 @@ depends_on: []
 - Limits in the engine's importer (separate if missing).
 
 ## Outcome
-`read_part` now reads through `Read::take(limit + 1)` and returns `SnapshotError::Malformed` naming the part when it exceeds `MAX_PART_BYTES` (256 MiB). `rustsheet-xlsx` has no existing limit to reuse, so the constant lives in the snapshot reader; the importer limit stays out of scope. Unit test `part_over_the_size_limit_is_malformed` covers it. Eval results unchanged.
+`read_part` now reads through `Read::take(limit + 1)` and returns `SnapshotError::Malformed` naming the part when it exceeds `rustsheet::LoadOptions::default().max_uncompressed_bytes` (256 MiB, the public API's limit, so there is one definition). Unit test `part_over_the_size_limit_is_malformed` covers the boundary and error. Eval results unchanged. Follow-up: T-0035 (same cap in the suite fetcher's `extract_zip`).
