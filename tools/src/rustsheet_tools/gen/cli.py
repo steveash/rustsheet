@@ -1,6 +1,7 @@
 """`rustsheet-gen` — generate synthetic spec cases into an eval suite.
 
   rustsheet-gen --milestone M2 --count 25 --seed 1 --suite gen-m2
+  rustsheet-gen --policy operators-refs --seed 0          # suite gen-m1 (M1, no functions)
 
 Creates eval/suites/<suite>/suite.toml if missing (non-gating until oracle sidecars exist).
 """

@@ -27,13 +27,27 @@ Oracle fill and baselines (T-0109), function-based generation (T-0203).
 
 ## Outcome
 `rustsheet-gen --policy operators-refs [--seed N]` (`tools/src/rustsheet_tools/gen/operators_refs.py`)
-writes suite `gen-m1`. It makes one case per category, 14 categories (unary-power, percent, concat,
-compare, coerce, error, refs, range, intersection, union, whole-row-col, cross-sheet, chain, mixed),
-with 250 probes each, so 3,500 cells. Every probe is tagged `category/form` in `hypotheses`. The data
-lives on sheets `Data`, `'My Data'` and `'Q''1'`. Every probe yields one value, because a multi-cell
-result would spill into the next probe. Whole rows and columns appear only as intersection operands.
-Chains reference earlier probes only. Tests in `tools/tests/test_generator.py` cover: determinism,
-no function names, every category at least 50 times, the whole-row/column rule, nesting depth at
-most 6, no date, currency or separator text, and acyclic chains. A local engine run over the
-generated suite showed 14 cases pending and 0 crashes. The suite itself is not committed (T-0109
-fills it with the oracle).
+writes suite `gen-m1`. It makes one case per category, 15 categories (literal, unary-power,
+percent, concat, compare, coerce, error, refs, range, intersection, union, whole-row-col,
+cross-sheet, chain, mixed). Each has 250 probes, all distinct within the case, so the default
+seed gives 3,750 cells. Every category is a table of `form: template` lines, and each probe is
+tagged `category/form` in `hypotheses`.
+
+The data lives on sheets `Data`, `'My Data'` and `'Q''1'`. Every intersection covers one cell or
+none by construction, so nothing spills into the next probe. Whole rows and columns appear only as
+intersection operands, and chains reference earlier probes only.
+
+Tests in `tools/tests/test_generator.py` cover:
+- determinism;
+- no function names;
+- every category at least 50 times, with at least 3 forms and at least 3,000 distinct probes;
+- the whole-row/column rule;
+- no spills, with intersection cell counts computed from the areas;
+- nesting depth at most 6;
+- no date, currency or separator text;
+- acyclic chains.
+
+A local crash check (`uv run rustsheet-gen --policy operators-refs`, then
+`rustsheet-eval run --suite gen-m1`, then deleting the suite) gave 15 cases pending and 0 crashes.
+The suite itself is not committed: T-0109 fills it with the oracle, after first smoke-probing one
+formula per form tag in a single workbook.
