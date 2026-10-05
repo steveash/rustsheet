@@ -3,10 +3,10 @@ id: T-0209
 title: "SUMIFS/COUNTIFS: a criteria range shaped unlike the first range is #VALUE! (442 gen-m2 known failures)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: done
 priority: P1
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -85,3 +85,29 @@ These cells also need another task:
 ## Out of scope
 - SUMIF/AVERAGEIF resizing (T-0214).
 - AVERAGEIFS/MINIFS/MAXIFS unless an oracle probe confirms the same rule (file a follow-up).
+
+## Handoff (resumed)
+Superseded by the Outcome below: the probe confirmed the rule for AVERAGEIFS/MINIFS/MAXIFS, so only
+SUMIF opts out of the shape check, and the A56 regression was fixed by the error-broadcast rule.
+
+Tried: `apply_ifs` gained a `strict_shape` flag (SUMIFS true; AVERAGEIFS/MINIFS/MAXIFS false, SUMIF path
+via new `sum_ifs(.., false)` so SUMIF never errors); `fn_countifs` checks `same_shape`. Unit test
+`test_sumifs_countifs_shape_mismatch_is_value_error` passes. `make eval-baseline`: gen-m2 known failures
+1726 -> 1278 (449 fixed) but refuses on **1 regression**: `gen-m2/dd99be1f2454159f` Calc!A56
+`=((B12-B7)+COUNTIFS(Data!B4:D5,">0",Data!A6:A9,"*c",Data!A4:A12,"<>"))-INDEX(Data!A5:C12,0,3)`:
+expected `#SPILL!`, actual `#VALUE!`. COUNTIFS now correctly gives `#VALUE!`, but Excel then yields an
+array-sized result (INDEX(...,0,3) is a column array, so the scalar `#VALUE!` broadcasts and the cell
+spills/#SPILL!), while our binary op returns a scalar error. It passed before only because COUNTIFS
+returned a number. Next: make scalar-error (op) array broadcast like Excel (probe first), or decide
+via decision record how to treat this cell; do not use --allow-regressions without one. Then run
+`make eval-baseline`, `make check`, reviews.
+
+## Outcome
+SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS and MAXIFS return `#VALUE!` when any range is shaped unlike the
+first (the last three confirmed by the new probe `probes/ifs-shape-mismatch`); SUMIF's path stays lenient.
+The handoff's one regression (gen-m2/dd99be1f2454159f Calc!A56) was a separate Excel rule: a scalar error
+operand of `+ - * / ^` broadcasts against an array operand (probe `probes/error-operand-broadcast`,
+docs/excel-semantics/arrays.md), now implemented in `handle_arithmetic`. Eval: gen-m2 known failures
+1503 -> 1049 after merging main (454 fixed, 0 regressions), gen-m1 351 -> 350; probes gain 26 checked cells, 9 known failures (6 ROWS/COLUMNS over
+an array expression, follow-up T-0228; 3 AVERAGEIF resizing, which stays lenient here and is resized by
+T-0214). Follow-up T-0231: probe the same broadcast for comparison and `&`.
