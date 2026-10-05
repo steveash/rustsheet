@@ -12,7 +12,7 @@ use crate::{
     model::Model,
 };
 
-/// An argument of a text function that works element by element (LEFT, MID,
+/// An argument of an element-wise function that works element by element (LEFT, MID,
 /// EXACT, FIND, ...): a single scalar value or a 2-D array of values.
 /// When any argument is an array (e.g. a SEQUENCE or a multi-cell range) the
 /// scalar arguments are broadcast across it and the result is an array.
@@ -110,7 +110,7 @@ pub(crate) fn within_text_budget(total: &mut usize, len: usize) -> bool {
 }
 
 impl Model {
-    /// Evaluates an argument of a text function into a scalar value or a 2-D array of
+    /// Evaluates an argument of an element-wise function into a scalar value or a 2-D array of
     /// values. References to a single cell collapse to a scalar; multi-cell ranges
     /// and array literals/spills become arrays that the result is broadcast over.
     pub(crate) fn lift_arg(
