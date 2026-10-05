@@ -3,7 +3,7 @@ id: T-0020
 title: "Report Excel-evidence coverage per function"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
