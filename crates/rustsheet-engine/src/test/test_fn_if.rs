@@ -34,3 +34,36 @@ fn fn_if_missing_args() {
     assert_eq!(model._get_text("A2"), *"5");
     assert_eq!(model._get_text("A3"), *"0");
 }
+
+// Excel: IF and INDEX hand an aggregate a reference, so its text and booleans
+// are skipped like a range cell's; elsewhere they are values (T-0216;
+// docs/excel-semantics/references.md).
+#[test]
+fn test_if_and_index_pass_references_to_aggregates() {
+    let mut model = new_empty_model();
+    model._set("A1", "abc");
+    model._set("A2", "'1");
+    model._set("A3", "TRUE");
+    model._set("A4", "5");
+    model._set("B1", "=SUM(IF(FALSE,-2.5,A1),A4)");
+    model._set("B2", "=COUNT(IF(TRUE,A2),A4)");
+    model._set("B3", "=SUM(A4,INDEX(A1:A2,1))");
+    model._set("B4", "=MAX(IF(TRUE,A1),INDEX(A1:A4,3),A4)");
+    model._set("B5", "=AVERAGE(IF(TRUE,A3),A4)");
+    model._set("B6", "=ISREF(INDEX(A1:A2,2))");
+    model._set("B7", "=IF(TRUE,A1)&\"x\"");
+    model._set("B8", "=SUM(IF(TRUE,\"abc\"))");
+    model._set("B9", "=MIN(IF(TRUE,A1),INDEX(A1:A4,3),A4)");
+    model._set("B10", "=ISREF(INDEX(A1,1,2,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), *"5");
+    assert_eq!(model._get_text("B2"), *"1");
+    assert_eq!(model._get_text("B3"), *"5");
+    assert_eq!(model._get_text("B4"), *"5");
+    assert_eq!(model._get_text("B5"), *"5");
+    assert_eq!(model._get_text("B6"), *"TRUE");
+    assert_eq!(model._get_text("B7"), *"abcx");
+    assert_eq!(model._get_text("B8"), *"#VALUE!");
+    assert_eq!(model._get_text("B9"), *"5");
+    assert_eq!(model._get_text("B10"), *"FALSE");
+}
