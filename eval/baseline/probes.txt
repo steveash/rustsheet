@@ -11,9 +11,12 @@ C	probes/date-text-locale.case.json	10
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16
 C	probes/error-operand-broadcast.case.json	15
+C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
 C	probes/isref-function-results.case.json	6
+C	probes/lcm-result-bound.case.json	28
+C	probes/lcm-result-edge.case.json	6
 C	probes/literal-digits.case.json	6
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
@@ -59,11 +62,9 @@ F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
-F	probes/resource-limits.case.json	Sheet1!C1
 F	probes/resource-limits.case.json	Sheet1!C10
 F	probes/resource-limits.case.json	Sheet1!C12
 F	probes/resource-limits.case.json	Sheet1!C14
-F	probes/resource-limits.case.json	Sheet1!C3
 F	probes/resource-limits.case.json	Sheet1!C9
 F	probes/rich-errors-field.case.json	Sheet1!A1
 F	probes/rich-errors-field.case.json	Sheet1!B1
