@@ -34,6 +34,9 @@ T-0107, T-0110, T-0129, T-0105, T-0122) and gen-m1 at 100% (harness T-0117, then
 them (T-0011, T-0026, T-0030). perf dropped: its tasks (T-0400, T-0402, T-0403) are M3.)
 
 ## Needs owner
+- T-0040 (function catalog) is blocked: the sandbox egress policy blocks support.microsoft.com and
+  learn.microsoft.com, so the en-US function list cannot be fetched. Allow those hosts, or commit a
+  vetted name + minimum-arity list (details in the task's "Blocked because").
 
 ## Log
 - 2026-10-02 — Owner set `main` as the GitHub default branch and enabled the routines (repo attached).
