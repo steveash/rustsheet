@@ -18,6 +18,8 @@ The three T-0216 leftovers:
    → -2, because the HLOOKUP picks B4 = FALSE, which COUNT skips (today -3).
 3. `INDEX(A1:A2,2) A1:A2` intersects the reference INDEX returns (gives the A2 value). This was a T-0216
    acceptance item.
+4. `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE (probes/isref-function-results C3, C5; known
+   failures today). `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` stay FALSE.
 
 ## Context
 Evidence (excel-graph gen-m2 sidecars): 7469c3e920e1ade4 Calc!A351 (1), 60a543744fc4a8f7 Calc!A200 (2),
@@ -31,6 +33,7 @@ IFERROR returns. Semantics: docs/excel-semantics/references.md.
 ## Acceptance criteria
 - [ ] 7469c3e920e1ade4 A351 and 60a543744fc4a8f7 A200 leave eval/baseline/gen-m2.txt; no new F lines.
 - [ ] Unit test for `=INDEX(A1:A2,2) A1:A2`.
+- [ ] probes/isref-function-results C3 and C5 leave eval/baseline/probes.txt.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
