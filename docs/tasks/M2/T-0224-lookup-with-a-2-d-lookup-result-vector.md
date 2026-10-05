@@ -11,13 +11,13 @@ depends_on: []
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+LOOKUP with a 2-D lookup_vector or result_vector returns the error Excel returns (probe it); today it returns the non-Excel `#ERROR!`.
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+T-0210 made MATCH return `#N/A` for 2-D arrays and left LOOKUP unchanged (`as_vector(.., Error::ERROR)` in `lookup_and_reference/mod.rs`) because it is unprobed. Use the excel-probe skill, then record the rule in docs/excel-semantics/lookup.md.
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] Probe evidence cited; LOOKUP on a 2-D vector matches Excel; unit test; `make check` green.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
