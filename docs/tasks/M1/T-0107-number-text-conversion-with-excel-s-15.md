@@ -40,10 +40,12 @@ gen-m1 (T-0109 triage, oracle excel-graph 2026-10-05): 34 `&` cells, all in this
 
 ## Outcome
 One routine, `number_to_text` (number_format.rs), now serves every number→text coercion: `cast_to_string`
-(`&`, text-function arguments), array elements, CONCAT, TEXTJOIN and UNICODE. It cuts to 15
-significant digits, drops trailing zeros, prints zero/negative zero/subnormals as "0", and uses
+(`&`, text-function arguments), array elements, CONCAT, TEXTJOIN, UNICODE, TEXTSPLIT delimiters and
+XMATCH regex mode. It cuts to 15 significant digits with the ROUND family's `significant_15` (exact
+ties toward zero, moved to number_format.rs and shared), drops trailing zeros, prints zero/negative zero/subnormals as "0", and uses
 plain notation up to 20 characters (sign excluded), else `d.dddE±XX`. The 20-character rule and
-two-digit exponent were measured with a new probe (probes/number-to-text-notation, 44 cells).
+two-digit exponent were measured with a new probe (probes/number-to-text-notation, 52 cells).
 Eval delta: gen-m1 known failures 295 → 261 (all 34 listed cells), gen-m2 785 → 780 (all 5 listed
-cells), probes precision-and-rounding A9 fixed; number-to-text-notation 42/44 (A22, A29 are
+cells), probes precision-and-rounding A9 fixed; number-to-text-notation 50/52 (A22, A29 are
 16+-digit literals the parser does not truncate: follow-up T-0143). No regressions.
+Not coercion sites, left as is: conditional_formatting.rs (display), engineering complex/number_basis (own formats), cell.rs/stringify (formula literal text).

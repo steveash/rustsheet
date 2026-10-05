@@ -57,7 +57,8 @@ exponent is uppercase (`-2.22044604925031E-16`, `5.55111512312578E-17`, `1E+21`)
 in fixed notation where `%.15g` would switch: `123456789012345678` → "123456789012345000",
 `1e15+0.3` → "1000000000000000", `9999999999999999` → "9999999999999990" and `2^53+1` →
 "9007199254740990" (digits past 15 are zeros), `1e-5` → "0.00001", `1e-15` → "0.000000000000001"
-(`LEN` 17). (`1E+20&0.1` → "1E+200.1", `1E+20&100` → "1E+20100"); the exact switch is the 20-character rule below.
+(`LEN` 17). Large values switch to E notation too: `1E+20&0.1` → "1E+200.1" and `1E+20&100` →
+"1E+20100"; the exact switch is the 20-character rule below.
 Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `=7+Data!$E5&10` with E5 = 1E-15 → "710". Snapping does not apply inside the CONCAT argument:
 `CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
 significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
@@ -66,8 +67,10 @@ Notation rule (T-0107): plain notation whenever the plain string, without the si
 and `-10000000000000000000` stay plain, `1E+20`/`-1E+20`/`1E+21` do not; `0.000000000000000001`
 (1E-18), `0.000000000000000123` and `0.00012345678901234` stay plain, `1E-19`, `1.23E-17`,
 `9.99999999999999E-16` and `1.23456789012345E-05` (21+ characters plain) do not. Trailing zeros of
-the 15 digits are dropped (`2^0.5` → "1.4142135623731").
-Evidence: probes/number-to-text-notation A1–A44 (excel-graph, 2026-10-05, T-0107);
+the 15 digits are dropped (`2^0.5` → "1.4142135623731"). An exact tie at the 16th digit goes toward
+zero, as in ROUND's 15-digit cut: `1E+15+15` → "1000000000000010", `1E+14+1.5` → "100000000000001",
+`12345678901234.75` → "12345678901234.7".
+Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
 probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,
 A21, A188 (oracle: excel-graph, 2026-10-05, T-0109).
