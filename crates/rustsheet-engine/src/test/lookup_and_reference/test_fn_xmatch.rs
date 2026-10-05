@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
+use super::results_independent_of_used_area;
 use crate::test::util::new_empty_model;
 
 // ── exact match (default) ─────────────────────────────────────────────────────
@@ -279,4 +280,50 @@ fn test_xmatch_whole_row_and_column_bounded_by_used_range() {
     assert_eq!(model._get_text("C2"), "#N/A");
     assert_eq!(model._get_text("C3"), "#N/A");
     assert_eq!(model._get_text("C4"), "#N/A");
+}
+
+// The blank tail of a whole-column/row search vector is virtual (T-0127): every
+// match and search mode must see what a full walk sees, wherever the used area
+// ends. The full walk matches an empty cell as 0.
+#[test]
+fn test_xmatch_whole_column_and_row_independent_of_used_area() {
+    let data = [
+        ("A1", "10"),
+        ("A2", "20"),
+        ("A3", "30"),
+        ("B1", "10"),
+        ("C1", "20"),
+        ("D1", "30"),
+    ];
+    let mut column = Vec::new();
+    let mut row = Vec::new();
+    for (vector, out) in [("A:A", &mut column), ("1:1", &mut row)] {
+        let mut formulas = Vec::new();
+        for lookup in ["20", "0"] {
+            for match_mode in [-1, 0, 1] {
+                for search_mode in [1, -1, 2, -2] {
+                    formulas.push(format!(
+                        "=XMATCH({lookup},{vector},{match_mode},{search_mode})"
+                    ));
+                }
+            }
+        }
+        let refs: Vec<&str> = formulas.iter().map(String::as_str).collect();
+        let filler = if vector == "A:A" { "Z1048576" } else { "XFD5" };
+        *out = results_independent_of_used_area(&data, "H3", filler, &refs);
+    }
+    // XMATCH(0,A:A): the first empty cell is row 4 (full walk, not truncated).
+    let model_value = |formula: &str| {
+        let mut model = new_empty_model();
+        for (cell, value) in data {
+            model._set(cell, value);
+        }
+        model._set("H3", formula);
+        model.evaluate();
+        model._get_text("H3")
+    };
+    assert_eq!(model_value("=XMATCH(0,A:A)"), "4");
+    assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "1048576");
+    assert_eq!(model_value("=XMATCH(0,1:1)"), "5");
+    assert_eq!(column.len(), row.len());
 }
