@@ -26,7 +26,8 @@ same rounding, same quirks — including behavior Excel never documented. The pr
 6. **Leave knowledge behind.** Every Excel quirk you find goes into `docs/excel-semantics/`, the
    canonical list of known, accepted quirks, in the same PR that found it, even if nothing
    implements it yet; decisions →
-   `docs/decisions/`; progress → `docs/status.md`.
+   `docs/decisions/`; progress → the task's Outcome note (the steward rolls it up into
+   `docs/status.md` daily; PRs do not append to its log, decision 0021).
 
 ## Repository map
 | Path | What |
