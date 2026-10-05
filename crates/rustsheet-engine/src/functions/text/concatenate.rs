@@ -4,10 +4,15 @@ use crate::{
     cast::array_node_to_string,
     expressions::{
         parser::{ArrayNode, Node},
+        token::Error,
         types::CellReferenceIndex,
     },
     model::Model,
 };
+
+/// Longest text a cell can hold. Excel returns `#VALUE!` for a longer CONCATENATE result; it also
+/// bounds the allocation a broadcast over a large range can make (CLAUDE.md directive 5).
+const MAX_TEXT_CHARS: usize = 32767;
 
 impl Model {
     /// CONCATENATE(text1, [text2], ...): joins text; array arguments lift element-wise.
@@ -29,6 +34,9 @@ impl Model {
             let mut joined = String::new();
             for operand in &operands {
                 joined.push_str(&array_node_to_string(operand.elem(i, j))?);
+                if joined.chars().count() > MAX_TEXT_CHARS {
+                    return Err(Error::VALUE);
+                }
             }
             Ok(ArrayNode::String(joined))
         })

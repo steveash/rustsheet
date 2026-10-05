@@ -30,4 +30,6 @@ gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
 Status: VERIFIED
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
+Bound: a CONCATENATE result longer than 32767 characters is `#VALUE!` (Excel's cell text limit; also the
+allocation bound for array broadcasts, directive 5). Not oracle-probed; T-0226 implements it.
 Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226).
