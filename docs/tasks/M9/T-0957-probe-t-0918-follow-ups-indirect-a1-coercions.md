@@ -20,8 +20,8 @@ CLEAN/PROPER/REPLACE (only LEFT/MID/RIGHT have Excel-authored evidence); add a
 docs/excel-semantics/ entry for R1C1 offset wrapping. Use the excel-probe skill.
 
 ## Acceptance criteria
-- [ ] Probe cases with oracle values; docs/excel-semantics entries; follow-up tasks filed for any mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe cases with oracle values; docs/excel-semantics entries; follow-up tasks filed for any mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
