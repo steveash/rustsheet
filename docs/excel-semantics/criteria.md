@@ -40,15 +40,15 @@ Implemented in: functions::criteria::build_criteria_with (CriteriaFlavor::Databa
 Rule: leading spaces stop a criterion from being an operator criterion: `"  > 1 "` and `" >1"` are
 plain-text criteria (DSUM over Qty 1, 2, 4 → 0). After the operator, though, the operand is read as
 a number with surrounding spaces ignored: `">1 "`, `"> 1"` and `">"&" 1 "` (`"> 1 "`) all act as
-`>1` (→ 6) in D-functions; COUNTIF was probed with `"> 1"` only (`COUNTIF(r,"> 1")` → 2 over
-1, 2, 4; T-0238 probes the trailing-space forms there). Plain-text
+`>1` (→ 6) in D-functions; COUNTIF behaves the same: over 1, 2, 4 `"> 1"`, `">1 "`, `"> 1 "` → 2, `">= 1"` → 3, `"< 2"` → 1,
+`"= 1"`, `"=1 "`, `"1 "`, `" 1"`, `"=  1  "` → 1, `"<> 1"` → 2; only ASCII spaces are ignored (`">"&CHAR(9)&"1"` → 0). Plain-text
 D-function criteria keep their spaces in the prefix match: `" ab"` matches only " ab", `"ab "`
 only "ab " (over ab, "ab ", " ab"), and the prefix match is case-insensitive (`"AB"` → 2).
 Evidence: smoke/d-function-criteria Sheet1!J2 (`"  > 1 "` → 0); probes/criteria-gaps C15 (`" >1"`
-→ 0), C16–C18 (→ 6), C22 (→ 2), C19–C21 (1, 1, 2). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
+→ 0), C16–C18 (→ 6), C22 (→ 2), C19–C21 (1, 1, 2); probes/criteria-padded-operand C1–C18. Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
 Status: VERIFIED
 Implemented in: functions::database::criteria_cell_matches (no trimming)
-Tasks: T-0238 (padded numeric operand; criteria-gaps C16–C18, C22 are known failures)
+Implemented in: functions::criteria::parse_criterion_number (T-0238)
 
 ## "=" matches blank cells, not an empty-string cell
 Rule: `COUNTIF(range,"=")` counts truly blank cells but not a cell holding the empty string, while
