@@ -57,13 +57,13 @@ Implemented in: `fn_mod` in crates/rustsheet-engine/src/functions/math_and_trigo
 Tasks: T-0141
 
 ## Formula number literals are read at 15 significant digits
-Rule: a numeric literal in a formula is rounded to 15 significant digits when parsed:
+Rule: a numeric literal in a formula is cut (truncated, see "15-digit literal parsing") to 15 significant digits when parsed:
 `1.7763568394002505E-12-1.77635683940025E-12` = 0, `1.00000000000000049-1` = 0 and
 `1.0000000000000009-1` = 0 (a full double parse would leave 4.9E-16 and 8.9E-16), and
 `MOD(2,1.7763568394002505E-12)` equals the 15-digit-literal result 1.1089014151366425E-12.
 Evidence: probes/literal-digits C1-C6 (found by T-0141); excel-graph, 2026-10-05.
 Status: VERIFIED
-Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs (lexer number token and `cast_number`; digits 16+ are truncated, not rounded) (T-0143)
+Implemented in: see "15-digit literal parsing"
 
 ## Number → text conversion uses 15 significant digits
 Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 136
@@ -127,7 +127,8 @@ digits 16+ are **truncated**, not rounded: `VALUE("9307149050110945.41")` = 9307
 Evidence: probes-numeric/23733e52a2ff91ab `literal-15-digit/*`; probes/precision-and-rounding A11.
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Tasks: T-0143
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number` and `parse_formatted_number` (so `VALUE`); other raw `str::parse::<f64>` sites and an oracle case for `"<17 digits>"+0` are T-0150.
+Tasks: T-0143, T-0150
 
 ## Subnormal results become 0
 Rule: a result below the smallest normal double is returned as 0: `=2^-1074` → 0,

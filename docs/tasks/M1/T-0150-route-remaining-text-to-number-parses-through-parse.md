@@ -14,7 +14,7 @@ depends_on: []
 Every place that reads user text as a number keeps only 15 significant digits, like T-0143's lexer and `cast_number`.
 
 ## Context
-T-0143 added `parse_excel_number` (number_format.rs). Sites still using raw `str::parse::<f64>` on user text: utils.rs:330, functions/statistical/count_and_average.rs:263 and :319, functions/criteria.rs:19 and :317, functions/text/string_format.rs:188 (NUMBERVALUE), formatter/lexer.rs:195. Each needs Excel evidence (docs/excel-semantics/numbers.md) before switching; use the excel-probe skill where uncited.
+T-0143 added `parse_excel_number` (number_format.rs). Done in T-0143: lexer, `cast_number`, `parse_formatted_number` (VALUE). Also open: `"NaN"`/`"inf"` text still parses (Excel gives #VALUE!; needs probe), and `"<17 digits>"+0` has no oracle case. Sites still using raw `str::parse::<f64>` on user text: utils.rs:330, functions/statistical/count_and_average.rs:263 and :319, functions/criteria.rs:19 and :317, functions/text/string_format.rs:188 (NUMBERVALUE), formatter/lexer.rs:195. Each needs Excel evidence (docs/excel-semantics/numbers.md) before switching; use the excel-probe skill where uncited.
 
 ## Acceptance criteria
 - [ ] Each site above either uses `parse_excel_number` (with a test or eval case) or has a documented reason in numbers.md.

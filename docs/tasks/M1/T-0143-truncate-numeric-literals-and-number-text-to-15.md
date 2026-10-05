@@ -23,13 +23,13 @@ probes/number-to-text-notation A22 `=CONCAT(123456789012345678)` → "1234567890
 Code paths: the formula lexer's number token and the text→number coercion (`cast.rs`).
 
 ## Acceptance criteria
-- [ ] probes/number-to-text-notation A22 and A29 and precision-and-rounding A11 pass; the
+- [x] probes/number-to-text-notation A22 and A29 and precision-and-rounding A11 pass; the
       probes-numeric `literal-15-digit/*` known failures shrink; no regressions.
-- [ ] One truncation helper is shared by the lexer and the text→number coercion.
-- [ ] `make check` green; reviewers approve.
+- [x] One truncation helper is shared by the lexer and the text→number coercion.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Outcome
-Added `parse_excel_number` (truncates to 15 significant digits) shared by the lexer and `cast_number`. probes known failures 135 -> 127 (8 fixed), no regressions.
+Added `parse_excel_number` (truncates to 15 significant digits), shared by the lexer, `cast_number` and `parse_formatted_number` (VALUE). probes known failures 135 -> 127 (8 fixed); probes-numeric (ungated) 2253 -> 2352 passing cells (all 300 literal cells and the VALUE cells); no regressions. Follow-up T-0150 for the remaining raw parse sites and an oracle case for `"text"+0`.
