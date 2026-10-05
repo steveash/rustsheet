@@ -271,8 +271,9 @@ impl Model {
                 ));
             }
         }
-        // SUMIFS: every range shaped like sum_range, else #VALUE! (T-0209). The
-        // other consumers are unprobed, so they keep walking by offset.
+        // Every range shaped like sum_range, else #VALUE! (T-0209; SUMIFS from
+        // gen-m2, AVERAGEIFS/MINIFS/MAXIFS from probes/ifs-shape-mismatch). Only
+        // SUMIF's single-criterion path opts out: it never errors (T-0214).
         if strict_shape
             && (!same_shape(ranges) || range_shape(&ranges[0]) != range_shape(&sum_range))
         {
@@ -426,9 +427,14 @@ impl Model {
                 })
                 .collect(),
             _ => {
-                // Single criterion: delegate to SUMIFS, which returns a scalar.
+                // Single criterion: the SUMIFS walk, minus its shape check, since
+                // SUMIF never errors on a shape mismatch (T-0214).
                 let arguments = vec![sum_range.clone(), criteria_range.clone(), criteria.clone()];
-                return self.sum_ifs(&arguments, cell, false);
+                let mut total = 0.0;
+                if let Err(e) = self.apply_ifs(&arguments, cell, false, |v| total += v) {
+                    return e;
+                }
+                return CalcResult::Number(total);
             }
         };
 
@@ -475,7 +481,7 @@ impl Model {
             total += value;
             count += 1.0;
         };
-        if let Err(e) = self.apply_ifs(args, cell, false, average) {
+        if let Err(e) = self.apply_ifs(args, cell, true, average) {
             return e;
         }
 
@@ -492,7 +498,7 @@ impl Model {
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
-        if let Err(e) = self.apply_ifs(args, cell, false, apply_min) {
+        if let Err(e) = self.apply_ifs(args, cell, true, apply_min) {
             return e;
         }
 
@@ -505,7 +511,7 @@ impl Model {
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
-        if let Err(e) = self.apply_ifs(args, cell, false, apply_max) {
+        if let Err(e) = self.apply_ifs(args, cell, true, apply_max) {
             return e;
         }
         if max.is_infinite() {

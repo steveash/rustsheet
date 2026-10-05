@@ -176,3 +176,25 @@ fn test_sumifs_countifs_shape_mismatch_is_value_error() {
     assert_eq!(model._get_text("F5"), *"3");
     assert_eq!(model._get_text("F6"), *"4");
 }
+
+// Excel: AVERAGEIFS/MINIFS/MAXIFS share the shape rule
+// (probes/ifs-shape-mismatch; docs/excel-semantics/criteria.md).
+#[test]
+fn test_averageifs_minifs_maxifs_shape_mismatch_is_value_error() {
+    let mut model = new_empty_model();
+    for (i, cell) in ["A1", "B1", "C1", "D1", "A2", "B2", "C2", "D2"]
+        .iter()
+        .enumerate()
+    {
+        model._set(cell, &(i + 1).to_string());
+    }
+    model._set("F1", "=AVERAGEIFS(A1:B2,A1:D1,\"<9\")");
+    model._set("F2", "=MINIFS(A1:D2,A1:B4,\"<99\")");
+    model._set("F3", "=MAXIFS(A1:B2,A1:B2,\"<99\",A2:D2,\"<99\")");
+    model._set("F4", "=MAXIFS(A1:B2,A1:B2,\"<99\",C1:D2,\"<99\")");
+    model.evaluate();
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("F2"), *"#VALUE!");
+    assert_eq!(model._get_text("F3"), *"#VALUE!");
+    assert_eq!(model._get_text("F4"), *"6");
+}

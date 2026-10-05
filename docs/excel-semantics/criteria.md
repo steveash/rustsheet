@@ -75,12 +75,18 @@ Evidence: poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-g
 Status: VERIFIED
 Tasks: T-0207
 
-## SUMIFS / COUNTIFS: every range must have the first range's shape
+## SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS: every range must have the first range's shape
 Rule: if any criteria (or sum) range is shaped differently from the first range, SUMIFS/COUNTIFS
 return `#VALUE!`, even when the cell counts are equal (2x4 vs 4x2). `=SUMIFS(Data!B7:C9,Data!A10:D12,"<5")`
 → `#VALUE!`; all 145 mismatched top-level calls in gen-m2 are `#VALUE!`, all 26 same-shape calls are numbers.
-Evidence: gen-m2/04cfd82f54dbc2b2 Calc!A150, 7469c3e920e1ade4 Calc!A51. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Evidence: gen-m2/04cfd82f54dbc2b2 Calc!A150 (3x2 vs 3x4), 1b6ceed7489e0800 Calc!A372 (8x1 sum_range vs
+1x2 criteria range), 207a5753da48c7e0 Calc!A327 (COUNTIFS 5x3 vs 2x4), 7469c3e920e1ade4 Calc!A51 (COUNTIFS
+2x4 vs 4x2, same size). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+AVERAGEIFS, MINIFS and MAXIFS follow the same rule (`=MINIFS(A1:B2,A1:D1,"<9")` and
+`=AVERAGEIFS(A1:D2,A1:B4,"<99")` are `#VALUE!`; probes/ifs-shape-mismatch F1–F8, excel-graph 2026-10-05).
+SUMIF (T-0214) never errors.
 Status: VERIFIED
+Implemented in: `fn_countifs` and `apply_ifs` (`strict_shape`) in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0209
 
 ## SUMIF resizes sum_range from its top-left cell and never errors

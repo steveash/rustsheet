@@ -463,20 +463,9 @@ impl Model {
 
     /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.sum_ifs(args, cell, true)
-    }
-
-    /// Shared SUMIFS walk; SUMIF passes `strict_shape: false` because it never
-    /// errors on a shape mismatch (T-0214).
-    pub(crate) fn sum_ifs(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-        strict_shape: bool,
-    ) -> CalcResult {
         let mut total = 0.0;
         let sum = |value| total += value;
-        if let Err(e) = self.apply_ifs(args, cell, strict_shape, sum) {
+        if let Err(e) = self.apply_ifs(args, cell, true, sum) {
             return e;
         }
         CalcResult::Number(total)

@@ -3,7 +3,7 @@ id: T-0209
 title: "SUMIFS/COUNTIFS: a criteria range shaped unlike the first range is #VALUE! (442 gen-m2 known failures)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -98,3 +98,12 @@ spills/#SPILL!), while our binary op returns a scalar error. It passed before on
 returned a number. Next: make scalar-error (op) array broadcast like Excel (probe first), or decide
 via decision record how to treat this cell; do not use --allow-regressions without one. Then run
 `make eval-baseline`, `make check`, reviews.
+
+## Outcome
+SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS and MAXIFS return `#VALUE!` when any range is shaped unlike the
+first (the last three confirmed by the new probe `probes/ifs-shape-mismatch`); SUMIF's path stays lenient.
+The handoff's one regression (gen-m2/dd99be1f2454159f Calc!A56) was a separate Excel rule: a scalar error
+operand of `+ - * / ^` broadcasts against an array operand (probe `probes/error-operand-broadcast`,
+docs/excel-semantics/arrays.md), now implemented in `handle_arithmetic`. Eval: gen-m2 known failures
+1518 -> 1065 (453 fixed, 0 regressions); probes gain 23 checked cells, 6 known failures (ROWS/COLUMNS over
+an array expression, follow-up T-0228).
