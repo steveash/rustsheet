@@ -3,7 +3,7 @@ id: T-0042
 title: "spec2xlsx: write spill references A1# as _xlfn.ANCHORARRAY(A1)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
