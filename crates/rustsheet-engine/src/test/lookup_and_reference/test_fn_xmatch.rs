@@ -246,10 +246,11 @@ fn test_xmatch_array_constant_numeric() {
 
 // ── whole-column lookup array and a spill beyond the used area ───────────────
 
-// XMATCH clips a whole-column lookup array to the sheet's used area. When it
-// runs inside an anchor, the array it looks in may be spilled on demand
-// during the walk, past the bound the walk was clipped to. The skipped part
-// is on record, so the spill restarts the pass and the match is found.
+// XMATCH evaluates a whole-column lookup array only up to the sheet's used
+// area (the rest is a virtual empty tail). When it runs inside an anchor, the
+// array it looks in may be spilled on demand during the walk, past the
+// evaluated part. The skipped part is on record, so the spill restarts the
+// pass and the match is found.
 #[test]
 fn test_xmatch_whole_column_sees_a_spill_beyond_the_used_area() {
     let mut model = new_empty_model();
@@ -266,7 +267,7 @@ fn test_xmatch_whole_column_sees_a_spill_beyond_the_used_area() {
 }
 
 #[test]
-fn test_xmatch_whole_row_and_column_bounded_by_used_range() {
+fn test_xmatch_whole_row_and_column_search_the_used_range() {
     let mut model = new_empty_model();
     model._set("A1", "10");
     model._set("A2", "20");
@@ -284,7 +285,8 @@ fn test_xmatch_whole_row_and_column_bounded_by_used_range() {
 
 // The blank tail of a whole-column/row search vector is virtual (T-0127): every
 // match and search mode must see what a full walk sees, wherever the used area
-// ends. The full walk matches an empty cell as 0.
+// ends. The pinned values below are the engine's full-walk values (an empty
+// cell compares as 0), not Excel evidence: TODO(T-0126).
 #[test]
 fn test_xmatch_whole_column_and_row_independent_of_used_area() {
     let data = [
@@ -295,9 +297,7 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         ("C1", "20"),
         ("D1", "30"),
     ];
-    let mut column = Vec::new();
-    let mut row = Vec::new();
-    for (vector, out) in [("A:A", &mut column), ("1:1", &mut row)] {
+    for vector in ["A:A", "1:1"] {
         let mut formulas = Vec::new();
         for lookup in ["20", "0"] {
             for match_mode in [-1, 0, 1] {
@@ -310,7 +310,7 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         }
         let refs: Vec<&str> = formulas.iter().map(String::as_str).collect();
         let filler = if vector == "A:A" { "Z1048576" } else { "XFD5" };
-        *out = results_independent_of_used_area(&data, "H3", filler, &refs);
+        results_independent_of_used_area(&data, "H3", filler, &refs);
     }
     // XMATCH(0,A:A): the first empty cell is row 4 (full walk, not truncated).
     let model_value = |formula: &str| {
@@ -325,5 +325,14 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
     assert_eq!(model_value("=XMATCH(0,A:A)"), "4");
     assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "1048576");
     assert_eq!(model_value("=XMATCH(0,1:1)"), "5");
-    assert_eq!(column.len(), row.len());
+    // A blank lookup value equals the whole tail: the equal-run walk of the
+    // binary searches must jump it, not step a million cells (directive 5).
+    for formula in [
+        "=XMATCH(Z1,A:A,1,2)",
+        "=XMATCH(Z1,A:A,-1,2)",
+        "=XMATCH(Z1,A:A,1,-2)",
+        "=XMATCH(Z1,A:A,-1,-2)",
+    ] {
+        model_value(formula);
+    }
 }
