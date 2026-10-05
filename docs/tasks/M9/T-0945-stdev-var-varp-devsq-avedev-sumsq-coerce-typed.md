@@ -3,7 +3,7 @@ id: T-0945
 title: "STDEV/VAR/VARP/DEVSQ/AVEDEV/SUMSQ: coerce typed text and boolean arguments; AVEDEV/DEVSQ with no numbers is #NUM! (13 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
