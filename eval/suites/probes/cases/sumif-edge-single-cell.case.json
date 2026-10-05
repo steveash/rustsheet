@@ -1,0 +1,60 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SUMIF/AVERAGEIF sum_range resized past the sheet edge; single-cell sum and criteria ranges in SUMIF/SUMIFS/MINIFS",
+  "tags": [
+    "M2",
+    "criteria",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "XFD1": 10,
+        "XFD2": 11,
+        "A1048576": 20,
+        "B1048576": 21,
+        "XFD1048576": 30,
+        "D1": 7,
+        "D2": -1,
+        "F1": "=SUMIF(A1:B2,\">0\",XFD1)",
+        "F2": "=AVERAGEIF(A1:B2,\">0\",XFD1)",
+        "F3": "=SUMIF(A1:B2,\">0\",A1048576)",
+        "F4": "=AVERAGEIF(A1:B2,\">0\",A1048576)",
+        "F5": "=SUMIF(A1:B2,\">0\",XFD1048576)",
+        "F6": "=AVERAGEIF(A1:B2,\">0\",XFD1048576)",
+        "F7": "=SUMIFS(D1,A1:A1,\">0\")",
+        "F8": "=MINIFS(D1,A1:A1,\">0\")",
+        "F9": "=MAXIFS(D1,A1:A1,\">0\")",
+        "F10": "=SUMIFS(D1:D1,A1:A1,\">0\")",
+        "F11": "=SUMIF(A1,\">0\",D1)",
+        "F12": "=SUMIFS(D1:D1,A1,\">0\")",
+        "F13": "=SUMIFS(D1,A1,\">0\")",
+        "F14": "=SUMIF(A1,{\">0\"},D1)",
+        "F15": "=COUNTIF(A1,\">0\")"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!F1",
+    "Sheet1!F2",
+    "Sheet1!F3",
+    "Sheet1!F4",
+    "Sheet1!F5",
+    "Sheet1!F6",
+    "Sheet1!F7",
+    "Sheet1!F8",
+    "Sheet1!F9",
+    "Sheet1!F10",
+    "Sheet1!F11",
+    "Sheet1!F12",
+    "Sheet1!F13",
+    "Sheet1!F14",
+    "Sheet1!F15"
+  ]
+}
