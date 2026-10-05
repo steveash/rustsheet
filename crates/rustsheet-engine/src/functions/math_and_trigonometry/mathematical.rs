@@ -481,15 +481,12 @@ impl Model {
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
+            Ok(f) => f.trunc(),
             Err(s) => return s,
         };
+        if let Some(unchanged) = round_beyond_double_range(value, number_of_digits) {
+            return CalcResult::Number(unchanged);
+        }
         let scale = 10.0_f64.powf(number_of_digits);
         CalcResult::Number((value * scale).round() / scale)
     }
@@ -503,15 +500,12 @@ impl Model {
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
+            Ok(f) => f.trunc(),
             Err(s) => return s,
         };
+        if let Some(unchanged) = round_beyond_double_range(value, number_of_digits) {
+            return CalcResult::Number(unchanged);
+        }
         let scale = 10.0_f64.powf(number_of_digits);
         if value > 0.0 {
             CalcResult::Number((value * scale).ceil() / scale)
@@ -529,15 +523,12 @@ impl Model {
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
+            Ok(f) => f.trunc(),
             Err(s) => return s,
         };
+        if let Some(unchanged) = round_beyond_double_range(value, number_of_digits) {
+            return CalcResult::Number(unchanged);
+        }
         let scale = 10.0_f64.powf(number_of_digits);
         if value > 0.0 {
             CalcResult::Number((value * scale).floor() / scale)
@@ -1207,5 +1198,24 @@ impl Model {
             result *= (n + t) / (t + 1.0);
         }
         CalcResult::Number(result)
+    }
+}
+
+/// ROUND, ROUNDUP and ROUNDDOWN to more digits than a double can hold: `10^digits` overflows
+/// and the naive `x * scale / scale` is NaN. A 15-digit value has no digit past decimal place
+/// 339, so rounding to more than 340 places is the identity, and rounding to 309 or more places
+/// left of the point gives 0. That is what Excel returns:
+/// `ROUNDDOWN(0.5,123456789.123)` = 0.5 (gen-m2/f7e6d351c8538ef5 A35),
+/// `DAY(ROUNDDOWN(123456789.123,100000))` = #NUM! (gen-m2/a339ea84ef64382e A138),
+/// `ROUNDDOWN(TRUE,-123456789.323)` = 0 (gen-m2/1b6ceed7489e0800 A337). Digits of 2^31 or more
+/// are left alone: Excel is inconsistent there (`ROUND(1E+15,1E+15)` = 0) and T-0218 probes it.
+fn round_beyond_double_range(value: f64, digits: f64) -> Option<f64> {
+    const LIMIT: f64 = 2_147_483_648.0;
+    if digits > 340.0 && digits < LIMIT {
+        Some(value)
+    } else if digits < -308.0 && digits > -LIMIT {
+        Some(0.0)
+    } else {
+        None
     }
 }

@@ -138,6 +138,11 @@ unchanged (`=ROUNDDOWN(Data!E3,123456789.123)` → 0.5; `ROUND(Data!$B3,12345678
 (it is the divisor in caa981b0753f455c A270, which is `#DIV/0!`; dd99be1f2454159f A159 is similar).
 Evidence: gen-m2/f7e6d351c8538ef5 A35, 893302d6c5b99e2e A136, 7469c3e920e1ade4 A336 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: UNVERIFIED (the rule separating the two outcomes needs a probe before implementing; T-0218)
+Partly implemented (T-0125): for num_digits whose magnitude is below 2^31, more than 340 places
+keeps the number and 309 or more places to the left gives 0. That is exact rounding, and Excel
+agrees: A35 above, and `DAY(ROUNDDOWN(123456789.123,100000))` = #NUM! (gen-m2/a339ea84ef64382e
+A138). Larger magnitudes still wait on T-0218.
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`round_beyond_double_range`)
 Tasks: T-0218
 
 ## GAMMALN / GAMMALN.PRECISE (T-0926)

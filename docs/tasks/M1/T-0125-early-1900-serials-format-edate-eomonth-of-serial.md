@@ -3,11 +3,11 @@ id: T-0125
 title: "Early-1900 serials: format/EDATE/EOMONTH of serial 60 and DAY/MONTH/YEAR(0)"
 milestone: M1
 lane: engine
-status: todo
+status: blocked
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-0213]
 ---
 
 ## Goal
@@ -40,3 +40,18 @@ Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKN
   Needs an implicit-intersection probe.
 Next: fix or probe those two (or split them to their own tasks and fix first), then
 `make eval-baseline`, `make check`, review.
+
+## Blocked because
+Waits for T-0213 (INDEX with one index into a 2-D range is #REF!). After the opus resume
+(2026-10-05), the branch fixes 46 gen-m2 cells and 4 probe cells. One regression is left:
+- `gen-m2/a6d4377c7b1b92cd` Calc!A278 `=IFERROR(YEAR(INDEX(Data!C11:E12,1)),-SUM(Data!C3:C5))`
+  expects 1. This is not implicit intersection, as the handoff guessed: in Excel,
+  `INDEX(C11:E12,1)` is #REF! (T-0213; A17 of the same case), so IFERROR falls back. The engine
+  returns C11 (blank). YEAR of blank used to be #NUM!, which made the cell pass by accident; it is
+  now 1900.
+
+The handoff's other regression (A138, ROUNDDOWN with 100000 digits) is fixed on this branch by
+`round_beyond_double_range`, a partial T-0218 fix limited to digits whose magnitude is below
+2^31. To resume once T-0213 is merged: merge main, run `make eval-check` (expect 0 regressions),
+`make eval-baseline` (probes also reports one new-coverage failure, from the dates-early-1900
+case growing from 16 to 25 cells; check it), then `make check` and review.
