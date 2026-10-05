@@ -106,7 +106,10 @@ pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
 /// significant digits are kept, later digits are truncated (not rounded), so
 /// `123456789012345678` reads as `123456789012345000` and `12345.6789012345678` as
 /// `12345.6789012345` (docs/excel-semantics/numbers.md "15-digit literal parsing").
-/// Accepts what `str::parse::<f64>` accepts; `None` when that fails.
+/// Accepts what `str::parse::<f64>` accepts, except that the value has to be below 1E+308 in
+/// magnitude, Excel's typeable range: "1e308", "1e400", "inf" and "NaN" are `None`
+/// (probes/text-number-words A6-A10, H3, K9, K10; docs/excel-semantics/numbers.md
+/// "Number text of 1E+308 or more is not a number").
 pub fn parse_excel_number(text: &str) -> Option<f64> {
     let (mantissa, exp) = match text.find(['e', 'E']) {
         Some(i) => text.split_at(i),
@@ -135,7 +138,21 @@ pub fn parse_excel_number(text: &str) -> Option<f64> {
         }
     }
     out.push_str(exp);
-    out.parse::<f64>().ok()
+    out.parse::<f64>()
+        .ok()
+        .filter(|number| number.abs() < EXCEL_NUMBER_LIMIT)
+}
+
+/// Excel's largest typeable number is 9.99999999999999E+307: text or a literal at or above
+/// 1E+308 in magnitude is not a number (docs/excel-semantics/numbers.md).
+const EXCEL_NUMBER_LIMIT: f64 = 1e308;
+
+/// Reads a number written with digits (`12`, `-3.5`, `.5`, `1e5`) the way `str::parse::<f64>`
+/// does, minus its two surprises: it also reads the words "NaN", "inf" and "infinity", and it
+/// turns a number too large to hold (`1e400`) into infinity. None of those is a number to Excel
+/// (`COUNTIF(r,"inf")` counts the text "inf", probes/text-number-words E1).
+pub(crate) fn parse_finite_number(text: &str) -> Option<f64> {
+    text.parse::<f64>().ok().filter(|number| number.is_finite())
 }
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {

@@ -278,6 +278,17 @@ enum ParseReferenceError {
     ColumnError(String),
 }
 
+/// The number in the `<v>` of a cell. One that cannot be read is 0, and so is one that is not
+/// finite ("NaN", "inf", "1e400"): no cell holds such a number.
+fn parse_cell_number(cell_value: Option<&str>) -> f64 {
+    cell_value
+        .unwrap_or("0")
+        .parse::<f64>()
+        .ok()
+        .filter(|number| number.is_finite())
+        .unwrap_or(0.0)
+}
+
 // This parses Sheet1!AS23 into sheet, column and row
 // FIXME: This is buggy. Does not check that is a valid sheet name
 // There is a similar named function in rustsheet_engine. We probably should fix both at the same time.
@@ -400,15 +411,13 @@ pub(super) fn get_cell_from_excel(
             "n" => {
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
-                        v: SpillValue::Number(
-                            cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
-                        ),
+                        v: SpillValue::Number(parse_cell_number(cell_value)),
                         s: cell_style,
                         a: anchor,
                     }
                 } else {
                     Cell::NumberCell {
-                        v: cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
+                        v: parse_cell_number(cell_value),
                         s: cell_style,
                     }
                 }
@@ -515,9 +524,7 @@ pub(super) fn get_cell_from_excel(
         };
         match cell_type {
             "b" => make_cell(FormulaValue::Boolean(cell_value == Some("1"))),
-            "n" => make_cell(FormulaValue::Number(
-                cell_value.unwrap_or("0").parse::<f64>().unwrap_or(0.0),
-            )),
+            "n" => make_cell(FormulaValue::Number(parse_cell_number(cell_value))),
             "e" => {
                 // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
                 // Older engines would just import #VALUE!
@@ -1055,7 +1062,18 @@ mod tests {
 
     use crate::import::xml::XmlNode;
 
-    use crate::import::worksheets::{load_hyperlinks, parse_reference};
+    use crate::import::worksheets::{load_hyperlinks, parse_cell_number, parse_reference};
+
+    #[test]
+    fn cell_numbers_are_finite() {
+        assert_eq!(parse_cell_number(Some("12.5")), 12.5);
+        assert_eq!(parse_cell_number(Some("-1e308")), -1e308);
+        assert_eq!(parse_cell_number(None), 0.0);
+        // What cannot be read is 0, and so is what is not a finite number
+        for value in ["", "abc", "NaN", "nan", "inf", "-inf", "Infinity", "1e400"] {
+            assert_eq!(parse_cell_number(Some(value)), 0.0, "{value}");
+        }
+    }
 
     #[test]
     fn parse_reference_works() {

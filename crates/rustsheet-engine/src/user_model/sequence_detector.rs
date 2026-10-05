@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::locale::Locale;
+use crate::number_format::parse_finite_number;
 use crate::number_format::to_excel_precision_str;
 
 enum DateCaseStyle {
@@ -211,12 +212,12 @@ impl SequenceDetector for NumericProgressionDetector {
             .map(|num| {
                 self.validate_grouping(num, *primary, *secondary)?;
 
-                num.chars()
+                let number = num
+                    .chars()
                     .filter(|&c| c != group_sep)
                     .map(|c| if c == decimal_sep { '.' } else { c })
-                    .collect::<String>()
-                    .parse::<f64>()
-                    .map_err(|_| ())
+                    .collect::<String>();
+                parse_finite_number(&number).ok_or(())
             })
             .collect::<Result<Vec<_>, _>>()
             .ok()

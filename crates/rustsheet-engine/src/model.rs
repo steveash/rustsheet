@@ -130,6 +130,13 @@ pub struct FmtSettings {
 fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
     match node {
         ArrayNode::Boolean(b) => FormulaValue::Boolean(b),
+        // No cell holds a number that is not finite: an array element that overflowed is #NUM!,
+        // as the safety belt in `set_cells_with_result` makes it for a single cell.
+        ArrayNode::Number(n) if !n.is_finite() => FormulaValue::Error {
+            ei: Error::NUM,
+            o: String::new(),
+            m: String::new(),
+        },
         ArrayNode::Number(n) => FormulaValue::Number(n),
         ArrayNode::String(s) => FormulaValue::Text(s),
         ArrayNode::Error(ei) => FormulaValue::Error {
@@ -144,6 +151,8 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
 fn array_node_to_spill_value(node: ArrayNode) -> SpillValue {
     match node {
         ArrayNode::Boolean(b) => SpillValue::Boolean(b),
+        // See `array_node_to_formula_value`
+        ArrayNode::Number(n) if !n.is_finite() => SpillValue::Error(Error::NUM),
         ArrayNode::Number(n) => SpillValue::Number(n),
         ArrayNode::String(s) => SpillValue::Text(s),
         ArrayNode::Error(ei) => SpillValue::Error(ei),

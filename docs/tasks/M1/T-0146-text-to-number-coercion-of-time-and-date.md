@@ -16,6 +16,8 @@ a number (`0+A1`, `-A1`, `VALUE`, arithmetic on array elements): today `cast_num
 plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Excel 0.4243055…).
 
 ## Context
+- Excel-authored evidence too: ironcalc-calc/TEXT/MINUS_MINUS.xlsx Sheet1!C12 (`=--"12:00"` is 0.5),
+  a known failure added by T-0920.
 - Evidence (excel-graph oracle, column C of each): `eval/suites/probes/cases/timevalue-fractional-seconds.case.json`,
   `timevalue-fractional-seconds2`, `timevalue-component-limits`, `timevalue-ampm-limits`. These are
   the probes' known failures (89 cells) recorded as new coverage by T-0910.

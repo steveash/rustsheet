@@ -186,6 +186,7 @@ C	ironcalc-calc/TEXT/DOLLARs.xlsx	36
 C	ironcalc-calc/TEXT/EXACT.xlsx	13
 C	ironcalc-calc/TEXT/FIND_SEARCH.xlsx	62
 C	ironcalc-calc/TEXT/MID_LEFT_RIGHT_arrays.xlsx	197
+C	ironcalc-calc/TEXT/MINUS_MINUS.xlsx	73
 C	ironcalc-calc/TEXT/PROPER.xlsx	11
 C	ironcalc-calc/TEXT/REGEX.xlsx	7
 C	ironcalc-calc/TEXT/REPT.xlsx	17
@@ -1787,6 +1788,7 @@ F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E2
 F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E3
 F	ironcalc-calc/STATISTICAL/Z_TEST.xlsx	Sheet1!E2
 F	ironcalc-calc/STATISTICAL/Z_TEST.xlsx	Sheet1!E4
+F	ironcalc-calc/TEXT/MINUS_MINUS.xlsx	Sheet1!C12
 F	ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!C15
 F	ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!I4
 F	ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!I5
