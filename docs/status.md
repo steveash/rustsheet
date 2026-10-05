@@ -1,6 +1,9 @@
 # Status
 
-Updated by the steward routine (daily) and by workers (one line per merged task).
+The steward routine owns the snapshot and the critical-lane line and rewrites them daily; agents may
+still add or remove "Needs owner" entries. PRs no longer append log lines (decision 0021): the record
+of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
+merged since its last run.
 
 ## Snapshot — 2026-10-04 (M1 in progress)
 
@@ -28,10 +31,6 @@ since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pend
 T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baseline before M3 (T-0400, T-0402).)
 
 ## Needs owner
-- Re-apply docs/process/routines.md (T-0023): replace the two worker routines with "rustsheet worker: sonnet"
-  (model Sonnet 5.5, hourly) and "rustsheet worker: opus" (model Opus 5.5, every 2 h) using the prompts there; keep the
-  steward (its step 6 text also changed in T-0022). Then delete this line.
-- PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 
 ## Log
 - 2026-10-02 — Owner set `main` as the GitHub default branch and enabled the routines (repo attached).
@@ -93,4 +92,8 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-05 — T-0028: agents check PR mergeability after every push, event and merge to main, and resolve conflicts at once (decision 0020); `make check` runs typos; eval delta none.
 - 2026-10-05 — T-0015: spec2xlsx output deterministic (pinned core.xml creation time); eval delta none.
 - 2026-10-05 — T-0027: shared-formula members shown shifted in eval show/snapshot (engine `shift_formula_text`); eval delta none.
-- 2026-10-05 — T-0119: handed off to opus (clip changes approximate/blank-match values; needs value-neutral virtual empty tail); eval delta none.
+- 2026-10-05 — T-0203: gen-m2 oracle-filled and gated (30 cases, 12,000 cells, 85.62% bit-exact, 1,726 known failures, new coverage); IF arity fixed in the catalog; T-0208 fixed (oracle `#SPILL!` read by key name; 74 cells); 14 gap tasks T-0209..T-0222; unknown rich errorTypes read as `#UNDECODED!` and stay unscored (poi 951 -> 950, T-0030).
+- 2026-10-05 — T-0123: names may contain `\` (en-US lexer, identifier validity); poi known failures 950 -> 935 (15 fixed, 0 regressions).
+- 2026-10-05 — T-0031: salvaged stale draft PRs #11/#13/#38 (T-0905, T-0907 restored; financial.md; T-0901/T-0925 findings) and closed them; eval delta none.
+- 2026-10-05 — Log frozen here (decision 0021, T-0033); later work: `git log --first-parent main` and the steward's daily summary.
+- 2026-10-05 — Owner re-applied the T-0023 routines (sonnet hourly, opus every 2 h); T-0032: sonnet queue buffer (≥10 ready sonnet tasks; `make ready-tasks`, decision 0021).

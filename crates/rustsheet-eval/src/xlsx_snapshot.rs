@@ -271,9 +271,12 @@ fn resolve_entity(r: &quick_xml::events::BytesRef<'_>) -> String {
 
 /// The error each value-metadata entry (`vm`, 1-based) stands for, if it is a rich-value error.
 ///
-/// `xl/metadata.xml` lists `<rc v=N>` per entry; `v` indexes `xl/richData/rdrichvalue.xml`, whose
-/// first field is the `errorType`. Evidence: ironcalc-calc/ERROR.TYPE.xlsx (errorType 13 is
-/// `#CALC!` with ERROR.TYPE 14; 8 is `#SPILL!` with ERROR.TYPE 9).
+/// `xl/metadata.xml` lists `<rc v=N>` per entry; `v` indexes `xl/richData/rdrichvalue.xml`. The
+/// `errorType` field is found by key name in that value's structure
+/// (`xl/richData/rdrichvaluestructure.xml`): Excel for the web writes `_error` keys alphabetically
+/// (`colOffset, errorType, rwOffset, subType`), so it is not always the first field (T-0208,
+/// gen-m2/78bc88199fc96650 Calc!A61). Evidence for the codes: ironcalc-calc/ERROR.TYPE.xlsx
+/// (errorType 13 is `#CALC!` with ERROR.TYPE 14; 8 is `#SPILL!` with ERROR.TYPE 9).
 fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, SnapshotError> {
     let (Some(meta), Some(rich)) = (
         read_part(zip, "xl/metadata.xml")?,
@@ -281,37 +284,8 @@ fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, Snapshot
     ) else {
         return Ok(Vec::new());
     };
-    // First `<v>` of every `<rv>`.
-    let mut rv_errors: Vec<Option<&'static str>> = Vec::new();
-    let mut reader = Reader::from_str(&rich);
-    let (mut in_rv, mut seen_first, mut in_v) = (false, false, false);
-    loop {
-        match reader
-            .read_event()
-            .map_err(|e| xml_err("xl/richData/rdrichvalue.xml", e))?
-        {
-            Event::Start(e) => match e.local_name().as_ref() {
-                "rv" => (in_rv, seen_first) = (true, false),
-                "v" if in_rv && !seen_first => (in_v, seen_first) = (true, true),
-                _ => {}
-            },
-            Event::Text(t) if in_v => {
-                let code = t.xml_content(XmlVersion::Implicit1_0);
-                rv_errors.push(match code.trim() {
-                    "13" => Some("#CALC!"),
-                    "8" => Some("#SPILL!"),
-                    _ => None,
-                });
-            }
-            Event::End(e) => match e.local_name().as_ref() {
-                "v" => in_v = false,
-                "rv" => in_rv = false,
-                _ => {}
-            },
-            Event::Eof => break,
-            _ => {}
-        }
-    }
+    let structures = read_part(zip, "xl/richData/rdrichvaluestructure.xml")?;
+    let rv_errors = rich_value_errors(&rich, structures.as_deref())?;
     // `<valueMetadata>` blocks, one `<rc v=..>` each. Shortcut: `rc v` is used directly as the
     // `<rv>` index, skipping futureMetadata's `rvb i` hop; they coincide in every evidence workbook.
     // TODO(T-0921): resolve through futureMetadata and share one decoder with the importer.
@@ -334,6 +308,96 @@ fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, Snapshot
             Event::End(e) if e.local_name().as_ref() == "valueMetadata" => {
                 in_value_metadata = false;
             }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
+/// Stands in for a rich-value error whose `errorType` has no evidence-backed mapping yet. Cells
+/// holding it are never scored (runner) or written as goldens (`rustsheet-oracle fill`).
+pub const UNDECODED_RICH_ERROR: &str = "#UNDECODED!";
+
+/// Whether `v` is [`UNDECODED_RICH_ERROR`] (an expectation nobody can score yet).
+#[must_use]
+pub fn is_undecoded(v: &crate::value::Value) -> bool {
+    matches!(v, crate::value::Value::Error(e) if e == UNDECODED_RICH_ERROR)
+}
+
+/// Position of the `errorType` key in each `<s>` of `rdrichvaluestructure.xml` (None when absent).
+fn error_type_positions(xml: &str) -> Result<Vec<Option<usize>>, SnapshotError> {
+    const PART: &str = "xl/richData/rdrichvaluestructure.xml";
+    let mut out = Vec::new();
+    let mut reader = Reader::from_str(xml);
+    let mut key = 0usize;
+    loop {
+        match reader.read_event().map_err(|e| xml_err(PART, e))? {
+            Event::Start(e) if e.local_name().as_ref() == "s" => {
+                out.push(None);
+                key = 0;
+            }
+            Event::Empty(e) if e.local_name().as_ref() == "s" => out.push(None),
+            Event::Start(e) | Event::Empty(e) if e.local_name().as_ref() == "k" => {
+                if attr(&e, "n").as_deref() == Some("errorType") {
+                    if let Some(last) = out.last_mut() {
+                        *last = Some(key);
+                    }
+                }
+                key += 1;
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
+/// The rich-value error (`#CALC!`, `#SPILL!`) of every `<rv>` in `rdrichvalue.xml`, reading the
+/// `errorType` field by key name. Without a structures part the first field is used.
+fn rich_value_errors(
+    rich: &str,
+    structures: Option<&str>,
+) -> Result<Vec<Option<&'static str>>, SnapshotError> {
+    const PART: &str = "xl/richData/rdrichvalue.xml";
+    let positions = structures.map(error_type_positions).transpose()?;
+    let mut out: Vec<Option<&'static str>> = Vec::new();
+    let mut reader = Reader::from_str(rich);
+    // (field index of errorType in the current rv, current field index, inside that <v>)
+    let (mut want, mut field, mut in_v) = (None::<usize>, 0usize, false);
+    loop {
+        match reader.read_event().map_err(|e| xml_err(PART, e))? {
+            Event::Start(e) => match e.local_name().as_ref() {
+                "rv" => {
+                    out.push(None);
+                    field = 0;
+                    want = match &positions {
+                        None => Some(0),
+                        Some(p) => attr(&e, "s")
+                            .and_then(|s| s.parse::<usize>().ok())
+                            .and_then(|s| p.get(s).copied().flatten()),
+                    };
+                }
+                "v" => in_v = true,
+                _ => {}
+            },
+            Event::Text(t) if in_v && want == Some(field) => {
+                let code = t.xml_content(XmlVersion::Implicit1_0);
+                if let Some(last) = out.last_mut() {
+                    *last = Some(match code.trim() {
+                        "13" => "#CALC!",
+                        "8" => "#SPILL!",
+                        // Never guess: an errorType without ERROR.TYPE evidence (e.g. 10, seen for
+                        // an uncached external reference) must not pass as the cached `#VALUE!`.
+                        _ => UNDECODED_RICH_ERROR,
+                    });
+                }
+            }
+            Event::End(e) if e.local_name().as_ref() == "v" => {
+                in_v = false;
+                field += 1;
+            }
+            Event::Empty(e) if e.local_name().as_ref() == "v" => field += 1,
             Event::Eof => break,
             _ => {}
         }
@@ -711,6 +775,23 @@ mod tests {
         assert_eq!(get("A1"), Some(Value::Error("#CALC!".into())));
         assert_eq!(get("B1"), Some(Value::Error("#SPILL!".into())));
         assert_eq!(get("C1"), Some(Value::Error("#VALUE!".into())));
+    }
+
+    /// Excel for the web's `_error` structure lists `colOffset` before `errorType`
+    /// (gen-m2/78bc88199fc96650 Calc!A61: rv `0 8 5 1` is `#SPILL!`, not "no error").
+    #[test]
+    fn rich_value_error_type_is_read_by_key_name() {
+        let structures = r#"<rvStructures><s t="_error"><k n="colOffset" t="i"/><k n="errorType" t="i"/><k n="rwOffset" t="i"/><k n="subType" t="i"/></s><s t="_error"><k n="errorType" t="i"/></s></rvStructures>"#;
+        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>2</v><v>0</v><v>0</v></rv></rvData>"#;
+        let got = rich_value_errors(rich, Some(structures)).unwrap_or_default();
+        assert_eq!(
+            got,
+            vec![Some("#SPILL!"), Some("#CALC!"), Some(UNDECODED_RICH_ERROR)]
+        );
+        // No structures part: the first field is the errorType (ERROR.TYPE.xlsx layout).
+        let got = rich_value_errors(r#"<rvData><rv s="0"><v>13</v></rv></rvData>"#, None)
+            .unwrap_or_default();
+        assert_eq!(got, vec![Some("#CALC!")]);
     }
 
     #[test]

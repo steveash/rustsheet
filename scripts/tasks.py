@@ -4,6 +4,8 @@
   scripts/tasks.py list [--lane L] [--status S] [--milestone M]
   scripts/tasks.py next --lane L [--tier T] [--no-fetch]  # best ready, unclaimed task; handoffs
                                          # (also on pushed agent/* branches) count as opus, come first
+  scripts/tasks.py ready [--lane L] [--tier T] [--no-fetch]  # every task `next` could pick, in its
+                                         # order, then "N ready" (queue health, decision 0021)
   scripts/tasks.py validate              # schema + dependency checks (CI)
   scripts/tasks.py board                 # write docs/tasks/BOARD.md (local view, git-ignored)
   scripts/tasks.py new --milestone M1 --lane engine --title "..." [--priority P1] [--size S]
@@ -252,6 +254,35 @@ def effective_tier(t: dict[str, object], on_branches: set[str]) -> object:
     return "opus" if handed_off(t, on_branches) else t.get("tier")
 
 
+def available(
+    tasks: list[dict[str, object]],
+    by_id: dict[str, dict[str, object]],
+    lane: str | None,
+    tier: str | None,
+    fetch: bool = True,
+) -> list[dict[str, object]]:
+    """Ready tasks a worker of `tier` may start in `lane`, best first (handoffs, milestone, priority)."""
+    claimed, on_branches = branch_claims(fetch=fetch)
+    cands = [
+        t
+        for t in tasks
+        if ready(t, by_id)
+        and (lane is None or t.get("lane") == lane)
+        and (tier is None or effective_tier(t, on_branches) == tier)
+        # Someone else's pushed claim; a handoff is the opus worker's to resume (decision 0018).
+        and (str(t["id"]) not in claimed or (handed_off(t, on_branches) and tier != "sonnet"))
+    ]
+    cands.sort(
+        key=lambda t: (
+            not handed_off(t, on_branches),
+            str(t.get("milestone"))[1:].zfill(3),
+            str(t.get("priority")),
+            str(t["id"]),
+        )
+    )
+    return cands
+
+
 def arg(name: str) -> str | None:
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else None
 
@@ -268,26 +299,13 @@ def main() -> int:
         return 1 if errors else 0
     if cmd == "new":
         return new_task(tasks, fetch="--no-fetch" not in sys.argv)
-    if cmd == "next":
-        lane, tier = arg("--lane"), arg("--tier")
-        claimed, on_branches = branch_claims(fetch="--no-fetch" not in sys.argv)
-        cands = [
-            t
-            for t in tasks
-            if ready(t, by_id)
-            and (lane is None or t.get("lane") == lane)
-            and (tier is None or effective_tier(t, on_branches) == tier)
-            # Someone else's pushed claim; a handoff is the opus worker's to resume (decision 0018).
-            and (str(t["id"]) not in claimed or (handed_off(t, on_branches) and tier != "sonnet"))
-        ]
-        cands.sort(
-            key=lambda t: (
-                not handed_off(t, on_branches),
-                str(t.get("milestone"))[1:].zfill(3),
-                str(t.get("priority")),
-                str(t["id"]),
-            )
-        )
+    if cmd in ("next", "ready"):
+        cands = available(tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv)
+        if cmd == "ready":
+            for t in cands:
+                print(f"{t['id']}  {t.get('lane')!s:<9} {t['title']}")
+            print(f"{len(cands)} ready")
+            return 0
         if not cands:
             print("no ready task")
             return 1

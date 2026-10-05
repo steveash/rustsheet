@@ -73,3 +73,19 @@ Rule: an array constant as a criterion makes COUNTIFS return an array of counts,
 Evidence: poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
 Status: VERIFIED
 Tasks: T-0207
+
+## SUMIFS / COUNTIFS: every range must have the first range's shape
+Rule: if any criteria (or sum) range is shaped differently from the first range, SUMIFS/COUNTIFS
+return `#VALUE!`, even when the cell counts are equal (2x4 vs 4x2). `=SUMIFS(Data!B7:C9,Data!A10:D12,"<5")`
+→ `#VALUE!`; all 145 mismatched top-level calls in gen-m2 are `#VALUE!`, all 26 same-shape calls are numbers.
+Evidence: gen-m2/04cfd82f54dbc2b2 Calc!A150, 7469c3e920e1ade4 Calc!A51. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Status: VERIFIED
+Tasks: T-0209
+
+## SUMIF resizes sum_range from its top-left cell and never errors
+Rule: SUMIF sums the range of the criteria range's shape that starts at sum_range's top-left cell,
+whatever sum_range's own shape: `=SUMIF(Data!C2:E2,"<>1",Data!B4:B10)` sums B4:D4 (123456831.123).
+71 of 71 mismatched calls in gen-m2 return numbers.
+Evidence: gen-m2/629e6e8b76fab8b9 Calc!A217. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Status: VERIFIED
+Tasks: T-0214

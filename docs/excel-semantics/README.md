@@ -25,8 +25,8 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`). Any other kind of
   deviation needs its own decision record.
 
-Files by area: `numbers.md`, `dates.md`, `coercion.md`, `errors.md`, `criteria.md`,
-`arrays.md`, `lookup.md`, `number-formats.md`, `references.md`, … (create as needed). Format per rule:
+Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
+`arrays.md`, `lookup.md`, `number-formats.md`, `references.md`, `syntax.md`, … (create as needed). Format per rule:
 
 ```
 ## <short rule name>

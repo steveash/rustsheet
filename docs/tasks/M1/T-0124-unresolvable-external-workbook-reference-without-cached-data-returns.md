@@ -7,12 +7,12 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-0030]
 ---
 
 ## Goal
 A formula that references another workbook with no usable cached values gives Excel's error
-(`#VALUE!` per the excel-graph oracle) instead of `#REF!`. The workbook was written by Apache POI,
+(a vm-coded rich-value error per the excel-graph oracle, errorType 10 / subType 2, cached as `#VALUE!`; decoded by T-0030) instead of `#REF!`. The workbook was written by Apache POI,
 so this is web-only evidence: confirm on desktop Excel (excel-probe skill) before implementing.
 
 ## Context

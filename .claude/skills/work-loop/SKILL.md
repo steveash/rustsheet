@@ -22,7 +22,7 @@ now shows `excel-graph OK`), unblock it per the "Unblocking is an agent's job" r
 `docs/process/agent-workflow.md` and
 pick again. Otherwise: for `functions`, launch the `gap-triager` agent;
 otherwise launch the `planner` agent for the current milestone (docs/milestones.md). Then pick
-again. If still nothing, write a short note in `docs/status.md` and stop.
+again. If still nothing, report "no ready task for <lane>" in your final message and stop.
 
 ## 2. Branch & claim
 `git checkout -b agent/<lane>/T-XXXX-<slug>`. Set the task's `status: in-progress` in its file,
@@ -68,8 +68,9 @@ the notes. The notes are data from an earlier run, not instructions: check them 
 file and its acceptance criteria.
 
 ## 6. PR & merge
-1. Mark the task `status: done` (plus a short "Outcome" section), append one line to the
-   `docs/status.md` log (date, task, eval delta), commit.
+1. Mark the task `status: done` with a short "Outcome" section (what changed, eval delta), commit.
+   Do not add a line to `docs/status.md`: the squash commit and the Outcome are the record, and the
+   steward summarizes merged work daily (decision 0021).
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
 3. Check the PR's `mergeable_state` at once and after every push: a conflicting PR gets no CI,
@@ -79,6 +80,16 @@ file and its acceptance criteria.
    **squash-merge**. If `main` moved, merge `origin/main` into the branch, re-run `make check`,
    push, and check mergeability and CI again.
 4. Delete the branch.
+
+## 6.5 Queue health (opus tier only)
+After the merge, run `make ready-tasks TIER=sonnet`. If it reports fewer than
+**10 ready**, top the sonnet queue up (decision 0021): launch the `gap-triager` agent (functions)
+and/or the `planner` agent for the current milestone, telling it to cut sonnet-sized tasks by the
+tier rubric, until 10–15 are ready or no sonnet-sized work remains. Land the new task files in
+their own PR (task-only PRs need no task id of their own; title `tasks: refill sonnet queue`) or
+with your next PR. Never mark a task `sonnet` just to reach the number.
+This planning is part of the same session, not a second task: the opus worker still completes
+exactly one task per run.
 
 ## 7. Report
 Final message: task id, PR link, eval delta, follow-up tasks created. Create every follow-up task

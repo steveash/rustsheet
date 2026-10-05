@@ -74,7 +74,7 @@ functions:
     returns: any
     params:
       - { name: logical_test, mode: value, type: bool }
-      - { name: value_if_true, mode: value, type: any, optional: true }
+      - { name: value_if_true, mode: value, type: any }  # required: =IF(x) is a syntax error in Excel
       - { name: value_if_false, mode: value, type: any, optional: true }
   - name: AND
     category: logical

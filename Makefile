@@ -82,12 +82,15 @@ check: fmt-check clippy test eval-check py-check py-bindings hygiene typos ## Ev
 ci: check deny machete
 
 # ---------------------------------------------------------------- Tasks
-.PHONY: tasks next-task board new-task
+.PHONY: tasks next-task ready-tasks board new-task
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
 next-task: ## Highest-priority ready task: make next-task LANE=functions [TIER=sonnet|opus]
 	$(PY) scripts/tasks.py next $(if $(LANE),--lane $(LANE)) $(if $(TIER),--tier $(TIER))
+
+ready-tasks: ## Every task next-task could pick, then "N ready": make ready-tasks TIER=sonnet [LANE=..] (decision 0021)
+	$(PY) scripts/tasks.py ready $(if $(LANE),--lane $(LANE)) $(if $(TIER),--tier $(TIER))
 
 new-task: ## New task file with a collision-free id: make new-task MILESTONE=M1 LANE=engine TITLE="..." [PRIORITY=P1] [SIZE=S] [TIER=opus] (fetches origin)
 	$(PY) scripts/tasks.py new --milestone "$(MILESTONE)" --lane "$(LANE)" --title "$(TITLE)" $(if $(PRIORITY),--priority $(PRIORITY)) $(if $(SIZE),--size $(SIZE)) $(if $(TIER),--tier $(TIER))

@@ -715,3 +715,22 @@ fn test_log10_is_function() {
     assert_eq!(lx.next_token(), RightParenthesis);
     assert_eq!(lx.next_token(), EOF);
 }
+
+#[test]
+fn test_names_with_backslash() {
+    for name in ["A\\B", "\\name", "HSI\\10_1___val"] {
+        let mut lx = new_lexer(name, true);
+        assert_eq!(lx.next_token(), Ident(name.to_string()), "{name}");
+        assert_eq!(lx.next_token(), EOF);
+    }
+}
+
+#[test]
+fn test_backslash_separates_array_columns_with_comma_decimal() {
+    let locale = get_locale("de").unwrap();
+    let language = get_language("en").unwrap();
+    let mut lx = Lexer::new("{1\\2}", LexerMode::A1, locale, language);
+    assert_eq!(lx.next_token(), LeftBrace);
+    assert_eq!(lx.next_token(), Number(1.0));
+    assert_eq!(lx.next_token(), Backslash);
+}

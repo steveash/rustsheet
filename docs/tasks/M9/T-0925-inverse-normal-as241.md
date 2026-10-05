@@ -27,3 +27,13 @@ Code: `functions/statistical/{normal,log_normal}.rs`. Implement AS241 (PPND16) o
 
 ## Out of scope
 erf/CDF accuracy (T-0924); T.INV/GAMMA.INV/BETA.INV iterations.
+
+## Earlier attempt (draft PR #38, 2026-10-04; salvaged by T-0031)
+Plain AS241 (PPND16) fixed 57 of ~120 cells (ironcalc-calc known failures 1632 -> 1580) but regressed
+5 cells that statrs matched by luck: `CONFIDENCE.xlsx CONFIDENCE.NORM CONFIDENCE.T!D8`,
+`LOGNORM.xlsx LOGNORM.INV!F72`, `NORM_DIST.xlsx NORM.INV!F28`, `NORM.S.INV!D11` (expected
+-2.0000000000000004) and `D13` (expected exactly -3.0; AS241 gives -2.999999999999999). One Newton or
+Halley step against the T-0924 CDF was worse (fixed 38, 9 regressions). Excel's last digits (e.g.
+`NORM.S.INV(C2)` -> 1.3333330000000008) look like iteration against Excel's own CDF, so parity likely
+needs that CDF bit-for-bit (several NORM.S.DIST cells, e.g. `NORM.S.INV!C3`, are still NumericUlp)
+plus oracle probes. The oracle now exists: probe NORM.S.INV at p = NORM.S.DIST(k) for integer k first.

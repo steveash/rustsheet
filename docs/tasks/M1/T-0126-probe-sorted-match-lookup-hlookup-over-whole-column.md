@@ -7,14 +7,14 @@ status: todo
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-0212]
 ---
 
 ## Goal
 Oracle evidence for approximate-match lookups (MATCH type 1/-1, LOOKUP, HLOOKUP/VLOOKUP sorted) over whole-column/row references with a blank tail, and the engine matches it.
 
 ## Context
-T-0119 made whole-column/row search vectors value-neutral (`SearchVector`: only the used part is evaluated, the rest is a virtual run of empty cells of full length), so the engine's results are those of a full walk, where each probed empty cell compares as 0/""/FALSE. Unverified consequences (docs/excel-semantics/lookup.md, "Sorted lookups over a blank tail"): with numbers 10,20,30 in A1:A3 and a,b,c in B1:B3, `MATCH(99,A:A,1)` = 1048576, `VLOOKUP(99,A:B,2)` = 0, `LOOKUP(20,A:A,B:B)` = 0, `HLOOKUP(99,1:2,2)` = 0 (data in A1:C2). The hypothesis to test is that Excel skips the blank tail (the "last number" idiom `MATCH(9.99E+307,A:A)`).
+T-0119 made whole-column/row search vectors value-neutral (`SearchVector`: only the used part is evaluated, the rest is a virtual run of empty cells of full length), so the engine's results are those of a full walk, where each probed empty cell compares as 0/""/FALSE. T-0212 implements Excel's type-skipping binary search (blanks never match, VERIFIED on bounded gen-m2 ranges); this task confirms it carries over to a whole column/row with a blank tail (docs/excel-semantics/lookup.md, "Whole-column / whole-row search vectors: blank tail"). Engine values today: with numbers 10,20,30 in A1:A3 and a,b,c in B1:B3, `MATCH(99,A:A,1)` = 1048576, `VLOOKUP(99,A:B,2)` = 0, `LOOKUP(20,A:A,B:B)` = 0, `HLOOKUP(99,1:2,2)` = 0 (data in A1:C2). Expected per the verified rule: the blank tail is skipped (the "last number" idiom `MATCH(9.99E+307,A:A)`).
 
 Probe cases (each with the data above, and again with an unrelated far cell such as Z100 filled):
 - sorted: `MATCH(99,A:A,1)`, `MATCH(99,A:A,-1)`, `MATCH(5,A:A,1)`, `MATCH(9.99E+307,A:A)`, `VLOOKUP(99,A:B,2)`, `HLOOKUP(99,1:2,2)`, `LOOKUP(20,A:A,B:B)`, `LOOKUP(99,A:A,B:B)`, `LOOKUP(30,A1:A3,E:E)`; bounded: `MATCH(99,A1:A10,1)`, `VLOOKUP(99,A1:B10,2)`, a blank in the middle (A2 empty).

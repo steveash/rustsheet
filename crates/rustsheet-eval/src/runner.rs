@@ -18,7 +18,7 @@ use crate::engine::{Engine, Evaluated};
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
-use crate::xlsx_snapshot::read_snapshot;
+use crate::xlsx_snapshot::{is_undecoded, read_snapshot};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -323,7 +323,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 sheet: sheet.to_string(),
                 addr,
                 formula: cell.formula.clone(),
-                expected: lookup(sheet, addr)?,
+                expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
             })
         })
         .collect();
@@ -396,8 +396,12 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     for q in wanted {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
-        let Some(value) = expected.get(&cell_key(&sheet, addr)).cloned() else {
-            continue; // pending oracle for this cell
+        let Some(value) = expected
+            .get(&cell_key(&sheet, addr))
+            .filter(|v| !is_undecoded(v))
+            .cloned()
+        else {
+            continue; // pending oracle for this cell (or an undecoded rich error)
         };
         let formula = formula_of(&sheet, &a1);
         if volatile.contains(&(sheet.clone(), addr)) {
@@ -535,6 +539,37 @@ mod tests {
             ]
         );
         assert_eq!(prepared.expected_source, "excel-graph");
+    }
+
+    /// A rich error without an evidence-backed mapping (`#UNDECODED!`, `xlsx_snapshot.rs`) is
+    /// never scored: the cell stays pending (poi/link-external-workbook-b Sheet0!A1, T-0203).
+    #[test]
+    fn undecoded_rich_errors_are_not_scored() {
+        let dir = std::env::temp_dir().join(format!("rs-runner-{}-undecoded", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("a.case.json");
+        let case = format!(
+            r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=1","A2":"=2"}}}}]}}"#
+        );
+        std::fs::write(&path, case).expect("write case");
+        let oracle = format!(
+            r##"{{"format":"{ORACLE_FORMAT}","source":{{"kind":"excel-graph","application":"x"}},
+               "sheets":{{"S":{{"A1":{{"t":"e","v":"#UNDECODED!"}},"A2":{{"t":"n","v":2}}}}}}}}"##
+        );
+        std::fs::write(dir.join("a.oracle.json"), oracle).expect("write oracle");
+        let prepared = prepare_spec(&CaseFile {
+            id: "t/a".into(),
+            sidecar: oracle_sidecar(&path),
+            path,
+        });
+        let _ = std::fs::remove_dir_all(&dir);
+        let cells: Vec<String> = prepared
+            .expect("prepare")
+            .expectations
+            .into_iter()
+            .map(|e| e.addr.to_string())
+            .collect();
+        assert_eq!(cells, vec!["A2".to_string()]);
     }
 
     #[test]

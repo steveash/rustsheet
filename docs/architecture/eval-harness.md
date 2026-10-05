@@ -30,7 +30,7 @@ Current suites:
 - `poi`: Apache POI Excel-authored xlsx/xlsm (external, fetched with `rustsheet-eval fetch --suite poi`; 3.5k cells).
 - `smoke`: hand-written core semantics.
 - `probes`: Excel-behavior questions awaiting the oracle.
-- `gen-m2`: generator output, pending oracle.
+- `gen-m2`: generator output (30 cases, 12,000 cells), oracle-filled and gated (T-0203).
 
 ## Case formats
 **`rustsheet-case/v1`** (`*.case.json`):
