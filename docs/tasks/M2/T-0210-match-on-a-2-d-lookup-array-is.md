@@ -73,4 +73,4 @@ Cells that pass with this fix alone (simulated by rewriting the call to `NA()` a
 ## Outcome
 `fn_match` now returns `#N/A` for a 2-D lookup_array (`as_vector` takes the non-vector error kind; LOOKUP keeps
 `#ERROR!`, unprobed). Argument errors still win. gen-m2 known failures 1726 -> 1518 (208 fixed, 0 regressions).
-XMATCH left unchanged. Semantics already in docs/excel-semantics/lookup.md.
+The other ~5 listed cells also depend on T-0209 (e.g. A91) and leave with it. XMATCH left unchanged. Follow-up: probe LOOKUP's 2-D vector error (new task). Semantics already in docs/excel-semantics/lookup.md.

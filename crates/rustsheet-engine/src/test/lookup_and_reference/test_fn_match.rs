@@ -142,10 +142,14 @@ fn test_match_two_dimensional_lookup_array_is_na() {
     model._set("D3", "=MATCH(1/0,A1:B2,0)");
     model._set("D4", "=MATCH(2,{1,2;3,4},0)");
     model._set("D5", "=MATCH(2,A1:B1,0)");
+    model._set("D6", "=MATCH(2,A1:B2,1/0)");
+    model._set("D7", "=MATCH(2,A1:B2,\"x\")");
     model.evaluate();
     assert_eq!(model._get_text("D1"), *"#N/A");
     assert_eq!(model._get_text("D2"), *"#N/A");
     assert_eq!(model._get_text("D3"), *"#DIV/0!");
     assert_eq!(model._get_text("D4"), *"#N/A");
     assert_eq!(model._get_text("D5"), *"2");
+    assert_eq!(model._get_text("D6"), *"#DIV/0!");
+    assert_eq!(model._get_text("D7"), *"#VALUE!");
 }
