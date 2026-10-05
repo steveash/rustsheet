@@ -60,12 +60,7 @@ Status: VERIFIED
 Implemented in: `fn_concatenate` (early return of the first argument error, T-0226)
 
 ## CONCATENATE result longer than 32767 characters
-Rule: a CONCATENATE result (per element for arrays) longer than 32767 characters is `#VALUE!`; this also
-bounds the allocation of array broadcasts (CLAUDE.md directive 5). Applies to scalar results too.
-Evidence: none from the oracle (Microsoft documents the limit). Open: exactly 32767 vs 32768, per-element in
-arrays, and whether Excel counts UTF-16 code units (the code counts `chars()`).
-Status: UNVERIFIED (probe pending, T-0233)
-Implemented in: `fn_concatenate` (T-0226)
+Superseded: Excel truncates rather than returning `#VALUE!`; see coercion.md "Text longer than 32,767 characters".
 
 
 ## A scalar error operand broadcasts against an array operand

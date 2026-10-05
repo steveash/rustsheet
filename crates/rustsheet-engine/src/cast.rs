@@ -42,7 +42,7 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
 
 /// Longest text a cell can hold (docs/excel-semantics/coercion.md). Also bounds the allocation
 /// a concatenation can make (CLAUDE.md directive 5).
-const MAX_TEXT_CHARS: usize = 32767;
+pub(crate) const MAX_TEXT_CHARS: usize = 32767;
 
 /// Truncates `text` to [`MAX_TEXT_CHARS`] characters, as Excel does for CONCATENATE and `&`
 /// (probes/resource-limits C9, C10, excel-graph).

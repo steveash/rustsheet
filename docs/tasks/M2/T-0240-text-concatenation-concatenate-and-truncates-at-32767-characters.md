@@ -35,4 +35,4 @@ if it is available (decision 0019), and record a CONFLICTING entry if desktop di
 - CONCAT/TEXTJOIN unless the new probe cells show they truncate too.
 
 ## Outcome
-CONCATENATE and `&` now truncate to 32,767 chars via shared `concat_text`/`truncate_text` (cast.rs). probes/resource-limits C9 and C10 fixed (probes known failures 43 -> 41). CONCAT/TEXTJOIN not probed (out of scope).
+CONCATENATE and `&` now truncate to 32,767 chars via shared `concat_text`/`truncate_text` (cast.rs). probes/resource-limits C9 and C10 fixed (probes known failures 43 -> 41). CONCAT/TEXTJOIN not probed (out of scope). excel-desktop backend was not used (excel-graph evidence only).
