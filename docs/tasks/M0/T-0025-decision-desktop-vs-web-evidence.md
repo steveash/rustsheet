@@ -3,7 +3,7 @@ id: T-0025
 title: "Decision record: which Excel wins when desktop and web evidence disagree"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
