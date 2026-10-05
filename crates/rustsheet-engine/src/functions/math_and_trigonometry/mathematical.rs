@@ -26,6 +26,10 @@ impl Model {
         let mut result = f64::NAN;
         for arg in args {
             match self.evaluate_aggregate_arg(arg, cell) {
+<<<<<<< HEAD
+=======
+                CalcResult::Number(value) => result = value.min(result),
+>>>>>>> origin/main
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         result = pick(value, result);
@@ -62,7 +66,67 @@ impl Model {
     }
 
     pub(crate) fn fn_max(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+<<<<<<< HEAD
         self.fold_min_max(args, cell, f64::max)
+=======
+        let mut result = f64::NAN;
+        for arg in args {
+            match self.evaluate_aggregate_arg(arg, cell) {
+                CalcResult::Number(value) => result = value.max(result),
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    for row in left.row..(right.row + 1) {
+                        for column in left.column..(right.column + 1) {
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(value) => {
+                                    result = value.max(result);
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                _ => {
+                                    // We ignore booleans and strings
+                                }
+                            }
+                        }
+                    }
+                }
+                CalcResult::Array(array) => {
+                    for row in array {
+                        for node in row {
+                            match node {
+                                ArrayNode::Number(value) => result = value.max(result),
+                                ArrayNode::Error(error) => {
+                                    return CalcResult::Error {
+                                        error,
+                                        origin: cell,
+                                        message: String::new(),
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                error @ CalcResult::Error { .. } => return error,
+                _ => {
+                    // We ignore booleans and strings
+                }
+            };
+        }
+        if result.is_nan() || result.is_infinite() {
+            return CalcResult::Number(0.0);
+        }
+        CalcResult::Number(result)
+>>>>>>> origin/main
     }
 
     pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

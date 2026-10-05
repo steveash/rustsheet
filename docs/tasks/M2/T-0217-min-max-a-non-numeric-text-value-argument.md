@@ -36,6 +36,8 @@ Check the other T-0200 users (AVERAGE, COUNT?) with the same probe and file foll
 - Reference-vs-value results of IF/INDEX (T-0216).
 
 ## Handoff (resumed)
+Superseded by the Outcome below (the helper and the regressions it describes are gone).
+
 Tried: `fn_min`/`fn_max` fallback arm now coerces value args via `cast_to_number` (new helper
 `min_max_value_arg`; single-cell `Node::ReferenceKind` args stay ignored). Unit test
 `test_fn_min_max_text_value_arguments` passes and the 5 target cells are fixed, but `eval-check`
