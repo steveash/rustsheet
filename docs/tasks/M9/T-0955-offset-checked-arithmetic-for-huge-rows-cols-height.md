@@ -3,7 +3,7 @@ id: T-0955
 title: "OFFSET: checked arithmetic for huge rows/cols/height/width (i32 overflow panics in debug)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
