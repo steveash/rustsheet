@@ -3,7 +3,7 @@ id: T-0246
 title: "Probe bare = criterion in SUMIF/AVERAGEIF/*IFS over empty-string and blank cells"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
