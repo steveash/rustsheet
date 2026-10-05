@@ -3,7 +3,7 @@ id: T-0127
 title: "XMATCH whole-column search: virtual empty tail instead of truncation"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
