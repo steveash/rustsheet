@@ -61,10 +61,11 @@ Tasks: T-0131
 ## An error in a range operand of arithmetic wins over the right operand's error
 Rule: when the left operand is a one-cell range holding an error and the right operand is an error,
 the result is the left error: `(Data!C1:C10 Data!B9:D9)/Data!D$5` with C9 = `#N/A` and
-D5 = `#DIV/0!` is `#N/A`. RustSheet gives `#DIV/0!`, because the range becomes an array whose
-elements are only looked at after the right operand's error has already been returned.
+D5 = `#DIV/0!` is `#N/A`. `handle_arithmetic` lifts a scalar right-hand error to a 1x1 array, so the
+left range's element error is seen first (`arithmetic_on_values`, case 4).
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105).
 Status: VERIFIED (one cell; the multi-cell case is unprobed)
+Implemented in: `Model::handle_arithmetic` (crates/rustsheet-engine/src/arithmetic.rs)
 Tasks: T-0137
 
 ## Text longer than 32,767 characters

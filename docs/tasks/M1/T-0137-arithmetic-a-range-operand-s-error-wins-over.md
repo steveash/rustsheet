@@ -3,7 +3,7 @@ id: T-0137
 title: "Arithmetic: a range operand's error wins over the other operand's error"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -37,10 +37,16 @@ There is no oracle evidence for that yet; probe it (`excel-probe` skill) before 
 multi-cell case.
 
 ## Acceptance criteria
-- [ ] `gen-m1/4dc8ed1de05a61be` Calc!A250 disappears from eval/baseline/gen-m1.txt, with no new
+- [x] `gen-m1/4dc8ed1de05a61be` Calc!A250 disappears from eval/baseline/gen-m1.txt, with no new
   F lines in any suite.
-- [ ] Unit tests for the 1x1 cases above.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for the 1x1 cases above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Coercion of text elements in range arithmetic (T-0131).
+
+## Outcome
+The cell was already fixed on `main` (a scalar right-hand error is lifted to a 1x1 array in
+`handle_arithmetic`, so the left range's element error wins); `gen-m1/4dc8ed1de05a61be` has no
+F line in the baseline. This PR adds the 1x1 unit test and updates coercion.md. The multi-cell left
+range case stays unprobed. Eval delta: none.
