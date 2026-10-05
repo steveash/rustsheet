@@ -3,7 +3,7 @@ id: T-0117
 title: "Generator: operators-and-references policy for gen-m1 (offline, unfilled)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
