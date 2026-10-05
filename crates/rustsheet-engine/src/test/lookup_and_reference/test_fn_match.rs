@@ -62,6 +62,7 @@ fn test_match_array_wildcard() {
     assert_eq!(model._get_text("A1"), "2");
 }
 
+// UNVERIFIED: no oracle case for a 2-D array; #N/A assumed by analogy with ranges (T-0224).
 #[test]
 fn test_match_array_not_a_vector() {
     let mut model = new_empty_model();
@@ -140,7 +141,6 @@ fn test_match_two_dimensional_lookup_array_is_na() {
     model._set("D1", "=MATCH(2,A1:B2,0)");
     model._set("D2", "=MATCH(2,A1:B2)");
     model._set("D3", "=MATCH(1/0,A1:B2,0)");
-    model._set("D4", "=MATCH(2,{1,2;3,4},0)");
     model._set("D5", "=MATCH(2,A1:B1,0)");
     model._set("D6", "=MATCH(2,A1:B2,1/0)");
     model._set("D7", "=MATCH(2,A1:B2,\"x\")");
@@ -148,7 +148,6 @@ fn test_match_two_dimensional_lookup_array_is_na() {
     assert_eq!(model._get_text("D1"), *"#N/A");
     assert_eq!(model._get_text("D2"), *"#N/A");
     assert_eq!(model._get_text("D3"), *"#DIV/0!");
-    assert_eq!(model._get_text("D4"), *"#N/A");
     assert_eq!(model._get_text("D5"), *"2");
     assert_eq!(model._get_text("D6"), *"#DIV/0!");
     assert_eq!(model._get_text("D7"), *"#VALUE!");

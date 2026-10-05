@@ -17,6 +17,7 @@ LOOKUP with a 2-D lookup_vector or result_vector returns the error Excel returns
 T-0210 made MATCH return `#N/A` for 2-D arrays and left LOOKUP unchanged (`as_vector(.., Error::ERROR)` in `lookup_and_reference/mod.rs`) because it is unprobed. Use the excel-probe skill, then record the rule in docs/excel-semantics/lookup.md.
 
 ## Acceptance criteria
+- [ ] Also probe `MATCH(2,{1,2;3,4},0)` and `MATCH(2,A1:B2*1,0)`; mark the lookup.md array sub-rule VERIFIED or fix it.
 - [ ] Probe evidence cited; LOOKUP on a 2-D vector matches Excel; unit test; `make check` green.
 - [ ] `make check` green; reviewers approve.
 
