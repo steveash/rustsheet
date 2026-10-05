@@ -54,6 +54,10 @@ pub struct SheetData {
     chunks: Vec<Option<Box<Chunk>>>,
     /// How many rows exist.
     row_count: usize,
+    /// The number of the last column that holds a cell, 0 if none does. Kept
+    /// exact: writes only raise it, and removing a cell from that column
+    /// rescans the rows (`recompute_last_column`).
+    last_column: i32,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -188,7 +192,9 @@ impl SheetData {
 
     /// Puts a cell at a position and returns the one that was there.
     pub fn set_cell(&mut self, row: i32, column: i32, cell: Cell) -> Option<Cell> {
-        self.row_or_insert(row)?.insert(column, cell)
+        let previous = self.row_or_insert(row)?.insert(column, cell);
+        self.last_column = self.last_column.max(column);
+        previous
     }
 
     /// Removes the cell at a position and returns it.
@@ -198,6 +204,9 @@ impl SheetData {
         let (_, cell) = row_data.cells.remove(index);
         if row_data.cells.is_empty() {
             self.remove_row(row);
+        }
+        if column >= self.last_column {
+            self.recompute_last_column();
         }
         Some(cell)
     }
@@ -231,16 +240,18 @@ impl SheetData {
     }
 
     /// The number of the last column that holds a cell, or 0 for an empty sheet.
-    /// Visits each existing row once (not each cell), so callers can bound
-    /// whole-row walks by it.
+    /// O(1), so callers can bound whole-row walks by it.
     pub(crate) fn last_column(&self) -> i32 {
-        self.chunks
-            .iter()
-            .flatten()
-            .flat_map(|chunk| chunk.rows.iter().flatten())
-            .filter_map(|row| row.cells.last().map(|(column, _)| *column))
+        self.last_column
+    }
+
+    /// Rescans the rows, visiting each once (not each cell).
+    fn recompute_last_column(&mut self) {
+        self.last_column = self
+            .rows_in_order()
+            .filter_map(|(_, row)| row.cells.last().map(|(column, _)| *column))
             .max()
-            .unwrap_or(0)
+            .unwrap_or(0);
     }
 
     /// The rows that exist, in ascending order.
@@ -276,11 +287,18 @@ impl SheetData {
         let Some(Some(chunk)) = self.chunks.get_mut(chunk_index) else {
             return;
         };
-        if chunk.rows[index].take().is_some() {
+        if let Some(removed) = chunk.rows[index].take() {
+            let reached_last = removed
+                .cells
+                .last()
+                .is_some_and(|(column, _)| *column >= self.last_column);
             chunk.used -= 1;
             self.row_count -= 1;
             if chunk.used == 0 {
                 self.chunks[chunk_index] = None;
+            }
+            if reached_last {
+                self.recompute_last_column();
             }
         }
     }
@@ -307,7 +325,13 @@ impl SheetData {
             }
         });
         cells.shrink_to_fit();
+        let old_last = row_data.cells.last().map(|(column, _)| *column);
+        let new_last = cells.last().map(|(column, _)| *column);
         row_data.cells = cells;
+        self.last_column = self.last_column.max(new_last.unwrap_or(0));
+        if old_last.is_some_and(|old| old >= self.last_column && Some(old) > new_last) {
+            self.recompute_last_column();
+        }
     }
 }
 
@@ -353,6 +377,19 @@ mod test {
         assert_eq!(data.last_column(), 7);
         data.remove_cell(5000, 7);
         assert_eq!(data.last_column(), 4);
+        // removing a whole row, or replacing it, lowers it too
+        data.set_cell(9, 12, number(1.0));
+        assert_eq!(data.last_column(), 12);
+        data.set_row(9, vec![(5, number(1.0))]);
+        assert_eq!(data.last_column(), 5);
+        data.set_row(9, Vec::new());
+        assert_eq!(data.last_column(), 4);
+        data.set_cell(9, 12, number(1.0));
+        data.remove_row(9);
+        assert_eq!(data.last_column(), 4);
+        data.remove_row(1);
+        data.remove_row(3);
+        assert_eq!(data.last_column(), 0);
     }
 
     #[test]
