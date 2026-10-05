@@ -23,6 +23,9 @@ impl Model {
                 CalcResult::Number(value) => {
                     f(value);
                 }
+                // An empty argument (`AVERAGE(5,)`) counts as 0
+                // (probes/average-value-args F2, F6, F9, F15, F17).
+                CalcResult::EmptyArg => f(0.0),
                 CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
@@ -44,9 +47,8 @@ impl Model {
                                 ArrayNode::Number(value) => {
                                     f(value);
                                 }
-                                ArrayNode::Boolean(b) => {
-                                    f(if b { 1.0 } else { 0.0 });
-                                }
+                                // Booleans inside an array are ignored, unlike direct
+                                // arguments (probes/average-value-args F1, F5, F8, F10).
                                 ArrayNode::Error(error) => {
                                     return Err(CalcResult::Error {
                                         error,
@@ -311,6 +313,8 @@ impl Model {
                 CalcResult::Boolean(_) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     result += 1.0;
                 }
+                // COUNT(5,) is 2 (probes/average-value-args F16).
+                CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s)
                     if !matches!(arg, Node::ReferenceKind { .. }) && s.parse::<f64>().is_ok() =>
                 {
@@ -335,6 +339,13 @@ impl Model {
                             }
                         }
                     }
+                }
+                // Only an array's numbers count (probes/average-value-args F32).
+                CalcResult::Array(array) => {
+                    let numbers = array.iter().flatten();
+                    result += numbers
+                        .filter(|v| matches!(v, ArrayNode::Number(_)))
+                        .count() as f64;
                 }
                 _ => {
                     // Ignore everything else

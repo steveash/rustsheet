@@ -455,7 +455,7 @@ impl Model {
     /// Rows and columns of the reference or array that ROWS/COLUMNS count. An array
     /// is counted, never read: `ROWS(NA()-{1;2;3})` is 3 although every element is
     /// `#N/A` (probes/error-operand-broadcast C1, C3, C6-C8, C10). A non-reference,
-    /// non-array argument keeps `#VALUE!` (ROWS(5) is unprobed, T-0228).
+    /// non-array argument counts as 1x1 (probes/rows-columns-args C1-C5, C12).
     pub(crate) fn rows_columns_extent(
         &mut self,
         node: &Node,
@@ -468,6 +468,8 @@ impl Model {
             )),
             CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
             error @ CalcResult::Error { .. } => Err(error),
+            // Excel: a scalar is 1x1 (probes/rows-columns-args); other kinds stay unprobed.
+            CalcResult::Number(_) | CalcResult::Boolean(_) | CalcResult::String(_) => Ok((1, 1)),
             _ => Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
