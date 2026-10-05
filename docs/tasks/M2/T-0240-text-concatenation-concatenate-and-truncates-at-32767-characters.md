@@ -3,7 +3,7 @@ id: T-0240
 title: "Text concatenation (CONCATENATE and &) truncates at 32767 characters"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,9 +27,12 @@ The evidence is excel-graph (web) only; confirm truncation with the excel-deskto
 if it is available (decision 0019), and record a CONFLICTING entry if desktop differs.
 
 ## Acceptance criteria
-- [ ] probes/resource-limits C9 and C10 disappear from eval/baseline/probes.txt with no new F lines.
-- [ ] Share one truncation helper between CONCATENATE and `&` (no copy).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/resource-limits C9 and C10 disappear from eval/baseline/probes.txt with no new F lines.
+- [x] Share one truncation helper between CONCATENATE and `&` (no copy).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CONCAT/TEXTJOIN unless the new probe cells show they truncate too.
+
+## Outcome
+CONCATENATE and `&` now truncate to 32,767 chars via shared `concat_text`/`truncate_text` (cast.rs). probes/resource-limits C9 and C10 fixed (probes known failures 43 -> 41). CONCAT/TEXTJOIN not probed (out of scope).

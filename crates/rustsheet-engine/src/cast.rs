@@ -40,6 +40,29 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// Longest text a cell can hold (docs/excel-semantics/coercion.md). Also bounds the allocation
+/// a concatenation can make (CLAUDE.md directive 5).
+const MAX_TEXT_CHARS: usize = 32767;
+
+/// Truncates `text` to [`MAX_TEXT_CHARS`] characters, as Excel does for CONCATENATE and `&`
+/// (probes/resource-limits C9, C10, excel-graph).
+pub(crate) fn truncate_text(text: &mut String) {
+    if text.len() > MAX_TEXT_CHARS {
+        if let Some((byte, _)) = text.char_indices().nth(MAX_TEXT_CHARS) {
+            text.truncate(byte);
+        }
+    }
+}
+
+/// Concatenates two strings, truncating the result to the cell text limit.
+pub(crate) fn concat_text(a: &str, b: &str) -> String {
+    let mut joined = String::with_capacity(a.len() + b.len());
+    joined.push_str(a);
+    joined.push_str(b);
+    truncate_text(&mut joined);
+    joined
+}
+
 /// Converts a single array element to a string using the same rules as
 /// [`Model::cast_to_string`]. Errors propagate.
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {

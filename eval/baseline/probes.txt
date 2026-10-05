@@ -62,10 +62,8 @@ F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
-F	probes/resource-limits.case.json	Sheet1!C10
 F	probes/resource-limits.case.json	Sheet1!C12
 F	probes/resource-limits.case.json	Sheet1!C14
-F	probes/resource-limits.case.json	Sheet1!C9
 F	probes/rich-errors-field.case.json	Sheet1!A1
 F	probes/rich-errors-field.case.json	Sheet1!B1
 F	probes/rich-errors-field.case.json	Sheet1!D1
