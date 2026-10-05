@@ -3,7 +3,7 @@ id: T-0236
 title: "AVERAGE family: probe value-arg coercion (array booleans, empty args) and align for_each_value"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ unprobed: write a probe (excel-probe skill) for `AVERAGE({TRUE,5})`, `AVERAGE(5,
 
 ## Out of scope
 - MIN/MAX (T-0217).
+
+## Outcome
+Probe `probes/average-value-args` (32 cells, excel-graph oracle). AVERAGE/MEDIAN/GEOMEAN/HARMEAN/SKEW/SKEW.P/KURT/STDEV/VAR ignore booleans inside arrays and count an empty argument as 0, exactly like MIN/MAX; COUNT counts an empty argument (`COUNT(5,)` = 2) and only the numbers of an array (`COUNT({TRUE,5})` = 1, previously 0). `for_each_value`, `fn_count`, `fn_stdev_s/p`, `fn_var_s/p` aligned. Eval delta: new case 32/32 pass, 0 regressions; coercion.md entry VERIFIED. Unprobed: errors/text inside a COUNT array, text inside HARMEAN/SKEW/KURT arrays (shared code path).
