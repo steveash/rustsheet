@@ -52,11 +52,33 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
     } else {
         (round_off(mantissa, dropped, mode), -num_digits)
     };
-    let magnitude: f64 = format!("{digits}e{place}").parse().ok()?;
+    let magnitude = decimal_to_f64(digits, place)?;
     if magnitude.is_infinite() {
         return None;
     }
+    if magnitude == 0.0 {
+        // Excel has no negative zero (`ROUND(-0.0001,2)` is 0).
+        return Some(0.0);
+    }
     Some(magnitude.copysign(value))
+}
+
+/// The double nearest to `digits * 10^place`, where `digits <= 10^15`.
+fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
+    // Fast path: `digits` (< 2^53) and 10^|place| (|place| <= 22) are exact doubles, so one
+    // multiplication or division is correctly rounded, like the parse below.
+    if let Ok(exact_power) = i32::try_from(place.unsigned_abs()) {
+        if exact_power <= 22 {
+            let digits = digits as f64; // digits <= 10^15 < 2^53: exact
+            let scale = 10_f64.powi(exact_power);
+            return Some(if place >= 0 {
+                digits * scale
+            } else {
+                digits / scale
+            });
+        }
+    }
+    format!("{digits}e{place}").parse().ok()
 }
 
 /// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`, rounding per `mode`.
@@ -172,6 +194,8 @@ mod tests {
         assert_eq!(round(1.5, f64::MAX), Some(1.5));
         assert_eq!(round(1.5, f64::MIN), Some(0.0));
         assert_eq!(round(1.234_567_890_123_45e300, -299.0), Some(1.2e300));
+        assert_eq!(round(1e-300, 310.0), Some(1e-300));
+        assert_eq!(round(-0.0001, 2.0).map(f64::is_sign_negative), Some(false));
     }
 
     #[test]
