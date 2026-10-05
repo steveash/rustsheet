@@ -239,7 +239,11 @@ fn test_sumif_resizes_sum_range() {
     model._set("F3", "=SUMIF(A1:B2,\"<99\",B1)");
     // Array criteria path resizes too.
     model._set("F4", "=SUMIF(A2:B2,{\"<99\"},A1:A4)");
+    // Resized range runs off the grid: clamped to it (no Excel evidence; keeps the walk bounded).
+    model._set("XFD1048576", "5");
+    model._set("F5", "=SUMIF(A1:B2,\"<99\",XFD1048576)");
     model.evaluate();
+    assert_eq!(model._get_text("F5"), *"5");
     assert_eq!(model._get_text("F1"), *"3");
     assert_eq!(model._get_text("F2"), *"10");
     assert_eq!(model._get_text("F3"), *"18");
