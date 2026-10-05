@@ -3,7 +3,7 @@ id: T-0138
 title: "Probe intersection operator edge cases: whitespace, literal and error operands"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
