@@ -3,7 +3,7 @@ id: T-0038
 title: "make new-decision allocates decision numbers"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
