@@ -3,7 +3,7 @@ id: T-0043
 title: "Case spec: defined names"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -30,7 +30,7 @@ cannot live in eval/suites because the case format has no names. That needs both
 ## Out of scope
 - Sheet-scoped names.
 
-## Handoff
+## Handoff (resumed)
 Sonnet run, no code written. Findings:
 - Harness side (`crates/rustsheet-eval/src/engine.rs::evaluate_spec`) builds the workbook only through the `rustsheet` facade (`Workbook::edit` / `Transaction`). The facade has no way to define a name, and SPEC-0001 (line ~25) lists "tables and names editing" as out of v0 scope. `Workbook.model` is `pub(crate)`.
 - The engine can do it: `rustsheet_engine::Model::new_defined_name(name, scope, formula)` (model.rs ~3346).
