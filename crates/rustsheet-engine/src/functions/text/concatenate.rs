@@ -34,7 +34,7 @@ impl Model {
             let mut joined = String::new();
             for operand in &operands {
                 joined.push_str(&array_node_to_string(operand.elem(i, j))?);
-                if joined.chars().count() > MAX_TEXT_CHARS {
+                if joined.len() > MAX_TEXT_CHARS && joined.chars().count() > MAX_TEXT_CHARS {
                     return Err(Error::VALUE);
                 }
             }

@@ -54,3 +54,4 @@ not write a new helper. Keep the scalar path's results exactly as they are.
 
 ## Outcome
 CONCATENATE now lifts over range/array arguments via `text_arg` + `broadcast_text`; static analysis reports an array result. gen-m2 known failures 1518 -> 1514 (4 fixed, the 2 targets plus 2 more), no regressions.
+The result is capped at 32767 characters (`#VALUE!`), which also changes scalar results beyond that length; unverified, probe filed as T-0233. A scalar error argument returns that error (arrays.md).
