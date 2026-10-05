@@ -12,6 +12,29 @@ use crate::{
 /// A compiled criterion predicate, as returned by `build_criteria`.
 type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
 
+/// Rows and columns spanned by a range.
+fn range_shape(range: &Range) -> (i32, i32) {
+    (
+        range.right.row - range.left.row,
+        range.right.column - range.left.column,
+    )
+}
+
+/// True when every range has the same rows x columns as the first one.
+fn same_shape(ranges: &[Range]) -> bool {
+    ranges
+        .first()
+        .is_none_or(|first| ranges.iter().all(|r| range_shape(r) == range_shape(first)))
+}
+
+fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "Ranges must have the same shape".to_string(),
+    )
+}
+
 impl Model {
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
@@ -67,11 +90,14 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     );
                 }
-                // TODO test ranges are of the same size as sum_range
                 ranges.push(Range { left, right });
             } else {
                 return CalcResult::new_error(Error::VALUE, cell, "Expected a range".to_string());
             }
+        }
+        // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
+        if !same_shape(ranges) {
+            return shape_mismatch(cell);
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -180,6 +206,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
+        strict_shape: bool,
         apply: F,
     ) -> Result<(), CalcResult>
     where
@@ -235,7 +262,6 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     ));
                 }
-                // TODO test ranges are of the same size as sum_range
                 ranges.push(Range { left, right });
             } else {
                 return Err(CalcResult::new_error(
@@ -244,6 +270,13 @@ impl Model {
                     "Expected a range".to_string(),
                 ));
             }
+        }
+        // SUMIFS: every range shaped like sum_range, else #VALUE! (T-0209). The
+        // other consumers are unprobed, so they keep walking by offset.
+        if strict_shape
+            && (!same_shape(ranges) || range_shape(&ranges[0]) != range_shape(&sum_range))
+        {
+            return Err(shape_mismatch(cell));
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -442,7 +475,7 @@ impl Model {
             total += value;
             count += 1.0;
         };
-        if let Err(e) = self.apply_ifs(args, cell, average) {
+        if let Err(e) = self.apply_ifs(args, cell, false, average) {
             return e;
         }
 
@@ -459,7 +492,7 @@ impl Model {
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
-        if let Err(e) = self.apply_ifs(args, cell, apply_min) {
+        if let Err(e) = self.apply_ifs(args, cell, false, apply_min) {
             return e;
         }
 
@@ -472,7 +505,7 @@ impl Model {
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
-        if let Err(e) = self.apply_ifs(args, cell, apply_max) {
+        if let Err(e) = self.apply_ifs(args, cell, false, apply_max) {
             return e;
         }
         if max.is_infinite() {
