@@ -35,3 +35,5 @@ Unprobed: a scalar non-reference argument (`ROWS(5)`, `ROWS(NA())`); probe befor
 
 ## Outcome
 ROWS/COLUMNS now count reference or array values (`rows_columns_extent`); scalar non-reference arguments keep the old error (unprobed). probes known failures 27 -> 21 (6 fixed, 0 regressions). Rule recorded in docs/excel-semantics/arrays.md.
+
+Follow-up: T-0237 (probe scalar/array-constant arguments).
