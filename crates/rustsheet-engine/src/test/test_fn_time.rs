@@ -268,8 +268,8 @@ fn test_timevalue_function_errors() {
         ("A1", "=TIMEVALUE()"),                 // Wrong arg count
         ("A2", "=TIMEVALUE(\"14:30\", \"x\")"), // Wrong arg count
         ("B1", "=TIMEVALUE(\"invalid\")"),      // Invalid format
-        ("B2", "=TIMEVALUE(\"25:00\")"),        // Invalid hour
-        ("B3", "=TIMEVALUE(\"14:70\")"),        // Invalid minute
+        ("B2", "=TIMEVALUE(\"10000:00\")"),     // Hour past 9999
+        ("B3", "=TIMEVALUE(\"14:70 PM\")"),     // Minute past 59 with AM/PM
         ("B4", "=TIMEVALUE(\"\")"),             // Empty string
         ("B5", "=TIMEVALUE(\"2PM\")"),          // Missing space (still unsupported)
     ]);
@@ -477,9 +477,9 @@ fn test_timevalue_malformed_but_parseable() {
         ("D3", "=TIMEVALUE(\"23:59:60\")"), // Should error (invalid second)
     ]);
 
-    // Milliseconds are not supported, should return a #VALUE! error
-    assert_eq!(model._get_text("A1"), *"#VALUE!");
-    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    // Fractional seconds parse (probe timevalue-fractional-seconds)
+    assert_eq!(model._get_text("A1"), *"0.60416809");
+    assert_eq!(model._get_text("A2"), *"0.604178229");
 
     // Leading zeros should work fine
     assert_eq!(model._get_text("A3"), *TIME_2_30_AM); // 02:30:00 should parse as 2:30:00
