@@ -38,10 +38,46 @@ Status: VERIFIED (Excel-cached values)
 ## TIMEVALUE of "date time" text keeps serial-subtraction error
 Rule: for text carrying a date and a time, Excel builds the full serial and returns its fractional
 part, so `TIMEVALUE("7/7/2026 4:35 PM")` = 0.69097222221898846 (46210.6909… minus 46210), not the
-exact 16:35/24 = 0.69097222222222221. Time-only text is exact.
+exact 16:35/24 = 0.69097222222222221. Time-only text below 24 hours is exact.
 Evidence: ironcalc-calc DATE_AND_TIME/TIMEVALUE.xlsx B18 (Excel-cached).
-Fractional seconds (`"10:11:12.5"`) remain UNVERIFIED (T-0910 stays open for that).
-Status: VERIFIED (Excel-cached value, one cell)
+The same holds for fractional seconds and hours past 23 in "date time" text:
+`TIMEVALUE("1/2/2020 10:11:12.5")` = 0.42445023148320615, `TIMEVALUE("1/2/2020 25:00")` =
+0.04166666666424135 (probes/timevalue-fractional-seconds B16, timevalue-ampm-limits B14).
+Status: VERIFIED (Excel-cached value; oracle: excel-graph, 2026-10-05)
+
+## Time text
+Rule: en-US Excel reads clock text as `H:M`, `H:M:S[.f]` or `M:S.f` and its serial is
+`(total_ms / 1000) / 86400`; TIMEVALUE returns that serial minus its floor, coercion (`0+text`)
+returns it whole.
+Details, all from probes/timevalue-fractional-seconds, timevalue-fractional-seconds2,
+timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-10-05):
+- Two components with a fraction are **minutes and seconds**: `"11:12.5"` is 672.5 s, `"10:11 .5"`
+  is 611.5 s; without a fraction they are hours and minutes (`"10:11"`, and `"10:11."` with an
+  empty fraction).
+- Fractional seconds round **half-up on the decimal digits** to milliseconds: `.1234` → .123,
+  `.4995` → .500 (a float-based rounding would give .499), `.0005` → .001, `.0004` → 0,
+  `.9999` carries into the next second; digits past the fourth are ignored.
+- Components are 1–4 digits, at most 9999 (`"9999:59:59"` parses, `"10000:00:00"`,
+  `"10:10000:00"`, `"0:0:10000"` are #VALUE!), and a leading zero is allowed only in a 2-digit
+  component (`"010:11:12"`, `"10:011:12"`, `"000:00"` are #VALUE!).
+- Without AM/PM, minutes and seconds may exceed 59 and hours 23: `"10:61"`, `"10:11:99.5"`,
+  `"25:00"`. TIMEVALUE wraps them by subtraction, so it keeps the float error:
+  `TIMEVALUE("25:00")` = 0.04166666666666674, `TIMEVALUE("24:00:00.5")` = 5.78703703713046e-06,
+  `TIMEVALUE("23:59:59.9995")` = 0 (coercion gives 1).
+- An AM/PM suffix needs whitespace before it (`"10:11:12.5PM"` is #VALUE!), may be `AM`, `PM`,
+  `A` or `P` in any case (`"a.m."` is #VALUE!), and then the hour must be at most 12 and minutes
+  and seconds at most 59 before rounding (`"13:00:00.5 PM"`, `"10:61 PM"`, `"10:11:60.5 PM"` are
+  #VALUE!; `"10:11:59.9995 PM"` is 22:12:00). PM adds 12 to hours 0–11 (`"0:11:12.5 PM"` is
+  12:11:12.5, `"10:11.5 PM"` is 12:10:11.5); AM maps 12 to 0.
+- Spaces are allowed around `:` and `.` (`"10 :11:12"`, `"10:11:12 . 5"`). A comma is not a
+  decimal separator (`"10:11:12,5"`), and a second `.` or an exponent is #VALUE!.
+- TIMEVALUE trims surrounding spaces but coercion does not: `0+" 10:11:12.5 "` is #VALUE!
+  (timevalue-fractional-seconds2 C11).
+- Oddity not implemented: `TIMEVALUE("10:11.5:12")` = 0.424369212962963 (36665.5 s); the engine
+  returns #VALUE! (timevalue-component-limits B26, baselined).
+Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_text::parse_clock_text`
+(T-0910); text-to-number coercion of time text is T-0145.
+
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
