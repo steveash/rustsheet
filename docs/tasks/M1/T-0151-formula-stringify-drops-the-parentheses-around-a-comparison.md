@@ -3,7 +3,7 @@ id: T-0151
 title: "Formula stringify drops the parentheses around a comparison inside & (xlsx-imported formulas; 1 poi known failure)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
