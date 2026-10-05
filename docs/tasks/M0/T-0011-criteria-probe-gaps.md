@@ -3,7 +3,7 @@ id: T-0011
 title: "Probe the remaining criteria-grammar gaps (<>text, ~ escapes, case, = on blanks)"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
