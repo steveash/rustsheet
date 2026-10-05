@@ -11,6 +11,23 @@ use crate::{
 use std::f64::consts::PI;
 
 impl Model {
+    /// Coerces a MIN/MAX argument that is not a range or array.
+    ///
+    /// Excel (gen-m2 oracle cases, T-0217): a value argument (literal or function result) is
+    /// coerced like SUM does, so non-numeric text is `#VALUE!` and `"2"` is 2. A single-cell
+    /// reference behaves like a one-cell range, so text and booleans there are ignored.
+    fn min_max_value_arg(
+        &mut self,
+        arg: &Node,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Option<f64>, CalcResult> {
+        if matches!(arg, Node::ReferenceKind { .. }) {
+            return Ok(None);
+        }
+        self.cast_to_number(value, cell).map(Some)
+    }
+
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
@@ -60,9 +77,11 @@ impl Model {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
+                other => match self.min_max_value_arg(arg, other, cell) {
+                    Ok(Some(value)) => result = value.min(result),
+                    Ok(None) => {}
+                    Err(error) => return error,
+                },
             };
         }
         if result.is_nan() || result.is_infinite() {
@@ -120,9 +139,11 @@ impl Model {
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
+                other => match self.min_max_value_arg(arg, other, cell) {
+                    Ok(Some(value)) => result = value.max(result),
+                    Ok(None) => {}
+                    Err(error) => return error,
+                },
             };
         }
         if result.is_nan() || result.is_infinite() {

@@ -3,10 +3,10 @@ id: T-0217
 title: "MIN/MAX: a non-numeric text value argument is #VALUE! (5 gen-m2 known failures)"
 milestone: M2
 lane: functions-math
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -34,3 +34,14 @@ Check the other T-0200 users (AVERAGE, COUNT?) with the same probe and file foll
 
 ## Out of scope
 - Reference-vs-value results of IF/INDEX (T-0216).
+
+## Handoff
+Tried: `fn_min`/`fn_max` fallback arm now coerces value args via `cast_to_number` (new helper
+`min_max_value_arg`; single-cell `Node::ReferenceKind` args stay ignored). Unit test
+`test_fn_min_max_text_value_arguments` passes and the 5 target cells are fixed, but `eval-check`
+reports 3 REGRESSIONS in gen-m2: `207a5753da48c7e0` Calc!A278, `f0d1bacec5de8146` Calc!A298,
+`fa437879253827be` Calc!A312. All three pass `IF(cond, ref)` or `INDEX(...)` into MIN/MAX where
+Excel treats the result as a reference (text skipped), but our IF/INDEX return values, so the text
+is now coerced to #VALUE!. This is exactly T-0216 (IF/INDEX return references). Suggested next
+step: land T-0216 first (or do both together), then re-apply this change; cannot be fixed without
+reference-preserving IF/INDEX, and the baseline may not take regressions.
