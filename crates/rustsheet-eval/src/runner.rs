@@ -1,6 +1,6 @@
 //! Executes cases against an [`Engine`] and scores every checked cell.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -15,6 +15,7 @@ use crate::case::{
 };
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
+use crate::report::is_excel_evidence;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
@@ -44,6 +45,10 @@ pub struct CellResult {
     pub expected: Value,
     pub actual: Value,
     pub verdict: Verdict,
+    /// Whether the expected value came from Excel (oracle sidecar or Excel-authored cached value),
+    /// as opposed to a hand-written one. The evidence report counts only these cells (T-0044).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub from_excel: bool,
 }
 
 impl CellResult {
@@ -95,6 +100,7 @@ struct Expectation {
     addr: Addr,
     formula: Option<String>,
     expected: Value,
+    from_excel: bool,
 }
 
 enum Prepared {
@@ -259,6 +265,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 expected: e.expected.clone(),
                 actual,
                 verdict,
+                from_excel: e.from_excel,
             }
         })
         .collect()
@@ -286,10 +293,11 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     let bytes = std::fs::read(&case.path).map_err(|e| e.to_string())?;
     let snapshot = read_snapshot(&bytes).map_err(|e| e.to_string())?;
     let oracle = load_oracle(case)?;
-    let (source, lookup): (String, Lookup) = if let Some(o) = oracle {
+    let (source, from_excel, lookup): (String, bool, Lookup) = if let Some(o) = oracle {
         let kind = o.source.kind.clone();
         (
-            kind,
+            kind.clone(),
+            is_excel_evidence(&kind),
             Box::new(move |sheet: &str, addr: Addr| {
                 o.sheets
                     .get(sheet)
@@ -302,6 +310,8 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         let cached = snapshot.values();
         (
             format!("excel-cached ({app})"),
+            // A suite may trust cached values of any application; only Excel's count as evidence.
+            snapshot.is_excel_authored(),
             Box::new(move |s: &str, a: Addr| cached.get(&(s.to_string(), a)).cloned()),
         )
     } else {
@@ -325,6 +335,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 addr,
                 formula: cell.formula.clone(),
                 expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
+                from_excel,
             })
         })
         .collect();
@@ -355,13 +366,19 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         .expected_source
         .clone()
         .unwrap_or_else(|| "inline".into());
+    // Cells whose expectation the sidecar supplies; hand cells beside them are not Excel evidence.
+    let mut oracle_cells: BTreeSet<String> = BTreeSet::new();
+    let mut oracle_is_excel = false;
     if let Some(o) = load_oracle(case)? {
         source.clone_from(&o.source.kind);
+        oracle_is_excel = is_excel_evidence(&o.source.kind);
         for (sheet, cells) in o.sheets {
             for (a1, v) in cells {
                 let addr = Addr::parse(&a1)
                     .ok_or_else(|| format!("bad cell key {sheet}!{a1} in oracle sidecar"))?;
-                expected.insert(cell_key(&sheet, addr), v);
+                let key = cell_key(&sheet, addr);
+                oracle_cells.insert(key.clone());
+                expected.insert(key, v);
             }
         }
     }
@@ -397,11 +414,8 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     for q in wanted {
         let (sheet, a1) = split_qualified(&q).ok_or_else(|| format!("bad cell key {q}"))?;
         let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
-        let Some(value) = expected
-            .get(&cell_key(&sheet, addr))
-            .filter(|v| !is_undecoded(v))
-            .cloned()
-        else {
+        let key = cell_key(&sheet, addr);
+        let Some(value) = expected.get(&key).filter(|v| !is_undecoded(v)).cloned() else {
             continue; // pending oracle for this cell (or an undecoded rich error)
         };
         let formula = formula_of(&sheet, &a1);
@@ -414,6 +428,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             addr,
             formula,
             expected: value,
+            from_excel: oracle_is_excel && oracle_cells.contains(&key),
         });
     }
     Ok(PreparedCase {
@@ -527,12 +542,25 @@ mod tests {
         });
         let _ = std::fs::remove_dir_all(&dir);
         let prepared = prepared.expect("prepare");
+        let excel_flags: Vec<(String, String, bool)> = prepared
+            .expectations
+            .iter()
+            .map(|e| (e.sheet.clone(), e.addr.to_string(), e.from_excel))
+            .collect();
         let mut got: Vec<(String, String, Value)> = prepared
             .expectations
             .into_iter()
             .map(|e| (e.sheet, e.addr.to_string(), e.expected))
             .collect();
         got.sort_by(|a, b| (&a.0, &a.1).cmp(&(&b.0, &b.1)));
+        let excel: Vec<(String, String)> = excel_flags
+            .into_iter()
+            .filter(|(_, _, from_excel)| *from_excel)
+            .map(|(sheet, cell, _)| (sheet, cell))
+            .collect();
+        // The hand value B1 is not Excel evidence although the sidecar covers its neighbours.
+        assert_eq!(excel.len(), 3);
+        assert!(!excel.contains(&("S".to_string(), "B1".to_string())));
         assert_eq!(
             got,
             vec![
