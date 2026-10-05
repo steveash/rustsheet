@@ -69,3 +69,16 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "10");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+#[test]
+fn typed_text_booleans_and_no_numbers() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DEVSQ(\"1\",\"2\",2)");
+    model._set("B1", "x");
+    model._set("B2", "=TRUE");
+    model._set("A2", "=DEVSQ(B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.666666667");
+    // Excel: no numbers at all is #NUM!, not #DIV/0!.
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+}

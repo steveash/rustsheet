@@ -3,7 +3,7 @@ id: T-0945
 title: "STDEV/VAR/VARP/DEVSQ/AVEDEV/SUMSQ: coerce typed text and boolean arguments; AVEDEV/DEVSQ with no numbers is #NUM! (13 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -62,3 +62,10 @@ arguments; AVEDEV and DEVSQ of nothing is #NUM!".
   T-0236 probes those for every `for_each_value` user.
 - STDEV.P/VAR.P/STDEVA/VARA variants not cited above: switch them to the same iterator only if no
   F line changes; no evidence here.
+
+## Outcome
+STDEV.S/.P, VAR.S/.P, DEVSQ, AVEDEV and SUMSQ now iterate with `Model::for_each_value` (hand-written
+loops removed, about 250 lines fewer); AVEDEV/DEVSQ of no numbers return `#NUM!`. Unit tests added
+for each. Eval delta: poi known failures 932 -> 921 (11 of the 13 listed fixed). I392 and K1456 stay
+known failures: they are last-digit accumulation differences (DEVSQ/VARP summation order), which the
+task said to keep; see the follow-up task.

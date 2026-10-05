@@ -21,48 +21,10 @@ impl Model {
             *count += 1;
         }
 
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    accumulate(&mut sum, &mut sumsq, &mut count, value);
-                }
-                // An empty argument counts as 0 (probes/average-value-args F11, F21-F23).
-                CalcResult::EmptyArg => {
-                    accumulate(&mut sum, &mut sumsq, &mut count, 0.0);
-                }
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        accumulate(&mut sum, &mut sumsq, &mut count, value);
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    accumulate(&mut sum, &mut sumsq, &mut count, value);
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
-            }
+        if let Err(error) = self.for_each_value(args, cell, |value| {
+            accumulate(&mut sum, &mut sumsq, &mut count, value);
+        }) {
+            return error;
         }
 
         if count == 0 {
@@ -100,48 +62,10 @@ impl Model {
             *count += 1;
         }
 
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    accumulate(&mut sum, &mut sumsq, &mut count, value);
-                }
-                // An empty argument counts as 0 (probes/average-value-args F11, F21-F23).
-                CalcResult::EmptyArg => {
-                    accumulate(&mut sum, &mut sumsq, &mut count, 0.0);
-                }
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        accumulate(&mut sum, &mut sumsq, &mut count, value);
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    accumulate(&mut sum, &mut sumsq, &mut count, value);
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
-            }
+        if let Err(error) = self.for_each_value(args, cell, |value| {
+            accumulate(&mut sum, &mut sumsq, &mut count, value);
+        }) {
+            return error;
         }
 
         if count <= 1 {
