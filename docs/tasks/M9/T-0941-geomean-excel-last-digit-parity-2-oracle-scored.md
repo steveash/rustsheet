@@ -24,7 +24,7 @@ Code: `crates/rustsheet-engine/src/functions/statistical/geomean.rs`. Excel's ev
 unknown; probe candidate formulations (product then root, `pow(prod, 1/n)`, log-sum) against the
 oracle with the `excel-probe` skill rather than fitting to two cells: `exp(ln(product)/n)` matches
 G27 but `exp(ln(47))` still misses B27, so no single candidate fits both yet. Both values come from
-Excel for the web; check desktop parity too (T-0025) before fitting a last digit. Record the rule in
+Excel for the web; check desktop parity too (decision 0030) before fitting a last digit. Record the rule in
 `docs/excel-semantics/`.
 
 ## Acceptance criteria

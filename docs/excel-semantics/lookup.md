@@ -11,7 +11,7 @@ Implemented in: the engine already returns #REF! (those cells pass).
 Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the same formulas give
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
 2026-10-04. Never take oracle values as evidence for references to missing sheets
-(docs/architecture/oracle.md, "Known divergences"; which Excel wins is T-0025).
+(docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
 ## MATCH on a 2-D lookup_array is #N/A; argument errors win
 Rule: `MATCH` with a lookup_array of more than one row and column returns `#N/A` even when the value
