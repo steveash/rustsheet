@@ -11,6 +11,8 @@ C	probes/criteria-ifs-bare-equals.case.json	12
 C	probes/criteria-operands.case.json	25
 C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
+C	probes/date-text-dotted-criteria.case.json	16
+C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16
@@ -51,11 +53,11 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 F	probes/criteria-padded-text.case.json	Sheet1!C13
-F	probes/date-text-locale.case.json	Sheet1!B1
-F	probes/date-text-locale.case.json	Sheet1!B4
-F	probes/date-text-locale.case.json	Sheet1!B5
-F	probes/date-text-locale.case.json	Sheet1!B6
-F	probes/date-text-locale.case.json	Sheet1!B7
+F	probes/date-text-grammar.case.json	Sheet1!C30
+F	probes/date-text-grammar.case.json	Sheet1!C31
+F	probes/date-text-grammar.case.json	Sheet1!C53
+F	probes/date-text-grammar.case.json	Sheet1!C55
+F	probes/date-text-grammar.case.json	Sheet1!C63
 F	probes/dates-early-1900.case.json	Sheet1!A10
 F	probes/dates-early-1900.case.json	Sheet1!A12
 F	probes/dates-early-1900.case.json	Sheet1!A16
