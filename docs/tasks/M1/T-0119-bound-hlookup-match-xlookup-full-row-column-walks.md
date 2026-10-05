@@ -24,7 +24,7 @@ T-0111 bounded VLOOKUP's search column via `SheetData::last_row` (`LookupTable::
 ## Out of scope
 Per-recalc search-column caching (M3).
 
-## Handoff
+## Handoff (resumed)
 Tried: truncate search vectors at the sheet-wide last used row/column (`LookupTable::first_row/first_column`, `as_vector(.., search=true)`, `clip_search_rows/columns` in lookup_table.rs, recording the skipped tail with `record_seen_empty_range`); LOOKUP's 3-arg result vector is cut after element `l`; `SheetData::last_column` added. `make check` green, eval delta none, timing 159.5 s -> 0.33 s (200 x MATCH(i,A:A,0), 10k cells, debug). Spill-restart tests for MATCH/LOOKUP/HLOOKUP pass. Security, architecture, quality, performance reviewers APPROVE (round 2).
 Failed: excel-fidelity reviewer requested changes twice (blocking, then request-changes). The clip changes values, and the premise "empty cells never match" is false in this engine: `compare_values` treats Empty as 0/""/FALSE, so
 - approximate search depends on vector length: `MATCH(99,A:A,1)` went 1048576 -> last used row (and would depend on unrelated filled cells such as B100);
