@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-0942]
 ---
 
 ## Goal
@@ -19,6 +19,9 @@ Oracle-free: Excel's cached values are the exact quantiles, ours (statrs `Normal
 - `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` `LOGNORM.DIST LOGNORM.INV!F2` expected 4.000000000000003 actual 4.000000000091908 (31 cells).
 - `ironcalc-calc/STATISTICAL/CONFIDENCE.xlsx` CONFIDENCE.NORM 23 cells, all NumericUlp (`D2` expected 0.2771807648699355 actual 0.27718076486993554).
 Code: `functions/statistical/{normal,log_normal}.rs`. Implement AS241 (PPND16) once, in the same module as the T-0924 kernel if that has landed (else a new `normal_kernel` module that T-0924 extends), and route all four functions through it. Where AS241 alone leaves ulp-level diffs, test whether one Newton/Halley refinement step against the T-0924 CDF reproduces the cached cells and keep what matches.
+
+**Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
+cached workbooks give. Fit against the T-0942 sweep, never blind.
 
 ## Acceptance criteria
 - [ ] All NumericClose/NumericMismatch lines for NORM.S.INV, NORM.INV, LOGNORM.INV disappear from `eval/baseline/ironcalc-calc.txt`; the CONFIDENCE.NORM ulp lines disappear or the PR documents which remain and why. Exact before/after counts in the PR; no new lines.

@@ -13,7 +13,16 @@ For each group, use `make eval-show CASE=...` on 1–3 examples, then create a t
 `make new-task` (it assigns the id; set `tier` by the rubric in docs/process/task-format.md) in the `functions-*` lane of the module the fix touches (lane table in docs/process/agent-workflow.md; decision 0022), or `engine` for engine-level issues, including:
 the failing case ids/cells, expected vs actual, the suspected root cause, and acceptance
 criteria "these N known-failure lines disappear from eval/baseline/<suite>.txt with no new ones".
-Prioritize by (failing cells × real-world function frequency prior from eval/catalog/functions.yaml).
+Rank groups by the function's `milestone` in eval/catalog/functions.yaml, earliest first, then
+by failing cells × its `prior` (decision 0026): a current-milestone function comes before any M9
+last-digit tail, however many cells the tail has. Create each task with `--milestone` set to that
+catalog milestone (operators count as M1; a function missing from the catalog is M9, the
+long-tail milestone). `scripts/tasks.py next` already orders ready tasks by milestone, so M9 tasks
+are still picked whenever nothing earlier is ready.
+A numeric-fitting group (last-digit or ulp differences whose formulation must be fitted) that
+needs more Excel points than the cached workbooks give is not attempted blind: its task says
+"Needs an oracle sweep" and depends on a research-lane sweep task (create one with `make new-task`
+if none covers it, e.g. T-0942).
 When the Excel values in a group reveal a quirk (expected values that look wrong, arbitrary or
 inconsistent are still correct: Excel is always right), add or update its entry in
 `docs/excel-semantics/` citing the cells, and link it from the task.
