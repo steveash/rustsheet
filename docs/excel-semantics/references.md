@@ -202,6 +202,6 @@ Tasks: T-0946
 ## OFFSET: negative height or width (known divergence)
 Rule: Excel accepts a negative height or width (the range extends up or left) but `fn_offset` returns
 `#VALUE!` (it follows the documentation, not Excel). No oracle evidence yet.
-Evidence: none; see T-0959.
+Evidence: none; see T-0956.
 Status: UNVERIFIED
-Tasks: T-0959
+Tasks: T-0956
