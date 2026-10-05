@@ -6,6 +6,7 @@ C	probes/average-value-args.case.json	32
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-operands.case.json	25
+C	probes/criteria-padded-operand.case.json	18
 C	probes/date-text-locale.case.json	10
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16
@@ -23,10 +24,6 @@ C	probes/rich-errors-stockhistory.case.json	5
 C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
 C	probes/sumif-edge-single-cell.case.json	15
-F	probes/criteria-gaps.case.json	Sheet1!C16
-F	probes/criteria-gaps.case.json	Sheet1!C17
-F	probes/criteria-gaps.case.json	Sheet1!C18
-F	probes/criteria-gaps.case.json	Sheet1!C22
 F	probes/criteria-grammar.case.json	Sheet1!C4
 F	probes/date-text-locale.case.json	Sheet1!B1
 F	probes/date-text-locale.case.json	Sheet1!B4
