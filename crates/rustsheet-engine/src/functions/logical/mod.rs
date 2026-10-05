@@ -109,6 +109,18 @@ impl Model {
     }
 
     pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.if_impl(args, cell, false)
+    }
+
+    /// IF; with `as_reference` a scalar condition hands back the chosen branch as
+    /// an aggregate argument sees it, so a reference stays a range (T-0216;
+    /// docs/excel-semantics/references.md).
+    pub(crate) fn if_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() != 2 && args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -127,12 +139,11 @@ impl Model {
                     Ok(b) => b,
                     Err(e) => return e,
                 };
-                return if b {
-                    self.evaluate_node_in_context(&args[1], cell)
-                } else if has_else {
-                    self.evaluate_node_in_context(&args[2], cell)
-                } else {
-                    CalcResult::Boolean(false)
+                let branch = if b { args.get(1) } else { args.get(2) };
+                return match branch {
+                    Some(node) if as_reference => self.evaluate_aggregate_arg(node, cell),
+                    Some(node) => self.evaluate_node_in_context(node, cell),
+                    None => CalcResult::Boolean(false),
                 };
             }
         };
