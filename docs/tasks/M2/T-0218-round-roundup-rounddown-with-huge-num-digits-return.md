@@ -2,7 +2,7 @@
 id: T-0218
 title: "ROUND/ROUNDUP/ROUNDDOWN with huge num_digits return a number, not #NUM! (12 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-math
 status: todo
 priority: P2
 size: S

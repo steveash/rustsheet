@@ -2,7 +2,7 @@
 id: T-0937
 title: "TEXT scientific formats with literals between E and the exponent digits (10 known failures)"
 milestone: M10
-lane: functions
+lane: functions-text
 status: todo
 priority: P3
 size: S

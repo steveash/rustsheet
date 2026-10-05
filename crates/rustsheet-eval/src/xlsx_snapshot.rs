@@ -114,14 +114,33 @@ impl WorkbookSnapshot {
 
 type Zip = zip::ZipArchive<Cursor<Vec<u8>>>;
 
+/// Zip-bomb guard (CLAUDE.md directive 5): one part may not inflate past the
+/// public API's default whole-package limit, so the harness reads what the API would.
 fn read_part(zip: &mut Zip, name: &str) -> Result<Option<String>, SnapshotError> {
+    read_part_capped(
+        zip,
+        name,
+        rustsheet::LoadOptions::default().max_uncompressed_bytes,
+    )
+}
+
+fn read_part_capped(
+    zip: &mut Zip,
+    name: &str,
+    limit: u64,
+) -> Result<Option<String>, SnapshotError> {
     let mut file = match zip.by_name(name) {
         Ok(f) => f,
         Err(zip::result::ZipError::FileNotFound) => return Ok(None),
         Err(e) => return Err(e.into()),
     };
     let mut s = String::new();
-    file.read_to_string(&mut s)?;
+    (&mut file).take(limit + 1).read_to_string(&mut s)?;
+    if s.len() as u64 > limit {
+        return Err(SnapshotError::Malformed(format!(
+            "part {name} exceeds the {limit}-byte decompressed size limit"
+        )));
+    }
     Ok(Some(s))
 }
 
@@ -709,6 +728,30 @@ fn decode_value(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+
+    fn zip_with(name: &str, body: &[u8]) -> Zip {
+        let mut w = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        w.start_file(name, zip::write::FileOptions::default())
+            .unwrap();
+        w.write_all(body).unwrap();
+        let bytes = w.finish().unwrap().into_inner();
+        zip::ZipArchive::new(Cursor::new(bytes)).unwrap()
+    }
+
+    #[test]
+    fn part_over_the_size_limit_is_malformed() {
+        let mut zip = zip_with("xl/big.xml", &[b'a'; 100]);
+        assert_eq!(
+            read_part_capped(&mut zip, "xl/big.xml", 100)
+                .unwrap()
+                .unwrap()
+                .len(),
+            100
+        );
+        let err = read_part_capped(&mut zip, "xl/big.xml", 99).unwrap_err();
+        assert!(matches!(&err, SnapshotError::Malformed(m) if m.contains("xl/big.xml")));
+    }
 
     const SHEET: &str = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>
 <row r="1"><c r="A1"><v>1.5</v></c><c r="B1" t="s"><v>0</v></c><c r="C1" t="b"><v>1</v></c></row>

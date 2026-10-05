@@ -54,7 +54,17 @@ fn sha256_hex(path: &Path) -> Result<String> {
     }))
 }
 
+/// Zip-bomb guard (CLAUDE.md directive 5): the public API's per-package limit, so one
+/// definition bounds what the harness inflates from an archive entry.
 fn extract_zip(archive: &Path, dest: &Path) -> Result<()> {
+    extract_zip_capped(
+        archive,
+        dest,
+        rustsheet::LoadOptions::default().max_uncompressed_bytes,
+    )
+}
+
+fn extract_zip_capped(archive: &Path, dest: &Path, limit: u64) -> Result<()> {
     let mut zip = zip::ZipArchive::new(fs::File::open(archive)?)?;
     for i in 0..zip.len() {
         let mut entry = zip.by_index(i)?;
@@ -69,7 +79,16 @@ fn extract_zip(archive: &Path, dest: &Path) -> Result<()> {
             if let Some(parent) = out.parent() {
                 fs::create_dir_all(parent)?;
             }
-            io::copy(&mut entry, &mut fs::File::create(&out)?)?;
+            let copied = io::copy(
+                &mut io::Read::take(&mut entry, limit.saturating_add(1)),
+                &mut fs::File::create(&out)?,
+            )?;
+            if copied > limit {
+                bail!(
+                    "archive entry {} exceeds the {limit}-byte decompressed size limit",
+                    entry.name()
+                );
+            }
         }
     }
     Ok(())
@@ -206,6 +225,16 @@ mod tests {
             zip.write_all(body.as_bytes()).expect("write");
         }
         zip.finish().expect("finish");
+    }
+
+    #[test]
+    fn entry_over_the_size_limit_is_rejected() {
+        let dir = scratch("big");
+        let zip = dir.join("big.zip");
+        write_zip(&zip, &[("pkg/big.bin", &"a".repeat(100))]);
+        extract_zip_capped(&zip, &dir.join("ok"), 100).expect("at the limit");
+        let err = extract_zip_capped(&zip, &dir.join("bad"), 99).expect_err("over the limit");
+        assert!(err.to_string().contains("pkg/big.bin"), "{err}");
     }
 
     fn suite(dir: &Path, url: &str, sha: &str) -> Suite {

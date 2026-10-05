@@ -2,7 +2,7 @@
 id: T-0927
 title: "BINOM.DIST/NEGBINOM.DIST/BINOM.DIST.RANGE/POISSON.DIST: direct pmf evaluation (~140 known failures)"
 milestone: M9
-lane: functions
+lane: functions-stat
 status: todo
 priority: P2
 size: M
