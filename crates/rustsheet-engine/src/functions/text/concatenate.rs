@@ -10,7 +10,8 @@ use crate::{
     model::Model,
 };
 
-/// Longest text a cell can hold. Excel returns `#VALUE!` for a longer CONCATENATE result; it also
+/// Longest text a cell can hold. Excel truncates a longer CONCATENATE result to this length
+/// (docs/excel-semantics/coercion.md; we still return `#VALUE!`, T-0240); it also
 /// bounds the allocation a broadcast over a large range can make (CLAUDE.md directive 5).
 const MAX_TEXT_CHARS: usize = 32767;
 

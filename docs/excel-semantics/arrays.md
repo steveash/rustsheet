@@ -68,6 +68,25 @@ Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.r
 Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
 Tasks: T-0209, T-0228
 
+## Array results above 1,000,000 cells are #ERROR!
+Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000 and
+`ROWS(SEQUENCE(1048576))` = 1048576; only a dimension past the grid is `#VALUE!`
+(`SEQUENCE(1048577)`). RustSheet returns `#ERROR!` (not even an Excel error value) for SEQUENCE,
+RANDARRAY, MAKEARRAY/BYROW/BYCOL results and matrix results above 1,000,000 cells, to bound
+allocation on untrusted input (CLAUDE.md directive 5); past-the-grid dimensions are `#VALUE!` as in Excel.
+Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05; C12 and C14 are known failures by design).
+Status: DEVIATION (decision 0014)
+Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`)
+
+## The edit API refuses a cell inside a spill extent above 4,194,304 cells
+Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
+of an array formula they touch; when that imported footprint is larger than 2^22 cells, the edit is
+refused with `EditError::InvalidInput` ("spill extent too large to edit"), so an untrusted file cannot
+make one edit walk the whole grid (CLAUDE.md directive 5).
+Evidence: none for Excel; this is a resource limit, not an Excel observation.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet/src/edit.rs (`MAX_FOOTPRINT_CELLS`)
+
 ## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
 Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
 does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number.
