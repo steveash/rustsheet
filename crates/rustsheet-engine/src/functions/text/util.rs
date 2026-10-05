@@ -205,9 +205,10 @@ mod tests {
     }
 
     #[test]
-    fn budget_is_exceeded_by_a_million_long_results() {
+    fn budget_allows_exactly_64_mib() {
         let mut total = 0;
-        let ok = (0..1_000_000).all(|_| within_text_budget(&mut total, 32767));
-        assert!(!ok);
+        // 2048 results of 32 KiB make exactly 64 MiB; the next one crosses the cap.
+        assert!((0..2048).all(|_| within_text_budget(&mut total, 32768)));
+        assert!(!within_text_budget(&mut total, 1));
     }
 }
