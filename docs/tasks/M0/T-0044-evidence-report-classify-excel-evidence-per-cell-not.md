@@ -3,7 +3,7 @@ id: T-0044
 title: "Evidence report: classify Excel evidence per cell, not per case"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
