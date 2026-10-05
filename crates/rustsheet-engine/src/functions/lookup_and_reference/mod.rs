@@ -724,8 +724,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.row - c.left.row + 1) as f64),
+        match self.rows_columns_extent(&args[0], cell) {
+            Ok((rows, _)) => CalcResult::Number(rows as f64),
             Err(s) => s,
         }
     }
@@ -811,8 +811,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.column - c.left.column + 1) as f64),
+        match self.rows_columns_extent(&args[0], cell) {
+            Ok((_, columns)) => CalcResult::Number(columns as f64),
             Err(s) => s,
         }
     }
