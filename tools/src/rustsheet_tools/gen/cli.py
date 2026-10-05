@@ -14,6 +14,7 @@ from typing import Any
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import Catalog, generate_case, write_case
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
+from rustsheet_tools.gen.operators_refs import generate_operators_refs
 
 SUITE_TOML = """name = "{name}"
 description = "{description}"
@@ -50,9 +51,13 @@ def main() -> None:
     ap.add_argument("--suite", default=None, help="suite name (default gen-<milestone>)")
     ap.add_argument(
         "--policy",
-        choices=["random", "numeric-rules"],
+        choices=["random", "numeric-rules", "operators-refs"],
         default="random",
-        help="numeric-rules: dense floating-point probe batches (suite probes-numeric); ignores --milestone/--count/--formulas/--depth",
+        help=(
+            "numeric-rules: dense floating-point probe batches (suite probes-numeric); "
+            "operators-refs: M1 operators and references only, no functions (suite gen-m1, T-0117); "
+            "both ignore --milestone/--count/--formulas/--depth"
+        ),
     )
     ap.add_argument("--catalog", type=Path, default=None)
     args = ap.parse_args()
@@ -65,6 +70,15 @@ def main() -> None:
             "Floating-point rule probes from rustsheet-gen --policy numeric-rules; pending until the Excel oracle fills expectations",
             "M1",
             generate_numeric_rules(args.seed),
+        )
+        return
+    if args.policy == "operators-refs":
+        write_suite(
+            root,
+            args.suite or "gen-m1",
+            "M1 operator and reference probes from rustsheet-gen --policy operators-refs; expectations from the Excel oracle",
+            "M1",
+            generate_operators_refs(args.seed),
         )
         return
     catalog = Catalog.load(args.catalog or root / "eval" / "catalog" / "functions.yaml")

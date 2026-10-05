@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import Catalog, generate_case
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
+from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1
 
 
@@ -109,3 +112,66 @@ def test_build_xlsx_pins_the_creation_time() -> None:
     with zipfile.ZipFile(io.BytesIO(first)) as z:
         assert b"2000-01-01T00:00:00Z" in z.read("docProps/core.xml")
     assert build_xlsx(spec) == first
+
+
+def _operators_refs_formulas() -> list[tuple[str, str, str]]:
+    """(category/form tag, cell, formula) for every probe of the default operators-refs run."""
+    return [
+        (c["hypotheses"][f"Calc!{cell}"], cell, f)
+        for c in generate_operators_refs(0)
+        for cell, f in c["sheets"][-1]["cells"].items()
+    ]
+
+
+def _strip_quoted(formula: str) -> str:
+    """Drops string literals and quoted sheet names so only formula syntax remains."""
+    return re.sub(r"'(?:[^']|'')*'", "S", re.sub(r'"(?:[^"]|"")*"', "T", formula))
+
+
+def test_operators_refs_is_deterministic() -> None:
+    dump = json.dumps(generate_operators_refs(3), sort_keys=True)
+    assert dump == json.dumps(generate_operators_refs(3), sort_keys=True)
+    assert dump != json.dumps(generate_operators_refs(4), sort_keys=True)
+
+
+def test_operators_refs_has_no_function_names() -> None:
+    for _, _, f in _operators_refs_formulas():
+        assert not re.search(r"[A-Za-z_][A-Za-z0-9_.]*\(", _strip_quoted(f)), f
+
+
+def test_operators_refs_covers_every_category() -> None:
+    cases = generate_operators_refs(0)
+    counts = Counter(tag.split("/")[0] for tag, _, _ in _operators_refs_formulas())
+    assert set(counts) == set(CATEGORIES)
+    assert min(counts.values()) >= 50
+    assert sum(counts.values()) >= 3000  # M1 exit: gen-m1 has >= 3,000 oracle cells
+    for c in cases:
+        assert set(c["hypotheses"]) == set(c["check"])
+        assert c["expected"] == {}
+        assert build_xlsx(c)[:2] == b"PK"
+
+
+def test_operators_refs_whole_rows_and_columns_only_in_intersections() -> None:
+    whole = re.compile(r"!\$?(?:[A-Z]+:\$?[A-Z]+|\d+:\$?\d+)(?![\w$])")
+    seen = 0
+    for _, _, f in _operators_refs_formulas():
+        bare = _strip_quoted(f)
+        for m in whole.finditer(bare):
+            seen += 1
+            before, after = bare[: m.start()], bare[m.end() :]
+            assert after.startswith(" ") or re.search(r" \S*$", before), f
+    assert seen > 0
+
+
+def test_operators_refs_is_bounded_and_locale_free() -> None:
+    for tag, cell, f in _operators_refs_formulas():
+        depth = max_depth = 0
+        for ch in _strip_quoted(f):
+            depth += {"(": 1, ")": -1}.get(ch, 0)
+            max_depth = max(max_depth, depth)
+        assert max_depth <= 6, f
+        for text in re.findall(r'"((?:[^"]|"")*)"', f):
+            assert not re.search(r"[/$,:]", text), f  # no date, currency or grouped-number text
+        if tag.startswith("chain/"):
+            row = int(cell[1:])
+            assert all(int(n) < row for n in re.findall(r"(?<![!\w$])\$?A\$?(\d+)", _strip_quoted(f))), f
