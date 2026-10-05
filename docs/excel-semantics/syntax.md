@@ -22,7 +22,9 @@ up to 127 nested parentheses or function calls and up to 255 terms in one operat
 (`=A1+A2+...`) are accepted. Excel caps function nesting at 64 levels (Microsoft, "Excel
 specifications and limits": "Nested levels of functions: 64") and formula text at 8,192
 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer operator
-chains (about 4,000 terms fit in 8,192 characters) and its paren-nesting cap is not measured.
+chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its paren-nesting
+cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses
+per its published limit (UNVERIFIED: no oracle probe yet).
 This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
 on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be

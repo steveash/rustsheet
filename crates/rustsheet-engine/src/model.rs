@@ -2597,8 +2597,8 @@ impl Model {
 
     /// Parses a formula typed into a cell. A formula that fails to parse is
     /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
-    /// otherwise kept as a parse error, except one nested deeper than the
-    /// parser allows, which is rejected: the cell could never hold it.
+    /// otherwise kept as a parse error, except one nested too deep (no `)` helps), which
+    /// is rejected: the cell could never hold it.
     fn parse_cell_formula(
         &mut self,
         sheet: u32,
@@ -2609,7 +2609,6 @@ impl Model {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
         let mut node = self.parser.parse(formula, cell_reference);
-        // A closing parenthesis never makes a formula shallower.
         if matches!(&node, Node::ParseErrorKind { message, .. } if message != TOO_DEEP_MESSAGE) {
             let retry = self.parser.parse(&format!("{formula})"), cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
