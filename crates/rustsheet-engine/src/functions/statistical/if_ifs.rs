@@ -275,7 +275,8 @@ impl Model {
         // gen-m2, AVERAGEIFS/MINIFS/MAXIFS from probes/ifs-shape-mismatch). Only
         // SUMIF's single-criterion path opts out: it never errors (T-0214).
         if strict_shape
-            && (!same_shape(ranges) || range_shape(&ranges[0]) != range_shape(&sum_range))
+            && (!same_shape(ranges)
+                || ranges.first().map(range_shape) != Some(range_shape(&sum_range)))
         {
             return Err(shape_mismatch(cell));
         }

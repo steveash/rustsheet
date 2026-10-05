@@ -81,6 +81,8 @@ fn is_one_over_an_odd_integer(y: f64) -> bool {
 fn error_as_array(result: CalcResult) -> NumberOrArray {
     let error = match result {
         CalcResult::Error { error, .. } => error,
+        // `get_number_or_array` only fails with an error value; anything else
+        // is not a number, which is #VALUE! like any failed coercion.
         _ => Error::VALUE,
     };
     NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]])

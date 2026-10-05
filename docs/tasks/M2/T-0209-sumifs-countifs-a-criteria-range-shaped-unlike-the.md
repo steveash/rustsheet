@@ -87,6 +87,9 @@ These cells also need another task:
 - AVERAGEIFS/MINIFS/MAXIFS unless an oracle probe confirms the same rule (file a follow-up).
 
 ## Handoff (resumed)
+Superseded by the Outcome below: the probe confirmed the rule for AVERAGEIFS/MINIFS/MAXIFS, so only
+SUMIF opts out of the shape check, and the A56 regression was fixed by the error-broadcast rule.
+
 Tried: `apply_ifs` gained a `strict_shape` flag (SUMIFS true; AVERAGEIFS/MINIFS/MAXIFS false, SUMIF path
 via new `sum_ifs(.., false)` so SUMIF never errors); `fn_countifs` checks `same_shape`. Unit test
 `test_sumifs_countifs_shape_mismatch_is_value_error` passes. `make eval-baseline`: gen-m2 known failures
