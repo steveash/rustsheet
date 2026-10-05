@@ -2,7 +2,7 @@
 
 ## AND / OR evaluate every argument; an error anywhere wins
 Rule: AND/OR do not short-circuit: `=OR(TRUE,(2<COUNTIFS(…shape mismatch…)))` → `#VALUE!`.
-Evidence: gen-m2/78bc88199fc96650 Calc!A217. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6c5b99e2e A170, dd99be1f2454159f A3; AND: 75840b9c71a50596 A56, 96a0952412cefa6c A126. Unprobed: which error wins with several errors, and an error inside the same range as the deciding value (T-0229). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
 Tasks: T-0215
 

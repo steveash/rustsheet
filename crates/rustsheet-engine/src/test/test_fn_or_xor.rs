@@ -282,6 +282,7 @@ fn test_and_or_do_not_short_circuit_past_errors() {
     model._set("A4", "=AND(FALSE,NA())");
     model._set("B1", "1");
     model._set("B2", "=1/0");
+    // A5/A6 (an error inside a range argument) are UNVERIFIED: no oracle case, probe in T-0229.
     model._set("A5", "=OR(B1:B2)");
     model._set("A6", "=OR(TRUE,B1:B2)");
     model._set("A7", "=AND(FALSE,TRUE)");

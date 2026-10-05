@@ -53,11 +53,11 @@ These cells also need a lookup or criteria task:
 - `gen-m2/f7e6d351c8538ef5.case.json` A312 (also:  lookup)
 
 ## Acceptance criteria
-- [ ] The 3 cells above disappear from eval/baseline/gen-m2.txt with no new F lines. The 17 shared cells leave once their
+- [x] The 3 cells above disappear from eval/baseline/gen-m2.txt with no new F lines. The 17 shared cells leave once their
       other task lands (check them after T-0209/T-0211/T-0212).
-- [ ] Unit tests: error after a deciding value propagates, for scalars and for ranges.
-- [ ] docs/excel-semantics/ entry (errors.md or a new logical.md) with the evidence above.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests: error after a deciding value propagates, for scalars and for ranges.
+- [x] docs/excel-semantics/ entry (errors.md or a new logical.md) with the evidence above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - -
@@ -65,4 +65,4 @@ These cells also need a lookup or criteria task:
 ## Outcome
 Dropped the short-circuit parameter from `logical_nary`, so AND/OR (like XOR) evaluate every argument and an error
 anywhere wins. gen-m2 known failures 1518 -> 1503 (15 fixed, 0 regressions); the cells that also need a lookup or
-criteria fix leave with those tasks. Semantics already in docs/excel-semantics/coercion.md.
+criteria fix leave with those tasks (12 of 17 already left here, plus 2 unlisted). Semantics already in docs/excel-semantics/coercion.md.
