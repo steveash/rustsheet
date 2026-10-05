@@ -145,9 +145,6 @@ fn intersections_round_trip_through_stringify() {
         ("'Q''1'!7:7 'Q''1'!E7", "'Q''1'!7:7 'Q''1'!E7"),
         ("$A$10:$D$12 A12", "$A$10:$D$12 A12"),
         ("A1 (B1:C3 C1)", "A1 (B1:C3 C1)"),
-        ("A1 (B1+C1)", "A1 (B1+C1)"),
-        ("A1 (-B1)", "A1 (-B1)"),
-        ("A1 (1)", "A1 (1)"),
         ("(A1 B1):C3", "(A1 B1):C3"),
         ("@(A1:B2 B1)", "@(A1:B2 B1)"),
         ("-A1:A3 A2", "-A1:A3 A2"),
@@ -204,4 +201,62 @@ fn long_intersection_chains_hit_the_depth_cap() {
         panic!("expected the depth error, got {node:?}");
     };
     assert_eq!(message, TOO_DEEP_MESSAGE);
+}
+
+#[test]
+fn only_spaces_and_line_feeds_separate_operands() {
+    let mut parser = parser();
+    for separator in [" ", "  ", "\n", " \n ", "\n\n"] {
+        let node = parser.parse(&format!("A1:A3{separator}A2:B2"), &context());
+        assert!(is_intersection(&node), "{separator:?}: {node:?}");
+    }
+    // Excel refuses a workbook holding these (T-0138).
+    for separator in ["\r", "\r\n", "\t", "\u{a0}", " \t "] {
+        let node = parser.parse(&format!("A1:A3{separator}A2:B2"), &context());
+        assert!(
+            matches!(node, Node::ParseErrorKind { .. }),
+            "{separator:?}: {node:?}"
+        );
+    }
+}
+
+#[test]
+fn ideographic_space_is_not_a_separator() {
+    // Excel reads it as part of a name: `#NAME?` (probes/intersection-whitespace H7).
+    let mut parser = parser();
+    let node = parser.parse("A1:A3\u{3000}A2:B2", &context());
+    assert!(!is_intersection(&node), "{node:?}");
+}
+
+#[test]
+fn intersection_operands_must_be_references() {
+    let mut parser = parser();
+    for formula in [
+        "A1 (1)",
+        "#N/A A1",
+        "#N/A #REF!",
+        "(1/0) A1",
+        "A1 (1/0)",
+        "(1/0) (NA())",
+        "(1/0) Z99",
+        "A1 SUM(A1:A2)",
+        "SUM(A1:A2) A1",
+        "A1 NA()",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert!(
+            matches!(node, Node::ParseErrorKind { .. }),
+            "{formula}: {node:?}"
+        );
+    }
+    for formula in [
+        "A1 #REF!",
+        "#REF! A1",
+        "A1:A3 INDEX(A1:B3,2,0)",
+        "OFFSET(A2,0,0,1,2) A1:A3",
+        "A1:A3 IF(TRUE,A2:B2)",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert!(is_intersection(&node), "{formula}: {node:?}");
+    }
 }

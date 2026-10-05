@@ -108,16 +108,18 @@ fn cross_sheet_intersection_is_value_error() {
 fn intersection_propagates_errors() {
     let mut model = model();
     model._set("A1", "=Data!D2:E8 Data!E8:E12");
-    model._set("A2", "=(1/0) Data!E8");
+    model._set("A2", "=#REF! Data!E8");
     model._set("A3", "=Data!E8 #REF!");
-    model._set("A4", "=(1+0) Data!E8");
+    // A value that is not a reference cannot be intersected: Excel refuses the formula.
+    model._set("A4", "=(1/0) Data!E8");
+    model._set("A5", "=(1+0) Data!E8");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), "#DIV/0!");
-    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#REF!");
     assert_eq!(model._get_text("A3"), "#REF!");
-    // A value that is not a reference cannot be intersected.
-    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#ERROR!");
+    assert_eq!(model._get_text("A5"), "#ERROR!");
 }
 
 #[test]

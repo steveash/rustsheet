@@ -7,6 +7,7 @@
 
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, TokenType};
+use crate::functions::Function;
 
 impl Parser {
     /// `intersect => range (' ' range)*`, left associative.
@@ -25,9 +26,15 @@ impl Parser {
             && self.lexer.whitespace_follows()
             && starts_reference(&self.lexer.peek_token())
         {
+            // Excel refuses the formula (load-time `FileCorruptTryRepair`, so no oracle value)
+            // on CR, TAB, NBSP and the like as separator, and on a value as an operand.
+            let separator_ok = self.lexer.separator_is_space_or_lf();
             let p = self.parse_range();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
+            }
+            if !separator_ok || !is_reference_operand(&t) || !is_reference_operand(&p) {
+                return self.intersection_error();
             }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
@@ -39,6 +46,15 @@ impl Parser {
             };
         }
         t
+    }
+
+    fn intersection_error(&self) -> Node {
+        Node::ParseErrorKind {
+            formula: self.lexer.get_formula(),
+            expecting: vec![ExpectedTokens::Range],
+            position: self.lexer.get_position() as usize,
+            message: "Intersection needs references separated by spaces or line feeds".to_string(),
+        }
     }
 
     pub(super) fn parse_range(&mut self) -> Node {
@@ -121,6 +137,37 @@ fn is_constant(node: &Node) -> bool {
         node,
         Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) | Node::ArrayKind(_)
     )
+}
+
+/// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
+/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// references"): values, value operators, error literals other than `#REF!` and value
+/// functions (`SUM`, `NA`) make Excel refuse the formula. Reference-returning calls are
+/// INDEX, OFFSET and IF (probes/intersection-function-operands) plus INDIRECT and CHOOSE,
+/// which Excel documents as returning references.
+fn is_reference_operand(node: &Node) -> bool {
+    match node {
+        Node::NumberKind(_)
+        | Node::StringKind(_)
+        | Node::BooleanKind(_)
+        | Node::ArrayKind(_)
+        | Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. }
+        | Node::UnaryKind { .. } => false,
+        Node::ErrorKind(error) => *error == Error::REF,
+        Node::FunctionKind { kind, .. } => matches!(
+            kind,
+            Function::Index
+                | Function::Offset
+                | Function::If
+                | Function::Indirect
+                | Function::Choose
+        ),
+        _ => true,
+    }
 }
 
 /// Whether `token` can start the right operand of an intersection: a reference, a name or

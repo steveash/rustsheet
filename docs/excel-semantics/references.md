@@ -78,6 +78,7 @@ Evidence: probes/intersection-whitespace H1:H8 (oracle: excel-graph, 2026-10-05,
 workbooks come from scratch runs of `rustsheet-oracle recalc` on one formula each (T-0138); a refused workbook
 has no values to commit.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); expressions/lexer/mod.rs (`Lexer::separator_is_space_or_lf`, `is_blank`)
 Tasks: T-0138, T-0148
 
 ## Intersection operands must be references
@@ -103,6 +104,7 @@ between two error operands. Accepted forms:
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5 (oracle:
 excel-graph, 2026-10-05, T-0138). The refused workbooks come from scratch runs of one formula each (T-0138).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
+Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`; INDIRECT and CHOOSE are allowed as reference-returning without probe evidence; `@` and union operands are T-0149)
 Tasks: T-0138, T-0148, T-0149, T-0042
 
 ## A defined name may be an intersection
