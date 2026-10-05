@@ -8,10 +8,10 @@ Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text
 
 ## Text functions broadcast over array arguments
 Rule: EXACT, FIND, LEN, REPT, SEARCH, SUBSTITUTE, TRIM, CLEAN, PROPER and REPLACE lift element-wise over
-array and range arguments and spill, in any argument position (`REPT("a",{1,2,3})` = a, aa, aaa;
+array and range arguments and spill, in the argument positions probed (`REPT("a",{1,2,3})` = a, aa, aaa;
 `SUBSTITUTE("aaa","a","x",{1,2,3})` = xaa, axa, aax; `REPLACE("abcdef",{1,2},{2,3},"Q")` = Qcdef, aQef;
 `EXACT({"a","b"},{"a";"b"})` is a 2x2 grid). An element that errors is an error only in its own cell
-(`FIND({"b","z"},"abc")` = 2, `#VALUE!`). Array constants may not contain expressions: Excel rejects the
-whole workbook for `{"a"&CHAR(7)&"b","c"}` (use a range).
-Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json A30:A120 (oracle: excel-graph, 2026-10-05, T-0957).
-Status: VERIFIED (the engine matches all 58 cells)
+(`FIND({"b","z"},"abc")` = 2, `#VALUE!`). Not probed: arrays in FIND/SEARCH `within_text` or `start_num`.
+Array constants may not contain expressions (see syntax.md, "Array constants take a single optional sign").
+Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json A30:C124 (oracle: excel-graph, 2026-10-05, T-0957).
+Status: VERIFIED (Excel for the web only; the engine matches all 43 text-broadcast cells)

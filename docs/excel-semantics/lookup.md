@@ -14,10 +14,10 @@ a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
 ## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
-Rule: `a1` is coerced like any logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
+Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
 `INDIRECT("H2",-1)` = 5, `"TRUE"` text = TRUE), `0` is FALSE, so `INDIRECT("H2",0)` reads "H2" as R1C1
-and is `#REF!`, while `INDIRECT("R2C8",0)` = 5. Empty-string and non-boolean text (`""`, `"x"`) is `#VALUE!`
-in both styles.
+and is `#REF!`, while `INDIRECT("R2C8",0)` = 5. Empty-string text is `#VALUE!` in both styles (B4, B10) and `"x"` is `#VALUE!` in A1 style (B5).
+Not probed: `"FALSE"` text and booleans read from cells.
 Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json B3:B10 (oracle: excel-graph, 2026-10-05, T-0957).
 Status: VERIFIED (Excel for the web only; the engine matches all of these)
 
