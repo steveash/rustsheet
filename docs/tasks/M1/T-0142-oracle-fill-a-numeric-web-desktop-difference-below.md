@@ -41,4 +41,4 @@ number (and prints a `DESKTOP` line) when the workbook was saved by Microsoft Ex
 and the web number differs at all but within 1e-9; larger differences stay pending; pre-16 builds
 keep the web value. Unit tests cover equal / below 1e-9 / above 1e-9 / non-16.x. Re-filling the poi
 suite with `--force` changed only `produced_at` stamps and two volatile cells (46299 -> 46300,
-a random value), no last-digit cell, so no sidecar changed and no scored cell moved. Eval delta: none.
+a random value), no last-digit cell, so no sidecar changed and no scored cell moved. Eval delta: none. Near-zero residues (2.2e-16 vs 0) count as material under the relative 1e-9 test, so they stay pending (deliberate limit).
