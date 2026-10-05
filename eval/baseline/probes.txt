@@ -11,6 +11,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
 C	probes/isref-function-results.case.json	6
+C	probes/min-max-value-args.case.json	16
 C	probes/precision-and-rounding.case.json	18
 F	probes/criteria-grammar.case.json	Sheet1!C4
 F	probes/date-text-locale.case.json	Sheet1!B1
@@ -18,7 +19,6 @@ F	probes/date-text-locale.case.json	Sheet1!B4
 F	probes/date-text-locale.case.json	Sheet1!B5
 F	probes/date-text-locale.case.json	Sheet1!B6
 F	probes/date-text-locale.case.json	Sheet1!B7
-F	probes/dates-and-blanks.case.json	Sheet1!A15
 F	probes/dates-early-1900.case.json	Sheet1!A10
 F	probes/dates-early-1900.case.json	Sheet1!A12
 F	probes/dates-early-1900.case.json	Sheet1!A16

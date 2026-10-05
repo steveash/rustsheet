@@ -11,59 +11,45 @@ use crate::{
 use std::f64::consts::PI;
 
 impl Model {
-    pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
+    ///
+    /// Excel (probes/min-max-value-args, T-0217; docs/excel-semantics/coercion.md): ranges,
+    /// references (also via IF/INDEX) and arrays contribute only their numbers, while a value
+    /// argument is coerced as SUM does: text that is not a number is `#VALUE!`, `"2"` is 2,
+    /// TRUE is 1 and an empty argument is 0.
+    fn fold_min_max(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        pick: fn(f64, f64) -> f64,
+    ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
             match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Number(value) => result = value.min(result),
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    result = value.min(result);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
+                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+                        result = pick(value, result);
+                    }) {
+                        return error;
                     }
                 }
                 CalcResult::Array(array) => {
-                    for row in array {
-                        for node in row {
-                            match node {
-                                ArrayNode::Number(value) => result = value.min(result),
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: String::new(),
-                                    }
-                                }
-                                _ => {}
+                    for node in array.into_iter().flatten() {
+                        match node {
+                            ArrayNode::Number(value) => result = pick(value, result),
+                            ArrayNode::Error(error) => {
+                                return CalcResult::new_error(error, cell, String::new())
                             }
+                            // Booleans and text in an array are ignored.
+                            _ => {}
                         }
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
+                value => match self.cast_to_number(value, cell) {
+                    Ok(value) => result = pick(value, result),
+                    Err(error) => return error,
+                },
+            }
         }
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Number(0.0);
@@ -71,64 +57,12 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fold_min_max(args, cell, f64::min)
+    }
+
     pub(crate) fn fn_max(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut result = f64::NAN;
-        for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Number(value) => result = value.max(result),
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    result = value.max(result);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for node in row {
-                            match node {
-                                ArrayNode::Number(value) => result = value.max(result),
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: String::new(),
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
-        }
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Number(0.0);
-        }
-        CalcResult::Number(result)
+        self.fold_min_max(args, cell, f64::max)
     }
 
     pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
