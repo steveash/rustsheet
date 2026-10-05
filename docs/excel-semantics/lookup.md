@@ -19,8 +19,9 @@ is in it (`=MATCH(Data!C$5,Data!A5:C9,1)` with C5 = 2 inside A5:C9 → `#N/A`; n
 call in gen-m2 returns a number), but an error in lookup_value is returned first
 (`=MATCH(MAX(MONTH(-0.5)),Data!A7:C9)` → `#NUM!`).
 Evidence: gen-m2/cbdabe32a32a4012 Calc!A227, ce315bb699e1be6f Calc!A135, 629e6e8b76fab8b9 Calc!A313. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-Status: VERIFIED
-Tasks: T-0210
+Status: VERIFIED for range references. UNVERIFIED sub-rule: a 2-D *array* (literal `{1,2;3,4}` or computed)
+is assumed `#N/A` by analogy; no oracle case covers it (probe pending, T-0224).
+Tasks: T-0210, T-0224
 
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
