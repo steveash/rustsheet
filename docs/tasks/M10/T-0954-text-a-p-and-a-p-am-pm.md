@@ -41,7 +41,8 @@ PM"; those cells also need fractional seconds and stay out of scope).
 - [ ] Formatter unit tests for `a/p` and `A/P` on a morning and an afternoon time (the cells
       above). Noon and midnight have no Excel cell, so they are hand expectations that follow the
       engine's `AM/PM` handling ("12:00:00 p", "12:00:00 a").
-- [ ] Lowercase `am/pm` still prints "PM" (DateFormatTests A13), and the short marker keeps its case.
+- [ ] A unit test shows `hh:mm:ss am/pm` prints "PM" (rule from DateFormatTests A13 and A18; A13
+      itself also needs fractional seconds, out of scope here), and the short marker keeps its case.
 - [ ] The number-formats.md entry gets an `Implemented in:` line.
 - [ ] `make check` green; reviewers approve.
 
