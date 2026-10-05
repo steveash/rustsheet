@@ -21,8 +21,7 @@
     `done` on main (merged, branch not yet deleted).
   - Both worker prompts loop: after each merge they pick the next task, until 100 minutes into
     the session (at most 6 tasks). Both run every 2 hours, staggered by an hour; an optional
-    second sonnet worker
-    (same prompt, odd hours) can be added when usage allows.
+    second sonnet worker (same prompt, odd hours) can be added when usage allows.
 - **Consequences:**
   - Several workers can fix functions at once; fixes spanning families take their main module's lane.
   - Fewer cold starts per task. A run may overlap the next scheduled run of another worker; the
