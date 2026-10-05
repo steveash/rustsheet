@@ -27,9 +27,6 @@ F	probes/error-operand-broadcast.case.json	Sheet1!C3
 F	probes/error-operand-broadcast.case.json	Sheet1!C6
 F	probes/error-operand-broadcast.case.json	Sheet1!C7
 F	probes/error-operand-broadcast.case.json	Sheet1!C8
-F	probes/ifs-shape-mismatch.case.json	Sheet1!F10
-F	probes/ifs-shape-mismatch.case.json	Sheet1!F11
-F	probes/ifs-shape-mismatch.case.json	Sheet1!F9
 F	probes/precision-and-rounding.case.json	Sheet1!A11
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
