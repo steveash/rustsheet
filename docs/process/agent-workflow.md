@@ -22,8 +22,8 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 | Lane | Typical paths | Examples |
 |---|---|---|
 | `engine` | `crates/rustsheet-engine/src/{evaluation,model,expressions,graph,storage}` | DAG, coercion rules, references, structural edits |
-| `functions-math` | `functions/math_and_trigonometry/`, `functions/subtotal.rs` | ROUND, trig, COMBIN, SEQUENCE |
-| `functions-stat` | `functions/statistical/` (not `if_ifs.rs`) | distributions, MIN/MAX, AVERAGE |
+| `functions-math` | `functions/math_and_trigonometry/`, `functions/subtotal.rs` | ROUND, MIN/MAX, trig, COMBIN, SEQUENCE |
+| `functions-stat` | `functions/statistical/` (not `if_ifs.rs`) | distributions, AVERAGE, COUNT, MEDIAN |
 | `functions-criteria` | `functions/criteria.rs`, `functions/statistical/if_ifs.rs`, `functions/database.rs` | SUMIF(S), COUNTIF(S), D-functions |
 | `functions-financial` | `functions/financial/` | PV/PMT, IRR/RATE |
 | `functions-engineering` | `functions/engineering/` | BESSEL, IM*, CONVERT |
@@ -43,7 +43,8 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
   second sonnet worker. Each walks the `**Critical lane:**` list in `docs/status.md`, then
   `functions` (every `functions-*` lane; allowlist and rules in `routines.md`).
 - One task in flight per lane. `make next-task` enforces it: it skips tasks claimed by a pushed
-  branch and lanes with a branch that moved in the last 2 hours (handoffs excepted).
+  branch and lanes with a branch that moved in the last 2 hours (handoffs, and branches whose task
+  is already done on main, excepted).
 - The functions work is split into the nine `functions-*` lanes above so several workers can fix
   functions at once; plain `functions` is retired for open tasks (`scripts/tasks.py validate`).
   Pick the lane by the module the fix touches; a fix spanning families takes the lane of its main

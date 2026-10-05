@@ -104,6 +104,22 @@ def write_task(
     return path
 
 
+def run_next(
+    root: Path,
+    tier: str,
+    claims: tuple[set[str], set[str]] = (set(), set()),
+    active: frozenset[tuple[str, str]] = frozenset(),
+    lane: str | None = None,
+) -> str:
+    argv = ["tasks.py", "next", "--tier", tier, *(["--lane", lane] if lane else [])]
+    with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+            mock.patch.object(tasks.sys, "argv", argv), \
+            mock.patch.object(tasks, "branch_claims", return_value=(*claims, set(active))), \
+            mock.patch("builtins.print") as printed:
+        tasks.main()
+    return str(printed.call_args[0][0]).split()[0]
+
+
 class Tiers(unittest.TestCase):
     def test_open_tasks_need_a_valid_tier_done_ones_do_not(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -119,29 +135,13 @@ class Tiers(unittest.TestCase):
         self.assertEqual(sum("tier=" in e for e in errors), 2)
         self.assertTrue(any("T-0001" in e for e in errors) and any("T-0002" in e for e in errors))
 
-    def run_next(
-        self,
-        root: Path,
-        tier: str,
-        claims: tuple[set[str], set[str]] = (set(), set()),
-        busy: frozenset[str] = frozenset(),
-        lane: str | None = None,
-    ) -> str:
-        argv = ["tasks.py", "next", "--tier", tier, *(["--lane", lane] if lane else [])]
-        with mock.patch.object(tasks, "ROOT", root), mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
-                mock.patch.object(tasks.sys, "argv", argv), \
-                mock.patch.object(tasks, "branch_claims", return_value=(*claims, set(busy))), \
-                mock.patch("builtins.print") as printed:
-            tasks.main()
-        return str(printed.call_args[0][0]).split()[0]
-
     def test_next_filters_by_tier_and_takes_handoffs_first(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_task(root, "T-0001", tier="opus")
             write_task(root, "T-0002", tier="opus", body="\n## Handoff\nsonnet run stuck on X\n")
             write_task(root, "T-0003", tier="sonnet")
-            self.assertEqual([self.run_next(root, "opus"), self.run_next(root, "sonnet")], ["T-0002", "T-0003"])
+            self.assertEqual([run_next(root, "opus"), run_next(root, "sonnet")], ["T-0002", "T-0003"])
 
     def test_handoff_seen_only_on_its_branch_moves_the_task_to_opus(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -150,8 +150,8 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0002", tier="sonnet")  # main still says sonnet
             write_task(root, "T-0003", tier="sonnet")
             claims = ({"T-0002"}, {"T-0002"})  # pushed branch with a Handoff
-            self.assertEqual(self.run_next(root, "opus", claims), "T-0002")
-            self.assertEqual(self.run_next(root, "sonnet", claims), "T-0003")
+            self.assertEqual(run_next(root, "opus", claims), "T-0002")
+            self.assertEqual(run_next(root, "sonnet", claims), "T-0003")
 
     def test_resumed_handoff_is_no_longer_a_handoff(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -159,14 +159,14 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0001", tier="opus")
             write_task(root, "T-0002", tier="opus", body="\n## Handoff (resumed)\nopus run picked it up\n")
             # Resumed: its fresh branch is a claim again, so the next opus run skips it.
-            self.assertEqual(self.run_next(root, "opus", ({"T-0002"}, set())), "T-0001")
+            self.assertEqual(run_next(root, "opus", ({"T-0002"}, set())), "T-0001")
 
     def test_claimed_task_is_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_task(root, "T-0001", tier="sonnet")
             write_task(root, "T-0002", tier="sonnet")
-            self.assertEqual(self.run_next(root, "sonnet", ({"T-0001"}, set())), "T-0002")
+            self.assertEqual(run_next(root, "sonnet", ({"T-0001"}, set())), "T-0002")
 
     def test_ready_lists_what_next_could_pick_and_counts_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,17 +192,33 @@ class FunctionLanes(unittest.TestCase):
             write_task(root, "T-0001", tier="sonnet", lane="functions-text")
             write_task(root, "T-0002", tier="sonnet", lane="functions-math")
             write_task(root, "T-0003", tier="sonnet", lane="engine")
-            run = Tiers().run_next
-            self.assertEqual(run(root, "sonnet", lane="functions"), "T-0001")
-            self.assertEqual(run(root, "sonnet", lane="functions", busy=frozenset({"functions-text"})), "T-0002")
-            self.assertEqual(run(root, "sonnet", lane="functions-math"), "T-0002")
+            self.assertEqual(run_next(root, "sonnet", lane="functions"), "T-0001")
+            busy_text = frozenset({("functions-text", "T-0009")})  # T-0009: open task on another branch
+            self.assertEqual(run_next(root, "sonnet", lane="functions", active=busy_text), "T-0002")
+            self.assertEqual(run_next(root, "sonnet", lane="functions-math"), "T-0002")
 
     def test_handoff_is_resumed_even_in_a_busy_lane(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_task(root, "T-0001", tier="sonnet", lane="functions-stat", body="\n## Handoff\nstuck\n")
-            run = Tiers().run_next
-            self.assertEqual(run(root, "opus", busy=frozenset({"functions-stat"})), "T-0001")
+            self.assertEqual(run_next(root, "opus", active=frozenset({("functions-stat", "T-0008")})), "T-0001")
+
+    def test_branch_of_a_done_task_does_not_keep_its_lane_busy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="sonnet", lane="functions-text", status="done")
+            write_task(root, "T-0002", tier="sonnet", lane="functions-text")
+            # T-0001 merged a minute ago and its branch still exists: the lane is free again.
+            self.assertEqual(run_next(root, "sonnet", active=frozenset({("functions-text", "T-0001")})), "T-0002")
+
+    def test_busy_lane_comes_from_the_tasks_own_lane_not_the_branch_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="sonnet", lane="functions-text", status="in-progress")
+            write_task(root, "T-0002", tier="sonnet", lane="functions-text")
+            write_task(root, "T-0003", tier="sonnet", lane="functions-math")
+            # A branch pushed as agent/functions/T-0001-... still makes functions-text busy.
+            self.assertEqual(run_next(root, "sonnet", active=frozenset({("functions", "T-0001")})), "T-0003")
 
     def test_plain_functions_lane_is_retired_for_open_tasks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -240,7 +256,7 @@ class BranchClaims(unittest.TestCase):
         with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
             # T-0001 is recent, so its lane is busy; T-0003's handoff waits for opus and keeps
             # harness free.
-            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}, {"engine"}))
+            self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}, {("engine", "T-0001")}))
 
 
 class Slug(unittest.TestCase):

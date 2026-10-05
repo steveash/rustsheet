@@ -105,7 +105,10 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
         if not t.get("title"):
             errors.append(f"{where}: missing title")
         if t.get("status") in OPEN and t.get("lane") == "functions":
-            errors.append(f"{where}: lane='functions' is retired for open tasks; use one of {FUNCTION_LANES} (decision 0022)")
+            errors.append(
+                f"{where}: lane='functions' is retired for open tasks; use a functions-* lane "
+                "(table in docs/process/agent-workflow.md; decision 0022)"
+            )
         if t.get("status") in OPEN and t.get("tier") not in TIERS:
             errors.append(f"{where}: tier={t.get('tier')!r} not in {TIERS} (open tasks need a tier)")
         if "TODO(fill)" in path_of(t).read_text():
@@ -226,16 +229,16 @@ HANDOFF = re.compile(r"^## Handoff\s*$", re.M)
 CLAIM_TTL_SECONDS = 24 * 3600  # a pushed agent/* branch younger than this claims its task
 
 
-def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[str]]:
-    """(claimed, handed_off, busy_lanes) from pushed `agent/<lane>/T-XXXX-*` branches.
+def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str, str]]]:
+    """(claimed, handed_off, active) from pushed `agent/<lane>/T-XXXX-*` branches.
 
     A pushed branch with a commit in the last 24 h is a claim: another worker must not start the
     same task (work-loop step 2).
     A branch whose task file has a `## Handoff` section was escalated to opus (step 5b); main
     still shows `tier: sonnet` until it merges (decision 0018).
-    A lane is busy while one of its branches has a commit in the last 2 h, unless that branch is
-    an unresumed handoff (it waits for the opus worker): one task in flight per lane (decision
-    0022). Best effort, like `git_task_ids`.
+    `active` holds (lane, task id) for branches with a commit in the last 2 h that are not
+    unresumed handoffs (those wait for the opus worker); `available` turns them into busy lanes
+    (decision 0022). Best effort, like `git_task_ids`.
     """
 
     def git(*args: str) -> str:
@@ -264,8 +267,8 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[str]]:
             for name in git("ls-tree", "-r", "--name-only", ref, "--", "docs/tasks").splitlines():
                 if f"/{tid}-" in name and HANDOFF.search(git("show", f"{ref}:{name}")):
                     handed.add(tid)
-        busy = {lane for tid, lane in recent.items() if tid not in handed}
-        return claimed, handed, busy
+        active = {(lane, tid) for tid, lane in recent.items() if tid not in handed}
+        return claimed, handed, active
     except (OSError, subprocess.CalledProcessError) as e:
         print(f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",
               file=sys.stderr)
@@ -299,7 +302,15 @@ def available(
     fetch: bool = True,
 ) -> list[dict[str, object]]:
     """Ready tasks a worker of `tier` may start in `lane`, best first (handoffs, milestone, priority)."""
-    claimed, on_branches, busy = branch_claims(fetch=fetch)
+    claimed, on_branches, active = branch_claims(fetch=fetch)
+    # One task in flight per lane. A branch whose task is already done on main (merged, branch not
+    # yet deleted) leaves its lane free, so a looping worker can take the next task at once.
+    # The task's own `lane:` decides (the branch name is only a fallback for tasks not on main).
+    busy = {
+        str(by_id[tid].get("lane")) if tid in by_id else lane
+        for lane, tid in active
+        if by_id.get(tid, {}).get("status") not in ("done", "dropped")
+    }
     cands = [
         t
         for t in tasks

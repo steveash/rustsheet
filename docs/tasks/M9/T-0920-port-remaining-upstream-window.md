@@ -2,7 +2,7 @@
 id: T-0920
 title: "Port remaining IronCalc fixes: POWER ranges, finite-number parse, --A1:B4, implicit-intersection export"
 milestone: M9
-lane: functions-math
+lane: engine
 status: todo
 priority: P3
 size: M
@@ -18,6 +18,8 @@ conflicts in `cast.rs`, `date_and_time.rs`), `9212095d` (implicit-intersection e
 `rustsheet-xlsx/src/export/worksheets.rs`).
 
 ## Context
+Lane: `engine` (decision 0022): the ports span `cast.rs`, `model.rs`, `date_and_time.rs`, text formatting and the xlsx export, so no single functions lane owns them.
+
 Use the patch recipe from T-0911 (`format-patch`, rewrite paths, `git apply --reject`) and resolve
 hunks by hand. Port each as its own commit with `Ported-From: ironcalc@<sha>`; split the task if a
 single port exceeds size S.

@@ -22,9 +22,10 @@ after 3 tasks / 45 min; cold starts are slow. Decision 0022.
 
 ## Acceptance criteria
 - [x] Nine `functions-*` lanes (agent-workflow.md table); `validate` rejects `lane: functions` on
-      open tasks and `new` refuses it; all 34 open functions tasks relabelled by module.
-- [x] `next`/`ready` skip busy lanes (a pushed agent branch moved in the last 2 h, handoffs
-      excepted) and accept `--lane functions` for any functions-* lane; unit tests.
+      open tasks and `new` refuses it; all 34 open functions tasks relabelled by module (33 into
+      `functions-*`, T-0920 into `engine`).
+- [x] `next`/`ready` skip busy lanes (a pushed agent branch moved in the last 2 h; handoffs and
+      branches whose task is done on main excepted; keyed on the task's own lane) and accept `--lane functions` for any functions-* lane; unit tests.
 - [x] routines.md: both worker prompts loop until 100 minutes into the session; schedules every
       2 h, staggered; optional second sonnet worker; steward step 2 counts all functions-* lanes.
 - [x] work-loop, gap-triager, task-format, Makefile help updated; no `docs/status.md` changes
