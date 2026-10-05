@@ -3,7 +3,7 @@ id: T-0946
 title: "OFFSET: an omitted height or width argument keeps the reference's size (4 poi known failures)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
