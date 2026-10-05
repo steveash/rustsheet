@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Rich-value errors from STOCKHISTORY of an unknown ticker (T-0030)",
+  "tags": [
+    "M0",
+    "probe",
+    "rich-value-errors"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=_xlfn.STOCKHISTORY(\"QZXQZXQ\",DATE(2020,1,2))",
+        "B1": "=ERROR.TYPE(A1)",
+        "C1": "=ISERROR(A1)",
+        "D1": "=ARRAYTOTEXT(A1)",
+        "E1": "=VALUETOTEXT(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1",
+    "Sheet1!C1",
+    "Sheet1!D1",
+    "Sheet1!E1"
+  ]
+}

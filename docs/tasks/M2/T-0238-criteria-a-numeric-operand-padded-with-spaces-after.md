@@ -3,7 +3,7 @@ id: T-0238
 title: "Criteria: a numeric operand padded with spaces after the operator is a number"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,3 +35,6 @@ Add probe cells for COUNTIF with `">1 "` and `"> 1 "` (only `"> 1"` was probed t
 
 ## Out of scope
 - Leading-space criteria (already correct).
+
+## Outcome
+Probed COUNTIF padded operands (probes/criteria-padded-operand, 18 cells): spaces around a numeric operand are ignored for every operator and bare numbers, tabs are not. Shared `parse_criterion_number` trims ASCII spaces. Eval: probes known failures 30 -> 26 (criteria-gaps C16-C18, C22 fixed), no regressions.
