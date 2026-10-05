@@ -9,11 +9,11 @@
     cheap attempt that fails and is redone costs more than doing it on the right model once.
 - **Decision:**
   - Task front matter has `tier: sonnet | opus` (required on open tasks, validated by
-    `scripts/tasks.py`); `make next-task TIER=` filters on it and orders handed-off tasks first.
+    `scripts/tasks.py`); `make next-task TIER=` filters on it and orders handed-off tasks first (amended by decision 0023: P0 tasks come before handoffs).
     The rubric (docs/process/task-format.md): `sonnet` only for size S, mechanically checkable,
     evidence already present, no spec, no protected path, no numeric fitting; otherwise `opus`.
   - Two workers replace the functions-lane and critical-lane workers (docs/process/routines.md):
-    sonnet hourly, up to 3 sonnet tasks per session; opus every 2 hours, one task, handoffs first,
+    sonnet hourly, up to 3 sonnet tasks per session; opus every 2 hours, one task, handoffs first (P0 first since decision 0023),
     and it (with the steward) runs the planner and gap-triager. Both walk the critical-lane list then
     `functions`, one task in flight per lane (busy = branch commit < 2 h, except handed-off branches).
   - Claims: the first commit on `agent/<lane>/T-XXXX-*` is pushed at once, and `make next-task`

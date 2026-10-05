@@ -92,13 +92,19 @@ class NewTask(unittest.TestCase):
 
 
 def write_task(
-    root: Path, tid: str, status: str = "todo", tier: str | None = "opus", body: str = "", lane: str = "harness"
+    root: Path,
+    tid: str,
+    status: str = "todo",
+    tier: str | None = "opus",
+    body: str = "",
+    lane: str = "harness",
+    priority: str = "P1",
 ) -> Path:
     path = root / "docs/tasks/M0" / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     path.write_text(
-        f"---\nid: {tid}\ntitle: \"x\"\nmilestone: M0\nlane: {lane}\nstatus: {status}\npriority: P1\n"
+        f"---\nid: {tid}\ntitle: \"x\"\nmilestone: M0\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
         f"size: S\n{tier_line}depends_on: []\n---\n{body}"
     )
     return path
@@ -142,6 +148,15 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0002", tier="opus", body="\n## Handoff\nsonnet run stuck on X\n")
             write_task(root, "T-0003", tier="sonnet")
             self.assertEqual([run_next(root, "opus"), run_next(root, "sonnet")], ["T-0002", "T-0003"])
+
+    def test_p0_comes_before_a_handoff(self) -> None:
+        # T-0931 (P0 stack overflow) once waited behind the T-0125 (P2) handoff.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="opus", priority="P2", body="\n## Handoff\nsonnet run stuck\n")
+            write_task(root, "T-0002", tier="opus", priority="P0")
+            write_task(root, "T-0003", tier="opus", priority="P1")
+            self.assertEqual(run_next(root, "opus"), "T-0002")
 
     def test_handoff_seen_only_on_its_branch_moves_the_task_to_opus(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

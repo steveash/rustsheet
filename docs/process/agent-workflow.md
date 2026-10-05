@@ -68,7 +68,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   check passes, or the blocking task is `done`): set `status: todo`, delete the "Blocked because"
   section, drop dependencies that stood only for the capability, remove the
   resolved "Needs owner" entry from `docs/status.md`, and note the unblock in the PR (no log line;
-  decision 0021). Land it in that run's PR.
+  decision 0024). Land it in that run's PR.
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
@@ -81,7 +81,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 ## The loop (summary)
 
 1. **Sync:** `main` up to date. Resume lane work if any exists.
-2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; handoffs first). If empty, run the gap triager (functions lanes) or the
+2. **Pick:** `make next-task LANE=x TIER=<tier>` (unclaimed tasks only; P0 first, then handoffs; decision 0023). If empty, run the gap triager (functions lanes) or the
    planner (other lanes).
 3. **Understand:**
    - Read the task, its spec, the code, `docs/excel-semantics/`, and the failing cases (`make eval-show`).
@@ -95,7 +95,7 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 8. **PR:** use the template. Set the task to `done` with an Outcome note.
 9. **Merge:** once CI is green and reviews are approved, squash-merge. The squash commit title and the
    task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
-   (decision 0021), so PRs do not edit its log.
+   (decision 0024), so PRs do not edit its log.
 
 ## Specs before architecture
 

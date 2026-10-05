@@ -17,7 +17,7 @@ Read `docs/process/agent-workflow.md` once per session if you have not.
    is resumed by an opus run from its pushed branch, starting from the handoff notes.
 
 ## 1. Pick
-`make next-task LANE=<lane> TIER=<tier>` (handed-off tasks come first). If none is ready, first check the lane's blocked tasks
+`make next-task LANE=<lane> TIER=<tier>` (P0 tasks first, then handed-off tasks; decision 0023). If none is ready, first check the lane's blocked tasks
 (`make tasks LANE=<lane> STATUS=blocked`): if a blocker is gone (e.g. `rustsheet-oracle status`
 now shows `excel-graph OK`), unblock it per the "Unblocking is an agent's job" rule under Task lifecycle in
 `docs/process/agent-workflow.md` and
@@ -71,7 +71,7 @@ file and its acceptance criteria.
 ## 6. PR & merge
 1. Mark the task `status: done` with a short "Outcome" section (what changed, eval delta), commit.
    Do not add a line to `docs/status.md`: the squash commit and the Outcome are the record, and the
-   steward summarizes merged work daily (decision 0021).
+   steward summarizes merged work daily (decision 0024).
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
 3. Check the PR's `mergeable_state` at once and after every push: a conflicting PR gets no CI,
