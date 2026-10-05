@@ -3,7 +3,7 @@ id: T-0210
 title: "MATCH on a 2-D lookup_array is #N/A, not #ERROR! (217 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -69,3 +69,8 @@ Cells that pass with this fix alone (simulated by rewriting the call to `NA()` a
 
 ## Out of scope
 - How MATCH searches (approximate/exact type rules): T-0212.
+
+## Outcome
+`fn_match` now returns `#N/A` for a 2-D lookup_array (`as_vector` takes the non-vector error kind; LOOKUP keeps
+`#ERROR!`, unprobed). Argument errors still win. gen-m2 known failures 1726 -> 1518 (208 fixed, 0 regressions).
+The other ~5 listed cells also depend on T-0209 (e.g. A91) and leave with it. XMATCH left unchanged. Follow-up: probe LOOKUP's 2-D vector error (T-0224, which also probes 2-D array arguments of MATCH). The 5 cells not fixed here come from other causes: d04d501154afc771 A119/A383 and fa437879253827be A102 (inner VLOOKUP/HLOOKUP `#REF!`, index validated after search), d3e2df0bef2f173a A38 (VLOOKUP range_lookup `#VALUE!`), 893302d6c5b99e2e A167 (no MATCH; INDEX/SUMIFS spill). Semantics already in docs/excel-semantics/lookup.md.
