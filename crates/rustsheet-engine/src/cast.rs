@@ -451,4 +451,28 @@ impl Model {
             })
         }
     }
+
+    /// Rows and columns of the reference or array that ROWS/COLUMNS count. An array
+    /// is counted, never read: `ROWS(NA()-{1;2;3})` is 3 although every element is
+    /// `#N/A` (probes/error-operand-broadcast C1, C3, C6-C8, C10). A non-reference,
+    /// non-array argument keeps `#VALUE!` (ROWS(5) is unprobed, T-0228).
+    pub(crate) fn rows_columns_extent(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(usize, usize), CalcResult> {
+        match self.evaluate_node_with_reference(node, cell) {
+            CalcResult::Range { left, right } => Ok((
+                (right.row - left.row + 1) as usize,
+                (right.column - left.column + 1) as usize,
+            )),
+            CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected reference or array".to_string(),
+            )),
+        }
+    }
 }

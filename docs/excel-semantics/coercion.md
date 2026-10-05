@@ -6,11 +6,19 @@ Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6
 Status: VERIFIED
 Tasks: T-0215
 
-## MIN / MAX of a non-numeric text value argument is #VALUE!
-Rule: a text value passed directly (not in a range) that is not a number makes MIN/MAX `#VALUE!`:
-`=MAX(IFERROR(IF(Data!D4,"ü"),Data!$E$7),Data!D7:D9)` → `#VALUE!`.
-Evidence: gen-m2/f7e6d351c8538ef5 Calc!A14. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+## MIN / MAX coerce value arguments like SUM; ranges and arrays give only their numbers
+Rule: a value argument (literal or function result, e.g. IFERROR or CONCATENATE) is coerced like
+SUM's: non-numeric text is `#VALUE!` (`=MIN("a")`, `=MAX(CONCATENATE("x"))`), numeric text counts
+(`=MIN("2")` → 2, `=MAX("1e2",5)` → 100), TRUE/FALSE count as 1/0 (`=MIN(TRUE,5)` → 1), and an empty
+argument counts as 0 (`=MIN(5,)` → 0, `=MAX(-5,)` → 0). A reference, also one returned by IF/INDEX
+(references.md), and an array contribute only their numbers: `=MIN(A1)` with A1 = "a" → 0,
+`=MAX(IF(TRUE,A1),A2)` → A2, `=MIN({TRUE,5})` → 5, `=MAX({"9",-1})` → -1. IFERROR returns a value,
+so `=MIN(IFERROR(A1,1))` with A1 = "a" is `#VALUE!` and an IFERROR of a blank cell is 0.
+Evidence: probes/min-max-value-args (C1–C16); gen-m2/f7e6d351c8538ef5 Calc!A14,
+dd99be1f2454159f A73/A264, 2cfe279fe77a000d A138, 04cfd82f54dbc2b2 A182.
+Oracle: excel-graph, 2026-10-05 (probe), 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`fold_min_max`)
 Tasks: T-0217
 
 ## LEFT / RIGHT / MID numeric arguments
