@@ -1,5 +1,6 @@
 mod arabic_roman;
 pub(crate) mod array_size;
+mod decimal_round;
 mod gcd_lcm;
 mod hyperbolic;
 mod mathematical;
