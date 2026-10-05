@@ -62,6 +62,22 @@ impl Lexer {
         }
     }
 
+    /// True when the text after the `:` at the current position starts with a sheet name followed
+    /// by `!` (plain or quoted), e.g. the `Data!` in `B8:Data!E12`. Leaves the position unchanged.
+    fn sheet_prefix_after_colon(&mut self) -> bool {
+        let start = self.position;
+        self.position += 1;
+        let found = if self.peek_char() == Some('\'') {
+            self.position += 1;
+            self.consume_single_quote_string().is_ok() && self.peek_char() == Some('!')
+        } else {
+            !self.consume_identifier().is_empty() && self.peek_char() == Some('!')
+        };
+        // `consume_single_quote_string` moves the position to the end of input on failure.
+        self.position = start;
+        found
+    }
+
     // Parsing a range is a parser on it's own right. Here is the grammar:
     //
     //    range       -> cell | cell ':' cell | row ':' row | column ':' column
@@ -78,7 +94,10 @@ impl Lexer {
         let mut position = self.position;
         match self.consume_reference_a1() {
             Ok(cell) => {
-                if self.peek_char() == Some(':') {
+                // `Data!B8:Data!E12`: when the second corner carries a sheet prefix the token ends at
+                // the first corner. The colon is lexed as the range operator and the parser joins
+                // the two references (references.md "Range corners may both carry the sheet prefix").
+                if self.peek_char() == Some(':') && !self.sheet_prefix_after_colon() {
                     // It's a range
                     self.position += 1;
                     if let Ok(cell2) = self.consume_reference_a1() {
