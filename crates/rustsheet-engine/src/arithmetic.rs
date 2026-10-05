@@ -23,20 +23,6 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
     }
 }
 
-/// Unify how we map booleans/strings to f64
-fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
-    match value {
-        ArrayNode::Number(f) => Ok(*f),
-        ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-        ArrayNode::String(s) => match s.parse::<f64>() {
-            Ok(f) => Ok(f),
-            Err(_) => Err(Error::VALUE),
-        },
-        ArrayNode::Error(err) => Err(err.clone()),
-        ArrayNode::Empty => Ok(0.0),
-    }
-}
-
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
@@ -89,6 +75,18 @@ fn error_as_array(result: CalcResult) -> NumberOrArray {
 }
 
 impl Model {
+    /// Coerces an array element to a number for arithmetic: text goes through `cast_number`, as a
+    /// scalar text operand does (`Data!D7:D7/1` with D7 = " 2 " is 2, gen-m1/1ce5b2467b3b19fd A14).
+    fn array_node_to_f64(&self, value: &ArrayNode) -> Result<f64, Error> {
+        match value {
+            ArrayNode::Number(f) => Ok(*f),
+            ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
+            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
+            ArrayNode::Error(err) => Err(err.clone()),
+            ArrayNode::Empty => Ok(0.0),
+        }
+    }
+
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
         &mut self,
@@ -154,7 +152,7 @@ impl Model {
                 for row in a2 {
                     let mut data_row = Vec::new();
                     for node in row {
-                        match to_f64(&node) {
+                        match self.array_node_to_f64(&node) {
                             Ok(f2) => match op(f1, f2) {
                                 Ok(x) => data_row.push(ArrayNode::Number(x)),
                                 Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
@@ -177,7 +175,7 @@ impl Model {
                 for row in a1 {
                     let mut data_row = Vec::new();
                     for node in row {
-                        match to_f64(&node) {
+                        match self.array_node_to_f64(&node) {
                             Ok(f1) => match op(f1, f2) {
                                 Ok(x) => data_row.push(ArrayNode::Number(x)),
                                 Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
@@ -214,17 +212,21 @@ impl Model {
                         let val2 = row2.and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)));
 
                         match (val1, val2) {
-                            (Some(v1), Some(v2)) => match (to_f64(v1), to_f64(v2)) {
-                                (Ok(f1), Ok(f2)) => match op(f1, f2) {
-                                    Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                    Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
-                                    Err(Error::VALUE) => {
-                                        data_row.push(ArrayNode::Error(Error::VALUE))
-                                    }
-                                    Err(e) => data_row.push(ArrayNode::Error(e)),
-                                },
-                                (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
-                            },
+                            (Some(v1), Some(v2)) => {
+                                match (self.array_node_to_f64(v1), self.array_node_to_f64(v2)) {
+                                    (Ok(f1), Ok(f2)) => match op(f1, f2) {
+                                        Ok(x) => data_row.push(ArrayNode::Number(x)),
+                                        Err(Error::DIV) => {
+                                            data_row.push(ArrayNode::Error(Error::DIV))
+                                        }
+                                        Err(Error::VALUE) => {
+                                            data_row.push(ArrayNode::Error(Error::VALUE))
+                                        }
+                                        Err(e) => data_row.push(ArrayNode::Error(e)),
+                                    },
+                                    (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
+                                }
+                            }
                             // Mismatched dimensions => #VALUE!
                             _ => data_row.push(ArrayNode::Error(Error::VALUE)),
                         }
