@@ -365,8 +365,7 @@ fn test_padded_numeric_operand_compares_numerically() {
     let hits = |criteria: &str, n: f64| {
         let crit = CalcResult::String(criteria.to_string());
         let matcher = build_criteria(&crit, locale);
-        let hit = matcher(&CalcResult::Number(n));
-        hit
+        matcher(&CalcResult::Number(n))
     };
     assert!(hits("> 1", 2.0) && !hits("> 1", 1.0));
     assert!(hits(">1 ", 2.0) && hits("> 1 ", 2.0));
