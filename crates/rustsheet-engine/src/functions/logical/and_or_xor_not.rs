@@ -33,6 +33,7 @@ impl Model {
                                 {
                                     Ok(f) => ArrayNode::Boolean(!f),
                                     Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                                    // An ArrayNode element is never a range or array, so this is unreachable.
                                     Err(_) => ArrayNode::Error(Error::VALUE),
                                 }
                             })

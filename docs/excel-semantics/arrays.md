@@ -28,6 +28,7 @@ gen-m2/75840b9c71a50596 Calc!A29 `=NOT(INDEX(Data!B2:E8,Data!C$10,3))` (C10 = FA
 gen-m2/f7e6d351c8538ef5 Calc!A106 `=NOT(INDEX(Data!B3:E9,(Data!B$10-0.1),4))` (B10 = 0.2);
 gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12,0),("#N/A"&Data!D4)))`;
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
-Status: VERIFIED
+Status: VERIFIED for the array shape and #SPILL! (NOT returns an array). ASSUMED, pending probe T-0232: the per-element cast
+(text, empty and error elements follow the scalar `cast_to_bool` rules); the oracle cells never showed an element value.
 Implemented in: `fn_not` (`functions/logical/and_or_xor_not.rs`) and its `scalar_arguments` static-analysis entry (T-0225); CONCATENATE pending (T-0226).
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
