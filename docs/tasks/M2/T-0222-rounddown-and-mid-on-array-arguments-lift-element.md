@@ -2,7 +2,7 @@
 id: T-0222
 title: "ROUNDDOWN and MID on array arguments: lift element-wise instead of #N/IMPL! (2 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-math
 status: todo
 priority: P3
 size: S
@@ -15,6 +15,8 @@ ROUNDDOWN and MID accept array arguments (e.g. a row from `INDEX(range,1,0)`) an
 Excel, instead of returning `#N/IMPL!`.
 
 ## Context
+Lane: `functions-math` (decision 0022): ROUNDDOWN is the main module; the MID half touches `text/common.rs` through the shared array-lift helper.
+
 gen-m2 (T-0203) evidence (excel-graph):
 - `gen-m2/893302d6c5b99e2e` Calc!A313 `=ROUNDDOWN((Data!D5*INDEX(Data!C7:D11,1,0)),((Data!B8/Data!D6)/(0/Data!A$1)))`:
   expected `#DIV/0!` (the num_digits error), actual `#N/IMPL!`.

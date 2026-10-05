@@ -86,7 +86,7 @@ ci: check deny machete
 tasks: ## List tasks (LANE=, STATUS=, MILESTONE= filters)
 	$(PY) scripts/tasks.py list $(if $(LANE),--lane $(LANE)) $(if $(STATUS),--status $(STATUS)) $(if $(MILESTONE),--milestone $(MILESTONE))
 
-next-task: ## Highest-priority ready task: make next-task LANE=functions [TIER=sonnet|opus]
+next-task: ## Best ready task in a non-busy lane: make next-task LANE=functions [TIER=sonnet|opus] (LANE=functions = any functions-* lane)
 	$(PY) scripts/tasks.py next $(if $(LANE),--lane $(LANE)) $(if $(TIER),--tier $(TIER))
 
 ready-tasks: ## Every task next-task could pick, then "N ready": make ready-tasks TIER=sonnet [LANE=..] (decision 0021)

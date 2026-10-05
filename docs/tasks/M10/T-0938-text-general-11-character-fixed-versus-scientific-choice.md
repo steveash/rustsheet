@@ -2,7 +2,7 @@
 id: T-0938
 title: "TEXT General: 11-character fixed-versus-scientific choice for small numbers (2 known failures)"
 milestone: M10
-lane: functions
+lane: functions-text
 status: todo
 priority: P3
 size: S

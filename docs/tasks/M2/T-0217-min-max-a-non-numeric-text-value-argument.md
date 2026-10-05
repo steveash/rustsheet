@@ -2,7 +2,7 @@
 id: T-0217
 title: "MIN/MAX: a non-numeric text value argument is #VALUE! (5 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-math
 status: todo
 priority: P2
 size: S

@@ -2,7 +2,7 @@
 id: T-0213
 title: "INDEX: one index into a 2-D range is #REF! (164 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-lookup
 status: todo
 priority: P1
 size: S

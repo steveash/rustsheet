@@ -2,7 +2,7 @@
 id: T-0934
 title: "TEXT elapsed-time formats: fractional seconds, negatives and plain h/m/s after [h]/[m]/[s] (47 known failures)"
 milestone: M10
-lane: functions
+lane: functions-text
 status: todo
 priority: P2
 size: M
