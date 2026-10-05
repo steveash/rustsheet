@@ -25,15 +25,15 @@ Status: VERIFIED
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
-(number, reference, parenthesis, function call, array) costs two levels and each operator one, so
-up to 127 nested parentheses or function calls and up to 255 terms in one operator chain
-(`=A1+A2+...`) are accepted. Each unary minus is a node (T-0132), so a run of more than about
-250 minus signs (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64 levels (Microsoft, "Excel
-specifications and limits": "Nested levels of functions: 64") and formula text at 8,192
-characters, so every formula within Excel's nesting cap fits; but Excel accepts longer operator
-chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its paren-nesting
-cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses
-per its published limit (UNVERIFIED: no oracle probe yet).
+(number, reference, parenthesis, function call, array) costs two levels and each operator one, so up
+to 127 nested parentheses or function calls and up to 255 terms in one operator chain (`=A1+A2+...`)
+are accepted. Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
+(`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
+levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
+text at 8,192 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer
+operator chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its
+paren-nesting cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel
+refuses per its published limit (UNVERIFIED: no oracle probe yet).
 This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
 on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be

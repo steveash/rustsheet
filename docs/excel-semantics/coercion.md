@@ -56,6 +56,9 @@ A17; gen-m1/57fe331cb7611dbf Calc!A167 (oracle: excel-graph, 2026-10-05, T-0109)
 Excel-authored `TEXT/MINUS_MINUS.xlsx` (`ironcalc@9b1ae3fd`; 72 of its 73 cells pass with T-0132)
 agrees: `--TRUE` = 1, `---TRUE` = -1, `--"3"` = 3, `--"abc"` = #VALUE!, `--A1:A4` lifts element-wise.
 A plus sign is a no-op (`+x` stays text or boolean).
+A single unary `-` or `%` also works element by element on a range or array: `INDEX(...,1,0)%`
+= 0 (gen-m2/f9d4df4efdfbcbd5 A125, oracle excel-graph); the spill shapes asserted in
+`test/test_unary_operators.rs` are upstream's, not yet oracle-checked.
 Status: VERIFIED
 Implemented in: `Parser::parse_power` keeps one `UnaryKind::Minus` per minus sign; `Model::apply_number_unary`
 evaluates it (element-wise over ranges and arrays); `stringify`/`move_formula` print `--x` as typed and

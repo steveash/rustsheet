@@ -121,6 +121,20 @@ fn unary_minus_runs_nest_up_to_the_limit() {
 }
 
 #[test]
+fn unary_minus_run_at_the_limit_evaluates() {
+    on_small_stack(|| {
+        // Each minus is an evaluator frame too (`apply_number_unary`): the
+        // longest run that parses must also evaluate and print on a small stack.
+        let mut model = crate::test::util::new_empty_model();
+        let minuses = "-".repeat(MAX_FORMULA_DEPTH - 3);
+        model._set("A1", &format!("={minuses}TRUE"));
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "-1");
+        assert_eq!(model._get_formula("A1"), format!("={minuses}TRUE"));
+    });
+}
+
+#[test]
 fn parser_is_reusable_after_a_too_deep_formula() {
     on_small_stack(|| {
         let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
