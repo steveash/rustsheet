@@ -59,8 +59,8 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
     None
 }
 
-/// The serial a time or date-time text coerces to where text becomes a number (`0+"10:11"`,
-/// `--"12:00"`, VALUE): clock text, hour-only AM/PM and "date clock" text, unwrapped (`0+"25:00"`
+/// The serial a time or date-time text coerces to where `cast_number` reads text as a number
+/// (`0+"10:11"`, `--"12:00"`): clock text, hour-only AM/PM and "date clock" text, unwrapped (`0+"25:00"`
 /// is 1.0416666666666667, unlike TIMEVALUE which keeps the fraction). Surrounding spaces make
 /// the text invalid here although TIMEVALUE trims them (probes/timevalue-fractional-seconds2
 /// C11). Excel: see docs/excel-semantics/dates.md#time-text.

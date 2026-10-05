@@ -50,7 +50,7 @@ plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Exc
 ## Outcome
 `cast_number` falls back to the new `time_text::parse_time_serial` (clock text, hour-only AM/PM,
 "date clock" text, unwrapped serial; text with surrounding spaces stays #VALUE!), so `0+`, `--`,
-VALUE and array arithmetic read time text. Restored the time assertions in
+and array arithmetic read time text (VALUE does not: `fn_value` has its own path, see T-0153). Restored the time assertions in
 `test_unary_operators.rs`. Eval delta: probes known failures 132 -> 47 (85 of the 89 cells fixed);
 gen-m1/gen-m2/ironcalc-calc/poi unchanged, no regressions. Not done: the oddity
 `"10:11.5:12"` (timevalue-component-limits B26/C26, see dates.md "Open") and the upstream
