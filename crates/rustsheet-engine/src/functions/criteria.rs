@@ -71,8 +71,10 @@ fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
             }
             false
         }
+        // Excel: text cells are parsed with the same ASCII-space trimming as the criterion
+        // operand (docs/excel-semantics/criteria.md, probes/criteria-padded-text).
         CalcResult::String(s) => {
-            if let Ok(f) = s.parse::<f64>() {
+            if let Ok(f) = parse_criterion_number(s) {
                 if (f - target).abs() < f64::EPSILON {
                     return true;
                 }
@@ -409,6 +411,10 @@ pub(crate) fn build_criteria_with<'a>(
                     }
                 } else if let Some(f) = parse_date_criterion(v, locale) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
+                } else if flavor == CriteriaFlavor::Standard && explicit_equals && v.is_empty() {
+                    // Excel: a bare "=" does not match an empty-string cell (probes/criteria-grammar
+                    // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
+                    Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                 } else if flavor == CriteriaFlavor::Database && !explicit_equals {
                     Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {

@@ -52,8 +52,18 @@ Tasks: T-0220
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
 `--("">1.5)` = 1, `--""` (a cell holding empty text) = `#VALUE!`, `--100` = 100.
 Evidence: gen-m1/6462bf910ef9f28f Calc!A49 (`--Data!C4`, C4 = FALSE), A84 (`--Data!$A11`, A11 = ""),
-A17; gen-m1/57fe331cb7611dbf Calc!A167 (oracle: excel-graph, 2026-10-05, T-0109).
+A17; gen-m1/57fe331cb7611dbf Calc!A167 (oracle: excel-graph, 2026-10-05, T-0109). Upstream IronCalc's
+Excel-authored `TEXT/MINUS_MINUS.xlsx` (`ironcalc@9b1ae3fd`; 72 of its 73 cells pass with T-0132)
+agrees: `--TRUE` = 1, `---TRUE` = -1, `--"3"` = 3, `--"abc"` = #VALUE!, `--A1:A4` lifts element-wise.
+A plus sign is a no-op (`+x` stays text or boolean).
+A single unary `-` or `%` also works element by element on a range or array: `INDEX(...,1,0)%`
+= 0 (gen-m2/f9d4df4efdfbcbd5 A125, oracle excel-graph); the spill shapes asserted in
+`test/test_unary_operators.rs` are upstream's, not yet oracle-checked.
 Status: VERIFIED
+Implemented in: `Parser::parse_power` keeps one `UnaryKind::Minus` per minus sign; `Model::apply_number_unary`
+evaluates it (element-wise over ranges and arrays); `stringify`/`move_formula` print `--x` as typed and
+parenthesise a lower-precedence operand (T-0132, `Ported-From: ironcalc@9b1ae3fd`). `--"12:00"`
+(MINUS_MINUS.xlsx C12, Excel 0.5) still fails: time text coercion is T-0146, which adds that workbook.
 Tasks: T-0132
 
 ## Text in a range operand of arithmetic is coerced
@@ -74,19 +84,26 @@ Rule: when the left operand is a one-cell range holding an error and the right o
 the result is the left error: `(Data!C1:C10 Data!B9:D9)/Data!D$5` with C9 = `#N/A` and
 D5 = `#DIV/0!` is `#N/A`. `handle_arithmetic` lifts a scalar right-hand error to a 1x1 array, so the
 left range's element error is seen first (`arithmetic_on_values`, case 4).
-Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105).
-Status: VERIFIED (one cell; the multi-cell case is unprobed)
+The same holds element by element for a multi-cell range. Each element shows its own error if it has
+one, and otherwise the scalar's error. A text element fails with `#VALUE!` before the scalar's error.
+With C8 = 7, C9 = `#N/A`, C10 = "x" and D5 = `#DIV/0!`: `=Data!C8:C9/Data!D5` is {`#DIV/0!`; `#N/A`},
+`=Data!C9:C10/Data!D5` and `=Data!C9:C10+Data!D5` are {`#N/A`; `#VALUE!`}, and a scalar left error wins
+over every element (`=Data!D5/Data!C8:C9` is `#DIV/0!` twice).
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105);
+probes/arith-range-error-precedence (oracle: excel-graph, 2026-10-05, T-0138).
+Status: VERIFIED
 Implemented in: `Model::handle_arithmetic` (crates/rustsheet-engine/src/arithmetic.rs)
-Tasks: T-0137
+Tasks: T-0137, T-0138
 
 ## Text longer than 32,767 characters
 Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
 `LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767. REPT with a
-longer result is `#VALUE!` (`REPT("a",32768)`). RustSheet gives `#VALUE!` for the CONCATENATE case
-and does not bound `&` at all (32768).
-Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05; C9 and C10 are known failures).
+longer result is `#VALUE!` (`REPT("a",32768)`).
+Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05).
+Open: the scalar cases are verified; per-element truncation in arrays and whether Excel counts UTF-16
+code units (the code counts `chars()`) are unprobed. Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: not yet (`MAX_TEXT_CHARS` in functions/text/concatenate.rs gives `#VALUE!`; T-0240)
+Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240); CONCAT/TEXTJOIN not probed
 Tasks: T-0240
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing

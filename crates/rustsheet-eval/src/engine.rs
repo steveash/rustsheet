@@ -26,6 +26,8 @@ pub trait Engine: Sync {
     /// # Errors
     /// Returns a human-readable message if the spec cannot be materialized.
     fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String>;
+    /// Worksheet functions the engine implements, by en-US name (for the evidence report).
+    fn implemented_functions(&self) -> Vec<String>;
 }
 
 /// The RustSheet engine (currently the forked IronCalc `Model`).
@@ -57,6 +59,10 @@ impl Evaluated for RustSheetEvaluated {
 impl Engine for RustSheetEngine {
     fn name(&self) -> &'static str {
         "rustsheet"
+    }
+
+    fn implemented_functions(&self) -> Vec<String> {
+        rustsheet::implemented_functions()
     }
 
     fn evaluate_xlsx(&self, bytes: &[u8]) -> Result<Box<dyn Evaluated>, String> {

@@ -2,7 +2,7 @@ use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node},
+    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_CHARS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -168,7 +168,7 @@ fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<Ar
     let number_times = number_times?.floor();
     // We normally don't follow Excel's sometimes archaic size's restrictions
     // But this might be a security issue
-    if number_times < 0.0 || text.len() as f64 * number_times > 32767.0 {
+    if number_times < 0.0 || text.len() as f64 * number_times > MAX_TEXT_CHARS as f64 {
         return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(text.repeat(number_times as usize)))

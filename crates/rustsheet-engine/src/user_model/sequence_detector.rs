@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::locale::Locale;
+use crate::number_format::to_excel_precision_str;
 
 enum DateCaseStyle {
     Uppercase,
@@ -96,8 +97,9 @@ pub(crate) enum Progression {
 }
 impl Progression {
     fn format_number(progression: &NumericProgression, i: usize) -> String {
-        round_sig(progression.next(i))
-            .to_string()
+        // The text is typed back in as user input, which keeps 15 significant digits (T-0143), so
+        // emit at most 15 digits instead of the shortest round-trip repr.
+        to_excel_precision_str(round_sig(progression.next(i)))
             .replace('.', &progression.decimal_sep.to_string())
     }
     pub(crate) fn next(&self, i: usize) -> String {

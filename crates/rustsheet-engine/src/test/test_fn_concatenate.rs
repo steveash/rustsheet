@@ -58,17 +58,20 @@ fn fn_concatenate_lifts_over_arrays() {
 }
 
 #[test]
-fn fn_concatenate_result_over_32767_chars_is_value_error() {
+fn fn_concatenate_and_ampersand_truncate_at_32767_chars() {
     let mut model = new_empty_model();
     model._set("A1", "x");
     model._set("A2", "y");
     model._set("B1", "=REPT(\"a\",20000)");
-    model._set("C1", "=CONCATENATE(A1:A2,B1,B1)");
+    model._set("C1", "=LEN(CONCATENATE(A1:A2,B1,B1))");
     model._set("E1", "=LEN(CONCATENATE(B1,\"b\"))");
+    model._set("D1", "=LEN(REPT(\"a\",32767)&\"b\")");
+    model._set("D2", "=LEN(CONCATENATE(REPT(\"a\",32767),\"b\"))");
 
     model.evaluate();
 
-    assert_eq!(model._get_text("C1"), *"#VALUE!");
-    assert_eq!(model._get_text("C2"), *"#VALUE!");
+    assert_eq!(model._get_text("C1"), *"32767");
     assert_eq!(model._get_text("E1"), *"20001");
+    assert_eq!(model._get_text("D1"), *"32767");
+    assert_eq!(model._get_text("D2"), *"32767");
 }

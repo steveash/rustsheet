@@ -602,12 +602,11 @@ impl Parser {
 
     fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
-        let mut sign = 1;
+        // Every minus is kept (`--x` coerces `x` to a number); a plus is a no-op.
+        let mut minus_count = 0;
         while let TokenType::Addition(op) = next_token {
             self.lexer.advance_token();
-            if op == token::OpSum::Minus {
-                sign = -sign;
-            }
+            minus_count += usize::from(op == token::OpSum::Minus);
             next_token = self.lexer.peek_token();
         }
 
@@ -615,7 +614,7 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        if sign == -1 {
+        for _ in 0..minus_count {
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }

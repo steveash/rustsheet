@@ -49,6 +49,21 @@ Evidence: smoke/d-function-criteria Sheet1!J2 (`"  > 1 "` → 0); probes/criteri
 Status: VERIFIED
 Implemented in: functions::database::criteria_cell_matches (no trimming before the operator), functions::criteria::parse_criterion_number (spaces around the numeric operand)
 
+## Numeric criteria against text cells and non-ASCII spaces
+Rule: a numeric criterion (`"1"`, `"1 "`, `" 1"`, `"= 1"`, `"=1 "`) matches number cells and text cells
+whose ASCII-space-trimmed text parses to that number (`"1"`, `"1 "`, `" 1"`). CHAR(160) is not
+ignored: `"1"&CHAR(160)` and `CHAR(160)&"1"` (and `"="&CHAR(160)&"1"`) are text criteria that match
+only the cell with exactly that text, and CHAR(160)-padded text cells never match a numeric
+criterion. `"<> 1"` / `"<>1 "` count every cell except number 1 (text "1" still counts, 5 of 6).
+`">= 1"`, `"> 0 "` match number cells only (→ 1). `"<>"&CHAR(160)&"1"` → 5 (all but the exact text).
+Open: `">"&CHAR(160)&"0"` (a text comparison) matched 4 of the 5 text cells; the string ordering
+Excel uses around CHAR(160)/space is not implemented (engine gives 1), see the follow-up task.
+Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
+"1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
+Status: VERIFIED (C13 string ordering unimplemented)
+Implemented in: functions::criteria::result_is_equal_to_number
+Tasks: T-0242
+
 ## "=" matches blank cells, not an empty-string cell
 Rule: `COUNTIF(range,"=")` counts truly blank cells but not a cell holding the empty string, while
 `COUNTIF(range,"")` counts both.
@@ -56,7 +71,13 @@ Evidence: probes/criteria-grammar C3 (`""` → 1), C4 (`"="` → 0) over a range
 cell and no blank cells; probes/criteria-gaps C2 (`"="` → 1), C3 (`""` → 1) over a range with one
 blank cell and no empty string. Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
 Status: VERIFIED
-Tasks: T-0227
+Implemented in: `build_criteria_with` (`crates/rustsheet-engine/src/functions/criteria.rs`), Standard flavor.
+Also verified for SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MAXIFS (`"="`) and MINIFS (`""`): over A1:A5 = 1,
+"" (empty-string cell), blank, 4, "x" with B = 10,20,40,80,160, `"="` selects only the blank cell
+(SUMIF 40, AVERAGEIF 40, COUNTIFS 1, SUMIFS 40, AVERAGEIFS 40, MAXIFS 40) and `""` selects both
+(SUMIF 60, AVERAGEIF 30, COUNTIFS 2, SUMIFS 60, AVERAGEIFS 30, MINIFS 20). Evidence:
+probes/criteria-ifs-bare-equals C1-C12. Oracle: excel-graph, 2026-10-05 (T-0246).
+Tasks: T-0227, T-0246
 
 ## `<`, `>`, `<=`, `>=` with a boolean or error operand
 Rule: `COUNTIF(r,">TRUE")`, `"<TRUE"`, `">#N/A"` and `"<#N/A"` match nothing, even over TRUE or
