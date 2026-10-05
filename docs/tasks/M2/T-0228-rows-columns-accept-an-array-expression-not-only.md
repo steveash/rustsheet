@@ -3,7 +3,7 @@ id: T-0228
 title: "ROWS/COLUMNS accept an array expression, not only a reference"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
