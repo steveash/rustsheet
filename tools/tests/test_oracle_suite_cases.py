@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -78,3 +79,9 @@ def test_undecoded_rich_errors_are_never_written_as_goldens() -> None:
     values = {"S": {"A1": dict(cli.UNDECODED), "A2": {"t": "n", "v": 2.0}}}
     cli._drop_undecoded(Path("x.xlsx"), values)
     assert values == {"S": {"A2": {"t": "n", "v": 2.0}}}
+
+
+def test_undecoded_marker_matches_the_harness_constant() -> None:
+    rust = Path(__file__).resolve().parents[2] / "crates/rustsheet-eval/src/xlsx_snapshot.rs"
+    m = re.search(r'pub const UNDECODED_RICH_ERROR: &str = "([^"]+)";', rust.read_text())
+    assert m and m.group(1) == cli.UNDECODED["v"]
