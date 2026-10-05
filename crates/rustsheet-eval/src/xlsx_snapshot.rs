@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
+use rustsheet_engine::expressions::utils::shift::shift_formula_text;
 use rustsheet_xlsx::import::decode_xlsx_escapes;
 
 #[derive(Debug, thiserror::Error)]
@@ -49,7 +50,7 @@ pub enum FormulaKind {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CellSnapshot {
-    /// Formula text without leading `=`; for shared-formula members, the master's text.
+    /// Formula text without leading `=`; for shared-formula members, the master's text shifted to the member's cell.
     pub formula: Option<String>,
     pub formula_kind: Option<FormulaKind>,
     /// Cached value (for formulas) or constant value (for inputs).
@@ -417,7 +418,7 @@ fn parse_sheet(
 ) -> Result<BTreeMap<Addr, CellSnapshot>, SnapshotError> {
     let mut reader = Reader::from_str(xml);
     let mut cells = BTreeMap::new();
-    let mut shared_masters: HashMap<u32, String> = HashMap::new();
+    let mut shared_masters: HashMap<u32, (Addr, String)> = HashMap::new();
     let mut array_ranges: Vec<(Addr, Addr, Addr)> = Vec::new(); // (top-left, bottom-right, anchor)
     let mut cur = PendingCell::default();
     let mut field = Field::None;
@@ -492,11 +493,13 @@ fn parse_sheet(
             _ => {}
         }
     }
-    // Shared-formula members that appeared before their master get the master text now.
-    for cell in cells.values_mut() {
+    // Shared-formula members show the master's formula as it applies to their own cell.
+    for (addr, cell) in &mut cells {
         if let Some(FormulaKind::Shared { si }) = cell.formula_kind {
             if cell.formula.is_none() {
-                cell.formula = shared_masters.get(&si).cloned();
+                if let Some((master, text)) = shared_masters.get(&si) {
+                    cell.formula = Some(shifted_member_formula(text, *master, *addr));
+                }
             }
         }
     }
@@ -542,11 +545,21 @@ fn push_field(cur: &mut PendingCell, field: Field, text: &str) {
     }
 }
 
+/// The master's formula text moved from `master` to `member`, spacing preserved. Falls back to
+/// the master's text when it does not lex (nothing better is known).
+fn shifted_member_formula(text: &str, master: Addr, member: Addr) -> String {
+    let delta = |to: u32, from: u32| i32::try_from(i64::from(to) - i64::from(from)).ok();
+    delta(member.row, master.row)
+        .zip(delta(member.col, master.col))
+        .and_then(|(dr, dc)| shift_formula_text(text, dr, dc))
+        .unwrap_or_else(|| text.to_string())
+}
+
 fn finish_cell(
     c: PendingCell,
     shared: &[String],
     rich_errors: &[Option<&'static str>],
-    masters: &mut HashMap<u32, String>,
+    masters: &mut HashMap<u32, (Addr, String)>,
     arrays: &mut Vec<(Addr, Addr, Addr)>,
     out: &mut BTreeMap<Addr, CellSnapshot>,
 ) {
@@ -559,9 +572,10 @@ fn finish_cell(
                 Some("shared") => {
                     let si: u32 = si.and_then(|s| s.parse().ok()).unwrap_or(u32::MAX);
                     if let Some(t) = &text {
-                        masters.insert(si, t.clone());
+                        masters.insert(si, (addr, t.clone()));
                     }
-                    let text = text.or_else(|| masters.get(&si).cloned());
+                    // A member's text is derived from its master in `parse_sheet`, which also
+                    // handles members that precede their master.
                     (text, Some(FormulaKind::Shared { si }))
                 }
                 Some("array") => {
@@ -658,8 +672,8 @@ mod tests {
         );
         assert_eq!(
             get("A4").and_then(|c| c.formula).as_deref(),
-            Some("A2+1"),
-            "shared member inherits master text"
+            Some("A3+1"),
+            "shared member shows the master's formula shifted to its own cell"
         );
         assert_eq!(
             get("B4").and_then(|c| c.formula_kind),

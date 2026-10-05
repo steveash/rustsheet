@@ -1,6 +1,7 @@
 use super::types::*;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 
+pub mod shift;
 #[cfg(test)]
 mod test;
 

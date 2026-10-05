@@ -3,7 +3,7 @@ id: T-0027
 title: "Show shared formulas as they apply to each cell in eval show/snapshot"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -23,11 +23,11 @@ existing shared-formula expansion if one exists (`rg -i shared crates/rustsheet-
 rather than writing a second reference shifter. Found in the T-0019 review.
 
 ## Acceptance criteria
-- [ ] `show poi/NumberFormatApproxTests.xlsx` prints `=TEXT(C96, B96)` for Tests!A96; a unit test covers a
+- [x] `show poi/NumberFormatApproxTests.xlsx` prints `=TEXT(C96, B96)` for Tests!A96; a unit test covers a
       shared-formula member with relative and absolute references.
-- [ ] The snapshot JSON keeps `formula_kind` (shared, si) so tools can still tell members apart.
-- [ ] Eval results unchanged (display only).
-- [ ] `make check` green; reviewers approve.
+- [x] The snapshot JSON keeps `formula_kind` (shared, si) so tools can still tell members apart.
+- [x] Eval results unchanged (display only).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any change to how formulas are evaluated or scored.
@@ -47,3 +47,8 @@ Sonnet run, no code written; stopped at a design question.
   criterion; (b) is smaller but compares less well to the oracle's own text.
 - Either way check that `calibrate.rs`, `volatile.rs` and `report.rs` (users of `CellSnapshot.formula`)
   still behave, and keep `formula_kind` unchanged.
+
+## Outcome
+Option (a) of the handoff: `rustsheet_engine::expressions::utils::shift::shift_formula_text` shifts reference
+tokens in formula text (lexer spans, spacing/quoting kept, off-sheet -> `#REF!`); `xlsx_snapshot.rs` applies it
+to members in a post-pass (works for members before their master). Unit tests in both crates. Eval unchanged.

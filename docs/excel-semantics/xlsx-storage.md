@@ -6,3 +6,10 @@ Characters invalid in XML 1.0 (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F)
 cells; a literal `_xHHHH_` look-alike is written `_x005F_xHHHH_`.
 Evidence: `ironcalc-calc/TEXT/CHAR.xlsx` (Excel-cached): `=CHAR(1)` is stored as `_x0001_`.
 Readers must decode (`rustsheet_xlsx::import::decode_xlsx_escapes`); this is not CHAR behavior.
+
+## Shared-formula members store no text; the master's text applies shifted
+Only the master `<f t="shared" ref=.. si=..>` carries text; members are `<f t="shared" si=../>` and
+compute the master's formula with every relative reference moved by (member − master) rows/columns
+(absolute `$` parts stay). Evidence: poi/NumberFormatApproxTests.xlsx Tests!A96 is a member of si 5
+whose master text is `TEXT(C41, B41)` and computes `TEXT(C96, B96)`. `rustsheet-eval show`/`snapshot`
+print the shifted text (spacing kept) via `shift_formula_text`; `formula_kind` still carries `si`.
