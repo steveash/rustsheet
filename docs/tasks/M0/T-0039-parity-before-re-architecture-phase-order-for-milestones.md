@@ -26,7 +26,8 @@ come before most function families, and the `perf` lane is on the critical-lane 
   criteria, what is out of scope, and what stays allowed during Phase 1.
 - [x] docs/milestones.md states the phase order. M3, M4 and the performance half of M11 (now
   M13) are marked Phase 2. M11 keeps real-world fidelity in Phase 1.
-- [x] The open M3 tasks are `blocked` until Phase 1 exits.
+- [x] The open M3 tasks are `blocked` until Phase 1 exits (T-0403, already in flight in its own
+  PR, is left to finish).
 - [x] A task to catalog every Excel function with its parity scope (T-0040).
 - [x] `make check` green; reviewers approve.
 
@@ -38,5 +39,6 @@ come before most function families, and the `perf` lane is on the critical-lane 
 2026-10-05: decision 0026 sets the phase order. Phase 1 is parity (M0, M1, M2, M5–M11), Phase
 2 is architecture and performance (M3, M4, and the new M13 split out of M11), Phase 3 is the
 release (M12). docs/milestones.md holds the Phase 1 exit criteria and the `**Phase 1:**
-exited` marker. T-0400..T-0403 are blocked until then, T-0040 is filed for the full function
-catalog, and T-0018 now orders tasks by phase.
+exited` marker. T-0400..T-0402 are blocked until then. T-0403, a small local perf fix already in
+its own PR, was left to finish. T-0040 is filed for the full function catalog. Also renumbered
+the duplicate union-operator T-0129 (from #81) to T-0135, which fixes `tasks.py validate` on main.

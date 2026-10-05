@@ -34,7 +34,7 @@
     evaluator stay as small as the parity fix needs.
   - **Deferred to Phase 2:** the new dependency graph, storage, structural-edit rewrite,
     benchmarks and perf gate, and parallel recalculation. The open M3 tasks are `blocked` with a
-    pointer here.
+    pointer here, except T-0403, a small local fix that was already in review.
   - Some parity work needs the Phase 2 graph: circular references and iterative calculation,
     dynamic dependencies, TABLE(). Its oracle cases are still written in Phase 1, so the suite
     is ready before the refactor; only the implementation waits.

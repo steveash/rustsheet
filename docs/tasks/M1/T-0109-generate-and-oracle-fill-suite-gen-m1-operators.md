@@ -40,7 +40,7 @@ before the bulk fill.
 
 The gap-triager split the 978 failures into these tasks:
 - T-0105, intersection: 632 cells.
-- T-0129, union: 250 (value-context `#VALUE!`; general multi-area design in spec T-0133).
+- T-0135, union: 250 (value-context `#VALUE!`; general multi-area design in spec T-0133).
 - T-0130, range with both corners sheet-qualified: 41.
 - T-0107, number→text in `&`: 34.
 - T-0131, text in range arithmetic: 10.
