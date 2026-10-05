@@ -297,3 +297,20 @@ fn test_and_or_do_not_short_circuit_past_errors() {
     assert_eq!(model._get_text("A7"), *"FALSE");
     assert_eq!(model._get_text("A8"), *"TRUE");
 }
+
+// NOT lifts over arrays and ranges, one result per element (T-0225).
+#[test]
+fn test_not_lifts_over_arrays_and_ranges() {
+    let mut model = new_empty_model();
+    model._set("A1", "=NOT({TRUE,FALSE})");
+    model._set("A3", "TRUE");
+    model._set("A4", "0");
+    model._set("C1", "=NOT(A3:A4)");
+    model._set("E1", "=NOT(TRUE)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"FALSE");
+    assert_eq!(model._get_text("B1"), *"TRUE");
+    assert_eq!(model._get_text("C1"), *"FALSE");
+    assert_eq!(model._get_text("C2"), *"TRUE");
+    assert_eq!(model._get_text("E1"), *"FALSE");
+}

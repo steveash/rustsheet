@@ -1,24 +1,47 @@
 use crate::{
     calc_result::CalcResult,
+    cast::ValueOrArray,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::util::array_node_to_calc_result,
     model::Model,
 };
 
 impl Model {
+    /// NOT lifts over ranges and arrays, one result per element (T-0225,
+    /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument.
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.get_boolean(&args[0], cell) {
-                Ok(f) => return CalcResult::Boolean(!f),
-                Err(s) => {
-                    return s;
-                }
-            };
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        match self.get_value_or_array(&args[0], cell) {
+            Ok(ValueOrArray::Value(value)) => match self.cast_to_bool(value, cell) {
+                Ok(f) => CalcResult::Boolean(!f),
+                Err(s) => s,
+            },
+            Ok(ValueOrArray::Array(array)) => CalcResult::Array(
+                array
+                    .into_iter()
+                    .map(|row| {
+                        row.into_iter()
+                            .map(|node| {
+                                match self
+                                    .cast_to_bool(array_node_to_calc_result(&node, cell), cell)
+                                {
+                                    Ok(f) => ArrayNode::Boolean(!f),
+                                    Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                                    Err(_) => ArrayNode::Error(Error::VALUE),
+                                }
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            Err(e) => e,
+        }
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
