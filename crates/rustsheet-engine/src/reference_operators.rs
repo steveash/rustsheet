@@ -45,11 +45,11 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let left = match self.intersection_operand(left, cell) {
+        let left = match self.evaluate_intersection_operand(left, cell) {
             Ok(range) => range,
             Err(error) => return error,
         };
-        let right = match self.intersection_operand(right, cell) {
+        let right = match self.evaluate_intersection_operand(right, cell) {
             Ok(range) => range,
             Err(error) => return error,
         };
@@ -85,7 +85,7 @@ impl Model {
     /// An operand of the intersection as a single-sheet area with its corners in order, or
     /// the result to give instead: the operand's own error, or `#VALUE!` for anything that
     /// is not a reference (`(1+0) A1`) or spans sheets.
-    fn intersection_operand(
+    fn evaluate_intersection_operand(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,

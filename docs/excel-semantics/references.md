@@ -56,6 +56,19 @@ Status: VERIFIED
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
+## Intersection operator: implementation choices (UNVERIFIED)
+Rule: RustSheet's choices where gen-m1 (single U+0020 spaces between references) has no evidence:
+- Any Unicode whitespace between two reference operands is the operator: LF, CR, TAB, NBSP and
+  U+3000 (`char::is_whitespace`, `Lexer::whitespace_follows`).
+- A literal operand on the left (`=1 A1`, `=(1) A1`) or TRUE/FALSE, `@x` or an error other than
+  `#REF!` on the right is a parse error; a parenthesized non-reference on the right (`=A1 (1)`)
+  is `#VALUE!`; `#N/A` on the left and `#REF!` on the right are accepted and propagate.
+- An operand's error wins over `#VALUE!`/`#NULL!` (`=(1/0) A1` = `#DIV/0!`).
+- The cross-sheet check runs before the disjoint check (`=Data!A1 Other!Z99` = `#VALUE!`).
+Evidence: none from Excel; the engine's results come from a scratch-suite run in the T-0105 review (2026-10-05).
+Status: UNVERIFIED
+Tasks: T-0138
+
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
 `Data!A3:D4 Data!Z99` → `#NULL!`, `Data!B4:E11 Data!A1:A3` → `#NULL!`.

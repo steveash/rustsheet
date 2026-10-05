@@ -56,4 +56,4 @@ D5 = `#DIV/0!` is `#N/A`. RustSheet gives `#DIV/0!`, because the range becomes a
 elements are only looked at after the right operand's error has already been returned.
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105).
 Status: VERIFIED (one cell; the multi-cell case is unprobed)
-Tasks: T-0136
+Tasks: T-0137

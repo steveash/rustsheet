@@ -44,9 +44,11 @@ where it separates two reference operands); `expressions/parser/mod.rs` `parse_r
 `parse_expr` (end-of-input check); `model.rs` `evaluate_node_in_context`; stringify round-trip.
 
 ## Acceptance criteria
-- [x] Every F line of `gen-m1/4dc8ed1de05a61be` and `gen-m1/7cb99acdd82402f1` (500 cells) and the
-  132 `range/dollar-range`, `range/reversed-corners` and `range/range-of-ranges` cells of
-  `gen-m1/1ce5b2467b3b19fd` disappear from eval/baseline/gen-m1.txt, with no new F lines in any suite.
+- [x] 627 of the 632 target cells pass: every F line of `gen-m1/4dc8ed1de05a61be` and
+  `gen-m1/7cb99acdd82402f1` and the 132 `range/dollar-range`, `range/reversed-corners` and
+  `range/range-of-ranges` cells of `gen-m1/1ce5b2467b3b19fd` disappear from eval/baseline/gen-m1.txt,
+  except 5 cells that fail after the intersection: 7cb99acdd82402f1 A72, A103, A217, A235 (T-0131)
+  and 4dc8ed1de05a61be A250 (T-0137). No suite gains a new F line.
 - [x] Spec cases in `smoke` for invalid trailing input (the trailing-input half has no gen-m1
   evidence; flag hand expectations for oracle confirmation).
 - [x] Formulas with intersections round-trip through stringify (unit test).
@@ -74,12 +76,12 @@ The 5 target cells still failing fail after the intersection, not in it:
 - 4 cells (gen-m1/7cb99acdd82402f1 A72, A103, A217, A235) need text `" 2 "` coerced in range
   arithmetic, so they are added to T-0131.
 - 1 cell (gen-m1/4dc8ed1de05a61be A250) needs the left range's error to win over the right
-  operand's error. That is new task T-0136, with the quirk recorded in coercion.md.
+  operand's error. That is new task T-0137, with the quirk recorded in coercion.md.
 
 Trailing-input smoke cases are hand expectations (`#ERROR!`), tagged `unconfirmed`. Excel
 refuses such formulas, so an oracle value may never exist.
 
-Open questions (no oracle evidence yet):
+Open questions, recorded as UNVERIFIED in references.md and to be probed by T-0138:
 - whether a line break or non-breaking space also acts as the operator;
 - whether `=1 A1` is a parse error in Excel or gives `#VALUE!`;
 - whether a defined name whose formula is an intersection counts as a reference.
