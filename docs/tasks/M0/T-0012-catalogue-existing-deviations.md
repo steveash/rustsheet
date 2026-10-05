@@ -57,4 +57,4 @@ The Bessel order cap and the parser depth limit already had entries.
 - OCT/HEX bounds, the 31-character sheet name and the maximum date serial: intended to match Excel's ranges (not probed here);
 - WEBSERVICE/FILTERXML: not in the engine's function list, so no I/O path exists (decision 0027 scopes WEBSERVICE out).
 
-Eval: probes +14 cells, with 6 new known failures (4 by design, 2+2 for T-0239/T-0240); 0 regressions.
+Eval: probes +14 cells, with 6 new known failures (2 by design: C12, C14; 2 for T-0239; 2 for T-0240); 0 regressions.

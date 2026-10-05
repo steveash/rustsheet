@@ -22,6 +22,10 @@ and `2^54` to the probe first, then set the bound from the evidence. Keep a boun
 check that the i64 arithmetic cannot overflow (LCM of two large arguments).
 docs/excel-semantics/numbers.md "GCD / LCM argument bound".
 
+The evidence is excel-graph (web) only; for GCD/LCM it contradicts Microsoft's documented
+`>= 2^53 → #NUM!`. Confirm with the excel-desktop backend first if it is available
+(decision 0019), and record a CONFLICTING entry if desktop differs.
+
 ## Acceptance criteria
 - [ ] probes/resource-limits C1 and C3 disappear from eval/baseline/probes.txt with no new F lines.
 - [ ] Probe cells for the real upper bound added and passing; unit test for LCM overflow.

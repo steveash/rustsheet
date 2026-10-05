@@ -23,6 +23,9 @@ bound at all). C11 `LEN(REPT("a",32768))` = `#VALUE!` already passes. Code: `MAX
 CONCAT and TEXTJOIN past the limit before changing them (they may be `#VALUE!` instead).
 docs/excel-semantics/coercion.md "Text longer than 32,767 characters".
 
+The evidence is excel-graph (web) only; confirm truncation with the excel-desktop backend first
+if it is available (decision 0019), and record a CONFLICTING entry if desktop differs.
+
 ## Acceptance criteria
 - [ ] probes/resource-limits C9 and C10 disappear from eval/baseline/probes.txt with no new F lines.
 - [ ] Share one truncation helper between CONCATENATE and `&` (no copy).

@@ -74,5 +74,5 @@ longer result is `#VALUE!` (`REPT("a",32768)`). RustSheet gives `#VALUE!` for th
 and does not bound `&` at all (32768).
 Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05; C9 and C10 are known failures).
 Status: VERIFIED
-Implemented in: functions/text/concatenate.rs (`MAX_TEXT_CHARS`)
+Implemented in: not yet (`MAX_TEXT_CHARS` in functions/text/concatenate.rs gives `#VALUE!`; T-0240)
 Tasks: T-0240
