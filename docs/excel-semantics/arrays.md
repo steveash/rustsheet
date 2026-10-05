@@ -30,3 +30,19 @@ gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
 Status: VERIFIED
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
+
+## A scalar error operand broadcasts against an array operand
+Rule: an arithmetic operator (`+ - * / ^`) whose one operand is a scalar error (or text that is
+not a number) and whose other operand is an array or multi-cell range returns an array of that
+operand's size, every element the scalar's error, not a scalar error: `NA()-{1;2;3}` is
+`{#N/A;#N/A;#N/A}`, `"abc"*{1,2}` is `{#VALUE!,#VALUE!}`. Per element the leftmost error wins:
+`INDEX({1;#DIV/0!;3}+NA(),2)` is `#DIV/0!`, `INDEX(NA()+{1;#DIV/0!;3},2)` is `#N/A`. So a cell such as
+`=(…+COUNTIFS(<mismatched shapes>))-INDEX(Data!A5:C12,0,3)` is an 8-row array and shows `#SPILL!` when
+the cells below are occupied.
+Evidence (oracle: excel-graph, 2026-10-05): probes/error-operand-broadcast C2, C4, C5, C9, C11–C15
+(`SUM(IFERROR(NA()-{1;2;3},1))` = 3); gen-m2/dd99be1f2454159f Calc!A56 (expected `#SPILL!`).
+The same probe shows ROWS/COLUMNS accept an array expression (`ROWS(NA()-{1;2;3})` = 3, C1/C3/C6–C8/C10);
+the engine does not yet (T-0228).
+Status: VERIFIED
+Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.rs`
+Tasks: T-0209
