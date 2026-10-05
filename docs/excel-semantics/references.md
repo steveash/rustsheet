@@ -198,3 +198,10 @@ J1008 (3), M1008 and N1008 (7.0009); K7:L8 = {1, 1.001; 2, 2.9999}.
 Status: VERIFIED (Excel-cached)
 Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0946
+
+## OFFSET: negative height or width (known divergence)
+Rule: Excel accepts a negative height or width (the range extends up or left) but `fn_offset` returns
+`#VALUE!` (it follows the documentation, not Excel). No oracle evidence yet.
+Evidence: none; see T-0956.
+Status: UNVERIFIED
+Tasks: T-0956

@@ -877,9 +877,9 @@ impl Model {
             Some(node) => {
                 let c = self.get_number(node, cell)?;
                 Ok(if c < 1.0 {
-                    c.ceil() as i32 - 1
+                    (c.ceil() as i32).saturating_sub(1)
                 } else {
-                    c.floor() as i32 - 1
+                    (c.floor() as i32).saturating_sub(1)
                 })
             }
         }
@@ -918,8 +918,10 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let row_start = reference.left.row + rows;
-        let column_start = reference.left.column + cols;
+        // `as i32` saturates, so sums saturate too (untrusted input must not overflow): any such
+        // result is outside the sheet and falls through to #REF!.
+        let row_start = reference.left.row.saturating_add(rows);
+        let column_start = reference.left.column.saturating_add(cols);
         // A missing or empty height/width keeps the reference's size
         // (poi/FormulaEvalTestData_Copy.xlsx EverythingTests!I1008, J1008, M1008, N1008).
         let height =
@@ -953,8 +955,8 @@ impl Model {
             };
         }
 
-        let column_end = column_start + width;
-        let row_end = row_start + height;
+        let column_end = column_start.saturating_add(width);
+        let row_end = row_start.saturating_add(height);
         if row_start < 1 || row_end > LAST_ROW || column_start < 1 || column_end > LAST_COLUMN {
             return CalcResult::Error {
                 error: Error::REF,
