@@ -56,6 +56,7 @@ mod conditional_formatting;
 mod constants;
 mod cut_paste;
 mod evaluation;
+mod function_names;
 mod functions;
 mod implicit_intersection;
 pub mod links;
@@ -76,6 +77,7 @@ mod test;
 pub mod mock_time;
 
 pub use evaluation::{KeyBuild, KeyHasher};
+pub use function_names::implemented_function_names;
 pub use locale::get_supported_locales;
 pub use merged_cells::MergeStructure;
 pub use model::get_milliseconds_since_epoch;
