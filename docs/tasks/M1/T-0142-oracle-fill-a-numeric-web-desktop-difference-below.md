@@ -3,7 +3,7 @@ id: T-0142
 title: "Oracle fill: a numeric web/desktop difference below 1e-9 keeps the desktop value (decision 0030)"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -34,3 +34,11 @@ last-digit web/desktop differences (poi, any `oracle_dir` suite) are scored agai
 
 ## Out of scope
 -
+
+## Outcome
+`_drop_desktop_conflicts` (tools/src/rustsheet_tools/oracle/cli.py) now writes the cached desktop
+number (and prints a `DESKTOP` line) when the workbook was saved by Microsoft Excel AppVersion 16.x
+and the web number differs at all but within 1e-9; larger differences stay pending; pre-16 builds
+keep the web value. Unit tests cover equal / below 1e-9 / above 1e-9 / non-16.x. Re-filling the poi
+suite with `--force` changed only `produced_at` stamps and two volatile cells (46299 -> 46300,
+a random value), no last-digit cell, so no sidecar changed and no scored cell moved. Eval delta: none.

@@ -62,7 +62,9 @@ def test_web_values_that_contradict_desktop_excel_are_left_pending(monkeypatch: 
 def test_desktop_numbers_replace_web_below_1e9_and_pending_above(monkeypatch: pytest.MonkeyPatch) -> None:
     desktop = {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0}, "A3": {"t": "n", "v": 1.0}}
     monkeypatch.setattr(cli, "snapshot", lambda _: _cached("Microsoft Excel", desktop))
-    web = {"S": {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0 + 1e-12}, "A3": {"t": "n", "v": 1.001}}}
+    web = {
+        "S": {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0 + 1e-12}, "A3": {"t": "n", "v": 1.001}}
+    }
     assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 1
     assert web == {"S": {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0}}}
 
