@@ -3,7 +3,7 @@ id: T-0931
 title: "Parser: bound formula nesting depth (stack overflow on deeply nested parentheses)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
