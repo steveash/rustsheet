@@ -3,7 +3,7 @@ id: T-0946
 title: "OFFSET: an omitted height or width argument keeps the reference's size (4 poi known failures)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,12 +33,15 @@ height/width with `get_number`, which turns `Node::EmptyArg` into 0, so `height 
 Treat an `EmptyArg` height/width like the missing argument (the `l == 3` branch values).
 
 ## Acceptance criteria
-- [ ] These 4 lines disappear from eval/baseline/poi.txt with no new F lines in any baseline:
+- [x] These 4 lines disappear from eval/baseline/poi.txt with no new F lines in any baseline:
       `poi/FormulaEvalTestData_Copy.xlsx` EverythingTests!I1008, J1008, M1008, N1008.
-- [ ] Unit tests in `crates/rustsheet-engine/src/test/test_fn_offset.rs` for the four forms above.
-- [ ] references.md entry gets an `Implemented in:` line.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests in `crates/rustsheet-engine/src/test/test_fn_offset.rs` for the four forms above.
+- [x] references.md entry gets an `Implemented in:` line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Empty `rows`/`cols` arguments (no evidence; they already read as 0).
 - Negative height/width (the code comment notes a known difference; separate task if evidence appears).
+
+## Outcome
+New `offset_size` helper: a missing or empty (`EmptyArgKind`) height/width keeps the reference's size. poi known failures 932 -> 928 (I1008, J1008, M1008, N1008), no regressions; unit test `fn_offset_empty_height_width`.

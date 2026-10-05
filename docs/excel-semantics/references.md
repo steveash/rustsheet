@@ -116,6 +116,17 @@ the case format has no defined names yet (T-0043).
 Status: UNVERIFIED (scratch evidence from Excel for the web only; committed case pending T-0043)
 Tasks: T-0138, T-0043
 
+## A sheet-qualified #REF! is #REF!
+Rule: a reference that Excel has already replaced by `#REF!` but that keeps its sheet prefix
+evaluates to `#REF!`. That holds as a cell formula (`='1'!#REF!`) and as the body of a defined name:
+with `sale_1` and `sale_2` both defined as `Sheet1!#REF!`, `=sale_1*sale_2` is `#REF!`. With an
+undefined name on the left, `=aaa*sale_1` is `#NAME?`, so the left operand's error wins.
+Evidence: poi/customIndexedColors.xlsx `_TGK_HIDDEN!B1` (Excel 16.0) and poi/49783.xlsx Sheet1!A2, B2
+(Excel 14.0); desktop Excel cached values. The unquoted form `=Sheet1!#REF!` and the form inside a
+function (`=SUM(Sheet1!#REF!)`) have no Excel cell yet.
+Status: VERIFIED (cell formula with a quoted sheet, and defined-name body)
+Tasks: T-0152
+
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
 `Data!A3:D4 Data!Z99` → `#NULL!`, `Data!B4:E11 Data!A1:A3` → `#NULL!`.
@@ -185,4 +196,5 @@ is the reference's height or width, as if the argument were left out; it is not 
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!I1008 (2.001),
 J1008 (3), M1008 and N1008 (7.0009); K7:L8 = {1, 1.001; 2, 2.9999}.
 Status: VERIFIED (Excel-cached)
+Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0946
