@@ -156,7 +156,7 @@ as formula literals: `="1e308"*1`, `="1.7976931348623157e308"*1`, `="1e400"*1`, 
 `VALUE("1e400")`, `SUM("1e400",1)` are #VALUE!, while `="9.99999999999999e307"*1` and
 `="0.01e309"+0` (1E+307) are numbers. The words "inf", "NaN", "infinity" (any case or sign) are
 text, never numbers (NUMBERVALUE too: `NUMBERVALUE("1e308")` and `NUMBERVALUE("inf")` are
-#VALUE!; `COUNT("1e308",1)` is 1; `COUNTIF(r,"<1e308")` compares as text): `="inf"*1`, `=--"Infinity"`, `VALUE("NaN")` are #VALUE!, `COUNT("inf","NaN",
+#VALUE!; `COUNT("1e308",1)` is 1): `="inf"*1`, `=--"Infinity"`, `VALUE("NaN")` are #VALUE!, `COUNT("inf","NaN",
 "1e400","+1")` is 1 (only "+1" counts), and `COUNTIF(r,"inf")` / `">1e400"` compare as text. A
 `TEXT` format condition whose number is out of range (`[>1e400]`) makes the format invalid
 (#VALUE!), `[>1e308]` included.

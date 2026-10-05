@@ -61,4 +61,4 @@ also covers T-0140 (closed). `9b1ae3fd` had been ported by T-0132; its Excel-aut
 is added by T-0153 (it needed T-0146's time-text coercion; the generated xlsx tests require every cell to pass).
 Eval: ironcalc-calc unchanged; probes +61
 checked cells, 46 pass, 15 known failures (tiny magnitudes, T-0154; array ISERROR F12:H12, T-0247);
-0 regressions. Follow-ups: T-0154, T-0247, T-0956 (POWER review items), T-0957, T-0958 (T-0918 items).
+0 regressions. Follow-ups: T-0154, T-0247, T-0959 (POWER review items), T-0957, T-0958 (T-0918 items).

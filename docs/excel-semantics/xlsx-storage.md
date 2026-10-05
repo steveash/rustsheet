@@ -31,5 +31,5 @@ as 0, as an unreadable one already was; no cell holds a NaN or an infinity. Exce
 such a value and its handling of a file that has one is unknown (likely repair or rejection).
 Stored values up to f64::MAX are kept: the 1E+308 limit of numbers.md is about typed text.
 Evidence: none for Excel; input hardening (CLAUDE.md directive 5), ported from ironcalc@58279cda.
-Status: UNVERIFIED
-Implemented in: crates/rustsheet-xlsx/src/import/worksheets.rs (`parse_cell_number`)
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-xlsx/src/import/util.rs (`parse_cell_number`)
