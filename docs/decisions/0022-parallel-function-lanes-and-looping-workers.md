@@ -18,7 +18,8 @@
   - `make next-task` / `ready-tasks` enforce one task in flight per lane: a lane is busy while a
     pushed `agent/<lane>/*` branch has a commit in the last 2 hours, unless it is an unresumed
     handoff (decision 0018), which the opus worker may still resume, or its task is already
-    `done` on main (merged, branch not yet deleted).
+    `done` on main (merged, branch not yet deleted), or its task is `status: blocked` on that
+    branch (it cannot progress; it stays claimed so nobody restarts it, T-0041).
   - Both worker prompts loop: after each merge they pick the next task, until 100 minutes into
     the session (at most 6 tasks; raised to 110 minutes and 10 tasks by decision 0025). Both run
     every 2 hours, staggered by an hour; an optional second sonnet worker (same prompt, odd
