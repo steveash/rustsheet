@@ -1,8 +1,9 @@
 # Status
 
-Updated by the steward routine (daily). Workers no longer append per-PR lines (decision 0021): the
-record of merged work is `git log --first-parent main` plus each task's Outcome, and the steward
-lists what merged since its last run.
+The steward routine owns the snapshot and the critical-lane line and rewrites them daily; agents may
+still add or remove "Needs owner" entries. PRs no longer append log lines (decision 0021): the record
+of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
+merged since its last run.
 
 ## Snapshot — 2026-10-04 (M1 in progress)
 

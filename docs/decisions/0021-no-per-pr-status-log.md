@@ -14,6 +14,12 @@
     critical-lane line.
   - `.gitattributes` sets `docs/status.md merge=union`, so a branch that still touches it (the
     steward, an older branch) merges with `origin/main` without hand edits.
+  - Risk accepted for status.md's in-place sections (snapshot table, `**Critical lane:**` line,
+    "Needs owner"): a union merge could keep two versions of an edited line. Only the steward edits
+    the snapshot and critical-lane line, and it rewrites them on every daily run; "Needs owner"
+    entries are added or removed whole by unblocking agents, which git merges without conflict
+    unless two branches touch neighboring lines. The worst case is one stale line until the next
+    steward run, which is cheaper than a conflict on every PR.
   - Not applied to `docs/excel-semantics/`: entries there are edited in place, and a union merge
     could silently keep two contradictory versions of a rule. Those conflicts are rare (two PRs on
     the same topic) and worth a human-style look.
