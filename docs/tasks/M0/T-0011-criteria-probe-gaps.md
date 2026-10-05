@@ -40,4 +40,4 @@ docs/excel-semantics/criteria.md, all now VERIFIED:
   same holds in COUNTIF. Plain-text prefix matches keep their spaces.
 
 The 4 cells where the engine differs (padded numeric operand: C16–C18, C22) are recorded as known
-failures; follow-up T-0238. Eval: probes known failures 20 → 24 (+4 new coverage), 0 regressions.
+failures; follow-up T-0238. Eval: probes known failures 20 → 24 (4 new known failures, all in the new case), 0 regressions.

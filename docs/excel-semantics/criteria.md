@@ -45,9 +45,8 @@ only "ab " (over ab, "ab ", " ab"), and the prefix match is case-insensitive (`"
 Evidence: smoke/d-function-criteria Sheet1!J2 (`"  > 1 "` → 0); probes/criteria-gaps C15 (`" >1"`
 → 0), C16–C18 (→ 6), C22 (→ 2), C19–C21 (1, 1, 2). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
 Status: VERIFIED
-Implemented in: functions::database::criteria_cell_matches (no trimming); the padded numeric
-operand is not implemented yet (criteria-gaps C16–C18, C22 are known failures; T-0238)
-Tasks: T-0238
+Implemented in: functions::database::criteria_cell_matches (no trimming)
+Tasks: T-0238 (padded numeric operand; criteria-gaps C16–C18, C22 are known failures)
 
 ## "=" matches blank cells, not an empty-string cell
 Rule: `COUNTIF(range,"=")` counts truly blank cells but not a cell holding the empty string, while
