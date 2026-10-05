@@ -17,7 +17,7 @@ name. It skips such a cell as volatile, as it already does for direct cell refer
 ## Context
 `poi/56688_4.xlsx` Sheet1!B2 is `=EDATE(DATE_CELL,INCREMENT)`. The workbook defines
 `DATE_CELL` = `Sheet1!$A$2` and `INCREMENT` = `Sheet1!$A$3`. A2 is `=TODAY()`, cached on the day
-Excel saved the file (41823), and A3 is 2. Excel cached 41885 in B2, the engine gives 44934 for
+Excel saved the file (41823), and A3 is 2. Excel cached 41885 in B2, the engine gives 44934 (the harness's fixed default clock, 2023-01-08) for
 today's date, and the cell is a known failure (NumericMismatch) only because the harness scores
 it. The workbook has no METADATA sheet, so the clock is not pinned and TODAY() itself is skipped.
 

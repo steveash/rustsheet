@@ -16,6 +16,7 @@ A reference that Excel has already turned into `#REF!` but that keeps its sheet 
 when it is the body of a defined name.
 
 ## Context
+Rule and evidence: docs/excel-semantics/references.md, "A sheet-qualified #REF! is #REF!".
 Excel writes these when a referenced range is deleted. Evidence, desktop Excel cached values
 (`make eval-show CASE=...`):
 - `poi/customIndexedColors.xlsx` (Excel 16.0) `_TGK_HIDDEN!B1` `='1'!#REF!`: expected `#REF!`,
@@ -43,6 +44,10 @@ Code paths:
       disappear from eval/baseline/poi.txt, with no new F lines in any suite.
 - [ ] Unit tests: `='Sheet1'!#REF!`, `=Sheet1!#REF!` and `=SUM(Sheet1!#REF!)` give `#REF!`. A
       defined name with body `Sheet1!#REF!` used in `=name*1` gives `#REF!`.
+      `=Sheet1!#REF!` and `=SUM(Sheet1!#REF!)` are hand expectations (no Excel cell yet; the
+      references.md entry says so). If the implementation makes them differ from the quoted form,
+      probe them first (`excel-probe` skill).
+- [ ] references.md "A sheet-qualified #REF! is #REF!" gets an `Implemented in:` line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

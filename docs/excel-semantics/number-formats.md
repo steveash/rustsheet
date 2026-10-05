@@ -102,7 +102,7 @@ and keeps the sign.
   (A82, A118).
 - `#,,` on -1234567 → "-1" (A95).
 Evidence: poi/NumberFormatTests.xlsx Tests!A44:A46, A67:A69, A80:A82, A95, A112, A118, A335
-(desktop Excel cached values, Microsoft Macintosh Excel 16.0, 1904 date system; no web sidecar).
+(desktop Excel cached values, Microsoft Macintosh Excel 16.0; no web sidecar).
 Status: VERIFIED
 Tasks: T-0952
 
@@ -123,7 +123,10 @@ Tasks: T-0953
 Rule: `a/p` prints "a" or "p" and `A/P` prints "A" or "P", like `AM/PM`: hours switch to the
 12-hour clock. `hh:mm:ss a/p` on 17816.607951388887 → "02:35:27 p" (A11); `HH:MM:SS A/P` →
 "02:35:27 P" (A16); on 36191.1702084375 → "04:05:06 a" (A30), "04:05:06 A" (A35).
-Evidence: poi/DateFormatTests.xlsx Tests!A11, A16, A30, A35 (desktop Excel cached values,
+The short marker keeps the case it is written in, but the long one does not: lowercase `am/pm` still
+prints uppercase "PM" (`hh:mm:ss.000 am/pm` → "02:35:27.000 PM", A13; `HH:MM:SS.000 AM/PM` gives the
+same, A18).
+Evidence: poi/DateFormatTests.xlsx Tests!A11, A13, A16, A18, A30, A35 (desktop Excel cached values,
 Microsoft Macintosh Excel 16.0; the workbook uses the 1904 date system, which does not change the
 time of day).
 Status: VERIFIED

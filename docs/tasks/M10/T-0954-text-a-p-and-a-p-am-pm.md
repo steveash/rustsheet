@@ -38,8 +38,10 @@ PM"; those cells also need fractional seconds and stay out of scope).
 ## Acceptance criteria
 - [ ] The 4 lines `F	poi/DateFormatTests.xlsx	Tests!A11`, A16, A30 and A35 disappear from
       eval/baseline/poi.txt, with no new F lines in any suite.
-- [ ] Formatter unit tests for `a/p` and `A/P` on a morning and an afternoon time, and one for 12:00
-      noon and 00:00 midnight in the 12-hour clock, matching the existing `AM/PM` behavior.
+- [ ] Formatter unit tests for `a/p` and `A/P` on a morning and an afternoon time (the cells
+      above). Noon and midnight have no Excel cell, so they are hand expectations that follow the
+      engine's `AM/PM` handling ("12:00:00 p", "12:00:00 a").
+- [ ] Lowercase `am/pm` still prints "PM" (DateFormatTests A13), and the short marker keeps its case.
 - [ ] The number-formats.md entry gets an `Implemented in:` line.
 - [ ] `make check` green; reviewers approve.
 
