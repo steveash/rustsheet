@@ -239,7 +239,10 @@ def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> in
     Any Microsoft application counts as evidence here, deliberately broader than
     `is_excel_authored` (which rejects AppVersion 12.0 because XlsxWriter fakes it): the
     lowercase-e conflicts come from a real Mac Excel 2008 (12.0) file, and a false conflict only
-    leaves a cell pending."""
+    leaves a cell pending.
+
+    Also overwrites a web number that differs by less than 1e-9 with the cached value when the
+    workbook was saved by a 16.x build (decision 0030 rule 1, T-0142). Returns the dropped count."""
     try:
         snap = snapshot(case)
     except subprocess.CalledProcessError as e:  # never write web values we could not check
