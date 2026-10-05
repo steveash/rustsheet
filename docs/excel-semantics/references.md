@@ -103,4 +103,5 @@ Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12`
 Evidence: gen-m1/1ce5b2467b3b19fd Calc!A10, A16, A25 (41 `range/ref-colon-ref` and 53
 `range/range-of-ranges` cells; oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+Implemented in: `sheet_prefix_after_colon` (crates/rustsheet-engine/src/expressions/lexer/ranges.rs)
 Tasks: T-0130, T-0105

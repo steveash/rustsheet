@@ -116,3 +116,22 @@ fn test_mixed_absolute_2d_range() {
     assert_eq!(model._get_text("Data!A4"), "45");
     assert_eq!(model._get_text("Data!E4"), "45");
 }
+
+#[test]
+fn test_range_with_both_corners_sheet_qualified() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "Data").unwrap();
+    model._set("Data!B2", "1");
+    model._set("Data!B3", "2");
+    model._set("Data!C2", "3");
+    model._set("Data!C3", "4");
+    model._set("Data!E1", "=SUM(Data!B2:Data!C3)");
+    model._set("Data!E2", "=SUM(Data!B2:C3)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("Data!E1"), "10");
+    assert_eq!(model._get_text("Data!E2"), "10");
+    // The formula round-trips through stringify unchanged.
+    assert_eq!(model._get_formula("Data!E1"), "=SUM(Data!B2:Data!C3)");
+}

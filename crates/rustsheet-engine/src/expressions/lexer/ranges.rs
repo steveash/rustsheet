@@ -62,6 +62,36 @@ impl Lexer {
         }
     }
 
+    /// True when the text after the `:` at the current position starts with a sheet name followed
+    /// by `!` (plain or quoted), e.g. the `Data!` in `B8:Data!E12`.
+    fn sheet_prefix_after_colon(&self) -> bool {
+        let mut position = self.position + 1;
+        if position < self.len && self.chars[position] == '\'' {
+            // Quoted sheet name; a doubled quote is an escaped quote.
+            position += 1;
+            while position < self.len {
+                if self.chars[position] == '\'' {
+                    if position + 1 < self.len && self.chars[position + 1] == '\'' {
+                        position += 2;
+                        continue;
+                    }
+                    return position + 1 < self.len && self.chars[position + 1] == '!';
+                }
+                position += 1;
+            }
+            return false;
+        }
+        let start = position;
+        while position < self.len
+            && (self.chars[position].is_alphanumeric()
+                || self.chars[position] == '_'
+                || self.chars[position] == '.')
+        {
+            position += 1;
+        }
+        position > start && position < self.len && self.chars[position] == '!'
+    }
+
     // Parsing a range is a parser on it's own right. Here is the grammar:
     //
     //    range       -> cell | cell ':' cell | row ':' row | column ':' column
@@ -78,7 +108,15 @@ impl Lexer {
         let mut position = self.position;
         match self.consume_reference_a1() {
             Ok(cell) => {
-                if self.peek_char() == Some(':') {
+                if self.peek_char() == Some(':') && self.sheet_prefix_after_colon() {
+                    // `Data!B8:Data!E12`: end the token at the first corner. The colon is lexed
+                    // as the range operator and the parser joins the two single-cell references
+                    // (Excel: references.md "Range corners may both carry the sheet prefix").
+                    Ok(ParsedRange {
+                        left: cell,
+                        right: None,
+                    })
+                } else if self.peek_char() == Some(':') {
                     // It's a range
                     self.position += 1;
                     if let Ok(cell2) = self.consume_reference_a1() {

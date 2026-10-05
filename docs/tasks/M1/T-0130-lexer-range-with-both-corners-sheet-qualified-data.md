@@ -3,7 +3,7 @@ id: T-0130
 title: "Lexer: range with both corners sheet-qualified (Data!B8:Data!E12)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -42,3 +42,6 @@ contains a trailing intersection, so they can only pass once T-0105 has landed.
 
 ## Out of scope
 - Corners on different sheets (`Data!A1:'My Data'!B2`): no gen-m1 evidence (see T-0122 for 3-D refs).
+
+## Outcome
+The lexer ends a range token at the first corner when the second corner is sheet-qualified (`sheet_prefix_after_colon` in `lexer/ranges.rs`); the existing range-operator path joins the corners. gen-m1 known failures 350 -> 309 (41 fixed, 0 regressions). The formula round-trips as written (`Data!B2:Data!C3`).
