@@ -22,6 +22,9 @@ text-number cell `" 2 "` through a range in arithmetic. The engine gives `#VALUE
   A200, A212, A223.
 - `gen-m1/9646257ac139cd1e` (`cross-sheet/single-range`): A25 `Data!E9:E9-7` Excel -5; A81
   `'Q''1'!D7:D7*1.5` Excel 3; A175 `Data!D3:D3/10` Excel 0.2.
+- Found in T-0105, once the intersection operator parsed: `gen-m1/7cb99acdd82402f1`
+  (`whole-row-col/row-cell-arith`) A72 `('Q''1'!5:5 'Q''1'!B5)+2` Excel 4; A103, A217, A235
+  (the intersected cell is " 2 ").
 The same form over a numeric cell passes (`Data!B2:B2+2`, 1ce5… A135), so the 1x1 range itself
 is not the problem. The scalar path already coerces: `-" 2 "*2` = -4 (10f579127ffb6d9b A106) passes.
 Semantics: docs/excel-semantics/coercion.md "Text in a range operand of arithmetic is coerced".
@@ -32,7 +35,7 @@ currency/percent/date handling. That duplicates `Model::cast_number` (cast.rs), 
 uses. Per CLAUDE.md directive 3, route array elements through `cast_number`; do not add a second parser.
 
 ## Acceptance criteria
-- [ ] The 10 cells above disappear from eval/baseline/gen-m1.txt with no new F lines in any suite.
+- [ ] The 14 cells above disappear from eval/baseline/gen-m1.txt with no new F lines in any suite.
 - [ ] `to_f64` no longer parses text itself (one coercion routine; reviewer-quality checks).
 - [ ] `make check` green; reviewers approve.
 

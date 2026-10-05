@@ -194,6 +194,15 @@ impl Lexer {
         tk
     }
 
+    /// Whether whitespace comes right after the last token read (a [`peek_token`](Self::peek_token)
+    /// does not count). Whitespace is otherwise skipped, but between two references it is
+    /// Excel's intersection operator (`A1:B2 B1:B3`), so the parser has to see it.
+    pub fn whitespace_follows(&self) -> bool {
+        self.chars
+            .get(self.position)
+            .is_some_and(|c| c.is_whitespace())
+    }
+
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
     /// It is a noop if the has not been a previous peek_token
     pub fn advance_token(&mut self) {

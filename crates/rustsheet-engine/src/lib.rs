@@ -60,6 +60,7 @@ mod implicit_intersection;
 pub mod links;
 mod merged_cells;
 mod model;
+mod reference_operators;
 mod styles;
 mod tz;
 mod units;
