@@ -89,7 +89,7 @@ fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
 /// "Date clock" text (`"1/2/2020 10:11:12.5"`, `"July 1, 2026 6 PM"`) as the unwrapped serial:
 /// date serial plus clock serial. The clock is the last word, or the last two when they end in
 /// AM/PM, since date text has spaces of its own (probes/date-text-grammar C30, C31, C55).
-pub(super) fn parse_date_clock_serial(text: &str, locale: &Locale) -> Option<f64> {
+pub(crate) fn parse_date_clock_serial(text: &str, locale: &Locale) -> Option<f64> {
     let mut date_end = text.len();
     for _ in 0..2 {
         date_end = text[..date_end].trim_end().rfind(char::is_whitespace)?;

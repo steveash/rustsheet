@@ -3,7 +3,7 @@ id: T-0159
 title: "VALUE: date text with a clock suffix (\"July 1, 2026 10:00\")"
 milestone: M1
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,8 @@ way; probe it before implementing.
 
 ## Out of scope
 VALUE percent rounding (T-0929).
+
+## Outcome
+`fn_value` falls back to `time_text::parse_date_clock_serial` (now `pub(crate)`) on the trimmed text.
+Eval: probes/date-text-grammar C30, C31, C53, C55, C63 fixed (probes known failures 61 -> 56), no regressions.
+Plain clock text (`VALUE("10:00")`) was not probed here.
