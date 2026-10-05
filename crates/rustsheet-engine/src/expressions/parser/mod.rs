@@ -11,7 +11,8 @@ concat  => term ('&' term)*
 term    => factor (opFactor factor)*
 factor  => prod (opProd prod)*
 prod    => power ('^' power)*
-power   => (unaryOp)* range '%'*
+power   => (unaryOp)* intersect '%'*
+intersect => range (' ' range)*
 range   => implicit (':' primary)?
 implicit=> '@' primary | primary '#' | primary
 primary => '(' expr ')'
@@ -54,6 +55,7 @@ mod depth;
 mod lambda;
 mod lists;
 pub mod move_formula;
+mod reference_operators;
 pub mod static_analysis;
 pub mod stringify;
 
@@ -188,6 +190,11 @@ pub enum Node {
         column2: i32,
     },
     OpRangeKind {
+        left: Box<Node>,
+        right: Box<Node>,
+    },
+    /// `left right`: the cells both references contain (Excel's space operator).
+    OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
     },
@@ -360,7 +367,8 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
-        self.parse_expr()
+        let node = self.parse_expr();
+        self.expect_end(node)
     }
 
     /// Parses `formula` up to `cursor` (a char offset) and reports what the
@@ -603,7 +611,7 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_range();
+        let mut t = self.parse_intersection();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -629,63 +637,6 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
         t
-    }
-
-    fn parse_range(&mut self) -> Node {
-        let t = self.parse_implicit();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let depth = self.depth;
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::Colon {
-            self.lexer.advance_token();
-            let p = self.parse_primary();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            return Node::OpRangeKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-        }
-        t
-    }
-
-    fn parse_implicit(&mut self) -> Node {
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::At {
-            self.lexer.advance_token();
-            let t = self.parse_primary();
-            if let Node::ParseErrorKind { .. } = t {
-                return t;
-            }
-            if let Err(error) = self.grow(self.depth, 0) {
-                return error;
-            }
-            return Node::ImplicitIntersection {
-                automatic: false,
-                child: Box::new(t),
-            };
-        }
-        let primary = self.parse_primary();
-        if let Node::ParseErrorKind { .. } = primary {
-            return primary;
-        }
-        let next_token = self.lexer.peek_token();
-        if next_token == TokenType::Spill {
-            self.lexer.advance_token();
-            if let Err(error) = self.grow(self.depth, 0) {
-                return error;
-            }
-            return Node::SpillRangeOperator {
-                child: Box::new(primary),
-            };
-        }
-        primary
     }
 
     fn parse_operand(&mut self) -> Node {

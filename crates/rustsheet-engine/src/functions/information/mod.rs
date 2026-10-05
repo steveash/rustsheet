@@ -129,9 +129,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match &args[0] {
-            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => {
-                CalcResult::Boolean(true)
-            }
+            Node::ReferenceKind { .. }
+            | Node::RangeKind { .. }
+            | Node::OpRangeKind { .. }
+            | Node::OpIntersectKind { .. } => CalcResult::Boolean(true),
             Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
             _ => CalcResult::Boolean(false),
         }

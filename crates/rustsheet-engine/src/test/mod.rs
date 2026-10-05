@@ -54,6 +54,7 @@ mod test_forecast;
 mod test_frozen_rows_columns;
 mod test_gcd_lcm;
 mod test_general;
+mod test_intersection_operator;
 mod test_inverted_ranges;
 mod test_issue_623;
 mod test_math;

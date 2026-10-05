@@ -288,6 +288,7 @@ impl Model {
             Node::WrongReferenceKind { .. } => None,
             Node::WrongRangeKind { .. } => None,
             Node::OpRangeKind { .. } => None,
+            Node::OpIntersectKind { .. } => None,
             Node::OpConcatenateKind { .. } => None,
             Node::ErrorKind(_) => None,
             Node::ParseErrorKind { .. } => None,
