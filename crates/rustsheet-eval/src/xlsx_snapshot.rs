@@ -654,6 +654,19 @@ mod tests {
 </sheetData></worksheet>"#;
 
     #[test]
+    fn shared_member_before_master_is_shifted_with_absolute_refs() {
+        let xml = r#"<worksheet><sheetData>
+<row r="2"><c r="A2"><f t="shared" si="3"/><v>0</v></c></row>
+<row r="1"><c r="A1"><f t="shared" ref="A1:A2" si="3">$B1+C$1+ SUM(D1:E2)</f><v>0</v></c></row>
+</sheetData></worksheet>"#;
+        let cells = parse_sheet(xml, "s.xml", &[], &[]).unwrap_or_default();
+        let a2 = Addr::parse("A2")
+            .and_then(|a| cells.get(&a))
+            .and_then(|c| c.formula.clone());
+        assert_eq!(a2.as_deref(), Some("$B2+C$1+ SUM(D2:E3)"));
+    }
+
+    #[test]
     fn parses_values_formulas_shared_and_arrays() {
         let cells = parse_sheet(SHEET, "sheet1.xml", &["hi".to_string()], &[]).unwrap_or_default();
         let get = |s: &str| Addr::parse(s).and_then(|a| cells.get(&a)).cloned();

@@ -13,3 +13,5 @@ compute the master's formula with every relative reference moved by (member − 
 (absolute `$` parts stay). Evidence: poi/NumberFormatApproxTests.xlsx Tests!A96 is a member of si 5
 whose master text is `TEXT(C41, B41)` and computes `TEXT(C96, B96)`. `rustsheet-eval show`/`snapshot`
 print the shifted text (spacing kept) via `shift_formula_text`; `formula_kind` still carries `si`.
+Spec: ECMA-376 Part 1 §18.3.1.40 (`f`). Excel never writes a member whose shifted references fall off
+the sheet; `#REF!` for that case is only the harness's display choice, not observed Excel behavior.

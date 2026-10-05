@@ -51,4 +51,4 @@ Sonnet run, no code written; stopped at a design question.
 ## Outcome
 Option (a) of the handoff: `rustsheet_engine::expressions::utils::shift::shift_formula_text` shifts reference
 tokens in formula text (lexer spans, spacing/quoting kept, off-sheet -> `#REF!`); `xlsx_snapshot.rs` applies it
-to members in a post-pass (works for members before their master). Unit tests in both crates. Eval unchanged.
+to members in a post-pass (works for members before their master). Unit tests in both crates. Eval unchanged for the suites available locally; the volatile-taint analysis now sees members' shifted precedents (not strictly display-only).
