@@ -1,0 +1,55 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "INDIRECT a1-argument coercions and R1C1 offsets; array broadcasting of EXACT/FIND/LEN/REPT/SEARCH/SUBSTITUTE/TRIM/CLEAN/PROPER/REPLACE (T-0957)",
+  "tags": [
+    "M9",
+    "probe",
+    "indirect",
+    "text"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "H1": "data",
+        "H2": 5,
+        "B3": "=INDIRECT(\"H2\",0)",
+        "B4": "=INDIRECT(\"H2\",\"\")",
+        "B5": "=INDIRECT(\"H2\",\"x\")",
+        "B6": "=INDIRECT(\"H2\",2)",
+        "B7": "=INDIRECT(\"H2\",\"TRUE\")",
+        "B8": "=INDIRECT(\"H2\",-1)",
+        "B9": "=INDIRECT(\"R2C8\",0)",
+        "B10": "=INDIRECT(\"R2C8\",\"\")",
+        "B11": "=INDIRECT(\"R[-1]C[6]\",FALSE)",
+        "B12": "=INDIRECT(\"R[-11]C[6]\",FALSE)",
+        "B13": "=INDIRECT(\"R[1]C[-1]\",FALSE)",
+        "B14": "=INDIRECT(\"RC[-1]\",FALSE)",
+        "B15": "=INDIRECT(\"R[-20]C\",FALSE)",
+        "B16": "=INDIRECT(\"R[1048560]C\",FALSE)",
+        "A20": "abc",
+        "A21": " a  b ",
+        "A22": "hello world",
+        "A23": "x",
+        "A24": "y",
+        "A30": "=EXACT({\"a\",\"B\"},\"a\")",
+        "A36": "=FIND({\"b\",\"z\"},\"abc\")",
+        "A42": "=LEN({\"ab\",\"\",\"abc\"})",
+        "A48": "=REPT(\"a\",{1,2,3})",
+        "A54": "=REPT({\"a\",\"b\"},2)",
+        "A60": "=SEARCH({\"B\",\"c\"},\"abc\")",
+        "A66": "=SUBSTITUTE({\"aa\",\"ab\"},\"a\",\"x\")",
+        "A72": "=SUBSTITUTE(\"aaa\",\"a\",\"x\",{1,2,3})",
+        "A78": "=TRIM({\" a  b \",\"c  d\"})",
+        "A84": "=CLEAN({\"a\"&CHAR(7)&\"b\",\"c\"})",
+        "A90": "=PROPER({\"hello world\",\"aBc dEf\"})",
+        "A96": "=REPLACE({\"abcdef\",\"xyz\"},2,2,\"Q\")",
+        "A102": "=REPLACE(\"abcdef\",{1,2},{2,3},\"Q\")",
+        "A108": "=EXACT({\"a\",\"b\"},{\"a\";\"b\"})",
+        "A114": "=LEN(A20:A24)",
+        "A120": "=TRIM(A20:A24)"
+      }
+    }
+  ],
+  "expected": {}
+}
