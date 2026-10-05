@@ -3,10 +3,10 @@ id: T-0027
 title: "Show shared formulas as they apply to each cell in eval show/snapshot"
 milestone: M0
 lane: harness
-status: in-progress
+status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -31,3 +31,19 @@ rather than writing a second reference shifter. Found in the T-0019 review.
 
 ## Out of scope
 - Any change to how formulas are evaluated or scored.
+
+## Handoff
+Sonnet run, no code written; stopped at a design question.
+- `xlsx_snapshot.rs` parses raw XML, so the shifter has to work on formula *text*. The engine's shifter
+  (`expressions/parser/move_formula.rs`, `pub(crate)`) works on parsed `Node`s and re-stringifies, and
+  `Model::get_cell_formula` does the same through `to_localized_string`: both drop the source spacing and
+  print `=TEXT(C96,B96)`, whereas the acceptance criterion shows `=TEXT(C96, B96)`.
+- No text-preserving shifter exists (`rg` for shift/move/displace found only node-based ones in
+  `actions.rs`, `cut_paste.rs`, `move_formula.rs`).
+- Options: (a) expose a small public engine helper that shifts a formula's text by (dr, dc) by walking
+  `Lexer` tokens and rewriting only reference tokens, then call it from `finish_cell` / the post-pass in
+  `parse_sheet` (needs the master's address, which `masters` does not keep yet); (b) relax the criterion to
+  accept engine-normalised spacing and use `Model::get_cell_formula` after loading. (a) matches the
+  criterion; (b) is smaller but compares less well to the oracle's own text.
+- Either way check that `calibrate.rs`, `volatile.rs` and `report.rs` (users of `CellSnapshot.formula`)
+  still behave, and keep `formula_kind` unchanged.
