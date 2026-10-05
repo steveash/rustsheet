@@ -3,7 +3,7 @@ id: T-0015
 title: "spec2xlsx: deterministic output so oracle input_sha256 and the cache are reproducible"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
