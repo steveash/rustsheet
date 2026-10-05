@@ -75,28 +75,45 @@ fn test_datevalue_ambiguous_ddmm() {
 }
 
 #[test]
-fn test_datevalue_ddmm_unambiguous() {
-    // 15/01/2023 should be 15-Jan-2023 since 15 cannot be month
-    assert_eq!(
-        eval_formula_raw_number("=DATEVALUE(\"15/01/2023\")").unwrap(),
-        44941.0
-    );
+fn test_datevalue_day_first_is_not_en_us() {
+    // en-US reads numeric dates month first only: no month 15 or 29, so #VALUE!
+    // (probes/date-text-grammar A32, A57, A58; docs/excel-semantics/dates.md).
+    for formula in ["=DATEVALUE(\"15/01/2023\")", "=DATEVALUE(\"29/02/2020\")"] {
+        assert_eq!(eval_formula(formula), *"#VALUE!", "{formula}");
+    }
 }
 
 #[test]
 fn test_datevalue_leap_day() {
     assert_eq!(
-        eval_formula_raw_number("=DATEVALUE(\"29/02/2020\")").unwrap(),
+        eval_formula_raw_number("=DATEVALUE(\"2/29/2020\")").unwrap(),
         43890.0
     );
 }
 
 #[test]
 fn test_datevalue_year_first_text_month() {
-    assert_eq!(
-        eval_formula_raw_number("=DATEVALUE(\"2023/Jan/15\")").unwrap(),
-        44941.0
-    );
+    // Year-first dates are numeric only (probes/date-text-grammar A20, A56).
+    assert_eq!(eval_formula("=DATEVALUE(\"2023/Jan/15\")"), *"#VALUE!");
+}
+
+#[test]
+fn test_datevalue_month_name_and_clock_text() {
+    // probes/date-text-grammar B1, B30, B55, B53.
+    for (formula, expected) in [
+        ("=DATEVALUE(\"July 1, 2026\")", 46204.0),
+        ("=DATEVALUE(\"July 1, 2026 10:00\")", 46204.0),
+        ("=DATEVALUE(\"Jul 1, 2026 4:35 PM\")", 46204.0),
+        ("=DATEVALUE(\"1/2/2020 25:00\")", 43833.0),
+    ] {
+        assert_eq!(eval_formula_raw_number(formula), Ok(expected), "{formula}");
+    }
+    for formula in [
+        "=DATEVALUE(\"2026-01-01 garbage\")",
+        "=DATEVALUE(\"2026-07-01T10:00\")",
+    ] {
+        assert_eq!(eval_formula(formula), *"#VALUE!", "{formula}");
+    }
 }
 
 #[test]

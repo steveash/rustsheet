@@ -4,12 +4,13 @@
 
 use chrono::{DateTime, NaiveDateTime, NaiveTime, Timelike};
 
-use super::{parse_datevalue_text, SECONDS_PER_DAY_F64};
+use super::SECONDS_PER_DAY_F64;
+use crate::{formatter::date_text::parse_date, locale::Locale};
 
 /// Time of day for TIMEVALUE text: the fractional part of the serial the text denotes, so clock
 /// text past 24 hours wraps (`TIMEVALUE("25:00")` is 1.0416666666666667 - 1) and "date time" text
 /// keeps the subtraction's float error. Excel: see docs/excel-semantics/dates.md#time-text.
-pub(super) fn parse_time_string(text: &str) -> Option<f64> {
+pub(super) fn parse_time_string(text: &str, locale: &Locale) -> Option<f64> {
     let text = text.trim();
     if let Some(serial) = parse_clock_text(text) {
         return Some(serial - serial.floor());
@@ -50,7 +51,7 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
     // "date clock" text the patterns above do not cover (fractional seconds, hours past 23,
     // M:S.f): date serial plus clock serial, then the fractional part (probe
     // timevalue-ampm-limits: TIMEVALUE("1/2/2020 25:00") is 0.04166666666424135).
-    if let Some(serial) = parse_date_clock_serial(text) {
+    if let Some(serial) = parse_date_clock_serial(text, locale) {
         return Some(serial - serial.floor());
     }
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {
@@ -64,14 +65,14 @@ pub(super) fn parse_time_string(text: &str) -> Option<f64> {
 /// is 1.0416666666666667, unlike TIMEVALUE which keeps the fraction). Surrounding spaces make
 /// the text invalid here although TIMEVALUE trims them (probes/timevalue-fractional-seconds2
 /// C11). Excel: see docs/excel-semantics/dates.md#time-text.
-pub(crate) fn parse_time_serial(text: &str) -> Option<f64> {
+pub(crate) fn parse_time_serial(text: &str, locale: &Locale) -> Option<f64> {
     if text != text.trim() {
         return None;
     }
     if let Some(serial) = parse_clock_text(text) {
         return Some(serial);
     }
-    parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text))
+    parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text, locale))
 }
 
 /// Hour-only "N AM" / "N PM" text (hour 1-12, no minutes) as a time-of-day serial.
@@ -85,11 +86,22 @@ fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
     Some(time.num_seconds_from_midnight() as f64 / SECONDS_PER_DAY_F64)
 }
 
-/// "Date clock" text (`"1/2/2020 10:11:12.5"`) as the unwrapped serial: date serial plus clock serial.
-fn parse_date_clock_serial(text: &str) -> Option<f64> {
-    let (date_part, clock_part) = text.split_once(char::is_whitespace)?;
-    let days = parse_datevalue_text(date_part).ok()?;
-    Some(f64::from(days) + parse_clock_text(clock_part)?)
+/// "Date clock" text (`"1/2/2020 10:11:12.5"`, `"July 1, 2026 6 PM"`) as the unwrapped serial:
+/// date serial plus clock serial. The clock is the last word, or the last two when they end in
+/// AM/PM, since date text has spaces of its own (probes/date-text-grammar C30, C31, C55).
+pub(super) fn parse_date_clock_serial(text: &str, locale: &Locale) -> Option<f64> {
+    let mut date_end = text.len();
+    for _ in 0..2 {
+        date_end = text[..date_end].trim_end().rfind(char::is_whitespace)?;
+        let clock_part = text[date_end..].trim();
+        let clock = parse_clock_text(clock_part).or_else(|| parse_hour_only_am_pm(clock_part));
+        if let (Some(clock), Ok((days, _))) =
+            (clock, parse_date(text[..date_end].trim_end(), locale))
+        {
+            return Some(f64::from(days) + clock);
+        }
+    }
+    None
 }
 
 /// Largest value of one clock component: Excel takes at most four digits
