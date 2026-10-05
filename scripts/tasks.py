@@ -56,7 +56,11 @@ TASK_FILE = re.compile(r"(?:^|/)(T-\d{4})-[^/]*\.md$")
 
 
 def parse(path: Path) -> dict[str, object]:
-    text = path.read_text()
+    return front_matter(path.read_text(), path)
+
+
+def front_matter(text: str, path: Path) -> dict[str, object]:
+    """The front matter of task file `text` (read from `path`, on disk or on a branch)."""
     m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
     if not m:
         raise ValueError(f"{path}: missing front matter")
@@ -244,7 +248,8 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
     A branch whose task file has a `## Handoff` section was escalated to opus (step 5b); main
     still shows `tier: sonnet` until it merges (decision 0018).
     `active` holds (lane, task id) for branches with a commit in the last 2 h that are not
-    unresumed handoffs (those wait for the opus worker); `available` turns them into busy lanes
+    unresumed handoffs (those wait for the opus worker) and whose task is not `status: blocked`
+    on the branch (it cannot progress, but stays claimed); `available` turns them into busy lanes
     (decision 0022). Best effort, like `git_task_ids`.
     """
 
@@ -256,6 +261,7 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
             git("fetch", "-q", "--prune", "origin")
         claimed: set[str] = set()
         handed: set[str] = set()
+        blocked: set[str] = set()
         recent: dict[str, str] = {}  # task id -> lane, for branches younger than BUSY_SECONDS
         now = time.time()
         refs = git("for-each-ref", "--format=%(refname) %(committerdate:unix)", "refs/remotes/origin/agent")
@@ -272,9 +278,17 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
             if age < BUSY_SECONDS:
                 recent[tid] = lane
             for name in git("ls-tree", "-r", "--name-only", ref, "--", "docs/tasks").splitlines():
-                if f"/{tid}-" in name and HANDOFF.search(git("show", f"{ref}:{name}")):
+                if f"/{tid}-" not in name:
+                    continue
+                text = git("show", f"{ref}:{name}")
+                if HANDOFF.search(text):
                     handed.add(tid)
-        active = {(lane, tid) for tid, lane in recent.items() if tid not in handed}
+                try:
+                    if front_matter(text, Path(name)).get("status") == "blocked":
+                        blocked.add(tid)
+                except ValueError:  # malformed front matter on a branch: not known to be blocked
+                    pass
+        active = {(lane, tid) for tid, lane in recent.items() if tid not in handed | blocked}
         return claimed, handed, active
     except (OSError, subprocess.CalledProcessError) as e:
         print(f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",

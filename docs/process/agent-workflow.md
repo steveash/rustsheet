@@ -74,7 +74,9 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
 - Tasks live in `docs/tasks/<milestone>/T-XXXX-slug.md` (format: `task-format.md`).
 - A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`, pushed at once; `make
-  next-task` skips claimed tasks and busy lanes, so parallel workers don't race. Workers resume their lane's open branch or PR before starting new work.
+  next-task` skips claimed tasks and busy lanes, so parallel workers don't race. A branch whose
+  task is `status: blocked` (on the branch) or `done` (on main) keeps its claim but frees its lane
+  (decision 0022). Workers resume their lane's open branch or PR before starting new work.
 - Sizing: S ≤ ~150 changed lines, M ≤ ~400 (excluding tests, fixtures and generated files).
   L tasks must be split by the planner before work starts (`scripts/tasks.py validate` enforces this).
 
