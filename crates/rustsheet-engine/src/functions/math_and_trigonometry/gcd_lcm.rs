@@ -5,6 +5,7 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+// Excel accepts 2^53 itself (docs/excel-semantics/numbers.md, T-0239).
 const MAX_LCM_GCD: i64 = 2_i64.pow(53);
 
 // Euclidean gcd for i64 (non-negative inputs expected)

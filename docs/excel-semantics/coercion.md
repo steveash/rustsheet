@@ -68,6 +68,16 @@ Status: VERIFIED (one cell; the multi-cell case is unprobed)
 Implemented in: `Model::handle_arithmetic` (crates/rustsheet-engine/src/arithmetic.rs)
 Tasks: T-0137
 
+## Text longer than 32,767 characters
+Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
+`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767. REPT with a
+longer result is `#VALUE!` (`REPT("a",32768)`). RustSheet gives `#VALUE!` for the CONCATENATE case
+and does not bound `&` at all (32768).
+Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05; C9 and C10 are known failures).
+Status: VERIFIED
+Implemented in: not yet (`MAX_TEXT_CHARS` in functions/text/concatenate.rs gives `#VALUE!`; T-0240)
+Tasks: T-0240
+
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same
 element count, not the same shape (a 3x2 range pairs with a 6x1 range); a pair where either side
