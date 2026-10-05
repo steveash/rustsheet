@@ -125,6 +125,7 @@ impl Model {
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
+        not_vector: Error,
     ) -> Result<SearchVector, CalcResult> {
         match value {
             CalcResult::Range { left, right } => {
@@ -134,7 +135,7 @@ impl Model {
                     true
                 } else {
                     return Err(CalcResult::Error {
-                        error: Error::ERROR,
+                        error: not_vector,
                         origin: cell,
                         message: "Argument must be a vector".to_string(),
                     });
@@ -146,7 +147,7 @@ impl Model {
                 let is_vector = array.len() == 1 || array.iter().all(|row| row.len() == 1);
                 if !is_vector {
                     return Err(CalcResult::Error {
-                        error: Error::ERROR,
+                        error: not_vector,
                         origin: cell,
                         message: "Argument must be a vector".to_string(),
                     });
@@ -332,10 +333,12 @@ impl Model {
         };
         let match_range = self.evaluate_node_in_context(&args[1], cell);
 
+        // A 2-D lookup_array is #N/A (T-0210, docs/excel-semantics/lookup.md), only after
+        // lookup_value and match_type errors have won above.
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match self.as_vector(match_range, cell) {
+        let values = match self.as_vector(match_range, cell, Error::NA) {
             Ok(values) => values,
             Err(error) => return error,
         };
@@ -554,7 +557,7 @@ impl Model {
             // Vector form: search the lookup vector, return from the result
             // vector at the same position.
             let value = self.evaluate_node_in_context(&args[1], cell);
-            let lookup_vector = match self.as_vector(value, cell) {
+            let lookup_vector = match self.as_vector(value, cell, Error::ERROR) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
@@ -563,7 +566,7 @@ impl Model {
                 None => return not_found,
             };
             let result = self.evaluate_node_in_context(&args[2], cell);
-            let result_vector = match self.as_vector(result, cell) {
+            let result_vector = match self.as_vector(result, cell, Error::ERROR) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
