@@ -25,9 +25,10 @@ reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0026).
 
-During Phase 1, the M3, M4 and M13 tasks stay `blocked`. Parity behavior that needs the Phase 2
-dependency graph (circular references and iterative calculation, dynamic dependencies, TABLE())
-still gets its oracle cases in Phase 1; only its implementation waits.
+When all of this holds, the steward adds the line `**Phase 1:** exited <YYYY-MM-DD>` to
+docs/status.md. Until then, the M3, M4 and M13 tasks stay `blocked`. Parity behavior that
+needs the Phase 2 dependency graph (circular references and iterative calculation, dynamic
+dependencies, TABLE()) still gets its oracle cases in Phase 1; only its implementation waits.
 
 Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (strict, see
 `architecture/eval-harness.md`).

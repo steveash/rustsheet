@@ -26,4 +26,4 @@ Optimizations.
 
 ## Blocked because
 Deferred to Phase 2 (decision 0026): the dependency-graph, storage and performance work waits until
-Phase 1 parity exits. Unblock when docs/status.md records the Phase 1 exit.
+Phase 1 parity exits. Unblock when docs/status.md has the line `**Phase 1:** exited <date>`.
