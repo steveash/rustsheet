@@ -1,4 +1,4 @@
-use crate::constants::LAST_ROW;
+use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, model::Model};
@@ -53,8 +53,21 @@ impl LookupTable {
     }
 
     /// Materializes the first row of the table (the search vector for HLOOKUP).
+    ///
+    /// Columns of a range right of the sheet's last used column are all empty,
+    /// so they are not materialized (see `first_column`).
     pub(super) fn first_row(&self, model: &mut Model, cell: CellReferenceIndex) -> Vec<CalcResult> {
-        (0..self.columns())
+        let columns = match self {
+            LookupTable::Range { left, .. } => {
+                let last_used = model
+                    .workbook
+                    .worksheet(left.sheet)
+                    .map_or(LAST_COLUMN, |ws| ws.last_used_column());
+                self.columns().min(last_used - left.column + 1).max(0)
+            }
+            LookupTable::Array(_) => self.columns(),
+        };
+        (0..columns)
             .map(|column| self.get(model, 0, column, cell))
             .collect()
     }

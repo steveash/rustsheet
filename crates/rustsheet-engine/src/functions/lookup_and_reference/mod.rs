@@ -125,9 +125,15 @@ impl Model {
     /// and in-formula array literals. Used by the vector-based lookup functions
     /// (MATCH, LOOKUP). Returns the appropriate error `CalcResult` when the value
     /// is not a vector or not a valid source.
+    ///
+    /// With `search` set the vector is a search vector: the part of a range
+    /// beyond the sheet's last used row/column is dropped, as empty cells never
+    /// match and a whole-column reference would otherwise evaluate a million
+    /// of them. Result vectors keep their full length.
     fn as_vector(
         &mut self,
         value: CalcResult,
+        search: bool,
         cell: CellReferenceIndex,
     ) -> Result<Vec<CalcResult>, CalcResult> {
         match value {
@@ -143,6 +149,16 @@ impl Model {
                         message: "Argument must be a vector".to_string(),
                     });
                 };
+                let mut right = right;
+                if search {
+                    if let Ok(ws) = self.workbook.worksheet(left.sheet) {
+                        if is_row_vector {
+                            right.row = right.row.min(ws.last_used_row());
+                        } else {
+                            right.column = right.column.min(ws.last_used_column());
+                        }
+                    }
+                }
                 Ok(self.prepare_array(&left, &right, is_row_vector))
             }
             CalcResult::Array(array) => {
@@ -337,7 +353,7 @@ impl Model {
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match self.as_vector(match_range, cell) {
+        let values = match self.as_vector(match_range, true, cell) {
             Ok(values) => values,
             Err(error) => return error,
         };
@@ -563,7 +579,7 @@ impl Model {
             // Vector form: search the lookup vector, return from the result
             // vector at the same position.
             let value = self.evaluate_node_in_context(&args[1], cell);
-            let lookup_vector = match self.as_vector(value, cell) {
+            let lookup_vector = match self.as_vector(value, true, cell) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
@@ -571,8 +587,17 @@ impl Model {
                 Some(l) => l,
                 None => return not_found,
             };
-            let result = self.evaluate_node_in_context(&args[2], cell);
-            let result_vector = match self.as_vector(result, cell) {
+            let mut result = self.evaluate_node_in_context(&args[2], cell);
+            // Only element `l` is returned: do not evaluate the cells after it
+            // (a whole-column result vector would cost a million evaluations).
+            if let CalcResult::Range { left, right } = &mut result {
+                if left.row == right.row {
+                    right.column = right.column.min(left.column.saturating_add(l as i32));
+                } else if left.column == right.column {
+                    right.row = right.row.min(left.row.saturating_add(l as i32));
+                }
+            }
+            let result_vector = match self.as_vector(result, false, cell) {
                 Ok(values) => values,
                 Err(error) => return error,
             };

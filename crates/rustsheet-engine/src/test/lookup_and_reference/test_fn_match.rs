@@ -68,3 +68,34 @@ fn test_match_array_not_a_vector() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }
+
+#[test]
+fn test_match_whole_row_and_column_bounded_by_used_range() {
+    // Each formula sits in a fresh model at H3 so it does not extend the used rows.
+    let cases = [
+        ("=MATCH(20,A:A,0)", "2"),
+        ("=MATCH(99,A:A,0)", "#N/A"),
+        ("=MATCH(99,A:A,1)", "3"),
+        ("=MATCH(20,1:1,0)", "3"),
+        ("=MATCH(99,1:1,0)", "#N/A"),
+        // Range that starts below (or right of) all data is entirely empty.
+        ("=MATCH(1,A100:A200,0)", "#N/A"),
+        ("=MATCH(1,Z1:ZZ1,0)", "#N/A"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        for (cell, value) in [
+            ("A1", "10"),
+            ("A2", "20"),
+            ("A3", "30"),
+            ("B1", "10"),
+            ("C1", "20"),
+            ("D1", "30"),
+        ] {
+            model._set(cell, value);
+        }
+        model._set("H3", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("H3"), expected, "{formula}");
+    }
+}

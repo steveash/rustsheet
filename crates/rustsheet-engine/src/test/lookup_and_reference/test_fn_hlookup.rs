@@ -85,3 +85,32 @@ fn test_hlookup_array_sorted_largest_smaller() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "b");
 }
+
+#[test]
+fn test_hlookup_full_row_bounded_by_used_columns() {
+    // Each formula sits in a fresh model at A3 so it does not extend the used area.
+    let cases = [
+        // Sorted lookups past the last column return the last column.
+        ("=HLOOKUP(99,1:2,2)", "c"),
+        ("=HLOOKUP(20,1:2,2,FALSE)", "b"),
+        ("=HLOOKUP(99,1:2,2,FALSE)", "#N/A"),
+        // Range that starts right of all data is entirely empty.
+        ("=HLOOKUP(1,Z1:ZZ2,2,FALSE)", "#N/A"),
+    ];
+    for (formula, expected) in cases {
+        let mut model = new_empty_model();
+        for (cell, value) in [
+            ("A1", "10"),
+            ("B1", "20"),
+            ("C1", "30"),
+            ("A2", "a"),
+            ("B2", "b"),
+            ("C2", "c"),
+        ] {
+            model._set(cell, value);
+        }
+        model._set("A3", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("A3"), expected, "{formula}");
+    }
+}

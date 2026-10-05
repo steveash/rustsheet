@@ -3,7 +3,7 @@ id: T-0119
 title: "Bound HLOOKUP/MATCH/XMATCH/LOOKUP whole-row and whole-column walks by the used range"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -23,3 +23,7 @@ T-0111 bounded VLOOKUP's search column via `SheetData::last_row` (`LookupTable::
 
 ## Out of scope
 Per-recalc search-column caching (M3).
+
+## Outcome
+`SheetData::last_column` (+ `Worksheet::last_used_column`) added next to `last_row`. HLOOKUP's search row, MATCH's lookup vector and LOOKUP's lookup vector are truncated at the last used column/row (`LookupTable::first_row`, `as_vector(.., search = true)`); LOOKUP's 3-argument result vector is cut after element `l`. XMATCH already clipped via `clip_to_used_area`; covered by a test. Timing (debug build): 200 x `MATCH(i,A:A,0)` over 10k cells 159.5 s before, 0.33 s after. Eval delta none.
+Side effect: sorted (approximate) search over a whole column/row no longer sees the empty tail, so `MATCH(99,A:A,1)` returns the last used row (3) instead of 1048576, and `HLOOKUP(99,1:2,2)` returns the last column's value, matching VLOOKUP (T-0111). Not oracle-probed; no eval cell covers it.

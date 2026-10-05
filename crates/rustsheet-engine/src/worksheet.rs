@@ -675,6 +675,12 @@ impl Worksheet {
         self.sheet_data.last_row()
     }
 
+    /// The last column that holds anything (0 when the sheet is empty). Unlike
+    /// `dimension` this does not visit every cell.
+    pub(crate) fn last_used_column(&self) -> i32 {
+        self.sheet_data.last_column()
+    }
+
     /// Calculates dimension of the sheet. This function isn't cheap to calculate.
     pub fn dimension(&self) -> WorksheetDimension {
         // FIXME: It's probably better to just track the size as operations happen.

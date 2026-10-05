@@ -12,3 +12,7 @@ Oracle caveat: **Excel for the web disagrees.** Through the Graph oracle the sam
 a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...)` = 3), probed
 2026-10-04. Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; which Excel wins is T-0025).
+
+## Whole-row / whole-column search vectors (T-0119)
+
+Empty cells never match an exact lookup, so MATCH/LOOKUP/HLOOKUP/VLOOKUP/XMATCH search only up to the sheet's last used row/column of a `A:A` / `1:1` reference. For approximate (sorted) search this also means the empty tail is ignored; the sorted-tail behaviour on an unbounded range has not been oracle-probed (TODO: probe `MATCH(99,A:A,1)` with trailing blanks).

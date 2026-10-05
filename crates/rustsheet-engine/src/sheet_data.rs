@@ -230,6 +230,19 @@ impl SheetData {
         0
     }
 
+    /// The number of the last column that holds a cell, or 0 for an empty sheet.
+    /// Visits each existing row once (not each cell), so callers can bound
+    /// whole-row walks by it.
+    pub(crate) fn last_column(&self) -> i32 {
+        self.chunks
+            .iter()
+            .flatten()
+            .flat_map(|chunk| chunk.rows.iter().flatten())
+            .filter_map(|row| row.cells.last().map(|(column, _)| *column))
+            .max()
+            .unwrap_or(0)
+    }
+
     /// The rows that exist, in ascending order.
     pub fn rows(&self) -> Vec<i32> {
         self.rows_in_order().map(|(row, _)| row).collect()
@@ -328,6 +341,18 @@ mod test {
         assert_eq!(data.last_row(), 5000);
         data.remove_cell(5000, 3);
         assert_eq!(data.last_row(), 1024);
+    }
+
+    #[test]
+    fn last_column_is_the_rightmost_cell() {
+        let mut data = SheetData::new();
+        assert_eq!(data.last_column(), 0);
+        data.set_cell(1, 2, number(1.0));
+        data.set_cell(5000, 7, number(1.0));
+        data.set_cell(3, 4, number(1.0));
+        assert_eq!(data.last_column(), 7);
+        data.remove_cell(5000, 7);
+        assert_eq!(data.last_column(), 4);
     }
 
     #[test]

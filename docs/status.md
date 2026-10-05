@@ -93,3 +93,4 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-05 — T-0028: agents check PR mergeability after every push, event and merge to main, and resolve conflicts at once (decision 0020); `make check` runs typos; eval delta none.
 - 2026-10-05 — T-0015: spec2xlsx output deterministic (pinned core.xml creation time); eval delta none.
 - 2026-10-05 — T-0027: shared-formula members shown shifted in eval show/snapshot (engine `shift_formula_text`); eval delta none.
+- 2026-10-05 — T-0119: HLOOKUP/MATCH/LOOKUP search vectors bounded by used row/column (MATCH(x,A:A,0) x200 over 10k cells 159.5s -> 0.33s); eval delta none.
