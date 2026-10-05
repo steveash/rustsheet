@@ -47,7 +47,7 @@ operands (CR, TAB, NBSP are parse errors), U+3000 starts a name (lexer name char
 parse errors. Eval: probes/intersection-whitespace H7 fixed (probes known failures 61 -> 60), no
 regressions. Only SUM and NA calls are refused as operands; other functions are accepted, unverified (follow-up probe task).
 
-## Handoff
+## Handoff (resumed)
 Done and pushed: separators (space/LF only; CR/TAB/NBSP are parse errors), value-operand rejection
 (literals, value operators, non-#REF! errors, SUM and NA calls), baseline (H7 fixed), unit tests, docs.
 `make check` was green before the last review-driven tweak (function rule changed to refuse only SUM/NA;
