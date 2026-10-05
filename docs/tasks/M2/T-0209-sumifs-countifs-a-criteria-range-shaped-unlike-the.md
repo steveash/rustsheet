@@ -86,7 +86,7 @@ These cells also need another task:
 - SUMIF/AVERAGEIF resizing (T-0214).
 - AVERAGEIFS/MINIFS/MAXIFS unless an oracle probe confirms the same rule (file a follow-up).
 
-## Handoff
+## Handoff (resumed)
 Tried: `apply_ifs` gained a `strict_shape` flag (SUMIFS true; AVERAGEIFS/MINIFS/MAXIFS false, SUMIF path
 via new `sum_ifs(.., false)` so SUMIF never errors); `fn_countifs` checks `same_shape`. Unit test
 `test_sumifs_countifs_shape_mismatch_is_value_error` passes. `make eval-baseline`: gen-m2 known failures
