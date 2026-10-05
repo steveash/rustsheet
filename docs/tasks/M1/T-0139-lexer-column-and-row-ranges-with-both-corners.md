@@ -3,7 +3,7 @@ id: T-0139
 title: "Lexer: column and row ranges with both corners sheet-qualified (Data!A:Data!B)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
