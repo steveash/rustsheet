@@ -468,8 +468,13 @@ impl Model {
             )),
             CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
             error @ CalcResult::Error { .. } => Err(error),
-            // Excel: a scalar argument is a 1x1 array (docs/excel-semantics/arrays.md, probes/rows-columns-args).
-            _ => Ok((1, 1)),
+            // Excel: a scalar is 1x1 (probes/rows-columns-args); other kinds stay unprobed.
+            CalcResult::Number(_) | CalcResult::Boolean(_) | CalcResult::String(_) => Ok((1, 1)),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected reference or array".to_string(),
+            )),
         }
     }
 }
