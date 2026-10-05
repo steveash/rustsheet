@@ -4,6 +4,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, model::Model};
 
 use super::array_node_to_calc_result;
+use crate::functions::binary_search::Sequence;
 use crate::functions::util::compare_values;
 
 /// A two dimensional table for the LOOKUP family of functions. It abstracts over
@@ -145,6 +146,19 @@ impl SearchVector {
         })
     }
 
+    /// The indices a linear search must test, in search order. The empty tail
+    /// is all one value, so only its first cell in that order is a candidate
+    /// (T-0127): its first cell when walking forward, its last when backward.
+    pub(super) fn linear_candidates(&self, forward: bool) -> Vec<usize> {
+        let evaluated = self.values.len();
+        let tail = (self.len > evaluated).then_some(if forward { evaluated } else { self.len - 1 });
+        if forward {
+            (0..evaluated).chain(tail).collect()
+        } else {
+            tail.into_iter().chain((0..evaluated).rev()).collect()
+        }
+    }
+
     /// Old style binary search, assuming ascending order. Returns the index of
     /// a matching element or of the largest element smaller than `target`, and
     /// `None` if `target` is smaller than every element.
@@ -162,6 +176,18 @@ impl SearchVector {
             }
         }
         l.checked_sub(1)
+    }
+}
+
+impl Sequence<CalcResult> for SearchVector {
+    fn seq_len(&self) -> usize {
+        self.len
+    }
+    fn at(&self, index: usize) -> &CalcResult {
+        self.get(index)
+    }
+    fn uniform_tail_start(&self) -> usize {
+        self.values.len()
     }
 }
 
