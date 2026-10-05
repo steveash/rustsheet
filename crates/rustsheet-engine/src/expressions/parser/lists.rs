@@ -45,6 +45,8 @@ impl Parser {
         }
     }
 
+    /// The arguments of a call to `fn_name`, after its `(`; empty arguments
+    /// (`IF(A1,,2)`) are `EmptyArgKind`.
     pub(super) fn parse_function_args(&mut self, fn_name: &str) -> Result<Vec<Node>, Node> {
         let arg_separator_token = &self.get_argument_separator_token();
         let mut args: Vec<Node> = Vec::new();

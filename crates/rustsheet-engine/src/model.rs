@@ -2609,7 +2609,8 @@ impl Model {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
         let mut node = self.parser.parse(formula, cell_reference);
-        if let Node::ParseErrorKind { .. } = node {
+        // A closing parenthesis never makes a formula shallower.
+        if matches!(&node, Node::ParseErrorKind { message, .. } if message != TOO_DEEP_MESSAGE) {
             let retry = self.parser.parse(&format!("{formula})"), cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;

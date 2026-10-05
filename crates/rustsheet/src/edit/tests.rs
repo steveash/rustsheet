@@ -444,7 +444,8 @@ fn oversized_spill_footprints_are_rejected() {
 
 /// Runs `f` on a 1 MiB stack (the smallest common one, WebAssembly's) in an optimized build, the
 /// stack the engine's formula depth limit is sized for; an unoptimized build spends about ten
-/// times more stack per nesting level, so it gets 16 MiB.
+/// times more stack per nesting level, so it gets 16 MiB. Same helper as the engine's
+/// `parser/tests/test_nesting_depth.rs` (test code cannot be shared across crates); keep in sync.
 fn on_small_stack(f: impl FnOnce() + Send + 'static) {
     let stack = if cfg!(debug_assertions) {
         16 << 20

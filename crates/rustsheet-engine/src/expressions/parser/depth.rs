@@ -9,6 +9,7 @@ use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
 /// ([`TOO_DEEP_MESSAGE`]), which keeps untrusted formulas from overflowing
 /// the stack (CLAUDE.md directive 5).
+///
 /// An operand costs [`PRIMARY_DEPTH`] levels and an operator one, so up to 127
 /// nested parentheses or calls fit (Excel allows 64 nested functions) and up
 /// to 255 terms in one operator chain. Excel accepts longer chains

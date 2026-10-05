@@ -1,4 +1,3 @@
-#![allow(clippy::panic)]
 //! T-0931: formulas nested deeper than `MAX_FORMULA_DEPTH` are a parse error,
 //! never a stack overflow; formulas up to the limit parse.
 
