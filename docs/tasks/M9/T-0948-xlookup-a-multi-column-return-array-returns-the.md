@@ -21,7 +21,7 @@ Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16), Sheet1 (`make eval-s
 B5:B14 = EmpIDs, C5:D14 = name/department, B2 = 8389 (row 7: "Dianne Pugh", "Finance").
 - C2 `=XLOOKUP(B2,B5:B14,C5:D14)` (array formula over C2:D2): expected "Dianne Pugh"; actual `#VALUE!`.
 - D2 (second cell of the same result): expected "Finance"; actual empty.
-Passing today and must stay so: Sheet2 F2/F12 and Sheet3 F4 of the same workbook, and the
+Passing today and must stay so: Sheet2 F2/F12 and Sheet3 F4 (an XMATCH) of the same workbook, and the
 ironcalc-calc XLOOKUP cases.
 
 Rule recorded in docs/excel-semantics/lookup.md "XLOOKUP: return_array may be wider than the lookup

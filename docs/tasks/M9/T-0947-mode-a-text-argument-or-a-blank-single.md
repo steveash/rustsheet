@@ -35,7 +35,10 @@ and blank single-cell references; do not change single-cell references to text u
 
 Code: `collect_mode_values` in `crates/rustsheet-engine/src/functions/statistical/mode_functions.rs`
 (shared by MODE, MODE.SNGL and MODE.MULT; the evidence is for MODE, keep the path shared).
-Its `_ => {}` arm drops `CalcResult::String` and `CalcResult::EmptyCell`.
+Its `_ => {}` arm drops `CalcResult::String` (and also swallows `CalcResult::Error`; unprobed, not
+this task's); `EmptyCell | EmptyArg` have their own arm. Only a blank *single-cell reference* becomes
+`#VALUE!`: `EmptyArg` (`MODE(1,1,)`) must not change (no evidence), and the String arm must fire only
+for non-reference nodes.
 
 ## Acceptance criteria
 - [ ] These 4 lines disappear from eval/baseline/poi.txt with no new F lines in any baseline:

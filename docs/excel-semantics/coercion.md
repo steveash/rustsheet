@@ -93,8 +93,8 @@ Tasks: T-0945
 Rule: a text value argument, even numeric text (`MODE(B8,"1",2,3)`), makes MODE `#VALUE!`, and so
 does a single-cell reference to a blank cell: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
 although 2 appears twice. Blanks and text inside a multi-cell range are ignored
-(`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). The text wins over a later error argument:
-`MODE("1",1,#DIV/0!,2,3)` is `#VALUE!`. Not isolated yet: a single-cell reference to text on its own.
+(`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). Also
+`MODE("1",1,#DIV/0!,2,3)` is `#VALUE!` (whether argument order matters is unprobed). Not isolated yet: a single-cell reference to text on its own.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
 K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
 Status: VERIFIED (Excel-cached)

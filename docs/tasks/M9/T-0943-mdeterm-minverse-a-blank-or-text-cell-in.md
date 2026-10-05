@@ -15,8 +15,8 @@ MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank
 (MMULT already does). Today a blank counts as 0, so MDETERM gives 0 (singular) and MINVERSE `#NUM!`.
 
 ## Context
-Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 15; `make eval-show
-CASE=poi/MatrixFormulaEvalTestData.xlsx`), sheet Sheet1. All formulas are legacy array formulas.
+Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16; `make eval-show
+CASE=poi/MatrixFormulaEvalTestData.xlsx`), sheet Sheet1. H10, H30, H14:J16 and H34:J36 are legacy array formulas; H50 is a normal formula.
 - H10 `=MDETERM(B10:D12)` (B10:D12 all blank): expected `#VALUE!`, actual 0.
 - H30 `=MDETERM(B30:D32)` (B30 = 1, the rest blank): expected `#VALUE!`, actual 0.
 - H14:J16 `=MINVERSE(B14:D16)` (all blank): expected `#VALUE!` in all 9 cells, actual `#NUM!`.
@@ -42,5 +42,5 @@ helper exists rather than adding a second one.
 ## Out of scope
 - The other 95 failing cells of the same workbook (H46:J136): a legacy array formula whose result is
   smaller than its range (a 1x1 or single row/column result is repeated, other cells are `#N/A`).
-  That is CSE range filling, an engine change; see the T-0904 attempt notes.
+  That is CSE range filling, an engine change; see T-0913.
 - Text or boolean cells inside the matrix (no evidence in this workbook).

@@ -35,7 +35,15 @@ Root cause: `fn_stdev_s`/`fn_stdev_p` (standard_dev.rs), `fn_var_s`/`fn_var_p` (
 `Boolean` results. `Model::for_each_value` (statistical/count_and_average.rs) already coerces typed
 text/booleans and skips them in references (the T-0200 single aggregate iterator): route these
 functions through it instead of their own loops (CLAUDE.md directive 3), keeping each function's
-empty-result error.
+empty-result error (check each against the poi cells above: `for_each_value` returns `#VALUE!` for
+non-numeric typed text).
+
+Constraint: `for_each_value` counts booleans inside array literals as 1/0, while these six functions
+ignore them today, and Excel ignores them for MIN/MAX (probes/min-max-value-args C11). Do not change
+array-literal handling here: keep booleans and text in arrays ignored (until T-0236 settles it with
+a probe), and add a unit test pinning `STDEV({TRUE,1,3})` to today's result. DEVSQ E392, F392 and
+J392 are known last-digit failures (accumulation order): keep the summation order, and watch those
+lines. If the diff grows past S, SUMSQ (math_and_trigonometry) may go in its own PR.
 
 Rule recorded in docs/excel-semantics/coercion.md "STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed
 arguments; AVEDEV and DEVSQ of nothing is #NUM!".
