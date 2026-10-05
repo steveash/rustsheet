@@ -78,7 +78,7 @@ Evidence: probes/intersection-whitespace H1:H8 (oracle: excel-graph, 2026-10-05,
 workbooks come from scratch runs of `rustsheet-oracle recalc` on one formula each (T-0138); a refused workbook
 has no values to commit.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
-Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); expressions/lexer/mod.rs (`Lexer::separator_is_space_or_lf`, `is_blank`)
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); expressions/lexer/mod.rs (`Lexer::separator`)
 Tasks: T-0138, T-0148
 
 ## Intersection operands must be references

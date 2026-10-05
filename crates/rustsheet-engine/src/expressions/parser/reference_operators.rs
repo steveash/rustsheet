@@ -28,13 +28,26 @@ impl Parser {
         {
             // Excel refuses the formula (load-time `FileCorruptTryRepair`, so no oracle value)
             // on CR, TAB, NBSP and the like as separator, and on a value as an operand.
-            let separator_ok = self.lexer.separator_is_space_or_lf();
+            let separator = self.lexer.separator();
+            // U+3000 starts a name for Excel, and no such name is defined: `#NAME?`
+            // (probes/intersection-whitespace H7).
+            let name_error = separator.contains(&'\u{3000}');
+            let separator_ok = separator
+                .iter()
+                .all(|c| matches!(c, ' ' | '\n' | '\u{3000}'));
             let p = self.parse_range();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
-            if !separator_ok || !is_reference_operand(&t) || !is_reference_operand(&p) {
+            if !separator_ok
+                || !(name_error || is_reference_operand(&t))
+                || !is_reference_operand(&p)
+            {
                 return self.intersection_error();
+            }
+            if name_error {
+                t = Node::ErrorKind(Error::NAME);
+                continue;
             }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;

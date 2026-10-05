@@ -199,18 +199,22 @@ impl Lexer {
     /// does not count). Whitespace is otherwise skipped, but between two references it is
     /// Excel's intersection operator (`A1:B2 B1:B3`), so the parser has to see it.
     pub fn whitespace_follows(&self) -> bool {
-        self.chars.get(self.position).is_some_and(|c| is_blank(*c))
+        self.chars
+            .get(self.position)
+            .is_some_and(|c| c.is_whitespace())
     }
 
-    /// Whether the whitespace right after the last token is made only of spaces and line
-    /// feeds, the only separators Excel accepts in an intersection (docs/excel-semantics/
-    /// references.md "Intersection operator: separators"; CR, TAB and NBSP there make Excel
-    /// refuse the formula).
-    pub fn separator_is_space_or_lf(&self) -> bool {
-        self.chars[self.position.min(self.len)..]
+    /// The whitespace right after the last token. Spaces and line feeds are the only separators
+    /// Excel accepts in an intersection; CR, TAB and NBSP make it refuse the formula, and
+    /// U+3000 is part of a name (docs/excel-semantics/references.md "Intersection operator:
+    /// separators").
+    pub fn separator(&self) -> &[char] {
+        let rest = &self.chars[self.position.min(self.len)..];
+        let end = rest
             .iter()
-            .take_while(|c| is_blank(**c))
-            .all(|c| matches!(c, ' ' | '\n'))
+            .position(|c| !c.is_whitespace())
+            .unwrap_or(rest.len());
+        &rest[..end]
     }
 
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
@@ -787,7 +791,7 @@ impl Lexer {
         let len = self.len;
         while position < len {
             let x = self.chars[position];
-            if !is_blank(x) {
+            if !x.is_whitespace() {
                 break;
             }
             position += 1;
@@ -845,10 +849,4 @@ impl Lexer {
             Err(error) => TokenType::Illegal(error),
         }
     }
-}
-
-/// Whitespace as the formula grammar sees it. The ideographic space (U+3000) is not: Excel reads
-/// it as part of a name, so `=A1:A3<U+3000>A2:B2` is `#NAME?` (probes/intersection-whitespace H7).
-fn is_blank(c: char) -> bool {
-    c.is_whitespace() && c != '\u{3000}'
 }

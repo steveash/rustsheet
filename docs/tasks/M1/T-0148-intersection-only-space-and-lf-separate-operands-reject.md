@@ -3,7 +3,7 @@ id: T-0148
 title: "Intersection: only space and LF separate operands; reject non-reference operands"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -39,3 +39,10 @@ out as `#NAME?`, not `#ERROR!`.
 
 ## Out of scope
 - `@` and union operands, and `(A1)(A2)` (T-0149).
+
+## Outcome
+`Lexer::separator` + `Parser::parse_intersection`/`is_reference_operand`: only spaces and LF separate
+operands (CR, TAB, NBSP are parse errors), U+3000 makes the right operand an undefined name
+(`#NAME?`), and value operands (literals, value operators, non-`#REF!` errors, value functions) are
+parse errors. Eval: probes/intersection-whitespace H7 fixed (probes known failures 61 -> 60), no
+regressions. INDIRECT and CHOOSE are allowed as reference-returning without probe evidence.

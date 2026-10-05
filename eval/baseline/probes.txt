@@ -3,6 +3,7 @@
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 C	probes/arith-range-error-precedence.case.json	12
+C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
@@ -62,7 +63,6 @@ F	probes/intersection-function-operands.case.json	Sheet1!H5
 F	probes/intersection-operands.case.json	Sheet1!H10
 F	probes/intersection-operands.case.json	Sheet1!H11
 F	probes/intersection-operands.case.json	Sheet1!H13
-F	probes/intersection-whitespace.case.json	Sheet1!H7
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/literal-digits.case.json	Sheet1!C4
