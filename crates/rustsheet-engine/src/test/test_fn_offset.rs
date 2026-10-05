@@ -97,7 +97,8 @@ fn fn_offset_huge_arguments_are_ref_errors() {
     for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A9"] {
         assert_eq!(model._get_text(cell), *"#REF!", "{cell}");
     }
-    // Negative height/width keep their existing #VALUE! (documented deviation).
+    // Negative height/width keep their existing #VALUE! (see the comment in fn_offset; Excel allows
+    // negative sizes, so this is a known gap, not Excel evidence).
     assert_eq!(model._get_text("A7"), *"#VALUE!");
     assert_eq!(model._get_text("A8"), *"#VALUE!");
 }
