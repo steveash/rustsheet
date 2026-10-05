@@ -34,7 +34,7 @@ in fixed notation where `%.15g` would switch: `123456789012345678` → "12345678
 "9007199254740990" (digits past 15 are zeros), `1e-5` → "0.00001", `1e-15` → "0.000000000000001"
 (`LEN` 17). So the switch to E notation lies between 1.23E+17 and 1E+20 for large values
 (`1E+20&0.1` → "1E+200.1", `1E+20&100` → "1E+20100") and between 2.22E-16 and 1E-15 for small ones.
-Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `7+1E-15&10` → "710". Snapping does not apply inside the CONCAT argument:
+Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `=7+Data!$E5&10` with E5 = 1E-15 → "710". Snapping does not apply inside the CONCAT argument:
 `CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
 significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
 Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
@@ -44,9 +44,11 @@ Status: VERIFIED
 Tasks: T-0107
 
 ## Negative zero prints as 0
-Rule: a negative zero becomes the text "0" (no sign) when converted to text: `-0&0.5` → "00.5",
+Rule: `-x` where x is 0, empty or FALSE converts to the text "0" (no sign); the oracle cannot tell
+whether that value is a negative zero or +0. `-0&0.5` → "00.5",
 `-0&"x y"` → "0x y", `-Data!C5&1` with C5 empty → "01", `0.1&-'Q''1'!B$4` → "0.10".
-Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more `-0&…` cells;
+Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A33 A71 A110 A112 A125 A177 A250; A71 is
+`-Data!B$3` with B3 = FALSE → "01000");
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 Tasks: T-0107

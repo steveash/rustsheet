@@ -38,8 +38,10 @@ Status: VERIFIED
 Tasks: T-0132
 
 ## Text in a range operand of arithmetic is coerced
-Rule: arithmetic on a range coerces its text cells exactly as it coerces a text value, so
-`Data!D7:D7/1` with D7 = " 2 " (spaces around the digit) is 2 and `Data!D3:D3/0` with the same text is `#DIV/0!`.
+Rule: arithmetic on a range coerces a numeric text cell to a number, so `Data!D7:D7/1` with
+D7 = " 2 " (spaces around the digit) is 2 and `Data!D3:D3/0` with the same text is `#DIV/0!`. Every
+observed number-producing text cell is " 2 ". That this is the same routine as scalar text
+coercion is an inference for T-0131's probe to confirm.
 Evidence: gen-m1/1ce5b2467b3b19fd Calc!A14, A79, A99; gen-m1/9646257ac139cd1e Calc!A25, A81 (oracle:
 excel-graph, 2026-10-05, T-0109). The scalar form `-" 2 "*2` = -4 (gen-m1/10f579127ffb6d9b A106).
 Status: VERIFIED
