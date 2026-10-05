@@ -3,7 +3,7 @@ id: T-0225
 title: "NOT on an array argument: lift element-wise instead of #VALUE! (2 gen-m2 known failures)"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -35,16 +35,21 @@ in `cast.rs` (and see how `apply_number_unary` lifts numeric unary functions). E
 cast with the same scalar rule NOT uses today (`cast_to_bool`); an error element stays that error.
 
 ## Acceptance criteria
-- [ ] `F	gen-m2/75840b9c71a50596.case.json	Calc!A29` and
+- [x] `F	gen-m2/75840b9c71a50596.case.json	Calc!A29` and
       `F	gen-m2/f7e6d351c8538ef5.case.json	Calc!A106` disappear from eval/baseline/gen-m2.txt
       (`make eval-baseline`), with no new F lines in any baseline.
-- [ ] Unit tests: `NOT({TRUE,FALSE})` is `{FALSE,TRUE}`; `NOT(A1:A2)` over TRUE and 0 spills
+- [x] Unit tests: `NOT({TRUE,FALSE})` is `{FALSE,TRUE}`; `NOT(A1:A2)` over TRUE and 0 spills
       FALSE and TRUE; a scalar `NOT(TRUE)` is unchanged.
-- [ ] docs/excel-semantics/arrays.md entry gets an `Implemented in:` line.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/excel-semantics/arrays.md entry gets an `Implemented in:` line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AND/OR/XOR (they aggregate, they do not lift; T-0215 covers their error handling).
 - Unary minus and `%` on arrays (`=-Data!D3:E3` is `#VALUE!` today): the upstream `--A1:B4`
   port in T-0920.
 - Comparisons over arrays that hold errors (T-0129).
+
+## Outcome
+`fn_not` uses `get_value_or_array` and casts each element with `cast_to_bool` (errors stay errors); NOT's static-analysis
+result now follows its arguments (`scalar_arguments`) like ABS/TRIM, so an array result is not collapsed by implicit
+intersection. gen-m2 known failures 1503 -> 1501 (A29 and A106 fixed, 0 regressions).
