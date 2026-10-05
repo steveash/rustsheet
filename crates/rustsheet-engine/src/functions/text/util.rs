@@ -1,3 +1,4 @@
+use crate::cast::MAX_TEXT_CHARS;
 pub(crate) enum Case {
     Sensitive,
     Insensitive,
@@ -26,6 +27,36 @@ pub(crate) fn text_before(
         return Some(text[..left].to_string());
     };
     None
+}
+
+/// Character count of `SUBSTITUTE(text, old_text, new_text[, instance_num])` computed without
+/// building the result, so a hostile replacement cannot allocate it (CLAUDE.md directive 5).
+/// Excel: a result over 32767 characters is #VALUE! (probes/text-result-limit C1-C7).
+pub(super) fn substituted_chars(
+    text: &str,
+    text_chars: usize,
+    old_text: &str,
+    new_text: &str,
+    instance_num: Option<i32>,
+) -> usize {
+    let new_chars = new_text.chars().count();
+    if let Some(n) = instance_num {
+        let upper_bound = text_chars + new_chars;
+        if upper_bound <= MAX_TEXT_CHARS {
+            return upper_bound;
+        }
+        // Only a matching instance is replaced; count the text left once it is removed.
+        let removed = substitute(text, old_text, "", n);
+        return if removed.len() == text.len() {
+            text_chars
+        } else {
+            removed.chars().count() + new_chars
+        };
+    }
+    let matches = text.matches(old_text).count();
+    text_chars
+        .saturating_add(matches.saturating_mul(new_chars))
+        .saturating_sub(matches.saturating_mul(old_text.chars().count()))
 }
 
 pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {

@@ -11,7 +11,7 @@ use crate::{
     formatter::format::{format_number, parse_formatted_number},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, text_after, text_before, Case},
+        text::util::{self, substitute, substituted_chars, text_after, text_before, Case},
     },
     model::Model,
     number_format::to_precision,
@@ -198,31 +198,8 @@ fn substitute_element(
     if old_text.is_empty() {
         return Ok(ArrayNode::String(text));
     }
-    // Excel: a result over 32767 characters is #VALUE! (probes/text-result-limit C1-C7); sized
-    // before building so a hostile replacement cannot allocate it (CLAUDE.md directive 5).
     let text_chars = text.chars().count();
-    let result_chars = match instance_num {
-        Some(n) => {
-            let upper_bound = text_chars + new_text.chars().count();
-            if upper_bound <= MAX_TEXT_CHARS {
-                upper_bound
-            } else {
-                // Only a matching instance is replaced; count the text left once it is removed.
-                let removed = substitute(&text, &old_text, "", n);
-                if removed.len() == text.len() {
-                    text_chars
-                } else {
-                    removed.chars().count() + new_text.chars().count()
-                }
-            }
-        }
-        None => {
-            let matches = text.matches(old_text.as_str()).count();
-            text_chars
-                .saturating_add(matches.saturating_mul(new_text.chars().count()))
-                .saturating_sub(matches.saturating_mul(old_text.chars().count()))
-        }
-    };
+    let result_chars = substituted_chars(&text, text_chars, &old_text, &new_text, instance_num);
     if result_chars > MAX_TEXT_CHARS && result_chars > text_chars {
         return Err(Error::VALUE);
     }
