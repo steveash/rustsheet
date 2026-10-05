@@ -41,13 +41,15 @@
         "A66": "=SUBSTITUTE({\"aa\",\"ab\"},\"a\",\"x\")",
         "A72": "=SUBSTITUTE(\"aaa\",\"a\",\"x\",{1,2,3})",
         "A78": "=TRIM({\" a  b \",\"c  d\"})",
-        "A84": "=CLEAN({\"a\"&CHAR(7)&\"b\",\"c\"})",
+        "A84": "=CLEAN(A25:A26)",
         "A90": "=PROPER({\"hello world\",\"aBc dEf\"})",
         "A96": "=REPLACE({\"abcdef\",\"xyz\"},2,2,\"Q\")",
         "A102": "=REPLACE(\"abcdef\",{1,2},{2,3},\"Q\")",
         "A108": "=EXACT({\"a\",\"b\"},{\"a\";\"b\"})",
         "A114": "=LEN(A20:A24)",
-        "A120": "=TRIM(A20:A24)"
+        "A120": "=TRIM(A20:A24)",
+        "A25": "=\"a\"&CHAR(7)&\"b\"",
+        "A26": "c"
       }
     }
   ],

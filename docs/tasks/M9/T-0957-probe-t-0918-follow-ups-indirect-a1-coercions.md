@@ -3,7 +3,7 @@ id: T-0957
 title: "Probe T-0918 follow-ups: INDIRECT a1 coercions and text-function array broadcasting"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ docs/excel-semantics/ entry for R1C1 offset wrapping. Use the excel-probe skill.
 
 ## Out of scope
 -
+
+## Outcome
+Probe `indirect-text-broadcast` (58 cells, oracle-filled); the engine already matches every cell, so no mismatch follow-ups. Recorded in lookup.md (INDIRECT a1 coercion, R1C1 offsets) and text.md (broadcasting). The R1C1 wrap-around itself is still unverified (wrapped cell was empty): a probe with a non-empty cell at the wrapped address would settle it. Eval delta: +1 passing probe case, no regressions.

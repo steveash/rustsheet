@@ -13,6 +13,22 @@ a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...
 2026-10-04. Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
+## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
+Rule: `a1` is coerced like any logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
+`INDIRECT("H2",-1)` = 5, `"TRUE"` text = TRUE), `0` is FALSE, so `INDIRECT("H2",0)` reads "H2" as R1C1
+and is `#REF!`, while `INDIRECT("R2C8",0)` = 5. Empty-string and non-boolean text (`""`, `"x"`) is `#VALUE!`
+in both styles.
+Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json B3:B10 (oracle: excel-graph, 2026-10-05, T-0957).
+Status: VERIFIED (Excel for the web only; the engine matches all of these)
+
+## INDIRECT R1C1 relative offsets
+Rule: `INDIRECT("R[-1]C[6]",FALSE)` is relative to the cell holding the formula (`R[-1]C[6]` in B11 reads
+H10; `R[-11]C[6]` in B12 reads H1). An offset that leaves the sheet is not `#REF!` (`R[-20]C` in B15 is 0, an
+empty cell), as if wrapping modulo 1,048,576 rows; a result row exactly at the last row (`R[1048560]C` in B16)
+is also fine. The probe cannot distinguish wrapping from clamping because the wrapped cell is empty.
+Evidence: indirect-text-broadcast.case.json B11:B16 (oracle: excel-graph, 2026-10-05, T-0957).
+Status: UNVERIFIED for the wrap-around itself (needs a non-empty cell at the wrapped address)
+
 ## MATCH on a 2-D lookup_array is #N/A; argument errors win
 Rule: `MATCH` with a lookup_array of more than one row and column returns `#N/A` even when the value
 is in it (`=MATCH(Data!C$5,Data!A5:C9,1)` with C5 = 2 inside A5:C9 → `#N/A`; no top-level 2-D MATCH
