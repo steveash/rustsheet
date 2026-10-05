@@ -148,7 +148,7 @@ impl Model {
         } else {
             right.column - left.column
         } + 1;
-        let mut result = vec![];
+        let mut result = Vec::with_capacity(usize::try_from(n).unwrap_or(0));
         for index in 0..n {
             let row;
             let column;

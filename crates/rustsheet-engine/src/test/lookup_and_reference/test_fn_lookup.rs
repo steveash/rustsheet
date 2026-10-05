@@ -162,3 +162,25 @@ fn test_lookup_whole_row_and_column_independent_of_used_area() {
         &["=LOOKUP(\"b\",1:1,2:2)", "=LOOKUP(10,1:2)"],
     );
 }
+
+// Every cell of the result vector is evaluated, so a result vector holding the
+// formula's own cell is circular even past the position returned.
+#[test]
+fn test_lookup_result_vector_holding_the_formula_is_circular() {
+    for formula in ["=LOOKUP(20,A1:A3,E:E)", "=LOOKUP(20,A1:A3,E1:E10)"] {
+        let mut model = new_empty_model();
+        for (cell, value) in [
+            ("A1", "10"),
+            ("A2", "20"),
+            ("A3", "30"),
+            ("E1", "a"),
+            ("E2", "b"),
+            ("E3", "c"),
+        ] {
+            model._set(cell, value);
+        }
+        model._set("E5", formula);
+        model.evaluate();
+        assert_eq!(model._get_text("E5"), "#CIRC!", "{formula}");
+    }
+}

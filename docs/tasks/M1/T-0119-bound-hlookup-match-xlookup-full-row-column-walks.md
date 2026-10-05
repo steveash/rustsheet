@@ -3,7 +3,7 @@ id: T-0119
 title: "Bound HLOOKUP/MATCH/XMATCH/LOOKUP whole-row and whole-column walks by the used range"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -17,12 +17,15 @@ Lookup functions other than VLOOKUP no longer evaluate up to 1M (column) or 16k 
 T-0111 bounded VLOOKUP's search column via `SheetData::last_row` (`LookupTable::first_column`). HLOOKUP's `first_row`, MATCH, XMATCH and LOOKUP still walk the full range: a hostile workbook can cost ~1M evaluations per call (directive 5). Empty cells never match, so truncation at the last used row/column is safe; add a last-used-column helper alongside `last_row`.
 
 ## Acceptance criteria
-- [ ] Unit tests with full-row/column references for each function, including a range starting below the data.
-- [ ] A timing note in the PR for `MATCH(x, A:A, 0)` in 10k cells before/after.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests with full-row/column references for each function, including a range starting below the data.
+- [x] A timing note in the PR for `MATCH(x, A:A, 0)` in 10k cells before/after.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Per-recalc search-column caching (M3).
+
+## Outcome
+MATCH, LOOKUP, HLOOKUP and VLOOKUP build their search vectors as a `SearchVector` (functions/lookup_and_reference/lookup_table.rs): the cells up to the sheet's last used row (or column, for ranges running to XFD) are evaluated, the rest is a virtual run of blanks of the full length, so every result equals a full walk whatever the used area (the handed-off version truncated, which changed values). The skipped tail is recorded as seen-empty, so spills into it restart the pass. `binary_search_on_array` moved into `SearchVector::binary_search`. Release timing, 200 x `MATCH(i,A:A,0)` over 10k cells: 16.45 s on main, 36 ms here. Eval delta none (all suites). XMATCH already bounded its walks (via `clip_to_used_area`, truncating); making it value-neutral is T-0127. Excel's treatment of a blank tail (T-0212's type-skipping search says blanks never match) is UNVERIFIED for whole columns: probes are T-0126. Follow-ups: T-0126 (extended), T-0127, T-0403 (`last_column` cost).
 
 ## Handoff (resumed)
 Tried: truncate search vectors at the sheet-wide last used row/column (`LookupTable::first_row/first_column`, `as_vector(.., search=true)`, `clip_search_rows/columns` in lookup_table.rs, recording the skipped tail with `record_seen_empty_range`); LOOKUP's 3-arg result vector is cut after element `l`; `SheetData::last_column` added. `make check` green, eval delta none, timing 159.5 s -> 0.33 s (200 x MATCH(i,A:A,0), 10k cells, debug). Spill-restart tests for MATCH/LOOKUP/HLOOKUP pass. Security, architecture, quality, performance reviewers APPROVE (round 2).

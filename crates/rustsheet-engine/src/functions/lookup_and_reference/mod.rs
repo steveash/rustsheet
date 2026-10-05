@@ -562,16 +562,7 @@ impl Model {
                 Some(l) => l,
                 None => return not_found,
             };
-            let mut result = self.evaluate_node_in_context(&args[2], cell);
-            // Only element `l` is returned: do not evaluate the cells after it
-            // (a whole-column result vector would cost a million evaluations).
-            if let CalcResult::Range { left, right } = &mut result {
-                if left.row == right.row {
-                    right.column = right.column.min(left.column.saturating_add(l as i32));
-                } else if left.column == right.column {
-                    right.row = right.row.min(left.row.saturating_add(l as i32));
-                }
-            }
+            let result = self.evaluate_node_in_context(&args[2], cell);
             let result_vector = match self.as_vector(result, cell) {
                 Ok(values) => values,
                 Err(error) => return error,

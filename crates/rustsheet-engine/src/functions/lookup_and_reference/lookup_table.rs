@@ -196,9 +196,10 @@ impl Model {
     }
 
     /// The last row of `row1..=row2` worth evaluating down `column`: rows
-    /// below the sheet's last used row are empty. The skipped cells
-    /// are recorded as seen empty, so a later spill into them restarts the
-    /// pass (as `clip_to_used_area` does).
+    /// below the sheet's last used row are empty. The skipped cells are
+    /// recorded as seen empty, so a later spill into them restarts the pass.
+    /// `Model::clip_to_used_area` does the same for 2-D walks that truncate
+    /// (XMATCH, XLOOKUP, ...; T-0127 moves XMATCH here).
     fn clip_search_rows(&mut self, sheet: u32, row1: i32, row2: i32, column: i32) -> i32 {
         let last_used = self
             .workbook
