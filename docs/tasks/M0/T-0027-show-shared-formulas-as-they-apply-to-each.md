@@ -32,7 +32,7 @@ rather than writing a second reference shifter. Found in the T-0019 review.
 ## Out of scope
 - Any change to how formulas are evaluated or scored.
 
-## Handoff
+## Handoff (resumed)
 Sonnet run, no code written; stopped at a design question.
 - `xlsx_snapshot.rs` parses raw XML, so the shifter has to work on formula *text*. The engine's shifter
   (`expressions/parser/move_formula.rs`, `pub(crate)`) works on parsed `Node`s and re-stringifies, and
