@@ -95,6 +95,7 @@ C	ironcalc-calc/LOOKUP_AND_REFERENCE/TRIMRANGE.xlsx	18
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/WRAPCOLS_ROWS.xlsx	38
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/XLOOKUP.xlsx	439
 C	ironcalc-calc/LOOKUP_AND_REFERENCE/XMATCH.xlsx	8
+C	ironcalc-calc/LOOKUP_AND_REFERENCE/XMATCH_arrays.xlsx	11
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ABS.xlsx	13
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ARABIC_ROMAN.xlsx	40427
 C	ironcalc-calc/MATH_AND_TRIGONOMETRY/ATAN2_POWER.xlsx	61
@@ -151,6 +152,7 @@ C	ironcalc-calc/STATISTICAL/F_TEST.xlsx	4
 C	ironcalc-calc/STATISTICAL/GAMMA.xlsx	167
 C	ironcalc-calc/STATISTICAL/GAMMALN_GAMMALNPRECISE.xlsx	91
 C	ironcalc-calc/STATISTICAL/GAUSS.xlsx	39
+C	ironcalc-calc/STATISTICAL/GEOMEAN.xlsx	33
 C	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	2
 C	ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx	32
 C	ironcalc-calc/STATISTICAL/LOGNORM.xlsx	147
@@ -197,6 +199,7 @@ C	ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx	63
 C	ironcalc-calc/TEXT/UNICODE.xlsx	24
 C	ironcalc-calc/TEXT/UPPER_LOWER.xlsx	56
 C	ironcalc-calc/arithmetic.xlsx	49
+C	ironcalc-calc/array_in_scalar_repro.xlsx	1
 C	ironcalc-calc/defined_names.xlsx	24
 C	ironcalc-calc/defined_names_for_unit_test.xlsx	3
 C	ironcalc-calc/escape_strings.xlsx	2
@@ -1423,6 +1426,8 @@ F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B3
 F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B31
 F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B34
 F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B4
+F	ironcalc-calc/STATISTICAL/GEOMEAN.xlsx	Sheet1!B27
+F	ironcalc-calc/STATISTICAL/GEOMEAN.xlsx	Sheet1!G27
 F	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	Sheet1!F2
 F	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx	Sheet1!D2

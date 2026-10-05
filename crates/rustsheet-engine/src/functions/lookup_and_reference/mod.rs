@@ -125,7 +125,13 @@ impl Model {
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
+        not_vector: Error,
     ) -> Result<SearchVector, CalcResult> {
+        let not_vector_error = || CalcResult::Error {
+            error: not_vector,
+            origin: cell,
+            message: "Argument must be a vector".to_string(),
+        };
         match value {
             CalcResult::Range { left, right } => {
                 let is_row_vector = if left.row == right.row {
@@ -133,11 +139,7 @@ impl Model {
                 } else if left.column == right.column {
                     true
                 } else {
-                    return Err(CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Argument must be a vector".to_string(),
-                    });
+                    return Err(not_vector_error());
                 };
                 Ok(self.range_search_vector(&left, &right, is_row_vector))
             }
@@ -145,11 +147,7 @@ impl Model {
                 // An array is a vector if it is a single row or a single column.
                 let is_vector = array.len() == 1 || array.iter().all(|row| row.len() == 1);
                 if !is_vector {
-                    return Err(CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Argument must be a vector".to_string(),
-                    });
+                    return Err(not_vector_error());
                 }
                 Ok(SearchVector::new(
                     array
@@ -335,7 +333,7 @@ impl Model {
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match self.as_vector(match_range, cell) {
+        let values = match self.as_vector(match_range, cell, Error::NA) {
             Ok(values) => values,
             Err(error) => return error,
         };
@@ -554,7 +552,7 @@ impl Model {
             // Vector form: search the lookup vector, return from the result
             // vector at the same position.
             let value = self.evaluate_node_in_context(&args[1], cell);
-            let lookup_vector = match self.as_vector(value, cell) {
+            let lookup_vector = match self.as_vector(value, cell, Error::ERROR) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
@@ -563,7 +561,7 @@ impl Model {
                 None => return not_found,
             };
             let result = self.evaluate_node_in_context(&args[2], cell);
-            let result_vector = match self.as_vector(result, cell) {
+            let result_vector = match self.as_vector(result, cell, Error::ERROR) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
