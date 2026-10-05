@@ -3,10 +3,10 @@ id: T-0125
 title: "Early-1900 serials: format/EDATE/EOMONTH of serial 60 and DAY/MONTH/YEAR(0)"
 milestone: M1
 lane: engine
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,3 +23,20 @@ T-0108 fixed DATE, DAY/MONTH/YEAR and number formatting for serials 1..60 but le
 
 ## Out of scope
 -
+
+## Handoff
+Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKNUM/TEXT/DAY-MONTH-YEAR"):
+`excel_serial_to_ymd` accepts serial 0, new `month_arithmetic_date`/`real_date_to_serial` in
+`formatter/dates.rs` used by EDATE/EOMONTH, WEEKNUM year fix, TEXT uses ymd validity; probe
+`dates-early-1900` extended (A17-A25, oracle filled) and passes 25/25; semantics note added.
+`make eval-check` shows 41 gen-m2 cells fixed but 2 REGRESSIONS that passed only by accident
+(DAY/YEAR(0) used to be #NUM!, hiding other engine bugs):
+- gen-m2/a339ea84ef64382e Calc!A138 `=DAY(ROUNDDOWN(123456789.123,ROUNDUP(1,-5)))` expected #NUM!, now 0:
+  the engine's ROUNDDOWN with huge digits (100000) returns 0; Excel evidently returns the value
+  unchanged (DAY of 123456789 is #NUM!). Fix ROUNDDOWN/ROUNDUP/ROUND with out-of-range digits (probe first).
+- gen-m2/a6d4377c7b1b92cd Calc!A278 `=IFERROR(YEAR(INDEX(Data!C11:E12,1)),-SUM(Data!C3:C5))` expected 1:
+  my reading is that the legacy (non-spilling) formula implicit-intersects the INDEX row range
+  and gives #VALUE!, so IFERROR falls back; the engine computes YEAR of the first element (1900).
+  Needs an implicit-intersection probe.
+Next: fix or probe those two (or split them to their own tasks and fix first), then
+`make eval-baseline`, `make check`, review.
