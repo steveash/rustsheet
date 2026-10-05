@@ -615,8 +615,6 @@ F	poi/GeneralFormatTests.xlsx	Tests!A73
 F	poi/HsGetVal.xlsx	Sheet1!B5
 F	poi/HsGetVal.xlsx	Sheet1!C5
 F	poi/InlineString.xlsx	!EngineError
-F	poi/Intersection-52111-xssf.xlsx	Tabelle1!A3
-F	poi/Intersection-52111-xssf.xlsx	Tabelle1!A7
 F	poi/LIBRE_OFFICE-128382-0.xlsx	!EngineError
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H10
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H104

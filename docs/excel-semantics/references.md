@@ -53,13 +53,28 @@ reversed corners (`Data!C8:B3`) and range-of-ranges (`Data!A7:A7:Data!C11`).
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A5, A2, A3, A16; gen-m1/7cb99acdd82402f1 Calc!A25, A4;
 gen-m1/1ce5b2467b3b19fd Calc!A9, A25 (oracle: excel-graph, 2026-10-05; 632 cells across the three cases, T-0109).
 Status: VERIFIED
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
+
+## Intersection operator: implementation choices (UNVERIFIED)
+Rule: RustSheet's choices where gen-m1 (single U+0020 spaces between references) has no evidence:
+- Any Unicode whitespace between two reference operands is the operator: LF, CR, TAB, NBSP and
+  U+3000 (`char::is_whitespace`, `Lexer::whitespace_follows`).
+- A literal operand on the left (`=1 A1`, `=(1) A1`) or TRUE/FALSE, `@x` or an error other than
+  `#REF!` on the right is a parse error; a parenthesized non-reference on the right (`=A1 (1)`)
+  is `#VALUE!`; `#N/A` on the left and `#REF!` on the right are accepted and propagate.
+- An operand's error wins over `#VALUE!`/`#NULL!` (`=(1/0) A1` = `#DIV/0!`).
+- The cross-sheet check runs before the disjoint check (`=Data!A1 Other!Z99` = `#VALUE!`).
+Evidence: none from Excel; the engine's results come from a scratch-suite run in the T-0105 review (2026-10-05).
+Status: UNVERIFIED
+Tasks: T-0138
 
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
 `Data!A3:D4 Data!Z99` → `#NULL!`, `Data!B4:E11 Data!A1:A3` → `#NULL!`.
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A6, A10 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+Implemented in: reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
 ## Cross-sheet intersection is #VALUE!
@@ -67,6 +82,7 @@ Rule: an intersection of references on two different sheets is `#VALUE!`, not `#
 the coordinates overlap (all 43 `intersection/cross-sheet` cells): `Data!C5:C10 'My Data'!C9:D9` → `#VALUE!`.
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A4, A17, A29 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+Implemented in: reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
 ## Union (comma) reference in a value context is #VALUE!

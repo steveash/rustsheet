@@ -370,44 +370,6 @@ impl Model {
         }
     }
 
-    fn get_range(&mut self, left: &Node, right: &Node, cell: CellReferenceIndex) -> CalcResult {
-        let left_result = self.evaluate_node_with_reference(left, cell);
-        let right_result = self.evaluate_node_with_reference(right, cell);
-        match (left_result, right_result) {
-            (
-                CalcResult::Range {
-                    left: left1,
-                    right: right1,
-                },
-                CalcResult::Range {
-                    left: left2,
-                    right: right2,
-                },
-            ) => {
-                if left1.row == right1.row
-                    && left1.column == right1.column
-                    && left2.row == right2.row
-                    && left2.column == right2.column
-                {
-                    return CalcResult::Range {
-                        left: left1,
-                        right: right2,
-                    };
-                }
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid range".to_string(),
-                }
-            }
-            _ => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid range".to_string(),
-            },
-        }
-    }
-
     /// Collapses a reference-context result to a value: a Range is implicitly
     /// intersected at `cell` and the intersected cell evaluated; an array gives its
     /// top left element; anything else (scalar, error) passes through unchanged.
@@ -633,6 +595,7 @@ impl Model {
                 CalcResult::new_error(Error::REF, cell, "Wrong reference".to_string())
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
+            OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
             WrongRangeKind { .. } => {
                 CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())
             }
