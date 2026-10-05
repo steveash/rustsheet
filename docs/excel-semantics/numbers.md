@@ -32,13 +32,26 @@ exponent is uppercase (`-2.22044604925031E-16`, `5.55111512312578E-17`, `1E+21`)
 in fixed notation where `%.15g` would switch: `123456789012345678` → "123456789012345000",
 `1e15+0.3` → "1000000000000000", `9999999999999999` → "9999999999999990" and `2^53+1` →
 "9007199254740990" (digits past 15 are zeros), `1e-5` → "0.00001", `1e-15` → "0.000000000000001"
-(`LEN` 17). So the switch to E notation lies between 1.23E+17 and 1E+21 for large values and
-between 2.22E-16 and 1E-15 for small ones. Snapping does not apply inside the CONCAT argument:
+(`LEN` 17). So the switch to E notation lies between 1.23E+17 and 1E+20 for large values
+(`1E+20&0.1` → "1E+200.1", `1E+20&100` → "1E+20100") and between 2.22E-16 and 1E-15 for small ones.
+Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `=7+Data!$E5&10` with E5 = 1E-15 → "710". Snapping does not apply inside the CONCAT argument:
 `CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
 significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
 Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
-`number-to-text/*`. Oracle: excel-graph, 2026-10-04.
+`number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,
+A21, A188 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+Tasks: T-0107
+
+## Negative zero prints as 0
+Rule: `-x` where x is 0, empty or FALSE converts to the text "0" (no sign); the oracle cannot tell
+whether that value is a negative zero or +0. `-0&0.5` → "00.5",
+`-0&"x y"` → "0x y", `-Data!C5&1` with C5 empty → "01", `0.1&-'Q''1'!B$4` → "0.10".
+Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A33 A71 A110 A112 A125 A177 A250; A71 is
+`-Data!B$3` with B3 = FALSE → "01000");
+gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED
+Tasks: T-0107
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
@@ -101,9 +114,13 @@ Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
 Evidence: ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx (Excel-authored): Sheet1!D2 (#DIV/0!),
 D3 and F9 (-1.9999999999999998 — we return -2, a 1-ulp NumericUlp known failure), sheets 2-8 for ranges.
-Status: UNVERIFIED for (a) overflow of a non-zero base being #NUM! (not #DIV/0!), (b) the 2^-48
-relative tolerance that decides whether an exponent "is" 1/odd (only exactly 1/3 is evidenced; probe
-`POWER(-8,0.333333333333333)`), (c) the operator `^` sharing all of the above.
+The operator `^` shares the zero case: `0^-0`, `+0^0`, `(-0)^0` and `0%^0` are all `#NUM!`, while
+`-0^0.5` = 0 (gen-m1/6462bf910ef9f28f Calc!A19, A30, A205, A222; gen-m1/1c62c4bff4ed1976 Calc!A60;
+oracle: excel-graph, 2026-10-05, T-0109).
+Status: VERIFIED for `0^0` → #NUM! (POWER and `^`). UNVERIFIED for (a) overflow of a non-zero base
+being #NUM! (not #DIV/0!), (b) the 2^-48 relative tolerance that decides whether an exponent "is"
+1/odd (only exactly 1/3 is evidenced; probe `POWER(-8,0.333333333333333)`), (c) the operator `^`
+sharing the other special cases.
 Implemented in: `arithmetic::power` (POWER and `^`).
 
 ## SIN / COS at multiples of 90° return k·6.1257422745431E-17
@@ -127,7 +144,11 @@ Tasks: T-0939
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
 0.7071067811865475 (pow: …476), `=100^100` = 1.0000000000000005E+200.
-Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Integer exponents are affected too: with x = 1E-15, `x^3` = 1.0000000000000001E-45 (pow: …03E-45);
+`3^-0.5` = 0.5773502691896258 (pow: …257).
+Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196 (oracle: excel-graph,
+2026-10-04, T-0203); gen-m1/6462bf910ef9f28f Calc!A33, A41, A48, A57, A86, A207 (oracle:
+excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 Tasks: T-0221
 
@@ -158,3 +179,12 @@ recalculated through excel-graph).
 Status: VERIFIED (observation). Which one a golden follows is T-0025; until then say which
 Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
 divergences").
+
+## GEOMEAN last digits differ from a log-sum evaluation
+
+`=GEOMEAN("47")` is exactly 47 in Excel, and `=GEOMEAN(1,2,"5",TRUE)` is 1.778279410038923;
+a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
+formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
+`crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
+Values are from Excel for the web, which can differ from desktop in the last digit (T-0025).
+Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
