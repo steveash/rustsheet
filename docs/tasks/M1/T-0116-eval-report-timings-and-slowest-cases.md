@@ -3,7 +3,7 @@ id: T-0116
 title: "Eval report: per-suite wall time and slowest cases"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
