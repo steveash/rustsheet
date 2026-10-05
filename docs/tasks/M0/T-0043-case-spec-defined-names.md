@@ -3,7 +3,7 @@ id: T-0043
 title: "Case spec: defined names"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
