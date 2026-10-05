@@ -121,11 +121,12 @@ Status: VERIFIED (Excel-cached)
 Tasks: T-0950
 
 ## ROUND/ROUNDUP/ROUNDDOWN lift over arrays; CONCAT joins array elements
-Rule: both arguments of ROUND, ROUNDUP and ROUNDDOWN lift element-wise (an error argument is the
-result, the first argument's error first), and CONCAT takes every element of an array argument
+Rule: both arguments of ROUND, ROUNDUP and ROUNDDOWN lift element-wise (an error argument is an error
+in every element of the result's shape, the number's error first), and CONCAT takes every element of an array argument
 row by row (an error element is the result). `=CONCAT(MID(INDEX(B3:E8,0.1,0),7,0))` over a 6x4 block is "".
-Evidence: gen-m2/893302d6c5b99e2e Calc!A313 (`#DIV/0!` from the num_digits error with an array
-number), gen-m2/d0c29dd5c530e28c Calc!A246 (""). Oracle: excel-graph (T-0203).
+Evidence: gen-m2/893302d6c5b99e2e Calc!A313:B313 (both `#DIV/0!`: the num_digits error spills over the
+1x2 array number), gen-m2/d0c29dd5c530e28c Calc!A246 (""). Also probes/round-concat-array-lift (spill cells D1:E5, CONCAT of mixed arrays: numbers, TRUE, first
+error in row-major order). Oracle: excel-graph (T-0203, T-0222).
 Status: VERIFIED
 Implemented in: functions::math_and_trigonometry::mathematical::round_family, functions::text::common::fn_concat
 Tasks: T-0222

@@ -1,7 +1,7 @@
 mod arraytotext;
 mod byte_functions;
 mod char_code;
-pub(crate) mod common;
+mod common;
 mod concatenate;
 mod encodeurl;
 mod regex_functions;

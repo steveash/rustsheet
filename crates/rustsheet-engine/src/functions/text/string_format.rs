@@ -11,7 +11,7 @@ use crate::{
     model::Model,
 };
 
-use super::common::broadcast_text;
+use crate::array_lift::broadcast_lift;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -208,23 +208,23 @@ impl Model {
         if args.len() != 4 {
             return CalcResult::new_args_number_error(cell);
         }
-        let old_text = match self.text_arg(&args[0], cell) {
+        let old_text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let start_num = match self.text_arg(&args[1], cell) {
+        let start_num = match self.lift_arg(&args[1], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let num_chars = match self.text_arg(&args[2], cell) {
+        let num_chars = match self.lift_arg(&args[2], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let new_text = match self.text_arg(&args[3], cell) {
+        let new_text = match self.lift_arg(&args[3], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        broadcast_text(
+        broadcast_lift(
             cell,
             &[&old_text, &start_num, &num_chars, &new_text],
             |i, j| {

@@ -1,10 +1,10 @@
 use crate::arithmetic::power;
+use crate::array_lift::{broadcast_lift, LiftArg};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
-use crate::functions::text::common::broadcast_text;
 use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
@@ -399,17 +399,19 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // Excel lifts both arguments element-wise; an error argument wins, first one first
-        // (gen-m2/893302d6c5b99e2e Calc!A313).
-        let value = match self.text_arg(&args[0], cell) {
-            Ok(a) => a,
-            Err(e) => return e,
-        };
-        let digits = match self.text_arg(&args[1], cell) {
-            Ok(a) => a,
-            Err(e) => return e,
-        };
-        broadcast_text(cell, &[&value, &digits], |i, j| {
+        // Excel lifts both arguments element-wise. An error argument is an error in every
+        // element of the result, not one error for the whole call: ROUNDDOWN(array, #DIV/0!)
+        // spills #DIV/0! over the array's shape (gen-m2/893302d6c5b99e2e Calc!A313:B313).
+        let mut lifted = Vec::with_capacity(2);
+        for arg in args {
+            lifted.push(match self.lift_arg(arg, cell) {
+                Ok(a) => a,
+                Err(CalcResult::Error { error, .. }) => LiftArg::Scalar(ArrayNode::Error(error)),
+                Err(e) => return e,
+            });
+        }
+        let (value, digits) = (&lifted[0], &lifted[1]);
+        broadcast_lift(cell, &[value, digits], |i, j| {
             let value = self.array_node_to_number(value.elem(i, j))?;
             let digits = self.array_node_to_number(digits.elem(i, j))?;
             round_decimal(value, digits, mode)

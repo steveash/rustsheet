@@ -1,4 +1,4 @@
-use super::common::{broadcast_text, TextArg};
+use crate::array_lift::{broadcast_lift, LiftArg};
 use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, truncate_text},
@@ -19,13 +19,13 @@ impl Model {
         // arguments"); with only scalars the result is the plain joined string.
         let mut operands = Vec::with_capacity(args.len());
         for arg in args {
-            match self.text_arg(arg, cell) {
+            match self.lift_arg(arg, cell) {
                 Ok(operand) => operands.push(operand),
                 Err(error) => return error,
             }
         }
-        let operand_refs: Vec<&TextArg> = operands.iter().collect();
-        broadcast_text(cell, &operand_refs, |i, j| {
+        let operand_refs: Vec<&LiftArg> = operands.iter().collect();
+        broadcast_lift(cell, &operand_refs, |i, j| {
             let mut joined = String::new();
             for operand in &operands {
                 joined.push_str(&array_node_to_string(operand.elem(i, j))?);

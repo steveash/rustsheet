@@ -50,6 +50,7 @@ pub use crate::constants::{LAST_COLUMN, LAST_ROW};
 
 mod actions;
 mod arithmetic;
+mod array_lift;
 mod cast;
 mod conditional_formatting;
 mod constants;

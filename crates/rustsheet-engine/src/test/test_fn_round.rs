@@ -26,8 +26,9 @@ fn round_family_lifts_over_arrays() {
     assert_eq!(model._get_text("C1"), "5.5");
     assert_eq!(model._get_text("D1"), "7.7");
     assert_eq!(model._get_text("C2"), "2.6");
-    // The error argument wins over the array.
+    // An error argument spills as an error over the array's shape (gen-m2/893302d6c5b99e2e).
     assert_eq!(model._get_text("C3"), "#DIV/0!");
+    assert_eq!(model._get_text("D3"), "#DIV/0!");
 }
 
 #[test]

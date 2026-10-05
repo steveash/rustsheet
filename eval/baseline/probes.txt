@@ -34,6 +34,7 @@ C	probes/rich-errors-calc.case.json	10
 C	probes/rich-errors-field.case.json	5
 C	probes/rich-errors-image.case.json	15
 C	probes/rich-errors-stockhistory.case.json	5
+C	probes/round-concat-array-lift.case.json	14
 C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9

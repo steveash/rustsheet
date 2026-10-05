@@ -32,4 +32,5 @@ used by other scalar functions. Do not write a new one.
 - Other functions that still return `#N/IMPL!` on arrays (file follow-ups).
 
 ## Outcome
-ROUND/ROUNDUP/ROUNDDOWN now lift both arguments via `text_arg`/`broadcast_text` (made crate-visible, no new helper). The MID half was not MID: MID already lifted; CONCAT rejected array arguments, so CONCAT now joins array elements. gen-m2 known failures 780 -> 778 (2 fixed, 0 regressions). Unit tests in test_fn_round.rs. Note: CONCAT of a Range containing array-valued cells still returns #N/IMPL! (not filed; no evidence case).
+ROUND/ROUNDUP/ROUNDDOWN now lift both arguments via `text_arg`/`broadcast_text` (made crate-visible, no new helper). The MID half was not MID: MID already lifted; CONCAT rejected array arguments, so CONCAT now joins array elements. gen-m2 known failures 780 -> 778 (2 fixed, 0 regressions). Unit tests in test_fn_round.rs. Note: CONCAT of a Range containing array-valued cells still returns #N/IMPL! (filed as T-0245).
+Helpers `TextArg`/`text_arg`/`broadcast_text` moved to the neutral `functions/array_lift.rs` as `LiftArg`/`lift_arg`/`broadcast_lift` (with `within_text_budget`) after architecture review.

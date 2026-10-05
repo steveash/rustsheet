@@ -1,8 +1,8 @@
+use crate::array_lift::{broadcast_lift, LiftArg};
 use crate::number_format::number_to_text;
 use crate::{
-    arithmetic::bcast_idx,
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_CHARS},
+    cast::{array_node_to_string, MAX_TEXT_CHARS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -11,48 +11,11 @@ use crate::{
     formatter::format::{format_number, parse_formatted_number},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, text_after, text_before, Case},
+        text::util::{substitute, text_after, text_before, Case},
     },
     model::Model,
     number_format::to_precision,
 };
-
-/// An argument of a text function that works element by element (LEFT, MID,
-/// EXACT, FIND, ...): a single scalar value or a 2-D array of values.
-/// When any argument is an array (e.g. a SEQUENCE or a multi-cell range) the
-/// scalar arguments are broadcast across it and the result is an array.
-pub(crate) enum TextArg {
-    Scalar(ArrayNode),
-    Array(Vec<Vec<ArrayNode>>),
-}
-
-/// What an array has beyond its end, when it is used next to a longer one.
-static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
-
-impl TextArg {
-    /// The (rows, columns) shape of this argument.
-    pub(crate) fn dims(&self) -> (usize, usize) {
-        match self {
-            TextArg::Scalar(_) => (1, 1),
-            TextArg::Array(a) => (a.len(), a.first().map(|r| r.len()).unwrap_or(0)),
-        }
-    }
-
-    /// Returns the element at (`i`, `j`), broadcasting scalars and length-1 dimensions.
-    ///
-    /// Where the array is too short for that position the element is `#N/A`,
-    /// as in Excel. It is an error like any other: if an earlier argument of
-    /// the function is an error too, that one comes first.
-    pub(crate) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
-        match self {
-            TextArg::Scalar(n) => n,
-            TextArg::Array(a) => bcast_idx(a.len(), i)
-                .and_then(|ri| a.get(ri))
-                .and_then(|row| bcast_idx(row.len(), j).and_then(|cj| row.get(cj)))
-                .unwrap_or(&MISSING),
-        }
-    }
-}
 
 /// Coerces a single array element to a number for the start/length arguments of
 /// LEFT/RIGHT/MID. Booleans and strings are rejected with `#VALUE!`, matching the
@@ -217,55 +180,6 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 
-/// Broadcasts `compute` over the (possibly array) `operands`. When every operand
-/// is a scalar the result is a single value; otherwise it is an array whose shape
-/// is the element-wise maximum of the operand shapes.
-pub(crate) fn broadcast_text(
-    cell: CellReferenceIndex,
-    operands: &[&TextArg],
-    compute: impl Fn(usize, usize) -> Result<ArrayNode, Error>,
-) -> CalcResult {
-    let mut rows = 1;
-    let mut cols = 1;
-    for operand in operands {
-        let (r, c) = operand.dims();
-        rows = rows.max(r);
-        cols = cols.max(c);
-    }
-
-    // All scalars: return a single value.
-    if rows <= 1 && cols <= 1 {
-        return match compute(0, 0) {
-            Ok(ArrayNode::String(s)) => CalcResult::String(s),
-            Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
-            Ok(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
-            Ok(ArrayNode::Empty) => CalcResult::String(String::new()),
-            Ok(ArrayNode::Error(e)) | Err(e) => CalcResult::new_error(e, cell, String::new()),
-        };
-    }
-
-    let mut total_bytes: usize = 0;
-    let mut result = Vec::with_capacity(rows);
-    for i in 0..rows {
-        let mut data_row = Vec::with_capacity(cols);
-        for j in 0..cols {
-            let value = compute(i, j).unwrap_or_else(ArrayNode::Error);
-            if let ArrayNode::String(s) = &value {
-                if !util::within_text_budget(&mut total_bytes, s.len()) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Total text result is too large".to_string(),
-                    );
-                }
-            }
-            data_row.push(value);
-        }
-        result.push(data_row);
-    }
-    CalcResult::Array(result)
-}
-
 /// Finds the first instance of 'search_for' in text starting at char index start
 fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     let ch = text.chars();
@@ -367,7 +281,13 @@ impl Model {
                     for node in rows.iter().flatten() {
                         match array_node_to_string(node) {
                             Ok(text) => result.push_str(&text),
-                            Err(error) => return CalcResult::new_error(error, cell, String::new()),
+                            Err(error) => {
+                                return CalcResult::new_error(
+                                    error,
+                                    cell,
+                                    "Error value in array".to_string(),
+                                )
+                            }
                         }
                     }
                 }
@@ -496,23 +416,23 @@ impl Model {
         if args.len() < 2 || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let find_text = match self.text_arg(&args[0], cell) {
+        let find_text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let within_text = match self.text_arg(&args[1], cell) {
+        let within_text = match self.lift_arg(&args[1], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
         let start_num = if args.len() == 3 {
-            match self.text_arg(&args[2], cell) {
+            match self.lift_arg(&args[2], cell) {
                 Ok(o) => o,
                 Err(e) => return e,
             }
         } else {
-            TextArg::Scalar(ArrayNode::Number(1.0))
+            LiftArg::Scalar(ArrayNode::Number(1.0))
         };
-        broadcast_text(cell, &[&find_text, &within_text, &start_num], |i, j| {
+        broadcast_lift(cell, &[&find_text, &within_text, &start_num], |i, j| {
             find_element(
                 find_text.elem(i, j),
                 within_text.elem(i, j),
@@ -527,11 +447,11 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.text_arg(&args[0], cell) {
+        let text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        broadcast_text(cell, &[&text], |i, j| len_element(text.elem(i, j)))
+        broadcast_lift(cell, &[&text], |i, j| len_element(text.elem(i, j)))
     }
 
     pub(crate) fn fn_trim(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -641,46 +561,23 @@ impl Model {
         self.apply_text_unary(args, cell, |s| s.to_uppercase())
     }
 
-    /// Evaluates an argument of a text function into a scalar value or a 2-D array of
-    /// values. References to a single cell collapse to a scalar; multi-cell ranges
-    /// and array literals/spills become arrays that the result is broadcast over.
-    pub(crate) fn text_arg(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<TextArg, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
-            err @ CalcResult::Error { .. } => Err(err),
-            CalcResult::Range { left, right } => {
-                Ok(TextArg::Array(self.evaluate_range(left, right)))
-            }
-            CalcResult::Array(a) => Ok(TextArg::Array(a)),
-            CalcResult::Lambda(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expecting a value".to_string(),
-            )),
-            other => Ok(TextArg::Scalar(calc_result_to_array_node(other))),
-        }
-    }
-
     pub(crate) fn fn_left(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.text_arg(&args[0], cell) {
+        let text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
         let num = if args.len() == 2 {
-            match self.text_arg(&args[1], cell) {
+            match self.lift_arg(&args[1], cell) {
                 Ok(o) => o,
                 Err(e) => return e,
             }
         } else {
-            TextArg::Scalar(ArrayNode::Number(1.0))
+            LiftArg::Scalar(ArrayNode::Number(1.0))
         };
-        broadcast_text(cell, &[&text, &num], |i, j| {
+        broadcast_lift(cell, &[&text, &num], |i, j| {
             left_element(text.elem(i, j), num.elem(i, j))
         })
     }
@@ -689,19 +586,19 @@ impl Model {
         if args.len() > 2 || args.is_empty() {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.text_arg(&args[0], cell) {
+        let text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
         let num = if args.len() == 2 {
-            match self.text_arg(&args[1], cell) {
+            match self.lift_arg(&args[1], cell) {
                 Ok(o) => o,
                 Err(e) => return e,
             }
         } else {
-            TextArg::Scalar(ArrayNode::Number(1.0))
+            LiftArg::Scalar(ArrayNode::Number(1.0))
         };
-        broadcast_text(cell, &[&text, &num], |i, j| {
+        broadcast_lift(cell, &[&text, &num], |i, j| {
             right_element(text.elem(i, j), num.elem(i, j))
         })
     }
@@ -710,19 +607,19 @@ impl Model {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.text_arg(&args[0], cell) {
+        let text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let start = match self.text_arg(&args[1], cell) {
+        let start = match self.lift_arg(&args[1], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let length = match self.text_arg(&args[2], cell) {
+        let length = match self.lift_arg(&args[2], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        broadcast_text(cell, &[&text, &start, &length], |i, j| {
+        broadcast_lift(cell, &[&text, &start, &length], |i, j| {
             mid_element(text.elem(i, j), start.elem(i, j), length.elem(i, j))
         })
     }
@@ -732,15 +629,15 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.text_arg(&args[0], cell) {
+        let text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let number_times = match self.text_arg(&args[1], cell) {
+        let number_times = match self.lift_arg(&args[1], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        broadcast_text(cell, &[&text, &number_times], |i, j| {
+        broadcast_lift(cell, &[&text, &number_times], |i, j| {
             rept_element(
                 text.elem(i, j),
                 self.array_node_to_number(number_times.elem(i, j)),
@@ -1066,21 +963,21 @@ impl Model {
         if !(3..=4).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.text_arg(&args[0], cell) {
+        let text = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let old_text = match self.text_arg(&args[1], cell) {
+        let old_text = match self.lift_arg(&args[1], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let new_text = match self.text_arg(&args[2], cell) {
+        let new_text = match self.lift_arg(&args[2], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
         // Without it every instance is replaced
         let instance_num = if arg_count > 3 {
-            match self.text_arg(&args[3], cell) {
+            match self.lift_arg(&args[3], cell) {
                 Ok(o) => Some(o),
                 Err(e) => return e,
             }
@@ -1091,7 +988,7 @@ impl Model {
         if let Some(instance_num) = &instance_num {
             operands.push(instance_num);
         }
-        broadcast_text(cell, &operands, |i, j| {
+        broadcast_lift(cell, &operands, |i, j| {
             substitute_element(
                 text.elem(i, j),
                 old_text.elem(i, j),
@@ -1108,15 +1005,15 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text1 = match self.text_arg(&args[0], cell) {
+        let text1 = match self.lift_arg(&args[0], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        let text2 = match self.text_arg(&args[1], cell) {
+        let text2 = match self.lift_arg(&args[1], cell) {
             Ok(o) => o,
             Err(e) => return e,
         };
-        broadcast_text(cell, &[&text1, &text2], |i, j| {
+        broadcast_lift(cell, &[&text1, &text2], |i, j| {
             exact_element(text1.elem(i, j), text2.elem(i, j))
         })
     }
