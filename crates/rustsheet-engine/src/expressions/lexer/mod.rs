@@ -225,7 +225,9 @@ impl Lexer {
                     ':' => TokenType::Colon,
                     ';' => TokenType::Semicolon,
                     '@' => TokenType::At,
-                    '\\' => TokenType::Backslash,
+                    // In comma-decimal locales `\` is the array column separator, so it only
+                    // belongs to a name where `.` is the decimal separator (see below).
+                    '\\' if !self.backslash_in_names() => TokenType::Backslash,
                     ',' => {
                         if self.locale.numbers.symbols.decimal == "," {
                             match self.consume_number(',') {
@@ -323,7 +325,7 @@ impl Lexer {
                         }
                     }
                     _ => {
-                        if char.is_alphabetic() || char == '_' {
+                        if char.is_alphabetic() || char == '_' || char == '\\' {
                             // At this point is one of the following:
                             //   1. A range with sheet: Sheet3!A3:D7
                             //   2. A boolean: TRUE or FALSE (dependent on the language)
@@ -621,12 +623,23 @@ impl Lexer {
         }
     }
 
+    /// Excel allows `\` in defined names (`poi/46535.xlsx` Others!L12 evaluates to `#NAME?`).
+    /// With a comma decimal separator `\` separates array columns instead, so names there
+    /// cannot contain it.
+    fn backslash_in_names(&self) -> bool {
+        self.locale.numbers.symbols.decimal == "."
+    }
+
     // Consumes an identifier from the input stream
     fn consume_identifier(&mut self) -> String {
         let mut position = self.position;
         while position < self.len {
             let next_char = self.chars[position];
-            if next_char.is_alphanumeric() || next_char == '_' || next_char == '.' {
+            if next_char.is_alphanumeric()
+                || next_char == '_'
+                || next_char == '.'
+                || (next_char == '\\' && self.backslash_in_names())
+            {
                 position += 1;
             } else {
                 break;

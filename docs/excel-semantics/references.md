@@ -11,8 +11,11 @@ Tasks: T-0122
 ## Undefined names may contain backslashes
 Rule: an undefined name such as `HSI\10_1\1460_1\1470_1___val` parses as a name and evaluates
 to `#NAME?` (not a syntax error).
-Evidence: poi/46535.xlsx Others!L12, M12, M17:M20 (oracle: excel-graph, 2026-10-04).
-Status: VERIFIED
+Evidence: poi/46535.xlsx Others!L12, M12, M17:M20 (oracle: excel-graph, 2026-10-04); the
+StructuredReferences.xlsx table names containing `\` also parse (9 cells).
+Deviation note: in comma-decimal locales `\` is the array column separator, so the lexer only reads it
+as a name character when the decimal separator is `.`. That rule is an assumption, not probed.
+Status: VERIFIED (en-US); comma-decimal locales UNVERIFIED
 Tasks: T-0123
 
 ## External reference with no cached data is a rich-value error (undecoded)

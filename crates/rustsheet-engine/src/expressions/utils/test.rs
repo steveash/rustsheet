@@ -218,6 +218,8 @@ fn test_names() {
 #[test]
 fn test_a1_identifier_allows_r_and_c() {
     // is_valid_a1_identifier permits "R" and "C" (valid LAMBDA/LET variable names).
+    assert!(is_valid_a1_identifier("A\\B"));
+    assert!(is_valid_a1_identifier("\\name"));
     assert!(is_valid_a1_identifier("R"));
     assert!(is_valid_a1_identifier("r"));
     assert!(is_valid_a1_identifier("C"));
