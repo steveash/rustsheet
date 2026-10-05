@@ -26,6 +26,8 @@
 //! read was two hashes and two jumps to unrelated places in memory, which on a
 //! large sheet cost more than running the formulas.
 
+use std::collections::BTreeMap;
+
 use bitcode::{Decode, Encode};
 
 use crate::constants::LAST_ROW;
@@ -54,10 +56,13 @@ pub struct SheetData {
     chunks: Vec<Option<Box<Chunk>>>,
     /// How many rows exist.
     row_count: usize,
-    /// The number of the last column that holds a cell, 0 if none does. Kept
-    /// exact: writes only raise it, and removing a cell from that column
-    /// rescans the rows (`recompute_last_column`).
-    last_column: i32,
+    /// How many cells each column holds, columns with none left out. Its last
+    /// key is the last used column, so removals stay O(log columns) however
+    /// many rows share that column. Derived from the cells, kept in step by
+    /// every write. Not serialised, so bytes cannot forge it:
+    /// `Model::from_workbook` rebuilds it with `rebuild_column_counts`.
+    #[bitcode(skip)]
+    column_counts: BTreeMap<i32, usize>,
 }
 
 #[derive(Encode, Decode, Debug, Clone)]
@@ -193,7 +198,9 @@ impl SheetData {
     /// Puts a cell at a position and returns the one that was there.
     pub fn set_cell(&mut self, row: i32, column: i32, cell: Cell) -> Option<Cell> {
         let previous = self.row_or_insert(row)?.insert(column, cell);
-        self.last_column = self.last_column.max(column);
+        if previous.is_none() {
+            self.count_column(column);
+        }
         previous
     }
 
@@ -205,9 +212,7 @@ impl SheetData {
         if row_data.cells.is_empty() {
             self.remove_row(row);
         }
-        if column >= self.last_column {
-            self.recompute_last_column();
-        }
+        self.uncount_column(column);
         Some(cell)
     }
 
@@ -240,18 +245,31 @@ impl SheetData {
     }
 
     /// The number of the last column that holds a cell, or 0 for an empty sheet.
-    /// O(1), so callers can bound whole-row walks by it.
+    /// O(log columns), so callers can bound whole-row walks by it.
     pub(crate) fn last_column(&self) -> i32 {
-        self.last_column
+        self.column_counts.keys().next_back().copied().unwrap_or(0)
     }
 
-    /// Rescans the rows, visiting each once (not each cell).
-    fn recompute_last_column(&mut self) {
-        self.last_column = self
-            .rows_in_order()
-            .filter_map(|(_, row)| row.cells.last().map(|(column, _)| *column))
-            .max()
-            .unwrap_or(0);
+    /// Recounts the columns from the cells, for a sheet that was decoded.
+    pub(crate) fn rebuild_column_counts(&mut self) {
+        let mut counts = BTreeMap::new();
+        for (_, column, _) in self.cells() {
+            *counts.entry(column).or_insert(0) += 1;
+        }
+        self.column_counts = counts;
+    }
+
+    fn count_column(&mut self, column: i32) {
+        *self.column_counts.entry(column).or_insert(0) += 1;
+    }
+
+    fn uncount_column(&mut self, column: i32) {
+        if let Some(count) = self.column_counts.get_mut(&column) {
+            *count -= 1;
+            if *count == 0 {
+                self.column_counts.remove(&column);
+            }
+        }
     }
 
     /// The rows that exist, in ascending order.
@@ -288,17 +306,13 @@ impl SheetData {
             return;
         };
         if let Some(removed) = chunk.rows[index].take() {
-            let reached_last = removed
-                .cells
-                .last()
-                .is_some_and(|(column, _)| *column >= self.last_column);
             chunk.used -= 1;
             self.row_count -= 1;
             if chunk.used == 0 {
                 self.chunks[chunk_index] = None;
             }
-            if reached_last {
-                self.recompute_last_column();
+            for (column, _) in &removed.cells {
+                self.uncount_column(*column);
             }
         }
     }
@@ -325,12 +339,13 @@ impl SheetData {
             }
         });
         cells.shrink_to_fit();
-        let old_last = row_data.cells.last().map(|(column, _)| *column);
-        let new_last = cells.last().map(|(column, _)| *column);
-        row_data.cells = cells;
-        self.last_column = self.last_column.max(new_last.unwrap_or(0));
-        if old_last.is_some_and(|old| old >= self.last_column && Some(old) > new_last) {
-            self.recompute_last_column();
+        let old = std::mem::replace(&mut row_data.cells, cells);
+        let new_columns: Vec<i32> = row_data.cells.iter().map(|(column, _)| *column).collect();
+        for (column, _) in &old {
+            self.uncount_column(*column);
+        }
+        for column in new_columns {
+            self.count_column(column);
         }
     }
 }
@@ -365,6 +380,38 @@ mod test {
         assert_eq!(data.last_row(), 5000);
         data.remove_cell(5000, 3);
         assert_eq!(data.last_row(), 1024);
+    }
+
+    #[test]
+    fn last_column_survives_clearing_a_wide_sheet() {
+        let mut data = SheetData::new();
+        for row in 1..=20_000 {
+            data.set_cell(row, 3, number(1.0));
+            data.set_cell(row, 8, number(1.0));
+        }
+        data.set_cell(1, 8, number(2.0)); // a replace does not count twice
+        for row in 1..=20_000 {
+            data.remove_cell(row, 8);
+        }
+        assert_eq!(data.last_column(), 3);
+        for row in 1..=20_000 {
+            data.remove_row(row);
+        }
+        assert_eq!(data.last_column(), 0);
+    }
+
+    #[test]
+    fn last_column_is_rebuilt_after_decoding() {
+        let mut data = SheetData::new();
+        data.set_cell(2, 6, number(1.0));
+        data.set_cell(9, 3, number(1.0));
+        let mut decoded: SheetData = bitcode::decode(&bitcode::encode(&data)).unwrap();
+        // the counts are not part of the bytes
+        assert_eq!(decoded.last_column(), 0);
+        decoded.rebuild_column_counts();
+        assert_eq!(decoded.last_column(), 6);
+        decoded.remove_cell(2, 6);
+        assert_eq!(decoded.last_column(), 3);
     }
 
     #[test]

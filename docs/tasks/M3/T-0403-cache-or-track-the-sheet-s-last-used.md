@@ -25,8 +25,10 @@ T-0119 bounds whole-row search vectors with `SheetData::last_column` (sheet_data
 The same for `last_row` (already chunk-based and cheap).
 
 ## Outcome
-`SheetData` now keeps `last_column` as a field: writes only raise it, and removing or replacing the
-rightmost cell/row rescans the rows once. `last_column()` is O(1). Unit tests cover set, remove,
-row removal and row replacement. Timing (release, 100k rows): 1,000 `last_column()` calls take
-25 ns in total. No clean "before" figure was taken (the old scan visited all 100k rows per call).
-No eval delta (no function behaviour changed).
+`SheetData` keeps a per-column cell count (`column_counts`, not serialised; `Model::from_workbook` rebuilds it); `last_column()` is its last key, O(log
+columns), and every write (`set_cell`, `remove_cell`, `remove_row`, `set_row`) keeps it in step, so
+removals never rescan rows (the first design did and the security review rightly flagged it as
+quadratic for deletes/clears). Tests cover set, replace, remove, row removal/replacement and
+clearing a 20k-row sheet. Timing (release, 100k rows, first design, O(1) read): 1,000 reads took
+25 ns in total; the old scan visited every row per call and no clean "before" figure was taken, and
+the `MATCH(x,1:1,0)` end-to-end timing was not measured. No eval delta (no function behaviour changed).

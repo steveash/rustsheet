@@ -1609,23 +1609,14 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model, String> {
+    pub fn from_workbook(mut workbook: Workbook, language_id: &str) -> Result<Model, String> {
+        workbook.rebuild_derived_state();
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
 
         let defined_names = workbook.get_defined_names_with_scope();
-        // add all tables
-        // let mut tables = Vec::new();
-        // for worksheet in worksheets {
-        //     let mut tables_in_sheet = HashMap::new();
-        //     for table in &worksheet.tables {
-        //         tables_in_sheet.insert(table.name.clone(), table.clone());
-        //     }
-        //     tables.push(tables_in_sheet);
-        // }
-
         let locale =
             get_locale(&workbook.settings.locale).map_err(|_| "Invalid locale".to_string())?;
         let tz = Tz::parse(&workbook.settings.tz)?;
