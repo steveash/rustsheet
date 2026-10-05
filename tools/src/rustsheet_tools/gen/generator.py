@@ -63,6 +63,11 @@ TEXT_POOL: list[str] = [
 CRITERIA_POOL: list[Any] = [">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>"]
 
 
+def col_letter(index: int) -> str:
+    """Column letter for a 0-based index within A..Z (generated data sheets are narrow)."""
+    return chr(ord("A") + index)
+
+
 @dataclass
 class Catalog:
     operators: list[dict[str, Any]]
@@ -93,7 +98,7 @@ class Gen:
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
-        col = chr(ord("A") + self.rng.randrange(self.data_cols))
+        col = col_letter(self.rng.randrange(self.data_cols))
         row = self.rng.randrange(1, self.data_rows + 1)
         dollar_c = "$" if self.rng.random() < 0.2 else ""
         dollar_r = "$" if self.rng.random() < 0.2 else ""
@@ -103,8 +108,8 @@ class Gen:
         c0 = self.rng.randrange(self.data_cols - width + 1)
         r0 = self.rng.randrange(1, self.data_rows)
         r1 = self.rng.randrange(r0, self.data_rows + 1)
-        a = chr(ord("A") + c0)
-        b = chr(ord("A") + c0 + width - 1)
+        a = col_letter(c0)
+        b = col_letter(c0 + width - 1)
         return f"Data!{a}{r0}:{b}{r1}"
 
     # -- literals --------------------------------------------------------------------------
