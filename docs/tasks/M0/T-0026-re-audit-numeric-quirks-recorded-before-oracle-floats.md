@@ -3,7 +3,7 @@ id: T-0026
 title: "Re-audit numeric quirks recorded before oracle floats parsed exactly"
 milestone: M0
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
