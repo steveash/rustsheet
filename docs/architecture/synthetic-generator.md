@@ -462,6 +462,11 @@ Each workbook draws one policy. The policy multiplies category weights and pool 
 | `stats_fin` | statistical and financial functions with domain-edge params |
 | `structure` | deep DAGs, wide fan-in/out, cross-sheet chains, insert/delete MRs |
 
+Implemented so far (`rustsheet-gen --policy`): `random` (the catalog-driven P0 generator),
+`numeric-rules` (dense floating-point probes, suite `probes-numeric`) and `operators-refs` (M1
+operators and references only, no functions, suite `gen-m1`; T-0117). The last two are
+whole-suite policies rather than per-workbook draws.
+
 ---
 
 ## 6. Value generators (per-type edge pools)

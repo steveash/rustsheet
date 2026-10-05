@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
+from collections import Counter
 from pathlib import Path
 
 from rustsheet_tools import repo_root
 from rustsheet_tools.gen.generator import Catalog, generate_case
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
+from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
 from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1
 
 
@@ -109,3 +112,118 @@ def test_build_xlsx_pins_the_creation_time() -> None:
     with zipfile.ZipFile(io.BytesIO(first)) as z:
         assert b"2000-01-01T00:00:00Z" in z.read("docProps/core.xml")
     assert build_xlsx(spec) == first
+
+
+def _operators_refs_formulas() -> list[tuple[str, str, str]]:
+    """(category/form tag, cell, formula) for every probe of the default operators-refs run."""
+    return [
+        (c["hypotheses"][f"Calc!{cell}"], cell, f)
+        for c in generate_operators_refs(0)
+        for cell, f in c["sheets"][-1]["cells"].items()
+    ]
+
+
+def _strip_quoted(formula: str) -> str:
+    """Drops string literals and quoted sheet names so only formula syntax remains."""
+    return re.sub(r"'(?:[^']|'')*'", "S", re.sub(r'"(?:[^"]|"")*"', "T", formula))
+
+
+# One area operand: `Sheet!`-prefixed cell, cell range (corners may repeat the sheet), whole
+# column or whole row. Rows are 1-based; columns are letters.
+_REF = r"\$?[A-Z]{1,3}\$?\d+"
+_AREA = re.compile(
+    rf"(?:\w+|S)!(?:{_REF}(?::(?:(?:\w+|S)!)?{_REF})*|\$?[A-Z]{{1,3}}:\$?[A-Z]{{1,3}}|\$?\d+:\$?\d+)"
+)
+
+
+def _bounds(area: str) -> tuple[int, int, int, int]:
+    """(c0, r0, c1, r1) bounding box of an area token; whole rows/columns span the sheet."""
+    body = re.sub(r"(?:\w+|S)!", "", area).replace("$", "")
+    if re.fullmatch(r"[A-Z]+:[A-Z]+", body):
+        a, b = sorted(parse_a1(f"{x}1")[1] for x in body.split(":"))
+        return a, 1, b, 1_048_576
+    if re.fullmatch(r"\d+:\d+", body):
+        a, b = sorted(int(x) for x in body.split(":"))
+        return 0, a, 16_383, b
+    corners = [parse_a1(x) for x in body.split(":")]
+    cols, rows = [c for _, c in corners], [r + 1 for r, _ in corners]
+    return min(cols), min(rows), max(cols), max(rows)
+
+
+def _cells_covered(operands: list[str]) -> int:
+    """Cells in the intersection of space-separated area operands (sheets ignored: an upper bound)."""
+    c0, r0, c1, r1 = _bounds(operands[0])
+    for other in operands[1:]:
+        d0, s0, d1, s1 = _bounds(other)
+        c0, r0, c1, r1 = max(c0, d0), max(r0, s0), min(c1, d1), min(r1, s1)
+    return max(0, c1 - c0 + 1) * max(0, r1 - r0 + 1)
+
+
+def test_operators_refs_is_deterministic() -> None:
+    dump = json.dumps(generate_operators_refs(3), sort_keys=True)
+    assert dump == json.dumps(generate_operators_refs(3), sort_keys=True)
+    assert dump != json.dumps(generate_operators_refs(4), sort_keys=True)
+
+
+def test_operators_refs_has_no_function_names() -> None:
+    for _, _, f in _operators_refs_formulas():
+        assert not re.search(r"[A-Za-z_][A-Za-z0-9_.]*\(", _strip_quoted(f)), f
+
+
+def test_operators_refs_covers_every_category_with_distinct_probes() -> None:
+    probes = _operators_refs_formulas()
+    counts = Counter(tag.split("/")[0] for tag, _, _ in probes)
+    forms = Counter(tag.split("/")[0] for tag in {t for t, _, _ in probes})
+    assert set(counts) == set(CATEGORIES)
+    assert min(counts.values()) >= 50
+    assert all(forms[c] >= 3 for c in CATEGORIES if c != "mixed"), forms  # mixed is one random-tree form
+    # M1 exit: gen-m1 has >= 3,000 oracle cells; a formula repeated in a case is the same probe.
+    distinct = sum(len(set(c["sheets"][-1]["cells"].values())) for c in generate_operators_refs(0))
+    assert distinct >= 3000
+    for c in generate_operators_refs(0):
+        assert set(c["hypotheses"]) == set(c["check"])
+        assert c["expected"] == {}
+        assert build_xlsx(c)[:2] == b"PK"
+
+
+def test_operators_refs_whole_rows_and_columns_only_in_intersections() -> None:
+    seen = 0
+    for _, _, f in _operators_refs_formulas():
+        bare = _strip_quoted(f)
+        for m in _AREA.finditer(bare):
+            if not re.search(r"!\$?(?:[A-Z]+:\$?[A-Z]+|\d+:\$?\d+)$", m[0]):
+                continue
+            seen += 1
+            # Directly joined to another area by the space operator, on one side or the other.
+            before, after = bare[: m.start()], bare[m.end() :]
+            assert re.match(r" (?:\w+|S)!", after) or re.search(r"(?:^|[ (=])\S+ $", before), f
+    assert seen > 0
+
+
+def test_operators_refs_never_spill() -> None:
+    """Every range expression covers at most one cell, so no probe spills into the next."""
+    checked = 0
+    for tag, _, f in _operators_refs_formulas():
+        if tag.startswith("union/"):
+            continue  # unions are multi-area by design: Excel returns one value or an error
+        bare = _strip_quoted(f)
+        # Maximal runs of areas joined by the space (intersection) operator.
+        for run in re.finditer(rf"{_AREA.pattern}(?: {_AREA.pattern})*", bare):
+            operands = _AREA.findall(run[0])
+            assert _cells_covered(operands) <= 1, f
+            checked += 1
+    assert checked > 1000
+
+
+def test_operators_refs_is_bounded_and_locale_free() -> None:
+    for tag, cell, f in _operators_refs_formulas():
+        depth = max_depth = 0
+        for ch in _strip_quoted(f):
+            depth += {"(": 1, ")": -1}.get(ch, 0)
+            max_depth = max(max_depth, depth)
+        assert max_depth <= 6, f
+        for text in re.findall(r'"((?:[^"]|"")*)"', f):
+            assert not re.search(r"[/$,:]", text), f  # no date, currency or grouped-number text
+        if tag.startswith("chain/"):
+            row = int(cell[1:])
+            assert all(int(n) < row for n in re.findall(r"(?<![!\w$])\$?A\$?(\d+)", _strip_quoted(f))), f
