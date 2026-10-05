@@ -3,7 +3,7 @@ id: T-0238
 title: "Criteria: a numeric operand padded with spaces after the operator is a number"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
