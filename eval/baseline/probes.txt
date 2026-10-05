@@ -134,8 +134,6 @@ F	probes/timevalue-fractional-seconds.case.json	Sheet1!C10
 F	probes/timevalue-fractional-seconds.case.json	Sheet1!C11
 F	probes/timevalue-fractional-seconds.case.json	Sheet1!C12
 F	probes/timevalue-fractional-seconds.case.json	Sheet1!C13
-F	probes/timevalue-fractional-seconds.case.json	Sheet1!C14
-F	probes/timevalue-fractional-seconds.case.json	Sheet1!C15
 F	probes/timevalue-fractional-seconds.case.json	Sheet1!C16
 F	probes/timevalue-fractional-seconds.case.json	Sheet1!C17
 F	probes/timevalue-fractional-seconds.case.json	Sheet1!C18

@@ -852,7 +852,6 @@ fn stringify(
                     | WrongRangeKind { .. }
                     | OpRangeKind { .. }
                     | OpIntersectKind { .. }
-                    | OpConcatenateKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
                     | NamedFunctionKind { .. }
@@ -864,12 +863,13 @@ fn stringify(
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
-                    | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
-
-                    OpPowerKind { .. } | OpSumKind { .. } | UnaryKind { .. } => true,
+                    // Looser than the minus: `-(A1=B1)` is not `-A1=B1`; `--x` needs none.
+                    UnaryKind { ref kind, .. } => *kind == OpUnary::Percentage,
+                    OpPowerKind { .. } | OpSumKind { .. } | OpConcatenateKind { .. } => true,
+                    CompareKind { .. } => true,
                 };
                 if needs_parentheses {
                     format!(
