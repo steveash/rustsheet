@@ -10,7 +10,6 @@ use crate::expressions::lexer::LexerMode;
 use crate::expressions::parser::stringify::to_rc_format;
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
 use crate::expressions::parser::{Node, Parser, MAX_FORMULA_DEPTH, TOO_DEEP_MESSAGE};
-use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceRC;
 
 fn context() -> CellReferenceRC {
@@ -225,8 +224,16 @@ fn only_spaces_and_line_feeds_separate_operands() {
 fn ideographic_space_makes_a_name_error() {
     // Excel reads it as part of a name: `#NAME?` (probes/intersection-whitespace H7).
     let mut parser = parser();
-    let node = parser.parse("A1:A3\u{3000}A2:B2", &context());
-    assert_eq!(node, Node::ErrorKind(Error::NAME));
+    // The text is kept, as an undefined name (evaluates to #NAME?, prints as written).
+    let formula = "A1:A3\u{3000}A2:B2";
+    let node = parser.parse(formula, &context());
+    assert!(
+        matches!(&node, Node::NamedVariableKind { name, id: None } if name == formula),
+        "{node:?}"
+    );
+    assert_eq!(to_rc_format(&node), formula);
+    let node = parser.parse("SUM(A1:A3\u{3000}A2:B2)", &context());
+    assert_eq!(to_rc_format(&node), "SUM(A1:A3\u{3000}A2:B2)");
 }
 
 #[test]

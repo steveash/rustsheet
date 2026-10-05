@@ -3,7 +3,7 @@ id: T-0148
 title: "Intersection: only space and LF separate operands; reject non-reference operands"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,19 +31,19 @@ U+3000 probably stops the reference token and starts a name: check `=A1:A3<U+300
 out as `#NAME?`, not `#ERROR!`.
 
 ## Acceptance criteria
-- [ ] probes/intersection-whitespace H7 passes (`#NAME?`), with no new F lines anywhere.
-- [ ] Unit tests: each refused formula above parses to an error (the engine's `#ERROR!`), and
+- [x] probes/intersection-whitespace H7 passes (`#NAME?`), with no new F lines anywhere.
+- [x] Unit tests: each refused formula above parses to an error (the engine's `#ERROR!`), and
   space runs, LF and LF mixed with spaces still intersect.
-- [ ] The `Implemented in:` lines of the two references.md entries name the code.
-- [ ] `make check` green; reviewers approve.
+- [x] The `Implemented in:` lines of the two references.md entries name the code.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - `@` and union operands, and `(A1)(A2)` (T-0149).
 
 ## Outcome
 `Lexer::separator` + `Parser::parse_intersection`/`is_reference_operand`: only spaces and LF separate
-operands (CR, TAB, NBSP are parse errors), U+3000 starts a name (lexer name character)
-(`#NAME?`), and value operands (literals, value operators, non-`#REF!` errors, value functions) are
+operands (CR, TAB, NBSP are parse errors); an intersection with U+3000 becomes an undefined name holding
+its text (evaluates to `#NAME?`, prints as written, so FORMULATEXT and export keep it); value operands (literals, value operators, non-`#REF!` errors, value functions) are
 parse errors. Eval: probes/intersection-whitespace H7 fixed (probes known failures 61 -> 60), no
 regressions. Only SUM and NA calls are refused as operands; other functions are accepted, unverified (follow-up probe task).
 

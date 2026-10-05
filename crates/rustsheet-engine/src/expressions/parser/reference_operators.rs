@@ -17,6 +17,7 @@ impl Parser {
     /// (`A1:B2 B1:B3`, `(A1) B1`, `A1 OFFSET(...)`). Everywhere else it keeps its meaning
     /// of nothing at all: `= 1 + 2`, `SUM( A1 , B1 )`, `A1 -B1`, `{ 1 , 2 }`.
     pub(super) fn parse_intersection(&mut self) -> Node {
+        let start = self.lexer.get_position();
         let mut t = self.parse_range();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -46,7 +47,12 @@ impl Parser {
                 return self.intersection_error();
             }
             if name_error {
-                t = Node::ErrorKind(Error::NAME);
+                // An undefined name: evaluates to `#NAME?` and prints as written, so the formula
+                // text survives FORMULATEXT and export.
+                t = Node::NamedVariableKind {
+                    name: self.source_since(start),
+                    id: None,
+                };
                 continue;
             }
             if let Err(error) = self.grow(depth, self.depth) {
@@ -59,6 +65,19 @@ impl Parser {
             };
         }
         t
+    }
+
+    /// The formula text from char position `start` to the lexer's position, without the
+    /// surrounding whitespace.
+    fn source_since(&self, start: i32) -> String {
+        let formula: Vec<char> = self.lexer.get_formula().chars().collect();
+        let to_index = |p: i32| usize::try_from(p).unwrap_or(0).min(formula.len());
+        let (from, to) = (to_index(start), to_index(self.lexer.get_position()));
+        formula[from.min(to)..to]
+            .iter()
+            .collect::<String>()
+            .trim()
+            .to_string()
     }
 
     fn intersection_error(&self) -> Node {
