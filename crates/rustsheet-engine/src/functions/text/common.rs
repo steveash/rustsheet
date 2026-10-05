@@ -21,7 +21,7 @@ use crate::{
 /// EXACT, FIND, ...): a single scalar value or a 2-D array of values.
 /// When any argument is an array (e.g. a SEQUENCE or a multi-cell range) the
 /// scalar arguments are broadcast across it and the result is an array.
-pub(super) enum TextArg {
+pub(crate) enum TextArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
 }
@@ -31,7 +31,7 @@ static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
 
 impl TextArg {
     /// The (rows, columns) shape of this argument.
-    pub(super) fn dims(&self) -> (usize, usize) {
+    pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             TextArg::Scalar(_) => (1, 1),
             TextArg::Array(a) => (a.len(), a.first().map(|r| r.len()).unwrap_or(0)),
@@ -43,7 +43,7 @@ impl TextArg {
     /// Where the array is too short for that position the element is `#N/A`,
     /// as in Excel. It is an error like any other: if an earlier argument of
     /// the function is an error too, that one comes first.
-    pub(super) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
+    pub(crate) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
         match self {
             TextArg::Scalar(n) => n,
             TextArg::Array(a) => bcast_idx(a.len(), i)
@@ -220,7 +220,7 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
 /// Broadcasts `compute` over the (possibly array) `operands`. When every operand
 /// is a scalar the result is a single value; otherwise it is an array whose shape
 /// is the element-wise maximum of the operand shapes.
-pub(super) fn broadcast_text(
+pub(crate) fn broadcast_text(
     cell: CellReferenceIndex,
     operands: &[&TextArg],
     compute: impl Fn(usize, usize) -> Result<ArrayNode, Error>,
@@ -361,7 +361,17 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                // Excel: an array argument contributes every element, row by row, and an
+                // error element is the result (gen-m2/d0c29dd5c530e28c Calc!A246).
+                CalcResult::Array(rows) => {
+                    for node in rows.iter().flatten() {
+                        match array_node_to_string(node) {
+                            Ok(text) => result.push_str(&text),
+                            Err(error) => return CalcResult::new_error(error, cell, String::new()),
+                        }
+                    }
+                }
+                CalcResult::Lambda(_) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
@@ -634,7 +644,7 @@ impl Model {
     /// Evaluates an argument of a text function into a scalar value or a 2-D array of
     /// values. References to a single cell collapse to a scalar; multi-cell ranges
     /// and array literals/spills become arrays that the result is broadcast over.
-    pub(super) fn text_arg(
+    pub(crate) fn text_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,

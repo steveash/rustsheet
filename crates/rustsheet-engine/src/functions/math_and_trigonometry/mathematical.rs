@@ -4,6 +4,7 @@ use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
+use crate::functions::text::common::broadcast_text;
 use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
@@ -398,18 +399,23 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
+        // Excel lifts both arguments element-wise; an error argument wins, first one first
+        // (gen-m2/893302d6c5b99e2e Calc!A313).
+        let value = match self.text_arg(&args[0], cell) {
+            Ok(a) => a,
+            Err(e) => return e,
         };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
+        let digits = match self.text_arg(&args[1], cell) {
+            Ok(a) => a,
+            Err(e) => return e,
         };
-        match round_decimal(value, number_of_digits, mode) {
-            Some(result) => CalcResult::Number(result),
-            None => CalcResult::new_error(Error::NUM, cell, "Result is too large".to_string()),
-        }
+        broadcast_text(cell, &[&value, &digits], |i, j| {
+            let value = self.array_node_to_number(value.elem(i, j))?;
+            let digits = self.array_node_to_number(digits.elem(i, j))?;
+            round_decimal(value, digits, mode)
+                .map(ArrayNode::Number)
+                .ok_or(Error::NUM)
+        })
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
