@@ -3,7 +3,7 @@ id: T-0015
 title: "spec2xlsx: deterministic output so oracle input_sha256 and the cache are reproducible"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,9 +22,12 @@ workbook to Excel. Likely fix: pass a fixed `created` date via `Workbook.set_pro
 for any other run-dependent bytes, e.g. zip timestamps).
 
 ## Acceptance criteria
-- [ ] A test builds the same spec twice (with a time change in between, e.g. a patched clock) and gets identical bytes.
-- [ ] Existing sidecars' `input_sha256` either match the new deterministic output or are documented as legacy.
-- [ ] `make check` green; reviewers approve.
+- [x] A test builds the same spec twice (with a time change in between, e.g. a patched clock) and gets identical bytes.
+- [x] Existing sidecars' `input_sha256` either match the new deterministic output or are documented as legacy.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Changing the case format or re-filling sidecars (values do not depend on the hash).
+
+## Outcome
+spec2xlsx pins `created` via `set_properties`; test asserts the pinned date and identical rebuilds. Zip entry timestamps were checked (all fixed at 1980-01-01). Existing sidecar hashes are documented as legacy in `docs/architecture/eval-harness.md`. Eval delta none.
