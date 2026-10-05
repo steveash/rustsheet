@@ -3,7 +3,7 @@ id: T-0143
 title: "Truncate numeric literals and number text to 15 significant digits on parse"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
