@@ -4,6 +4,7 @@ use regex::Regex;
 use regex_lite::Regex;
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -84,7 +85,7 @@ fn linear_search(
             candidates.into_iter().find(|&idx| {
                 let text = match array.get(idx) {
                     CalcResult::String(s) => s.clone(),
-                    CalcResult::Number(n) => n.to_string(),
+                    CalcResult::Number(n) => number_to_text(*n),
                     CalcResult::Boolean(b) => b.to_string(),
                     _ => return false,
                 };

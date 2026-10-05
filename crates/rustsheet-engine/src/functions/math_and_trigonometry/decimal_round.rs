@@ -12,6 +12,8 @@
 //! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
 //! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
 
+use crate::number_format::significant_15;
+
 /// How the final digit is chosen in stage 2.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum RoundMode {
@@ -25,8 +27,6 @@ pub(crate) enum RoundMode {
 
 /// Significant digits Excel keeps before rounding.
 const SIGNIFICANT_DIGITS: i64 = 15;
-/// More significant digits than any double's exact decimal expansion (at most 767).
-const EXACT_DIGITS: usize = 800;
 /// `num_digits` beyond this magnitude rounds every finite double the same way, so clamping it
 /// keeps the exponent arithmetic small without changing any result.
 const MAX_NUM_DIGITS: f64 = 10_000.0;
@@ -97,51 +97,6 @@ fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> u64 {
         RoundMode::Down => false,
     };
     kept + u64::from(round_up)
-}
-
-/// The exact decimal value of positive finite `value` cut to 15 significant digits:
-/// `(mantissa, exponent)` with `value ≈ mantissa / 10^14 * 10^exponent` and
-/// `10^14 <= mantissa < 10^15`. Digits past the 15th round to nearest; an exact tie goes away
-/// from zero when `tie_away`, otherwise toward zero.
-fn significant_15(value: f64, tie_away: bool) -> (u64, i64) {
-    // 25 correctly rounded digits decide every case except a possible exact tie, which needs
-    // the exact expansion (rare: only values with a 5 as 16th digit and zeros after it).
-    let (mut digits, mut exponent) = scientific_digits(value, 25);
-    if is_possible_tie(&digits) {
-        (digits, exponent) = scientific_digits(value, EXACT_DIGITS);
-    }
-    let lead = digits.get(..15).unwrap_or_default();
-    let mut mantissa = lead
-        .iter()
-        .fold(0_u64, |acc, d| acc * 10 + u64::from(d - b'0'));
-    let rest = digits.get(15..).unwrap_or_default();
-    let round_up = match rest.split_first() {
-        Some((&first, _)) if first > b'5' => true,
-        Some((&b'5', tail)) => tie_away || tail.iter().any(|&d| d != b'0'),
-        _ => false,
-    };
-    if round_up {
-        mantissa += 1;
-        if mantissa == 1_000_000_000_000_000 {
-            mantissa /= 10;
-            exponent += 1;
-        }
-    }
-    (mantissa, exponent)
-}
-
-/// True when the 16th significant digit is 5 and every later printed digit is 0.
-fn is_possible_tie(digits: &[u8]) -> bool {
-    digits.get(15) == Some(&b'5') && digits.iter().skip(16).all(|&d| d == b'0')
-}
-
-/// The first `count` significant digits of positive finite `value` (correctly rounded) and its
-/// decimal exponent.
-fn scientific_digits(value: f64, count: usize) -> (Vec<u8>, i64) {
-    let text = format!("{:.*e}", count - 1, value);
-    let (mantissa, exponent) = text.split_once('e').unwrap_or((&text, "0"));
-    let digits = mantissa.bytes().filter(u8::is_ascii_digit).collect();
-    (digits, exponent.parse().unwrap_or(0))
 }
 
 #[cfg(test)]

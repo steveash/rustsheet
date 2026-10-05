@@ -1,3 +1,4 @@
+use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
@@ -308,7 +309,7 @@ impl Model {
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::String(value) => result = format!("{result}{value}"),
-                CalcResult::Number(value) => result = format!("{result}{value}"),
+                CalcResult::Number(value) => result.push_str(&number_to_text(value)),
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Boolean(value) => {
                     if value {
@@ -336,7 +337,9 @@ impl Model {
                                 CalcResult::String(value) => {
                                     result = format!("{result}{value}");
                                 }
-                                CalcResult::Number(value) => result = format!("{result}{value}"),
+                                CalcResult::Number(value) => {
+                                    result.push_str(&number_to_text(value))
+                                }
                                 CalcResult::Boolean(value) => {
                                     if value {
                                         result = format!("{result}TRUE");
@@ -573,7 +576,7 @@ impl Model {
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{v}"),
+                CalcResult::Number(v) => number_to_text(v),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -963,7 +966,7 @@ impl Model {
         let mut values = Vec::new();
         for arg in &args[2..] {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(format!("{value}")),
+                CalcResult::Number(value) => values.push(number_to_text(value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -991,7 +994,7 @@ impl Model {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    values.push(format!("{value}"));
+                                    values.push(number_to_text(value));
                                 }
                                 CalcResult::String(value) => values.push(value),
                                 CalcResult::Boolean(value) => {

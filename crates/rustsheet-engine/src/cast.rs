@@ -1,3 +1,4 @@
+use crate::number_format::number_to_text;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -43,7 +44,7 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
 /// [`Model::cast_to_string`]. Errors propagate.
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     match node {
-        ArrayNode::Number(f) => Ok(format!("{f}")),
+        ArrayNode::Number(f) => Ok(number_to_text(*f)),
         ArrayNode::String(s) => Ok(s.clone()),
         ArrayNode::Boolean(b) => Ok(if *b {
             "TRUE".to_string()
@@ -351,11 +352,9 @@ impl Model {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
-        // FIXME: I think when casting a number we should convert it to_precision(x, 15)
-        // See function Exact
         let result = self.dereference(result, cell);
         match result {
-            CalcResult::Number(f) => Ok(format!("{f}")),
+            CalcResult::Number(f) => Ok(number_to_text(f)),
             CalcResult::String(s) => Ok(s),
             CalcResult::Boolean(f) => {
                 if f {
