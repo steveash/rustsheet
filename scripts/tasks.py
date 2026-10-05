@@ -303,7 +303,7 @@ def main() -> int:
         cands = available(tasks, by_id, arg("--lane"), arg("--tier"), fetch="--no-fetch" not in sys.argv)
         if cmd == "ready":
             for t in cands:
-                print(f"{t['id']}  {t.get('lane'):<9} {t['title']}")
+                print(f"{t['id']}  {t.get('lane')!s:<9} {t['title']}")
             print(f"{len(cands)} ready")
             return 0
         if not cands:

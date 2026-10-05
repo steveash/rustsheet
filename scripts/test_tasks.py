@@ -158,7 +158,6 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0002", tier="sonnet")
             self.assertEqual(self.run_next(root, "sonnet", ({"T-0001"}, set())), "T-0002")
 
-
     def test_ready_lists_what_next_could_pick_and_counts_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

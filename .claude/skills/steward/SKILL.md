@@ -29,6 +29,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Never idle on an open PR without a wake-up**: after opening a PR, arm a safety-net check-in
   (`send_later`, ~50 min) when the tool exists, so a lost event or an unnoticed conflict is
   caught; re-arm while the PR is open.
+- **Sonnet queue buffer** (decision 0021): in the steward's queue step, also run
+  `make ready-tasks TIER=sonnet`; below 10 ready, run the gap-triager and/or planner to cut
+  sonnet-sized tasks by the tier rubric (never relabel a task to reach the number).
 - **Generated files**: never hand-edit `eval/baseline/*.txt` or `quality/*.json`; regenerate with
   `make eval-baseline` and the `scripts/check_*.py --update` commands. `docs/tasks/BOARD.md` is
   git-ignored and never committed (decision 0017).
