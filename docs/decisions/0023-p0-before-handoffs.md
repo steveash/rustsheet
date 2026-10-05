@@ -9,9 +9,11 @@
   milestone, priority and id as before. A handoff is still resumed before any non-P0 work, and its
   branch still does not make its lane busy.
 - **Also (same PR):** decision numbers collided on 2026-10-05 (T-0032 and T-0033 both wrote 0021
-  in parallel PRs). The status-log record is renumbered 0024, and `scripts/check_governance.py`
-  (run by `make hygiene` and CI) now fails when two records share a number. CI tests the PR merged
-  with main, so the second PR to land sees the clash.
+  in parallel PRs). The status-log record is renumbered 0024, and `scripts/check_decisions.py`
+  (run by `make hygiene`, so by `make check` and CI on PRs and on main) fails when two records share
+  a number or a record is not named `NNNN-slug.md`. It needs no git or base ref, so it cannot be
+  skipped. CI tests the PR merged with main, so the second PR to land sees the clash; one that slips
+  through fails main's next run.
 - **Consequences:** a P0 is never delayed by an escalation. The worker prompts need no change: the
   opus worker's first `make next-task TIER=opus` returns the P0 (it is not a handoff, so the worker
   takes it through the lane walk, and P0 tasks have so far always sat in critical lanes). This
