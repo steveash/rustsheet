@@ -18,10 +18,10 @@ intersection), a disjoint one is `#NULL!`, a constant is its value.
 
 ## Context
 `probes/defined-name-intersection.case.json` (oracle: excel-graph, T-0043) fails on 9 of its
-10 formula cells: the engine answers `#NAME?` with "Defined name ... is not a reference"
+10 formula cells (H9 `=ISREF(disj)` passes only because `ISREF(#NAME?)` is FALSE too): the engine answers `#NAME?` with "Defined name ... is not a reference"
 (`crates/rustsheet-engine/src/model.rs` ~725). `parse_defined_names` (`new_empty.rs`) only keeps
 reference and LAMBDA bodies, so any other body is dropped. Semantics:
-docs/excel-semantics/references.md "A defined name may be an intersection". T-0152 also touches
+docs/excel-semantics/references.md "A defined name may be an intersection" and "A defined name may be a constant". T-0152 also touches
 name-body evaluation (`Sheet1!#REF!` bodies); reuse whatever it lands rather than adding a
 second path. Recursion through names (`a` = `=b`, `b` = `=a`) must stay bounded (directive 5).
 
