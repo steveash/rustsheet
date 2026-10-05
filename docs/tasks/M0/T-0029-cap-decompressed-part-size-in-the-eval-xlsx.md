@@ -3,7 +3,7 @@ id: T-0029
 title: "Cap decompressed part size in the eval xlsx snapshot reader"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
