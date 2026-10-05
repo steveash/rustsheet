@@ -308,6 +308,13 @@ fn bool_or_error_operand_matcher<'a>(
     }
 }
 
+/// Parses a numeric criterion operand. Excel ignores spaces around it (`"> 1"`,
+/// `">1 "`, `"=  1  "` all compare numerically); a tab is not ignored.
+/// Evidence: probes/criteria-padded-operand C1-C17 and probes/criteria-gaps C16-C18, C22.
+fn parse_criterion_number(v: &str) -> Result<f64, std::num::ParseFloatError> {
+    v.trim_matches(' ').parse::<f64>()
+}
+
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
 pub(crate) fn build_criteria_with<'a>(
     value: &'a CalcResult,
@@ -317,7 +324,7 @@ pub(crate) fn build_criteria_with<'a>(
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
                     m
@@ -329,7 +336,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
                     m
@@ -342,7 +349,7 @@ pub(crate) fn build_criteria_with<'a>(
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
                 // Same for both flavors: `<>ab` is an exact not-equal, never a prefix test.
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_not_equal_to_bool(x, b))
@@ -362,7 +369,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
                     m
@@ -374,7 +381,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
                     m
@@ -388,7 +395,7 @@ pub(crate) fn build_criteria_with<'a>(
             } else {
                 let explicit_equals = s.starts_with('=');
                 let v = s.strip_prefix('=').unwrap_or(s);
-                if let Ok(f) = v.parse::<f64>() {
+                if let Ok(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_equal_to_bool(x, b))
