@@ -124,3 +124,13 @@ round-trips as written; `Data!A1:Other!B2` (corners on different sheets) gives `
 `Data!A:Data!B`, `Data!1:Data!2` and `Data!A1:Data!B` still fail to parse (T-0139).
 Status: UNVERIFIED (probe pending, T-0139)
 Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs)
+
+## OFFSET: an empty height or width argument means the reference's size
+Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
+is the reference's height or width, as if the argument were left out; it is not 0.
+`SUM(OFFSET(K7:L8,0,0,1,))` = K7+L7, `SUM(OFFSET(K7:L8,0,0,,1))` = K7+K8,
+`SUM(OFFSET(K7:L8,0,0,,))` and `SUM(OFFSET(K7:L8,0,0,))` = the whole K7:L8.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!I1008 (2.001),
+J1008 (3), M1008 and N1008 (7.0009); K7:L8 = {1, 1.001; 2, 2.9999}.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0946
