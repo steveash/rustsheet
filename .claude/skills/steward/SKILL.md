@@ -13,7 +13,8 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Branch updates**: merge `origin/main` into the branch (never rebase/force-push a pushed branch).
 - **Merge conflicts are never "waiting on CI"** (decision 0020). GitHub runs no CI on a PR that
   conflicts with `main`, so no CI event will ever arrive and waiting deadlocks the PR. Check the
-  PR's `mergeable_state` (GitHub MCP `pull_request_read` method `get`; re-read once if `unknown`):
+  PR's `mergeable_state` (GitHub MCP `pull_request_read` method `get`; if still `unknown` after one
+  re-read, test-merge `origin/main` locally, and otherwise re-check at the next check-in):
   - after every push and right after opening the PR;
   - on every PR event or check-in, before anything else;
   - after any PR merges to `main` (yours or another session's): re-check every open PR this
@@ -22,7 +23,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   If it is `dirty`: `git fetch origin main`, merge `origin/main` into the branch now, resolve
   (keep both sides' features; status-log conflicts keep both lines; regenerate baselines with
   `make eval-baseline` and take `main`'s side of generated files first), run `make check`, push.
-  Do the same for a stale open agent PR from another session whose task is otherwise done
+  Do the same for a stale open agent PR (an `agent/*` branch only, never a human's branch) from another session whose task is otherwise done
   (a merge commit only, never a rewrite), and say so on that PR. Ask only when both sides changed
   the same logic and either choice loses behavior.
 - **Never idle on an open PR without a wake-up**: after opening a PR, arm a safety-net check-in

@@ -23,7 +23,7 @@ baselines). Owner asked for the instructions to make conflict resolution proacti
       `dirty` → merge main, resolve, `make check`, push; arm a safety-net check-in after opening a PR.
 - [x] work-loop step 3 points to it; decision 0020 records it.
 - [x] `make check` runs `typos` (CI-only before; #56 and #53 went red on it after a green local check).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Routine prompt text (docs/process/routines.md): the routines read these skills, so no re-apply is needed.
