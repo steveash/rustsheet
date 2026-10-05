@@ -18,3 +18,9 @@ pub use refs::{
 };
 pub use value::{Array, ArrayShapeError, ErrorKind, Value, XlError};
 pub use workbook::{CellInfo, LoadOptions, SaveOptions, SheetMeta, Workbook, WorkbookOptions};
+
+/// Every worksheet function the engine implements, by its en-US name (`SUM`, `ERROR.TYPE`), sorted.
+#[must_use]
+pub fn implemented_functions() -> Vec<String> {
+    rustsheet_engine::implemented_function_names()
+}

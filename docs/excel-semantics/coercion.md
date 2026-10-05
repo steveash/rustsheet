@@ -84,10 +84,16 @@ Rule: when the left operand is a one-cell range holding an error and the right o
 the result is the left error: `(Data!C1:C10 Data!B9:D9)/Data!D$5` with C9 = `#N/A` and
 D5 = `#DIV/0!` is `#N/A`. `handle_arithmetic` lifts a scalar right-hand error to a 1x1 array, so the
 left range's element error is seen first (`arithmetic_on_values`, case 4).
-Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105).
-Status: VERIFIED (one cell; the multi-cell case is unprobed)
+The same holds element by element for a multi-cell range. Each element shows its own error if it has
+one, and otherwise the scalar's error. A text element fails with `#VALUE!` before the scalar's error.
+With C8 = 7, C9 = `#N/A`, C10 = "x" and D5 = `#DIV/0!`: `=Data!C8:C9/Data!D5` is {`#DIV/0!`; `#N/A`},
+`=Data!C9:C10/Data!D5` and `=Data!C9:C10+Data!D5` are {`#N/A`; `#VALUE!`}, and a scalar left error wins
+over every element (`=Data!D5/Data!C8:C9` is `#DIV/0!` twice).
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105);
+probes/arith-range-error-precedence (oracle: excel-graph, 2026-10-05, T-0138).
+Status: VERIFIED
 Implemented in: `Model::handle_arithmetic` (crates/rustsheet-engine/src/arithmetic.rs)
-Tasks: T-0137
+Tasks: T-0137, T-0138
 
 ## Text longer than 32,767 characters
 Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
