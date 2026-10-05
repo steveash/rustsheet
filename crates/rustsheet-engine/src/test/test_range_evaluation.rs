@@ -166,3 +166,21 @@ fn test_range_with_both_corners_reversed() {
 
     assert_eq!(model._get_text("Data!E1"), "10");
 }
+
+#[test]
+fn test_array_arithmetic_coerces_text_elements() {
+    let mut model = new_empty_model();
+    model._set("B1", "' 2 ");
+    model._set("B2", "abc");
+    model._set("A1", "=B1:B1/1");
+    model._set("A2", "=B1:B1*2.5");
+    model._set("A3", "=B1:B1/0");
+    model._set("A4", "=B2:B2+1");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), "2");
+    assert_eq!(model._get_text("A2"), "5");
+    assert_eq!(model._get_text("A3"), "#DIV/0!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+}
