@@ -21,16 +21,38 @@ fn fn_concatenate() {
 
     model._set("B1", r#"=CONCATENATE(A1, A2, A3, "!")"#);
     model._set("C2", r#"=CONCATENATE(@A1:A3, "!")"#);
-    // FIXME: this should be an array ["Hello!", " my!", "World!"] and spill
-    // Instead we are doing implicit intersection
+    // An array argument lifts element-wise and spills: ["Hello!", " my!", "World!"].
     model._set("B2", r#"=CONCATENATE(A1:A3, "!")"#);
     model._set("D3", r#"=CONCAT(A1:A3, "!")"#);
 
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"Hello my World!");
-    // FIXME: this is wrong
-    assert_eq!(model._get_text("B2"), *" my !");
+    assert_eq!(model._get_text("B2"), *"Hello!");
+    assert_eq!(model._get_text("B3"), *" my !");
+    assert_eq!(model._get_text("B4"), *"World!");
     assert_eq!(model._get_text("D3"), *"Hello my World!");
     assert_eq!(model._get_text("C2"), *" my !");
+}
+
+#[test]
+fn fn_concatenate_lifts_over_arrays() {
+    let mut model = new_empty_model();
+    model._set("A1", "a");
+    model._set("A2", "b");
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("D1", "=CONCATENATE(A1:A2,\"x\")");
+    model._set("F1", "=CONCATENATE(A1:A2,B1:B2)");
+    model._set("H1", "=CONCATENATE(\"p\",\"q\",1)");
+    model._set("J1", "=CONCAT(A1:A2)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"ax");
+    assert_eq!(model._get_text("D2"), *"bx");
+    assert_eq!(model._get_text("F1"), *"a1");
+    assert_eq!(model._get_text("F2"), *"b2");
+    assert_eq!(model._get_text("H1"), *"pq1");
+    assert_eq!(model._get_text("J1"), *"ab");
 }

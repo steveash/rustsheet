@@ -30,3 +30,4 @@ gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
 Status: VERIFIED
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
+Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/common.rs) via `text_arg` + `broadcast_text` (T-0226).

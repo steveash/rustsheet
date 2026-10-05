@@ -3,7 +3,7 @@ id: T-0226
 title: "CONCATENATE on array arguments: lift element-wise instead of #VALUE! (2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -51,3 +51,6 @@ not write a new helper. Keep the scalar path's results exactly as they are.
 - Element-wise error propagation over arrays in operators (T-0129).
 - Mismatched array shapes beyond size-1 broadcasting (keep whatever `broadcast_text` does
   and file a probe task if a case needs it).
+
+## Outcome
+CONCATENATE now lifts over range/array arguments via `text_arg` + `broadcast_text`; static analysis reports an array result. gen-m2 known failures 1518 -> 1514 (4 fixed, the 2 targets plus 2 more), no regressions.

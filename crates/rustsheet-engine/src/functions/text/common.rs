@@ -1088,22 +1088,6 @@ impl Model {
             )
         })
     }
-    pub(crate) fn fn_concatenate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count == 0 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let mut text_array = Vec::new();
-        for arg in args {
-            let text = match self.get_string(arg, cell) {
-                Ok(s) => s,
-                Err(error) => return error,
-            };
-            text_array.push(text)
-        }
-        CalcResult::String(text_array.join(""))
-    }
-
     // EXACT(text1, text2)
     // If any of the arguments is an array it compares element by element.
     pub(crate) fn fn_exact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
