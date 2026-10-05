@@ -39,8 +39,8 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
 
 **Concurrency policy (Max-subscription friendly):**
 - The workers are the routines in `routines.md`: by default one sonnet and one opus worker, each
-  looping over tasks of its tier for up to ~100 minutes per run (decision 0022), plus an optional
-  second sonnet worker. Each walks the `**Critical lane:**` list in `docs/status.md`, then
+  looping over tasks of its tier for up to ~110 minutes and 10 tasks per run (decisions 0022,
+  0025), plus an optional second sonnet worker. Each walks the `**Critical lane:**` list in `docs/status.md`, then
   `functions` (every `functions-*` lane; allowlist and rules in `routines.md`).
 - One task in flight per lane. `make next-task` enforces it: it skips tasks claimed by a pushed
   branch and lanes with a branch that moved in the last 2 hours (handoffs, and branches whose task

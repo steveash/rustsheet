@@ -50,7 +50,7 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
 re-run only the reviewers that did not approve. Max 3 review rounds; if still blocked, set the
 task `status: blocked` with a "Blocked because" section, push the branch, open the PR as draft,
-and stop.
+and stop work on this task (pick the next one at step 1 while the session budget allows).
 
 ## 5b. Escalate (sonnet runs only)
 Stop and hand the task to `opus` when `make check` fails twice on the same cause, a reviewer
@@ -60,8 +60,9 @@ design question). Then: push the branch; append a `## Handoff` section to the ta
 tried, what failed with the relevant error or finding, what you would do next; redact secrets and
 never paste environment or oracle-credential output); set `tier: opus` and
 `status: todo`; commit and push that to the branch; open the PR as draft if one does not exist;
-stop. Do not keep retrying: a handoff costs less than a third failed attempt. Opus runs never
-escalate; they block per step 5 instead.
+stop work on this task and pick the next one at step 1 while the session budget allows. Do not
+keep retrying: a handoff costs less than a third failed attempt. Opus runs never escalate; they
+block per step 5 instead.
 
 An opus run resuming a handoff first renames the heading to `## Handoff (resumed)`, commits and
 pushes that (the claim; otherwise the next opus run would take the same branch), then works from
@@ -81,6 +82,8 @@ file and its acceptance criteria.
    **squash-merge**. If `main` moved, merge `origin/main` into the branch, re-run `make check`,
    push, and check mergeability and CI again.
 4. Delete the branch.
+5. Go back to step 1 for the next task while the session budget allows (110 minutes, 10 tasks;
+   decision 0025); the opus tier first does step 6.5.
 
 ## 6.5 Queue health (opus tier only)
 After the merge, run `make ready-tasks TIER=sonnet`. If it reports fewer than
@@ -89,9 +92,8 @@ and/or the `planner` agent for the current milestone, telling it to cut sonnet-s
 tier rubric, until 10–15 are ready or no sonnet-sized work remains. Land the new task files in
 their own PR (task-only PRs need no task id of their own; title `tasks: refill sonnet queue`) or
 with your next PR. Never mark a task `sonnet` just to reach the number.
-This planning is part of the same session, not a second task: the opus worker still completes
-exactly one task per run.
+This planning is part of the same session and does not count as a task.
 
 ## 7. Report
-Final message: task id, PR link, eval delta, follow-up tasks created. Create every follow-up task
-with `make new-task` (it assigns a collision-free id; decision 0016) and push it with the PR.
+Final message, once per session, for each task: task id, PR link, eval delta, follow-up tasks
+created. Create every follow-up task with `make new-task` (it assigns a collision-free id; decision 0016) and push it with the PR.

@@ -20,8 +20,9 @@
     handoff (decision 0018), which the opus worker may still resume, or its task is already
     `done` on main (merged, branch not yet deleted).
   - Both worker prompts loop: after each merge they pick the next task, until 100 minutes into
-    the session (at most 6 tasks). Both run every 2 hours, staggered by an hour; an optional
-    second sonnet worker (same prompt, odd hours) can be added when usage allows.
+    the session (at most 6 tasks; raised to 110 minutes and 10 tasks by decision 0025). Both run
+    every 2 hours, staggered by an hour; an optional second sonnet worker (same prompt, odd
+    hours) can be added when usage allows.
 - **Consequences:**
   - Several workers can fix functions at once; fixes spanning families take their main module's lane.
   - Fewer cold starts per task. A run may overlap the next scheduled run of another worker; the
