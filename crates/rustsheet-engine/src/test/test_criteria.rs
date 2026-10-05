@@ -67,6 +67,38 @@ fn test_build_criteria_is_bool() {
 }
 
 #[test]
+fn test_build_criteria_ordering_with_bool_operand() {
+    // Excel (probes/criteria-operands C1-C4): `<`/`>` match nothing, `<=`/`>=` act as equality.
+    // The `#N/A` operand is covered by the same eval cells (C5-C8).
+    let t = CalcResult::Boolean(true);
+    let text = CalcResult::String("abc".to_string());
+    for op in ["<", ">"] {
+        let c = CalcResult::String(format!("{op}TRUE"));
+        let f = build_criteria(&c, en_locale());
+        assert!(!f(&t) && !f(&text));
+    }
+    for op in ["<=", ">="] {
+        let c = CalcResult::String(format!("{op}TRUE"));
+        let f = build_criteria(&c, en_locale());
+        assert!(f(&t) && !f(&text) && !f(&CalcResult::Boolean(false)));
+    }
+}
+
+#[test]
+fn test_database_explicit_equals_is_exact_not_prefix() {
+    // probes/criteria-operands D18: `ab` matches "abc" by prefix, `=ab` does not.
+    let abc = CalcResult::String("abc".to_string());
+    let (plain_c, exact_c) = (
+        CalcResult::String("ab".to_string()),
+        CalcResult::String("=ab".to_string()),
+    );
+    let plain = build_criteria_with(&plain_c, en_locale(), CriteriaFlavor::Database);
+    let exact = build_criteria_with(&exact_c, en_locale(), CriteriaFlavor::Database);
+    assert!(plain(&abc) && !exact(&abc));
+    assert!(exact(&CalcResult::String("AB".to_string())));
+}
+
+#[test]
 fn test_build_criteria_is_less_than() {
     let c = CalcResult::String("<100".to_string());
     let fn_criteria = build_criteria(&c, en_locale());
