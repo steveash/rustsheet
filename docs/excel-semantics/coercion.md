@@ -44,5 +44,16 @@ observed number-producing text cell is " 2 ". That this is the same routine as s
 coercion is an inference for T-0131's probe to confirm.
 Evidence: gen-m1/1ce5b2467b3b19fd Calc!A14, A79, A99; gen-m1/9646257ac139cd1e Calc!A25, A81 (oracle:
 excel-graph, 2026-10-05, T-0109). The scalar form `-" 2 "*2` = -4 (gen-m1/10f579127ffb6d9b A106).
+The same holds for a one-cell intersection of a whole row: `('Q''1'!5:5 'Q''1'!B5)+2` with B5 = " 2 "
+is 4 (gen-m1/7cb99acdd82402f1 Calc!A72, A103, A217, A235; found in T-0105).
 Status: VERIFIED
 Tasks: T-0131
+
+## An error in a range operand of arithmetic wins over the right operand's error
+Rule: when the left operand is a one-cell range holding an error and the right operand is an error,
+the result is the left error: `(Data!C1:C10 Data!B9:D9)/Data!D$5` with C9 = `#N/A` and
+D5 = `#DIV/0!` is `#N/A`. RustSheet gives `#DIV/0!`, because the range becomes an array whose
+elements are only looked at after the right operand's error has already been returned.
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105).
+Status: VERIFIED (one cell; the multi-cell case is unprobed)
+Tasks: T-0136

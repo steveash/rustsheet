@@ -53,6 +53,7 @@ reversed corners (`Data!C8:B3`) and range-of-ranges (`Data!A7:A7:Data!C11`).
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A5, A2, A3, A16; gen-m1/7cb99acdd82402f1 Calc!A25, A4;
 gen-m1/1ce5b2467b3b19fd Calc!A9, A25 (oracle: excel-graph, 2026-10-05; 632 cells across the three cases, T-0109).
 Status: VERIFIED
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_intersection`); reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
 ## Disjoint intersection is #NULL!
@@ -60,6 +61,7 @@ Rule: an intersection of references that share no cell is `#NULL!` (all 51 `inte
 `Data!A3:D4 Data!Z99` → `#NULL!`, `Data!B4:E11 Data!A1:A3` → `#NULL!`.
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A6, A10 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+Implemented in: reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
 ## Cross-sheet intersection is #VALUE!
@@ -67,6 +69,7 @@ Rule: an intersection of references on two different sheets is `#VALUE!`, not `#
 the coordinates overlap (all 43 `intersection/cross-sheet` cells): `Data!C5:C10 'My Data'!C9:D9` → `#VALUE!`.
 Evidence: gen-m1/4dc8ed1de05a61be Calc!A4, A17, A29 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
+Implemented in: reference_operators.rs (`Model::get_intersection`)
 Tasks: T-0105
 
 ## Union (comma) reference in a value context is #VALUE!
