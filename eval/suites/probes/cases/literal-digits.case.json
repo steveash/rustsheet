@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Numeric literals longer than 15 significant digits in formulas (found by T-0141)",
+  "tags": [
+    "M1",
+    "literals",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": "=MOD(2,1.7763568394002505E-12)",
+        "C2": "=MOD(2,1.77635683940025E-12)",
+        "C3": "=1.7763568394002505E-12-1.77635683940025E-12",
+        "C4": "=0.1+0.2-0.3",
+        "C5": "=1.00000000000000049-1",
+        "C6": "=1.0000000000000009-1"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!C2",
+    "Sheet1!C3",
+    "Sheet1!C4",
+    "Sheet1!C5",
+    "Sheet1!C6"
+  ]
+}
