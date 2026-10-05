@@ -196,4 +196,5 @@ is the reference's height or width, as if the argument were left out; it is not 
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!I1008 (2.001),
 J1008 (3), M1008 and N1008 (7.0009); K7:L8 = {1, 1.001; 2, 2.9999}.
 Status: VERIFIED (Excel-cached)
+Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0946
