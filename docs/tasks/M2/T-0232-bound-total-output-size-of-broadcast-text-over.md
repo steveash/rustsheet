@@ -3,7 +3,7 @@ id: T-0232
 title: "Bound total output size of broadcast_text over large ranges"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Found by the T-0226 security review. `broadcast_text` in `crates/rustsheet-engin
 
 ## Out of scope
 -
+
+## Outcome
+`broadcast_text` now returns `#VALUE!` once total string output exceeds 64 MiB (`util::within_text_budget`); DEVIATION entry in `docs/excel-semantics/text.md`. Eval delta: none.

@@ -10,7 +10,7 @@ use crate::{
     formatter::format::{format_number, parse_formatted_number},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{substitute, text_after, text_before, Case},
+        text::util::{self, substitute, text_after, text_before, Case},
     },
     model::Model,
     number_format::to_precision,
@@ -243,11 +243,22 @@ pub(super) fn broadcast_text(
         };
     }
 
+    let mut total_bytes: usize = 0;
     let mut result = Vec::with_capacity(rows);
     for i in 0..rows {
         let mut data_row = Vec::with_capacity(cols);
         for j in 0..cols {
-            data_row.push(compute(i, j).unwrap_or_else(ArrayNode::Error));
+            let value = compute(i, j).unwrap_or_else(ArrayNode::Error);
+            if let ArrayNode::String(s) = &value {
+                if !util::within_text_budget(&mut total_bytes, s.len()) {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Total text result is too large".to_string(),
+                    );
+                }
+            }
+            data_row.push(value);
         }
         result.push(data_row);
     }
