@@ -15,6 +15,7 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 threshold is left to T-0110. The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 
 ## ROUND uses decimal-correct half-away-from-zero
@@ -22,6 +23,7 @@ Rule: `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 in Excel, even though 
 binary values are slightly below the half. IronCalc returns 1 for the first.
 Evidence: probes/precision-and-rounding.case.json A6 (1.01), A7 (2.68), A8 (`ROUND(-2.5,0)` = -3).
 Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 
 ## Number → text conversion uses 15 significant digits
@@ -38,6 +40,7 @@ between 2.22E-16 and 1E-15 for small ones. Snapping does not apply inside the CO
 significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
 Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 
 ## Comparison tolerance
@@ -46,6 +49,7 @@ Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as 
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
 uninformative here because X ≥ b in every probe. The threshold is left to the implementing task.
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 
 ## 15-digit literal parsing
@@ -54,6 +58,7 @@ digits 16+ are **truncated**, not rounded: `VALUE("9307149050110945.41")` = 9307
 `=1234567890.12345678` = 1234567890.12345. Truncation matched 450 of 450 probes.
 Evidence: probes-numeric/23733e52a2ff91ab `literal-15-digit/*`; probes/precision-and-rounding A11.
 Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 
 ## Subnormal results become 0
@@ -61,6 +66,7 @@ Rule: a result below the smallest normal double is returned as 0: `=2^-1074` →
 `=CONCAT(1e-307/10)` → "0".
 Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e-307/10`.
 Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 
 ## Formula literals of 1E+308 or more are invalid
@@ -115,12 +121,14 @@ other 1,433 scored cells, 5 differ from libm by a few ulp and the rest are bit-e
 desktop Excel that saved the workbook agree.
 Evidence: poi/47813.xlsx Numbers!C92, B182, C272, B362, C452, B542, C632 (oracle sidecar
 `eval/suites/poi/oracle/47813.oracle.json` and the workbook's cached values). Oracle: excel-graph, 2026-10-04.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 Tasks: T-0915
 
 ## ACOS(0.5) is the double nearest π/3
 Rule: `ACOS(0.5)` = 1.0471975511965976 (the double nearest π/3); libm returns 1.0471975511965979.
 Evidence: poi/48539.xlsx Instance1!E23 (oracle: excel-graph, 2026-10-04); poi/FormulaEvalTestData_Copy.xlsx Q104.
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 Tasks: T-0939
 
@@ -128,6 +136,7 @@ Tasks: T-0939
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
 0.7071067811865475 (pow: …476), `=100^100` = 1.0000000000000005E+200.
 Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Re-checked with exact float parsing (T-0026, docs/research/numeric-reaudit-2026-10-05.md): confirmed.
 Status: VERIFIED
 Tasks: T-0221
 
