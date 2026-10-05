@@ -73,3 +73,14 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "1.2");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+#[test]
+fn typed_booleans_and_no_numbers() {
+    let mut model = new_empty_model();
+    model._set("A1", "=AVEDEV(TRUE,FALSE)");
+    model._set("B1", "x");
+    model._set("A2", "=AVEDEV(B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.5");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+}
