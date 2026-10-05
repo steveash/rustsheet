@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use crate::locale::Locale;
-use crate::number_format::parse_finite_number;
-use crate::number_format::to_excel_precision_str;
+use crate::number_format::{parse_finite_number, to_excel_precision_str};
 
 enum DateCaseStyle {
     Uppercase,

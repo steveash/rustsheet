@@ -56,9 +56,9 @@ All five upstream commits are in. `58279cda` + `80eafbbc` (finite-number parse) 
 conditions, quoting and autofill; `parse_excel_number` also rejects |x| >= 1E+308 (Excel's
 typeable limit, so "1e308", "1e400", "inf", "NaN" text is #VALUE!); non-finite array elements
 become #NUM!; `Worksheet::set_cell_with_number` refuses non-finite numbers; the xlsx importer reads
-non-finite `<v>` as 0. Evidence: new probe probes/text-number-words (53 cells, excel-graph), which
-also covers T-0140 (closed). `9b1ae3fd` had been ported by T-0132; this adds its Excel-authored
-MINUS_MINUS.xlsx (73 cells, 72 pass; C12 `=--"12:00"` is T-0146).
-Eval: ironcalc-calc checked 71818 -> 71891 (+1 known failure, MINUS_MINUS C12); probes +53
-checked cells, 38 pass, 15 known failures (tiny magnitudes, T-0154; array ISERROR F12:H12, T-0247);
+non-finite `<v>` as 0. Evidence: new probe probes/text-number-words (61 cells, excel-graph), which
+also covers T-0140 (closed). `9b1ae3fd` had been ported by T-0132; its Excel-authored MINUS_MINUS.xlsx
+passes 72 of 73 cells, and the last one (C12 `=--"12:00"`) is T-0146, which now adds the workbook.
+Eval: ironcalc-calc unchanged; probes +61
+checked cells, 46 pass, 15 known failures (tiny magnitudes, T-0154; array ISERROR F12:H12, T-0247);
 0 regressions. Follow-ups: T-0154, T-0247, T-0956 (POWER review items), T-0957, T-0958 (T-0918 items).

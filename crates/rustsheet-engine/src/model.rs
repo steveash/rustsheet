@@ -130,8 +130,7 @@ pub struct FmtSettings {
 fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
     match node {
         ArrayNode::Boolean(b) => FormulaValue::Boolean(b),
-        // No cell holds a number that is not finite: an array element that overflowed is #NUM!,
-        // as the safety belt in `set_cells_with_result` makes it for a single cell.
+        // An overflowed element is #NUM!, like the single-cell safety belt in `set_cells_with_result`
         ArrayNode::Number(n) if !n.is_finite() => FormulaValue::Error {
             ei: Error::NUM,
             o: String::new(),
@@ -149,14 +148,10 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
 }
 
 fn array_node_to_spill_value(node: ArrayNode) -> SpillValue {
-    match node {
-        ArrayNode::Boolean(b) => SpillValue::Boolean(b),
-        // See `array_node_to_formula_value`
-        ArrayNode::Number(n) if !n.is_finite() => SpillValue::Error(Error::NUM),
-        ArrayNode::Number(n) => SpillValue::Number(n),
-        ArrayNode::String(s) => SpillValue::Text(s),
-        ArrayNode::Error(ei) => SpillValue::Error(ei),
-        ArrayNode::Empty => SpillValue::Number(0.0),
+    // Same rules as `array_node_to_formula_value`; text is moved, not cloned
+    match array_node_to_formula_value(node) {
+        FormulaValue::Text(s) => SpillValue::Text(s),
+        value => formula_value_to_spill_value(&value),
     }
 }
 

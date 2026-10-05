@@ -53,11 +53,11 @@ fn condition_without_number() {
 
 #[test]
 fn condition_largest_number() {
-    let mut lexer = Lexer::new("[>1e308]");
+    let mut lexer = Lexer::new("[>9.99999999999999e307]");
     let token = lexer.next_token();
     assert!(matches!(
         token,
-        Token::Condition(Compare::GreaterThan, 1e308)
+        Token::Condition(Compare::GreaterThan, 9.99999999999999e307)
     ));
     assert!(matches!(lexer.next_token(), Token::EOF));
 }

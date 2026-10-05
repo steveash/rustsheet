@@ -155,6 +155,17 @@ pub(super) fn get_bool_false(node: &XmlNode, s: &str) -> bool {
     get_bool_with_default(node, s, false)
 }
 
+/// The number in the `<v>` of a cell. One that cannot be read is 0, and so is one that is not
+/// finite ("NaN", "inf", "1e400"): no cell holds such a number. This is a stored value, not typed
+/// text, so the 1E+308 typing limit of `parse_finite_number` does not apply
+/// (docs/excel-semantics/xlsx-storage.md).
+pub(super) fn parse_cell_number(cell_value: Option<&str>) -> f64 {
+    cell_value
+        .and_then(|value| value.parse::<f64>().ok())
+        .filter(|number| number.is_finite())
+        .unwrap_or(0.0)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
@@ -209,5 +220,16 @@ mod tests {
         assert!(get_bool(node, "empty"));
         assert!(get_bool(node, "yes"));
         assert!(get_bool(node, "other"));
+    }
+
+    #[test]
+    fn cell_numbers_are_finite() {
+        assert_eq!(parse_cell_number(Some("12.5")), 12.5);
+        assert_eq!(parse_cell_number(Some("-1e308")), -1e308);
+        assert_eq!(parse_cell_number(None), 0.0);
+        // What cannot be read is 0, and so is what is not a finite number
+        for value in ["", "abc", "NaN", "nan", "inf", "-inf", "Infinity", "1e400"] {
+            assert_eq!(parse_cell_number(Some(value)), 0.0, "{value}");
+        }
     }
 }

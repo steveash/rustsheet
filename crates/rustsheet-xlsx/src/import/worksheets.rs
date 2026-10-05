@@ -31,7 +31,9 @@ use super::{
     shared_strings::decode_xlsx_escapes,
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
-    util::{get_attribute, get_bool_false, get_color, get_number, get_relationship},
+    util::{
+        get_attribute, get_bool_false, get_color, get_number, get_relationship, parse_cell_number,
+    },
 };
 
 pub(crate) struct Sheet {
@@ -276,17 +278,6 @@ enum ParseReferenceError {
     RowError(ParseIntError),
     #[error("ColumnError: {0}")]
     ColumnError(String),
-}
-
-/// The number in the `<v>` of a cell. One that cannot be read is 0, and so is one that is not
-/// finite ("NaN", "inf", "1e400"): no cell holds such a number.
-fn parse_cell_number(cell_value: Option<&str>) -> f64 {
-    cell_value
-        .unwrap_or("0")
-        .parse::<f64>()
-        .ok()
-        .filter(|number| number.is_finite())
-        .unwrap_or(0.0)
 }
 
 // This parses Sheet1!AS23 into sheet, column and row
@@ -1062,18 +1053,7 @@ mod tests {
 
     use crate::import::xml::XmlNode;
 
-    use crate::import::worksheets::{load_hyperlinks, parse_cell_number, parse_reference};
-
-    #[test]
-    fn cell_numbers_are_finite() {
-        assert_eq!(parse_cell_number(Some("12.5")), 12.5);
-        assert_eq!(parse_cell_number(Some("-1e308")), -1e308);
-        assert_eq!(parse_cell_number(None), 0.0);
-        // What cannot be read is 0, and so is what is not a finite number
-        for value in ["", "abc", "NaN", "nan", "inf", "-inf", "Infinity", "1e400"] {
-            assert_eq!(parse_cell_number(Some(value)), 0.0, "{value}");
-        }
-    }
+    use crate::import::worksheets::{load_hyperlinks, parse_reference};
 
     #[test]
     fn parse_reference_works() {

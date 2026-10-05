@@ -217,15 +217,47 @@
    "K9": {
     "t": "e",
     "v": "#VALUE!"
+   },
+   "L1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "L2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L3": {
+    "t": "n",
+    "v": 1.0
+   },
+   "L4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L5": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L6": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L7": {
+    "t": "n",
+    "v": 0.0
+   },
+   "L8": {
+    "t": "e",
+    "v": "#VALUE!"
    }
   },
   "Data": {}
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "776f74598138a20a00b02ccc8ae96168f21068fa99e464226478701bbb09ebf2",
+  "input_sha256": "ab76c83c235e71cfff71b43bef5c6721ec2ef6b0dadee2f234be8400c1409a50",
   "kind": "excel-graph",
-  "produced_at": "2026-10-05T17:27:45+00:00",
+  "produced_at": "2026-10-05T18:01:34+00:00",
   "version": null
  }
 }

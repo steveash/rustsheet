@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::expressions::utils::parse_reference_a1;
 use crate::formatter::dates::{date_to_serial_number, from_excel_date};
-use crate::number_format::parse_finite_number;
 use crate::{
     calc_result::CalcResult,
     cell::CellValue,
@@ -116,7 +115,7 @@ fn parse_cf_date_bound(value: &str) -> Option<f64> {
     if let Ok(serial) = crate::functions::date_and_time::parse_datevalue_text(trimmed) {
         return Some(serial as f64);
     }
-    parse_finite_number(trimmed).map(f64::floor)
+    crate::number_format::parse_finite_number(trimmed).map(f64::floor)
 }
 
 /// Stable string key for a CellValue, used for duplicate detection.

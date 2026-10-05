@@ -55,9 +55,10 @@ fn reading_numbers() {
         ("5.", 5.0),
         ("1e5", 100000.0),
         ("1E-3", 0.001),
-        ("1e308", 1e308),
+        ("9.99999999999999e307", 9.99999999999999e307),
         ("0", 0.0),
-        // Too small to hold is zero, which is a number
+        // Too small to hold is zero, which is a number.
+        // TODO(T-0154): Excel reads "1e-400" as #VALUE! (probes/text-number-words A9, B5)
         ("1e-400", 0.0),
     ] {
         assert_eq!(parse_finite_number(text), Some(number), "{text}");
@@ -66,7 +67,7 @@ fn reading_numbers() {
         assert_eq!(parse_finite_number(text), None, "{text}");
     }
     for text in [
-        "1e400", "-1e400", "1e309", "", " ", "abc", "1e", "--1", "1,5",
+        "1e400", "-1e400", "1e309", "1e308", "-1e308", "", " ", "abc", "1e", "--1", "1,5",
     ] {
         assert_eq!(parse_finite_number(text), None, "{text}");
     }
@@ -271,7 +272,7 @@ fn a_number_too_large_in_a_formula_is_an_error() {
     // Excel does not load a formula with a literal of 1E+308 or more
     // (docs/excel-semantics/numbers.md); it is no number here either
     model._set("A3", "=1e308");
-    // Too small to hold is zero
+    // Too small to hold is zero. TODO(T-0154): check against Excel with the tiny-text rule
     model._set("A4", "=1e-400");
     model.evaluate();
 
@@ -368,6 +369,7 @@ fn a_number_too_large_in_a_number_format_is_an_error() {
             "=TEXT(5, \"[>1e308]0.0;0\")",
             "=TEXT(5, \"[>]0.0;0\")",
         ]),
-        ["#VALUE!", "#VALUE!", "5.0", "5.0"]
+        // probes/text-number-words J1, L4, J2
+        ["#VALUE!", "#VALUE!", "#VALUE!", "5.0"]
     );
 }

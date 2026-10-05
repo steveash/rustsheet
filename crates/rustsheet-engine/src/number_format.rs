@@ -140,19 +140,28 @@ pub fn parse_excel_number(text: &str) -> Option<f64> {
     out.push_str(exp);
     out.parse::<f64>()
         .ok()
-        .filter(|number| number.abs() < EXCEL_NUMBER_LIMIT)
+        .filter(|number| in_excel_range(*number))
 }
 
 /// Excel's largest typeable number is 9.99999999999999E+307: text or a literal at or above
 /// 1E+308 in magnitude is not a number (docs/excel-semantics/numbers.md).
 const EXCEL_NUMBER_LIMIT: f64 = 1e308;
 
+/// Whether a parsed number is one Excel reads from text: below [`EXCEL_NUMBER_LIMIT`] in
+/// magnitude (false for infinities and NaN too).
+fn in_excel_range(number: f64) -> bool {
+    number.abs() < EXCEL_NUMBER_LIMIT
+}
+
 /// Reads a number written with digits (`12`, `-3.5`, `.5`, `1e5`) the way `str::parse::<f64>`
-/// does, minus its two surprises: it also reads the words "NaN", "inf" and "infinity", and it
-/// turns a number too large to hold (`1e400`) into infinity. None of those is a number to Excel
-/// (`COUNTIF(r,"inf")` counts the text "inf", probes/text-number-words E1).
-pub(crate) fn parse_finite_number(text: &str) -> Option<f64> {
-    text.parse::<f64>().ok().filter(|number| number.is_finite())
+/// does, minus its surprises: it also reads the words "NaN", "inf" and "infinity", and it reads
+/// numbers of 1E+308 or more, which Excel takes for text (`COUNTIF(r,"inf")` counts the text
+/// "inf", `COUNT("1e308",1)` is 1, `NUMBERVALUE("1e308")` is #VALUE!: probes/text-number-words
+/// E1, L1, L5). Unlike [`parse_excel_number`] it keeps every digit.
+pub fn parse_finite_number(text: &str) -> Option<f64> {
+    text.parse::<f64>()
+        .ok()
+        .filter(|number| in_excel_range(*number))
 }
 
 pub fn to_precision(value: f64, precision: usize) -> f64 {

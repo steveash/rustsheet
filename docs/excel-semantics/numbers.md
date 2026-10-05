@@ -155,21 +155,22 @@ array elements, criteria operands) is a number only below 1E+308 in magnitude, t
 as formula literals: `="1e308"*1`, `="1.7976931348623157e308"*1`, `="1e400"*1`, `="-1e400"+0`,
 `VALUE("1e400")`, `SUM("1e400",1)` are #VALUE!, while `="9.99999999999999e307"*1` and
 `="0.01e309"+0` (1E+307) are numbers. The words "inf", "NaN", "infinity" (any case or sign) are
-text, never numbers: `="inf"*1`, `=--"Infinity"`, `VALUE("NaN")` are #VALUE!, `COUNT("inf","NaN",
+text, never numbers (NUMBERVALUE too: `NUMBERVALUE("1e308")` and `NUMBERVALUE("inf")` are
+#VALUE!; `COUNT("1e308",1)` is 1; `COUNTIF(r,"<1e308")` compares as text): `="inf"*1`, `=--"Infinity"`, `VALUE("NaN")` are #VALUE!, `COUNT("inf","NaN",
 "1e400","+1")` is 1 (only "+1" counts), and `COUNTIF(r,"inf")` / `">1e400"` compare as text. A
 `TEXT` format condition whose number is out of range (`[>1e400]`) makes the format invalid
-(#VALUE!).
+(#VALUE!), `[>1e308]` included.
 Small magnitudes are not yet matched (follow-up T-0154): a nonzero value below about 1E-309
 is #VALUE! (`"1e-310"+0`, `"1e-323"+0`, `"4.9e-324"+0`, `VALUE("1e-400")`), values from about
 1E-309 up to at least the smallest normal double read as 0 (`"1e-309"`, `"1e-308"`,
 `"2.2250738585072014e-308"` → 0; `"1e-307"` stays 1E-307), and a zero mantissa with an exponent
 above 308 is #VALUE! (`"0e309"`, `"0e400"`) while `"0e308"` is 0.
-Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10).
+Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8).
 Oracle: excel-graph, 2026-10-05.
 Status: VERIFIED
-Implemented in: `parse_excel_number` (range check, so `cast_number`, `VALUE` and the lexer) and
-`parse_finite_number` (criteria, COUNT/AVERAGE text, NUMBERVALUE, format conditions) in
-crates/rustsheet-engine/src/number_format.rs.
+Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
+lexer) and `parse_finite_number` (criteria, COUNT/AVERAGE text, NUMBERVALUE, format conditions),
+in crates/rustsheet-engine/src/number_format.rs.
 Tasks: T-0920, T-0140, T-0154
 
 ## MOD is an exact remainder

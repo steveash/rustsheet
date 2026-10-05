@@ -16,8 +16,10 @@ a number (`0+A1`, `-A1`, `VALUE`, arithmetic on array elements): today `cast_num
 plain numbers, percentages, currencies and dates, so `0+"10:11"` is #VALUE! (Excel 0.4243055…).
 
 ## Context
-- Excel-authored evidence too: ironcalc-calc/TEXT/MINUS_MINUS.xlsx Sheet1!C12 (`=--"12:00"` is 0.5),
-  a known failure added by T-0920.
+- Excel-authored evidence too: upstream IronCalc's `xlsx/tests/calc_tests/TEXT/MINUS_MINUS.xlsx`
+  (ironcalc@9b1ae3fd); add it to crates/rustsheet-xlsx/tests/calc_tests/TEXT/ in this task. T-0920
+  checked it: 72 of 73 cells pass, Sheet1!C12 (`=--"12:00"` is 0.5) is this task's, and the
+  generated xlsx tests need every cell to pass, so it could not land before this fix.
 - Evidence (excel-graph oracle, column C of each): `eval/suites/probes/cases/timevalue-fractional-seconds.case.json`,
   `timevalue-fractional-seconds2`, `timevalue-component-limits`, `timevalue-ampm-limits`. These are
   the probes' known failures (89 cells) recorded as new coverage by T-0910.
