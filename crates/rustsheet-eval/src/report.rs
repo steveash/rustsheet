@@ -44,10 +44,12 @@ pub struct SuiteSummary {
 /// Number of slowest cases kept in the report.
 const SLOWEST_CASES: usize = 10;
 
+/// A case id with its wall time, for the report's slowest-cases table.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SlowCase {
     /// `suite/case` id.
     pub id: String,
+    /// Wall time of the case in milliseconds.
     pub millis: u64,
 }
 
