@@ -3,7 +3,7 @@ id: T-0237
 title: "Probe ROWS/COLUMNS with scalar, array-constant and SEQUENCE arguments"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0228 made ROWS/COLUMNS count array values. Unprobed: scalar non-reference argu
 
 ## Out of scope
 - ROW/COLUMN.
+
+## Outcome
+Probed ROWS/COLUMNS (probes/rows-columns-args): scalars count as 1x1, errors pass through, array constants/SEQUENCE count dimensions. Engine now returns 1x1 for scalars; arrays.md updated.
