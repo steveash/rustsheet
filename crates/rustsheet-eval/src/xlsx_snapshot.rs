@@ -294,8 +294,7 @@ fn resolve_entity(r: &quick_xml::events::BytesRef<'_>) -> String {
 /// `errorType` field is found by key name in that value's structure
 /// (`xl/richData/rdrichvaluestructure.xml`): Excel for the web writes `_error` keys alphabetically
 /// (`colOffset, errorType, rwOffset, subType`), so it is not always the first field (T-0208,
-/// gen-m2/78bc88199fc96650 Calc!A61). Evidence for the codes: ironcalc-calc/ERROR.TYPE.xlsx
-/// (errorType 13 is `#CALC!` with ERROR.TYPE 14; 8 is `#SPILL!` with ERROR.TYPE 9).
+/// gen-m2/78bc88199fc96650 Calc!A61). The codes are in [`rich_error_name`].
 fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, SnapshotError> {
     let (Some(meta), Some(rich)) = (
         read_part(zip, "xl/metadata.xml")?,
@@ -344,6 +343,23 @@ pub fn is_undecoded(v: &crate::value::Value) -> bool {
     matches!(v, crate::value::Value::Error(e) if e == UNDECODED_RICH_ERROR)
 }
 
+/// The error a rich-value `errorType` code stands for. errorType is always ERROR.TYPE − 1, and
+/// the `subType` (the reason) does not change the error. Evidence: probes/rich-errors-*
+/// (excel-graph, 2026-10-05, T-0030): each cell's errorType from the cached oracle workbook, its
+/// ERROR.TYPE and its VALUETOTEXT text; ironcalc-calc/ERROR.TYPE.xlsx for 8 and 13.
+/// Codes Excel was not seen to write (`#BUSY!`, `#UNKNOWN!`, ...) are never guessed: they stay
+/// [`UNDECODED_RICH_ERROR`] so they cannot pass as the cached `#VALUE!`.
+fn rich_error_name(error_type: &str) -> &'static str {
+    match error_type {
+        "8" => "#SPILL!",    // SEQUENCE blocked by a value
+        "9" => "#CONNECT!",  // STOCKHISTORY of an unknown ticker
+        "10" => "#BLOCKED!", // IMAGE of an unreachable URL; uncached external reference
+        "12" => "#FIELD!",   // FIELDVALUE of a plain number
+        "13" => "#CALC!",    // FILTER with no match
+        _ => UNDECODED_RICH_ERROR,
+    }
+}
+
 /// Position of the `errorType` key in each `<s>` of `rdrichvaluestructure.xml` (None when absent).
 fn error_type_positions(xml: &str) -> Result<Vec<Option<usize>>, SnapshotError> {
     const PART: &str = "xl/richData/rdrichvaluestructure.xml";
@@ -372,7 +388,7 @@ fn error_type_positions(xml: &str) -> Result<Vec<Option<usize>>, SnapshotError> 
     Ok(out)
 }
 
-/// The rich-value error (`#CALC!`, `#SPILL!`) of every `<rv>` in `rdrichvalue.xml`, reading the
+/// The rich-value error (`#CALC!`, `#SPILL!`, ...) of every `<rv>` in `rdrichvalue.xml`, reading the
 /// `errorType` field by key name. Without a structures part the first field is used.
 fn rich_value_errors(
     rich: &str,
@@ -403,13 +419,7 @@ fn rich_value_errors(
             Event::Text(t) if in_v && want == Some(field) => {
                 let code = t.xml_content(XmlVersion::Implicit1_0);
                 if let Some(last) = out.last_mut() {
-                    *last = Some(match code.trim() {
-                        "13" => "#CALC!",
-                        "8" => "#SPILL!",
-                        // Never guess: an errorType without ERROR.TYPE evidence (e.g. 10, seen for
-                        // an uncached external reference) must not pass as the cached `#VALUE!`.
-                        _ => UNDECODED_RICH_ERROR,
-                    });
+                    *last = Some(rich_error_name(code.trim()));
                 }
             }
             Event::End(e) if e.local_name().as_ref() == "v" => {
@@ -679,12 +689,17 @@ fn finish_cell(
         c.is_text.as_deref(),
         shared,
     );
-    // Excel stores `#CALC!`/`#SPILL!` as `#VALUE!` plus a rich-value `vm`; recover the real error.
+    // Excel stores rich errors (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` plus a rich-value `vm`;
+    // recover the real error. A `vm` that cannot be resolved (no such entry, no errorType key,
+    // a missing field) is undecoded, never the cached `#VALUE!` (T-0203 review).
     if let (Value::Error(e), Some(vm)) = (&value, c.vm) {
         if e == "#VALUE!" {
-            if let Some(Some(real)) = rich_errors.get(vm.wrapping_sub(1)) {
-                value = Value::Error((*real).to_string());
-            }
+            let real = rich_errors
+                .get(vm.wrapping_sub(1))
+                .copied()
+                .flatten()
+                .unwrap_or(UNDECODED_RICH_ERROR);
+            value = Value::Error(real.to_string());
         }
     }
     if formula_kind.is_none() && value == Value::Empty {
@@ -820,16 +835,59 @@ mod tests {
         assert_eq!(get("C1"), Some(Value::Error("#VALUE!".into())));
     }
 
+    /// probes/rich-errors-* (T-0030): errorType = ERROR.TYPE - 1, whatever the subType.
+    #[test]
+    fn rich_error_codes_follow_the_probes() {
+        let got: Vec<_> = ["8", "9", "10", "12", "13", "11", "x"]
+            .into_iter()
+            .map(rich_error_name)
+            .collect();
+        assert_eq!(
+            got,
+            [
+                "#SPILL!",
+                "#CONNECT!",
+                "#BLOCKED!",
+                "#FIELD!",
+                "#CALC!",
+                UNDECODED_RICH_ERROR,
+                UNDECODED_RICH_ERROR
+            ]
+        );
+    }
+
+    /// A `vm` that resolves to no error (out of range, no errorType) is undecoded, not `#VALUE!`.
+    #[test]
+    fn unresolved_rich_value_error_is_undecoded() {
+        let sheet = r#"<worksheet><sheetData><row r="1"><c r="A1" t="e" vm="3"><f>1</f><v>#VALUE!</v></c><c r="B1" t="e" vm="1"><f>1</f><v>#VALUE!</v></c><c r="C1" t="e" vm="1"><f>1</f><v>#N/A</v></c></row></sheetData></worksheet>"#;
+        let rich = [None, Some("#CALC!")];
+        let cells = parse_sheet(sheet, "sheet1.xml", &[], &rich).unwrap_or_default();
+        let get = |s: &str| {
+            Addr::parse(s)
+                .and_then(|a| cells.get(&a))
+                .map(|c| c.value.clone())
+        };
+        assert_eq!(get("A1"), Some(Value::Error(UNDECODED_RICH_ERROR.into())));
+        assert_eq!(get("B1"), Some(Value::Error(UNDECODED_RICH_ERROR.into())));
+        assert_eq!(get("C1"), Some(Value::Error("#N/A".into())));
+    }
+
     /// Excel for the web's `_error` structure lists `colOffset` before `errorType`
     /// (gen-m2/78bc88199fc96650 Calc!A61: rv `0 8 5 1` is `#SPILL!`, not "no error").
     #[test]
     fn rich_value_error_type_is_read_by_key_name() {
         let structures = r#"<rvStructures><s t="_error"><k n="colOffset" t="i"/><k n="errorType" t="i"/><k n="rwOffset" t="i"/><k n="subType" t="i"/></s><s t="_error"><k n="errorType" t="i"/></s></rvStructures>"#;
-        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>2</v><v>0</v><v>0</v></rv></rvData>"#;
+        let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>2</v><v>0</v><v>0</v></rv><rv s="1"><v>10</v></rv><rv s="0"><v>0</v></rv></rvData>"#;
         let got = rich_value_errors(rich, Some(structures)).unwrap_or_default();
         assert_eq!(
             got,
-            vec![Some("#SPILL!"), Some("#CALC!"), Some(UNDECODED_RICH_ERROR)]
+            vec![
+                Some("#SPILL!"),
+                Some("#CALC!"),
+                Some(UNDECODED_RICH_ERROR),
+                Some("#BLOCKED!"),
+                None
+            ]
         );
         // No structures part: the first field is the errorType (ERROR.TYPE.xlsx layout).
         let got = rich_value_errors(r#"<rvData><rv s="0"><v>13</v></rv></rvData>"#, None)

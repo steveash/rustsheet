@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "#FIELD! as a rich-value error: FIELDVALUE of a plain number (T-0030)",
+  "tags": [
+    "M0",
+    "probe",
+    "rich-value-errors"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A10": 5,
+        "A1": "=_xlfn.FIELDVALUE(A10,\"Price\")",
+        "B1": "=ERROR.TYPE(A1)",
+        "C1": "=ISERROR(A1)",
+        "D1": "=ARRAYTOTEXT(A1)",
+        "E1": "=VALUETOTEXT(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1",
+    "Sheet1!C1",
+    "Sheet1!D1",
+    "Sheet1!E1"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "A1": {
+    "t": "e",
+    "v": "#BLOCKED!"
+   },
+   "A3": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#CALC!"
+   },
+   "A8": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "B1": {
+    "t": "n",
+    "v": 11.0
+   },
+   "C1": {
+    "t": "b",
+    "v": true
+   },
+   "D1": {
+    "t": "e",
+    "v": "#BLOCKED!"
+   },
+   "D3": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "D6": {
+    "t": "e",
+    "v": "#CALC!"
+   },
+   "D8": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "E1": {
+    "t": "s",
+    "v": "#BLOCKED!"
+   },
+   "E3": {
+    "t": "s",
+    "v": "#SPILL!"
+   },
+   "E6": {
+    "t": "s",
+    "v": "#CALC!"
+   },
+   "E8": {
+    "t": "s",
+    "v": "#DIV/0!"
+   },
+   "F1": {
+    "t": "e",
+    "v": "#BLOCKED!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "6d5d7531d7d688db5292f787b3cf0913a41529ccc1c3ad55fe7d8a35024b8344",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-05T12:22:03+00:00",
+  "version": null
+ }
+}
