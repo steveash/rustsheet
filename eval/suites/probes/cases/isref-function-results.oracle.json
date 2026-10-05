@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C1": {
+    "t": "b",
+    "v": true
+   },
+   "C2": {
+    "t": "b",
+    "v": false
+   },
+   "C3": {
+    "t": "b",
+    "v": true
+   },
+   "C4": {
+    "t": "b",
+    "v": false
+   },
+   "C5": {
+    "t": "b",
+    "v": true
+   },
+   "C6": {
+    "t": "b",
+    "v": false
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2355ce473ab889c8af8be9ebb2ad22baae3d42ae8e8da136e5a31d0c4c895409",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-05T08:51:41+00:00",
+  "version": null
+ }
+}

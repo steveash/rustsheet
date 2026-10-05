@@ -136,3 +136,29 @@ fn comparison_size_one_broadcast() {
     assert_eq!(model._get_text("A2"), "FALSE");
     assert_eq!(model._get_text("B2"), "TRUE");
 }
+
+// Excel: a scalar error operand broadcasts against an array operand, and a
+// per-element left error wins over the scalar one
+// (probes/error-operand-broadcast; docs/excel-semantics/arrays.md).
+#[test]
+fn scalar_error_operand_broadcasts_over_array() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("A3", "3");
+    model._set("C1", "=SUM(IFERROR(NA()-{1;2;3},1))");
+    model._set("C2", "=SUM(IFERROR(A1:A3^NA(),1))");
+    model._set("C3", "=SUM(IFERROR(\"abc\"*{1,2},1))");
+    model._set("C4", "=INDEX({1;#DIV/0!;3}+NA(),2)");
+    model._set("C5", "=INDEX(NA()+{1;#DIV/0!;3},2)");
+    model._set("C6", "=NA()+1/0");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), *"3");
+    assert_eq!(model._get_text("C2"), *"3");
+    assert_eq!(model._get_text("C3"), *"2");
+    assert_eq!(model._get_text("C4"), *"#DIV/0!");
+    assert_eq!(model._get_text("C5"), *"#N/A");
+    assert_eq!(model._get_text("C6"), *"#N/A");
+}

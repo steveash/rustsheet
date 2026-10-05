@@ -31,7 +31,7 @@ impl Model {
     pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => result = value.min(result),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
@@ -93,7 +93,7 @@ impl Model {
     pub(crate) fn fn_max(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => result = value.max(result),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
@@ -283,31 +283,8 @@ impl Model {
 
         let mut result = 0.0;
         for arg in args {
-            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
-            let arg = match arg {
-                Node::ReferenceKind {
-                    column,
-                    absolute_column,
-                    row,
-                    absolute_row,
-                    sheet_index,
-                    sheet_name,
-                } => &Node::RangeKind {
-                    sheet_name: sheet_name.clone(),
-                    sheet_index: *sheet_index,
-                    absolute_row1: *absolute_row,
-                    absolute_column1: *absolute_column,
-                    row1: *row,
-                    column1: *column,
-                    absolute_row2: *absolute_row,
-                    absolute_column2: *absolute_column,
-                    row2: *row,
-                    column2: *column,
-                },
-                _ => arg,
-            };
-
-            match self.evaluate_node_in_context(arg, cell) {
+            // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         result += value;
@@ -486,7 +463,7 @@ impl Model {
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut total = 0.0;
         let sum = |value| total += value;
-        if let Err(e) = self.apply_ifs(args, cell, sum) {
+        if let Err(e) = self.apply_ifs(args, cell, true, sum) {
             return e;
         }
         CalcResult::Number(total)
