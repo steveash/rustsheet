@@ -32,3 +32,5 @@ that lifts over ranges/arrays, and their static analysis reports array results s
 New probe `probes/is-functions-array-lift` (excel-graph). Eval: probes known failures 61 -> 58
 (text-number-words F12:H12 fixed). ISEVEN/ISODD over a text-containing range gave a single
 `#VALUE!` in Excel; recorded UNVERIFIED in `docs/excel-semantics/information.md`, not implemented.
+
+Follow-up: T-0248 (ISEVEN/ISODD probe, extra IS* probe coverage).
