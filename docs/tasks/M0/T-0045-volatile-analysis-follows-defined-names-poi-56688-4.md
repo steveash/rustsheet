@@ -3,7 +3,7 @@ id: T-0045
 title: "Volatile analysis follows defined names (poi/56688_4.xlsx scores a TODAY-dependent cell)"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
