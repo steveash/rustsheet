@@ -5,6 +5,9 @@ some extra rounding rules. Microsoft documents a few of them
 (https://learn.microsoft.com/en-us/troubleshoot/microsoft-365-apps/excel/floating-point-arithmetic-inaccurate-result),
 but the exact rules must be measured.
 
+Every rule below that cites oracle-sidecar values was re-checked with exact float parsing on
+2026-10-05 and still holds (T-0026, docs/research/numeric-reaudit-2026-10-05.md).
+
 ## Near-zero snapping in addition and subtraction
 Rule: when the formula's **outermost** operation is `+`/`-`, or the formula is `SUM(...)`, and the
 result is within a few ULP of zero relative to the operands, Excel returns exactly 0.
