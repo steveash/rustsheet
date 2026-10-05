@@ -3,7 +3,7 @@ id: T-0109
 title: "Generate and oracle-fill suite gen-m1 (operators and references only)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
