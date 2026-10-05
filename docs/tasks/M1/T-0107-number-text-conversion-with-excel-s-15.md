@@ -3,7 +3,7 @@ id: T-0107
 title: "Number→text conversion with Excel's 15-significant-digit rule"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
