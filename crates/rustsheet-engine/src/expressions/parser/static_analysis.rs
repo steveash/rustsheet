@@ -1755,7 +1755,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
-        Function::Concatenate => not_implemented(args),
+        Function::Concatenate => scalar_arguments(args),
         Function::Exact => scalar_arguments(args),
         Function::Find => scalar_arguments(args),
         // LEFT/MID/RIGHT broadcast element-wise: an array/range argument yields an array.
