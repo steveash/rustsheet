@@ -5,6 +5,31 @@ Each milestone has a **scope**, **exit criteria** (measurable; checked by agents
 CI gate for synthetic suites once they are in scope. Later milestones can start in parallel
 lanes when they don't depend on earlier ones, but exit criteria are checked in order.
 
+## Phase order (decision 0027)
+
+Milestones are worked in this order, not in numeric order. The *current milestone* (used by
+the planner, the gap-triager and the steward's critical lanes) is the first one in this order
+whose exit criteria are not met.
+
+| Phase | Milestones, in order | Status |
+|---|---|---|
+| 1. Parity | M0, M1, M2, M5, M6, M7, M8, M9, M10, M11 | active |
+| 2. Architecture and performance | M3, M4, M13 | deferred until Phase 1 exits |
+| 3. Release | M12 | after Phase 2 |
+
+**Phase 1 exit:** every Excel function is in the catalog with its parity scope (T-0040). Every
+in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
+reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a filed task or a
+`DEVIATION` entry. The exit criteria of M1, M2, M5–M10 and M11 are met.
+
+Out of scope: functions whose result depends on systems outside the workbook (web and online
+services, external data servers, code and add-ins; list in decision 0027).
+
+When all of this holds, the steward adds the line `**Phase 1:** exited <YYYY-MM-DD>` to
+docs/status.md. Until then, the M3, M4 and M13 tasks stay `blocked`. Parity behavior that
+needs the Phase 2 dependency graph (circular references and iterative calculation, dynamic
+dependencies, TABLE()) still gets its oracle cases in Phase 1; only its implementation waits.
+
 Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (strict, see
 `architecture/eval-harness.md`).
 
@@ -67,7 +92,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
 
-## M3 — Dependency graph, incremental and lazy recalculation
+## M3 — Dependency graph, incremental and lazy recalculation (Phase 2)
 
 **Scope (spec first):**
 - Persistent dependency graph: cells, ranges via an interval index, names.
@@ -84,7 +109,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - Full recalc throughput no worse than fork baseline.
 - All eval suites unchanged (no regressions).
 
-## M4 — Storage, memory and structural edits
+## M4 — Storage, memory and structural edits (Phase 2)
 
 **Scope:**
 - Chunked columnar copy-on-write storage.
@@ -165,19 +190,16 @@ per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP.
 
 **Exit criteria:** formatted-text oracle suite (≥ 10k cells) at 100%.
 
-## M11 — Fidelity and performance at scale
+## M11 — Real-world fidelity
 
 **Scope:**
-- Real-world corpora: POI, FUSE/SpreadsheetBench via xlsx-corpus-bench, Enron (performance).
+- Real-world corpora: POI, FUSE/SpreadsheetBench via xlsx-corpus-bench.
 - xlsx round-trip preservation of unknown parts.
-- Data tables (TABLE()).
-- Iterative calculation parity.
-- Parallel recalc.
-- Comparison against Excel desktop timings, LibreOffice and Formualizer.
+- Data tables (TABLE()) and iterative calculation parity. The oracle cases come in Phase 1;
+  the implementation needs the M3 graph.
 
-**Exit criteria:**
-- Formula-cell match on xlsx-corpus-bench ≥ 99.8%, matching or beating the best published engine.
-- Full recalc faster than Excel desktop on the benchmark suite.
+**Exit criteria:** formula-cell match on xlsx-corpus-bench ≥ 99.8%, matching or beating the best
+published engine.
 
 ## M12 — API v1, bindings & release
 
@@ -189,3 +211,14 @@ per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP.
 
 **Exit criteria:** API v1 tagged; Python and Java packages published from CI; fuzzers run 24 h
 with no crash.
+
+## M13 — Performance at scale (Phase 2)
+
+Split out of M11 by decision 0027.
+
+**Scope:**
+- Enron/VEnron performance models.
+- Parallel recalc.
+- Comparison against Excel desktop timings, LibreOffice and Formualizer.
+
+**Exit criteria:** full recalc faster than Excel desktop on the benchmark suite.

@@ -294,28 +294,15 @@ fn lambda_r_and_c_parameters() {
 }
 
 // SIN(x) is a fully-resolved function call, not a lambda — calling it with (3)
-// afterwards is syntactically invalid per the grammar.  The parser returns just
-// SIN(x) and the trailing (3) is left unconsumed (no parse error is raised at
-// the primary level).
+// afterwards is syntactically invalid per the grammar. Since T-0105 the trailing
+// (3) is a parse error rather than being silently dropped.
 #[test]
 fn sin_is_not_immediately_invocable() {
     let mut p = parser();
     let t = p.parse("SIN(x)(3)", &cell());
-    // The result should be a plain SIN call, not a LambdaCallKind.
     assert!(
-        matches!(
-            t,
-            Node::FunctionKind {
-                kind: Function::Sin,
-                ..
-            }
-        ),
-        "SIN(x)(3) should parse as SIN(x), got {t:?}"
-    );
-    // Confirm it is NOT treated as a lambda call.
-    assert!(
-        !matches!(t, Node::LambdaCallKind { .. }),
-        "SIN(x)(3) must not produce a LambdaCallKind"
+        matches!(t, Node::ParseErrorKind { .. }),
+        "SIN(x)(3) should be a parse error, got {t:?}"
     );
 }
 

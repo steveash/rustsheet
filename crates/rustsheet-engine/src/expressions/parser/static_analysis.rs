@@ -118,14 +118,11 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 };
             }
         }
-        Node::OpRangeKind { left, right } => {
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
-                    child: Box::new(Node::OpRangeKind {
-                        left: left.clone(),
-                        right: right.clone(),
-                    }),
+                    child: Box::new(node.clone()),
                 }
             }
         }
@@ -234,6 +231,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }
+        | Node::OpIntersectKind { .. }
         | Node::DefinedNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::TableNameKind(_)
@@ -362,7 +360,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             column2,
             ..
         } => StaticResult::Range(row2 - row1, column2 - column1),
-        Node::OpRangeKind { .. } => {
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             // TODO: We could do a bit better here
             StaticResult::Unknown
         }
