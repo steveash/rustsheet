@@ -3,7 +3,7 @@ id: T-0105
 title: "Parser: implement the space (intersection) operator and reject trailing input"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
@@ -37,7 +37,7 @@ Excel's results (expected vs engine):
 Semantics: docs/excel-semantics/references.md "Intersection operator (space)".
 
 Two further groups need this operator and another fix, and are scored by those tasks:
-`range/ref-colon-ref` (41 cells, T-0130) and `union/cut-by-cell` (32 cells, T-0129).
+`range/ref-colon-ref` (41 cells, T-0130) and `union/cut-by-cell` (32 cells, T-0134).
 
 Code: `expressions/lexer` (whitespace is currently skipped, so the space must become a token
 where it separates two reference operands); `expressions/parser/mod.rs` `parse_range` /
@@ -53,4 +53,4 @@ where it separates two reference operands); `expressions/parser/mod.rs` `parse_r
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Union operator (T-0129). Sheet-qualified second range corner `Data!B8:Data!E12` (T-0130).
+Union operator (T-0134). Sheet-qualified second range corner `Data!B8:Data!E12` (T-0130).

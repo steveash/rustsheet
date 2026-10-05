@@ -45,7 +45,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 **Exit criteria:**
 - `smoke`, `probes` and `gen-m1` (≥ 3,000 oracle cells, operators and references only) at 100% bit-exact.
   Measured by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left, in T-0105,
-  T-0107, T-0129–T-0132 and T-0221; T-0221 is an M2 task that also blocks M1).
+  T-0107, T-0130–T-0132, T-0134 and T-0221; T-0221 is an M2 task that also blocks M1).
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
   `DATE(1900,2,29)`, and the parser accepting trailing garbage.
 - API v0 spec merged and implemented. Python `rustsheet.Workbook` passes binding tests.
