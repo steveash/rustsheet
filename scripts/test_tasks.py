@@ -100,13 +100,14 @@ def write_task(
     lane: str = "harness",
     priority: str = "P1",
     milestone: str = "M0",
+    depends_on: str = "",
 ) -> Path:
     path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     path.write_text(
         f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
-        f"size: S\n{tier_line}depends_on: []\n---\n{body}"
+        f"size: S\n{tier_line}depends_on: [{depends_on}]\n---\n{body}"
     )
     return path
 
@@ -164,11 +165,12 @@ class Tiers(unittest.TestCase):
     def test_task_waiting_on_an_open_sweep_is_not_ready(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            path = write_task(root, "T-0901", tier="opus", milestone="M9")
-            path.write_text(path.read_text().replace("depends_on: []", "depends_on: [T-0942]"))
+            write_task(root, "T-0901", tier="opus", milestone="M9", depends_on="T-0942")
             write_task(root, "T-0942", tier="opus", milestone="M9", lane="research")
             write_task(root, "T-0939", tier="opus", milestone="M9", priority="P2")
             self.assertEqual(run_next(root, "opus", lane="harness"), "T-0939")
+            write_task(root, "T-0942", tier="opus", milestone="M9", lane="research", status="done")
+            self.assertEqual(run_next(root, "opus", lane="harness"), "T-0901")
 
     def test_p0_comes_before_a_handoff(self) -> None:
         # T-0931 (P0 stack overflow) once waited behind the T-0125 (P2) handoff.
