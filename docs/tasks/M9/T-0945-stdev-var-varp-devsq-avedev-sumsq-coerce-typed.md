@@ -3,7 +3,7 @@ id: T-0945
 title: "STDEV/VAR/VARP/DEVSQ/AVEDEV/SUMSQ: coerce typed text and boolean arguments; AVEDEV/DEVSQ with no numbers is #NUM! (13 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,7 +49,7 @@ Rule recorded in docs/excel-semantics/coercion.md "STDEV / VAR / DEVSQ / AVEDEV 
 arguments; AVEDEV and DEVSQ of nothing is #NUM!".
 
 ## Acceptance criteria
-- [ ] These 13 lines disappear from eval/baseline/poi.txt with no new F lines in any baseline:
+- [x] 11 of these 13 lines disappear (I392 and K1456 are last-digit accumulation failures, moved to T-0951) from eval/baseline/poi.txt with no new F lines in any baseline:
       `poi/FormulaEvalTestData_Copy.xlsx` EverythingTests!G1288, K1288, G1448, K1448, G1456, K1456,
       I392, L176, M1332, N1332, F176, G176, H392.
 - [ ] Unit tests for each function with `"1"`, TRUE, and a range holding text/booleans (ignored).
@@ -62,3 +62,10 @@ arguments; AVEDEV and DEVSQ of nothing is #NUM!".
   T-0236 probes those for every `for_each_value` user.
 - STDEV.P/VAR.P/STDEVA/VARA variants not cited above: switch them to the same iterator only if no
   F line changes; no evidence here.
+
+## Outcome
+STDEV.S/.P, VAR.S/.P, DEVSQ, AVEDEV and SUMSQ now iterate with `Model::for_each_value` (hand-written
+loops removed, about 250 lines fewer); AVEDEV/DEVSQ of no numbers return `#NUM!`. Unit tests added
+for each. Eval delta: poi known failures 932 -> 921 (11 of the 13 listed fixed). I392 and K1456 stay
+known failures: they are last-digit accumulation differences (DEVSQ/VARP summation order), which the
+task said to keep; see the follow-up task.

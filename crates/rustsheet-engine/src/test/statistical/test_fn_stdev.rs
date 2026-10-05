@@ -69,3 +69,24 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+// Typed text/booleans count as direct arguments; in ranges they are ignored
+// (docs/excel-semantics/coercion.md, poi EverythingTests!G1288/K1288).
+#[test]
+fn typed_text_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=STDEV(\"1\",\"2\")");
+    model._set("A2", "=STDEV(TRUE,FALSE,TRUE)");
+    model._set("B1", "=TRUE");
+    model._set("B2", "1");
+    model._set("B3", "3");
+    model._set("B4", "x");
+    model._set("A3", "=STDEV(B1:B4)");
+    model._set("A4", "=STDEV({TRUE,1,3})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.707106781");
+    assert_eq!(model._get_text("A2"), *"0.577350269");
+    assert_eq!(model._get_text("A3"), *"1.414213562");
+    // Booleans inside array literals stay ignored until T-0236 probes them.
+    assert_eq!(model._get_text("A4"), *"1.414213562");
+}

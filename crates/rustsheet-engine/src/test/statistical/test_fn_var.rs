@@ -69,3 +69,19 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
 }
+
+#[test]
+fn typed_text_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=VAR(\"1\",\"2\")");
+    model._set("A2", "=VARP(\"1\",\"2\")");
+    model._set("A3", "=VAR(TRUE,FALSE,TRUE)");
+    model._set("B1", "=TRUE");
+    model._set("B2", "x");
+    model._set("A4", "=VAR(B1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0.5");
+    assert_eq!(model._get_text("A2"), *"0.25");
+    assert_eq!(model._get_text("A3"), *"0.333333333");
+    assert_eq!(model._get_text("A4"), *"#DIV/0!");
+}
