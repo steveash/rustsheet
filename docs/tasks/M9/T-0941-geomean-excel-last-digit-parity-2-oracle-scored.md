@@ -22,7 +22,9 @@ two are NumericUlp, baselined as new coverage:
 - `Sheet1!G27` `=GEOMEAN(1,2,"5", TRUE)`: Excel 1.778279410038923, ours 1.7782794100389228.
 Code: `crates/rustsheet-engine/src/functions/statistical/geomean.rs`. Excel's evaluation order is
 unknown; probe candidate formulations (product then root, `pow(prod, 1/n)`, log-sum) against the
-oracle with the `excel-probe` skill rather than fitting to two cells. Record the rule in
+oracle with the `excel-probe` skill rather than fitting to two cells: `exp(ln(product)/n)` matches
+G27 but `exp(ln(47))` still misses B27, so no single candidate fits both yet. Both values come from
+Excel for the web; check desktop parity too (T-0025) before fitting a last digit. Record the rule in
 `docs/excel-semantics/`.
 
 ## Acceptance criteria

@@ -159,10 +159,11 @@ Status: VERIFIED (observation). Which one a golden follows is T-0025; until then
 Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
 divergences").
 
-## GEOMEAN of a single value returns it exactly
+## GEOMEAN last digits differ from a log-sum evaluation
 
 `=GEOMEAN("47")` is exactly 47 in Excel, and `=GEOMEAN(1,2,"5",TRUE)` is 1.778279410038923;
 a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
-formulation is not yet known (T-0941). Evidence: excel-graph sidecar
+formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
-Status: VERIFIED (values); formulation UNVERIFIED.
+Values are from Excel for the web, which can differ from desktop in the last digit (T-0025).
+Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
