@@ -202,3 +202,20 @@ formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph)
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
 Values are from Excel for the web, which can differ from desktop in the last digit (T-0025).
 Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
+
+## GCD / LCM argument bound
+Rule: Excel accepts an argument equal to 2^53: `GCD(2^53,2)` = 2, `LCM(2^53,1)` = 9007199254740992
+(and 2^53-1). RustSheet rejects arguments `>= 2^53` with `#NUM!`. Excel's real upper bound is unprobed.
+Evidence: probes/resource-limits C1–C4 (excel-graph, 2026-10-05; C1 and C3 are known failures).
+Status: VERIFIED (the 2^53 cells); bound UNVERIFIED (probe pending, T-0239)
+Implemented in: functions/math_and_trigonometry/gcd_lcm.rs (`MAX_LCM_GCD`)
+Tasks: T-0239
+
+## CHISQ.DIST degrees of freedom and BITAND operands are bounded
+Rule: CHISQ.DIST with degrees of freedom above 10^10 is `#NUM!` (10^10 itself is accepted;
+CHISQ.DIST.RT/CHISQ.INV/CHISQ.INV.RT share the constant but are unprobed), and BITAND is `#NUM!` for an operand of
+2^48 or more (2^48-1 is accepted; the other BIT functions share the constant but are unprobed).
+These are Excel's own limits, not deviations.
+Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
+Status: VERIFIED
+Implemented in: functions/statistical/chisq.rs (`MAX_DEGREES_OF_FREEDOM`); functions/engineering/bit_operations.rs (`MAX`)
