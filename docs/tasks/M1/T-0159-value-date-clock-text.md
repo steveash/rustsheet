@@ -34,4 +34,4 @@ VALUE percent rounding (T-0929).
 ## Outcome
 `fn_value` falls back to `time_text::parse_date_clock_serial` (now `pub(crate)`) on the trimmed text.
 Eval: probes/date-text-grammar C30, C31, C53, C55, C63 fixed (probes known failures 61 -> 56), no regressions.
-Plain clock text (`VALUE("10:00")`) was not probed here.
+Plain clock text (`VALUE("10:00")`) is unprobed: tracked by T-0153 and T-0162.
