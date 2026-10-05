@@ -282,7 +282,7 @@ fn read_shared_strings(zip: &mut Zip) -> Result<Vec<String>, SnapshotError> {
                     // Excel caps cell text at 32,767 characters. Snapshot cells copy their shared
                     // string, so an oversized one referenced by many cells would expand without
                     // bound (poi poc-shared-strings: 1 MB x 12,000 cells, T-0118).
-                    if let Err(e) = ImportLimits::default().check_text(&cur) {
+                    if let Err(e) = ImportLimits::default().check_escaped_text(&cur) {
                         return Err(SnapshotError::Malformed(format!("shared string: {e}")));
                     }
                     out.push(decode_xlsx_escapes(&std::mem::take(&mut cur)));

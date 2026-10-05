@@ -846,7 +846,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let sheet_id = settings.id;
     let state = &settings.state;
 
-    let limits = archive.limits().clone();
+    let limits = *archive.limits();
     let file = archive.open(path)?;
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.

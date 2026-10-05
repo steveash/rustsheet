@@ -225,6 +225,35 @@ fn inline_string_longer_than_the_text_limit_is_a_limit_error() -> TestResult {
     Ok(())
 }
 
+/// A sheet whose A100 is a `t="str"` formula result of `count` carriage returns, stored as
+/// `_x000D_` escapes as Excel writes them.
+fn sheet_with_escaped_text(count: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+    let cell = format!(
+        "<sheetData><row r=\"100\"><c r=\"A100\" t=\"str\"><f>REPT(CHAR(13),{count})</f><v>{}</v></c></row>",
+        "_x000D_".repeat(count)
+    );
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+#[test]
+fn escaped_cell_text_counts_decoded_characters() -> TestResult {
+    assert_imports(&sheet_with_escaped_text(32_767)?)?;
+    assert_eq!(
+        load_from_xlsx_bytes(&sheet_with_escaped_text(32_768)?, "case", "en", "UTC").err(),
+        Some(XlsxError::Limit {
+            limit: ImportLimit::TextLength,
+            max: 32_767
+        })
+    );
+    Ok(())
+}
+
 #[test]
 fn inflating_past_the_byte_budget_is_a_limit_error() -> TestResult {
     let bytes = zip_of(&parts()?)?;

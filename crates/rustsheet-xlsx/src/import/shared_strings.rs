@@ -11,7 +11,7 @@ use crate::error::XlsxError;
 pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
     archive: &mut Package<R>,
 ) -> Result<Vec<String>, XlsxError> {
-    let limits = archive.limits().clone();
+    let limits = *archive.limits();
     match archive.open_optional("xl/sharedStrings.xml")? {
         Some(file) => read_shared_strings_from_xml(XmlNode::parse(file)?, &limits),
         None => Ok(Vec::new()),

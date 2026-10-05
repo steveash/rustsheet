@@ -8,17 +8,20 @@
 use std::cell::Cell;
 use std::io::{self, BufReader, Read, Seek};
 
+use super::shared_strings::decode_xlsx_escapes;
 use crate::error::{ImportLimit, XlsxError};
 
 /// Resource limits for importing a workbook.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImportLimits {
     /// Most bytes the parts the importer reads may inflate to, in total.
     pub max_uncompressed_bytes: u64,
     /// Most entries the zip directory may list.
     pub max_zip_entries: u32,
-    /// Most characters in one shared string or cell text. Excel's own cell limit is 32,767;
-    /// what Excel does with a longer one in a file is not probed yet (T-0004).
+    /// Most characters (Unicode scalar values) in one shared string or cell text, counted after
+    /// `_xHHHH_` escapes are decoded. Excel's own cell limit is 32,767 (believed to be UTF-16
+    /// code units, so this count is never stricter); what Excel does with a longer one in a file
+    /// is not probed yet (T-0004).
     pub max_text_chars: usize,
 }
 
@@ -41,6 +44,16 @@ impl ImportLimits {
                 limit: ImportLimit::TextLength,
                 max: u64::try_from(self.max_text_chars).unwrap_or(u64::MAX),
             });
+        }
+        Ok(())
+    }
+
+    /// [`ImportLimits::check_text`] on text as stored in a part, with `_xHHHH_` escapes still
+    /// in it: each escape is seven characters that decode to one, so only text longer than the
+    /// limit as stored is decoded to be counted.
+    pub fn check_escaped_text(&self, stored: &str) -> Result<(), XlsxError> {
+        if stored.len() > self.max_text_chars {
+            self.check_text(&decode_xlsx_escapes(stored))?;
         }
         Ok(())
     }
@@ -210,7 +223,7 @@ mod tests {
             max_uncompressed_bytes: 10,
             ..ImportLimits::default()
         };
-        let mut pkg = package(bytes.clone(), limits.clone()).unwrap();
+        let mut pkg = package(bytes.clone(), limits).unwrap();
         assert_eq!(read_all(&mut pkg, "a").unwrap(), b"12345");
         assert_eq!(read_all(&mut pkg, "b").unwrap(), b"67890");
         assert!(pkg.overrun().is_none());
@@ -293,6 +306,11 @@ mod tests {
         assert!(limits.check_text("abc").is_ok());
         // Three characters, nine bytes
         assert!(limits.check_text("€€€").is_ok());
+        // Escapes count as the one character they decode to
+        assert!(limits.check_escaped_text("_x000D__x000D__x000D_").is_ok());
+        assert!(limits
+            .check_escaped_text("_x000D__x000D__x000D__x000D_")
+            .is_err());
         assert_eq!(
             limits.check_text("abcd"),
             Err(XlsxError::Limit {

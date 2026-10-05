@@ -94,7 +94,7 @@ fn load_xlsx_from_reader<R: Read + Seek>(
     tz: &str,
     limits: &ImportLimits,
 ) -> Result<Workbook, XlsxError> {
-    let mut archive = Package::new(reader, limits.clone())?;
+    let mut archive = Package::new(reader, *limits)?;
     let workbook = load_package(&mut archive, name, locale, tz);
     // A part that ran over the byte budget may have been skipped as optional or surfaced as an
     // XML error; either way the overrun is what is reported.

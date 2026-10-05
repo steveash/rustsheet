@@ -38,10 +38,11 @@ Implemented in: crates/rustsheet-xlsx/src/import/util.rs (`parse_cell_number`)
 Rule: the importer rejects a workbook with `XlsxError::Limit` when its zip lists more than 5,000
 entries, when the parts it reads inflate past 256 MiB in total (bytes actually inflated, not the
 sizes the zip declares), when one shared string or cell text (`<v>`, inline `<is>`) is longer than
-32,767 characters, or when a part uses an entity reference other than the five predefined ones
+32,767 characters (Unicode scalar values, counted after `_xHHHH_` escapes are decoded), or when a part uses an entity reference other than the five predefined ones
 and character references (declared entities are never expanded: no "billion laughs"). The limits
 are `rustsheet_xlsx::import::ImportLimits`; the public API passes its `LoadOptions` sizes through.
-Excel's own cell limit is 32,767 characters, but what Excel does with a longer string in a file
+Excel's own cell limit is 32,767 characters (believed to be UTF-16 code units, which never count
+fewer than scalar values, so this bound is never stricter than Excel's), but what Excel does with a longer string in a file
 (truncate, repair or refuse) is not probed (T-0004); xlsx parts never declare entities, and OPC
 forbids DTDs in package parts. Entity references in attribute values were already rejected.
 Evidence: none for Excel; these are resource limits (CLAUDE.md directive 5), not Excel observations.

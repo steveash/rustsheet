@@ -369,7 +369,7 @@ impl SheetDataReader<'_> {
         let (r_index, column_index) =
             parse_cell_reference(&cell.reference).map_err(XlsxError::Xml)?;
         for text in [&cell.value, &cell.rich_text].into_iter().flatten() {
-            self.limits.check_text(text)?;
+            self.limits.check_escaped_text(text)?;
         }
         // A row without an `r` attribute takes its index from its first cell
         if row.index.is_none() {
