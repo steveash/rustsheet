@@ -3,7 +3,7 @@ id: T-0228
 title: "ROWS/COLUMNS accept an array expression, not only a reference"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,8 @@ Unprobed: a scalar non-reference argument (`ROWS(5)`, `ROWS(NA())`); probe befor
 
 ## Out of scope
 - ROW/COLUMN (they need a reference and behave differently).
+
+## Outcome
+ROWS/COLUMNS now count reference or array values (`rows_columns_extent`); scalar non-reference arguments keep the old error (unprobed). probes known failures 27 -> 21 (6 fixed, 0 regressions). Rule recorded in docs/excel-semantics/arrays.md.
+
+Follow-up: T-0237 (probe scalar/array-constant arguments).

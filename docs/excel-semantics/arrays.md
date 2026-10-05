@@ -61,10 +61,12 @@ the cells below are occupied.
 Evidence (oracle: excel-graph, 2026-10-05): probes/error-operand-broadcast C2, C4, C5, C9, C11–C15
 (`SUM(IFERROR(NA()-{1;2;3},1))` = 3); gen-m2/dd99be1f2454159f Calc!A56 (expected `#SPILL!`).
 The same probe shows ROWS/COLUMNS accept an array expression (`ROWS(NA()-{1;2;3})` = 3, C1/C3/C6–C8/C10);
-the engine does not yet (T-0228).
+ROWS/COLUMNS count an array without reading its elements, so an all-error array still has its size.
+Unprobed: a scalar non-reference argument (`ROWS(5)`, `ROWS(NA())`); the engine keeps `#VALUE!`/the error (T-0228).
 Status: VERIFIED
 Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.rs`
-Tasks: T-0209
+Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
+Tasks: T-0209, T-0228
 
 ## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
 Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
