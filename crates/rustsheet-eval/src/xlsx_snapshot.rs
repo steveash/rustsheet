@@ -74,6 +74,7 @@ pub struct SheetSnapshot {
 /// A `<definedName>` of `xl/workbook.xml`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DefinedName {
+    /// The name as written in the workbook (matched case-insensitively).
     pub name: String,
     /// Name of the sheet the name is scoped to (`localSheetId`); `None` for a global name.
     pub sheet: Option<String>,
@@ -482,6 +483,11 @@ fn read_workbook_rels(zip: &mut Zip) -> Result<HashMap<String, String>, Snapshot
 /// `(name, localSheetId, body)` per `<definedName>`.
 type RawName = (String, Option<usize>, String);
 
+fn raw_name(e: &BytesStart<'_>) -> Option<RawName> {
+    let local = attr(e, "localSheetId").and_then(|v| v.parse().ok());
+    Some((attr(e, "name")?, local, String::new()))
+}
+
 /// `(sheet name, relationship id)` per `<sheet>`.
 type SheetRef = (String, String);
 
@@ -496,6 +502,14 @@ fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), Snap
             .read_event()
             .map_err(|e| xml_err("workbook.xml", e))?
         {
+            Event::Start(e) if e.local_name().as_ref() == "definedName" => {
+                names.extend(raw_name(&e));
+                in_name = true;
+            }
+            // A self-closing name has no body text and no End event.
+            Event::Empty(e) if e.local_name().as_ref() == "definedName" => {
+                names.extend(raw_name(&e));
+            }
             Event::Start(e) | Event::Empty(e) => match e.local_name().as_ref() {
                 "sheet" => {
                     if let (Some(name), Some(rid)) = (attr(&e, "name"), attr(&e, "id")) {
@@ -504,13 +518,6 @@ fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), Snap
                 }
                 "workbookPr" => {
                     date1904 = matches!(attr(&e, "date1904").as_deref(), Some("1" | "true"));
-                }
-                "definedName" => {
-                    if let Some(name) = attr(&e, "name") {
-                        let local = attr(&e, "localSheetId").and_then(|v| v.parse().ok());
-                        names.push((name, local, String::new()));
-                        in_name = true;
-                    }
                 }
                 _ => {}
             },
@@ -955,5 +962,28 @@ mod tests {
                 .map(|c| c.value.clone())
         };
         assert_eq!(get("A1"), Some(Value::Text("\u{1}".into())));
+    }
+}
+
+#[cfg(test)]
+mod defined_name_tests {
+    use super::*;
+
+    #[test]
+    fn reads_scoped_empty_and_escaped_defined_names() {
+        let xml = r#"<workbook><sheets><sheet name="S" r:id="rId1"/></sheets><definedNames>
+            <definedName name="G">S!$A$1+1&lt;2</definedName>
+            <definedName name="E"/>
+            <definedName name="L" localSheetId="0">TODAY()</definedName>
+            </definedNames></workbook>"#;
+        let (_, _, names) = parse_workbook(xml).expect("parses");
+        assert_eq!(
+            names,
+            [
+                ("G".to_string(), None, "S!$A$1+1<2".to_string()),
+                ("E".to_string(), None, String::new()),
+                ("L".to_string(), Some(0), "TODAY()".to_string()),
+            ]
+        );
     }
 }
