@@ -246,12 +246,23 @@ def _drop_desktop_conflicts(case: Path, values: dict[str, dict[str, Any]]) -> in
         raise OracleError(f"cannot check against cached values: {(e.stderr or '').strip()[:120]}") from e
     if not (snap.get("application") or "").startswith("Microsoft"):
         return 0  # cached by POI, LibreOffice, a generator...: no Excel evidence to conflict with
+    # Decision 0030 rules 1/2: only a 16.x build outranks the web; older builds (12.0 = Mac Excel
+    # 2008, XlsxWriter's placeholder) keep the web value when the difference is last-digit noise.
+    is_desktop = (snap.get("app_version") or "").startswith("16.")
     cached = formula_values(snap)
     dropped = 0
     for sheet, cells in values.items():
         for a1 in list(cells):
             mine = cached.get(sheet, {}).get(a1)
-            if mine is not None and _materially_differ(cells[a1], mine):
+            if mine is None:
+                continue
+            if is_desktop and cells[a1] != mine and not _materially_differ(cells[a1], mine):
+                print(
+                    f"DESKTOP {case.name} {sheet}!{a1}: web={cells[a1]} desktop={mine} (desktop value kept)",
+                    file=sys.stderr,
+                )
+                cells[a1] = mine
+            elif _materially_differ(cells[a1], mine):
                 print(
                     f"CONFLICT {case.name} {sheet}!{a1}: web={cells[a1]} desktop={mine} (left pending)",
                     file=sys.stderr,

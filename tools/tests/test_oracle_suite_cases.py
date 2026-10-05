@@ -40,9 +40,9 @@ def test_skip_reason(entry: dict[str, Any], include_cached: bool, skipped: bool)
     assert (cli._skip_reason(entry, include_cached) is not None) is skipped
 
 
-def _cached(app: str, a1: dict[str, Any]) -> dict[str, Any]:
+def _cached(app: str, a1: dict[str, Any], version: str = "16.0300") -> dict[str, Any]:
     cells = {k: {"formula": "=X()", "formula_kind": {"kind": "normal"}, "value": v} for k, v in a1.items()}
-    return {"application": app, "sheets": [{"name": "S", "cells": cells}]}
+    return {"application": app, "app_version": version, "sheets": [{"name": "S", "cells": cells}]}
 
 
 def test_web_values_that_contradict_desktop_excel_are_left_pending(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -56,7 +56,23 @@ def test_web_values_that_contradict_desktop_excel_are_left_pending(monkeypatch: 
         }
     }
     assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 2
-    assert web == {"S": {"A2": {"t": "n", "v": 0.1 + 1e-17}}}  # last-digit noise is kept
+    assert web == {"S": {"A2": {"t": "n", "v": 0.1}}}  # last-digit noise: the 16.x desktop value wins
+
+
+def test_desktop_numbers_replace_web_below_1e9_and_pending_above(monkeypatch: pytest.MonkeyPatch) -> None:
+    desktop = {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0}, "A3": {"t": "n", "v": 1.0}}
+    monkeypatch.setattr(cli, "snapshot", lambda _: _cached("Microsoft Excel", desktop))
+    web = {"S": {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0 + 1e-12}, "A3": {"t": "n", "v": 1.001}}}
+    assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 1
+    assert web == {"S": {"A1": {"t": "n", "v": 1.0}, "A2": {"t": "n", "v": 1.0}}}
+
+
+def test_pre_16_producers_never_replace_a_web_number(monkeypatch: pytest.MonkeyPatch) -> None:
+    desktop = {"A1": {"t": "n", "v": 1.0}}
+    monkeypatch.setattr(cli, "snapshot", lambda _: _cached("Microsoft Excel", desktop, "12.0000"))
+    web = {"S": {"A1": {"t": "n", "v": 1.0 + 1e-12}}}
+    assert cli._drop_desktop_conflicts(Path("x.xlsx"), web) == 0
+    assert web == {"S": {"A1": {"t": "n", "v": 1.0 + 1e-12}}}
 
 
 def test_non_excel_cached_values_never_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
