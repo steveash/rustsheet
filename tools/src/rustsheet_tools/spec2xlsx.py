@@ -81,6 +81,8 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
             _write(ws, row, col, raw)
+    for name, formula in spec.get("names", {}).items():
+        wb.define_name(name, formula)
     wb.close()
     return buf.getvalue()
 

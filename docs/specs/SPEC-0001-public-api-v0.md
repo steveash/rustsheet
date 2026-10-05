@@ -22,7 +22,8 @@ Goals:
 
 Non-goals (later phases per api-design.md "Phasing"): incremental `ChangeSet` from dirty
 propagation, `CalcMode`, precedents/dependents (v0.5, M3); snapshots, scenarios, structural edits
-and `RefMap` (v0.8, M4); undo/redo; styles; tables and names editing; `Calculator`; Java/FFI;
+and `RefMap` (v0.8, M4); undo/redo; styles; tables and names editing beyond adding a
+workbook-scoped name (`Txn::define_name`, T-0043); `Calculator`; Java/FFI;
 numpy/arrow bulk transfer (M12). The `UserModel` UI layer stays out of the facade.
 
 ## Excel behavior to match
@@ -154,6 +155,7 @@ impl Txn<'_> {
     pub fn rename_sheet(&mut self, id: SheetId, new_name: &str) -> Result<(), EditError>;
     pub fn delete_sheet(&mut self, id: SheetId) -> Result<(), EditError>;
     pub fn first_sheet(&self) -> Result<SheetId, EditError>;
+    pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError>; // workbook scope; T-0043
 }
 pub struct ChangeSet { pub inputs: Vec<InputChange>, pub values: Vec<ValueChange>, pub sheets: Vec<SheetChange> }
 pub struct InputChange { pub cell: CellRef, pub before: Option<String>, pub after: Option<String> } // formula or literal text as the user sees it
@@ -214,7 +216,7 @@ Semantics:
 pub enum RefError { #[error("unknown sheet {0:?}")] UnknownSheet(String), #[error("invalid reference {0:?}")] Invalid(String),
                     #[error("reference out of bounds")] OutOfBounds, #[error("range too large")] TooLarge, #[error("unsupported reference form")] Unsupported }
 #[derive(thiserror::Error, Debug)] #[non_exhaustive]
-pub enum EditError { Ref(#[from] RefError), InvalidInput { cell: CellRef, message: String }, SheetName(String), LastSheet, Engine(String) }
+pub enum EditError { Ref(#[from] RefError), InvalidInput { cell: CellRef, message: String }, SheetName(String), LastSheet, DefinedName(String), Engine(String) }
 pub enum LoadError { Io(std::io::Error), Format(String), Options(String) }
 pub enum SaveError { Io(std::io::Error), Engine(String) }
 ```

@@ -3,6 +3,7 @@
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 C	probes/arith-range-error-precedence.case.json	12
+C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
@@ -13,6 +14,7 @@ C	probes/criteria-padded-text.case.json	14
 C	probes/date-text-locale.case.json	10
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16
+C	probes/defined-name-intersection.case.json	10
 C	probes/error-operand-broadcast.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
@@ -58,6 +60,15 @@ F	probes/dates-early-1900.case.json	Sheet1!A10
 F	probes/dates-early-1900.case.json	Sheet1!A12
 F	probes/dates-early-1900.case.json	Sheet1!A16
 F	probes/dates-early-1900.case.json	Sheet1!A9
+F	probes/defined-name-intersection.case.json	Sheet1!H1
+F	probes/defined-name-intersection.case.json	Sheet1!H10
+F	probes/defined-name-intersection.case.json	Sheet1!H2
+F	probes/defined-name-intersection.case.json	Sheet1!H3
+F	probes/defined-name-intersection.case.json	Sheet1!H4
+F	probes/defined-name-intersection.case.json	Sheet1!H5
+F	probes/defined-name-intersection.case.json	Sheet1!H6
+F	probes/defined-name-intersection.case.json	Sheet1!H7
+F	probes/defined-name-intersection.case.json	Sheet1!H8
 F	probes/intersection-function-operands.case.json	Sheet1!H5
 F	probes/intersection-operands.case.json	Sheet1!H10
 F	probes/intersection-operands.case.json	Sheet1!H11

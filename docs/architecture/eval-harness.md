@@ -44,6 +44,8 @@ Input conventions:
 - A string starting with `=` is a formula, written with **dynamic-array (M365) semantics**.
 - Any other string is text. Use the tagged form for text that starts with `=` or for errors.
 - The empty string `""` is materialized as `=""`.
+- Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
+  formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 
 The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and by
 `engine.rs::evaluate_spec` (for RustSheet).

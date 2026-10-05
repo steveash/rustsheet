@@ -54,6 +54,7 @@ mod cast;
 mod conditional_formatting;
 mod constants;
 mod cut_paste;
+mod defined_names;
 mod evaluation;
 mod function_names;
 mod functions;
