@@ -12,12 +12,12 @@ depends_on: [T-0030]
 
 ## Goal
 A formula that references another workbook with no usable cached values gives Excel's error
-(a vm-coded rich-value error per the excel-graph oracle, errorType 10 / subType 2, cached as `#VALUE!`; decoded by T-0030) instead of `#REF!`. The workbook was written by Apache POI,
+(a vm-coded rich-value error per the excel-graph oracle, errorType 10 / subType 2, cached as `#VALUE!`; T-0030 decoded it as `#BLOCKED!`) instead of `#REF!`. The workbook was written by Apache POI,
 so this is web-only evidence: confirm on desktop Excel (excel-probe skill) before implementing.
 
 ## Context
 Evidence: `poi/link-external-workbook-b.xlsx` (POI-written, excel-graph sidecar from T-0019)
-Sheet0!A1 `=SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)`: expected `#VALUE!`, actual `#REF!`
+Sheet0!A1 `=SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)`: expected `#BLOCKED!` (T-0030), actual `#REF!`
 (file cache `<v>30.0</v>`, ignored for scoring). The package has `xl/externalLinks/externalLink0.xml`
 with an empty `<externalBook r:id="rId1"/>`: no sheetNames, no sheetDataSet. The formula uses the
 literal file name in brackets, not Excel's `[1]` index form.

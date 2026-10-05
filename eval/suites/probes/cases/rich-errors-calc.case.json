@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Rich-value errors Excel stores in xlsx (vm/rdrichvalue errorType): ERROR.TYPE and ISERROR next to each producing cell; the cached oracle workbook gives each errorType (T-0030)",
+  "tags": [
+    "M0",
+    "probe",
+    "rich-value-errors"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SEQUENCE(2)",
+        "A2": 5,
+        "B1": "=ERROR.TYPE(A1)",
+        "C1": "=ISERROR(A1)",
+        "A4": "=FILTER({1;2},{FALSE;FALSE})",
+        "B4": "=ERROR.TYPE(A4)",
+        "C4": "=ISERROR(A4)",
+        "A6": "=1/0",
+        "B6": "=ERROR.TYPE(A6)",
+        "A7": "=NA()",
+        "B7": "=ERROR.TYPE(A7)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1",
+    "Sheet1!C1",
+    "Sheet1!A4",
+    "Sheet1!B4",
+    "Sheet1!C4",
+    "Sheet1!A6",
+    "Sheet1!B6",
+    "Sheet1!A7",
+    "Sheet1!B7"
+  ]
+}
