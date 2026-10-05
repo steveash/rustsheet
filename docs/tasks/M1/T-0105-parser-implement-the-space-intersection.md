@@ -52,7 +52,7 @@ where it separates two reference operands); `expressions/parser/mod.rs` `parse_r
 - [x] Spec cases in `smoke` for invalid trailing input (the trailing-input half has no gen-m1
   evidence; flag hand expectations for oracle confirmation).
 - [x] Formulas with intersections round-trip through stringify (unit test).
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Union operator (T-0134). Sheet-qualified second range corner `Data!B8:Data!E12` (T-0130).
