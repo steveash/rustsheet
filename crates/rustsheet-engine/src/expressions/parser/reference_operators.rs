@@ -156,8 +156,9 @@ fn is_constant(node: &Node) -> bool {
 /// intersection (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions (`SUM`, `NA`) make Excel refuse the formula. Reference-returning calls are
-/// INDEX, OFFSET and IF (probes/intersection-function-operands) plus INDIRECT and CHOOSE,
-/// which Excel documents as returning references.
+/// INDEX, OFFSET and IF (probes/intersection-function-operands). Only the value functions
+/// with evidence (SUM, NA) are refused; every other call is accepted until probed
+/// (UNVERIFIED, docs/excel-semantics/references.md).
 fn is_reference_operand(node: &Node) -> bool {
     match node {
         Node::NumberKind(_)
@@ -171,14 +172,7 @@ fn is_reference_operand(node: &Node) -> bool {
         | Node::CompareKind { .. }
         | Node::UnaryKind { .. } => false,
         Node::ErrorKind(error) => *error == Error::REF,
-        Node::FunctionKind { kind, .. } => matches!(
-            kind,
-            Function::Index
-                | Function::Offset
-                | Function::If
-                | Function::Indirect
-                | Function::Choose
-        ),
+        Node::FunctionKind { kind, .. } => !matches!(kind, Function::Sum | Function::Na),
         _ => true,
     }
 }

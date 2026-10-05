@@ -104,7 +104,7 @@ between two error operands. Accepted forms:
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5 (oracle:
 excel-graph, 2026-10-05, T-0138). The refused workbooks come from scratch runs of one formula each (T-0138).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
-Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`; INDIRECT and CHOOSE are allowed as reference-returning without probe evidence; `@` and union operands are T-0149)
+Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`; only SUM and NA, the evidenced value functions, are refused: any other function is accepted as an operand, UNVERIFIED until probed (T-0150); `@` and union operands are T-0149)
 Tasks: T-0138, T-0148, T-0149, T-0042
 
 ## A defined name may be an intersection
