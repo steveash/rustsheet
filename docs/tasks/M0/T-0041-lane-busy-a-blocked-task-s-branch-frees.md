@@ -3,7 +3,7 @@ id: T-0041
 title: "Lane busy: a blocked task's branch frees its lane"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -30,10 +30,17 @@ front-matter parser (`parse`, not a new regex; directive 3), and leave blocked t
 tasks claimed, so nobody restarts them: unblocking is decision 0013's job.
 
 ## Acceptance criteria
-- [ ] A task whose pushed branch sets `status: blocked` does not make its lane busy, but stays
+- [x] A task whose pushed branch sets `status: blocked` does not make its lane busy, but stays
   claimed. Unit test in `scripts/test_tasks.py`, next to the done-task test from T-0034.
-- [ ] Decision 0022's busy-lane wording and docs/process/agent-workflow.md mention the exception.
-- [ ] `make check` green; reviewers approve.
+- [x] Decision 0022's busy-lane wording and docs/process/agent-workflow.md mention the exception.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing `BUSY_SECONDS` or the claim TTL.
+
+## Outcome
+`scripts/tasks.py::branch_claims` now reads each agent branch's task front matter (via
+`front_matter`, split out of `parse`) and leaves branches whose task is `status: blocked` out of
+`active`, so a blocked task no longer keeps its lane busy; it stays claimed. Unit test
+`test_blocked_task_on_its_branch_frees_the_lane_but_stays_claimed`; decision 0022 and
+agent-workflow.md document the exception. Eval delta: none (scripts only).
