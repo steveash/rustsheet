@@ -3,7 +3,7 @@ id: T-0038
 title: "make new-decision allocates decision numbers"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -30,18 +30,18 @@ pattern, or share its branch-listing part, rather than copying it (CLAUDE.md dir
 `scripts/check_duplication.py`).
 
 ## Acceptance criteria
-- [ ] `make new-decision TITLE="..."` writes `docs/decisions/NNNN-<slug>.md` from a template
+- [x] `make new-decision TITLE="..."` writes `docs/decisions/NNNN-<slug>.md` from a template
   (Status / Context / Decision / Consequences, as in 0023). NNNN is one above the highest number
   found on the working tree and on every `origin/*` branch, read after a fetch. Without git or a
   network it warns and uses the working tree, as `make new-task` does.
-- [ ] Unit tests in `scripts/` cover: a number taken only on a pushed branch is skipped; the
+- [x] Unit tests in `scripts/` cover: a number taken only on a pushed branch is skipped; the
   working-tree fallback works; the slug matches the `check_decisions.py` name pattern.
-- [ ] One definition: the branch scan is shared with `git_task_ids` (no copied loop), and the
+- [x] One definition: the branch scan is shared with `git_task_ids` (no copied loop), and the
   name regex is shared with `scripts/check_decisions.py`.
-- [ ] The work-loop skill, `docs/process/agent-workflow.md` and `docs/decisions/README.md` say
+- [x] The work-loop skill, `docs/process/agent-workflow.md` and `docs/decisions/README.md` say
   to create records with `make new-decision` and to push the record with the first commit on the
   branch, so other sessions see the number. A decision record notes the change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 Note (decision 0028): allocation alone cannot prevent duplicates, because a session can allocate
 before it pushes. The guarantee is the merge-time up-to-date check, and this task only makes
@@ -51,3 +51,13 @@ one rule.
 ## Out of scope
 - A merge queue or other branch-protection changes (owner settings).
 - Renumbering existing records.
+
+## Outcome
+`make new-decision TITLE="..."` (`scripts/new_decision.py`) writes `docs/decisions/NNNN-<slug>.md`
+from a Status/Context/Decision/Consequences template, numbered one above the highest number on the
+working tree and on every `origin/*` branch (after a fetch; warns and uses the working tree without
+git). The branch scan is now `tasks.git_branch_names(directory, pattern)`, shared with
+`git_task_ids`; the name regex is `check_decisions.NAME`; the slug is `tasks.slug`. Unit tests in
+`scripts/test_new_decision.py`. Work-loop skill, agent-workflow.md and decisions/README.md point to
+it; decision 0029 (allocated with the new tool). `check_decisions.py` now also fails a record that
+still holds the template placeholders (review finding). Eval: unchanged (scripts only).
