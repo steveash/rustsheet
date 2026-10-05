@@ -9,6 +9,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     error constants); they behave identically for dependants.
   * The empty-string text constant "" is written as the formula `=""` (XlsxWriter turns an
     empty string into a blank cell, which has different semantics).
+  * Spill references (`A1#`) are written in their file form `_xlfn.ANCHORARRAY(A1)`; Excel for the
+    web rejects a literal `A1#` in `<f>` (T-0042). The engine reads the spec text, so cases keep `A1#`.
   * Future functions get their `_xlfn.` prefixes automatically (XlsxWriter use_future_functions).
 """
 
@@ -29,6 +31,23 @@ import xlsxwriter
 _FIXED_CREATED = datetime(2000, 1, 1)
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
+
+
+# `A1#`, `$A$1#`, `Sheet!A1#`, `'My Sheet'!A1#`; the lookbehind keeps names like `X1A1#` whole.
+_SPILL_REF = re.compile(r"(?<![\w.$!'])((?:(?:'(?:[^']|'')+'|[A-Za-z_][\w.]*)!)?\$?[A-Za-z]{1,3}\$?\d+)#")
+_STRING_LITERAL = re.compile(r'"(?:[^"]|"")*"')
+
+
+def anchor_spill_refs(formula: str) -> str:
+    """Rewrites spill references outside string literals to `_xlfn.ANCHORARRAY(ref)`."""
+    out: list[str] = []
+    pos = 0
+    for lit in _STRING_LITERAL.finditer(formula):
+        out.append(_SPILL_REF.sub(r"_xlfn.ANCHORARRAY(\1)", formula[pos : lit.start()]))
+        out.append(lit.group(0))
+        pos = lit.end()
+    out.append(_SPILL_REF.sub(r"_xlfn.ANCHORARRAY(\1)", formula[pos:]))
+    return "".join(out)
 
 
 def parse_a1(a1: str) -> tuple[int, int]:
@@ -73,7 +92,7 @@ def _write(ws: Any, row: int, col: int, raw: Any) -> None:
         ws.write_number(row, col, float(raw))
     elif isinstance(raw, str):
         if raw.startswith("="):
-            ws.write_dynamic_array_formula(row, col, row, col, raw)
+            ws.write_dynamic_array_formula(row, col, row, col, anchor_spill_refs(raw))
         elif raw == "":
             ws.write_formula(row, col, '=""')
         else:

@@ -3,7 +3,7 @@ id: T-0042
 title: "spec2xlsx: write spill references A1# as _xlfn.ANCHORARRAY(A1)"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ does not know the ANCHORARRAY function (`#NAME?`).
 
 ## Out of scope
 - An ANCHORARRAY function in the engine.
+
+## Outcome
+`spec2xlsx.anchor_spill_refs` rewrites `A1#`, `$A$1#`, `Sheet!A1#` and `'My Sheet'!A1#` outside string literals to `_xlfn.ANCHORARRAY(ref)` when a formula is written (the engine still reads the spec text). probes/intersection-operands H12 is now `=J1# J2:K2`; its sidecar was refilled from excel-graph (same value, 2). Eval: probes known failures 47 -> 46 (fixed 1); no other change.
