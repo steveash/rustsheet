@@ -75,3 +75,12 @@ is a virtual run of blanks of the full length (`SearchVector`,
 the used area (unit tests compare against a sheet whose used area reaches the last row/column).
 T-0212's "skip upwards past other types" step must jump over that tail in O(1) (every index
 from the evaluated length on is blank), not walk it.
+
+## XLOOKUP: return_array may be wider than the lookup vector
+Rule: with a column lookup vector, a return range with the same number of rows and several columns
+returns the whole matched row: `XLOOKUP(8389,B5:B14,C5:D14)` is the 1x2 array
+{"Dianne Pugh","Finance"}.
+Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2. Unprobed: the row-vector
+analog and array (non-range) return arguments.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0948

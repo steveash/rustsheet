@@ -67,3 +67,23 @@ Status: VERIFIED
 Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.rs`
 Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
 Tasks: T-0209, T-0228
+
+## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
+Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
+does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number.
+Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1!H10 `MDETERM(B10:D12)`
+and H30 `MDETERM(B30:D32)` (all blank / only B30 = 1) are `#VALUE!`; H14:J16 `MINVERSE(B14:D16)` and
+H34:J36 `MINVERSE(B34:D36)` are `#VALUE!` in every cell; H50 `MDETERM(B50)` = 1.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0943
+
+## Legacy (CSE) array formula over a larger range
+Rule: a legacy array formula entered over a range larger than its result fills the range: a 1x1
+result is repeated into every cell, a single-row result is repeated down and a single-column result
+across, and every other cell is `#N/A`.
+Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1: `TRANSPOSE(B46)` over
+H46:J48 is 1 in all 9 cells (also `MINVERSE(B54)` H54:J56, `MMULT(B58,E58)` H58:J60);
+`B62:C62+E62:F62` over H62:J64 repeats the row down with J62:J64 `#N/A`; `TRANSPOSE(B66:C66)` over
+H66:J68 has row 68 `#N/A` (47 `#N/A` fill cells in H46:J136).
+Status: VERIFIED (Excel-cached)
+Tasks: T-0950

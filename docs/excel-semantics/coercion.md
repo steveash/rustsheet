@@ -67,3 +67,43 @@ Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; fo
 Status: VERIFIED (one cell; the multi-cell case is unprobed)
 Implemented in: `Model::handle_arithmetic` (crates/rustsheet-engine/src/arithmetic.rs)
 Tasks: T-0137
+
+## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
+Rule: the two arrays are paired element by element in row-major order and need only the same
+element count, not the same shape (a 3x2 range pairs with a 6x1 range); a pair where either side
+is not a number (blank, text, boolean in a range) is skipped; no numeric pair left is `#DIV/0!`;
+different element counts are `#N/A`; scalar arguments are allowed (`SUMXMY2(2,4)` = 4).
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!D1336, E1336,
+G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9,J7:J12)` =
+105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0944
+
+## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
+Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =
+0.7071…, `VAR(TRUE,FALSE,TRUE)` = 0.333…, `SUMSQ("2","3",4)` = 29, `AVEDEV(TRUE,FALSE)` = 0.5),
+while text and booleans in ranges are ignored. With no number at all AVEDEV and DEVSQ return
+`#NUM!`, whereas STDEV/VAR/VARP return `#DIV/0!` (inconsistent, but that is Excel).
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G1288, K1288,
+G1448, K1448, G1456, K1456, I392, L176, M1332, N1332; `#NUM!`: F176, G176, H392; `#DIV/0!`: F1288,
+F1448, F1456, H1288.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0945
+
+## MODE: text arguments and blank single-cell references are #VALUE!
+Rule: a text value argument, even numeric text (`MODE(B8,"1",2,3)`), makes MODE `#VALUE!`, and so
+does a single-cell reference to a blank cell: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
+although 2 appears twice. Blanks and text inside a multi-cell range are ignored
+(`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). Also
+`MODE("1",1,#DIV/0!,2,3)` is `#VALUE!` (whether argument order matters is unprobed). Not isolated yet: a single-cell reference to text on its own.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
+K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0947
+
+## MAXA / MINA: single-cell references are read like ranges
+Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1/0, as in a range:
+`MAXA(F14,E19,F12)` over three text cells is 0, `MINA(B16,B10,B9)` with B16 = TRUE is 1.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J888, F912.
+Status: VERIFIED (Excel-cached)
+Tasks: T-0949
