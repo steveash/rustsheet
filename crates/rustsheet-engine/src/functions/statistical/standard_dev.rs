@@ -26,6 +26,10 @@ impl Model {
                 CalcResult::Number(value) => {
                     accumulate(&mut sum, &mut sumsq, &mut count, value);
                 }
+                // An empty argument counts as 0 (probes/average-value-args F11, F21-F23).
+                CalcResult::EmptyArg => {
+                    accumulate(&mut sum, &mut sumsq, &mut count, 0.0);
+                }
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         accumulate(&mut sum, &mut sumsq, &mut count, value);
@@ -100,6 +104,10 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => {
                     accumulate(&mut sum, &mut sumsq, &mut count, value);
+                }
+                // An empty argument counts as 0 (probes/average-value-args F11, F21-F23).
+                CalcResult::EmptyArg => {
+                    accumulate(&mut sum, &mut sumsq, &mut count, 0.0);
                 }
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {

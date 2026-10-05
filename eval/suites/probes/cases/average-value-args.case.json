@@ -1,0 +1,67 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "AVERAGE/MEDIAN/GEOMEAN/STDEV/VAR value-argument coercion: array booleans and text, empty arguments",
+  "tags": [
+    "M2",
+    "coercion",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": true,
+        "A2": 5,
+        "F1": "=AVERAGE({TRUE,5})",
+        "F2": "=AVERAGE(5,)",
+        "F3": "=AVERAGE(5,TRUE)",
+        "F4": "=AVERAGE({\"a\",5})",
+        "F5": "=MEDIAN({TRUE,1,3})",
+        "F6": "=MEDIAN(1,)",
+        "F7": "=MEDIAN(1,TRUE,3)",
+        "F8": "=GEOMEAN({TRUE,4})",
+        "F9": "=GEOMEAN(4,)",
+        "F10": "=STDEV({TRUE,1,3})",
+        "F11": "=STDEV(1,3,)",
+        "F12": "=VAR({TRUE,1,3})",
+        "F13": "=VARP({TRUE,1,3})",
+        "F14": "=STDEVP({TRUE,1,3})",
+        "F15": "=AVERAGE(5,{TRUE},)",
+        "F16": "=COUNT(5,)",
+        "F17": "=AVERAGE(A1:A2,)",
+        "F18": "=MEDIAN({\"a\",1,3})",
+        "F19": "=STDEV({\"a\",1,3})",
+        "F20": "=GEOMEAN({\"a\",4})",
+        "F21": "=VAR(1,3,)",
+        "F22": "=VARP(1,3,)",
+        "F23": "=STDEVP(1,3,)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!F1",
+    "Sheet1!F2",
+    "Sheet1!F3",
+    "Sheet1!F4",
+    "Sheet1!F5",
+    "Sheet1!F6",
+    "Sheet1!F7",
+    "Sheet1!F8",
+    "Sheet1!F9",
+    "Sheet1!F10",
+    "Sheet1!F11",
+    "Sheet1!F12",
+    "Sheet1!F13",
+    "Sheet1!F14",
+    "Sheet1!F15",
+    "Sheet1!F16",
+    "Sheet1!F17",
+    "Sheet1!F18",
+    "Sheet1!F19",
+    "Sheet1!F20",
+    "Sheet1!F21",
+    "Sheet1!F22",
+    "Sheet1!F23"
+  ]
+}

@@ -21,6 +21,17 @@ Status: VERIFIED
 Implemented in: functions/math_and_trigonometry/mathematical.rs (`fold_min_max`)
 Tasks: T-0217
 
+## AVERAGE, MEDIAN, GEOMEAN, STDEV/VAR, COUNT value arguments
+Rule: these coerce like MIN/MAX above: booleans inside an array are ignored (`=AVERAGE({TRUE,5})` → 5,
+`=MEDIAN({TRUE,1,3})` → 2, `=GEOMEAN({TRUE,4})` → 4, `=STDEV({TRUE,1,3})` → 1.414...), a direct boolean counts
+as 1/0 (`=AVERAGE(5,TRUE)` → 3), text inside an array is ignored, and an empty argument counts as 0
+(`=AVERAGE(5,)` → 2.5, `=MEDIAN(1,)` → 0.5, `=GEOMEAN(4,)` → `#NUM!`, `=STDEV(1,3,)` → 1.5275..., VAR/VARP/STDEVP likewise,
+`=COUNT(5,)` → 2, `=AVERAGE(A1:A2,)` with A1 = TRUE, A2 = 5 → 2.5).
+Evidence: probes/average-value-args F1–F23 (oracle: excel-graph, 2026-10-05)
+Status: VERIFIED
+Implemented in: `for_each_value`, `fn_count` in functions/statistical/count_and_average.rs; `fn_stdev_s/p`, `fn_var_s/p` (standard_dev.rs, variance.rs)
+Tasks: T-0236
+
 ## LEFT / RIGHT / MID numeric arguments
 Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`); a start or length around 1E+15 is `#VALUE!`
 (`MID("ü",1000000000000000.0,4)`); in LEFT a length a hair below 1 (`TRUE - 1E-15`) counts as 1

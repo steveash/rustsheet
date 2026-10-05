@@ -23,6 +23,9 @@ impl Model {
                 CalcResult::Number(value) => {
                     f(value);
                 }
+                // An empty argument (`AVERAGE(5,)`) counts as 0
+                // (probes/average-value-args F2, F6, F9, F11, F17).
+                CalcResult::EmptyArg => f(0.0),
                 CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
@@ -44,9 +47,8 @@ impl Model {
                                 ArrayNode::Number(value) => {
                                     f(value);
                                 }
-                                ArrayNode::Boolean(b) => {
-                                    f(if b { 1.0 } else { 0.0 });
-                                }
+                                // Booleans inside an array are ignored, unlike direct
+                                // arguments (probes/average-value-args F1, F5, F8, F10).
                                 ArrayNode::Error(error) => {
                                     return Err(CalcResult::Error {
                                         error,
@@ -309,6 +311,10 @@ impl Model {
                     result += 1.0;
                 }
                 CalcResult::Boolean(_) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    result += 1.0;
+                }
+                // COUNT(5,) is 2: the empty argument counts as a number (probes/average-value-args F16).
+                CalcResult::EmptyArg => {
                     result += 1.0;
                 }
                 CalcResult::String(s)
