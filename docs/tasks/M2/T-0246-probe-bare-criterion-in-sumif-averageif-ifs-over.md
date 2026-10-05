@@ -3,7 +3,7 @@ id: T-0246
 title: "Probe bare = criterion in SUMIF/AVERAGEIF/*IFS over empty-string and blank cells"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ T-0227 changed `build_criteria_with` (Standard flavor) so `"="` matches blank ce
 
 ## Out of scope
 -
+
+## Outcome
+Added `probes/criteria-ifs-bare-equals` (12 cells) with excel-graph oracle values; the engine already
+matches all 12 (no engine change). Finding recorded in criteria.md. Eval delta: probes cases +1,
+cells +12 passed, known failures unchanged.
