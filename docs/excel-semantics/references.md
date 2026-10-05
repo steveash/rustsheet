@@ -18,17 +18,18 @@ as a name character when the decimal separator is `.`. That rule is an assumptio
 Status: VERIFIED (en-US); comma-decimal locales UNVERIFIED
 Tasks: T-0123
 
-## External reference with no cached data is a rich-value error (undecoded)
+## External reference with no cached data is `#BLOCKED!`
 Rule: `SUM('[link-external-workbook-a.xlsx]Sheet0'!A1:B1)` whose externalBook part holds no cached
-data does not give `#REF!`. Excel for the web writes the cell as a vm-coded rich-value error,
-errorType 10 / subType 2 (rv `10 2`, errorType-first structure), cached as `#VALUE!`. Which error
-that is (by the 8 = `#SPILL!`, 13 = `#CALC!` pattern errorType 10 may be `#BLOCKED!`) needs an
-ERROR.TYPE probe; until then the harness marks it `#UNDECODED!` and does not score it.
-Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (cached oracle workbook
-eval/.cache/oracle/excel-graph/6e0e5c2a…2361.xlsx, 2026-10-04). The workbook was written by Apache
-POI, so there is no desktop evidence.
-Status: UNVERIFIED (errorType 10 decoding and desktop behavior pending; T-0124, T-0030)
-Tasks: T-0124, T-0030
+data is `#BLOCKED!`, not `#REF!`. Excel for the web writes it as a vm-coded rich-value error,
+errorType 10 / subType 2, cached as `#VALUE!`; errorType 10 is `#BLOCKED!` (ERROR.TYPE 11,
+docs/excel-semantics/arrays.md table, probes/rich-errors-image). Inferred from that mapping: no
+ERROR.TYPE or VALUETOTEXT was taken next to the external reference itself (subType 2 there, 12 for
+IMAGE).
+Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (excel-graph, refilled 2026-10-05, T-0030).
+The workbook was written by Apache POI, so there is no desktop evidence (decision 0030: web-only
+values are goldens).
+Status: VERIFIED (Excel for the web; error name inferred from errorType 10)
+Tasks: T-0124
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
