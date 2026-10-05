@@ -10,8 +10,10 @@
   `EVIDENCE_THRESHOLD` (25 cells).
 - **Decision:** The gap-triager agent (`.claude/agents/gap-triager.md`, a protected path) also
   reads that section. It files probe or generator tasks for in-scope functions (by catalog
-  milestone) that have fewer than 25 Excel-evidence cells or none at all. The steward copies the
-  section's one-line summary into the docs/status.md snapshot.
+  milestone) that have fewer than 25 Excel-evidence cells or none at all. T-0020 seeds the
+  section's one-line summary in the docs/status.md snapshot; the steward refreshes it on each run.
 - **Consequences:** Evidence gaps become tasks, not only failures. The evidence report is
   informational and never part of the eval gate, so no threshold is enforced and no baseline changes.
   Functions with no Excel evidence are treated as unverified, even when they pass hand-written cases.
+  The counts are an upper bound: a cell counts for every function its formula names, including
+  branches that never run (T-0044 makes the per-cell source exact).
