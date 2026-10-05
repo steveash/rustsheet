@@ -10,7 +10,7 @@ use crate::{
 };
 
 impl Model {
-    // CONCATENATE(text1, [text2], ...)
+    /// CONCATENATE(text1, [text2], ...): joins text; array arguments lift element-wise.
     pub(crate) fn fn_concatenate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
