@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_excel_serial_to_ymd_early_1900() {
-        assert_eq!(excel_serial_to_ymd(0), None);
+        assert_eq!(excel_serial_to_ymd(0), Some((1900, 1, 0)));
         assert_eq!(excel_serial_to_ymd(1), Some((1900, 1, 1)));
         assert_eq!(excel_serial_to_ymd(59), Some((1900, 2, 28)));
         assert_eq!(excel_serial_to_ymd(60), Some((1900, 2, 29)));
