@@ -21,6 +21,23 @@ Evidence: gen-m1/6462bf910ef9f28f Calc!A66, A130; gen-m1/10f579127ffb6d9b Calc!A
 A153 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 
+## Array constants take a single optional sign on a number literal
+Rule: inside `{...}` an item is a literal, optionally preceded by one `+` or `-` that is directly
+attached to a number. `{+1}` = 1, `{-1}` = -1, `{-1.5E1}` = -15, `{1,-2,+3}` sums to 2. Every other
+sign form tested was a syntax error, so Excel for the web refuses the whole workbook on load (same
+mechanism as `=IF(TRUE)` above): sign runs `{--1}`, `{++1}`, `{-+1}`, `{+-1}`, `{---1}`, `{1,--2}`;
+a space after the sign `{- 1}`, `{+ 1}`; a sign on a boolean, text or error literal `{-TRUE}`,
+`{+"a"}`, `{-#N/A}`, `{+#N/A}`.
+Evidence: eval/suites/probes/cases/array-constant-signs.case.json (oracle: excel-graph, 2026-10-05,
+T-0147) for the accepted forms; each rejected form was sent as a single-cell workbook
+(e.g. `{"sheets":[{"name":"Sheet1","cells":{"A1":"=SUM({--1})"}}]}`) and got createSession 501
+`FileCorruptTryRepair` (rejected inputs cannot be committed; re-run such specs to reproduce).
+RustSheet today: `{--1}`, `{---1}`, `{1,--2}`, `{-TRUE}` and `{-#N/A}` are rejected (T-0132 keeps each
+minus as a node). Wrongly accepted: `{++1}`, `{-+1}`, `{+-1}`, `{+"a"}`, `{+#N/A}` (the parser
+drops plus signs in `parse_power`) and `{- 1}`, `{+ 1}` (whitespace after the sign is lost before
+parsing). Measured with the release build, T-0147.
+Status: VERIFIED
+
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
