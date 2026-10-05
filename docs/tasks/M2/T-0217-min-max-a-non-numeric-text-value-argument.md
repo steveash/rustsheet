@@ -3,7 +3,7 @@ id: T-0217
 title: "MIN/MAX: a non-numeric text value argument is #VALUE! (5 gen-m2 known failures)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,9 +28,9 @@ Route them through the T-0200 aggregate iterator the way SUM is, rather than add
 Check the other T-0200 users (AVERAGE, COUNT?) with the same probe and file follow-ups if any differ.
 
 ## Acceptance criteria
-- [ ] The 5 cells above disappear from eval/baseline/gen-m2.txt with no new F lines.
-- [ ] Unit tests: `MIN("a")`, `MAX(CONCATENATE("x"))` give `#VALUE!`. `MIN("2")` gives 2. A range with text is ignored.
-- [ ] `make check` green; reviewers approve.
+- [x] The 5 cells above disappear from eval/baseline/gen-m2.txt with no new F lines.
+- [x] Unit tests: `MIN("a")`, `MAX(CONCATENATE("x"))` give `#VALUE!`. `MIN("2")` gives 2. A range with text is ignored.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Reference-vs-value results of IF/INDEX (T-0216).
@@ -45,3 +45,13 @@ Excel treats the result as a reference (text skipped), but our IF/INDEX return v
 is now coerced to #VALUE!. This is exactly T-0216 (IF/INDEX return references). Suggested next
 step: land T-0216 first (or do both together), then re-apply this change; cannot be fixed without
 reference-preserving IF/INDEX, and the baseline may not take regressions.
+
+## Outcome
+Resumed from the handoff on top of T-0216 (IF/INDEX hand aggregates references via
+`evaluate_aggregate_arg`), which removes the 3 regressions the handoff hit. MIN and MAX now share
+one `fold_min_max`: ranges go through `for_each_number_in_range`, arrays keep only numbers, and a
+value argument is coerced with `cast_to_number` like SUM's. New probe `probes/min-max-value-args`
+(16 cells, excel-graph) confirmed text/boolean/empty-arg coercion and array skipping; recorded in
+docs/excel-semantics/coercion.md. Eval: gen-m2 known failures 873 → 868 (the 5 target cells),
+poi 933 → 931, probes +16 new cells passing and dates-and-blanks A15 (`MAX("3",1)`) fixed; 0 regressions.
+Follow-up: T-0236 (AVERAGE family array booleans / empty args).
