@@ -30,6 +30,7 @@ Why `(A1)(A2)` is `#REF!` is not known; find a rule that fits, and probe more fo
 ## Acceptance criteria
 - [ ] The four cells above pass, with no new F lines in any suite (`make eval-baseline`).
 - [ ] Every new rule found is recorded in docs/excel-semantics/references.md.
+- [ ] "Intersection operands must be references" in references.md gets an `Implemented in:` line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
