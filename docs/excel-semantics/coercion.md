@@ -87,7 +87,7 @@ Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05).
 Open: the scalar cases are verified; per-element truncation in arrays and whether Excel counts UTF-16
 code units (the code counts `chars()`) are unprobed. Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240); CONCAT/TEXTJOIN not probed
+Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240); CONCAT/TEXTJOIN give `#CALC!` (probes/text-result-limit C8-C9, not implemented)
 Tasks: T-0240
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing

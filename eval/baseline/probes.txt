@@ -37,6 +37,7 @@ C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sumif-edge-single-cell.case.json	15
+C	probes/text-result-limit.case.json	10
 F	probes/criteria-grammar.case.json	Sheet1!C4
 F	probes/date-text-locale.case.json	Sheet1!B1
 F	probes/date-text-locale.case.json	Sheet1!B4
@@ -84,3 +85,5 @@ F	probes/sheet-qualified-both-corners.case.json	Calc!A12
 F	probes/sheet-qualified-both-corners.case.json	Calc!A5
 F	probes/sheet-qualified-both-corners.case.json	Calc!A6
 F	probes/sheet-qualified-both-corners.case.json	Calc!A7
+F	probes/text-result-limit.case.json	Sheet1!C8
+F	probes/text-result-limit.case.json	Sheet1!C9

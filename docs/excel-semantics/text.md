@@ -5,3 +5,13 @@ Rule: a text function broadcast over arrays (LEFT, REPT, SUBSTITUTE, ...) return
 Evidence: none for Excel's behavior; this is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
 Implemented in: functions/text/util.rs (`MAX_BROADCAST_TEXT_BYTES`, `within_text_budget`), checked by functions/text/common.rs (`broadcast_text`)
+
+## SUBSTITUTE result longer than 32,767 characters
+Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
+replace-all and for a given instance number alike; exactly 32,767 is fine, and a non-matching instance leaves
+the text unchanged. `CONCAT` and `TEXTJOIN` past the limit give `#CALC!` in excel-graph (not implemented).
+Evidence: probes/text-result-limit C1-C7 (SUBSTITUTE), C8-C9 (CONCAT/TEXTJOIN `#CALC!`) (excel-graph, 2026-10-05;
+excel-desktop not used).
+Status: VERIFIED for SUBSTITUTE; CONCAT/TEXTJOIN `#CALC!` unverified on desktop
+Implemented in: `substitute_element` in functions/text/common.rs sizes the result before building it (T-0241)
+Tasks: T-0241
