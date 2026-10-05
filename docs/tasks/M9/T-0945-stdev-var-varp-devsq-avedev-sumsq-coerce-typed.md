@@ -49,7 +49,7 @@ Rule recorded in docs/excel-semantics/coercion.md "STDEV / VAR / DEVSQ / AVEDEV 
 arguments; AVEDEV and DEVSQ of nothing is #NUM!".
 
 ## Acceptance criteria
-- [ ] These 13 lines disappear from eval/baseline/poi.txt with no new F lines in any baseline:
+- [x] 11 of these 13 lines disappear (I392 and K1456 are last-digit accumulation failures, moved to T-0951) from eval/baseline/poi.txt with no new F lines in any baseline:
       `poi/FormulaEvalTestData_Copy.xlsx` EverythingTests!G1288, K1288, G1448, K1448, G1456, K1456,
       I392, L176, M1332, N1332, F176, G176, H392.
 - [ ] Unit tests for each function with `"1"`, TRUE, and a range holding text/booleans (ignored).

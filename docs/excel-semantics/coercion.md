@@ -123,6 +123,8 @@ Status: VERIFIED (Excel-cached)
 Implemented in: `Model::for_each_value` users `fn_stdev_s`/`fn_stdev_p`, `fn_var_s`/`fn_var_p`,
 `fn_devsq`, `fn_avedev`, `fn_sumsq`. Open: I392 (`DEVSQ("1","2",2)`) and K1456
 (`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392).
+Open: an empty argument (`DEVSQ(1,)`) is ignored by DEVSQ/AVEDEV/SUMSQ but counted as 0 by STDEV/VAR
+(probes/average-value-args); no evidence yet for the first group (T-0236).
 Tasks: T-0945
 
 ## MODE: text arguments and blank single-cell references are #VALUE!
