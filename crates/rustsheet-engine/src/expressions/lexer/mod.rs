@@ -46,6 +46,7 @@ use std::mem;
 
 use serde::{Deserialize, Serialize};
 
+use crate::number_format::parse_excel_number;
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
 
 use crate::language::Language;
@@ -626,9 +627,9 @@ impl Lexer {
             }
         }
         self.position = position;
-        match chars.parse::<f64>() {
-            Err(_) => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            Ok(v) => Ok(v),
+        match parse_excel_number(&chars) {
+            None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
+            Some(v) => Ok(v),
         }
     }
 
