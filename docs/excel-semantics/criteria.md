@@ -72,7 +72,7 @@ cell and no blank cells; probes/criteria-gaps C2 (`"="` → 1), C3 (`""` → 1) 
 blank cell and no empty string. Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0011).
 Status: VERIFIED
 Implemented in: `build_criteria_with` (`crates/rustsheet-engine/src/functions/criteria.rs`), Standard flavor.
-Also verified for SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MAXIFS and MINIFS: over A1:A5 = 1,
+Also verified for SUMIF, AVERAGEIF, COUNTIFS, SUMIFS, AVERAGEIFS, MAXIFS (`"="`) and MINIFS (`""`): over A1:A5 = 1,
 "" (empty-string cell), blank, 4, "x" with B = 10,20,40,80,160, `"="` selects only the blank cell
 (SUMIF 40, AVERAGEIF 40, COUNTIFS 1, SUMIFS 40, AVERAGEIFS 40, MAXIFS 40) and `""` selects both
 (SUMIF 60, AVERAGEIF 30, COUNTIFS 2, SUMIFS 60, AVERAGEIFS 30, MINIFS 20). Evidence:
