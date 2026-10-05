@@ -201,6 +201,10 @@ fn long_intersection_chains_hit_the_depth_cap() {
         panic!("expected the depth error, got {node:?}");
     };
     assert_eq!(message, TOO_DEEP_MESSAGE);
+    // U+3000 chains are capped the same way (security review: no unbounded chain).
+    let ideographic = vec!["A1"; MAX_FORMULA_DEPTH * 4].join("\u{3000}");
+    let node = parser.parse(&ideographic, &context());
+    assert!(matches!(node, Node::ParseErrorKind { .. }), "{node:?}");
 }
 
 #[test]

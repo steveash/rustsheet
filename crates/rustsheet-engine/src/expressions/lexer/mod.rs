@@ -217,6 +217,18 @@ impl Lexer {
         &rest[..end]
     }
 
+    /// The lexer's position as a char index.
+    pub fn get_position_index(&self) -> usize {
+        self.position
+    }
+
+    /// The formula text from char index `start` to the current position, trimmed.
+    pub fn source_since(&self, start: usize) -> String {
+        let end = self.position.min(self.len);
+        let text: String = self.chars[start.min(end)..end].iter().collect();
+        text.trim().to_string()
+    }
+
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
     /// It is a noop if the has not been a previous peek_token
     pub fn advance_token(&mut self) {

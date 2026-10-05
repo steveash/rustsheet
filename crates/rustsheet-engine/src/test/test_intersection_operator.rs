@@ -198,3 +198,14 @@ fn trailing_input_is_an_error() {
         assert_eq!(model._get_text(cell), "#ERROR!", "{cell}");
     }
 }
+
+#[test]
+fn ideographic_space_intersection_is_name_error_and_keeps_its_text() {
+    // probes/intersection-whitespace H7: `#NAME?` (T-0148).
+    let mut model = model();
+    model._set("A1", "=A1:A3\u{3000}A2:B2");
+    model._set("B9", "=FORMULATEXT(A1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NAME?");
+    assert_eq!(model._get_text("B9"), "=A1:A3\u{3000}A2:B2");
+}

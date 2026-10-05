@@ -17,12 +17,13 @@ impl Parser {
     /// (`A1:B2 B1:B3`, `(A1) B1`, `A1 OFFSET(...)`). Everywhere else it keeps its meaning
     /// of nothing at all: `= 1 + 2`, `SUM( A1 , B1 )`, `A1 -B1`, `{ 1 , 2 }`.
     pub(super) fn parse_intersection(&mut self) -> Node {
-        let start = self.lexer.get_position();
+        let start = self.lexer.get_position_index();
         let mut t = self.parse_range();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
         let mut depth = self.depth;
+        let mut as_name = false;
         while !is_constant(&t)
             && self.lexer.whitespace_follows()
             && starts_reference(&self.lexer.peek_token())
@@ -46,15 +47,7 @@ impl Parser {
             {
                 return self.intersection_error();
             }
-            if name_error {
-                // An undefined name: evaluates to `#NAME?` and prints as written, so the formula
-                // text survives FORMULATEXT and export.
-                t = Node::NamedVariableKind {
-                    name: self.source_since(start),
-                    id: None,
-                };
-                continue;
-            }
+            as_name |= name_error;
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
             }
@@ -64,20 +57,16 @@ impl Parser {
                 right: Box::new(p),
             };
         }
+        if as_name {
+            // A synthetic undefined name holding the source text: evaluates to `#NAME?` and
+            // prints as written, so FORMULATEXT and export keep the formula. Built once, after
+            // the chain, which the depth cap bounds like any intersection.
+            return Node::NamedVariableKind {
+                name: self.lexer.source_since(start),
+                id: None,
+            };
+        }
         t
-    }
-
-    /// The formula text from char position `start` to the lexer's position, without the
-    /// surrounding whitespace.
-    fn source_since(&self, start: i32) -> String {
-        let formula: Vec<char> = self.lexer.get_formula().chars().collect();
-        let to_index = |p: i32| usize::try_from(p).unwrap_or(0).min(formula.len());
-        let (from, to) = (to_index(start), to_index(self.lexer.get_position()));
-        formula[from.min(to)..to]
-            .iter()
-            .collect::<String>()
-            .trim()
-            .to_string()
     }
 
     fn intersection_error(&self) -> Node {
@@ -177,7 +166,7 @@ fn is_constant(node: &Node) -> bool {
 /// functions (`SUM`, `NA`) make Excel refuse the formula. Reference-returning calls are
 /// INDEX, OFFSET and IF (probes/intersection-function-operands). Only the value functions
 /// with evidence (SUM, NA) are refused; every other call is accepted until probed
-/// (UNVERIFIED, docs/excel-semantics/references.md).
+/// (UNVERIFIED, docs/excel-semantics/references.md; T-0161).
 fn is_reference_operand(node: &Node) -> bool {
     match node {
         Node::NumberKind(_)

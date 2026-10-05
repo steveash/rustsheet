@@ -20,6 +20,9 @@ OFFSET, IF (accepted) and SUM, NA (workbook refused). Candidates: INDIRECT, CHOO
 SWITCH, IFS, TAKE, DROP, CHOOSEROWS, value functions such as ABS, ROW. Refused workbooks give no
 value, so record load success/refusal per function (probes/intersection-function-operands).
 
+Also probe the value-operator operands refused by inference in T-0148: `=A1 (B1+C1)`,
+`=A1 (-B1)`, `=A1 (B1&"")`, `=A1 (B1=1)`, `=A1 (B1%)`.
+
 ## Acceptance criteria
 - [ ] Each candidate probed; result in docs/excel-semantics/references.md.
 - [ ] `is_reference_operand` matches the evidence; tests added.
