@@ -158,3 +158,11 @@ recalculated through excel-graph).
 Status: VERIFIED (observation). Which one a golden follows is T-0025; until then say which
 Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
 divergences").
+
+## GEOMEAN of a single value returns it exactly
+
+`=GEOMEAN("47")` is exactly 47 in Excel, and `=GEOMEAN(1,2,"5",TRUE)` is 1.778279410038923;
+a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
+formulation is not yet known (T-0941). Evidence: excel-graph sidecar
+`crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
+Status: VERIFIED (values); formulation UNVERIFIED.

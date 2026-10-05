@@ -5,30 +5,33 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
-## Snapshot — 2026-10-04 (M1 in progress)
+## Snapshot — 2026-10-05 (M1 in progress)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 210 | 71,773 | 97.59% | 1,727 |
-| poi | 336 | 27,287 | 96.57% (40 workbooks oracle-scored, T-0019) | 959 |
+| ironcalc-calc | 210 | 71,818 | 97.80% | 1,580 (+2 new coverage from today's oracle fill) |
+| poi | 336 | 27,286 | 96.66% (199 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 935 |
+| gen-m2 | 30 | 12,000 | 85.62% | 1,726 |
 | smoke | 5 | 38 | 100% | 0 |
-| probes | 3 | 45 | 71.11% | 13 |
-| probes-numeric | 4 | 2,738 | 60.19% | not gated |
-| gen-m2 | 3 | pending oracle | — | — |
+| probes | 6 | 96 | 80.21% | 19 |
+| probes-numeric | 4 | 2,738 | 68.08% | not gated |
 
-Hygiene: lint-debt 99 allow entries · duplicated lines 8,420 · oversized files 20.
+Hygiene: lint-debt 99 allow entries · duplicated lines 8,360 · oversized files 19 (formatter/format.rs dropped below the limit; ratchet updated).
 
-Since 2026-10-03: 13 PRs merged to `main` (T-0910/0912/0114/0115/0914/0111/0911/0919/0918/0920/0118/0913/0101);
-0 reverted; 0 blocked. CI on `main` (dc8dba7): green. Open PRs: #13 (T-0901 blocked, draft) and #11 (T-0904 blocked,
-draft), both docs-only drafts from other sessions, >24 h; #11 is superseded by T-0913 (merged) and can be closed by the owner.
-Ready queues: functions 9 (no triage needed), engine/api/harness ≥2 each (no planning needed). Upstream IronCalc: nothing new
-since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pending T-0009 (probes) and T-0004 (smoke, calibration). Spot-audit not run this session.
+Since the 2026-10-04 steward run (#33): 41 PRs merged to `main` (T-0004/0009/0013/0015/0016/0017/0019/0022/0023/0027/0028/0029/0031/0032/0033/0034/0035/0036/0037,
+T-0102/0103/0104/0108/0116/0119/0123, T-0203/0206, T-0923/0924/0926/0928/0930/0932, decision 0014, task filings); 0 reverted; 0 tasks blocked.
+In flight: T-0931 (engine, P0), T-0117 (harness, gen-m1). CI on `main` (c2b8a31): green. Open PRs: #68 (T-0125 draft, handed off to opus, <24 h).
+Ready queues: functions 31, sonnet 11 (buffer ≥10 met); engine 1 ready because T-0931 holds the lane (10 more todo), harness 4, research 6,
+quality 3 — no triage or planning needed. Upstream IronCalc: 7 new commits through 4deab8f6, filed T-0129 (error broadcasting), T-0223
+(MAX/MIN), T-0940 (ISREF). Oracle: excel-graph OK; fill on poi wrote 0 sidecars (292 skipped, 4 workbooks failed, as in T-0019) and on ironcalc-calc wrote 3
+(GEOMEAN, XMATCH_arrays, array_in_scalar_repro: +45 scored cells, 2 GEOMEAN ulp misses filed as T-0941).
+Spot-audit: none yet; the first merges are 2026-10-02, so the first weekly audit is due 2026-10-09 (with the decision 0015 reviewer-model check).
 
-**Critical lane:** engine, harness, research, perf
+**Critical lane:** engine, harness, research
 
-(Ordered list read by both tier workers, which then fall back to `functions`. API v0 is done; M1 exit needs the engine parity fixes
-(T-0931, T-0106..T-0110); harness has the throughput fixes (T-0016, T-0017, T-0022, T-0023) and gen-m1/gen-m2 (T-0117,
-T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baseline before M3 (T-0400, T-0402).)
+(Ordered list read by both tier workers, which then fall back to `functions`. M1 exit needs the engine parity fixes (T-0931, T-0106,
+T-0107, T-0110, T-0129, T-0105, T-0122) and gen-m1 at 100% (harness T-0117, then oracle fill); research holds the probes that unblock
+them (T-0011, T-0026, T-0030). perf dropped: its tasks (T-0400, T-0402, T-0403) are M3.)
 
 ## Needs owner
 
