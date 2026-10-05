@@ -88,3 +88,43 @@ Rule: General keeps fixed notation while the digits fit in 11 characters, sign n
 Evidence: poi/GeneralFormatTests.xlsx A18, A27, A28, A61.
 Status: VERIFIED
 Tasks: T-0938
+
+## A comma between digit placeholders turns on thousands grouping
+Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
+part in threes". It is not a literal at that position. `0`/`?` placeholders beyond the number's
+digits pad the grouped result, and the padding is grouped too: with `0` a padded group shows its
+separator, and with `?` the padded separator becomes a space. A trailing `,` still scales by 1000
+and keeps the sign.
+- `0,0000000` on 1234567 → "01,234,567" (A67); `0,00000000` → "001,234,567" (A68);
+  `0,000000000` → "0,001,234,567" (A69); `$000,000,000` on 314159 → "$000,314,159" (A335).
+- `?,???????` → " 1,234,567" (A44); `?,????????` → "  1,234,567" (A45); `?,?????????` →
+  "    1,234,567" (A46, A112). Negatives put "-" first: "- 1,234,567" (A80), "-    1,234,567"
+  (A82, A118).
+- `#,,` on -1234567 → "-1" (A95).
+Evidence: poi/NumberFormatTests.xlsx Tests!A44:A46, A67:A69, A80:A82, A95, A112, A118, A335
+(desktop Excel cached values, Microsoft Macintosh Excel 16.0, 1904 date system; no web sidecar).
+Status: VERIFIED
+Tasks: T-0952
+
+## `£`, `¥` and `|` print as literals without quotes
+Rule: these characters need no quotes or backslash in a number format; they print as written,
+and the number's "-" goes in front of everything (also before a quoted prefix). (`€` already works.)
+- `£000.00` on 12.3 → "£012.30" (A5); `¥#.00" after"` → "¥12.30 after" (A18), on -12.3
+  → "-¥12.30 after" (A21); `"before "¥#.00` → "before ¥12.30" (A19), on -12.3 → "-before ¥12.30"
+  (A22).
+- `|?.?|` on 1.1 → "|1.1|" (A107); `|??.?|` → "| 1.1|" (A108); `|?.??|` → "|1.1 |" (A109);
+  `|??.??|` → "| 1.1 |" (A110); on -1.1 → "-|1.1|" … "-| 1.1 |" (A113:A116).
+Evidence: poi/NumberFormatTests.xlsx Tests!A5, A18, A19, A21, A22, A107:A110, A113:A116 (desktop
+Excel cached values, Microsoft Macintosh Excel 16.0).
+Status: VERIFIED
+Tasks: T-0953
+
+## `a/p` and `A/P` AM/PM markers
+Rule: `a/p` prints "a" or "p" and `A/P` prints "A" or "P", like `AM/PM`: hours switch to the
+12-hour clock. `hh:mm:ss a/p` on 17816.607951388887 → "02:35:27 p" (A11); `HH:MM:SS A/P` →
+"02:35:27 P" (A16); on 36191.1702084375 → "04:05:06 a" (A30), "04:05:06 A" (A35).
+Evidence: poi/DateFormatTests.xlsx Tests!A11, A16, A30, A35 (desktop Excel cached values,
+Microsoft Macintosh Excel 16.0; the workbook uses the 1904 date system, which does not change the
+time of day).
+Status: VERIFIED
+Tasks: T-0954
