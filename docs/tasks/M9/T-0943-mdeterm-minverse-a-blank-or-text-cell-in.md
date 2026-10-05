@@ -3,7 +3,7 @@ id: T-0943
 title: "MDETERM/MINVERSE: a blank cell in the matrix is #VALUE! (20 poi known failures)"
 milestone: M9
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
