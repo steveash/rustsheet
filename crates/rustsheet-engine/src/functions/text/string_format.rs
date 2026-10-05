@@ -230,8 +230,8 @@ impl Model {
             |i, j| {
                 replace_element(
                     old_text.elem(i, j),
-                    self.text_number(start_num.elem(i, j)),
-                    self.text_number(num_chars.elem(i, j)),
+                    self.array_node_to_number(start_num.elem(i, j)),
+                    self.array_node_to_number(num_chars.elem(i, j)),
                     new_text.elem(i, j),
                 )
             },

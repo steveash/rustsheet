@@ -55,6 +55,7 @@ excel-graph, 2026-10-05, T-0109). The scalar form `-" 2 "*2` = -4 (gen-m1/10f579
 The same holds for a one-cell intersection of a whole row: `('Q''1'!5:5 'Q''1'!B5)+2` with B5 = " 2 "
 is 4 (gen-m1/7cb99acdd82402f1 Calc!A72, A103, A217, A235; found in T-0105).
 Status: VERIFIED
+Implemented in: `Model::array_node_to_number` (crates/rustsheet-engine/src/cast.rs), via `cast_number`; only the " 2 " form is oracle-covered, other text forms follow the scalar path.
 Tasks: T-0131
 
 ## An error in a range operand of arithmetic wins over the right operand's error
