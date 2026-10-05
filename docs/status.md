@@ -28,9 +28,6 @@ since 9b1ae3fd. Oracle credentials now configured (2026-10-04); first fills pend
 T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baseline before M3 (T-0400, T-0402).)
 
 ## Needs owner
-- Re-apply docs/process/routines.md (T-0023): replace the two worker routines with "rustsheet worker: sonnet"
-  (model Sonnet 5.5, hourly) and "rustsheet worker: opus" (model Opus 5.5, every 2 h) using the prompts there; keep the
-  steward (its step 6 text also changed in T-0022). Then delete this line.
 - PR #11 (T-0904, blocked draft) is obsolete after T-0913; close it when convenient.
 
 ## Log
@@ -94,3 +91,4 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-05 — T-0015: spec2xlsx output deterministic (pinned core.xml creation time); eval delta none.
 - 2026-10-05 — T-0027: shared-formula members shown shifted in eval show/snapshot (engine `shift_formula_text`); eval delta none.
 - 2026-10-05 — T-0203: gen-m2 oracle-filled and gated (30 cases, 12,000 cells, 85.62% bit-exact, 1,726 known failures, new coverage); IF arity fixed in the catalog; T-0208 fixed (oracle `#SPILL!` read by key name; 74 cells); 14 gap tasks T-0209..T-0222; unknown rich errorTypes read as `#UNDECODED!` and stay unscored (poi 951 -> 950, T-0030).
+- 2026-10-05 — Owner re-applied the T-0023 routines (sonnet hourly, opus every 2 h); T-0032: sonnet queue buffer (≥10 ready sonnet tasks; `scripts/tasks.py ready`, decision 0021).

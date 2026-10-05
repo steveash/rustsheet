@@ -159,6 +159,23 @@ class Tiers(unittest.TestCase):
             self.assertEqual(self.run_next(root, "sonnet", ({"T-0001"}, set())), "T-0002")
 
 
+    def test_ready_lists_what_next_could_pick_and_counts_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0001", tier="sonnet")
+            write_task(root, "T-0002", tier="sonnet")  # claimed by a pushed branch
+            write_task(root, "T-0003", tier="opus")
+            write_task(root, "T-0004", tier="sonnet", status="done")
+            with mock.patch.object(tasks, "ROOT", root), \
+                    mock.patch.object(tasks, "TASKS", root / "docs/tasks"), \
+                    mock.patch.object(tasks.sys, "argv", ["tasks.py", "ready", "--tier", "sonnet"]), \
+                    mock.patch.object(tasks, "branch_claims", return_value=({"T-0002"}, set())), \
+                    mock.patch("builtins.print") as printed:
+                self.assertEqual(tasks.main(), 0)
+        lines = [str(c[0][0]) for c in printed.call_args_list]
+        self.assertEqual([lines[0].split()[0], lines[-1]], ["T-0001", "1 ready"])
+
+
 class BranchClaims(unittest.TestCase):
     def test_recent_branches_claim_old_ones_only_count_with_a_handoff(self) -> None:
         now = int(time.time())

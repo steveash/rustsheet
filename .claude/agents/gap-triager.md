@@ -17,4 +17,8 @@ Prioritize by (failing cells × real-world function frequency prior from eval/ca
 When the Excel values in a group reveal a quirk (expected values that look wrong, arbitrary or
 inconsistent are still correct: Excel is always right), add or update its entry in
 `docs/excel-semantics/` citing the cells, and link it from the task.
+When you are refilling the sonnet queue (decision 0021), prefer cutting groups into tasks that
+meet the `sonnet` rubric (size S, mechanical acceptance criteria, Excel evidence already in
+`eval/`, no numeric fitting), e.g. one function or one verdict class per task; keep anything
+needing fitting, a spec or new evidence as `opus`. Never relabel a task to reach the target.
 Skip groups already covered by an open task. Validate and regenerate the board when done.

@@ -36,6 +36,9 @@ Work is partitioned into **lanes** so that parallel workers rarely touch the sam
   `routines.md`).
 - Run at most one task in flight per lane.
 - A daily **steward run** (planner + gap triager + status report) keeps queues full.
+- **Sonnet buffer** (decision 0021): keep at least 10 ready, unclaimed `tier: sonnet` tasks
+  (`python3 scripts/tasks.py ready --tier sonnet`). The steward and the opus worker (work-loop
+  step 6.5) top it up with the gap-triager or planner, cutting sonnet-sized tasks by the tier rubric.
 - Raise concurrency only after a week with a revert rate under 5%.
 
 ## Task lifecycle
