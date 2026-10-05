@@ -3,7 +3,7 @@ id: T-0105
 title: "Parser: implement the space (intersection) operator and reject trailing input"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
