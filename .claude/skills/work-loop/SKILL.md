@@ -45,6 +45,9 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 - `make fmt` then `make check`. Fix everything. Never weaken a gate to get green.
 - If eval cells newly pass: `make eval-baseline` and commit `eval/baseline/`.
 - If you paid down lint debt / duplication / oversized files: run the script with `--update`.
+- A decision record (needed for any protected-path change) is created with
+  `make new-decision TITLE="..."` (collision-free number; decision 0029); commit and push it with
+  the first commit after the claim so other sessions see the number.
 
 ## 5. Review
 Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
