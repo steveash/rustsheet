@@ -1,6 +1,6 @@
 # Arrays
 
-## Cached `#CALC!` / `#SPILL!` are stored as `#VALUE!` plus a `vm` attribute
+## Cached rich errors (`#CALC!`, `#SPILL!`, `#BLOCKED!`, ...) are stored as `#VALUE!` plus a `vm` attribute
 Rule: Excel writes a dynamic-array `#CALC!` (e.g. DROP/TAKE to nothing, `SEQUENCE(0,0)`, FILTER with no
 match) or `#SPILL!` into the sheet XML as `t="e"` with `<v>#VALUE!</v>` and a `vm="N"` attribute. `vm`
 indexes `xl/metadata.xml` `<valueMetadata>`; its `<rc v=K>` indexes `xl/richData/rdrichvalue.xml`. The
@@ -9,9 +9,25 @@ structure (`xl/richData/rdrichvaluestructure.xml`): desktop files put it first, 
 writes the `_error` keys alphabetically (`colOffset, errorType, rwOffset, subType`), so there the
 first field is `colOffset`. (The earlier "first field is the errorType" was wrong for those files;
 T-0208, gen-m2/78bc88199fc96650 Calc!A61 rv `0 8 5 1` is `#SPILL!`.) A reader that ignores `vm`
-sees `#VALUE!`. Other errorTypes exist (10 for an uncached external reference, references.md); until a
-probe maps them (T-0030) the harness reads them as `#UNDECODED!` and never scores them.
-Evidence: ironcalc-calc/ERROR.TYPE.xlsx (A8 vm→13, ERROR.TYPE=14; A14 vm→8, ERROR.TYPE=9);
+sees `#VALUE!`. Every rich error is stored this way, not only the dynamic-array ones; errorType is
+always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
+
+| errorType | error | ERROR.TYPE | produced by (probe cell) |
+|---|---|---|---|
+| 8 | `#SPILL!` | 9 | `SEQUENCE(2)` blocked by a value (rich-errors-calc A1) |
+| 9 | `#CONNECT!` | 10 | `STOCKHISTORY` of an unknown ticker (rich-errors-stockhistory A1, subType 4) |
+| 10 | `#BLOCKED!` | 11 | `IMAGE` of an unreachable URL (rich-errors-image A1, subType 12); an uncached external reference (poi/link-external-workbook-b A1, subType 2) |
+| 12 | `#FIELD!` | 13 | `FIELDVALUE` of a plain number (rich-errors-field A1; extra `Price` field) |
+| 13 | `#CALC!` | 14 | FILTER with no match (rich-errors-calc A4, subType 3) |
+
+A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType with subType 1. The
+error names come from `VALUETOTEXT(cell)` (a text "#BLOCKED!" etc.), which also matches for
+`#SPILL!`, `#CALC!` and `#DIV/0!`. `#BUSY!`, `#UNKNOWN!` and other codes were not produced; the
+harness reads unmapped codes, and a `vm` that resolves to no errorType, as `#UNDECODED!` and never
+scores them.
+Evidence: probes/rich-errors-calc, -field, -image, -stockhistory (excel-graph, 2026-10-05, T-0030:
+ERROR.TYPE and VALUETOTEXT per cell, errorType/subType from the cached oracle workbooks);
+ironcalc-calc/ERROR.TYPE.xlsx (A8 vm→13, ERROR.TYPE=14; A14 vm→8, ERROR.TYPE=9);
 DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all errorType 13, subType 3).
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was
 wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was already right.)
