@@ -575,7 +575,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J1344
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J888
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J908
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K1168
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K1288
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K1336
@@ -586,7 +585,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K824
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K936
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L176
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L908
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1008
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1332
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352
