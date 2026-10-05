@@ -3,7 +3,7 @@ id: T-0035
 title: "Cap decompressed entry size in the suite fetcher extract_zip"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
