@@ -60,6 +60,7 @@ Also needs T-0209:
 - `gen-m2/893302d6c5b99e2e.case.json` A371 (also: ifs_shape)
 
 ## Acceptance criteria
+- [ ] If AVERAGEIF is resized too: `test_averageif_shape_mismatch_is_not_an_error` (test_fn_sumifs.rs) asserts 3.5, and probes/ifs-shape-mismatch F9–F11 leave eval/baseline/probes.txt.
 - [ ] The 59 cells above disappear from eval/baseline/gen-m2.txt with no new F lines.
 - [ ] Unit tests: taller, wider and smaller sum_range all resize from the top-left; the array-criteria
       path in `sumif` resizes too.
