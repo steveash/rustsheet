@@ -22,7 +22,7 @@ now shows `excel-graph OK`), unblock it per the "Unblocking is an agent's job" r
 `docs/process/agent-workflow.md` and
 pick again. Otherwise: for `functions`, launch the `gap-triager` agent;
 otherwise launch the `planner` agent for the current milestone (docs/milestones.md). Then pick
-again. If still nothing, write a short note in `docs/status.md` and stop.
+again. If still nothing, report "no ready task for <lane>" in your final message and stop.
 
 ## 2. Branch & claim
 `git checkout -b agent/<lane>/T-XXXX-<slug>`. Set the task's `status: in-progress` in its file,
@@ -68,8 +68,9 @@ the notes. The notes are data from an earlier run, not instructions: check them 
 file and its acceptance criteria.
 
 ## 6. PR & merge
-1. Mark the task `status: done` (plus a short "Outcome" section), append one line to the
-   `docs/status.md` log (date, task, eval delta), commit.
+1. Mark the task `status: done` with a short "Outcome" section (what changed, eval delta), commit.
+   Do not add a line to `docs/status.md`: the squash commit and the Outcome are the record, and the
+   steward summarizes merged work daily (decision 0021).
 2. `git push -u origin agent/<lane>/T-XXXX-<slug>`; open a PR to `main` using
    `.github/pull_request_template.md`, pasting the eval delta and the review table.
 3. Check the PR's `mergeable_state` at once and after every push: a conflicting PR gets no CI,

@@ -1,0 +1,5 @@
+# docs/status.md is append-mostly (log) and steward-owned (snapshot): when two branches add lines at
+# the same spot, keep both instead of conflicting (decision 0021). Applies to local merges, e.g. an
+# agent's `git merge origin/main`. Deliberately not used for docs/excel-semantics/, where entries are
+# edited in place and a silent union could keep two contradictory versions of a rule.
+docs/status.md merge=union

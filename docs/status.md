@@ -1,6 +1,8 @@
 # Status
 
-Updated by the steward routine (daily) and by workers (one line per merged task).
+Updated by the steward routine (daily). Workers no longer append per-PR lines (decision 0021): the
+record of merged work is `git log --first-parent main` plus each task's Outcome, and the steward
+lists what merged since its last run.
 
 ## Snapshot — 2026-10-04 (M1 in progress)
 
@@ -95,3 +97,4 @@ T-0203); research has the oracle fills (T-0004, T-0019); perf builds the baselin
 - 2026-10-05 — T-0027: shared-formula members shown shifted in eval show/snapshot (engine `shift_formula_text`); eval delta none.
 - 2026-10-05 — T-0203: gen-m2 oracle-filled and gated (30 cases, 12,000 cells, 85.62% bit-exact, 1,726 known failures, new coverage); IF arity fixed in the catalog; T-0208 fixed (oracle `#SPILL!` read by key name; 74 cells); 14 gap tasks T-0209..T-0222; unknown rich errorTypes read as `#UNDECODED!` and stay unscored (poi 951 -> 950, T-0030).
 - 2026-10-05 — T-0031: salvaged stale draft PRs #11/#13/#38 (T-0905, T-0907 restored; financial.md; T-0901/T-0925 findings) and closed them; eval delta none.
+- 2026-10-05 — Log frozen here (decision 0021, T-0033); later work: `git log --first-parent main` and the steward's daily summary.
