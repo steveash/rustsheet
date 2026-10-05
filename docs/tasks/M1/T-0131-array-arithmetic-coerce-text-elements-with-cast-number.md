@@ -43,4 +43,4 @@ uses. Per CLAUDE.md directive 3, route array elements through `cast_number`; do 
 - Number→text conversion (T-0107).
 
 ## Outcome
-Array elements in arithmetic are coerced with `Model::cast_number` (new `array_node_to_f64` replaces the bare `to_f64` parser in `arithmetic.rs`). gen-m1 known failures 309 -> 295 (14 fixed, 0 regressions).
+Array elements in arithmetic are coerced with `Model::cast_number` (shared `array_node_to_number` in `cast.rs` replaces both the bare `to_f64` parser in `arithmetic.rs` and the duplicate `text_number`). gen-m1 known failures 309 -> 295 (14 fixed, 0 regressions).

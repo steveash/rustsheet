@@ -56,6 +56,19 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
 }
 
 impl Model {
+    /// Coerces a single array element to a number the way a scalar number argument is: booleans
+    /// are 1 and 0, text goes through `cast_number` (`Data!D7:D7/1` with D7 = " 2 " is 2,
+    /// gen-m1/1ce5b2467b3b19fd A14), empties are 0 and errors propagate.
+    pub(crate) fn array_node_to_number(&self, node: &ArrayNode) -> Result<f64, Error> {
+        match node {
+            ArrayNode::Number(v) => Ok(*v),
+            ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
+            ArrayNode::Empty => Ok(0.0),
+            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
+            ArrayNode::Error(e) => Err(e.clone()),
+        }
+    }
+
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
         match s.trim().parse::<f64>() {
             Ok(f) => Some(f),

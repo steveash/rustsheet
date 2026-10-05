@@ -492,23 +492,10 @@ impl Model {
             find_element(
                 find_text.elem(i, j),
                 within_text.elem(i, j),
-                self.text_number(start_num.elem(i, j)),
+                self.array_node_to_number(start_num.elem(i, j)),
                 is_search,
             )
         })
-    }
-
-    /// Coerces a single array element to a number the way a number argument
-    /// is: booleans are 0 and 1, text has to read as a number, empties are 0
-    /// and errors propagate.
-    pub(super) fn text_number(&self, node: &ArrayNode) -> Result<f64, Error> {
-        match node {
-            ArrayNode::Number(v) => Ok(*v),
-            ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-            ArrayNode::Empty => Ok(0.0),
-            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
-            ArrayNode::Error(e) => Err(e.clone()),
-        }
     }
 
     // LEN, LEFT, RIGHT, MID, LOWER, UPPER, TRIM
@@ -730,7 +717,10 @@ impl Model {
             Err(e) => return e,
         };
         broadcast_text(cell, &[&text, &number_times], |i, j| {
-            rept_element(text.elem(i, j), self.text_number(number_times.elem(i, j)))
+            rept_element(
+                text.elem(i, j),
+                self.array_node_to_number(number_times.elem(i, j)),
+            )
         })
     }
 
@@ -1084,7 +1074,7 @@ impl Model {
                 new_text.elem(i, j),
                 instance_num
                     .as_ref()
-                    .map(|n| self.text_number(n.elem(i, j))),
+                    .map(|n| self.array_node_to_number(n.elem(i, j))),
             )
         })
     }
