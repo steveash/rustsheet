@@ -3,7 +3,7 @@ id: T-0241
 title: "Cap SUBSTITUTE per-element result length"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
