@@ -53,6 +53,8 @@ fn test_if_and_index_pass_references_to_aggregates() {
     model._set("B6", "=ISREF(INDEX(A1:A2,2))");
     model._set("B7", "=IF(TRUE,A1)&\"x\"");
     model._set("B8", "=SUM(IF(TRUE,\"abc\"))");
+    model._set("B9", "=MIN(IF(TRUE,A1),INDEX(A1:A4,3),A4)");
+    model._set("B10", "=ISREF(INDEX(A1,1,2,2))");
     model.evaluate();
     assert_eq!(model._get_text("B1"), *"5");
     assert_eq!(model._get_text("B2"), *"1");
@@ -62,4 +64,6 @@ fn test_if_and_index_pass_references_to_aggregates() {
     assert_eq!(model._get_text("B6"), *"TRUE");
     assert_eq!(model._get_text("B7"), *"abcx");
     assert_eq!(model._get_text("B8"), *"#VALUE!");
+    assert_eq!(model._get_text("B9"), *"5");
+    assert_eq!(model._get_text("B10"), *"FALSE");
 }

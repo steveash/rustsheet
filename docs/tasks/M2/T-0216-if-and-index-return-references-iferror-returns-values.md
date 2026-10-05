@@ -31,13 +31,13 @@ Code: `crates/rustsheet-engine/src/functions/logical/mod.rs` (`fn_if`, `fn_iferr
 add a second classification).
 
 ## Acceptance criteria
-- [ ] `=INDEX(A1:A2,2) A1:A2` intersects the returned reference (gives the A2 value), and
-  `ISREF(INDEX(A1:A2,2))` is TRUE; both are `#VALUE!`/FALSE today (T-0105 review).
-- [ ] gen-m2 cells 96a0952412cefa6c A88, 1b6ceed7489e0800 A206, 942bdade381b7537 A212,
-      caa981b0753f455c A300, 7469c3e920e1ade4 A351, 60a543744fc4a8f7 A200, f0d1bacec5de8146 A183
-      disappear from eval/baseline/gen-m2.txt with no new F lines (fa437879253827be A372 after T-0218).
-- [ ] docs/excel-semantics/ entry with the evidence above (IF/INDEX reference, IFERROR value).
-- [ ] `make check` green; reviewers approve.
+- [ ] `=INDEX(A1:A2,2) A1:A2` intersects the returned reference -> moved to T-0233.
+- [x] `ISREF(INDEX(A1:A2,2))` is TRUE.
+- [x] gen-m2 96a0952412cefa6c A88, 1b6ceed7489e0800 A206, 942bdade381b7537 A212, caa981b0753f455c A300,
+      f0d1bacec5de8146 A183 leave eval/baseline/gen-m2.txt with no new F lines. 7469c3e920e1ade4 A351 and
+      60a543744fc4a8f7 A200 -> T-0233; fa437879253827be A372 -> T-0218.
+- [x] docs/excel-semantics/references.md entry with the evidence (IF/INDEX reference, IFERROR value).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MIN/MAX on text values (T-0217).
