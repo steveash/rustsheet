@@ -421,6 +421,13 @@ fn stringify(
 ) -> String {
     use self::Node::*;
     let sub = |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
+    let compare_in_parens = |n: &Node| {
+        if matches!(n, CompareKind { .. }) {
+            format!("({})", sub(n))
+        } else {
+            sub(n)
+        }
+    };
     match node {
         BooleanKind(value) => {
             if *value {
@@ -586,102 +593,44 @@ fn stringify(
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
             format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpConcatenateKind { left, right } => format!("{}&{}", sub(left), sub(right)),
-        CompareKind { kind, left, right } => format!("{}{kind}{}", sub(left), sub(right)),
+        OpConcatenateKind { left, right } => {
+            // `&` binds tighter than the comparisons: `"a"&(2<3)` printed bare re-parses as
+            // `("a"&2)<3` (T-0151).
+            format!("{}&{}", compare_in_parens(left), compare_in_parens(right))
+        }
+        CompareKind { kind, left, right } => {
+            // Comparisons chain left to right, so only a comparison on the right needs parentheses.
+            let right_str = if matches!(**right, CompareKind { .. }) {
+                format!("({})", sub(right))
+            } else {
+                sub(right)
+            };
+            format!("{}{kind}{right_str}", sub(left))
+        }
         OpSumKind { kind, left, right } => {
             // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
-            let left_str = if matches!(**left, CompareKind { .. }) {
-                format!(
-                    "({})",
-                    stringify(
-                        left,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                )
-            } else {
-                stringify(
-                    left,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language,
-                )
-            };
+            let left_str = compare_in_parens(left);
             // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
             let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
                 | matches!(**right, CompareKind { .. })
             {
-                format!(
-                    "({})",
-                    stringify(
-                        right,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                )
+                format!("({})", sub(right))
             } else {
-                stringify(
-                    right,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language,
-                )
+                sub(right)
             };
 
             format!("{left_str}{kind}{right_str}")
         }
         OpProductKind { kind, left, right } => {
             let x = match **left {
-                OpSumKind { .. } | CompareKind { .. } => format!(
-                    "({})",
-                    stringify(
-                        left,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                ),
-                _ => stringify(
-                    left,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language,
-                ),
+                OpSumKind { .. } | CompareKind { .. } => format!("({})", sub(left)),
+                _ => sub(left),
             };
             let y = match **right {
-                OpSumKind { .. } | CompareKind { .. } | OpProductKind { .. } => format!(
-                    "({})",
-                    stringify(
-                        right,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                ),
-                _ => stringify(
-                    right,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language,
-                ),
+                OpSumKind { .. } | CompareKind { .. } | OpProductKind { .. } => {
+                    format!("({})", sub(right))
+                }
+                _ => sub(right),
             };
             format!("{x}{kind}{y}")
         }
