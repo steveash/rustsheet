@@ -65,14 +65,16 @@ probes with a blank tail are T-0126.
 Status: UNVERIFIED (probe pending, T-0126)
 Engine today (until T-0212): each probed blank compares as 0 / "" / FALSE, so `MATCH(99,A:A,1)`
 = 1048576 and `VLOOKUP(99,A:B,2)` = 0, and exact `VLOOKUP(0,A:B,2,FALSE)` matches the first blank.
+Likewise for XMATCH (T-0127, UNVERIFIED): with data in A1:A3 and B1:D1, `XMATCH(0,A:A)` = 4,
+`XMATCH(0,A:A,0,-1)` = 1048576 and `XMATCH(0,1:1)` = 5.
 
-Performance invariant (T-0119, not an Excel rule): MATCH, LOOKUP, HLOOKUP and VLOOKUP evaluate a
+Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
 is a virtual run of blanks of the full length (`SearchVector`,
 `functions/lookup_and_reference/lookup_table.rs`), so results are those of a full walk whatever
 the used area (unit tests compare against a sheet whose used area reaches the last row/column).
 T-0212's "skip upwards past other types" step must jump over that tail in O(1) (every index
-from the evaluated length on is blank), not walk it. XMATCH still truncates instead (T-0127).
+from the evaluated length on is blank), not walk it.
 
 ## XLOOKUP: return_array may be wider than the lookup vector
 Rule: with a column lookup vector, a return range with the same number of rows and several columns
