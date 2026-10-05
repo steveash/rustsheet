@@ -29,4 +29,4 @@ XMATCH now builds its search vector with `range_search_vector` (virtual empty ta
 searches in `binary_search.rs` take a `Sequence` accessor (slices and `SearchVector`), and linear
 searches test one tail candidate (`SearchVector::linear_candidates`). New
 `test_xmatch_whole_column_and_row_independent_of_used_area` covers match/search modes over `A:A`
-and `1:1`. Eval delta: none (no eval cells changed). Duplication ratchet lowered.
+and `1:1`. Eval delta: none (no eval cells changed).
