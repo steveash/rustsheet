@@ -125,6 +125,7 @@ fn bounds_at_2_pow_53() {
     model._set("A7", "=LCM(3,3002399751580330+1)=2^53");
     model._set("A8", "=LCM(1E+300,1)");
     model._set("A9", "=LCM(3037000500,3037000501)");
+    model._set("A10", "=GCD(2^53+1,2)");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"2");
@@ -136,4 +137,5 @@ fn bounds_at_2_pow_53() {
     assert_eq!(model._get_text("A7"), *"TRUE");
     assert_eq!(model._get_text("A8"), *"#NUM!");
     assert_eq!(model._get_text("A9"), *"#NUM!");
+    assert_eq!(model._get_text("A10"), *"2");
 }
