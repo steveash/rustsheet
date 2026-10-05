@@ -3,7 +3,7 @@ id: T-0403
 title: "Cache or track the sheet's last used column for whole-row lookups"
 milestone: M3
 lane: perf
-status: todo
+status: blocked
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,7 @@ T-0119 bounds whole-row search vectors with `SheetData::last_column` (sheet_data
 
 ## Out of scope
 The same for `last_row` (already chunk-based and cheap).
+
+## Blocked because
+Deferred to Phase 2 (decision 0026): the dependency-graph, storage and performance work waits until
+Phase 1 parity exits. Unblock when docs/status.md records the Phase 1 exit.

@@ -3,7 +3,7 @@ id: T-0400
 title: "Benchmark suite skeleton with synthetic scale models"
 milestone: M3
 lane: perf
-status: todo
+status: blocked
 priority: P1
 size: M
 tier: opus
@@ -23,3 +23,7 @@ Baseline numbers from docs/research/ironcalc-assessment.md §2.3 (≈0.49 s per 
 
 ## Out of scope
 Optimizations.
+
+## Blocked because
+Deferred to Phase 2 (decision 0026): the dependency-graph, storage and performance work waits until
+Phase 1 parity exits. Unblock when docs/status.md records the Phase 1 exit.
