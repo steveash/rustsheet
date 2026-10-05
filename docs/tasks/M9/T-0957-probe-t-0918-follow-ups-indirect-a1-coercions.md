@@ -3,7 +3,7 @@ id: T-0957
 title: "Probe T-0918 follow-ups: INDIRECT a1 coercions and text-function array broadcasting"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
