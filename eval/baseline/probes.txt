@@ -6,6 +6,7 @@ C	probes/arith-range-error-precedence.case.json	12
 C	probes/average-value-args.case.json	32
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
+C	probes/criteria-ifs-bare-equals.case.json	12
 C	probes/criteria-operands.case.json	25
 C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
