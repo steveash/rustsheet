@@ -122,9 +122,22 @@ Tasks: T-0130, T-0105
 Rule: corners are ordered whichever way
 they are written (`Data!B2:Data!A1` is `Data!A1:B2`; implemented in `get_range`); the formula text
 round-trips as written; `Data!A1:Other!B2` (corners on different sheets) gives `#VALUE!` in the engine;
-`Data!A:Data!B`, `Data!1:Data!2` and `Data!A1:Data!B` still fail to parse (T-0139).
-Status: UNVERIFIED (probe pending, T-0139)
+the forms below are not ranges in Excel (T-0139, see the next entry).
+Status: VERIFIED
 Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs)
+
+## Sheet-qualified column or row corners on both sides are not a range
+Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
+previous entry). With column or row corners the second prefix is not accepted: `Data!A:Data!B`,
+`Data!A1:Data!B`, `Data!A:Data!B1`, `Data!A:Data!A`, `Data!B:Data!A` and `Data!A1:B` are `#NAME?`
+(the bare `A`/`B` after the colon is read as a name), while `Data!A:B` (219 on the probe data) and
+`Data!1:2` are ordinary ranges. `Data!1:Data!2`, `Data!A1:Data!2` and `Data!$A:Data!$B` cannot be
+stored: the workbook fails to load in Excel for the web (createSession 501 FileCorruptTryRepair),
+so there is no value to match. The engine gives `#ERROR!` (parse failure) where Excel gives `#NAME?`.
+Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (oracle: excel-graph,
+2026-10-05, T-0139); A2 and A4 are the single-prefix forms.
+Status: VERIFIED (web)
+Tasks: T-0139
 
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
