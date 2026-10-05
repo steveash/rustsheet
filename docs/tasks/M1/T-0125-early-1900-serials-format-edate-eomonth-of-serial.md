@@ -24,7 +24,7 @@ T-0108 fixed DATE, DAY/MONTH/YEAR and number formatting for serials 1..60 but le
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKNUM/TEXT/DAY-MONTH-YEAR"):
 `excel_serial_to_ymd` accepts serial 0, new `month_arithmetic_date`/`real_date_to_serial` in
 `formatter/dates.rs` used by EDATE/EOMONTH, WEEKNUM year fix, TEXT uses ymd validity; probe
