@@ -97,15 +97,16 @@ Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downlo
 
 Calibration against 206 desktop-Excel-saved ironcalc workbooks (71,765 cells, 99.96% bit-exact;
 docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs (which one
-decides goldens when they disagree: T-0025):
+decides goldens when they disagree: decision 0030, desktop Excel wins):
 
 - **References to missing sheets.** `INDIRECT("NoSuchSheet!A1")` is a reference to an empty cell
   in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never
   use oracle values as evidence here (docs/excel-semantics/lookup.md).
 - **Last-digit floating point.** In ATAN2, IMARGUMENT, IMREAL/IMSQRT, IMCOS, IMTAN, ERFC,
   BESSELJ/BESSELY, MIRR, IRR and SIN, 18 cells differ from desktop by a few ULPs or by near-zero
-  residue (2.2e-16 vs 0). Both are "Excel"; for ULP-sensitive work on these functions, prefer
-  desktop evidence (Excel-authored workbooks) and say which one a golden comes from.
+  residue (2.2e-16 vs 0). Both are "Excel"; engine fits target desktop evidence (Excel-authored
+  workbooks), and a web golden missed by at most 4 ULPs stays a known failure (decision 0030,
+  rule 4). Say which one a golden comes from.
 - **TEXT formats and CELL (poi, T-0019).** Lowercase-`e` scientific formats give `#VALUE!` on the
   web where Mac Excel cached strings; an elapsed token after a plain `s` gives different hours;
   `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)

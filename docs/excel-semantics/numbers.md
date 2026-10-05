@@ -190,9 +190,9 @@ few ULPs or leave different near-zero residues (two-flow IRR: desktop 2.2e-16, w
 `SIN(4)`: desktop -0.7568024953079283, web -0.7568024953079282).
 Evidence: docs/research/oracle-calibration.md (18 ironcalc-calc cells, cached by desktop Excel,
 recalculated through excel-graph).
-Status: VERIFIED (observation). Which one a golden follows is T-0025; until then say which
-Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
-divergences").
+Status: VERIFIED (observation). Decision 0030 (rule 4): engine fits target desktop values where
+they exist; a web golden missed by at most 4 ULPs (or a residue below 1e-15) stays a known
+failure, not a fitting target. Say which Excel a value comes from when working on these functions.
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
@@ -200,7 +200,7 @@ divergences").
 a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
 formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
-Values are from Excel for the web, which can differ from desktop in the last digit (T-0025).
+Values are from Excel for the web, which can differ from desktop in the last digit (decision 0030).
 Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
 
 ## GCD / LCM argument bound

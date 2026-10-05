@@ -3,7 +3,7 @@ id: T-0025
 title: "Decision record: which Excel wins when desktop and web evidence disagree"
 milestone: M0
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,16 @@ the engine already follows it, without a recorded decision. Both are "Microsoft 
 the choice affects how eval is scored and what agents may cite.
 
 ## Acceptance criteria
-- [ ] Decision record with options (desktop wins / web wins / accept either for listed divergences), the choice and its consequences for sidecars, baselines and probes.
-- [ ] docs/architecture/oracle.md and the two excel-semantics entries point to it.
-- [ ] Reviewers approve.
+- [x] Decision record with options (desktop wins / web wins / accept either for listed divergences), the choice and its consequences for sidecars, baselines and probes.
+- [x] docs/architecture/oracle.md and the two excel-semantics entries point to it.
+- [x] Reviewers approve.
 
 ## Out of scope
 Building the Windows desktop backend.
+
+## Outcome
+Decision 0030: desktop en-US Microsoft 365 Excel wins when it and Excel for the web disagree;
+web-only values are goldens except for the listed known divergences; non-en-US desktop workbooks
+are no evidence for locale-dependent behavior; last-digit web goldens (≤ 4 ULPs) in the listed
+functions stay known failures rather than fitting targets. oracle.md, excel-semantics README,
+lookup.md and numbers.md point to it. No code or eval change (eval delta: none).
