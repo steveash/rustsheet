@@ -90,37 +90,30 @@ Excel for the web refuse the workbook: `=1 A1`, `=(1) A1`, `=A1 (1)`, `=A1 TRUE`
 `=#REF! #N/A`, `=A1 SUM(A1:A2)`, `=A1 NA()`, `=SUM(A1:A2) A1`. So "which error wins" never arises
 between two error operands. Accepted forms:
 - `=A1 #REF!` and `=#REF! A1` are `#REF!`; `=C1:C2 C2` with C2 = `#N/A` is `#N/A` (the cell's value);
-  `=C1 C2` is `#NULL!` whatever the cells hold.
-- `=A1 @A1` = 1. `=@A1:A3 A2:B2` = 2 in row 11, where `@A1:A3` alone fails: the space binds tighter than `@`.
+  `=C1 C2` is `#NULL!` even when both cells hold errors.
+- `=A1 @A1` = 1. `=@A1:A3 A2:B2` = 2 in row 11, where `=@A1:A3` alone is `#VALUE!` (I11): the space
+  binds tighter than `@`.
 - `=A1:A3 INDEX(A1:B3,2,0)`, `OFFSET(A2,0,0,1,2)` and `IF(TRUE,A2:B2)` give 2, on either side.
 - A spill reference intersects: `=J1# J2:K2` = 2 with `J1 = SEQUENCE(3)`, stored as
   `_xlfn.ANCHORARRAY(J1)` (a literal `J1#` in the file is refused).
 - `=A1:A3 (A2:B2,A2)` is `#VALUE!` (a two-area union is left over).
-- `=(A1)(A2)`, with no space, is `#REF!`, not a syntax error. The reason is not known.
+- `=(A1)(A2)`, with no space, is `#REF!`, not a syntax error. The reason is not known (syntax.md, trailing input).
 - `=Data!A1 Other!Z99` (different sheets, no shared coordinates) is `#VALUE!`, like overlapping cross-sheet
   operands: the sheet check comes before the disjoint check.
-Evidence: probes/intersection-operands H1:H15 and probes/intersection-function-operands H1:H5 (oracle:
+Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5 (oracle:
 excel-graph, 2026-10-05, T-0138). The refused workbooks come from scratch runs of one formula each (T-0138).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Tasks: T-0138, T-0148, T-0149, T-0042
-
-## Trailing input after a complete formula
-Rule: Excel for the web refuses a workbook holding `=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"` or
-`=A1 1` (`FileCorruptTryRepair`), so these have no Excel value. RustSheet's `#ERROR!` (a formula it
-cannot parse) is its stand-in, as eval/suites/smoke/cases/trailing-input.case.json expects. That case's
-B6 `=(A1)(A2)` is the exception: Excel loads it and gives `#REF!` (see above).
-Evidence: scratch runs of `rustsheet-oracle recalc` on one formula each (excel-graph, 2026-10-05, T-0138).
-Status: VERIFIED (load-time refusal observed in Excel for the web only)
-Tasks: T-0138, T-0149
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
 `Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2` and `wide` = `Sheet1!$A$1:$B$3 Sheet1!$A$2:$B$3`: `=isect` = 2,
 `=ISREF(isect)` = TRUE, `=isect A1:B3` = 2, `=ROWS(wide)` = 2, `=COLUMNS(wide)` = 2, `=SUM(wide)` = 55,
 `=INDEX(wide,2,2)` = 30. A disjoint one, `disj` = `Sheet1!$A$1 Sheet1!$B$2`, is `#NULL!` and `ISREF(disj)` = FALSE.
-Evidence: scratch xlsx built with xlsxwriter `define_name`, recalculated by excel-graph (2026-10-05, T-0138);
+Evidence: scratch xlsx built with xlsxwriter: Sheet1 A1:A3 = 1, 2, 3, B1:B3 = 10, 20, 30, the three
+names above via `define_name`, each formula in column H. Recalculated by excel-graph (2026-10-05, T-0138);
 the case format has no defined names yet (T-0043).
-Status: VERIFIED (scratch evidence; committed case pending T-0043)
+Status: UNVERIFIED (scratch evidence from Excel for the web only; committed case pending T-0043)
 Tasks: T-0138, T-0043
 
 ## Disjoint intersection is #NULL!

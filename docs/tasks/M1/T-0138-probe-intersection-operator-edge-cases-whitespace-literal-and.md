@@ -50,9 +50,10 @@ All 8 groups were probed on excel-graph (2026-10-05). Four new probe cases with 
 intersection-whitespace, intersection-operands, intersection-function-operands and
 arith-range-error-precedence. When Excel for the web cannot parse a formula in an xlsx, it refuses the
 whole workbook (`FileCorruptTryRepair`). Those formulas were probed one per scratch workbook and are
-recorded in docs. The UNVERIFIED entry in references.md is replaced by verified entries on separators,
-operands, trailing input and defined names; coercion.md's range-error entry now covers the
-multi-cell case. Group 6 (defined names) has scratch evidence only, because the case format has no names (T-0043).
+recorded in docs. The UNVERIFIED entry in references.md is replaced by verified entries on separators
+and operands. syntax.md's trailing-input entry is now verified. coercion.md's range-error entry
+now covers the multi-cell case. Group 6 (defined names) has scratch evidence only and stays
+UNVERIFIED until a committed case exists (T-0043).
 Mismatches filed: T-0148 (separators, non-reference operands), T-0149 (`@`, union, `(A1)(A2)`),
-T-0042 (spec2xlsx spill references). Eval delta: +4 probe cases, 40 new oracle cells, 34 pass and
+T-0042 (spec2xlsx spill references). Eval delta: +4 probe cases, 41 new oracle cells, 35 pass and
 6 fail (new coverage, baselined).
