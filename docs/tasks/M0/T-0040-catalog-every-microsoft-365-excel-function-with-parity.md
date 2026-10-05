@@ -3,7 +3,7 @@ id: T-0040
 title: "Catalog every Microsoft 365 Excel function with parity scope and oracle availability"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
