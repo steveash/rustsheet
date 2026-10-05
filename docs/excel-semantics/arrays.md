@@ -9,7 +9,8 @@ structure (`xl/richData/rdrichvaluestructure.xml`): desktop files put it first, 
 writes the `_error` keys alphabetically (`colOffset, errorType, rwOffset, subType`), so there the
 first field is `colOffset`. (The earlier "first field is the errorType" was wrong for those files;
 T-0208, gen-m2/78bc88199fc96650 Calc!A61 rv `0 8 5 1` is `#SPILL!`.) A reader that ignores `vm`
-sees `#VALUE!`.
+sees `#VALUE!`. Other errorTypes exist (10 for an uncached external reference, references.md); until a
+probe maps them (T-0030) the harness reads them as `#UNDECODED!` and never scores them.
 Evidence: ironcalc-calc/ERROR.TYPE.xlsx (A8 vm→13, ERROR.TYPE=14; A14 vm→8, ERROR.TYPE=9);
 DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all errorType 13, subType 3).
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was

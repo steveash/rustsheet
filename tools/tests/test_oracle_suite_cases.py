@@ -72,3 +72,9 @@ def test_unreadable_workbook_is_never_filled_unchecked(monkeypatch: pytest.Monke
     monkeypatch.setattr(cli, "snapshot", boom)
     with pytest.raises(cli.OracleError, match="missing workbook rels"):
         cli._drop_desktop_conflicts(Path("x.xlsx"), {"S": {}})
+
+
+def test_undecoded_rich_errors_are_never_written_as_goldens() -> None:
+    values = {"S": {"A1": dict(cli.UNDECODED), "A2": {"t": "n", "v": 2.0}}}
+    cli._drop_undecoded(Path("x.xlsx"), values)
+    assert values == {"S": {"A2": {"t": "n", "v": 2.0}}}

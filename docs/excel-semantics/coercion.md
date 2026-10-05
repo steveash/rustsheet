@@ -15,7 +15,8 @@ Tasks: T-0217
 
 ## LEFT / RIGHT / MID numeric arguments
 Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`); a start or length around 1E+15 is `#VALUE!`
-(`MID("ü",1000000000000000.0,4)`); a length a hair below 1 (0.999999999999999) counts as 1.
+(`MID("ü",1000000000000000.0,4)`); in LEFT a length a hair below 1 (`TRUE - 1E-15`) counts as 1
+(seen for LEFT only, and the cell cannot tell whether the subtraction or LEFT rounds: probe in T-0219).
 Evidence: gen-m2/ef5c55a81783b7d5 A40, d0c29dd5c530e28c A269, 78bc88199fc96650 A345,
 b4392a6514a36ade A14 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
@@ -23,7 +24,7 @@ Tasks: T-0219
 
 ## Text comparison uses Excel's collation, not code-point order
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE
-(code-point order says otherwise for the first).
+(code-point order says otherwise for both: "x" < "ü" and "1" < "?").
 Evidence: gen-m2/2cfe279fe77a000d Calc!A318, 96a0952412cefa6c Calc!A284. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED (two cells; the full collation table needs probes, T-0220)
 Tasks: T-0220

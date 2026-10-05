@@ -101,3 +101,4 @@ recalcs) and list what changed in the PR.
 
 ## Outcome
 Done inside T-0203's PR (the gen-m2 goldens could not be committed correctly without it). `read_rich_errors` now finds `errorType` by key name through `rdrichvaluestructure.xml` (`rich_value_errors`, unit test); gen-m2 sidecars refilled (27 workbooks recalculated again because the spec builder output changed; values identical apart from these cells): 74 cells `#VALUE!` → `#SPILL!` (58 now pass, 5 fail for lookup reasons, 11 become known failures). The gen-m2 baseline is new in the same PR, so there are no regressions. Other suites' sidecars: values unchanged. arrays.md corrected.
+Review follow-up: errorTypes other than 8/13 no longer fall back to the cached `#VALUE!`; they read as `#UNDECODED!`, which the runner never scores and the fill never writes (poi/link-external-workbook-b Sheet0!A1, errorType 10; mapping probe T-0030).

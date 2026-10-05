@@ -314,6 +314,16 @@ fn read_rich_errors(zip: &mut Zip) -> Result<Vec<Option<&'static str>>, Snapshot
     Ok(out)
 }
 
+/// Stands in for a rich-value error whose `errorType` has no evidence-backed mapping yet. Cells
+/// holding it are never scored (runner) or written as goldens (`rustsheet-oracle fill`).
+pub const UNDECODED_RICH_ERROR: &str = "#UNDECODED!";
+
+/// Whether `v` is [`UNDECODED_RICH_ERROR`] (an expectation nobody can score yet).
+#[must_use]
+pub fn is_undecoded(v: &crate::value::Value) -> bool {
+    matches!(v, crate::value::Value::Error(e) if e == UNDECODED_RICH_ERROR)
+}
+
 /// Position of the `errorType` key in each `<s>` of `rdrichvaluestructure.xml` (None when absent).
 fn error_type_positions(xml: &str) -> Result<Vec<Option<usize>>, SnapshotError> {
     const PART: &str = "xl/richData/rdrichvaluestructure.xml";
@@ -373,11 +383,13 @@ fn rich_value_errors(
             Event::Text(t) if in_v && want == Some(field) => {
                 let code = t.xml_content(XmlVersion::Implicit1_0);
                 if let Some(last) = out.last_mut() {
-                    *last = match code.trim() {
-                        "13" => Some("#CALC!"),
-                        "8" => Some("#SPILL!"),
-                        _ => None,
-                    };
+                    *last = Some(match code.trim() {
+                        "13" => "#CALC!",
+                        "8" => "#SPILL!",
+                        // Never guess: an errorType without ERROR.TYPE evidence (e.g. 10, seen for
+                        // an uncached external reference) must not pass as the cached `#VALUE!`.
+                        _ => UNDECODED_RICH_ERROR,
+                    });
                 }
             }
             Event::End(e) if e.local_name().as_ref() == "v" => {
@@ -745,7 +757,10 @@ mod tests {
         let structures = r#"<rvStructures><s t="_error"><k n="colOffset" t="i"/><k n="errorType" t="i"/><k n="rwOffset" t="i"/><k n="subType" t="i"/></s><s t="_error"><k n="errorType" t="i"/></s></rvStructures>"#;
         let rich = r#"<rvData><rv s="0"><v>0</v><v>8</v><v>5</v><v>1</v></rv><rv s="1"><v>13</v></rv><rv s="0"><v>8</v><v>2</v><v>0</v><v>0</v></rv></rvData>"#;
         let got = rich_value_errors(rich, Some(structures)).unwrap_or_default();
-        assert_eq!(got, vec![Some("#SPILL!"), Some("#CALC!"), None]);
+        assert_eq!(
+            got,
+            vec![Some("#SPILL!"), Some("#CALC!"), Some(UNDECODED_RICH_ERROR)]
+        );
         // No structures part: the first field is the errorType (ERROR.TYPE.xlsx layout).
         let got = rich_value_errors(r#"<rvData><rv s="0"><v>13</v></rv></rvData>"#, None)
             .unwrap_or_default();

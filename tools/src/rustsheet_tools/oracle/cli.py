@@ -160,6 +160,7 @@ def cmd_fill(args: argparse.Namespace) -> int:
             },
             "sheets": values,
         }
+        _drop_undecoded(case, values)
         if spec:
             _report_hand_disagreements(case, spec, values)
         sidecar.parent.mkdir(parents=True, exist_ok=True)
@@ -201,6 +202,22 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
         got = values.get(sheet, {}).get(a1)
         if got is not None and got != hand:
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
+
+
+# Same string as UNDECODED_RICH_ERROR in crates/rustsheet-eval/src/xlsx_snapshot.rs.
+UNDECODED = {"t": "e", "v": "#UNDECODED!"}
+
+
+def _drop_undecoded(case: Path, values: dict[str, dict[str, Any]]) -> None:
+    """Leaves pending the cells whose rich-value error the harness cannot decode yet: a golden
+    must hold the error Excel produced, never a guess (T-0203 review: errorType 10)."""
+    for sheet, cells in values.items():
+        for a1 in [a for a, v in cells.items() if v == UNDECODED]:
+            print(
+                f"UNDECODED {case.name} {sheet}!{a1}: rich-value error type unknown (left pending)",
+                file=sys.stderr,
+            )
+            del cells[a1]
 
 
 def _materially_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
