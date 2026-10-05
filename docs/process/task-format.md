@@ -8,7 +8,7 @@ parses them; `make board` writes a local, git-ignored `docs/tasks/BOARD.md` view
 id: T-0123
 title: Implement SUMIFS criteria with wildcard escapes
 milestone: M2
-lane: functions            # harness | engine | functions | api | perf | quality | research
+lane: functions-criteria   # harness | engine | api | perf | quality | research | functions-{math,stat,criteria,financial,engineering,text,lookup,date,logic}
 status: todo               # todo | in-progress | blocked | done | dropped
 priority: P1               # P0 (blocking) .. P3 (nice to have)
 size: M                    # S (≤150 lines) | M (≤400) | L (must be split)

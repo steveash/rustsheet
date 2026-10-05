@@ -2,7 +2,7 @@
 id: T-0211
 title: "VLOOKUP/HLOOKUP: search before validating the column/row index (201 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-lookup
 status: todo
 priority: P1
 size: S

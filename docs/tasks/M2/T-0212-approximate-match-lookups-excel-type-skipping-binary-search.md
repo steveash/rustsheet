@@ -2,7 +2,7 @@
 id: T-0212
 title: "Approximate-match lookups: Excel type-skipping binary search in VLOOKUP/HLOOKUP/MATCH (484 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-lookup
 status: todo
 priority: P1
 size: M

@@ -2,7 +2,7 @@
 id: T-0210
 title: "MATCH on a 2-D lookup_array is #N/A, not #ERROR! (217 gen-m2 known failures)"
 milestone: M2
-lane: functions
+lane: functions-lookup
 status: todo
 priority: P1
 size: S

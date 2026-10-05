@@ -2,7 +2,7 @@
 id: T-0915
 title: "SIN/COS/TAN (and SEC/CSC/COT): Excel's argument reduction near multiples of pi"
 milestone: M9
-lane: functions
+lane: functions-math
 status: todo
 priority: P3
 size: S

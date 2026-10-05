@@ -2,8 +2,10 @@
 """Task board for autonomous agents. Tasks are markdown files with front matter in docs/tasks/.
 
   scripts/tasks.py list [--lane L] [--status S] [--milestone M]
-  scripts/tasks.py next --lane L [--tier T] [--no-fetch]  # best ready, unclaimed task; handoffs
-                                         # (also on pushed agent/* branches) count as opus, come first
+  scripts/tasks.py next --lane L [--tier T] [--no-fetch]  # best ready, unclaimed task in a lane
+                                         # that is not busy; handoffs (also on pushed agent/*
+                                         # branches) count as opus, come first; --lane functions
+                                         # means any functions-* lane (decision 0022)
   scripts/tasks.py ready [--lane L] [--tier T] [--no-fetch]  # every task `next` could pick, in its
                                          # order, then "N ready" (queue health, decision 0021)
   scripts/tasks.py validate              # schema + dependency checks (CI)
@@ -28,7 +30,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TASKS = ROOT / "docs" / "tasks"
 STATUSES = ["todo", "in-progress", "blocked", "done", "dropped"]
-LANES = ["harness", "engine", "functions", "api", "perf", "quality", "research"]
+# The functions lane is split by function family so several workers can fix functions at once
+# (decision 0022). Plain "functions" remains valid only on done/dropped tasks, and as the `next`
+# / `ready` lane filter meaning "any functions-* lane".
+FUNCTION_LANES = [
+    "functions-math",
+    "functions-stat",
+    "functions-criteria",
+    "functions-financial",
+    "functions-engineering",
+    "functions-text",
+    "functions-lookup",
+    "functions-date",
+    "functions-logic",
+]
+LANES = ["harness", "engine", "api", "perf", "quality", "research", *FUNCTION_LANES, "functions"]
+BUSY_SECONDS = 2 * 3600  # a lane whose pushed agent branch moved this recently is busy
 PRIORITIES = ["P0", "P1", "P2", "P3"]
 SIZES = ["S", "M", "L"]
 TIERS = ["sonnet", "opus"]  # model tier that works the task (decision 0018)
@@ -87,6 +104,11 @@ def validate(tasks: list[dict[str, object]]) -> list[str]:
             errors.append(f"{where}: bad milestone {t.get('milestone')!r}")
         if not t.get("title"):
             errors.append(f"{where}: missing title")
+        if t.get("status") in OPEN and t.get("lane") == "functions":
+            errors.append(
+                f"{where}: lane='functions' is retired for open tasks; use a functions-* lane "
+                "(table in docs/process/agent-workflow.md; decision 0022)"
+            )
         if t.get("status") in OPEN and t.get("tier") not in TIERS:
             errors.append(f"{where}: tier={t.get('tier')!r} not in {TIERS} (open tasks need a tier)")
         if "TODO(fill)" in path_of(t).read_text():
@@ -184,7 +206,7 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     """Writes a task file with the next free id (`--no-fetch` skips `git fetch`, e.g. offline)."""
     milestone, lane, title = arg("--milestone"), arg("--lane"), arg("--title")
     priority, size, tier = arg("--priority") or "P2", arg("--size") or "S", arg("--tier") or "opus"
-    if not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and title) or "\n" in title:
+    if not (milestone and MILESTONE.fullmatch(milestone) and lane in LANES and lane != "functions" and title) or "\n" in title:
         print("usage: tasks.py new --milestone M<n> --lane <lane> --title <one-line title> "
               "[--priority P2] [--size S] [--tier opus] [--no-fetch]")
         return 2
@@ -201,19 +223,22 @@ def new_task(tasks: list[dict[str, object]], fetch: bool = True) -> int:
     return 0
 
 
-AGENT_BRANCH = re.compile(r"^refs/remotes/origin/agent/[^/]+/(T-\d{4})(?:-|$)")
+AGENT_BRANCH = re.compile(r"^refs/remotes/origin/agent/([^/]+)/(T-\d{4})(?:-|$)")
 # An unresumed handoff; the opus run that picks it up renames it "## Handoff (resumed)".
 HANDOFF = re.compile(r"^## Handoff\s*$", re.M)
 CLAIM_TTL_SECONDS = 24 * 3600  # a pushed agent/* branch younger than this claims its task
 
 
-def branch_claims(fetch: bool = True) -> tuple[set[str], set[str]]:
-    """(claimed, handed_off) task ids from pushed `agent/<lane>/T-XXXX-*` branches.
+def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str, str]]]:
+    """(claimed, handed_off, active) from pushed `agent/<lane>/T-XXXX-*` branches.
 
     A pushed branch with a commit in the last 24 h is a claim: another worker must not start the
     same task (work-loop step 2).
     A branch whose task file has a `## Handoff` section was escalated to opus (step 5b); main
-    still shows `tier: sonnet` until it merges (decision 0018). Best effort, like `git_task_ids`.
+    still shows `tier: sonnet` until it merges (decision 0018).
+    `active` holds (lane, task id) for branches with a commit in the last 2 h that are not
+    unresumed handoffs (those wait for the opus worker); `available` turns them into busy lanes
+    (decision 0022). Best effort, like `git_task_ids`.
     """
 
     def git(*args: str) -> str:
@@ -224,6 +249,7 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str]]:
             git("fetch", "-q", "--prune", "origin")
         claimed: set[str] = set()
         handed: set[str] = set()
+        recent: dict[str, str] = {}  # task id -> lane, for branches younger than BUSY_SECONDS
         now = time.time()
         refs = git("for-each-ref", "--format=%(refname) %(committerdate:unix)", "refs/remotes/origin/agent")
         for line in refs.splitlines():
@@ -231,17 +257,22 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str]]:
             m = AGENT_BRANCH.match(ref)
             if not m:
                 continue
+            lane, tid = m.group(1), m.group(2)
+            age = now - int(stamp) if stamp.isdigit() else float("inf")
             # Stale branches (abandoned or merged-but-undeleted) are not claims; handoffs are, at any age.
-            if stamp.isdigit() and now - int(stamp) < CLAIM_TTL_SECONDS:
-                claimed.add(m.group(1))
+            if age < CLAIM_TTL_SECONDS:
+                claimed.add(tid)
+            if age < BUSY_SECONDS:
+                recent[tid] = lane
             for name in git("ls-tree", "-r", "--name-only", ref, "--", "docs/tasks").splitlines():
-                if f"/{m.group(1)}-" in name and HANDOFF.search(git("show", f"{ref}:{name}")):
-                    handed.add(m.group(1))
-        return claimed, handed
+                if f"/{tid}-" in name and HANDOFF.search(git("show", f"{ref}:{name}")):
+                    handed.add(tid)
+        active = {(lane, tid) for tid, lane in recent.items() if tid not in handed}
+        return claimed, handed, active
     except (OSError, subprocess.CalledProcessError) as e:
         print(f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",
               file=sys.stderr)
-        return set(), set()
+        return set(), set(), set()
 
 
 def handed_off(t: dict[str, object], on_branches: set[str]) -> bool:
@@ -254,6 +285,15 @@ def effective_tier(t: dict[str, object], on_branches: set[str]) -> object:
     return "opus" if handed_off(t, on_branches) else t.get("tier")
 
 
+def in_lane(t: dict[str, object], lane: str | None) -> bool:
+    """`lane` matches itself; "functions" matches every functions-* lane (decision 0022)."""
+    if lane is None:
+        return True
+    if lane == "functions":
+        return str(t.get("lane")) in (*FUNCTION_LANES, "functions")
+    return t.get("lane") == lane
+
+
 def available(
     tasks: list[dict[str, object]],
     by_id: dict[str, dict[str, object]],
@@ -262,15 +302,25 @@ def available(
     fetch: bool = True,
 ) -> list[dict[str, object]]:
     """Ready tasks a worker of `tier` may start in `lane`, best first (handoffs, milestone, priority)."""
-    claimed, on_branches = branch_claims(fetch=fetch)
+    claimed, on_branches, active = branch_claims(fetch=fetch)
+    # One task in flight per lane. A branch whose task is already done on main (merged, branch not
+    # yet deleted) leaves its lane free, so a looping worker can take the next task at once.
+    # The task's own `lane:` decides (the branch name is only a fallback for tasks not on main).
+    busy = {
+        str(by_id[tid].get("lane")) if tid in by_id else lane
+        for lane, tid in active
+        if by_id.get(tid, {}).get("status") not in ("done", "dropped")
+    }
     cands = [
         t
         for t in tasks
         if ready(t, by_id)
-        and (lane is None or t.get("lane") == lane)
+        and in_lane(t, lane)
         and (tier is None or effective_tier(t, on_branches) == tier)
         # Someone else's pushed claim; a handoff is the opus worker's to resume (decision 0018).
         and (str(t["id"]) not in claimed or (handed_off(t, on_branches) and tier != "sonnet"))
+        # One task in flight per lane; a handoff is resumed whatever its lane is doing.
+        and (t.get("lane") not in busy or (handed_off(t, on_branches) and tier != "sonnet"))
     ]
     cands.sort(
         key=lambda t: (
@@ -328,7 +378,7 @@ def main() -> int:
         return 0
     lane, status, ms = arg("--lane"), arg("--status"), arg("--milestone")
     for t in tasks:
-        if (lane and t.get("lane") != lane) or (status and t.get("status") != status) or (ms and t.get("milestone") != ms):
+        if not in_lane(t, lane) or (status and t.get("status") != status) or (ms and t.get("milestone") != ms):
             continue
         mark = "*" if ready(t, by_id) else " "
         print(

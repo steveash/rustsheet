@@ -2,7 +2,7 @@
 id: T-0929
 title: "VALUE: exact percent parsing and d-Mon-yyyy text dates (2 known failures)"
 milestone: M9
-lane: functions
+lane: functions-text
 status: todo
 priority: P3
 size: S

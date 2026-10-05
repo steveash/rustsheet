@@ -2,7 +2,7 @@
 id: T-0936
 title: "TEXT conditional sections: [<>], spaces in conditions, unmatched single condition (14 known failures)"
 milestone: M10
-lane: functions
+lane: functions-text
 status: todo
 priority: P2
 size: S
