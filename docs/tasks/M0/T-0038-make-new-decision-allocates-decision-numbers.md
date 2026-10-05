@@ -59,4 +59,5 @@ working tree and on every `origin/*` branch (after a fetch; warns and uses the w
 git). The branch scan is now `tasks.git_branch_names(directory, pattern)`, shared with
 `git_task_ids`; the name regex is `check_decisions.NAME`; the slug is `tasks.slug`. Unit tests in
 `scripts/test_new_decision.py`. Work-loop skill, agent-workflow.md and decisions/README.md point to
-it; decision 0029 (allocated with the new tool). Eval: unchanged (scripts only).
+it; decision 0029 (allocated with the new tool). `check_decisions.py` now also fails a record that
+still holds the template placeholders (review finding). Eval: unchanged (scripts only).

@@ -18,6 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import check_decisions  # noqa: E402 (the sys.path line above must run first)
 import tasks  # noqa: E402
 
+# check_decisions.py fails a record that still holds this placeholder.
+
 TEMPLATE = """# {number} — {title}
 
 - **Status:** accepted (TODO(fill): date, task id)

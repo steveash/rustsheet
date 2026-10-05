@@ -14,4 +14,5 @@
 - **Consequences:** a number already pushed by another session is never reused. A session that
   allocates before pushing can still race another one, so `check_decisions.py` and the merge-time
   up-to-date check (decision 0028) remain the guarantee. Task ids and decision numbers now follow
-  one allocation rule.
+  one allocation rule. `check_decisions.py` fails a record that still holds the template's
+  `TODO(fill)` placeholders, as `tasks.py validate` does for task files.
