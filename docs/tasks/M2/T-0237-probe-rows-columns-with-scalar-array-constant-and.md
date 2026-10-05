@@ -3,7 +3,7 @@ id: T-0237
 title: "Probe ROWS/COLUMNS with scalar, array-constant and SEQUENCE arguments"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
