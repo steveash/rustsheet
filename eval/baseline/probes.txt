@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+C	probes/average-value-args.case.json	32
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-operands.case.json	25
