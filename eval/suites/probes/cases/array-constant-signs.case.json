@@ -1,0 +1,21 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Sign runs inside array constants. Only the formulas Excel accepts are here; {--1}, {++1}, {-+1}, {+-1}, {---1}, {- 1}, {+ 1}, {1,--2}, {-TRUE}, {+\"a\"}, {-#N/A}, {+#N/A} each make Excel reject the workbook on load (see docs/excel-semantics/syntax.md)",
+  "tags": [
+    "M1",
+    "parser",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=SUM({+1})",
+        "A2": "=SUM({-1})",
+        "A3": "=SUM({-1.5E1})",
+        "A4": "=SUM({1,-2,+3})"
+      }
+    }
+  ],
+  "expected": {}
+}
