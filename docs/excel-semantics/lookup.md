@@ -13,6 +13,21 @@ a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...
 2026-10-04. Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; which Excel wins is T-0025).
 
-## Whole-row / whole-column search vectors (T-0119)
+## Sorted lookups over a blank tail (whole column / row)
+Rule (hypothesis): approximate-match search (MATCH type 1/-1, LOOKUP, VLOOKUP/HLOOKUP sorted,
+XMATCH binary modes) ignores the empty cells after the data, so `MATCH(99,A:A,1)` with numbers
+in A1:A3 is 3 (the widely used "last number in a column" idiom `MATCH(9.99E+307,A:A)`).
+Evidence: none yet; probe cases are T-0126.
+Status: UNVERIFIED (probe pending, T-0126)
+Engine today: compares each probed empty cell as 0 / "" / FALSE, so these lookups over `A:A`
+land on row 1048576 (`MATCH(99,A:A,1)` = 1048576, `VLOOKUP(99,A:B,2)` = 0). Exact matches treat
+an empty cell the same way: `VLOOKUP(0,A:B,2,FALSE)` matches the first empty row. Do not
+change either until T-0126 has oracle values.
 
-Empty cells never match an exact lookup, so MATCH/LOOKUP/HLOOKUP/VLOOKUP/XMATCH search only up to the sheet's last used row/column of a `A:A` / `1:1` reference. For approximate (sorted) search this also means the empty tail is ignored; the sorted-tail behaviour on an unbounded range has not been oracle-probed (T-0126 probes `MATCH(99,A:A,1)` with trailing blanks).
+## Whole-column / whole-row search vectors are walked only up to the used area (T-0119)
+Not an Excel rule but a performance invariant: MATCH, LOOKUP, HLOOKUP and VLOOKUP evaluate a
+search vector only up to the sheet's last used row (column, for ranges running to XFD); the
+rest is a virtual run of empty cells of the full length (`SearchVector` in
+`functions/lookup_and_reference/lookup_table.rs`), so results are those of the full walk
+whatever the used area. Unit tests compare each case against a sheet whose used area reaches
+the last row/column. (XMATCH still truncates via `clip_to_used_area`, T-0127.)
