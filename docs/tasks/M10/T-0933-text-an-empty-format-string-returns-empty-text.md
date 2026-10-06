@@ -3,7 +3,7 @@ id: T-0933
 title: "TEXT: an empty format string returns empty text (194 known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
