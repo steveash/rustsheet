@@ -3,7 +3,7 @@ id: T-0921
 title: "One decoder for value-metadata (vm) errors shared by importer and eval snapshot"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
