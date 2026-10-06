@@ -3,7 +3,7 @@ id: T-0192
 title: "Probe overflow of SUM intermediates and error precedence, SUMPRODUCT, AVERAGE, PRODUCT, SUMSQ, SUBTOTAL, AGGREGATE, PERCENTOF"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
