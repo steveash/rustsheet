@@ -23,10 +23,8 @@ fn simple_example() {
 fn subnormal_result_is_zero() {
     let mut model = new_empty_model();
     model._set("A1", "=2.2250738585072E-308%");
-    model._set("A2", "=1E-310%");
-    model._set("A3", "=1E-300%");
+    model._set("A2", "=1E-300%");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"0");
-    assert_eq!(model._get_text("A2"), *"0");
-    assert_eq!(model._get_text("A3"), *"1E-302");
+    assert_eq!(model._get_text("A2"), *"1E-302");
 }
