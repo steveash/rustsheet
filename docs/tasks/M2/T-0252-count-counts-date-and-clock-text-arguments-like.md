@@ -3,7 +3,7 @@ id: T-0252
 title: "COUNT counts date and clock text arguments like SUM coerces them"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,7 @@ Found in T-0153. Evidence: probes/clock-text-oddities F37 (excel-graph, baseline
 
 ## Out of scope
 -
+
+## Outcome
+`fn_count` coerces direct text with `cast_number` (finite only). probes/count-direct-text added (13 cells, oracle-filled, all pass); clock-text-oddities F37 fixed. Parenthesised text `(1)` = -1 is a separate gap, filed as T-0259 with probes/paren-negative-text. probes known failures 108 -> 111 counting the 4 new-coverage failures of that probe, -1 fixed.
+The `"(1)"` form from the acceptance list moved to T-0259.
