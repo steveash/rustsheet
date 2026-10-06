@@ -43,7 +43,7 @@ Evidence: probes/weeknum-serial-0.case.json (94 cells; Oracle: excel-graph, 2026
 - return_type 0, 3-10 and 18-20 (and 0.5, which truncates to 0) give `#NUM!` for any serial, not `#VALUE!`; `WEEKNUM(0,NA())` is `#N/A`, `WEEKNUM(0,"x")`, `WEEKNUM(100,"")` and `WEEKNUM(100,TRUE/FALSE)` are `#VALUE!`
   (a boolean return_type is rejected), `WEEKNUM(100,"2")` = 16, 21.5 truncates to 21 and 2.9 to 2.
 - return_type 22, 50, 99, 100, 1000, -1 (and 2.9) are NOT errors: they number weeks like type 2 (`WEEKNUM(100,99)` = 16,
-  `WEEKNUM(367,99)` = 1, `WEEKNUM(400,-1)` = 5; probe rows C59-C103).
+  `WEEKNUM(367,99)` = 1, `WEEKNUM(400,-1)` = 5; probe cells C59-C94).
 - ANOMALY: the identical formula `=WEEKNUM(0,99)` is 0 in C5 and 1 in C68 of the same workbook (`WEEKNUM(1,99)` = 1 in both), reproduced on a second fill.
   Unexplained; a type 2 numbering gives 1. Do not implement serial 0 with an out-of-range type until an opus run resolves it (T-1023 handoff).
 RustSheet currently returns `#VALUE!` for types <= 0 and 3, `#NUM!` for other invalid types, accepts TRUE, and `#NUM!` for serial 0 with type 21.
