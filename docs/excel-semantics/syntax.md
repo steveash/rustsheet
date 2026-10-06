@@ -46,7 +46,7 @@ error ("Formula is nested too deeply"); typed into a cell through the API it is 
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each operator one, so up
 to 127 nested parentheses or function calls and up to 255 terms in one operator chain (`=A1+A2+...`)
-are accepted. Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
+are accepted; union operand lists too (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer

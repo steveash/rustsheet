@@ -200,8 +200,6 @@ Tasks: T-0134
 Rule: what the engine does with unions beyond the forms gen-m1 measured. None of it is probed.
 - The comma is the union operator only directly inside parentheses: `(A1,B2)` is one union,
   `SUM(A1,B2)` two arguments, `SUM((A1,B2))` one union argument, and `=A1,B2` is a syntax error.
-  A defined name whose body is a top-level union (`Sheet1!$A$1,Sheet1!$B$2`, the usual form of
-  `_xlnm.Print_Area`) does not parse.
 - Precedence: tighter than every operator but the other reference operators, as Excel's precedence
   table lists `,` with `:` and the space. `(A1,B1 C1)` is `(A1,(B1 C1))` and `(A1+B1,C1)` is
   `A1+(B1,C1)`, so it gives `#VALUE!`.
@@ -218,19 +216,34 @@ Rule: what the engine does with unions beyond the forms gen-m1 measured. None of
   own: `((A1,B2),C3)` prints as `(A1,B2,C3)`, which is the same tree.
 - `ISREF((A1,B2))` is TRUE.
 - Known gaps, where Excel surely differs: a union reaching a function gets `#VALUE!`
-  (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), and so does a union returned by IF, CHOOSE or
-  LET (`LET(x,(A1,B2),x A1)`). The engine has no multi-area value yet (spec T-0133).
-Status: UNVERIFIED (probe pending: precedence, operand refusal, errors, cross-sheet, ISREF; T-0133)
+  (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently takes its fallback for
+  one, and so does a union returned by IF, CHOOSE or LET (`LET(x,(A1,B2),x A1)`). A defined name
+  whose body is a top-level union (`Sheet1!$A$1,Sheet1!$B$2`, the usual form of
+  `_xlnm.Print_Area`) does not parse, though Excel accepts multi-area names. The engine has no
+  multi-area value yet (spec T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
+  `OpUnionKind` unwrapped, unlike Range and Intersect nodes; T-0133 should revisit it.
+Status: UNVERIFIED (probe pending, T-0185: precedence, operand refusal, errors, cross-sheet, ISREF,
+FORMULATEXT, multi-area names; unions as function arguments, T-0133)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`); reference_operators.rs
 Tasks: T-0134, T-0133
 
 ## Union area cap
-Rule: intersecting unions multiplies their areas (`(A1,A2,A3) (A1:A3,B1:B3)` has six pairs). The
-engine stops at 65,536 areas (`MAX_AREAS`) and gives `#VALUE!`. Excel's limit, if any, is not known.
-Excel's result there is not known either; it would only differ where later cuts bring the areas
-back down to one.
+Rule: intersecting unions multiplies their areas (`(A1,A2,A3) (A1:A3,B1:B3)` has six pairs), and
+balanced nesting (`((A1,A2),(A3,A4))`) keeps a union's depth logarithmic, so the parser's depth
+cap does not bound its leaves. The engine bounds every area list it builds, not just products, at
+65,536 areas (`MAX_AREAS`), with `#VALUE!` past it: an intersection of more than `MAX_AREAS` pairs,
+and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each operand before
+the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
+not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
+intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
+repeat that per three characters of formula, so one reference expression may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it. In a value context a union
+keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
+its result past them; it would differ where later cuts bring the areas back down to one, or where
+a later operand's error would come first.
 Status: DEVIATION (decision 0014)
-Implemented in: reference_operators.rs (`Model::intersect_areas`)
+Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `Model::union_areas`,
+`Model::count_union_areas`, `Model::intersect_areas`)
 Tasks: T-0134
 
 ## Range corners may both carry the sheet prefix

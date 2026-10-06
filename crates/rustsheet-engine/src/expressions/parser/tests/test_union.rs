@@ -1,4 +1,4 @@
-#![allow(clippy::panic)]
+#![allow(clippy::panic, reason = "tests")]
 
 //! The union operator, a comma directly inside parentheses (`(A1,B2)`), T-0134. Excel evidence:
 //! docs/excel-semantics/references.md "Union (comma) reference in a value context is #VALUE!"

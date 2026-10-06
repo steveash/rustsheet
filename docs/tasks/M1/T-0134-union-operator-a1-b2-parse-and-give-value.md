@@ -58,8 +58,10 @@ The union operator is `Node::OpUnionKind`, a binary node like `OpIntersectKind`.
   a call. A left union operand loses its own, so `((A,B),C)` prints `(A,B,C)`, which is the same tree.
 - Evaluation: a union where a value is needed is `#VALUE!`, after any operand error. The
   intersection now works on lists of areas: one area left is that area, several are `#VALUE!`,
-  none is `#NULL!`. The pairwise product is capped at 65,536 areas (DEVIATION, references.md
-  "Union area cap").
+  none is `#NULL!`. Every area list is capped at 65,536 areas, both intersection products and
+  accumulated unions (also balanced ones), one reference expression compares at most 1,048,576
+  pairs, and a union in a value context keeps only its area count (security review; DEVIATION,
+  references.md "Union area cap"). Two plain areas still intersect without an area list.
 - ISREF, LET variable ids, units, static analysis, the sheet and name renames, bound-variable
   export and move_formula all handle the new node.
 - To keep the oversized files from growing, `argument_separator` replaces four copies of the
@@ -80,7 +82,8 @@ parsing and evaluation the engine chose without evidence"): precedence against a
 operand refusal, error order, cross-sheet unions, ISREF, the comma-decimal separator, and
 top-level unions in defined names (Print_Area). Known gaps left to the T-0133 spec: unions as
 function arguments (`SUM((A1,B2))`, AREAS, INDEX area_num), and unions returned by IF, CHOOSE or LET.
+Probe task for the UNVERIFIED choices: T-0185.
 
-Follow-up: T-0184 (the id may need renumbering). The R1C1 lexer does not read a sheet prefix
+Follow-up: T-0184. The R1C1 lexer does not read a sheet prefix
 on the second corner, so `SUM(Data!B8:Data!E12,A1)` fails its R1C1 round trip. This was already
 broken on main and is not specific to unions.
