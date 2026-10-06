@@ -47,6 +47,7 @@ C	probes/rich-errors-stockhistory.case.json	5
 C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
+C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-words.case.json	62

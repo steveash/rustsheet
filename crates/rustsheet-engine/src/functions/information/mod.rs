@@ -267,8 +267,16 @@ impl Model {
                         ParsedDefinedName::RangeReference(range) => {
                             return CalcResult::Number(range.left.sheet as f64 + 1.0)
                         }
+                        // Excel: SHEET of a name whose body is an error literal is that error
+                        // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!").
+                        ParsedDefinedName::ErrorLiteral(error) => {
+                            return CalcResult::new_error(
+                                error.clone(),
+                                cell,
+                                format!("Defined name \"{name}\" is an error."),
+                            );
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula
-                        | ParsedDefinedName::ErrorLiteral(_)
                         | ParsedDefinedName::LambdaDefinition(..) => {
                             return CalcResult::Error {
                                 error: Error::ERROR,
