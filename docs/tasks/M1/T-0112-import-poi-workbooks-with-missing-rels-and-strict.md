@@ -32,4 +32,5 @@ Found by T-0003. 49609 fails with "missing workbook rels"; the Strict files fail
 - `XmlNode::relationship_id` reads `r:id` in the Strict OOXML namespace too, so SimpleStrict,
   SampleSS.strict, sample.strict and 57914 import; their cached cells pass.
 - Eval: poi known failures 635 -> 630 (five `!` entries gone), +4 newly checked cells all passing,
-  0 regressions. Strict `t="d"` date cells are still dropped: T-0406.
+  0 regressions. Strict `t="d"` date cells are still dropped: T-0406. Strict files declare
+  `dateCompatibility="0"`, which the importer ignores; probe filed as T-0407.

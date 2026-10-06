@@ -95,11 +95,12 @@ relationships point at `/xl/workbook.xml` and `/xl/sharedStrings.xml`; Excel ope
 sheets (FAM, VIC) and their shared-string text (B1 "Cycle"). OPC part names are case-insensitive
 (ECMA-376 Part 2); the backslash reading is Excel's leniency, the schema does not allow it.
 Equivalent entries (`xl/a.xml` and `XL/A.xml` in one zip) are invalid OPC and Excel's choice is
-not probed: an exact name wins, else the first in byte order.
-Evidence: oracle: excel-graph, 2026-10-06, T-0112: the unmodified file was uploaded directly (the
-canary embedder cannot read such a package, so this run has no canary) and Excel for the web
-opened it and returned a normalized copy with sheets FAM and VIC, B1:E1 "Cycle", "A1", "A2", "A3".
-Status: VERIFIED (Excel for the web)
+not probed: an exact name wins, else the first in byte order (our choice; UNVERIFIED, probe
+pending). Percent-encoded part names (`%41` for `A`) are not normalized (not probed either).
+Evidence: oracle: excel-graph, 2026-10-06T19:27Z, T-0112, input sha256 4237e7a06cfba518904fac9d2085bc38c4912290c9c698acd38234b86691c546:
+the unmodified file was uploaded directly (the canary embedder cannot read such a package, so this
+run has no canary and no sidecar; the file has no formulas to score) and Excel for the web opened it and returned a normalized copy with sheets FAM and VIC, B1:E1 "Cycle", "A1", "A2", "A3".
+Status: VERIFIED (Excel for the web; desktop not observed), except the equivalent-entries tie-break
 Implemented in: `PartNames` in crates/rustsheet-xlsx/src/import/package.rs (importer and the eval
 snapshot reader)
 Tasks: T-0112
@@ -109,10 +110,15 @@ Rule: a workbook saved as "Strict Open XML Spreadsheet" writes `r:id` in the nam
 `http://purl.oclc.org/ooxml/officeDocument/relationships` (Transitional:
 `http://schemas.openxmlformats.org/officeDocument/2006/relationships`), and stores a date cell as
 `t="d"` with ISO 8601 text (`<c r="A4" s="1" t="d"><v>1990-01-01</v></c>`) instead of a serial.
-Evidence: poi/SimpleStrict.xlsx and poi/SampleSS.strict.xlsx (Excel-authored, Microsoft Excel
-15.0300): both use the purl namespace for every `<sheet r:id>`; SimpleStrict "Sheet Number 2"!A4
-is the `t="d"` cell above. Their cached formula values pass once `r:id` is read (T-0112).
+Strict files also declare `<workbookPr dateCompatibility="0">`, which ECMA-376 ties to the 1900
+date base compatibility (serial 60 and dates before 1900-03-01); the importer ignores the attribute
+and what Excel computes under it is not probed (T-0407).
+Evidence: poi/SimpleStrict.xlsx, poi/SampleSS.strict.xlsx, poi/sample.strict.xlsx and
+poi/57914.xlsx (Excel-authored): all use the purl namespace for every `<sheet r:id>` and declare
+`dateCompatibility="0"`; SimpleStrict "Sheet Number 2"!A4 is the `t="d"` cell above. Their cached
+formula values pass once `r:id` is read (T-0112).
 Status: VERIFIED for `r:id`; UNVERIFIED (probe pending) for the value a `t="d"` cell imports as
-(presumably serial 32874 for 1990-01-01); the importer drops `t="d"` cells today (T-0406).
+(presumably serial 32874 for 1990-01-01); the importer drops `t="d"` cells today (T-0406);
+UNVERIFIED (probe pending, T-0407) for `dateCompatibility="0"`.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs
-Tasks: T-0112, T-0406
+Tasks: T-0112, T-0406, T-0407
