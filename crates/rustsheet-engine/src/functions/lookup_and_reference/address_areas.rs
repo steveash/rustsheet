@@ -127,7 +127,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let result = self.evaluate_node_in_context(&args[0], cell);
+        let result = self.evaluate_single_sheet_arg(&args[0], cell);
         if result.is_error() {
             return result;
         }
