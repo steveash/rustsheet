@@ -3,7 +3,7 @@ id: T-0988
 title: "Postfix % flushes subnormal results to 0"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
