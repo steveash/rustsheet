@@ -7,7 +7,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::to_excel_precision,
+    number_format::cmp_excel_precision,
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -51,18 +51,14 @@ fn error_sort_rank(e: &Error) -> u8 {
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            let value1 = to_excel_precision(*value1, 15);
-            let value2 = to_excel_precision(*value2, 15);
             // Equality is decided on the 15-digit values alone: an absolute tolerance would equate
             // every tiny value with 0, but Excel says `EXP(-708)=0` is FALSE (docs/excel-semantics/numbers.md,
             // probes/subnormal-function-results C4-C6).
-            if value1 == value2 {
-                return 0;
+            match cmp_excel_precision(*value1, *value2) {
+                std::cmp::Ordering::Less => -1,
+                std::cmp::Ordering::Equal => 0,
+                std::cmp::Ordering::Greater => 1,
             }
-            if value1 < value2 {
-                return -1;
-            }
-            1
         }
         (CalcResult::Number(_value1), CalcResult::String(_value2)) => -1,
         (CalcResult::Number(_value1), CalcResult::Boolean(_value2)) => -1,
