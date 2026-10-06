@@ -33,4 +33,6 @@ with tools/upstream/generate_language (it reproduced the old file byte for byte 
 probes/aggregate-grid (217 cells) and probes/aggregate-args (53 cells), oracle excel-graph; semantics in
 docs/excel-semantics/numbers.md "AGGREGATE". Eval: probes known failures 233 -> 231 (fixed 9: aggregate-overflow
 A27:C29; 263 new cells pass, 7 new known failures). Follow-ups: T-1034 (LARGE/SMALL k), T-1033 (array
-function_num/option/k); VAR.P last digit in grid B31/C31 is the existing VAR.P formula.
+function_num/option/k), T-1036 (hidden/filtered rows and nested calls, unprobed), T-1037 (VAR.P last digit,
+grid B31/C31). Hidden rows are read once per call (review: a per-cell row-style scan was quadratic);
+unit test test/test_aggregate.rs covers hidden rows and nested SUBTOTAL cells.

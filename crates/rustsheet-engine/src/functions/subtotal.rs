@@ -26,7 +26,7 @@ enum SubTotalMode {
 }
 
 #[derive(PartialEq, Debug)]
-pub(crate) enum CellTableStatus {
+pub enum CellTableStatus {
     Normal,
     Hidden,
     Filtered,
@@ -53,7 +53,7 @@ impl Model {
         false
     }
 
-    pub(crate) fn cell_hidden_status(
+    fn cell_hidden_status(
         &self,
         sheet_index: u32,
         row: i32,
@@ -84,7 +84,6 @@ impl Model {
 
     /// Whether the cell holds a formula whose outermost call is one of `kinds` (SUBTOTAL and
     /// AGGREGATE skip such cells).
-    // FIXME(TD): This is too much
     pub(crate) fn cell_formula_is_one_of(
         &self,
         sheet_index: u32,

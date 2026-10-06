@@ -7,6 +7,8 @@
 //! Excel's rules are in docs/excel-semantics/numbers.md "AGGREGATE" (probes/aggregate-grid,
 //! probes/aggregate-args, probes/aggregate-overflow).
 
+use std::collections::HashSet;
+
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -14,7 +16,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{subtotal::CellTableStatus, Function},
+    functions::Function,
     model::Model,
 };
 
@@ -208,14 +210,27 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
         let nested = [Function::Subtotal, Function::Aggregate];
-        self.for_each_position_in_range(area.left, area.right, cell, |model, position| {
-            if ignore.hidden {
-                let status = model
-                    .cell_hidden_status(position.sheet, position.row, position.column)
+        // The hidden rows of each sheet of the area, read once: a per-cell lookup would scan
+        // the sheet's row styles for every cell (cells x styled rows on a crafted workbook).
+        let mut hidden_rows = HashSet::new();
+        if ignore.hidden {
+            for sheet in area.left.sheet..=area.right.sheet {
+                let worksheet = self
+                    .workbook
+                    .worksheet(sheet)
                     .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-                if status != CellTableStatus::Normal {
-                    return Ok(());
-                }
+                hidden_rows.extend(
+                    worksheet
+                        .rows
+                        .iter()
+                        .filter(|row| row.hidden)
+                        .map(|row| (sheet, row.r)),
+                );
+            }
+        }
+        self.for_each_position_in_range(area.left, area.right, cell, |model, position| {
+            if hidden_rows.contains(&(position.sheet, position.row)) {
+                return Ok(());
             }
             if ignore.nested
                 && model.cell_formula_is_one_of(

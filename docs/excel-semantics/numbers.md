@@ -446,7 +446,9 @@ Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), p
 Oracle: excel-graph, 2026-10-06 (T-0993).
 Status: VERIFIED, except hidden and filtered rows (UNVERIFIED: the case format cannot hide rows; the engine skips
 hidden and filter-hidden rows under odd options and keeps them otherwise) and nested SUBTOTAL/AGGREGATE inside a
-larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped).
+larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
+Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
+option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
 Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), array function_num/option/k lifting (T-1033), the
-VAR.P last digit (probes/aggregate-grid B31, C31).
+VAR.P last digit (probes/aggregate-grid B31, C31; T-1037).
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs).
