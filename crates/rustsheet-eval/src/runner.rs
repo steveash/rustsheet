@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::case::is_excel_evidence;
 use crate::case::{
-    canonical_key, cell_key, split_qualified, CaseSpec, CellInput, OracleFile, CASE_FORMAT,
+    canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
+    CASE_FORMAT,
 };
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
