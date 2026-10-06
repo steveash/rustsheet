@@ -141,6 +141,17 @@ pub fn to_string_displaced(
 /// It uses A1 style if context is not None. If context is None it uses R1C1 style
 /// If full_row is true then the row details will be omitted in the A1 case
 /// If full_column is true then column details will be omitted.
+/// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
+/// needs quotes (Excel writes `'Data2:Q 4'!A1`).
+pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
+    let span = format!("{first}:{last}");
+    if quote_name(first) == first && quote_name(last) == last {
+        span
+    } else {
+        format!("'{}'", span.replace('\'', "''"))
+    }
+}
+
 pub(crate) fn stringify_reference(
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
@@ -546,6 +557,25 @@ fn stringify(
             );
             format!("{s1}:{s2}")
         }
+        // Rows and columns inserted or moved on one sheet of the span do not shift the span's
+        // cells (edit semantics are not modelled yet), so no displacement reaches `reference`.
+        SheetSpanKind {
+            first_sheet,
+            last_sheet,
+            reference,
+            ..
+        } => format!(
+            "{}!{}",
+            sheet_span_text(first_sheet, last_sheet),
+            stringify(
+                reference,
+                context,
+                &DisplaceData::None,
+                export_to_excel,
+                locale,
+                language
+            )
+        ),
         WrongRangeKind {
             sheet_name,
             absolute_row1,
@@ -717,6 +747,7 @@ fn stringify(
                     | StringKind(_)
                     | ReferenceKind { .. }
                     | RangeKind { .. }
+                    | SheetSpanKind { .. }
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
                     | OpRangeKind { .. }
@@ -899,6 +930,20 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         } => {
             if *index == sheet_index && sheet_name.is_some() {
                 *sheet_name = Some(new_name.to_owned());
+            }
+        }
+        Node::SheetSpanKind {
+            first_sheet,
+            last_sheet,
+            first_index,
+            last_index,
+            ..
+        } => {
+            if *first_index == sheet_index {
+                new_name.clone_into(first_sheet);
+            }
+            if *last_index == sheet_index {
+                new_name.clone_into(last_sheet);
             }
         }
         Node::WrongReferenceKind { sheet_name, .. } => {
@@ -1088,6 +1133,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::EmptyArgKind => {}
         Node::ReferenceKind { .. } => {}
         Node::RangeKind { .. } => {}
+        Node::SheetSpanKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}

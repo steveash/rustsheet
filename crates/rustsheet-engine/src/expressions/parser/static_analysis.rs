@@ -72,6 +72,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -228,6 +229,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -366,6 +368,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             StaticResult::Unknown
         }
         Node::ReferenceKind { .. } => StaticResult::Scalar,
+        // A 3-D reference is a value only as an error (`#REF!`), so it never spills.
+        Node::SheetSpanKind { .. } => StaticResult::Scalar,
 
         // binary operations
         Node::OpConcatenateKind { left, right }

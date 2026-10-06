@@ -1,6 +1,6 @@
 use super::{
     reference_operators::{intersection_operand, tight_operand, union_text},
-    stringify::{stringify_reference, DisplaceData},
+    stringify::{sheet_span_text, stringify_reference, to_localized_string, DisplaceData},
     ArrayNode, Node, Reference,
 };
 use crate::{
@@ -176,6 +176,25 @@ fn to_string_moved(
                 },
                 false,
                 false,
+            )
+        }
+        // A cut-and-paste moves cells on one sheet, so it never moves a whole 3-D span: the
+        // reference stays as written (edit semantics of 3-D references are not modelled yet).
+        SheetSpanKind {
+            first_sheet,
+            last_sheet,
+            reference,
+            ..
+        } => {
+            let context = CellReferenceRC {
+                sheet: move_context.source_sheet_name.to_string(),
+                column: move_context.column,
+                row: move_context.row,
+            };
+            format!(
+                "{}!{}",
+                sheet_span_text(first_sheet, last_sheet),
+                to_localized_string(reference, &context, locale, language)
             )
         }
         RangeKind {

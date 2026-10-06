@@ -355,6 +355,12 @@ impl Model {
                 // The implicit intersection of a scalar is the scalar itself.
                 other => other,
             },
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } => self.get_sheet_span_reference(*first_index, *last_index, reference, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -583,6 +589,12 @@ impl Model {
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
+            SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right } => self.get_union(left, right, cell),
             WrongRangeKind { .. } => {
                 CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())

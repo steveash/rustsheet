@@ -1,0 +1,92 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "3-D references (First:Last!ref) in the aggregates that accept them: span order, text/bool/blank skipping, errors, quoted names, whole columns (T-0122).",
+  "tags": [
+    "M1",
+    "references",
+    "3d-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "C1": "=SUM(Data1:Data3!A1)",
+        "C2": "=SUM(Data3:Data1!A1)",
+        "C3": "=SUM(Data1:Data3!A1:A3)",
+        "C4": "=COUNT(Data1:Data3!A1:A3)",
+        "C5": "=COUNTA(Data1:Data3!A1:A3)",
+        "C6": "=PRODUCT(Data1:Data3!A1)",
+        "C7": "=AVERAGE(Data1:Data3!A1:A3)",
+        "C8": "=AVERAGEA(Data1:Data3!A1:A3)",
+        "C9": "=MAXA(Data1:Data3!A1:A3)",
+        "C10": "=MINA(Data1:Data3!A1:A3)",
+        "C11": "=STDEV(Data1:Data3!A1)",
+        "C12": "=VAR(Data1:Data3!A1)",
+        "C13": "=SUM(Data1:Data1!A1)",
+        "C14": "=SUM('Data2:Q 4'!A1)",
+        "C15": "=SUM(Data1:Data3!A:A)",
+        "C16": "=SUM(Data1:Data3!B1)",
+        "C17": "=MAX(Data1:Data3!C1)",
+        "C18": "=COUNT(Data1:Data3!B1:C1)",
+        "C19": "=SUM(Data1:Data3!A1,5)",
+        "C20": "=MEDIAN(Data1:Data3!A1)"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": "5",
+        "A3": true,
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10,
+        "B1": "=1/0",
+        "C1": "x"
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 100,
+        "A2": 2,
+        "A3": -4,
+        "B1": 7
+      }
+    },
+    {
+      "name": "Q 4",
+      "cells": {
+        "A1": 1000
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!C3",
+    "Calc!C4",
+    "Calc!C5",
+    "Calc!C6",
+    "Calc!C7",
+    "Calc!C8",
+    "Calc!C9",
+    "Calc!C10",
+    "Calc!C11",
+    "Calc!C12",
+    "Calc!C13",
+    "Calc!C14",
+    "Calc!C15",
+    "Calc!C16",
+    "Calc!C17",
+    "Calc!C18",
+    "Calc!C19",
+    "Calc!C20"
+  ]
+}
