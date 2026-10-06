@@ -11,7 +11,7 @@ use crate::{formatter::date_text::parse_date, locale::Locale};
 /// text past 24 hours wraps (`TIMEVALUE("25:00")` is 1.0416666666666667 - 1) and "date time" text
 /// keeps the subtraction's float error. Excel: see docs/excel-semantics/dates.md#time-text.
 pub(super) fn parse_time_string(text: &str, locale: &Locale) -> Option<f64> {
-    let text = text.trim();
+    let text = trim_spaces(text);
     if let Some(serial) = parse_clock_text(text) {
         return Some(serial - serial.floor());
     }
@@ -62,24 +62,27 @@ pub(super) fn parse_time_string(text: &str, locale: &Locale) -> Option<f64> {
 
 /// The serial a time or date-time text coerces to where `cast_number` reads text as a number
 /// (`0+"10:11"`, `--"12:00"`): clock text, hour-only AM/PM and "date clock" text, unwrapped (`0+"25:00"`
-/// is 1.0416666666666667, unlike TIMEVALUE which keeps the fraction). Surrounding spaces make
-/// the text invalid here although TIMEVALUE trims them (probes/timevalue-fractional-seconds2
-/// C11). Excel: see docs/excel-semantics/dates.md#time-text.
+/// is 1.0416666666666667, unlike TIMEVALUE which keeps the fraction). A leading space makes
+/// the text invalid here although TIMEVALUE trims it (probes/timevalue-fractional-seconds2
+/// C11, value-clock-text C14); trailing spaces are allowed (value-clock-text C34-C37).
+/// Excel: see docs/excel-semantics/dates.md#time-text.
 pub(crate) fn parse_time_serial(text: &str, locale: &Locale) -> Option<f64> {
-    if text != text.trim() {
+    if text.starts_with(' ') {
         return None;
     }
+    let text = text.trim_end_matches(' ');
     if let Some(serial) = parse_clock_text(text) {
         return Some(serial);
     }
     parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text, locale))
 }
 
-/// Hour-only "N AM" / "N PM" text (hour 1-12, no minutes) as a time-of-day serial.
+/// Hour-only "N AM" / "N PM" text (hour 0-12, no minutes) as a time-of-day serial: `"0 PM"` is
+/// noon and `"0 AM"` midnight, `"13 PM"` is #VALUE! (probes/value-clock-text rows 9-11, 28).
 fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
     let (hour_str, is_pm) = parse_simple_am_pm(text)?;
     let hour = hour_str.parse::<u32>().ok()?;
-    if !(1..=12).contains(&hour) {
+    if hour > 12 {
         return None;
     }
     let time = NaiveTime::from_hms_opt(hour_from_12h(hour, is_pm), 0, 0)?;
@@ -104,6 +107,13 @@ pub(crate) fn parse_date_clock_serial(text: &str, locale: &Locale) -> Option<f64
     None
 }
 
+/// Time text is trimmed and split on the space character only: a tab, a no-break space or an
+/// ideographic space anywhere is #VALUE! (`"10:00\t"`, `"10:00\u{a0}AM"`, `"\u{3000}10:00"`:
+/// probes/value-clock-text rows 38, 42-45).
+fn trim_spaces(text: &str) -> &str {
+    text.trim_matches(' ')
+}
+
 /// Largest value of one clock component: Excel takes at most four digits
 /// (`TIMEVALUE("9999:59:59")` parses, `"10000:00:00"` is #VALUE!).
 const MAX_CLOCK_COMPONENT: u32 = 9_999;
@@ -112,7 +122,7 @@ const MAX_CLOCK_COMPONENT: u32 = 9_999;
 /// a leading zero only in a 2-digit component (`"10:05"` parses, `"010:11:12"` and `"10:011:12"`
 /// are #VALUE!).
 fn parse_clock_component(part: &str) -> Option<u32> {
-    let part = part.trim();
+    let part = trim_spaces(part);
     let digits_ok = (1..=4).contains(&part.len()) && part.bytes().all(|b| b.is_ascii_digit());
     if !digits_ok || (part.len() > 2 && part.starts_with('0')) {
         return None;
@@ -141,8 +151,8 @@ fn fraction_digits_to_ms(digits: &str) -> u32 {
 /// The value is `(total_ms / 1000) / 86400`, which matches Excel bit for bit
 /// (`"10:11:12.5"` is 0.4244502314814815). Excel: see docs/excel-semantics/dates.md#time-text.
 fn parse_clock_text(text: &str) -> Option<f64> {
-    let text = text.trim();
-    let (body, suffix_is_pm) = match text.rsplit_once(char::is_whitespace) {
+    let text = trim_spaces(text);
+    let (body, suffix_is_pm) = match text.rsplit_once(' ') {
         Some((body, word)) if ["am", "a"].iter().any(|s| word.eq_ignore_ascii_case(s)) => {
             (body, Some(false))
         }
@@ -199,22 +209,23 @@ fn hour_from_12h(hour: u32, is_pm: bool) -> u32 {
     }
 }
 
-/// Splits hour-only "N PM" / "N AM" text (case-insensitive, optional trailing `.`) into the hour
-/// digits and whether it is PM.
+/// Splits hour-only "N PM" / "N AM" text into the hour digits and whether it is PM. The suffix is
+/// `AM`, `PM`, `A` or `P` in any case with an optional trailing `.` (`"6 P."`, `"6 a"`:
+/// probes/value-clock-text rows 7, 25, 29-33).
 fn parse_simple_am_pm(text: &str) -> Option<(&str, bool)> {
-    let (hour_part, suffix) = text.rsplit_once(char::is_whitespace)?;
+    let (hour_part, suffix) = text.rsplit_once(' ')?;
 
     let suffix = suffix.strip_suffix('.').unwrap_or(suffix);
 
-    let is_pm = if suffix.eq_ignore_ascii_case("pm") {
+    let is_pm = if suffix.eq_ignore_ascii_case("pm") || suffix.eq_ignore_ascii_case("p") {
         true
-    } else if suffix.eq_ignore_ascii_case("am") {
+    } else if suffix.eq_ignore_ascii_case("am") || suffix.eq_ignore_ascii_case("a") {
         false
     } else {
         return None;
     };
 
-    let hour_part = hour_part.trim();
+    let hour_part = trim_spaces(hour_part);
 
     if !hour_part.is_empty() && hour_part.chars().all(|c| c.is_ascii_digit()) {
         return Some((hour_part, is_pm));
