@@ -48,7 +48,7 @@ coerces the INDEX value: `#VALUE!` / the error), baselined in probes H2, H3, H11
 A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
 from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
 value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
-`#REF!` and `#N/A` when not found (K7), i.e. the first element is not used.
+`#REF!` and `#N/A` when not found (K7); whether it spills into J11 is unprobed.
 Status: VERIFIED
 Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 (crates/rustsheet-engine/src/functions/lookup_and_reference/index_arg.rs), shared by VLOOKUP and HLOOKUP.
