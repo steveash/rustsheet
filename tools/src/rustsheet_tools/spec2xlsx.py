@@ -53,9 +53,7 @@ def future_function_prefixes() -> dict[str, str]:
     Read from the engine exporter's `Function::to_xlsx_string` so there is one list (T-0166).
     """
     found = _XLSX_NAME_ARM.findall(_ENGINE_FUNCTIONS.read_text(encoding="utf-8"))
-    # The exporter writes the classic CEILING as `_xlfn.CEILING`, which Excel does not (T-0172);
-    # a spec's CEILING must stay the plain function.
-    return {f.removeprefix("_xlfn.").removeprefix("_xlws.").upper(): f for f in found if f != "_xlfn.CEILING"}
+    return {f.removeprefix("_xlfn.").removeprefix("_xlws.").upper(): f for f in found}
 
 
 def _skip_literal(formula: str, i: int) -> int:
