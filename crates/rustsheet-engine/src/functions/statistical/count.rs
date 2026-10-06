@@ -1,8 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
-};
+use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
     pub(crate) fn fn_count(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -33,27 +31,15 @@ impl Model {
                     result += 1.0;
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let (row2, column2) = match self.clipped_corner(left, right, cell) {
-                        Ok(corner) => corner,
-                        Err(error) => return error,
-                    };
-                    for row in left.row..=row2 {
-                        for column in left.column..=column2 {
-                            if let CalcResult::Number(_) = self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
+                    if let Err(error) =
+                        self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                            if let CalcResult::Number(_) = value {
                                 result += 1.0;
                             }
-                        }
+                            Ok(())
+                        })
+                    {
+                        return error;
                     }
                 }
                 // Only an array's numbers count (probes/average-value-args F32).
@@ -80,30 +66,15 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let (row2, column2) = match self.clipped_corner(left, right, cell) {
-                        Ok(corner) => corner,
-                        Err(error) => return error,
-                    };
-                    for row in left.row..=row2 {
-                        for column in left.column..=column2 {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                _ => {
-                                    result += 1.0;
-                                }
+                    if let Err(error) =
+                        self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                            if !matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg) {
+                                result += 1.0;
                             }
-                        }
+                            Ok(())
+                        })
+                    {
+                        return error;
                     }
                 }
                 CalcResult::Array(a) => {
@@ -134,35 +105,23 @@ impl Model {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s) if s.is_empty() => result += 1.0,
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let (row2, column2) = match self.clipped_corner(left, right, cell) {
-                        Ok(corner) => corner,
-                        Err(error) => return error,
-                    };
-                    // The clipped-off cells are empty and each one is blank.
-                    let rows = |last: i32| f64::from((last - left.row + 1).max(0));
-                    let columns = |last: i32| f64::from((last - left.column + 1).max(0));
-                    result +=
-                        rows(right.row) * columns(right.column) - rows(row2) * columns(column2);
-                    for row in left.row..=row2 {
-                        for column in left.column..=column2 {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
-                                CalcResult::String(s) if s.is_empty() => result += 1.0,
-                                _ => {}
+                    // Only the used area is walked: the cells past it are empty,
+                    // so every cell that is not blank is found in the walk.
+                    let mut filled = 0.0;
+                    if let Err(error) =
+                        self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                            match value {
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+                                CalcResult::String(s) if s.is_empty() => {}
+                                _ => filled += 1.0,
                             }
-                        }
+                            Ok(())
+                        })
+                    {
+                        return error;
                     }
+                    let side = |first: i32, last: i32| f64::from(last - first + 1);
+                    result += side(left.row, right.row) * side(left.column, right.column) - filled;
                 }
                 _ => {}
             };

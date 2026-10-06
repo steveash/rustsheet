@@ -166,19 +166,6 @@ impl Model {
         }
     }
 
-    /// The bottom-right corner a walk of the range `left..=right` goes to:
-    /// whole-row and whole-column ranges are clipped to the used area
-    /// (`clip_to_used_area`), and the cells past the corner are empty.
-    pub(crate) fn clipped_corner(
-        &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
-        cell: CellReferenceIndex,
-    ) -> Result<(i32, i32), CalcResult> {
-        self.clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
-    }
-
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///
@@ -197,6 +184,24 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
+        self.for_each_cell_or_error_in_range(left, right, cell, |model, value| match value {
+            error @ CalcResult::Error { .. } => Err(error),
+            value => f(model, value),
+        })
+    }
+
+    /// [`Self::for_each_cell_in_range`] that also hands `f` the error cells
+    /// (COUNTA counts them, COUNT and COUNTBLANK skip them).
+    pub(crate) fn for_each_cell_or_error_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
+    {
         if left.sheet != right.sheet {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -204,17 +209,17 @@ impl Model {
                 "Ranges are in different sheets".to_string(),
             ));
         }
-        let (row2, column2) = self.clipped_corner(left, right, cell)?;
+        let (row2, column2) = self
+            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
         for row in left.row..=row2 {
             for column in left.column..=column2 {
-                match self.evaluate_cell(CellReferenceIndex {
+                let value = self.evaluate_cell(CellReferenceIndex {
                     sheet: left.sheet,
                     row,
                     column,
-                }) {
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    value => f(self, value)?,
-                }
+                });
+                f(self, value)?;
             }
         }
         Ok(())

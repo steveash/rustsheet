@@ -545,40 +545,20 @@ impl Model {
                 handle(serial)?;
             }
             CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
+                self.for_each_cell_in_range(left, right, cell, |model, value| match value {
+                    CalcResult::Number(v) => {
+                        let serial = v.floor() as i64;
+                        model.excel_date(serial, cell)?;
+                        handle(serial)
+                    }
+                    // ignore empty cells
+                    CalcResult::EmptyCell => Ok(()),
+                    _ => Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                let (row2, column2) = self.clipped_corner(left, right, cell)?;
-                for row in left.row..=row2 {
-                    for column in left.column..=column2 {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(v) => {
-                                let serial = v.floor() as i64;
-                                self.excel_date(serial, cell)?;
-                                handle(serial)?;
-                            }
-                            CalcResult::EmptyCell => {
-                                // ignore empty cells
-                            }
-                            e @ CalcResult::Error { .. } => return Err(e),
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Invalid holiday date".to_string(),
-                                ))
-                            }
-                        }
-                    }
-                }
+                        "Invalid holiday date".to_string(),
+                    )),
+                })?;
             }
             CalcResult::Array(array) => {
                 for row in array {

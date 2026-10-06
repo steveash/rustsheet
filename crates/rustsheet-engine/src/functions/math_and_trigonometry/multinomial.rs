@@ -39,50 +39,31 @@ impl Model {
                     values.push(v.trunc() as u64);
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let (row2, column2) = match self.clipped_corner(left, right, cell) {
-                        Ok(corner) => corner,
-                        Err(error) => return error,
-                    };
-                    // Cells past the used area are empty, and an empty cell counts
-                    // as 0 here, which changes neither the sum nor the product of
-                    // factorials, so skipping them leaves the result as it was.
-                    for row in left.row..=row2 {
-                        for column in left.column..=column2 {
-                            match self.evaluate_cell(
-                                crate::expressions::types::CellReferenceIndex {
-                                    sheet: left.sheet,
-                                    row,
-                                    column,
-                                },
-                            ) {
-                                CalcResult::Number(v) => {
-                                    if v < 0.0 {
-                                        return CalcResult::new_error(
-                                            Error::NUM,
-                                            cell,
-                                            "MULTINOMIAL requires non-negative values".to_string(),
-                                        );
-                                    }
-                                    values.push(v.trunc() as u64);
-                                }
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => values.push(0),
-                                err @ CalcResult::Error { .. } => return err,
-                                _ => {
-                                    return CalcResult::new_error(
-                                        Error::VALUE,
-                                        cell,
-                                        "MULTINOMIAL requires numeric values".to_string(),
-                                    )
-                                }
+                    // A cell past the used area is empty, which counts as 0 here
+                    // and changes neither the sum nor the product of factorials.
+                    if let Err(error) =
+                        self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                            CalcResult::Number(v) if v < 0.0 => Err(CalcResult::new_error(
+                                Error::NUM,
+                                cell,
+                                "MULTINOMIAL requires non-negative values".to_string(),
+                            )),
+                            CalcResult::Number(v) => {
+                                values.push(v.trunc() as u64);
+                                Ok(())
                             }
-                        }
+                            CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                                values.push(0);
+                                Ok(())
+                            }
+                            _ => Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "MULTINOMIAL requires numeric values".to_string(),
+                            )),
+                        })
+                    {
+                        return error;
                     }
                 }
                 CalcResult::Array(arr) => {

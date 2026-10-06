@@ -155,43 +155,26 @@ impl Model {
                     }
                 }
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        ));
-                    }
-
-                    let (row2, column2) = self.clipped_corner(left, right, cell)?;
-                    for row in left.row..=row2 {
-                        for column in left.column..=column2 {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    f(value);
-                                }
-                                CalcResult::Boolean(b) => {
-                                    f(if b { 1.0 } else { 0.0 });
-                                }
-                                CalcResult::String(_) => {
-                                    f(0.0);
-                                }
-                                error @ CalcResult::Error { .. } => return Err(error),
-                                CalcResult::Range { .. } => {
-                                    return Err(CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        "Unexpected Range".to_string(),
-                                    ));
-                                }
-                                _ => {}
-                            }
+                    self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                        CalcResult::Number(value) => {
+                            f(value);
+                            Ok(())
                         }
-                    }
+                        CalcResult::Boolean(b) => {
+                            f(if b { 1.0 } else { 0.0 });
+                            Ok(())
+                        }
+                        CalcResult::String(_) => {
+                            f(0.0);
+                            Ok(())
+                        }
+                        CalcResult::Range { .. } => Err(CalcResult::new_error(
+                            Error::ERROR,
+                            cell,
+                            "Unexpected Range".to_string(),
+                        )),
+                        _ => Ok(()),
+                    })?;
                 }
                 error @ CalcResult::Error { .. } => return Err(error),
                 // Everything else is ignored
@@ -234,53 +217,38 @@ impl Model {
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let (row2, column2) = match self.clipped_corner(left, right, cell) {
-                        Ok(corner) => corner,
-                        Err(error) => return error,
-                    };
-                    for row in left.row..=row2 {
-                        for column in left.column..=column2 {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::String(_) => count += 1.0,
-                                CalcResult::Number(value) => {
-                                    count += 1.0;
-                                    sum += value;
-                                }
-                                CalcResult::Boolean(b) => {
-                                    if b {
-                                        sum += 1.0;
-                                    }
-                                    count += 1.0;
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::Range { .. } => {
-                                    return CalcResult::new_error(
-                                        Error::ERROR,
-                                        cell,
-                                        "Unexpected Range".to_string(),
-                                    );
-                                }
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    }
-                                }
+                    if let Err(error) =
+                        self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                            CalcResult::String(_) => {
+                                count += 1.0;
+                                Ok(())
                             }
-                        }
+                            CalcResult::Number(value) => {
+                                count += 1.0;
+                                sum += value;
+                                Ok(())
+                            }
+                            CalcResult::Boolean(b) => {
+                                count += 1.0;
+                                sum += f64::from(u8::from(b));
+                                Ok(())
+                            }
+                            CalcResult::Range { .. } => Err(CalcResult::new_error(
+                                Error::ERROR,
+                                cell,
+                                "Unexpected Range".to_string(),
+                            )),
+                            CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                                Err(CalcResult::Error {
+                                    error: Error::NIMPL,
+                                    origin: cell,
+                                    message: "Arrays not supported yet".to_string(),
+                                })
+                            }
+                            _ => Ok(()),
+                        })
+                    {
+                        return error;
                     }
                 }
                 CalcResult::Number(value) => {
