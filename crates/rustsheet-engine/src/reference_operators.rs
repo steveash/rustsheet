@@ -260,6 +260,19 @@ impl Model {
         }
     }
 
+    /// Whether `(left,right)` evaluates to a reference: a union with an error operand (`(A1,#REF!)`)
+    /// is that error, not a reference (probes/union-accepted H9, docs/excel-semantics/references.md).
+    pub(crate) fn union_is_reference(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> bool {
+        let mut budget = MAX_AREA_PAIRS;
+        self.count_union_areas(left, right, cell, &mut budget)
+            .is_ok()
+    }
+
     /// The areas of a reference argument: several for a union, one for any other reference.
     /// `Err` holds the error the argument evaluates to, or `#VALUE!` if it is not a reference
     /// (AGGREGATE's reference form; probes/aggregate-args).
