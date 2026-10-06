@@ -30,9 +30,16 @@ fn read_shared_strings_from_xml(
     let mut shared_strings = Vec::new();
     let nodes: Vec<&XmlNode> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
     for node in nodes {
+        // Only the plain `<t>` and the `<r><t>` rich-text runs are the cell text; phonetic
+        // (furigana) runs `<rPh><t>` are not (ECMA-376 §18.4.6; the eval snapshot reader skips
+        // them too).
         let text = node
-            .descendants()
-            .filter(|n| n.has_tag_name("t"))
+            .children()
+            .flat_map(|child| match child.tag_name() {
+                "t" => vec![child],
+                "r" => child.children().filter(|n| n.has_tag_name("t")).collect(),
+                _ => Vec::new(),
+            })
             .map(|n| decode_xlsx_escapes(n.text().unwrap_or("")))
             .collect::<Vec<String>>()
             .join("");
@@ -122,6 +129,26 @@ mod tests {
                 "Hello World".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn test_phonetic_runs_are_not_cell_text() {
+        let xml_string = r#"
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">
+    <si>
+        <r><t>東</t></r>
+        <r><rPr><b/></rPr><t>京</t></r>
+        <rPh sb="0" eb="1"><t>トウ</t></rPh>
+        <rPh sb="1" eb="2"><t>キョウ</t></rPh>
+        <phoneticPr fontId="1"/>
+    </si>
+    <si>
+        <t>漢字</t>
+        <rPh sb="0" eb="2"><t>カンジ</t></rPh>
+    </si>
+</sst>"#;
+        let shared_strings = read_shared_strings_from_string(xml_string.trim()).unwrap();
+        assert_eq!(shared_strings, ["東京".to_string(), "漢字".to_string()]);
     }
 
     #[test]
