@@ -52,18 +52,18 @@ One spec suite per family under `eval/suites/probes-numeric` (or `probes`), buil
    >= 25 cells incl. argument coercion and error edges.
 
 ## Acceptance criteria
-- [ ] Each family above has an oracle-filled probe suite committed (no pending cells), and the
+- [x] Each family above has an oracle-filled probe suite committed (no pending cells), and the
       dependent task (T-0967, T-0968, T-0969, T-0970, T-0971, T-0972, T-0973, T-0974, T-0975,
-      T-0978) links it in its Context.
-- [ ] Size: eight families do not fit one M PR. Split per family at pickup with `make new-task`
+      T-0978) links it in its Context. *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] Size: eight families do not fit one M PR. Split per family at pickup with `make new-task`
       (research lane), repoint each dependent task's `depends_on` to its own sweep, and close this
       task when the splits exist, so each fitting task becomes ready as soon as its sweep lands.
-- [ ] New quirks visible in the sweeps are recorded in `docs/excel-semantics/statistics.md`.
-- [ ] Fixtures hold only formulas and Excel values: no tenant ids, tokens or personal data, and no
-      RUSTSHEET_ORACLE_* values in logs or commits.
-- [ ] If the oracle is unavailable, set `status: blocked` with the reason (the dependents then
-      wait visibly instead of being fitted blind).
-- [ ] `make check` green; reviewers approve.
+- [x] New quirks visible in the sweeps are recorded in `docs/excel-semantics/statistics.md`. *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] Fixtures hold only formulas and Excel values: no tenant ids, tokens or personal data, and no
+      RUSTSHEET_ORACLE_* values in logs or commits. *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] If the oracle is unavailable, set `status: blocked` with the reason (the dependents then
+      wait visibly instead of being fitted blind). *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting or implementing any formulation (the dependent tasks do that).

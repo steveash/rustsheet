@@ -33,6 +33,6 @@ Filed (functions-stat unless noted):
 - T-0973 gamma function: GAMMA + GAMMALN residue (39)
 - T-0968 normal CDF / erfc residue (59, after T-0966); T-0975 normal densities + PHI (24)
 - T-0976 FISHERINV formula (6, sonnet); T-0977 HYPGEOM.DIST (2, after T-0966); T-0978 WEIBULL.DIST (2, after T-0966)
-- T-0966 (research) oracle sweeps per kernel family plus evidence for the 28 legacy aliases.
+- T-0966 (research) oracle sweeps per kernel family plus evidence for the 28 legacy aliases. Split into T-1040..T-1049; the T-0966 Outcome maps each fitting task to its sweep.
 Quirks recorded in `docs/excel-semantics/statistics.md` (new) and `numbers.md` (GAMMALN).
 Also filed with this PR: T-0250 (research; T-0211 review follow-up, VLOOKUP/HLOOKUP index-shape probe).
