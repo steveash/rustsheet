@@ -23,7 +23,7 @@ Excel's values are demonstrably not the correctly rounded ones (see
 `docs/excel-semantics/statistics.md`: normal CDF 1 ulp high at z = 1, GAMMA(-0.5) 1 ulp off,
 T.DIST.RT not 1 - T.DIST, inverses that do not round-trip). Earlier blind attempts at this kind of
 fit (T-0925, draft PR #38) fixed some cells and regressed others. Decision 0026 / T-0018: such
-groups wait for an oracle sweep. T-0942 covers the inverse normal (T-0925); this task covers the rest.
+groups wait for an oracle sweep. T-1006 (split from T-0942) covers the inverse normal (T-0925); this task covers the rest.
 
 One spec suite per family under `eval/suites/probes-numeric` (or `probes`), built with
 `rustsheet-gen --policy numeric-rules` or hand-written specs, filled with `rustsheet-oracle fill`
@@ -67,4 +67,4 @@ One spec suite per family under `eval/suites/probes-numeric` (or `probes`), buil
 
 ## Out of scope
 - Fitting or implementing any formulation (the dependent tasks do that).
-- Inverse normal (T-0942 / T-0925) and the discrete distributions (T-0927).
+- Inverse normal (T-1006 / T-0925) and the discrete distributions (T-0927).
