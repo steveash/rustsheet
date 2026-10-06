@@ -3,7 +3,7 @@ use chrono::Datelike;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    formatter::dates::DATE_OUT_OF_RANGE_MESSAGE,
+    formatter::dates::{from_excel_date, DATE_OUT_OF_RANGE_MESSAGE},
     model::Model,
 };
 
@@ -25,8 +25,10 @@ impl Model {
         };
         let out_of_range =
             || CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
+        // A boolean return_type is #VALUE! (`WEEKNUM(100,TRUE)`); text that reads as a number
+        // is accepted (`WEEKNUM(100,"2")` = 16; probes/weeknum-serial-0 C35-C38, T-1023).
         let return_type = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
+            match self.get_number_no_bools(&args[1], cell) {
                 Ok(f) => f as i32,
                 Err(s) => return s,
             }
@@ -34,11 +36,12 @@ impl Model {
             1
         };
         if return_type == 21 {
-            let Some(date) = date else {
-                return out_of_range();
+            return match iso_week(serial) {
+                Ok(week) => CalcResult::Number(week),
+                Err(error) => {
+                    CalcResult::new_error(error, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string())
+                }
             };
-            let w = date.iso_week().week();
-            return CalcResult::Number(w as f64);
         }
         let start_offset = match return_type {
             1 => chrono::Weekday::Sun,
@@ -49,9 +52,11 @@ impl Model {
             15 => chrono::Weekday::Fri,
             16 => chrono::Weekday::Sat,
             17 => chrono::Weekday::Sun,
-            x if x <= 0 || x == 3 => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
-            }
+            // 0, 3-10 and 18-20 are #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
+            // Excel gives 22+ and negatives the start weekday of the last valid WEEKNUM evaluated
+            // earlier in the recalc, #NUM! only when none ran (probes/weeknum-stale-return-type,
+            // docs/excel-semantics/dates.md); this matches only that no-state case.
+            // TODO(T-1025): model or decline the stale state.
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a
@@ -77,4 +82,13 @@ impl Model {
         let week = (date - first).num_days() / 7 + 1;
         CalcResult::Number(week as f64)
     }
+}
+
+/// The ISO week of `serial` (WEEKNUM type 21, ISOWEEKNUM). Serial 0 ("Saturday 0 January 1900")
+/// shares serial 1's ISO week: `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52 (probes/weeknum-serial-0
+/// C1, C2, C17, C21; T-1023); a negative serial is #NUM!.
+pub(super) fn iso_week(serial: i64) -> Result<f64, Error> {
+    let serial = if serial == 0 { 1 } else { serial };
+    let date = from_excel_date(serial).map_err(|_| Error::NUM)?;
+    Ok(f64::from(date.iso_week().week()))
 }

@@ -33,12 +33,34 @@ WEEKNUM puts the week-1 anchor: serial 1 counts as a Sunday. For return type 2 t
 anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKNUM(61,21)` = 9, A23). The anchor holds through 1900: probes/weeknum-1900-later has `WEEKNUM(61)` = 9,
 `WEEKNUM(100,2)` = 16, `WEEKNUM(100)` = 15, `WEEKNUM(200,2)` = 30, `WEEKNUM(366,2)` = 54, `WEEKNUM(366)` = 53, `WEEKNUM(0,12)` = 1, `WEEKNUM(0,17)` = 0,
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
-start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED).
+start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
+type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
 Implemented in: `fn_weeknum` (T-0995). Not yet: TEXT ddd/dddd of serial 0 is #VALUE!
 (T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
+
+### WEEKNUM return_type edge cases and serial 0 (T-1023)
+Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
+0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
+NOT simply an error: it reuses the start weekday of the last WEEKNUM with a valid type evaluated
+earlier in the same recalc (type 21 leaves "start Monday"; ISOWEEKNUM leaves nothing), and is
+`#NUM!` only when none has run. On a fresh load Excel evaluates bottom to top, so with
+`A1=WEEKNUM(100,99)` and `A2=WEEKNUM(100,2)` both are 16, while the swapped layout gives 16 and
+`#NUM!`; `WEEKNUM(0,99)` was 0 or 1 in the 94-cell workbook depending on its neighbours. A boolean
+return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`, also from a reference), text that reads as a number is
+accepted (`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
+(`WEEKNUM(-1,21)` is `#NUM!`, `WEEKNUM(0,NA())` is `#N/A`). Under ISO numbering serial 0 shares
+serial 1's week: `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52 = `WEEKNUM(1,21)`; `ISOWEEKNUM(-1)` is `#NUM!`.
+Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 cells),
+probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
+probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
+the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
+Status: VERIFIED. RustSheet matches everything except the stale state: it always gives `#NUM!`
+for 22+ and negatives, which matches Excel only when no valid WEEKNUM ran earlier in the recalc
+(probes/weeknum-stale-return-type keeps those cells as known failures; model or decline: T-1025).
+Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.
