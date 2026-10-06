@@ -238,8 +238,7 @@ cells on when `h < 0`; the area is the span between the two, so a negative size 
 `OFFSET(A10,0,0,-3,1)` is A8:A10 (and width `-3` on C10 is A10:C10). The sizes in (0, 1) reach one cell
 back (`OFFSET(A10,0,0,0.5,1)` is A9:A10), those in (-1, 0) one cell on (`-0.5` is A10:A11), and
 fractions otherwise truncate toward zero (1.5 and -1.5 are one cell, -2.9 is two cells up, 2.5 two down).
-Only exactly 0 is `#REF!` (as is an area reaching past row 1/column A or the sheet's end, and a width
-that leaves a multi-cell reference's default height or width beyond the edge). A multi-cell reference
+Only exactly 0 is `#REF!` (as is an area reaching past row 1/column A or the sheet's end: `OFFSET(A5:B6,0,0,,-2)` is `#REF!`). A multi-cell reference
 anchors at its top-left: `OFFSET(A5:B6,0,0,-2)` is A4:B5.
 Evidence: probe offset-negative-height-width (oracle: excel-graph, 2026-10-06, T-0956; 80 cells).
 Status: VERIFIED
