@@ -3,7 +3,7 @@ id: T-0207
 title: "COUNTIFS/COUNTIF array criteria lift to an array of counts (4 known failures)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,11 +27,22 @@ Related, excel-cached and not required here: `poi/FormulaEvalTestData_Copy.xlsx`
 EverythingTests!E1324 `SUMIF(AA7:AA13,C10:D10, C7)` expected 1.1, actual #VALUE!.
 
 ## Acceptance criteria
-- [ ] The 4 lines (Sheet1!A3, D3, A4, D4) disappear from eval/baseline/poi.txt with no new F lines.
-- [ ] Unit tests: array criteria for COUNTIF, COUNTIFS and SUMIFS give arrays of the right shape.
-- [ ] The lift is implemented once for the whole *IF(S) family.
-- [ ] Broadcast rule recorded in `docs/excel-semantics/criteria.md` with evidence.
-- [ ] `make check` green; reviewers approve.
+- [x] The 4 lines (Sheet1!A3, D3, A4, D4) disappear from eval/baseline/poi.txt with no new F lines.
+- [x] Unit tests: array criteria for COUNTIF, COUNTIFS and SUMIFS give arrays of the right shape.
+- [x] The lift is implemented once for the whole *IF(S) family.
+- [x] Broadcast rule recorded in `docs/excel-semantics/criteria.md` with evidence.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 D-functions. The criteria grammar itself (T-0206, T-0011).
+
+## Outcome
+- `Model::lift_criteria` / `lift_ifs` (if_ifs.rs) lift COUNTIF(S), SUMIF(S), AVERAGEIF(S), MAXIFS
+  and MINIFS over array/range criteria in one place: criteria broadcast like the element-wise
+  operators (`bcast_idx`, `MISSING`), a position past a shorter array is an `#N/A` criterion.
+  SUMIF's private array path is gone. `criteria_static_result` gives the family's spill shape.
+- Probe probes/ifs-array-criteria (39 cells, excel-graph) pins shapes, broadcast and the `#N/A`
+  padding; criteria.md "*IF(S) lift array criteria" records it. Legacy COUNTIF keeps intersecting a
+  range criterion (poi FormulaEvalTestData_Copy F296).
+- Eval: poi known failures 635 -> 631 (70005-countifs A3, D3, A4, D4), probes +39 passing cells,
+  0 regressions.
