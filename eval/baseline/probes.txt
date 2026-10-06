@@ -111,13 +111,9 @@ F	probes/3d-ref-functions.case.json	Calc!C20
 F	probes/aggregate-overflow.case.json	Calc!A27
 F	probes/aggregate-overflow.case.json	Calc!A28
 F	probes/aggregate-overflow.case.json	Calc!A29
-F	probes/aggregate-overflow.case.json	Calc!A47
-F	probes/aggregate-overflow.case.json	Calc!A48
 F	probes/aggregate-overflow.case.json	Calc!B27
 F	probes/aggregate-overflow.case.json	Calc!B28
 F	probes/aggregate-overflow.case.json	Calc!B29
-F	probes/aggregate-overflow.case.json	Calc!B47
-F	probes/aggregate-overflow.case.json	Calc!B48
 F	probes/aggregate-overflow.case.json	Calc!B51
 F	probes/aggregate-overflow.case.json	Calc!B52
 F	probes/aggregate-overflow.case.json	Calc!B53

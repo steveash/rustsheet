@@ -3,7 +3,7 @@ id: T-0992
 title: "MEDIAN and GEOMEAN of values near 9E+307 do not overflow"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Rule VERIFIED in docs/excel-semantics/numbers.md (Aggregate overflow), evidence 
 
 ## Out of scope
 -
+
+## Outcome
+MEDIAN halves the middle pair when their sum overflows; GEOMEAN uses a scaled product root when the plain product is out of normal range. probes/aggregate-overflow A47, A48, B47, B48 now pass (probes known failures 233 -> 229).
