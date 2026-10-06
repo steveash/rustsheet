@@ -151,11 +151,13 @@ evaluates to `#REF!`. That holds as a cell formula (`='1'!#REF!`) and as the bod
 with `sale_1` and `sale_2` both defined as `Sheet1!#REF!`, `=sale_1*sale_2` is `#REF!`. With an
 undefined name on the left, `=aaa*sale_1` is `#NAME?`, so the left operand's error wins.
 Evidence: poi/customIndexedColors.xlsx `_TGK_HIDDEN!B1` (Excel 16.0) and poi/49783.xlsx Sheet1!A2, B2
-(Excel 14.0); desktop Excel cached values. The unquoted form `=Sheet1!#REF!` and the form inside a
-function (`=SUM(Sheet1!#REF!)`) have no Excel cell yet; nor do a nonexistent sheet prefix and defined-name bodies that are other bare error literals (all hand expectations, T-0169).
-Status: VERIFIED (cell formula with a quoted sheet, and defined-name body)
-Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body); unit tests in test/test_sheet_qualified_ref_error.rs (unquoted and SUM forms are hand expectations).
-Tasks: T-0152
+(Excel 14.0); desktop Excel cached values. Probe sheet-qualified-ref-error-forms (oracle: excel-graph, 2026-10-06, T-0169)
+confirms: `=Sheet1!#REF!`, `=SUM(Sheet1!#REF!)` and `=NoSuchSheet!#REF!` are all `#REF!`; names with a bare error-literal
+body (`=#N/A`, `=#DIV/0!`, `=#REF!`) evaluate to that error; and `SHEET(name)` of an error-literal name is that same error
+(`#REF!` for `Sheet1!#REF!`, `#N/A` for `=#N/A`), not a distinct error.
+Status: VERIFIED
+Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body), `fn_sheet` (SHEET of such a name).
+Tasks: T-0152, T-0169
 
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
