@@ -23,6 +23,25 @@ fn test_frequency_basic() {
     assert_eq!(model._get_text("C3"), "1");
 }
 
+// Evidence: poi FormulaEvalTestData_Copy.xlsx EverythingTests row 936 (T-0947).
+#[test]
+fn test_mode_text_and_blank_reference_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "2");
+    model._set("A2", "text");
+    model._set("A4", "2");
+    model._set("B1", "=MODE(A1,\"1\",2,3)");
+    model._set("B2", "=MODE(1,\"1\",#DIV/0!,2,3)");
+    model._set("B3", "=MODE(A1,2,A3)");
+    model._set("B4", "=MODE(A1:A4,2)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#VALUE!");
+    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B3"), "#VALUE!");
+    // Text and blanks inside a range are ignored.
+    assert_eq!(model._get_text("B4"), "2");
+}
+
 // ── MODE.SNGL ────────────────────────────────────────────────────────────────
 
 #[test]
