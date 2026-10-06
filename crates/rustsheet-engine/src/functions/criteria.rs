@@ -117,7 +117,7 @@ fn result_is_greater_or_equal_than_number(calc_result: &CalcResult, target: f64)
 
 fn result_is_not_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => *f != target,
+        CalcResult::Number(f) => !numbers_equal(*f, target),
         _ => true,
     }
 }
