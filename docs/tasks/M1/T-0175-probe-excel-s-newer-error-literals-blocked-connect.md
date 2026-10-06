@@ -3,7 +3,7 @@ id: T-0175
 title: "Probe Excel's newer error literals (#BLOCKED!, #CONNECT!, #FIELD!, #BUSY!, #GETTING_DATA, #UNKNOWN!) in formulas and cells"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -49,3 +49,6 @@ and skip that part.
 ## Out of scope
 - Engine or facade support for the new kinds (spec T-0177, then its implementation tasks).
 - IMAGE/STOCKHISTORY/FIELDVALUE values beyond their error (decision 0027: out of scope).
+
+## Outcome
+Probe probes/error-literals-new (18 cells) filled from excel-graph 2026-10-06. Of the nine literals tried as one-cell workbooks, only `#GETTING_DATA` loads (ERROR.TYPE 8, reported as `#N/A`); the rest are rejected with 501 unsupportedWorkbook. Recorded in syntax.md ("Newer error literals") and the arrays.md table. Harness gap: error constants as `t="e"` cell values cannot be written by spec2xlsx. No engine change.

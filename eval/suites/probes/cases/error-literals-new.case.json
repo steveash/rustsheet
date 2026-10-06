@@ -1,0 +1,35 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Newer error literals (T-0175): only #GETTING_DATA is accepted as a formula literal by Excel for the web (#BLOCKED!, #CONNECT!, #FIELD!, #BUSY!, #UNKNOWN!, #PYTHON!, #EXTERNAL!, #blocked! make createSession fail 501 unsupportedWorkbook, checked one single-cell workbook each). ERROR.TYPE, IS*, IFERROR, comparison and precedence behavior of the accepted literal.",
+  "tags": [
+    "M1",
+    "errors",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=#GETTING_DATA",
+        "A2": "=ERROR.TYPE(#GETTING_DATA)",
+        "A3": "=ISERR(#GETTING_DATA)",
+        "A4": "=ISNA(#GETTING_DATA)",
+        "A5": "=IFERROR(#GETTING_DATA,\"x\")",
+        "A6": "=VALUETOTEXT(#GETTING_DATA)",
+        "A7": "=#GETTING_DATA=#GETTING_DATA",
+        "A8": "=#N/A=#GETTING_DATA",
+        "A9": "=#GETTING_DATA+#DIV/0!",
+        "A10": "=#DIV/0!+#GETTING_DATA",
+        "A11": "=#getting_data",
+        "A12": "=ISERROR(#GETTING_DATA)",
+        "A13": "=#GETTING_DATA=#N/A",
+        "A14": "=ISNUMBER(ERROR.TYPE(#GETTING_DATA))",
+        "A15": "=IFNA(#GETTING_DATA,\"y\")",
+        "A16": "=TYPE(#GETTING_DATA)",
+        "A17": "=ISERR(#N/A)",
+        "A18": "=#GETTING_DATA&\"a\""
+      }
+    }
+  ],
+  "expected": {}
+}
