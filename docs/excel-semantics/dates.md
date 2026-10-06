@@ -145,11 +145,14 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   36708 (2000), `"Jul-99"` 36342, `"2/30"` 10990 (1930-02-01). February 29 follows the current year:
   in 2026 `"2/29"` and `"Feb-29"` are 47150 (2029-02-01). `"13/1"` is #VALUE!. VALUE and DATEVALUE
   agree on all of them. Evidence: probes/date-text-yearless (clock-independent cells: MONTH/DAY of
-  the current-year forms, full dates of the two-digit-year forms); the years 2026 and 2029, and
-  `"Jul-26"` = 46229, come from scratch runs on 2026-10-05/06 (they depend on the clock).
+  the current-year forms, full dates of the two-digit-year forms). UNVERIFIED (not scored, clock-
+  dependent scratch runs on 2026-10-05/06): the years 2026 and 2029, `"Jul-26"` = 46229 and
+  `"2/29"` = 47150. Not probed: a space between two numbers (`"7 45"`, which the engine rejects),
+  `"7/0"` and `"13/45"`.
 Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
 UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
-for month-year), which the engine assigns to typed input.
+for month-year, `m/yy` for numeric month-year such as `"2/30"`), which the engine assigns to typed
+input.
 Status: VERIFIED. Not implemented: the year-less current-year forms, which the engine rejects
 (#VALUE!, T-0167); the two-digit-year reading of year-less text is implemented (T-0160).
 Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,

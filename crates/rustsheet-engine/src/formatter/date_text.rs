@@ -78,11 +78,20 @@ fn parse_year(year_str: &str) -> Result<(i32, &'static str), String> {
         return Err("Not a valid year".to_string());
     }
     let year = year_str.parse::<i32>().map_err(|e| e.to_string())?;
-    Ok(match (year_str.len(), year) {
-        (2, y) if y < 30 => (2000 + y, "yy"),
-        (2, y) => (1900 + y, "yy"),
-        (_, y) => (y, "yyyy"),
+    Ok(if year_str.len() == 2 {
+        (two_digit_year(year), "yy")
+    } else {
+        (year, "yyyy")
     })
+}
+
+/// The year of a two-digit year: below 30 is 20xx, the rest 19xx.
+fn two_digit_year(year: i32) -> i32 {
+    if year < 30 {
+        2000 + year
+    } else {
+        1900 + year
+    }
 }
 
 /// The serial of a calendar date, including the fictitious 1900-02-29 (serial 60), or an error
@@ -109,18 +118,19 @@ fn max_days_in_month(month: u32) -> u32 {
     }
 }
 
-/// "Month year" text ("Jul 2026", "Jul-45", and in month-first locales "2/30") is the first of
-/// that month. A number of one or two digits is read as a day of the current year when it can
-/// be a day of that month ("Jul-26" is 26 July this year), otherwise as a two-digit year:
-/// "Jul-45" is 1 July 1945, "Jul-0" 1 July 2000, "2/30" 1 February 1930
-/// (probes/date-text-yearless). The current-year reading needs the clock and is not
-/// implemented yet (#VALUE!, T-0167); "Feb-29" depends on the current year being a leap year,
-/// so it waits too.
-fn parse_month_year(name: &str, year_str: &str, locale: &Locale) -> Result<(i32, String), String> {
+/// "Month year" text is the first of that month. A one- or two-digit number that can be a day
+/// of the month is a day of the current year (#VALUE! until T-0167), any other is a two-digit
+/// year: "Jul-45" is 1 July 1945 (probes/date-text-yearless). `numeric_month` admits a month
+/// number ("2/30"), only for separated words in month-first locales.
+fn parse_month_year(
+    name: &str,
+    year_str: &str,
+    locale: &Locale,
+    numeric_month: bool,
+) -> Result<(i32, String), String> {
     let (month, format) = match parse_month_name(name, locale) {
         Some((month, _)) => (month, MONTH_NAME_YEAR_FORMAT),
-        // A numeric month only where the short date starts with the month (en-US "m/d/yyyy").
-        None if !locale.dates.date_formats.short.starts_with('d') => {
+        None if numeric_month && !locale.dates.date_formats.short.starts_with('d') => {
             let (month, _) = parse_month_number(name)?;
             (month, "m/yy")
         }
@@ -136,11 +146,7 @@ fn parse_month_year(name: &str, year_str: &str, locale: &Locale) -> Result<(i32,
         if u32::try_from(number).is_ok_and(|day| (1..=max_days_in_month(month)).contains(&day)) {
             return Err("Year-less date text needs the current year".to_string());
         }
-        if number < 30 {
-            2000 + number
-        } else {
-            1900 + number
-        }
+        two_digit_year(number)
     } else {
         return Err("Not a valid year".to_string());
     };
@@ -160,7 +166,7 @@ fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String>
     // At most 4 parts: enough to reject longer text without splitting all of it.
     let parts: Vec<&str> = word.splitn(4, separator).collect();
     let (day_str, month_str, year_str) = match parts.as_slice() {
-        [name, year] => return parse_month_year(name, year, locale),
+        [name, year] => return parse_month_year(name, year, locale, true),
         // Year first is numeric only: "2023/Jan/15" is #VALUE! (probes/date-text-grammar A20).
         [year, month, day] if is_digits(year, 4..=4) => {
             let (day, day_format) = parse_day(day)?;
@@ -221,7 +227,7 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
     let words: Vec<&str> = value.split_whitespace().take(4).collect();
     let (day, name, year) = match words.as_slice() {
         [word] => return parse_separated(word, locale),
-        [name, year] => return parse_month_year(name, year, locale),
+        [name, year] => return parse_month_year(name, year, locale, false),
         [name, day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
         [day, name, year] => (*day, *name, *year),
         _ => return Err("Not a valid date".to_string()),
@@ -309,6 +315,8 @@ mod tests {
         // A possible day of the month is the current year's (not implemented yet, T-0167)
         for text in [
             "Jul-26", "7/1", "Jul 31", "Feb-29", "2/29", "13/1", "13/45", "0/45", "Jul-123",
+            // A numeric month needs a separator (a space between numbers is not probed)
+            "7 45", "1 0",
         ] {
             assert_eq!(en(text), None, "{text}");
         }

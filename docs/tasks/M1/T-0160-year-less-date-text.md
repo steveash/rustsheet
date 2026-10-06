@@ -28,8 +28,8 @@ computed from a pinned date.
 ## Acceptance criteria
 - [x] Evidence for each year-less form, recorded in dates.md.
 - [x] Eval cells are clock-independent (MONTH/DAY, or forms that can never be a day), so nothing needs pinning.
-- [ ] The engine reads them in the current year: split to T-0167 (clock access design); the clock-free
-      two-digit-year reading is implemented here.
+- [x] The engine reads the two-digit-year forms (clock-free); the current-year reading is split to
+      T-0167 (clock access design).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
