@@ -135,7 +135,7 @@ fn test_year_booleans() {
 
     // Serial 1 is 1900-01-01
     assert_eq!(model._get_text("A1"), *"1900");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1900");
 }
 
 #[test]
@@ -148,7 +148,7 @@ fn test_month_booleans() {
 
     // Serial 1 is 1900-01-01
     assert_eq!(model._get_text("A1"), *"1");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1");
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn test_day_booleans() {
 
     // Serial 1 is 1900-01-01
     assert_eq!(model._get_text("A1"), *"1");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"0");
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn test_day_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"0");
     // Excel's fictitious Feb 29, 1900 (probes/dates-and-blanks A3)
     assert_eq!(model._get_text("A3"), *"29");
 
@@ -196,7 +196,7 @@ fn test_month_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1");
     // We agree with Excel here (We are both in Feb)
     assert_eq!(model._get_text("A3"), *"2");
 
@@ -216,7 +216,7 @@ fn test_year_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1900");
 
     assert_eq!(model._get_text("A3"), *"1900");
 

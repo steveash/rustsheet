@@ -19,17 +19,6 @@ fn last_day_of_feb(year: i32) -> u32 {
     }
 }
 
-// DAYS360's view of a date serial: the shared Excel mapping (with the fictitious
-// 29 February 1900) plus serial 0, which Excel renders as "0 January 1900" and DAYS360
-// reads as day 0 of January 1900 (not 31 December 1899), which is what makes it
-// antisymmetric. `None` outside `0..=MAXIMUM_DATE_SERIAL_NUMBER`, which Excel reports as `#NUM!`.
-fn days360_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
-    if serial == 0 {
-        return Some((1900, 1, 0));
-    }
-    excel_serial_to_ymd(serial)
-}
-
 // Converts a raw numeric argument to a date serial (date part) for DAYS360,
 // rounding the time-of-day to the nearest second before discarding it. Excel
 // rolls e.g. 46000.999999 up to 46001 when extracting the date part.
@@ -170,7 +159,6 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::date_text::parse_date;
-use crate::formatter::dates::date_to_serial_number;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::locale::Locale;
@@ -179,7 +167,9 @@ use crate::{
     constants::EXCEL_DATE_BASE,
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
-    formatter::dates::{excel_serial_to_ymd, from_excel_date},
+    formatter::dates::{
+        excel_serial_to_ymd, from_excel_date, month_arithmetic_date, real_date_to_serial,
+    },
     model::Model,
 };
 
@@ -335,11 +325,8 @@ impl Model {
                 message: "Function DAY parameter 1 value is too large.".to_string(),
             };
         }
-        // Take year and month from Excel's exact view of the serial so the round trip through
-        // `date_to_serial_number` stays on one calendar (the stand-in `date` is a day early below
-        // serial 60).
-        let Some(date) = excel_serial_to_ymd(serial_number)
-            .and_then(|(y, m, _)| chrono::NaiveDate::from_ymd_opt(y, m, 1))
+        let Some(date) = month_arithmetic_date(serial_number)
+            .and_then(|d| chrono::NaiveDate::from_ymd_opt(d.year(), d.month(), 1))
         else {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -364,20 +351,20 @@ impl Model {
             date - Months::new(months_abs)
         };
 
-        // Instead of calculating the end of month we compute the first day of the following month
-        // and take one day.
-        let mut month = native_date.month() + 1;
-        let mut year = native_date.year();
+        // The last day of the month is a real calendar date: EOMONTH(31,1) is 28 February 1900
+        // (serial 59), not the fictitious serial 60.
+        let (mut month, mut year) = (native_date.month() + 1, native_date.year());
         if month == 13 {
             month = 1;
             year += 1;
         }
-        match date_to_serial_number(1, month, year) {
-            Ok(serial_number) => CalcResult::Number(serial_number as f64 - 1.0),
-            Err(message) => CalcResult::Error {
+        let last_day = chrono::NaiveDate::from_ymd_opt(year, month, 1).and_then(|d| d.pred_opt());
+        match last_day.and_then(real_date_to_serial) {
+            Some(serial) => CalcResult::Number(f64::from(serial)),
+            None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
-                message,
+                message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
             },
         }
     }
@@ -505,9 +492,11 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        let date = match self.excel_date(serial_number, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
+        if let Err(e) = self.excel_date(serial_number, cell) {
+            return e;
+        }
+        let Some(date) = month_arithmetic_date(serial_number) else {
+            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
         let months = match self.get_number_no_bools(&args[1], cell) {
             Ok(c) => {
@@ -525,15 +514,14 @@ impl Model {
             date - Months::new(months_abs)
         };
 
-        let serial_number = native_date.num_days_from_ce() - EXCEL_DATE_BASE;
-        if !(MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER).contains(&serial_number) {
-            return CalcResult::Error {
+        match real_date_to_serial(native_date) {
+            Some(serial) => CalcResult::Number(f64::from(serial)),
+            None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
                 message: "EDATE out of bounds".to_string(),
-            };
+            },
         }
-        CalcResult::Number(serial_number as f64)
     }
 
     /// Walk a scalar / range / array node and invoke the provided closure with every
@@ -1192,11 +1180,11 @@ impl Model {
                 "Out of range parameters for date".to_string(),
             )
         };
-        let start = match days360_serial_to_ymd(start_serial) {
+        let start = match excel_serial_to_ymd(start_serial) {
             Some(ymd) => ymd,
             None => return out_of_range(),
         };
-        let end = match days360_serial_to_ymd(end_serial) {
+        let end = match excel_serial_to_ymd(end_serial) {
             Some(ymd) => ymd,
             None => return out_of_range(),
         };
@@ -1265,7 +1253,10 @@ impl Model {
             }
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
         };
-        let mut first = match chrono::NaiveDate::from_ymd_opt(date.year(), 1, 1) {
+        // Serials 1..=60 are 1900 in Excel but the weekday-faithful stand-in date is in 1899.
+        // Evidence: probes/dates-early-1900 A16 (`WEEKNUM(1)` = 1).
+        let year = if serial <= 60 { 1900 } else { date.year() };
+        let mut first = match chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
             Some(d) => d,
             None => {
                 return CalcResult::new_error(
