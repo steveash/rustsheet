@@ -13,12 +13,15 @@ Tasks: T-0247
 
 ## ISEVEN/ISODD over a range
 Rule: `ISEVEN(range)` / `ISODD(range)` with a multi-cell range argument return a single `#VALUE!`
-with no spill, over a numbers-only range (2, 3, 4.5, -7, 0) as well as over a mixed one (1, "x",
-TRUE, #N/A, empty, #DIV/0!). They do not lift element-wise like the other IS* functions. RustSheet
-already matches; no implementation change was needed.
-Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15; excel-graph oracle sidecar,
-2026-10-06). A desktop check would still be needed to tell this from an implicit-intersection
-result in the desktop app.
+with no spill, over a numbers-only range (2, 3, 4.5, -7, 0) as well as a mixed one (1, "x",
+TRUE, #N/A, empty, #DIV/0!). There is no implicit intersection either: the formula placed on a
+row inside the range (`=ISEVEN(Data!C1:C5)` at row 2) is still `#VALUE!`, as is a 2-D range
+(`Data!C1:D3`). They do not lift over ranges like the other IS* functions. An array constant does
+lift: `=ISEVEN({2,3})` spills {TRUE, FALSE}, `=ISODD({2,3})` spills {FALSE, TRUE}. A single-cell
+reference is an ordinary value.
+Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15, J2, K2, L3, M30:N30, M32:N32;
+excel-graph oracle sidecar, 2026-10-06). Desktop Excel was not checked.
+Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248
 

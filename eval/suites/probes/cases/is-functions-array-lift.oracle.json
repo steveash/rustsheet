@@ -273,6 +273,34 @@
    "H6": {
     "t": "b",
     "v": false
+   },
+   "J2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "M30": {
+    "t": "b",
+    "v": true
+   },
+   "M32": {
+    "t": "b",
+    "v": false
+   },
+   "N30": {
+    "t": "b",
+    "v": false
+   },
+   "N32": {
+    "t": "b",
+    "v": true
    }
   },
   "Data": {
@@ -288,9 +316,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "b54f82bb1d193d5877752953232c289e5cae67189b66d70bed7e772c929f8661",
+  "input_sha256": "da2c2a6843be5bb7f1f5fdf9a3b7026f23599e0b3a6bde0dcf3e4461a99c45f9",
   "kind": "excel-graph",
-  "produced_at": "2026-10-06T12:57:18+00:00",
+  "produced_at": "2026-10-06T13:16:46+00:00",
   "version": null
  }
 }
