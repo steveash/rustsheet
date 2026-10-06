@@ -222,8 +222,11 @@ cells A4, A6, A60-A62, A65 and A69 cannot score the engine; only their `C` compa
 The probe leaves out
 literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
 file (`unsupportedWorkbook`) when they appeared.
-Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER. Not implemented: postfix `%`
-(T-0988), PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987). The engine also compares a tiny nonzero
+Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
+flushes the results of PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987), once on the final result.
+Unverified (T-1007): subnormal literal arguments, flushing per product or square instead of on the total, and
+AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101) and AGGREGATE(1), which divide the same way. Not implemented: postfix `%`
+(T-0988). The engine also compares a tiny nonzero
 value equal to 0, which Excel does not (C4-C6, C60-C62, C65, C69, C73-C75; T-0989).
 Tasks: T-0179
 
