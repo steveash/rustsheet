@@ -3,7 +3,7 @@ id: T-0999
 title: "spec2xlsx: emit t=e stored error constants and probe #BLOCKED! etc."
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Follow-up of T-0195 / T-0175. `tools/src/rustsheet_tools/spec2xlsx.py` (the `tag
 
 ## Out of scope
 - Engine support for the new error kinds (T-0177).
+
+## Outcome
+spec2xlsx writes `{"t":"e","v":..,"stored":true}` as a stored `t="e"` constant (placeholder cell patched after write; deterministic; tests in tools/tests/test_spec2xlsx_stored_errors.py). Probe probes/error-stored-constants: stored `#BUSY!` loads, `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!`, `#CALC!` are rejected; findings in syntax.md. Eval: probes new-coverage failures +6 (engine does not support the new error kinds, T-0177), no regressions.

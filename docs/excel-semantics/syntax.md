@@ -102,10 +102,15 @@ Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and
 `#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
 `#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
 `#GETTING_DATA` special precedence: it is an ordinary error kind.
-Not probed (harness gap, T-0999): error constants as `t="e"` cell values, since spec2xlsx writes error
-literals as formulas (`<v>#BLOCKED!</v>` cannot be emitted), so whether a stored `#BLOCKED!` etc.
-cell loads is unknown.
+Stored constants (`<c t="e"><v>#BUSY!</v></c>`, spec2xlsx `{"t":"e","v":"#BUSY!","stored":true}`, T-0999)
+are different from formula literals: of the newer names only `#BUSY!` (and `#GETTING_DATA`, `#N/A`) load.
+A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` is rejected on load
+(createSession 501 `unsupportedWorkbook`), like the formula literals. A stored `#BUSY!` is an error
+(`ISERROR` TRUE) and `A1&""` is `#BUSY!`, but `ERROR.TYPE` of it is reported as 0 (not `#N/A`), unlike
+`#GETTING_DATA` (8) and `#N/A` (7); `#GETTING_DATA&""` is reported as `#N/A`. Unprobed: `#PYTHON!`, `#EXTERNAL!` stored.
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
-rejections were run as throw-away one-cell cases (not committed; no value to record).
+rejections were run as throw-away one-cell cases (not committed; no value to record);
+probes/error-stored-constants (S!A1:D3, excel-graph 2026-10-06) for the loading stored names, the five
+stored rejections as throw-away one-cell cases (same).
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999

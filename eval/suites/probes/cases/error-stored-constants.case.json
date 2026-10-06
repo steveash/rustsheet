@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0999: stored t=\"e\" error constants that load in Excel. #BLOCKED!, #CONNECT!, #FIELD!, #UNKNOWN! and #CALC! stored constants are rejected on load (throw-away one-cell cases, no sidecar). B = ERROR.TYPE, C = ISERROR, D = text coercion.",
+  "tags": [
+    "M1",
+    "errors",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": {
+          "t": "e",
+          "v": "#BUSY!",
+          "stored": true
+        },
+        "B1": "=ERROR.TYPE(A1)",
+        "C1": "=ISERROR(A1)",
+        "D1": "=A1&\"\"",
+        "A2": {
+          "t": "e",
+          "v": "#GETTING_DATA",
+          "stored": true
+        },
+        "B2": "=ERROR.TYPE(A2)",
+        "C2": "=ISERROR(A2)",
+        "D2": "=A2&\"\"",
+        "A3": {
+          "t": "e",
+          "v": "#N/A",
+          "stored": true
+        },
+        "B3": "=ERROR.TYPE(A3)",
+        "C3": "=ISERROR(A3)",
+        "D3": "=A3&\"\""
+      }
+    }
+  ],
+  "expected": {}
+}
