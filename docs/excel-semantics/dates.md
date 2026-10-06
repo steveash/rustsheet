@@ -28,8 +28,9 @@ EDATE/EOMONTH as day 0 of January 1900: `EDATE(0,1)` = `EOMONTH(0,0)` = 31, `EOM
 "Saturday 0 January 1900" (A26-A35). WEEKNUM numbers weeks from a 1 January 1900 that is a Sunday (serial 1):
 `WEEKNUM(0)` = 0, `WEEKNUM(0,2)` = 1, `WEEKNUM(1,2)` = 1, `WEEKNUM(2,2)` = 2, `WEEKNUM(7,2)` = 2, `WEEKNUM(8,2)` = 2,
 `WEEKNUM(9,2)` = 3, `WEEKNUM(59,2)` = `WEEKNUM(60,2)` = `WEEKNUM(61,2)` = 10, `WEEKNUM(1,21)` = ISOWEEKNUM(1) = 52,
-`WEEKNUM(60)` = 9, `WEEKNUM(7)` = 1, `WEEKNUM(8)` = 2 (A1-A25). The same holds past serial 60 up to the end of 1900: the weekday
-numbering of the whole year is the Sunday-based one, so a real calendar anchor is wrong for serials 1-366.
+`WEEKNUM(60)` = 9, `WEEKNUM(7)` = 1, `WEEKNUM(8)` = 2 (A1-A25). Past serial 60 the Sunday-based weekday equals the real one (`TEXT(61,"dddd")` = "Thursday"), so what differs is where
+WEEKNUM puts the week-1 anchor: serial 1 counts as a Sunday. For return type 2 that makes serial 61 week 10 where a real-calendar
+anchor gives 9 (A11); types 1 and 21 agree with the real calendar at serial 61 (`WEEKNUM(61,21)` = 9, A23). Serials above 61 are unprobed (UNVERIFIED).
 Implemented in: no. The engine gets WEEKNUM wrong for serials 0-61 in several return types: rows 1-3, 5, 6, 8-11 (T-0995), TEXT ddd/dddd of serial 0 is #VALUE!
 (T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
