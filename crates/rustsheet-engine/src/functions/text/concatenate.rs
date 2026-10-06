@@ -55,7 +55,8 @@ impl JoinSize {
 }
 
 /// CONCAT's result under construction with its running UTF-16 size, so each append is O(piece)
-/// however many cells a range has (CLAUDE.md directive 5).
+/// however many cells a range has. Once over the cell limit it stops appending but keeps
+/// counting (CLAUDE.md directive 5).
 #[derive(Default)]
 struct ConcatText {
     text: String,
@@ -63,25 +64,23 @@ struct ConcatText {
 }
 
 impl ConcatText {
-    /// Appends `piece`; false once the text is over the cell limit.
-    fn push(&mut self, piece: &str) -> bool {
+    fn push(&mut self, piece: &str) {
         self.units = self.units.saturating_add(piece.encode_utf16().count());
-        if self.units > MAX_TEXT_UNITS {
-            return false;
+        if self.units <= MAX_TEXT_UNITS {
+            self.text.push_str(piece);
         }
-        self.text.push_str(piece);
-        true
     }
 
-    /// Appends the text of a scalar cell value; `Ok(false)` when the limit is passed.
-    fn push_value(&mut self, value: CalcResult) -> Result<bool, CalcResult> {
+    /// Appends the text of a scalar cell value; an error value is returned as `Err`.
+    fn push_value(&mut self, value: CalcResult) -> Result<(), CalcResult> {
         match value {
-            CalcResult::String(value) => Ok(self.push(&value)),
-            CalcResult::Number(value) => Ok(self.push(&number_to_text(value))),
-            CalcResult::Boolean(value) => Ok(self.push(if value { "TRUE" } else { "FALSE" })),
-            error @ CalcResult::Error { .. } => Err(error),
-            _ => Ok(true),
+            CalcResult::String(value) => self.push(&value),
+            CalcResult::Number(value) => self.push(&number_to_text(value)),
+            CalcResult::Boolean(value) => self.push(if value { "TRUE" } else { "FALSE" }),
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => {}
         }
+        Ok(())
     }
 }
 
@@ -117,7 +116,7 @@ impl Model {
         let mut result = ConcatText::default();
         for arg in args {
             let value = self.evaluate_node_in_context(arg, cell);
-            let within_limit = match value {
+            match value {
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -140,14 +139,11 @@ impl Model {
                                     "Arrays not supported yet".to_string(),
                                 );
                             }
-                            match result.push_value(cell_value) {
-                                Ok(true) => {}
-                                Ok(false) => return text_limit_error(cell),
-                                Err(error) => return error,
+                            if let Err(error) = result.push_value(cell_value) {
+                                return error;
                             }
                         }
                     }
-                    true
                 }
                 CalcResult::Array(_) | CalcResult::Lambda(_) => {
                     return CalcResult::new_error(
@@ -156,15 +152,18 @@ impl Model {
                         "Arrays not supported yet".to_string(),
                     );
                 }
-                scalar => match result.push_value(scalar) {
-                    Ok(within_limit) => within_limit,
-                    Err(error) => return error,
-                },
-            };
-            // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit C8).
-            if !within_limit {
-                return text_limit_error(cell);
+                scalar => {
+                    if let Err(error) = result.push_value(scalar) {
+                        return error;
+                    }
+                }
             }
+        }
+        // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit
+        // C8). Later arguments are still evaluated so an error in one wins; whether Excel does the
+        // same is unprobed (text.md).
+        if result.units > MAX_TEXT_UNITS {
+            return text_limit_error(cell);
         }
         CalcResult::String(result.text)
     }
@@ -186,9 +185,13 @@ impl Model {
         };
         let mut values: Vec<String> = Vec::new();
         let mut size = JoinSize::new(&delimiter);
+        // Once over the limit the values are dropped, but arguments are still evaluated so an error
+        // in a later one wins (unprobed against Excel, text.md).
+        let mut over_limit = false;
         for arg in &args[2..] {
-            if size.exceeds(&values) {
-                return text_limit_error(cell);
+            over_limit = over_limit || size.exceeds(&values);
+            if over_limit {
+                values.clear();
             }
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => values.push(number_to_text(value)),
@@ -213,8 +216,9 @@ impl Model {
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
-                            if size.exceeds(&values) {
-                                return text_limit_error(cell);
+                            over_limit = over_limit || size.exceeds(&values);
+                            if over_limit {
+                                values.clear();
                             }
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
@@ -274,7 +278,7 @@ impl Model {
                 }
             };
         }
-        if size.exceeds(&values) {
+        if over_limit || size.exceeds(&values) {
             return text_limit_error(cell);
         }
         CalcResult::String(values.join(&delimiter))

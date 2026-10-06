@@ -141,3 +141,16 @@ fn concat_and_textjoin_limit_with_multibyte_and_range_arguments() {
     assert_eq!(model._get_text("B5"), *"#CALC!");
     assert_eq!(model._get_text("B6"), *"#CALC!");
 }
+
+// Unprobed (text.md): an error in a later argument wins over the length error.
+#[test]
+fn concat_and_textjoin_error_after_the_limit_wins() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCAT(REPT(\"a\",32767),\"b\",NA())");
+    model._set("A2", "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\",NA())");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}
