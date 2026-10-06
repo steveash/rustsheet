@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-0009]
+depends_on: [T-0009, T-1017]
 ---
 
 ## Goal
