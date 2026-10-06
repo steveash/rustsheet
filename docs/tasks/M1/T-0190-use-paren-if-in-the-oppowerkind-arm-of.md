@@ -3,7 +3,7 @@ id: T-0190
 title: "Use paren_if in the OpPowerKind arm of stringify"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
