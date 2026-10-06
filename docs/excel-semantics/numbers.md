@@ -302,3 +302,16 @@ These are Excel's own limits, not deviations.
 Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
 Status: VERIFIED
 Implemented in: functions/statistical/chisq.rs (`MAX_DEGREES_OF_FREEDOM`); functions/engineering/bit_operations.rs (`MAX`)
+
+## Multiplication overflow is `#NUM!` inside a formula
+Rule: a product beyond the double range (`1e307*100`) is `#NUM!` at once, not an infinite
+intermediate, so `=CONCAT(1e307*100)`, `=(1e307*100)&""`, `=TEXT(1e307*100,"0.0000")` and
+`=LEN((1e307*100)&"")` are all `#NUM!`. `1E+307*10-10^308` is 0 (1e308 does not overflow).
+Evidence: probes-numeric/4f413cc257ce15c4 Calc!A121:A124 (oracle: excel-graph, T-0008/T-0009) and
+probes/precision-and-rounding A12, A13.
+UNVERIFIED: whether `+`, `-` and `/` overflow the same way; only `*` has evidence, so they are unchanged.
+Probe `=(1e308+1e308)&""` and `=(1e308/1e-10)&""` to decide.
+Status: VERIFIED for `*`
+Implemented in: `arithmetic::times` (crates/rustsheet-engine/src/arithmetic.rs); test
+`overflowing_product_is_num_inside_formulas`.
+Tasks: T-0136
