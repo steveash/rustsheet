@@ -16,9 +16,9 @@ Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,
 `MONTH(60)` = 2, `DAY(59)` = 28, `EOMONTH(1,0)` = 31, `EOMONTH(31,1)` = `EDATE(31,1)` = 59,
 `TEXT(60,"m/d/yyyy")` = "2/29/1900", `TEXT(0,"m/d/yyyy")` = "1/0/1900", `DATEVALUE("1/1/1900")` = 1,
 `WEEKDAY(1)` = 1, `WEEKDAY(60)` = 4, `WEEKNUM(1)` = 1.
-Engine still differs on `EOMONTH(31,1)`, `EDATE(31,1)`, `TEXT(0,...)` and `WEEKNUM(1)` (T-0125).
-Still approximate below serial 61: EDATE/EOMONTH month arithmetic, `TEXT(0,...)`, WEEKNUM, and DAY/MONTH/YEAR(0)
-(Excel gives 0/1/1900; the engine returns #NUM!) (T-0125).
+All of these now match (T-0125).
+EDATE/EOMONTH do month arithmetic on real calendar dates: serial 60 counts as 28 February 1900 (`EDATE(60,0)` = `EOMONTH(60,0)` = 59), `EOMONTH(59,0)` = 59, and results below serial 1 are #NUM! (`EOMONTH(1,-1)`, `EDATE(1,-1)`). `TEXT(DATE(1900,1,0),"d")` = "0"; `DAY(0)` = 0, `MONTH(0)` = 1, `YEAR(0)` = 1900.
+Evidence: probes/dates-early-1900 A17-A25. Oracle: excel-graph, 2026-10-05.
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
