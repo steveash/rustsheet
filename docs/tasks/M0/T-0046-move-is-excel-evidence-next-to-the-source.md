@@ -3,7 +3,7 @@ id: T-0046
 title: "Move is_excel_evidence next to the source-kind definition"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
