@@ -90,12 +90,6 @@ pub struct FunctionStat {
 /// Below this many Excel-evidence cells a function's pass rate says little (T-0020).
 pub const EVIDENCE_THRESHOLD: usize = 25;
 
-/// Whether a case's expectations come from Excel (an oracle backend or Excel-cached values),
-/// not from hand-written or engine-derived values.
-pub(crate) fn is_excel_evidence(expected_source: &str) -> bool {
-    expected_source.starts_with("excel")
-}
-
 /// Scored cells with Excel-sourced expectations that call one function.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct FunctionEvidence {
