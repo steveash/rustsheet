@@ -24,4 +24,4 @@ Follow-up to T-0185 (fidelity review). docs/excel-semantics/numbers.md lists the
 -
 
 ## Outcome
-Probe aggregate-overflow (48 formulas, excel-graph). SUM overflows at the intermediate point; error precedence is first error in argument order and beats overflow; SUMPRODUCT, AVERAGE, PRODUCT, SUMSQ, SUBTOTAL, AGGREGATE and 9 more overflow to #NUM!. PERCENTOF is #NAME? in the oracle (unverified). Recorded in numbers.md; engine tasks T-0990, T-0991, T-0992. Eval delta: new-coverage failures only.
+Probe aggregate-overflow (48 formulas, excel-graph). SUM overflows at the intermediate point; error precedence is first error in argument order and beats overflow; SUMPRODUCT, AVERAGE, PRODUCT, SUMSQ, SUBTOTAL, AGGREGATE and 9 more overflow to #NUM!. PERCENTOF is #NAME? in the oracle, so it was left out of the probe and stays unverified. Recorded in numbers.md; engine tasks T-0990, T-0991, T-0992 and T-0993 (AGGREGATE). Eval delta: new-coverage failures only.
