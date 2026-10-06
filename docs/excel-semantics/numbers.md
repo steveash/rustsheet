@@ -153,7 +153,7 @@ F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-c
 VAR.P, STDEV.P, VARA and STDEVA still return NaN (baselined; T-1029).
 Not implemented: MEDIAN and GEOMEAN of huge values are wrong the other way (T-0992); the engine has no AGGREGATE
 (`#NAME?`, A27-A29; T-0993).
-Evidence: probes/aggregate-overflow Calc!A1:C48 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
+Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
 Implemented in: `arithmetic::{plus, minus, times, divide}` (crates/rustsheet-engine/src/arithmetic.rs);

@@ -21,4 +21,4 @@ Found by T-1021. probes/aggregate-overflow Calc!A51:C54 and A57:C60: Excel `#NUM
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- MEDIAN and GEOMEAN (T-0992) and AGGREGATE (T-0993).
