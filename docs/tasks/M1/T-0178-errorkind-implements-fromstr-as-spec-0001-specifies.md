@@ -3,7 +3,7 @@ id: T-0178
 title: "ErrorKind implements FromStr as SPEC-0001 specifies"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -34,3 +34,6 @@ Keep `from_literal` (the Python binding's `XlError` constructor in bindings/pyth
 ## Out of scope
 - New error kinds (T-0177).
 - Changing `from_literal` or the Python binding.
+
+## Outcome
+`ErrorKind` implements `FromStr` (delegating to `from_literal`) with `ParseErrorKindError`; SPEC-0001 sentence updated; unit test added. No eval delta.
