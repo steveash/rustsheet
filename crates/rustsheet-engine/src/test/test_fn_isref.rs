@@ -3,7 +3,7 @@
 use crate::test::util::new_empty_model;
 
 // Ported-From: ironcalc@f4953b1d, c4641f0f (cases Excel-cached in
-// ironcalc-calc INFORMATION/ISREF.xlsx), 29ee0601.
+// upstream ISREF.xlsx), 29ee0601.
 #[test]
 fn references_and_values() {
     let mut model = new_empty_model();
@@ -39,7 +39,7 @@ fn references_and_values() {
     }
 }
 
-// A defined name is a reference if what it stands for is one (ISREF.xlsx A14, A15, A16).
+// A defined name is a reference if what it stands for is one (upstream ISREF.xlsx A14, A15, A16).
 #[test]
 fn defined_names() {
     let mut model = new_empty_model();

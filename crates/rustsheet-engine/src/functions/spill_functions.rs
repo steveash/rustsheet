@@ -610,7 +610,7 @@ impl Model {
                         "No data returned by FILTER".to_string(),
                     ),
                     // A range is its values: FILTER gives values, never a reference, found or not
-                    // (Excel-cached: ironcalc-calc INFORMATION/ISREF.xlsx Sheet1!D11, D14).
+                    // (Excel-cached: upstream ISREF.xlsx Sheet1!D11, D14).
                     CalcResult::Range { left, right } => {
                         CalcResult::Array(self.evaluate_range(left, right))
                     }

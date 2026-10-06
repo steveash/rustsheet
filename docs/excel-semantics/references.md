@@ -52,7 +52,7 @@ excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = F
 A defined name that stands for a cell or range is a reference to ISREF, a single cell included
 (`ISREF(TextCell)` and `ISREF(Cells)` TRUE, `ISREF(Twice)` for a LAMBDA name FALSE), and FILTER's `if_empty` range is its
 values, never a reference (`FILTER(A1:A1,B1:B1,D1:D2)` spills D1:D2, `ISREF(FILTER(..))` FALSE, `SUM(..)` = 30).
-Evidence: ironcalc-calc INFORMATION/ISREF.xlsx (Excel 16.03, cached) Sheet1!A14, A15, D11, D12, D14. ISREF of a LET/LAMBDA variable
+Evidence: upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; added to calc_tests by T-0965) Sheet1!A14, A15, D11, D12, D14. ISREF of a LET/LAMBDA variable
 bound to a reference is TRUE (A19-A26, not implemented: T-0963).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
 COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT);
