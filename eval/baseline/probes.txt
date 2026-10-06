@@ -73,6 +73,7 @@ C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-ref-error-forms.case.json	10
+C	probes/subnormal-function-results.case.json	75
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-tiny.case.json	60
@@ -232,6 +233,17 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!A1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!B1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
+F	probes/subnormal-function-results.case.json	Calc!A1
+F	probes/subnormal-function-results.case.json	Calc!A10
+F	probes/subnormal-function-results.case.json	Calc!A21
+F	probes/subnormal-function-results.case.json	Calc!A4
+F	probes/subnormal-function-results.case.json	Calc!A41
+F	probes/subnormal-function-results.case.json	Calc!A6
+F	probes/subnormal-function-results.case.json	Calc!A9
+F	probes/subnormal-function-results.case.json	Calc!B5
+F	probes/subnormal-function-results.case.json	Calc!C4
+F	probes/subnormal-function-results.case.json	Calc!C5
+F	probes/subnormal-function-results.case.json	Calc!C6
 F	probes/text-number-tiny.case.json	Data!B1
 F	probes/text-number-tiny.case.json	Data!B13
 F	probes/text-number-tiny.case.json	Data!B15
