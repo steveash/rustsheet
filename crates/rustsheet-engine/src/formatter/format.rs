@@ -68,6 +68,19 @@ fn invalid_date(value: f64) -> Formatted {
     }
 }
 
+/// Formats a TEXT value, `None` being a blank: with an empty format a blank gives "" (docs/excel-semantics/
+/// number-formats.md "An empty format string returns empty text"); otherwise it formats as 0.
+pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatted {
+    if value.is_none() && format.is_empty() {
+        return Formatted {
+            color: None,
+            text: String::new(),
+            error: None,
+        };
+    }
+    format_number(value.unwrap_or(0.0), format, locale)
+}
+
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
