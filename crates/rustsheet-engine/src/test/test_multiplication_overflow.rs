@@ -175,3 +175,21 @@ fn overflowing_conditional_and_dispersion_aggregates_are_num() {
         assert_eq!(model._get_text(&format!("A{row}")), *"6", "A{row}");
     }
 }
+
+/// A tiny nonzero value is not equal to 0 (`EXP(-708)=0` is FALSE, probes/subnormal-function-results
+/// C5), but a literal below the smallest normal reads as 0 (`1E-308=0` is TRUE, A70).
+#[test]
+fn tiny_values_compare_unequal_to_zero_but_subnormal_literals_are_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=EXP(-708)=0");
+    model._set("A2", "=EXP(-708)<>0");
+    model._set("A3", "=1E-308=0");
+    model._set("A4", "=1E-300=0");
+    model._set("A5", "=1E-20>0");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"FALSE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"FALSE");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+}

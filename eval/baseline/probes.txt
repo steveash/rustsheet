@@ -3,9 +3,9 @@
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 C	probes/3d-ref-aggregates.case.json	20
-C	probes/3d-ref-functions.case.json	14
+C	probes/3d-ref-functions.case.json	22
 C	probes/3d-ref-values.case.json	10
-C	probes/aggregate-overflow.case.json	136
+C	probes/aggregate-overflow.case.json	178
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
@@ -106,6 +106,8 @@ C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
+F	probes/3d-ref-functions.case.json	Calc!C18
+F	probes/3d-ref-functions.case.json	Calc!C20
 F	probes/aggregate-overflow.case.json	Calc!A27
 F	probes/aggregate-overflow.case.json	Calc!A28
 F	probes/aggregate-overflow.case.json	Calc!A29
@@ -116,9 +118,25 @@ F	probes/aggregate-overflow.case.json	Calc!B28
 F	probes/aggregate-overflow.case.json	Calc!B29
 F	probes/aggregate-overflow.case.json	Calc!B47
 F	probes/aggregate-overflow.case.json	Calc!B48
+F	probes/aggregate-overflow.case.json	Calc!B51
+F	probes/aggregate-overflow.case.json	Calc!B52
+F	probes/aggregate-overflow.case.json	Calc!B53
+F	probes/aggregate-overflow.case.json	Calc!B54
+F	probes/aggregate-overflow.case.json	Calc!B57
+F	probes/aggregate-overflow.case.json	Calc!B58
+F	probes/aggregate-overflow.case.json	Calc!B59
+F	probes/aggregate-overflow.case.json	Calc!B60
 F	probes/aggregate-overflow.case.json	Calc!C27
 F	probes/aggregate-overflow.case.json	Calc!C28
 F	probes/aggregate-overflow.case.json	Calc!C29
+F	probes/aggregate-overflow.case.json	Calc!C51
+F	probes/aggregate-overflow.case.json	Calc!C52
+F	probes/aggregate-overflow.case.json	Calc!C53
+F	probes/aggregate-overflow.case.json	Calc!C54
+F	probes/aggregate-overflow.case.json	Calc!C57
+F	probes/aggregate-overflow.case.json	Calc!C58
+F	probes/aggregate-overflow.case.json	Calc!C59
+F	probes/aggregate-overflow.case.json	Calc!C60
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13
@@ -263,13 +281,6 @@ F	probes/subnormal-function-results.case.json	Calc!A60
 F	probes/subnormal-function-results.case.json	Calc!A61
 F	probes/subnormal-function-results.case.json	Calc!A62
 F	probes/subnormal-function-results.case.json	Calc!A65
-F	probes/subnormal-function-results.case.json	Calc!C4
-F	probes/subnormal-function-results.case.json	Calc!C5
-F	probes/subnormal-function-results.case.json	Calc!C6
-F	probes/subnormal-function-results.case.json	Calc!C60
-F	probes/subnormal-function-results.case.json	Calc!C61
-F	probes/subnormal-function-results.case.json	Calc!C62
-F	probes/subnormal-function-results.case.json	Calc!C65
 F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
