@@ -174,10 +174,10 @@ fn minutes_with_seconds_fit(minute: u32, second_ms: u64) -> bool {
 /// `H:M`, `H:M:S[.f]`, `M:S.f` (two components with a fraction are minutes and seconds) or the
 /// odd `H:M.f:S` (see [`fraction_as_seconds`]; `S` is checked and then ignored), spaces allowed
 /// around `:` and `.`, one trailing `:` ignored, components up to 9999 (minutes plus the
-/// seconds' whole minutes too), an optional
-/// ` AM`/` PM`/` A`/` P` suffix after whitespace (then the hour is at most 12 and minutes and
-/// whole seconds at most 59). The value is `(total_ms / 1000) / 86400`, which matches Excel bit
-/// for bit (`"10:11:12.5"` is 0.4244502314814815). Excel: see docs/excel-semantics/dates.md#time-text.
+/// seconds' whole minutes too), an optional ` AM`/` PM`/` A`/` P` suffix after whitespace
+/// (then the hour is at most 12 and minutes and whole seconds at most 59). The value is
+/// `(total_ms / 1000) / 86400`, which matches Excel bit for bit (`"10:11:12.5"` is
+/// 0.4244502314814815). Excel: see docs/excel-semantics/dates.md#time-text.
 fn parse_clock_text(text: &str) -> Option<f64> {
     let text = trim_spaces(text);
     let (body, suffix_is_pm) = match text.rsplit_once(' ') {
