@@ -6,7 +6,7 @@ use crate::{
 };
 
 use super::{
-    date_text::parse_date,
+    date_text::{parse_date, CurrentYear},
     dates::{excel_serial_to_ymd, from_excel_date},
     parser::{ParsePart, Parser, TextToken},
 };
@@ -634,6 +634,7 @@ pub(crate) fn parse_formatted_number(
     original: &str,
     currencies: &[&str],
     locale: &Locale,
+    current_year: CurrentYear,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
     let scientific_format = "0.00E+00";
@@ -693,7 +694,7 @@ pub(crate) fn parse_formatted_number(
 
     // Date text, untrimmed: number coercion rejects date text with surrounding spaces (see
     // `parse_date`); VALUE trims before calling.
-    if let Ok((serial_number, format)) = parse_date(original, locale) {
+    if let Ok((serial_number, format)) = parse_date(original, locale, current_year) {
         return Ok((serial_number as f64, Some(format)));
     }
 

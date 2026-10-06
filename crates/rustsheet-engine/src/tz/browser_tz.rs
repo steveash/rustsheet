@@ -99,3 +99,10 @@ pub(crate) fn excel_serial_for_now(tz: &Tz) -> Option<f64> {
 
     Some((days_from_ce - EXCEL_DATE_BASE) as f64 + secs as f64 / 86400.0)
 }
+
+/// The calendar year of now in `tz`.
+pub(crate) fn current_year(tz: &Tz) -> Option<i32> {
+    let ms = crate::model::get_milliseconds_since_epoch();
+    let parts = js::ic_tz_parts(ms as f64, &tz.0);
+    (parts.length() == 6).then(|| parts.get(0).as_f64().unwrap_or(0.0) as i32)
+}

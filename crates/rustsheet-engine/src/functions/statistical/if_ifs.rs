@@ -116,7 +116,9 @@ impl Model {
             return shape_mismatch(cell);
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion, self.locale));
+            fn_criteria.push(build_criteria(criterion, self.locale, &|| {
+                self.current_year()
+            }));
         }
 
         let mut total = 0.0;
@@ -305,7 +307,9 @@ impl Model {
             sum_range = resize_to(&sum_range, &ranges[0]);
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion, self.locale));
+            fn_criteria.push(build_criteria(criterion, self.locale, &|| {
+                self.current_year()
+            }));
         }
 
         self.run_ifs(&sum_range, ranges.as_slice(), &fn_criteria, cell, apply)
@@ -479,7 +483,9 @@ impl Model {
         for criteria_row in &criteria_grid {
             let mut out_row: Vec<ArrayNode> = Vec::with_capacity(criteria_row.len());
             for criterion in criteria_row {
-                let fn_criteria = [build_criteria(criterion, self.locale)];
+                let fn_criteria = [build_criteria(criterion, self.locale, &|| {
+                    self.current_year()
+                })];
                 let mut total = 0.0;
                 let node = match self.run_ifs(
                     &sum_range,
