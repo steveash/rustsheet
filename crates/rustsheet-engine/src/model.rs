@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::arithmetic::{power, times};
+use crate::arithmetic::{divide, minus, plus, power, times};
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -552,8 +552,8 @@ impl Model {
         use Node::*;
         match node {
             OpSumKind { kind, left, right } => match kind {
-                OpSum::Add => self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 + f2)),
-                OpSum::Minus => self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 - f2)),
+                OpSum::Add => self.handle_arithmetic(left, right, cell, &plus),
+                OpSum::Minus => self.handle_arithmetic(left, right, cell, &minus),
             },
             NumberKind(value) => CalcResult::Number(*value),
             StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#)),
@@ -636,13 +636,7 @@ impl Model {
             OpConcatenateKind { left, right } => self.handle_concatenate(left, right, cell),
             OpProductKind { kind, left, right } => match kind {
                 OpProduct::Times => self.handle_arithmetic(left, right, cell, &times),
-                OpProduct::Divide => self.handle_arithmetic(left, right, cell, &|f1, f2| {
-                    if f2 == 0.0 {
-                        Err(Error::DIV)
-                    } else {
-                        Ok(f1 / f2)
-                    }
-                }),
+                OpProduct::Divide => self.handle_arithmetic(left, right, cell, &divide),
             },
             OpPowerKind { left, right } => self.handle_arithmetic(left, right, cell, &power),
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
@@ -1558,23 +1552,14 @@ impl Model {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn from_workbook(workbook: Workbook, language_id: &str) -> Result<Model, String> {
+    pub fn from_workbook(mut workbook: Workbook, language_id: &str) -> Result<Model, String> {
+        workbook.rebuild_derived_state();
         let parsed_formulas = Vec::new();
         let worksheets = &workbook.worksheets;
 
         let worksheet_names = worksheets.iter().map(|s| s.get_name()).collect();
 
         let defined_names = workbook.get_defined_names_with_scope();
-        // add all tables
-        // let mut tables = Vec::new();
-        // for worksheet in worksheets {
-        //     let mut tables_in_sheet = HashMap::new();
-        //     for table in &worksheet.tables {
-        //         tables_in_sheet.insert(table.name.clone(), table.clone());
-        //     }
-        //     tables.push(tables_in_sheet);
-        // }
-
         let locale =
             get_locale(&workbook.settings.locale).map_err(|_| "Invalid locale".to_string())?;
         let tz = Tz::parse(&workbook.settings.tz)?;

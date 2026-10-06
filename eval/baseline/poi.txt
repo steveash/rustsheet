@@ -24,7 +24,6 @@ C	poi/51998.xlsx	2
 C	poi/53101.xlsx	2
 C	poi/53105.xlsx	1
 C	poi/54206.xlsx	176
-C	poi/54288.xlsx	0
 C	poi/54436.xlsx	1
 C	poi/54524.xlsx	1
 C	poi/54764-2.xlsx	0
@@ -54,7 +53,6 @@ C	poi/59021.xlsx	0
 C	poi/59106.xlsx	2
 C	poi/59132.xlsx	5
 C	poi/59736.xlsx	2
-C	poi/59746_NoRowNums.xlsx	0
 C	poi/60509.xlsx	7
 C	poi/60825.xlsx	0
 C	poi/61063.xlsx	1
@@ -81,7 +79,6 @@ C	poi/FormulaEvalTestData_Copy.xlsx	1295
 C	poi/FormulaSheetRange.xlsx	2
 C	poi/GeneralFormatTests.xlsx	72
 C	poi/HsGetVal.xlsx	2
-C	poi/InlineString.xlsx	0
 C	poi/InlineStrings.xlsx	6
 C	poi/Intersection-52111-xssf.xlsx	3
 C	poi/LIBRE_OFFICE-128382-0.xlsx	0
@@ -155,7 +152,6 @@ F	poi/47889.xlsx	!EngineError
 F	poi/48539.xlsx	Instance1!E23
 F	poi/48703.xlsx	Sheet1!B2
 F	poi/49609.xlsx	!InvalidCase
-F	poi/54288.xlsx	!EngineError
 F	poi/54436.xlsx	Sheet1!A14
 F	poi/54764-2.xlsx	!EngineError
 F	poi/54764.xlsx	!EngineError
@@ -187,15 +183,9 @@ F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/59106.xlsx	Test!A2
 F	poi/59106.xlsx	Test!B2
-F	poi/59746_NoRowNums.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
 F	poi/61063.xlsx	Tabelle1!A4
-F	poi/61652.xlsx	IRPPCalc!A2
-F	poi/61652.xlsx	IRPPCalc!N12
-F	poi/61652.xlsx	Model!A4
-F	poi/61652.xlsx	Model!A6
 F	poi/61652.xlsx	Model!B4
-F	poi/61652.xlsx	Model!C4
 F	poi/63934.xlsx	Sheet1!B2
 F	poi/70005-countifs.xlsx	Sheet1!A3
 F	poi/70005-countifs.xlsx	Sheet1!A4
@@ -333,12 +323,9 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E584
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E824
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E872
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F128
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F1496
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F340
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F584
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F940
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G1252
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H1168
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H160
@@ -373,7 +360,6 @@ F	poi/GeneralFormatTests.xlsx	Tests!A72
 F	poi/GeneralFormatTests.xlsx	Tests!A73
 F	poi/HsGetVal.xlsx	Sheet1!B5
 F	poi/HsGetVal.xlsx	Sheet1!C5
-F	poi/InlineString.xlsx	!EngineError
 F	poi/LIBRE_OFFICE-128382-0.xlsx	!EngineError
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H104
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H108

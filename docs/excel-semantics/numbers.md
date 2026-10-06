@@ -77,7 +77,11 @@ in fixed notation where `%.15g` would switch: `123456789012345678` → "12345678
 "1E+20100"; the exact switch is the 20-character rule below.
 Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `=7+Data!$E5&10` with E5 = 1E-15 → "710". Snapping does not apply inside the CONCAT argument:
 `CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
-significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
+significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`. The 15th digit is rounded, not cut,
+and the count is of significant digits, not decimal places: `TEXT(2/3,…)` = `0.666666666666667000`,
+`TEXT(0.000123456789012345,…)` = `0.000123456789012345`, `TEXT(1.005*1000,…)` = `1005.000000000000000000`,
+`TEXT(2^53+1,…)` = `9007199254740990.000000000000000000`, `TEXT(0.1+0.2-0.3,…)` = `0.000000000000000056`
+(probes-numeric/4f413cc257ce15c4 A23, A51, A79, A71, A7; T-0980).
 Notation rule (T-0107): plain notation whenever the plain string, without the sign, has at most
 20 characters, otherwise `d.dddE±XX` with at least two exponent digits: `99999999999999900000`
 and `-10000000000000000000` stay plain, `1E+20`/`-1E+20`/`1E+21` do not; `0.000000000000000001`
@@ -101,20 +105,43 @@ Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED. Implementation: `number_to_text` (T-0107).
 
-## Overflow in `*` is #NUM! where it happens
-Rule: a product beyond the double range is the error `#NUM!` at that point, so it propagates
-through `&`, CONCAT, TEXT and LEN as an error. It never becomes an "infinite" number that is
-formatted later: `CONCAT(1e307*100)`, `(1e307*100)&""`, `TEXT(1e307*100,"0.000000000000000000")`
-and `LEN((1e307*100)&"")` are all `#NUM!`. A result of exactly 1e308 is finite:
-`=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
-Evidence: probes-numeric/4f413cc257ce15c4 Calc!A121-A124; probes/precision-and-rounding A12, A13.
-Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet), for negative overflow
-(`-1e307*100`) and for the per-element array form (`{1e307,1}*100`); the unit tests pin our
-expectation only.
-Implemented in: `arithmetic::times` (crates/rustsheet-engine/src/arithmetic.rs); test
-`overflowing_product_is_num_inside_formulas`.
-Tasks: T-0136
+## Overflow in `+ - * /` is #NUM! where it happens
+Rule: a sum, difference, product or quotient beyond the double range is the error `#NUM!` at that
+point, so it propagates through `&`, CONCAT, TEXT and LEN as an error. It never becomes an
+"infinite" number that is formatted later: `CONCAT(1e307*100)`, `(1e307*100)&""`,
+`TEXT(1e307*100,"0.000000000000000000")` and `LEN((1e307*100)&"")` are all `#NUM!`. The same holds
+for `=9E+307+9E+307`, `=9E+307-(-9E+307)`, `=-9E+307-9E+307`, `=9E+307/0.1`, `=-9E+307/0.1` and the
+negative products `=-1E+307*100`, `=1E+307*-100` (ERROR.TYPE 6). The intermediate counts:
+`=9E+307+9E+307-9E+307` is `#NUM!`, not 9E+307. `SUM(9E+307,9E+307)` is `#NUM!` too. A result of
+exactly 1e308 is finite: `=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
+Arrays overflow per element: `INDEX({1E+307,1}*100,1)` is `#NUM!`, `INDEX({1E+307,1}*100,2)` is 100,
+`ROWS({1E+307;1}*100)` is 2 and `SUM(IFERROR({1E+307,1}*100,0))` is 100.
+Evidence: probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
+probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
+Status: VERIFIED
+Implemented in: `arithmetic::{plus, minus, times, divide}` (crates/rustsheet-engine/src/arithmetic.rs);
+tests `overflowing_product_is_num_inside_formulas` and
+`overflowing_sum_and_quotient_are_num_and_a_subnormal_divisor_is_zero`. SUM overflow is not implemented: T-0185.
+Tasks: T-0136, T-0173
+
+## A subnormal divisor is zero
+Rule: a divisor below the smallest normal double (2.2250738585072014E-308) divides like zero:
+`=1/1E-308`, `=1/(2^-1023)` and `=1/(1E-307/10)` are `#DIV/0!` (ERROR.TYPE 2), while
+`=1/(2^-1022)` (the smallest normal) is the finite 4.49423283715579E+307. The same flush as
+"Subnormal results become 0": the divisor reads as 0. An underflowing quotient is plain 0:
+`=1E-307/1E+300` is 0.
+Evidence: probes/arith-overflow Calc!A8:D9, A16:D18. Oracle: excel-graph, 2026-10-06.
+Status: VERIFIED
+Implemented in: `arithmetic::divide`.
+Tasks: T-0173
+
+## Numbers near 1E+307 print with 14 significant digits
+Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
+4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
+Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
+Leading hypothesis: the existing 20-character cap on E-notation text above applies; a 3-digit
+exponent leaves room for only 14 digits ("4.4942328371558E+307" is exactly 20 characters).
+Status: UNVERIFIED beyond this one value. Not implemented: T-0186.
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.

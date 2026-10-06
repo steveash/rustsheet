@@ -2,6 +2,7 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
@@ -33,9 +34,11 @@ C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
+C	probes/indirect-text-broadcast.case.json	58
 C	probes/intersection-function-operands.case.json	14
 C	probes/intersection-operands.case.json	16
 C	probes/intersection-whitespace.case.json	8
+C	probes/is-functions-array-lift.case.json	57
 C	probes/isref-function-results.case.json	6
 C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/lcm-result-bound.case.json	28
@@ -67,11 +70,16 @@ C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-words.case.json	62
+C	probes/text-result-limit.case.json	14
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/value-clock-text.case.json	135
+F	probes/arith-overflow.case.json	Calc!B16
+F	probes/arith-overflow.case.json	Calc!B4
+F	probes/arith-overflow.case.json	Calc!C4
+F	probes/arith-overflow.case.json	Calc!D4
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13
@@ -166,9 +174,6 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
 F	probes/text-number-words.case.json	Calc!A9
 F	probes/text-number-words.case.json	Calc!B5
-F	probes/text-number-words.case.json	Calc!F12
-F	probes/text-number-words.case.json	Calc!G12
-F	probes/text-number-words.case.json	Calc!H12
 F	probes/text-number-words.case.json	Calc!H6
 F	probes/text-number-words.case.json	Calc!H7
 F	probes/text-number-words.case.json	Calc!H8
@@ -179,3 +184,5 @@ F	probes/text-number-words.case.json	Calc!K3
 F	probes/text-number-words.case.json	Calc!K4
 F	probes/text-number-words.case.json	Calc!K5
 F	probes/text-number-words.case.json	Calc!K7
+F	probes/text-result-limit.case.json	Sheet1!C8
+F	probes/text-result-limit.case.json	Sheet1!C9

@@ -11,6 +11,7 @@ use std::io::BufRead;
 
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 use rustsheet_engine::expressions::parser::Parser;
+use rustsheet_engine::expressions::utils::{is_valid_row, number_to_column};
 use rustsheet_engine::types::{Cell, Row, SheetData};
 
 use crate::error::XlsxError;
@@ -80,8 +81,14 @@ fn is_sheet_data_end(element: &BytesEnd) -> bool {
 
 /// A `<row>` while its cells are being read.
 struct RowXml {
-    /// From the `r` attribute, or from the first cell if the row has none.
-    index: Option<i32>,
+    /// From the `r` attribute, or the row after the previous one if the row has none.
+    index: i32,
+    /// The row had no `r`, so its first cell with an `r` still decides its index.
+    positional: bool,
+    /// Where the row's own entry is in `SheetDataReader::rows`, if it has one.
+    format_slot: Option<usize>,
+    /// The column of the previous cell in the row, 0 before the first cell.
+    last_column: i32,
     cells: HashMap<i32, Cell>,
 }
 
@@ -105,6 +112,8 @@ struct FormulaXml {
 #[derive(Default)]
 struct CellXml {
     reference: String,
+    /// The cell has an `r` attribute.
+    has_reference: bool,
     /// The style index, the default style being 0.
     style: i32,
     /// The `t` attribute.
@@ -148,6 +157,8 @@ struct SheetDataReader<'a> {
     stack: Vec<Tag>,
     row: Option<RowXml>,
     cell: Option<CellXml>,
+    /// The index of the previous row, 0 before the first row.
+    last_row: i32,
 }
 
 impl SheetDataReader<'_> {
@@ -264,7 +275,7 @@ impl SheetDataReader<'_> {
         // `spans` is not used in IronCalc at the moment (it's an optimization).
         // Unused attributes:
         // * thickBot, thickTop, ph, collapsed, outlineLevel
-        let mut index = None;
+        let mut explicit_index = None;
         let mut height = DEFAULT_ROW_HEIGHT;
         let mut has_height_attribute = false;
         let mut custom_height = false;
@@ -275,7 +286,7 @@ impl SheetDataReader<'_> {
             let attribute = attribute?;
             let value = attribute_value_of(&attribute)?;
             match attribute.key.as_ref() {
-                "r" => index = Some(value.parse::<i32>()?),
+                "r" => explicit_index = Some(value.parse::<i32>()?),
                 "ht" => {
                     has_height_attribute = true;
                     height = value.parse::<f64>().unwrap_or(DEFAULT_ROW_HEIGHT);
@@ -287,23 +298,41 @@ impl SheetDataReader<'_> {
                 _ => {}
             }
         }
-        if let Some(index) = index {
-            // The height of the row is always the visible height of the row.
-            // If custom_height is false the height was computed automatically,
-            // for example because a cell has many lines or a larger font.
-            if custom_height || custom_format || style != 0 || has_height_attribute || hidden {
-                self.rows.push(Row {
-                    r: index,
-                    height,
-                    s: style,
-                    custom_height,
-                    custom_format,
-                    hidden,
-                });
-            }
+        // `r` is optional: a row without it is the row after the previous one
+        // (docs/excel-semantics/xlsx-storage.md "Cells and rows without r are positional").
+        // `r` is untrusted, so the successor is a checked add.
+        let index = match explicit_index {
+            Some(index) => index,
+            None => match self
+                .last_row
+                .checked_add(1)
+                .filter(|row| is_valid_row(*row))
+            {
+                Some(index) => index,
+                None => return Err(XlsxError::Xml("Row past the last row".to_string())),
+            },
+        };
+        self.last_row = index;
+        // The height of the row is always the visible height of the row.
+        // If custom_height is false the height was computed automatically,
+        // for example because a cell has many lines or a larger font.
+        let mut format_slot = None;
+        if custom_height || custom_format || style != 0 || has_height_attribute || hidden {
+            format_slot = Some(self.rows.len());
+            self.rows.push(Row {
+                r: index,
+                height,
+                s: style,
+                custom_height,
+                custom_format,
+                hidden,
+            });
         }
         self.row = Some(RowXml {
             index,
+            positional: explicit_index.is_none(),
+            format_slot,
+            last_column: 0,
             cells: HashMap::new(),
         });
         Ok(())
@@ -313,15 +342,8 @@ impl SheetDataReader<'_> {
         let Some(row) = self.row.take() else {
             return Ok(());
         };
-        match row.index {
-            Some(index) => {
-                self.sheet_data.set_row(index, row.cells);
-                Ok(())
-            }
-            None => Err(XlsxError::Xml(
-                "Row without a row index (r attribute)".to_string(),
-            )),
-        }
+        self.sheet_data.set_row(row.index, row.cells);
+        Ok(())
     }
 
     fn start_cell(&mut self, element: &BytesStart) -> Result<(), XlsxError> {
@@ -345,6 +367,7 @@ impl SheetDataReader<'_> {
             match attribute.key.as_ref() {
                 "r" => {
                     has_reference = true;
+                    cell.has_reference = true;
                     cell.reference = value.into_owned();
                 }
                 "s" => cell.style = value.parse::<i32>().unwrap_or(0),
@@ -355,7 +378,16 @@ impl SheetDataReader<'_> {
             }
         }
         if !has_reference {
-            return Err(XlsxError::Xml("Missing \"r\" XML attribute".to_string()));
+            // `r` is optional: a cell without it is the column after the previous cell in
+            // its row (docs/excel-semantics/xlsx-storage.md "Cells and rows without r are
+            // positional").
+            let Some(row) = self.row.as_ref() else {
+                return Err(XlsxError::Xml("Cell outside of a row".to_string()));
+            };
+            let Some(name) = row.last_column.checked_add(1).and_then(number_to_column) else {
+                return Err(XlsxError::Xml("Cell past the last column".to_string()));
+            };
+            cell.reference = format!("{name}{}", row.index);
         }
         self.cell = Some(cell);
         Ok(())
@@ -373,10 +405,17 @@ impl SheetDataReader<'_> {
         for text in [&cell.value, &cell.rich_text].into_iter().flatten() {
             self.limits.check_escaped_text(text)?;
         }
-        // A row without an `r` attribute takes its index from its first cell
-        if row.index.is_none() {
-            row.index = Some(r_index);
+        // A row without `r` whose first cell has one takes the row of that cell, as the
+        // snapshot reader does; otherwise the stored row and `r_index` could disagree.
+        if row.positional && cell.has_reference {
+            row.positional = false;
+            row.index = r_index;
+            self.last_row = r_index;
+            if let Some(entry) = row.format_slot.and_then(|slot| self.rows.get_mut(slot)) {
+                entry.r = r_index;
+            }
         }
+        row.last_column = column_index;
 
         // type, the default type being "n" for number
         // If the cell does not have a value is an empty cell
@@ -624,6 +663,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         stack: Vec::new(),
         row: None,
         cell: None,
+        last_row: 0,
     };
     loop {
         let event = reader.read_event_into(&mut buffer)?;
@@ -649,4 +689,89 @@ pub(super) fn read_sheet_data<R: BufRead>(
         rows: state.rows,
         shared_formulas: state.shared_formulas,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustsheet_engine::expressions::parser::new_parser_english;
+
+    /// The positions of the cells `sheetData` holds, as (row, column) pairs.
+    fn read_positions(sheet_data: &str) -> Result<Vec<(i32, i32)>, XlsxError> {
+        let xml = format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>{sheet_data}</sheetData></worksheet>"#
+        );
+        let mut parser = new_parser_english(vec!["Sheet1".to_string()], vec![], HashMap::new());
+        let read = read_sheet_data(
+            xml.as_bytes(),
+            "Sheet1",
+            &mut parser,
+            &mut Vec::new(),
+            &ImportLimits::default(),
+            &[],
+        )?;
+        let mut positions: Vec<(i32, i32)> = read
+            .sheet_data
+            .cells()
+            .map(|(row, column, _)| (row, column))
+            .collect();
+        positions.sort_unstable();
+        Ok(positions)
+    }
+
+    // docs/excel-semantics/xlsx-storage.md "Cells and rows without r are positional" (T-0181).
+    #[test]
+    fn cell_without_r_follows_the_previous_cell() {
+        let positions = read_positions(
+            r#"<row r="3"><c r="C3"><v>1</v></c><c><v>2</v></c><c><v>3</v></c></row>"#,
+        );
+        assert_eq!(positions.unwrap(), vec![(3, 3), (3, 4), (3, 5)]);
+    }
+
+    #[test]
+    fn first_cell_without_r_is_column_a() {
+        let positions = read_positions(r#"<row r="2"><c><v>1</v></c></row>"#);
+        assert_eq!(positions.unwrap(), vec![(2, 1)]);
+    }
+
+    #[test]
+    fn row_without_r_follows_the_previous_row() {
+        let positions =
+            read_positions(r#"<row r="5"><c><v>1</v></c></row><row><c><v>2</v></c></row>"#);
+        assert_eq!(positions.unwrap(), vec![(5, 1), (6, 1)]);
+    }
+
+    #[test]
+    fn first_row_without_r_is_row_one() {
+        let positions = read_positions(r#"<row><c><v>1</v></c></row>"#);
+        assert_eq!(positions.unwrap(), vec![(1, 1)]);
+    }
+
+    #[test]
+    fn cell_without_r_after_the_last_column_is_an_error() {
+        let positions =
+            read_positions(r#"<row r="1"><c r="XFD1"><v>1</v></c><c><v>2</v></c></row>"#);
+        assert!(positions.is_err());
+    }
+
+    #[test]
+    fn row_without_r_takes_the_row_of_its_first_cell_with_r() {
+        let positions = read_positions(
+            r#"<row><c r="B7"><v>1</v></c><c><v>2</v></c></row><row><c><v>3</v></c></row>"#,
+        );
+        assert_eq!(positions.unwrap(), vec![(7, 2), (7, 3), (8, 1)]);
+    }
+
+    #[test]
+    fn row_without_r_after_an_i32_max_row_is_an_error() {
+        let positions = read_positions(r#"<row r="2147483647"/><row><c><v>1</v></c></row>"#);
+        assert!(positions.is_err());
+    }
+
+    #[test]
+    fn row_without_r_after_the_last_row_is_an_error() {
+        let positions =
+            read_positions(r#"<row r="1048576"><c><v>1</v></c></row><row><c><v>2</v></c></row>"#);
+        assert!(positions.is_err());
+    }
 }
