@@ -185,7 +185,8 @@ and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unpro
 ## Criteria equality
 Rule: COUNTIF/SUMIF-style numeric criteria compare the 15-digit rounded values (no absolute epsilon): over {1E-300, 0, 1E-17, 2E-16, 1+2^-52},
 `COUNTIF(r,0)` = 1 and `"=0"` = 1, `COUNTIF(r,1)` = 1 (1+2^-52 matches 1), `"<>1"` = 4. Lookup ordering (MATCH/XMATCH/XLOOKUP) never equates tiny values with 0.
-Evidence: probes/tiny-vs-zero-criteria (A1-A33). Oracle: excel-graph, 2026-10-06. Status: VERIFIED
+Evidence: probes/tiny-vs-zero-criteria (A1-A33); the general 15-digit rule rests on the Comparison tolerance entry below. The blank-cell criterion path (`result_is_equal_to_empty`) uses the same rule but is inferred, not probed.
+Implemented in: `numbers_equal` (functions/criteria.rs), `Ord for CalcResult` (calc_result.rs). Tasks: T-1028. Oracle: excel-graph, 2026-10-06. Status: VERIFIED
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
