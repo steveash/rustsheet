@@ -1,6 +1,9 @@
 mod bound_variables;
 use super::reference_operators::{intersection_operand, tight_operand, union_text};
-use super::{super::utils::quote_name, Node, Reference};
+use super::{
+    super::utils::{name_needs_quoting, quote_name},
+    Node, Reference,
+};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
@@ -141,7 +144,7 @@ pub fn to_string_displaced(
 /// needs quotes (Excel writes `'Data2:Q 4'!A1`).
 pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
     let span = format!("{first}:{last}");
-    if quote_name(first) == first && quote_name(last) == last {
+    if !name_needs_quoting(first) && !name_needs_quoting(last) {
         span
     } else {
         format!("'{}'", span.replace('\'', "''"))

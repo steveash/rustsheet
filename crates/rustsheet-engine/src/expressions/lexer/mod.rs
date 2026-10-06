@@ -838,8 +838,8 @@ impl Lexer {
         let last = self.consume_identifier();
         if self.peek_char() == Some('!')
             && !last.is_empty()
-            && utils::quote_name(first) == first
-            && utils::quote_name(&last) == last
+            && !utils::name_needs_quoting(first)
+            && !utils::name_needs_quoting(&last)
         {
             self.position += 1;
             return Some(format!("{first}:{last}"));
