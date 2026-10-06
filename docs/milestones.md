@@ -21,7 +21,8 @@ whose exit criteria are not met.
 in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
 reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a filed task or a
 `DEVIATION` entry. "Bit-exact" percentages here and in every milestone count only scored cells
-not listed as accepted deviations, which are scored in their own column (decision 0036). The exit criteria of M1, M2, M5–M10 and M11 are met.
+not listed as accepted deviations, which are scored in their own column (decision 0036). The
+exit criteria of M1, M2, M5–M10 and M11 are met.
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).

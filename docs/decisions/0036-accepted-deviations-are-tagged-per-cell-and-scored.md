@@ -45,7 +45,9 @@
     listed deviations. Every listed deviation must cite an accepted DEVIATION entry.
   - Interim rule, until the harness work (T-0191) lands: the steward may treat a known failure as
     a deviation only if its F line is probes/resource-limits C12 or C14. Both cite the arrays.md
-    DEVIATION entry. The steward reports both by name in docs/status.md when it declares M1 exit.
+    DEVIATION entry. Before declaring M1 exit, the steward runs
+    `make eval-show CASE=probes/resource-limits` and confirms both cells show `#ERROR!`, since the
+    baseline does not pin their value. It then names both cells in docs/status.md.
 - **Consequences:**
   - T-0191 (harness, M1, P1) implements the file, the scoring, the report column and the check.
     It moves C12/C14 from eval/baseline/probes.txt into `eval/suites/probes/deviations` with
