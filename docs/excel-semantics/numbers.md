@@ -171,6 +171,8 @@ Rule: a result below the smallest normal double is returned as 0: `=2^-1074` →
 Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e-307/10`.
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^`); function results are not flushed yet.
+Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
 Rule: Excel's largest typeable number is 9.99999999999999E+307. A workbook whose formula text
