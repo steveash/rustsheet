@@ -22,7 +22,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
-C	probes/intersection-function-operands.case.json	12
+C	probes/intersection-function-operands.case.json	14
 C	probes/intersection-operands.case.json	16
 C	probes/intersection-whitespace.case.json	8
 C	probes/isref-function-results.case.json	6
@@ -107,6 +107,7 @@ F	probes/defined-name-intersection.case.json	Sheet1!H7
 F	probes/defined-name-intersection.case.json	Sheet1!H8
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
+F	probes/intersection-function-operands.case.json	Sheet1!H14
 F	probes/intersection-function-operands.case.json	Sheet1!H5
 F	probes/intersection-function-operands.case.json	Sheet1!H8
 F	probes/intersection-operands.case.json	Sheet1!H10
