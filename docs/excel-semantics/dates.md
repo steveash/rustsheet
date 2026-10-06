@@ -194,13 +194,22 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   the two-digit-year reading covers every month-first spelling (`"Jul 45"`, `"Jul/45"`,
   `"July 45"`, `"7-45"`, and `"7/45 10:00"` with a clock) but not the day-first ones (`"45-Jul"`,
   `"45 Jul"` are #VALUE!); `"13/45"`, `"0/45"` and a space between two numbers (`"7 45"`) are
-  #VALUE!.
+  #VALUE!. And (probes/date-text-yearless-3, excel-graph, 2026-10-06, T-0167): day-first text takes
+  `/` too and a leading zero (`"1/Jul"`, `"01-Jul"`, `"1 July"`), month-name text takes `-` after the
+  full name (`"July-1"`, `"Jul-01"`), and a clock may follow either order (`"Jul 1 10:00"`,
+  `"1-Jul 10:00"`, `"Jul-26 6 PM"`); in day-first order a number that is not a day is #VALUE!, never
+  a year (`"45/Jul"`, `"0-Jul"`, `"32 Jul"`). Criteria read year-less text the same way
+  (`COUNTIF(dates,"7/1")`, `">=Jul-2"`, `"<2-Jul"`), and so does number coercion (`DAY("7/2"+0)` = 2);
+  `MATCH("7/2",dates,0)` is #N/A (MATCH never coerces text).
 Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
 UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
 for month-year, `m/yy` for numeric month-year such as `"2/30"`), which the engine assigns to typed
 input.
-Status: VERIFIED. Not implemented: the year-less current-year forms, which the engine rejects
-(#VALUE!, T-0167); the two-digit-year reading of year-less text is implemented (T-0160).
+Status: VERIFIED. Implemented, year-less text included (T-0160, T-0167): the current year comes
+from the model's clock and timezone (`Model::current_year`, the clock NOW and TODAY read), passed to
+the parser, which asks for it only when the number can be a day of the month. Typed year-less text
+gets the format `d-mmm` (UNVERIFIED). A typed `+`/`-` input is a formula unless the whole input,
+sign included, is a number, so `-4-2` stays the formula -6 although `4-2` is a date.
 Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
 

@@ -1122,13 +1122,16 @@ impl Model {
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
                 // (probes/date-text-grammar C7, value-clock-text B14, B44).
                 let text = text.trim_matches(' ');
-                if let Ok((value, _)) = parse_formatted_number(text, &currencies, self.locale) {
+                if let Ok((value, _)) =
+                    parse_formatted_number(text, &currencies, self.locale, &|| self.current_year())
+                {
                     return CalcResult::Number(value);
                 };
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                if let Some(serial) = parse_time_serial(text, self.locale) {
+                if let Some(serial) = parse_time_serial(text, self.locale, &|| self.current_year())
+                {
                     return CalcResult::Number(serial);
                 }
                 CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())

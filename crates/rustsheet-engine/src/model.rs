@@ -391,7 +391,9 @@ impl Model {
                 Some(stripped)
             }
         } else if let Some(stripped) = value.strip_prefix(['+', '-']) {
-            if stripped.is_empty() || self.cast_number(stripped).is_some() {
+            // The whole input, sign included, must be a number: "-4-2" is the formula -6 although
+            // "4-2" alone is a date (2 April, year-less text read in the current year).
+            if stripped.is_empty() || self.cast_number(value).is_some() {
                 None
             } else {
                 Some(value)
@@ -2291,7 +2293,9 @@ impl Model {
 
                 //  We try to parse as number
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale)
+                    parse_formatted_number(&value, &currencies, self.locale, &|| {
+                        self.current_year()
+                    })
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
@@ -3379,6 +3383,11 @@ impl Model {
         self.workbook.settings.locale = locale_id.to_string();
         self.evaluate();
         Ok(())
+    }
+
+    /// The current year in the model's timezone, which year-less date text ("7/1") is read in.
+    pub(crate) fn current_year(&self) -> Option<i32> {
+        crate::tz::current_year(&self.tz)
     }
 
     /// Sets the timezone of the model

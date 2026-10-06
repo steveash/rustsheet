@@ -113,12 +113,17 @@ impl Model {
                     currencies.push(currency);
                 }
                 // Try to parse as a formatted number (e.g., dates, currencies, percentages)
-                if let Ok((v, _number_format)) = parse_formatted_number(s, &currencies, self.locale)
+                if let Ok((v, _number_format)) =
+                    parse_formatted_number(s, &currencies, self.locale, &|| self.current_year())
                 {
                     return Some(v);
                 }
                 // Time and date-time text (`0+"10:11:12.5"`); probes/timevalue-*.
-                crate::functions::date_and_time::time_text::parse_time_serial(s, self.locale)
+                crate::functions::date_and_time::time_text::parse_time_serial(
+                    s,
+                    self.locale,
+                    &|| self.current_year(),
+                )
             }
         }
     }

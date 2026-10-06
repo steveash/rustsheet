@@ -729,7 +729,12 @@ impl Model {
         // Criteria text is used as-is, not trimmed: Excel's DSUM with criterion "  > 1 " matches
         // nothing (smoke/d-function-criteria J2 = 0, excel-graph 2026-10-04; see
         // docs/excel-semantics/criteria.md).
-        let matches = build_criteria_with(crit_cell, self.locale, CriteriaFlavor::Database);
+        let matches = build_criteria_with(
+            crit_cell,
+            self.locale,
+            &|| self.current_year(),
+            CriteriaFlavor::Database,
+        );
         matches(db_val)
     }
 
