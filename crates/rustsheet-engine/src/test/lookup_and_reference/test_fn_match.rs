@@ -152,3 +152,49 @@ fn test_match_two_dimensional_lookup_array_is_na() {
     assert_eq!(model._get_text("D6"), *"#DIV/0!");
     assert_eq!(model._get_text("D7"), *"#VALUE!");
 }
+
+/// Excel's values for approximate and exact lookups over whole columns with a
+/// blank tail (probes/lookup-whole-column-blank-tail, Col sheet; T-0126).
+#[test]
+fn whole_column_blank_tail_matches_excel() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "10"),
+        ("A2", "20"),
+        ("A3", "30"),
+        ("B1", "a"),
+        ("B2", "b"),
+        ("B3", "c"),
+    ] {
+        model._set(cell, value);
+    }
+    let cases = [
+        ("=MATCH(99,A:A,1)", "3"),
+        ("=MATCH(99,A:A,-1)", "#N/A"),
+        ("=MATCH(5,A:A,1)", "#N/A"),
+        ("=MATCH(9.99E+307,A:A)", "3"),
+        ("=VLOOKUP(99,A:B,2)", "c"),
+        ("=LOOKUP(20,A:A,B:B)", "b"),
+        ("=LOOKUP(99,A:A,B:B)", "c"),
+        ("=LOOKUP(30,A1:A3,E:E)", "0"),
+        ("=MATCH(99,A1:A10,1)", "3"),
+        ("=VLOOKUP(99,A1:B10,2)", "c"),
+        ("=VLOOKUP(0,A:B,2,FALSE)", "#N/A"),
+        ("=VLOOKUP(\"\",A:B,2,FALSE)", "#N/A"),
+        ("=MATCH(0,A:A,0)", "#N/A"),
+        ("=MATCH(G1,A:A,0)", "#N/A"),
+        ("=VLOOKUP(G1,A:B,2)", "#N/A"),
+        ("=XMATCH(0,A:A)", "#N/A"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("M{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("M{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
