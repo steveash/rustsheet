@@ -139,7 +139,9 @@ fn parse_month_year(
     if !(1..=12).contains(&month) {
         return Err("Not a valid month".to_string());
     }
-    let year = if is_digits(year_str, 4..=4) {
+    // A numeric month takes only the one- or two-digit number probes/date-text-yearless covers;
+    // "7/2026" is not probed.
+    let year = if is_digits(year_str, 4..=4) && format == MONTH_NAME_YEAR_FORMAT {
         parse_year(year_str)?.0
     } else if is_digits(year_str, 1..=2) {
         let number = year_str.parse::<i32>().map_err(|e| e.to_string())?;
@@ -315,8 +317,9 @@ mod tests {
         // A possible day of the month is the current year's (not implemented yet, T-0167)
         for text in [
             "Jul-26", "7/1", "Jul 31", "Feb-29", "2/29", "13/1", "13/45", "0/45", "Jul-123",
-            // A numeric month needs a separator (a space between numbers is not probed)
-            "7 45", "1 0",
+            // A numeric month needs a separator (a space between numbers is not probed), and a
+            // four-digit year with it is not probed either
+            "7 45", "1 0", "7/2026", "12-1999",
         ] {
             assert_eq!(en(text), None, "{text}");
         }

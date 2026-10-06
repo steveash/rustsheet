@@ -148,7 +148,8 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   the current-year forms, full dates of the two-digit-year forms). UNVERIFIED (not scored, clock-
   dependent scratch runs on 2026-10-05/06): the years 2026 and 2029, `"Jul-26"` = 46229 and
   `"2/29"` = 47150. Not probed: a space between two numbers (`"7 45"`, which the engine rejects),
-  `"7/0"` and `"13/45"`.
+  `"13/45"`, `"0/45"`, a numeric month with a four-digit year (`"7/2026"`, rejected), and numeric
+  forms with `0` (`"7/0"`, `"7-0"`, which the engine reads as 2000 like `"Jul-0"`).
 Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
 UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
 for month-year, `m/yy` for numeric month-year such as `"2/30"`), which the engine assigns to typed

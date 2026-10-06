@@ -28,7 +28,7 @@ Excel these cells are not volatile; the harness scores only clock-independent ce
 ## Acceptance criteria
 - [ ] probes/date-text-yearless B1:D12 pass; baseline shrinks.
 - [ ] The `date_text.rs` test that pins these forms to #VALUE! (`month_and_two_digit_year_when_the_number_cannot_be_a_day`) flips to the Excel values.
-- [ ] Probe the forms T-0160 left unprobed: `"7/0"`, `"13/45"`, `"7 45"` (space between numbers).
+- [ ] Probe the forms T-0160 left unprobed: `"7/0"`, `"7-0"`, `"1-0"`, `"13/45"`, `"0/45"`, `"7 45"` (space between numbers), `"7/2026"`, `"7-2026"`, `"12/1999"`, `"7/45 10:00"`; align the engine.
 - [ ] Unit tests with a pinned clock: "Jul-26", "7/1", "1-Jul", "July 1", "Jul/26", "7-1", "7/1 10:00"; "2/29" in a leap and a non-leap year.
 - [ ] `make check` green; reviewers approve.
 
