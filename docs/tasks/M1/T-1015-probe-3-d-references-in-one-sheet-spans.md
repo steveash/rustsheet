@@ -27,4 +27,4 @@ Follow-up of T-0197. Its tests assert the one-sheet-span cases without oracle ev
 Added probes/3d-ref-functions C15:C22 with excel-graph values (one-sheet spans in AREAS, COUNTBLANK, INDEX;
 wrapped spans in INDEX/MATCH/SUM). Engine matches 6 of 8; INDEX and MATCH over `IF(TRUE,span)` give
 `#REF!` where Excel gives `#VALUE!` (baselined: C18, C20). Findings in docs/excel-semantics/references.md.
-Follow-up: T-1024 (IF-wrapped span gap).
+Follow-up: T-1026 (IF-wrapped span gap).

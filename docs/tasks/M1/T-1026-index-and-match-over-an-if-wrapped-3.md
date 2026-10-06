@@ -1,5 +1,5 @@
 ---
-id: T-1024
+id: T-1026
 title: "INDEX and MATCH over an IF-wrapped 3-D span give #VALUE!, not #REF!"
 milestone: M1
 lane: functions-lookup
