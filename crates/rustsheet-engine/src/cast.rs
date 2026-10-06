@@ -337,11 +337,15 @@ impl Model {
     /// OFFSET or INDEX inside a scalar argument) is dereferenced: a single cell
     /// gives its value, a larger range is intersected with the row or column of
     /// `cell`, as Excel does in a scalar context. Literal ranges never get here:
-    /// static analysis wraps them in `@` at parse time.
+    /// static analysis wraps them in `@` at parse time. ISEVEN/ISODD call it too.
     ///
     /// A 1x1 array (the result of arithmetic on such a reference, for instance
     /// `INDIRECT("C3")*1`) is a scalar wrapped in an array and unwraps likewise.
-    fn dereference(&mut self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+    pub(crate) fn dereference(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         match result {
             CalcResult::Range { .. } => self.implicit_intersection_to_value(result, cell),
             CalcResult::Array(ref array) if array.len() == 1 && array[0].len() == 1 => {

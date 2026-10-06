@@ -17,7 +17,12 @@
         "A4": "=NA()",
         "A6": "=1/0",
         "B1": "y",
-        "B3": 4
+        "B3": 4,
+        "C1": 2,
+        "C2": 3,
+        "C3": 4.5,
+        "C4": -7,
+        "C5": 0
       }
     },
     {
@@ -33,7 +38,21 @@
         "H1": "=ISBLANK(Data!A1:A6)",
         "A9": "=ISNUMBER({1,\"a\",TRUE})",
         "A10": "=ISERROR({1,\"a\",TRUE}*1)",
-        "A11": "=ISBLANK(Data!A1:B3)"
+        "A11": "=ISBLANK(Data!A1:B3)",
+        "A15": "=ISEVEN(Data!C1:C5)",
+        "B15": "=ISODD(Data!C1:C5)",
+        "D15": "=ISEVEN(Data!A1:A6)",
+        "E15": "=ISODD(Data!A1:A6)",
+        "A22": "=ISBLANK(OFFSET(Data!A5,0,0))",
+        "B22": "=ISNUMBER(INDEX(Data!A1:A6,1))",
+        "C22": "=ISBLANK(INDEX(Data!A1:A6,5))",
+        "D22": "=ISTEXT(INDEX(Data!A1:A6,2))",
+        "J2": "=ISEVEN(Data!C1:C5)",
+        "K2": "=ISODD(Data!C1:C5)",
+        "L3": "=ISEVEN(Data!C1:D3)",
+        "M30": "=ISEVEN({2,3})",
+        "M32": "=ISODD({2,3})",
+        "M34": "=ISEVEN({4.5,-7,\"3\",TRUE})"
       }
     }
   ],
@@ -95,6 +114,28 @@
     "Calc!C10",
     "Calc!A11",
     "Calc!B11",
-    "Calc!A12"
+    "Calc!A12",
+    "Calc!B12",
+    "Calc!A13",
+    "Calc!B13",
+    "Calc!A15",
+    "Calc!B15",
+    "Calc!D15",
+    "Calc!E15",
+    "Calc!A22",
+    "Calc!B22",
+    "Calc!C22",
+    "Calc!D22",
+    "Calc!J2",
+    "Calc!K2",
+    "Calc!L3",
+    "Calc!M30",
+    "Calc!N30",
+    "Calc!M32",
+    "Calc!N32",
+    "Calc!M34",
+    "Calc!N34",
+    "Calc!O34",
+    "Calc!P34"
   ]
 }
