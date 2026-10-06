@@ -2192,7 +2192,6 @@ impl Function {
             Function::Sheet => "_xlfn.SHEET".to_string(),
             Function::Formulatext => "_xlfn.FORMULATEXT".to_string(),
             Function::Isoweeknum => "_xlfn.ISOWEEKNUM".to_string(),
-            Function::Ceiling => "_xlfn.CEILING".to_string(),
             Function::CeilingMath => "_xlfn.CEILING.MATH".to_string(),
             Function::CeilingPrecise => "_xlfn.CEILING.PRECISE".to_string(),
             Function::FloorMath => "_xlfn.FLOOR.MATH".to_string(),

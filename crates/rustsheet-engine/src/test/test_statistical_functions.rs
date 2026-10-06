@@ -23,6 +23,30 @@ fn test_frequency_basic() {
     assert_eq!(model._get_text("C3"), "1");
 }
 
+// Evidence: poi FormulaEvalTestData_Copy.xlsx EverythingTests row 936 (T-0947).
+#[test]
+fn test_mode_text_and_blank_reference_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "2");
+    model._set("A2", "text");
+    model._set("A4", "2");
+    model._set("B1", "=MODE(A1,\"1\",2,3)");
+    model._set("B2", "=MODE(1,\"1\",#DIV/0!,2,3)");
+    model._set("B3", "=MODE(A1,2,A3)");
+    model._set("B4", "=MODE(A1:A4,2)");
+    model._set("B5", "=MODE(A1,A2,\"1\",2)");
+    model._set("B6", "=MODE(1,1,)");
+    model.evaluate();
+    assert_eq!(model._get_text("B5"), "#VALUE!");
+    // An empty argument is unprobed and must keep its old behaviour.
+    assert_eq!(model._get_text("B6"), "1");
+    assert_eq!(model._get_text("B1"), "#VALUE!");
+    assert_eq!(model._get_text("B2"), "#VALUE!");
+    assert_eq!(model._get_text("B3"), "#VALUE!");
+    // Text and blanks inside a range are ignored.
+    assert_eq!(model._get_text("B4"), "2");
+}
+
 // ── MODE.SNGL ────────────────────────────────────────────────────────────────
 
 #[test]
@@ -347,4 +371,24 @@ fn test_logest_basic() {
     let b: f64 = model._get_text("D1").parse().unwrap();
     assert!((m - 3.0).abs() < 0.01, "m should be ≈3, got {m}");
     assert!((b - 2.0).abs() < 0.01, "b should be ≈2, got {b}");
+}
+
+// Evidence: poi FormulaEvalTestData_Copy.xlsx EverythingTests J888, F912 (T-0949).
+#[test]
+fn test_maxa_mina_single_cell_references() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "y");
+    model._set("A3", "TRUE");
+    model._set("A4", "FALSE");
+    model._set("A5", "534");
+    model._set("B1", "=MAXA(A1,A2)");
+    model._set("B2", "=MINA(A3,A5,A5)");
+    model._set("B3", "=MAXA(A4,A1)");
+    model._set("B4", "=MINA(A5,A4)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "0");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("B3"), "0");
+    assert_eq!(model._get_text("B4"), "0");
 }

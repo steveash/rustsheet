@@ -1,5 +1,5 @@
 use super::{
-    reference_operators::{intersection_operand, tight_operand},
+    reference_operators::{intersection_operand, tight_operand, union_text},
     stringify::{stringify_reference, DisplaceData},
     ArrayNode, Node, Reference,
 };
@@ -381,6 +381,10 @@ fn to_string_moved(
                 intersection_operand(text, n, is_left)
             };
             format!("{} {}", operand(left, true), operand(right, false))
+        }
+        OpUnionKind { left, right } => {
+            let text = |n| to_string_moved(n, move_context, locale, language);
+            union_text(&text(left), left, &text(right), locale)
         }
         OpConcatenateKind { left, right } => format!(
             "{}&{}",

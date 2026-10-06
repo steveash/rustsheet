@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "COUNT direct text arguments: which text forms count as numbers (T-0252)",
+  "tags": [
+    "M2",
+    "statistical",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": "=COUNT(\"10:00\",\"x\")",
+        "C2": "=COUNT(\"1/2/2020\",\"x\")",
+        "C3": "=COUNT(\"$1\",\"x\")",
+        "C4": "=COUNT(\"1%\",\"x\")",
+        "C5": "=COUNT(\"1,000\",\"x\")",
+        "C6": "=COUNT(\" 1\",\"x\")",
+        "C8": "=COUNT(\"6 PM\",\"x\")",
+        "C9": "=COUNT(\"x\",\"x\")",
+        "C10": "=COUNT(\"1e3\",\"x\")",
+        "C11": "=COUNT(\"inf\",\"x\")",
+        "C12": "=COUNT(\"TRUE\",\"x\")",
+        "C13": "=COUNT(\"12:60\",\"x\")",
+        "C14": "=COUNT(\"1/1/1900\",\"x\")"
+      }
+    }
+  ],
+  "expected": {}
+}

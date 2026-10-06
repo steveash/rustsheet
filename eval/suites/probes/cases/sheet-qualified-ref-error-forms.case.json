@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Edge forms of a sheet-qualified #REF!: unquoted, inside SUM, nonexistent sheet prefix, SHEET() of an error-literal name, and defined names whose body is a bare error literal (T-0169). See docs/excel-semantics/references.md \"A sheet-qualified #REF! is #REF!\"",
+  "tags": ["M1", "references", "probe"],
+  "names": {
+    "badref": "=Sheet1!#REF!",
+    "na_name": "=#N/A",
+    "div_name": "=#DIV/0!",
+    "ref_name": "=#REF!"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=Sheet1!#REF!",
+        "A2": "=SUM(Sheet1!#REF!)",
+        "A3": "=NoSuchSheet!#REF!",
+        "A4": "=SHEET(badref)",
+        "A5": "=na_name",
+        "A6": "=div_name",
+        "A7": "=ref_name",
+        "A8": "=badref",
+        "A9": "=ISERROR(Sheet1!#REF!)",
+        "A10": "=SHEET(na_name)"
+      }
+    }
+  ],
+  "expected": {}
+}

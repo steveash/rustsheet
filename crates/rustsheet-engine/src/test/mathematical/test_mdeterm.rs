@@ -70,3 +70,15 @@ fn test_mdeterm_wrong_arg_count() {
     model.evaluate();
     assert_eq!(model._get_text("B1"), "#ERROR!");
 }
+
+#[test]
+fn test_mdeterm_blank_cell_is_value_error() {
+    let mut model = new_empty_model();
+    // A1 = 1, the rest of A1:B2 blank (poi MatrixFormulaEvalTestData H30)
+    model._set("A1", "1");
+    model._set("D1", "=MDETERM(A1:B2)");
+    model._set("D2", "=MDETERM(A1)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#VALUE!");
+    assert_eq!(model._get_text("D2"), "1");
+}

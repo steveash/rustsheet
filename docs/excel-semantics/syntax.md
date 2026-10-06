@@ -21,6 +21,12 @@ Evidence: gen-m1/6462bf910ef9f28f Calc!A66, A130; gen-m1/10f579127ffb6d9b Calc!A
 A153 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 
+## `&` binds looser than `+ - * /`
+Rule: `=2.5+0.5&1E+3` adds first, then concatenates (`"3"&"1000"` = "31000"), so a printed
+formula needs parentheses to keep a `&` operand of an arithmetic operator (`("a"&1)+1`, T-0157).
+Evidence: gen-m1/57fe331cb7611dbf (`=(((0.1&1E+3)+100)<>...`) and the gen cases with `=2.5+0.5&1E+3`.
+Status: VERIFIED
+
 ## Array constants take a single optional sign on a number literal
 Rule: inside `{...}` an item is a literal, optionally preceded by one `+` or `-` that is directly
 attached to a number. `{+1}` = 1, `{-1}` = -1, `{-1.5E1}` = -15, `{1,-2,+3}` sums to 2. Every other
@@ -28,6 +34,8 @@ sign form tested was a syntax error, so Excel for the web refuses the whole work
 mechanism as `=IF(TRUE)` above): sign runs `{--1}`, `{++1}`, `{-+1}`, `{+-1}`, `{---1}`, `{1,--2}`;
 a space after the sign `{- 1}`, `{+ 1}`; a sign on a boolean, text or error literal `{-TRUE}`,
 `{+"a"}`, `{-#N/A}`, `{+#N/A}`.
+Array-constant items that are expressions (`{"a"&CHAR(7)&"b","c"}`) are rejected the same way (found bisecting
+the T-0957 probe, excel-graph 2026-10-05); the engine rejects them too (`parse_array_item`).
 Evidence: eval/suites/probes/cases/array-constant-signs.case.json (oracle: excel-graph, 2026-10-05,
 T-0147) for the accepted forms; each rejected form was sent as a single-cell workbook
 (e.g. `{"sheets":[{"name":"Sheet1","cells":{"A1":"=SUM({--1})"}}]}`) and got createSession 501
@@ -44,7 +52,7 @@ error ("Formula is nested too deeply"); typed into a cell through the API it is 
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each operator one, so up
 to 127 nested parentheses or function calls and up to 255 terms in one operator chain (`=A1+A2+...`)
-are accepted. Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
+are accepted; union operand lists too (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
 text at 8,192 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer

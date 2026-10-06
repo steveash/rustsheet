@@ -2,6 +2,7 @@ mod isomitted;
 
 use crate::{
     calc_result::CalcResult,
+    cast::calc_result_to_array_node,
     defined_names::ParsedDefinedName,
     expressions::{
         parser::{ArrayNode, Node},
@@ -9,9 +10,25 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
+    functions::math_and_trigonometry::array_size::check_array_size,
     get_all_timezones,
     model::Model,
 };
+
+/// Applies a boolean test to every element of a 2-D array.
+fn map_array(
+    values: Vec<Vec<ArrayNode>>,
+    test: &impl Fn(&ArrayNode) -> bool,
+) -> Vec<Vec<ArrayNode>> {
+    values
+        .into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|v| ArrayNode::Boolean(test(&v)))
+                .collect()
+        })
+        .collect()
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn get_system() -> String {
@@ -24,103 +41,65 @@ fn get_system() -> String {
 }
 
 impl Model {
-    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
+    /// Shared body of the IS* type tests (ISNUMBER, ISERROR, ...).
+    ///
+    /// A multi-cell range or array argument is tested element by element and
+    /// the result spills with the same shape (probes/is-functions-array-lift,
+    /// excel-graph; docs/excel-semantics/information.md). A single value
+    /// yields one boolean.
+    fn is_predicate(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        test: impl Fn(&ArrayNode) -> bool,
+    ) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } => {
+                // DEVIATION (decision 0014): Excel spills any range that fits the grid; the
+                // shared allocation bound applies (docs/excel-semantics/arrays.md).
+                let rows = (right.row - left.row + 1).max(0) as usize;
+                let columns = (right.column - left.column + 1).max(0) as usize;
+                if let Some((error, message)) = check_array_size(rows, columns) {
+                    return CalcResult::new_error(error, cell, message);
+                }
+                let values = self.evaluate_range(left, right);
+                CalcResult::Array(map_array(values, &test))
+            }
+            CalcResult::Array(values) => CalcResult::Array(map_array(values, &test)),
+            other => CalcResult::Boolean(test(&calc_result_to_array_node(other))),
+        }
+    }
+
+    pub(crate) fn fn_isnumber(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Number(_)))
     }
     pub(crate) fn fn_istext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::String(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::String(_)))
     }
     pub(crate) fn fn_isnontext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::String(_) => return CalcResult::Boolean(false),
-                _ => {
-                    return CalcResult::Boolean(true);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(args, cell, |v| !matches!(v, ArrayNode::String(_)))
     }
     pub(crate) fn fn_islogical(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Boolean(_) => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Boolean(_)))
     }
     pub(crate) fn fn_isblank(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::EmptyCell => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Empty))
     }
     pub(crate) fn fn_iserror(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { .. } => return CalcResult::Boolean(true),
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Error(_)))
     }
     pub(crate) fn fn_iserr(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error { error, .. } => {
-                    if Error::NA == error {
-                        return CalcResult::Boolean(false);
-                    } else {
-                        return CalcResult::Boolean(true);
-                    }
-                }
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(
+            args,
+            cell,
+            |v| matches!(v, ArrayNode::Error(e) if *e != Error::NA),
+        )
     }
     pub(crate) fn fn_isna(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Error {
-                    error: Error::NA, ..
-                } => {
-                    return CalcResult::Boolean(true);
-                }
-                _ => {
-                    return CalcResult::Boolean(false);
-                }
-            };
-        }
-        CalcResult::new_args_number_error(cell)
+        self.is_predicate(args, cell, |v| matches!(v, ArrayNode::Error(Error::NA)))
     }
 
     // Returns true if it is a reference or evaluates to a reference
@@ -133,7 +112,8 @@ impl Model {
             Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
             | Node::OpRangeKind { .. }
-            | Node::OpIntersectKind { .. } => CalcResult::Boolean(true),
+            | Node::OpIntersectKind { .. }
+            | Node::OpUnionKind { .. } => CalcResult::Boolean(true),
             // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
             Node::FunctionKind {
                 kind: crate::functions::Function::Index,
@@ -143,6 +123,13 @@ impl Model {
                 CalcResult::Range { .. }
             )),
             Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
+            // A defined name is a reference if what it stands for is one, a single cell included
+            // (Excel-cached: upstream ISREF.xlsx Sheet1!A14-A18; probes/isref-names-filter-if-empty).
+            Node::DefinedNameKind((name, scope, _)) => CalcResult::Boolean(matches!(
+                self.parsed_defined_names
+                    .get(&(*scope, name.to_lowercase())),
+                Some(ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_))
+            )),
             _ => CalcResult::Boolean(false),
         }
     }
@@ -267,8 +254,16 @@ impl Model {
                         ParsedDefinedName::RangeReference(range) => {
                             return CalcResult::Number(range.left.sheet as f64 + 1.0)
                         }
+                        // Excel: SHEET of a name whose body is an error literal is that error
+                        // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!").
+                        ParsedDefinedName::ErrorLiteral(error) => {
+                            return CalcResult::new_error(
+                                error.clone(),
+                                cell,
+                                format!("Defined name \"{name}\" is an error."),
+                            );
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula
-                        | ParsedDefinedName::ErrorLiteral(_)
                         | ParsedDefinedName::LambdaDefinition(..) => {
                             return CalcResult::Error {
                                 error: Error::ERROR,

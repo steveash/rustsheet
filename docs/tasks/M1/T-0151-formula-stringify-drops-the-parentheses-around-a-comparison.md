@@ -3,7 +3,7 @@ id: T-0151
 title: "Formula stringify drops the parentheses around a comparison inside & (xlsx-imported formulas; 1 poi known failure)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -47,3 +47,6 @@ What the gap triage found (2026-10-05):
 ## Out of scope
 - Other precedence or printing changes the evidence does not show (union, intersection,
   operator-chain depth: T-0128, T-0134, T-0148).
+
+## Outcome
+`stringify` now parenthesises a comparison operand of `&` (either side) and a comparison on the right of a comparison, so printed formulas re-parse to the same tree (the importer round-trips through `to_rc_format`). The new `comparison_operands_keep_their_parentheses` test fails without the fix. Eval: poi known failures 916 -> 915 (FormulaEvalTestData_Copy.xlsx EverythingTests!F27 fixed); nothing else changed.

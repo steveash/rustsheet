@@ -49,10 +49,16 @@ Status: VERIFIED
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). IF/CHOOSE in ISREF: T-0235.
+A defined name that stands for a cell or range is a reference to ISREF, a single cell included
+(`ISREF(TextCell)` and `ISREF(Cells)` TRUE; a LAMBDA name, a constant name `=7` and an undefined name are FALSE), and FILTER's `if_empty` range is its
+values, never a reference (`FILTER(A1:A1,B1:B1,D1:D2)` spills D1:D2, `ISREF(FILTER(..))` FALSE, `SUM(..)` = 30).
+Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; to be added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
+bound to a reference is TRUE (A19-A26, not implemented: T-0963).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
 COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT);
-ISREF of INDEX in `fn_isref` (functions/information/mod.rs)
-Tasks: T-0216, T-0235
+ISREF of INDEX and of defined names in `fn_isref` (functions/information/mod.rs),
+FILTER if_empty range in `fn_filter` (functions/spill_functions.rs)
+Tasks: T-0216, T-0235, T-0940
 
 ## Intersection operator (space)
 Rule: `A B` (a space between two references) gives the reference to the cells both contain. In a
@@ -114,15 +120,18 @@ operands. Accepted forms:
 - `=Data!A1 Other!Z99` (different sheets, no shared coordinates) is `#VALUE!`, like overlapping cross-sheet
   operands: the sheet check comes before the disjoint check.
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5
-(oracle: excel-graph, 2026-10-05, T-0138), H6:H12 (2026-10-06, T-0161). The refused workbooks, LET and
-TRIMRANGE (the case builder cannot write `_xlpm.` names or the `_xlfn.TRIMRANGE` prefix yet, T-0166),
-come from scratch runs of one formula each (T-0138, T-0161); each refusal was `FileCorruptTryRepair`,
-and the same CHOOSEROWS and IFERROR calls load on their own (=2).
+(oracle: excel-graph, 2026-10-05, T-0138), H6:H12 (2026-10-06, T-0161). H13 `=A1:A3 LET(x,A2:B2,x)` and
+H14 `=A1:A3 TRIMRANGE(A2:B2)` are both 2 (2026-10-06, T-0166; the case builder now writes `_xlpm.` bound
+names and `_xlfn.` prefixes; without them Excel refuses the file or gives `#NAME?`). The refused
+workbooks come from scratch runs of one formula each (T-0138, T-0161); each refusal was
+`FileCorruptTryRepair`, and the same CHOOSEROWS and IFERROR calls load on their own (=2).
+UNVERIFIED builder edge: a LET name that equals a function name or is used before its declaration is
+still written with `_xlpm.`; how Excel stores that is not probed.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
 future function names, LAMBDA definitions and calls, and `@` operands are accepted; `@` and union
-operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP to arrays, so those three
+operands are T-0149). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
 
@@ -148,11 +157,13 @@ evaluates to `#REF!`. That holds as a cell formula (`='1'!#REF!`) and as the bod
 with `sale_1` and `sale_2` both defined as `Sheet1!#REF!`, `=sale_1*sale_2` is `#REF!`. With an
 undefined name on the left, `=aaa*sale_1` is `#NAME?`, so the left operand's error wins.
 Evidence: poi/customIndexedColors.xlsx `_TGK_HIDDEN!B1` (Excel 16.0) and poi/49783.xlsx Sheet1!A2, B2
-(Excel 14.0); desktop Excel cached values. The unquoted form `=Sheet1!#REF!` and the form inside a
-function (`=SUM(Sheet1!#REF!)`) have no Excel cell yet; nor do a nonexistent sheet prefix and defined-name bodies that are other bare error literals (all hand expectations, T-0169).
-Status: VERIFIED (cell formula with a quoted sheet, and defined-name body)
-Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body); unit tests in test/test_sheet_qualified_ref_error.rs (unquoted and SUM forms are hand expectations).
-Tasks: T-0152
+(Excel 14.0); desktop Excel cached values. Probe sheet-qualified-ref-error-forms (oracle: excel-graph, 2026-10-06, T-0169)
+confirms: `=Sheet1!#REF!`, `=SUM(Sheet1!#REF!)` and `=NoSuchSheet!#REF!` are all `#REF!`; names with a bare error-literal
+body (`=#N/A`, `=#DIV/0!`, `=#REF!`) evaluate to that error; and `SHEET(name)` of an error-literal name is that same error
+(`#REF!` for `Sheet1!#REF!`, `#N/A` for `=#N/A`), not a distinct error.
+Status: VERIFIED
+Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body), `fn_sheet` (SHEET of such a name).
+Tasks: T-0152, T-0169
 
 ## Disjoint intersection is #NULL!
 Rule: an intersection of references that share no cell is `#NULL!` (all 51 `intersection/disjoint` cells):
@@ -178,7 +189,63 @@ the union down to one cell gives that cell's value. `(Data!E4,Data!E4)` → `#VA
 `((Data!A2,Data!E8),Data!B6)` → `#VALUE!`; `(Data!D1:D12,Data!A1:A12) Data!D11` = "a" (Data!D11).
 Evidence: gen-m1/c940d3cfb0d3b083 Calc!A1, A2, A14, A25, A12; all 218 value-context cells are
 `#VALUE!` and all 32 `union/cut-by-cell` cells give the cell (oracle: excel-graph, 2026-10-05, T-0109).
+An intersection that leaves two areas is `#VALUE!` even when both are the same cell:
+`=A1:A3 (A2:B2,A2)` (probes/intersection-function-operands H5, see "Intersection operands must be references").
 Status: VERIFIED
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`, `union_text`);
+reference_operators.rs (`Model::get_union`, `Model::get_intersection` over the areas of a union)
+Tasks: T-0134
+
+## Union: parsing and evaluation the engine chose without evidence
+Rule: what the engine does with unions beyond the forms gen-m1 measured. None of it is probed.
+- The comma is the union operator only directly inside parentheses: `(A1,B2)` is one union,
+  `SUM(A1,B2)` two arguments, `SUM((A1,B2))` one union argument, and `=A1,B2` is a syntax error.
+- Precedence: tighter than every operator but the other reference operators, as Excel's precedence
+  table lists `,` with `:` and the space. `(A1,B1 C1)` is `(A1,(B1 C1))` and `(A1+B1,C1)` is
+  `A1+(B1,C1)`, so it gives `#VALUE!`.
+- Operands must be references, as for the intersection: `(1,A1)`, `(A1,"a")`, `(A1,#N/A)`,
+  `(A1,SUM(B1))` and `(A1,(B1+1))` are syntax errors. `#REF!`, `@ref` and reference-returning calls
+  are accepted.
+- In a value context an operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` is `#REF!`.
+- A union cut by an intersection: the cut runs on each pair of areas. Pairs with no shared cell
+  are dropped, and nothing left is `#NULL!`. A pair on different sheets is `#VALUE!`
+  (`(Data!A1:A3,Other!A1:A3) Data!A2`), as for two plain areas. Further cuts can bring several
+  areas down to one: `(A1:A12,D1:D12) A4:D4 D4` is D4.
+- In comma-decimal locales the union operator is the argument separator `;`, printed the same way.
+- Printing: a union always carries its parentheses, and a left operand that is a union loses its
+  own: `((A1,B2),C3)` prints as `(A1,B2,C3)`, which is the same tree.
+- `ISREF((A1,B2))` is TRUE.
+- Known gaps, where Excel surely differs: a union reaching a function gets `#VALUE!`
+  (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently takes its fallback for
+  one, and so does a union returned by IF, CHOOSE or LET (`LET(x,(A1,B2),x A1)`). A defined name
+  whose body is a top-level union (`Sheet1!$A$1,Sheet1!$B$2`, the usual form of
+  `_xlnm.Print_Area`) does not parse, though Excel accepts multi-area names. The engine has no
+  multi-area value yet (spec T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
+  `OpUnionKind` unwrapped, unlike Range and Intersect nodes; T-0133 should revisit it.
+Status: UNVERIFIED (probe pending, T-0187: precedence, operand refusal, errors, cross-sheet, ISREF,
+FORMULATEXT, multi-area names; unions as function arguments, T-0133)
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`); reference_operators.rs
+Tasks: T-0134, T-0133
+
+## Union area cap
+Rule: intersecting unions multiplies their areas (`(A1,A2,A3) (A1:A3,B1:B3)` has six pairs), and
+balanced nesting (`((A1,A2),(A3,A4))`) keeps a union's depth logarithmic, so the parser's depth
+cap does not bound its leaves. The engine bounds every area list it builds, not just products, at
+65,536 areas (`MAX_AREAS`), with `#VALUE!` past it: an intersection of more than `MAX_AREAS` pairs,
+and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each operand before
+the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
+not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
+intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
+repeat that per three characters of formula, so one top-level reference expression may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it; a reference-returning function
+used as an operand (`INDEX`, `OFFSET`, `IF`) starts its own budget, so total work stays linear in
+formula length. In a value context a union
+keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
+its result past them; it would differ where later cuts bring the areas back down to one, or where
+a later operand's error would come first.
+Status: DEVIATION (decision 0014)
+Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `Model::union_areas`,
+`Model::count_union_areas`, `Model::intersect_areas`)
 Tasks: T-0134
 
 ## Range corners may both carry the sheet prefix
@@ -209,11 +276,12 @@ previous entry). With column or row corners the second prefix is not accepted: `
 stored: the workbook fails to load in Excel for the web (createSession 501 FileCorruptTryRepair),
 so there is no value to match. Each was isolated as a one-formula case on the Data/Calc layout of
 the probe case (`Calc!A1` = the formula) and failed on its own; re-run `rustsheet-oracle fill -b excel-graph`
-on such a case to reproduce (2026-10-05). The engine gives `#ERROR!` (parse failure) where Excel gives `#NAME?`.
+on such a case to reproduce (2026-10-05).
+Implemented: only these probed shapes lex as an identifier (sheet prefix kept, so the formula text round-trips) that evaluates to `#NAME?`; other parse failures keep `#ERROR!`.
 Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (oracle: excel-graph,
 2026-10-05, T-0139); A2 and A4 are the single-prefix forms.
 Status: VERIFIED (web)
-Tasks: T-0139
+Tasks: T-0139, T-0145
 
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
@@ -226,9 +294,35 @@ Status: VERIFIED (Excel-cached)
 Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0946
 
-## OFFSET: negative height or width (known divergence)
-Rule: Excel accepts a negative height or width (the range extends up or left) but `fn_offset` returns
-`#VALUE!` (it follows the documentation, not Excel). No oracle evidence yet.
-Evidence: none; see T-0956.
-Status: UNVERIFIED
+## OFFSET negative and fractional height/width
+Rule: the height/width `h` (after the rows/cols offset has been applied, the "anchor" is the reference's
+top-left cell) names an area from the anchor to `floor(h - 1)` cells on when `h > 0`, or `ceil(h + 1)`
+cells on when `h < 0`; the area is the span between the two, so a negative size extends up/left.
+`OFFSET(A10,0,0,-3,1)` is A8:A10 (and width `-3` on C10 is A10:C10). The sizes in (0, 1) reach one cell
+back (`OFFSET(A10,0,0,0.5,1)` is A9:A10), those in (-1, 0) one cell on (`-0.5` is A10:A11), and
+fractions otherwise truncate toward zero (1.5 and -1.5 are one cell, -2.9 is two cells up, 2.5 two down).
+Only exactly 0 is `#REF!` (as is an area reaching past row 1/column A or the sheet's end: `OFFSET(A5:B6,0,0,,-2)` is `#REF!`). A multi-cell reference
+anchors at its top-left: `OFFSET(A5:B6,0,0,-2)` is A4:B5.
+Evidence: probe offset-negative-height-width (oracle: excel-graph, 2026-10-06, T-0956; 80 cells).
+Status: VERIFIED
+Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0956
+
+## ADDRESS leaves a [Book]Sheet name unquoted
+Rule: ADDRESS does not quote a `sheet_text` made of a `[workbook]` part and a plain sheet name:
+`ADDRESS(2,3,3,TRUE,"[Book1]Sheet1")` is `[Book1]Sheet1!$C2`, while names with spaces or `$` are
+quoted (`'Me lo invente'!$C$2`, `'A Wird One$'!$A$1`) and `"Sheet2"` is not.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!F128;
+ironcalc-calc LOOKUP_AND_REFERENCE/ADDRESS.xlsx (Excel-cached) Sheet1!E2, B33, B38.
+Status: VERIFIED (Excel-cached). Open (unprobed): `[Book1]My Sheet` and brackets elsewhere in the name.
+Tasks: T-0984
+
+## T of a multi-cell range is not intersected
+Rule: in a legacy formula, `T(range)` over several cells is not the implicitly intersected cell:
+`T(L7:N7)` in N1352 is "" although N7 is text, `T(J1351:J1353)` in O1352 is "" although
+J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VALUE!`.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
+O1352 (all top-left cells are non-text: 545, 1.001, blank).
+Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
+cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array formulas.
+Tasks: T-0985

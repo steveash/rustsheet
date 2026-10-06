@@ -13,6 +13,25 @@ a reference to an empty cell (`INDIRECT(...)` = 0, `ISREF(...)` = TRUE, `ROW(...
 2026-10-04. Never take oracle values as evidence for references to missing sheets
 (docs/architecture/oracle.md, "Known divergences"; desktop wins per decision 0030).
 
+## INDIRECT's a1 argument is coerced like a boolean; text must be TRUE/FALSE
+Rule: `a1` is coerced like a logical argument: a nonzero number is TRUE (`INDIRECT("H2",2)` and
+`INDIRECT("H2",-1)` = 5, `"TRUE"` text = TRUE), `0` is FALSE, so `INDIRECT("H2",0)` reads "H2" as R1C1
+and is `#REF!`, while `INDIRECT("R2C8",0)` = 5. Empty-string text is `#VALUE!` in both styles (B4, B10) and `"x"` is `#VALUE!` in A1 style (B5).
+Not probed: `"FALSE"` text and booleans read from cells.
+Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json B3:B10 (oracle: excel-graph, 2026-10-05, T-0957).
+Status: VERIFIED (Excel for the web only; the engine matches all of these)
+
+## INDIRECT R1C1 relative offsets
+Rule: `INDIRECT("R[-1]C[6]",FALSE)` is relative to the cell holding the formula (`R[-11]C[6]` in B12 reads H1, "data";
+B11's `R[-1]C[6]` = 0 reads the empty H10). An offset that leaves the sheet is not `#REF!` (`R[-20]C` in B15 is 0, an
+empty cell); whether it wraps or clamps is unknown, because the probe's target cell is empty. A result row exactly at the last row (`R[1048560]C` in B16)
+is also fine.
+RustSheet today: `parse_r1c1_number` (engine utils.rs) wraps and returns `#REF!` when the offset magnitude is
+at least the sheet size; T-0960 should check both that and the wrap itself against the oracle.
+Evidence: indirect-text-broadcast.case.json B11:B16 (oracle: excel-graph, 2026-10-05, T-0957).
+Status: UNVERIFIED for the wrap-around itself (T-0960)
+Tasks: T-0960
+
 ## MATCH on a 2-D lookup_array is #N/A; argument errors win
 Rule: `MATCH` with a lookup_array of more than one row and column returns `#N/A` even when the value
 is in it (`=MATCH(Data!C$5,Data!A5:C9,1)` with C5 = 2 inside A5:C9 → `#N/A`; no top-level 2-D MATCH
@@ -25,11 +44,33 @@ Tasks: T-0210, T-0224
 
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
-(`=VLOOKUP("a",Data!E2:E6,3)` → `#N/A`; index -2.5 too). Found, a non-numeric text index is `#REF!`
-(not `#VALUE!`), an index of -1E+15 is `#REF!`, and "1.5" coerces to 1.
-Evidence: gen-m2/1b6ceed7489e0800 A24, 2cfe279fe77a000d A85, 61cacc22c4244179 A310,
-caa981b0753f455c A182, 629e6e8b76fab8b9 A53, cbdabe32a32a4012 A87 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+(`=VLOOKUP("a",Data!E2:E6,3)` → `#N/A`; indexes -1, 0, -2.5 and past the table too). Only a found
+value goes on to index validation:
+- An index below 1 after truncation (-1, 0, 0.5, a blank cell) is `#VALUE!`; one past the table, or
+  below the 32-bit integer range (-1E+15, -2147483649), is `#REF!`.
+- A *reference* index is read only then: a referenced cell holding non-numeric text or an error is
+  `#REF!` (not `#VALUE!`, not the error itself); numeric text ("1.5") and booleans coerce.
+- A *value* index (a literal or a formula result) is coerced before the search, so literal text
+  (`"a"`, `""`) is `#VALUE!` and an error (`1/0`, `NA()`) is that error even when nothing is found.
+  Arguments fail left to right: lookup_value, then the index, then range_lookup (`VLOOKUP(2,A1:C3,"a",1/0)`
+  is `#VALUE!`).
+Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); gen-m2/1b6ceed7489e0800 A24,
+2cfe279fe77a000d A85, 61cacc22c4244179 A310, caa981b0753f455c A182, 629e6e8b76fab8b9 A53,
+cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
+Cut-off (probes/lookup-index-shapes H19-H36, excel-graph, 2026-10-06, T-0250): an index of
+-2147483648 is `#REF!`, -2147483647, -65536, -32769, -32768 and -32767 are `#VALUE!`, in VLOOKUP and
+HLOOKUP alike; not found is `#N/A` for all of them. A fractional index next to the cut-off is unprobed.
+Index shapes (same probe): `OFFSET(E1,..)` and `INDIRECT("E1")` results are references (a cell holding
+text or an error is `#REF!` when found, `#N/A` when not found). So is `INDEX(E1:E4,2)`: text or an
+error in the INDEXed cell is `#REF!` found / `#N/A` not found, **not** implemented yet (the engine
+coerces the INDEX value: `#VALUE!` / the error), baselined in probes H2, H3, H11, H12 (T-0250 follow-up).
+A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
+from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
+value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
+`#REF!` and `#N/A` when not found (K7); whether it spills into J11 is unprobed.
 Status: VERIFIED
+Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
+(crates/rustsheet-engine/src/functions/lookup_and_reference/index_arg.rs), shared by VLOOKUP and HLOOKUP.
 Tasks: T-0211
 
 ## Approximate-match lookups: type-skipping binary search

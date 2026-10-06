@@ -1,0 +1,10 @@
+name = "fixtures"
+description = "Hand-built xlsx files for behavior a spec case cannot express (raw XML such as phonetic runs). Excel oracle sidecars sit next to each file."
+kind = "xlsx"
+root = "cases"
+include = ["**/*.xlsx"]
+license = "Apache-2.0"
+origin = "hand (inputs) + Excel oracle (expectations)"
+gate = true
+baseline = "cells"
+milestone = ["M1"]

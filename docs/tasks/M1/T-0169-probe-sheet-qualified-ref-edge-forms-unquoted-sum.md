@@ -3,7 +3,7 @@ id: T-0169
 title: "Probe sheet-qualified #REF! edge forms (unquoted, SUM, missing sheet, SHEET(name), bare error-literal name bodies)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0152 made `Sheet!#REF!` lex as `#REF!` and defined names with an error-literal
 
 ## Out of scope
 -
+
+## Outcome
+Probe `sheet-qualified-ref-error-forms` (10 cells, Excel oracle) added. Only difference: `SHEET(name)` of an error-literal name returned `#ERROR!`; now returns the literal's error. references.md updated.

@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::{parse_excel_number, parse_finite_number};
+use crate::number_format::parse_excel_number;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -110,10 +110,15 @@ impl Model {
                 CalcResult::Number(value) => {
                     f(value);
                 }
-                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                // A single-cell reference reads like a one-cell range: text counts as 0 and
+                // a boolean as 1/0 (coercion.md "MAXA / MINA", poi EverythingTests J888, F912).
+                CalcResult::Boolean(value) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                CalcResult::String(_) if matches!(arg, Node::ReferenceKind { .. }) => {
+                    f(0.0);
+                }
+                CalcResult::String(value) => {
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
@@ -336,11 +341,13 @@ impl Model {
                 }
                 // COUNT(5,) is 2 (probes/average-value-args F16).
                 CalcResult::EmptyArg => result += 1.0,
-                // Only tests number-ness, so the 15-digit cut cannot change the answer
+                // Direct text counts when it coerces to a number as SUM's does, clock, date,
+                // currency and percent text included (probes/count-direct-text; T-0252). Only
+                // number-ness matters, so the 15-digit cut cannot change the answer
                 // (docs/excel-semantics/numbers.md "15-digit literal parsing").
                 CalcResult::String(s)
                     if !matches!(arg, Node::ReferenceKind { .. })
-                        && parse_finite_number(&s).is_some() =>
+                        && self.cast_number(&s).is_some_and(f64::is_finite) =>
                 {
                     result += 1.0;
                 }

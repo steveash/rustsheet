@@ -75,6 +75,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
+        | Node::OpUnionKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
@@ -165,18 +166,19 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             // noop for now
         }
         Node::FunctionKind { kind, args } => {
-            let arg_count = args.len();
-            let signature = get_function_args_signature(kind, arg_count);
-            for index in 0..arg_count {
-                if matches!(signature[index], Signature::Scalar)
+            let signature = get_function_args_signature(kind, args.len());
+            for (index, arg) in args.iter_mut().enumerate() {
+                // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
+                // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
+                if matches!(signature.get(index), Some(Signature::Scalar))
                     && matches!(
-                        run_static_analysis_on_node(&args[index]),
+                        run_static_analysis_on_node(arg),
                         StaticResult::Range(_, _) | StaticResult::Unknown
                     )
                 {
-                    add_implicit_intersection(&mut args[index], true);
+                    add_implicit_intersection(arg, true);
                 } else {
-                    add_implicit_intersection(&mut args[index], false);
+                    add_implicit_intersection(arg, false);
                 }
             }
             // There are some function that will never add an automatic II:
@@ -232,6 +234,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }
         | Node::OpIntersectKind { .. }
+        | Node::OpUnionKind { .. }
         | Node::DefinedNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::TableNameKind(_)
@@ -269,13 +272,12 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             remove_redundant_implicit_intersection(right, add);
         }
         Node::FunctionKind { kind, args } => {
-            let arg_count = args.len();
-            let signature = get_function_args_signature(kind, arg_count);
-            for index in 0..arg_count {
+            let signature = get_function_args_signature(kind, args.len());
+            for (index, arg) in args.iter_mut().enumerate() {
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not.
-                let child_add = matches!(signature[index], Signature::Scalar);
-                remove_redundant_implicit_intersection(&mut args[index], child_add);
+                let child_add = matches!(signature.get(index), Some(Signature::Scalar));
+                remove_redundant_implicit_intersection(arg, child_add);
             }
         }
     };
@@ -360,8 +362,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             column2,
             ..
         } => StaticResult::Range(row2 - row1, column2 - column1),
-        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
-            // TODO: We could do a bit better here
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
         Node::ReferenceKind { .. } => StaticResult::Scalar,
@@ -373,13 +374,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::OpPowerKind { left, right, .. }
         | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
 
-        // defined names
-        Node::DefinedNameKind(_) => {
-            // TODO: We could do better if we tracked the defined names
-            StaticResult::Unknown
-        }
+        // Defined names and tables: their shape is not tracked.
+        Node::DefinedNameKind(_) | Node::TableNameKind(_) => StaticResult::Unknown,
         Node::NamedVariableKind { .. } => StaticResult::Scalar,
-        Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
@@ -1697,19 +1694,19 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
         Function::ErrorType => not_implemented(args),
-        Function::Isblank => not_implemented(args),
-        Function::Iserr => not_implemented(args),
-        Function::Iserror => not_implemented(args),
+        Function::Isblank => scalar_arguments(args),
+        Function::Iserr => scalar_arguments(args),
+        Function::Iserror => scalar_arguments(args),
         Function::Iseven => not_implemented(args),
         Function::Isformula => not_implemented(args),
-        Function::Islogical => not_implemented(args),
-        Function::Isna => not_implemented(args),
-        Function::Isnontext => not_implemented(args),
-        Function::Isnumber => not_implemented(args),
+        Function::Islogical => scalar_arguments(args),
+        Function::Isna => scalar_arguments(args),
+        Function::Isnontext => scalar_arguments(args),
+        Function::Isnumber => scalar_arguments(args),
         Function::Isodd => not_implemented(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
-        Function::Istext => not_implemented(args),
+        Function::Istext => scalar_arguments(args),
         Function::Na => StaticResult::Scalar,
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),

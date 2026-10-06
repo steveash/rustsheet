@@ -68,6 +68,20 @@ fn invalid_date(value: f64) -> Formatted {
     }
 }
 
+/// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
+/// blank formats as 0 (see "An empty format string returns empty text" in
+/// docs/excel-semantics/number-formats.md).
+pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatted {
+    if value.is_none() && format.is_empty() {
+        return Formatted {
+            color: None,
+            text: String::new(),
+            error: None,
+        };
+    }
+    format_number(value.unwrap_or(0.0), format, locale)
+}
+
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
@@ -185,10 +199,12 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
             let date = from_excel_date(value as i64).ok();
             // Day/month/year tokens show Excel's exact components (including the fictitious
-            // 1900-02-29); weekday tokens keep the weekday-faithful stand-in `date`.
-            // The fallback is never read: `date` is `None` exactly when `ymd` is.
-            let (ymd_year, ymd_month, ymd_day) =
-                excel_serial_to_ymd(value as i64).unwrap_or((0, 1, 0));
+            // 1900-02-29) and "1900-01-00" (serial 0); weekday tokens keep the weekday-faithful
+            // stand-in `date`. The fallback is never read: `ymd` is `None` exactly when
+            // `date_valid` is false.
+            let ymd = excel_serial_to_ymd(value as i64);
+            let date_valid = ymd.is_some();
+            let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
             for token in tokens {
                 match token {
                     TextToken::Literal(c) => {
@@ -213,13 +229,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                     TextToken::Digit(_) => {}
                     TextToken::Period => {}
                     TextToken::Day => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         text = format!("{text}{ymd_day}");
                     }
                     TextToken::DayPadded => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         let day = ymd_day as usize;
@@ -260,35 +276,35 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{}{}", text, locale.dates.day_names[day]);
                     }
                     TextToken::Month => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{text}{month}");
                     }
                     TextToken::MonthPadded => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{text}{month:02}");
                     }
                     TextToken::MonthNameShort => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{}{}", text, locale.dates.months_short[month - 1]);
                     }
                     TextToken::MonthName => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
                         text = format!("{}{}", text, locale.dates.months[month - 1]);
                     }
                     TextToken::MonthLetter => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         let month = ymd_month as usize;
@@ -296,13 +312,13 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{months_letter}");
                     }
                     TextToken::YearShort => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         text = format!("{text}{:02}", ymd_year % 100);
                     }
                     TextToken::Year => {
-                        if date.is_none() {
+                        if !date_valid {
                             return invalid_date(value);
                         }
                         text = format!("{}{}", text, ymd_year);

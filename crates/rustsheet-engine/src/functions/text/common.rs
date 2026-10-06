@@ -3,17 +3,18 @@ use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_CHARS},
+    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_number, parse_formatted_number},
+    formatter::format::{format_text, parse_formatted_number},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, text_after, text_before, Case},
+        text::util::{self, substitute, substitute_exceeds_limit, text_after, text_before, Case},
     },
+    locale::Locale,
     model::Model,
     number_format::to_precision,
 };
@@ -167,9 +168,10 @@ fn find_element(
 fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let text = array_node_to_string(text)?;
     let number_times = number_times?.floor();
-    // We normally don't follow Excel's sometimes archaic size's restrictions
-    // But this might be a security issue
-    if number_times < 0.0 || text.len() as f64 * number_times > MAX_TEXT_CHARS as f64 {
+    // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
+    // it also bounds the allocation (CLAUDE.md directive 5).
+    let units = text.encode_utf16().count() as f64;
+    if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
         return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(text.repeat(number_times as usize)))
@@ -198,6 +200,9 @@ fn substitute_element(
     };
     if old_text.is_empty() {
         return Ok(ArrayNode::String(text));
+    }
+    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
+        return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(match instance_num {
         Some(n) => substitute(&text, &old_text, &new_text, n),
@@ -304,6 +309,14 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
+/// The TEXT array element for a number (`None`: a blank): its text, or `#VALUE!` for a bad format.
+fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
+    let d = format_text(value, format, locale);
+    d.error.map_or(ArrayNode::String(d.text), |_| {
+        ArrayNode::Error(Error::VALUE)
+    })
+}
+
 impl Model {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
@@ -374,7 +387,6 @@ impl Model {
         CalcResult::String(result)
     }
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        use crate::expressions::parser::ArrayNode;
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -398,22 +410,8 @@ impl Model {
                     let mut data_row = Vec::with_capacity(row.len());
                     for node in row {
                         let out = match node {
-                            ArrayNode::Number(f) => {
-                                let d = format_number(f, &format_code, locale);
-                                if d.error.is_some() {
-                                    ArrayNode::Error(Error::VALUE)
-                                } else {
-                                    ArrayNode::String(d.text)
-                                }
-                            }
-                            ArrayNode::Empty => {
-                                let d = format_number(0.0, &format_code, locale);
-                                if d.error.is_some() {
-                                    ArrayNode::Error(Error::VALUE)
-                                } else {
-                                    ArrayNode::String(d.text)
-                                }
-                            }
+                            ArrayNode::Number(f) => text_node(Some(f), &format_code, locale),
+                            ArrayNode::Empty => text_node(None, &format_code, locale),
                             ArrayNode::Boolean(b) => ArrayNode::Boolean(b),
                             ArrayNode::String(s) => ArrayNode::String(s),
                             e @ ArrayNode::Error(_) => e,
@@ -425,6 +423,7 @@ impl Model {
                 CalcResult::Array(output)
             }
             other => {
+                let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
                     CalcResult::String(s) => return CalcResult::String(s),
@@ -444,7 +443,7 @@ impl Model {
                     Ok(s) => s,
                     Err(s) => return s,
                 };
-                let d = format_number(value, &format_code, self.locale);
+                let d = format_text((!is_blank).then_some(value), &format_code, self.locale);
                 if let Some(_e) = d.error {
                     return CalcResult::Error {
                         error: Error::VALUE,

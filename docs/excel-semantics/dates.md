@@ -16,9 +16,9 @@ Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,
 `MONTH(60)` = 2, `DAY(59)` = 28, `EOMONTH(1,0)` = 31, `EOMONTH(31,1)` = `EDATE(31,1)` = 59,
 `TEXT(60,"m/d/yyyy")` = "2/29/1900", `TEXT(0,"m/d/yyyy")` = "1/0/1900", `DATEVALUE("1/1/1900")` = 1,
 `WEEKDAY(1)` = 1, `WEEKDAY(60)` = 4, `WEEKNUM(1)` = 1.
-Engine still differs on `EOMONTH(31,1)`, `EDATE(31,1)`, `TEXT(0,...)` and `WEEKNUM(1)` (T-0125).
-Still approximate below serial 61: EDATE/EOMONTH month arithmetic, `TEXT(0,...)`, WEEKNUM, and DAY/MONTH/YEAR(0)
-(Excel gives 0/1/1900; the engine returns #NUM!) (T-0125).
+All of these now match (T-0125).
+EDATE/EOMONTH do month arithmetic on real calendar dates: serial 60 counts as 28 February 1900 (`EDATE(60,0)` = `EOMONTH(60,0)` = 59), `EOMONTH(59,0)` = 59, and results below serial 1 are #NUM! (`EOMONTH(1,-1)`, `EDATE(1,-1)`). `TEXT(DATE(1900,1,0),"d")` = "0"; `DAY(0)` = 0, `MONTH(0)` = 1, `YEAR(0)` = 1900.
+Evidence: probes/dates-early-1900 A17-A25. Oracle: excel-graph, 2026-10-05.
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
@@ -90,17 +90,40 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   trailing `.` (`"6 P."`, `"6 A."`, `"6 PM."`) and several spaces before it (`"6  PM"`); the same
   in VALUE, coercion and TIMEVALUE, also as the clock of date-clock text (`"1/2/2020 6 P"` =
   43832.75, `"1/2/2020 0 AM"` = 43832) (value-clock-text rows 4-11, 25, 28-33, 39-41).
-- Oddity not implemented: `TIMEVALUE("10:11.5:12")` = 0.424369212962963 (36665.5 s); the engine
-  returns #VALUE! (timevalue-component-limits B26, baselined).
+- **`H:M.f:S` reads the fraction digits twice**, as whole seconds and as the fraction, and
+  ignores `S`: `"10:11.5:12"` is 10:11 plus 5.5 s (0.424369212962963), `"10:11.25:12"` plus
+  25.25 s, `"10:11.0123:12"` plus 123.012 s, `"10:11.12345:12"` plus 12345.123 s, `"10:11.9999:12"`
+  plus 10000 s (half-up ms rounding as above); `S` must still be a valid component (1–4 digits,
+  `"10:11.5:99"` and `"10:11.5:1234"` parse, `"10:11.5:012"`, `"10:11.5:12345"`, `"10:11.5:-1"`,
+  `"10:11.5:12.5"`, `"10:11.5:12:13"` are #VALUE!), the fraction must have digits (`"10:11.:12"`
+  is #VALUE!), and only a two-component head takes it (`"10:11:12.5:13"` is #VALUE!). With AM/PM the
+  whole seconds count against the 59 limit (`"10:11.59:12 PM"` parses, `"10:11.60:12 PM"` is
+  #VALUE!). Also in date-clock text (`0+"1/2/2020 10:11.5:12"` = 43832.42436921296).
+- **At most one component may be out of its usual range** (hours from 24, minutes from 60,
+  whole seconds from 60, counted before millisecond rounding), in every clock form: `"10:61"`,
+  `"23:60"` (= 1), `"0:24:60"`, `"24:59:59"`, `"0:59:9999.9999"`, `"0:9999:59.9999"`, `"59:60.5"`,
+  `"0:11.9999:1"` (11 min + 10000 s) and `"10:9999.5:12"` parse, but `"24:60"`, `"24:0:60"`,
+  `"0:60:60"`, `"9998:60:00"`, `"0:9990:599"`, `"60:60.5"` (M:S.f), `"0:9998.60:1"` and
+  `"0:9999:9999.9999"` are #VALUE!. Evidence: probes/clock-text-oddities4 to -7 (excel-graph,
+  2026-10-06). Unprobed: an `H:M.f:S` fraction of more than 12 significant digits (the engine
+  gives #VALUE!, a bound that keeps the serial exact; `"10:11.12345:12"` parses).
+- **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
+  is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
+  Unprobed: a trailing `:` before an AM/PM suffix.
+  Evidence for these bullets: probes/clock-text-oddities, clock-text-oddities2 to -7 (excel-graph, 2026-10-06, T-0153), TIMEVALUE, `0+text` and VALUE agree.
+- **Clock text as a direct argument** is read as its coercion serial by SUM, AVERAGE, MAX, MIN,
+  PRODUCT, LARGE, SMALL, ABS, INT, MOD, HOUR/MINUTE/SECOND, DAY and array math (`SUM("10:00","6 PM")`
+  = 1.1666666666666667, `AVERAGE("10:00 ")` = 0.4166666666666667, `HOUR("25:00")` = 1,
+  `SECOND("10:11.5")` = 11, `SUM(-{"10:00";"6 PM"})` = -1.1666666666666667); a leading space is
+  #VALUE! like coercion (`SUM(" 10:00")`); `COUNT("10:00","x")` is 1 (implemented in T-0252). Evidence: probes/clock-text-oddities F31:F55 (excel-graph, 2026-10-06).
 Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_text::parse_clock_text`
 (T-0910); text-to-number coercion (`cast_number`) uses `time_text::parse_time_serial` (T-0146).
-Open: `0+"10:11.5:12"` (timevalue-component-limits C26) has the same unimplemented oddity as B26.
 Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: hour-only AM/PM
 coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
 43832.416666666664, value-clock-text row 27; the engine already matched).
-Unverified (no oracle evidence yet, T-0153): every other `cast_number` caller (direct arguments
-of aggregates, LARGE/SMALL and date functions such as `HOUR("10:11")`, array math), and `+10:00`
-typed into a cell (stored as text now).
+`H:M.f:S`, the one-out-of-range limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
+Out of the oracle's reach: `+10:00` typed into a cell (the oracle uploads xlsx files, so it
+cannot type; the engine stores it as text).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
@@ -180,3 +203,11 @@ Status: VERIFIED. Not implemented: the year-less current-year forms, which the e
 (#VALUE!, T-0167); the two-digit-year reading of year-less text is implemented (T-0160).
 Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
+
+## WORKDAY holidays take the whole range
+Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
+implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
+Evidence: poi/59106.xlsx (Excel-cached) Test!B2 = 42438 (start 42429, holidays 42422, 42423, 42437,
+42499; without D4 the result would be 42437) and A2 = "09 Mar 2016".
+Status: VERIFIED (Excel-cached)
+Tasks: T-0983

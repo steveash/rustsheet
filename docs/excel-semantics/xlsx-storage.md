@@ -55,11 +55,34 @@ crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
 ## Phonetic (furigana) runs are not cell text
 Rule: a shared string's text is its plain `<t>` plus the `<r><t>` rich-text runs. `<rPh><t>` phonetic
 runs (ECMA-376 §18.4.6) are annotations and are not part of the cell value, so they do not count
-towards `LEN` or the 32,767-character limit. Evidence: ECMA-376 §18.4.6 only; there is no Excel oracle value. poi/50299.xlsx and poi/51519.xlsx
-(Excel-authored, with `<rPh>` runs) have no formula reading the text, and our eval snapshot reader
-skips `<rPh>` too, which is an internal consistency check, not evidence. A spec case cannot carry
-phonetic markup, so confirming it needs a hand-built fixture xlsx with `=LEN(A1)` (T-0170). The unit
-test `test_phonetic_runs_are_not_cell_text` pins the behavior. PHONETIC() is not implemented.
-Status: PLAUSIBLE (spec-backed, no formula-level oracle value)
+towards `LEN` (and so, by inference only, not towards the 32,767-character limit: not probed). Evidence: fixtures/shared-string-phonetic-runs.xlsx
+(oracle: excel-graph, 2026-10-06, T-0170): A1 is "Tokyo" with an `<rPh>` run of 5 katakana;
+`=LEN(A1)` is 5 (not 10), `=A1&"!"` is "Tokyo!" and `=EXACT(A1,"Tokyo")` is TRUE. The unit test
+`test_phonetic_runs_are_not_cell_text` pins the behavior. PHONETIC() is not implemented.
+Status: VERIFIED
 Implemented in: `read_shared_strings_from_xml` in crates/rustsheet-xlsx/src/import/shared_strings.rs
-Tasks: T-0164
+Tasks: T-0164, T-0170
+
+## Classic CEILING is stored without `_xlfn.`
+Rule: the classic `CEILING` is a plain function name in the file (`<f>CEILING(2.5,2)</f>`); only the
+2010/2013 forms carry the prefix (`_xlfn.CEILING.MATH`, `_xlfn.CEILING.PRECISE`). Excel also accepts
+a hand-written `_xlfn.CEILING(2.5,2)` on load (value 4) and re-stores it as `CEILING(2.5,2)`.
+Evidence: probes/ceiling-xlfn-prefix A1:A4, all 4 (oracle: excel-graph, 2026-10-06, T-0172); the
+recalculated workbook's `<f>` text was `CEILING(2.5,2)` for both A1 and A2 and `_xlfn.CEILING.MATH(...)`
+for A3 and A4.
+Status: VERIFIED
+Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/mod.rs); test
+`test_export_ceiling_has_no_xlfn_prefix`.
+Tasks: T-0172
+
+## Cells and rows without r are positional
+Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
+1 if first); a cell without `r` is the column after the previous cell in its row (column A if first).
+Evidence: ECMA-376 Part 1 §18.3.1.73 (row) and §18.3.1.4 (c) make `r` optional. POI workbooks
+written this way by other tools: poi/54288.xlsx (r-less cells after `C3`), poi/59746_NoRowNums.xlsx
+and poi/InlineString.xlsx (r-less rows and cells). They hold no formulas, so no Excel value is
+scored; the placement is the schema's, as the eval snapshot reader already applies it.
+DEVIATION (directive 5, decision 0014): an r-less cell past XFD or r-less row past row 1,048,576 is an import error, not a placed cell; an explicit `r` of i32::MAX followed by an r-less row is the same error, never an overflow.
+Implemented in: `rustsheet-xlsx` `import/sheet_data.rs` `start_row` and `start_cell` (an r-less cell or row past XFD or row 1,048,576 is an import error).
+Status: UNVERIFIED (probe pending; ECMA-376 and POI files only, no Excel observation)
+Tasks: T-0181

@@ -55,3 +55,22 @@ fn test_fn_fisher_inv_smoke() {
     assert_eq!(model._get_text("A4"), *"#ERROR!");
     assert_eq!(model._get_text("A5"), *"#ERROR!");
 }
+
+#[test]
+fn test_fn_fisherinv_bit_exact() {
+    let mut model = new_empty_model();
+    model._set("A1", "=FISHERINV(1E-7)");
+    model._set("A2", "=FISHERINV(1000)");
+    model._set("A3", "=FISHERINV(-1000)");
+    model._set("A4", "=FISHERINV(0)");
+    model.evaluate();
+
+    let value = |cell: &str| match model.get_cell_value_by_ref(cell).unwrap() {
+        crate::cell::CellValue::Number(n) => n,
+        other => panic!("expected number, got {other:?}"),
+    };
+    assert_eq!(value("Sheet1!A1"), 1.000_000_000_503_929_2e-7);
+    assert_eq!(value("Sheet1!A2"), 1.0);
+    assert_eq!(value("Sheet1!A3"), -1.0);
+    assert_eq!(value("Sheet1!A4"), 0.0);
+}

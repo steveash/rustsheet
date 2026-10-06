@@ -1,0 +1,61 @@
+---
+id: T-0968
+title: "Normal CDF and erfc last-digit residue: ERFC, NORM.S.DIST, NORM.DIST, LOGNORM.DIST, GAUSS, Z.TEST cumulative (59 known failures)"
+milestone: M9
+lane: functions-stat
+status: todo
+priority: P2
+size: M
+tier: opus
+depends_on: [T-0966]
+---
+
+## Goal
+The cumulative normal family and erfc reproduce Excel's last digits from the single erf/erfc kernel
+in `functions/statistical/special.rs`, finishing what T-0924 started.
+
+## Context
+Triage T-0903. T-0924 (done) replaced statrs' erf with a series / continued-fraction kernel that is
+correctly rounded or nearly so; the remaining lines are Excel's own last digits, which are not
+correctly rounded: `NORM.S.DIST(1,TRUE)` is 0.841344746068543 while Phi(1) rounds to
+0.8413447460685429 (`docs/excel-semantics/statistics.md`, "The normal CDF is not always correctly
+rounded"). Code: `special.rs` `erf`, `erfc`, `normal_cdf`; callers `normal.rs`, `log_normal.rs`,
+`gauss.rs`, `z_test.rs`, `engineering/bessel.rs` (ERFC/ERFC.PRECISE).
+59 baseline lines in `eval/baseline/ironcalc-calc.txt` (48 NumericUlp, 11 NumericClose); cumulative
+cells only (densities are T-0975):
+- `ironcalc-calc/ENGINEERING/ERFs.xlsx` `Sheet1`: E4, G4, E5, G5, E6, G6, E7(C), G7(C), E8, G8, E11, G11, E13, G13, E20, G20
+- `ironcalc-calc/STATISTICAL/GAUSS.xlsx` `GAUSS`: B3, B4, B29, B31, B34
+- `ironcalc-calc/STATISTICAL/LOGNORM.xlsx` `LOGNORM.DIST LOGNORM.INV`: E2, E8, E9, E17(C), E18(C), E41, E43(C), E45, E47, E48, E49, E50, E53, E54, E55, E58, E66, E67, E68
+- `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.DIST NORM.INV`: E4(C), E8, E9, E11, E20, E32(C), E39, E58(C)
+- `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`: C4, C8, C9, C11(C), C13(C), C15, C19(C), C22, C29
+- `ironcalc-calc/STATISTICAL/Z_TEST.xlsx` `Sheet1`: E2, E4
+(C = NumericClose, unmarked = NumericUlp.)
+
+Examples (expected vs actual):
+- `NORM.S.DIST(1,TRUE)` C8/C29: expected 0.841344746068543, actual 0.8413447460685429; C9 (z = -1):
+  expected 0.158655253931457, actual 0.15865525393145707.
+- `ERFC(5)` E7/G7 (Close): expected 1.537459794428034e-12, actual 1.537459794428035e-12; E20: expected
+  4.1838256077794166e-23, actual 4.183825607779414e-23.
+- `NORM.S.DIST(-10,TRUE)` C19 (Close): expected 7.619853024160475e-24, actual 7.619853024160595e-24
+  (1.6e-14: the far tail differs by more than rounding); LOGNORM.DIST E18: expected
+  1.284175630643432e-117, actual 1.2841756306435955e-117.
+- `GAUSS(1)` B3: expected 0.34134474606854304, actual 0.3413447460685429.
+
+Hypothesis (the oracle is the judge): Excel's erfc is a classic rational approximation (Cody 1969
+/ W. J. Cody's CALERF, or Hart et al.) rather than a correctly rounded evaluation, and
+NORM.S.DIST(z,TRUE) is `0.5*erfc(-z/sqrt2)` on it (or Cody's ANORM directly); GAUSS = Phi(z) - 0.5
+or 0.5*erf(z/sqrt2). The far-tail Close cells (C19, E17, E18, E32) show the tail formulation
+differs too. **Needs an oracle sweep (T-0018):** fit against the T-0966 normal-CDF sweep
+(family 1), never blind; T-0924's Outcome records that blind tweaks only trade cells.
+
+## Acceptance criteria
+- [ ] At least 40 of the 59 lines leave `eval/baseline/ironcalc-calc.txt`, including every NumericClose
+      line, and no new lines appear in any baseline (the T-0924 fixes and T-0925's cells must not
+      regress; ERF/ERF.PRECISE must stay fixed).
+- [ ] erf/erfc and the normal CDF stay single definitions in `special.rs` (`rg "fn erfc"`).
+- [ ] The formulation that matched is recorded in `docs/excel-semantics/statistics.md`, with the
+      sweep cells as evidence; the `special.rs` module comment is corrected (Excel is not correctly rounded).
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+Normal densities and PHI (T-0975); inverse normal (T-0925); legacy NORMDIST/NORMSDIST evidence (T-0966).

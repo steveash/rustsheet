@@ -63,3 +63,13 @@ fn test_minverse_non_square_error() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), "#VALUE!");
 }
+
+#[test]
+fn test_minverse_blank_cell_is_value_error() {
+    let mut model = new_empty_model();
+    // A1 = 1, the rest of A1:B2 blank (poi MatrixFormulaEvalTestData H34:J36)
+    model._set("A1", "1");
+    model._set("D1", "=MINVERSE(A1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "#VALUE!");
+}
