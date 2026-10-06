@@ -206,7 +206,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(flush_subnormal(sum / count))
+        CalcResult::finite_number_or_num(flush_subnormal(sum / count), cell)
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
