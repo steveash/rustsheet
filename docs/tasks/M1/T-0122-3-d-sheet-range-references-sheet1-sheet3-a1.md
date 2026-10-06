@@ -51,5 +51,5 @@ needed), matching new probes/3d-ref-* (excel-graph). `Data!A1:Other!B2` stays `#
 `get_range`. Formula text round-trips (also through RC storage) and sheet renames update the span.
 Eval delta: poi known failures 658 → 642 (16 fixed, 0 regressions); probes +3 cases (44 cells,
 32 pass, 12 new-coverage failures owned by T-0196 and T-0197). Follow-ups: T-0196 (AVERAGEA, MAXA,
-MINA, PRODUCT, CONCAT), T-0197 (INDEX, AREAS, VLOOKUP, MATCH, COUNTBLANK give #VALUE!), T-0198 (edit
+MINA, PRODUCT, CONCAT, LARGE, RANK), T-0197 (INDEX, AREAS, VLOOKUP, MATCH, COUNTBLANK give #VALUE!), T-0198 (edit
 semantics).

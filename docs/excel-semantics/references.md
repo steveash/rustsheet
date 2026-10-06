@@ -13,7 +13,7 @@ probes/3d-ref-aggregates (excel-graph, 2026-10-06).
 Status: VERIFIED
 Implemented in: `get_sheet_span_range` (crates/rustsheet-engine/src/reference_operators.rs) and
 `for_each_cell_or_error_in_range` (crates/rustsheet-engine/src/functions/util.rs). AVERAGEA, MAXA,
-MINA, PRODUCT and CONCAT are not yet (T-0196).
+MINA, PRODUCT, CONCAT, LARGE and RANK are not yet (T-0196).
 Tasks: T-0122, T-0196
 
 ## 3-D references outside the aggregates
@@ -23,7 +23,9 @@ ISBLANK FALSE and IFERROR its fallback. Where one sheet's reference is needed it
 ROWS, COLUMNS, ROW, AREAS, VLOOKUP, MATCH, SUMIF, COUNTIF and COUNTBLANK. SUMPRODUCT gives `#REF!`.
 A span of one sheet (`=Data1:Data1!A1`) is that sheet's reference: 1.
 Evidence: probes/3d-ref-values, probes/3d-ref-functions (excel-graph, 2026-10-06).
-Status: VERIFIED
+Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span whose end is not a
+sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
+implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
 crates/rustsheet-engine/src/reference_operators.rs. INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK do
 not give `#VALUE!` yet (T-0197).
