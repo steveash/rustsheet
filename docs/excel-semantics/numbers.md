@@ -189,21 +189,24 @@ Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e
 probes/text-number-words H6, H7, K1, K4, K5 (`="1e-308"+0` is 0).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Per function group (T-0189, VERIFIED, probes/subnormal-function-results, excel-graph 2026-10-06):
-the postfix `%` (`=1E-306%`, `=-1E-306%`), `SUM`, `PRODUCT` (`PRODUCT(1E-200,1E-110)`,
-`PRODUCT(1E-308,1)`), `SUMPRODUCT`, `POWER`, `SQRT`, `ABS`, `MAX`, `AVERAGE`, `N`, `--`, `IF`,
-`ROUND` all return a true 0 (`(x)=0` is TRUE). `EXP` is the exception: `EXP(-745)` and `EXP(-720)`
-are NOT flushed (`(EXP(-745))=0` is FALSE) although they print as "0" (`&""`) and the Graph API reports
-0.0, so the oracle value of those cells cannot show the stored subnormal. `EXP(-708)` (3.3E-308,
-normal) is kept and prints with 14 digits ("3.3075530036384E-308"; see "Exponent width" in
-"Number → text conversion uses 15 significant digits"). `TEXT(1E-307/10,"0.00E+00")` is "0.00E+00".
-A literal below the smallest normal also reads as 0 inside functions (`PRODUCT(1E-308,1)` is 0).
-The probe leaves out literals whose exponent is below -308 (`1E-310`, `1E-320`, `1E-620`):
-the Graph workbook builder rejected the file (`unsupportedWorkbook`) when they appeared.
-Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^` and POWER only; SUM and the other
-functions pass above because their operands are already flushed). Not implemented: postfix `%`
-(T-0988), PRODUCT and SUMPRODUCT (T-0987). The engine also treats a tiny nonzero value as equal to 0 in
-comparisons, which Excel does not (`=EXP(-708)=0` is FALSE; T-0989).
+Per function group (T-0189, VERIFIED, probes/subnormal-function-results, excel-graph 2026-10-06;
+`C` companion cells `(x)=0` tell a true 0 from a kept subnormal, since the Graph API reports 0.0 and
+`&""` prints "0" for both). The result is a true 0 (`(x)=0` TRUE) for the postfix `%`
+(`=1E-306%`, `=-1E-306%`), `/` and `*` (`1E-307/10`), PRODUCT (`PRODUCT(3E-308,0.5)`,
+`PRODUCT(1E-200,1E-110)`), SUMPRODUCT, SUMSQ (`SUMSQ(1E-160)`), AVERAGE (`AVERAGE(3E-308,-2.9E-308)`)
+and POWER. The subnormal is KEPT (`(x)=0` FALSE although it prints "0") for `-` (`=3E-308-2.5E-308`),
+`SUM` / `SUBTOTAL(9,..)` of the same operands, `EXP(-745)`, `EXP(-720)` and for MIN, ABS and SIN
+of such a value. So the flush belongs to multiplication and division (`%`, PRODUCT, SUMPRODUCT, SUMSQ,
+AVERAGE all multiply or divide), not to addition. `EXP(-708)` (3.3E-308, normal) prints with 14
+digits ("3.3075530036384E-308"; see "Exponent width" under "Number → text conversion uses 15
+significant digits"). `TEXT(1E-307/10,"0.00E+00")` is "0.00E+00". A literal below the smallest normal
+reads as 0: `=1E-308=0`, `=1E-308*1=0` are TRUE and `ISNUMBER(1E-308)` is TRUE (`2E-308`,
+`-2E-308` too: a probe using them as a subtrahend gave the other operand back). The probe leaves out
+literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
+file (`unsupportedWorkbook`) when they appeared.
+Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER. Not implemented: postfix `%`
+(T-0988), PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987). The engine also compares a tiny nonzero
+value equal to 0, which Excel does not (C4-C6, C60-C62, C65, C69, C73-C75; T-0989).
 Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
