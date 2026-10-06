@@ -3,7 +3,7 @@ id: T-0157
 title: "Formula stringify drops the parentheses around a & operand of + - * /"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ oracle evidence or a spec case.
 
 ## Out of scope
 - A general precedence-based parenthesiser; other operators (T-0128, T-0134, T-0148).
+
+## Outcome
+`stringify` now parenthesises a `&` operand of `+ - * /` (left and right, and the right of `-`),
+via a `loose_in_parens` closure that extends `compare_in_parens` with `OpConcatenateKind`. Unit test
+`concatenation_operands_of_arithmetic_keep_their_parentheses` checks print/re-parse round trips.
+Eval delta: none (no suite changed).
