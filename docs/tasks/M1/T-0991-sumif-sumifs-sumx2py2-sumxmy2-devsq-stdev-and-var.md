@@ -3,7 +3,7 @@ id: T-0991
 title: "SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR overflow is #NUM!"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
