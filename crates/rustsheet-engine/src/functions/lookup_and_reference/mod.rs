@@ -23,7 +23,7 @@ mod tocol_torow;
 mod transpose;
 mod trimrange;
 mod wrapcols_wraprows;
-mod xmatch;
+pub(crate) mod xmatch;
 
 /// Finds the 0-based index of `lookup_value` within `search_vector`.
 /// When `is_sorted` is true Excel's approximate-match search is used (the

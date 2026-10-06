@@ -139,8 +139,26 @@ blank: `VLOOKUP(0,A:B,2,FALSE)`, `VLOOKUP("",A:B,2,FALSE)`, `HLOOKUP(FALSE,1:2,2
 value in `MATCH(G1,A:A,0)`, `MATCH(G1,A:A,1)`, `VLOOKUP(G1,A:B,2[,FALSE])`.
 Status: VERIFIED
 Implemented in: `SearchVector::approximate_search`/`exact_position`; XMATCH exact mode skips
-blanks (T-0126). XMATCH with match_mode other than 0 or binary search_mode over blanks is unprobed (T-1018).
+blanks (T-0126); linear XMATCH/XLOOKUP in `linear_scan` (T-1018).
 Tasks: T-0126, T-1018
+
+## XMATCH / XLOOKUP linear search over blanks
+Rule: in an exact or wildcard search (search_mode 1/-1) a blank candidate never matches a non-blank
+lookup value; a blank lookup value (`G1`, an empty cell) matches the first blank candidate. For
+match_mode -1/1 and a numeric lookup value a blank candidate is larger than every number and never
+smaller than one (the engine models it as empty text; unprobed for text and boolean lookup values). So with 5,_,10,_,20,_ in A1:A6: `XMATCH(0,A1:A6,-1)` is #N/A, `XMATCH(0,A1:A6,1)` is 1,
+`XMATCH(7,A1:A6,1)` is 3 (10 is the smaller of the larger candidates) but `XMATCH(25,A1:A6,1)` and
+`XMATCH(99,A:A,1)` are 2 (the first blank, the only candidate "larger" than 25). `XMATCH(0,A1:A6,2)`
+is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"nf")` is "nf",
+`XLOOKUP(0,A1:A6,B1:B6,"nf",1)` is "a", `XLOOKUP(G1,A1:A6,B1:B6,"nf")` is "b"). Error cells are skipped.
+Evidence: probes/xmatch-xlookup-blanks (Excel oracle; Col, Err, Row sheets, bounded and whole column/row).
+Status: VERIFIED
+Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared by XLOOKUP.
+Open (T-1019): binary search_mode 2/-2 over blanks: exact lookups of present values skip the blanks,
+e.g. `XMATCH(10,A1:A6,0,2)` is 3 and `XLOOKUP(10,A1:A6,B1:B6,"nf",0,2)` is "c" (engine #N/A / "nf");
+`XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is 2 (engine 5 / 6), unexplained by simple skipping.
+Also unprobed: text and boolean lookup values with match_mode -1/1 over blanks, and a blank lookup
+value against 0/""/FALSE candidates (`XMATCH(G1,A:A)` is 2 here, where `MATCH(G1,A:A,0)` is #N/A).
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest

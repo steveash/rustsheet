@@ -445,7 +445,7 @@ impl Model {
                 if let Err(e) = self.apply_ifs(&arguments, cell, false, |v| total += v) {
                     return e;
                 }
-                return CalcResult::Number(total);
+                return CalcResult::finite_number_or_num(total, cell);
             }
         };
         let criteria_grid: Vec<Vec<CalcResult>> = criteria_array
@@ -484,7 +484,9 @@ impl Model {
                     cell,
                     |v| total += v,
                 ) {
-                    Ok(()) => ArrayNode::Number(total),
+                    Ok(()) if total.is_finite() => ArrayNode::Number(total),
+                    // Overflow is #NUM! like the scalar SUMIF (T-0991).
+                    Ok(()) => ArrayNode::Error(Error::NUM),
                     Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
                     Err(_) => ArrayNode::Error(Error::ERROR),
                 };

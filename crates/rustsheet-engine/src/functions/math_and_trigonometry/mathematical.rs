@@ -255,7 +255,7 @@ impl Model {
         {
             return error;
         }
-        CalcResult::Number(flush_subnormal(result))
+        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
     /// PRODUCT(number1, [number2], ...)
@@ -327,7 +327,7 @@ impl Model {
         if !seen_value {
             return CalcResult::Number(0.0);
         }
-        CalcResult::Number(flush_subnormal(result))
+        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
     /// SUMIF(criteria_range, criteria, [sum_range])
@@ -352,7 +352,7 @@ impl Model {
         if let Err(e) = self.apply_ifs(args, cell, true, sum) {
             return e;
         }
-        CalcResult::Number(total)
+        CalcResult::finite_number_or_num(total, cell)
     }
 
     /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal

@@ -536,7 +536,7 @@ impl Model {
                 message: "Division by 0!".to_string(),
             };
         }
-        CalcResult::Number(result / (l as f64))
+        CalcResult::finite_number_or_num(result / (l as f64), cell)
     }
 
     fn subtotal_sum(
@@ -553,7 +553,7 @@ impl Model {
         for value in values {
             result += value;
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 
     fn subtotal_product(
@@ -570,7 +570,7 @@ impl Model {
         for value in values {
             result *= value;
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 
     fn subtotal_max(
