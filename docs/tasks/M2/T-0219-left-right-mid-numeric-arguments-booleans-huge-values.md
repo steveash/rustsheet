@@ -39,3 +39,4 @@ Code: `crates/rustsheet-engine/src/functions/text/` (LEFT/RIGHT/MID argument par
 
 ## Out of scope
 - Number-to-text of the first argument (T-0107).
+- Boolean and numeric-text count arguments (gen-m2 ef5c55a8 A40, d04d5011 A19): T-0256 owns them.
