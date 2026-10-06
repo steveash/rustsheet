@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::arithmetic::power;
+use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -89,19 +90,6 @@ pub(crate) enum CellStructure {
         anchor: (i32, i32),
         range: (i32, i32),
     },
-}
-
-/// A parsed formula for a defined name
-#[derive(Clone)]
-pub(crate) enum ParsedDefinedName {
-    /// CellReference (`=C4`)
-    CellReference(CellReferenceIndex),
-    /// A Range (`=C4:D6`)
-    RangeReference(Range),
-    /// `=LAMBDA(params..., body)`
-    LambdaDefinition(Vec<NamedVariable>, Node),
-    /// `=SomethingElse`
-    InvalidDefinedNameFormula,
 }
 
 /// Formatting settings for a locale
@@ -716,6 +704,11 @@ impl Model {
                             self.lambdas.insert(lambda_id, (param_names, body));
                             CalcResult::Lambda(lambda_id)
                         }
+                        ParsedDefinedName::ErrorLiteral(error) => CalcResult::new_error(
+                            error,
+                            cell,
+                            format!("Defined name \"{name}\" is an error."),
+                        ),
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
