@@ -32,7 +32,7 @@ impl Model {
 
     /// Validates the index once the lookup value is found and returns it 0-based. A referenced
     /// cell that is not a number (text, an error) is `#REF!`; an index below 1 is `#VALUE!`, past
-    /// `size` or below the 32-bit integer range is `#REF!` (probes/lookup-index-order, excel-graph).
+    /// `size` or at or below the 32-bit integer minimum is `#REF!` (probes/lookup-index-order, excel-graph).
     pub(super) fn resolve_lookup_index(
         &mut self,
         index: LookupIndexArg,
@@ -50,7 +50,9 @@ impl Model {
                 .cast_to_number(range, cell)
                 .map_err(|_| invalid_reference())?,
         };
-        if number < f64::from(i32::MIN) {
+        // -2147483648 is already #REF! while -2147483647 is #VALUE! (probes/lookup-index-shapes
+        // H19-H20, H31-H32); a fractional index near the cut-off is unprobed.
+        if number <= f64::from(i32::MIN) {
             return Err(invalid_reference());
         }
         // In range now, so the cast cannot saturate on the low side; a huge positive index
