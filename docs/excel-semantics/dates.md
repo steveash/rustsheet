@@ -33,9 +33,13 @@ WEEKNUM puts the week-1 anchor: serial 1 counts as a Sunday. For return type 2 t
 anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKNUM(61,21)` = 9, A23). The anchor holds through 1900: probes/weeknum-1900-later has `WEEKNUM(61)` = 9,
 `WEEKNUM(100,2)` = 16, `WEEKNUM(100)` = 15, `WEEKNUM(200,2)` = 30, `WEEKNUM(366,2)` = 54, `WEEKNUM(366)` = 53, `WEEKNUM(0,12)` = 1, `WEEKNUM(0,17)` = 0,
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
-start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED).
+start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
+type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
 Implemented in: `fn_weeknum` (T-0995). Not yet: TEXT ddd/dddd of serial 0 is #VALUE!
 (T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
+The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
+`DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
+04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
 
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
 Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21); every
@@ -51,11 +55,9 @@ cell and 1 in another, reproduced on a second fill. The same formulas alone, or 
 WEEKNUM, are `#NUM!` in every small workbook tried (9 workbooks), so the larger workbook's values
 were taken as an artifact of that recalculation and those cells moved to weeknum-invalid-type.
 Status: VERIFIED (small workbooks); the larger-workbook values are unexplained (not reproduced
-in isolation).
+in isolation). Decision (T-1023): the engine follows the small-workbook results; re-probe if a
+real workbook shows the type-2-like numbering again.
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
-The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
-`DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
-04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
 
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.

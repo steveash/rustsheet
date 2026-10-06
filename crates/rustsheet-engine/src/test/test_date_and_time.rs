@@ -416,6 +416,12 @@ fn test_weeknum_function() {
     model._set("A17", "=WEEKNUM(-1)");
     model._set("A18", &format!("=WEEKNUM({EXCEL_INVALID_DATE})"));
 
+    // ISO numbering of serial 0 (probes/weeknum-serial-0 C1, C2, C22; T-1023)
+    model._set("A19", "=WEEKNUM(0,21)");
+    model._set("A20", "=ISOWEEKNUM(0)");
+    model._set("A21", "=ISOWEEKNUM(-1)");
+    model._set("A22", "=WEEKNUM(100,TRUE)");
+
     model.evaluate();
 
     // Basic functionality
@@ -445,6 +451,10 @@ fn test_weeknum_function() {
     assert_eq!(model._get_text("A16"), *"#NUM!");
     assert_eq!(model._get_text("A17"), *"#NUM!");
     assert_eq!(model._get_text("A18"), *"#NUM!");
+    assert_eq!(model._get_text("A19"), *"52");
+    assert_eq!(model._get_text("A20"), *"52");
+    assert_eq!(model._get_text("A21"), *"#NUM!");
+    assert_eq!(model._get_text("A22"), *"#VALUE!");
 }
 
 #[test]
