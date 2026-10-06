@@ -34,6 +34,7 @@ C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/literal-digits.case.json	6
 C	probes/lookup-index-order.case.json	50
+C	probes/lookup-index-shapes.case.json	43
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
@@ -130,6 +131,10 @@ F	probes/intersection-operands.case.json	Sheet1!H13
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/literal-digits.case.json	Sheet1!C4
+F	probes/lookup-index-shapes.case.json	Sheet1!H11
+F	probes/lookup-index-shapes.case.json	Sheet1!H12
+F	probes/lookup-index-shapes.case.json	Sheet1!H2
+F	probes/lookup-index-shapes.case.json	Sheet1!H3
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
