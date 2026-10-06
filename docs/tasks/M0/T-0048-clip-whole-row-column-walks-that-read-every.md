@@ -3,7 +3,7 @@ id: T-0048
 title: "Clip whole-row/column walks that read every cell (MULTINOMIAL, date holidays, COUNT-family helper)"
 milestone: M0
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
