@@ -3,10 +3,10 @@ use crate::{
     cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
         parser::{ArrayNode, Node},
-        token::{Error, OpCompare},
+        token::{Error, OpCompare, OpSum},
         types::CellReferenceIndex,
     },
-    functions::util::compare_values,
+    functions::{util::compare_values, Function},
     model::Model,
 };
 
@@ -171,6 +171,26 @@ pub(crate) fn array_of_errors(
 }
 
 impl Model {
+    /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
+    /// outermost `+`/`-` or SUM to 0 (docs/excel-semantics/numbers.md "Near-zero snapping in
+    /// addition and subtraction"); every other node evaluates as usual.
+    pub(crate) fn evaluate_formula_root(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::OpSumKind { kind, left, right } => {
+                self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
+            }
+            Node::FunctionKind {
+                kind: Function::Sum,
+                args,
+            } => self.fn_sum_outermost(args, cell),
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
     /// A formula's outermost `+`/`-`: like [`Model::handle_arithmetic`], but a scalar result is
     /// snapped to 0 by [`snap_near_zero`]. Array operands are not snapped (no evidence).
     pub(crate) fn handle_outermost_sum(
