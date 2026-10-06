@@ -413,9 +413,8 @@ impl Model {
                         };
                     }
                     CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
-                    CalcResult::Error { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                        unreachable!()
-                    }
+                    error @ CalcResult::Error { .. } => return error,
+                    CalcResult::Array(_) | CalcResult::Lambda(_) => unreachable!(),
                 };
                 let d = format_text((!is_blank).then_some(value), &format_code, self.locale);
                 if let Some(_e) = d.error {
