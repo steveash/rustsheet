@@ -179,3 +179,11 @@ Status: VERIFIED. Not implemented: the year-less current-year forms, which the e
 (#VALUE!, T-0167); the two-digit-year reading of year-less text is implemented (T-0160).
 Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
+
+## WORKDAY holidays take the whole range
+Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
+implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
+Evidence: poi/59106.xlsx (Excel-cached) Test!B2 = 42438 (start 42429, holidays 42422, 42423, 42437,
+42499; without D4 the result would be 42437) and A2 = "09 Mar 2016".
+Status: VERIFIED (Excel-cached)
+Tasks: T-0983

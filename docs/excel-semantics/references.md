@@ -251,3 +251,22 @@ Evidence: probe offset-negative-height-width (oracle: excel-graph, 2026-10-06, T
 Status: VERIFIED
 Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0956
+
+## ADDRESS leaves a [Book]Sheet name unquoted
+Rule: ADDRESS does not quote a `sheet_text` made of a `[workbook]` part and a plain sheet name:
+`ADDRESS(2,3,3,TRUE,"[Book1]Sheet1")` is `[Book1]Sheet1!$C2`, while names with spaces or `$` are
+quoted (`'Me lo invente'!$C$2`, `'A Wird One$'!$A$1`) and `"Sheet2"` is not.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!F128;
+ironcalc-calc LOOKUP_AND_REFERENCE/ADDRESS.xlsx (Excel-cached) Sheet1!E2, B33, B38.
+Status: VERIFIED (Excel-cached). Open (unprobed): `[Book1]My Sheet` and brackets elsewhere in the name.
+Tasks: T-0984
+
+## T of a multi-cell range is not intersected
+Rule: in a legacy formula, `T(range)` over several cells is not the implicitly intersected cell:
+`T(L7:N7)` in N1352 is "" although N7 is text, `T(J1351:J1353)` in O1352 is "" although
+J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VALUE!`.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
+O1352 (all top-left cells are non-text: 545, 1.001, blank).
+Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
+cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array formulas.
+Tasks: T-0985

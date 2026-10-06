@@ -74,3 +74,13 @@ Status: VERIFIED
 Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/mod.rs); test
 `test_export_ceiling_has_no_xlfn_prefix`.
 Tasks: T-0172
+
+## Cells and rows without r are positional
+Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
+1 if first); a cell without `r` is the column after the previous cell in its row (column A if first).
+Evidence: ECMA-376 Part 1 §18.3.1.73 (row) and §18.3.1.4 (c) make `r` optional. POI workbooks
+written this way by other tools: poi/54288.xlsx (r-less cells after `C3`), poi/59746_NoRowNums.xlsx
+and poi/InlineString.xlsx (r-less rows and cells). They hold no formulas, so no Excel value is
+scored; the placement is the schema's, as the eval snapshot reader already applies it.
+Status: spec (no Excel observation)
+Tasks: T-0181
