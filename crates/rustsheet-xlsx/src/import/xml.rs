@@ -24,6 +24,12 @@ use crate::error::{ImportLimit, XlsxError};
 /// The namespace of the `xml:` prefix, which needs no declaration.
 const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
 
+/// The relationships namespaces of `r:id` attributes: Transitional, then Strict OOXML.
+const RELATIONSHIPS_NAMESPACES: [&str; 2] = [
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships",
+];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct XmlAttribute {
     /// The local name, without the prefix.
@@ -96,6 +102,15 @@ impl XmlNode {
             .iter()
             .find(|a| a.namespace.as_deref() == Some(namespace) && a.name == name)
             .map(|a| a.value.as_str())
+    }
+
+    /// The relationship id (`r:id`) of the element, in the Transitional or the Strict
+    /// relationships namespace: Excel writes Strict OOXML with
+    /// `http://purl.oclc.org/ooxml/officeDocument/relationships` (poi/SimpleStrict.xlsx).
+    pub(crate) fn relationship_id(&self) -> Option<&str> {
+        RELATIONSHIPS_NAMESPACES
+            .iter()
+            .find_map(|namespace| self.attribute_ns(namespace, "id"))
     }
 
     pub(crate) fn has_attribute(&self, name: &str) -> bool {
