@@ -152,8 +152,8 @@ F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-c
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
 VAR.P, STDEV.P, VARA and STDEVA still yield NaN internally (the A cells pass because a top-level NaN shows as `#NUM!`; the `&""` and ERROR.TYPE forms are wrong; baselined, T-1029).
 Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60), so Excel does not use a stable deviation; do not "fix" this to 0.
-MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. Not implemented: the engine has no AGGREGATE
-(`#NAME?`, A27-A29; T-0993).
+MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. AGGREGATE A27-A29 pass since T-0993
+("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
@@ -429,3 +429,32 @@ These are Excel's own limits, not deviations.
 Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
 Status: VERIFIED
 Implemented in: functions/statistical/chisq.rs (`MAX_DEGREES_OF_FREEDOM`); functions/engineering/bit_operations.rs (`MAX`)
+
+## AGGREGATE
+Rule: `AGGREGATE(function_num, options, ...)`. Both numbers are truncated (`9.9` is 9, `7.9` is 7), text that reads
+as a number and booleans are accepted (`"9"` is 9, TRUE is 1, FALSE is 0, an empty option is 0), and anything
+outside 1-19 or 0-7 is `#VALUE!`; an error in either is returned. Options 0-3 skip cells whose formula is a
+SUBTOTAL or AGGREGATE (4-7 keep them), options 2, 3, 6 and 7 skip error values, odd options skip hidden rows.
+Functions 1-13 (AVERAGE, COUNT, COUNTA, MAX, MIN, PRODUCT, STDEV.S, STDEV.P, SUM, VAR.S, VAR.P, MEDIAN, MODE.SNGL)
+take only references, unions included: a value, an array literal, a computed array (`E1:E6*1`) or a nested call
+such as `SUBTOTAL(9,E1:E2)` is `#VALUE!`, yet an error argument (`NA()`, `1/0`) is returned whatever the option.
+COUNT never returns an error from the range (errors are not numbers) and COUNTA counts errors unless the option
+skips them. Over no numbers: COUNT, COUNTA, MAX, MIN, PRODUCT and SUM give 0, MEDIAN `#NUM!`, MODE.SNGL `#N/A`, the
+others `#DIV/0!`. Functions 14-19 (LARGE, SMALL, PERCENTILE.INC, QUARTILE.INC, PERCENTILE.EXC, QUARTILE.EXC) take
+one array (reference, union or computed array; options 2/3/6/7 skip its errors, the `AGGREGATE(15,6,x/(cond),k)`
+idiom) and k: three arguments is `#VALUE!`, an error in k is returned even under option 6, no numbers is `#NUM!`,
+and k follows the named function (`AGGREGATE(14,0,E1:E6,2.9)` = `LARGE(E1:E6,2.9)` = the 3rd largest).
+Excel for the web refuses to open a workbook holding `AGGREGATE(14,0,E1:E3,E4:E6,2)`, `AGGREGATE(14,6,E1:E6,2,3)`,
+`AGGREGATE(9,0,1,2,3)` or `AGGREGATE(2,0,E1:E6,"3",TRUE)` (`createSession` 501 unsupportedWorkbook), so those
+forms have no evidence. An array function_num or option (`AGGREGATE({9,4},0,..)`) gives a single value in the
+checked cell (23, the SUM).
+Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
+Oracle: excel-graph, 2026-10-06 (T-0993).
+Status: VERIFIED, except hidden and filtered rows (UNVERIFIED: the case format cannot hide rows; the engine skips
+hidden and filter-hidden rows under odd options and keeps them otherwise) and nested SUBTOTAL/AGGREGATE inside a
+larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
+Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
+option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
+Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), array function_num/option/k lifting (T-1038), the
+VAR.P last digit (probes/aggregate-grid B31, C31; T-1037).
+Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs).
