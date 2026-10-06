@@ -77,9 +77,6 @@ C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/value-clock-text.case.json	135
 F	probes/arith-overflow.case.json	Calc!B16
-F	probes/arith-overflow.case.json	Calc!B4
-F	probes/arith-overflow.case.json	Calc!C4
-F	probes/arith-overflow.case.json	Calc!D4
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13

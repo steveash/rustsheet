@@ -116,6 +116,8 @@ negative products `=-1E+307*100`, `=1E+307*-100` (ERROR.TYPE 6). The intermediat
 exactly 1e308 is finite: `=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
 Arrays overflow per element: `INDEX({1E+307,1}*100,1)` is `#NUM!`, `INDEX({1E+307,1}*100,2)` is 100,
 `ROWS({1E+307;1}*100)` is 2 and `SUM(IFERROR({1E+307,1}*100,0))` is 100.
+Implementation: `+ - * /` (T-0173), `SUM` (T-0185). Other aggregates (SUMPRODUCT, AVERAGE, PRODUCT, SUMSQ) are
+not probed for overflow yet and still return infinity: unverified, needs an oracle probe before changing.
 Evidence: probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
