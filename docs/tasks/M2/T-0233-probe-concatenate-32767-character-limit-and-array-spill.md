@@ -3,7 +3,7 @@ id: T-0233
 title: "Probe CONCATENATE 32767-character limit and array spill values"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
