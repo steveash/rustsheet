@@ -1225,8 +1225,7 @@ impl Model {
         }
         // Broadcasts element-wise over a range/array date argument.
         self.apply_number_unary(&args[0], cell, |serial| {
-            let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
-            Ok(date.iso_week().week() as f64)
+            weeknum::iso_week(serial.floor() as i64)
         })
     }
 

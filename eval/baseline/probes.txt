@@ -102,6 +102,9 @@ C	probes/union-operand-neg-cut-group.case.json	2
 C	probes/union-operand-nested-parens.case.json	6
 C	probes/value-clock-text.case.json	135
 C	probes/weeknum-1900-later.case.json	23
+C	probes/weeknum-invalid-type.case.json	8
+C	probes/weeknum-serial-0.case.json	57
+C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
 F	probes/3d-ref-functions.case.json	Calc!C18
 F	probes/3d-ref-functions.case.json	Calc!C20
@@ -315,6 +318,11 @@ F	probes/union-defined-name.case.json	!EngineError
 F	probes/union-operand-double-minus.case.json	Sheet1!H1
 F	probes/union-operand-nested-parens.case.json	Sheet1!H2
 F	probes/union-operand-nested-parens.case.json	Sheet1!H6
+F	probes/weeknum-stale-return-type.case.json	Mixed!A3
+F	probes/weeknum-stale-return-type.case.json	Mixed!A4
+F	probes/weeknum-stale-return-type.case.json	Type1!A1
+F	probes/weeknum-stale-return-type.case.json	Type21!A1
+F	probes/weeknum-stale-return-type.case.json	Up!A1
 F	probes/xmatch-xlookup-blanks.case.json	Col!M16
 F	probes/xmatch-xlookup-blanks.case.json	Col!M17
 F	probes/xmatch-xlookup-blanks.case.json	Col!M20
