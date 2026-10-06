@@ -23,9 +23,9 @@ Use the T-0911 patch recipe; `29ee0601` touches `spill_functions.rs` (functions-
 that hunk minimal. If `29ee0601` depends on the FILTER change in `d7b09c33`, port it with T-0223 instead.
 
 ## Acceptance criteria
-- [ ] Commits ported with `Ported-From: ironcalc@<sha>`, including their unit tests.
+- [x] Commits ported with `Ported-From: ironcalc@<sha>`, including their unit tests.
 - [x] (narrowed) `ISREF.xlsx` not added, see Outcome and T-0965; 0 eval regressions.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MAX/MIN (T-0223), error broadcasting (T-0129).
