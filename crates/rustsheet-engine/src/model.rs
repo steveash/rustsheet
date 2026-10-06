@@ -736,7 +736,8 @@ impl Model {
             // element by element on a range or an array
             UnaryKind { kind, right } => match kind {
                 OpUnary::Minus => self.apply_number_unary(right, cell, |f| Ok(-f)),
-                // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results become 0", probes/subnormal-function-results A1, A21).
+                // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
+                // become 0", probes/subnormal-function-results A1, A21).
                 OpUnary::Percentage => {
                     self.apply_number_unary(right, cell, |f| Ok(flush_subnormal(f / 100.0)))
                 }
