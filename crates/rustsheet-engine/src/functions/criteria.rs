@@ -10,7 +10,7 @@ use crate::{
     expressions::token::is_english_error_string,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
-    number_format::{parse_excel_number, parse_finite_number},
+    number_format::{parse_excel_number, parse_finite_number, to_excel_precision},
 };
 
 /// If `s` looks like a date literal in the given locale, return its Excel
@@ -66,18 +66,20 @@ pub(crate) fn from_wildcard_to_regex(
 
 // It could be either the number or a string representation of the number
 // In the rest of the cases calc_result needs to be a number (cannot be the string "23", for instance)
+// Excel: criteria equality compares the 15-digit values, so 1+2^-52 matches 1 but 1E-17 never matches 0
+// (docs/excel-semantics/numbers.md#criteria-equality, probes/tiny-vs-zero-criteria A1-A12).
+fn numbers_equal(a: f64, b: f64) -> bool {
+    to_excel_precision(a, 15) == to_excel_precision(b, 15)
+}
+
 fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => {
-            // Excel: criteria equality is exact, so a tiny value never matches 0
-            // (docs/excel-semantics/numbers.md#criteria-exact-equality, probes/tiny-vs-zero-criteria).
-            *f == target
-        }
+        CalcResult::Number(f) => numbers_equal(*f, target),
         // Excel: text cells are parsed with the same ASCII-space trimming as the criterion
         // operand (docs/excel-semantics/criteria.md, probes/criteria-padded-text).
         CalcResult::String(s) => {
             if let Some(f) = parse_criterion_number(s) {
-                return f == target;
+                return numbers_equal(f, target);
             }
             false
         }
