@@ -29,6 +29,7 @@ from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape
 
 import xlsxwriter
 
@@ -218,7 +219,7 @@ def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
                     if text.count(placeholder) != 1:
                         msg = f"cannot store error {name} in {ref}: placeholder not found"
                         raise ValueError(msg)
-                    text = text.replace(placeholder, f'<c r="{ref}" t="e"><v>{name}</v></c>')
+                    text = text.replace(placeholder, f'<c r="{ref}" t="e"><v>{escape(name)}</v></c>')
                 data = text.encode()
             dst.writestr(info, data)
     return out.getvalue()
