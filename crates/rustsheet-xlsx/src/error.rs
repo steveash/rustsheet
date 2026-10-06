@@ -3,6 +3,31 @@ use std::num::{ParseFloatError, ParseIntError};
 use thiserror::Error;
 use zip::result::ZipError;
 
+/// A resource bound the importer enforces on untrusted workbooks (CLAUDE.md directive 5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportLimit {
+    /// Entries listed in the zip directory.
+    ZipEntries,
+    /// Bytes inflated from the parts the importer reads, in total.
+    UncompressedBytes,
+    /// Characters in one cell text or shared string.
+    TextLength,
+    /// Entity references beyond the five predefined ones and character references: xlsx parts
+    /// declare no entities, so none is ever expanded (no "billion laughs").
+    EntityExpansion,
+}
+
+impl std::fmt::Display for ImportLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ImportLimit::ZipEntries => "zip entries",
+            ImportLimit::UncompressedBytes => "uncompressed bytes",
+            ImportLimit::TextLength => "characters in one text",
+            ImportLimit::EntityExpansion => "custom entity expansions",
+        })
+    }
+}
+
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum XlsxError {
     #[error("I/O Error: {0}")]
@@ -19,6 +44,9 @@ pub enum XlsxError {
     Comparison(String),
     #[error("Not Implemented Error: {0}")]
     NotImplemented(String),
+    /// The workbook exceeds an import resource limit.
+    #[error("Limit Error: more than {max} {limit}")]
+    Limit { limit: ImportLimit, max: u64 },
 }
 
 impl From<io::Error> for XlsxError {
@@ -60,7 +88,9 @@ impl From<quick_xml::events::attributes::AttrError> for XlsxError {
 impl XlsxError {
     pub fn user_message(&self) -> String {
         match &self {
-            XlsxError::IO(_) | XlsxError::Workbook(_) => self.to_string(),
+            XlsxError::IO(_) | XlsxError::Workbook(_) | XlsxError::Limit { .. } => {
+                self.to_string()
+            }
             XlsxError::Zip(_) | XlsxError::Xml(_) => {
                 "IronCalc can only open workbooks created by Microsoft Excel. \
                 Can you open this file with Excel, save it to a new file, \
