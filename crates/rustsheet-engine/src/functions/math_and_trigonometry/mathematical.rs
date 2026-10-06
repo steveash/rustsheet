@@ -241,7 +241,7 @@ impl Model {
                 }
             };
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
