@@ -3,7 +3,7 @@ id: T-0993
 title: "Implement AGGREGATE (functions 1-19, options 0-7)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
