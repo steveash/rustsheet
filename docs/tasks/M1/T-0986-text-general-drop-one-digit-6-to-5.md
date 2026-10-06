@@ -3,7 +3,7 @@ id: T-0986
 title: "TEXT General: drop one digit (6 to 5) when decimal exponent magnitude is 99 or more"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
