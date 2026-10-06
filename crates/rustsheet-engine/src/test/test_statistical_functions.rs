@@ -372,3 +372,23 @@ fn test_logest_basic() {
     assert!((m - 3.0).abs() < 0.01, "m should be ≈3, got {m}");
     assert!((b - 2.0).abs() < 0.01, "b should be ≈2, got {b}");
 }
+
+// Evidence: poi FormulaEvalTestData_Copy.xlsx EverythingTests J888, F912 (T-0949).
+#[test]
+fn test_maxa_mina_single_cell_references() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("A2", "y");
+    model._set("A3", "TRUE");
+    model._set("A4", "FALSE");
+    model._set("A5", "534");
+    model._set("B1", "=MAXA(A1,A2)");
+    model._set("B2", "=MINA(A3,A5,A5)");
+    model._set("B3", "=MAXA(A4,A1)");
+    model._set("B4", "=MINA(A5,A4)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "0");
+    assert_eq!(model._get_text("B2"), "1");
+    assert_eq!(model._get_text("B3"), "0");
+    assert_eq!(model._get_text("B4"), "0");
+}

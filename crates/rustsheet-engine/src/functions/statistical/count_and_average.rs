@@ -110,10 +110,15 @@ impl Model {
                 CalcResult::Number(value) => {
                     f(value);
                 }
-                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                // A single-cell reference reads like a one-cell range: text counts as 0 and
+                // a boolean as 1/0 (coercion.md "MAXA / MINA", poi EverythingTests J888, F912).
+                CalcResult::Boolean(value) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                CalcResult::String(_) if matches!(arg, Node::ReferenceKind { .. }) => {
+                    f(0.0);
+                }
+                CalcResult::String(value) => {
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
