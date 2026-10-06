@@ -201,3 +201,28 @@ fn test_range_operand_error_wins_over_right_scalar_error() {
     assert_eq!(model._get_text("A1"), "#N/A");
     assert_eq!(model._get_text("A2"), "#N/A");
 }
+
+#[test]
+fn test_sheet_qualified_malformed_corner_pairs_keep_text_and_are_name_errors() {
+    let mut model = new_empty_model();
+    model.rename_sheet("Sheet1", "Data").unwrap();
+    model.new_sheet();
+    model.rename_sheet("Sheet1", "My Data").unwrap();
+    // T-0145: Excel gives #NAME? and keeps the formula as typed.
+    let formulas = [
+        "=SUM(Data!A:Data!B)",
+        "=SUM(Data!A1:B)",
+        "=SUM('My Data'!A:'My Data'!B1)",
+    ];
+    for (i, formula) in formulas.iter().enumerate() {
+        model._set(&format!("Data!D{}", i + 1), formula);
+    }
+
+    model.evaluate();
+
+    for (i, formula) in formulas.iter().enumerate() {
+        let cell = format!("Data!D{}", i + 1);
+        assert_eq!(model._get_text(&cell), "#NAME?", "{formula}");
+        assert_eq!(model._get_formula(&cell), *formula);
+    }
+}
