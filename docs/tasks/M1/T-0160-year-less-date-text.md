@@ -3,7 +3,7 @@ id: T-0160
 title: "Year-less date text reads the current year (\"Jul-26\", \"7/1\", \"1-Jul\")"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
