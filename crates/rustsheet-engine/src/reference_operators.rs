@@ -260,6 +260,19 @@ impl Model {
         }
     }
 
+    /// Whether `(left,right)` evaluates to a reference: a union with an error operand (`(A1,#REF!)`)
+    /// is that error, not a reference (probes/union-accepted H9, docs/excel-semantics/references.md).
+    pub(crate) fn union_is_reference(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> bool {
+        let mut budget = MAX_AREA_PAIRS;
+        self.count_union_areas(left, right, cell, &mut budget)
+            .is_ok()
+    }
+
     /// The number of areas `(left,right)` stands for, or the result to give instead, exactly
     /// as [`Model::union_areas`] finds them but without building the union's area list.
     fn count_union_areas(
