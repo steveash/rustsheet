@@ -163,6 +163,8 @@ although 2 appears twice. Blanks and text inside a multi-cell range are ignored
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
 K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
 Status: VERIFIED (Excel-cached)
+Implemented in: `collect_mode_values` (mode_functions.rs). MODE.SNGL/MODE.MULT share it by inference
+(unprobed), as do non-literal text-valued expressions (e.g. `A1&""`).
 Tasks: T-0947
 
 ## MAXA / MINA: single-cell references are read like ranges
