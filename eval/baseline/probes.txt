@@ -95,6 +95,7 @@ C	probes/union-accepted.case.json	9
 C	probes/union-defined-name.case.json	0
 C	probes/union-neg-operand.case.json	2
 C	probes/value-clock-text.case.json	135
+C	probes/xmatch-xlookup-blanks.case.json	69
 F	probes/aggregate-overflow.case.json	Calc!A27
 F	probes/aggregate-overflow.case.json	Calc!A28
 F	probes/aggregate-overflow.case.json	Calc!A29
@@ -352,3 +353,10 @@ F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9
 F	probes/union-accepted.case.json	Sheet1!H9
 F	probes/union-defined-name.case.json	!EngineError
+F	probes/xmatch-xlookup-blanks.case.json	Col!M16
+F	probes/xmatch-xlookup-blanks.case.json	Col!M17
+F	probes/xmatch-xlookup-blanks.case.json	Col!M20
+F	probes/xmatch-xlookup-blanks.case.json	Col!M23
+F	probes/xmatch-xlookup-blanks.case.json	Col!M44
+F	probes/xmatch-xlookup-blanks.case.json	Err!M6
+F	probes/xmatch-xlookup-blanks.case.json	Row!A18

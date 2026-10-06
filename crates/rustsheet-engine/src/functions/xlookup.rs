@@ -8,7 +8,7 @@ use super::{
         binary_search_descending_or_greater, binary_search_descending_or_smaller,
         binary_search_or_greater, binary_search_or_smaller,
     },
-    criteria::wildcard_text_matcher,
+    lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
     util::compare_values,
 };
 
@@ -36,82 +36,18 @@ fn linear_search(
     match_mode: MatchMode,
 ) -> Option<usize> {
     let length = array.len();
-
-    match match_mode {
-        MatchMode::ExactMatch => {
-            // exact match
-            for l in 0..length {
-                let index = if search_mode == SearchMode::StartAtFirstItem {
-                    l
-                } else {
-                    length - l - 1
-                };
-
-                let value = &array[index];
-                if compare_values(value, lookup_value) == 0 {
-                    return Some(index);
-                }
-            }
-            return None;
-        }
-        MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => {
-            // exact match, if none found return the next smaller/larger item
-            let mut found_index = 0;
-            let mut approx = None;
-            let m_mode = match_mode as i32;
-            for l in 0..length {
-                let index = if search_mode == SearchMode::StartAtFirstItem {
-                    l
-                } else {
-                    length - l - 1
-                };
-
-                let value = &array[index];
-                let c = compare_values(value, lookup_value);
-                if c == 0 {
-                    return Some(index);
-                } else if c == m_mode {
-                    match approx {
-                        None => {
-                            approx = Some(value.clone());
-                            found_index = index;
-                        }
-                        Some(ref p) => {
-                            if compare_values(p, value) == m_mode {
-                                approx = Some(value.clone());
-                                found_index = index;
-                            }
-                        }
-                    }
-                }
-            }
-            if approx.is_none() {
-                return None;
-            } else {
-                return Some(found_index);
-            }
-        }
-        MatchMode::WildcardMatch => {
-            let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-                if let CalcResult::String(s) = &lookup_value {
-                    wildcard_text_matcher(s)
-                } else {
-                    Box::new(move |x| compare_values(x, lookup_value) == 0)
-                };
-            for l in 0..length {
-                let index = if search_mode == SearchMode::StartAtFirstItem {
-                    l
-                } else {
-                    length - l - 1
-                };
-                let value = &array[index];
-                if result_matches(value) {
-                    return Some(index);
-                }
-            }
-        }
+    let mode = match match_mode {
+        MatchMode::ExactMatch => XmatchMode::Exact,
+        MatchMode::ExactMatchSmaller => XmatchMode::ExactMatchSmaller,
+        MatchMode::ExactMatchLarger => XmatchMode::ExactMatchLarger,
+        MatchMode::WildcardMatch => XmatchMode::Wildcard,
+    };
+    let get = |index: usize| &array[index];
+    if search_mode == SearchMode::StartAtFirstItem {
+        linear_scan(lookup_value, 0..length, get, mode)
+    } else {
+        linear_scan(lookup_value, (0..length).rev(), get, mode)
     }
-    None
 }
 
 impl Model {
