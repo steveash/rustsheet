@@ -120,6 +120,9 @@ Implementation: `+ - * /` (T-0173), `SUM` (T-0185). Other aggregates (SUMPRODUCT
 not probed for overflow yet and still return infinity: unverified, needs an oracle probe before changing.
 `SUM` checks only the final total, so `SUM(9E+307,9E+307,-9E+307)` is `#NUM!` here; whether Excel overflows at the
 intermediate point (as `=9E+307+9E+307-9E+307` does) is unprobed (UNVERIFIED).
+`SUM` returns the first argument error before its overflow check, so `SUM(9E+307,9E+307,NA())` is `#N/A` here; which error
+wins in Excel is unprobed (UNVERIFIED). PERCENTOF sums its arguments through `fn_sum`, so an overflowing part or total is
+`#NUM!` there too (UNVERIFIED).
 Evidence: probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
