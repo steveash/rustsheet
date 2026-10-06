@@ -115,7 +115,7 @@ Unprobed: `#PYTHON!`, `#EXTERNAL!` stored. The rejected names were re-run as thr
 (`A1` = `{"t":"e","v":"<name>","stored":true}`, nothing else), so to reproduce one, write that case.
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
-probes/error-stored-constants (S!A1:D3, excel-graph 2026-10-06) for the loading stored names, the five
+probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same).
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999
