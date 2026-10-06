@@ -3,7 +3,7 @@ id: T-0996
 title: "TEXT ddd/dddd accept serial 0 (Saturday) and read the Sunday-based early-1900 weekday"
 milestone: M1
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Rule VERIFIED in docs/excel-semantics/dates.md (Early-1900 edges), evidence prob
 
 ## Out of scope
 -
+
+## Outcome
+TEXT ddd/dddd use `excel_weekday_index` (Sunday-based, serial 0 = Saturday) instead of the stand-in calendar date. probes/dates-early-1900-edges rows 26, 27, 30, 34 pass (probes known failures 226 -> 214).
