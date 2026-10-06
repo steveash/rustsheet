@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::arithmetic::power;
+use crate::arithmetic::{power, times};
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -635,9 +635,7 @@ impl Model {
             }
             OpConcatenateKind { left, right } => self.handle_concatenate(left, right, cell),
             OpProductKind { kind, left, right } => match kind {
-                OpProduct::Times => {
-                    self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 * f2))
-                }
+                OpProduct::Times => self.handle_arithmetic(left, right, cell, &times),
                 OpProduct::Divide => self.handle_arithmetic(left, right, cell, &|f1, f2| {
                     if f2 == 0.0 {
                         Err(Error::DIV)

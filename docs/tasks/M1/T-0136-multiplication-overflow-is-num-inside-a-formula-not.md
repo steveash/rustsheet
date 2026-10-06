@@ -3,7 +3,7 @@ id: T-0136
 title: "Multiplication overflow is #NUM! inside a formula, not an infinite intermediate (4 probes-numeric cells)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -54,3 +54,8 @@ Semantics: docs/excel-semantics/numbers.md "Overflow in `*` is #NUM! where it ha
 ## Out of scope
 - Overflow in `+`, `-`, `/` and in functions (needs probes first).
 - Gating probes-numeric (its other failures belong to T-0107/T-0110).
+
+## Outcome
+`*` now returns `#NUM!` on overflow via `arithmetic::times`; unit test added. Eval delta: the 4
+probes-numeric cells (Calc!A121:A124) now pass; probes-numeric is not gated, so no baseline change.
+Follow-up: probe `+`, `-`, `/` overflow (noted UNVERIFIED in numbers.md).

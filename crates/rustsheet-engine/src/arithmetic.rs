@@ -23,6 +23,17 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
     }
 }
 
+/// `x * y`; a product beyond the double range is `#NUM!` at once, so it stays an error through
+/// `&`, CONCAT, TEXT and LEN (probes-numeric/4f413cc257ce15c4 Calc!A121:A124, excel-graph).
+/// Only `*` has evidence; `+`, `-` and `/` are left as they were (docs/excel-semantics/numbers.md).
+pub(crate) fn times(x: f64, y: f64) -> Result<f64, Error> {
+    let product = x * y;
+    if product.is_infinite() {
+        return Err(Error::NUM);
+    }
+    Ok(product)
+}
+
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
