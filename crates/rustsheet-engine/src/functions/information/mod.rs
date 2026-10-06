@@ -145,9 +145,10 @@ impl Model {
             Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
             // A defined name is a reference if what it stands for is one, a single cell included
             // (Excel-cached: upstream ISREF.xlsx Sheet1!A14, A15).
-            node @ Node::DefinedNameKind(_) => CalcResult::Boolean(matches!(
-                self.evaluate_node_with_reference(node, cell),
-                CalcResult::Range { .. }
+            Node::DefinedNameKind((name, scope, _)) => CalcResult::Boolean(matches!(
+                self.parsed_defined_names
+                    .get(&(*scope, name.to_lowercase())),
+                Some(ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_))
             )),
             _ => CalcResult::Boolean(false),
         }
