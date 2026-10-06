@@ -55,8 +55,8 @@ impl Model {
             // 0, 3-10 and 18-20 are #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
             // Excel gives 22+ and negatives the start weekday of the last valid WEEKNUM evaluated
             // earlier in the recalc, #NUM! only when none ran (probes/weeknum-stale-return-type,
-            // docs/excel-semantics/dates.md); this matches only that no-state case.
-            // TODO(T-1025): model or decline the stale state.
+            // docs/excel-semantics/dates.md). That value depends on Excel's calc order, so we
+            // always give #NUM!, Excel's no-state value (DEVIATION, decision 0038).
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a
