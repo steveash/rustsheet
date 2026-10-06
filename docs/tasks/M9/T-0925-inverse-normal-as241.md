@@ -23,6 +23,11 @@ Code: `functions/statistical/{normal,log_normal}.rs`. Implement AS241 (PPND16) o
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
 cached workbooks give. Fit against the T-0942 sweep, never blind.
 
+Triage T-0903 (2026-10-06 report): this task owns 106 baseline lines: NORM.S.INV 33, NORM.INV 19,
+LOGNORM.INV 31 (all NORM_DIST.xlsx / LOGNORM.xlsx `*.INV` cells) and CONFIDENCE.NORM 23. The normal
+CDF it inverts is not correctly rounded (`docs/excel-semantics/statistics.md`); its last digits are
+T-0968, so an iteration against Excel's CDF needs T-0968 first.
+
 ## Acceptance criteria
 - [ ] All NumericClose/NumericMismatch lines for NORM.S.INV, NORM.INV, LOGNORM.INV disappear from `eval/baseline/ironcalc-calc.txt`; the CONFIDENCE.NORM ulp lines disappear or the PR documents which remain and why. Exact before/after counts in the PR; no new lines.
 - [ ] No other call sites of statrs `inverse_cdf` for Normal (rg).
