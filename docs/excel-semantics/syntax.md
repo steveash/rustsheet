@@ -28,6 +28,8 @@ sign form tested was a syntax error, so Excel for the web refuses the whole work
 mechanism as `=IF(TRUE)` above): sign runs `{--1}`, `{++1}`, `{-+1}`, `{+-1}`, `{---1}`, `{1,--2}`;
 a space after the sign `{- 1}`, `{+ 1}`; a sign on a boolean, text or error literal `{-TRUE}`,
 `{+"a"}`, `{-#N/A}`, `{+#N/A}`.
+Array-constant items that are expressions (`{"a"&CHAR(7)&"b","c"}`) are rejected the same way (found bisecting
+the T-0957 probe, excel-graph 2026-10-05); the engine rejects them too (`parse_array_item`).
 Evidence: eval/suites/probes/cases/array-constant-signs.case.json (oracle: excel-graph, 2026-10-05,
 T-0147) for the accepted forms; each rejected form was sent as a single-cell workbook
 (e.g. `{"sheets":[{"name":"Sheet1","cells":{"A1":"=SUM({--1})"}}]}`) and got createSession 501
