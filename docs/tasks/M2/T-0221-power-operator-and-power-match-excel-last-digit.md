@@ -33,7 +33,9 @@ gen-m1 (T-0109 triage, oracle excel-graph 2026-10-05) adds 8 NumericUlp cells wh
 - `gen-m1/57fe331cb7611dbf` A54 `((('Q''1'!A$7^Data!B10)^("0.5"^TRUE))^10)` expected
   0.031250000000000035, actual 0.03125000000000002; A104 `('Q''1'!B9^'Q''1'!C1)` expected
   1.54289402744788e+51, actual 1.5428940274478798e+51.
-docs/excel-semantics/numbers.md has "POWER and `^`" (special cases) but nothing on accuracy. Excel's
+T-0942 sweep: integer exponents are right-to-left square-and-multiply, 154/154 cells
+(numbers.md "Integer exponents", probes-numeric/m9-fin-power); non-integer exponents remain open.
+docs/excel-semantics/numbers.md has "POWER and `^`" (special cases). Excel's
 results look like `exp(y*ln(x))` in double, or a similar decomposition. Fit a formulation against these cells
 plus a probe sweep (excel-probe skill), as T-0914 did for the hyperbolics. Check docs/excel-semantics/numbers.md
 "Excel for the web and desktop Excel differ" first: these are excel-graph values.
