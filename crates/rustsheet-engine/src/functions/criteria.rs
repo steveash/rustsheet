@@ -10,7 +10,7 @@ use crate::{
     expressions::token::is_english_error_string,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
-    number_format::{parse_excel_number, parse_finite_number},
+    number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
 };
 
 /// If `s` looks like a date literal in the given locale, return its Excel
@@ -61,6 +61,12 @@ pub(crate) fn from_wildcard_to_regex(
     regex::Regex::new(reg)
 }
 
+// Excel: criteria equality compares the 15-digit values, so 1+2^-52 matches 1 but 1E-17 never matches 0
+// (docs/excel-semantics/numbers.md#criteria-equality, probes/tiny-vs-zero-criteria A1-A12).
+fn numbers_equal(a: f64, b: f64) -> bool {
+    cmp_excel_precision(a, b) == std::cmp::Ordering::Equal
+}
+
 // NUMBERS ///
 //*********///
 
@@ -68,20 +74,12 @@ pub(crate) fn from_wildcard_to_regex(
 // In the rest of the cases calc_result needs to be a number (cannot be the string "23", for instance)
 fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => {
-            if (f - target).abs() < f64::EPSILON {
-                return true;
-            }
-            false
-        }
+        CalcResult::Number(f) => numbers_equal(*f, target),
         // Excel: text cells are parsed with the same ASCII-space trimming as the criterion
         // operand (docs/excel-semantics/criteria.md, probes/criteria-padded-text).
         CalcResult::String(s) => {
             if let Some(f) = parse_criterion_number(s) {
-                if (f - target).abs() < f64::EPSILON {
-                    return true;
-                }
-                return false;
+                return numbers_equal(f, target);
             }
             false
         }
@@ -119,12 +117,7 @@ fn result_is_greater_or_equal_than_number(calc_result: &CalcResult, target: f64)
 
 fn result_is_not_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => {
-            if (f - target).abs() > f64::EPSILON {
-                return true;
-            }
-            false
-        }
+        CalcResult::Number(f) => !numbers_equal(*f, target),
         _ => true,
     }
 }
@@ -248,7 +241,7 @@ fn result_is_not_equal_to_empty(calc_result: &CalcResult) -> bool {
 
 fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
     match calc_result {
-        CalcResult::Number(f) => (f - 0.0).abs() < f64::EPSILON,
+        CalcResult::Number(f) => *f == 0.0,
         _ => false,
     }
 }

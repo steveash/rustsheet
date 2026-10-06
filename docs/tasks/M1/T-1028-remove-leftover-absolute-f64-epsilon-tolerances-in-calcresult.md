@@ -3,7 +3,7 @@ id: T-1028
 title: "Remove leftover absolute f64::EPSILON tolerances in CalcResult Ord and criteria matching"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Follow-up of T-0989 (review finding). `impl Ord for CalcResult` (calc_result.rs 
 
 ## Out of scope
 -
+
+## Outcome
+Criteria equality (=, <>, blank-as-0) and `Ord for CalcResult` now compare 15-digit values instead of an absolute `f64::EPSILON`. New probe `probes/tiny-vs-zero-criteria` (oracle-filled) pins Excel: `COUNTIF(r,0)` ignores 1E-17, `COUNTIF(r,1)` matches 1+2^-52. Eval: the new probe passes in full (all cells); baseline known failures unchanged (230), no regressions. Quirk recorded in `docs/excel-semantics/numbers.md`.
