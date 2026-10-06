@@ -4,6 +4,8 @@ use std::io::{Cursor, Read};
 use std::path::Path;
 
 use rustsheet_engine::{Model, LAST_COLUMN, LAST_ROW};
+use rustsheet_xlsx::error::XlsxError;
+use rustsheet_xlsx::import::ImportLimits;
 
 use crate::error::{LoadError, RefError, SaveError};
 use crate::refs::{
@@ -53,10 +55,11 @@ pub struct LoadOptions {
 
 impl Default for LoadOptions {
     fn default() -> Self {
+        let import = ImportLimits::default();
         Self {
             recalc: true,
-            max_uncompressed_bytes: 256 << 20,
-            max_zip_entries: 5_000,
+            max_uncompressed_bytes: import.max_uncompressed_bytes,
+            max_zip_entries: import.max_zip_entries,
             workbook: WorkbookOptions::default(),
         }
     }
@@ -240,9 +243,24 @@ impl Workbook {
     pub fn from_xlsx_bytes(bytes: &[u8], opts: &LoadOptions) -> Result<Self, LoadError> {
         check_zip_limits(bytes, opts)?;
         let w = &opts.workbook;
-        let book =
-            rustsheet_xlsx::import::load_from_xlsx_bytes(bytes, "workbook", &w.locale, &w.timezone)
-                .map_err(engine_load_error)?;
+        // The importer enforces the same limits on the parts it reads, so a caller raising
+        // them here is not stopped by the importer's defaults.
+        let limits = ImportLimits {
+            max_uncompressed_bytes: opts.max_uncompressed_bytes,
+            max_zip_entries: opts.max_zip_entries,
+            ..ImportLimits::default()
+        };
+        let book = rustsheet_xlsx::import::load_from_xlsx_bytes_with_limits(
+            bytes,
+            "workbook",
+            &w.locale,
+            &w.timezone,
+            &limits,
+        )
+        .map_err(|e| match e {
+            XlsxError::Limit { .. } => LoadError::Options(e.to_string()),
+            e => engine_load_error(e),
+        })?;
         let model = Model::from_workbook(book, &w.language).map_err(LoadError::Format)?;
         let mut workbook = Self::from_model(model, w.max_read_cells);
         if opts.recalc {

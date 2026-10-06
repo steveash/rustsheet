@@ -33,3 +33,21 @@ Stored values up to f64::MAX are kept: the 1E+308 limit of numbers.md is about t
 Evidence: none for Excel; input hardening (CLAUDE.md directive 5), ported from ironcalc@58279cda.
 Status: DEVIATION (decision 0014)
 Implemented in: crates/rustsheet-xlsx/src/import/util.rs (`parse_cell_number`)
+
+## Import resource limits reject a workbook outright
+Rule: the importer rejects a workbook with `XlsxError::Limit` when its zip lists more than 5,000
+entries, when the parts it reads inflate past 256 MiB in total (bytes actually inflated, not the
+sizes the zip declares), when one shared string or cell text (`<v>`, inline `<is>`) is longer than
+32,767 characters (Unicode scalar values, counted after `_xHHHH_` escapes are decoded), or when a
+part uses an entity reference other than the five predefined ones and character references (declared
+entities are never expanded: no "billion laughs"). The limits are
+`rustsheet_xlsx::import::ImportLimits`; the public API passes its `LoadOptions` sizes through.
+Excel's own cell limit is 32,767 characters (believed to be UTF-16 code units, which never count
+fewer than scalar values, so this bound is never stricter than Excel's), but what Excel does with a
+longer string in a file (truncate, repair or refuse) is not probed (T-0004); xlsx parts never
+declare entities, and OPC forbids DTDs in package parts. Entity references in attribute values were
+already rejected.
+Evidence: none for Excel; these are resource limits (CLAUDE.md directive 5), not Excel observations.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-xlsx/src/import/package.rs (`ImportLimits`, `Package`),
+crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
