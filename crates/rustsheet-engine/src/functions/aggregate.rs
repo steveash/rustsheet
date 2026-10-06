@@ -39,6 +39,9 @@ struct Collected {
     non_empty: usize,
     /// The first error not ignored. COUNT and COUNTA never return it.
     error: Option<CalcResult>,
+    /// Sheets whose hidden rows are already in `hidden_rows` (odd options only).
+    hidden_sheets: HashSet<u32>,
+    hidden_rows: HashSet<(u32, i32)>,
 }
 
 impl Model {
@@ -210,16 +213,18 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<(), CalcResult> {
         let nested = [Function::Subtotal, Function::Aggregate];
-        // The hidden rows of each sheet of the area, read once: a per-cell lookup would scan
-        // the sheet's row styles for every cell (cells x styled rows on a crafted workbook).
-        let mut hidden_rows = HashSet::new();
+        // The hidden rows of each sheet, read once per AGGREGATE call: a per-cell (or per-area)
+        // lookup would rescan the sheet's row styles (cells or areas x styled rows).
         if ignore.hidden {
             for sheet in area.left.sheet..=area.right.sheet {
+                if !collected.hidden_sheets.insert(sheet) {
+                    continue;
+                }
                 let worksheet = self
                     .workbook
                     .worksheet(sheet)
                     .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-                hidden_rows.extend(
+                collected.hidden_rows.extend(
                     worksheet
                         .rows
                         .iter()
@@ -229,7 +234,10 @@ impl Model {
             }
         }
         self.for_each_position_in_range(area.left, area.right, cell, |model, position| {
-            if hidden_rows.contains(&(position.sheet, position.row)) {
+            if collected
+                .hidden_rows
+                .contains(&(position.sheet, position.row))
+            {
                 return Ok(());
             }
             if ignore.nested
