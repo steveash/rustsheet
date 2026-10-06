@@ -263,25 +263,14 @@ impl Model {
         right: CellReferenceIndex,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
         let mut values = Vec::new();
-        for row_offset in 0..=(right.row - left.row) {
-            for col_offset in 0..=(right.column - left.column) {
-                let cell_ref = CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row + row_offset,
-                    column: left.column + col_offset,
-                };
-                let cell_value = self.evaluate_cell(cell_ref);
-                match cell_value {
-                    CalcResult::Number(v) => {
-                        values.push(Some(v));
-                    }
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    _ => {
-                        values.push(None);
-                    }
-                }
-            }
-        }
+        // The shared range walk also covers 3-D references (T-0196).
+        self.for_each_cell_in_range(left, right, left, |_, value| {
+            values.push(match value {
+                CalcResult::Number(v) => Some(v),
+                _ => None,
+            });
+            Ok(())
+        })?;
         Ok(values)
     }
 

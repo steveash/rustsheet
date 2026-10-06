@@ -3,7 +3,7 @@ id: T-0196
 title: "3-D references in AVERAGEA, MAXA, MINA, PRODUCT, CONCAT, LARGE and RANK"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ arrive (as references); check those functions' existing cases still pass.
 
 ## Out of scope
 - Other functions (STDEVA, VARA, ...): probe first, file separately.
+
+## Outcome
+AVERAGEA, MAXA, MINA, PRODUCT, CONCAT, LARGE and RANK now take their arguments through `evaluate_aggregate_arg`; CONCAT and `values_from_range` (LARGE/RANK) walk ranges with `for_each_cell_in_range`, so the 3-D walk stays in one place (CONCAT no longer returns #VALUE! for cross-sheet ranges). probes known failures 292 -> 285 (7 fixed, 0 regressions).
