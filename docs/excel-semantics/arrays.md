@@ -113,7 +113,10 @@ argument the leftmost error is the result: `WEEKDAY(1/0,NA())` is `#DIV/0!`, `TE
 `#N/A` (the format's error wins over a text value).
 Evidence: crates/rustsheet-xlsx/tests/calc_tests/INFORMATION/error_broadcast.xlsx (Excel-authored,
 upstream IronCalc 4deab8f6; 230 cells, all pass).
-Status: VERIFIED
+Status: VERIFIED, except two engine choices without evidence (UNVERIFIED, T-0994): a non-numeric
+text element in WEEKDAY's date array next to an error return type is `#VALUE!`; and with all-scalar
+arguments a text function returns its first error argument before coercing the others
+(`MID("abc","x",NA())` is `#N/A`, while `MID({"abc"},"x",NA())` is `#VALUE!`).
 Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/arithmetic.rs),
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
 Tasks: T-0129

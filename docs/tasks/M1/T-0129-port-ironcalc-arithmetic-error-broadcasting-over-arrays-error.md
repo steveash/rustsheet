@@ -41,4 +41,4 @@ in `handle_arithmetic` (T-0209): `arithmetic_on_values` now takes `Result` opera
 `TextArg` moved to `functions/text/text_arg.rs` and reuses arithmetic's `MISSING` (the copy in
 text/common.rs is gone); `own_error` replaces three copies of the same closure.
 Eval delta: gen-m2 known failures 475 → 470 (5 fixed); ironcalc-calc +1 case, 0 new failures;
-0 regressions. Rule recorded in docs/excel-semantics/arrays.md.
+0 regressions. Rule recorded in docs/excel-semantics/arrays.md. Follow-up: T-0994 (probe two sub-rules).
