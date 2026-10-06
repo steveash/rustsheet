@@ -6,7 +6,7 @@
 
 ## Problem
 The engine knows twelve errors: the classic eight (`#NULL!` … `#N/A`), plus `#SPILL!` and
-`#CALC!`, plus the engine-only `#ERROR!`, `#N/IMPL!` and `#CIRC!`
+`#CALC!`, plus the engine-only `#ERROR!`, `#N/IMPL` (its `Display`; the parsed literal is `#N/IMPL!`) and `#CIRC!`
 (`crates/rustsheet-engine/src/expressions/token.rs`, `enum Error`). Excel has more. Without a kind for
 them:
 - `probes/error-literals-new` fails 17 of 18 cells, because `=#GETTING_DATA` does not parse and
@@ -49,8 +49,9 @@ Non-goals:
 
 Behavior shared by all four:
 - **Ordinary error kinds.** They propagate like any error. The leftmost error operand wins for
-  `=`, `+`, `-`, `*`, `&` and `SUM` (syntax.md, T-0195: `#GETTING_DATA+#DIV/0!` is 8 and
-  `#DIV/0!+#GETTING_DATA` is 2). No new precedence rule is needed.
+  `=`, `+`, `-`, `*` and `SUM` (syntax.md, T-0195: `#GETTING_DATA+#DIV/0!` is 8 and
+  `#DIV/0!+#GETTING_DATA` is 2). For `&` and comparisons the rule is arrays.md "Errors broadcast
+  through `&`, comparisons, POWER and the element-wise functions". No new precedence rule is needed.
 - **None of them is `#N/A`.** For `#GETTING_DATA`: `ISNA` is FALSE, `ISERR` TRUE, `ISERROR` TRUE,
   `IFNA` passes it through, `IFERROR` catches it, and `TYPE` is 16 (error-literals-new A3, A4, A12,
   A15, A5, A16). For the three rich kinds, ISERR, ISNA and TYPE are inferred from "not `#N/A`" and
@@ -83,9 +84,10 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
      (8 / 10 / 11 / 13). Every `match` on `Error` stays exhaustive (no `_` arm is added), so the
      compiler finds every site.
    - `error_type_code` stays the single ERROR.TYPE table. Replace its "not produced" comment with
-     the remaining unproduced codes (12, 19).
+     the remaining unproduced codes, 12 (`#UNKNOWN!`) and 19 (`#EXTERNAL!`), kept as "no
+     evidence of a producer".
 2. **Two name tables, kept apart on purpose.**
-   - **Stored names** (`get_error_by_english_name`, `is_english_error_string`): all sixteen names.
+   - **Stored names** (`get_error_by_english_name`): all sixteen names.
      The xlsx importer (`t="e"` values and rich-value names), the eval snapshot reader, and the
      facade's `ErrorKind::from_literal` use this table. `from_literal` moves to it from
      `get_error_by_name`, uppercasing as today. This lets Python `XlError("#BLOCKED!")` build the
@@ -99,8 +101,13 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
    - Typed cell input (`Model::set_user_input` → `get_error_by_name`) and `value_needs_quoting`
      keep today's table until there is evidence of what Excel does with typed `#BLOCKED!` (desktop UI; not reachable by the web oracle). With that table, a
      typed `#BLOCKED!` stays text, and a typed `#GETTING_DATA` becomes the error because it is in
-     the formula table. That choice **needs evidence** (desktop) and is recorded as UNVERIFIED in
+     the formula table. That choice **needs evidence** from desktop Excel (T-1016) and is recorded as UNVERIFIED in
      syntax.md.
+   - **Criteria** (`is_english_error_string`, used by the COUNTIF/SUMIF family in
+     `functions/criteria.rs`) keep **today's twelve names, unchanged**. Adding a name there would
+     turn a criterion such as `"#BLOCKED!"` or `"<>#CONNECT!"` from text into an error match, and
+     there is no evidence for either result. T-1012 probes it, and T-1013 changes the criteria
+     table only if the probe shows Excel matching the error.
 3. **Stored form: `Error::stored_literal(&self) -> &'static str`**, the single place that knows
    Excel saves `#GETTING_DATA` as `#N/A`. It returns `"#N/A"` for `GETTINGDATA` and the `Display`
    text otherwise. The xlsx exporter and the eval harness both call it (see below). It is a
@@ -184,7 +191,7 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
   a parity engine should give Excel's offline answer. Rejected.
 
 ## Test plan
-- Unit tests in token.rs for every new variant:
+- Unit tests in token.rs for every new variant (and that `is_english_error_string` is unchanged):
   - its Display text and code;
   - the stored-name round trip;
   - that `#GETTING_DATA` (any case) lexes and that `#BLOCKED!` does not;
@@ -208,6 +215,7 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
 | R1 | T-1012: Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
 | F1 | T-1013: IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (DEVIATION entries for IMAGE and STOCKHISTORY) | functions-logic | S | sonnet | E1, R1 |
 | X2 | T-1014: Export rich-value errors as `#VALUE!` plus `vm` metadata, if T-0999 shows Excel does not read stored literals | harness | M | opus | T-0999, X1 |
+| R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |
 | — | T-0124 (existing): uncached external reference is `#BLOCKED!` | engine | S | — | E1 |
 
 Nothing stays behind an old path: each task replaces behavior in place. Until E1 lands, cells

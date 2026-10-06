@@ -20,6 +20,7 @@ SPEC-0003 "Functions with no I/O" (rollout F1). Known failures: probes/rich-erro
 ## Acceptance criteria
 - [ ] The three functions are registered with Excel's arity (including the `_xlfn.` prefix). They return the spec's error after argument errors as T-1012 found, never spill, and do no I/O.
 - [ ] information.md entries for IMAGE and STOCKHISTORY have `Status: DEVIATION (decision 0014)`: reachable URLs and real tickers give errors, where Excel fetches. FIELDVALUE's entry is VERIFIED.
+- [ ] COUNTIF-family criteria naming the new errors follow T-1012's evidence. `is_english_error_string` changes only if Excel matches the error, and the test cites the probe cell.
 - [ ] The 13 rich-errors-* known failures pass and are recorded with `make eval-baseline`, with no regressions.
 - [ ] `make check` green; reviewers approve.
 
