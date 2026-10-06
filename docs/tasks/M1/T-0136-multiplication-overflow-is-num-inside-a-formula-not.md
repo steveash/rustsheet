@@ -3,7 +3,7 @@ id: T-0136
 title: "Multiplication overflow is #NUM! inside a formula, not an infinite intermediate (4 probes-numeric cells)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
