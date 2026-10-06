@@ -69,19 +69,15 @@ pub(crate) fn from_wildcard_to_regex(
 fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
         CalcResult::Number(f) => {
-            if (f - target).abs() < f64::EPSILON {
-                return true;
-            }
-            false
+            // Excel: criteria equality is exact, so a tiny value never matches 0
+            // (docs/excel-semantics/numbers.md#criteria-exact-equality, probes/tiny-vs-zero-criteria).
+            *f == target
         }
         // Excel: text cells are parsed with the same ASCII-space trimming as the criterion
         // operand (docs/excel-semantics/criteria.md, probes/criteria-padded-text).
         CalcResult::String(s) => {
             if let Some(f) = parse_criterion_number(s) {
-                if (f - target).abs() < f64::EPSILON {
-                    return true;
-                }
-                return false;
+                return f == target;
             }
             false
         }
@@ -119,12 +115,7 @@ fn result_is_greater_or_equal_than_number(calc_result: &CalcResult, target: f64)
 
 fn result_is_not_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
     match calc_result {
-        CalcResult::Number(f) => {
-            if (f - target).abs() > f64::EPSILON {
-                return true;
-            }
-            false
-        }
+        CalcResult::Number(f) => *f != target,
         _ => true,
     }
 }
@@ -248,7 +239,7 @@ fn result_is_not_equal_to_empty(calc_result: &CalcResult) -> bool {
 
 fn result_is_equal_to_empty(calc_result: &CalcResult) -> bool {
     match calc_result {
-        CalcResult::Number(f) => (f - 0.0).abs() < f64::EPSILON,
+        CalcResult::Number(f) => *f == 0.0,
         _ => false,
     }
 }

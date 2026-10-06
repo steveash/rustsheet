@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
 use crate::expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex};
+use crate::number_format::to_excel_precision;
 
 #[derive(Clone)]
 pub struct Range {
@@ -62,13 +63,10 @@ impl Ord for CalcResult {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-                if (value2 - value1).abs() < f64::EPSILON {
-                    return Ordering::Equal;
-                }
-                if value1 < value2 {
-                    return Ordering::Less;
-                }
-                Ordering::Greater
+                // Same 15-digit rule as `compare_values`; an absolute epsilon would equate tiny values with 0.
+                let value1 = to_excel_precision(*value1, 15);
+                let value2 = to_excel_precision(*value2, 15);
+                value1.partial_cmp(&value2).unwrap_or(Ordering::Equal)
             }
             (CalcResult::Number(_value1), CalcResult::String(_value2)) => Ordering::Less,
             (CalcResult::Number(_value1), CalcResult::Boolean(_value2)) => Ordering::Less,

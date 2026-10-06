@@ -182,6 +182,11 @@ The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Expone
 Status: VERIFIED. Implemented in `number_to_text` (T-0199); the rounding is half up on the 15-digit string,
 and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unprobed, T-1000).
 
+## Criteria exact equality
+Rule: COUNTIF/SUMIF-style numeric criteria compare exactly (no epsilon, no 15-digit rounding): over {1E-300, 0, 1E-17, 2E-16, 1+2^-52},
+`COUNTIF(r,0)` = 1 and `"=0"` = 1, `"<>1"` = 4. Lookup ordering (MATCH/XMATCH/XLOOKUP) never equates tiny values with 0.
+Evidence: probes/tiny-vs-zero-criteria (A1-A33). Oracle: excel-graph, 2026-10-06. Status: VERIFIED
+
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
 Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for

@@ -3,7 +3,7 @@ id: T-1028
 title: "Remove leftover absolute f64::EPSILON tolerances in CalcResult Ord and criteria matching"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Follow-up of T-0989 (review finding). `impl Ord for CalcResult` (calc_result.rs 
 
 ## Out of scope
 -
+
+## Outcome
+Criteria equality is exact and `Ord for CalcResult` uses the 15-digit rule; probe tiny-vs-zero-criteria added. Probe cells fixed: see baseline.
