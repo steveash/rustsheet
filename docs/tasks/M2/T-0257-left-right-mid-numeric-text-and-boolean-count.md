@@ -3,10 +3,10 @@ id: T-0257
 title: "LEFT/RIGHT/MID: numeric text and boolean count arguments coerce to numbers (6 poi + 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -52,3 +52,16 @@ the negative-count and start < 1 checks after coercion.
 - Huge counts (about 1E+15 is `#VALUE!`) and near-integer counts: T-0219.
 - UTF-16 counting of LEFT/RIGHT/MID positions: T-0249.
 - LEFTB/RIGHTB/MIDB.
+
+## Handoff
+Implemented (commit on this branch): `fn_left`/`fn_right`/`fn_mid` in
+`crates/rustsheet-engine/src/functions/text/common.rs` now pass `self.array_node_to_number(..)` results
+into the element functions (the old `text_num_arg` is removed); unit test `counts_coerce_text_and_booleans`
+and the `Implemented in:` line in coercion.md are added. Unit tests pass.
+Blocker: `make eval-baseline` refuses with 1 REGRESSION, gen-m2/942bdade381b7537 Calc!A290
+`=IFERROR(RIGHT(Data!E10,HLOOKUP(Data!A5,Data!A2:B4,3,TRUE)),"a*")`: expected "a*" (HLOOKUP is #N/A in
+Excel: lookup TRUE against a row of [blank, -1] has no same-type cell), actual "". Our HLOOKUP wrongly
+returns FALSE (binary_search in lookup_and_reference/lookup_table.rs compares across types), which used to
+be masked because a boolean count was `#VALUE!` anyway. The root cause is T-0212 (type-skipping approximate
+lookups). Next: either land T-0212 first, or accept this one cell via a decision record, then run
+`make eval-baseline` (expect 8 fixed lines, 1 added) and finish review/PR.
