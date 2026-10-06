@@ -22,9 +22,17 @@
     "t": "b",
     "v": false
    },
+   "A15": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A2": {
     "t": "b",
     "v": false
+   },
+   "A22": {
+    "t": "b",
+    "v": true
    },
    "A3": {
     "t": "b",
@@ -66,9 +74,17 @@
     "t": "b",
     "v": false
    },
+   "B15": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "B2": {
     "t": "b",
     "v": false
+   },
+   "B22": {
+    "t": "b",
+    "v": true
    },
    "B3": {
     "t": "b",
@@ -102,6 +118,10 @@
     "t": "b",
     "v": false
    },
+   "C22": {
+    "t": "b",
+    "v": true
+   },
    "C3": {
     "t": "b",
     "v": false
@@ -126,9 +146,17 @@
     "t": "b",
     "v": true
    },
+   "D15": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "D2": {
     "t": "b",
     "v": false
+   },
+   "D22": {
+    "t": "b",
+    "v": true
    },
    "D3": {
     "t": "b",
@@ -149,6 +177,10 @@
    "E1": {
     "t": "b",
     "v": false
+   },
+   "E15": {
+    "t": "e",
+    "v": "#VALUE!"
    },
    "E2": {
     "t": "b",
@@ -241,6 +273,50 @@
    "H6": {
     "t": "b",
     "v": false
+   },
+   "J2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "L3": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "M30": {
+    "t": "b",
+    "v": true
+   },
+   "M32": {
+    "t": "b",
+    "v": false
+   },
+   "M34": {
+    "t": "b",
+    "v": true
+   },
+   "N30": {
+    "t": "b",
+    "v": false
+   },
+   "N32": {
+    "t": "b",
+    "v": true
+   },
+   "N34": {
+    "t": "b",
+    "v": false
+   },
+   "O34": {
+    "t": "b",
+    "v": false
+   },
+   "P34": {
+    "t": "e",
+    "v": "#VALUE!"
    }
   },
   "Data": {
@@ -256,9 +332,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "106e7d9415f72037210b8a76fcbbd58e300d7ed04dae0cb60196c7626e784bc0",
+  "input_sha256": "969a3603b984538396180ac8592c96b6953a3064b52b6e959698c2814ade93d0",
   "kind": "excel-graph",
-  "produced_at": "2026-10-05T19:58:40+00:00",
+  "produced_at": "2026-10-06T13:32:22+00:00",
   "version": null
  }
 }

@@ -3,7 +3,7 @@ id: T-0248
 title: "Probe ISEVEN/ISODD over numeric and mixed ranges; extend IS* lift probe coverage"
 milestone: M2
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,12 @@ T-0247 saw a single `#VALUE!` (no spill) for ISEVEN/ISODD over a mixed range (do
 
 ## Out of scope
 -
+
+## Outcome
+Probed ISEVEN/ISODD over numbers-only, mixed, overlapping-row, 2-D and array-constant arguments
+(excel-graph): a multi-cell range is a single `#VALUE!` (no intersection, no lift), an array
+constant lifts. RustSheet implicitly intersected the range, so ISEVEN/ISODD now go through one
+`parity_predicate` that returns `#VALUE!` for a multi-cell range and lifts arrays (static analysis
+updated to match). Semantics entry VERIFIED. IS* lift probe extended (rest of the ISBLANK block,
+OFFSET/INDEX reference arguments); the unscored "no spill" check cells were dropped. Eval: the
+probe case now checks 79 cells, all passing; probes suite 2362 -> 2373 passing cells.

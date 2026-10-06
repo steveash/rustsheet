@@ -11,14 +11,23 @@ Evidence: probes/is-functions-array-lift (excel-graph) `Calc!A1:H6`, `A9:C9`, `A
 Status: VERIFIED (excel-graph)
 Tasks: T-0247
 
-## ISEVEN/ISODD over a range containing text
-Rule (UNEXPLAINED): `ISEVEN(Data!A1:A6)` / `ISODD(Data!A1:A6)` over 1, "x", TRUE, #N/A, empty,
-#DIV/0! returned a single `#VALUE!` with no spill. Not implemented; needs a probe over a
-numbers-only range and a desktop check to tell lifting from implicit intersection.
-Evidence: probes/is-functions-array-lift (removed cells I1/J1; excel-graph oracle sidecar of
-T-0247 run, 2026-10-05).
-Status: UNVERIFIED
-Tasks: T-0247
+## ISEVEN/ISODD over a range
+Rule: `ISEVEN(range)` / `ISODD(range)` with a multi-cell range argument return a single `#VALUE!`
+with no spill, over a numbers-only range (2, 3, 4.5, -7, 0) as well as a mixed one (1, "x",
+TRUE, #N/A, empty, #DIV/0!). There is no implicit intersection either: the formula placed on a
+row inside the range (`=ISEVEN(Data!C1:C5)` at row 2) is still `#VALUE!`, as is a 2-D range
+(`Data!C1:D3`). They do not lift over ranges like the other IS* functions. An array constant does
+lift: `=ISEVEN({2,3})` spills {TRUE, FALSE}, `=ISODD({2,3})` spills {FALSE, TRUE}. A single-cell
+reference is an ordinary value.
+Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15, J2, K2, L3, M30:N30, M32:N32;
+excel-graph oracle sidecar, 2026-10-06). Desktop Excel was not checked.
+Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: parity of the truncated
+absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
+expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
+dynamic-array flag Excel writes for the range form.
+Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-0247, T-0248
 
 ## Resource bound on lifted IS* ranges
 Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. RustSheet returns
