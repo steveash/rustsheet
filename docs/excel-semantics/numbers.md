@@ -147,11 +147,14 @@ excel-graph (the oracle does not know it), so its overflow stays UNVERIFIED and 
 Implementation: `+ - * /` (T-0173), `SUM` (T-0185), and SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9
 (T-0990, `CalcResult::finite_number_or_num` on the final result, which covers a later 0 or 1E-200 factor
 since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the code but are unprobed), and
-SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR (T-0991, the same check). Unprobed (UNVERIFIED, T-1021): the spilling
-array-criteria SUMIF (`#NUM!` per criterion), and VAR.S/STDEV.S (same code); VAR.P, STDEV.P, VARA, STDEVA still return infinity or NaN.
+SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR (T-0991, the same check). Probed (T-1021, probes/aggregate-overflow Calc!A49:C62): Excel gives `#NUM!` (ERROR.TYPE 6) for VAR.S, STDEV.S, VAR.P, STDEV.P, VARA and STDEVA over
+F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-criteria SUMIF per criterion:
+`INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
+VAR.P, STDEV.P, VARA and STDEVA still yield NaN internally (the A cells pass because a top-level NaN shows as `#NUM!`; the `&""` and ERROR.TYPE forms are wrong; baselined, T-1029).
+Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60), so Excel does not use a stable deviation; do not "fix" this to 0.
 Not implemented: MEDIAN and GEOMEAN of huge values are wrong the other way (T-0992); the engine has no AGGREGATE
 (`#NAME?`, A27-A29; T-0993).
-Evidence: probes/aggregate-overflow Calc!A1:C48 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
+Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
 Implemented in: `arithmetic::{plus, minus, times, divide}` (crates/rustsheet-engine/src/arithmetic.rs);
