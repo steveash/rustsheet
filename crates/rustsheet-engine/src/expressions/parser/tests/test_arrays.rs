@@ -100,3 +100,30 @@ fn simple_matrix() {
         "{1,2,3;4,5,6;7,8,9}"
     );
 }
+
+// Excel: one sign directly attached to a number literal (docs/excel-semantics/syntax.md).
+#[test]
+fn array_constant_sign_forms() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for (formula, value) in [("{+1}", 1.0), ("{-1}", -1.0), ("{-1.5E1}", -15.0)] {
+        assert_eq!(
+            parser.parse(formula, &cell),
+            Node::ArrayKind(vec![vec![ArrayNode::Number(value)]]),
+            "{formula}"
+        );
+    }
+    for formula in [
+        "{++1}", "{-+1}", "{+-1}", "{--1}", "{---1}", "{1,--2}", "{- 1}", "{+ 1}", "{-TRUE}",
+        "{+\"a\"}", "{-#N/A}", "{+#N/A}",
+    ] {
+        assert!(
+            matches!(parser.parse(formula, &cell), Node::ParseErrorKind { .. }),
+            "{formula}"
+        );
+    }
+}
