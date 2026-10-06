@@ -3,7 +3,7 @@ id: T-0990
 title: "SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL overflow is #NUM!"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
