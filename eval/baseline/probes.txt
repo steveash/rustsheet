@@ -38,6 +38,7 @@ C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
 C	probes/number-to-text-notation.case.json	52
+C	probes/offset-negative-height-width.case.json	80
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-calc.case.json	10
@@ -55,6 +56,7 @@ C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
+C	probes/value-clock-text.case.json	135
 F	probes/criteria-padded-text.case.json	Sheet1!C13
 F	probes/date-text-yearless.case.json	Sheet1!B1
 F	probes/date-text-yearless.case.json	Sheet1!B10

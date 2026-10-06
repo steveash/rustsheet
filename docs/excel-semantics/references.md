@@ -231,9 +231,17 @@ Status: VERIFIED (Excel-cached)
 Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0946
 
-## OFFSET: negative height or width (known divergence)
-Rule: Excel accepts a negative height or width (the range extends up or left) but `fn_offset` returns
-`#VALUE!` (it follows the documentation, not Excel). No oracle evidence yet.
-Evidence: none; see T-0956.
-Status: UNVERIFIED
+## OFFSET negative and fractional height/width
+Rule: the height/width `h` (after the rows/cols offset has been applied, the "anchor" is the reference's
+top-left cell) names an area from the anchor to `floor(h - 1)` cells on when `h > 0`, or `ceil(h + 1)`
+cells on when `h < 0`; the area is the span between the two, so a negative size extends up/left.
+`OFFSET(A10,0,0,-3,1)` is A8:A10 (and width `-3` on C10 is A10:C10). The sizes in (0, 1) reach one cell
+back (`OFFSET(A10,0,0,0.5,1)` is A9:A10), those in (-1, 0) one cell on (`-0.5` is A10:A11), and
+fractions otherwise truncate toward zero (1.5 and -1.5 are one cell, -2.9 is two cells up, 2.5 two down).
+Only exactly 0 is `#REF!` (as is an area reaching past row 1/column A or the sheet's end, and a width
+that leaves a multi-cell reference's default height or width beyond the edge). A multi-cell reference
+anchors at its top-left: `OFFSET(A5:B6,0,0,-2)` is A4:B5.
+Evidence: probe offset-negative-height-width (oracle: excel-graph, 2026-10-06, T-0956; 80 cells).
+Status: VERIFIED
+Implemented in: `offset_size` / `fn_offset` in crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs
 Tasks: T-0956
