@@ -3,7 +3,7 @@ id: T-0021
 title: "Fuzz the formula parser and xlsx importer (cargo-fuzz, nightly)"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
