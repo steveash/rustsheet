@@ -19,6 +19,19 @@ Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,
 All of these now match (T-0125).
 EDATE/EOMONTH do month arithmetic on real calendar dates: serial 60 counts as 28 February 1900 (`EDATE(60,0)` = `EOMONTH(60,0)` = 59), `EOMONTH(59,0)` = 59, and results below serial 1 are #NUM! (`EOMONTH(1,-1)`, `EDATE(1,-1)`). `TEXT(DATE(1900,1,0),"d")` = "0"; `DAY(0)` = 0, `MONTH(0)` = 1, `YEAR(0)` = 1900.
 Evidence: probes/dates-early-1900 A17-A25. Oracle: excel-graph, 2026-10-05.
+Early-1900 edges (T-0182, VERIFIED, probes/dates-early-1900-edges, excel-graph 2026-10-06): serial 0 works in
+EDATE/EOMONTH as day 0 of January 1900: `EDATE(0,1)` = `EOMONTH(0,0)` = 31, `EOMONTH(0,1)` = 59, `EDATE(0,12)` = 366,
+`EDATE(0,0)` = 0, `EOMONTH(0.5,1)` = 59, `EDATE(0.5,1)` = 31 (cells A36-A44); `EOMONTH(0,-1)` is #NUM! and
+`EDATE(40000,2000000000)` is #NUM!. `TEXT` with ddd/dddd reads the Sunday-based weekday: `TEXT(0,"dddd")` =
+"Saturday", `TEXT(0.5,"ddd h:mm")` = "Sat 12:00", `TEXT(1,"dddd")` = "Sunday", `TEXT(59,"dddd")` = "Tuesday",
+`TEXT(60,"dddd")` = "Wednesday", `TEXT(61,"dddd")` = "Thursday", `TEXT(0,"dddd d mmmm yyyy")` =
+"Saturday 0 January 1900" (A26-A35). WEEKNUM numbers weeks from a 1 January 1900 that is a Sunday (serial 1):
+`WEEKNUM(0)` = 0, `WEEKNUM(0,2)` = 1, `WEEKNUM(1,2)` = 1, `WEEKNUM(2,2)` = 2, `WEEKNUM(7,2)` = 2, `WEEKNUM(8,2)` = 2,
+`WEEKNUM(9,2)` = 3, `WEEKNUM(59,2)` = `WEEKNUM(60,2)` = `WEEKNUM(61,2)` = 10, `WEEKNUM(1,21)` = ISOWEEKNUM(1) = 52,
+`WEEKNUM(60)` = 9, `WEEKNUM(7)` = 1, `WEEKNUM(8)` = 2 (A1-A25). The same holds past serial 60 up to the end of 1900: the weekday
+numbering of the whole year is the Sunday-based one, so a real calendar anchor is wrong for serials 1-366.
+Implemented in: no. The engine gets WEEKNUM(2,2), (59,2), (61,2) wrong (T-0995), TEXT ddd/dddd of serial 0 is #VALUE!
+(T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
