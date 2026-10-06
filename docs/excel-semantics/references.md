@@ -272,7 +272,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
-Status: VERIFIED (except the parts marked as engine choices)
+Status: VERIFIED (except the parts marked as engine choices; engine mismatches tracked in T-1024)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
 Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024
 
