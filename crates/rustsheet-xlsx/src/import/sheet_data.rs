@@ -131,6 +131,8 @@ struct SheetDataReader<'a> {
     parser: &'a mut Parser,
     shared_strings: &'a mut Vec<String>,
     limits: &'a ImportLimits,
+    /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
+    rich_errors: &'a [Option<&'static str>],
 
     sheet_data: SheetData,
     rows: Vec<Row>,
@@ -570,9 +572,14 @@ impl SheetDataReader<'_> {
             }
         }
         let anchor_cell = self.array_cell.get(&(r_index, column_index)).cloned();
+        let rich_error = cell
+            .value_metadata
+            .as_deref()
+            .and_then(|vm| vm.trim().parse::<usize>().ok())
+            .and_then(|vm| self.rich_errors.get(vm.checked_sub(1)?).copied().flatten());
         let cell = get_cell_from_excel(
             cell.value.as_deref(),
-            cell.value_metadata.as_deref(),
+            rich_error,
             cell_type,
             cell.style,
             formula_index,
@@ -596,6 +603,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
     parser: &mut Parser,
     shared_strings: &mut Vec<String>,
     limits: &ImportLimits,
+    rich_errors: &[Option<&'static str>],
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
@@ -606,6 +614,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
         parser,
         shared_strings,
         limits,
+        rich_errors,
         sheet_data: SheetData::new(),
         rows: Vec::new(),
         shared_formulas: Vec::new(),
