@@ -183,9 +183,11 @@ and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unpro
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
 Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
-uninformative here because X ≥ b in every probe. The threshold is left to the implementing task.
+uninformative here because X ≥ b in every probe. No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
+reproduces all 648 cells (T-0989; it also fixed the 2^-10 base, where an absolute epsilon wrongly said equal).
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Implemented in: `compare_values` (functions/util.rs). Tasks: T-0989
 
 ## 15-digit literal parsing
 Rule: numeric literals, `"text"+0` and `VALUE("text")` keep only 15 significant digits;
@@ -228,9 +230,13 @@ file (`unsupportedWorkbook`) when they appeared.
 Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
 flushes the results of PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987), once on the final result, and of the
 postfix `%` (T-0988).
-Unverified (T-1007): subnormal literal arguments, flushing per product or square instead of on the total, and
-AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101) and AGGREGATE(1), which divide the same way. The engine also compares a tiny nonzero
-value equal to 0, which Excel does not (C4-C6, C60-C62, C65, C69, C73-C75; T-0989).
+Unverified (T-1007): subnormal literals passed as function arguments, flushing per product or square instead of on the total, and
+AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101) and AGGREGATE(1), which divide the same way.
+Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so
+`EXP(-708)=0` is FALSE (C4-C6, C60-C62, C65 pass), while a literal below the smallest normal is flushed to 0 when it is
+read (`=1E-308=0` is TRUE). Still failing: the engine flushes the result of `+` and `-` (`3E-308-2.5E-308`, C69, C73-C75;
+Excel keeps it), and EXP(-745)/EXP(-720) (A4, A6). Fixing `+`/`-` regresses A69, A73-A75 and the text-number-tiny/words
+cells, because Graph reports 0.0 for a kept subnormal: a scoring decision is needed (T-1027).
 Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
