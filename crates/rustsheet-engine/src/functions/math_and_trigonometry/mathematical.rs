@@ -241,16 +241,7 @@ impl Model {
                 }
             };
         }
-        // A total beyond the double range is #NUM! at once, like `+` (probes/arith-overflow
-        // Calc!A4:D4, ERROR.TYPE 6), so it stays an error through `&`, CONCAT and ISERROR.
-        if !result.is_finite() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Number too large".to_string(),
-            };
-        }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
