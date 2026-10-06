@@ -156,9 +156,9 @@ Tasks: T-0173
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
 Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
-Leading hypothesis: the existing 20-character cap on E-notation text above applies; a 3-digit
-exponent leaves room for only 14 digits ("4.4942328371558E+307" is exactly 20 characters).
-Status: UNVERIFIED beyond this one value. Not implemented: T-0186.
+The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
+"Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
+Status: VERIFIED. Not implemented: T-0199.
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
@@ -189,8 +189,19 @@ Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e
 probes/text-number-words H6, H7, K1, K4, K5 (`="1e-308"+0` is 0).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^` and POWER); the postfix `%` and other function
-results are not flushed yet (UNVERIFIED, T-0189).
+Per function group (T-0189, VERIFIED, probes/subnormal-function-results, excel-graph 2026-10-06):
+the postfix `%` (`=1E-306%`, `=-1E-306%`), `SUM`, `PRODUCT` (`PRODUCT(1E-200,1E-110)`,
+`PRODUCT(1E-308,1)`), `SUMPRODUCT`, `POWER`, `SQRT`, `ABS`, `MAX`, `AVERAGE`, `N`, `--`, `IF`,
+`ROUND` all return a true 0 (`(x)=0` is TRUE). `EXP` is the exception: `EXP(-745)` and `EXP(-720)`
+are NOT flushed (`(EXP(-745))=0` is FALSE) although they print as "0" (`&""`) and the Graph API reports
+0.0, so the oracle value of those cells cannot show the stored subnormal. `EXP(-708)` (3.3E-308,
+normal) is kept and prints with 14 digits ("3.3075530036384E-308"; see "Exponent width" in
+"Number → text conversion uses 15 significant digits"). `TEXT(1E-307/10,"0.00E+00")` is "0.00E+00".
+A literal below the smallest normal also reads as 0 inside functions (`PRODUCT(1E-308,1)` is 0).
+The probe leaves out literals whose exponent is below -308 (`1E-310`, `1E-320`, `1E-620`):
+the Graph workbook builder rejected the file (`unsupportedWorkbook`) when they appeared.
+Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^`, POWER, `%`, SUM); PRODUCT and
+SUMPRODUCT do not flush yet (T-0987).
 Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
