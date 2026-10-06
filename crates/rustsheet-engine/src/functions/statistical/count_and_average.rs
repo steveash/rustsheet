@@ -368,7 +368,13 @@ impl Model {
             // even: average of the two middle values
             let a = values[(n / 2) - 1];
             let b = values[n / 2];
-            (a + b) / 2.0
+            // Halve first when the sum would overflow: Excel gives 9E+307 for two 9E+307 values.
+            let sum = a + b;
+            if sum.is_finite() {
+                sum / 2.0
+            } else {
+                a / 2.0 + b / 2.0
+            }
         };
 
         CalcResult::Number(median)

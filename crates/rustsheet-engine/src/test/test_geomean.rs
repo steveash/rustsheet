@@ -71,3 +71,20 @@ fn test_fn_geomean_large_values_no_overflow() {
         "GEOMEAN of two 1e200 values should be 1e200, got {v}"
     );
 }
+
+#[test]
+fn test_fn_geomean_mixed_magnitudes_stay_finite() {
+    let mut model = new_empty_model();
+    // Neither the product (inf / 0) nor a partial product may leave the double range.
+    model._set("B1", "=GEOMEAN(1E154,1E300)");
+    model._set("B2", "=GEOMEAN(1E-154,1E-300)");
+    model._set("B3", "=GEOMEAN(1E300,1E300,1E300)");
+    model.evaluate();
+    for (cell, want) in [("B1", 1e227), ("B2", 1e-227), ("B3", 1e300)] {
+        let v: f64 = model
+            ._get_text(cell)
+            .parse()
+            .unwrap_or_else(|_| panic!("{cell}: {}", model._get_text(cell)));
+        assert!(((v - want) / want).abs() < 1e-9, "{cell}: got {v}");
+    }
+}
