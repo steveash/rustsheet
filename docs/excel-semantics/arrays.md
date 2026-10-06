@@ -52,8 +52,16 @@ gen-m2/75840b9c71a50596 Calc!A29 `=NOT(INDEX(Data!B2:E8,Data!C$10,3))` (C10 = FA
 gen-m2/f7e6d351c8538ef5 Calc!A106 `=NOT(INDEX(Data!B3:E9,(Data!B$10-0.1),4))` (B10 = 0.2);
 gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12,0),("#N/A"&Data!D4)))`;
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
+Element values (probes/concatenate-limit-spill, excel-graph, 2026-10-06, T-0233): arguments
+broadcast like the arithmetic operators, so a row and a column give a grid
+(`CONCATENATE({"a","b"},{"x";"y"})` is {"ax","bx";"ay","by"}, `CONCATENATE(A1:A2,B1:C1)` likewise),
+a single-row or single-column argument stretches, and positions past a shorter argument are `#N/A`
+(`CONCATENATE({"a";"b";"c"},{"x";"y"})` is {"ax";"by";#N/A}; same for ranges, `A1:A3` with `B1:B2`).
+An error element stays in its position (`CONCATENATE({1;2},{#N/A;"x"})` is {#N/A;"2x"}); numbers and
+booleans in arrays become text as in `&` ({1;TRUE;FALSE;1.5} gives "1-","TRUE-","FALSE-","1.5-";
+1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array argument gives a single-cell result.
 Status: VERIFIED
-Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
+Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values)
 Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226).
 
 ## CONCATENATE with a scalar error argument returns that error, not an array
