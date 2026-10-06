@@ -1,4 +1,3 @@
-use crate::functions::date_and_time::time_text::parse_time_serial;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
@@ -9,7 +8,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_text, parse_formatted_number},
+    formatter::format::format_text,
     functions::{
         criteria::from_wildcard_to_regex,
         text::util::{self, substitute, substitute_exceeds_limit, text_after, text_before, Case},
@@ -1117,24 +1116,17 @@ impl Model {
         }
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(text) => {
-                let currencies = vec!["$", "€"];
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
                 // (probes/date-text-grammar C7, value-clock-text B14, B44).
                 let text = text.trim_matches(' ');
-                if let Ok((value, _)) =
-                    parse_formatted_number(text, &currencies, self.locale, &|| self.current_year())
-                {
-                    return CalcResult::Number(value);
-                };
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                if let Some(serial) = parse_time_serial(text, self.locale, &|| self.current_year())
-                {
-                    return CalcResult::Number(serial);
+                match self.parse_number_text(text, &["$", "€"]) {
+                    Some(value) => CalcResult::Number(value),
+                    None => CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string()),
                 }
-                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::Number(f) => CalcResult::Number(f),
             CalcResult::Boolean(_) => {

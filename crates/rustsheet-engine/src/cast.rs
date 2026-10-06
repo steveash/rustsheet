@@ -112,20 +112,22 @@ impl Model {
                 if !currencies.iter().any(|e| *e == currency) {
                     currencies.push(currency);
                 }
-                // Try to parse as a formatted number (e.g., dates, currencies, percentages)
-                if let Ok((v, _number_format)) =
-                    parse_formatted_number(s, &currencies, self.locale, &|| self.current_year())
-                {
-                    return Some(v);
-                }
-                // Time and date-time text (`0+"10:11:12.5"`); probes/timevalue-*.
-                crate::functions::date_and_time::time_text::parse_time_serial(
-                    s,
-                    self.locale,
-                    &|| self.current_year(),
-                )
+                self.parse_number_text(s, &currencies)
             }
         }
+    }
+
+    /// Text as number coercion and VALUE read it, after their own trimming: a formatted number
+    /// (dates, currencies in `currencies`, percentages), else time and date-time text
+    /// (`0+"10:11:12.5"`; probes/timevalue-*).
+    pub(crate) fn parse_number_text(&self, text: &str, currencies: &[&str]) -> Option<f64> {
+        let year = || self.current_year();
+        if let Ok((v, _number_format)) =
+            parse_formatted_number(text, currencies, self.locale, &year)
+        {
+            return Some(v);
+        }
+        crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, &year)
     }
     pub(crate) fn get_number_or_array(
         &mut self,

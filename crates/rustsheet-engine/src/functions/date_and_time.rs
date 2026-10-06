@@ -169,10 +169,9 @@ use crate::arithmetic::bcast_idx;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
-use crate::formatter::date_text::{parse_date, CurrentYear};
+use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
-use crate::locale::Locale;
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -246,26 +245,22 @@ impl WeekendPattern {
     }
 }
 
-/// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the date
-/// of [`parse_date`] text, or of "date clock" text the day its clock time lands on
-/// (probes/date-text-grammar B53: `DATEVALUE("1/2/2020 25:00")` is 43833, 3 Jan).
-/// Excel: see docs/excel-semantics/dates.md ("Date text is parsed month-first").
-pub(crate) fn parse_datevalue_text(
-    value: &str,
-    locale: &Locale,
-    current_year: CurrentYear,
-) -> Option<i32> {
-    let text = value.trim();
-    if let Ok((serial, _)) = parse_date(text, locale, current_year) {
-        return Some(serial);
-    }
-    let serial = time_text::parse_date_clock_serial(text, locale, current_year)?.floor();
-    (f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
-        .contains(&serial)
-        .then_some(serial as i32)
-}
-
 impl Model {
+    /// DATEVALUE's reading of date text (also date arguments read as text, e.g. DATEDIF): the
+    /// date of [`parse_date`] text, or of "date clock" text the day its clock time lands on
+    /// (probes/date-text-grammar B53: `DATEVALUE("1/2/2020 25:00")` is 43833, 3 Jan), with
+    /// year-less text in [`Model::current_year`]. Excel: see docs/excel-semantics/dates.md.
+    pub(crate) fn parse_datevalue_text(&self, value: &str) -> Option<i32> {
+        let (text, year) = (value.trim(), &|| self.current_year());
+        if let Ok((serial, _)) = parse_date(text, self.locale, year) {
+            return Some(serial);
+        }
+        let serial = time_text::parse_date_clock_serial(text, self.locale, year)?.floor();
+        (f64::from(MINIMUM_DATE_SERIAL_NUMBER)..=f64::from(MAXIMUM_DATE_SERIAL_NUMBER))
+            .contains(&serial)
+            .then_some(serial as i32)
+    }
+
     fn get_date_serial(
         &mut self,
         node: &Node,
@@ -274,16 +269,14 @@ impl Model {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
             CalcResult::Number(f) => Ok(f.floor() as i64),
-            CalcResult::String(s) => {
-                match parse_datevalue_text(&s, self.locale, &|| self.current_year()) {
-                    Some(n) => Ok(i64::from(n)),
-                    None => Err(CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Invalid date".to_string(),
-                    }),
-                }
-            }
+            CalcResult::String(s) => match self.parse_datevalue_text(&s) {
+                Some(n) => Ok(i64::from(n)),
+                None => Err(CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Invalid date".to_string(),
+                }),
+            },
             CalcResult::Boolean(b) => {
                 if b {
                     Ok(1)
@@ -968,16 +961,14 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::String(s) => {
-                match parse_datevalue_text(&s, self.locale, &|| self.current_year()) {
-                    Some(n) => CalcResult::Number(f64::from(n)),
-                    None => CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Invalid date".to_string(),
-                    },
-                }
-            }
+            CalcResult::String(s) => match self.parse_datevalue_text(&s) {
+                Some(n) => CalcResult::Number(f64::from(n)),
+                None => CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "Invalid date".to_string(),
+                },
+            },
             CalcResult::Number(_) => CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
