@@ -3,7 +3,7 @@ id: T-0047
 title: "Bound memory when a whole-row/column range is lifted into an array (DATE(11:1899,12,1) OOM)"
 milestone: M0
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
