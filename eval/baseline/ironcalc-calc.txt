@@ -186,6 +186,7 @@ C	ironcalc-calc/TEXT/DOLLARs.xlsx	36
 C	ironcalc-calc/TEXT/EXACT.xlsx	13
 C	ironcalc-calc/TEXT/FIND_SEARCH.xlsx	62
 C	ironcalc-calc/TEXT/MID_LEFT_RIGHT_arrays.xlsx	197
+C	ironcalc-calc/TEXT/MINUS_MINUS.xlsx	73
 C	ironcalc-calc/TEXT/PROPER.xlsx	11
 C	ironcalc-calc/TEXT/REGEX.xlsx	7
 C	ironcalc-calc/TEXT/REPT.xlsx	17
