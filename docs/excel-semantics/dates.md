@@ -71,18 +71,36 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   12:11:12.5, `"10:11.5 PM"` is 12:10:11.5); AM maps 12 to 0.
 - Spaces are allowed around `:` and `.` (`"10 :11:12"`, `"10:11:12 . 5"`). A comma is not a
   decimal separator (`"10:11:12,5"`), and a second `.` or an exponent is #VALUE!.
-- TIMEVALUE trims surrounding spaces but coercion does not: `0+" 10:11:12.5 "` is #VALUE!
-  (timevalue-fractional-seconds2 C11).
+- TIMEVALUE and VALUE trim surrounding spaces; coercion rejects a **leading** space but allows
+  trailing ones: `0+" 10:11:12.5 "` and `0+" 10:00 "` are #VALUE!, `0+"10:00 "`, `0+"6 PM "`,
+  `0+"10:00 AM  "` and `0+"1/2/2020 10:00 "` parse (timevalue-fractional-seconds2 C11;
+  value-clock-text C14, C34-C37). Only the space character U+0020 counts, for trimming and before
+  an AM/PM suffix: a tab, a no-break space (U+00A0) or an ideographic space (U+3000) is #VALUE! in
+  all three (`"10:00\t"`, `"10:00\u00a0"`, `"10:00\u00a0AM"`, `"\u300010:00"`, and
+  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters between
+  the date and the clock of date-clock text.
+- **VALUE of clock text** is the coercion serial of the trimmed text, unwrapped like coercion
+  (`VALUE("25:00")` = 1.0416666666666667, `VALUE("24:00")` = 1, `VALUE("10:11.5")` =
+  0.007077546296296296, `VALUE("1/2/2020 6 PM")` = 43832.75, `VALUE("Jan 2, 2020 10:00")` =
+  43832.416666666664); whatever coercion rejects VALUE rejects (`"10:00PM"`, `"-10:00"`,
+  `"+10:00"`, `"11.5:00"`, `"13 PM"`). Evidence: probes/value-clock-text (excel-graph,
+  2026-10-06, T-0162), column B (VALUE) against C (`0+text`) and D (TIMEVALUE), 45 texts.
+- **Hour-only AM/PM** (`"6 PM"` = 0.75) takes the hour 0–12 (`"0 PM"` = 0.5, `"0 AM"` = 0,
+  `"12 AM"` = 0, `"13 PM"` is #VALUE!), the suffix `AM`, `PM`, `A` or `P` in any case, an optional
+  trailing `.` (`"6 P."`, `"6 A."`, `"6 PM."`) and several spaces before it (`"6  PM"`); the same
+  in VALUE, coercion and TIMEVALUE, also as the clock of date-clock text (`"1/2/2020 6 P"` =
+  43832.75, `"1/2/2020 0 AM"` = 43832) (value-clock-text rows 4-11, 25, 28-33, 39-41).
 - Oddity not implemented: `TIMEVALUE("10:11.5:12")` = 0.424369212962963 (36665.5 s); the engine
   returns #VALUE! (timevalue-component-limits B26, baselined).
 Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_text::parse_clock_text`
 (T-0910); text-to-number coercion (`cast_number`) uses `time_text::parse_time_serial` (T-0146).
 Open: `0+"10:11.5:12"` (timevalue-component-limits C26) has the same unimplemented oddity as B26.
-Unverified (no oracle evidence yet, T-0153): hour-only AM/PM coercion (`--"6 PM"` = 0.75 is only an
-upstream IronCalc unit test; `"6 PM."`, `"10 P"`, `"0 PM"`, `"1/2/2020 6 PM"`), date-clock text with a
-month name (`"Jan 2, 2020 10:00"` stays #VALUE!), VALUE of time text (`VALUE("10:11")` is #VALUE!
-here, not probed), every other `cast_number` caller (direct arguments of aggregates, LARGE/SMALL and date functions such
-as `HOUR("10:11")`, array math), and `+10:00` typed into a cell (stored as text now).
+Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: hour-only AM/PM
+coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
+43832.416666666664, value-clock-text row 27; the engine already matched).
+Unverified (no oracle evidence yet, T-0153): every other `cast_number` caller (direct arguments
+of aggregates, LARGE/SMALL and date functions such as `HOUR("10:11")`, array math), and `+10:00`
+typed into a cell (stored as text now).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
