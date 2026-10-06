@@ -6,8 +6,11 @@
 use regex_lite as regex;
 
 use crate::{
-    calc_result::CalcResult, expressions::token::is_english_error_string,
-    formatter::date_text::parse_date, locale::Locale, number_format::parse_finite_number,
+    calc_result::CalcResult,
+    expressions::token::is_english_error_string,
+    formatter::date_text::parse_date,
+    locale::Locale,
+    number_format::{parse_excel_number, parse_finite_number},
 };
 
 /// If `s` looks like a date literal in the given locale, return its Excel
@@ -311,7 +314,7 @@ fn bool_or_error_operand_matcher<'a>(
 /// Evidence: probes/criteria-padded-operand C1-C17 and probes/criteria-gaps C16-C18, C22.
 /// "inf", "NaN" and "1e400" are text criteria (probes/text-number-words E1-E5).
 fn parse_criterion_number(v: &str) -> Option<f64> {
-    parse_finite_number(v.trim_matches(' '))
+    parse_excel_number(v.trim_matches(' '))
 }
 
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
