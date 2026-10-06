@@ -260,10 +260,14 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
-- Engine choices still unprobed: only a single unary minus is accepted on an operand (`(--A1,B1)`
-  and `(A1%,B1)` are refused, `(-(A1,B2),C1)` is accepted); only one level of written parentheses
-  is kept in printing (`((A1,B2))` prints as `(A1,B2)`); a negated operand cut by an intersection is
-  unknown. The union is the loosest operator inside its parenthesis and the
+- Operand forms (T-0998, probes/union-operand-*, oracle: excel-graph, 2026-10-06): `=(--A1,B1)` loads, is
+  `#VALUE!` and FORMULATEXT prints `=(--A1,B1)` (the engine refuses it, `#ERROR!`, though it
+  prints it; three or more minuses are unprobed); `=(A1%,B1)` is refused by Excel (`FileCorruptTryRepair`, as the engine does); `=(-(A1,B2),C1)` loads and is
+  `#VALUE!`; `=(-A1,B1) A1` and `=(-A1,B1) B1` (a negated operand cut by an intersection) are refused by Excel
+  (`FileCorruptTryRepair`; the engine accepts them). Excel keeps every level of written parentheses: FORMULATEXT of
+  `=((A1,B2))` is `=((A1,B2))` and of `=(((A1,B2),C1))` is `=(((A1,B2),C1))` (the engine drops one level of a
+  doubled one). Follow-up: T-1024.
+- Engine behavior, not probed: the union is the loosest operator inside its parenthesis and the
   intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
@@ -273,9 +277,11 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
-Status: VERIFIED (except the parts marked as engine choices)
+T-0998: probes/union-operand-{double-minus,nested-parens,neg-cut-group} (same oracle and date); its refusals (percent,
+negated operand cut by an intersection) came from scratch fills that failed with FileCorruptTryRepair and were not kept.
+Status: VERIFIED (except the parts marked as engine choices; engine mismatches tracked in T-1024)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
-Tasks: T-0134, T-0187, T-0193, T-0194, T-0133
+Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024
 
 ## Union area cap
 Rule: intersecting unions multiplies their areas (`(A1,A2,A3) (A1:A3,B1:B3)` has six pairs), and
