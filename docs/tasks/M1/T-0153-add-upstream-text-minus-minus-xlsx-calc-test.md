@@ -3,7 +3,7 @@ id: T-0153
 title: "Add upstream TEXT/MINUS_MINUS.xlsx calc_test and the 10:11.5:12 clock oddity"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
