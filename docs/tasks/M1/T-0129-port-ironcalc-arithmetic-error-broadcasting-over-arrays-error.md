@@ -3,7 +3,7 @@ id: T-0129
 title: "Port IronCalc arithmetic error broadcasting over arrays (error_broadcast.xlsx)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
