@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use std::cmp::Ordering;
 
 use crate::expressions::parser::ArrayNode;
@@ -205,7 +206,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(sum / count)
+        CalcResult::Number(flush_subnormal(sum / count))
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
