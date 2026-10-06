@@ -3,7 +3,7 @@ id: T-1021
 title: "Probe overflow of array-criteria SUMIF, VAR.S, STDEV.S, VAR.P, STDEV.P, VARA, STDEVA"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ Follow-up of T-0991, which made SUMIF (scalar and spilling), VAR and STDEV (also
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/aggregate-overflow Calc!A49:C62 with excel-graph values: all six variance/deviation functions and the
+spilling array-criteria SUMIF give `#NUM!` on overflow. Engine matches for VAR.S, STDEV.S and SUMIF; VAR.P, STDEV.P,
+VARA and STDEVA give NaN (16 cells baselined). Findings in docs/excel-semantics/numbers.md. Follow-up: T-1029.
