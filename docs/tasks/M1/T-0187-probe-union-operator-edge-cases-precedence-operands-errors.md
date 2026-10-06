@@ -1,5 +1,5 @@
 ---
-id: T-0185
+id: T-0187
 title: "Probe union operator edge cases (precedence, operands, errors, cross-sheet, ISREF, FORMULATEXT, multi-area names)"
 milestone: M1
 lane: research

@@ -222,7 +222,7 @@ Rule: what the engine does with unions beyond the forms gen-m1 measured. None of
   `_xlnm.Print_Area`) does not parse, though Excel accepts multi-area names. The engine has no
   multi-area value yet (spec T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
   `OpUnionKind` unwrapped, unlike Range and Intersect nodes; T-0133 should revisit it.
-Status: UNVERIFIED (probe pending, T-0185: precedence, operand refusal, errors, cross-sheet, ISREF,
+Status: UNVERIFIED (probe pending, T-0187: precedence, operand refusal, errors, cross-sheet, ISREF,
 FORMULATEXT, multi-area names; unions as function arguments, T-0133)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`); reference_operators.rs
 Tasks: T-0134, T-0133

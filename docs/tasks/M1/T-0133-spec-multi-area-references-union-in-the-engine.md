@@ -35,7 +35,7 @@ should decide:
 
 Today a union passed to a function is `#VALUE!`, so IFERROR silently takes its fallback for one
 (T-0134); the spec should say what changes for such formulas. Edge cases of the operator itself
-are probed in T-0185.
+are probed in T-0187.
 
 ## Acceptance criteria
 - [ ] `docs/specs/SPEC-XXXX-multi-area-references.md` is merged, with the representation, function
