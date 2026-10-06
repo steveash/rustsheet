@@ -1,4 +1,6 @@
-use std::io::{BufReader, Read};
+use std::io::Read;
+
+use super::package::Package;
 
 use rustsheet_engine::types::Metadata;
 
@@ -19,11 +21,9 @@ struct CoreData {
     last_modified: String,
 }
 
-fn load_core<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
-) -> Result<CoreData, XlsxError> {
-    let file = archive.by_name("docProps/core.xml")?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+fn load_core<R: Read + std::io::Seek>(archive: &mut Package<R>) -> Result<CoreData, XlsxError> {
+    let file = archive.open("docProps/core.xml")?;
+    let doc = XmlNode::parse(file)?;
     let core_data = &doc;
     // Note the namespace should be "http://purl.org/dc/elements/1.1/"
     let creator = get_value_or_default(core_data, "creator", "Anonymous User");
@@ -41,11 +41,9 @@ fn load_core<R: Read + std::io::Seek>(
     })
 }
 
-fn load_app<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
-) -> Result<AppData, XlsxError> {
-    let file = archive.by_name("docProps/app.xml")?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+fn load_app<R: Read + std::io::Seek>(archive: &mut Package<R>) -> Result<AppData, XlsxError> {
+    let file = archive.open("docProps/app.xml")?;
+    let doc = XmlNode::parse(file)?;
     let app_data = &doc;
 
     let application = get_value_or_default(app_data, "Application", "Unknown application");
@@ -57,7 +55,7 @@ fn load_app<R: Read + std::io::Seek>(
 }
 
 pub(super) fn load_metadata<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
 ) -> Result<Metadata, XlsxError> {
     let app_data = load_app(archive)?;
     let core_data = load_core(archive)?;

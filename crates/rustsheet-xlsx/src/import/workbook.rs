@@ -1,4 +1,6 @@
-use std::io::{BufReader, Read};
+use std::io::Read;
+
+use super::package::Package;
 
 use super::xml::XmlNode;
 use rustsheet_engine::types::{DefinedName, SheetState};
@@ -11,10 +13,10 @@ use super::{
 };
 
 pub(super) fn load_workbook<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
 ) -> Result<WorkbookXML, XlsxError> {
-    let file = archive.by_name("xl/workbook.xml")?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open("xl/workbook.xml")?;
+    let doc = XmlNode::parse(file)?;
     let mut defined_names = Vec::new();
     let mut sheets = Vec::new();
     // Get the sheets

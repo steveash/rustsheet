@@ -3,12 +3,9 @@
 use rustsheet_engine::expressions::parser::{
     new_parser_english, static_analysis::add_implicit_intersection, Parser,
 };
-use std::{
-    collections::HashMap,
-    io::{BufReader, Read},
-    num::ParseIntError,
-};
+use std::{collections::HashMap, io::Read, num::ParseIntError};
 
+use super::package::{part_folder_and_rels, resolve_target, Package};
 use super::xml::XmlNode;
 use rustsheet_engine::{
     expressions::{
@@ -238,12 +235,12 @@ fn load_sheet_color(ws: &XmlNode, theme: &Theme) -> Result<Color, XlsxError> {
 }
 
 fn load_comments<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
 ) -> Result<Vec<Comment>, XlsxError> {
     let mut comments = Vec::new();
-    let file = archive.by_name(path)?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open(path)?;
+    let doc = XmlNode::parse(file)?;
     let ws = &doc;
     let comment_list = ws
         .children()
@@ -254,7 +251,7 @@ fn load_comments<R: Read + std::io::Seek>(
             let text = comment
                 .descendants()
                 .filter(|n| n.has_tag_name("t"))
-                .map(|n| n.text().unwrap().to_string())
+                .map(|n| n.text().unwrap_or_default().to_string())
                 .collect::<Vec<String>>()
                 .join("");
             let cell_ref = get_attribute(comment, "ref")?.to_string();
@@ -577,25 +574,19 @@ pub(super) fn get_cell_from_excel(
 }
 
 fn load_sheet_rels<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
     tables: &mut HashMap<String, Table>,
     sheet_name: &str,
 ) -> Result<(Vec<Comment>, HashMap<String, String>), XlsxError> {
-    // ...xl/worksheets/sheet6.xml -> xl/worksheets/_rels/sheet6.xml.rels
     let mut comments = Vec::new();
     // relationship id ("rId4") -> target of the hyperlink
     let mut hyperlinks = HashMap::new();
-    let v: Vec<&str> = path.split("/worksheets/").collect();
-    let mut path = v[0].to_string();
-    path.push_str("/worksheets/_rels/");
-    path.push_str(v[1]);
-    path.push_str(".rels");
-    let file = archive.by_name(&path);
-    if file.is_err() {
+    let (folder, rels_path) = part_folder_and_rels(path);
+    let Some(file) = archive.open_optional(&rels_path)? else {
         return Ok((comments, hyperlinks));
-    }
-    let doc = XmlNode::parse(BufReader::new(file?))?;
+    };
+    let doc = XmlNode::parse(file)?;
 
     let rels = doc
         .children()
@@ -604,25 +595,16 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     for rel in rels {
         let t = get_attribute(rel, "Type")?.to_string();
         if t.ends_with("comments") {
-            let mut target = get_attribute(rel, "Target")?.to_string();
-            // Target="../comments1.xlsx"
-            target.replace_range(..2, v[0]);
+            // Target="../comments1.xml"
+            let target = resolve_target(folder, get_attribute(rel, "Target")?);
             comments = load_comments(archive, &target)?;
         } else if t.ends_with("hyperlink") {
             let id = get_attribute(rel, "Id")?.to_string();
             let target = get_attribute(rel, "Target")?.to_string();
             hyperlinks.insert(id, target);
         } else if t.ends_with("table") {
-            let mut target = get_attribute(rel, "Target")?.to_string();
-
-            let path = if let Some(p) = target.strip_prefix('/') {
-                p.to_string()
-            } else {
-                // Target="../table1.xlsx"
-                target.replace_range(..2, v[0]);
-                target
-            };
-
+            // Target="../tables/table1.xml"
+            let path = resolve_target(folder, get_attribute(rel, "Target")?);
             let table = load_table(archive, &path, sheet_name)?;
             tables.insert(table.name.clone(), table);
         }
@@ -850,7 +832,7 @@ pub(super) struct SheetSettings {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn load_sheet<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
     settings: SheetSettings,
     worksheets: &[String],
@@ -864,7 +846,8 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     let sheet_id = settings.id;
     let state = &settings.state;
 
-    let file = archive.by_name(path)?;
+    let limits = *archive.limits();
+    let file = archive.open(path)?;
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
@@ -875,12 +858,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         mut sheet_data,
         rows,
         shared_formulas,
-    } = read_sheet_data(
-        BufReader::new(file),
-        sheet_name,
-        &mut parser,
-        shared_strings,
-    )?;
+    } = read_sheet_data(file, sheet_name, &mut parser, shared_strings, &limits)?;
     let ws = &worksheet;
 
     let dimension = load_dimension(ws);
@@ -968,7 +946,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 }
 
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     rels: &HashMap<String, Relationship>,
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
@@ -981,12 +959,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     for sheet in &workbook.worksheets {
         let rel = get_relationship(rels, &sheet.id)?;
         if rel.rel_type.ends_with("worksheet") {
-            let path = &rel.target;
-            let path = if let Some(p) = path.strip_prefix('/') {
-                p.to_string()
-            } else {
-                format!("xl/{path}")
-            };
+            let path = resolve_target("xl", &rel.target);
             sheet_rels.insert(
                 &sheet.id,
                 load_sheet_rels(archive, &path, tables, &sheet.name)?,
@@ -1008,12 +981,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         let state = &sheet.state;
         let rel = get_relationship(rels, rel_id)?;
         if rel.rel_type.ends_with("worksheet") {
-            let path = &rel.target;
-            let path = if let Some(p) = path.strip_prefix('/') {
-                p.to_string()
-            } else {
-                format!("xl/{path}")
-            };
+            let path = resolve_target("xl", &rel.target);
             let (comments, hyperlink_rels) = sheet_rels
                 .get(rel_id)
                 .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
