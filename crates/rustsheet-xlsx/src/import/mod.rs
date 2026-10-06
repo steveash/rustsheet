@@ -1,6 +1,7 @@
 mod conditional_formatting;
 mod metadata;
 mod package;
+pub mod rich_errors;
 pub(crate) mod shared_strings;
 mod sheet_data;
 mod styles;
