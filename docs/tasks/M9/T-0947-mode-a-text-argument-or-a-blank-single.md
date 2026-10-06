@@ -3,7 +3,7 @@ id: T-0947
 title: "MODE: a text argument or a blank single-cell reference argument is #VALUE! (4 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
