@@ -3,7 +3,7 @@ id: T-0989
 title: "Comparison of tiny nonzero values with 0 is not tolerant (EXP(-708)=0 is FALSE)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
