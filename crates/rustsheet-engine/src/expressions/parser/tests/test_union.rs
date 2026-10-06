@@ -262,8 +262,8 @@ fn long_unions_hit_the_depth_cap() {
 
 #[test]
 fn negated_reference_is_a_union_operand() {
-    // Excel loads `(-A1,B1)` as a union of `-A1` and `B1` (probes/union-neg-operand H2), not
-    // as `-(A1,B1)`.
+    // Excel loads and prints `(-A1,B1)` unchanged (probes/union-neg-operand H2); the engine
+    // reads it as a union of `-A1` and `B1`, not as `-(A1,B1)`.
     let mut parser = parser();
     let node = parser.parse("(-A1,B1)", &context());
     let Node::OpUnionKind { left, .. } = &node else {

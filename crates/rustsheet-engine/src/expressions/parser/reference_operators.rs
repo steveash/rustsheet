@@ -221,7 +221,8 @@ fn is_constant(node: &Node) -> bool {
 }
 
 /// Whether `node` may be an operand of a union: a reference expression, or a negated one
-/// (Excel loads `(-A1,B1)`, probes/union-neg-operand H2, T-0187).
+/// (Excel loads `(-A1,B1)` and prints it unchanged, probes/union-neg-operand H1:H2, T-0187; the
+/// tree shape, a union of `-A1` and `B1`, is an engine choice).
 fn is_union_operand(node: &Node) -> bool {
     match node {
         Node::UnaryKind {

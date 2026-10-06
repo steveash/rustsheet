@@ -251,7 +251,10 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
-- Engine choices still unprobed: the union is the loosest operator inside its parenthesis and the
+- Engine choices still unprobed: only a single unary minus is accepted on an operand (`(--A1,B1)`
+  and `(A1%,B1)` are refused, `(-(A1,B2),C1)` is accepted); only one level of written parentheses
+  is kept in printing (`((A1,B2))` prints as `(A1,B2)`); a negated operand cut by an intersection is
+  unknown. The union is the loosest operator inside its parenthesis and the
   intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
