@@ -42,7 +42,7 @@ Open: the exact low cut-off between `#VALUE!` and `#REF!` is unprobed between -2
 (the code treats anything below -2^31 as `#REF!`).
 Status: VERIFIED
 Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
-(crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_index.rs), shared by VLOOKUP and HLOOKUP.
+(crates/rustsheet-engine/src/functions/lookup_and_reference/index_arg.rs), shared by VLOOKUP and HLOOKUP.
 Tasks: T-0211
 
 ## Approximate-match lookups: type-skipping binary search

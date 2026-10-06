@@ -1,5 +1,4 @@
-//! The row/column index argument of VLOOKUP/HLOOKUP, which Excel validates only after the
-//! search (docs/excel-semantics/lookup.md).
+//! Reading and validating the VLOOKUP/HLOOKUP index argument.
 
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error,

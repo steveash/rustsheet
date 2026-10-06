@@ -18,7 +18,7 @@ mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod hstack_vstack;
-mod lookup_index;
+mod index_arg;
 mod lookup_table;
 mod tocol_torow;
 mod transpose;
