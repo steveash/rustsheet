@@ -3,7 +3,7 @@ id: T-0150
 title: "Route remaining text-to-number parses through parse_excel_number (VALUE, criteria, COUNT, utils)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
