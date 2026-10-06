@@ -138,8 +138,9 @@ blank: `VLOOKUP(0,A:B,2,FALSE)`, `VLOOKUP("",A:B,2,FALSE)`, `HLOOKUP(FALSE,1:2,2
 `MATCH(0,A:A,0)`, `XMATCH(0,A:A)` (and `XMATCH(0,1:1)`) are #N/A, and so are a blank-cell lookup
 value in `MATCH(G1,A:A,0)`, `MATCH(G1,A:A,1)`, `VLOOKUP(G1,A:B,2[,FALSE])`.
 Status: VERIFIED
-Implemented in: `SearchVector::approximate_position`/`exact_position`; XMATCH exact mode skips
-blanks (T-0126). XMATCH with match_mode other than 0 or binary search_mode over blanks is unprobed.
+Implemented in: `SearchVector::approximate_search`/`exact_position`; XMATCH exact mode skips
+blanks (T-0126). XMATCH with match_mode other than 0 or binary search_mode over blanks is unprobed (T-1018).
+Tasks: T-0126, T-1018
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
