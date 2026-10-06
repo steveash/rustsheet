@@ -3,7 +3,7 @@ id: T-0161
 title: "Probe which functions Excel accepts as intersection operands"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,19 @@ Also probe the value-operator operands refused by inference in T-0148: `=A1 (B1+
 `=A1 (-B1)`, `=A1 (B1&"")`, `=A1 (B1=1)`, `=A1 (B1%)`.
 
 ## Acceptance criteria
-- [ ] Each candidate probed; result in docs/excel-semantics/references.md.
-- [ ] `is_reference_operand` matches the evidence; tests added.
-- [ ] `make check` green; reviewers approve.
+- [x] Each candidate probed; result in docs/excel-semantics/references.md.
+- [x] `is_reference_operand` matches the evidence; tests added.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - `@` and union operands (T-0149).
+
+## Outcome
+Probed 23 operands in Excel for the web (excel-graph, 2026-10-06), one scratch workbook each.
+Accepted (give 2): INDIRECT, CHOOSE, XLOOKUP, LET (with `_xlpm.` names), SWITCH, IFS, TAKE, DROP.
+Workbook refused (`FileCorruptTryRepair`): ABS, ROW, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
+VSTACK, SORT, UNIQUE, and the value operators `(B1+C1)`, `(-B1)`, `(B1&"")`, `(B1=1)`, `(B1%)`.
+`is_reference_operand` is now an allowlist of the evidenced reference-returning functions; parser
+tests cover every probed form. probes/intersection-function-operands gains H6:H12 (oracle-filled).
+Eval: probes known failures 64 -> 67 (3 new-coverage failures: the engine evaluates XLOOKUP, TAKE and
+DROP to arrays, filed as T-0165), 0 regressions. Follow-ups: T-0165, T-0166 (spec2xlsx `_xlpm.`).

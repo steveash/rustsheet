@@ -163,10 +163,10 @@ fn is_constant(node: &Node) -> bool {
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
 /// intersection (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
-/// functions (`SUM`, `NA`) make Excel refuse the formula. Reference-returning calls are
-/// INDEX, OFFSET and IF (probes/intersection-function-operands). Only the value functions
-/// with evidence (SUM, NA) are refused; every other call is accepted until probed
-/// (UNVERIFIED, docs/excel-semantics/references.md; T-0161).
+/// functions make Excel refuse the formula. The accepted calls are the reference-returning
+/// functions below (probes/intersection-function-operands; T-0161); value functions such as
+/// SUM, NA, ABS, ROW, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER, SORT, UNIQUE and VSTACK
+/// are refused, even those that pass a range through.
 fn is_reference_operand(node: &Node) -> bool {
     match node {
         Node::NumberKind(_)
@@ -180,7 +180,20 @@ fn is_reference_operand(node: &Node) -> bool {
         | Node::CompareKind { .. }
         | Node::UnaryKind { .. } => false,
         Node::ErrorKind(error) => *error == Error::REF,
-        Node::FunctionKind { kind, .. } => !matches!(kind, Function::Sum | Function::Na),
+        Node::FunctionKind { kind, .. } => matches!(
+            kind,
+            Function::Index
+                | Function::Offset
+                | Function::If
+                | Function::Indirect
+                | Function::Choose
+                | Function::Xlookup
+                | Function::Let
+                | Function::Switch
+                | Function::Ifs
+                | Function::Take
+                | Function::Drop
+        ),
         _ => true,
     }
 }

@@ -86,17 +86,25 @@ Tasks: T-0138, T-0148
 ## Intersection operands must be references
 Rule: Excel decides when it parses the formula whether each operand of an intersection is a
 reference expression. A reference, a parenthesized reference, `#REF!`, `@ref`, a union and a call to a
-reference-returning function (INDEX, OFFSET, IF, ANCHORARRAY) are accepted. Number, string, boolean and
-error literals other than `#REF!`, a parenthesized value (`(1)`, `(1/0)`) and value functions (SUM, NA) make
-Excel for the web refuse the workbook: `=1 A1`, `=(1) A1`, `=A1 (1)`, `=A1 TRUE`, `=A1 "a"`,
+reference-returning function (INDEX, OFFSET, IF, ANCHORARRAY, INDIRECT, CHOOSE, XLOOKUP, LET, SWITCH,
+IFS, TAKE, DROP) are accepted. Number, string, boolean and error literals other than `#REF!`, a
+parenthesized value (`(1)`, `(1/0)`), a parenthesized value operator and value functions make Excel for
+the web refuse the workbook: `=1 A1`, `=(1) A1`, `=A1 (1)`, `=A1 TRUE`, `=A1 "a"`,
 `=#N/A A1`, `=A1 #N/A`, `=A1 #DIV/0!`, `=(1/0) A1`, `=A1 (1/0)`, `=(1/0) (NA())`, `=(1/0) Z99`,
-`=#REF! #N/A`, `=A1 SUM(A1:A2)`, `=A1 NA()`, `=SUM(A1:A2) A1`. So "which error wins" never arises
+`=#REF! #N/A`, `=A1 SUM(A1:A2)`, `=A1 NA()`, `=SUM(A1:A2) A1`, `=A1 (B1+C1)`, `=A1 (-B1)`,
+`=A1 (B1&"")`, `=A1 (B1=1)`, `=A1 (B1%)`, and with A1:B3 = 1, 2, 3 / 10, 20, 30: `=A1:A3 ABS(A2)`,
+`ROW(A2)`, `IFERROR(A2:B2,0)`, `IFNA(A2:B2,0)`, `CHOOSEROWS(A1:B3,2)`, `FILTER(A1:B3,A1:A3=2)`,
+`VSTACK(A2:B2)`, `SORT(A2:B2)`, `UNIQUE(A2:B2)` and `=A2:B2 CHOOSECOLS(A1:B3,1)`. IFERROR and IFNA
+pass a range through, and CHOOSEROWS/CHOOSECOLS select rows and columns of one, like TAKE and DROP, yet
+are refused: what counts is Excel's fixed list of reference-returning functions, not the argument. So "which error wins" never arises
 between two error operands. Accepted forms:
 - `=A1 #REF!` and `=#REF! A1` are `#REF!`; `=C1:C2 C2` with C2 = `#N/A` is `#N/A` (the cell's value);
   `=C1 C2` is `#NULL!` even when both cells hold errors.
 - `=A1 @A1` = 1. `=@A1:A3 A2:B2` = 2 in row 11, where `=@A1:A3` alone is `#VALUE!` (I11): the space
   binds tighter than `@`.
-- `=A1:A3 INDEX(A1:B3,2,0)`, `OFFSET(A2,0,0,1,2)` and `IF(TRUE,A2:B2)` give 2, on either side.
+- `=A1:A3 INDEX(A1:B3,2,0)`, `OFFSET(A2,0,0,1,2)` and `IF(TRUE,A2:B2)` give 2, on either side;
+  `INDIRECT("A2:B2")`, `CHOOSE(1,A2:B2)`, `XLOOKUP(2,A1:A3,A1:B3)`, `SWITCH(1,1,A2:B2)`,
+  `IFS(TRUE,A2:B2)`, `TAKE(A2:B3,1)`, `DROP(A1:B2,1)` and `LET(x,A2:B2,x)` give 2 as right operands.
 - A spill reference intersects: `=J1# J2:K2` = 2 with `J1 = SEQUENCE(3)`, stored as
   `_xlfn.ANCHORARRAY(J1)` (a literal `J1#` in the file is refused).
 - `=A1:A3 (A2:B2,A2)` is `#VALUE!` (a two-area union is left over).
@@ -104,10 +112,16 @@ between two error operands. Accepted forms:
 - `=Data!A1 Other!Z99` (different sheets, no shared coordinates) is `#VALUE!`, like overlapping cross-sheet
   operands: the sheet check comes before the disjoint check.
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5 (oracle:
-excel-graph, 2026-10-05, T-0138). The refused workbooks come from scratch runs of one formula each (T-0138).
+excel-graph, 2026-10-05, T-0138), H6:H12 (2026-10-06, T-0161). The refused workbooks, and LET (the
+case builder cannot write `_xlpm.` names yet, T-0166), come from scratch runs of one formula each
+(T-0138, T-0161); each refusal was `FileCorruptTryRepair`, and the same CHOOSEROWS and IFERROR calls
+load on their own (=2).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
-Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`; only SUM and NA, the evidenced value functions, are refused: any other function is accepted as an operand, UNVERIFIED until probed (T-0161); value operators (`+ - * / ^ & =`, unary minus, percent) are refused by inference, since only `(1/0)` among them is evidenced, also T-0161; `@` and union operands are T-0149)
-Tasks: T-0138, T-0148, T-0149, T-0042, T-0161
+Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
+functions above; functions not probed are refused by inference, as are `*`, `/` and `^`, which were not
+probed one by one; `@` and union operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP
+to arrays, so those three intersections are `#VALUE!` (T-0165).
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
