@@ -26,7 +26,7 @@ enum SubTotalMode {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum CellTableStatus {
+pub(crate) enum CellTableStatus {
     Normal,
     Hidden,
     Filtered,
@@ -53,7 +53,7 @@ impl Model {
         false
     }
 
-    fn cell_hidden_status(
+    pub(crate) fn cell_hidden_status(
         &self,
         sheet_index: u32,
         row: i32,
@@ -78,8 +78,20 @@ impl Model {
         }
     }
 
-    // FIXME(TD): This is too much
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
+        self.cell_formula_is_one_of(sheet_index, row, column, &[Function::Subtotal])
+    }
+
+    /// Whether the cell holds a formula whose outermost call is one of `kinds` (SUBTOTAL and
+    /// AGGREGATE skip such cells).
+    // FIXME(TD): This is too much
+    pub(crate) fn cell_formula_is_one_of(
+        &self,
+        sheet_index: u32,
+        row: i32,
+        column: i32,
+        kinds: &[Function],
+    ) -> bool {
         let cell = match self.workbook.worksheets[sheet_index as usize].cell(row, column) {
             Some(c) => c,
             None => {
@@ -90,13 +102,7 @@ impl Model {
         match cell.get_formula() {
             Some(f) => {
                 let node: &Node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
-                matches!(
-                    node,
-                    Node::FunctionKind {
-                        kind: Function::Subtotal,
-                        args: _
-                    }
-                )
+                matches!(node, Node::FunctionKind { kind, .. } if kinds.contains(kind))
             }
             None => false,
         }

@@ -211,6 +211,25 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
+        self.for_each_position_in_range(left, right, cell, |model, position| {
+            let value = model.evaluate_cell(position);
+            f(model, value)
+        })
+    }
+
+    /// Calls `f` with the position of every cell of the range `left..=right`, in row-major
+    /// order, without evaluating it: for walks that skip cells by position (AGGREGATE's hidden
+    /// rows and nested SUBTOTAL/AGGREGATE cells). An `Err` from `f` stops the walk.
+    pub(crate) fn for_each_position_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
         // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
         // clipped to its own used area, so a span of whole columns walks only data.
         debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
@@ -220,8 +239,7 @@ impl Model {
                 .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
             for row in left.row..=row2 {
                 for column in left.column..=column2 {
-                    let value = self.evaluate_cell(CellReferenceIndex { sheet, row, column });
-                    f(self, value)?;
+                    f(self, CellReferenceIndex { sheet, row, column })?;
                 }
             }
         }

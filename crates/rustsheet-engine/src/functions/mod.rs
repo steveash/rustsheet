@@ -6,6 +6,7 @@ use crate::{
 };
 use std::array::IntoIter;
 
+mod aggregate;
 pub(crate) mod binary_search;
 pub(crate) mod criteria;
 mod database;
@@ -539,6 +540,7 @@ pub enum Function {
     Delta,
     Gestep,
     Subtotal,
+    Aggregate,
 
     // Database
     Daverage,
@@ -1065,6 +1067,7 @@ impl_function_lookup! {
     delta    => Delta,
     gestep   => Gestep,
     subtotal => Subtotal,
+    aggregate => Aggregate,
 
     // Database
     daverage => Daverage,
@@ -1571,6 +1574,7 @@ impl Function {
             Function::Delta => functions.delta.clone(),
             Function::Gestep => functions.gestep.clone(),
             Function::Subtotal => functions.subtotal.clone(),
+            Function::Aggregate => functions.aggregate.clone(),
             Function::Daverage => functions.daverage.clone(),
             Function::Dcount => functions.dcount.clone(),
             Function::Dget => functions.dget.clone(),
@@ -1614,7 +1618,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 496> {
+    pub fn into_iter() -> IntoIter<Function, 497> {
         [
             Function::And,
             Function::False,
@@ -1950,6 +1954,7 @@ impl Function {
             Function::Delta,
             Function::Gestep,
             Function::Subtotal,
+            Function::Aggregate,
             Function::Roman,
             Function::Arabic,
             Function::Combin,
@@ -2123,6 +2128,7 @@ impl Function {
     /// See <https://learn.microsoft.com/en-us/openspecs/office_standards/ms-xlsx/3d025add-118d-4413-9856-ab65712ec1b0>
     pub fn to_xlsx_string(&self) -> String {
         match self {
+            Function::Aggregate => "_xlfn.AGGREGATE".to_string(),
             Function::Concat => "_xlfn.CONCAT".to_string(),
             Function::Ifna => "_xlfn.IFNA".to_string(),
             Function::Ifs => "_xlfn.IFS".to_string(),
@@ -2610,6 +2616,7 @@ impl Model {
             Function::Delta => self.fn_delta(args, cell),
             Function::Gestep => self.fn_gestep(args, cell),
             Function::Subtotal => self.fn_subtotal(args, cell),
+            Function::Aggregate => self.fn_aggregate(args, cell),
             Function::Acot => self.fn_acot(args, cell),
             Function::Acoth => self.fn_acoth(args, cell),
             Function::Cot => self.fn_cot(args, cell),
