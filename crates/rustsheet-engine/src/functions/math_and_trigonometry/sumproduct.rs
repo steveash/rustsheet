@@ -82,6 +82,6 @@ impl Model {
             }
         }
 
-        CalcResult::Number(flush_subnormal(total))
+        CalcResult::finite_number_or_num(flush_subnormal(total), cell)
     }
 }
