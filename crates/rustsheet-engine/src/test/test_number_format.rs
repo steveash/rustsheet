@@ -10,6 +10,24 @@ fn test_simple_format() {
     assert_eq!(formatted.text, "2.3".to_string());
 }
 
+// T-0986: General keeps 6 significant digits in E notation, 5 from an exponent magnitude of 99
+// (probes/number-text-exponent-digits D1:D15).
+#[test]
+fn general_drops_a_digit_at_exponent_magnitude_99() {
+    let cases = [
+        (1.234_567_890_123_45e98, "1.23457E+98"),
+        (1.234_567_890_123_45e99, "1.2346E+99"),
+        (1.234_567_890_123_45e100, "1.2346E+100"),
+        (1.234_567_890_123_45e307, "1.2346E+307"),
+        (1.234_567_890_123_45e-98, "1.23457E-98"),
+        (1.234_567_890_123_45e-99, "1.2346E-99"),
+        (1.234_567_890_123_45e-300, "1.2346E-300"),
+    ];
+    for (value, text) in cases {
+        assert_eq!(format_number(value, "General", "en").text, text, "{value}");
+    }
+}
+
 #[test]
 fn test_maximum_zeros() {
     let formatted = format_number(1.0 / 3.0, "#,##0.0000000000000000000", "en");
