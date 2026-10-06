@@ -3,7 +3,7 @@ id: T-0976
 title: "FISHERINV: use (EXP(2y)-1)/(EXP(2y)+1) like Excel (6 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
