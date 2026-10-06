@@ -25,3 +25,4 @@ Rule VERIFIED in docs/excel-semantics/numbers.md (Subnormal results become 0, pe
 
 ## Outcome
 `arithmetic::flush_subnormal` (also used by `finite_or_num`) now flushes the results of PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE; SUM keeps subnormals. Probes known failures 279 -> 271 (fixed 8: A9, A10, A41, A63, A64, A66-A68), no regressions; unit test added.
+Subnormal literal arguments are not read as 0 by these functions (only results are flushed); that and the other average functions are filed as T-1007.
