@@ -28,9 +28,9 @@ The existing pattern to reuse is `Model::clip_to_used_area` (evaluation.rs), alr
 treat the rest as empty (what each function does with an empty cell must stay unchanged).
 
 ## Acceptance criteria
-- [ ] Each walk listed above clips whole-row/column ranges with `clip_to_used_area` (no new helper).
-- [ ] A unit test per family evaluates a whole-sheet range argument (`A:XFD` or `1:1048576`) and returns the same value as the used-area range, quickly (debug test under a few seconds).
-- [ ] `make check` green; reviewers approve.
+- [x] Each walk listed above clips whole-row/column ranges with `clip_to_used_area` (no new helper).
+- [x] A unit test per family evaluates a whole-sheet range argument (`A:XFD` or `1:1048576`) and returns the same value as the used-area range, quickly (debug test under a few seconds).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
