@@ -3,7 +3,7 @@ id: T-0195
 title: "Probe #GETTING_DATA comparison and precedence via ERROR.TYPE, and stored t=e error values"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ Follow-up of T-0175 (docs/excel-semantics/syntax.md "Newer error literals"). The
 
 ## Out of scope
 - Engine support for the new kinds (T-0177).
+
+## Outcome
+Probe `error-literals-new2` (15 `ERROR.TYPE` cells, excel-graph) shows the leftmost error operand wins for comparison, `&`, `+`, `*`, `-` and `SUM`; `#GETTING_DATA` has no special precedence. Recorded in syntax.md. The stored `t="e"` question needs a harness change, filed as T-0999. No engine change; probes known failures 339 -> 354 (15 new baselined cells).
