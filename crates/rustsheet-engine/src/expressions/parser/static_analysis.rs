@@ -75,6 +75,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
+        | Node::OpUnionKind { .. }
         | Node::LambdaDefKind { .. }
         | Node::LambdaCallKind { .. } => {}
         Node::ImplicitIntersection { child, .. } => {
@@ -232,6 +233,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }
         | Node::OpIntersectKind { .. }
+        | Node::OpUnionKind { .. }
         | Node::DefinedNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::TableNameKind(_)
@@ -360,8 +362,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             column2,
             ..
         } => StaticResult::Range(row2 - row1, column2 - column1),
-        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
-            // TODO: We could do a bit better here
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
         Node::ReferenceKind { .. } => StaticResult::Scalar,
@@ -373,13 +374,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::OpPowerKind { left, right, .. }
         | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
 
-        // defined names
-        Node::DefinedNameKind(_) => {
-            // TODO: We could do better if we tracked the defined names
-            StaticResult::Unknown
-        }
+        // Defined names and tables: their shape is not tracked.
+        Node::DefinedNameKind(_) | Node::TableNameKind(_) => StaticResult::Unknown,
         Node::NamedVariableKind { .. } => StaticResult::Scalar,
-        Node::TableNameKind(_) => StaticResult::Unknown,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
