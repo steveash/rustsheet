@@ -122,11 +122,12 @@ impl Model {
         &mut self,
         result_left: CellReferenceIndex,
         result_right: CellReferenceIndex,
+        column_lookup: bool,
         row_offset: i32,
         column_offset: i32,
     ) -> CalcResult {
         let row = result_left.row + row_offset;
-        if result_right.column == result_left.column {
+        if !column_lookup || result_right.column == result_left.column {
             return self.evaluate_cell(CellReferenceIndex {
                 sheet: result_left.sheet,
                 row,
@@ -311,6 +312,7 @@ impl Model {
                                         self.xlookup_pick(
                                             result_left,
                                             result_right,
+                                            is_row_vector,
                                             row_index,
                                             column_index,
                                         )
@@ -361,6 +363,7 @@ impl Model {
                                                 self.xlookup_pick(
                                                     result_left,
                                                     result_right,
+                                                    is_row_vector,
                                                     row - result_left.row,
                                                     column - result_left.column,
                                                 )
@@ -373,6 +376,7 @@ impl Model {
                                             self.xlookup_pick(
                                                 result_left,
                                                 result_right,
+                                                is_row_vector,
                                                 row - result_left.row,
                                                 column - result_left.column,
                                             )
