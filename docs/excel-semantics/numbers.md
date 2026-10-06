@@ -100,7 +100,8 @@ cut one digit lower: 6 digits for `|exp| <= 98` ("1.23457E-05", "1.23457E-50") a
 `|exp| >= 99` ("1.2346E+100", "1.2346E-99", though "1.23457E-99" would fit its 11-character
 limit; probe D8-D10). `(1/(2^-1022))&""` is "4.4942328371558E+307". Evidence:
 probes/number-text-exponent-digits (excel-graph, 2026-10-06).
-The General cut (5 digits at `|exp| >= 99`) is implemented in the formatter's General branch (T-0986). D8
+The General cut (5 digits at `|exp| >= 99`) is probed only at +-99 and beyond; its 98/99 boundary is carried over from
+the `&""` path until T-1001 probes it. It is implemented in the formatter's General branch (T-0986). D8
 (`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) needs the 11-character
 fixed-versus-E rule, T-0938, and still fails.
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
