@@ -587,9 +587,20 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let arguments = [sum_range.clone(), criteria_range.clone(), criteria.clone()];
-        self.lift_ifs(&arguments, cell, |model, criteria| {
+        self.sum_ifs(&arguments, cell, false)
+    }
+
+    /// SUMIFS (`strict_shape`) and SUMIF on `(sum_range, criteria_range, criteria, ...)`, lifted
+    /// over array criteria; a sum beyond the double range is `#NUM!` (T-0991).
+    pub(crate) fn sum_ifs(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        strict_shape: bool,
+    ) -> CalcResult {
+        self.lift_ifs(args, cell, |model, criteria| {
             let mut total = 0.0;
-            match model.apply_ifs(&arguments, criteria, cell, false, |v| total += v) {
+            match model.apply_ifs(args, criteria, cell, strict_shape, |v| total += v) {
                 Ok(()) => CalcResult::finite_number_or_num(total, cell),
                 Err(e) => e,
             }

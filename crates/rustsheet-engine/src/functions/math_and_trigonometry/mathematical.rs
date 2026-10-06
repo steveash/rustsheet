@@ -347,13 +347,7 @@ impl Model {
 
     /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.lift_ifs(args, cell, |model, criteria| {
-            let mut total = 0.0;
-            match model.apply_ifs(args, criteria, cell, true, |v| total += v) {
-                Ok(()) => CalcResult::finite_number_or_num(total, cell),
-                Err(e) => e,
-            }
-        })
+        self.sum_ifs(args, cell, true)
     }
 
     /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
