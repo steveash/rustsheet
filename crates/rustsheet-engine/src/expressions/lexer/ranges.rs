@@ -1,5 +1,8 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::{token::TokenType, utils::column_to_number};
+use crate::expressions::{
+    token::TokenType,
+    utils::{column_to_number, is_valid_column},
+};
 
 use super::Lexer;
 use super::{ParsedRange, ParsedReference, Result};
@@ -67,14 +70,24 @@ impl Lexer {
     fn sheet_prefix_after_colon(&mut self) -> bool {
         let start = self.position;
         self.position += 1;
+        let found = self.skip_sheet_prefix();
+        // `consume_single_quote_string` moves the position to the end of input on failure.
+        self.position = start;
+        found
+    }
+
+    /// Skips a sheet prefix at the current position (quoted or plain name, then the `!`) and
+    /// returns whether one was there.
+    fn skip_sheet_prefix(&mut self) -> bool {
         let found = if self.peek_char() == Some('\'') {
             self.position += 1;
             self.consume_single_quote_string().is_ok() && self.peek_char() == Some('!')
         } else {
             !self.consume_identifier().is_empty() && self.peek_char() == Some('!')
         };
-        // `consume_single_quote_string` moves the position to the end of input on failure.
-        self.position = start;
+        if found {
+            self.position += 1;
+        }
         found
     }
 
@@ -87,59 +100,76 @@ impl Lexer {
         }
         let start = self.position;
         self.position += 1;
-        if self.peek_char() == Some('\'') {
-            self.position += 1;
-            let _ = self.consume_single_quote_string();
-        } else {
-            self.consume_identifier();
-        }
-        self.position += 1; // the `!`
+        self.skip_sheet_prefix();
         let not_cell = self.consume_reference_a1().is_err();
         self.position = start;
         not_cell
     }
 
-    /// Consumes `corner:corner` (second corner optionally sheet-prefixed) where the corners are
-    /// plain letters, digits and `$`. Excel reads such a malformed sheet-qualified range as a name
-    /// (`Data!A:Data!B` is `#NAME?`, references.md "Sheet-qualified column or row corners on both
-    /// sides are not a range"), so the caller returns the text as an identifier.
+    /// Reads a corner made of a valid column and optional row digits (`A`, `B1`); no `$`. Returns
+    /// whether it has a row, or `None` (position unspecified) when it is not such a corner.
+    fn consume_plain_corner(&mut self) -> Option<bool> {
+        let from = self.position;
+        while self.peek_char().is_some_and(|c| c.is_ascii_alphabetic()) {
+            self.position += 1;
+        }
+        let letters: String = self.chars[from..self.position].iter().collect();
+        if !is_valid_column(&letters.to_ascii_uppercase()) {
+            return None;
+        }
+        let digits_from = self.position;
+        while self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
+            self.position += 1;
+        }
+        let digits: String = self.chars[digits_from..self.position].iter().collect();
+        let row_ok = digits
+            .parse::<i32>()
+            .is_ok_and(|r| (1..=LAST_ROW).contains(&r));
+        if !digits.is_empty() && !row_ok {
+            return None;
+        }
+        // `A1:INDEX(...)`, `B2.5` and the like are not corners.
+        if self
+            .peek_char()
+            .is_some_and(|c| c.is_ascii_alphanumeric() || matches!(c, '$' | '(' | '.' | '_'))
+        {
+            return None;
+        }
+        Some(!digits.is_empty())
+    }
+
+    /// Consumes the malformed corner pairs Excel reads as a name instead of a range, and returns
+    /// their text: a second corner with its own sheet prefix next to a column or row corner
+    /// (`Data!A:Data!B`, `Data!A1:Data!B`, `Data!A:Data!B1`), and a cell followed by a bare
+    /// column (`Data!A1:B`). Excel gives `#NAME?` for them (references.md "Sheet-qualified column
+    /// or row corners on both sides are not a range"); other parse failures are left alone.
     pub(super) fn consume_corner_pair_as_name(&mut self) -> Option<String> {
         let start = self.position;
-        let corner = |lexer: &mut Self| {
-            let from = lexer.position;
-            while lexer
-                .peek_char()
-                .is_some_and(|c| c.is_ascii_alphanumeric() || c == '$')
-            {
-                lexer.position += 1;
-            }
-            lexer.position > from
-        };
-        // A pure-digit first corner (`3:A2`) is a row range gone wrong; its error stays as is.
-        let first_has_letter = self.chars[start..]
-            .iter()
-            .take_while(|c| c.is_ascii_alphanumeric() || **c == '$')
-            .any(char::is_ascii_alphabetic);
-        let ok = first_has_letter && corner(self) && self.peek_char() == Some(':') && {
+        let first_has_row = self.consume_plain_corner();
+        let mut result = None;
+        if let (Some(first_has_row), Some(':')) = (first_has_row, self.peek_char()) {
             let has_prefix = self.sheet_prefix_after_colon();
             self.position += 1;
             if has_prefix {
-                if self.peek_char() == Some('\'') {
-                    self.position += 1;
-                    let _ = self.consume_single_quote_string();
-                } else {
-                    self.consume_identifier();
-                }
-                self.position += 1; // the `!`
+                self.skip_sheet_prefix();
             }
-            corner(self)
-        };
-        if ok && self.position <= self.len {
-            Some(self.chars[start..self.position].iter().collect())
-        } else {
-            self.position = start;
-            None
+            if let Some(second_has_row) = self.consume_plain_corner() {
+                // Without a second prefix only `cell:column` is malformed; `A:B`, `A1:B2` and
+                // `1:2` are ranges, and with a prefix two cells form a range as well.
+                let malformed = if has_prefix {
+                    !(first_has_row && second_has_row)
+                } else {
+                    first_has_row && !second_has_row
+                };
+                if malformed {
+                    result = Some(self.chars[start..self.position].iter().collect());
+                }
+            }
         }
+        if result.is_none() {
+            self.position = start;
+        }
+        result
     }
 
     // Parsing a range is a parser on it's own right. Here is the grammar:
