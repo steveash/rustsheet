@@ -52,8 +52,11 @@ impl Model {
             15 => chrono::Weekday::Fri,
             16 => chrono::Weekday::Sat,
             17 => chrono::Weekday::Sun,
-            // Every other return_type, negative or above 21 included, is #NUM!
-            // (probes/weeknum-invalid-type, probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
+            // 0, 3-10 and 18-20 are #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19, C23-C26).
+            // Excel gives 22+ and negatives the start weekday of the last valid WEEKNUM evaluated
+            // earlier in the recalc, #NUM! only when none ran (probes/weeknum-stale-return-type,
+            // docs/excel-semantics/dates.md); this matches only that no-state case.
+            // TODO(T-1025): model or decline the stale state.
             _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
         };
         // Excel numbers the weeks of 1900 as if serial 1 were a Sunday (the real 1 Jan 1900 is a

@@ -100,6 +100,7 @@ C	probes/value-clock-text.case.json	135
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
+C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
 F	probes/aggregate-overflow.case.json	Calc!A27
 F	probes/aggregate-overflow.case.json	Calc!A28
@@ -308,6 +309,11 @@ F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9
 F	probes/union-accepted.case.json	Sheet1!H9
 F	probes/union-defined-name.case.json	!EngineError
+F	probes/weeknum-stale-return-type.case.json	Mixed!A3
+F	probes/weeknum-stale-return-type.case.json	Mixed!A4
+F	probes/weeknum-stale-return-type.case.json	Type1!A1
+F	probes/weeknum-stale-return-type.case.json	Type21!A1
+F	probes/weeknum-stale-return-type.case.json	Up!A1
 F	probes/xmatch-xlookup-blanks.case.json	Col!M16
 F	probes/xmatch-xlookup-blanks.case.json	Col!M17
 F	probes/xmatch-xlookup-blanks.case.json	Col!M20

@@ -42,21 +42,24 @@ The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONT
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
 
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
-Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21); every
-other value, 0, 3-10, 18-20, 22 and above, and negatives, is `#NUM!` for any serial (not `#VALUE!`).
-A boolean return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`), text that reads as a number is accepted
-(`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
+Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
+0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
+NOT simply an error: it reuses the start weekday of the last WEEKNUM with a valid type evaluated
+earlier in the same recalc (type 21 leaves "start Monday"; ISOWEEKNUM leaves nothing), and is
+`#NUM!` only when none has run. On a fresh load Excel evaluates bottom to top, so with
+`A1=WEEKNUM(100,99)` and `A2=WEEKNUM(100,2)` both are 16, while the swapped layout gives 16 and
+`#NUM!`; `WEEKNUM(0,99)` was 0 or 1 in the 94-cell workbook depending on its neighbours. A boolean
+return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`, also from a reference), text that reads as a number is
+accepted (`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
 (`WEEKNUM(-1,21)` is `#NUM!`, `WEEKNUM(0,NA())` is `#N/A`). Under ISO numbering serial 0 shares
 serial 1's week: `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52 = `WEEKNUM(1,21)`; `ISOWEEKNUM(-1)` is `#NUM!`.
-Evidence: probes/weeknum-serial-0 (57 cells) and probes/weeknum-invalid-type (8 cells; oracle:
-excel-graph, 2026-10-06, T-1023). A first, larger version of weeknum-serial-0 (94 cells) gave
-type-2-like values for return_type 22, 50, 99, 100, 1000 and -1, and `WEEKNUM(0,99)` was 0 in one
-cell and 1 in another, reproduced on a second fill. The same formulas alone, or after a valid
-WEEKNUM, are `#NUM!` in every small workbook tried (9 workbooks), so the larger workbook's values
-were taken as an artifact of that recalculation and those cells moved to weeknum-invalid-type.
-Status: VERIFIED (small workbooks); the larger-workbook values are unexplained (not reproduced
-in isolation). Decision (T-1023): the engine follows the small-workbook results; re-probe if a
-real workbook shows the type-2-like numbering again.
+Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 cells),
+probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
+probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
+the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
+Status: VERIFIED. RustSheet matches everything except the stale state: it always gives `#NUM!`
+for 22+ and negatives, which matches Excel only when no valid WEEKNUM ran earlier in the recalc
+(probes/weeknum-stale-return-type keeps those cells as known failures; model or decline: T-1025).
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
 ## DATE adds 1900 to years below 1900

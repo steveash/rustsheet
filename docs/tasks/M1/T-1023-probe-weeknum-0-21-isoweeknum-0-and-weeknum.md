@@ -31,11 +31,14 @@ return_type >= 22 / negative (acts like type 2; engine errors), boolean return_t
 Next: re-probe the anomaly in isolation (single-cell workbooks, desktop backend if available), decide the serial-0 rule, then fix `fn_weeknum` and `fn_isoweeknum` (isoweeknum goes through `from_excel_date`, which rejects serial 0).
 
 ## Outcome
-- Opus resume: re-probed the handoff's anomaly in 9 small workbooks. Every return_type outside
-  1, 2, 11-17, 21 (22, 99, -1, ...) is `#NUM!` in all of them, so the type-2-like values in the
-  94-cell workbook were taken as that workbook's artifact. Those cells moved to the new case
-  probes/weeknum-invalid-type (8 cells), and weeknum-serial-0 was refilled (57 cells).
-- `fn_weeknum`: an invalid return_type is `#NUM!` (was `#VALUE!` for <= 0 and 3), and a boolean
+- Opus resume plus excel-fidelity review: the handoff's anomaly is deterministic Excel behaviour.
+  A return_type >= 22 or < 0 reuses the start weekday of the last valid WEEKNUM evaluated earlier
+  in the recalc (Excel evaluates bottom to top on load), and is `#NUM!` only when none ran.
+  Recorded in probes/weeknum-stale-return-type (13 cells) and dates.md; modelling or declining it
+  is T-1025. The cells that depend on it moved out of weeknum-serial-0 (now 57 cells) into
+  weeknum-invalid-type (8 cells, no earlier WEEKNUM, all `#NUM!`).
+- `fn_weeknum`: 0, 3-10 and 18-20 are `#NUM!` (was `#VALUE!` for <= 0 and 3), and a boolean
   return_type is `#VALUE!`. Under ISO numbering serial 0 shares serial 1's week (`iso_week`, shared
   with ISOWEEKNUM): `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52.
-- Eval: probes +65 checked cells, all passing; 0 regressions. dates.md entry rewritten as a rule.
+- Eval: probes +65 checked cells passing, plus weeknum-stale-return-type with 5 new-coverage known
+  failures (the stale-state cells); 0 regressions.
