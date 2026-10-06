@@ -3,7 +3,7 @@ id: T-0947
 title: "MODE: a text argument or a blank single-cell reference argument is #VALUE! (4 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -49,3 +49,6 @@ for non-reference nodes.
 
 ## Out of scope
 - Booleans as MODE arguments (no evidence).
+
+## Outcome
+`collect_mode_values` now returns `#VALUE!` for text values and blank single-cell references (shared by MODE/MODE.SNGL/MODE.MULT); single-cell references to text are unchanged (unprobed). Unit test added; coercion.md updated. Eval: poi known failures 895 -> 891 (G936, H936, K936, M936 fixed), no regressions.
