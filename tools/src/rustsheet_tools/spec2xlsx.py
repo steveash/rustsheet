@@ -11,12 +11,14 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     empty string into a blank cell, which has different semantics).
   * Spill references (`A1#`) are written in their file form `_xlfn.ANCHORARRAY(A1)`; Excel for the
     web rejects a literal `A1#` in `<f>` (T-0042). The engine reads the spec text, so cases keep `A1#`.
-  * Future functions get their `_xlfn.` prefixes automatically (XlsxWriter use_future_functions).
+  * Future functions get their `_xlfn.` prefixes from XlsxWriter (use_future_functions) and, for the
+    ones it does not know, from the engine exporter's list; LET/LAMBDA names are written as `_xlpm.x`.
 """
 
 from __future__ import annotations
 
 import argparse
+import functools
 import io
 import json
 import re
@@ -42,23 +44,18 @@ _STRING_LITERAL = re.compile(r'"(?:[^"]|"")*"')
 _IDENT = re.compile(r"[A-Za-z_][\w.]*")
 _ENGINE_FUNCTIONS = Path(__file__).resolve().parents[3] / "crates/rustsheet-engine/src/functions/mod.rs"
 _XLSX_NAME_ARM = re.compile(r'Function::\w+ => "(_xlfn\.[\w.]+)"\.to_string\(\)')
-_FUTURE_PREFIXES: dict[str, str] | None = None
 
 
+@functools.cache
 def future_function_prefixes() -> dict[str, str]:
     """Maps bare upper-case function names to their file form (`TRIMRANGE` → `_xlfn.TRIMRANGE`).
 
     Read from the engine exporter's `Function::to_xlsx_string` so there is one list (T-0166).
     """
-    global _FUTURE_PREFIXES  # noqa: PLW0603
-    if _FUTURE_PREFIXES is None:
-        found = _XLSX_NAME_ARM.findall(_ENGINE_FUNCTIONS.read_text(encoding="utf-8"))
-        # The exporter writes the classic CEILING as `_xlfn.CEILING`, which Excel does not;
-        # a spec's CEILING must stay the plain function.
-        _FUTURE_PREFIXES = {
-            f.removeprefix("_xlfn.").removeprefix("_xlws.").upper(): f for f in found if f != "_xlfn.CEILING"
-        }
-    return _FUTURE_PREFIXES
+    found = _XLSX_NAME_ARM.findall(_ENGINE_FUNCTIONS.read_text(encoding="utf-8"))
+    # The exporter writes the classic CEILING as `_xlfn.CEILING`, which Excel does not (T-0172);
+    # a spec's CEILING must stay the plain function.
+    return {f.removeprefix("_xlfn.").removeprefix("_xlws.").upper(): f for f in found if f != "_xlfn.CEILING"}
 
 
 def _skip_literal(formula: str, i: int) -> int:

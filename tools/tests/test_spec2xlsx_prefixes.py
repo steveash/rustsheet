@@ -3,7 +3,12 @@
 import io
 import zipfile
 
-from rustsheet_tools.spec2xlsx import build_xlsx, prefix_bound_names, prefix_future_functions
+from rustsheet_tools.spec2xlsx import (
+    build_xlsx,
+    future_function_prefixes,
+    prefix_bound_names,
+    prefix_future_functions,
+)
 
 
 def test_let_names_are_prefixed() -> None:
@@ -43,3 +48,9 @@ def test_build_xlsx_writes_the_file_form() -> None:
     assert "_xlfn.TRIMRANGE(A2:B2)" in sheet
     assert "_xlfn._xlfn" not in sheet
     assert "_xlpm._xlpm" not in sheet
+
+
+def test_engine_prefix_list_is_not_empty() -> None:
+    prefixes = future_function_prefixes()
+    assert {"LET", "TRIMRANGE", "FILTER"} <= prefixes.keys()
+    assert "CEILING" not in prefixes
