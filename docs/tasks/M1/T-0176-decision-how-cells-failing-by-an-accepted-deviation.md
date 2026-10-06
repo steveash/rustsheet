@@ -3,7 +3,7 @@ id: T-0176
 title: "Decision: how cells failing by an accepted DEVIATION count toward milestone exit (probes/resource-limits C12, C14)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -36,14 +36,23 @@ cells out of the gated probes suite. Constraints: CLAUDE.md directive 2 (no weak
 hand-edited baselines), decision 0002 (strict scoring), decision 0014.
 
 ## Acceptance criteria
-- [ ] `make new-decision` record in docs/decisions/ choosing one option, with the rejected options
+- [x] `make new-decision` record in docs/decisions/ choosing one option, with the rejected options
       and why; it says how the steward verifies M1 exit for these two cells.
-- [ ] docs/milestones.md M1 (and the Phase 1 exit paragraph if it changes) states the rule in one
+- [x] docs/milestones.md M1 (and the Phase 1 exit paragraph if it changes) states the rule in one
       sentence, citing the decision; if the decision needs harness or case-format work, that task is
       filed (harness lane) and named in the decision.
-- [ ] `make check` green; reviewers approve (Excel-fidelity reviewer included).
+- [x] `make check` green; reviewers approve (Excel-fidelity reviewer included).
 
 ## Out of scope
 - Implementing any harness change the decision calls for (file it).
 - Changing the 1,000,000-cell limit itself.
 - Editing the probes/resource-limits C12/C14 cases or the M1 exit text before this decision lands.
+
+## Outcome
+Decision 0036 chooses option (b): a per-suite `deviations` file (case, cell, decision, DEVIATION
+entry, pinned by-design value), modelled on decision 0032's `cached_overrides` so xlsx suites are
+covered too. Listed cells are scored in their own column, with the pinned value gated, and left out
+of bit-exact. Options (a) (interim only), (c) and (d) are rejected with reasons. docs/milestones.md
+(Phase 1 exit and M1) states the rule. Until the harness work lands, the interim steward rule
+accepts only probes/resource-limits C12/C14. Filed T-0191 (harness, M1, P1, opus) for the
+implementation. Docs only; eval unchanged.
