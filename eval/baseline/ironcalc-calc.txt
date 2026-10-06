@@ -59,6 +59,7 @@ C	ironcalc-calc/INFORMATION/CELL.xlsx	32
 C	ironcalc-calc/INFORMATION/ERROR.TYPE.xlsx	16
 C	ironcalc-calc/INFORMATION/FORMULATEXT.xlsx	27
 C	ironcalc-calc/INFORMATION/ISOMITTED.xlsx	3
+C	ironcalc-calc/INFORMATION/ISREF.xlsx	43
 C	ironcalc-calc/INFORMATION/ISREF_ISFORMULA_ISODD_ISEVEN.xlsx	66
 C	ironcalc-calc/INFORMATION/IS_INFORMATION.xlsx	106
 C	ironcalc-calc/INFORMATION/N.xlsx	21
@@ -923,6 +924,16 @@ F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R12
 F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R2
 F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R4
 F	ironcalc-calc/FINANCIAL/XNPV.xlsx	Sheet1!R5
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!A19
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!A20
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!A23
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!A24
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!A26
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!D2
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!D9
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!J17
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!K17
+F	ironcalc-calc/INFORMATION/ISREF.xlsx	Sheet1!L17
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C11
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!C4
 F	ironcalc-calc/LOGICAL/IF_ARRAY.xlsx	Sheet1!E4
