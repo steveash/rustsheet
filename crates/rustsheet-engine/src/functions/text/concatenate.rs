@@ -39,7 +39,7 @@ impl JoinSize {
     }
 
     fn exceeds(&mut self, values: &[String]) -> bool {
-        for value in &values[self.counted..] {
+        for value in values.get(self.counted..).unwrap_or_default() {
             let separator = if self.counted == 0 {
                 0
             } else {
