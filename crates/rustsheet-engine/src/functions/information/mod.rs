@@ -112,7 +112,8 @@ impl Model {
             Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
             | Node::OpRangeKind { .. }
-            | Node::OpIntersectKind { .. } => CalcResult::Boolean(true),
+            | Node::OpIntersectKind { .. }
+            | Node::OpUnionKind { .. } => CalcResult::Boolean(true),
             // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
             Node::FunctionKind {
                 kind: crate::functions::Function::Index,

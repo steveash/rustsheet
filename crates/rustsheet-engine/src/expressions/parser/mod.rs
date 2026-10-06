@@ -11,7 +11,8 @@ concat  => term ('&' term)*
 term    => factor (opFactor factor)*
 factor  => prod (opProd prod)*
 prod    => power ('^' power)*
-power   => (unaryOp)* intersect '%'*
+power   => (unaryOp)* union '%'*
+union   => intersect (',' intersect)*   only directly inside '(' ')'
 intersect => range (' ' range)*
 range   => implicit (':' primary)?
 implicit=> '@' primary | primary '#' | primary
@@ -198,6 +199,11 @@ pub enum Node {
         left: Box<Node>,
         right: Box<Node>,
     },
+    /// `(left,right)`: the areas of both references (Excel's union operator).
+    OpUnionKind {
+        left: Box<Node>,
+        right: Box<Node>,
+    },
     OpConcatenateKind {
         left: Box<Node>,
         right: Box<Node>,
@@ -294,6 +300,8 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
+    /// Whether a comma is the union operator: directly inside a parenthesis (T-0134).
+    union_allowed: bool,
 }
 
 pub fn new_parser_english(
@@ -333,6 +341,7 @@ impl Parser {
             nesting: 0,
             depth: 0,
             inner_depth: 0,
+            union_allowed: false,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -367,6 +376,7 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
+        self.union_allowed = false;
         let node = self.parse_expr();
         self.expect_end(node)
     }
@@ -610,7 +620,7 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_intersection();
+        let mut t = self.parse_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -641,22 +651,7 @@ impl Parser {
     fn parse_operand(&mut self) -> Node {
         let next_token = self.lexer.next_token();
         match next_token {
-            TokenType::LeftParenthesis => {
-                let t = self.parse_expr();
-                if let Node::ParseErrorKind { .. } = t {
-                    return t;
-                }
-
-                if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
-                    return Node::ParseErrorKind {
-                        formula: self.lexer.get_formula(),
-                        expecting: vec![ExpectedTokens::Other],
-                        position: err.position,
-                        message: err.message,
-                    };
-                }
-                t
-            }
+            TokenType::LeftParenthesis => self.parse_parenthesized(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => {

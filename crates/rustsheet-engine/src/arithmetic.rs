@@ -23,15 +23,39 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
     }
 }
 
+/// `x + y`; a sum beyond the double range is `#NUM!` at once, like a product
+/// (probes/arith-overflow Calc!B1:B5, excel-graph).
+pub(crate) fn plus(x: f64, y: f64) -> Result<f64, Error> {
+    finite_or_num(x + y)
+}
+
+/// `x - y`; a difference beyond the double range is `#NUM!` (probes/arith-overflow Calc!B2:B3).
+pub(crate) fn minus(x: f64, y: f64) -> Result<f64, Error> {
+    finite_or_num(x - y)
+}
+
 /// `x * y`; a product beyond the double range is `#NUM!` at once, so it stays an error through
 /// `&`, CONCAT, TEXT and LEN (probes-numeric/4f413cc257ce15c4 Calc!A121:A124, excel-graph).
-/// Only `*` has evidence; `+`, `-` and `/` are left as they were (docs/excel-semantics/numbers.md).
 pub(crate) fn times(x: f64, y: f64) -> Result<f64, Error> {
-    let product = x * y;
-    if product.is_infinite() {
+    finite_or_num(x * y)
+}
+
+/// `x / y`. A divisor below the smallest normal double counts as zero, so `1/1E-308` and
+/// `1/2^-1023` are `#DIV/0!` while `1/2^-1022` is finite; a quotient beyond the double range is
+/// `#NUM!` (probes/arith-overflow Calc!A6:A8, A16:A18, excel-graph).
+pub(crate) fn divide(x: f64, y: f64) -> Result<f64, Error> {
+    if y.abs() < f64::MIN_POSITIVE {
+        return Err(Error::DIV);
+    }
+    finite_or_num(x / y)
+}
+
+/// An infinite (or NaN) result is the error `#NUM!`.
+fn finite_or_num(value: f64) -> Result<f64, Error> {
+    if !value.is_finite() {
         return Err(Error::NUM);
     }
-    Ok(product)
+    Ok(value)
 }
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
