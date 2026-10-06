@@ -21,3 +21,15 @@ fn overflowing_product_is_num_inside_formulas() {
     }
     assert_eq!(model._get_text("A6"), *"0");
 }
+
+/// The array path shares the closure: only the overflowing element is an error.
+#[test]
+fn overflow_in_an_array_product_is_per_element() {
+    let mut model = new_empty_model();
+    model._set("A1", "=INDEX({1e307,1}*100,1,1)");
+    model._set("B1", "=INDEX({1e307,1}*100,1,2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("B1"), *"100");
+}
