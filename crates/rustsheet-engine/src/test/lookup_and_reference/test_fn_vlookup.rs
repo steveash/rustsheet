@@ -165,6 +165,10 @@ fn test_vlookup_found_validates_index() {
         ("=VLOOKUP(2,A1:C3,0.5)", "#VALUE!"),
         ("=VLOOKUP(2,A1:C3,-1E+15)", "#REF!"),
         ("=VLOOKUP(2,A1:C3,-2147483649)", "#REF!"),
+        // probes/lookup-index-shapes H19-H24: the cut-off is the 32-bit minimum itself.
+        ("=VLOOKUP(2,A1:C3,-2147483648)", "#REF!"),
+        ("=VLOOKUP(2,A1:C3,-2147483647)", "#VALUE!"),
+        ("=VLOOKUP(2,A1:C3,-32768)", "#VALUE!"),
         ("=VLOOKUP(2,A1:C3,4)", "#REF!"),
         ("=VLOOKUP(2,A1:C3,1E+15)", "#REF!"),
         // A referenced cell that is not a number is #REF!, a blank one is 0.

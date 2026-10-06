@@ -38,8 +38,17 @@ value goes on to index validation:
 Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); gen-m2/1b6ceed7489e0800 A24,
 2cfe279fe77a000d A85, 61cacc22c4244179 A310, caa981b0753f455c A182, 629e6e8b76fab8b9 A53,
 cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
-Open: the exact low cut-off between `#VALUE!` and `#REF!` is unprobed between -2147483649 and -1
-(the code treats anything below -2^31 as `#REF!`).
+Cut-off (probes/lookup-index-shapes H19-H36, excel-graph, 2026-10-06, T-0250): an index of
+-2147483648 is `#REF!`, -2147483647, -65536, -32769, -32768 and -32767 are `#VALUE!`, in VLOOKUP and
+HLOOKUP alike; not found is `#N/A` for all of them. A fractional index next to the cut-off is unprobed.
+Index shapes (same probe): `OFFSET(E1,..)` and `INDIRECT("E1")` results are references (a cell holding
+text or an error is `#REF!` when found, `#N/A` when not found). So is `INDEX(E1:E4,2)`: text or an
+error in the INDEXed cell is `#REF!` found / `#N/A` not found, **not** implemented yet (the engine
+coerces the INDEX value: `#VALUE!` / the error), baselined in probes H2, H3, H11, H12 (T-0250 follow-up).
+A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
+from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
+value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
+`#REF!` and `#N/A` when not found (K7); whether it spills into J11 is unprobed.
 Status: VERIFIED
 Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 (crates/rustsheet-engine/src/functions/lookup_and_reference/index_arg.rs), shared by VLOOKUP and HLOOKUP.
