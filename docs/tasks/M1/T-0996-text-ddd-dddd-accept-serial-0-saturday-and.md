@@ -3,7 +3,7 @@ id: T-0996
 title: "TEXT ddd/dddd accept serial 0 (Saturday) and read the Sunday-based early-1900 weekday"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
