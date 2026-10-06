@@ -3,7 +3,7 @@ id: T-0193
 title: "Union printing and parsing: keep nested union parentheses, read (-A1,B1) as a union of -A1, reject (A1+B1,C1)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
