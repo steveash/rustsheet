@@ -12,7 +12,7 @@ use crate::{
     formatter::format::{format_text, parse_formatted_number},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, text_after, text_before, Case},
+        text::util::{self, substitute, substitute_exceeds_limit, text_after, text_before, Case},
     },
     locale::Locale,
     model::Model,
@@ -200,6 +200,9 @@ fn substitute_element(
     };
     if old_text.is_empty() {
         return Ok(ArrayNode::String(text));
+    }
+    if substitute_exceeds_limit(&text, &old_text, &new_text, instance_num) {
+        return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(match instance_num {
         Some(n) => substitute(&text, &old_text, &new_text, n),
