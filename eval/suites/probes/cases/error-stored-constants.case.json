@@ -1,0 +1,56 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0999: stored t=\"e\" error constants that load in Excel. #BLOCKED!, #CONNECT!, #FIELD!, #UNKNOWN! and #CALC! stored constants are rejected on load (throw-away one-cell cases, no sidecar). B = ERROR.TYPE, C = ISERROR, D = text coercion, E = ISERR, F = ISNA, G = TYPE, H = ERROR.TYPE+100 (XlsxWriter caches 0 for every formula, so a stale cell cannot look right), I = IFNA.",
+  "tags": [
+    "M1",
+    "errors",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": {
+          "t": "e",
+          "v": "#BUSY!",
+          "stored": true
+        },
+        "B1": "=ERROR.TYPE(A1)",
+        "C1": "=ISERROR(A1)",
+        "D1": "=A1&\"\"",
+        "A2": {
+          "t": "e",
+          "v": "#GETTING_DATA",
+          "stored": true
+        },
+        "B2": "=ERROR.TYPE(A2)",
+        "C2": "=ISERROR(A2)",
+        "D2": "=A2&\"\"",
+        "A3": {
+          "t": "e",
+          "v": "#N/A",
+          "stored": true
+        },
+        "B3": "=ERROR.TYPE(A3)",
+        "C3": "=ISERROR(A3)",
+        "D3": "=A3&\"\"",
+        "E1": "=ISERR(A1)",
+        "F1": "=ISNA(A1)",
+        "G1": "=TYPE(A1)",
+        "H1": "=ERROR.TYPE(A1)+100",
+        "I1": "=IFNA(A1,\"y\")",
+        "E2": "=ISERR(A2)",
+        "F2": "=ISNA(A2)",
+        "G2": "=TYPE(A2)",
+        "H2": "=ERROR.TYPE(A2)+100",
+        "I2": "=IFNA(A2,\"y\")",
+        "E3": "=ISERR(A3)",
+        "F3": "=ISNA(A3)",
+        "G3": "=TYPE(A3)",
+        "H3": "=ERROR.TYPE(A3)+100",
+        "I3": "=IFNA(A3,\"y\")"
+      }
+    }
+  ],
+  "expected": {}
+}
