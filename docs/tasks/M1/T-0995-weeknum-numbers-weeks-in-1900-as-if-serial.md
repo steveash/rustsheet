@@ -3,7 +3,7 @@ id: T-0995
 title: "WEEKNUM numbers weeks in 1900 as if serial 1 were a Sunday (WEEKNUM(2,2) is 2)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
