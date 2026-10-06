@@ -3,7 +3,7 @@ id: T-0207
 title: "COUNTIFS/COUNTIF array criteria lift to an array of counts (4 known failures)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
