@@ -465,7 +465,7 @@ mod number_to_text_tests {
             (1e15 + 15.0, "1000000000000010"),
             (1e14 + 1.5, "100000000000001"),
             (12_345_678_901_234.75, "12345678901234.7"),
-            // T-0186: 14 mantissa digits from a decimal exponent magnitude of 99.
+            // T-0199 (evidence T-0186): 14 mantissa digits from a decimal exponent magnitude of 99.
             (1.234_567_890_123_45e98, "1.23456789012345E+98"),
             (1.234_567_890_123_45e99, "1.2345678901235E+99"),
             (9.876_543_210_987_65e-99, "9.8765432109877E-99"),
