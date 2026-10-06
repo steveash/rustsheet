@@ -12,7 +12,7 @@
   "crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs": 1015,
   "crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs": 1066,
   "crates/rustsheet-engine/src/functions/mod.rs": 2874,
-  "crates/rustsheet-engine/src/functions/text/common.rs": 1178,
+  "crates/rustsheet-engine/src/functions/text/common.rs": 1183,
   "crates/rustsheet-engine/src/model.rs": 3603,
   "crates/rustsheet-engine/src/user_model/common.rs": 2373,
   "crates/rustsheet-engine/src/user_model/ui.rs": 1088,
