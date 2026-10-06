@@ -3,7 +3,7 @@ id: T-0999
 title: "spec2xlsx: emit t=e stored error constants and probe #BLOCKED! etc."
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
