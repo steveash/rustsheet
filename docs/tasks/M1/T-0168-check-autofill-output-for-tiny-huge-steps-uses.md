@@ -28,7 +28,6 @@ Left over from T-0150/T-0143: `to_excel_precision_str` (used by user_model/seque
 ## Outcome
 Autofill output text is typed back in as user input and parsed (T-0143), so exponent vs plain notation in
 the generated text cannot change a cell's value; `test_autofill_extreme_steps.rs` pins small (1E-5) and large
-(1E+14) steps in the en and de locales. The probe cell for `"<17 digits>"+0` was dropped: `SUM("...")`,
-AVERAGE and NUMBERVALUE already cover the 15-digit rule on the text-to-number path (T-0150). The check found
+(1E+14) steps in the en and de locales. Added probe cell B14 (`"<17 digits>"+0`, Excel 0, engine matches) to probes/text-number-15-digits. The check found
 a different gap: fills over E-notation sources copy rather than extend; filed as T-0171 (needs Excel
 evidence the Graph oracle cannot give). Eval: no change.
