@@ -88,7 +88,9 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 
 impl Model {
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
-    /// token (the lexer builds those): only two single cells are joined.
+    /// token (the lexer builds those): only two single cells on one sheet are joined, so
+    /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
+    /// is only ever a 3-D reference.
     pub(crate) fn get_range(
         &mut self,
         left: &Node,
@@ -107,7 +109,7 @@ impl Model {
                     left: left2,
                     right: right2,
                 },
-            ) if left1 == right1 && left2 == right2 => {
+            ) if left1 == right1 && left2 == right2 && left1.sheet == left2.sheet => {
                 // Corners may be written in either order (`Data!B2:Data!A1` is `Data!A1:B2`).
                 // UNVERIFIED against the oracle (references.md).
                 CalcResult::Range {
@@ -124,6 +126,74 @@ impl Model {
                 }
             }
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
+        }
+    }
+
+    /// A 3-D reference (`First:Last!A1`) where a value is needed: Excel gives `#REF!` for the
+    /// bare reference, in an operator and in value functions such as ABS
+    /// (probes/3d-ref-values C1:C3). A span of one sheet is that sheet's reference
+    /// (`=Data1:Data1!A1`, C9).
+    pub(crate) fn get_sheet_span_value(
+        &mut self,
+        first_index: u32,
+        last_index: u32,
+        reference: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if first_index == last_index {
+            return self.evaluate_node_in_context(reference, cell);
+        }
+        CalcResult::new_error(
+            Error::REF,
+            cell,
+            "3-D reference where a value is needed".to_string(),
+        )
+    }
+
+    /// A 3-D reference where a single-sheet reference is needed: `#VALUE!` (INDEX, ROWS, ROW,
+    /// AREAS, VLOOKUP, MATCH, SUMIF, COUNTIF, probes/3d-ref-functions). A span of one sheet is
+    /// that sheet's reference.
+    pub(crate) fn get_sheet_span_reference(
+        &mut self,
+        first_index: u32,
+        last_index: u32,
+        reference: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if first_index == last_index {
+            return self.evaluate_node_with_reference(reference, cell);
+        }
+        CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "3-D reference where one sheet is needed".to_string(),
+        )
+    }
+
+    /// A 3-D reference as an aggregate argument: one `Range` whose corners sit on the first
+    /// and the last sheet of the span in tab order, whichever way it was written
+    /// (`Data3:Data1!A1` is `Data1:Data3!A1`, probes/3d-ref-aggregates C2). Only
+    /// [`Model::evaluate_aggregate_arg`] builds a `Range` across sheets, and
+    /// [`Model::for_each_cell_or_error_in_range`] walks it sheet by sheet.
+    pub(crate) fn get_sheet_span_range(
+        &mut self,
+        first_index: u32,
+        last_index: u32,
+        reference: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.evaluate_node_with_reference(reference, cell) {
+            CalcResult::Range { left, right } => CalcResult::Range {
+                left: CellReferenceIndex {
+                    sheet: first_index.min(last_index),
+                    ..left
+                },
+                right: CellReferenceIndex {
+                    sheet: first_index.max(last_index),
+                    ..right
+                },
+            },
+            other => other,
         }
     }
 

@@ -2,6 +2,9 @@
 # never edit by hand. `C<TAB>case<TAB>checked-cells` lists every case; `F<TAB>case<TAB>item` lists
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
+C	probes/3d-ref-aggregates.case.json	20
+C	probes/3d-ref-functions.case.json	14
+C	probes/3d-ref-values.case.json	10
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
@@ -86,6 +89,18 @@ C	probes/union-accepted.case.json	9
 C	probes/union-defined-name.case.json	0
 C	probes/union-neg-operand.case.json	2
 C	probes/value-clock-text.case.json	135
+F	probes/3d-ref-aggregates.case.json	Calc!C10
+F	probes/3d-ref-aggregates.case.json	Calc!C6
+F	probes/3d-ref-aggregates.case.json	Calc!C8
+F	probes/3d-ref-aggregates.case.json	Calc!C9
+F	probes/3d-ref-functions.case.json	Calc!C1
+F	probes/3d-ref-functions.case.json	Calc!C10
+F	probes/3d-ref-functions.case.json	Calc!C11
+F	probes/3d-ref-functions.case.json	Calc!C13
+F	probes/3d-ref-functions.case.json	Calc!C14
+F	probes/3d-ref-functions.case.json	Calc!C5
+F	probes/3d-ref-functions.case.json	Calc!C6
+F	probes/3d-ref-values.case.json	Calc!C8
 F	probes/arith-overflow.case.json	Calc!B16
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11

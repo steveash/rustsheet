@@ -63,7 +63,8 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            // A reference, 3-D ones included, arrives as a Range: its non-empty cells count.
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Range { left, right } => {
                     if let Err(error) =

@@ -2,11 +2,41 @@
 
 ## 3-D sheet-range references in aggregates
 Rule: SUM, AVERAGE, MIN, MAX, COUNT and COUNTA accept `First:Last!ref`, and the sheet span may
-include the formula's own sheet.
+include the formula's own sheet. The span is the sheets from First to Last in tab order, whichever
+way it is written (`Data3:Data1!A1` = `Data1:Data3!A1`); text, booleans and blanks in it are skipped
+like in any range, and the first error cell wins. A name that needs quotes quotes the whole span
+(`'Data2:Q 4'!A1`). Also accepted (same probes): AVERAGEA, MAXA, MINA, PRODUCT, STDEV, VAR, MEDIAN,
+LARGE, RANK, SUMSQ and CONCAT (`=CONCAT(Data1:Data3!A1)` → "110100").
 Evidence: poi/FormulaSheetRange.xlsx test!D11 = 10, D12 = 60 and poi/48703.xlsx Sheet1!B2 = 20 (oracle:
-excel-graph, 2026-10-04); poi/55906-MultiSheetRefs.xlsx A3 = 66, I6 = 4 (Excel-cached).
+excel-graph, 2026-10-04); poi/55906-MultiSheetRefs.xlsx A3 = 66, I6 = 4 (Excel-cached);
+probes/3d-ref-aggregates (excel-graph, 2026-10-06).
 Status: VERIFIED
-Tasks: T-0122
+Implemented in: `get_sheet_span_range` (crates/rustsheet-engine/src/reference_operators.rs) and
+`for_each_cell_or_error_in_range` (crates/rustsheet-engine/src/functions/util.rs). AVERAGEA, MAXA,
+MINA, PRODUCT, CONCAT, LARGE and RANK are not yet (T-0196).
+Tasks: T-0122, T-0196
+
+## 3-D references outside the aggregates
+Rule: where a value is needed a 3-D reference is `#REF!`: the bare formula `=Data1:Data3!A1`, an
+operator (`+1`), and value functions such as ABS; so ERROR.TYPE gives 4, ISERROR TRUE, ISREF and
+ISBLANK FALSE and IFERROR its fallback. Where one sheet's reference is needed it is `#VALUE!`: INDEX,
+ROWS, COLUMNS, ROW, AREAS, VLOOKUP, MATCH, SUMIF, COUNTIF and COUNTBLANK. SUMPRODUCT gives `#REF!`.
+A span of one sheet (`=Data1:Data1!A1`) is that sheet's reference: 1.
+Evidence: probes/3d-ref-values, probes/3d-ref-functions (excel-graph, 2026-10-06).
+Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span whose end is not a
+sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
+implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
+Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
+crates/rustsheet-engine/src/reference_operators.rs. INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK do
+not give `#VALUE!` yet (T-0197).
+Tasks: T-0122, T-0197
+
+## 3-D references when sheets or cells change (unprobed)
+Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
+sheet re-resolves the span by name. Deleting an end sheet makes the reference `#REF!`, and inserting
+or deleting rows or columns does not shift the span. Excel's own rules for these edits are not probed.
+Status: UNVERIFIED
+Tasks: T-0198
 
 ## Undefined names may contain backslashes
 Rule: an undefined name such as `HSI\10_1\1460_1\1470_1___val` parses as a name and evaluates
