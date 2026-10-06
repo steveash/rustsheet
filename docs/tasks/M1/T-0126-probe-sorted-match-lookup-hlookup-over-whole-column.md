@@ -3,7 +3,7 @@ id: T-0126
 title: "Probe sorted MATCH/LOOKUP/HLOOKUP over whole column/row with blank tail"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -21,9 +21,16 @@ Probe cases (each with the data above, and again with an unrelated far cell such
 - exact on blanks: `VLOOKUP(0,A:B,2,FALSE)`, `HLOOKUP(FALSE,1:2,2,FALSE)`, `VLOOKUP("",A:B,2,FALSE)`, `MATCH(0,A:A,0)`, `XMATCH(0,A:A)`, and a lookup value that is a reference to a blank cell.
 
 ## Acceptance criteria
-- [ ] Probe cases in eval/suites/probes with oracle values; docs/excel-semantics/lookup.md records the rules (VERIFIED) and the engine matches them, keeping `SearchVector`'s bounded evaluation.
-- [ ] The unit tests in test_fn_match/vlookup/hlookup/lookup/xmatch.rs pin the probed values.
-- [ ] `make check` green; reviewers approve.
+- [x] Probe cases in eval/suites/probes with oracle values; docs/excel-semantics/lookup.md records the rules (VERIFIED) and the engine matches them, keeping `SearchVector`'s bounded evaluation.
+- [x] The unit tests in test_fn_match/vlookup/hlookup/lookup/xmatch.rs pin the probed values.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe `lookup-whole-column-blank-tail` (60 cells; Col/ColFar/Row/RowFar) filled from excel-graph: all
+approximate and exact lookups over whole columns/rows with a blank tail behave as the verified
+type-skipping rule predicts, with or without a far used cell. The one engine gap was XMATCH exact
+mode matching blanks (`XMATCH(0,A:A)` gave 4, Excel #N/A); fixed. docs/excel-semantics/lookup.md is
+now VERIFIED. Eval: probes +60 passing cells (new case, fully passing); no regressions.

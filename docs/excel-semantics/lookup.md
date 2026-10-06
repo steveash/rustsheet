@@ -128,14 +128,18 @@ Tasks: T-0213
 ## Whole-column / whole-row search vectors: blank tail
 Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
 column with data in A1:A3 behaves like A1:A3 for an approximate lookup (`MATCH(99,A:A,1)` is
-expected to be 3, not 1048576).
-Evidence: inferred from the VERIFIED type-skipping entry (bounded gen-m2 ranges); whole-column
-probes with a blank tail are T-0126.
-Status: UNVERIFIED (probe pending, T-0126)
-Engine today (until T-0212): each probed blank compares as 0 / "" / FALSE, so `MATCH(99,A:A,1)`
-= 1048576 and `VLOOKUP(99,A:B,2)` = 0, and exact `VLOOKUP(0,A:B,2,FALSE)` matches the first blank.
-Likewise for XMATCH (T-0127, UNVERIFIED): with data in A1:A3 and B1:D1, `XMATCH(0,A:A)` = 4,
-`XMATCH(0,A:A,0,-1)` = 1048576 and `XMATCH(0,1:1)` = 5.
+3, not 1048576).
+Evidence: probes/lookup-whole-column-blank-tail (Excel oracle, Col/ColFar/Row/RowFar; identical with
+and without a far used cell Z100). `MATCH(99,A:A,1)` = 3, `MATCH(9.99E+307,A:A)` = 3,
+`VLOOKUP(99,A:B,2)` = "c", `HLOOKUP(99,1:2,2)` = "c", `LOOKUP(99,A:A,B:B)` = "c",
+`LOOKUP(20,A:A,B:B)` = "b", `LOOKUP(30,A1:A3,E:E)` = 0 (blank result), same as the bounded
+`A1:A10` forms. `MATCH(99,A:A,-1)` and `MATCH(5,A:A,1)` are #N/A. Exact lookups never match a
+blank: `VLOOKUP(0,A:B,2,FALSE)`, `VLOOKUP("",A:B,2,FALSE)`, `HLOOKUP(FALSE,1:2,2,FALSE)`,
+`MATCH(0,A:A,0)`, `XMATCH(0,A:A)` (and `XMATCH(0,1:1)`) are #N/A, and so are a blank-cell lookup
+value in `MATCH(G1,A:A,0)`, `MATCH(G1,A:A,1)`, `VLOOKUP(G1,A:B,2[,FALSE])`.
+Status: VERIFIED
+Implemented in: `SearchVector::approximate_position`/`exact_position`; XMATCH exact mode skips
+blanks (T-0126). XMATCH with match_mode other than 0 or binary search_mode over blanks is unprobed.
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
