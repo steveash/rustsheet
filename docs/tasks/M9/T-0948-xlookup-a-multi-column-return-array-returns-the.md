@@ -3,7 +3,7 @@ id: T-0948
 title: "XLOOKUP: a multi-column return_array returns the whole matched row (2 poi known failures)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -43,3 +43,6 @@ column keeps today's scalar result).
 ## Out of scope
 - The horizontal analog (a row lookup vector with a multi-row return range) and array (non-range)
   return arguments: no evidence yet; file a probe follow-up rather than implementing them blind.
+
+## Outcome
+XLOOKUP with a column lookup vector accepts a multi-column return range of the same row count and returns the matched row as a 1xN array (`xlookup_pick`); XLOOKUP's static-analysis result is now `Unknown` (it can return an array). poi known failures 899 -> 897 (2 fixed, 0 regressions). Unit tests in `test_xlookup_wide.rs`. Follow-up: T-0962 probes the horizontal analog.
