@@ -20,7 +20,8 @@ whose exit criteria are not met.
 **Phase 1 exit:** every Excel function is in the catalog with its parity scope (T-0040). Every
 in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
 reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a filed task or a
-`DEVIATION` entry. The exit criteria of M1, M2, M5–M10 and M11 are met.
+`DEVIATION` entry. "Bit-exact" percentages here and in every milestone count only scored cells
+not listed as accepted deviations, which are scored in their own column (decision 0036). The exit criteria of M1, M2, M5–M10 and M11 are met.
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
@@ -68,7 +69,9 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   Remove the `Model<'a>` lifetime (this fixes the leak in the Python binding).
 
 **Exit criteria:**
-- `smoke`, `probes` and `gen-m1` (≥ 3,000 oracle cells, operators and references only) at 100% bit-exact.
+- `smoke`, `probes` and `gen-m1` (≥ 3,000 oracle cells, operators and references only) at 100% bit-exact,
+  excluding cells listed as accepted deviations (decision 0036; until T-0191 lands, only
+  probes/resource-limits C12 and C14).
   Measured by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left, in T-0105,
   T-0107, T-0130–T-0132, T-0134 and T-0221; T-0221 is an M2 task that also blocks M1).
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
