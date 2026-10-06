@@ -13,7 +13,6 @@ C	poi/47889.xlsx	0
 C	poi/48539.xlsx	27
 C	poi/48703.xlsx	2
 C	poi/49156.xlsx	20
-C	poi/49609.xlsx	0
 C	poi/49783.xlsx	3
 C	poi/49872.xlsx	4
 C	poi/49966.xlsx	3
@@ -45,7 +44,6 @@ C	poi/56822-Countifs.xlsx	1
 C	poi/57196.xlsx	62
 C	poi/57535.xlsx	5
 C	poi/57798.xlsx	2
-C	poi/57914.xlsx	0
 C	poi/58106.xlsx	7
 C	poi/58616.xlsx	0
 C	poi/58648.xlsx	1
@@ -87,10 +85,10 @@ C	poi/NewStyleConditionalFormattings.xlsx	304
 C	poi/NewlineInFormulas.xlsx	9
 C	poi/NumberFormatApproxTests.xlsx	11
 C	poi/NumberFormatTests.xlsx	325
-C	poi/SampleSS.strict.xlsx	0
+C	poi/SampleSS.strict.xlsx	1
 C	poi/SampleSS.xlsx	1
 C	poi/SimpleNormal.xlsx	2
-C	poi/SimpleStrict.xlsx	0
+C	poi/SimpleStrict.xlsx	2
 C	poi/StructuredReferences.xlsx	9
 C	poi/StructuredRefs-lots-with-lookups.xlsx	7274
 C	poi/Tables.xlsx	21
@@ -123,7 +121,7 @@ C	poi/poc-xmlbomb.xlsx	0
 C	poi/protected_passtika.xlsx	0
 C	poi/ref-56737.xlsx	7
 C	poi/ref2-56737.xlsx	10
-C	poi/sample.strict.xlsx	0
+C	poi/sample.strict.xlsx	1
 C	poi/sample.xlsx	1
 C	poi/shared_formulas.xlsx	40
 C	poi/simple-monthly-budget.xlsx	5
@@ -150,7 +148,6 @@ F	poi/47813.xlsx	Numbers!C683
 F	poi/47813.xlsx	Numbers!C92
 F	poi/47889.xlsx	!EngineError
 F	poi/48539.xlsx	Instance1!E23
-F	poi/49609.xlsx	!InvalidCase
 F	poi/54436.xlsx	Sheet1!A14
 F	poi/54764-2.xlsx	!EngineError
 F	poi/54764.xlsx	!EngineError
@@ -164,7 +161,6 @@ F	poi/56737.xlsx	Uses!D3
 F	poi/56737.xlsx	Uses!D5
 F	poi/57535.xlsx	Sheet1!E5
 F	poi/57535.xlsx	Sheet1!E6
-F	poi/57914.xlsx	!EngineError
 F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/59106.xlsx	Test!A2
@@ -173,10 +169,6 @@ F	poi/60825.xlsx	!EngineError
 F	poi/61063.xlsx	Tabelle1!A4
 F	poi/61652.xlsx	Model!B4
 F	poi/63934.xlsx	Sheet1!B2
-F	poi/70005-countifs.xlsx	Sheet1!A3
-F	poi/70005-countifs.xlsx	Sheet1!A4
-F	poi/70005-countifs.xlsx	Sheet1!D3
-F	poi/70005-countifs.xlsx	Sheet1!D4
 F	poi/DateFormatNumberTests.xlsx	Tests!A10
 F	poi/DateFormatNumberTests.xlsx	Tests!A11
 F	poi/DateFormatNumberTests.xlsx	Tests!A2
@@ -680,8 +672,6 @@ F	poi/NumberFormatTests.xlsx	Tests!A80
 F	poi/NumberFormatTests.xlsx	Tests!A81
 F	poi/NumberFormatTests.xlsx	Tests!A82
 F	poi/NumberFormatTests.xlsx	Tests!A95
-F	poi/SampleSS.strict.xlsx	!EngineError
-F	poi/SimpleStrict.xlsx	!EngineError
 F	poi/TextFormatTests.xlsx	Tests!A10
 F	poi/TextFormatTests.xlsx	Tests!A12
 F	poi/TextFormatTests.xlsx	Tests!A13
@@ -763,7 +753,6 @@ F	poi/ref2-56737.xlsx	Refs!G3
 F	poi/ref2-56737.xlsx	Refs!G5
 F	poi/ref2-56737.xlsx	Refs!I3
 F	poi/ref2-56737.xlsx	Refs!I5
-F	poi/sample.strict.xlsx	!EngineError
 F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!E4
 F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!E9
 F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!F9

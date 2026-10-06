@@ -28,7 +28,7 @@ enum SearchMode {
 }
 
 #[derive(PartialEq, Clone, Copy)]
-enum MatchMode {
+pub(crate) enum MatchMode {
     ExactMatchSmaller = -1,
     Exact = 0,
     ExactMatchLarger = 1,
@@ -36,30 +36,44 @@ enum MatchMode {
     Regex = 3,
 }
 
-/// Searches `array` for `lookup_value` and returns the 0-based index of the match,
-/// or `None` if not found. Only the candidates `SearchVector` names are tested:
-/// they cover the virtual empty tail with a single cell.
-fn linear_search(
+/// A blank candidate in an ordered comparison: it sorts as the empty text, so it is
+/// larger than every number and never smaller than one (probes/xmatch-xlookup-blanks
+/// Col!M5-M12; T-1018).
+static BLANK_AS_TEXT: CalcResult = CalcResult::String(String::new());
+
+/// The first (in `indices` order) candidate of `get` that matches `lookup_value` under
+/// `match_mode`, shared by XMATCH and XLOOKUP. A blank candidate never matches a non-blank
+/// lookup value in an exact or wildcard search, and matches a blank one (Col!M14, M30-M34);
+/// the regex mode is XMATCH's own and matches nothing here.
+pub(crate) fn linear_scan<'a>(
     lookup_value: &CalcResult,
-    array: &SearchVector,
-    search_mode: &SearchMode,
+    indices: impl IntoIterator<Item = usize>,
+    get: impl Fn(usize) -> &'a CalcResult,
     match_mode: MatchMode,
 ) -> Option<usize> {
-    let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
-
+    let blank_lookup = matches!(lookup_value, CalcResult::EmptyCell);
+    let is_blank = |v: &CalcResult| matches!(v, CalcResult::EmptyCell);
     match match_mode {
-        // A blank never matches an exact XMATCH, so `XMATCH(0,A:A)` over a column with a
-        // blank tail is #N/A (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126).
-        MatchMode::Exact => candidates.into_iter().find(|&idx| {
-            let v = array.get(idx);
-            !matches!(v, CalcResult::EmptyCell) && compare_values(v, lookup_value) == 0
+        MatchMode::Exact => indices.into_iter().find(|&idx| {
+            let v = get(idx);
+            if is_blank(v) {
+                blank_lookup
+            } else {
+                compare_values(v, lookup_value) == 0
+            }
         }),
         MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => {
             let m = match_mode as i32;
             let mut best_idx = None;
             let mut best_val: Option<&CalcResult> = None;
-            for idx in candidates {
-                let v = array.get(idx);
+            for idx in indices {
+                let mut v = get(idx);
+                if is_blank(v) {
+                    if blank_lookup {
+                        return Some(idx);
+                    }
+                    v = &BLANK_AS_TEXT;
+                }
                 let c = compare_values(v, lookup_value);
                 if c == 0 {
                     return Some(idx);
@@ -77,8 +91,31 @@ fn linear_search(
                 } else {
                     Box::new(move |x| compare_values(x, lookup_value) == 0)
                 };
-            candidates.into_iter().find(|&idx| matches(array.get(idx)))
+            indices.into_iter().find(|&idx| {
+                let v = get(idx);
+                if is_blank(v) {
+                    blank_lookup
+                } else {
+                    matches(v)
+                }
+            })
         }
+        MatchMode::Regex => None,
+    }
+}
+
+/// Searches `array` for `lookup_value` and returns the 0-based index of the match,
+/// or `None` if not found. Only the candidates `SearchVector` names are tested:
+/// they cover the virtual empty tail with a single cell.
+fn linear_search(
+    lookup_value: &CalcResult,
+    array: &SearchVector,
+    search_mode: &SearchMode,
+    match_mode: MatchMode,
+) -> Option<usize> {
+    let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
+
+    match match_mode {
         MatchMode::Regex => {
             let pattern = match lookup_value {
                 CalcResult::String(s) => s.as_str(),
@@ -95,6 +132,8 @@ fn linear_search(
                 re.is_match(&text)
             })
         }
+        // Regex is handled above; the other modes share XLOOKUP's blank-aware scan.
+        _ => linear_scan(lookup_value, candidates, |idx| array.get(idx), match_mode),
     }
 }
 

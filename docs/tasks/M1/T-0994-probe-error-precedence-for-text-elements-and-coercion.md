@@ -3,7 +3,7 @@ id: T-0994
 title: "Probe error precedence for text elements and coercion errors next to an error argument (WEEKDAY, MID)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ comparisons, POWER and the element-wise functions" marks both as UNVERIFIED:
 
 ## Out of scope
 - Implementing a fix (file it separately).
+
+## Outcome
+Probe `error-precedence-text` (30 cells) oracle-filled; arrays.md now VERIFIED. WEEKDAY behaves as the engine does. MID differs on 2 cells (known failures 246 -> 248 in probes, new coverage); follow-up T-1022.

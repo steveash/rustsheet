@@ -206,7 +206,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(flush_subnormal(sum / count))
+        CalcResult::finite_number_or_num(flush_subnormal(sum / count), cell)
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -368,7 +368,13 @@ impl Model {
             // even: average of the two middle values
             let a = values[(n / 2) - 1];
             let b = values[n / 2];
-            (a + b) / 2.0
+            // Halve first when the sum would overflow: Excel gives 9E+307 for two 9E+307 values.
+            let sum = a + b;
+            if sum.is_finite() {
+                sum / 2.0
+            } else {
+                a / 2.0 + b / 2.0
+            }
         };
 
         CalcResult::Number(median)

@@ -40,10 +40,7 @@ Evidence: eval/suites/probes/cases/array-constant-signs.case.json (oracle: excel
 T-0147) for the accepted forms; each rejected form was sent as a single-cell workbook
 (e.g. `{"sheets":[{"name":"Sheet1","cells":{"A1":"=SUM({--1})"}}]}`) and got createSession 501
 `FileCorruptTryRepair` (rejected inputs cannot be committed; re-run such specs to reproduce).
-RustSheet today: `{--1}`, `{---1}`, `{1,--2}`, `{-TRUE}` and `{-#N/A}` are rejected (T-0132 keeps each
-minus as a node). Wrongly accepted: `{++1}`, `{-+1}`, `{+-1}`, `{+"a"}`, `{+#N/A}` (the parser
-drops plus signs in `parse_power`) and `{- 1}`, `{+ 1}` (whitespace after the sign is lost before
-parsing). Measured with the release build, T-0147.
+RustSheet today: all of these forms are rejected (`parse_array_item` takes one sign directly attached to a number token; T-0156).
 Status: VERIFIED
 
 ## Formula nesting depth cap

@@ -410,11 +410,17 @@ fn test_weeknum_function() {
     // Error cases - invalid return_type
     model._set("A14", "=WEEKNUM(44561,0)");
     model._set("A15", "=WEEKNUM(44561,3)");
-    model._set("A16", "=WEEKNUM(44561,-1)");
+    model._set("A16", "=WEEKNUM(44561,18)");
 
     // Error cases - invalid dates
     model._set("A17", "=WEEKNUM(-1)");
     model._set("A18", &format!("=WEEKNUM({EXCEL_INVALID_DATE})"));
+
+    // ISO numbering of serial 0 (probes/weeknum-serial-0 C1, C2, C22; T-1023)
+    model._set("A19", "=WEEKNUM(0,21)");
+    model._set("A20", "=ISOWEEKNUM(0)");
+    model._set("A21", "=ISOWEEKNUM(-1)");
+    model._set("A22", "=WEEKNUM(100,TRUE)");
 
     model.evaluate();
 
@@ -438,11 +444,18 @@ fn test_weeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
-    assert_eq!(model._get_text("A14"), *"#VALUE!");
-    assert_eq!(model._get_text("A15"), *"#VALUE!");
-    assert_eq!(model._get_text("A16"), *"#VALUE!");
+    // Excel: return_type 0, 3-10 and 18-20 are always #NUM! (probes/weeknum-serial-0 C3, C4,
+    // C18, C19, C25; T-1023). 22+ and negatives depend on calc order in Excel;
+    // we always give #NUM! (decision 0038).
+    assert_eq!(model._get_text("A14"), *"#NUM!");
+    assert_eq!(model._get_text("A15"), *"#NUM!");
+    assert_eq!(model._get_text("A16"), *"#NUM!");
     assert_eq!(model._get_text("A17"), *"#NUM!");
     assert_eq!(model._get_text("A18"), *"#NUM!");
+    assert_eq!(model._get_text("A19"), *"52");
+    assert_eq!(model._get_text("A20"), *"52");
+    assert_eq!(model._get_text("A21"), *"#NUM!");
+    assert_eq!(model._get_text("A22"), *"#VALUE!");
 }
 
 #[test]

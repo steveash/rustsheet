@@ -113,13 +113,20 @@ argument the leftmost error is the result: `WEEKDAY(1/0,NA())` is `#DIV/0!`, `TE
 `#N/A` (the format's error wins over a text value).
 Evidence: crates/rustsheet-xlsx/tests/calc_tests/INFORMATION/error_broadcast.xlsx (Excel-authored,
 upstream IronCalc 4deab8f6; 230 cells, all pass).
-Status: VERIFIED, except two engine choices without evidence (UNVERIFIED, T-0994): a non-numeric
-text element in WEEKDAY's date array next to an error return type is `#VALUE!`; and with all-scalar
-arguments a text function returns its first error argument before coercing the others
-(`MID("abc","x",NA())` is `#N/A`, while `MID({"abc"},"x",NA())` is `#VALUE!`).
+Status: VERIFIED (probe `eval/suites/probes/cases/error-precedence-text`, T-0994). WEEKDAY with an
+error return type: a text element of the date array is `#VALUE!` (`{"x",1,TRUE,""}` gives
+`#VALUE!,#N/A,#N/A,#VALUE!`; `WEEKDAY("x",NA())` is `#VALUE!`), while a blank range cell counts as 0
+and takes the return type's error (`#N/A`). Text functions coerce arguments left to right and the first
+failing argument decides, an error argument and a failed text-to-number coercion alike, in the scalar and
+the array form: `MID("abc","x",NA())` and `MID({"abc"},"x",NA())` are both `#VALUE!` (the "x" start is
+reached before the error), `MID("abc",NA(),"x")` and `MID("x",1,NA())` are `#N/A`, `LEFT("abc","x")`,
+`RIGHT`, `REPT("a","x")` and `FIND("a","abc","x")` are `#VALUE!`, and `REPT({"a"},NA())` is `#N/A`.
+RustSheet differs for MID only: it returns `#N/A` for the two `#VALUE!` MID cases (T-1022). TRUE in a range
+behaves like TRUE in an array (`#N/A`), and `WEEKDAY(NA(),"x")` is `#N/A` (left to right).
+Probe cells: probes/error-precedence-text Calc!C1-C30 (oracle: excel-graph, 2026-10-06).
 Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/arithmetic.rs),
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
-Tasks: T-0129
+Tasks: T-0129, T-0994, T-1022
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
@@ -131,8 +138,8 @@ with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))
 `INDEX(ABS(A:A),2)` = 3, `SUM(--ISNUMBER(A:A))` = 2, and `=ABS(A:A)` in C7 is `#SPILL!`.
 Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
 RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
-(one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, a SUMIF
-criteria grid, and every range lifted into an array (`Model::evaluate_range`: scalar functions
+(one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, an *IF(S)
+criteria grid (broadcast criteria included), and every range lifted into an array (`Model::evaluate_range`: scalar functions
 over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
 before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
 `DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
