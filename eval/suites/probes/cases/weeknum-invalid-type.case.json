@@ -1,0 +1,35 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM with a return_type outside 1, 2, 11-17, 21 (22, 50, 99, 100, 1000, -1) is #NUM! for any serial (T-1023; a larger mixed workbook gave type-2-like values for these cells, not reproducible in small workbooks)",
+  "tags": [
+    "M1",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=WEEKNUM(0,99)",
+        "A2": "=WEEKNUM(100,99)",
+        "A3": "=WEEKNUM(100,22)",
+        "A4": "=WEEKNUM(100,-1)",
+        "A5": "=WEEKNUM(1,50)",
+        "A6": "=WEEKNUM(400,1000)",
+        "A7": "=WEEKNUM(0,-1)",
+        "A8": "=WEEKNUM(367,100)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8"
+  ]
+}

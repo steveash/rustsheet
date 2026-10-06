@@ -38,15 +38,21 @@ Implemented in: `fn_weeknum` (T-0995). Not yet: TEXT ddd/dddd of serial 0 is #VA
 (T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
 
 ### WEEKNUM return_type edge cases and serial 0 (T-1023)
-Evidence: probes/weeknum-serial-0.case.json (94 cells; Oracle: excel-graph, 2026-10-06). OBSERVED, not yet a settled rule:
-- `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52 (same as serial 1: `WEEKNUM(1,21)` = 52); `ISOWEEKNUM(-1)` and `WEEKNUM(-1,21)` are `#NUM!`.
-- return_type 0, 3-10 and 18-20 (and 0.5, which truncates to 0) give `#NUM!` for any serial, not `#VALUE!`; `WEEKNUM(0,NA())` is `#N/A`, `WEEKNUM(0,"x")`, `WEEKNUM(100,"")` and `WEEKNUM(100,TRUE/FALSE)` are `#VALUE!`
-  (a boolean return_type is rejected), `WEEKNUM(100,"2")` = 16, 21.5 truncates to 21 and 2.9 to 2.
-- return_type 22, 50, 99, 100, 1000, -1 (and 2.9) are NOT errors: they number weeks like type 2 (`WEEKNUM(100,99)` = 16,
-  `WEEKNUM(367,99)` = 1, `WEEKNUM(400,-1)` = 5; probe cells C59-C94).
-- ANOMALY: the identical formula `=WEEKNUM(0,99)` is 0 in C5 and 1 in C68 of the same workbook (`WEEKNUM(1,99)` = 1 in both), reproduced on a second fill.
-  Unexplained; a type 2 numbering gives 1. Do not implement serial 0 with an out-of-range type until an opus run resolves it (T-1023 handoff).
-RustSheet currently returns `#VALUE!` for types <= 0 and 3, `#NUM!` for other invalid types, accepts TRUE, and `#NUM!` for serial 0 with type 21.
+Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21); every
+other value, 0, 3-10, 18-20, 22 and above, and negatives, is `#NUM!` for any serial (not `#VALUE!`).
+A boolean return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`), text that reads as a number is accepted
+(`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
+(`WEEKNUM(-1,21)` is `#NUM!`, `WEEKNUM(0,NA())` is `#N/A`). Under ISO numbering serial 0 shares
+serial 1's week: `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52 = `WEEKNUM(1,21)`; `ISOWEEKNUM(-1)` is `#NUM!`.
+Evidence: probes/weeknum-serial-0 (57 cells) and probes/weeknum-invalid-type (8 cells; oracle:
+excel-graph, 2026-10-06, T-1023). A first, larger version of weeknum-serial-0 (94 cells) gave
+type-2-like values for return_type 22, 50, 99, 100, 1000 and -1, and `WEEKNUM(0,99)` was 0 in one
+cell and 1 in another, reproduced on a second fill. The same formulas alone, or after a valid
+WEEKNUM, are `#NUM!` in every small workbook tried (9 workbooks), so the larger workbook's values
+were taken as an artifact of that recalculation and those cells moved to weeknum-invalid-type.
+Status: VERIFIED (small workbooks); the larger-workbook values are unexplained (not reproduced
+in isolation).
+Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)

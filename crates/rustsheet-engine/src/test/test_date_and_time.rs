@@ -438,9 +438,11 @@ fn test_weeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
-    assert_eq!(model._get_text("A14"), *"#VALUE!");
-    assert_eq!(model._get_text("A15"), *"#VALUE!");
-    assert_eq!(model._get_text("A16"), *"#VALUE!");
+    // Excel: any invalid return_type is #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19,
+    // probes/weeknum-invalid-type A4, A7; T-1023).
+    assert_eq!(model._get_text("A14"), *"#NUM!");
+    assert_eq!(model._get_text("A15"), *"#NUM!");
+    assert_eq!(model._get_text("A16"), *"#NUM!");
     assert_eq!(model._get_text("A17"), *"#NUM!");
     assert_eq!(model._get_text("A18"), *"#NUM!");
 }
