@@ -104,7 +104,8 @@ Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-01
 probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,
 A21, A188 (oracle: excel-graph, 2026-10-05, T-0109).
-Status: VERIFIED. Implementation: `number_to_text` in `crates/rustsheet-engine/src/number_format.rs` (T-0107).
+Status: VERIFIED. Implementation: `number_to_text` in `crates/rustsheet-engine/src/number_format.rs` (T-0107; the
+`|exp| >= 99` cut: T-0199).
 
 ## Negative zero prints as 0
 Rule: `-x` where x is 0, empty or FALSE converts to the text "0" (no sign); the oracle cannot tell
@@ -168,7 +169,8 @@ Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cel
 Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
 The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
 "Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
-Status: VERIFIED. Not implemented: T-0199.
+Status: VERIFIED. Implemented in `number_to_text` (T-0199); the rounding is half up on the 15-digit string,
+and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unprobed, T-1000).
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
