@@ -3,7 +3,7 @@ id: T-0976
 title: "FISHERINV: use (EXP(2y)-1)/(EXP(2y)+1) like Excel (6 known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -36,3 +36,6 @@ inf/inf would be NaN: return 1 when exp(2y) is infinite), C44/C45 booleans, the 
 
 ## Out of scope
 FISHER (passes); other hyperbolic functions (T-0917).
+
+## Outcome
+`fn_fisher_inv` now computes (exp(2y)-1)/(exp(2y)+1), returning 1 when exp(2y) overflows. ironcalc-calc known failures 1577 -> 1571 (6 fixed, 0 regressions). Unit test `test_fn_fisherinv_bit_exact` added; statistics.md entry has `Implemented in:`.
