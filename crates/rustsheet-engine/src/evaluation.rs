@@ -923,19 +923,18 @@ impl Model {
             CalcResult::Range { left, right } => {
                 if left == right {
                     self.evaluate_cell(left)
+                } else if cell_reference.row + (right.row - left.row) > LAST_ROW
+                    || cell_reference.column + (right.column - left.column) > LAST_COLUMN
+                {
+                    CalcResult::new_error(
+                        Error::SPILL,
+                        cell_reference,
+                        "Spill would exceed worksheet bounds".to_string(),
+                    )
                 } else {
-                    let height = right.row - left.row + 1;
-                    let width = right.column - left.column + 1;
-                    if cell_reference.row + height - 1 > LAST_ROW
-                        || cell_reference.column + width - 1 > LAST_COLUMN
-                    {
-                        CalcResult::new_error(
-                            Error::SPILL,
-                            cell_reference,
-                            "Spill would exceed worksheet bounds".to_string(),
-                        )
-                    } else {
-                        CalcResult::Array(self.evaluate_range(left, right))
+                    match self.evaluate_range(left, right, cell_reference) {
+                        Ok(array) => CalcResult::Array(array),
+                        Err(error) => error,
                     }
                 }
             }

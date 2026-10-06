@@ -1440,40 +1440,6 @@ impl Model {
         self.workbook.worksheet(sheet)?.is_empty_cell(row, column)
     }
 
-    /// Evaluates all cells in a given range and returns the results in a 2D vector.
-    pub(crate) fn evaluate_range(
-        &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
-    ) -> Vec<Vec<ArrayNode>> {
-        let mut result = Vec::new();
-        for r in left.row..=right.row {
-            let mut row_result = Vec::new();
-            for c in left.column..=right.column {
-                let cell_reference = CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: r,
-                    column: c,
-                };
-                let value = match self.evaluate_cell(cell_reference) {
-                    CalcResult::Number(n) => ArrayNode::Number(n),
-                    CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-                    CalcResult::String(s) => ArrayNode::String(s),
-                    CalcResult::Error { error, .. } => ArrayNode::Error(error),
-                    CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-                    CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                        // This should never happen, but we need to handle it anyway
-                        debug_assert!(false, "Unexpected array result in non-array formula");
-                        ArrayNode::Error(Error::NIMPL)
-                    }
-                };
-                row_result.push(value);
-            }
-            result.push(row_result);
-        }
-        result
-    }
-
     #[inline(always)]
     pub(crate) fn fetch_cell(&self, cell_reference: CellReferenceIndex) -> Option<&Cell> {
         self.workbook.worksheets[cell_reference.sheet as usize]

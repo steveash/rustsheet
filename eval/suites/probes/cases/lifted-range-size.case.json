@@ -1,0 +1,34 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Whole-column ranges lifted element-wise into an array (T-0047): ABS(A:A), ISNUMBER(A:A), A:A+0, spill room",
+  "tags": [
+    "M0",
+    "arrays",
+    "limits",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": -2,
+        "A2": 3,
+        "C4": "=ROWS(ABS(A:A))",
+        "C5": "=SUM(ABS(A:A))",
+        "C6": "=INDEX(ABS(A:A),2)",
+        "C7": "=ABS(A:A)",
+        "C8": "=SUM(--ISNUMBER(A:A))",
+        "C10": "=ROWS(A:A+0)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C4",
+    "Sheet1!C5",
+    "Sheet1!C6",
+    "Sheet1!C7",
+    "Sheet1!C8",
+    "Sheet1!C10"
+  ]
+}

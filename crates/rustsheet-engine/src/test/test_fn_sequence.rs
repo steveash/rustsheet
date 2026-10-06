@@ -86,9 +86,9 @@ fn test_sequence_cols_exceeds_sheet_limit() {
 
 #[test]
 fn test_sequence_rows_cols_exceeds_max_size() {
-    // If rows * columns exceeds MAX_SIZE (1_000_000), must return #ERROR!
+    // If rows * columns exceeds MAX_SIZE (1_048_576, one whole column), must return #ERROR!
     let mut model = new_empty_model();
-    model._set("A1", "=SEQUENCE(1000,1001)");
+    model._set("A1", "=SEQUENCE(1025,1024)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#ERROR!");
 }

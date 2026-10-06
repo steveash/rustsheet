@@ -1,6 +1,7 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
+use crate::functions::math_and_trigonometry::array_size::check_range_size;
 use crate::functions::util::array_node_to_calc_result;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -432,6 +433,10 @@ impl Model {
                         cell,
                         "Ranges are in different sheets".to_string(),
                     );
+                }
+                // DEVIATION (decision 0014): the shared allocation bound on lifted ranges.
+                if let Some((error, message)) = check_range_size(&left, &right) {
+                    return CalcResult::new_error(error, cell, message);
                 }
                 let mut grid = Vec::new();
                 for r in left.row..=right.row {

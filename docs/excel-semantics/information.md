@@ -22,9 +22,10 @@ Tasks: T-0247
 
 ## Resource bound on lifted IS* ranges
 Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. RustSheet returns
-`#ERROR!` for a lifted IS* range above 1,000,000 cells, to bound allocation on untrusted input
-(CLAUDE.md directive 5); whole-column arguments therefore also fail.
-Evidence: none for Excel at this size; resource limit, see arrays.md "Array results above 1,000,000 cells".
+`#ERROR!` for a lifted IS* range above 1,048,576 cells (one whole column), to bound allocation on
+untrusted input (CLAUDE.md directive 5); a whole-column argument lifts (`SUM(--ISNUMBER(A:A))` = 2,
+probes/lifted-range-size C8), a whole-row range of more than 64 rows does not.
+Evidence: probes/lifted-range-size C8; resource limit, see arrays.md "Array results above 1,048,576 cells".
 Status: DEVIATION (decision 0014)
-Implemented in: functions/information/mod.rs (`is_predicate`, `check_range_size`)
+Implemented in: functions/information/mod.rs (`is_predicate`, via `Model::evaluate_range`)
 Tasks: T-0247
