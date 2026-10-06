@@ -83,7 +83,7 @@ impl Model {
             var = 0.0;
         }
 
-        CalcResult::Number(var.sqrt())
+        CalcResult::finite_number_or_num(var.sqrt(), cell)
     }
 
     pub(crate) fn fn_stdeva(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

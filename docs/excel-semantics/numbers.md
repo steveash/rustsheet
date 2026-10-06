@@ -146,8 +146,10 @@ excel-graph (the oracle does not know it), so its overflow stays UNVERIFIED and 
 (the engine's PERCENTOF sums through `fn_sum`, so it overflows to `#NUM!` like SUM; unverified).
 Implementation: `+ - * /` (T-0173), `SUM` (T-0185), and SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9
 (T-0990, `CalcResult::finite_number_or_num` on the final result, which covers a later 0 or 1E-200 factor
-since an infinity stays infinite or turns NaN). SUBTOTAL 101/106/109 share the code but are unprobed. Not implemented (they return infinity or NaN): SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV, VAR
-(T-0991); MEDIAN and GEOMEAN of huge values are wrong the other way (T-0992); the engine has no AGGREGATE
+since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the code but are unprobed), and
+SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR (T-0991, the same check). Unprobed (UNVERIFIED, T-1021): the spilling
+array-criteria SUMIF (`#NUM!` per criterion), and VAR.S/STDEV.S (same code); VAR.P, STDEV.P, VARA, STDEVA still return infinity or NaN.
+Not implemented: MEDIAN and GEOMEAN of huge values are wrong the other way (T-0992); the engine has no AGGREGATE
 (`#NAME?`, A27-A29; T-0993).
 Evidence: probes/aggregate-overflow Calc!A1:C48 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
