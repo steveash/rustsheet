@@ -185,3 +185,20 @@ Evidence: probes/text-number-words; full rule in numbers.md "Number text of 1E+3
 Oracle: excel-graph, 2026-10-05.
 Status: VERIFIED
 Tasks: T-0920, T-0140
+
+## Direct text arguments of COUNT coerce like arithmetic
+Rule: a direct text argument of COUNT counts whenever arithmetic would read it as a number: clock text
+(`"10:00"`), date text (`"1/2/2020"`, `"1/1/1900"`), currency, percent, thousands separators,
+leading blanks, `"6 PM"` and `"12:60"` all count (`COUNT("10:00","x")` = 1). "inf" and the text `"TRUE"` do
+not count. Reference cells holding text still never count.
+Evidence: probes/count-direct-text (excel-graph, 2026-10-06), clock-text-oddities F37.
+Implemented in: `functions/statistical/count_and_average.rs` `fn_count`.
+Status: VERIFIED
+Tasks: T-0252
+
+## Parenthesised number text is negative
+Rule: `"(1)"` is read as -1 wherever text is coerced to a number: `0+"(1)"` = -1, `SUM("(1)")` = -1,
+`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine does not read the form yet.
+Evidence: probes/paren-negative-text (excel-graph, 2026-10-06).
+Status: VERIFIED
+Tasks: T-0257
