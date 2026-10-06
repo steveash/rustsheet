@@ -30,8 +30,8 @@ Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span
 sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
 implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
-crates/rustsheet-engine/src/reference_operators.rs. INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK do
-not give `#VALUE!` yet (T-0197).
+crates/rustsheet-engine/src/reference_operators.rs; INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK reach
+the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs).
 Tasks: T-0122, T-0197
 
 ## 3-D references when sheets or cells change (unprobed)

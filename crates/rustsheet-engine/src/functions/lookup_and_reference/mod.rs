@@ -221,7 +221,7 @@ impl Model {
         let row_num = row_num.floor() as usize;
         let col_num = col_num.floor() as usize;
 
-        match self.evaluate_node_in_context(&args[0], cell) {
+        match self.evaluate_single_sheet_arg(&args[0], cell) {
             CalcResult::Range { left, right } => {
                 let num_rows = (right.row - left.row + 1) as usize;
                 let (row_eff, col_eff) =
@@ -319,7 +319,7 @@ impl Model {
         } else {
             1
         };
-        let match_range = self.evaluate_node_in_context(&args[1], cell);
+        let match_range = self.evaluate_single_sheet_arg(&args[1], cell);
 
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
@@ -430,7 +430,7 @@ impl Model {
         } else {
             true
         };
-        let range = self.evaluate_node_in_context(&args[1], cell);
+        let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
             CalcResult::Range { left, right } => LookupTable::Range { left, right },
             CalcResult::Array(array) => LookupTable::Array(array),

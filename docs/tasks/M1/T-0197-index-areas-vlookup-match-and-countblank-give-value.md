@@ -3,7 +3,7 @@ id: T-0197
 title: "INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK give #VALUE! for a 3-D reference"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -29,3 +29,6 @@ Rule: docs/excel-semantics/references.md "3-D references outside the aggregates"
 
 ## Out of scope
 - 3-D references in the aggregates (T-0196).
+
+## Outcome
+INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK now give `#VALUE!` for a multi-sheet 3-D reference via `Model::evaluate_single_sheet_arg`; unit test added. Fixes probes/3d-ref-functions C1, C5, C6, C10, C13.
