@@ -26,3 +26,4 @@ Found in T-0153. Evidence: probes/clock-text-oddities F37 (excel-graph, baseline
 
 ## Outcome
 `fn_count` coerces direct text with `cast_number` (finite only). probes/count-direct-text added (13 cells, oracle-filled, all pass); clock-text-oddities F37 fixed. Parenthesised text `(1)` = -1 is a separate gap, filed as T-0257 with probes/paren-negative-text. probes known failures 108 -> 111 counting the 4 new-coverage failures of that probe, -1 fixed.
+The `"(1)"` form from the acceptance list moved to T-0257.

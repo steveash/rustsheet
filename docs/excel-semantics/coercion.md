@@ -189,7 +189,7 @@ Tasks: T-0920, T-0140
 ## Direct text arguments of COUNT coerce like arithmetic
 Rule: a direct text argument of COUNT counts whenever arithmetic would read it as a number: clock text
 (`"10:00"`), date text (`"1/2/2020"`, `"1/1/1900"`), currency, percent, thousands separators,
-leading blanks, `"6 PM"` and `"12:60"` all count (`COUNT("10:00","x")` = 1). "inf" and the text `"TRUE"` do
+a leading blank before plain number text (`" 1"`), `"6 PM"` and `"12:60"` all count (`COUNT("10:00","x")` = 1). "inf" and the text `"TRUE"` do
 not count. Reference cells holding text still never count.
 Evidence: probes/count-direct-text (excel-graph, 2026-10-06), clock-text-oddities F37.
 Implemented in: `functions/statistical/count_and_average.rs` `fn_count`.

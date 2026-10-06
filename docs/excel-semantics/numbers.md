@@ -135,7 +135,7 @@ The same truncation applies to numeric text in COUNTIF/SUMIF criteria (`COUNTIF(
 matches a cell holding 123456789012345000, and `"<…"`/`">=…"` compare against the cut value) and to
 `NUMBERVALUE` and `AVERAGE` text arguments (probes/text-number-15-digits B1-B8, B11-B13; excel-graph,
 2026-10-06).
-Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`. Other sites keep `parse_finite_number` because the digit count cannot change their answer: COUNT and the date-criterion check only test number-ness; the sequence detector (autofill sources are already 15-digit values), conditional-formatting date bounds, `formatter/lexer.rs` condition operands and utils.rs are not affected in practice. `"<17 digits>"+0` is cut the same way (probes/text-number-15-digits B14, excel-graph 2026-10-06). Unverified: autofill over E-notation numbers (1E-10, 2E-10) copies instead of extending in our engine; Excel's behavior is unknown (T-0171).
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`, and COUNT's direct text (via `cast_number`, T-0252). Other sites keep `parse_finite_number` because the digit count cannot change their answer: the date-criterion check only tests number-ness; the sequence detector (autofill sources are already 15-digit values), conditional-formatting date bounds, `formatter/lexer.rs` condition operands and utils.rs are not affected in practice. `"<17 digits>"+0` is cut the same way (probes/text-number-15-digits B14, excel-graph 2026-10-06). Unverified: autofill over E-notation numbers (1E-10, 2E-10) copies instead of extending in our engine; Excel's behavior is unknown (T-0171).
 Tasks: T-0143, T-0150
 
 ## Subnormal results become 0
@@ -177,7 +177,7 @@ Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, 
 Oracle: excel-graph, 2026-10-05.
 Status: VERIFIED
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
-lexer) and `parse_finite_number` (criteria, COUNT/AVERAGE text, NUMBERVALUE, format conditions),
+lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
 in crates/rustsheet-engine/src/number_format.rs.
 Tasks: T-0920, T-0140, T-0154
 
