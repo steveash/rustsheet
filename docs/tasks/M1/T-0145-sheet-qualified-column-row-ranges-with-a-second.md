@@ -3,7 +3,7 @@ id: T-0145
 title: "Sheet-qualified column/row ranges with a second prefix give #NAME? instead of #ERROR! (Data!A:Data!B)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
