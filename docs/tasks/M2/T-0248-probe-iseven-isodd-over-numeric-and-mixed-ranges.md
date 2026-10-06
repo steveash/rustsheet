@@ -3,7 +3,7 @@ id: T-0248
 title: "Probe ISEVEN/ISODD over numeric and mixed ranges; extend IS* lift probe coverage"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
