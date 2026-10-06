@@ -269,6 +269,12 @@ fn intersection_operands_must_be_references() {
         "A1 (B1&\"\")",
         "A1 (B1=1)",
         "A1 (B1%)",
+        "A1 (B1*C1)",
+        "A1 (B1/C1)",
+        "A1 (B1^2)",
+        "A1:A3 VLOOKUP(2,A1:B3,1)",
+        "A1:A3 MATCH(2,A1:A3,0)",
+        "A1:A3 ROWS(A2:B2)",
     ] {
         let node = parser.parse(formula, &context());
         assert!(

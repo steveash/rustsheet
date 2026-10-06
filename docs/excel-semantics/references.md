@@ -84,20 +84,21 @@ begins and ends, and so how references inside it update on row/column inserts, i
 Tasks: T-0138, T-0148
 
 ## Intersection operands must be references
-Rule: Excel decides when it parses the formula whether each operand of an intersection is a
-reference expression. A reference, a parenthesized reference, `#REF!`, `@ref`, a union and a call to a
+Rule: Excel decides when it parses the formula whether each operand of an intersection is a reference
+expression. A reference, a parenthesized reference, `#REF!`, `@ref`, a union and a call to a
 reference-returning function (INDEX, OFFSET, IF, ANCHORARRAY, INDIRECT, CHOOSE, XLOOKUP, LET, SWITCH,
 IFS, TAKE, DROP) are accepted. Number, string, boolean and error literals other than `#REF!`, a
 parenthesized value (`(1)`, `(1/0)`), a parenthesized value operator and value functions make Excel for
-the web refuse the workbook: `=1 A1`, `=(1) A1`, `=A1 (1)`, `=A1 TRUE`, `=A1 "a"`,
-`=#N/A A1`, `=A1 #N/A`, `=A1 #DIV/0!`, `=(1/0) A1`, `=A1 (1/0)`, `=(1/0) (NA())`, `=(1/0) Z99`,
-`=#REF! #N/A`, `=A1 SUM(A1:A2)`, `=A1 NA()`, `=SUM(A1:A2) A1`, `=A1 (B1+C1)`, `=A1 (-B1)`,
-`=A1 (B1&"")`, `=A1 (B1=1)`, `=A1 (B1%)`, and with A1:B3 = 1, 2, 3 / 10, 20, 30: `=A1:A3 ABS(A2)`,
-`ROW(A2)`, `IFERROR(A2:B2,0)`, `IFNA(A2:B2,0)`, `CHOOSEROWS(A1:B3,2)`, `FILTER(A1:B3,A1:A3=2)`,
-`VSTACK(A2:B2)`, `SORT(A2:B2)`, `UNIQUE(A2:B2)` and `=A2:B2 CHOOSECOLS(A1:B3,1)`. IFERROR and IFNA
-pass a range through, and CHOOSEROWS/CHOOSECOLS select rows and columns of one, like TAKE and DROP, yet
-are refused: what counts is Excel's fixed list of reference-returning functions, not the argument. So "which error wins" never arises
-between two error operands. Accepted forms:
+the web refuse the workbook: `=1 A1`, `=(1) A1`, `=A1 (1)`, `=A1 TRUE`, `=A1 "a"`, `=#N/A A1`, `=A1
+#N/A`, `=A1 #DIV/0!`, `=(1/0) A1`, `=A1 (1/0)`, `=(1/0) (NA())`, `=(1/0) Z99`, `=#REF! #N/A`, `=A1
+SUM(A1:A2)`, `=A1 NA()`, `=SUM(A1:A2) A1`, `=A1 (B1+C1)`, `=A1 (-B1)`, `=A1 (B1&"")`, `=A1 (B1=1)`, `=A1
+(B1%)`, `=A1 (B1*C1)`, `=A1 (B1/C1)`, `=A1 (B1^2)`, and with A1:B3 = 1, 2, 3 / 10, 20, 30: `=A1:A3
+ABS(A2)`, `ROW(A2)`, `IFERROR(A2:B2,0)`, `IFNA(A2:B2,0)`, `CHOOSEROWS(A1:B3,2)`,
+`FILTER(A1:B3,A1:A3=2)`, `VSTACK(A2:B2)`, `SORT(A2:B2)`, `UNIQUE(A2:B2)`, `VLOOKUP(2,A1:B3,1)`,
+`MATCH(2,A1:A3,0)`, `ROWS(A2:B2)` and `=A2:B2 CHOOSECOLS(A1:B3,1)`. IFERROR and IFNA pass a range
+through, and CHOOSEROWS/CHOOSECOLS select rows and columns of one, like TAKE and DROP, yet are refused:
+what counts is Excel's fixed list of reference-returning functions, not the argument. So "which error
+wins" never arises between two error operands. Accepted forms:
 - `=A1 #REF!` and `=#REF! A1` are `#REF!`; `=C1:C2 C2` with C2 = `#N/A` is `#N/A` (the cell's value);
   `=C1 C2` is `#NULL!` even when both cells hold errors.
 - `=A1 @A1` = 1. `=@A1:A3 A2:B2` = 2 in row 11, where `=@A1:A3` alone is `#VALUE!` (I11): the space
@@ -118,8 +119,7 @@ case builder cannot write `_xlpm.` names yet, T-0166), come from scratch runs of
 load on their own (=2).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
-functions above; functions not probed are refused by inference, as are `*`, `/` and `^`, which were not
-probed one by one; `@` and union operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP
+functions above; functions not probed are refused by inference; `@` and union operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP
 to arrays, so those three intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
 
