@@ -40,7 +40,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    // FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1) = tanh(y)
+    // FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1), evaluated as written (not tanh)
     pub(crate) fn fn_fisher_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
