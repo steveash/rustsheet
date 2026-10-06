@@ -32,3 +32,10 @@ pub(crate) fn excel_serial_for_now(tz: &Tz) -> Option<f64> {
         days as f64 + fraction
     })
 }
+
+/// The calendar year of now in `tz`.
+pub(crate) fn current_year(tz: &Tz) -> Option<i32> {
+    use chrono::{DateTime, Datelike};
+    let millis = crate::model::get_milliseconds_since_epoch();
+    DateTime::from_timestamp(millis.div_euclid(1000), 0).map(|dt| dt.with_timezone(&tz.0).year())
+}

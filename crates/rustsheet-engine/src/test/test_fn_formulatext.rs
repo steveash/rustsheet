@@ -99,6 +99,12 @@ fn test_sign_prefixed() {
     model._set("A6", "+42");
     assert_eq!(model._get_formula("A6"), *"");
 
+    // Sign-prefixed input is classified with no clock, as before year-less dates (T-0167).
+    for (cell, input) in [("A7", "+$5"), ("A8", "- 5"), ("A9", "-Jul-45")] {
+        model._set(cell, input);
+        assert_eq!(model._get_formula(cell), *"", "{input}");
+    }
+
     model._set("A7", "-B");
     assert_eq!(model._get_formula("A7"), *"=-B");
 

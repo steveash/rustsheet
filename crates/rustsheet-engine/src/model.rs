@@ -391,11 +391,9 @@ impl Model {
                 Some(stripped)
             }
         } else if let Some(stripped) = value.strip_prefix(['+', '-']) {
-            if stripped.is_empty() || self.cast_number(stripped).is_some() {
-                None
-            } else {
-                Some(value)
-            }
+            // Read with no clock, so "-4-2" stays a formula although "4-2" is a date now.
+            (!stripped.is_empty() && self.cast_number_in(stripped, &|| None).is_none())
+                .then_some(value)
         } else {
             None
         }
@@ -2290,8 +2288,9 @@ impl Model {
                 }
 
                 //  We try to parse as number
+                let year = || self.current_year();
                 if let Ok((v, number_format)) =
-                    parse_formatted_number(&value, &currencies, self.locale)
+                    parse_formatted_number(&value, &currencies, self.locale, &year)
                 {
                     if let Some(num_fmt) = number_format {
                         // Should not apply the format in the following cases:
