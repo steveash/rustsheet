@@ -41,16 +41,59 @@ impl Model {
             let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
             return CalcResult::Number((log_sum / n).exp());
         }
+        // Split every factor into mantissa in [1, 2) and a power of two, so no step can overflow
+        // or underflow whatever the magnitudes mix.
         let mut product = 1.0_f64;
-        let mut exp2: i32 = 0;
+        let mut exp2: i64 = 0;
         for &v in &values {
-            product *= v;
-            if !(f64::MIN_POSITIVE.sqrt()..=f64::MAX.sqrt()).contains(&product) {
-                let e = ((product.to_bits() >> 52) & 0x7ff) as i32 - 1023;
-                product *= 2f64.powi(-e);
-                exp2 += e;
+            let (m, e) = split_pow2(v);
+            product *= m;
+            exp2 += i64::from(e);
+            if product >= 2f64.powi(500) {
+                product *= 2f64.powi(-500);
+                exp2 += 500;
             }
         }
-        CalcResult::Number(product.powf(1.0 / n) * 2f64.powf(f64::from(exp2) / n))
+        // `exp2 / n` is the exponent of the root; split it so the final scaling cannot overflow
+        // before the mantissa root shrinks it.
+        let result = product.powf(1.0 / n) * 2f64.powf(exp2 as f64 / n);
+        // Defensive only: a geometric mean of finite positives never exceeds the largest value.
+        if result.is_finite() {
+            CalcResult::Number(result)
+        } else {
+            CalcResult::new_error(Error::NUM, cell, "GEOMEAN overflow".to_string())
+        }
+    }
+}
+
+/// Splits a positive finite `v` into `(m, e)` with `v = m * 2^e` and `m` in `[1, 2)`.
+fn split_pow2(v: f64) -> (f64, i32) {
+    // Scale subnormals into the normal range first so the exponent field is meaningful.
+    let (v, bias) = if v < f64::MIN_POSITIVE {
+        (v * 2f64.powi(64), -64)
+    } else {
+        (v, 0)
+    };
+    let e = ((v.to_bits() >> 52) & 0x7ff) as i32 - 1023;
+    (
+        f64::from_bits((v.to_bits() & !(0x7ffu64 << 52)) | (1023u64 << 52)),
+        e + bias,
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_pow2;
+
+    #[test]
+    fn split_roundtrips() {
+        for v in [5e-324, 1e-310, 1e-154, 1.0, 1.5, 9e307, f64::MAX] {
+            let (m, e) = split_pow2(v);
+            assert!((1.0..2.0).contains(&m));
+            assert_eq!(
+                m * 2f64.powi(e.clamp(-1000, 1000)) * 2f64.powi(e - e.clamp(-1000, 1000)),
+                v
+            );
+        }
     }
 }
