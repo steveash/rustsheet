@@ -3,7 +3,7 @@ id: T-0197
 title: "INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK give #VALUE! for a 3-D reference"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
