@@ -552,8 +552,11 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     ));
                 }
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
+                let (row2, column2) = self
+                    .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+                for row in left.row..=row2 {
+                    for column in left.column..=column2 {
                         match self.evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row,

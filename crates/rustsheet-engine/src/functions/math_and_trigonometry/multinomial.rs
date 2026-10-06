@@ -46,8 +46,21 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
+                    let (row2, column2) = match self.clip_to_used_area(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(corner) => corner,
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    };
+                    // Cells past the used area are empty, and an empty cell counts
+                    // as 0 here, which changes neither the sum nor the product of
+                    // factorials, so skipping them leaves the result as it was.
+                    for row in left.row..=row2 {
+                        for column in left.column..=column2 {
                             match self.evaluate_cell(
                                 crate::expressions::types::CellReferenceIndex {
                                     sheet: left.sheet,

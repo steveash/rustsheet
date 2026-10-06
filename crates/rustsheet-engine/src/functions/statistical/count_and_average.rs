@@ -163,8 +163,17 @@ impl Model {
                         ));
                     }
 
-                    for row in left.row..=right.row {
-                        for column in left.column..=right.column {
+                    let (row2, column2) = self
+                        .clip_to_used_area(
+                            left.sheet,
+                            left.row,
+                            left.column,
+                            right.row,
+                            right.column,
+                        )
+                        .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+                    for row in left.row..=row2 {
+                        for column in left.column..=column2 {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -240,8 +249,18 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let (row2, column2) = match self.clip_to_used_area(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(corner) => corner,
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    };
+                    for row in left.row..=row2 {
+                        for column in left.column..=column2 {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -359,8 +378,18 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let (row2, column2) = match self.clip_to_used_area(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(corner) => corner,
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    };
+                    for row in left.row..=row2 {
+                        for column in left.column..=column2 {
                             if let CalcResult::Number(_) = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -402,8 +431,18 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let (row2, column2) = match self.clip_to_used_area(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(corner) => corner,
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    };
+                    for row in left.row..=row2 {
+                        for column in left.column..=column2 {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
@@ -452,8 +491,23 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
+                    let (row2, column2) = match self.clip_to_used_area(
+                        left.sheet,
+                        left.row,
+                        left.column,
+                        right.row,
+                        right.column,
+                    ) {
+                        Ok(corner) => corner,
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    };
+                    // The clipped-off cells are empty and each one is blank.
+                    let rows = |last: i32| f64::from((last - left.row + 1).max(0));
+                    let columns = |last: i32| f64::from((last - left.column + 1).max(0));
+                    result +=
+                        rows(right.row) * columns(right.column) - rows(row2) * columns(column2);
+                    for row in left.row..=row2 {
+                        for column in left.column..=column2 {
                             match self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,

@@ -3,7 +3,7 @@ id: T-0048
 title: "Clip whole-row/column walks that read every cell (MULTINOMIAL, date holidays, COUNT-family helper)"
 milestone: M0
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -34,3 +34,6 @@ treat the rest as empty (what each function does with an empty cell must stay un
 
 ## Out of scope
 -
+
+## Outcome
+MULTINOMIAL, the NETWORKDAYS/WORKDAY holidays walk, and the range arms of AVERAGEA's `for_each_value_a` helper, AVERAGEA, COUNT, COUNTA and COUNTBLANK now walk to `clip_to_used_area`'s corner. COUNTBLANK adds the clipped-off cells (all empty) back to its count. Unit tests in test/test_clipped_range_walks.rs (before the change the whole-sheet cases ran for minutes). No eval delta.
