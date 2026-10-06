@@ -3,7 +3,7 @@ id: T-0156
 title: "Array constants: reject sign forms Excel rejects ({++1}, {-+1}, {+'a'}, {+#N/A})"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
