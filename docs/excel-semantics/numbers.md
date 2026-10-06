@@ -330,8 +330,9 @@ Tasks: T-0221
 Rule: for an integer exponent n, `x^n` and `POWER(x,n)` equal binary exponentiation in doubles,
 scanning n's bits from the low end (`r=1; b=x; while n: if n&1: r*=b; b*=b; n>>=1`), and
 `x^-n` equals `1/` that result. 154 of 154 cells match for each of `(1+r)^n`, `POWER(1+r,n)` and
-`(1+r)^-n` on 11 rates by 14 nper values (1..360); libm `pow` matches 58, correctly rounded pow 58,
-left-to-right square-and-multiply 84, repeated multiplication 63. It also reproduces the
+`(1+r)^-n` on 11 rates by 14 nper values (1..360); per form (`^n` / `POWER` / `^-n`) libm `pow`
+matches 58/58/59, left-to-right square-and-multiply 84/84/86, and correctly rounded pow and
+repeated multiplication at most 66. It also reproduces the
 integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)^2` =
 1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
 Non-integer exponents are not explained by this rule.
