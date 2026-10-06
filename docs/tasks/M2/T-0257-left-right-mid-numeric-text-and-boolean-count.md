@@ -3,7 +3,7 @@ id: T-0257
 title: "LEFT/RIGHT/MID: numeric text and boolean count arguments coerce to numbers (6 poi + 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
