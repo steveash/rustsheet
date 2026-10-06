@@ -3,7 +3,7 @@ id: T-0175
 title: "Probe Excel's newer error literals (#BLOCKED!, #CONNECT!, #FIELD!, #BUSY!, #GETTING_DATA, #UNKNOWN!) in formulas and cells"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
