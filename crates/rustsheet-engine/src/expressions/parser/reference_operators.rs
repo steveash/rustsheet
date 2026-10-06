@@ -248,6 +248,7 @@ fn is_intersection_operand(node: &Node) -> bool {
 /// Whether `node` is a union with a negated operand at any depth.
 fn has_negated_operand(node: &Node) -> bool {
     match node {
+        // `is_union_operand` admits only a unary minus, so any unary here is a negation.
         Node::UnaryKind { .. } => true,
         Node::OpUnionKind { left, right, .. } => {
             has_negated_operand(left) || has_negated_operand(right)
@@ -363,17 +364,19 @@ pub(crate) fn union_text(
     right_text: &str,
     locale: &Locale,
 ) -> String {
-    let Node::OpUnionKind { left, written, .. } = node else {
-        return String::new();
+    // Callers pass only unions; any other node prints as a plain one-level union of its texts.
+    let (left, written) = match node {
+        Node::OpUnionKind { left, written, .. } => (&**left, *written),
+        other => (other, 1),
     };
-    let left_text = match &**left {
+    let left_text = match left {
         Node::OpUnionKind { written: 0, .. } => left_text
             .strip_prefix('(')
             .and_then(|text| text.strip_suffix(')'))
             .unwrap_or(left_text),
         _ => left_text,
     };
-    let levels = (*written).max(1);
+    let levels = written.max(1);
     format!(
         "{}{left_text}{}{right_text}{}",
         "(".repeat(levels),
