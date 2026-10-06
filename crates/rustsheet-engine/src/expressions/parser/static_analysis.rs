@@ -1732,7 +1732,6 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
-        // A multi-column return_range returns the matched row as an array.
         Function::Xlookup => StaticResult::Unknown,
         Function::Xmatch => not_implemented(args),
         Function::Trimrange => StaticResult::Unknown,
