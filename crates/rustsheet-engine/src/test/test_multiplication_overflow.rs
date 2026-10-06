@@ -33,3 +33,28 @@ fn overflow_in_an_array_product_is_per_element() {
     assert_eq!(model._get_text("A1"), *"#NUM!");
     assert_eq!(model._get_text("B1"), *"100");
 }
+
+/// `+`, `-` and `/` overflow like `*`; a subnormal divisor is zero
+/// (probes/arith-overflow, excel-graph; docs/excel-semantics/numbers.md).
+#[test]
+fn overflowing_sum_and_quotient_are_num_and_a_subnormal_divisor_is_zero() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=(9E+307+9E+307)&\"\"", "#NUM!"),
+        ("A2", "=(9E+307-(-9E+307))&\"\"", "#NUM!"),
+        ("A3", "=(-9E+307-9E+307)&\"\"", "#NUM!"),
+        ("A4", "=(9E+307+9E+307-9E+307)&\"\"", "#NUM!"),
+        ("A5", "=(9E+307/0.1)&\"\"", "#NUM!"),
+        ("A6", "=(-9E+307/0.1)&\"\"", "#NUM!"),
+        ("A7", "=1/1E-308", "#DIV/0!"),
+        ("A8", "=1/(2^-1023)", "#DIV/0!"),
+        ("A9", "=1/(2^-1022)>1E+307", "TRUE"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, _, expected) in cases {
+        assert_eq!(model._get_text(cell), *expected, "{cell}");
+    }
+}
