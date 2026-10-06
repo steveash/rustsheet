@@ -248,7 +248,8 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   `=(-A1,B1)`. The engine reads it as a union of `-A1` and `B1` and prints that (T-0193).
 - An error operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` and `=(#REF!,A1) A1` are
   `#REF!`, and `ISREF((A1,#REF!))` is FALSE (probes/union-accepted H9; implemented in `Model::union_is_reference`, T-0194). `ISREF((A1,B2))` is
-  TRUE, and `=(A1,B2) A1` is 1.
+  TRUE, and `=(A1,B2) A1` is 1. The engine's ISREF is also FALSE for any other union that fails to
+  evaluate to areas (`(-A1,B1)`, `(A1 B2,C1)`, a 3D operand); those are unprobed (T-1039).
 - Cross-sheet: `=(Data!A1,Other!A1)` and `=(Data!A1:A3,Other!A1:A3) Data!A2` are `#VALUE!`.
 - Printing: Excel keeps the user's parentheses, so FORMULATEXT of `=((Data!A2,Data!E8),Data!B6)` is
   exactly that. The engine keeps a union operand's own parentheses (`grouped` on `OpUnionKind`), while a
@@ -284,6 +285,7 @@ Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parent
 Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024
 
 ## Union area cap
+(ISREF of a union over the cap is FALSE in the engine, where Excel presumably says TRUE; same DEVIATION.)
 Rule: intersecting unions multiplies their areas (`(A1,A2,A3) (A1:A3,B1:B3)` has six pairs), and
 balanced nesting (`((A1,A2),(A3,A4))`) keeps a union's depth logarithmic, so the parser's depth
 cap does not bound its leaves. The engine bounds every area list it builds, not just products, at
