@@ -3,7 +3,7 @@ id: T-0966
 title: "Oracle sweeps for statistical-distribution kernels (normal CDF/PDF, gamma, incomplete beta/gamma, t, Weibull) and compat-alias evidence"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -68,3 +68,23 @@ One spec suite per family under `eval/suites/probes-numeric` (or `probes`), buil
 ## Out of scope
 - Fitting or implementing any formulation (the dependent tasks do that).
 - Inverse normal (T-1006 / T-0925) and the discrete distributions (T-0927).
+
+## Outcome
+Split per family as the size criterion asks (this task produced no sweep itself). Sweep tasks, all
+`research`, size S, tier `sonnet` (mechanical probe-and-fill with an available oracle, no fitting):
+
+| Family | Sweep | Dependent fitting tasks (`depends_on` repointed) |
+|---|---|---|
+| 1 normal CDF / erfc | T-1040 | T-0968 |
+| 2 normal PDF | T-1041 | T-0975 (links it; does not wait: accuracy upgrade first) |
+| 3 GAMMA / GAMMALN | T-1042 | T-0973 (links it; does not wait) |
+| 4 Student t | T-1043 | T-0967 (waits); T-0969 (links it; does not wait) |
+| 5 incomplete beta | T-1044 | T-0974 (waits); T-0970 (links it; does not wait) |
+| 6 incomplete gamma | T-1045 | T-0972 (waits); T-0971 (links it; does not wait) |
+| 7 Weibull | T-1046 | T-0978 |
+| 8 evidence gaps | T-1047 (legacy BETADIST..FTEST), T-1048 (legacy GAMMADIST..ZTEST), T-1049 (thin modern names, incl. a HYPGEOM.DIST grid) | T-0977 (waits on T-1048, T-1049) |
+
+T-0969, T-0970, T-0971, T-0973 and T-0975 never depended on this task (their accuracy upgrades come
+first and leftover last-digit cells wait for the sweep), so their `depends_on` stays empty; their
+text now names the specific sweep. Each sweep task carries the T-0040 lesson: no arity-invalid call
+in a probe workbook. Eval delta: none (task files only).

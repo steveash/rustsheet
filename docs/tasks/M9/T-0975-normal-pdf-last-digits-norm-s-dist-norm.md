@@ -45,7 +45,7 @@ enter; `d*d/2` vs `0.5*d*d`) against all cached density cells, including the cur
 ## Acceptance criteria
 - [ ] The 12 NORM.S.DIST density lines leave `eval/baseline/ironcalc-calc.txt`; the NORM.DIST,
       LOGNORM.DIST and PHI lines leave too if one formulation per function fits every cached density
-      cell, otherwise the PR lists them and they go to the T-0966 normal-PDF sweep (family 2). No new
+      cell, otherwise the PR lists them and they go to the T-1041 normal-PDF sweep. No new
       lines in any baseline.
 - [ ] One density helper in `special.rs` used by NORM.S.DIST, NORM.DIST, LOGNORM.DIST and PHI (or a
       comment citing cells that prove a function needs a different order).
