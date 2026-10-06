@@ -25,4 +25,4 @@ Follow-up to T-0179 review. The engine flushes only `+ - * / ^` and POWER (`arit
 -
 
 ## Outcome
-Probe subnormal-function-results (excel-graph) covers %, EXP, SUM, PRODUCT, SUMPRODUCT and 8 more functions. All flush to a true 0 except EXP, whose subnormal results are non-zero but print as 0. Recorded in numbers.md; engine task T-0987 (PRODUCT/SUMPRODUCT). Literals below -308 exponent make the Graph workbook unsupported (noted). Eval delta: new-coverage failures only.
+Probe subnormal-function-results (excel-graph) covers %, EXP, SUM, PRODUCT, SUMPRODUCT and 8 more functions. All flush to a true 0 except EXP, whose subnormal results are non-zero but print as 0. Recorded in numbers.md; engine tasks T-0987 (PRODUCT/SUMPRODUCT), T-0988 (postfix %), T-0989 (compare tiny value with 0). Literals below -308 exponent make the Graph workbook unsupported (noted). Eval delta: new-coverage failures only.

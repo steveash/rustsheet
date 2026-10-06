@@ -200,8 +200,10 @@ normal) is kept and prints with 14 digits ("3.3075530036384E-308"; see "Exponent
 A literal below the smallest normal also reads as 0 inside functions (`PRODUCT(1E-308,1)` is 0).
 The probe leaves out literals whose exponent is below -308 (`1E-310`, `1E-320`, `1E-620`):
 the Graph workbook builder rejected the file (`unsupportedWorkbook`) when they appeared.
-Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^`, POWER, `%`, SUM); PRODUCT and
-SUMPRODUCT do not flush yet (T-0987).
+Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^` and POWER only; SUM and the other
+functions pass above because their operands are already flushed). Not implemented: postfix `%`
+(T-0988), PRODUCT and SUMPRODUCT (T-0987). The engine also treats a tiny nonzero value as equal to 0 in
+comparisons, which Excel does not (`=EXP(-708)=0` is FALSE; T-0989).
 Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
