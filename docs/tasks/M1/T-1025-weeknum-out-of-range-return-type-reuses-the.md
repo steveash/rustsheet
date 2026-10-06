@@ -3,7 +3,7 @@ id: T-1025
 title: "WEEKNUM out-of-range return_type reuses the last valid start weekday: model or decline (decision)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
