@@ -27,10 +27,11 @@ Code: `fn_value` in crates/rustsheet-engine/src/functions/text/common.rs.
 - VALUE percent rounding (T-0929).
 
 ## Outcome
-Probe `probes/value-clock-text` (excel-graph, 39 texts × VALUE / `0+text` / TIMEVALUE): VALUE of
+Probe `probes/value-clock-text` (excel-graph, 45 texts × VALUE / `0+text` / TIMEVALUE): VALUE of
 clock text is the coercion serial of the trimmed text (`VALUE("25:00")` = 1.0416666666666667).
 `fn_value` now calls `parse_time_serial` on the trimmed text. Found on the way and fixed in the
-shared parser: coercion allows trailing (not leading) spaces; a no-break space is never trimmed;
+shared parser: coercion allows trailing (not leading) spaces; only U+0020 is trimmed or splits
+the AM/PM suffix (tab, no-break and ideographic spaces are #VALUE!, VALUE of date text too);
 hour-only AM/PM takes hour 0-12 and `A`/`P` with an optional `.`. Recorded in
-docs/excel-semantics/dates.md#time-text. Eval: new case 117/117 cells pass; 0 regressions, 0
+docs/excel-semantics/dates.md#time-text. Eval: new case 135/135 cells pass; 0 regressions, 0
 baseline changes in every suite (poi included).

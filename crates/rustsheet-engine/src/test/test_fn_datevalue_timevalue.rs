@@ -73,12 +73,12 @@ fn timevalue_clock_text_grammar() {
 }
 
 // VALUE of clock text is the coercion serial (`0+text`) with surrounding spaces trimmed;
-// coercion itself allows trailing but not leading spaces, and a no-break space is never trimmed
-// (probes/value-clock-text, excel-graph).
+// coercion itself allows trailing but not leading spaces, and only the space character counts:
+// a tab or a no-break space is never trimmed (probes/value-clock-text, excel-graph).
 #[test]
 fn value_and_coercion_of_clock_text() {
     // (text, VALUE(text), 0+text)
-    let cases: [(&str, Option<f64>, Option<f64>); 12] = [
+    let cases: [(&str, Option<f64>, Option<f64>); 15] = [
         ("10:00", Some(10.0 / 24.0), Some(10.0 / 24.0)),
         (
             "25:00",
@@ -93,6 +93,9 @@ fn value_and_coercion_of_clock_text() {
         (" 10:00 ", Some(10.0 / 24.0), None),
         ("10:00 ", Some(10.0 / 24.0), Some(10.0 / 24.0)),
         ("10:00\u{a0}", None, None),
+        ("10:00\u{a0}AM", None, None),
+        ("10:00\t", None, None),
+        ("1/2/2020\u{a0}", None, None),
         ("6 P.", Some(0.75), Some(0.75)),
         ("6 a", Some(0.25), Some(0.25)),
         ("0 PM", Some(0.5), Some(0.5)),

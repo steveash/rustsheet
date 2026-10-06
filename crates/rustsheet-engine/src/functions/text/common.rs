@@ -1119,16 +1119,17 @@ impl Model {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(text) => {
                 let currencies = vec!["$", "€"];
-                // VALUE trims date text, unlike number coercion (probes/date-text-grammar C7).
-                if let Ok((value, _)) =
-                    parse_formatted_number(text.trim(), &currencies, self.locale)
-                {
+                // VALUE trims spaces around date and clock text, unlike number coercion, but
+                // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
+                // (probes/date-text-grammar C7, value-clock-text B14, B44).
+                let text = text.trim_matches(' ');
+                if let Ok((value, _)) = parse_formatted_number(text, &currencies, self.locale) {
                     return CalcResult::Number(value);
                 };
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                if let Some(serial) = parse_time_serial(text.trim_ascii(), self.locale) {
+                if let Some(serial) = parse_time_serial(text, self.locale) {
                     return CalcResult::Number(serial);
                 }
                 CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
