@@ -44,7 +44,8 @@ b4392a6514a36ade A14 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidec
 poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!E824, H824, K824 (LEFT),
 E1168, H1168, K1168 (RIGHT).
 Status: VERIFIED
-Tasks: T-0219 (huge and near-integer counts), T-0259 (numeric text and booleans)
+Implemented in: `Model::array_node_to_number` (cast.rs), used by `fn_left`/`fn_right`/`fn_mid` (T-0257).
+Tasks: T-0219 (huge and near-integer counts), T-0257 (numeric text and booleans)
 
 ## Text comparison uses Excel's collation, not code-point order
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE

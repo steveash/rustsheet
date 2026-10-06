@@ -19,23 +19,10 @@ use crate::{
     number_format::to_precision,
 };
 
-/// Coerces a single array element to a number for the start/length arguments of
-/// LEFT/RIGHT/MID. Booleans and strings are rejected with `#VALUE!`, matching the
-/// scalar behaviour of these functions; empties are treated as 0 and errors
-/// propagate.
-fn text_num_arg(node: &ArrayNode) -> Result<f64, Error> {
-    match node {
-        ArrayNode::Number(v) => Ok(*v),
-        ArrayNode::Empty => Ok(0.0),
-        ArrayNode::Error(e) => Err(e.clone()),
-        ArrayNode::Boolean(_) | ArrayNode::String(_) => Err(Error::VALUE),
-    }
-}
-
 /// Computes a single LEFT result from one element of each argument.
-fn left_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> {
+fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    let num = text_num_arg(num)?;
+    let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
     }
@@ -44,9 +31,9 @@ fn left_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> {
 }
 
 /// Computes a single RIGHT result from one element of each argument.
-fn right_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> {
+fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    let num = text_num_arg(num)?;
+    let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
     }
@@ -58,12 +45,12 @@ fn right_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> 
 /// Computes a single MID result from one element of each argument.
 fn mid_element(
     text: &ArrayNode,
-    start: &ArrayNode,
-    length: &ArrayNode,
+    start: Result<f64, Error>,
+    length: Result<f64, Error>,
 ) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    let start = text_num_arg(start)?;
-    let length = text_num_arg(length)?;
+    let start = start?;
+    let length = length?;
     if start < 1.0 {
         return Err(Error::VALUE);
     }
@@ -646,7 +633,7 @@ impl Model {
             TextArg::Scalar(ArrayNode::Number(1.0))
         };
         broadcast_text(cell, &[&text, &num], |i, j| {
-            left_element(text.elem(i, j), num.elem(i, j))
+            left_element(text.elem(i, j), self.array_node_to_number(num.elem(i, j)))
         })
     }
 
@@ -667,7 +654,7 @@ impl Model {
             TextArg::Scalar(ArrayNode::Number(1.0))
         };
         broadcast_text(cell, &[&text, &num], |i, j| {
-            right_element(text.elem(i, j), num.elem(i, j))
+            right_element(text.elem(i, j), self.array_node_to_number(num.elem(i, j)))
         })
     }
 
@@ -688,7 +675,11 @@ impl Model {
             Err(e) => return e,
         };
         broadcast_text(cell, &[&text, &start, &length], |i, j| {
-            mid_element(text.elem(i, j), start.elem(i, j), length.elem(i, j))
+            mid_element(
+                text.elem(i, j),
+                self.array_node_to_number(start.elem(i, j)),
+                self.array_node_to_number(length.elem(i, j)),
+            )
         })
     }
 

@@ -22,6 +22,24 @@ fn scalar_still_works() {
     assert_eq!(model._get_text("A6"), "234");
 }
 
+// ── Numeric text and boolean counts coerce (docs/excel-semantics/coercion.md) ─
+
+#[test]
+fn counts_coerce_text_and_booleans() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LEFT(\"abc\",\"2\")");
+    model._set("A2", "=RIGHT(\"abc\",TRUE)");
+    model._set("A3", "=MID(\"abcdef\",\"2\",\"2.9\")");
+    model._set("A4", "=LEFT(\"abc\",FALSE)");
+    model._set("A5", "=LEFT(\"abc\",\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "ab");
+    assert_eq!(model._get_text("A2"), "c");
+    assert_eq!(model._get_text("A3"), "bc");
+    assert_eq!(model._get_text("A4"), "");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
+}
+
 // ── MID over an array of start positions (the motivating example) ─────────────
 
 #[test]
