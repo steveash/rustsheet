@@ -3,7 +3,7 @@ id: T-0185
 title: "SUM of values that overflow the double range is #NUM!"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
