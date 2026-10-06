@@ -18,7 +18,7 @@ From the T-0125 fidelity review (PR #181). Unverified: (1) `fn_weeknum` (functio
 
 ## Acceptance criteria
 - [x] Probe cells oracle-filled; findings in docs/excel-semantics/dates.md.
-- [x] Engine matches every probe cell (fix in this task if small, else file tasks): the fixes touch three code areas, so tasks T-0995, T-0996, T-0997 were filed.
+- [x] Engine matches every probe cell, or fixes are filed: not matched here; the fixes touch three code areas, so T-0995, T-0996 and T-0997 cover every failing cell.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope

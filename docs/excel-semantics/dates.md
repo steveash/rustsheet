@@ -30,7 +30,7 @@ EDATE/EOMONTH as day 0 of January 1900: `EDATE(0,1)` = `EOMONTH(0,0)` = 31, `EOM
 `WEEKNUM(9,2)` = 3, `WEEKNUM(59,2)` = `WEEKNUM(60,2)` = `WEEKNUM(61,2)` = 10, `WEEKNUM(1,21)` = ISOWEEKNUM(1) = 52,
 `WEEKNUM(60)` = 9, `WEEKNUM(7)` = 1, `WEEKNUM(8)` = 2 (A1-A25). The same holds past serial 60 up to the end of 1900: the weekday
 numbering of the whole year is the Sunday-based one, so a real calendar anchor is wrong for serials 1-366.
-Implemented in: no. The engine gets WEEKNUM(2,2), (59,2), (61,2) wrong (T-0995), TEXT ddd/dddd of serial 0 is #VALUE!
+Implemented in: no. The engine gets WEEKNUM wrong for serials 0-61 in several return types: rows 1-3, 5, 6, 8-11 (T-0995), TEXT ddd/dddd of serial 0 is #VALUE!
 (T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
