@@ -10,7 +10,6 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::math_and_trigonometry::array_size::check_range_size,
     get_all_timezones,
     model::Model,
 };
@@ -57,14 +56,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => {
-                // DEVIATION (decision 0014): the shared allocation bound on lifted ranges.
-                if let Some((error, message)) = check_range_size(&left, &right) {
-                    return CalcResult::new_error(error, cell, message);
-                }
-                let values = self.evaluate_range(left, right);
-                CalcResult::Array(map_array(values, &test))
-            }
+            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(values) => CalcResult::Array(map_array(values, &test)),
+                Err(error) => error,
+            },
             CalcResult::Array(values) => CalcResult::Array(map_array(values, &test)),
             other => CalcResult::Boolean(test(&calc_result_to_array_node(other))),
         }
