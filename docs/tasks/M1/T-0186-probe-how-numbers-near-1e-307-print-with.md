@@ -3,7 +3,7 @@ id: T-0186
 title: "Probe how numbers near 1E+307 print with 14 significant digits"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
