@@ -3,7 +3,7 @@ id: T-0157
 title: "Formula stringify drops the parentheses around a & operand of + - * /"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
