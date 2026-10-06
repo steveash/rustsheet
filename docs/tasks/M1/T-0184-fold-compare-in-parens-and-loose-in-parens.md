@@ -3,7 +3,7 @@ id: T-0184
 title: "Fold compare_in_parens and loose_in_parens in stringify into one predicate"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
