@@ -1,5 +1,5 @@
 ---
-id: T-1002
+id: T-1008
 title: "Oracle sweep for T-0915: SIN/COS/TAN/SEC/CSC/COT near k*pi"
 milestone: M9
 lane: research

@@ -28,7 +28,7 @@ T-0925 were blocked, and T-0916 was found not fittable without the oracle. The o
 
 ## Acceptance criteria
 - [x] Each listed family has an oracle-filled probe suite committed (no pending cells), and the dependent task file links it.
-  (Split per the size criterion: financial lands here; the other five are T-1002..T-1006, see Outcome.)
+  (Split per the size criterion: financial lands here; the other five are T-1004..T-1006, T-1008, T-1009, see Outcome.)
 - [x] New quirks visible in the sweeps are recorded in docs/excel-semantics/ (numbers.md, financial.md, engineering.md).
 - [x] Size: six families will not fit one M PR. Split per family at pickup with `make new-task`
   and repoint each dependent task to its own sweep, so each M9 task becomes ready as soon as its
@@ -44,7 +44,7 @@ T-0925 were blocked, and T-0916 was found not fittable without the oracle. The o
 
 ## Outcome
 Split per family at pickup: this PR lands the financial sweep for T-0901 and files one sweep task
-per remaining family (T-1002 trig → T-0915, T-1003 IRR/RATE → T-0916, T-1004 Bessel → T-0908,
+per remaining family (T-1008 trig → T-0915, T-1009 IRR/RATE → T-0916, T-1004 Bessel → T-0908,
 T-1005 hyperbolics → T-0917, T-1006 NORM.S.INV → T-0925); each dependent now depends on its own sweep.
 Financial sweep (excel-graph, 2026-10-06): `probes-numeric/m9-fin-power` (616 cells),
 `m9-fin-pv-fv` (616), `m9-fin-pmt` (924), `m9-fin-nper-npv` (220), all filled, none pending.
