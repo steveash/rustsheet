@@ -136,13 +136,21 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
   (D30, D55: 0.41666666666424135, 0.6909722222189885, with the serial-subtraction error). Anything else after the date is
   #VALUE! (`"2026-01-01 garbage"`, ISO `"2026-07-01T10:00"`).
-- **Current year**: `"Jul-26"` is 26 July *of the current year*, not July 2026 (46229, seen in a
-  first fill of probes/date-text-grammar on 2026-10-05 and then dropped from the case because
-  it depends on the clock, as every year-less form does).
+- **Year-less text** (`mmm-n`, `mmm/n`, `mmm n`, `n-mmm`, `n mmm`, `mmmm n`, and month-first `m/n`,
+  `m-n`): a one- or two-digit `n` that is a valid day of that month *in the current year* gives that
+  day of the current year: `"Jul-26"`, `"Jul 26"` and `"Jul/26"` are 26 July (46229 in 2026),
+  `"7/1"`, `"7-1"`, `"1-Jul"`, `"1 Jul"`, `"July 1"` are 1 July, `"12/31"`, `"Jul-31"` too, and a
+  clock time may follow (`"7/1 10:00"`). Otherwise `n` is a two-digit year (below 30 is 20xx) and
+  the date is the first of the month: `"Jul-45"` 16619 (1945-07-01), `"Jul-32"` 11871, `"Jul-0"`
+  36708 (2000), `"Jul-99"` 36342, `"2/30"` 10990 (1930-02-01). February 29 follows the current year:
+  in 2026 `"2/29"` and `"Feb-29"` are 47150 (2029-02-01). `"13/1"` is #VALUE!. VALUE and DATEVALUE
+  agree on all of them. Evidence: probes/date-text-yearless (clock-independent cells: MONTH/DAY of
+  the current-year forms, full dates of the two-digit-year forms); the years 2026 and 2029, and
+  `"Jul-26"` = 46229, come from scratch runs on 2026-10-05/06 (they depend on the clock).
 Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
 UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
 for month-year), which the engine assigns to typed input.
 Status: VERIFIED. Not implemented: the year-less current-year forms, which the engine rejects
-(#VALUE!).
+(#VALUE!, T-0167); the two-digit-year reading of year-less text is implemented (T-0160).
 Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)

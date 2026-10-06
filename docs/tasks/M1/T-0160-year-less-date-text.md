@@ -3,7 +3,7 @@ id: T-0160
 title: "Year-less date text reads the current year (\"Jul-26\", \"7/1\", \"1-Jul\")"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -26,9 +26,21 @@ reading the clock must count as volatile. Design the clock access first (an engi
 computed from a pinned date.
 
 ## Acceptance criteria
-- [ ] Evidence for each year-less form, recorded in dates.md.
-- [ ] The engine reads them in the current year; eval cells are skipped or pinned like NOW/TODAY.
-- [ ] `make check` green; reviewers approve.
+- [x] Evidence for each year-less form, recorded in dates.md.
+- [x] Eval cells are clock-independent (MONTH/DAY, or forms that can never be a day), so nothing needs pinning.
+- [ ] The engine reads them in the current year: split to T-0167 (clock access design); the clock-free
+      two-digit-year reading is implemented here.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Locales other than en-US.
+
+## Outcome
+Probed 20 year-less forms in Excel for the web (2026-10-06). A one- or two-digit number after a month
+is a day of the current year when it can be one this year ("Jul-26", "7/1", "1-Jul", "July 1", "Jul/26",
+"7-1", "12/31"), otherwise a two-digit year (<30 is 20xx): "Jul-45" is 1945-07-01, "Jul-32" 1932,
+"Jul-0" 2000, "Jul-99" 1999, "2/30" 1930-02-01, and in 2026 "2/29" and "Feb-29" are 2029-02-01.
+New case probes/date-text-yearless (clock-independent cells only; oracle-filled). Implemented the
+clock-free half in `parse_month_year`; the current-year half needs engine clock access and is split
+to T-0167. Eval: probes fixed 0, new-coverage failures 36 (B1:D12, the current-year forms, T-0167), 0
+regressions; the 10 two-digit-year cells pass.
