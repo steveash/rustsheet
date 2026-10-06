@@ -6,6 +6,9 @@ C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
 C	probes/ceiling-xlfn-prefix.case.json	4
+C	probes/clock-text-oddities.case.json	115
+C	probes/clock-text-oddities2.case.json	50
+C	probes/clock-text-oddities3.case.json	32
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
@@ -61,6 +64,7 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/value-clock-text.case.json	135
+F	probes/clock-text-oddities.case.json	Sheet1!F37
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13
@@ -164,5 +168,3 @@ F	probes/text-number-words.case.json	Calc!K3
 F	probes/text-number-words.case.json	Calc!K4
 F	probes/text-number-words.case.json	Calc!K5
 F	probes/text-number-words.case.json	Calc!K7
-F	probes/timevalue-component-limits.case.json	Sheet1!B26
-F	probes/timevalue-component-limits.case.json	Sheet1!C26

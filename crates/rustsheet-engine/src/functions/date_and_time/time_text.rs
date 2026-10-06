@@ -144,12 +144,40 @@ fn fraction_digits_to_ms(digits: &str) -> u32 {
     }
 }
 
+/// Whole seconds plus milliseconds of the `f` in `H:M.f:S` clock text: the digits are read twice,
+/// once as whole seconds and once as the fraction (`"10:11.25:12"` is 10:11 plus 25.25 s,
+/// `"10:11.0123:12"` plus 123.012 s; probes/clock-text-oddities*). `None` past seven
+/// significant digits, which no clock Excel accepts reaches (see [`minutes_with_seconds_fit`]).
+fn fraction_as_seconds(digits: &str) -> Option<(u64, u32)> {
+    let significant = digits.trim_start_matches('0');
+    if significant.len() > 7 {
+        return None;
+    }
+    let whole = if significant.is_empty() {
+        0
+    } else {
+        significant.parse::<u64>().ok()?
+    };
+    Some((whole, fraction_digits_to_ms(digits)))
+}
+
+/// Whether the minutes plus the whole minutes in the (rounded) seconds stay within
+/// [`MAX_CLOCK_COMPONENT`]: `"0:11.9999:1"` (11 min, 10000 s) parses but `"0:9999.9998:1"`
+/// (9999 min, 9999 s), `"0:9998.9999:1"` and `"0:9999:9999.9999"` are #VALUE!, while
+/// `"0:9999.5:1"` (9999 min, 5.5 s) parses (probes/clock-text-oddities2 A20,
+/// clock-text-oddities3 A1-A9, A16).
+fn minutes_with_seconds_fit(minute: u32, second_ms: u64) -> bool {
+    u64::from(minute) + second_ms / 60_000 <= u64::from(MAX_CLOCK_COMPONENT)
+}
+
 /// Serial value of clock text in Excel's en-US grammar, before any wrap to one day:
-/// `H:M`, `H:M:S[.f]` or `M:S.f` (two components with a fraction are minutes and seconds),
-/// spaces allowed around `:` and `.`, components up to 9999, an optional ` AM`/` PM`/` A`/` P`
-/// suffix after whitespace (then the hour is at most 12 and minutes and seconds at most 59).
-/// The value is `(total_ms / 1000) / 86400`, which matches Excel bit for bit
-/// (`"10:11:12.5"` is 0.4244502314814815). Excel: see docs/excel-semantics/dates.md#time-text.
+/// `H:M`, `H:M:S[.f]`, `M:S.f` (two components with a fraction are minutes and seconds) or the
+/// odd `H:M.f:S` (see [`fraction_as_seconds`]; `S` is checked and then ignored), spaces allowed
+/// around `:` and `.`, one trailing `:` ignored, components up to 9999 (minutes plus the
+/// seconds' whole minutes too), an optional
+/// ` AM`/` PM`/` A`/` P` suffix after whitespace (then the hour is at most 12 and minutes and
+/// whole seconds at most 59). The value is `(total_ms / 1000) / 86400`, which matches Excel bit
+/// for bit (`"10:11:12.5"` is 0.4244502314814815). Excel: see docs/excel-semantics/dates.md#time-text.
 fn parse_clock_text(text: &str) -> Option<f64> {
     let text = trim_spaces(text);
     let (body, suffix_is_pm) = match text.rsplit_once(' ') {
@@ -161,25 +189,43 @@ fn parse_clock_text(text: &str) -> Option<f64> {
         }
         _ => (text, None),
     };
-    let (head, fraction) = match body.split_once('.') {
-        Some((head, fraction)) => {
+    // `"10:11:"` is 10:11 and `"10:11:12.5:"` is 10:11:12.5, but `"10:11.5::"` is #VALUE!
+    // (probes/clock-text-oddities3 A11-A14).
+    let body = trim_spaces(body);
+    let body = body.strip_suffix(':').unwrap_or(body);
+    let (head, fraction, odd_tail) = match body.split_once('.') {
+        Some((head, rest)) => {
+            let (fraction, odd_tail) = match rest.split_once(':') {
+                Some((fraction, tail)) => (fraction, Some(tail)),
+                None => (rest, None),
+            };
             let fraction = fraction.trim();
             if !fraction.bytes().all(|b| b.is_ascii_digit()) {
                 return None;
             }
-            (head, Some(fraction))
+            (head, Some(fraction), odd_tail)
         }
-        None => (body, None),
+        None => (body, None, None),
     };
     let parts = head
         .split(':')
         .map(parse_clock_component)
         .collect::<Option<Vec<u32>>>()?;
     let has_fraction_digits = fraction.is_some_and(|f| !f.is_empty());
-    let (hour, minute, second) = match parts.as_slice() {
-        [h, m, s] => (*h, *m, *s),
-        [m, s] if has_fraction_digits => (0, *m, *s),
-        [h, m] => (*h, *m, 0),
+    let ((hour, minute), (second, ms)) = match (parts.as_slice(), fraction, odd_tail) {
+        ([h, m], Some(f), Some(tail)) if has_fraction_digits => {
+            parse_clock_component(tail)?;
+            ((*h, *m), fraction_as_seconds(f)?)
+        }
+        (_, _, Some(_)) => return None,
+        ([h, m, s], ..) => (
+            (*h, *m),
+            (u64::from(*s), fraction.map_or(0, fraction_digits_to_ms)),
+        ),
+        ([m, s], Some(f), None) if has_fraction_digits => {
+            ((0, *m), (u64::from(*s), fraction_digits_to_ms(f)))
+        }
+        ([h, m], ..) => ((*h, *m), (0, 0)),
         _ => return None,
     };
     let hour = match suffix_is_pm {
@@ -191,10 +237,13 @@ fn parse_clock_text(text: &str) -> Option<f64> {
         }
         None => hour,
     };
-    let ms = fraction.map_or(0, fraction_digits_to_ms);
-    let total_ms = ((u64::from(hour) * 60 + u64::from(minute)) * 60 + u64::from(second)) * 1000
-        + u64::from(ms);
-    // Clock values stay far below 2^53 ms (at most 9999:9999:9999.999), so the cast is exact.
+    let second_ms = second * 1000 + u64::from(ms);
+    if !minutes_with_seconds_fit(minute, second_ms) {
+        return None;
+    }
+    let total_ms = (u64::from(hour) * 60 + u64::from(minute)) * 60_000 + second_ms;
+    // Clock values stay far below 2^53 ms (at most 9999 h plus 9999 min plus 59 s), so the cast is
+    // exact.
     let seconds = total_ms as f64 / 1000.0;
     Some(seconds / SECONDS_PER_DAY_F64)
 }
