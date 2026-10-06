@@ -6,7 +6,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     functions::{
-        math_and_trigonometry::array_size::check_array_size, util::array_node_to_calc_result,
+        math_and_trigonometry::array_size::check_range_size, util::array_node_to_calc_result,
     },
     model::Model,
 };
@@ -21,11 +21,8 @@ impl Model {
         }
         let array = match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::Range { left, right } => {
-                // DEVIATION (decision 0014): Excel spills any range that fits the grid; the
-                // shared allocation bound applies (docs/excel-semantics/arrays.md).
-                let rows = (right.row - left.row + 1).max(0) as usize;
-                let columns = (right.column - left.column + 1).max(0) as usize;
-                if let Some((error, message)) = check_array_size(rows, columns) {
+                // DEVIATION (decision 0014): the shared allocation bound on lifted ranges.
+                if let Some((error, message)) = check_range_size(&left, &right) {
                     return CalcResult::new_error(error, cell, message);
                 }
                 self.evaluate_range(left, right)

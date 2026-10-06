@@ -105,7 +105,7 @@ RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results and a range lifted by I
 allocation on untrusted input (CLAUDE.md directive 5); past-the-grid dimensions are `#VALUE!` as in Excel.
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05; C12 and C14 are known failures by design).
 Status: DEVIATION (decision 0014)
-Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`)
+Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`, `check_range_size` for lifted ranges)
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
