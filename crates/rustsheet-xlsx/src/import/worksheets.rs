@@ -6,6 +6,7 @@ use rustsheet_engine::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use super::package::{part_folder_and_rels, resolve_target, Package};
+use super::rich_errors::load_value_metadata_errors;
 use super::xml::XmlNode;
 use rustsheet_engine::{
     expressions::{
@@ -355,11 +356,21 @@ pub(super) enum CellArrayKind {
     ArrayFormula(i32, i32),
 }
 
+/// The error a cell caches, `cell_value`. Excel caches the errors older readers do not know
+/// (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` and keeps the real one in its value metadata,
+/// `rich_error` (see [`super::rich_errors`]); an error the engine has no kind for stays `#VALUE!`.
+fn cached_error_name<'a>(cell_value: Option<&'a str>, rich_error: Option<&'a str>) -> &'a str {
+    match (cell_value, rich_error) {
+        (Some("#VALUE!"), Some(real)) if get_error_by_english_name(real).is_some() => real,
+        _ => cell_value.unwrap_or("#ERROR!"),
+    }
+}
+
 // FIXME
 #[allow(clippy::too_many_arguments)]
 pub(super) fn get_cell_from_excel(
     cell_value: Option<&str>,
-    value_metadata: Option<&str>,
+    rich_error: Option<&str>,
     cell_type: &str,
     cell_style: i32,
     formula_index: i32,
@@ -411,16 +422,7 @@ pub(super) fn get_cell_from_excel(
                 }
             }
             "e" => {
-                // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
-                // Older engines would just import #VALUE!
-                let mut error_name = cell_value.unwrap_or("#ERROR!");
-                if error_name == "#VALUE!" && value_metadata.is_some() {
-                    error_name = match value_metadata {
-                        Some("1") => "#CALC!",
-                        Some("2") => "#SPILL!",
-                        _ => error_name,
-                    }
-                }
+                let error_name = cached_error_name(cell_value, rich_error);
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
                         v: SpillValue::Error(
@@ -514,16 +516,7 @@ pub(super) fn get_cell_from_excel(
             "b" => make_cell(FormulaValue::Boolean(cell_value == Some("1"))),
             "n" => make_cell(FormulaValue::Number(parse_cell_number(cell_value))),
             "e" => {
-                // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
-                // Older engines would just import #VALUE!
-                let mut error_name = cell_value.unwrap_or("#ERROR!");
-                if error_name == "#VALUE!" && value_metadata.is_some() {
-                    error_name = match value_metadata {
-                        Some("1") => "#CALC!",
-                        Some("2") => "#SPILL!",
-                        _ => error_name,
-                    }
-                }
+                let error_name = cached_error_name(cell_value, rich_error);
                 make_cell(FormulaValue::Error {
                     ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
                     o: format!("{sheet_name}!{cell_ref}"),
@@ -841,6 +834,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     defined_names: Vec<DefinedNameS>,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
+    rich_errors: &[Option<&'static str>],
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
@@ -858,7 +852,14 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         mut sheet_data,
         rows,
         shared_formulas,
-    } = read_sheet_data(file, sheet_name, &mut parser, shared_strings, &limits)?;
+    } = read_sheet_data(
+        file,
+        sheet_name,
+        &mut parser,
+        shared_strings,
+        &limits,
+        rich_errors,
+    )?;
     let ws = &worksheet;
 
     let dimension = load_dimension(ws);
@@ -974,6 +975,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     let mut sheet_index = 0;
 
     let defined_names = workbook.get_defined_names_with_scope();
+    let rich_errors = load_value_metadata_errors(archive)?;
 
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
@@ -1002,6 +1004,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 defined_names.clone(),
                 theme,
                 dxfs,
+                &rich_errors,
             )?;
             if is_selected {
                 selected_sheet = sheet_index;
