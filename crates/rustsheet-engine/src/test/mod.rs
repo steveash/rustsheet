@@ -70,6 +70,7 @@ mod test_row_column_styles;
 mod test_set_user_input;
 mod test_shared_formulas;
 mod test_sheet_markup;
+mod test_sheet_qualified_ref_error;
 mod test_sheets;
 mod test_statistical_functions;
 mod test_styles;

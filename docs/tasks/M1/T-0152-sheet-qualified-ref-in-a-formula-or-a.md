@@ -3,7 +3,7 @@ id: T-0152
 title: "Sheet-qualified #REF! in a formula or a defined name evaluates to #REF! (2 poi known failures)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -56,3 +56,9 @@ Code paths:
   bigger engine feature and needs its own opus task.
 - External-workbook references (`[1]Sheet!A1`, T-0124).
 - Keeping the sheet prefix when such a formula is exported back to xlsx (no evidence here).
+
+## Outcome
+The lexer reads `Sheet!#REF!` (quoted or not) as the `#REF!` error token; defined names whose body is an
+error literal evaluate to that error (new `ParsedDefinedName::ErrorLiteral`; `new_defined_name` accepts
+it). Eval: poi known failures 899 -> 897 (fixed 2: 49783.xlsx Sheet1!A2, customIndexedColors.xlsx
+_TGK_HIDDEN!B1), 0 regressions. Other sheet-qualified errors (`Sheet1!#NAME?`) stay `#ERROR!`.

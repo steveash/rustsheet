@@ -149,8 +149,9 @@ with `sale_1` and `sale_2` both defined as `Sheet1!#REF!`, `=sale_1*sale_2` is `
 undefined name on the left, `=aaa*sale_1` is `#NAME?`, so the left operand's error wins.
 Evidence: poi/customIndexedColors.xlsx `_TGK_HIDDEN!B1` (Excel 16.0) and poi/49783.xlsx Sheet1!A2, B2
 (Excel 14.0); desktop Excel cached values. The unquoted form `=Sheet1!#REF!` and the form inside a
-function (`=SUM(Sheet1!#REF!)`) have no Excel cell yet.
+function (`=SUM(Sheet1!#REF!)`) have no Excel cell yet; nor do a nonexistent sheet prefix and defined-name bodies that are other bare error literals (all hand expectations, T-0169).
 Status: VERIFIED (cell formula with a quoted sheet, and defined-name body)
+Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body); unit tests in test/test_sheet_qualified_ref_error.rs (unquoted and SUM forms are hand expectations).
 Tasks: T-0152
 
 ## Disjoint intersection is #NULL!
