@@ -30,6 +30,10 @@
     "t": "n",
     "v": 0.0
    },
+   "B14": {
+    "t": "n",
+    "v": 0.0
+   },
    "B2": {
     "t": "n",
     "v": 0.0
@@ -66,9 +70,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8b37231fa2e26b23530fc6dab58b0635da6d56c565448c5fa465da7b22a65923",
+  "input_sha256": "ba493b639508b312fa1e66c20e283665b31c2f17a2fbb144bfd4fbed2abac251",
   "kind": "excel-graph",
-  "produced_at": "2026-10-06T00:31:11+00:00",
+  "produced_at": "2026-10-06T01:42:51+00:00",
   "version": null
  }
 }
