@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-0914, T-0942]
+depends_on: [T-0914, T-1005]
 ---
 
 ## Goal
@@ -17,7 +17,7 @@ Remaining ulp-level mismatches in `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOME
 T-0914 found SINH/COSH/TANH fit exp formulas (see `docs/excel-semantics/numbers.md`). COTH/CSCH did NOT fit the same building blocks: exp-based COTH/CSCH regressed COTH_CSCH_SECH!B10, B47, C54 which libm matches, so Excel's formulation there differs per range. Use `/tmp`-style throwaway fitting over the cached cells (parse the xlsx sheets), try log1p/sqrt based inverse forms, and keep only per-function variants with 0 regressions.
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
-cached workbooks give. Fit against the T-0942 sweep, never blind.
+cached workbooks give. Fit against the T-1005 sweep (`probes-numeric/m9-hyperbolic`), never blind.
 
 ## Acceptance criteria
 - [ ] At least 40 F lines for the listed functions leave the baseline, no new ones.
