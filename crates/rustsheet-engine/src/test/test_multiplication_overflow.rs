@@ -58,3 +58,19 @@ fn overflowing_sum_and_quotient_are_num_and_a_subnormal_divisor_is_zero() {
         assert_eq!(model._get_text(cell), *expected, "{cell}");
     }
 }
+
+/// A result below the smallest normal double is 0 (probes/precision-and-rounding A14).
+#[test]
+fn subnormal_results_become_zero() {
+    let mut model = new_empty_model();
+    model._set("A1", "=2^-1074");
+    model._set("A2", "=1E-307/10");
+    model._set("A3", "=1E-160*1E-160");
+    model._set("A4", "=2^-1022*2^1022");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"0");
+    assert_eq!(model._get_text("A2"), *"0");
+    assert_eq!(model._get_text("A3"), *"0");
+    // The smallest normal double itself is kept.
+    assert_eq!(model._get_text("A4"), *"1");
+}

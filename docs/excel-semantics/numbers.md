@@ -168,9 +168,13 @@ Tasks: T-0143, T-0150
 ## Subnormal results become 0
 Rule: a result below the smallest normal double is returned as 0: `=2^-1074` → 0,
 `=CONCAT(1e-307/10)` → "0".
-Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e-307/10`.
+Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e-307/10`;
+probes/text-number-words H6, H7, K1, K4, K5 (`="1e-308"+0` is 0).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^` and POWER); the postfix `%` and other function
+results are not flushed yet (UNVERIFIED, T-0189).
+Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
 Rule: Excel's largest typeable number is 9.99999999999999E+307. A workbook whose formula text

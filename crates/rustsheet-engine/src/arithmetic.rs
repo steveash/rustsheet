@@ -50,10 +50,14 @@ pub(crate) fn divide(x: f64, y: f64) -> Result<f64, Error> {
     finite_or_num(x / y)
 }
 
-/// An infinite (or NaN) result is the error `#NUM!`.
+/// An infinite (or NaN) result is the error `#NUM!`; a result below the smallest normal double
+/// is 0 (docs/excel-semantics/numbers.md "Subnormal results become 0", probes/precision-and-rounding A14).
 fn finite_or_num(value: f64) -> Result<f64, Error> {
     if !value.is_finite() {
         return Err(Error::NUM);
+    }
+    if value.abs() < f64::MIN_POSITIVE {
+        return Ok(0.0);
     }
     Ok(value)
 }
@@ -83,7 +87,7 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         // A negative number to a power that is not an integer nor an odd root
         return Err(Error::NUM);
     }
-    Ok(result)
+    finite_or_num(result)
 }
 
 /// Whether `y` is 1/3, 1/5, -1/7 and so on. A float cannot hold a third, so
