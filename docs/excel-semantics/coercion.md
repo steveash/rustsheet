@@ -115,6 +115,9 @@ Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingT
 G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9,J7:J12)` =
 105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
 Status: VERIFIED (Excel-cached)
+Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
+Open (unverified, T-0961): scalar text, boolean and empty arguments are currently one skipped pair
+(`#DIV/0!`); the first error in either array wins over the element-count `#N/A`.
 Tasks: T-0944
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
