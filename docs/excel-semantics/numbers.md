@@ -90,6 +90,14 @@ and `-10000000000000000000` stay plain, `1E+20`/`-1E+20`/`1E+21` do not; `0.0000
 the 15 digits are dropped (`2^0.5` → "1.4142135623731"). An exact tie at the 16th digit goes toward
 zero, as in ROUND's 15-digit cut: `1E+15+15` → "1000000000000010", `1E+14+1.5` → "100000000000001",
 `12345678901234.75` → "12345678901234.7".
+Exponent width (T-0186, VERIFIED): in E notation the mantissa has 15 significant digits when the
+decimal exponent magnitude is at most 98 (`1.23456789012345E+98`, `E-98`, `E+51`, `E-5` all print 15
+digits), and 14 when it is 99 or more (`1.23456789012345E+99` → "1.2345678901235E+99",
+`E+100`, `E+307`, `E-99`, `E-300` likewise; `9.87654321098765E-99` → "9.8765432109877E-99"). Note
+`E+99` has a 2-digit exponent yet already loses a digit, so this is not the 20-character cap alone:
+the cut is decided by `|exp| >= 99`. `&""`, `CONCAT` and `TEXT(x,"General")` (5 digits, a separate
+rule) agree; `(1/(2^-1022))&""` is "4.4942328371558E+307". Evidence:
+probes/number-text-exponent-digits (excel-graph, 2026-10-06).
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
 probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,
