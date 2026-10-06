@@ -189,7 +189,48 @@ the union down to one cell gives that cell's value. `(Data!E4,Data!E4)` → `#VA
 `((Data!A2,Data!E8),Data!B6)` → `#VALUE!`; `(Data!D1:D12,Data!A1:A12) Data!D11` = "a" (Data!D11).
 Evidence: gen-m1/c940d3cfb0d3b083 Calc!A1, A2, A14, A25, A12; all 218 value-context cells are
 `#VALUE!` and all 32 `union/cut-by-cell` cells give the cell (oracle: excel-graph, 2026-10-05, T-0109).
+An intersection that leaves two areas is `#VALUE!` even when both are the same cell:
+`=A1:A3 (A2:B2,A2)` (probes/intersection-function-operands H5, see "Intersection operands must be references").
 Status: VERIFIED
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`, `union_text`);
+reference_operators.rs (`Model::get_union`, `Model::get_intersection` over the areas of a union)
+Tasks: T-0134
+
+## Union: parsing and evaluation the engine chose without evidence
+Rule: what the engine does with unions beyond the forms gen-m1 measured. None of it is probed.
+- The comma is the union operator only directly inside parentheses: `(A1,B2)` is one union,
+  `SUM(A1,B2)` two arguments, `SUM((A1,B2))` one union argument, and `=A1,B2` is a syntax error.
+  A defined name whose body is a top-level union (`Sheet1!$A$1,Sheet1!$B$2`, the usual form of
+  `_xlnm.Print_Area`) does not parse.
+- Precedence: tighter than every operator but the other reference operators, as Excel's precedence
+  table lists `,` with `:` and the space. `(A1,B1 C1)` is `(A1,(B1 C1))` and `(A1+B1,C1)` is
+  `A1+(B1,C1)`, so it gives `#VALUE!`.
+- Operands must be references, as for the intersection: `(1,A1)`, `(A1,"a")`, `(A1,#N/A)`,
+  `(A1,SUM(B1))` and `(A1,(B1+1))` are syntax errors. `#REF!`, `@ref` and reference-returning calls
+  are accepted.
+- In a value context an operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` is `#REF!`.
+- A union cut by an intersection: the cut runs on each pair of areas. Pairs with no shared cell
+  are dropped, and nothing left is `#NULL!`. A pair on different sheets is `#VALUE!`
+  (`(Data!A1:A3,Other!A1:A3) Data!A2`), as for two plain areas. Further cuts can bring several
+  areas down to one: `(A1:A12,D1:D12) A4:D4 D4` is D4.
+- In comma-decimal locales the union operator is the argument separator `;`, printed the same way.
+- Printing: a union always carries its parentheses, and a left operand that is a union loses its
+  own: `((A1,B2),C3)` prints as `(A1,B2,C3)`, which is the same tree.
+- `ISREF((A1,B2))` is TRUE.
+- Known gaps, where Excel surely differs: a union reaching a function gets `#VALUE!`
+  (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), and so does a union returned by IF, CHOOSE or
+  LET (`LET(x,(A1,B2),x A1)`). The engine has no multi-area value yet (spec T-0133).
+Status: UNVERIFIED (probe pending: precedence, operand refusal, errors, cross-sheet, ISREF; T-0133)
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`); reference_operators.rs
+Tasks: T-0134, T-0133
+
+## Union area cap
+Rule: intersecting unions multiplies their areas (`(A1,A2,A3) (A1:A3,B1:B3)` has six pairs). The
+engine stops at 65,536 areas (`MAX_AREAS`) and gives `#VALUE!`. Excel's limit, if any, is not known.
+Excel's result there is not known either; it would only differ where later cuts bring the areas
+back down to one.
+Status: DEVIATION (decision 0014)
+Implemented in: reference_operators.rs (`Model::intersect_areas`)
 Tasks: T-0134
 
 ## Range corners may both carry the sheet prefix

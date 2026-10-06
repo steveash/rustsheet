@@ -18,5 +18,9 @@
   T-0043: model.rs 3829 → 3612 lines (defined-name methods moved to `defined_names.rs`);
   duplicated lines 8241 → 7881 and five other files lower, already shrunk on main
   (`check_duplication.py --update`, `check_file_size.py --update`).
+  T-0134: duplicated lines 7881 → 7825; stringify.rs 1244 → 1158, parser/mod.rs 1254 → 1249,
+  static_analysis.rs 2161 → 2158, model.rs 3603 → 3580 lines (stringify.rs and model.rs partly
+  shrunk on main already), and date_and_time.rs and text/common.rs, already shrunk on main
+  (`check_duplication.py --update`, `check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

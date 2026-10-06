@@ -1,15 +1,76 @@
-//! The reference operators, which bind tighter than every other operator: the intersection
-//! (a space, `A1:B2 B1:B3`), the range (`:`), `@` and the spill operator `#`. Also the check
-//! that a formula has no input left over after its expression.
+//! The reference operators, which bind tighter than every other operator: the union (a
+//! comma inside parentheses, `(A1,B2)`), the intersection (a space, `A1:B2 B1:B3`), the range
+//! (`:`), `@` and the spill operator `#`. Also the check that a formula has no input left over
+//! after its expression.
 //!
-//! Excel evidence for the intersection: docs/excel-semantics/references.md "Intersection
-//! operator (space)" (gen-m1, T-0105).
+//! Excel evidence: docs/excel-semantics/references.md "Intersection operator (space)" (gen-m1,
+//! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, TokenType};
 use crate::functions::Function;
+use crate::locale::Locale;
+
+use super::stringify::argument_separator;
 
 impl Parser {
+    /// `'(' expr ')'`, after the `(`. Directly inside it, and nowhere else, the argument
+    /// separator is the union operator: `(A1,B2)` is one union, `SUM(A1,B2)` two arguments.
+    pub(super) fn parse_parenthesized(&mut self) -> Node {
+        self.union_allowed = true;
+        let t = self.parse_expr();
+        if let Node::ParseErrorKind { .. } = t {
+            return t;
+        }
+        if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: err.position,
+                message: err.message,
+            };
+        }
+        t
+    }
+
+    /// `union => intersect (',' intersect)*`, left associative, only directly inside a
+    /// parenthesis. It binds looser than the intersection (`(A1,B1 C1)` is `(A1,(B1 C1))`)
+    /// and tighter than every other operator, as in Excel's precedence table, so `(A1+B1,C1)`
+    /// is `A1+(B1,C1)`. Operands must be references, as for the intersection: `(1,A1)` is
+    /// refused. Both are UNVERIFIED (docs/excel-semantics/references.md, T-0134).
+    pub(super) fn parse_union(&mut self) -> Node {
+        let mut t = self.parse_intersection();
+        if !self.union_allowed {
+            return t;
+        }
+        let separator = self.get_argument_separator_token();
+        let mut depth = self.depth;
+        while !matches!(t, Node::ParseErrorKind { .. }) && self.lexer.peek_token() == separator {
+            self.lexer.advance_token();
+            let p = self.parse_intersection();
+            if let Node::ParseErrorKind { .. } = p {
+                return p;
+            }
+            if !is_reference_operand(&t) || !is_reference_operand(&p) {
+                return Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Range],
+                    position: self.lexer.get_position() as usize,
+                    message: "Union needs references".to_string(),
+                };
+            }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
+            t = Node::OpUnionKind {
+                left: Box::new(t),
+                right: Box::new(p),
+            };
+        }
+        t
+    }
+
     /// `intersect => range (' ' range)*`, left associative.
     ///
     /// The lexer skips whitespace, so a space is the operator only where the parser sees one
@@ -222,7 +283,8 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
     let bare = match node {
         Node::OpIntersectKind { .. } => is_left,
         Node::ErrorKind(error) => *error == Error::REF,
-        Node::ReferenceKind { .. }
+        Node::OpUnionKind { .. }
+        | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
@@ -252,4 +314,24 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
     } else {
         text
     }
+}
+
+/// `(left,right)`, the printed union of `left_text` and `right_text` (the printed `left` and
+/// `right`). It always carries its parentheses: without them the comma would be an argument
+/// separator (`SUM((A1,B2))`) or left over input. A left operand that is itself a union is
+/// printed without its own, `(A1,B2,C3)`, which parses back to the same left-associative tree.
+pub(crate) fn union_text(
+    left_text: &str,
+    left: &Node,
+    right_text: &str,
+    locale: &Locale,
+) -> String {
+    let left_text = match left {
+        Node::OpUnionKind { .. } => left_text
+            .strip_prefix('(')
+            .and_then(|text| text.strip_suffix(')'))
+            .unwrap_or(left_text),
+        _ => left_text,
+    };
+    format!("({left_text}{}{right_text})", argument_separator(locale))
 }

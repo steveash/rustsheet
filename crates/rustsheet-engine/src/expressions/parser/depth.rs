@@ -55,9 +55,13 @@ impl Parser {
             return self.too_deep();
         }
         let outer_depth = std::mem::replace(&mut self.inner_depth, 0);
+        // A comma inside the operand separates arguments or array items, unless the operand
+        // is a parenthesis (`parse_parenthesized`); the enclosing context's meaning comes back after.
+        let outer_union = std::mem::replace(&mut self.union_allowed, false);
         self.nesting += PRIMARY_DEPTH;
         let node = self.parse_operand();
         self.nesting -= PRIMARY_DEPTH;
+        self.union_allowed = outer_union;
         let inner_depth = std::mem::replace(&mut self.inner_depth, outer_depth);
         if let Node::ParseErrorKind { .. } = node {
             return node;
