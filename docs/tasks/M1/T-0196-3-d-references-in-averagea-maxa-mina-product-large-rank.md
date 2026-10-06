@@ -3,7 +3,7 @@ id: T-0196
 title: "3-D references in AVERAGEA, MAXA, MINA, PRODUCT, CONCAT, LARGE and RANK"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
