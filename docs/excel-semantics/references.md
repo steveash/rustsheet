@@ -119,11 +119,13 @@ H14 `=A1:A3 TRIMRANGE(A2:B2)` are both 2 (2026-10-06, T-0166; the case builder n
 names and `_xlfn.` prefixes; without them Excel refuses the file or gives `#NAME?`). The refused
 workbooks come from scratch runs of one formula each (T-0138, T-0161); each refusal was
 `FileCorruptTryRepair`, and the same CHOOSEROWS and IFERROR calls load on their own (=2).
+UNVERIFIED builder edge: a LET name that equals a function name or is used before its declaration is
+still written with `_xlpm.`; how Excel stores that is not probed.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
 future function names, LAMBDA definitions and calls, and `@` operands are accepted; `@` and union
-operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP to arrays, so those three
+operands are T-0149). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
 

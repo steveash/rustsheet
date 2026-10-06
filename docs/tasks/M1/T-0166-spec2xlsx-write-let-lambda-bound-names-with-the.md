@@ -34,4 +34,4 @@ spec2xlsx now writes LET/LAMBDA names as `_xlpm.x` and prefixes engine-known fut
 (list read from `Function::to_xlsx_string`, except the classic CEILING, which the exporter wrongly
 writes as `_xlfn.CEILING`). Probes H13 (LET) and H14 (TRIMRANGE) added and oracle-filled (both 2).
 Eval delta: probes known failures 103 -> 104 (H14: the engine's TRIMRANGE as an intersection
-operand gives #VALUE!, like TAKE/DROP). Follow-up: the exporter's CEILING prefix (T-0172).
+operand gives #VALUE!, like TAKE/DROP). Follow-ups: the exporter's CEILING prefix (T-0172); H14 added to T-0165.
