@@ -1,19 +1,36 @@
 //! Workbook defined names: creating, validating, renaming and deleting them.
 
 use crate::{
+    calc_result::Range,
     expressions::{
         lexer::LexerMode,
         parser::{
             stringify::{rename_defined_name_in_node, to_rc_format},
-            Node,
+            NamedVariable, Node,
         },
-        types::CellReferenceRC,
+        token::Error,
+        types::{CellReferenceIndex, CellReferenceRC},
         utils::is_valid_identifier,
     },
     model::Model,
     types::DefinedName,
     utils as common,
 };
+
+/// A parsed formula for a defined name
+#[derive(Clone)]
+pub(crate) enum ParsedDefinedName {
+    /// CellReference (`=C4`)
+    CellReference(CellReferenceIndex),
+    /// A Range (`=C4:D6`)
+    RangeReference(Range),
+    /// `=LAMBDA(params..., body)`
+    LambdaDefinition(Vec<NamedVariable>, Node),
+    /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
+    ErrorLiteral(Error),
+    /// `=SomethingElse`
+    InvalidDefinedNameFormula,
+}
 
 impl Model {
     /// Adds a new defined name.
@@ -108,7 +125,8 @@ impl Model {
     ) -> Result<Option<u32>, String> {
         let sheet_id = self.defined_name_slot(name, scope)?;
 
-        // Make sure the formula is valid — accept cell/range references OR a LAMBDA definition.
+        // Make sure the formula is valid: a cell/range reference, a LAMBDA definition or an error
+        // literal such as `Sheet1!#REF!`.
         let is_reference =
             common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
                 self.get_sheet_index_by_name(name)
@@ -127,7 +145,7 @@ impl Model {
             if let Node::ParseErrorKind { .. } = node {
                 node = self.parse_internal_formula(formula_body, &dummy_ref);
             }
-            if !matches!(node, Node::LambdaDefKind { .. }) {
+            if !matches!(node, Node::LambdaDefKind { .. } | Node::ErrorKind(_)) {
                 return Err("Formula: Invalid defined name formula".to_string());
             }
         }
