@@ -1,4 +1,4 @@
-use crate::functions::date_and_time::time_text::parse_date_clock_serial;
+use crate::functions::date_and_time::time_text::parse_time_serial;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
@@ -1125,9 +1125,10 @@ impl Model {
                 {
                     return CalcResult::Number(value);
                 };
-                // Date text with a clock suffix is the date serial plus the time
-                // (probes/date-text-grammar C30, C31, C53, C55, C63).
-                if let Some(serial) = parse_date_clock_serial(text.trim(), self.locale) {
+                // Clock text and date text with a clock suffix read as in number coercion,
+                // with surrounding spaces trimmed (probes/value-clock-text column B against C;
+                // date-text-grammar C30, C31, C53, C55, C63).
+                if let Some(serial) = parse_time_serial(text.trim_ascii(), self.locale) {
                     return CalcResult::Number(serial);
                 }
                 CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())

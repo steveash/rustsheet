@@ -71,3 +71,54 @@ fn timevalue_clock_text_grammar() {
         }
     }
 }
+
+// VALUE of clock text is the coercion serial (`0+text`) with surrounding spaces trimmed;
+// coercion itself allows trailing but not leading spaces, and a no-break space is never trimmed
+// (probes/value-clock-text, excel-graph).
+#[test]
+fn value_and_coercion_of_clock_text() {
+    // (text, VALUE(text), 0+text)
+    let cases: [(&str, Option<f64>, Option<f64>); 12] = [
+        ("10:00", Some(10.0 / 24.0), Some(10.0 / 24.0)),
+        (
+            "25:00",
+            Some(1.041_666_666_666_666_7),
+            Some(1.041_666_666_666_666_7),
+        ),
+        (
+            "10:11.5",
+            Some(0.007_077_546_296_296_296),
+            Some(0.007_077_546_296_296_296),
+        ),
+        (" 10:00 ", Some(10.0 / 24.0), None),
+        ("10:00 ", Some(10.0 / 24.0), Some(10.0 / 24.0)),
+        ("10:00\u{a0}", None, None),
+        ("6 P.", Some(0.75), Some(0.75)),
+        ("6 a", Some(0.25), Some(0.25)),
+        ("0 PM", Some(0.5), Some(0.5)),
+        ("0 AM", Some(0.0), Some(0.0)),
+        ("13 PM", None, None),
+        ("1/2/2020 6 PM", Some(43_832.75), Some(43_832.75)),
+    ];
+    let mut model = new_empty_model();
+    for (i, (text, _, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), &format!("=VALUE(\"{text}\")"));
+        model._set(&format!("B{}", i + 1), &format!("=0+\"{text}\""));
+    }
+    model.evaluate();
+    for (i, (text, value, coerced)) in cases.iter().enumerate() {
+        for (column, expected) in [("A", value), ("B", coerced)] {
+            let cell = format!("{column}{}", i + 1);
+            match expected {
+                Some(v) => assert_eq!(
+                    model
+                        .get_cell_value_by_ref(&format!("Sheet1!{cell}"))
+                        .unwrap(),
+                    crate::cell::CellValue::Number(*v),
+                    "{column} {text:?}"
+                ),
+                None => assert_eq!(model._get_text(&cell), "#VALUE!", "{column} {text:?}"),
+            }
+        }
+    }
+}
