@@ -25,7 +25,7 @@ C	probes/date-text-grammar.case.json	138
 C	probes/date-text-locale.case.json	10
 C	probes/date-text-yearless.case.json	48
 C	probes/dates-and-blanks.case.json	15
-C	probes/dates-early-1900.case.json	16
+C	probes/dates-early-1900.case.json	25
 C	probes/defined-name-intersection.case.json	10
 C	probes/error-operand-broadcast.case.json	15
 C	probes/filter-if-empty-array.case.json	12
@@ -115,10 +115,6 @@ F	probes/date-text-yearless.case.json	Sheet1!D6
 F	probes/date-text-yearless.case.json	Sheet1!D7
 F	probes/date-text-yearless.case.json	Sheet1!D8
 F	probes/date-text-yearless.case.json	Sheet1!D9
-F	probes/dates-early-1900.case.json	Sheet1!A10
-F	probes/dates-early-1900.case.json	Sheet1!A12
-F	probes/dates-early-1900.case.json	Sheet1!A16
-F	probes/dates-early-1900.case.json	Sheet1!A9
 F	probes/defined-name-intersection.case.json	Sheet1!H1
 F	probes/defined-name-intersection.case.json	Sheet1!H10
 F	probes/defined-name-intersection.case.json	Sheet1!H2
