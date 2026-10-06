@@ -78,6 +78,70 @@ impl Lexer {
         found
     }
 
+    /// True when the text after the `:` at the current position is a sheet prefix followed by a
+    /// second corner that is not a cell (`Data!A1:Data!B`, `Data!A1:Data!2`). Leaves the position
+    /// unchanged.
+    pub(super) fn second_prefixed_corner_is_not_cell(&mut self) -> bool {
+        if self.peek_char() != Some(':') || !self.sheet_prefix_after_colon() {
+            return false;
+        }
+        let start = self.position;
+        self.position += 1;
+        if self.peek_char() == Some('\'') {
+            self.position += 1;
+            let _ = self.consume_single_quote_string();
+        } else {
+            self.consume_identifier();
+        }
+        self.position += 1; // the `!`
+        let not_cell = self.consume_reference_a1().is_err();
+        self.position = start;
+        not_cell
+    }
+
+    /// Consumes `corner:corner` (second corner optionally sheet-prefixed) where the corners are
+    /// plain letters, digits and `$`. Excel reads such a malformed sheet-qualified range as a name
+    /// (`Data!A:Data!B` is `#NAME?`, references.md "Sheet-qualified column or row corners on both
+    /// sides are not a range"), so the caller returns the text as an identifier.
+    pub(super) fn consume_corner_pair_as_name(&mut self) -> Option<String> {
+        let start = self.position;
+        let corner = |lexer: &mut Self| {
+            let from = lexer.position;
+            while lexer
+                .peek_char()
+                .is_some_and(|c| c.is_ascii_alphanumeric() || c == '$')
+            {
+                lexer.position += 1;
+            }
+            lexer.position > from
+        };
+        // A pure-digit first corner (`3:A2`) is a row range gone wrong; its error stays as is.
+        let first_has_letter = self.chars[start..]
+            .iter()
+            .take_while(|c| c.is_ascii_alphanumeric() || **c == '$')
+            .any(char::is_ascii_alphabetic);
+        let ok = first_has_letter && corner(self) && self.peek_char() == Some(':') && {
+            let has_prefix = self.sheet_prefix_after_colon();
+            self.position += 1;
+            if has_prefix {
+                if self.peek_char() == Some('\'') {
+                    self.position += 1;
+                    let _ = self.consume_single_quote_string();
+                } else {
+                    self.consume_identifier();
+                }
+                self.position += 1; // the `!`
+            }
+            corner(self)
+        };
+        if ok && self.position <= self.len {
+            Some(self.chars[start..self.position].iter().collect())
+        } else {
+            self.position = start;
+            None
+        }
+    }
+
     // Parsing a range is a parser on it's own right. Here is the grammar:
     //
     //    range       -> cell | cell ':' cell | row ':' row | column ':' column

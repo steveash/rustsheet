@@ -3,7 +3,7 @@ id: T-0145
 title: "Sheet-qualified column/row ranges with a second prefix give #NAME? instead of #ERROR! (Data!A:Data!B)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-0139. Excel reads the bare column or cell after the colon as a (sheet
 
 ## Out of scope
 -
+
+## Outcome
+A malformed sheet-qualified corner pair (`Data!A:Data!B`, `Data!A1:Data!B`, `Data!A:Data!B1`, `Data!A:Data!A`, `Data!B:Data!A`, `Data!A1:B`) now lexes as an identifier and evaluates to `#NAME?` (`lexer/mod.rs` `consume_range`, `lexer/ranges.rs`). probes known failures 104 -> 98 (six cells fixed), no regressions.

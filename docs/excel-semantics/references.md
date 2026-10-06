@@ -214,11 +214,11 @@ previous entry). With column or row corners the second prefix is not accepted: `
 stored: the workbook fails to load in Excel for the web (createSession 501 FileCorruptTryRepair),
 so there is no value to match. Each was isolated as a one-formula case on the Data/Calc layout of
 the probe case (`Calc!A1` = the formula) and failed on its own; re-run `rustsheet-oracle fill -b excel-graph`
-on such a case to reproduce (2026-10-05). The engine gives `#ERROR!` (parse failure) where Excel gives `#NAME?`.
+on such a case to reproduce (2026-10-05). Implemented: the lexer returns the malformed corner pair as an identifier, which evaluates to `#NAME?`.
 Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (oracle: excel-graph,
 2026-10-05, T-0139); A2 and A4 are the single-prefix forms.
 Status: VERIFIED (web)
-Tasks: T-0139
+Tasks: T-0139, T-0145
 
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
