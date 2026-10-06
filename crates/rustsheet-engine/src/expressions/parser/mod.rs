@@ -216,6 +216,9 @@ pub enum Node {
     OpUnionKind {
         left: Box<Node>,
         right: Box<Node>,
+        /// The union was written in its own parentheses as an operand of an enclosing union
+        /// (`((A1,B2),C3)`), so printing keeps them; a plain chain `(A1,B2,C3)` is not grouped.
+        grouped: bool,
     },
     OpConcatenateKind {
         left: Box<Node>,
@@ -313,8 +316,6 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
-    /// Whether a comma is the union operator: directly inside a parenthesis (T-0134).
-    union_allowed: bool,
 }
 
 pub fn new_parser_english(
@@ -354,7 +355,6 @@ impl Parser {
             nesting: 0,
             depth: 0,
             inner_depth: 0,
-            union_allowed: false,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -389,7 +389,6 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
-        self.union_allowed = false;
         let node = self.parse_expr();
         self.expect_end(node)
     }
@@ -623,7 +622,7 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_union();
+        let mut t = self.parse_intersection();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }

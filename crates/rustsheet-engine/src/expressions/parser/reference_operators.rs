@@ -7,51 +7,34 @@
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
-use crate::expressions::token::{Error, TokenType};
+use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
 use crate::locale::Locale;
 
 use super::stringify::argument_separator;
 
 impl Parser {
-    /// `'(' expr ')'`, after the `(`. Directly inside it, and nowhere else, the argument
-    /// separator is the union operator: `(A1,B2)` is one union, `SUM(A1,B2)` two arguments.
+    /// `'(' expr (',' expr)* ')'`, after the `(`. Directly inside it, and nowhere else, the
+    /// argument separator is the union operator: `(A1,B2)` is one union, `SUM(A1,B2)` two
+    /// arguments. The union is the loosest operator inside its parenthesis, so `(A1,B1 C1)` is
+    /// `(A1,(B1 C1))`. Its operands must be references, or a negated one: Excel loads `(-A1,B1)`
+    /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
+    /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
-        self.union_allowed = true;
-        let t = self.parse_expr();
+        let mut t = self.parse_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
-            return Node::ParseErrorKind {
-                formula: self.lexer.get_formula(),
-                expecting: vec![ExpectedTokens::Other],
-                position: err.position,
-                message: err.message,
-            };
-        }
-        t
-    }
-
-    /// `union => intersect (',' intersect)*`, left associative, only directly inside a
-    /// parenthesis. It binds looser than the intersection (`(A1,B1 C1)` is `(A1,(B1 C1))`)
-    /// and tighter than every other operator, as in Excel's precedence table, so `(A1+B1,C1)`
-    /// is `A1+(B1,C1)`. Operands must be references, as for the intersection: `(1,A1)` is
-    /// refused. Both are UNVERIFIED (docs/excel-semantics/references.md, T-0134).
-    pub(super) fn parse_union(&mut self) -> Node {
-        let mut t = self.parse_intersection();
-        if !self.union_allowed {
-            return t;
-        }
         let separator = self.get_argument_separator_token();
-        let mut depth = self.depth;
-        while !matches!(t, Node::ParseErrorKind { .. }) && self.lexer.peek_token() == separator {
+        let mut union_depth = self.depth;
+        let mut first = true;
+        while self.lexer.peek_token() == separator {
             self.lexer.advance_token();
-            let p = self.parse_intersection();
+            let mut p = self.parse_expr();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
-            if !is_reference_operand(&t) || !is_reference_operand(&p) {
+            if !is_union_operand(&t) || !is_union_operand(&p) {
                 return Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Range],
@@ -59,13 +42,29 @@ impl Parser {
                     message: "Union needs references".to_string(),
                 };
             }
-            if let Err(error) = self.grow(depth, self.depth) {
+            // A union operand that is itself a union was written in its own parentheses.
+            if first {
+                group(&mut t);
+                first = false;
+            }
+            group(&mut p);
+            if let Err(error) = self.grow(union_depth, self.depth) {
                 return error;
             }
-            depth = self.depth;
+            union_depth = self.depth;
             t = Node::OpUnionKind {
                 left: Box::new(t),
                 right: Box::new(p),
+                grouped: false,
+            };
+        }
+        self.inner_depth = self.inner_depth.max(union_depth);
+        if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: err.position,
+                message: err.message,
             };
         }
         t
@@ -229,6 +228,23 @@ fn is_constant(node: &Node) -> bool {
 /// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
 /// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
 /// probed are refused by inference.
+fn is_union_operand(node: &Node) -> bool {
+    match node {
+        Node::UnaryKind {
+            kind: OpUnary::Minus,
+            right,
+        } => is_reference_operand(right),
+        _ => is_reference_operand(node),
+    }
+}
+
+/// Marks `node`, an operand of a union, as written in its own parentheses when it is a union.
+fn group(node: &mut Node) {
+    if let Node::OpUnionKind { grouped, .. } = node {
+        *grouped = true;
+    }
+}
+
 fn is_reference_operand(node: &Node) -> bool {
     match node {
         Node::NumberKind(_)
@@ -319,7 +335,8 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
 /// `(left,right)`, the printed union of `left_text` and `right_text` (the printed `left` and
 /// `right`). It always carries its parentheses: without them the comma would be an argument
 /// separator (`SUM((A1,B2))`) or left over input. A left operand that is itself a union is
-/// printed without its own, `(A1,B2,C3)`, which parses back to the same left-associative tree.
+/// printed without its own, `(A1,B2,C3)`, which parses back to the same left-associative tree,
+/// unless it was written grouped (`((A1,B2),C3)`, Excel keeps those parentheses, T-0193).
 pub(crate) fn union_text(
     left_text: &str,
     left: &Node,
@@ -327,7 +344,7 @@ pub(crate) fn union_text(
     locale: &Locale,
 ) -> String {
     let left_text = match left {
-        Node::OpUnionKind { .. } => left_text
+        Node::OpUnionKind { grouped: false, .. } => left_text
             .strip_prefix('(')
             .and_then(|text| text.strip_suffix(')'))
             .unwrap_or(left_text),
