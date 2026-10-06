@@ -420,7 +420,7 @@ impl Model {
                 CalcResult::Array(output)
             }
             other => {
-                let is_blank = matches!(other, CalcResult::EmptyCell | CalcResult::EmptyArg);
+                let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
                     CalcResult::String(s) => return CalcResult::String(s),
