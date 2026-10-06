@@ -33,7 +33,8 @@ The facade adds no calculation semantics. Obligations:
   lane, not worked around in the facade.
 - Error values keep their Excel literal (`#DIV/0!`, `#N/A`, ...). `ErrorKind` maps 1:1 to the
   engine's `token::Error` (`REF NAME VALUE DIV NA NUM ERROR NIMPL SPILL CALC CIRC NULL`); the
-  literal round-trips through `ErrorKind::literal()` / `FromStr`. `ERROR` and `NIMPL` surface as
+  literal round-trips through `ErrorKind::literal()` and `ErrorKind::from_literal()` / `FromStr`
+  (`ParseErrorKindError` on failure). `ERROR` and `NIMPL` surface as
   `ErrorKind::Unknown` and `ErrorKind::NotImplemented`. The facade never rewrites a value.
 - Sheet-name lookup is case-insensitive, as in Excel.
 

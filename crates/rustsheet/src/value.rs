@@ -275,6 +275,20 @@ impl<'a> CellView<'a> {
     }
 }
 
+/// The text is not an en-US Excel error literal (see [`ErrorKind::from_literal`]).
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+#[error("`{0}` is not an Excel error literal")]
+pub struct ParseErrorKindError(pub String);
+
+impl std::str::FromStr for ErrorKind {
+    type Err = ParseErrorKindError;
+
+    /// Parses an error literal exactly as [`ErrorKind::from_literal`] does.
+    fn from_str(literal: &str) -> Result<Self, Self::Err> {
+        Self::from_literal(literal).ok_or_else(|| ParseErrorKindError(literal.to_owned()))
+    }
+}
+
 /// `rows * cols` does not fit in memory-addressable size, or does not match the value count.
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -384,6 +398,16 @@ mod tests {
             );
         }
         assert_eq!(ErrorKind::from_literal("#BOGUS!"), None);
+    }
+
+    #[test]
+    fn from_str_delegates_to_from_literal() {
+        for kind in ALL {
+            assert_eq!(kind.literal().parse::<ErrorKind>(), Ok(kind));
+            assert_eq!(kind.literal().to_lowercase().parse::<ErrorKind>(), Ok(kind));
+        }
+        let err = "#BOGUS!".parse::<ErrorKind>().unwrap_err();
+        assert!(err.to_string().contains("#BOGUS!"));
     }
 
     #[test]
