@@ -434,6 +434,15 @@ fn stringify(
             sub(n)
         }
     };
+    // `&` and the comparisons bind looser than `+ - * /`, so as operands of those they need
+    // parentheses to re-parse to the same tree (T-0157).
+    let loose_in_parens = |n: &Node| {
+        if matches!(n, CompareKind { .. } | OpConcatenateKind { .. }) {
+            format!("({})", sub(n))
+        } else {
+            sub(n)
+        }
+    };
     match node {
         BooleanKind(value) => {
             if *value {
@@ -610,11 +619,11 @@ fn stringify(
             format!("{}{kind}{}", sub(left), compare_in_parens(right))
         }
         OpSumKind { kind, left, right } => {
-            // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
-            let left_str = compare_in_parens(left);
+            // CompareKind and `&` have lower precedence than +/-, so wrap them to preserve semantics
+            let left_str = loose_in_parens(left);
             // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
             let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
-                | matches!(**right, CompareKind { .. })
+                | matches!(**right, CompareKind { .. } | OpConcatenateKind { .. })
             {
                 format!("({})", sub(right))
             } else {
@@ -625,11 +634,16 @@ fn stringify(
         }
         OpProductKind { kind, left, right } => {
             let x = match **left {
-                OpSumKind { .. } | CompareKind { .. } => format!("({})", sub(left)),
+                OpSumKind { .. } | CompareKind { .. } | OpConcatenateKind { .. } => {
+                    format!("({})", sub(left))
+                }
                 _ => sub(left),
             };
             let y = match **right {
-                OpSumKind { .. } | CompareKind { .. } | OpProductKind { .. } => {
+                OpSumKind { .. }
+                | CompareKind { .. }
+                | OpConcatenateKind { .. }
+                | OpProductKind { .. } => {
                     format!("({})", sub(right))
                 }
                 _ => sub(right),

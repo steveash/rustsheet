@@ -21,6 +21,12 @@ Evidence: gen-m1/6462bf910ef9f28f Calc!A66, A130; gen-m1/10f579127ffb6d9b Calc!A
 A153 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 
+## `&` binds looser than `+ - * /`
+Rule: `=2.5+0.5&1E+3` adds first, then concatenates (`"3"&"1000"` = "31000"), so a printed
+formula needs parentheses to keep a `&` operand of an arithmetic operator (`("a"&1)+1`, T-0157).
+Evidence: gen-m1/57fe331cb7611dbf (`=(((0.1&1E+3)+100)<>...`) and the gen cases with `=2.5+0.5&1E+3`.
+Status: VERIFIED
+
 ## Array constants take a single optional sign on a number literal
 Rule: inside `{...}` an item is a literal, optionally preceded by one `+` or `-` that is directly
 attached to a number. `{+1}` = 1, `{-1}` = -1, `{-1.5E1}` = -15, `{1,-2,+3}` sums to 2. Every other
