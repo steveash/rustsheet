@@ -46,4 +46,4 @@ to 3 significant digits; record each round's inputs.
 - Formula number literals (T-0144) and huge magnitudes (already VERIFIED).
 
 ## Outcome
-Probe probes/text-number-tiny (20 inputs, B=0+A, C=VALUE(A), D=ISERROR) filled from excel-graph 2026-10-06. Cut-off lies between 9.9999e-310 (#VALUE!) and 1e-309 (0, text-number-words K1), flush range ends at DBL_MIN 2.2250738585072014E-308, no bisection round needed. Zero-mantissa quirk: `0e309`, `-0e309`, `0e-400` #VALUE! but `0e308`, `0.0e309` are 0. numbers.md updated; engine mismatches are baselined for T-0154.
+Probe probes/text-number-tiny (20 inputs, B=0+A, C=VALUE(A), D=ISERROR) filled from excel-graph 2026-10-06. Cut-off lies between 9.9999e-310 (#VALUE!) and 1e-309 (0, text-number-words K1), flush range reaches DBL_MIN 2.2250738585072014E-308 and ends before 2.2250738585073E-308, no bisection round needed. Zero-mantissa quirk: `0e309`, `-0e309`, `0e-400` #VALUE! but `0e308`, `0.0e309` are 0. numbers.md updated; engine mismatches are baselined for T-0154.

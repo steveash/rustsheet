@@ -211,9 +211,9 @@ Small magnitudes are not yet matched (follow-up T-0154). Boundaries pinned by pr
 (`5e-310`, `9.99e-310`, `9.9999e-310`, `-1e-310`, `"1e-323"`, `"4.9e-324"`, `VALUE("1e-400")`), while
 `1e-309` (probes/text-number-words) and `1.000001e-309` are numbers (the cut-off lies between 9.9999E-310 and 1E-309). From 1E-309 up to and
 including DBL_MIN 2.2250738585072014E-308 (text-number-words H6; text-number-tiny `2.2250738585072e-308`, `2e-308`,
-`1.5e-309`, `-2e-308`, `-1e-309`) the text reads as 0 (not the subnormal value; sign dropped); `2.2250738585073e-308` keeps its value, as do `9.9e-308`, `1e-307`, `1.1e-307`.
+`1.5e-309`, `-2e-308`, `-1e-309`) the text reads as 0 (not the subnormal value; sign unverified); `2.2250738585073e-308` keeps its value, as do `9.9e-308`, `1e-307`, `1.1e-307`.
 Zero mantissas: `"0e308"` and `"0.0e309"` are 0 but `"0e309"`, `"-0e309"` and `"0e-400"` are #VALUE!
-(hypothesis from these five cells: a bare `0` mantissa is tested on its exponent; `0.0e309` differs from `0e309`; `0e-308`/`0e-309` not probed). The sign dropped on negative flushed values is unverified (the oracle JSON cannot tell -0 from 0).
+(hypothesis from these five cells: a bare `0` mantissa is tested on its exponent; `0.0e309` differs from `0e309`; `0e-308`/`0e-309` not probed). The sign of negative flushed values is unverified (the oracle JSON cannot tell -0 from 0).
 Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8); probes/text-number-tiny (Data!B1:D20).
 Oracle: excel-graph, 2026-10-05 and 2026-10-06.
 Status: VERIFIED
