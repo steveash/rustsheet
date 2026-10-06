@@ -14,6 +14,7 @@ C	probes/clock-text-oddities5.case.json	40
 C	probes/clock-text-oddities6.case.json	35
 C	probes/clock-text-oddities7.case.json	12
 C	probes/concatenate-limit-spill.case.json	68
+C	probes/count-direct-text.case.json	13
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
@@ -52,6 +53,7 @@ C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
 C	probes/number-to-text-notation.case.json	52
 C	probes/offset-negative-height-width.case.json	80
+C	probes/paren-negative-text.case.json	5
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-calc.case.json	10
@@ -70,7 +72,6 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/value-clock-text.case.json	135
-F	probes/clock-text-oddities.case.json	Sheet1!F37
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13
@@ -139,6 +140,10 @@ F	probes/lookup-index-shapes.case.json	Sheet1!H11
 F	probes/lookup-index-shapes.case.json	Sheet1!H12
 F	probes/lookup-index-shapes.case.json	Sheet1!H2
 F	probes/lookup-index-shapes.case.json	Sheet1!H3
+F	probes/paren-negative-text.case.json	Sheet1!C1
+F	probes/paren-negative-text.case.json	Sheet1!E1
+F	probes/paren-negative-text.case.json	Sheet1!E2
+F	probes/paren-negative-text.case.json	Sheet1!E3
 F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
