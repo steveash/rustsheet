@@ -3,7 +3,7 @@ id: T-0964
 title: "FILTER if_empty array: spill the array and #SPILL! on {1,2,3} cases (ISREF.xlsx D9, J17:L17)"
 milestone: M9
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Excel-cached cells in ironcalc-calc/INFORMATION/ISREF.xlsx: Sheet1!D9 `FILTER(L1
 
 ## Out of scope
 -
+
+## Outcome
+FILTER returns an array `if_empty` whole, so it spills (`fn_filter`, `spill_functions.rs`). `ISREF.xlsx` is not in the repo (T-0965 adds it), so the cells D9 and J17:L17 are covered by the new oracle probe `probes/filter-if-empty-array` (excel-graph, 2026-10-06), which mirrors them: spill across, down, 2x2, `SUM` = 6, and `#SPILL!` when blocked. Probes gains one passing case (12 cells), 0 regressions. Quirk: docs/excel-semantics/arrays.md.

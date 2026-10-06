@@ -21,6 +21,7 @@ C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900.case.json	16
 C	probes/defined-name-intersection.case.json	10
 C	probes/error-operand-broadcast.case.json	15
+C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
