@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "FILTER's if_empty given as an array constant: spills the array; #SPILL! when the spill area is blocked (T-0964; mirrors upstream ISREF.xlsx D9, J17:L17). See docs/excel-semantics/lookup.md",
+  "description": "FILTER's if_empty given as an array constant: spills the array; #SPILL! when the spill area is blocked (T-0964; mirrors upstream ISREF.xlsx D9, J17:L17). See docs/excel-semantics/arrays.md",
   "tags": ["M9", "lookup", "filter", "probe"],
   "sheets": [
     {
