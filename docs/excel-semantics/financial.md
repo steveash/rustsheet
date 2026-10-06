@@ -14,5 +14,12 @@ Evidence (Excel-cached values, `ironcalc-calc/FINANCIAL/PMT.xlsx`, `PV.xlsx`, `F
   but regress 13 others (PMT F15/F33/I15/J15/J32/J35/L26, PV F14/G14, IPMT_PPMT G13/H31/H4,
   CUMPRINC_CUMIPMT G15), which the gate forbids.
 - Related: gen-m2 shows `^` itself is not correctly rounded (numbers.md, T-0221).
-Status: UNVERIFIED (needs oracle probes of PV/FV/PMT on integer-nper grids; T-0901)
+- Oracle sweep (2026-10-06, T-0942; probes-numeric/m9-fin-power, m9-fin-pv-fv, m9-fin-pmt,
+  m9-fin-nper-npv): with `P = (1+r)^n` computed by right-to-left square-and-multiply (numbers.md,
+  "Integer exponents"), `k = 1+r*type` and `T = pmt*(k*((P-1)/r))`, PV = `-(fv+T)/P` matches
+  308 of 308 cells and FV = `-(pv*P+T)` matches 308 of 308 (with and without fv/pv and type=1).
+  The parenthesization of T matters: `(pmt*k)*((P-1)/r)` matches 270 of 308 PV cells. The same
+  P and T do not give PMT: 16 candidate shapes and 4 power routines match at most 63 of 154.
+  The engine passes 315/616 power, 208/616 PV/FV, 258/924 PMT/IPMT/PPMT and 119/220 NPER/NPV cells.
+Status: PARTLY VERIFIED (PV/FV formulation fitted on the sweep; PMT/IPMT/PPMT/NPER/NPV open; T-0901)
 Implemented in: n/a (T-0901). Salvaged from draft PR #13 by T-0031.

@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-0942]
+depends_on: [T-1002]
 ---
 
 ## Goal
@@ -18,7 +18,7 @@ Evidence: `ironcalc-calc/MATH_AND_TRIGONOMETRY/TRIGONOMETRIC.xlsx`, sheet SIN_CO
 Suspected cause: x87-style reduction using a pi approximated to ~66 bits (the ratio 1.22514845/1.22464679 ~ 1.0004 matches pi's rounding error at that precision). Hypothesis only: derive the effective pi constant that reproduces all cached values (fit against the 11 mismatch cells), then apply reduction `x - k*pi_eff` only when the argument is near a multiple of pi (check where Excel and libm agree for ordinary arguments so no currently passing cells regress).
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
-cached workbooks give. Fit against the T-0942 sweep, never blind.
+cached workbooks give. Fit against the T-1002 sweep (`probes-numeric/m9-trig-reduction`), never blind.
 
 ## Acceptance criteria
 - [ ] The 11 NumericMismatch SIN/COS/TAN cells above plus SEC/CSC cells on the same inputs leave eval/baseline/ironcalc-calc.txt, with no new F lines (NumericClose cells may remain; list them in Outcome).
