@@ -92,6 +92,9 @@ fn deep_formulas_of_every_shape_are_too_deep() {
             nested("LAMBDA(x,", "x", ")", levels),
             nested("-(", "1", ")", levels),
             nested("", "1", "%", levels),
+            nested("(", "A1", ",A1)", levels),
+            nested("(A1,", "A1", ")", levels),
+            format!("({})", vec!["A1"; levels].join(",")),
             format!("1{}", "&1".repeat(levels)),
             format!("1{}", "^1".repeat(levels)),
             format!("1{}", "*1".repeat(levels)),
@@ -148,5 +151,33 @@ fn parser_is_reusable_after_a_too_deep_formula() {
         ));
         let node = parser.parse(&nested("(", "1", ")", MAX_NESTING), &cell);
         assert!(!matches!(node, Node::ParseErrorKind { .. }));
+    });
+}
+
+/// Deepest nesting of unions that parses: each level is a parenthesis (two levels) holding a
+/// union (one), `((A1,A1),A1)`.
+const MAX_UNION_NESTING: usize = (MAX_FORMULA_DEPTH - 2) / 3;
+
+#[test]
+fn nested_unions_at_the_limit_parse_evaluate_and_print() {
+    on_small_stack(|| {
+        // T-0134: the union is one more parser and evaluator frame per level.
+        let formula = nested("(", "A1", ",A1)", MAX_UNION_NESTING);
+        assert!(matches!(parse(&formula), Node::OpUnionKind { .. }));
+        assert!(is_too_deep(&parse(&nested(
+            "(",
+            "A1",
+            ",A1)",
+            MAX_UNION_NESTING + 1
+        ))));
+        let right = nested("(A1,", "A1", ")", MAX_UNION_NESTING);
+        assert!(matches!(parse(&right), Node::OpUnionKind { .. }));
+        let mut model = crate::test::util::new_empty_model();
+        model._set("B1", &format!("={formula}"));
+        model._set("B2", &format!("={right} A1"));
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "#VALUE!");
+        assert_eq!(model._get_text("B2"), "#VALUE!");
+        assert_eq!(model._get_formula("B2"), format!("={right} A1"));
     });
 }

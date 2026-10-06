@@ -1,10 +1,90 @@
-//! Evaluation of the reference operators: the range (`:`) and the intersection (a space).
+//! Evaluation of the reference operators: the range (`:`), the intersection (a space) and
+//! the union (a comma inside parentheses).
 
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     model::Model,
 };
+
+/// Most areas a union or an intersection may stand for. Unions nest in balanced trees
+/// (`((A1,A2),(A3,A4))`) whose depth grows only with the logarithm of their leaves, so the
+/// parser's depth cap does not bound them, and intersecting unions multiplies their areas.
+/// Every area list the evaluator builds is checked against this cap before it grows, so a
+/// formula cannot allocate without bound (CLAUDE.md directive 5; DEVIATION, decision 0014:
+/// docs/excel-semantics/references.md "Union area cap").
+pub(crate) const MAX_AREAS: usize = 1 << 16;
+
+/// Most pairs of areas one top-level reference expression may compare. Each intersection compares at
+/// most [`MAX_AREAS`] pairs, but a chain of cuts (`(U1 U2) A1 A1 A1 ...`) repeats that once
+/// per three characters of formula, so the whole expression shares this budget.
+pub(crate) const MAX_AREA_PAIRS: usize = 1 << 20;
+
+/// Message of the `#VALUE!` for a union or intersection of more than [`MAX_AREAS`] areas.
+pub(crate) const TOO_MANY_AREAS: &str = "Too many areas in a reference";
+
+/// Message of the `#VALUE!` for an expression comparing more than [`MAX_AREA_PAIRS`] pairs.
+pub(crate) const TOO_MANY_AREA_PAIRS: &str = "Too many areas to intersect";
+
+/// `#VALUE!` for a reference of several areas where one area is needed.
+fn several_areas(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
+}
+
+fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
+}
+
+/// Whether `node` may stand for several areas, so evaluating it needs an area list.
+/// An intersection is multi-area only if a union sits somewhere under it: a chain of
+/// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
+/// Recursion is bounded by the parser's depth cap.
+fn is_multi_area(node: &Node) -> bool {
+    match node {
+        Node::OpUnionKind { .. } => true,
+        Node::OpIntersectKind { left, right } => is_multi_area(left) || is_multi_area(right),
+        _ => false,
+    }
+}
+
+/// The cells `a` and `b` share: `None` if none, `#VALUE!` if they are on different sheets.
+fn intersect_pair(
+    a: &Range,
+    b: &Range,
+    cell: CellReferenceIndex,
+) -> Result<Option<Range>, CalcResult> {
+    if a.left.sheet != b.left.sheet {
+        return Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Intersection of references on different sheets".to_string(),
+        ));
+    }
+    let top = a.left.row.max(b.left.row);
+    let bottom = a.right.row.min(b.right.row);
+    let first = a.left.column.max(b.left.column);
+    let last = a.right.column.min(b.right.column);
+    if top > bottom || first > last {
+        return Ok(None);
+    }
+    let sheet = a.left.sheet;
+    Ok(Some(Range {
+        left: CellReferenceIndex {
+            sheet,
+            row: top,
+            column: first,
+        },
+        right: CellReferenceIndex {
+            sheet,
+            row: bottom,
+            column: last,
+        },
+    }))
+}
+
+fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string())
+}
 
 impl Model {
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
@@ -50,48 +130,158 @@ impl Model {
     /// `left right`, the intersection operator: the reference to the cells both operands
     /// contain. Excel (docs/excel-semantics/references.md, gen-m1/4dc8ed1de05a61be): an
     /// operand's error propagates, areas that share no cell give `#NULL!`, and areas on two
-    /// different sheets give `#VALUE!` even where their coordinates overlap.
+    /// different sheets give `#VALUE!` even where their coordinates overlap. An operand may be
+    /// a union: a result of one area is that area (`(Data!A1:A12,Data!C1:C12) Data!A7` is
+    /// Data!A7, gen-m1/c940d3cfb0d3b083), and one of several areas is `#VALUE!`, even when
+    /// they are the same cell (`=A1:A3 (A2:B2,A2)`,
+    /// probes/intersection-function-operands H5).
     pub(crate) fn get_intersection(
         &mut self,
         left: &Node,
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let left = match self.evaluate_intersection_operand(left, cell) {
-            Ok(range) => range,
-            Err(error) => return error,
-        };
-        let right = match self.evaluate_intersection_operand(right, cell) {
-            Ok(range) => range,
-            Err(error) => return error,
-        };
-        if left.left.sheet != right.left.sheet {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Intersection of references on different sheets".to_string(),
-            );
-        }
-        let top = left.left.row.max(right.left.row);
-        let bottom = left.right.row.min(right.right.row);
-        let first = left.left.column.max(right.left.column);
-        let last = left.right.column.min(right.right.column);
-        if top > bottom || first > last {
-            return CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string());
-        }
-        let sheet = left.left.sheet;
-        CalcResult::Range {
-            left: CellReferenceIndex {
-                sheet,
-                row: top,
-                column: first,
+        match self.intersect_to_one_area(left, right, cell) {
+            Ok(area) => CalcResult::Range {
+                left: area.left,
+                right: area.right,
             },
-            right: CellReferenceIndex {
-                sheet,
-                row: bottom,
-                column: last,
-            },
+            Err(error) => error,
         }
+    }
+
+    /// The one area `left right` stands for, or the result to give instead.
+    fn intersect_to_one_area(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Range, CalcResult> {
+        if !is_multi_area(left) && !is_multi_area(right) {
+            // Two single areas, the common case: no area list.
+            let a = self.evaluate_intersection_operand(left, cell)?;
+            let b = self.evaluate_intersection_operand(right, cell)?;
+            return intersect_pair(&a, &b, cell)?.ok_or_else(|| empty_intersection(cell));
+        }
+        let mut budget = MAX_AREA_PAIRS;
+        let mut areas = self.intersect_areas(left, right, cell, &mut budget)?;
+        match areas.pop() {
+            Some(area) if areas.is_empty() => Ok(area),
+            _ => Err(several_areas(cell)),
+        }
+    }
+
+    /// `(left,right)`, the union operator, where a value is needed: `#VALUE!`, even for
+    /// `(E4,E4)` (gen-m1/c940d3cfb0d3b083). The engine has no multi-area value yet (T-0133),
+    /// so this is also what a function argument gets. An operand's own error comes first
+    /// (UNVERIFIED, references.md). The operands are checked in the order
+    /// [`Model::union_areas`] evaluates them, with the same errors, but only their area counts
+    /// are kept.
+    pub(crate) fn get_union(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut budget = MAX_AREA_PAIRS;
+        match self.count_union_areas(left, right, cell, &mut budget) {
+            Ok(_) => several_areas(cell),
+            Err(error) => error,
+        }
+    }
+
+    /// The number of areas `(left,right)` stands for, or the result to give instead, exactly
+    /// as [`Model::union_areas`] finds them but without building the union's area list.
+    fn count_union_areas(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+        budget: &mut usize,
+    ) -> Result<usize, CalcResult> {
+        let mut count = 0;
+        for node in [left, right] {
+            count += match node {
+                Node::OpUnionKind { left, right } => {
+                    self.count_union_areas(left, right, cell, budget)?
+                }
+                _ => self.evaluate_areas(node, cell, budget)?.len(),
+            };
+            if count > MAX_AREAS {
+                return Err(too_many_areas(cell));
+            }
+        }
+        Ok(count)
+    }
+
+    /// The areas a reference expression stands for: several for a union, and for an
+    /// intersection with one; one for any other reference. Never more than [`MAX_AREAS`].
+    /// `Err` holds the result to give instead (see [`Model::evaluate_intersection_operand`]).
+    fn evaluate_areas(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        budget: &mut usize,
+    ) -> Result<Vec<Range>, CalcResult> {
+        match node {
+            Node::OpUnionKind { left, right } => self.union_areas(left, right, cell, budget),
+            Node::OpIntersectKind { left, right } => {
+                self.intersect_areas(left, right, cell, budget)
+            }
+            _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),
+        }
+    }
+
+    /// The areas of `left` followed by those of `right`. More than [`MAX_AREAS`] is `#VALUE!`,
+    /// checked before the list grows (DEVIATION, decision 0014: references.md "Union area
+    /// cap").
+    fn union_areas(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+        budget: &mut usize,
+    ) -> Result<Vec<Range>, CalcResult> {
+        let mut areas = self.evaluate_areas(left, cell, budget)?;
+        let right = self.evaluate_areas(right, cell, budget)?;
+        if areas.len() + right.len() > MAX_AREAS {
+            return Err(too_many_areas(cell));
+        }
+        areas.extend(right);
+        Ok(areas)
+    }
+
+    /// The pairwise intersections of the areas of `left` and `right` that hold a cell. A pair
+    /// on different sheets is `#VALUE!`, and no shared cell at all is `#NULL!`. Unions of
+    /// unions multiply the areas, so more than [`MAX_AREAS`] pairs is `#VALUE!`, and so is
+    /// going over what is left of the expression's `budget` of [`MAX_AREA_PAIRS`] (DEVIATION,
+    /// decision 0014: references.md "Union area cap").
+    fn intersect_areas(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+        budget: &mut usize,
+    ) -> Result<Vec<Range>, CalcResult> {
+        let left = self.evaluate_areas(left, cell, budget)?;
+        let right = self.evaluate_areas(right, cell, budget)?;
+        let pairs = left.len().saturating_mul(right.len());
+        if pairs > MAX_AREAS {
+            return Err(too_many_areas(cell));
+        }
+        *budget = budget.checked_sub(pairs).ok_or_else(|| {
+            CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREA_PAIRS.to_string())
+        })?;
+        let mut areas = Vec::new();
+        for a in &left {
+            for b in &right {
+                areas.extend(intersect_pair(a, b, cell)?);
+            }
+        }
+        if areas.is_empty() {
+            return Err(empty_intersection(cell));
+        }
+        Ok(areas)
     }
 
     /// An operand of the intersection as a single-sheet area with its corners in order, or

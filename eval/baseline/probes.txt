@@ -136,7 +136,6 @@ F	probes/defined-name-intersection.case.json	Sheet1!H8
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
 F	probes/intersection-function-operands.case.json	Sheet1!H14
-F	probes/intersection-function-operands.case.json	Sheet1!H5
 F	probes/intersection-function-operands.case.json	Sheet1!H8
 F	probes/intersection-operands.case.json	Sheet1!H10
 F	probes/intersection-operands.case.json	Sheet1!H11

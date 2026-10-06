@@ -585,6 +585,7 @@ impl Model {
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
+            OpUnionKind { left, right } => self.get_union(left, right, cell),
             WrongRangeKind { .. } => {
                 CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())
             }
@@ -600,26 +601,11 @@ impl Model {
                 absolute_column2,
                 sheet_name: _,
             } => {
-                let r1 = if *absolute_row1 {
-                    *row1
-                } else {
-                    *row1 + cell.row
-                };
-                let r2 = if *absolute_row2 {
-                    *row2
-                } else {
-                    *row2 + cell.row
-                };
-                let c1 = if *absolute_column1 {
-                    *column1
-                } else {
-                    *column1 + cell.column
-                };
-                let c2 = if *absolute_column2 {
-                    *column2
-                } else {
-                    *column2 + cell.column
-                };
+                // Relative corners are offsets from the formula's cell.
+                let r1 = *row1 + if *absolute_row1 { 0 } else { cell.row };
+                let r2 = *row2 + if *absolute_row2 { 0 } else { cell.row };
+                let c1 = *column1 + if *absolute_column1 { 0 } else { cell.column };
+                let c2 = *column2 + if *absolute_column2 { 0 } else { cell.column };
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,

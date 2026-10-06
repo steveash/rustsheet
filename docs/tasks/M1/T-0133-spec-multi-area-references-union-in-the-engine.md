@@ -25,7 +25,17 @@ should decide:
 - how functions declare that they accept multi-area references;
 - the lexing rule for a union comma versus an argument separator, including comma-decimal locales;
 - stringify round-trip;
-- which Excel behaviour needs an excel-probe first (AREAS of a nested union, a cross-sheet union).
+- which Excel behaviour needs an excel-probe first (AREAS of a nested union, a cross-sheet union),
+  at least `SUM((A1,B2))`, `AREAS(((A1,B2),C3))`, `INDEX((A1:B2,C3:D4),1,1,2)`,
+  `LET(x,(A1,B2),x A1)` and `IF(TRUE,(A1,B2)) A1`;
+- defined names whose body is a union (`_xlnm.Print_Area` is usually `Sheet1!$A$1,Sheet1!$B$2`),
+  which do not parse today;
+- whether `add_implicit_intersection` (static_analysis.rs) should wrap `OpUnionKind`, which it
+  leaves unwrapped unlike Range and Intersect nodes.
+
+Today a union passed to a function is `#VALUE!`, so IFERROR silently takes its fallback for one
+(T-0134); the spec should say what changes for such formulas. Edge cases of the operator itself
+are probed in T-0187.
 
 ## Acceptance criteria
 - [ ] `docs/specs/SPEC-XXXX-multi-area-references.md` is merged, with the representation, function
