@@ -59,7 +59,7 @@ a single-row or single-column argument stretches, and positions past a shorter a
 (`CONCATENATE({"a";"b";"c"},{"x";"y"})` is {"ax";"by";#N/A}; same for ranges, `A1:A3` with `B1:B2`).
 An error element stays in its position (`CONCATENATE({1;2},{#N/A;"x"})` is {#N/A;"2x"}); numbers and
 booleans in arrays become text as in `&` ({1;TRUE;FALSE;1.5} gives "1-","TRUE-","FALSE-","1.5-";
-1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array gives a scalar.
+1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array argument gives a single-cell result.
 Status: VERIFIED
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values)
 Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226).

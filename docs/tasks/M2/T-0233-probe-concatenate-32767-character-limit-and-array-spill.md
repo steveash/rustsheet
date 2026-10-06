@@ -30,6 +30,6 @@ question matches the implementation (broadcast, `#N/A` past a shorter argument, 
 number/boolean text); arrays.md records the element values (VERIFIED). The 32,767 limit counts
 UTF-16 code units: `truncate_text` and REPT counted chars/UTF-8 bytes (`REPT("😀",16383)` and
 `REPT("é",20000)` were wrongly `#VALUE!`), fixed. Recorded in coercion.md. Eval: probes +68 cells,
-61 pass; 7 new-coverage known failures (6 need LEN in UTF-16 units → T-0249; 3 of those also
-involve a lone surrogate, which a Rust `String` cannot hold), 0 regressions, 0 fixed elsewhere.
-Follow-up: T-0249.
+61 pass; 7 new-coverage known failures: E7, E13, G97 need LEN in UTF-16 units (T-0249); E8–E11
+need a lone high surrogate Excel keeps at the limit, which a Rust `String` cannot hold (decision
+0033, DEVIATION). 0 regressions, 0 fixed elsewhere. Follow-up: T-0249; decision 0033.
