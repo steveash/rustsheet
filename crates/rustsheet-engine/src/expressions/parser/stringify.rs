@@ -427,8 +427,8 @@ fn stringify(
 ) -> String {
     use self::Node::*;
     let sub = |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
-    let compare_in_parens = |n: &Node| {
-        if matches!(n, CompareKind { .. }) {
+    let paren_if = |n: &Node, wrap: bool| {
+        if wrap {
             format!("({})", sub(n))
         } else {
             sub(n)
@@ -436,13 +436,8 @@ fn stringify(
     };
     // `&` and the comparisons bind looser than `+ - * /`, so as operands of those they need
     // parentheses to re-parse to the same tree (T-0157).
-    let loose_in_parens = |n: &Node| {
-        if matches!(n, CompareKind { .. } | OpConcatenateKind { .. }) {
-            format!("({})", sub(n))
-        } else {
-            sub(n)
-        }
-    };
+    let is_loose = |n: &Node| matches!(n, CompareKind { .. } | OpConcatenateKind { .. });
+    let compare_in_parens = |n: &Node| paren_if(n, matches!(n, CompareKind { .. }));
     match node {
         BooleanKind(value) => {
             if *value {
@@ -619,36 +614,18 @@ fn stringify(
             format!("{}{kind}{}", sub(left), compare_in_parens(right))
         }
         OpSumKind { kind, left, right } => {
-            // CompareKind and `&` have lower precedence than +/-, so wrap them to preserve semantics
-            let left_str = loose_in_parens(left);
-            // if kind is minus then we need parentheses in the right side if they are OpSumKind or CompareKind
-            let right_str = if (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }))
-                | matches!(**right, CompareKind { .. } | OpConcatenateKind { .. })
-            {
-                format!("({})", sub(right))
-            } else {
-                sub(right)
-            };
-
-            format!("{left_str}{kind}{right_str}")
+            // CompareKind and `&` have lower precedence than +/-, so wrap them to preserve semantics;
+            // `a-(b+c)` additionally needs its parentheses.
+            let left_str = paren_if(left, is_loose(left));
+            let right_wrap = is_loose(right)
+                || (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }));
+            format!("{left_str}{kind}{}", paren_if(right, right_wrap))
         }
         OpProductKind { kind, left, right } => {
-            let x = match **left {
-                OpSumKind { .. } | CompareKind { .. } | OpConcatenateKind { .. } => {
-                    format!("({})", sub(left))
-                }
-                _ => sub(left),
-            };
-            let y = match **right {
-                OpSumKind { .. }
-                | CompareKind { .. }
-                | OpConcatenateKind { .. }
-                | OpProductKind { .. } => {
-                    format!("({})", sub(right))
-                }
-                _ => sub(right),
-            };
-            format!("{x}{kind}{y}")
+            let x = paren_if(left, is_loose(left) || matches!(**left, OpSumKind { .. }));
+            let right_wrap =
+                is_loose(right) || matches!(**right, OpSumKind { .. } | OpProductKind { .. });
+            format!("{x}{kind}{}", paren_if(right, right_wrap))
         }
         OpPowerKind { left, right } => {
             let x = match **left {
