@@ -34,7 +34,12 @@ fn test_mode_text_and_blank_reference_arguments() {
     model._set("B2", "=MODE(1,\"1\",#DIV/0!,2,3)");
     model._set("B3", "=MODE(A1,2,A3)");
     model._set("B4", "=MODE(A1:A4,2)");
+    model._set("B5", "=MODE(A1,A2,\"1\",2)");
+    model._set("B6", "=MODE(1,1,)");
     model.evaluate();
+    assert_eq!(model._get_text("B5"), "#VALUE!");
+    // An empty argument is unprobed and must keep its old behaviour.
+    assert_eq!(model._get_text("B6"), "1");
     assert_eq!(model._get_text("B1"), "#VALUE!");
     assert_eq!(model._get_text("B2"), "#VALUE!");
     assert_eq!(model._get_text("B3"), "#VALUE!");
