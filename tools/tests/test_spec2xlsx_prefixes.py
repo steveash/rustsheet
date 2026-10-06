@@ -53,4 +53,4 @@ def test_build_xlsx_writes_the_file_form() -> None:
 def test_engine_prefix_list_is_not_empty() -> None:
     prefixes = future_function_prefixes()
     assert {"LET", "TRIMRANGE", "FILTER"} <= prefixes.keys()
-    assert "CEILING" not in prefixes
+    assert "CEILING" not in prefixes  # classic: stored without a prefix (T-0172)
