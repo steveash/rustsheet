@@ -3,7 +3,7 @@ id: T-0949
 title: "MAXA/MINA: single-cell reference arguments count text as 0 and booleans as 1/0 (2 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
