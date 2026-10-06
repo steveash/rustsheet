@@ -137,10 +137,6 @@ pub fn to_string_displaced(
     stringify(node, Some(context), displace_data, false, locale, language)
 }
 
-/// Converts a local reference to a string applying some displacement if needed.
-/// It uses A1 style if context is not None. If context is None it uses R1C1 style
-/// If full_row is true then the row details will be omitted in the A1 case
-/// If full_column is true then column details will be omitted.
 /// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
 /// needs quotes (Excel writes `'Data2:Q 4'!A1`).
 pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
@@ -152,6 +148,10 @@ pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
     }
 }
 
+/// Converts a local reference to a string applying some displacement if needed.
+/// It uses A1 style if context is not None. If context is None it uses R1C1 style
+/// If full_row is true then the row details will be omitted in the A1 case
+/// If full_column is true then column details will be omitted.
 pub(crate) fn stringify_reference(
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,

@@ -212,6 +212,7 @@ impl Model {
     {
         // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
         // clipped to its own used area, so a span of whole columns walks only data.
+        debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
         for sheet in left.sheet..=right.sheet {
             let (row2, column2) = self
                 .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)

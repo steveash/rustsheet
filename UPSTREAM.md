@@ -29,6 +29,9 @@ Not in upstream IronCalc; keep when porting nearby code: `Model::prepare_cell_fo
 (`sheet_undo.rs`, undoable sheet delete), `Model::evaluation_count` and `Model::define_name`
 (any parseable name body). The defined-name methods of upstream `model.rs` live in
 `defined_names.rs` (moved in T-0043 to shrink `model.rs`).
+`Node::SheetSpanKind` (3-D references `First:Last!A1`, T-0122): lexer `consume_sheet_span`, parser
+`parser/sheet_span.rs` (where `get_sheet_index_by_name` now lives), and arms in stringify,
+move_formula, static_analysis and units; a port touching `Node` matches must keep that arm.
 
 ## Tracking upstream
 
