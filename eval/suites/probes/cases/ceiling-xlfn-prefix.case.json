@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Classic CEILING is stored without a prefix: `_xlfn.CEILING` is not a function Excel knows (T-0172). `_xlfn.CEILING.MATH` is the 2013 form and loads.",
+  "description": "Classic CEILING is stored without a prefix; Excel loads a hand-written `_xlfn.CEILING` and re-stores it as plain CEILING (T-0172). `_xlfn.CEILING.MATH` is the 2013 form and loads.",
   "tags": ["M1", "xlsx", "probe"],
   "sheets": [
     {
