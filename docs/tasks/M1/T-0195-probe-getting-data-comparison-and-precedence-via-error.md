@@ -3,7 +3,7 @@ id: T-0195
 title: "Probe #GETTING_DATA comparison and precedence via ERROR.TYPE, and stored t=e error values"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
