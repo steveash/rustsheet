@@ -3,7 +3,7 @@ id: T-0956
 title: "OFFSET: negative height/width should be valid as in Excel (currently #VALUE!)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
