@@ -62,3 +62,15 @@ towards `LEN` (and so, by inference only, not towards the 32,767-character limit
 Status: VERIFIED
 Implemented in: `read_shared_strings_from_xml` in crates/rustsheet-xlsx/src/import/shared_strings.rs
 Tasks: T-0164, T-0170
+
+## Classic CEILING is stored without `_xlfn.`
+Rule: the classic `CEILING` is a plain function name in the file (`<f>CEILING(2.5,2)</f>`); only the
+2010/2013 forms carry the prefix (`_xlfn.CEILING.MATH`, `_xlfn.CEILING.PRECISE`). Excel also accepts
+a hand-written `_xlfn.CEILING(2.5,2)` on load (value 4) and re-stores it as `CEILING(2.5,2)`.
+Evidence: probes/ceiling-xlfn-prefix A1:A4, all 4 (oracle: excel-graph, 2026-10-06, T-0172); the
+recalculated workbook's `<f>` text was `CEILING(2.5,2)` for both A1 and A2 and `_xlfn.CEILING.MATH(...)`
+for A3 and A4.
+Status: VERIFIED
+Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/mod.rs); test
+`test_export_ceiling_has_no_xlfn_prefix`.
+Tasks: T-0172

@@ -1,0 +1,18 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Classic CEILING is stored without a prefix: `_xlfn.CEILING` is not a function Excel knows (T-0172). `_xlfn.CEILING.MATH` is the 2013 form and loads.",
+  "tags": ["M1", "xlsx", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=CEILING(2.5,2)",
+        "A2": "=_xlfn.CEILING(2.5,2)",
+        "A3": "=_xlfn.CEILING.MATH(2.5,2)",
+        "A4": "=CEILING.MATH(2.5,2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": ["Sheet1!A1", "Sheet1!A2", "Sheet1!A3", "Sheet1!A4"]
+}

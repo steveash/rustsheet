@@ -3,7 +3,7 @@ id: T-0172
 title: "xlsx export writes classic CEILING as _xlfn.CEILING (check against Excel)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ The exporter writes the classic two-argument CEILING with the correct file form,
 
 ## Out of scope
 -
+
+## Outcome
+Probe ceiling-xlfn-prefix (excel-graph): Excel stores classic CEILING unprefixed and also loads
+`_xlfn.CEILING` as CEILING. Exporter no longer prefixes it; spec2xlsx exclusion removed. Eval delta:
+probes gains one case (4 cells, all pass); no known-failure change.
