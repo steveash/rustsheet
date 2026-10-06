@@ -97,3 +97,23 @@ fn fn_concatenate_limit_counts_utf16_units() {
     // "é" is one UTF-16 unit (two UTF-8 bytes).
     assert_eq!(model._get_text("A3").chars().count(), 32767);
 }
+
+// Oracle: probes/text-result-limit C8, C9 (excel-graph): CONCAT and TEXTJOIN text over 32767
+// chars is #CALC!, exactly 32767 is fine.
+#[test]
+fn concat_and_textjoin_over_32767_chars_are_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LEN(CONCAT(REPT(\"a\",32767),\"b\"))");
+    model._set("A2", "=LEN(CONCAT(REPT(\"a\",32766),\"b\"))");
+    model._set("A3", "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\"))");
+    model._set("A4", "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32765),\"b\"))");
+    model._set("A5", "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32766),\"b\"))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#CALC!");
+    assert_eq!(model._get_text("A2"), *"32767");
+    assert_eq!(model._get_text("A3"), *"#CALC!");
+    assert_eq!(model._get_text("A4"), *"32767");
+    assert_eq!(model._get_text("A5"), *"#CALC!");
+}

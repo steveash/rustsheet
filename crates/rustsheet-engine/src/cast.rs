@@ -65,6 +65,13 @@ pub(crate) fn truncate_text(text: &mut String) {
     }
 }
 
+/// Whether `text` is over the cell text limit, counted in UTF-16 code units. Callers that build
+/// text piece by piece check it after each piece so a hostile input cannot grow it unbounded.
+pub(crate) fn exceeds_text_limit(text: &str) -> bool {
+    // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
+    text.len() > MAX_TEXT_UNITS && text.encode_utf16().count() > MAX_TEXT_UNITS
+}
+
 /// Concatenates two strings, truncating the result to the cell text limit.
 pub(crate) fn concat_text(a: &str, b: &str) -> String {
     let mut joined = String::with_capacity(a.len() + b.len());

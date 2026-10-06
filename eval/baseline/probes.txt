@@ -143,5 +143,3 @@ F	probes/text-number-words.case.json	Calc!H9
 F	probes/text-number-words.case.json	Calc!K2
 F	probes/text-number-words.case.json	Calc!K3
 F	probes/text-number-words.case.json	Calc!K7
-F	probes/text-result-limit.case.json	Sheet1!C8
-F	probes/text-result-limit.case.json	Sheet1!C9

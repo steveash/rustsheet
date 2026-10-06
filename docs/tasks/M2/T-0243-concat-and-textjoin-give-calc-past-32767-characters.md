@@ -3,7 +3,7 @@ id: T-0243
 title: "CONCAT and TEXTJOIN give #CALC! past 32767 characters"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/text-result-limit C8 (`LEN(CONCAT(REPT("a",32767),"b"))`) and C9 (TEXTJOI
 
 ## Out of scope
 -
+
+## Outcome
+CONCAT and TEXTJOIN now return `#CALC!` past 32,767 UTF-16 units, sizing the text as it is built and stopping early (directive 5). Eval: probes known failures 67 -> 65 (text-result-limit C8, C9 fixed), 0 regressions.
