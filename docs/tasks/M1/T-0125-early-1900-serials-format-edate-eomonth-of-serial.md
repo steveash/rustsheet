@@ -3,11 +3,11 @@ id: T-0125
 title: "Early-1900 serials: format/EDATE/EOMONTH of serial 60 and DAY/MONTH/YEAR(0)"
 milestone: M1
 lane: engine
-status: blocked
+status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-0213]
+depends_on: []
 ---
 
 ## Goal
@@ -24,7 +24,7 @@ T-0108 fixed DATE, DAY/MONTH/YEAR and number formatting for serials 1..60 but le
 ## Out of scope
 -
 
-## Handoff (resumed)
+## Handoff (resumed, earlier round)
 Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKNUM/TEXT/DAY-MONTH-YEAR"):
 `excel_serial_to_ymd` accepts serial 0, new `month_arithmetic_date`/`real_date_to_serial` in
 `formatter/dates.rs` used by EDATE/EOMONTH, WEEKNUM year fix, TEXT uses ymd validity; probe
@@ -41,8 +41,14 @@ Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKN
 Next: fix or probe those two (or split them to their own tasks and fix first), then
 `make eval-baseline`, `make check`, review.
 
-## Blocked because
-Waits for T-0213 (INDEX with one index into a 2-D range is #REF!). After the opus resume
+## Handoff
+Unblocked by the 2026-10-06 steward: T-0213 is done on main. Notes from the previous opus round follow.
+The steward's trial merge of origin/main (2026-10-06) conflicts in
+`functions/math_and_trigonometry/mathematical.rs`: main replaced the ROUND family with
+`round_family`/`round_decimal` (decimal_round.rs), so this branch's `round_beyond_double_range`
+must be folded into that path (or dropped if main already covers A138; T-0218 is still todo).
+
+After the opus resume
 (2026-10-05), the branch fixes 46 gen-m2 cells and 4 probe cells. One regression is left:
 - `gen-m2/a6d4377c7b1b92cd` Calc!A278 `=IFERROR(YEAR(INDEX(Data!C11:E12,1)),-SUM(Data!C3:C5))`
   expects 1. This is not implicit intersection, as the handoff guessed: in Excel,
