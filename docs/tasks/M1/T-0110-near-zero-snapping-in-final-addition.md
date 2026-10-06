@@ -3,7 +3,7 @@ id: T-0110
 title: "Near-zero snapping in final addition/subtraction"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
