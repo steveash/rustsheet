@@ -3,7 +3,7 @@ id: T-0152
 title: "Sheet-qualified #REF! in a formula or a defined name evaluates to #REF! (2 poi known failures)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
