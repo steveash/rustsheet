@@ -329,7 +329,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E824
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E872
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F128
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F27
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F584
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G1252
@@ -368,7 +367,6 @@ F	poi/HsGetVal.xlsx	Sheet1!B5
 F	poi/HsGetVal.xlsx	Sheet1!C5
 F	poi/InlineString.xlsx	!EngineError
 F	poi/LIBRE_OFFICE-128382-0.xlsx	!EngineError
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H10
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H104
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H108
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H116
@@ -378,13 +376,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H124
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H128
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H132
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H136
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H14
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H15
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H16
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H30
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H34
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H35
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H36
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H47
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H48
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!H55
@@ -407,12 +398,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I124
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I128
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I132
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I136
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I14
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I15
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I16
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I34
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I35
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I36
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I46
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I47
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!I48
@@ -456,12 +441,6 @@ F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J132
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J134
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J135
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J136
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J14
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J15
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J16
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J34
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J35
-F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J36
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J46
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J47
 F	poi/MatrixFormulaEvalTestData.xlsx	Sheet1!J48
