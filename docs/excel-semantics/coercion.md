@@ -36,10 +36,15 @@ Tasks: T-0236
 Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`); a start or length around 1E+15 is `#VALUE!`
 (`MID("ü",1000000000000000.0,4)`); in LEFT a length a hair below 1 (`TRUE - 1E-15`) counts as 1
 (seen for LEFT only, and the cell cannot tell whether the subtraction or LEFT rounds: probe in T-0219).
+Numeric text coerces too, literal or from a cell, and is then truncated like a number:
+`LEFT("a string","6")` is "a stri", `LEFT(E12,E17)` with E17 = "2.99999" (text) is "no",
+`LEFT("a string",TRUE)` is "a"; RIGHT the same ("string", "ce", "g").
 Evidence: gen-m2/ef5c55a81783b7d5 A40, d0c29dd5c530e28c A269, 78bc88199fc96650 A345,
 b4392a6514a36ade A14 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!E824, H824, K824 (LEFT),
+E1168, H1168, K1168 (RIGHT).
 Status: VERIFIED
-Tasks: T-0219
+Tasks: T-0219 (huge and near-integer counts), T-0257 (numeric text and booleans)
 
 ## Text comparison uses Excel's collation, not code-point order
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE
@@ -185,3 +190,15 @@ Evidence: probes/text-number-words; full rule in numbers.md "Number text of 1E+3
 Oracle: excel-graph, 2026-10-05.
 Status: VERIFIED
 Tasks: T-0920, T-0140
+
+## AND/OR/XOR text arguments
+Rule: an empty text literal is skipped (`AND("",TRUE)` = TRUE) and a text literal that is not
+"TRUE"/"FALSE" alone is `#VALUE!` (`AND("1")`, `OR("0")`). Next to a logical value, the literal "1"
+is `#VALUE!` in Excel 15 (`AND("1",1)`), yet text "1" returned by IFERROR is skipped in Microsoft 365
+(`AND(1E+15, IFERROR("1",…), FALSE)` is FALSE, not `#VALUE!`). Text in referenced cells is skipped.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J136, I136;
+ironcalc-calc LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53;
+gen-m2/893302d6c5b99e2e Calc!A108 (oracle: excel-graph).
+Status: UNVERIFIED (probe pending, T-0258): whether literal vs computed text, empty vs non-empty, or
+Excel version decides is not isolated.
+Tasks: T-0258
