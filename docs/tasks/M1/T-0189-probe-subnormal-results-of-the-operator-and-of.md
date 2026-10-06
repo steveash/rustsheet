@@ -3,7 +3,7 @@ id: T-0189
 title: "Probe subnormal results of the % operator and of functions (EXP, SUM)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
