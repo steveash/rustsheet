@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0998: union operand form neg-cut-group.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": 4,
+        "B2": 5,
+        "H1": "=(-(A1,B2),C1)",
+        "H2": "=FORMULATEXT(H1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2"
+  ]
+}
