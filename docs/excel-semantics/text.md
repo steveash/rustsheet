@@ -33,5 +33,5 @@ Tasks: T-0241
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
 Evidence: probes/text-result-limit C8-C9 (excel-graph, 2026-10-05; excel-desktop not used).
 Status: VERIFIED (web only)
-Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`exceeds_text_limit` in cast.rs, `JoinSize`) size the text as it is built and stop early (T-0243)
+Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) size the text as it is built and stop early (T-0243)
 Tasks: T-0243

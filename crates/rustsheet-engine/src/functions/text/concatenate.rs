@@ -2,7 +2,7 @@ use super::common::{broadcast_text, TextArg};
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, exceeds_text_limit, truncate_text, MAX_TEXT_UNITS},
+    cast::{array_node_to_string, truncate_text, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -23,20 +23,27 @@ fn text_limit_error(cell: CellReferenceIndex) -> CalcResult {
 
 /// Running UTF-16 size of a TEXTJOIN result, kept incrementally so each check is O(new values)
 /// and an oversized join stops before it is built (CLAUDE.md directive 5).
-#[derive(Default)]
 struct JoinSize {
+    delimiter_units: usize,
     counted: usize,
     units: usize,
 }
 
 impl JoinSize {
-    fn exceeds(&mut self, values: &[String], delimiter: &str) -> bool {
-        let delimiter_units = delimiter.encode_utf16().count();
+    fn new(delimiter: &str) -> Self {
+        JoinSize {
+            delimiter_units: delimiter.encode_utf16().count(),
+            counted: 0,
+            units: 0,
+        }
+    }
+
+    fn exceeds(&mut self, values: &[String]) -> bool {
         for value in &values[self.counted..] {
             let separator = if self.counted == 0 {
                 0
             } else {
-                delimiter_units
+                self.delimiter_units
             };
             self.units = self
                 .units
@@ -44,6 +51,37 @@ impl JoinSize {
             self.counted += 1;
         }
         self.units > MAX_TEXT_UNITS
+    }
+}
+
+/// CONCAT's result under construction with its running UTF-16 size, so each append is O(piece)
+/// however many cells a range has (CLAUDE.md directive 5).
+#[derive(Default)]
+struct ConcatText {
+    text: String,
+    units: usize,
+}
+
+impl ConcatText {
+    /// Appends `piece`; false once the text is over the cell limit.
+    fn push(&mut self, piece: &str) -> bool {
+        self.units = self.units.saturating_add(piece.encode_utf16().count());
+        if self.units > MAX_TEXT_UNITS {
+            return false;
+        }
+        self.text.push_str(piece);
+        true
+    }
+
+    /// Appends the text of a scalar cell value; `Ok(false)` when the limit is passed.
+    fn push_value(&mut self, value: CalcResult) -> Result<bool, CalcResult> {
+        match value {
+            CalcResult::String(value) => Ok(self.push(&value)),
+            CalcResult::Number(value) => Ok(self.push(&number_to_text(value))),
+            CalcResult::Boolean(value) => Ok(self.push(if value { "TRUE" } else { "FALSE" })),
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Ok(true),
+        }
     }
 }
 
@@ -73,25 +111,13 @@ impl Model {
         })
     }
 
+    /// CONCAT(text1, [text2], ...): joins text and ranges; over 32767 characters is #CALC!
+    /// (probes/text-result-limit C8).
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut result = "".to_string();
+        let mut result = ConcatText::default();
         for arg in args {
-            // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit C8).
-            if exceeds_text_limit(&result) {
-                return text_limit_error(cell);
-            }
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::String(value) => result = format!("{result}{value}"),
-                CalcResult::Number(value) => result.push_str(&number_to_text(value)),
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                CalcResult::Boolean(value) => {
-                    if value {
-                        result = format!("{result}TRUE");
-                    } else {
-                        result = format!("{result}FALSE");
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
+            let value = self.evaluate_node_in_context(arg, cell);
+            let within_limit = match value {
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -102,57 +128,49 @@ impl Model {
                     }
                     for row in left.row..(right.row + 1) {
                         for column in left.column..(right.column + 1) {
-                            if exceeds_text_limit(&result) {
-                                return text_limit_error(cell);
-                            }
-                            match self.evaluate_cell(CellReferenceIndex {
+                            let cell_value = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
-                            }) {
-                                CalcResult::String(value) => {
-                                    result = format!("{result}{value}");
-                                }
-                                CalcResult::Number(value) => {
-                                    result.push_str(&number_to_text(value))
-                                }
-                                CalcResult::Boolean(value) => {
-                                    if value {
-                                        result = format!("{result}TRUE");
-                                    } else {
-                                        result = format!("{result}FALSE");
-                                    }
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                CalcResult::Range { .. } => {}
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    }
-                                }
+                            });
+                            if matches!(cell_value, CalcResult::Array(_) | CalcResult::Lambda(_)) {
+                                return CalcResult::new_error(
+                                    Error::NIMPL,
+                                    cell,
+                                    "Arrays not supported yet".to_string(),
+                                );
+                            }
+                            match result.push_value(cell_value) {
+                                Ok(true) => {}
+                                Ok(false) => return text_limit_error(cell),
+                                Err(error) => return error,
                             }
                         }
                     }
+                    true
                 }
                 CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
+                    return CalcResult::new_error(
+                        Error::NIMPL,
+                        cell,
+                        "Arrays not supported yet".to_string(),
+                    );
                 }
+                scalar => match result.push_value(scalar) {
+                    Ok(within_limit) => within_limit,
+                    Err(error) => return error,
+                },
             };
+            // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit C8).
+            if !within_limit {
+                return text_limit_error(cell);
+            }
         }
-        if exceeds_text_limit(&result) {
-            return text_limit_error(cell);
-        }
-        CalcResult::String(result)
+        CalcResult::String(result.text)
     }
 
-    // TEXTJOIN(delimiter, ignore_empty, text1, [text2], …)
+    /// TEXTJOIN(delimiter, ignore_empty, text1, [text2], ...): joins text with a delimiter; over 32767
+    /// characters is #CALC! (probes/text-result-limit C9).
     pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
         if arg_count < 3 {
@@ -167,9 +185,9 @@ impl Model {
             Err(error) => return error,
         };
         let mut values: Vec<String> = Vec::new();
-        let mut size = JoinSize::default();
+        let mut size = JoinSize::new(&delimiter);
         for arg in &args[2..] {
-            if size.exceeds(&values, &delimiter) {
+            if size.exceeds(&values) {
                 return text_limit_error(cell);
             }
             match self.evaluate_node_in_context(arg, cell) {
@@ -195,7 +213,7 @@ impl Model {
                     }
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
-                            if size.exceeds(&values, &delimiter) {
+                            if size.exceeds(&values) {
                                 return text_limit_error(cell);
                             }
                             match self.evaluate_cell(CellReferenceIndex {
@@ -256,7 +274,7 @@ impl Model {
                 }
             };
         }
-        if size.exceeds(&values, &delimiter) {
+        if size.exceeds(&values) {
             return text_limit_error(cell);
         }
         CalcResult::String(values.join(&delimiter))
