@@ -3,7 +3,7 @@ id: T-0164
 title: "Shared strings: leave phonetic rPh runs out of the cell text"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,9 @@ on the joined text, so a long Japanese string with furigana could be rejected.
 
 ## Out of scope
 - PHONETIC() itself.
+
+## Outcome
+`read_shared_strings_from_xml` now takes only `<t>` and `<r><t>` of each `<si>`, so `<rPh>` text is
+excluded from the value and the length count. Unit test with `<r>` runs plus `<rPh>`/`phoneticPr`.
+Eval: no change (poi 50299/51519 have `<rPh>` but no formulas reading it; 0 regressions). A formula-level
+probe is not possible (spec cases carry no phonetic runs); recorded in xlsx-storage.md.
