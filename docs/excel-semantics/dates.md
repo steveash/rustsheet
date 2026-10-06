@@ -149,7 +149,10 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   dependent scratch runs on 2026-10-05/06): the years 2026 and 2029, `"Jul-26"` = 46229 and
   `"2/29"` = 47150. Not probed: a space between two numbers (`"7 45"`, which the engine rejects),
   `"13/45"`, `"0/45"`, a numeric month with a four-digit year (`"7/2026"`, rejected), and numeric
-  forms with `0` (`"7/0"`, `"7-0"`, which the engine reads as 2000 like `"Jul-0"`).
+  forms with `0` (`"7/0"`, `"7-0"`, `"1-0"`, which the engine reads as 2000 like `"Jul-0"`), the
+  two-digit-year reading of the other month-first spellings (`"Jul 45"`, `"Jul/45"`, `"July 45"`,
+  `"7-45"`, which the engine extends it to) and of the day-first spellings (`"45-Jul"`, `"45 Jul"`,
+  which the engine rejects). Only `mmm-n` and `m/n` two-digit years are probed.
 Evidence: probes/date-text-grammar A1–A68 (B/C, D30/D55). Oracle: excel-graph, 2026-10-05.
 UNVERIFIED (not scored): the display format typed month-name text gets (`d-mmm-yy`, `mmm-yy`
 for month-year, `m/yy` for numeric month-year such as `"2/30"`), which the engine assigns to typed
