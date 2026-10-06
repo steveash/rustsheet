@@ -22,6 +22,10 @@ gen-m2 (T-0203) evidence (excel-graph):
   TRUE (punctuation sorts before digits), engine FALSE ('1' U+0031 < '?' U+003F).
 - Lookup cells that the code-point emulation in T-0212 gets wrong probably come from the same rule, e.g.
   `gen-m2/60a543744fc4a8f7` Calc!A280 (`HLOOKUP("?b",...)`) and `gen-m2/a339ea84ef64382e` Calc!A246.
+- Added by T-0212 (decision 0037): two lookup cells that passed only while the search compared across
+  types and now fail on code-point order: `gen-m2/2cfe279fe77a000d` Calc!A328 (`VLOOKUP("x~*",...)`
+  over a column whose only text is "ü"; Excel ranks "ü" below "x") and `gen-m2/ef5c55a81783b7d5`
+  Calc!A151 (`VLOOKUP("1",...)` over {blank, FALSE, "?b", 1}; Excel ranks "?b" below "1").
 
 This is cross-cutting (comparison operators, MATCH/VLOOKUP/HLOOKUP, criteria `<`/`>`, SORT). It needs a
 probe workbook first. Use the excel-probe skill: ASCII punctuation, digits, letters, accented letters
@@ -33,7 +37,7 @@ Code: `compare_values` and the text comparison in `crates/rustsheet-engine/src/`
 - [ ] Probe suite of pairwise text comparisons filled by the oracle. docs/excel-semantics/ entry (new
       `text.md` or `numbers.md` sibling) with the rule and evidence.
 - [ ] One collation key function used by all comparison sites. The two cells above disappear from
-      eval/baseline/gen-m2.txt with no new F lines.
+      eval/baseline/gen-m2.txt with no new F lines, and so do the two decision-0037 cells.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

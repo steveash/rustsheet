@@ -43,29 +43,6 @@ fn error_sort_rank(e: &Error) -> u8 {
     }
 }
 
-/// This test for exact match (modulo case).
-///   * strings are not cast into bools or numbers
-///   * empty cell is not cast into empty string or zero
-pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
-    match (left, right) {
-        (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            if (value2 - value1).abs() < f64::EPSILON {
-                return true;
-            }
-            false
-        }
-        (CalcResult::String(value1), CalcResult::String(value2)) => {
-            let value1 = value1.to_uppercase();
-            let value2 = value2.to_uppercase();
-            value1 == value2
-        }
-        (CalcResult::Boolean(value1), CalcResult::Boolean(value2)) => value1 == value2,
-        (CalcResult::EmptyCell, CalcResult::EmptyCell) => true,
-        // NOTE: Errors and Ranges are not covered
-        (_, _) => false,
-    }
-}
-
 // In Excel there are two ways of comparing cell values.
 // The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
 // For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
@@ -154,6 +131,12 @@ impl Model {
     ) -> CalcResult {
         match node {
             Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } => self.get_sheet_span_range(*first_index, *last_index, reference, cell),
             Node::FunctionKind {
                 kind: Function::If,
                 args,
@@ -169,9 +152,11 @@ impl Model {
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///
-    /// The one range walk behind every aggregate function. Ranges spanning two
-    /// sheets are `#VALUE!`; whole-row and whole-column ranges are clipped to
-    /// the used area so the walk stays proportional to the data. The first
+    /// The one range walk behind every aggregate function. A range whose corners
+    /// sit on two sheets is a 3-D reference (only [`Self::evaluate_aggregate_arg`]
+    /// builds one) and is walked sheet by sheet in tab order; whole-row and
+    /// whole-column ranges are clipped to each sheet's used area so the walk
+    /// stays proportional to the data. The first
     /// error cell aborts the walk and is returned as `Err`, as does an `Err`
     /// from `f`. `f` never sees `CalcResult::Error`.
     pub(crate) fn for_each_cell_in_range<F>(
@@ -202,24 +187,18 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
-        if left.sheet != right.sheet {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Ranges are in different sheets".to_string(),
-            ));
-        }
-        let (row2, column2) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-        for row in left.row..=row2 {
-            for column in left.column..=column2 {
-                let value = self.evaluate_cell(CellReferenceIndex {
-                    sheet: left.sheet,
-                    row,
-                    column,
-                });
-                f(self, value)?;
+        // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
+        // clipped to its own used area, so a span of whole columns walks only data.
+        debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
+        for sheet in left.sheet..=right.sheet {
+            let (row2, column2) = self
+                .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            for row in left.row..=row2 {
+                for column in left.column..=column2 {
+                    let value = self.evaluate_cell(CellReferenceIndex { sheet, row, column });
+                    f(self, value)?;
+                }
             }
         }
         Ok(())

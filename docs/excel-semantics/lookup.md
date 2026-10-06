@@ -74,15 +74,43 @@ Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 Tasks: T-0211
 
 ## Approximate-match lookups: type-skipping binary search
-Rule (fits all 124 simple top-level approximate lookups in gen-m2): binary search over the range;
-when the middle cell is blank or of another type than the lookup value, step to the next cell of the
-same type upward; if none exists up to the upper bound, set the upper bound to mid-1. A greater cell
-sets the upper bound to mid-1; an equal cell is returned at once. Blanks never match and there is no
-cross-type match. Full algorithm and cells in T-0212.
-Evidence: gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
-a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-Status: VERIFIED (behavior); the step rule is a fitted model, re-check it against T-0212's cells.
-Tasks: T-0212
+Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a non-zero
+match_type run one binary search over the vector that only compares cells of the lookup value's
+own type (number, text or boolean; a blank lookup value is the number 0):
+```
+lo = 0; hi = n-1; best = none
+while lo <= hi:
+    mid = floor((lo+hi)/2)
+    m = first index >= mid with the lookup value's type   # skips blanks, errors, other types
+    if m > hi: hi = mid-1; continue
+    c = compare(v[m], key)                                  # text case-insensitive
+    if c == 0: return the last index of the run of adjacent equal cells starting at m
+               (the first index of the run, walking down, for a descending search)
+    if (c < 0 ascending) or (c > 0 descending): best = m; lo = m+1
+    else: hi = m-1
+return best (none -> #N/A)
+```
+Blanks never match and there is no cross-type match (`VLOOKUP(TRUE,{blank;-1},1,TRUE)` is `#N/A`).
+The run of equal cells stops at the first cell that is not equal, whatever its type
+(`MATCH(2,{0,0,0,2,"x",2,9})` = 4). Any negative match_type searches descending and any positive one
+ascending (`MATCH(5,{9,5,5,5,1},-2)` = 2, `MATCH(2,…,2)` = `MATCH(2,…,1)`). A blank MATCH key is 0
+in an approximate search (`MATCH(blank,{1,blank,0,blank,2})` = 3).
+Exact match (range_lookup FALSE, MATCH 0) only matches cells of the key's type: a blank cell never
+matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;blank},1,FALSE)` are
+`#N/A`), while a blank lookup value is 0 here too (`MATCH(blank,{1,blank,0,blank,2},0)` = 3,
+`MATCH(blank,{"";0},0)` = 2). Numbers must be exactly equal, without the 15-digit rounding of the
+comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
+A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
+Text comparison uses Excel's collation, not code-point order (T-0220).
+Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
+2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
+a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
+(excel-graph, 2026-10-04, T-0203); 419 gen-m2 cells fixed by T-0212;
+crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/MATCH.xlsx C7 (duplicate run, Excel-cached).
+Status: VERIFIED
+Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
+`crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
+Tasks: T-0212, T-0220
 
 ## INDEX with one index into a 2-D range is #REF!
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:

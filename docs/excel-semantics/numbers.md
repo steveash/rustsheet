@@ -126,19 +126,29 @@ negative products `=-1E+307*100`, `=1E+307*-100` (ERROR.TYPE 6). The intermediat
 exactly 1e308 is finite: `=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
 Arrays overflow per element: `INDEX({1E+307,1}*100,1)` is `#NUM!`, `INDEX({1E+307,1}*100,2)` is 100,
 `ROWS({1E+307;1}*100)` is 2 and `SUM(IFERROR({1E+307,1}*100,0))` is 100.
-Implementation: `+ - * /` (T-0173), `SUM` (T-0185). Other aggregates (SUMPRODUCT, AVERAGE, PRODUCT, SUMSQ) are
-not probed for overflow yet and still return infinity: unverified, needs an oracle probe before changing.
-`SUM` checks only the final total, so `SUM(9E+307,9E+307,-9E+307)` is `#NUM!` here; whether Excel overflows at the
-intermediate point (as `=9E+307+9E+307-9E+307` does) is unprobed (UNVERIFIED).
-`SUM` returns the first argument error before its overflow check, so `SUM(9E+307,9E+307,NA())` is `#N/A` here; which error
-wins in Excel is unprobed (UNVERIFIED). PERCENTOF sums its arguments through `fn_sum`, so an overflowing part or total is
-`#NUM!` there too (UNVERIFIED).
-Evidence: probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
+Aggregate overflow (T-0192, VERIFIED, probes/aggregate-overflow, excel-graph 2026-10-06): `SUM` overflows at
+the intermediate point, like `+`: `SUM(9E+307,9E+307,-9E+307)` is `#NUM!` while `SUM(9E+307,-9E+307,9E+307)`
+is 9E+307. A cell error beats the overflow wherever it sits; of several errors `SUM(1/0,NA(),..)` gives `#DIV/0!` (argument order, or `#DIV/0!` outranking `#N/A`: one case, not separated):
+`SUM(9E+307,9E+307,NA())` and `SUM(NA(),9E+307,9E+307)` are `#N/A`, `SUM(1/0,NA(),9E+307,9E+307)` is `#DIV/0!`,
+`SUM(9E+307,9E+307,"x")` is `#VALUE!`, `SUM(F1:F4)` (a range holding 9E+307, 9E+307, -9E+307, #N/A) is `#N/A`
+and `AGGREGATE(9,6,F1:F3,NA())` is `#N/A` (option 6 ignores errors in the referenced range, not an error passed directly as an argument). These overflow to `#NUM!` (ERROR.TYPE 6): SUMPRODUCT,
+AVERAGE (also `AVERAGE(9E+307,9E+307,-9E+307)`), PRODUCT (`PRODUCT(1E+200,1E+200)`, and still `#NUM!` with a later
+factor 0 or 1E-200), SUMSQ (`SUMSQ(1E+200)`), SUBTOTAL 9, 1 and 6, AGGREGATE 9 and 1 (option 6), SUMIF, SUMIFS,
+SERIESSUM, MMULT, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR, and `SUM(F1:F2)+0`, `SUM(F1:F2)&""`,
+`MAX(F1:F2)+F1` propagate it. Not an overflow: `COUNT` (3), `SUMX2MY2({9E+153},{0})` (8.1E+307, a finite near-limit result: SUMX2MY2 overflow itself is unprobed),
+`MEDIAN(F1:F2)` (9E+307) and `GEOMEAN(F1:F2)` (9E+307, exactly), F1:F2 holding 9E+307 twice (direct arguments not probed). `PERCENTOF` is `#NAME?` in
+excel-graph (the oracle does not know it), so its overflow stays UNVERIFIED and the probe has no PERCENTOF cell
+(the engine's PERCENTOF sums through `fn_sum`, so it overflows to `#NUM!` like SUM; unverified).
+Implementation: `+ - * /` (T-0173) and `SUM` (T-0185). Not implemented (they return infinity or NaN):
+SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE, SUBTOTAL (T-0990); SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV, VAR
+(T-0991); MEDIAN and GEOMEAN of huge values are wrong the other way (T-0992); the engine has no AGGREGATE
+(`#NAME?`, A27-A29; T-0993).
+Evidence: probes/aggregate-overflow Calc!A1:C48 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
 Implemented in: `arithmetic::{plus, minus, times, divide}` (crates/rustsheet-engine/src/arithmetic.rs);
 tests `overflowing_product_is_num_inside_formulas` and
-`overflowing_sum_and_quotient_are_num_and_a_subnormal_divisor_is_zero`. SUM overflow is not implemented: T-0185.
+`overflowing_sum_and_quotient_are_num_and_a_subnormal_divisor_is_zero`. SUM overflow: the `fn_sum` total check (T-0185).
 Tasks: T-0136, T-0173
 
 ## A subnormal divisor is zero
@@ -156,9 +166,9 @@ Tasks: T-0173
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
 Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
-Leading hypothesis: the existing 20-character cap on E-notation text above applies; a 3-digit
-exponent leaves room for only 14 digits ("4.4942328371558E+307" is exactly 20 characters).
-Status: UNVERIFIED beyond this one value. Not implemented: T-0186.
+The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
+"Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
+Status: VERIFIED. Not implemented: T-0199.
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
@@ -189,8 +199,26 @@ Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e
 probes/text-number-words H6, H7, K1, K4, K5 (`="1e-308"+0` is 0).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^` and POWER); the postfix `%` and other function
-results are not flushed yet (UNVERIFIED, T-0189).
+Per function group (T-0189, VERIFIED, probes/subnormal-function-results, excel-graph 2026-10-06;
+`C` companion cells `(x)=0` tell a true 0 from a kept subnormal, since the Graph API reports 0.0 and
+`&""` prints "0" for both). The result is a true 0 (`(x)=0` TRUE) for the postfix `%`
+(`=1E-306%`, `=-1E-306%`), `/` and `*` (`1E-307/10`), PRODUCT (`PRODUCT(3E-308,0.5)`,
+`PRODUCT(1E-200,1E-110)`), SUMPRODUCT, SUMSQ (`SUMSQ(1E-160)`), AVERAGE (`AVERAGE(3E-308,-2.9E-308)`)
+and POWER. The subnormal is KEPT (`(x)=0` FALSE although it prints "0") for `-` (`=3E-308-2.5E-308`),
+`SUM` / `SUBTOTAL(9,..)` of the same operands, `EXP(-745)`, `EXP(-720)` and for MIN, ABS and SIN
+of such a value. So the flush belongs to multiplication and division (`%`, PRODUCT, SUMPRODUCT, SUMSQ,
+AVERAGE all multiply or divide), not to addition. `EXP(-708)` (3.3E-308, normal) prints with 14
+digits ("3.3075530036384E-308"; see "Exponent width" under "Number → text conversion uses 15
+significant digits"). `TEXT(1E-307/10,"0.00E+00")` is "0.00E+00". A literal below the smallest normal
+reads as 0: `=1E-308=0` is TRUE and `ISNUMBER(1E-308)` is TRUE (A70, A71; `=1E-308*1=0` cannot tell this from the
+`*` flush). Oracle artifact: for a kept subnormal the Graph API reports the value 0.0, so the numeric
+cells A4, A6, A60-A62, A65 and A69 cannot score the engine; only their `C` companions can (T-0989).
+The probe leaves out
+literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
+file (`unsupportedWorkbook`) when they appeared.
+Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER. Not implemented: postfix `%`
+(T-0988), PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987). The engine also compares a tiny nonzero
+value equal to 0, which Excel does not (C4-C6, C60-C62, C65, C69, C73-C75; T-0989).
 Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid

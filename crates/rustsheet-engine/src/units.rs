@@ -287,6 +287,7 @@ impl Model {
             Node::StringKind(_) => None,
             Node::WrongReferenceKind { .. } => None,
             Node::WrongRangeKind { .. } => None,
+            Node::SheetSpanKind { .. } => None,
             Node::OpRangeKind { .. } => None,
             Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => None,
             Node::OpConcatenateKind { .. } => None,

@@ -50,6 +50,7 @@ use super::token::TokenType;
 use super::types::*;
 use super::utils::number_to_column;
 
+use sheet_span::with_sheet_span;
 use token::OpCompare;
 
 mod depth;
@@ -57,6 +58,7 @@ mod lambda;
 mod lists;
 pub mod move_formula;
 mod reference_operators;
+mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
 
@@ -171,6 +173,17 @@ pub enum Node {
         absolute_column2: bool,
         row2: i32,
         column2: i32,
+    },
+    /// `First:Last!A1` or `First:Last!A1:B2`, a 3-D reference: the same cells on every sheet
+    /// from `First` to `Last` in tab order (docs/excel-semantics/references.md, "3-D
+    /// sheet-range references"). `reference` is the `ReferenceKind` or `RangeKind` on the first
+    /// sheet, written without a sheet prefix.
+    SheetSpanKind {
+        first_sheet: String,
+        last_sheet: String,
+        first_index: u32,
+        last_index: u32,
+        reference: Box<Node>,
     },
     WrongReferenceKind {
         sheet_name: Option<String>,
@@ -447,16 +460,6 @@ impl Parser {
         }
     }
 
-    fn get_sheet_index_by_name(&self, name: &str) -> Option<u32> {
-        let worksheets = &self.worksheets;
-        for (i, sheet) in worksheets.iter().enumerate() {
-            if sheet == name {
-                return Some(i as u32);
-            }
-        }
-        None
-    }
-
     // Returns:
     //  * None: If there is no defined name by that name
     //  * Some((Some(index), formula)): If there is a defined name local to that sheet
@@ -702,11 +705,8 @@ impl Parser {
                 absolute_column,
                 absolute_row,
             } => {
+                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
                 let context = &self.context;
-                let sheet_index = match &sheet {
-                    Some(name) => self.get_sheet_index_by_name(name),
-                    None => self.get_sheet_index_by_name(&context.sheet),
-                };
                 let a1_mode = self.lexer.is_a1_mode();
                 let row = if absolute_row || !a1_mode {
                     row
@@ -718,7 +718,7 @@ impl Parser {
                 } else {
                     column - context.column
                 };
-                match sheet_index {
+                let node = match sheet_index {
                     Some(index) => Node::ReferenceKind {
                         sheet_name: sheet,
                         sheet_index: index,
@@ -734,14 +734,12 @@ impl Parser {
                         absolute_row,
                         absolute_column,
                     },
-                }
+                };
+                with_sheet_span(span, node)
             }
             TokenType::Range { sheet, left, right } => {
+                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
                 let context = &self.context;
-                let sheet_index = match &sheet {
-                    Some(name) => self.get_sheet_index_by_name(name),
-                    None => self.get_sheet_index_by_name(&context.sheet),
-                };
                 let mut row1 = left.row;
                 let mut column1 = left.column;
                 let mut row2 = right.row;
@@ -778,7 +776,7 @@ impl Parser {
                     };
                 }
 
-                match sheet_index {
+                let node = match sheet_index {
                     Some(index) => Node::RangeKind {
                         sheet_name: sheet,
                         sheet_index: index,
@@ -802,7 +800,8 @@ impl Parser {
                         absolute_row1,
                         absolute_row2,
                     },
-                }
+                };
+                with_sheet_span(span, node)
             }
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();

@@ -262,7 +262,7 @@ pub fn is_valid_identifier(name: &str) -> bool {
     is_valid_a1_identifier(name)
 }
 
-fn name_needs_quoting(name: &str) -> bool {
+pub(crate) fn name_needs_quoting(name: &str) -> bool {
     // Excel only leaves a sheet name unquoted when it is made of letters, digits,
     // '_' and '.', and does not start with a digit or a '.'. Anything else
     // (space, '&', '=', '-', '+', '(', ')', '$', ',', ';', '{', '}', '\'', '!', ...)
