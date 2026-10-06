@@ -47,12 +47,14 @@ parse (T-0138).
 ## Outcome
 Probed with excel-graph (2026-10-06). Three new cases are kept: probes/union-accepted (9 cells),
 union-neg-operand (2) and union-defined-name (5). Six scratch workbooks were refused by Excel
-(`FileCorruptTryRepair`): `(A1+B1,C1)` and all five non-reference operands, which confirms the
-engine's syntax errors. Groups 3-5 match the engine, except that `ISREF((A1,#REF!))` is FALSE
+(`FileCorruptTryRepair`): `(A1+B1,C1)` and all five non-reference operands. That confirms the
+engine's syntax errors for the five operands, but the engine wrongly accepts `(A1+B1,C1)`
+(T-0193). Groups 3-5 match the engine, except that `ISREF((A1,#REF!))` is FALSE
 (T-0194). Group 1: `(-A1,B1)` loads and gives #VALUE!, but the engine parses it as `-(A1,B1)`. Group
 6: Excel keeps nested union parentheses in FORMULATEXT, but the engine flattens them (T-0193 covers
 both). Group 7: multi-area names work in SUM, COUNT, ISREF and intersection, but the engine refuses
-the name body (spec T-0133). Group 8: not probeable through a file, since xlsx stores `,`.
+the name body (spec T-0133). Only a user-defined multi-area name was probed; `_xlnm.Print_Area`
+itself is left to T-0133's probe list. Group 8: not probeable through a file, since xlsx stores `,`.
 references.md "Union: parsing and evaluation" is now VERIFIED, apart from the parts marked as engine
 choices. Eval: probes new coverage 16 cells, 4 known failures added (the mismatches above,
 baselined as new coverage), 0 regressions.

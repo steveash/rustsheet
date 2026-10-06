@@ -203,8 +203,9 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   error. (Engine choice, not probed.)
 - Operands must be references. Excel for the web refuses a workbook (`FileCorruptTryRepair`) that
   holds `=(A1+B1,C1)`, `=(1,A1)`, `=(A1,"a")`, `=(A1,#N/A)`, `=(A1,SUM(B1))` or `=(A1,(B1+1))`
-  (one scratch workbook per formula, T-0187). The engine reads these as syntax errors, and
-  `(A1+B1,C1)` as `A1+(B1,C1)`.
+  (one scratch workbook per formula, T-0187). The engine reads the five non-reference operands as
+  syntax errors, but wrongly accepts `(A1+B1,C1)` as `A1+(B1,C1)` (`#VALUE!`), and should store it
+  as a parse error (T-0193).
 - A negated reference is accepted: `=(-A1,B1)` loads, gives `#VALUE!`, and FORMULATEXT prints it as
   `=(-A1,B1)`. The engine parses it as `-(A1,B1)` and prints that (T-0193).
 - An error operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` and `=(#REF!,A1) A1` are
@@ -220,11 +221,12 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
-- Engine choices still unprobed: a union cut by an intersection runs the cut on each pair of areas,
+- Engine choices still unprobed: the union binds tighter than every operator but the other
+  reference operators, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
-  function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), and so does a union
-  returned by IF, CHOOSE or LET (T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
+  function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently
+  takes its fallback for one, and so does a union returned by IF, CHOOSE or LET (T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
   `OpUnionKind` unwrapped; T-0133 should revisit it.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
