@@ -236,8 +236,10 @@ and a union whose accumulated areas would exceed `MAX_AREAS`, checked after each
 the next is evaluated (so `(I,A1,#REF!)`, with `I` an intersection of 65,536 areas, is `#VALUE!`,
 not `#REF!`). No operator ever returns more than `MAX_AREAS` areas, so the pairwise cost of one
 intersection is at most `MAX_AREAS` comparisons. A chain of cuts (`(U1 U2) A1 A1 ...`) would
-repeat that per three characters of formula, so one reference expression may compare at most
-1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it. In a value context a union
+repeat that per three characters of formula, so one top-level reference expression may compare at most
+1,048,576 pairs in all (`MAX_AREA_PAIRS`), with `#VALUE!` past it; a reference-returning function
+used as an operand (`INDEX`, `OFFSET`, `IF`) starts its own budget, so total work stays linear in
+formula length. In a value context a union
 keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.

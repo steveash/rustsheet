@@ -15,7 +15,7 @@ use crate::{
 /// docs/excel-semantics/references.md "Union area cap").
 pub(crate) const MAX_AREAS: usize = 1 << 16;
 
-/// Most pairs of areas one reference expression may compare. Each intersection compares at
+/// Most pairs of areas one top-level reference expression may compare. Each intersection compares at
 /// most [`MAX_AREAS`] pairs, but a chain of cuts (`(U1 U2) A1 A1 A1 ...`) repeats that once
 /// per three characters of formula, so the whole expression shares this budget.
 pub(crate) const MAX_AREA_PAIRS: usize = 1 << 20;
@@ -36,11 +36,15 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
 }
 
 /// Whether `node` may stand for several areas, so evaluating it needs an area list.
+/// An intersection is multi-area only if a union sits somewhere under it: a chain of
+/// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
+/// Recursion is bounded by the parser's depth cap.
 fn is_multi_area(node: &Node) -> bool {
-    matches!(
-        node,
-        Node::OpUnionKind { .. } | Node::OpIntersectKind { .. }
-    )
+    match node {
+        Node::OpUnionKind { .. } => true,
+        Node::OpIntersectKind { left, right } => is_multi_area(left) || is_multi_area(right),
+        _ => false,
+    }
 }
 
 /// The cells `a` and `b` share: `None` if none, `#VALUE!` if they are on different sheets.
