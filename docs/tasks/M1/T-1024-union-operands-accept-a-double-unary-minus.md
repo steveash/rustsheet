@@ -3,7 +3,7 @@ id: T-1024
 title: "Union operands: accept a double unary minus, refuse negated operand cut by intersection, keep nested parentheses in printing"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
