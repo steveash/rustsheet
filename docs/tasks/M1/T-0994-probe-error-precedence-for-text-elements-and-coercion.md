@@ -3,7 +3,7 @@ id: T-0994
 title: "Probe error precedence for text elements and coercion errors next to an error argument (WEEKDAY, MID)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
