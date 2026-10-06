@@ -3,7 +3,7 @@ id: T-0179
 title: "Subnormal results become 0 (probes/precision-and-rounding A14: 2^-1074)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ Rule VERIFIED in docs/excel-semantics/numbers.md ("Subnormal results become 0").
 
 ## Out of scope
 -
+
+## Outcome
+`finite_or_num` (the shared result finaliser of `+ - * /`, now also used by `^`) returns 0 for a
+result below the smallest normal double. probes known failures 110 -> 104 (6 fixed, 0 regressions);
+`subnormal_results_become_zero` unit test. Function results (EXP, etc.) are not flushed: not covered
+by evidence yet.
