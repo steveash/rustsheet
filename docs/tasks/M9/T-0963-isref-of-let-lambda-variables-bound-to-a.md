@@ -1,0 +1,25 @@
+---
+id: T-0963
+title: "ISREF of LET/LAMBDA variables bound to a reference (ISREF.xlsx A19-A26)"
+milestone: M9
+lane: functions-logic
+status: todo
+priority: P3
+size: M
+tier: opus
+depends_on: []
+---
+
+## Goal
+`ISREF(x)` is TRUE inside LET/LAMBDA when the variable was bound to a reference, as Excel does.
+
+## Context
+Excel-cached cells in ironcalc-calc/INFORMATION/ISREF.xlsx Sheet1!A19, A20, A23, A24, A26 (`LAMBDA(x,ISREF(x))(K1)`, `LET(x,K1,ISREF(x))`, `LET(x,TextCell,ISREF(x))`) are TRUE but we return FALSE: `LET` evaluates the binding with `evaluate_node_in_context` (functions/logical/let.rs) and lambda arguments likewise, so the reference is lost. Upstream: the `variable_value`/"a variable holds what it was bound to, a reference included" change around `c4641f0f` (information/mod.rs, model.rs). Found by T-0940.
+
+## Acceptance criteria
+- [ ] The five ISREF.xlsx cells above pass; `ISREF(x)` for a variable bound to a value is still FALSE.
+- [ ] 0 eval regressions, `make check` green.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
