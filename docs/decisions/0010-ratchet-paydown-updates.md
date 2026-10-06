@@ -22,5 +22,8 @@
   static_analysis.rs 2161 → 2158, model.rs 3603 → 3574 lines (stringify.rs and model.rs partly
   shrunk on main already), and date_and_time.rs and text/common.rs, already shrunk on main
   (`check_duplication.py --update`, `check_file_size.py --update`).
+  T-0995: date_and_time.rs 1593 → ~1540 lines (WEEKNUM moved to `date_and_time/weeknum.rs`), and
+  lookup_and_reference/mod.rs and other files already shrunk on main; duplicated lines 7825 → 7725 (T-1018's
+  XLOOKUP/XMATCH dedup, left unrecorded there) (`check_file_size.py --update`, `check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

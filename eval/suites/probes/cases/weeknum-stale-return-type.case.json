@@ -1,0 +1,65 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "WEEKNUM out-of-range return_type (>=22, <0) reuses the start weekday of the last valid WEEKNUM evaluated earlier in the recalc (Excel evaluates bottom to top on load); #NUM! when none ran (T-1023, T-1025)",
+  "tags": [
+    "M1",
+    "dates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Up",
+      "cells": {
+        "A1": "=WEEKNUM(100,99)",
+        "A2": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "Down",
+      "cells": {
+        "A1": "=WEEKNUM(100,2)",
+        "A2": "=WEEKNUM(100,99)"
+      }
+    },
+    {
+      "name": "Mixed",
+      "cells": {
+        "A1": "=WEEKNUM(100,0)",
+        "A2": "=WEEKNUM(100,3)",
+        "A3": "=WEEKNUM(100,-5)",
+        "A4": "=WEEKNUM(100,22)",
+        "A5": "=WEEKNUM(100,2)"
+      }
+    },
+    {
+      "name": "Type21",
+      "cells": {
+        "A1": "=WEEKNUM(100,99)",
+        "A2": "=WEEKNUM(100,21)"
+      }
+    },
+    {
+      "name": "Type1",
+      "cells": {
+        "A1": "=WEEKNUM(100,99)",
+        "A2": "=WEEKNUM(100)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Up!A1",
+    "Up!A2",
+    "Down!A1",
+    "Down!A2",
+    "Mixed!A1",
+    "Mixed!A2",
+    "Mixed!A3",
+    "Mixed!A4",
+    "Mixed!A5",
+    "Type21!A1",
+    "Type21!A2",
+    "Type1!A1",
+    "Type1!A2"
+  ]
+}

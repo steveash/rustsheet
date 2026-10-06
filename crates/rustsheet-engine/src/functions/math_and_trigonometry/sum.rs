@@ -67,7 +67,7 @@ impl Model {
         if count == 0 {
             return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
-        CalcResult::Number(sum)
+        CalcResult::finite_number_or_num(sum, cell)
     }
 
     // Flattens one SUMX argument (range, array or scalar number) row-major; non-numbers are `None`.

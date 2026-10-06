@@ -46,6 +46,6 @@ impl Model {
             result = 0.0;
         }
 
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 }

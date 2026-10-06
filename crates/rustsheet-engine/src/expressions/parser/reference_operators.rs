@@ -27,10 +27,9 @@ impl Parser {
         }
         let separator = self.get_argument_separator_token();
         let mut union_depth = self.depth;
-        let mut first = true;
         while self.lexer.peek_token() == separator {
             self.lexer.advance_token();
-            let mut p = self.parse_expr();
+            let p = self.parse_expr();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
@@ -42,12 +41,6 @@ impl Parser {
                     message: "Union needs references".to_string(),
                 };
             }
-            // A union operand that is itself a union was written in its own parentheses.
-            if first {
-                group(&mut t);
-                first = false;
-            }
-            group(&mut p);
             if let Err(error) = self.grow(union_depth, self.depth) {
                 return error;
             }
@@ -55,7 +48,7 @@ impl Parser {
             t = Node::OpUnionKind {
                 left: Box::new(t),
                 right: Box::new(p),
-                grouped: false,
+                written: 0,
             };
         }
         self.inner_depth = self.inner_depth.max(union_depth);
@@ -66,6 +59,10 @@ impl Parser {
                 position: err.position,
                 message: err.message,
             };
+        }
+        // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
+        if let Node::OpUnionKind { written, .. } = &mut t {
+            *written = written.saturating_add(1);
         }
         t
     }
@@ -102,7 +99,7 @@ impl Parser {
                 return p;
             }
             if !separator_ok
-                || !(name_error || is_reference_operand(&t))
+                || !(name_error || (is_reference_operand(&t) && !has_negated_operand(&t)))
                 || !is_reference_operand(&p)
             {
                 return self.intersection_error();
@@ -228,16 +225,29 @@ fn is_union_operand(node: &Node) -> bool {
         Node::UnaryKind {
             kind: OpUnary::Minus,
             right,
-        } => is_reference_operand(right),
+        } => match &**right {
+            // `(--A1,B1)` loads in Excel and is `#VALUE!`; three minuses are unprobed and stay
+            // refused (probes/union-operand-double-minus, T-1024).
+            Node::UnaryKind {
+                kind: OpUnary::Minus,
+                right: inner,
+            } => is_reference_operand(inner),
+            _ => is_reference_operand(right),
+        },
         _ => is_reference_operand(node),
     }
 }
 
-/// Marks `node`, an operand of a union, as written in its own parentheses when it is a union.
-fn group(node: &mut Node) {
-    if let Node::OpUnionKind { grouped, .. } = node {
-        *grouped = true;
-    }
+/// Whether `node` is a union with a directly negated operand, the left operand shape Excel
+/// refuses (`FileCorruptTryRepair`) for `(-A1,B1) A1` and `(-A1,B1) B1` (docs/excel-semantics/
+/// references.md "Union: parsing and evaluation", T-1024). A negation nested deeper, or on the
+/// right of an intersection, is unprobed and stays accepted (T-1031).
+fn has_negated_operand(node: &Node) -> bool {
+    matches!(
+        node,
+        Node::OpUnionKind { left, right, .. }
+            if matches!(**left, Node::UnaryKind { .. }) || matches!(**right, Node::UnaryKind { .. })
+    )
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
@@ -335,23 +345,35 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
     }
 }
 
-/// `(left,right)`, the printed union of `left_text` and `right_text` (the printed `left` and
-/// `right`). It always carries its parentheses: without them the comma would be an argument
-/// separator (`SUM((A1,B2))`) or left over input. A left operand that is itself a union is
-/// printed without its own, `(A1,B2,C3)`, which parses back to the same left-associative tree,
-/// unless it was written grouped (`((A1,B2),C3)`, Excel keeps those parentheses, T-0193).
+/// The printed union `node` (an `OpUnionKind`) of `left_text` and `right_text` (the printed
+/// operands), with the parentheses it was written in. It always carries at least one: without
+/// them the comma would be an argument separator (`SUM((A1,B2))`) or left over input. A left
+/// operand that is itself a union is printed without its own, `(A1,B2,C3)`, which parses back
+/// to the same left-associative tree, unless it was written in parentheses (`((A1,B2),C3)`,
+/// Excel keeps those parentheses, T-0193, and every extra level, `((A1,B2))`, T-1024).
 pub(crate) fn union_text(
+    node: &Node,
     left_text: &str,
-    left: &Node,
     right_text: &str,
     locale: &Locale,
 ) -> String {
+    // Callers pass only unions; any other node prints as a plain one-level union of its texts.
+    let (left, written) = match node {
+        Node::OpUnionKind { left, written, .. } => (&**left, *written),
+        other => (other, 1),
+    };
     let left_text = match left {
-        Node::OpUnionKind { grouped: false, .. } => left_text
+        Node::OpUnionKind { written: 0, .. } => left_text
             .strip_prefix('(')
             .and_then(|text| text.strip_suffix(')'))
             .unwrap_or(left_text),
         _ => left_text,
     };
-    format!("({left_text}{}{right_text})", argument_separator(locale))
+    let levels = written.max(1);
+    format!(
+        "{}{left_text}{}{right_text}{}",
+        "(".repeat(levels),
+        argument_separator(locale),
+        ")".repeat(levels)
+    )
 }
