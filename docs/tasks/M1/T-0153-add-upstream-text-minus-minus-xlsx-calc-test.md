@@ -24,6 +24,6 @@ Left over from T-0146. The workbook is `git show 9b1ae3fd:xlsx/tests/calc_tests/
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Done on this branch: `TEXT/MINUS_MINUS.xlsx` (from IronCalc 9b1ae3fd) added under crates/rustsheet-xlsx/tests/calc_tests/TEXT/; it already passes whole (`make eval-show CASE=ironcalc-calc/TEXT/MINUS_MINUS.xlsx`: 73/73), so that acceptance line needs no engine change.
 Not done: the `"10:11.5:12"` oddity (B26/C26 stay in eval/baseline/probes.txt) and probing the unverified edges listed in the acceptance criteria. Why: the only datum is `TIMEVALUE("10:11.5:12")` = 36665.5 s = 10h 11m 5.5s, and nothing says how a `H:M.f:S` string maps to that (the trailing `:12` seems to vanish); a rule needs several new oracle probes (vary the pieces: `10:11.5:13`, `10:12.5:12`, `10:11.25:12`, `1:11.5:12`) before implementing, which is beyond a sonnet-sized change. Next: write the probe case with those variants (excel-probe skill, oracle excel-graph is OK), fit the rule, implement in `time_text::parse_clock_text`/`parse_time_serial`, record in dates.md, drop B26/C26 via `make eval-baseline`.
