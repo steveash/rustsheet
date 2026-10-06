@@ -190,12 +190,7 @@ F	poi/59106.xlsx	Test!B2
 F	poi/59746_NoRowNums.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
 F	poi/61063.xlsx	Tabelle1!A4
-F	poi/61652.xlsx	IRPPCalc!A2
-F	poi/61652.xlsx	IRPPCalc!N12
-F	poi/61652.xlsx	Model!A4
-F	poi/61652.xlsx	Model!A6
 F	poi/61652.xlsx	Model!B4
-F	poi/61652.xlsx	Model!C4
 F	poi/63934.xlsx	Sheet1!B2
 F	poi/70005-countifs.xlsx	Sheet1!A3
 F	poi/70005-countifs.xlsx	Sheet1!A4
@@ -333,13 +328,10 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E584
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E824
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E872
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F128
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F1496
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F27
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F340
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F584
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F940
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!G1252
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H1168
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!H160

@@ -35,13 +35,14 @@ A concurrent refill (#182) filed the same LEFT/RIGHT/MID, AND/OR/XOR-text and WO
 At commit time (after #182) `make ready-tasks` shows functions 32, sonnet 24 (buffer met), research 8, api 3. Workers' busy lanes hide the rest: engine 0 ready with 19 todo, functions-text busy.
 Not filed, for the planner/owner to decide: 1904-date-system cells in POI DateFormat*Tests (~35 cells); R1C1 parse/print has no Excel evidence (would need a `formulasR1C1` oracle capture).
 Upstream IronCalc: no new commits past 4deab8f6. Oracle: excel-graph OK; fill on ironcalc-calc wrote 0 sidecars (207 skipped) and on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
+One `make eval-baseline` run segfaulted and did not reproduce in 6 reruns; filed T-0183 (P1, harness). The poi baseline was stale by 8 cells that #181 fixed (CI does not fetch poi); this PR records them (poi 690 → 682).
 Spot-audit: none yet; the first weekly audit is due 2026-10-09 (with the decision 0015 reviewer-model check).
 
-**Critical lane:** engine, research, api
+**Critical lane:** engine, research, api, harness
 
 (Ordered list read by both tier workers, which then fall back to `functions`. M1 exit needs gen-m1 at 100% (258 cells left; T-0134 and T-0221 still open)
 and the remaining engine parity tasks (T-0110, T-0122, T-0128, T-0129, T-0144, T-0149, T-0154, T-0158); research holds the probes that unblock them.
-harness dropped: no open M1 harness work, gen-m1 is generated and oracle-filled. perf stays out: its tasks are M3.)
+harness is last: gen-m1 is generated and oracle-filled; its only M1 work is the T-0183 segfault. perf stays out: its tasks are M3.)
 
 ## Needs owner
 
