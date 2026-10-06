@@ -27,7 +27,7 @@ T-0105/0106/0107/0109/0121/0127/0130/0131/0132/0136/0137/0138/0139/0141/0142/014
 T-0209/0210/0211/0213/0214/0215/0216/0217/0226/0227/0228/0232/0233/0234/0236/0237/0238/0239/0240/0242/0246,
 T-0903/0910/0920/0921/0940/0944/0945/0946/0947/0948/0949/0955/0956/0964) plus 5 queue/process PRs (decision 0028, sonnet-queue refills); 0 reverted.
 Blocked: only the Phase 2 tasks T-0400/T-0401/T-0402 (by decision 0027). T-0125 (#68) was blocked on T-0213, which is now done. This run unblocked it, the opus worker resumed it, and it merged during the run (#181).
-CI on `main` (86e5ddb): green. Merged during this run (not in the table above): T-0153 (#175), T-0250 (#177), T-0976 (#178), T-0933 (#179), T-0125 (#181), sonnet refill (#182). Open PRs: 10 — #83 T-0403, #93 T-0225, #105 T-0040 (draft, blocked), #125 T-0241, #129 T-0222,
+CI on `main` (86e5ddb): green. Merged during this run (not in the table above): T-0153 (#175), T-0250 (#177), T-0976 (#178), T-0933 (#179), T-0125 (#181), sonnet refill (#182), T-0252 (#183). Open PRs: 10 — #83 T-0403, #93 T-0225, #105 T-0040 (draft, blocked), #125 T-0241, #129 T-0222,
 #143 T-0151, #144 T-0957, #145 T-0247, #146 T-0943, #148 T-0044; all under 24 h old at the start of the run.
 Queues: functions 28 ready at the start of the run, which is enough. The sonnet buffer was 9 (below 10) and research had 0 ready, so this run ran the gap-triager and the planner.
 New tasks: sonnet T-0173/0174/0175/0178/0179/0980/0981, opus T-0176/0177/0180/0982.
