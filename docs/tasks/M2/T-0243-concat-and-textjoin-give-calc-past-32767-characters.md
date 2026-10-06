@@ -3,7 +3,7 @@ id: T-0243
 title: "CONCAT and TEXTJOIN give #CALC! past 32767 characters"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
