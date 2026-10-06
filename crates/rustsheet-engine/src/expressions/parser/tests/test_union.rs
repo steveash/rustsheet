@@ -209,8 +209,7 @@ fn unions_round_trip_through_stringify() {
 
 #[test]
 fn sheet_qualified_corner_pairs_are_union_operands() {
-    // T-0130: `Data!B8:Data!E12` is one range. Only A1 is checked: the R1C1 lexer does not
-    // read a second sheet prefix yet (T-0188, which affects any such range).
+    // T-0130: `Data!B8:Data!E12` is one range; T-0188: it also survives the R1C1 storage form.
     let mut parser = parser();
     let node = parser.parse("(Data!B8:Data!E12,A1)", &context());
     let Node::OpUnionKind { left, .. } = &node else {
@@ -220,6 +219,31 @@ fn sheet_qualified_corner_pairs_are_union_operands() {
     let text = to_english_localized_string(&node, &context());
     assert_eq!(text, "(Data!B8:Data!E12,A1)");
     assert_eq!(parser.parse(&text, &context()), node);
+    assert_r1c1_round_trip(&mut parser, "(Data!B8:Data!E12,A1)");
+}
+
+/// T-0188: the R1C1 lexer ends a range token at the first corner when the second corner carries
+/// a sheet prefix, as the A1 lexer does, so the stored form re-parses to the same tree.
+#[test]
+fn second_corner_sheet_prefix_survives_r1c1() {
+    let mut parser = parser();
+    for formula in [
+        "SUM(Data!B8:Data!E12,A1)",
+        "(Data!B8:Data!E12,A1)",
+        "Data!B8:Data!E12 Data!B12",
+    ] {
+        assert_r1c1_round_trip(&mut parser, formula);
+    }
+}
+
+fn assert_r1c1_round_trip(parser: &mut Parser, formula: &str) {
+    let node = parser.parse(formula, &context());
+    assert!(!is_parse_error(&node), "{formula}: {node:?}");
+    let rc = to_rc_format(&node);
+    parser.set_lexer_mode(LexerMode::R1C1);
+    let reparsed = parser.parse(&rc, &context());
+    parser.set_lexer_mode(LexerMode::A1);
+    assert_eq!(reparsed, node, "{formula} via {rc}");
 }
 
 #[test]

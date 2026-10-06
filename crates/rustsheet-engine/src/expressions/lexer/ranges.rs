@@ -326,7 +326,8 @@ impl Lexer {
         // first let's try to parse a cell
         match self.consume_reference_r1c1() {
             Ok(cell) => {
-                if self.peek_char() == Some(':') {
+                // Same as the A1 path: a sheet prefix on the second corner ends the token here.
+                if self.peek_char() == Some(':') && !self.sheet_prefix_after_colon() {
                     // It's a range
                     self.position += 1;
                     if let Ok(cell2) = self.consume_reference_r1c1() {
