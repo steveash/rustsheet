@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -81,6 +82,6 @@ impl Model {
             }
         }
 
-        CalcResult::Number(total)
+        CalcResult::Number(flush_subnormal(total))
     }
 }
