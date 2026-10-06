@@ -281,13 +281,6 @@ F	probes/subnormal-function-results.case.json	Calc!A60
 F	probes/subnormal-function-results.case.json	Calc!A61
 F	probes/subnormal-function-results.case.json	Calc!A62
 F	probes/subnormal-function-results.case.json	Calc!A65
-F	probes/subnormal-function-results.case.json	Calc!C4
-F	probes/subnormal-function-results.case.json	Calc!C5
-F	probes/subnormal-function-results.case.json	Calc!C6
-F	probes/subnormal-function-results.case.json	Calc!C60
-F	probes/subnormal-function-results.case.json	Calc!C61
-F	probes/subnormal-function-results.case.json	Calc!C62
-F	probes/subnormal-function-results.case.json	Calc!C65
 F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
