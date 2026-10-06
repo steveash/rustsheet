@@ -407,6 +407,11 @@ impl Model {
                                     ArrayNode::String(d.text)
                                 }
                             }
+                            // Excel: a blank value with an empty format is "" (number-formats.md
+                            // "An empty format string returns empty text"); other values unprobed.
+                            ArrayNode::Empty if format_code.is_empty() => {
+                                ArrayNode::String(String::new())
+                            }
                             ArrayNode::Empty => {
                                 let d = format_number(0.0, &format_code, locale);
                                 if d.error.is_some() {
@@ -426,6 +431,7 @@ impl Model {
                 CalcResult::Array(output)
             }
             other => {
+                let is_blank = matches!(other, CalcResult::EmptyCell | CalcResult::EmptyArg);
                 let value = match other {
                     CalcResult::Number(f) => f,
                     CalcResult::String(s) => return CalcResult::String(s),
@@ -445,6 +451,10 @@ impl Model {
                     Ok(s) => s,
                     Err(s) => return s,
                 };
+                // Same rule as the array branch above (blank value, empty format).
+                if format_code.is_empty() && is_blank {
+                    return CalcResult::String(String::new());
+                }
                 let d = format_number(value, &format_code, self.locale);
                 if let Some(_e) = d.error {
                     return CalcResult::Error {

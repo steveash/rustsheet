@@ -3,7 +3,7 @@ id: T-0933
 title: "TEXT: an empty format string returns empty text (194 known failures)"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ the rule in `docs/excel-semantics/` (new file `number-formats.md`).
 
 ## Out of scope
 Any other TEXT format feature (T-0934..T-0938).
+
+## Outcome
+`fn_text` returns `""` for a blank value with an empty format (scalar and array paths); non-blank values with `""` are unprobed and unchanged. Unit test added; number-formats.md has the `Implemented in:` line. Eval: poi known failures 889 -> 690 (199 fixed: the 194 listed plus the 5 FormatConditionTests cells), no regressions.
