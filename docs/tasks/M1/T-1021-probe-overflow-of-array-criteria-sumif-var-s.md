@@ -3,7 +3,7 @@ id: T-1021
 title: "Probe overflow of array-criteria SUMIF, VAR.S, STDEV.S, VAR.P, STDEV.P, VARA, STDEVA"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
