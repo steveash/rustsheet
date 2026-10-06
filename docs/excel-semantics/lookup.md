@@ -83,4 +83,5 @@ returns the whole matched row: `XLOOKUP(8389,B5:B14,C5:D14)` is the 1x2 array
 Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2. Unprobed: the row-vector
 analog and array (non-range) return arguments.
 Status: VERIFIED (Excel-cached)
+Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
 Tasks: T-0948
