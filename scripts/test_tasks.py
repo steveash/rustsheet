@@ -296,6 +296,29 @@ class BranchClaims(unittest.TestCase):
             # harness free.
             self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}, {("engine", "T-0001")}))
 
+    def test_blocked_task_on_its_branch_frees_the_lane_but_stays_claimed(self) -> None:
+        now = int(time.time())
+        refs = (
+            f"refs/remotes/origin/agent/engine/T-0001-working {now - 60}\n"
+            f"refs/remotes/origin/agent/research/T-0002-blocked {now - 60}\n"
+        )
+
+        def fake_run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            if args[0] == "for-each-ref":
+                return mock.Mock(stdout=refs)
+            if args[0] == "ls-tree":
+                tid = args[3].rsplit("/", 1)[-1][:6]
+                return mock.Mock(stdout=f"docs/tasks/M0/{tid}-x.md\n")
+            status = "blocked" if "T-0002" in args[1] else "in-progress"
+            return mock.Mock(stdout=f"---\nid: x\nstatus: {status}\n---\nbody\n")
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
+            # T-0002 was blocked a minute ago: nobody restarts it, but research may take its next task.
+            self.assertEqual(
+                tasks.branch_claims(fetch=False), ({"T-0001", "T-0002"}, set(), {("engine", "T-0001")})
+            )
+
 
 class Slug(unittest.TestCase):
     def test_slug(self) -> None:

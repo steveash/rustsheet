@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::number_format::parse_excel_number;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -17,10 +18,15 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            // References (also via IF/INDEX) arrive as a Range; the scalar
+            // arms below only see values.
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => {
                     f(value);
                 }
+                // An empty argument (`AVERAGE(5,)`) counts as 0
+                // (probes/average-value-args F2, F6, F9, F15, F17).
+                CalcResult::EmptyArg => f(0.0),
                 CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
@@ -42,9 +48,8 @@ impl Model {
                                 ArrayNode::Number(value) => {
                                     f(value);
                                 }
-                                ArrayNode::Boolean(b) => {
-                                    f(if b { 1.0 } else { 0.0 });
-                                }
+                                // Booleans inside an array are ignored, unlike direct
+                                // arguments (probes/average-value-args F1, F5, F8, F10).
                                 ArrayNode::Error(error) => {
                                     return Err(CalcResult::Error {
                                         error,
@@ -71,6 +76,26 @@ impl Model {
         Ok(())
     }
 
+    /// `for_each_value` that skips empty arguments (`DEVSQ(1, )`) instead of counting them as 0.
+    /// DEVSQ, AVEDEV and SUMSQ ignored them before they moved onto `for_each_value` and there is
+    /// no Excel evidence either way yet. TODO(T-0236): probe empty arguments and fold this into `for_each_value`.
+    pub(crate) fn for_each_value_skip_empty<F>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(f64),
+    {
+        for arg in args {
+            if !matches!(arg, Node::EmptyArgKind) {
+                self.for_each_value(std::slice::from_ref(arg), cell, &mut f)?;
+            }
+        }
+        Ok(())
+    }
+
     fn for_each_value_a<F>(
         &mut self,
         args: &[Node],
@@ -85,10 +110,15 @@ impl Model {
                 CalcResult::Number(value) => {
                     f(value);
                 }
-                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                // A single-cell reference reads like a one-cell range: text counts as 0 and
+                // a boolean as 1/0 (coercion.md "MAXA / MINA", poi EverythingTests J888, F912).
+                CalcResult::Boolean(value) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                CalcResult::String(_) if matches!(arg, Node::ReferenceKind { .. }) => {
+                    f(0.0);
+                }
+                CalcResult::String(value) => {
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
@@ -256,7 +286,7 @@ impl Model {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
-                    } else if let Ok(t) = s.parse::<f64>() {
+                    } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;
                     } else {
@@ -300,15 +330,24 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            // References (also via IF/INDEX) arrive as a Range; the scalar
+            // arms below only see values.
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(_) => {
                     result += 1.0;
                 }
                 CalcResult::Boolean(_) if !matches!(arg, Node::ReferenceKind { .. }) => {
                     result += 1.0;
                 }
+                // COUNT(5,) is 2 (probes/average-value-args F16).
+                CalcResult::EmptyArg => result += 1.0,
+                // Direct text counts when it coerces to a number as SUM's does, clock, date,
+                // currency and percent text included (probes/count-direct-text; T-0252). Only
+                // number-ness matters, so the 15-digit cut cannot change the answer
+                // (docs/excel-semantics/numbers.md "15-digit literal parsing").
                 CalcResult::String(s)
-                    if !matches!(arg, Node::ReferenceKind { .. }) && s.parse::<f64>().is_ok() =>
+                    if !matches!(arg, Node::ReferenceKind { .. })
+                        && self.cast_number(&s).is_some_and(f64::is_finite) =>
                 {
                     result += 1.0;
                 }
@@ -331,6 +370,13 @@ impl Model {
                             }
                         }
                     }
+                }
+                // Only an array's numbers count (probes/average-value-args F32).
+                CalcResult::Array(array) => {
+                    let numbers = array.iter().flatten();
+                    result += numbers
+                        .filter(|v| matches!(v, ArrayNode::Number(_)))
+                        .count() as f64;
                 }
                 _ => {
                     // Ignore everything else
@@ -442,49 +488,16 @@ impl Model {
             *count += 1;
         }
 
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => {
-                    accumulate(&mut values, &mut sum, &mut count, value);
-                }
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        accumulate(&mut values, &mut sum, &mut count, value);
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    accumulate(&mut values, &mut sum, &mut count, value);
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // ignore non-numeric
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // ignore non-numeric
-                }
-            }
+        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+            accumulate(&mut values, &mut sum, &mut count, value);
+        }) {
+            return error;
         }
 
         if count == 0 {
+            // Excel: #NUM!, not #DIV/0! (docs/excel-semantics/coercion.md, poi EverythingTests!F176).
             return CalcResult::new_error(
-                Error::DIV,
+                Error::NUM,
                 cell,
                 "AVEDEV with no numeric data".to_string(),
             );

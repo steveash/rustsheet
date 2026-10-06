@@ -1,6 +1,11 @@
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
+    functions::Function,
     model::Model,
     number_format::to_excel_precision,
 };
@@ -138,6 +143,29 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
 }
 
 impl Model {
+    /// Evaluates one argument of an aggregate (SUM, COUNT, AVERAGE, MIN, ...).
+    /// A cell reference, and an IF or INDEX that selects one, comes back as a
+    /// `Range`, so the caller skips its text, booleans and blanks like any range
+    /// cell; everything else is a value (T-0216; docs/excel-semantics/references.md).
+    pub(crate) fn evaluate_aggregate_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } => self.if_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_impl(args, cell, true),
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///

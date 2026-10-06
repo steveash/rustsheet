@@ -20,12 +20,50 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 
-## ROUND uses decimal-correct half-away-from-zero
-Rule: `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 in Excel, even though the
-binary values are slightly below the half. IronCalc returns 1 for the first.
-Evidence: probes/precision-and-rounding.case.json A6 (1.01), A7 (2.68), A8 (`ROUND(-2.5,0)` = -3).
-Oracle: excel-graph, 2026-10-04.
+## ROUND family rounds in two decimal stages
+Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
+binary value to 15 significant digits, then (2) round that decimal at `num_digits` (ROUND: half
+away from zero; ROUNDUP: away from zero; ROUNDDOWN: toward zero) and return the nearest double.
+Stage 1 rounds to nearest, but an **exact tie at the 16th digit** goes toward zero for ROUND and
+away from zero for ROUNDUP/ROUNDDOWN (inconsistent; Excel is right):
+`ROUND(999999999999957.5,0)` = 999999999999957 and `ROUND(999999999999956.5,0)` = …956, yet
+`ROUNDUP(…957.5,0)` = `ROUNDDOWN(…957.5,0)` = 999999999999958; `ROUND(1E+15+5,0)` = 1E+15 but
+`ROUNDDOWN(1E+15+5,0)` = 1000000000000010; `ROUND(12345678901234.75,2)` = 12345678901234.7.
+Consequences: `ROUND(1.005,2)` = 1.01 and `ROUND(2.675,2)` = 2.68 (the binary values are just below
+the half, but 15 digits read 1.00500000000000); `ROUNDDOWN(1-2^-53,0)` = 1; `ROUNDUP(1E+15+1,0)` =
+1E+15; `ROUND(1E+15+86,2)` = 1000000000000090; `ROUNDDOWN(123456789.123,-5)` = 123400000 exactly;
+a tie at a coarser digit is half away (`ROUND(12345678901234.5,0)` = 12345678901235, `ROUND(-2.5,0)`
+= -3). Large `num_digits` returns the 15-digit value (`ROUND(1.5,400)` = 1.5), very negative ones
+give 0 for ROUND (`ROUND(1.5,-400)`) and `#NUM!` for ROUNDUP (`ROUNDUP(1.5,-400)`, the result
+overflows). Near the largest double the 15-digit cut itself overflows: `ROUND(2^1023*(2-2^-52),0)`
+and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.5,0)&""` = "0").
+`ROUND(1.23456789012345E+300,-299)` = 1.2E+300.
+Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
+A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
+Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+
+## MOD is #NUM! for a huge quotient
+Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
+`MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
+the magnitude of `n` or `d` and not on signs: `MOD(-1125900000000,-1)`, `MOD(1125900000000,-1)` and
+`MOD(2251800000000,2)` are `#NUM!` while `MOD(2251799999999,2)` = 1, `MOD(1E+15+7,1000000)` = 7 and
+`MOD(1,1E-12)` (quotient 1E+12) is 2.01E-17 but `MOD(1.2,1E-12)` is `#NUM!`; a fractional quotient
+just below the limit works (`MOD(562949999999.5,0.5)` = 0, `MOD(562950000000.5,0.5)` = `#NUM!`).
+The older documented limit 2^27 does not apply (`MOD(2^40,1)` = 0).
+Evidence: probes/mod-huge-quotient, mod-quotient-threshold (1-5), mod-quotient-boundary (bisected with
+excel-graph, 2026-10-05); probes/round-family A20 (T-0106).
 Status: VERIFIED
+Implemented in: `fn_mod` in crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs
+Tasks: T-0141
+
+## Formula number literals are read at 15 significant digits
+Rule: a numeric literal in a formula is cut (truncated, see "15-digit literal parsing") to 15 significant digits when parsed:
+`1.7763568394002505E-12-1.77635683940025E-12` = 0, `1.00000000000000049-1` = 0 and
+`1.0000000000000009-1` = 0 (a full double parse would leave 4.9E-16 and 8.9E-16), and
+`MOD(2,1.7763568394002505E-12)` equals the 15-digit-literal result 1.1089014151366425E-12.
+Evidence: probes/literal-digits C1-C6 (found by T-0141); excel-graph, 2026-10-05.
+Status: VERIFIED
+Implemented in: see "15-digit literal parsing"
 
 ## Number → text conversion uses 15 significant digits
 Rule: `=CONCAT(0.1+0.2)` → "0.3": numbers become text with 15 significant digits (124 of 136
@@ -35,16 +73,28 @@ exponent is uppercase (`-2.22044604925031E-16`, `5.55111512312578E-17`, `1E+21`)
 in fixed notation where `%.15g` would switch: `123456789012345678` → "123456789012345000",
 `1e15+0.3` → "1000000000000000", `9999999999999999` → "9999999999999990" and `2^53+1` →
 "9007199254740990" (digits past 15 are zeros), `1e-5` → "0.00001", `1e-15` → "0.000000000000001"
-(`LEN` 17). So the switch to E notation lies between 1.23E+17 and 1E+20 for large values
-(`1E+20&0.1` → "1E+200.1", `1E+20&100` → "1E+20100") and between 2.22E-16 and 1E-15 for small ones.
+(`LEN` 17). Large values switch to E notation too: `1E+20&0.1` → "1E+200.1" and `1E+20&100` →
+"1E+20100"; the exact switch is the 20-character rule below.
 Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `=7+Data!$E5&10` with E5 = 1E-15 → "710". Snapping does not apply inside the CONCAT argument:
 `CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
-significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
-Evidence: probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
+significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`. The 15th digit is rounded, not cut,
+and the count is of significant digits, not decimal places: `TEXT(2/3,…)` = `0.666666666666667000`,
+`TEXT(0.000123456789012345,…)` = `0.000123456789012345`, `TEXT(1.005*1000,…)` = `1005.000000000000000000`,
+`TEXT(2^53+1,…)` = `9007199254740990.000000000000000000`, `TEXT(0.1+0.2-0.3,…)` = `0.000000000000000056`
+(probes-numeric/4f413cc257ce15c4 A23, A51, A79, A71, A7; T-0980).
+Notation rule (T-0107): plain notation whenever the plain string, without the sign, has at most
+20 characters, otherwise `d.dddE±XX` with at least two exponent digits: `99999999999999900000`
+and `-10000000000000000000` stay plain, `1E+20`/`-1E+20`/`1E+21` do not; `0.000000000000000001`
+(1E-18), `0.000000000000000123` and `0.00012345678901234` stay plain, `1E-19`, `1.23E-17`,
+`9.99999999999999E-16` and `1.23456789012345E-05` (21+ characters plain) do not. Trailing zeros of
+the 15 digits are dropped (`2^0.5` → "1.4142135623731"). An exact tie at the 16th digit goes toward
+zero, as in ROUND's 15-digit cut: `1E+15+15` → "1000000000000010", `1E+14+1.5` → "100000000000001",
+`12345678901234.75` → "12345678901234.7".
+Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
+probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,
 A21, A188 (oracle: excel-graph, 2026-10-05, T-0109).
-Status: VERIFIED
-Tasks: T-0107
+Status: VERIFIED. Implementation: `number_to_text` in `crates/rustsheet-engine/src/number_format.rs` (T-0107).
 
 ## Negative zero prints as 0
 Rule: `-x` where x is 0, empty or FALSE converts to the text "0" (no sign); the oracle cannot tell
@@ -53,8 +103,7 @@ whether that value is a negative zero or +0. `-0&0.5` → "00.5",
 Evidence: gen-m1/f91603cd8616521f Calc!A20, A249, A13 and 9 more cells (A7 A28 A33 A71 A110 A112 A125 A177 A250; A71 is
 `-Data!B$3` with B3 = FALSE → "01000");
 gen-m1/57fe331cb7611dbf Calc!A235 (oracle: excel-graph, 2026-10-05, T-0109).
-Status: VERIFIED
-Tasks: T-0107
+Status: VERIFIED. Implementation: `number_to_text` (T-0107).
 
 ## Overflow in `*` is #NUM! where it happens
 Rule: a product beyond the double range is the error `#NUM!` at that point, so it propagates
@@ -64,7 +113,11 @@ and `LEN((1e307*100)&"")` are all `#NUM!`. A result of exactly 1e308 is finite:
 `=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
 Evidence: probes-numeric/4f413cc257ce15c4 Calc!A121-A124; probes/precision-and-rounding A12, A13.
 Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet).
+Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet), for negative overflow
+(`-1e307*100`) and for the per-element array form (`{1e307,1}*100`); the unit tests pin our
+expectation only.
+Implemented in: `arithmetic::times` (crates/rustsheet-engine/src/arithmetic.rs); test
+`overflowing_product_is_num_inside_formulas`.
 Tasks: T-0136
 
 ## Comparison tolerance
@@ -82,6 +135,12 @@ digits 16+ are **truncated**, not rounded: `VALUE("9307149050110945.41")` = 9307
 Evidence: probes-numeric/23733e52a2ff91ab `literal-15-digit/*`; probes/precision-and-rounding A11.
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+The same truncation applies to numeric text in COUNTIF/SUMIF criteria (`COUNTIF(r,"123456789012345678")`
+matches a cell holding 123456789012345000, and `"<…"`/`">=…"` compare against the cut value) and to
+`NUMBERVALUE` and `AVERAGE` text arguments (probes/text-number-15-digits B1-B8, B11-B13; excel-graph,
+2026-10-06).
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`, and COUNT's direct text (via `cast_number`, T-0252). Other sites keep `parse_finite_number` because the digit count cannot change their answer: the date-criterion check only tests number-ness; the sequence detector (autofill sources are already 15-digit values), conditional-formatting date bounds, `formatter/lexer.rs` condition operands and utils.rs are not affected in practice. `"<17 digits>"+0` is cut the same way (probes/text-number-15-digits B14, excel-graph 2026-10-06). Unverified: autofill over E-notation numbers (1E-10, 2E-10) copies instead of extending in our engine; Excel's behavior is unknown (T-0171).
+Tasks: T-0143, T-0150
 
 ## Subnormal results become 0
 Rule: a result below the smallest normal double is returned as 0: `=2^-1074` → 0,
@@ -101,6 +160,30 @@ Evidence: T-0009 single-cell workbooks sent to excel-graph, 2026-10-04: `=1E+308
 `=1E+307`, `=1E+307*10`, `=10^307*10`, `=1E+300*1E+300` loaded. Before the fix,
 probes/precision-and-rounding A13 and the `1e308*10` cells of probes-numeric `number-to-text` failed the same way.
 Status: VERIFIED
+
+## Number text of 1E+308 or more is not a number
+Rule: text read as a number (`"x"+0`, `--"x"`, `VALUE`, `COUNT`/`SUM`/`AVERAGE` text arguments,
+array elements, criteria operands) is a number only below 1E+308 in magnitude, the same limit
+as formula literals: `="1e308"*1`, `="1.7976931348623157e308"*1`, `="1e400"*1`, `="-1e400"+0`,
+`VALUE("1e400")`, `SUM("1e400",1)` are #VALUE!, while `="9.99999999999999e307"*1` and
+`="0.01e309"+0` (1E+307) are numbers. The words "inf", "NaN", "infinity" (any case or sign) are
+text, never numbers (NUMBERVALUE too: `NUMBERVALUE("1e308")` and `NUMBERVALUE("inf")` are
+#VALUE!; `COUNT("1e308",1)` is 1): `="inf"*1`, `=--"Infinity"`, `VALUE("NaN")` are #VALUE!, `COUNT("inf","NaN",
+"1e400","+1")` is 1 (only "+1" counts), and `COUNTIF(r,"inf")` / `">1e400"` compare as text. A
+`TEXT` format condition whose number is out of range (`[>1e400]`) makes the format invalid
+(#VALUE!), `[>1e308]` included.
+Small magnitudes are not yet matched (follow-up T-0154): a nonzero value below about 1E-309
+is #VALUE! (`"1e-310"+0`, `"1e-323"+0`, `"4.9e-324"+0`, `VALUE("1e-400")`), values from about
+1E-309 up to at least the smallest normal double read as 0 (`"1e-309"`, `"1e-308"`,
+`"2.2250738585072014e-308"` → 0; `"1e-307"` stays 1E-307), and a zero mantissa with an exponent
+above 308 is #VALUE! (`"0e309"`, `"0e400"`) while `"0e308"` is 0.
+Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8).
+Oracle: excel-graph, 2026-10-05.
+Status: VERIFIED
+Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
+lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
+in crates/rustsheet-engine/src/number_format.rs.
+Tasks: T-0920, T-0140, T-0154
 
 ## MOD is an exact remainder
 Rule: `MOD(n,d)` = exact `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`.
@@ -182,17 +265,22 @@ rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `
 is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
 vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
 differ in the last digit and need oracle probes (T-0004).
+Some of those 12 are not correctly rounded: `GAMMALN(3)` (B5) is 0.6931471805599454, one ulp above
+the correctly rounded ln 2 = 0.6931471805599453, so "correctly rounded" only describes the cells
+T-0926 fixed. Follow-up: T-0973 (see also `statistics.md`).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,
-MIRR, IRR and SIN, Excel for the web (the excel-graph oracle) and desktop Excel can differ by a
-few ULPs or leave different near-zero residues (two-flow IRR: desktop 2.2e-16, web 0;
+MIRR, IRR and SIN, Excel for the web (the excel-graph oracle) and desktop Excel can differ by up
+to 4 ULPs (11 cells), within 1e-9 relative (4 cells), or leave different near-zero residues (3 cells) (two-flow IRR: desktop 2.2e-16, web 0;
 `SIN(4)`: desktop -0.7568024953079283, web -0.7568024953079282).
 Evidence: docs/research/oracle-calibration.md (18 ironcalc-calc cells, cached by desktop Excel,
 recalculated through excel-graph).
-Status: VERIFIED (observation). Which one a golden follows is T-0025; until then say which
-Excel a value comes from when working on these functions (docs/architecture/oracle.md, "Known
-divergences").
+Status: VERIFIED (observation). Decision 0030 (rule 4): engine fits target desktop values where
+they exist; a web golden that is already a known failure and is missed within 1e-9 relative (or by
+a residue below 1e-15) is not a fitting target. Sidecar numbers within 1e-9 of a 16.x desktop
+cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); near-zero residues
+(2.2e-16 vs 0) and pre-16 caches stay pending or web. Say which Excel a value comes from when working on these functions.
 
 ## GEOMEAN last digits differ from a log-sum evaluation
 
@@ -200,5 +288,28 @@ divergences").
 a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
 formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
-Values are from Excel for the web, which can differ from desktop in the last digit (T-0025).
+Values are from Excel for the web, which can differ from desktop in the last digit (decision 0030).
 Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
+
+## GCD / LCM argument bound
+Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
+`GCD(2^53,2)` = 2, `GCD(2^53+1,2)` = 2 (2^53+1 reads as 2^53), `GCD(2^53+2,2)`, `GCD(2^54,2)`,
+`GCD(1E+16,2)`, `GCD(-2^53,2)` are `#NUM!`. An LCM result is bounded the same way, on the rounded
+double: `LCM(2^53,1)` = `LCM(2^53,2)` = 2^53; `LCM(3,3002399751580330+1)` (exactly 2^53+1) = 2^53;
+`LCM(2^53,3)`, `LCM(2^52+1,2)` (2^53+2) and `LCM(3037000500,3037000501)` are `#NUM!`.
+Microsoft documents `>= 2^53 -> #NUM!`; Excel (web) contradicts that. Desktop Excel was not available
+to confirm (decision 0019), so the entry is web-only evidence.
+Evidence: probes/resource-limits C1-C4, probes/gcd-lcm-bounds, lcm-result-bound, lcm-result-edge
+(excel-graph, 2026-10-05).
+Status: VERIFIED (excel-graph only)
+Implemented in: functions/math_and_trigonometry/gcd_lcm.rs (`MAX_LCM_GCD`)
+Tasks: T-0239
+
+## CHISQ.DIST degrees of freedom and BITAND operands are bounded
+Rule: CHISQ.DIST with degrees of freedom above 10^10 is `#NUM!` (10^10 itself is accepted;
+CHISQ.DIST.RT/CHISQ.INV/CHISQ.INV.RT share the constant but are unprobed), and BITAND is `#NUM!` for an operand of
+2^48 or more (2^48-1 is accepted; the other BIT functions share the constant but are unprobed).
+These are Excel's own limits, not deviations.
+Evidence: probes/resource-limits C5, C6 (CHISQ.DIST), C7, C8 (BITAND) (excel-graph, 2026-10-05).
+Status: VERIFIED
+Implemented in: functions/statistical/chisq.rs (`MAX_DEGREES_OF_FREEDOM`); functions/engineering/bit_operations.rs (`MAX`)

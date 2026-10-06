@@ -3,7 +3,7 @@ id: T-0131
 title: "Array arithmetic: coerce text elements with cast_number (Data!D7:D7/1)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -41,3 +41,6 @@ uses. Per CLAUDE.md directive 3, route array elements through `cast_number`; do 
 
 ## Out of scope
 - Number→text conversion (T-0107).
+
+## Outcome
+Array elements in arithmetic are coerced with `Model::cast_number` (shared `array_node_to_number` in `cast.rs` replaces both the bare `to_f64` parser in `arithmetic.rs` and the duplicate `text_number`). gen-m1 known failures 309 -> 295 (14 fixed, 0 regressions).

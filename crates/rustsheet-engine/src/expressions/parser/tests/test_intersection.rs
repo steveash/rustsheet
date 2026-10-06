@@ -145,9 +145,6 @@ fn intersections_round_trip_through_stringify() {
         ("'Q''1'!7:7 'Q''1'!E7", "'Q''1'!7:7 'Q''1'!E7"),
         ("$A$10:$D$12 A12", "$A$10:$D$12 A12"),
         ("A1 (B1:C3 C1)", "A1 (B1:C3 C1)"),
-        ("A1 (B1+C1)", "A1 (B1+C1)"),
-        ("A1 (-B1)", "A1 (-B1)"),
-        ("A1 (1)", "A1 (1)"),
         ("(A1 B1):C3", "(A1 B1):C3"),
         ("@(A1:B2 B1)", "@(A1:B2 B1)"),
         ("-A1:A3 A2", "-A1:A3 A2"),
@@ -204,4 +201,106 @@ fn long_intersection_chains_hit_the_depth_cap() {
         panic!("expected the depth error, got {node:?}");
     };
     assert_eq!(message, TOO_DEEP_MESSAGE);
+    // U+3000 chains are capped the same way (security review: no unbounded chain).
+    let ideographic = vec!["A1"; MAX_FORMULA_DEPTH * 4].join("\u{3000}");
+    let node = parser.parse(&ideographic, &context());
+    assert!(matches!(node, Node::ParseErrorKind { .. }), "{node:?}");
+}
+
+#[test]
+fn only_spaces_and_line_feeds_separate_operands() {
+    let mut parser = parser();
+    for separator in [" ", "  ", "\n", " \n ", "\n\n"] {
+        let node = parser.parse(&format!("A1:A3{separator}A2:B2"), &context());
+        assert!(is_intersection(&node), "{separator:?}: {node:?}");
+    }
+    // Excel refuses a workbook holding these (T-0138).
+    for separator in ["\r", "\r\n", "\t", "\u{a0}", " \t "] {
+        let node = parser.parse(&format!("A1:A3{separator}A2:B2"), &context());
+        assert!(
+            matches!(node, Node::ParseErrorKind { .. }),
+            "{separator:?}: {node:?}"
+        );
+    }
+}
+
+#[test]
+fn ideographic_space_makes_a_name_error() {
+    // Excel reads it as part of a name: `#NAME?` (probes/intersection-whitespace H7).
+    let mut parser = parser();
+    // The text is kept, as an undefined name (evaluates to #NAME?, prints as written).
+    let formula = "A1:A3\u{3000}A2:B2";
+    let node = parser.parse(formula, &context());
+    assert!(
+        matches!(&node, Node::NamedVariableKind { name, id: None } if name == formula),
+        "{node:?}"
+    );
+    assert_eq!(to_rc_format(&node), formula);
+    let node = parser.parse("SUM(A1:A3\u{3000}A2:B2)", &context());
+    assert_eq!(to_rc_format(&node), "SUM(A1:A3\u{3000}A2:B2)");
+}
+
+#[test]
+fn intersection_operands_must_be_references() {
+    let mut parser = parser();
+    for formula in [
+        "A1 (1)",
+        "#N/A A1",
+        "#N/A #REF!",
+        "(1/0) A1",
+        "A1 (1/0)",
+        "(1/0) (NA())",
+        "(1/0) Z99",
+        "A1 SUM(A1:A2)",
+        "SUM(A1:A2) A1",
+        "A1 NA()",
+        "A1:A3 ABS(A2)",
+        "A1:A3 ROW(A2)",
+        "A1:A3 IFERROR(A2:B2,0)",
+        "A1:A3 IFNA(A2:B2,0)",
+        "A1:A3 CHOOSEROWS(A1:B3,2)",
+        "A2:B2 CHOOSECOLS(A1:B3,1)",
+        "A1:A3 FILTER(A1:B3,A1:A3=2)",
+        "A1:A3 VSTACK(A2:B2)",
+        "A1:A3 SORT(A2:B2)",
+        "A1:A3 UNIQUE(A2:B2)",
+        "A1 (B1+C1)",
+        "A1 (-B1)",
+        "A1 (B1&\"\")",
+        "A1 (B1=1)",
+        "A1 (B1%)",
+        "A1 (B1*C1)",
+        "A1 (B1/C1)",
+        "A1 (B1^2)",
+        "A1:A3 VLOOKUP(2,A1:B3,1)",
+        "A1:A3 MATCH(2,A1:A3,0)",
+        "A1:A3 ROWS(A2:B2)",
+        "A1:A3 HLOOKUP(2,A2:B3,1)",
+        "A1:A3 LOOKUP(2,A1:A3,A1:A3)",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert!(
+            matches!(node, Node::ParseErrorKind { .. }),
+            "{formula}: {node:?}"
+        );
+    }
+    for formula in [
+        "A1 #REF!",
+        "#REF! A1",
+        "A1:A3 INDEX(A1:B3,2,0)",
+        "OFFSET(A2,0,0,1,2) A1:A3",
+        "A1:A3 IF(TRUE,A2:B2)",
+        "A1:A3 INDIRECT(\"A2:B2\")",
+        "A1:A3 CHOOSE(1,A2:B2)",
+        "A1:A3 XLOOKUP(2,A1:A3,A1:B3)",
+        "A1:A3 LET(x,A2:B2,x)",
+        "A1:A3 SWITCH(1,1,A2:B2)",
+        "A1:A3 IFS(TRUE,A2:B2)",
+        "A1:A3 TAKE(A2:B3,1)",
+        "A1:A3 DROP(A1:B2,1)",
+        "A1:A3 TRIMRANGE(A2:B2)",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert!(is_intersection(&node), "{formula}: {node:?}");
+    }
 }

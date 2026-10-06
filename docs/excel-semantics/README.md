@@ -17,13 +17,18 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
 - **Excel for the web vs desktop.** When the excel-graph oracle contradicts values desktop Excel
   cached in the same workbook, the entry is `Status: CONFLICTING` with both sets of values, the
   cells stay pending, and nothing is implemented until an excel-desktop probe decides (decision 0019).
+  In general desktop en-US Microsoft 365 Excel wins over the web; web-only values are goldens
+  except for the known divergences in docs/architecture/oracle.md, and non-en-US desktop
+  workbooks are no evidence for locale-dependent behavior (decision 0030).
 - **Deliberate deviations** are allowed only where CLAUDE.md directive 5 (untrusted input)
   requires one: resource, recursion or allocation limits Excel does not have, no I/O from
   formulas (e.g. WEBSERVICE, external links), no panics. Directive 5 wins over fidelity.
   Decision 0014 is the standing record for these; each one needs an entry here with
   `Status: DEVIATION (decision 0014)` stating Excel's behavior and ours. Example:
   BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`). Any other kind of
-  deviation needs its own decision record.
+  deviation needs its own decision record, and its entries cite that record instead:
+  `Status: DEVIATION (decision NNNN)` (e.g. decision 0033, lone surrogates the engine's text
+  cannot hold).
 
 Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
 `arrays.md`, `lookup.md`, `number-formats.md`, `references.md`, `syntax.md`, … (create as needed). Format per rule:

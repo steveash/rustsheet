@@ -1,3 +1,4 @@
+use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -185,7 +186,7 @@ impl Model {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
             CalcResult::String(s) => Ok(vec![s]),
-            CalcResult::Number(n) => Ok(vec![n.to_string()]),
+            CalcResult::Number(n) => Ok(vec![number_to_text(n)]),
             CalcResult::EmptyArg | CalcResult::EmptyCell => Ok(vec![]),
             CalcResult::Array(arr) => {
                 let mut delims = Vec::new();
@@ -193,7 +194,7 @@ impl Model {
                     for item in row {
                         match item {
                             ArrayNode::String(s) => delims.push(s),
-                            ArrayNode::Number(n) => delims.push(n.to_string()),
+                            ArrayNode::Number(n) => delims.push(number_to_text(n)),
                             ArrayNode::Empty => {}
                             _ => {
                                 return Err(CalcResult::new_error(
@@ -214,7 +215,7 @@ impl Model {
                     for item in row {
                         match item {
                             ArrayNode::String(s) => delims.push(s),
-                            ArrayNode::Number(n) => delims.push(n.to_string()),
+                            ArrayNode::Number(n) => delims.push(number_to_text(n)),
                             ArrayNode::Empty => {}
                             _ => {
                                 return Err(CalcResult::new_error(

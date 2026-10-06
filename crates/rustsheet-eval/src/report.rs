@@ -87,6 +87,25 @@ pub struct FunctionStat {
     pub verdicts: BTreeMap<Verdict, usize>,
 }
 
+/// Below this many Excel-evidence cells a function's pass rate says little (T-0020).
+pub const EVIDENCE_THRESHOLD: usize = 25;
+
+/// Whether a case's expectations come from Excel (an oracle backend or Excel-cached values),
+/// not from hand-written or engine-derived values.
+pub(crate) fn is_excel_evidence(expected_source: &str) -> bool {
+    expected_source.starts_with("excel")
+}
+
+/// Scored cells with Excel-sourced expectations that call one function.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FunctionEvidence {
+    pub name: String,
+    /// Cells checked against Excel values (passing or not).
+    pub cells: usize,
+    /// Suites those cells come from.
+    pub suites: BTreeSet<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunReport {
     pub engine: String,
@@ -98,13 +117,22 @@ pub struct RunReport {
     /// Slowest cases of the run (informational; never part of the gate).
     #[serde(default)]
     pub slowest: Vec<SlowCase>,
+    /// Excel evidence per function, fewest cells first (informational; never part of the gate).
+    #[serde(default)]
+    pub evidence: Vec<FunctionEvidence>,
+    /// Implemented functions that no Excel-evidence cell calls.
+    #[serde(default)]
+    pub unevidenced: Vec<String>,
 }
 
 impl RunReport {
+    /// Aggregates `results`; `implemented` lists the engine's functions, so that functions
+    /// without any Excel evidence show up too.
     #[must_use]
-    pub fn build(engine: &str, results: &[CaseResult]) -> RunReport {
+    pub fn build(engine: &str, results: &[CaseResult], implemented: &[String]) -> RunReport {
         let mut suites: BTreeMap<String, SuiteSummary> = BTreeMap::new();
         let mut functions: BTreeMap<String, FunctionStat> = BTreeMap::new();
+        let mut evidence: BTreeMap<String, FunctionEvidence> = BTreeMap::new();
         for r in results {
             let s = suites
                 .entry(r.suite.clone())
@@ -120,6 +148,16 @@ impl RunReport {
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 for f in c.formula.as_deref().map(functions_in).unwrap_or_default() {
+                    if c.from_excel {
+                        let ev = evidence
+                            .entry(f.clone())
+                            .or_insert_with(|| FunctionEvidence {
+                                name: f.clone(),
+                                ..FunctionEvidence::default()
+                            });
+                        ev.cells += 1;
+                        ev.suites.insert(r.suite.clone());
+                    }
                     let st = functions.entry(f.clone()).or_insert_with(|| FunctionStat {
                         name: f,
                         ..FunctionStat::default()
@@ -146,12 +184,73 @@ impl RunReport {
                 r
             })
             .collect();
+        let unevidenced = implemented
+            .iter()
+            .filter(|f| !evidence.contains_key(f.as_str()))
+            .cloned()
+            .collect();
+        let mut evidence: Vec<FunctionEvidence> = evidence.into_values().collect();
+        evidence.sort_by(|a, b| a.cells.cmp(&b.cells).then_with(|| a.name.cmp(&b.name)));
         RunReport {
             engine: engine.to_string(),
             suites: suites.into_values().collect(),
             functions,
             cases,
             slowest: slowest(results, SLOWEST_CASES),
+            evidence,
+            unevidenced,
+        }
+    }
+
+    /// One line for docs/status.md: how many functions have enough Excel evidence.
+    #[must_use]
+    pub fn evidence_summary(&self) -> String {
+        let thin = self
+            .evidence
+            .iter()
+            .filter(|f| f.cells < EVIDENCE_THRESHOLD)
+            .count();
+        format!(
+            "Excel evidence: {} functions with ≥{EVIDENCE_THRESHOLD} oracle/cached cells, {thin} with fewer, {} implemented with none",
+            self.evidence.len() - thin,
+            self.unevidenced.len()
+        )
+    }
+
+    fn write_evidence(&self, md: &mut String) {
+        let _ = writeln!(md, "\n## Excel evidence per function\n");
+        let _ = writeln!(
+            md,
+            "{}. Cells count when their expectations come from Excel (oracle sidecar or Excel-cached values), pass or fail; hand-written expectations do not count.\n",
+            self.evidence_summary()
+        );
+        if !self.unevidenced.is_empty() {
+            let _ = writeln!(
+                md,
+                "Implemented, no Excel evidence ({}): {}\n",
+                self.unevidenced.len(),
+                self.unevidenced.join(", ")
+            );
+        }
+        let _ = writeln!(
+            md,
+            "| function | Excel cells | suites | below {EVIDENCE_THRESHOLD} |"
+        );
+        let _ = writeln!(md, "|---|---|---|---|");
+        for f in &self.evidence {
+            let suites: Vec<&str> = f.suites.iter().map(String::as_str).collect();
+            let flag = if f.cells < EVIDENCE_THRESHOLD {
+                "yes"
+            } else {
+                ""
+            };
+            let _ = writeln!(
+                md,
+                "| {} | {} | {} | {flag} |",
+                f.name,
+                f.cells,
+                suites.join(", ")
+            );
         }
     }
 
@@ -298,6 +397,7 @@ impl RunReport {
             }
             let _ = writeln!(md);
         }
+        self.write_evidence(&mut md);
         md
     }
 
@@ -352,9 +452,76 @@ mod tests {
         assert_eq!(ids, ["s/c", "s/a", "s/b"]);
     }
 
+    fn cell(formula: &str, verdict: Verdict) -> CellResult {
+        CellResult {
+            sheet: "S".into(),
+            cell: "A1".into(),
+            formula: Some(formula.into()),
+            expected: crate::value::Value::Number(1.0),
+            actual: crate::value::Value::Number(1.0),
+            verdict,
+            from_excel: false,
+        }
+    }
+
+    fn excel_cell(formula: &str, verdict: Verdict) -> CellResult {
+        CellResult {
+            from_excel: true,
+            ..cell(formula, verdict)
+        }
+    }
+
+    #[test]
+    fn evidence_counts_only_excel_sourced_cells_and_lists_unevidenced_functions() {
+        let mut oracle = case("probes/a", 1);
+        oracle.expected_source = "excel-graph".into();
+        oracle.cells = vec![
+            excel_cell("SUM(A1:A2)", Verdict::Pass),
+            excel_cell("SUM(A1)+ABS(1)", Verdict::NumericMismatch),
+            // A hand-written cell beside a partly covering sidecar is not evidence.
+            cell("SUM(A3)+IF(TRUE,1,0)", Verdict::Pass),
+        ];
+        let mut cached = case("poi/b", 1);
+        cached.expected_source = "excel-cached (Microsoft Excel)".into();
+        cached.cells = vec![
+            excel_cell("_xlfn.XLOOKUP(1,A:A,B:B)", Verdict::Pass),
+            // Non-Excel cached values (e.g. LibreOffice) do not count.
+            cell("TRIM(\"a\")", Verdict::Pass),
+        ];
+        let mut hand = case("smoke/c", 1);
+        hand.expected_source = "hand".into();
+        hand.cells = vec![cell("IF(TRUE,SUM(1),0)", Verdict::Pass)];
+        let implemented = ["ABS", "IF", "SUM", "TRIM", "XLOOKUP"].map(String::from);
+        let report = RunReport::build("e", &[oracle, cached, hand], &implemented);
+        let got: Vec<(&str, usize, Vec<&str>)> = report
+            .evidence
+            .iter()
+            .map(|f| {
+                (
+                    f.name.as_str(),
+                    f.cells,
+                    f.suites.iter().map(String::as_str).collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("ABS", 1, vec!["probes"]),
+                ("XLOOKUP", 1, vec!["poi"]),
+                ("SUM", 2, vec!["probes"])
+            ]
+        );
+        assert_eq!(report.unevidenced, ["IF", "TRIM"]);
+        let md = report.to_markdown(1);
+        assert!(md.contains("Excel evidence: 0 functions with ≥25 oracle/cached cells, 3 with fewer, 2 implemented with none"));
+        assert!(md.contains("Implemented, no Excel evidence (2): IF, TRIM"));
+        assert!(md.contains("| SUM | 2 | probes | yes |"));
+    }
+
     #[test]
     fn report_sums_suite_time_and_renders_timing() {
-        let report = RunReport::build("e", &[case("s/a", 5), case("s/b", 7), case("t/c", 1)]);
+        let report = RunReport::build("e", &[case("s/a", 5), case("s/b", 7), case("t/c", 1)], &[]);
         assert_eq!(report.suites[0].millis, 12);
         let md = report.to_markdown(1);
         assert!(

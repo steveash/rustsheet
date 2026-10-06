@@ -71,6 +71,10 @@ pub struct SuiteManifest {
     /// When absent, a sidecar sits next to its case (`foo.xlsx` → `foo.oracle.json`).
     #[serde(default)]
     pub oracle_dir: Option<String>,
+    /// xlsx suites: file (relative to the manifest) of per-cell replacements for cached values
+    /// that are not en-US evidence (`overrides.rs`, decision 0032).
+    #[serde(default)]
+    pub cached_overrides: Option<String>,
     /// Pinned external source; when present the cases live in `eval/.cache/suites/<name>`
     /// (populated by `rustsheet-eval fetch`) instead of next to the manifest.
     #[serde(default)]

@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Parenthesised accounting-negative text coerces to a negative number (found in T-0252)",
+  "tags": [
+    "M2",
+    "statistical",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": "=COUNT(\"(1)\",\"x\")",
+        "E1": "=0+\"(1)\"",
+        "E2": "=SUM(\"(1)\")",
+        "E3": "=0+\"(1,000)\"",
+        "E4": "=0+\"-(1)\""
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -4,10 +4,12 @@ use regex::Regex;
 use regex_lite::Regex;
 
 use crate::expressions::types::CellReferenceIndex;
+use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
+use super::lookup_table::SearchVector;
 use crate::functions::{
     binary_search::{
         binary_search_descending_or_greater, binary_search_descending_or_smaller,
@@ -35,56 +37,32 @@ enum MatchMode {
 }
 
 /// Searches `array` for `lookup_value` and returns the 0-based index of the match,
-/// or `None` if not found.
+/// or `None` if not found. Only the candidates `SearchVector` names are tested:
+/// they cover the virtual empty tail with a single cell.
 fn linear_search(
     lookup_value: &CalcResult,
-    array: &[CalcResult],
+    array: &SearchVector,
     search_mode: &SearchMode,
     match_mode: MatchMode,
 ) -> Option<usize> {
-    let len = array.len();
-
-    let item = |i: usize| -> usize {
-        if *search_mode == SearchMode::FirstToLast {
-            i
-        } else {
-            len - i - 1
-        }
-    };
+    let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
 
     match match_mode {
-        MatchMode::Exact => {
-            for i in 0..len {
-                let idx = item(i);
-                if compare_values(&array[idx], lookup_value) == 0 {
-                    return Some(idx);
-                }
-            }
-            None
-        }
+        MatchMode::Exact => candidates
+            .into_iter()
+            .find(|&idx| compare_values(array.get(idx), lookup_value) == 0),
         MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => {
             let m = match_mode as i32;
             let mut best_idx = None;
-            let mut best_val: Option<CalcResult> = None;
-            for i in 0..len {
-                let idx = item(i);
-                let v = &array[idx];
+            let mut best_val: Option<&CalcResult> = None;
+            for idx in candidates {
+                let v = array.get(idx);
                 let c = compare_values(v, lookup_value);
                 if c == 0 {
                     return Some(idx);
-                } else if c == m {
-                    match &best_val {
-                        None => {
-                            best_val = Some(v.clone());
-                            best_idx = Some(idx);
-                        }
-                        Some(p) => {
-                            if compare_values(p, v) == m {
-                                best_val = Some(v.clone());
-                                best_idx = Some(idx);
-                            }
-                        }
-                    }
+                } else if c == m && best_val.is_none_or(|p| compare_values(p, v) == m) {
+                    best_val = Some(v);
+                    best_idx = Some(idx);
                 }
             }
             best_idx
@@ -96,36 +74,23 @@ fn linear_search(
                 } else {
                     Box::new(move |x| compare_values(x, lookup_value) == 0)
                 };
-            for i in 0..len {
-                let idx = item(i);
-                if matches(&array[idx]) {
-                    return Some(idx);
-                }
-            }
-            None
+            candidates.into_iter().find(|&idx| matches(array.get(idx)))
         }
         MatchMode::Regex => {
             let pattern = match lookup_value {
                 CalcResult::String(s) => s.as_str(),
                 _ => return None,
             };
-            let re = match Regex::new(pattern) {
-                Ok(r) => r,
-                Err(_) => return None,
-            };
-            for i in 0..len {
-                let idx = item(i);
-                let text = match &array[idx] {
+            let re = Regex::new(pattern).ok()?;
+            candidates.into_iter().find(|&idx| {
+                let text = match array.get(idx) {
                     CalcResult::String(s) => s.clone(),
-                    CalcResult::Number(n) => n.to_string(),
+                    CalcResult::Number(n) => number_to_text(*n),
                     CalcResult::Boolean(b) => b.to_string(),
-                    _ => continue,
+                    _ => return false,
                 };
-                if re.is_match(&text) {
-                    return Some(idx);
-                }
-            }
-            None
+                re.is_match(&text)
+            })
         }
     }
 }
@@ -202,7 +167,7 @@ impl Model {
         // Materialise `lookup_array` into a one-dimensional vector of values.
         // It may be a range reference or an in-formula array constant `{…}`;
         // either way it must be a single row or single column.
-        let array: Vec<CalcResult> = match self.evaluate_node_in_context(&args[1], cell) {
+        let array: SearchVector = match self.evaluate_node_in_context(&args[1], cell) {
             CalcResult::Range { left, right } => {
                 let is_col_vec = left.column == right.column;
                 let is_row_vec = left.row == right.row;
@@ -214,22 +179,9 @@ impl Model {
                     );
                 }
 
-                // Honour entire-column/row references: clamp to worksheet used range.
-                let mut row2 = right.row;
-                let mut col2 = right.column;
-                match self.clip_to_used_area(left.sheet, left.row, left.column, row2, col2) {
-                    Ok((r, c)) => {
-                        row2 = r;
-                        col2 = c;
-                    }
-                    Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
-                }
-                let right = CellReferenceIndex {
-                    sheet: right.sheet,
-                    row: row2,
-                    column: col2,
-                };
-                self.prepare_array(&left, &right, is_col_vec)
+                // Entire-column/row references evaluate only the used part;
+                // the rest is a virtual run of empty cells (T-0127).
+                self.range_search_vector(&left, &right, is_col_vec)
             }
             CalcResult::Array(rows) => {
                 // An array constant must be a single row or single column.
@@ -244,10 +196,12 @@ impl Model {
                         "lookup_array must be a single row or column".to_string(),
                     );
                 }
-                rows.iter()
-                    .flatten()
-                    .map(|node| super::array_node_to_calc_result(node, cell))
-                    .collect()
+                SearchVector::new(
+                    rows.iter()
+                        .flatten()
+                        .map(|node| super::array_node_to_calc_result(node, cell))
+                        .collect(),
+                )
             }
             error @ CalcResult::Error { .. } => return error,
             _ => {
@@ -301,7 +255,7 @@ impl Model {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                     Some(l) => {
                         if match_mode == MatchMode::Exact {
-                            let v = &array[l as usize];
+                            let v = array.get(l as usize);
                             if compare_values(v, &lookup_value) != 0 {
                                 return CalcResult::new_error(
                                     Error::NA,

@@ -15,3 +15,74 @@ whose master text is `TEXT(C41, B41)` and computes `TEXT(C96, B96)`. `rustsheet-
 print the shifted text (spacing kept) via `shift_formula_text`; `formula_kind` still carries `si`.
 Spec: ECMA-376 Part 1 §18.3.1.40 (`f`). Excel never writes a member whose shifted references fall off
 the sheet; `#REF!` for that case is only the harness's display choice, not observed Excel behavior.
+
+## A hyperlink range above 10,000 cells links only its top-left cell
+Rule: Excel applies a `<hyperlink ref="A1:XFD1048576">` to every cell of its range. The importer
+expands a range of at most 10,000 cells to one link per cell; a larger range (a corrupt or
+malicious file can name the whole sheet) gives only the top-left cell the link, to bound memory
+(CLAUDE.md directive 5). Hyperlinks do not affect calculated values.
+Evidence: none for Excel; this is a resource limit, not an Excel observation.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-xlsx/src/import/worksheets.rs (`MAX_HYPERLINK_RANGE_CELLS`)
+
+## A non-finite cell value `<v>` imports as 0
+Rule: a numeric `<v>` that does not read as a finite double (`NaN`, `inf`, `1e400`) is imported
+as 0, as an unreadable one already was; no cell holds a NaN or an infinity. Excel never writes
+such a value and its handling of a file that has one is unknown (likely repair or rejection).
+Stored values up to f64::MAX are kept: the 1E+308 limit of numbers.md is about typed text.
+Evidence: none for Excel; input hardening (CLAUDE.md directive 5), ported from ironcalc@58279cda.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-xlsx/src/import/util.rs (`parse_cell_number`)
+
+## Import resource limits reject a workbook outright
+Rule: the importer rejects a workbook with `XlsxError::Limit` when its zip lists more than 5,000
+entries, when the parts it reads inflate past 256 MiB in total (bytes actually inflated, not the
+sizes the zip declares), when one shared string or cell text (`<v>`, inline `<is>`) is longer than
+32,767 characters (Unicode scalar values, counted after `_xHHHH_` escapes are decoded), or when a
+part uses an entity reference other than the five predefined ones and character references (declared
+entities are never expanded: no "billion laughs"). The limits are
+`rustsheet_xlsx::import::ImportLimits`; the public API passes its `LoadOptions` sizes through.
+Excel's own cell limit is 32,767 characters (believed to be UTF-16 code units, which never count
+fewer than scalar values, so this bound is never stricter than Excel's), but what Excel does with a
+longer string in a file (truncate, repair or refuse) is not probed (T-0004); xlsx parts never
+declare entities, and OPC forbids DTDs in package parts. Entity references in attribute values were
+already rejected.
+Evidence: none for Excel; these are resource limits (CLAUDE.md directive 5), not Excel observations.
+Status: DEVIATION (decision 0014)
+Implemented in: crates/rustsheet-xlsx/src/import/package.rs (`ImportLimits`, `Package`),
+crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
+
+## Phonetic (furigana) runs are not cell text
+Rule: a shared string's text is its plain `<t>` plus the `<r><t>` rich-text runs. `<rPh><t>` phonetic
+runs (ECMA-376 §18.4.6) are annotations and are not part of the cell value, so they do not count
+towards `LEN` (and so, by inference only, not towards the 32,767-character limit: not probed). Evidence: fixtures/shared-string-phonetic-runs.xlsx
+(oracle: excel-graph, 2026-10-06, T-0170): A1 is "Tokyo" with an `<rPh>` run of 5 katakana;
+`=LEN(A1)` is 5 (not 10), `=A1&"!"` is "Tokyo!" and `=EXACT(A1,"Tokyo")` is TRUE. The unit test
+`test_phonetic_runs_are_not_cell_text` pins the behavior. PHONETIC() is not implemented.
+Status: VERIFIED
+Implemented in: `read_shared_strings_from_xml` in crates/rustsheet-xlsx/src/import/shared_strings.rs
+Tasks: T-0164, T-0170
+
+## Classic CEILING is stored without `_xlfn.`
+Rule: the classic `CEILING` is a plain function name in the file (`<f>CEILING(2.5,2)</f>`); only the
+2010/2013 forms carry the prefix (`_xlfn.CEILING.MATH`, `_xlfn.CEILING.PRECISE`). Excel also accepts
+a hand-written `_xlfn.CEILING(2.5,2)` on load (value 4) and re-stores it as `CEILING(2.5,2)`.
+Evidence: probes/ceiling-xlfn-prefix A1:A4, all 4 (oracle: excel-graph, 2026-10-06, T-0172); the
+recalculated workbook's `<f>` text was `CEILING(2.5,2)` for both A1 and A2 and `_xlfn.CEILING.MATH(...)`
+for A3 and A4.
+Status: VERIFIED
+Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/mod.rs); test
+`test_export_ceiling_has_no_xlfn_prefix`.
+Tasks: T-0172
+
+## Cells and rows without r are positional
+Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
+1 if first); a cell without `r` is the column after the previous cell in its row (column A if first).
+Evidence: ECMA-376 Part 1 §18.3.1.73 (row) and §18.3.1.4 (c) make `r` optional. POI workbooks
+written this way by other tools: poi/54288.xlsx (r-less cells after `C3`), poi/59746_NoRowNums.xlsx
+and poi/InlineString.xlsx (r-less rows and cells). They hold no formulas, so no Excel value is
+scored; the placement is the schema's, as the eval snapshot reader already applies it.
+DEVIATION (directive 5, decision 0014): an r-less cell past XFD or r-less row past row 1,048,576 is an import error, not a placed cell; an explicit `r` of i32::MAX followed by an r-less row is the same error, never an overflow.
+Implemented in: `rustsheet-xlsx` `import/sheet_data.rs` `start_row` and `start_cell` (an r-less cell or row past XFD or row 1,048,576 is an import error).
+Status: UNVERIFIED (probe pending; ECMA-376 and POI files only, no Excel observation)
+Tasks: T-0181

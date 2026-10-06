@@ -47,6 +47,7 @@ use std::mem;
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
+use crate::number_format::parse_excel_number;
 
 use crate::language::Language;
 use crate::locale::Locale;
@@ -201,6 +202,31 @@ impl Lexer {
         self.chars
             .get(self.position)
             .is_some_and(|c| c.is_whitespace())
+    }
+
+    /// The whitespace right after the last token. Spaces and line feeds are the only separators
+    /// Excel accepts in an intersection; CR, TAB and NBSP make it refuse the formula, and
+    /// U+3000 is part of a name (docs/excel-semantics/references.md "Intersection operator:
+    /// separators").
+    pub fn separator(&self) -> &[char] {
+        let rest = &self.chars[self.position.min(self.len)..];
+        let end = rest
+            .iter()
+            .position(|c| !c.is_whitespace())
+            .unwrap_or(rest.len());
+        &rest[..end]
+    }
+
+    /// The lexer's position as a char index.
+    pub fn get_position_index(&self) -> usize {
+        self.position
+    }
+
+    /// The formula text from char index `start` to the current position, trimmed.
+    pub fn source_since(&self, start: usize) -> String {
+        let end = self.position.min(self.len);
+        let text: String = self.chars[start.min(end)..end].iter().collect();
+        text.trim().to_string()
     }
 
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
@@ -626,9 +652,9 @@ impl Lexer {
             }
         }
         self.position = position;
-        match chars.parse::<f64>() {
-            Err(_) => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            Ok(v) => Ok(v),
+        match parse_excel_number(&chars) {
+            None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
+            Some(v) => Ok(v),
         }
     }
 
@@ -813,11 +839,40 @@ impl Lexer {
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {
+        // Excel keeps the sheet prefix when a referenced range is deleted (`Sheet1!#REF!`); the
+        // whole reference is the #REF! error (docs/excel-semantics/references.md,
+        // "A sheet-qualified #REF! is #REF!").
+        if sheet.is_some() && self.peek_char() == Some('#') {
+            let start = self.position;
+            self.position += 1;
+            if self.consume_error() == TokenType::Error(Error::REF) {
+                return TokenType::Error(Error::REF);
+            }
+            self.position = start;
+        }
+        let start = self.position;
         let m = if self.mode == LexerMode::A1 {
             self.consume_range_a1()
         } else {
             self.consume_range_r1c1()
         };
+        if sheet.is_some() && self.mode == LexerMode::A1 {
+            let malformed = match &m {
+                Err(_) => true,
+                Ok(ParsedRange { right: None, .. }) => self.second_prefixed_corner_is_not_cell(),
+                Ok(_) => false,
+            };
+            if malformed {
+                let end = self.position;
+                self.position = start;
+                if let Some(name) = self.consume_corner_pair_as_name() {
+                    // Keep the sheet prefix so the formula text round-trips as typed.
+                    let prefix = sheet.as_deref().map(utils::quote_name).unwrap_or_default();
+                    return TokenType::Ident(format!("{prefix}!{name}"));
+                }
+                self.position = end;
+            }
+        }
         match m {
             Ok(ParsedRange { left, right }) => {
                 if let Some(right) = right {

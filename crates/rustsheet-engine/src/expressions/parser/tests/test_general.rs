@@ -3,7 +3,9 @@
 use std::collections::HashMap;
 
 use crate::expressions::lexer::LexerMode;
-use crate::expressions::parser::stringify::{to_rc_format, to_string_displaced, DisplaceData};
+use crate::expressions::parser::stringify::{
+    to_excel_string, to_rc_format, to_string_displaced, DisplaceData,
+};
 use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceRC;
 use crate::language::get_default_language;
@@ -532,4 +534,22 @@ fn test_to_string_displaced_too_high() {
         get_default_language(),
     );
     assert_eq!(t, "#REF!".to_string());
+}
+
+/// Excel stores the classic CEILING without a prefix and `CEILING.MATH` as `_xlfn.CEILING.MATH`
+/// (probes/ceiling-xlfn-prefix, T-0172: the recalculated file keeps `CEILING(2.5,2)` even when
+/// the input said `_xlfn.CEILING`).
+#[test]
+fn test_export_ceiling_has_no_xlfn_prefix() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let t = parser.parse("CEILING(2.5,2)+CEILING.MATH(2.5,2)", &cell_reference);
+    assert_eq!(
+        to_excel_string(&t, &cell_reference),
+        "CEILING(2.5,2)+_xlfn.CEILING.MATH(2.5,2)"
+    );
 }

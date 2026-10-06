@@ -27,6 +27,18 @@ fn same_shape(ranges: &[Range]) -> bool {
         .is_none_or(|first| ranges.iter().all(|r| range_shape(r) == range_shape(first)))
 }
 
+/// `anchor`'s top-left cell with `shape_of`'s rows x columns, clamped to the grid.
+fn resize_to(anchor: &Range, shape_of: &Range) -> Range {
+    let (rows, columns) = range_shape(shape_of);
+    let mut resized = Range {
+        left: anchor.left,
+        right: anchor.left,
+    };
+    resized.right.row = (anchor.left.row + rows).min(LAST_ROW);
+    resized.right.column = (anchor.left.column + columns).min(LAST_COLUMN);
+    resized
+}
+
 fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::VALUE,
@@ -53,7 +65,7 @@ impl Model {
             self.average_ifs(&arguments, cell, false)
         } else if args.len() == 3 {
             // Unlike AVERAGEIFS, a differently shaped average_range is not an
-            // error (probes/ifs-shape-mismatch F9–F11; resizing is T-0214).
+            // error: it is resized to the criteria range (probes/ifs-shape-mismatch F9–F11).
             let arguments = vec![args[2].clone(), args[0].clone(), args[1].clone()];
             self.average_ifs(&arguments, cell, false)
         } else {
@@ -80,7 +92,9 @@ impl Model {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2], cell);
+            // By reference: a single-cell criteria range (`A1`) is a 1x1 range
+            // (probes/sumif-edge-single-cell F11-F15).
+            let result = self.evaluate_node_with_reference(&args[case_index * 2], cell);
             if result.is_error() {
                 return result;
             }
@@ -218,11 +232,12 @@ impl Model {
         if args_count < 3 || args_count.is_multiple_of(2) {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let arg_0 = self.evaluate_node_in_context(&args[0], cell);
+        // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
+        let arg_0 = self.evaluate_node_with_reference(&args[0], cell);
         if arg_0.is_error() {
             return Err(arg_0);
         }
-        let sum_range = if let CalcResult::Range { left, right } = arg_0 {
+        let mut sum_range = if let CalcResult::Range { left, right } = arg_0 {
             if left.sheet != right.sheet {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
@@ -252,7 +267,8 @@ impl Model {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2 - 1], cell);
+            // By reference, as above (probes/sumif-edge-single-cell F11-F15).
+            let result = self.evaluate_node_with_reference(&args[case_index * 2 - 1], cell);
             if result.is_error() {
                 return Err(result);
             }
@@ -281,6 +297,12 @@ impl Model {
                 || ranges.first().map(range_shape) != Some(range_shape(&sum_range)))
         {
             return Err(shape_mismatch(cell));
+        }
+        if !strict_shape {
+            // SUMIF/AVERAGEIF sum a sum_range resized to the shape of the criteria
+            // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
+            // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
+            sum_range = resize_to(&sum_range, &ranges[0]);
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -362,7 +384,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        let value = self.evaluate_node_in_context(node, cell);
+        let value = self.evaluate_node_with_reference(node, cell);
         if value.is_error() {
             return Err(value);
         }
@@ -451,6 +473,7 @@ impl Model {
             Ok(r) => r,
             Err(e) => return e,
         };
+        let sum_range = resize_to(&sum_range, &criteria_range);
 
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
         for criteria_row in &criteria_grid {

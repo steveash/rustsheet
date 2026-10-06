@@ -1,48 +1,61 @@
 use crate::{
     calc_result::CalcResult,
-    cast::ValueOrArray,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::util::array_node_to_calc_result,
+    functions::{
+        math_and_trigonometry::array_size::check_array_size, util::array_node_to_calc_result,
+    },
     model::Model,
 };
 
 impl Model {
     /// NOT lifts over ranges and arrays, one result per element (T-0225,
-    /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument.
+    /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument
+    /// (ASSUMED, probe T-0260).
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_value_or_array(&args[0], cell) {
-            Ok(ValueOrArray::Value(value)) => match self.cast_to_bool(value, cell) {
-                Ok(f) => CalcResult::Boolean(!f),
-                Err(s) => s,
-            },
-            Ok(ValueOrArray::Array(array)) => CalcResult::Array(
-                array
-                    .into_iter()
-                    .map(|row| {
-                        row.into_iter()
-                            .map(|node| {
-                                match self
-                                    .cast_to_bool(array_node_to_calc_result(&node, cell), cell)
-                                {
-                                    Ok(f) => ArrayNode::Boolean(!f),
-                                    Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
-                                    // An ArrayNode element is never a range or array, so this is unreachable.
-                                    Err(_) => ArrayNode::Error(Error::VALUE),
-                                }
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
-            Err(e) => e,
-        }
+        let array = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } => {
+                // DEVIATION (decision 0014): Excel spills any range that fits the grid; the
+                // shared allocation bound applies (docs/excel-semantics/arrays.md).
+                let rows = (right.row - left.row + 1).max(0) as usize;
+                let columns = (right.column - left.column + 1).max(0) as usize;
+                if let Some((error, message)) = check_array_size(rows, columns) {
+                    return CalcResult::new_error(error, cell, message);
+                }
+                self.evaluate_range(left, right)
+            }
+            CalcResult::Array(array) => array,
+            error @ CalcResult::Error { .. } => return error,
+            value => {
+                return match self.cast_to_bool(value, cell) {
+                    Ok(f) => CalcResult::Boolean(!f),
+                    Err(s) => s,
+                };
+            }
+        };
+        CalcResult::Array(
+            array
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|node| {
+                            match self.cast_to_bool(array_node_to_calc_result(&node, cell), cell) {
+                                Ok(f) => ArrayNode::Boolean(!f),
+                                Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                                // An ArrayNode element is never a range or array, so this is unreachable.
+                                Err(_) => ArrayNode::Error(Error::VALUE),
+                            }
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

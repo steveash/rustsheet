@@ -1,0 +1,168 @@
+//! Decimal-correct rounding for ROUND, ROUNDUP and ROUNDDOWN.
+//!
+//! Excel rounds in two decimal stages, never by scaling with a binary power of ten
+//! (docs/excel-semantics/numbers.md, "ROUND family rounds in two decimal stages"; evidence
+//! probes/round-family and probes/precision-and-rounding A6–A8, oracle excel-graph):
+//! 1. the exact binary value is cut to 15 significant digits. An exact tie at the 16th digit goes
+//!    toward zero for ROUND (`ROUND(999999999999957.5,0)` = 999999999999957) but away from zero
+//!    for ROUNDUP and ROUNDDOWN (`ROUNDDOWN(999999999999957.5,0)` = 999999999999958);
+//! 2. that 15-digit decimal is rounded at `num_digits` (half away from zero, up or down), and the
+//!    decimal result is converted to the nearest double.
+//!
+//! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
+//! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
+
+use crate::number_format::significant_15;
+
+/// How the final digit is chosen in stage 2.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum RoundMode {
+    /// ROUND: half away from zero.
+    HalfAwayFromZero,
+    /// ROUNDUP: away from zero.
+    Up,
+    /// ROUNDDOWN: toward zero.
+    Down,
+}
+
+/// Significant digits Excel keeps before rounding.
+const SIGNIFICANT_DIGITS: i64 = 15;
+/// `num_digits` beyond this magnitude rounds every finite double the same way, so clamping it
+/// keeps the exponent arithmetic small without changing any result.
+const MAX_NUM_DIGITS: f64 = 10_000.0;
+
+/// Rounds `value` at `num_digits` decimal places the way Excel's ROUND family does.
+///
+/// `num_digits` is truncated toward zero. Returns `None` when the result is beyond the double
+/// range (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel).
+pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
+    if value == 0.0 || !value.is_finite() {
+        return Some(value);
+    }
+    // Truncation toward zero, as Excel does for a fractional num_digits; the clamp keeps the
+    // cast exact (NaN cannot reach here from a cell, but would become 0).
+    let num_digits = num_digits.clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS).trunc() as i64;
+    let tie_away = mode != RoundMode::HalfAwayFromZero;
+    let (mantissa, exponent) = significant_15(value.abs(), tie_away);
+    // `mantissa` has 15 digits; its last digit has place value 10^(exponent - 14).
+    let last_place = exponent - (SIGNIFICANT_DIGITS - 1);
+    let dropped = -num_digits - last_place;
+    let (digits, place) = if dropped <= 0 {
+        (mantissa, last_place)
+    } else {
+        (round_off(mantissa, dropped, mode), -num_digits)
+    };
+    let magnitude = decimal_to_f64(digits, place)?;
+    if magnitude.is_infinite() {
+        return None;
+    }
+    if magnitude == 0.0 {
+        // Excel has no negative zero (`ROUND(-0.0001,2)` is 0).
+        return Some(0.0);
+    }
+    Some(magnitude.copysign(value))
+}
+
+/// The double nearest to `digits * 10^place`, where `digits <= 10^15`.
+fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
+    // Fast path: `digits` (< 2^53) and 10^|place| (|place| <= 22) are exact doubles, so one
+    // multiplication or division is correctly rounded, like the parse below.
+    if let Ok(exact_power) = i32::try_from(place.unsigned_abs()) {
+        if exact_power <= 22 {
+            let digits = digits as f64; // digits <= 10^15 < 2^53: exact
+            let scale = 10_f64.powi(exact_power);
+            return Some(if place >= 0 {
+                digits * scale
+            } else {
+                digits / scale
+            });
+        }
+    }
+    format!("{digits}e{place}").parse().ok()
+}
+
+/// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`, rounding per `mode`.
+fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> u64 {
+    let Ok(dropped) = u32::try_from(dropped) else {
+        return u64::from(mode == RoundMode::Up);
+    };
+    let Some(unit) = 10_u64.checked_pow(dropped) else {
+        // Everything is dropped and the value is below half a unit.
+        return u64::from(mode == RoundMode::Up);
+    };
+    let (kept, rest) = (mantissa / unit, mantissa % unit);
+    let round_up = match mode {
+        RoundMode::HalfAwayFromZero => rest >= unit - rest,
+        RoundMode::Up => rest > 0,
+        RoundMode::Down => false,
+    };
+    kept + u64::from(round_up)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{round_decimal, RoundMode};
+
+    fn round(value: f64, digits: f64) -> Option<f64> {
+        round_decimal(value, digits, RoundMode::HalfAwayFromZero)
+    }
+
+    #[test]
+    fn binary_inexact_halves_round_up() {
+        assert_eq!(round(1.005, 2.0), Some(1.01));
+        assert_eq!(round(2.675, 2.0), Some(2.68));
+        assert_eq!(round(0.285, 2.0), Some(0.29));
+        assert_eq!(round(-2.5, 0.0), Some(-3.0));
+    }
+
+    #[test]
+    fn sixteenth_digit_tie_depends_on_function() {
+        let x = 999_999_999_999_957.5;
+        assert_eq!(round(x, 0.0), Some(999_999_999_999_957.0));
+        assert_eq!(round(-x, 5.0), Some(-999_999_999_999_957.0));
+        assert_eq!(
+            round_decimal(x, 0.0, RoundMode::Up),
+            Some(999_999_999_999_958.0)
+        );
+        assert_eq!(
+            round_decimal(x, 0.0, RoundMode::Down),
+            Some(999_999_999_999_958.0)
+        );
+        assert_eq!(round(1e15 + 5.0, 0.0), Some(1e15));
+        assert_eq!(
+            round_decimal(1e15 + 5.0, 0.0, RoundMode::Down),
+            Some(1e15 + 10.0)
+        );
+    }
+
+    #[test]
+    fn negative_and_extreme_digits() {
+        assert_eq!(round_decimal(42.0, -5.0, RoundMode::Up), Some(100_000.0));
+        assert_eq!(round_decimal(1e-15, -5.0, RoundMode::Up), Some(100_000.0));
+        assert_eq!(
+            round_decimal(123_456_789.123, -5.0, RoundMode::Down),
+            Some(123_400_000.0)
+        );
+        assert_eq!(round(1.5, -400.0), Some(0.0));
+        assert_eq!(round(1.5, 400.0), Some(1.5));
+        assert_eq!(round_decimal(1.5, -400.0, RoundMode::Up), None);
+        assert_eq!(round(1.5, f64::MAX), Some(1.5));
+        assert_eq!(round(1.5, f64::MIN), Some(0.0));
+        assert_eq!(round(1.234_567_890_123_45e300, -299.0), Some(1.2e300));
+        assert_eq!(round(1e-300, 310.0), Some(1e-300));
+        assert_eq!(round(-0.0001, 2.0).map(f64::is_sign_negative), Some(false));
+    }
+
+    #[test]
+    fn rounds_to_15_digits_first() {
+        assert_eq!(
+            round_decimal(1.0 - 2f64.powi(-53), 0.0, RoundMode::Down),
+            Some(1.0)
+        );
+        assert_eq!(round(1e15 + 86.0, 2.0), Some(1e15 + 90.0));
+        assert_eq!(
+            round_decimal((15.505 + 1.005) / 2.0, 9.0, RoundMode::Up),
+            Some(8.255)
+        );
+    }
+}

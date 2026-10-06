@@ -3,7 +3,7 @@ id: T-0134
 title: "Union operator (A1,B2): parse and give #VALUE! in value contexts"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus

@@ -307,10 +307,13 @@ fn test_not_lifts_over_arrays_and_ranges() {
     model._set("A4", "0");
     model._set("C1", "=NOT(A3:A4)");
     model._set("E1", "=NOT(TRUE)");
+    // Two whole columns exceed the shared array allocation bound (DEVIATION, decision 0014).
+    model._set("G1", "=NOT(Z:AA)");
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"FALSE");
     assert_eq!(model._get_text("B1"), *"TRUE");
     assert_eq!(model._get_text("C1"), *"FALSE");
     assert_eq!(model._get_text("C2"), *"TRUE");
     assert_eq!(model._get_text("E1"), *"FALSE");
+    assert_eq!(model._get_text("G1"), *"#ERROR!");
 }

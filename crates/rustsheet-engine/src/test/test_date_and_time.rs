@@ -135,7 +135,7 @@ fn test_year_booleans() {
 
     // Serial 1 is 1900-01-01
     assert_eq!(model._get_text("A1"), *"1900");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1900");
 }
 
 #[test]
@@ -148,7 +148,7 @@ fn test_month_booleans() {
 
     // Serial 1 is 1900-01-01
     assert_eq!(model._get_text("A1"), *"1");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1");
 }
 
 #[test]
@@ -161,7 +161,7 @@ fn test_day_booleans() {
 
     // Serial 1 is 1900-01-01
     assert_eq!(model._get_text("A1"), *"1");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"0");
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn test_day_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"0");
     // Excel's fictitious Feb 29, 1900 (probes/dates-and-blanks A3)
     assert_eq!(model._get_text("A3"), *"29");
 
@@ -196,7 +196,7 @@ fn test_month_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1");
     // We agree with Excel here (We are both in Feb)
     assert_eq!(model._get_text("A3"), *"2");
 
@@ -216,7 +216,7 @@ fn test_year_small_serial() {
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#NUM!");
-    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"1900");
 
     assert_eq!(model._get_text("A3"), *"1900");
 
@@ -893,4 +893,19 @@ fn test_eomonth_early_1900_serials() {
     assert_eq!(model._get_text("A1"), *"31");
     assert_eq!(model._get_text("A2"), *"31");
     assert_eq!(model._get_text("A3"), *"91");
+}
+
+#[test]
+fn edate_eomonth_huge_month_offsets_are_num_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=EDATE(40000,2000000000)");
+    model._set("A2", "=EDATE(40000,-2000000000)");
+    model._set("A3", "=EOMONTH(40000,2000000000)");
+    model._set("A4", "=EOMONTH(40000,-2000000000)");
+    model._set("A5", "=EDATE(40000,1E+10)");
+    model._set("A6", "=EOMONTH(40000,-1E+10)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
+        assert_eq!(model._get_text(cell), *"#NUM!", "{cell}");
+    }
 }

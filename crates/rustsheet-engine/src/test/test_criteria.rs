@@ -356,3 +356,36 @@ fn test_wildcard_text_matcher_escapes_and_case() {
     assert!(m(&CalcResult::String("a?".to_string())));
     assert!(!m(&CalcResult::String("ab".to_string())));
 }
+
+// Excel ignores spaces around a numeric operand (probes/criteria-padded-operand);
+// spaces before the operator keep the criterion a plain-text one (probes/criteria-gaps C15).
+#[test]
+fn test_padded_numeric_operand_compares_numerically() {
+    let locale = en_locale();
+    let hits = |criteria: &str, n: f64| {
+        let crit = CalcResult::String(criteria.to_string());
+        let matcher = build_criteria(&crit, locale);
+        matcher(&CalcResult::Number(n))
+    };
+    assert!(hits("> 1", 2.0) && !hits("> 1", 1.0));
+    assert!(hits(">1 ", 2.0) && hits("> 1 ", 2.0));
+    assert!(hits(">=  1", 1.0) && hits("< 2 ", 1.0) && hits("<= 2", 2.0));
+    assert!(hits("= 1", 1.0) && hits("<> 1", 2.0) && !hits("<> 1", 1.0));
+    assert!(hits("1 ", 1.0) && hits(" 1", 1.0));
+    assert!(!hits(" >1", 2.0));
+    assert!(!hits(">\t1", 2.0));
+}
+
+// A bare "=" matches a blank cell but not an empty-string cell; "" matches both
+// (probes/criteria-grammar C3/C4, probes/criteria-gaps C2/C3).
+#[test]
+fn test_build_criteria_bare_equals_skips_empty_string() {
+    let eq_c = CalcResult::String("=".to_string());
+    let eq = build_criteria(&eq_c, en_locale());
+    assert!(!eq(&CalcResult::String(String::new())));
+    assert!(eq(&CalcResult::EmptyCell));
+    let empty_c = CalcResult::String(String::new());
+    let empty = build_criteria(&empty_c, en_locale());
+    assert!(empty(&CalcResult::String(String::new())));
+    assert!(empty(&CalcResult::EmptyCell));
+}

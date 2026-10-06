@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use crate::number_format::format_number;
+use crate::number_format::{format_number, parse_excel_number};
 use crate::test::util::new_empty_model;
 use crate::UserModel;
 
@@ -45,4 +45,36 @@ fn test_leading_comma_text() {
 fn test_wrong_locale() {
     let formatted = format_number(2.3, "General", "ens");
     assert_eq!(formatted.text, "#ERROR!".to_string());
+}
+
+#[test]
+fn parse_excel_number_truncates_to_15_digits() {
+    // Integer digits past 15 become zeros, fraction digits past 15 are dropped (not rounded).
+    assert_eq!(
+        parse_excel_number("123456789012345678"),
+        Some(123_456_789_012_345_000.0)
+    );
+    assert_eq!(
+        parse_excel_number("-123456789012345678"),
+        Some(-123_456_789_012_345_000.0)
+    );
+    assert_eq!(
+        parse_excel_number("12345.6789012345678"),
+        Some(12345.6789012345)
+    );
+    // Leading zeros are not significant.
+    assert_eq!(
+        parse_excel_number("0.000123456789012345678"),
+        Some(0.000123456789012345)
+    );
+    // The exponent is kept.
+    assert_eq!(
+        parse_excel_number("1.23456789012345678E+20"),
+        Some(1.23456789012345E+20)
+    );
+    assert_eq!(parse_excel_number("1.00000000000000049"), Some(1.0));
+    // Short input is unchanged, bad text is None.
+    assert_eq!(parse_excel_number("0.1"), Some(0.1));
+    assert_eq!(parse_excel_number("abc"), None);
+    assert_eq!(parse_excel_number(""), None);
 }

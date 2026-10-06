@@ -37,3 +37,136 @@ fn timevalue_of_datetime_text_is_serial_fraction() {
     assert_eq!(value("Sheet1!A1"), 0.690_972_222_218_988_5);
     assert_eq!(value("Sheet1!A2"), 16.583_333_333_333_332 / 24.0);
 }
+
+// Clock text grammar, oracle values from probes/timevalue-*.case.json (excel-graph).
+#[test]
+fn timevalue_clock_text_grammar() {
+    let cases: [(&str, Option<f64>); 13] = [
+        ("10:11:12.5", Some(0.424_450_231_481_481_5)),
+        ("10:11:12.4995", Some(0.424_450_231_481_481_5)), // half-up on the decimal digits
+        ("11:12.5", Some(0.007_783_564_814_814_815)),     // two parts + fraction = M:S
+        ("10:11:12.5 P", Some(0.924_450_231_481_481_5)),
+        ("10:11:12 . 5", Some(0.424_450_231_481_481_5)),
+        ("24:00:00.5", Some(5.787_037_037_130_46e-6)), // frac of 1.0000057870370371
+        ("23:59:59.9995", Some(0.0)),
+        ("1/2/2020 10:11:12.5", Some(0.424_450_231_483_206_15)),
+        ("1/2/2020 25:00", Some(0.041_666_666_664_241_35)), // date + clock past 23 h
+        ("10:61 PM", None),
+        ("010:11:12", None),
+        ("10000:00:00", None),
+        ("10:11:12.5PM", None),
+    ];
+    let mut model = new_empty_model();
+    for (i, (text, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), &format!("=TIMEVALUE(\"{text}\")"));
+    }
+    model.evaluate();
+    for (i, (text, expected)) in cases.iter().enumerate() {
+        let actual = model
+            .get_cell_value_by_ref(&format!("Sheet1!A{}", i + 1))
+            .unwrap();
+        match expected {
+            Some(v) => assert_eq!(actual, crate::cell::CellValue::Number(*v), "{text}"),
+            None => assert_eq!(model._get_text(&format!("A{}", i + 1)), "#VALUE!", "{text}"),
+        }
+    }
+}
+
+// `H:M.f:S` clock text reads the fraction digits as whole seconds and as the fraction, ignores
+// `S`; at most one component may be out of range (hours from 24, minutes or whole seconds from
+// 60); one trailing `:` is ignored. Oracle values (0+text) from probes/clock-text-oddities*.case.json (excel-graph).
+#[test]
+fn coercion_of_minutes_fraction_clock_text() {
+    let cases: [(&str, Option<f64>); 22] = [
+        ("10:11.5:12", Some(0.424_369_212_962_963)),
+        ("10:11.5:99", Some(0.424_369_212_962_963)),
+        ("10:11.0123:12", Some(0.425_729_305_555_555_6)),
+        ("10:11.12345:12", Some(0.567_188_923_611_111_1)),
+        ("0:11.9999:1", Some(0.123_379_629_629_629_63)),
+        ("0:9999.5:1", Some(6.943_813_657_407_407)),
+        ("10:11.59:12 PM", Some(0.924_995_254_629_629_6)),
+        ("1/2/2020 10:11.5:12", Some(43_832.424_369_212_96)),
+        ("10:11.5:", Some(0.007_077_546_296_296_296)),
+        ("10:11:", Some(0.424_305_555_555_555_55)),
+        ("10:11.5:12.5", None),
+        ("10:11.:12", None),
+        ("10:11.5:012", None),
+        ("10:11.60:12 PM", None),
+        ("0:9998.9999:1", None),
+        ("0:9999:9999.9999", None),
+        ("0:9999.9998:1", None),
+        ("0:9999:59.9999", Some(6.944_444_444_444_445)),
+        ("0:24:60", Some(0.017_361_111_111_111_112)),
+        ("24:60", None),
+        ("24:0:60", None),
+        ("60:60.5", None),
+    ];
+    let mut model = new_empty_model();
+    for (i, (text, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), &format!("=0+\"{text}\""));
+    }
+    model.evaluate();
+    for (i, (text, expected)) in cases.iter().enumerate() {
+        let actual = model
+            .get_cell_value_by_ref(&format!("Sheet1!A{}", i + 1))
+            .unwrap();
+        match expected {
+            Some(v) => assert_eq!(actual, crate::cell::CellValue::Number(*v), "{text}"),
+            None => assert_eq!(model._get_text(&format!("A{}", i + 1)), "#VALUE!", "{text}"),
+        }
+    }
+}
+
+// VALUE of clock text is the coercion serial (`0+text`) with surrounding spaces trimmed;
+// coercion itself allows trailing but not leading spaces, and only the space character counts:
+// a tab or a no-break space is never trimmed (probes/value-clock-text, excel-graph).
+#[test]
+fn value_and_coercion_of_clock_text() {
+    // (text, VALUE(text), 0+text)
+    let cases: [(&str, Option<f64>, Option<f64>); 15] = [
+        ("10:00", Some(10.0 / 24.0), Some(10.0 / 24.0)),
+        (
+            "25:00",
+            Some(1.041_666_666_666_666_7),
+            Some(1.041_666_666_666_666_7),
+        ),
+        (
+            "10:11.5",
+            Some(0.007_077_546_296_296_296),
+            Some(0.007_077_546_296_296_296),
+        ),
+        (" 10:00 ", Some(10.0 / 24.0), None),
+        ("10:00 ", Some(10.0 / 24.0), Some(10.0 / 24.0)),
+        ("10:00\u{a0}", None, None),
+        ("10:00\u{a0}AM", None, None),
+        ("10:00\t", None, None),
+        ("1/2/2020\u{a0}", None, None),
+        ("6 P.", Some(0.75), Some(0.75)),
+        ("6 a", Some(0.25), Some(0.25)),
+        ("0 PM", Some(0.5), Some(0.5)),
+        ("0 AM", Some(0.0), Some(0.0)),
+        ("13 PM", None, None),
+        ("1/2/2020 6 PM", Some(43_832.75), Some(43_832.75)),
+    ];
+    let mut model = new_empty_model();
+    for (i, (text, _, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), &format!("=VALUE(\"{text}\")"));
+        model._set(&format!("B{}", i + 1), &format!("=0+\"{text}\""));
+    }
+    model.evaluate();
+    for (i, (text, value, coerced)) in cases.iter().enumerate() {
+        for (column, expected) in [("A", value), ("B", coerced)] {
+            let cell = format!("{column}{}", i + 1);
+            match expected {
+                Some(v) => assert_eq!(
+                    model
+                        .get_cell_value_by_ref(&format!("Sheet1!{cell}"))
+                        .unwrap(),
+                    crate::cell::CellValue::Number(*v),
+                    "{column} {text:?}"
+                ),
+                None => assert_eq!(model._get_text(&cell), "#VALUE!", "{column} {text:?}"),
+            }
+        }
+    }
+}

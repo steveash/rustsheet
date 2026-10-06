@@ -21,18 +21,38 @@ Evidence: gen-m1/6462bf910ef9f28f Calc!A66, A130; gen-m1/10f579127ffb6d9b Calc!A
 A153 (oracle: excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 
+## Array constants take a single optional sign on a number literal
+Rule: inside `{...}` an item is a literal, optionally preceded by one `+` or `-` that is directly
+attached to a number. `{+1}` = 1, `{-1}` = -1, `{-1.5E1}` = -15, `{1,-2,+3}` sums to 2. Every other
+sign form tested was a syntax error, so Excel for the web refuses the whole workbook on load (same
+mechanism as `=IF(TRUE)` above): sign runs `{--1}`, `{++1}`, `{-+1}`, `{+-1}`, `{---1}`, `{1,--2}`;
+a space after the sign `{- 1}`, `{+ 1}`; a sign on a boolean, text or error literal `{-TRUE}`,
+`{+"a"}`, `{-#N/A}`, `{+#N/A}`.
+Array-constant items that are expressions (`{"a"&CHAR(7)&"b","c"}`) are rejected the same way (found bisecting
+the T-0957 probe, excel-graph 2026-10-05); the engine rejects them too (`parse_array_item`).
+Evidence: eval/suites/probes/cases/array-constant-signs.case.json (oracle: excel-graph, 2026-10-05,
+T-0147) for the accepted forms; each rejected form was sent as a single-cell workbook
+(e.g. `{"sheets":[{"name":"Sheet1","cells":{"A1":"=SUM({--1})"}}]}`) and got createSession 501
+`FileCorruptTryRepair` (rejected inputs cannot be committed; re-run such specs to reproduce).
+RustSheet today: `{--1}`, `{---1}`, `{1,--2}`, `{-TRUE}` and `{-#N/A}` are rejected (T-0132 keeps each
+minus as a node). Wrongly accepted: `{++1}`, `{-+1}`, `{+-1}`, `{+"a"}`, `{+#N/A}` (the parser
+drops plus signs in `parse_power`) and `{- 1}`, `{+ 1}` (whitespace after the sign is lost before
+parsing). Measured with the release build, T-0147.
+Status: VERIFIED
+
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
-(number, reference, parenthesis, function call, array) costs two levels and each operator one, so
-up to 127 nested parentheses or function calls and up to 255 terms in one operator chain
-(`=A1+A2+...`) are accepted. Excel caps function nesting at 64 levels (Microsoft, "Excel
-specifications and limits": "Nested levels of functions: 64") and formula text at 8,192
-characters, so every formula within Excel's nesting cap fits; but Excel accepts longer operator
-chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its paren-nesting
-cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses
-per its published limit (UNVERIFIED: no oracle probe yet).
+(number, reference, parenthesis, function call, array) costs two levels and each operator one, so up
+to 127 nested parentheses or function calls and up to 255 terms in one operator chain (`=A1+A2+...`)
+are accepted. Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
+(`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
+levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
+text at 8,192 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer
+operator chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its
+paren-nesting cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel
+refuses per its published limit (UNVERIFIED: no oracle probe yet).
 This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
 on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
@@ -42,15 +62,19 @@ Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
 
 ## Input left over after a complete formula is a syntax error
-Rule: text after a complete expression (`=1 2`, `=SUM(A1))`, `="a" "b"`, `=SIN(x)(3)`) makes the
-formula invalid. Excel refuses such a formula when it is typed; RustSheet stores it as a parse error,
-whose value is `#ERROR!`. Before T-0105 the parser stopped after the first expression and silently
-dropped the rest (`=A1:B2 B1:B3` was stored as `=A1:B2`). A space between two operands that may be
-references is not left over input but the intersection operator (references.md); after a literal it
-is (`=1 A1` and `=A1 1` are both invalid in RustSheet).
-Evidence: none from the oracle yet. smoke/trailing-input.case.json holds hand expectations (no
-oracle sidecar); Excel for the web may refuse the whole workbook, as it does for `=IF(TRUE)`.
-Status: UNVERIFIED (Excel's handling of `=1 A1` and of a line break used in place of the space
-are not probed)
+Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
+`=A1 1`, `=1 A1`) makes the formula invalid: Excel for the web refuses a workbook holding any of them
+(`FileCorruptTryRepair`), so there is no Excel value. RustSheet stores it as a parse error, whose value
+is `#ERROR!`. Before T-0105 the parser stopped after the first expression and silently
+dropped the rest (`=A1:B2 B1:B3` was stored as `=A1:B2`). Spaces and line feeds between two
+reference operands are not left-over input but the intersection operator. Which operands and separators
+Excel accepts is in references.md ("Intersection operator: separators", "Intersection operands must
+be references"). One exception: `=(A1)(A2)` with no space loads and is `#REF!`, so
+smoke/trailing-input B6 (`#ERROR!`) is wrong (T-0149).
+Evidence: scratch runs of `rustsheet-oracle recalc -b excel-graph` on one formula per workbook
+(2026-10-05, T-0138); a refused workbook has no values to commit. `=(A1)(A2)`:
+probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05). smoke/trailing-input.case.json holds
+RustSheet's hand expectations.
+Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::expect_end`, `Parser::parse_intersection`)
-Tasks: T-0105
+Tasks: T-0105, T-0138, T-0149

@@ -8,8 +8,11 @@ cached in the same workbooks where it saved them. In each workbook `Tests!An` is
 ## An empty format string returns empty text
 Rule: `TEXT(<blank>, <blank format>)` returns `""`, not `#VALUE!`. Only a blank value has been
 probed.
-Evidence: poi/ElapsedFormatTests.xlsx A52:A215; poi/FormatChoiceTests.xlsx A27:A53.
+Evidence: poi/ElapsedFormatTests.xlsx A52:A215; poi/FormatChoiceTests.xlsx A27:A53; poi/GeneralFormatTests.xlsx
+A69, A71; poi/NumberFormatApproxTests.xlsx A249; poi/FormatConditionTests.xlsx A38, A51:A54 (Excel-cached).
+Unprobed: an omitted value argument (`TEXT(,"")`) and `TEXT(0,"")`.
 Status: VERIFIED
+Implemented in: `format_text` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), blank value only; other values with `""` stay unprobed.
 Tasks: T-0933
 
 ## Text and booleans use the format's text section
@@ -88,3 +91,58 @@ Rule: General keeps fixed notation while the digits fit in 11 characters, sign n
 Evidence: poi/GeneralFormatTests.xlsx A18, A27, A28, A61.
 Status: VERIFIED
 Tasks: T-0938
+
+## A comma between digit placeholders turns on thousands grouping
+Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
+part in threes". It is not a literal at that position. `0`/`?` placeholders beyond the number's
+digits pad the grouped result, and the padding is grouped too: with `0` a padded group shows its
+separator, and with `?` the padded separator becomes a space. A trailing `,` still scales by 1000
+and keeps the sign.
+- `0,0000000` on 1234567 → "01,234,567" (A67); `0,00000000` → "001,234,567" (A68);
+  `0,000000000` → "0,001,234,567" (A69); `$000,000,000` on 314159 → "$000,314,159" (A335).
+- `?,???????` → " 1,234,567" (A44); `?,????????` → "  1,234,567" (A45); `?,?????????` →
+  "    1,234,567" (A46, A112). Negatives put "-" first: "- 1,234,567" (A80), "-    1,234,567"
+  (A82, A118).
+- `#,,` on -1234567 → "-1" (A95).
+Evidence: poi/NumberFormatTests.xlsx Tests!A44:A46, A67:A69, A80:A82, A95, A112, A118, A335
+(desktop Excel cached values, Microsoft Macintosh Excel 16.0; no web sidecar).
+Status: VERIFIED
+Tasks: T-0952
+
+## `£`, `¥` and `|` print as literals without quotes
+Rule: these characters need no quotes or backslash in a number format; they print as written,
+and the number's "-" goes in front of everything (also before a quoted prefix). (`€` already works.)
+- `£000.00` on 12.3 → "£012.30" (A5); `¥#.00" after"` → "¥12.30 after" (A18), on -12.3
+  → "-¥12.30 after" (A21); `"before "¥#.00` → "before ¥12.30" (A19), on -12.3 → "-before ¥12.30"
+  (A22).
+- `|?.?|` on 1.1 → "|1.1|" (A107); `|??.?|` → "| 1.1|" (A108); `|?.??|` → "|1.1 |" (A109);
+  `|??.??|` → "| 1.1 |" (A110); on -1.1 → "-|1.1|" … "-| 1.1 |" (A113:A116).
+Evidence: poi/NumberFormatTests.xlsx Tests!A5, A18, A19, A21, A22, A107:A110, A113:A116 (desktop
+Excel cached values, Microsoft Macintosh Excel 16.0).
+Status: VERIFIED
+Tasks: T-0953
+
+## `a/p` and `A/P` AM/PM markers
+Rule: `a/p` prints "a" or "p" and `A/P` prints "A" or "P", like `AM/PM`: hours switch to the
+12-hour clock. `hh:mm:ss a/p` on 17816.607951388887 → "02:35:27 p" (A11); `HH:MM:SS A/P` →
+"02:35:27 P" (A16); on 36191.1702084375 → "04:05:06 a" (A30), "04:05:06 A" (A35).
+The short marker keeps the case it is written in, but the long one does not: lowercase `am/pm` still
+prints uppercase "PM" (`hh:mm:ss.000 am/pm` → "02:35:27.000 PM", A13; `HH:MM:SS.000 AM/PM` gives the
+same, A18).
+Evidence: poi/DateFormatTests.xlsx Tests!A11, A13, A16, A18, A30, A35 (desktop Excel cached values,
+Microsoft Macintosh Excel 16.0; the workbook uses the 1904 date system, which does not change the
+time of day).
+Status: VERIFIED
+Tasks: T-0954
+
+## Fractional seconds in clock formats
+Rule: `.0`, `.00` or `.000` after a plain `s`/`ss` prints the fraction of the second, rounded to that
+many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:06.009 AM" (A32),
+`HH:MM:SS.000 AM/PM` → "04:05:06.009 AM" (A37), `h:m:s.00` → "4:5:6.01" (A40); on 17816.607951388887
+`hh:mm:ss.000 am/pm` and `HH:MM:SS.000 AM/PM` → "02:35:27.000 PM" (A13, A18). With the short marker:
+`h:m:s.000 A/P` → "2:35:27.000 P" (A12), `H:M:S.00 a/p` → "2:35:27.00 p" (A17), `h:m:s.00 A/P` →
+"4:5:6.01 A" (A31), `H:M:S.00 a/p` → "4:5:6.01 a" (A36). Every cell shows rounding, not truncation: 36191.1702084375 is 04:05:06.008999934 and 17816.607951388887 is 14:35:26.99999985 (truncation would give .008, .00 and 26.999).
+Evidence: poi/DateFormatTests.xlsx Tests!A12, A13, A17, A18, A31, A32, A36, A37, A40 (desktop Excel cached
+values, Microsoft Macintosh Excel 16.0; the 1904 date system does not change the time of day).
+Status: VERIFIED
+Tasks: T-0981

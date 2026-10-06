@@ -50,6 +50,8 @@ cast with the same scalar rule NOT uses today (`cast_to_bool`); an error element
 - Comparisons over arrays that hold errors (T-0129).
 
 ## Outcome
-`fn_not` uses `get_value_or_array` and casts each element with `cast_to_bool` (errors stay errors); NOT's static-analysis
-result now follows its arguments (`scalar_arguments`) like ABS/TRIM, so an array result is not collapsed by implicit
-intersection. gen-m2 known failures 1503 -> 1501 (A29 and A106 fixed, 0 regressions).
+`fn_not` evaluates its argument once: a scalar is cast with `cast_to_bool`; a range (bounded by the shared
+`check_array_size` allocation limit, as the IS* lift does) or an array is cast element by element (errors stay errors).
+NOT's static-analysis result now follows its arguments (`scalar_arguments`) like ABS/TRIM, so an array result is not
+collapsed by implicit intersection. gen-m2 known failures 477 -> 475 (A29 and A106 fixed, 0 regressions).
+The per-element cast of text, empty and error elements is ASSUMED (not oracle-backed); follow-up probe T-0260.

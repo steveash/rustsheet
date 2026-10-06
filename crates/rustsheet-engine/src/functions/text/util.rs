@@ -1,3 +1,5 @@
+use crate::cast::MAX_TEXT_UNITS;
+
 pub(crate) enum Case {
     Sensitive,
     Insensitive,
@@ -26,6 +28,49 @@ pub(crate) fn text_before(
         return Some(text[..left].to_string());
     };
     None
+}
+
+/// Character count of `SUBSTITUTE(text, old_text, new_text[, instance_num])` computed without
+/// building the result, so a hostile replacement cannot allocate it (CLAUDE.md directive 5).
+/// Excel: a result over 32767 characters is #VALUE! (probes/text-result-limit C1-C7).
+fn substituted_chars(
+    text: &str,
+    text_chars: usize,
+    old_text: &str,
+    new_text: &str,
+    instance_num: Option<i32>,
+) -> usize {
+    let new_chars = new_text.chars().count();
+    if let Some(n) = instance_num {
+        let upper_bound = text_chars + new_chars;
+        if upper_bound <= MAX_TEXT_UNITS {
+            return upper_bound;
+        }
+        // Only a matching instance is replaced; count the text left once it is removed.
+        let removed = substitute(text, old_text, "", n);
+        return if removed.len() == text.len() {
+            text_chars
+        } else {
+            removed.chars().count() + new_chars
+        };
+    }
+    let matches = text.matches(old_text).count();
+    text_chars
+        .saturating_add(matches.saturating_mul(new_chars))
+        .saturating_sub(matches.saturating_mul(old_text.chars().count()))
+}
+
+/// Whether a SUBSTITUTE result would be over the cell text limit, so it is `#VALUE!`. A result
+/// that does not grow passes even from over-limit input (text.md "Open").
+pub(crate) fn substitute_exceeds_limit(
+    text: &str,
+    old_text: &str,
+    new_text: &str,
+    instance_num: Option<i32>,
+) -> bool {
+    let text_chars = text.chars().count();
+    let result_chars = substituted_chars(text, text_chars, old_text, new_text, instance_num);
+    result_chars > MAX_TEXT_UNITS && result_chars > text_chars
 }
 
 pub(crate) fn substitute(text: &str, old_text: &str, new_text: &str, instance_num: i32) -> String {
@@ -108,10 +153,21 @@ fn text_sensitive_reverse(
     None
 }
 
+/// Cap on the total bytes of text one broadcast may produce. Excel has no such
+/// limit that we have measured; this bounds allocation on untrusted input
+/// (DEVIATION, decision 0014; docs/excel-semantics/text.md).
+const MAX_BROADCAST_TEXT_BYTES: usize = 64 * 1024 * 1024;
+
+/// Adds `len` to the running `total`; false once it exceeds the broadcast cap.
+pub(crate) fn within_text_budget(total: &mut usize, len: usize) -> bool {
+    *total = total.saturating_add(len);
+    *total <= MAX_BROADCAST_TEXT_BYTES
+}
+
 #[cfg(test)]
 mod tests {
 
-    use super::{text_after, text_before, Case};
+    use super::{text_after, text_before, within_text_budget, Case};
     #[test]
     fn test_text_after_sensitive() {
         assert_eq!(
@@ -191,5 +247,13 @@ mod tests {
             text_before("長壽相等！", "相", 1, Case::Insensitive),
             Some("長壽".to_string())
         );
+    }
+
+    #[test]
+    fn budget_allows_exactly_64_mib() {
+        let mut total = 0;
+        // 2048 results of 32 KiB make exactly 64 MiB; the next one crosses the cap.
+        assert!((0..2048).all(|_| within_text_budget(&mut total, 32768)));
+        assert!(!within_text_budget(&mut total, 1));
     }
 }

@@ -105,11 +105,32 @@ fn deep_formulas_of_every_shape_are_too_deep() {
 }
 
 #[test]
-fn unary_sign_runs_do_not_nest() {
+fn unary_minus_runs_nest_up_to_the_limit() {
     on_small_stack(|| {
-        // Signs collapse into one node, so a long run is fine.
-        let node = parse(&format!("{}1", "-".repeat(10_000)));
-        assert!(matches!(node, Node::NumberKind(_)));
+        // Each minus is its own node (`--x` coerces, T-0132), so a run nests:
+        // one under the limit parses, a very long one is a parse error, never a
+        // stack overflow. Plus signs are no-ops and add no nodes.
+        let node = parse(&format!("{}1", "-".repeat(MAX_FORMULA_DEPTH - 3)));
+        assert!(matches!(node, Node::UnaryKind { .. }));
+        assert!(is_too_deep(&parse(&format!("{}1", "-".repeat(10_000)))));
+        assert!(matches!(
+            parse(&format!("{}1", "+".repeat(10_000))),
+            Node::NumberKind(_)
+        ));
+    });
+}
+
+#[test]
+fn unary_minus_run_at_the_limit_evaluates() {
+    on_small_stack(|| {
+        // Each minus is an evaluator frame too (`apply_number_unary`): the
+        // longest run that parses must also evaluate and print on a small stack.
+        let mut model = crate::test::util::new_empty_model();
+        let minuses = "-".repeat(MAX_FORMULA_DEPTH - 3);
+        model._set("A1", &format!("={minuses}TRUE"));
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "-1");
+        assert_eq!(model._get_formula("A1"), format!("={minuses}TRUE"));
     });
 }
 

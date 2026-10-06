@@ -1,10 +1,10 @@
 use std::{collections::HashMap, io::Read};
 
+use super::package::Package;
 use rustsheet_engine::types::{
     Alignment, Border, BorderItem, BorderStyle, CellStyleXfs, CellStyles, CellXfs, Color, Dxf,
     DxfFont, Fill, Font, FontScheme, HorizontalAlignment, NumFmt, Styles, Theme, VerticalAlignment,
 };
-use std::io::BufReader;
 
 use super::xml::XmlNode;
 
@@ -108,11 +108,11 @@ fn get_border(
 }
 
 pub(super) fn load_styles<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     theme: &Theme,
 ) -> Result<Styles, XlsxError> {
-    let file = archive.by_name("xl/styles.xml")?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open("xl/styles.xml")?;
+    let doc = XmlNode::parse(file)?;
     let style_sheet = &doc;
 
     // The workbook's `<colors><indexedColors>` override (if any), applied to every `indexed=`
@@ -619,7 +619,7 @@ mod indexed_color_tests {
         "</indexedColors></colors>",
     );
 
-    fn archive_of(styles: &str) -> zip::ZipArchive<Cursor<Vec<u8>>> {
+    fn archive_of(styles: &str) -> Package<Cursor<Vec<u8>>> {
         let mut buf = Vec::new();
         {
             let mut zw = zip::ZipWriter::new(Cursor::new(&mut buf));
@@ -628,7 +628,7 @@ mod indexed_color_tests {
             zw.write_all(styles.as_bytes()).unwrap();
             zw.finish().unwrap();
         }
-        zip::ZipArchive::new(Cursor::new(buf)).unwrap()
+        Package::new(Cursor::new(buf), super::super::ImportLimits::default()).unwrap()
     }
 
     // With an `<indexedColors>` override, `indexed=` fills/fonts resolve to the FILE's palette.

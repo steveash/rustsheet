@@ -16,60 +16,75 @@ fn is_same_shape_or_1d(rows1: i32, cols1: i32, rows2: i32, cols2: i32) -> bool {
 impl Model {
     // SUMX2MY2(array_x, array_y) - Returns the sum of the difference of squares
     pub(crate) fn fn_sumx2my2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let result = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-
-        let (_, _, values_left, values_right) = result;
-
-        let mut sum = 0.0;
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
-            let x = x_opt.unwrap_or(0.0);
-            let y = y_opt.unwrap_or(0.0);
-            sum += x * x - y * y;
-        }
-
-        CalcResult::Number(sum)
+        self.sumx_fold(args, cell, |x, y| x * x - y * y)
     }
 
     // SUMX2PY2(array_x, array_y) - Returns the sum of the sum of squares
     pub(crate) fn fn_sumx2py2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let result = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-
-        let (_rows, _cols, values_left, values_right) = result;
-
-        let mut sum = 0.0;
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
-            let x = x_opt.unwrap_or(0.0);
-            let y = y_opt.unwrap_or(0.0);
-            sum += x * x + y * y;
-        }
-
-        CalcResult::Number(sum)
+        self.sumx_fold(args, cell, |x, y| x * x + y * y)
     }
 
     // SUMXMY2(array_x, array_y) - Returns the sum of squares of differences
     pub(crate) fn fn_sumxmy2(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let result = match self.fn_get_two_matrices(args, cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
+        self.sumx_fold(args, cell, |x, y| (x - y) * (x - y))
+    }
 
-        let (_, _, values_left, values_right) = result;
-
-        let mut sum = 0.0;
-        for (x_opt, y_opt) in values_left.into_iter().zip(values_right) {
-            let x = x_opt.unwrap_or(0.0);
-            let y = y_opt.unwrap_or(0.0);
-            let diff = x - y;
-            sum += diff * diff;
+    // Excel pairs the arrays row-major and only needs equal element counts (not shapes); pairs where
+    // either side is not a number are skipped, none left is #DIV/0!, unequal counts are #N/A
+    // (docs/excel-semantics/coercion.md "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing").
+    fn sumx_fold(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        term: impl Fn(f64, f64) -> f64,
+    ) -> CalcResult {
+        if args.len() != 2 {
+            return CalcResult::new_args_number_error(cell);
         }
-
+        let left = match self.sumx_values(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        let right = match self.sumx_values(&args[1], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
+        };
+        if left.len() != right.len() {
+            return CalcResult::new_error(
+                Error::NA,
+                cell,
+                "Arrays must have the same number of elements".to_string(),
+            );
+        }
+        let mut sum = 0.0;
+        let mut count = 0;
+        for (x, y) in left.into_iter().zip(right) {
+            if let (Some(x), Some(y)) = (x, y) {
+                sum += term(x, y);
+                count += 1;
+            }
+        }
+        if count == 0 {
+            return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
+        }
         CalcResult::Number(sum)
+    }
+
+    // Flattens one SUMX argument (range, array or scalar number) row-major; non-numbers are `None`.
+    fn sumx_values(
+        &mut self,
+        arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        match self.evaluate_node_in_context(arg, cell) {
+            CalcResult::Range { left, right } => self.values_from_range(left, right),
+            CalcResult::Array(array) => self
+                .values_from_array(array)
+                .map_err(|error| CalcResult::new_error(error, cell, "Error in array".to_string())),
+            CalcResult::Number(n) => Ok(vec![Some(n)]),
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Ok(vec![None]),
+        }
     }
 
     // Helper function to extract and validate two matrices (ranges or arrays) with compatible shapes.

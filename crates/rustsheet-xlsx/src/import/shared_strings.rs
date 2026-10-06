@@ -1,5 +1,6 @@
-use std::io::{BufReader, Read};
+use std::io::Read;
 
+use super::package::{ImportLimits, Package};
 use super::xml::XmlNode;
 
 use crate::error::XlsxError;
@@ -8,29 +9,41 @@ use crate::error::XlsxError;
 /// Note than in IronCalc we lose _internal_ styling of a string
 /// See Section 18.4
 pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
 ) -> Result<Vec<String>, XlsxError> {
-    match archive.by_name("xl/sharedStrings.xml") {
-        Ok(file) => read_shared_strings_from_xml(XmlNode::parse(BufReader::new(file))?),
-        Err(_e) => Ok(Vec::new()),
+    let limits = *archive.limits();
+    match archive.open_optional("xl/sharedStrings.xml")? {
+        Some(file) => read_shared_strings_from_xml(XmlNode::parse(file)?, &limits),
+        None => Ok(Vec::new()),
     }
 }
 
 #[cfg(test)]
 fn read_shared_strings_from_string(text: &str) -> Result<Vec<String>, XlsxError> {
-    read_shared_strings_from_xml(XmlNode::parse(text.as_bytes())?)
+    read_shared_strings_from_xml(XmlNode::parse(text.as_bytes())?, &ImportLimits::default())
 }
 
-fn read_shared_strings_from_xml(doc: XmlNode) -> Result<Vec<String>, XlsxError> {
+fn read_shared_strings_from_xml(
+    doc: XmlNode,
+    limits: &ImportLimits,
+) -> Result<Vec<String>, XlsxError> {
     let mut shared_strings = Vec::new();
     let nodes: Vec<&XmlNode> = doc.descendants().filter(|n| n.has_tag_name("si")).collect();
     for node in nodes {
+        // Only the plain `<t>` and the `<r><t>` rich-text runs are the cell text; phonetic
+        // (furigana) runs `<rPh><t>` are not (ECMA-376 §18.4.6; the eval snapshot reader skips
+        // them too).
         let text = node
-            .descendants()
-            .filter(|n| n.has_tag_name("t"))
+            .children()
+            .flat_map(|child| match child.tag_name() {
+                "t" => vec![child],
+                "r" => child.children().filter(|n| n.has_tag_name("t")).collect(),
+                _ => Vec::new(),
+            })
             .map(|n| decode_xlsx_escapes(n.text().unwrap_or("")))
             .collect::<Vec<String>>()
             .join("");
+        limits.check_text(&text)?;
         shared_strings.push(text);
     }
     Ok(shared_strings)
@@ -116,6 +129,26 @@ mod tests {
                 "Hello World".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn test_phonetic_runs_are_not_cell_text() {
+        let xml_string = r#"
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2" uniqueCount="2">
+    <si>
+        <r><t>東</t></r>
+        <r><rPr><b/></rPr><t>京</t></r>
+        <rPh sb="0" eb="1"><t>トウ</t></rPh>
+        <rPh sb="1" eb="2"><t>キョウ</t></rPh>
+        <phoneticPr fontId="1"/>
+    </si>
+    <si>
+        <t>漢字</t>
+        <rPh sb="0" eb="2"><t>カンジ</t></rPh>
+    </si>
+</sst>"#;
+        let shared_strings = read_shared_strings_from_string(xml_string.trim()).unwrap();
+        assert_eq!(shared_strings, ["東京".to_string(), "漢字".to_string()]);
     }
 
     #[test]

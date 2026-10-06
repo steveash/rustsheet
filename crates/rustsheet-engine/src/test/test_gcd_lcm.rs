@@ -2,8 +2,6 @@
 
 use crate::test::util::new_empty_model;
 
-const MAX_LCM_GCD: i64 = 2_i64.pow(53);
-
 #[test]
 fn arguments() {
     let mut model = new_empty_model();
@@ -46,27 +44,17 @@ fn invalid_inputs() {
     model._set("A7", "=GCD({1, 2, 3}, {4, -5, 6})");
     model._set("A8", "=GCD({1, 2, 3}, {4, \"-5\", 6})");
 
-    model._set("B1", &format!("=LCM({}, 6)", MAX_LCM_GCD + 1));
-    model._set("B2", &format!("=LCM(\"{}\", 6)", MAX_LCM_GCD + 1));
-    model._set("B3", &format!("=GCD({}, 6)", MAX_LCM_GCD + 1));
-    model._set("B4", &format!("=GCD(\"{}\", 6)", MAX_LCM_GCD + 1));
+    // Numbers are cut to 15 significant digits on parse (T-0143), so 2^53+2 would no longer be
+    // past the limit; 1E+16 is.
+    model._set("B1", "=LCM(1E+16, 6)");
+    model._set("B2", "=LCM(\"1E+16\", 6)");
+    model._set("B3", "=GCD(1E+16, 6)");
+    model._set("B4", "=GCD(\"1E+16\", 6)");
 
-    model._set(
-        "B5",
-        &format!("=LCM({{1, 2, 3}}, {{4, {}, 6}})", MAX_LCM_GCD + 1),
-    );
-    model._set(
-        "B6",
-        &format!("=LCM({{1, 2, 3}}, {{4, \"{}\", 6}})", MAX_LCM_GCD + 1),
-    );
-    model._set(
-        "B7",
-        &format!("=GCD({{1, 2, 3}}, {{4, {}, 6}})", MAX_LCM_GCD + 1),
-    );
-    model._set(
-        "B8",
-        &format!("=GCD({{1, 2, 3}}, {{4, \"{}\", 6}})", MAX_LCM_GCD + 1),
-    );
+    model._set("B5", "=LCM({1, 2, 3}, {4, 1E+16, 6})");
+    model._set("B6", "=LCM({1, 2, 3}, {4, \"1E+16\", 6})");
+    model._set("B7", "=GCD({1, 2, 3}, {4, 1E+16, 6})");
+    model._set("B8", "=GCD({1, 2, 3}, {4, \"1E+16\", 6})");
 
     model.evaluate();
 
@@ -109,4 +97,33 @@ fn whole_column_sees_a_spill_beyond_the_used_area() {
         assert_eq!(model._get_text("A1"), expected, "{formula}");
         assert_eq!(model.evaluation.restarts_in_last_evaluation, 1, "{formula}");
     }
+}
+
+// Excel accepts 2^53 as an argument and as an LCM result, rejects more
+// (probes/gcd-lcm-bounds, lcm-result-bound, lcm-result-edge).
+#[test]
+fn bounds_at_2_pow_53() {
+    let mut model = new_empty_model();
+    model._set("A1", "=GCD(2^53,2)");
+    model._set("A2", "=GCD(2^53+2,2)");
+    model._set("A3", "=LCM(2^53,1)=2^53");
+    model._set("A4", "=LCM(2^53,2)=2^53");
+    model._set("A5", "=LCM(2^53,3)");
+    model._set("A6", "=LCM(2^52+1,2)");
+    model._set("A7", "=LCM(3,3002399751580330+1)=2^53");
+    model._set("A8", "=LCM(1E+300,1)");
+    model._set("A9", "=LCM(3037000500,3037000501)");
+    model._set("A10", "=GCD(2^53+1,2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("A2"), *"#NUM!");
+    assert_eq!(model._get_text("A3"), *"TRUE");
+    assert_eq!(model._get_text("A4"), *"TRUE");
+    assert_eq!(model._get_text("A5"), *"#NUM!");
+    assert_eq!(model._get_text("A6"), *"#NUM!");
+    assert_eq!(model._get_text("A7"), *"TRUE");
+    assert_eq!(model._get_text("A8"), *"#NUM!");
+    assert_eq!(model._get_text("A9"), *"#NUM!");
+    assert_eq!(model._get_text("A10"), *"2");
 }

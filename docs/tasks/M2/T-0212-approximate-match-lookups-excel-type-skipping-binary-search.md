@@ -88,9 +88,15 @@ Failing cells attributed to this root cause (some also need T-0210/T-0211, hence
 - `gen-m2/f9d4df4efdfbcbd5.case.json`: A8 A69 A90 A118 A133 A275 A276 A279 A286 A288 A289 A322 A336 A339 A365 A377 A389
 - `gen-m2/fa437879253827be.case.json`: A38 A90 A117 A123 A146 A166 A291 A305 A335 A370 A379 A386
 
+Added by T-0211 (decision 0034): these cells passed only while the index was validated before the
+search. Excel's search finds the value and the out-of-range index is `#REF!`; ours finds nothing
+(`#N/A`). They must pass after this task: `gen-m2/1b6ceed7489e0800` A193, `gen-m2/d0c29dd5c530e28c`
+A204, `gen-m2/dd99be1f2454159f` A369, `gen-m2/f7e6d351c8538ef5` A70, `gen-m2/f9d4df4efdfbcbd5` A45 A283.
+Also `gen-m2/ef5c55a81783b7d5` A32 (an inner HLOOKUP that our search wrongly matches).
+
 ## Acceptance criteria
 - [ ] With T-0210 and T-0211 merged, at least 460 of the cells above disappear from eval/baseline/gen-m2.txt, with no new
-      F lines. List any that remain in the PR with a reason (collation: T-0220).
+      F lines; the six decision-0034 cells pass. List any that remain in the PR with a reason (collation: T-0220).
 - [ ] Unit tests for each evidence bullet above.
 - [ ] docs/excel-semantics/lookup.md documents the algorithm with the evidence cells.
 - [ ] `make check` green; reviewers approve.

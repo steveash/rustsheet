@@ -3,67 +3,58 @@ use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::{to_excel_precision, to_precision};
+use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
+use crate::number_format::to_excel_precision;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 use std::f64::consts::PI;
 
+/// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`: a decimal limit, not a
+/// power of two (probes/mod-quotient-threshold5).
+const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
+
 impl Model {
-    pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
+    ///
+    /// Excel (probes/min-max-value-args, T-0217; docs/excel-semantics/coercion.md): ranges,
+    /// references (also via IF/INDEX) and arrays contribute only their numbers, while a value
+    /// argument is coerced as SUM does: text that is not a number is `#VALUE!`, `"2"` is 2,
+    /// TRUE is 1 and an empty argument is 0.
+    fn fold_min_max(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        pick: fn(f64, f64) -> f64,
+    ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result = value.min(result),
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    result = value.min(result);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
+                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+                        result = pick(value, result);
+                    }) {
+                        return error;
                     }
                 }
                 CalcResult::Array(array) => {
-                    for row in array {
-                        for node in row {
-                            match node {
-                                ArrayNode::Number(value) => result = value.min(result),
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: String::new(),
-                                    }
-                                }
-                                _ => {}
+                    for node in array.into_iter().flatten() {
+                        match node {
+                            ArrayNode::Number(value) => result = pick(value, result),
+                            ArrayNode::Error(error) => {
+                                return CalcResult::new_error(error, cell, String::new())
                             }
+                            // Booleans and text in an array are ignored.
+                            _ => {}
                         }
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
+                value => match self.cast_to_number(value, cell) {
+                    Ok(value) => result = pick(value, result),
+                    Err(error) => return error,
+                },
+            }
         }
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Number(0.0);
@@ -71,64 +62,12 @@ impl Model {
         CalcResult::Number(result)
     }
 
+    pub(crate) fn fn_min(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.fold_min_max(args, cell, f64::min)
+    }
+
     pub(crate) fn fn_max(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut result = f64::NAN;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result = value.max(result),
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    result = value.max(result);
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for node in row {
-                            match node {
-                                ArrayNode::Number(value) => result = value.max(result),
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: String::new(),
-                                    }
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
-        }
-        if result.is_nan() || result.is_infinite() {
-            return CalcResult::Number(0.0);
-        }
-        CalcResult::Number(result)
+        self.fold_min_max(args, cell, f64::max)
     }
 
     pub(crate) fn fn_base(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -262,31 +201,8 @@ impl Model {
 
         let mut result = 0.0;
         for arg in args {
-            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
-            let arg = match arg {
-                Node::ReferenceKind {
-                    column,
-                    absolute_column,
-                    row,
-                    absolute_row,
-                    sheet_index,
-                    sheet_name,
-                } => &Node::RangeKind {
-                    sheet_name: sheet_name.clone(),
-                    sheet_index: *sheet_index,
-                    absolute_row1: *absolute_row,
-                    absolute_column1: *absolute_column,
-                    row1: *row,
-                    column1: *column,
-                    absolute_row2: *absolute_row,
-                    absolute_column2: *absolute_column,
-                    row2: *row,
-                    column2: *column,
-                },
-                _ => arg,
-            };
-
-            match self.evaluate_node_in_context(arg, cell) {
+            // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         result += value;
@@ -334,42 +250,10 @@ impl Model {
         }
 
         let mut result = 0.0;
-        for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => result += value * value,
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        result += value * value;
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    result += value * value;
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                _ => {
-                    // We ignore booleans and strings
-                }
-            };
+        if let Err(error) =
+            self.for_each_value_skip_empty(args, cell, |value| result += value * value)
+        {
+            return error;
         }
         CalcResult::Number(result)
     }
@@ -471,79 +355,41 @@ impl Model {
         CalcResult::Number(total)
     }
 
-    pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
+    /// (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
+    fn round_family(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mode: RoundMode,
+    ) -> CalcResult {
         if args.len() != 2 {
-            // Incorrect number of arguments
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
+            Ok(f) => f,
             Err(s) => return s,
         };
         let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
+            Ok(f) => f,
             Err(s) => return s,
         };
-        let scale = 10.0_f64.powf(number_of_digits);
-        CalcResult::Number((value * scale).round() / scale)
+        match round_decimal(value, number_of_digits, mode) {
+            Some(result) => CalcResult::Number(result),
+            None => CalcResult::new_error(Error::NUM, cell, "Result is too large".to_string()),
+        }
+    }
+
+    pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_family(args, cell, RoundMode::HalfAwayFromZero)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        if value > 0.0 {
-            CalcResult::Number((value * scale).ceil() / scale)
-        } else {
-            CalcResult::Number((value * scale).floor() / scale)
-        }
+        self.round_family(args, cell, RoundMode::Up)
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => to_precision(f, 15),
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => {
-                if f > 0.0 {
-                    f.floor()
-                } else {
-                    f.ceil()
-                }
-            }
-            Err(s) => return s,
-        };
-        let scale = 10.0_f64.powf(number_of_digits);
-        if value > 0.0 {
-            CalcResult::Number((value * scale).floor() / scale)
-        } else {
-            CalcResult::Number((value * scale).ceil() / scale)
-        }
+        self.round_family(args, cell, RoundMode::Down)
     }
 
     // (number, divisor)
@@ -564,6 +410,15 @@ impl Model {
                 error: Error::DIV,
                 origin: cell,
                 message: "Divide by 0".to_string(),
+            };
+        }
+        // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
+        // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
+        if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
+            return CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "Quotient too large".to_string(),
             };
         }
         CalcResult::Number(crate::functions::util::excel_mod(value, divisor))

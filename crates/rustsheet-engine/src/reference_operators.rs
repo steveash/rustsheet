@@ -27,10 +27,22 @@ impl Model {
                     left: left2,
                     right: right2,
                 },
-            ) if left1 == right1 && left2 == right2 => CalcResult::Range {
-                left: left1,
-                right: right2,
-            },
+            ) if left1 == right1 && left2 == right2 => {
+                // Corners may be written in either order (`Data!B2:Data!A1` is `Data!A1:B2`).
+                // UNVERIFIED against the oracle (references.md).
+                CalcResult::Range {
+                    left: CellReferenceIndex {
+                        sheet: left1.sheet,
+                        row: left1.row.min(right2.row),
+                        column: left1.column.min(right2.column),
+                    },
+                    right: CellReferenceIndex {
+                        sheet: right2.sheet,
+                        row: left1.row.max(right2.row),
+                        column: left1.column.max(right2.column),
+                    },
+                }
+            }
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }
     }

@@ -6,10 +6,12 @@ mod test_fn_hstack_vstack;
 mod test_fn_index;
 mod test_fn_lookup;
 mod test_fn_match;
+mod test_fn_rows_columns;
 mod test_fn_trimrange;
 mod test_fn_vlookup;
 mod test_fn_wrapcols_wraprows;
 mod test_fn_xmatch;
+mod test_xlookup_wide;
 
 use crate::test::util::new_empty_model;
 

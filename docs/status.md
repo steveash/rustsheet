@@ -5,33 +5,44 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
-## Snapshot — 2026-10-05 (M1 in progress)
+## Snapshot — 2026-10-06 (M1 in progress)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 210 | 71,818 | 97.80% | 1,580 (+2 new coverage from today's oracle fill) |
-| poi | 336 | 27,286 | 96.66% (199 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 935 |
-| gen-m2 | 30 | 12,000 | 85.62% | 1,726 |
-| smoke | 5 | 38 | 100% | 0 |
-| probes | 6 | 96 | 80.21% | 19 |
-| probes-numeric | 4 | 2,738 | 68.08% | not gated |
+| ironcalc-calc | 210 | 71,818 | 97.80% | 1,577 |
+| poi | 336 | 27,286 | 96.83% (199 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 889 |
+| gen-m2 | 30 | 12,000 | 95.65% | 522 |
+| gen-m1 | 15 | 3,750 | 93.12% (M1 exit needs 100%) | 258 |
+| probes | 60 | 1,682 | 93.76% | 105 |
+| smoke | 6 | 46 | 100% | 0 |
+| fixtures | 1 | 3 | 100% | 0 |
+| probes-numeric | 4 | 2,738 | 86.05% | not gated |
 
-Hygiene: lint-debt 99 allow entries · duplicated lines 8,360 · oversized files 19 (formatter/format.rs is now under the limit; the ratchet file is protected, so the next PR touching it records the drop).
+`make eval-check` on `main` (86e5ddb): 0 regressions. Excel evidence (report.md, 2026-10-06): 261 functions with ≥25 oracle/cached cells, 184 with fewer, 68 implemented with none.
 
-Since the 2026-10-04 steward run (#33): 44 PRs merged to `main` (T-0004/0009/0013/0015/0016/0017/0019/0022/0023/0027/0028/0029/0031/0032/0033/0034/0035/0036/0037,
-T-0102/0103/0104/0108/0116/0119/0123, T-0203/0206, T-0923/0924/0926/0928/0930/0932, decision 0014, task filings); 0 reverted; 0 tasks blocked.
-Merged during this run: T-0931 (parser nesting limit), T-0117 (gen-m1 generator); in flight: T-0109 (gen-m1 oracle fill). CI on `main` (e684703): green. Open PRs: #68 (T-0125 draft, handed off to opus, <24 h).
-Ready queues: functions 31, sonnet 11 (buffer ≥10 met); engine 1 ready because T-0931 holds the lane (10 more todo), harness 4, research 6,
-quality 3 — no triage or planning needed. Upstream IronCalc: 7 new commits through 4deab8f6, filed T-0129 (error broadcasting), T-0223
-(MAX/MIN), T-0940 (ISREF). Oracle: excel-graph OK; fill on poi wrote 0 sidecars (292 skipped, 4 workbooks failed, as in T-0019) and on ironcalc-calc wrote 3
-(GEOMEAN, XMATCH_arrays, array_in_scalar_repro: +45 scored cells, 2 GEOMEAN ulp misses filed as T-0941).
-Spot-audit: none yet; the first merges are 2026-10-02, so the first weekly audit is due 2026-10-09 (with the decision 0015 reviewer-model check).
+Hygiene: lint-debt 99 allow entries · duplicated lines 7,873 (ratchet file still at 7,881; protected, so the next PR touching it records the drop) · oversized files 19.
 
-**Critical lane:** engine, harness, research
+Since the 2026-10-05 steward run (#79): 86 PRs merged to `main` — 81 tasks (T-0011/0012/0018/0020/0024/0025/0026/0030/0038/0039/0041/0042/0043/0045,
+T-0105/0106/0107/0109/0121/0127/0130/0131/0132/0136/0137/0138/0139/0141/0142/0143/0145/0146/0147/0148/0150/0152/0159/0160/0161/0162/0164/0166/0168/0169/0170/0172,
+T-0209/0210/0211/0213/0214/0215/0216/0217/0226/0227/0228/0232/0233/0234/0236/0237/0238/0239/0240/0242/0246,
+T-0903/0910/0920/0921/0940/0944/0945/0946/0947/0948/0949/0955/0956/0964) plus 5 queue/process PRs (decision 0028, sonnet-queue refills); 0 reverted.
+Blocked: only the Phase 2 tasks T-0400/T-0401/T-0402 (by decision 0027). T-0125 (#68) was blocked on T-0213, which is now done. This run unblocked it, the opus worker resumed it, and it merged during the run (#181).
+CI on `main` (86e5ddb): green. Merged during this run (not in the table above): T-0153 (#175), T-0250 (#177), T-0976 (#178), T-0933 (#179), T-0125 (#181), sonnet refill (#182), T-0252 (#183). Open PRs: 10 — #83 T-0403, #93 T-0225, #105 T-0040 (draft, blocked), #125 T-0241, #129 T-0222,
+#143 T-0151, #144 T-0957, #145 T-0247, #146 T-0943, #148 T-0044; all under 24 h old at the start of the run.
+Queues: functions 28 ready at the start of the run, which is enough. The sonnet buffer was 9 (below 10) and research had 0 ready, so this run ran the gap-triager and the planner.
+New tasks: sonnet T-0173/0174/0175/0178/0179/0980/0981, opus T-0176/0177/0180/0982.
+A concurrent refill (#182) filed the same LEFT/RIGHT/MID, AND/OR/XOR-text and WORKDAY-holidays gaps (T-0257, T-0258, T-0983) first, so this run dropped its duplicates.
+At commit time (after #182) `make ready-tasks` shows functions 32, sonnet 24 (buffer met), research 8, api 3. Workers' busy lanes hide the rest: engine 0 ready with 19 todo, functions-text busy.
+Not filed, for the planner/owner to decide: 1904-date-system cells in POI DateFormat*Tests (~35 cells); R1C1 parse/print has no Excel evidence (would need a `formulasR1C1` oracle capture).
+Upstream IronCalc: no new commits past 4deab8f6. Oracle: excel-graph OK; fill on ironcalc-calc wrote 0 sidecars (207 skipped) and on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
+One `make eval-baseline` run segfaulted and did not reproduce in 6 reruns; filed T-0183 (P1, harness). The poi baseline was stale by 8 cells that #181 fixed, because CI does not fetch poi; #185 has since recorded them.
+Spot-audit: none yet; the first weekly audit is due 2026-10-09 (with the decision 0015 reviewer-model check).
 
-(Ordered list read by both tier workers, which then fall back to `functions`. M1 exit needs the engine parity fixes (T-0931, T-0106,
-T-0107, T-0110, T-0129, T-0105, T-0122) and gen-m1 at 100% (harness T-0117, then oracle fill); research holds the probes that unblock
-them (T-0011, T-0026, T-0030). perf dropped: its tasks (T-0400, T-0402, T-0403) are M3.)
+**Critical lane:** engine, research, api, harness
+
+(Ordered list read by both tier workers, which then fall back to `functions`. M1 exit needs gen-m1 at 100% (258 cells left; T-0134 and T-0221 still open)
+and the remaining engine parity tasks (T-0110, T-0122, T-0128, T-0129, T-0144, T-0149, T-0154, T-0158); research holds the probes that unblock them.
+harness is last: gen-m1 is generated and oracle-filled; its only M1 work is the T-0183 segfault. perf stays out: its tasks are M3.)
 
 ## Needs owner
 

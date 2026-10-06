@@ -289,6 +289,23 @@ fn filter_no_match_with_if_empty() {
     assert_eq!(model._get_text("C1"), "No results");
 }
 
+// Excel: probes/filter-if-empty-array (docs/excel-semantics/arrays.md).
+#[test]
+fn filter_no_match_with_array_if_empty_spills_it() {
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("B1", "FALSE");
+    model._set("C1", "=FILTER(A1:A1,B1:B1,{1,2;3,4})");
+    model._set("C5", "=FILTER(A1:A1,B1:B1,{1,2,3})");
+    model._set("D5", "blocker");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "1");
+    assert_eq!(model._get_text("D1"), "2");
+    assert_eq!(model._get_text("C2"), "3");
+    assert_eq!(model._get_text("D2"), "4");
+    assert_eq!(model._get_text("C5"), "#SPILL!");
+}
+
 #[test]
 fn filter_multi_column() {
     let mut model = new_empty_model();
