@@ -64,6 +64,7 @@ C	ironcalc-calc/INFORMATION/IS_INFORMATION.xlsx	106
 C	ironcalc-calc/INFORMATION/N.xlsx	21
 C	ironcalc-calc/INFORMATION/SHEET_SHEETS.xlsx	5
 C	ironcalc-calc/INFORMATION/TYPE.xlsx	7
+C	ironcalc-calc/INFORMATION/error_broadcast.xlsx	230
 C	ironcalc-calc/LOGICAL/AND_OR_XOR.xlsx	317
 C	ironcalc-calc/LOGICAL/BYCOL_BYROW.xlsx	5
 C	ironcalc-calc/LOGICAL/IFERROR.xlsx	48
