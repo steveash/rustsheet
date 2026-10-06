@@ -424,6 +424,7 @@ mod tests {
 
     #[test]
     fn february_29_follows_the_current_year() {
+        // Hand-derived from the rule (UNVERIFIED: the oracle has only run in 2026).
         for text in ["2/29", "Feb-29", "29-Feb", "Feb 29"] {
             assert_eq!(en_in(text, Some(2024)), Some(45351), "{text}");
         }

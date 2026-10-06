@@ -51,6 +51,6 @@ the number can be a day of the month, and every caller passes it (VALUE, DATEVAL
 number coercion, typed input, criteria, D-functions, conditional-formatting date bounds). Day-first
 year-less text ("1-Jul", "1/Jul", "1 July") is parsed; a non-day there is #VALUE!. A new probe
 (probes/date-text-yearless-3, excel-graph, 45 cells) covers the remaining spellings, clocks and
-criteria. Typed `-4-2` stays a formula: the sign-prefix check now tests the whole input as a number.
+criteria. Typed `-4-2` stays a formula: the sign-prefix check reads the text with no clock, as before.
 Eval: probes known failures 109 -> 73 (36 fixed: date-text-yearless B1:D12), new probe 45/45,
 0 regressions in any suite.

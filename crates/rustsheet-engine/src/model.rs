@@ -391,8 +391,9 @@ impl Model {
                 Some(stripped)
             }
         } else if let Some(stripped) = value.strip_prefix(['+', '-']) {
-            // The whole input must be a number: "-4-2" is a formula, though "4-2" is a date.
-            (!stripped.is_empty() && self.cast_number(value).is_none()).then_some(value)
+            // Read with no clock, so "-4-2" stays a formula although "4-2" is a date now.
+            (!stripped.is_empty() && self.cast_number_in(stripped, &|| None).is_none())
+                .then_some(value)
         } else {
             None
         }

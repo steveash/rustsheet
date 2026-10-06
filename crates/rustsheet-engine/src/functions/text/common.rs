@@ -1123,7 +1123,7 @@ impl Model {
                 // Clock text and date text with a clock suffix read as in number coercion,
                 // with surrounding spaces trimmed (probes/value-clock-text column B against C;
                 // date-text-grammar C30, C31, C53, C55, C63).
-                match self.parse_number_text(text, &["$", "€"]) {
+                match self.parse_number_text(text, &["$", "€"], &|| self.current_year()) {
                     Some(value) => CalcResult::Number(value),
                     None => CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string()),
                 }

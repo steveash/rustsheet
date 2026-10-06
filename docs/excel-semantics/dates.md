@@ -208,8 +208,11 @@ input.
 Status: VERIFIED. Implemented, year-less text included (T-0160, T-0167): the current year comes
 from the model's clock and timezone (`Model::current_year`, the clock NOW and TODAY read), passed to
 the parser, which asks for it only when the number can be a day of the month. Typed year-less text
-gets the format `d-mmm` (UNVERIFIED). A typed `+`/`-` input is a formula unless the whole input,
-sign included, is a number, so `-4-2` stays the formula -6 although `4-2` is a date.
+gets the format `d-mmm` (UNVERIFIED). Typed `+`/`-` input is classified as before (the text after
+the sign read with no clock), so `-4-2` stays the formula -6 although `4-2` is a date; how Excel
+classifies typed sign-prefixed input is unprobed. UNVERIFIED (hand-derived from the rule, not
+oracle-observed, since the oracle clock is 2026): in a leap year `"2/29"`, `"Feb-29"`, `"29-Feb"`
+and `"Feb 29"` are 29 February; in a non-leap year `"29-Feb"` is #VALUE!.
 Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
 

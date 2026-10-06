@@ -1,3 +1,4 @@
+use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -104,6 +105,11 @@ impl Model {
     }
 
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
+        self.cast_number_in(s, &|| self.current_year())
+    }
+
+    /// [`Model::cast_number`] with year-less date text read in `current_year`.
+    pub(crate) fn cast_number_in(&self, s: &str, current_year: CurrentYear) -> Option<f64> {
         match parse_excel_number(s.trim()) {
             Some(f) => Some(f),
             _ => {
@@ -112,7 +118,7 @@ impl Model {
                 if !currencies.iter().any(|e| *e == currency) {
                     currencies.push(currency);
                 }
-                self.parse_number_text(s, &currencies)
+                self.parse_number_text(s, &currencies, current_year)
             }
         }
     }
@@ -120,14 +126,17 @@ impl Model {
     /// Text as number coercion and VALUE read it, after their own trimming: a formatted number
     /// (dates, currencies in `currencies`, percentages), else time and date-time text
     /// (`0+"10:11:12.5"`; probes/timevalue-*).
-    pub(crate) fn parse_number_text(&self, text: &str, currencies: &[&str]) -> Option<f64> {
-        let year = || self.current_year();
-        if let Ok((v, _number_format)) =
-            parse_formatted_number(text, currencies, self.locale, &year)
+    pub(crate) fn parse_number_text(
+        &self,
+        text: &str,
+        currencies: &[&str],
+        year: CurrentYear,
+    ) -> Option<f64> {
+        if let Ok((v, _number_format)) = parse_formatted_number(text, currencies, self.locale, year)
         {
             return Some(v);
         }
-        crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, &year)
+        crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
     }
     pub(crate) fn get_number_or_array(
         &mut self,
