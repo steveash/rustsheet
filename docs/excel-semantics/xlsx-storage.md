@@ -86,3 +86,33 @@ DEVIATION (directive 5, decision 0014): an r-less cell past XFD or r-less row pa
 Implemented in: `rustsheet-xlsx` `import/sheet_data.rs` `start_row` and `start_cell` (an r-less cell or row past XFD or row 1,048,576 is an import error).
 Status: UNVERIFIED (probe pending; ECMA-376 and POI files only, no Excel observation)
 Tasks: T-0181
+
+## Part names match case-insensitively and across backslashes
+Rule: Excel finds a package part whatever the case of its zip entry name, and reads a backslash in
+an entry name as `/`. poi/49609.xlsx (not Excel-authored) names its entries `[content_types].xml`,
+`_rels\.rels`, `xl\workbook.xml`, `xl\sharedstrings.xml`, `xl\worksheets\sheet1.xml`, while its
+relationships point at `/xl/workbook.xml` and `/xl/sharedStrings.xml`; Excel opens it with both
+sheets (FAM, VIC) and their shared-string text (B1 "Cycle"). OPC part names are case-insensitive
+(ECMA-376 Part 2); the backslash reading is Excel's leniency, the schema does not allow it.
+Equivalent entries (`xl/a.xml` and `XL/A.xml` in one zip) are invalid OPC and Excel's choice is
+not probed: an exact name wins, else the first in byte order.
+Evidence: oracle: excel-graph, 2026-10-06, T-0112: the unmodified file was uploaded directly (the
+canary embedder cannot read such a package, so this run has no canary) and Excel for the web
+opened it and returned a normalized copy with sheets FAM and VIC, B1:E1 "Cycle", "A1", "A2", "A3".
+Status: VERIFIED (Excel for the web)
+Implemented in: `PartNames` in crates/rustsheet-xlsx/src/import/package.rs (importer and the eval
+snapshot reader)
+Tasks: T-0112
+
+## Strict OOXML uses other namespaces
+Rule: a workbook saved as "Strict Open XML Spreadsheet" writes `r:id` in the namespace
+`http://purl.oclc.org/ooxml/officeDocument/relationships` (Transitional:
+`http://schemas.openxmlformats.org/officeDocument/2006/relationships`), and stores a date cell as
+`t="d"` with ISO 8601 text (`<c r="A4" s="1" t="d"><v>1990-01-01</v></c>`) instead of a serial.
+Evidence: poi/SimpleStrict.xlsx and poi/SampleSS.strict.xlsx (Excel-authored, Microsoft Excel
+15.0300): both use the purl namespace for every `<sheet r:id>`; SimpleStrict "Sheet Number 2"!A4
+is the `t="d"` cell above. Their cached formula values pass once `r:id` is read (T-0112).
+Status: VERIFIED for `r:id`; UNVERIFIED (probe pending) for the value a `t="d"` cell imports as
+(presumably serial 32874 for 1990-01-01); the importer drops `t="d"` cells today (T-0406).
+Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs
+Tasks: T-0112, T-0406
