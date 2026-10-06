@@ -115,7 +115,7 @@ Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
 Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
 REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
-CONCAT/TEXTJOIN not probed.
+CONCAT/TEXTJOIN give `#CALC!` (probes/text-result-limit C8-C9, not implemented).
 Tasks: T-0240, T-0233, T-0249
 
 ## Truncation inside a surrogate pair keeps a lone high surrogate

@@ -33,6 +33,7 @@ C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
+C	probes/indirect-text-broadcast.case.json	58
 C	probes/intersection-function-operands.case.json	14
 C	probes/intersection-operands.case.json	16
 C	probes/intersection-whitespace.case.json	8
@@ -67,6 +68,7 @@ C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-words.case.json	62
+C	probes/text-result-limit.case.json	14
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
@@ -179,3 +181,5 @@ F	probes/text-number-words.case.json	Calc!K3
 F	probes/text-number-words.case.json	Calc!K4
 F	probes/text-number-words.case.json	Calc!K5
 F	probes/text-number-words.case.json	Calc!K7
+F	probes/text-result-limit.case.json	Sheet1!C8
+F	probes/text-result-limit.case.json	Sheet1!C9
