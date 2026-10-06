@@ -336,6 +336,8 @@ impl Model {
                 }
                 // COUNT(5,) is 2 (probes/average-value-args F16).
                 CalcResult::EmptyArg => result += 1.0,
+                // Only tests number-ness, so the 15-digit cut cannot change the answer
+                // (docs/excel-semantics/numbers.md "15-digit literal parsing").
                 CalcResult::String(s)
                     if !matches!(arg, Node::ReferenceKind { .. })
                         && parse_finite_number(&s).is_some() =>
