@@ -22,3 +22,8 @@ After T-0215 removed the early return in `logical_nary`, `AND(A:XFD)`-style call
 
 ## Out of scope
 -
+
+## Scope note (from the T-0225 review)
+The same unbounded walk exists in every `*_or_array` lift (ABS, TRIM, NOT, ...) because `Model::evaluate_range`
+(`model.rs`) materializes every cell of the range, so `=NOT(A:XFD)` tries ~17 billion elements. Fix it in
+`evaluate_range` (clip to the used area, keep `record_seen_empty_range` tracking) rather than per function.

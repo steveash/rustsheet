@@ -5,20 +5,54 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::{
+        math_and_trigonometry::array_size::check_range_size, util::array_node_to_calc_result,
+    },
     model::Model,
 };
 
 impl Model {
+    /// NOT lifts over ranges and arrays, one result per element (T-0225,
+    /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument
+    /// (ASSUMED, probe T-0260).
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() == 1 {
-            match self.get_boolean(&args[0], cell) {
-                Ok(f) => return CalcResult::Boolean(!f),
-                Err(s) => {
-                    return s;
-                }
-            };
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
         }
-        CalcResult::new_args_number_error(cell)
+        let array = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } => {
+                // DEVIATION (decision 0014): the shared allocation bound on lifted ranges.
+                if let Some((error, message)) = check_range_size(&left, &right) {
+                    return CalcResult::new_error(error, cell, message);
+                }
+                self.evaluate_range(left, right)
+            }
+            CalcResult::Array(array) => array,
+            error @ CalcResult::Error { .. } => return error,
+            value => {
+                return match self.cast_to_bool(value, cell) {
+                    Ok(f) => CalcResult::Boolean(!f),
+                    Err(s) => s,
+                };
+            }
+        };
+        CalcResult::Array(
+            array
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|node| {
+                            match self.cast_to_bool(array_node_to_calc_result(&node, cell), cell) {
+                                Ok(f) => ArrayNode::Boolean(!f),
+                                Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+                                // An ArrayNode element is never a range or array, so this is unreachable.
+                                Err(_) => ArrayNode::Error(Error::VALUE),
+                            }
+                        })
+                        .collect()
+                })
+                .collect(),
+        )
     }
 
     pub(crate) fn fn_and(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
