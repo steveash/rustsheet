@@ -6,6 +6,7 @@ C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
 C	probes/ceiling-xlfn-prefix.case.json	4
+C	probes/concatenate-limit-spill.case.json	68
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
@@ -27,6 +28,7 @@ C	probes/intersection-function-operands.case.json	14
 C	probes/intersection-operands.case.json	16
 C	probes/intersection-whitespace.case.json	8
 C	probes/isref-function-results.case.json	6
+C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/literal-digits.case.json	6
@@ -58,6 +60,13 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/value-clock-text.case.json	135
+F	probes/concatenate-limit-spill.case.json	Sheet1!E10
+F	probes/concatenate-limit-spill.case.json	Sheet1!E11
+F	probes/concatenate-limit-spill.case.json	Sheet1!E13
+F	probes/concatenate-limit-spill.case.json	Sheet1!E7
+F	probes/concatenate-limit-spill.case.json	Sheet1!E8
+F	probes/concatenate-limit-spill.case.json	Sheet1!E9
+F	probes/concatenate-limit-spill.case.json	Sheet1!G97
 F	probes/criteria-padded-text.case.json	Sheet1!C13
 F	probes/date-text-yearless.case.json	Sheet1!B1
 F	probes/date-text-yearless.case.json	Sheet1!B10
