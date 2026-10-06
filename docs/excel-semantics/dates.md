@@ -30,8 +30,11 @@ EDATE/EOMONTH as day 0 of January 1900: `EDATE(0,1)` = `EOMONTH(0,0)` = 31, `EOM
 `WEEKNUM(9,2)` = 3, `WEEKNUM(59,2)` = `WEEKNUM(60,2)` = `WEEKNUM(61,2)` = 10, `WEEKNUM(1,21)` = ISOWEEKNUM(1) = 52,
 `WEEKNUM(60)` = 9, `WEEKNUM(7)` = 1, `WEEKNUM(8)` = 2 (A1-A25). Past serial 60 the Sunday-based weekday equals the real one (`TEXT(61,"dddd")` = "Thursday"), so what differs is where
 WEEKNUM puts the week-1 anchor: serial 1 counts as a Sunday. For return type 2 that makes serial 61 week 10 where a real-calendar
-anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKNUM(61,21)` = 9, A23; type 1 at serial 61 is unprobed). Serials above 61 are unprobed (UNVERIFIED).
-Implemented in: no. The engine gets WEEKNUM wrong for serials 0-61 in several return types: rows 1-3, 5, 6, 8-11 (T-0995), TEXT ddd/dddd of serial 0 is #VALUE!
+anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKNUM(61,21)` = 9, A23). The anchor holds through 1900: probes/weeknum-1900-later has `WEEKNUM(61)` = 9,
+`WEEKNUM(100,2)` = 16, `WEEKNUM(100)` = 15, `WEEKNUM(200,2)` = 30, `WEEKNUM(366,2)` = 54, `WEEKNUM(366)` = 53, `WEEKNUM(0,12)` = 1, `WEEKNUM(0,17)` = 0,
+and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
+start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED).
+Implemented in: `fn_weeknum` (T-0995). Not yet: TEXT ddd/dddd of serial 0 is #VALUE!
 (T-0996) and EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,

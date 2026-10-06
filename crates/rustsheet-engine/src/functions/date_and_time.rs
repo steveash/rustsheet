@@ -3,6 +3,7 @@ use chrono::Datelike;
 use chrono::Months;
 
 pub(crate) mod time_text;
+mod weeknum;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
@@ -1216,64 +1217,6 @@ impl Model {
             let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
             weekday_number(date, return_type)
         })
-    }
-
-    pub(crate) fn fn_weeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let return_type = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f as i32,
-                Err(s) => return s,
-            }
-        } else {
-            1
-        };
-        if return_type == 21 {
-            let w = date.iso_week().week();
-            return CalcResult::Number(w as f64);
-        }
-        let start_offset = match return_type {
-            1 => chrono::Weekday::Sun,
-            2 | 11 => chrono::Weekday::Mon,
-            12 => chrono::Weekday::Tue,
-            13 => chrono::Weekday::Wed,
-            14 => chrono::Weekday::Thu,
-            15 => chrono::Weekday::Fri,
-            16 => chrono::Weekday::Sat,
-            17 => chrono::Weekday::Sun,
-            x if x <= 0 || x == 3 => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
-            }
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
-        };
-        // Serials 1..=60 are 1900 in Excel but the weekday-faithful stand-in date is in 1899.
-        // Evidence: probes/dates-early-1900 A16 (`WEEKNUM(1)` = 1).
-        let year = if serial <= 60 { 1900 } else { date.year() };
-        let mut first = match chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
-            Some(d) => d,
-            None => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                );
-            }
-        };
-        while first.weekday() != start_offset {
-            first -= chrono::Duration::days(1);
-        }
-        let week = (date - first).num_days() / 7 + 1;
-        CalcResult::Number(week as f64)
     }
 
     pub(crate) fn fn_isoweeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

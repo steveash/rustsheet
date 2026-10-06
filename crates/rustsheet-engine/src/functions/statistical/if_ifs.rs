@@ -590,7 +590,7 @@ impl Model {
         self.lift_ifs(&arguments, cell, |model, criteria| {
             let mut total = 0.0;
             match model.apply_ifs(&arguments, criteria, cell, false, |v| total += v) {
-                Ok(()) => CalcResult::Number(total),
+                Ok(()) => CalcResult::finite_number_or_num(total, cell),
                 Err(e) => e,
             }
         })
