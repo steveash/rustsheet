@@ -55,7 +55,7 @@ The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and
 - `{"t":"n","v":1.5}` number
 - `{"t":"s","v":"x"}` text
 - `{"t":"b","v":true}` boolean
-- `{"t":"e","v":"#DIV/0!"}` error
+- `{"t":"e","v":"#DIV/0!"}` error (add `"stored":true` for a stored `t="e"` constant instead of a formula, T-0999)
 - `{"t":"empty"}` blank
 
 JSON numbers are written shortest-round-trip, so they are exact.

@@ -48,9 +48,12 @@ fn linear_search(
     let candidates = array.linear_candidates(*search_mode == SearchMode::FirstToLast);
 
     match match_mode {
-        MatchMode::Exact => candidates
-            .into_iter()
-            .find(|&idx| compare_values(array.get(idx), lookup_value) == 0),
+        // A blank never matches an exact XMATCH, so `XMATCH(0,A:A)` over a column with a
+        // blank tail is #N/A (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126).
+        MatchMode::Exact => candidates.into_iter().find(|&idx| {
+            let v = array.get(idx);
+            !matches!(v, CalcResult::EmptyCell) && compare_values(v, lookup_value) == 0
+        }),
         MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => {
             let m = match_mode as i32;
             let mut best_idx = None;
