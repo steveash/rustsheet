@@ -26,4 +26,4 @@ T-0187 probes (excel-graph, 2026-10-06): `FORMULATEXT` of `=((Data!A2,Data!E8),D
 - Unions as function arguments (T-0133).
 
 ## Outcome
-`Parser::parse_parenthesized` now reads the union as the loosest operator inside its parenthesis (operands: references or a negated reference; `(A1+B1,C1)` is a parse error), and `OpUnionKind` carries `grouped` so `((A,B),C)` prints with its parentheses. Unit tests cover the round-trips and the refusal. The probes/union-* cases are Excel-only, so the eval baseline is unchanged.
+`Parser::parse_parenthesized` now reads the union as the loosest operator inside its parenthesis (operands: references or a negated reference; `(A1+B1,C1)` is a parse error), and `OpUnionKind` carries `grouped` so `((A,B),C)` prints with its parentheses. Unit tests cover the round-trips and the refusal. The probes/union-* cases are Excel-only, but two probe cells now pass (probes known failures 339 -> 337).

@@ -427,7 +427,5 @@ F	probes/text-number-words.case.json	Calc!K3
 F	probes/text-number-words.case.json	Calc!K7
 F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9
-F	probes/union-accepted.case.json	Sheet1!H7
 F	probes/union-accepted.case.json	Sheet1!H9
 F	probes/union-defined-name.case.json	!EngineError
-F	probes/union-neg-operand.case.json	Sheet1!H2
