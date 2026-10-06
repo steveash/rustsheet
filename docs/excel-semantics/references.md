@@ -56,7 +56,7 @@ Evidence: upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached va
 bound to a reference is TRUE (A19-A26, not implemented: T-0963).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
 COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT);
-ISREF of INDEX and of defined names in `fn_isref` (functions/information/mod.rs), `evaluate_node_with_reference` (model.rs);
+ISREF of INDEX and of defined names in `fn_isref` (functions/information/mod.rs), 
 FILTER if_empty range in `fn_filter` (functions/spill_functions.rs)
 Tasks: T-0216, T-0235, T-0940
 
