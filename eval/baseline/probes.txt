@@ -32,6 +32,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/literal-digits.case.json	6
+C	probes/lookup-index-order.case.json	50
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
