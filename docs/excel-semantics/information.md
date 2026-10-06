@@ -26,5 +26,5 @@ Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. Ru
 (CLAUDE.md directive 5); whole-column arguments therefore also fail.
 Evidence: none for Excel at this size; resource limit, see arrays.md "Array results above 1,000,000 cells".
 Status: DEVIATION (decision 0014)
-Implemented in: functions/information/mod.rs (`is_predicate`, `check_array_size`)
+Implemented in: functions/information/mod.rs (`is_predicate`, `check_range_size`)
 Tasks: T-0247

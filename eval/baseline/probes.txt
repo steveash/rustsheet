@@ -117,7 +117,6 @@ F	probes/paren-negative-text.case.json	Sheet1!C1
 F	probes/paren-negative-text.case.json	Sheet1!E1
 F	probes/paren-negative-text.case.json	Sheet1!E2
 F	probes/paren-negative-text.case.json	Sheet1!E3
-F	probes/precision-and-rounding.case.json	Sheet1!A14
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
@@ -139,15 +138,10 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
 F	probes/text-number-words.case.json	Calc!A9
 F	probes/text-number-words.case.json	Calc!B5
-F	probes/text-number-words.case.json	Calc!H6
-F	probes/text-number-words.case.json	Calc!H7
 F	probes/text-number-words.case.json	Calc!H8
 F	probes/text-number-words.case.json	Calc!H9
-F	probes/text-number-words.case.json	Calc!K1
 F	probes/text-number-words.case.json	Calc!K2
 F	probes/text-number-words.case.json	Calc!K3
-F	probes/text-number-words.case.json	Calc!K4
-F	probes/text-number-words.case.json	Calc!K5
 F	probes/text-number-words.case.json	Calc!K7
 F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9

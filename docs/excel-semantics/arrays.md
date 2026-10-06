@@ -60,9 +60,11 @@ a single-row or single-column argument stretches, and positions past a shorter a
 An error element stays in its position (`CONCATENATE({1;2},{#N/A;"x"})` is {#N/A;"2x"}); numbers and
 booleans in arrays become text as in `&` ({1;TRUE;FALSE;1.5} gives "1-","TRUE-","FALSE-","1.5-";
 1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array argument gives a single-cell result.
-Status: VERIFIED
-Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values)
-Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226).
+Status: VERIFIED (CONCATENATE array shape, #SPILL! and element values)
+NOT status: VERIFIED for the array shape and #SPILL! (NOT returns an array). ASSUMED (UNVERIFIED), pending probe T-0260: the per-element cast
+(text, empty and error elements follow the scalar `cast_to_bool` rules); the oracle cells never showed an element value.
+Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values), T-0260 (NOT per-element cast probe)
+Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226); `fn_not` (`functions/logical/and_or_xor_not.rs`) and its `scalar_arguments` static-analysis entry (T-0225).
 
 ## CONCATENATE with a scalar error argument returns that error, not an array
 Rule: if any CONCATENATE argument is a scalar error, the result is that one error, even when another
@@ -99,11 +101,11 @@ Tasks: T-0209, T-0228
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000 and
 `ROWS(SEQUENCE(1048576))` = 1048576; only a dimension past the grid is `#VALUE!`
 (`SEQUENCE(1048577)`). RustSheet returns `#ERROR!` (not even an Excel error value) for SEQUENCE,
-RANDARRAY, MAKEARRAY/BYROW/BYCOL results and matrix results above 1,000,000 cells, to bound
+RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results and a range lifted by IS* or NOT (T-0225) above 1,000,000 cells, to bound
 allocation on untrusted input (CLAUDE.md directive 5); past-the-grid dimensions are `#VALUE!` as in Excel.
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05; C12 and C14 are known failures by design).
 Status: DEVIATION (decision 0014)
-Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`)
+Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`, `check_range_size` for lifted ranges)
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
