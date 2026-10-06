@@ -3,7 +3,7 @@ id: T-0179
 title: "Subnormal results become 0 (probes/precision-and-rounding A14: 2^-1074)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
