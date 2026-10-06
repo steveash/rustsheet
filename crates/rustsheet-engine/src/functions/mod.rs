@@ -2864,18 +2864,6 @@ mod tests {
                 list.push(text.to_owned());
             }
         }
-        // We make a list with their functions names, but we escape ".": ERROR.TYPE => ERRORTYPE
-        // let iter_list = Function::into_iter()
-        //     .map(|f| format!("{f}").replace('.', ""))
-        //     .collect::<Vec<_>>();
-
-        // let len = iter_list.len();
-
-        // assert_eq!(list.len(), len);
-        // // We still need to check there are no duplicates. This will fail if a function in iter_list
-        // // is included twice and one is missing
-        // for function in list {
-        //     assert!(iter_list.contains(&function.to_uppercase()));
-        // }
+        assert_eq!(list.len(), super::Function::into_iter().count());
     }
 }

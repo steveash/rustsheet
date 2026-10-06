@@ -2,7 +2,8 @@
 //! AGGREGATE(function_num, options, array, k).
 //!
 //! AGGREGATE gathers the numbers its options keep and hands them, as an array, to the function
-//! it names (SUM, LARGE, PERCENTILE.INC, ...), so every statistic keeps its one definition.
+//! it names (SUM, LARGE, PERCENTILE.INC, ...) as number arguments or an array, so every
+//! statistic keeps its one definition.
 //! Excel's rules are in docs/excel-semantics/numbers.md "AGGREGATE" (probes/aggregate-grid,
 //! probes/aggregate-args, probes/aggregate-overflow).
 
@@ -111,7 +112,12 @@ impl Model {
                 _ => CalcResult::new_error(Error::DIV, cell, "No numbers".to_string()),
             };
         }
-        let values = [numbers_array(collected.numbers)];
+        // Plain number arguments: PRODUCT does not read array literals.
+        let values: Vec<Node> = collected
+            .numbers
+            .into_iter()
+            .map(Node::NumberKind)
+            .collect();
         match function {
             1 => self.fn_average(&values, cell),
             4 => self.fn_max(&values, cell),
