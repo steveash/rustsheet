@@ -115,6 +115,38 @@ fn linear_search(
 }
 
 impl Model {
+    /// The XLOOKUP result at (`row_offset`, `column_offset`) of the return range. A multi-column
+    /// return range (only accepted for a column lookup vector) yields the whole matched row as a
+    /// 1xN array; a single column keeps the scalar result.
+    fn xlookup_pick(
+        &mut self,
+        result_left: CellReferenceIndex,
+        result_right: CellReferenceIndex,
+        column_lookup: bool,
+        row_offset: i32,
+        column_offset: i32,
+    ) -> CalcResult {
+        let row = result_left.row + row_offset;
+        if !column_lookup || result_right.column == result_left.column {
+            return self.evaluate_cell(CellReferenceIndex {
+                sheet: result_left.sheet,
+                row,
+                column: result_left.column + column_offset,
+            });
+        }
+        let values = (result_left.column..=result_right.column)
+            .map(|column| {
+                let value = self.evaluate_cell(CellReferenceIndex {
+                    sheet: result_left.sheet,
+                    row,
+                    column,
+                });
+                crate::cast::calc_result_to_array_node(value)
+            })
+            .collect();
+        CalcResult::Array(vec![values])
+    }
+
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
     /// to the first match it finds. If no match exists, then XLOOKUP can return the closest (approximate) match.
     /// =XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])
@@ -230,9 +262,13 @@ impl Model {
                         left: result_left,
                         right: result_right,
                     } => {
+                        // A column lookup vector accepts a return range with any number of columns
+                        // (poi/xlookup.xlsx Sheet1!C2); a row vector keeps the same-shape rule.
+                        let wide_columns_ok = is_row_vector;
                         if result_right.row - result_left.row != right.row - left.row
-                            || result_right.column - result_left.column
-                                != right.column - left.column
+                            || (!wide_columns_ok
+                                && result_right.column - result_left.column
+                                    != right.column - left.column)
                         {
                             return CalcResult::Error {
                                 error: Error::VALUE,
@@ -273,11 +309,13 @@ impl Model {
                                             if is_row_vector { index as i32 } else { 0 };
                                         let column_index =
                                             if is_row_vector { 0 } else { index as i32 };
-                                        self.evaluate_cell(CellReferenceIndex {
-                                            sheet: result_left.sheet,
-                                            row: result_left.row + row_index,
-                                            column: result_left.column + column_index,
-                                        })
+                                        self.xlookup_pick(
+                                            result_left,
+                                            result_right,
+                                            is_row_vector,
+                                            row_index,
+                                            column_index,
+                                        )
                                     }
                                     None => if_not_found,
                                 }
@@ -322,22 +360,26 @@ impl Model {
                                                     + if is_row_vector { 0 } else { l },
                                             });
                                             if compare_values(&value, &lookup_value) == 0 {
-                                                self.evaluate_cell(CellReferenceIndex {
-                                                    sheet: result_left.sheet,
-                                                    row,
-                                                    column,
-                                                })
+                                                self.xlookup_pick(
+                                                    result_left,
+                                                    result_right,
+                                                    is_row_vector,
+                                                    row - result_left.row,
+                                                    column - result_left.column,
+                                                )
                                             } else {
                                                 if_not_found
                                             }
                                         } else if match_mode == MatchMode::ExactMatchSmaller
                                             || match_mode == MatchMode::ExactMatchLarger
                                         {
-                                            self.evaluate_cell(CellReferenceIndex {
-                                                sheet: result_left.sheet,
-                                                row,
-                                                column,
-                                            })
+                                            self.xlookup_pick(
+                                                result_left,
+                                                result_right,
+                                                is_row_vector,
+                                                row - result_left.row,
+                                                column - result_left.column,
+                                            )
                                         } else {
                                             CalcResult::Error {
                                                 error: Error::VALUE,

@@ -108,16 +108,18 @@ fn cross_sheet_intersection_is_value_error() {
 fn intersection_propagates_errors() {
     let mut model = model();
     model._set("A1", "=Data!D2:E8 Data!E8:E12");
-    model._set("A2", "=(1/0) Data!E8");
+    model._set("A2", "=#REF! Data!E8");
     model._set("A3", "=Data!E8 #REF!");
-    model._set("A4", "=(1+0) Data!E8");
+    // A value that is not a reference cannot be intersected: Excel refuses the formula.
+    model._set("A4", "=(1/0) Data!E8");
+    model._set("A5", "=(1+0) Data!E8");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), "#DIV/0!");
-    assert_eq!(model._get_text("A2"), "#DIV/0!");
+    assert_eq!(model._get_text("A2"), "#REF!");
     assert_eq!(model._get_text("A3"), "#REF!");
-    // A value that is not a reference cannot be intersected.
-    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#ERROR!");
+    assert_eq!(model._get_text("A5"), "#ERROR!");
 }
 
 #[test]
@@ -195,4 +197,15 @@ fn trailing_input_is_an_error() {
     for cell in ["A1", "A2", "A3", "A4"] {
         assert_eq!(model._get_text(cell), "#ERROR!", "{cell}");
     }
+}
+
+#[test]
+fn ideographic_space_intersection_is_name_error_and_keeps_its_text() {
+    // probes/intersection-whitespace H7: `#NAME?` (T-0148).
+    let mut model = model();
+    model._set("A1", "=A1:A3\u{3000}A2:B2");
+    model._set("B9", "=FORMULATEXT(A1)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#NAME?");
+    assert_eq!(model._get_text("B9"), "=A1:A3\u{3000}A2:B2");
 }

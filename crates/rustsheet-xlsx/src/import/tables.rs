@@ -1,4 +1,6 @@
-use std::io::{BufReader, Read};
+use std::io::Read;
+
+use super::package::Package;
 
 use super::xml::XmlNode;
 use rustsheet_engine::types::{Table, TableColumn, TableStyleInfo};
@@ -22,12 +24,12 @@ use super::util::{get_bool, get_bool_false};
 
 /// Reads a table in an Excel workbook
 pub(crate) fn load_table<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
     sheet_name: &str,
 ) -> Result<Table, XlsxError> {
-    let file = archive.by_name(path)?;
-    let document = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open(path)?;
+    let document = XmlNode::parse(file)?;
 
     // table
     let table = &document;

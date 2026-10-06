@@ -18,6 +18,7 @@ mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod hstack_vstack;
+mod index_arg;
 mod lookup_table;
 mod tocol_torow;
 mod transpose;
@@ -405,9 +406,9 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        let row_index = match self.get_number(&args[2], cell) {
-            Ok(v) => v.floor() as i32,
-            Err(s) => return s,
+        let row_index = match self.lookup_index_arg(&args[2], cell) {
+            Ok(index) => index,
+            Err(error) => return error,
         };
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
@@ -437,18 +438,14 @@ impl Model {
                 }
             }
         };
-        // `row_index` is 1-based and must point inside the table
-        if row_index < 1 || row_index > table.rows() {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
+        // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(column) => table.get(self, row_index - 1, column as i32, cell),
+            Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
+                Ok(row_index) => table.get(self, row_index, column as i32, cell),
+                Err(error) => error,
+            },
             None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
@@ -469,9 +466,9 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        let column_index = match self.get_number(&args[2], cell) {
-            Ok(v) => v.floor() as i32,
-            Err(s) => return s,
+        let column_index = match self.lookup_index_arg(&args[2], cell) {
+            Ok(index) => index,
+            Err(error) => return error,
         };
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
@@ -501,18 +498,14 @@ impl Model {
                 }
             }
         };
-        // `column_index` is 1-based and must point inside the table
-        if column_index < 1 || column_index > table.columns() {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
+        // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(row) => table.get(self, row as i32, column_index - 1, cell),
+            Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
+                Ok(column_index) => table.get(self, row as i32, column_index, cell),
+                Err(error) => error,
+            },
             None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
@@ -864,22 +857,28 @@ impl Model {
         }
     }
 
-    /// Height or width argument of OFFSET as a zero-based span; `default` when the argument is
-    /// missing or empty.
+    /// Height or width argument of OFFSET as the signed distance from the anchor cell to the far
+    /// edge of the area; `default` when the argument is missing or empty, `None` for exactly 0.
+    ///
+    /// Excel: see docs/excel-semantics/references.md "OFFSET negative and fractional height/width".
+    /// A positive size `h` reaches `floor(h - 1)` cells on, a negative one `ceil(h + 1)` cells (so
+    /// -3 reaches 2 back), and the fractions in (-1, 1) reach one cell back and on respectively.
     fn offset_size(
         &mut self,
         arg: Option<&Node>,
         default: i32,
         cell: CellReferenceIndex,
-    ) -> Result<i32, CalcResult> {
+    ) -> Result<Option<i32>, CalcResult> {
         match arg {
-            None | Some(Node::EmptyArgKind) => Ok(default),
+            None | Some(Node::EmptyArgKind) => Ok(Some(default)),
             Some(node) => {
                 let c = self.get_number(node, cell)?;
-                Ok(if c < 1.0 {
-                    (c.ceil() as i32).saturating_sub(1)
+                Ok(if c > 0.0 {
+                    Some((c - 1.0).floor() as i32)
+                } else if c < 0.0 {
+                    Some((c + 1.0).ceil() as i32)
                 } else {
-                    (c.floor() as i32).saturating_sub(1)
+                    None
                 })
             }
         }
@@ -937,26 +936,20 @@ impl Model {
             Ok(w) => w,
             Err(e) => return e,
         };
-        // This is what Excel does
-        if width == -1 || height == -1 {
+        let (Some(height), Some(width)) = (height, width) else {
+            // A size of exactly 0 is #REF!, not an empty area.
             return CalcResult::Error {
                 error: Error::REF,
                 origin: cell,
                 message: "Invalid reference".to_string(),
             };
-        }
-        // NB: Excel documentation says that negative values of width and height are not valid
-        // but in practice they are valid. We follow the documentation and not Excel
-        if width < -1 || height < -1 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "width and height cannot be negative".to_string(),
-            };
-        }
-
+        };
+        // A negative size extends the area up/left from the anchor cell.
         let column_end = column_start.saturating_add(width);
         let row_end = row_start.saturating_add(height);
+        let (row_start, row_end) = (row_start.min(row_end), row_start.max(row_end));
+        let (column_start, column_end) =
+            (column_start.min(column_end), column_start.max(column_end));
         if row_start < 1 || row_end > LAST_ROW || column_start < 1 || column_end > LAST_COLUMN {
             return CalcResult::Error {
                 error: Error::REF,

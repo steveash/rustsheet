@@ -1,6 +1,6 @@
 ---
 id: T-0929
-title: "VALUE: exact percent parsing and d-Mon-yyyy text dates (2 known failures)"
+title: "VALUE: exact percent parsing (1 known failure)"
 milestone: M9
 lane: functions-text
 status: todo
@@ -11,17 +11,16 @@ depends_on: []
 ---
 
 ## Goal
-`VALUE("23.123%")` and `VALUE("2-Feb-2026")` match Excel.
+`VALUE("23.123%")` matches Excel.
 
 ## Context
-Oracle-free evidence in `ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx` (4 failing lines):
+Oracle-free evidence in `ironcalc-calc/TEXT/T_VALUE_VALUETOTEXT.xlsx` (1 failing line left):
 - `Sheet1!I4` `=VALUE("23.123%")` expected 0.23123, actual 0.23123000000000002: we divide the parsed number by 100; Excel yields the correctly rounded 0.23123 (parse with a decimal exponent shift, i.e. as "23.123e-2").
-- `Sheet1!I7` `=VALUE("2-Feb-2026")` expected 46055, actual #VALUE!: day-month-name-year text date form is not recognised.
-- NOT in scope: `I5` ("10-12-1999" -> 36504) and `C15` ("2/3/2023" -> 44987) were produced by a day-first (non-en-US) Excel locale (confirmed by oracle calibration: probes/date-text-locale B2/B3, docs/research/oracle-calibration.md); en-US semantics (month-first) must be kept, so those two baseline lines remain known failures. Note this in the PR and in `docs/excel-semantics/`.
+- Done elsewhere (T-0024): `I7` `=VALUE("2-Feb-2026")` now parses (shared date-text grammar), and `I5`/`C15`, whose cached values came from a day-first Excel, are scored against en-US oracle values through `eval/suites/ironcalc-calc/cached-overrides.tsv` (decision 0032).
 
 ## Acceptance criteria
-- [ ] `I4` and `I7` lines disappear from `eval/baseline/ironcalc-calc.txt`; no new ones; `I5`/`C15` remain.
-- [ ] Unit tests; check whether DATEVALUE shares the text-date parser (one definition; `rg parse_datevalue_text`).
+- [ ] The `I4` line disappears from `eval/baseline/ironcalc-calc.txt`; no new ones.
+- [ ] Unit tests.
 - [ ] `make check` green.
 
 ## Out of scope

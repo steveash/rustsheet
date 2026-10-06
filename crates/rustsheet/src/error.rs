@@ -69,6 +69,9 @@ pub enum EditError {
     /// A workbook must keep at least one sheet.
     #[error("cannot delete the last sheet")]
     LastSheet,
+    /// The defined name is invalid or already exists, or its formula does not parse.
+    #[error("invalid defined name: {0}")]
+    DefinedName(String),
     /// Any other engine error, passed through verbatim.
     #[error("engine error: {0}")]
     Engine(String),

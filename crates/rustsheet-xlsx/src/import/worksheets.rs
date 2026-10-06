@@ -3,12 +3,10 @@
 use rustsheet_engine::expressions::parser::{
     new_parser_english, static_analysis::add_implicit_intersection, Parser,
 };
-use std::{
-    collections::HashMap,
-    io::{BufReader, Read},
-    num::ParseIntError,
-};
+use std::{collections::HashMap, io::Read, num::ParseIntError};
 
+use super::package::{part_folder_and_rels, resolve_target, Package};
+use super::rich_errors::load_value_metadata_errors;
 use super::xml::XmlNode;
 use rustsheet_engine::{
     expressions::{
@@ -238,12 +236,12 @@ fn load_sheet_color(ws: &XmlNode, theme: &Theme) -> Result<Color, XlsxError> {
 }
 
 fn load_comments<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
 ) -> Result<Vec<Comment>, XlsxError> {
     let mut comments = Vec::new();
-    let file = archive.by_name(path)?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open(path)?;
+    let doc = XmlNode::parse(file)?;
     let ws = &doc;
     let comment_list = ws
         .children()
@@ -254,7 +252,7 @@ fn load_comments<R: Read + std::io::Seek>(
             let text = comment
                 .descendants()
                 .filter(|n| n.has_tag_name("t"))
-                .map(|n| n.text().unwrap().to_string())
+                .map(|n| n.text().unwrap_or_default().to_string())
                 .collect::<Vec<String>>()
                 .join("");
             let cell_ref = get_attribute(comment, "ref")?.to_string();
@@ -358,11 +356,21 @@ pub(super) enum CellArrayKind {
     ArrayFormula(i32, i32),
 }
 
+/// The error a cell caches, `cell_value`. Excel caches the errors older readers do not know
+/// (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` and keeps the real one in its value metadata,
+/// `rich_error` (see [`super::rich_errors`]); an error the engine has no kind for stays `#VALUE!`.
+fn cached_error_name<'a>(cell_value: Option<&'a str>, rich_error: Option<&'a str>) -> &'a str {
+    match (cell_value, rich_error) {
+        (Some("#VALUE!"), Some(real)) if get_error_by_english_name(real).is_some() => real,
+        _ => cell_value.unwrap_or("#ERROR!"),
+    }
+}
+
 // FIXME
 #[allow(clippy::too_many_arguments)]
 pub(super) fn get_cell_from_excel(
     cell_value: Option<&str>,
-    value_metadata: Option<&str>,
+    rich_error: Option<&str>,
     cell_type: &str,
     cell_style: i32,
     formula_index: i32,
@@ -414,16 +422,7 @@ pub(super) fn get_cell_from_excel(
                 }
             }
             "e" => {
-                // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
-                // Older engines would just import #VALUE!
-                let mut error_name = cell_value.unwrap_or("#ERROR!");
-                if error_name == "#VALUE!" && value_metadata.is_some() {
-                    error_name = match value_metadata {
-                        Some("1") => "#CALC!",
-                        Some("2") => "#SPILL!",
-                        _ => error_name,
-                    }
-                }
+                let error_name = cached_error_name(cell_value, rich_error);
                 if let Some(anchor) = anchor_cell {
                     Cell::SpillCell {
                         v: SpillValue::Error(
@@ -517,16 +516,7 @@ pub(super) fn get_cell_from_excel(
             "b" => make_cell(FormulaValue::Boolean(cell_value == Some("1"))),
             "n" => make_cell(FormulaValue::Number(parse_cell_number(cell_value))),
             "e" => {
-                // For compatibility reasons Excel does not put the value #SPILL! but adds it as a metadata
-                // Older engines would just import #VALUE!
-                let mut error_name = cell_value.unwrap_or("#ERROR!");
-                if error_name == "#VALUE!" && value_metadata.is_some() {
-                    error_name = match value_metadata {
-                        Some("1") => "#CALC!",
-                        Some("2") => "#SPILL!",
-                        _ => error_name,
-                    }
-                }
+                let error_name = cached_error_name(cell_value, rich_error);
                 make_cell(FormulaValue::Error {
                     ei: get_error_by_english_name(error_name).unwrap_or(Error::ERROR),
                     o: format!("{sheet_name}!{cell_ref}"),
@@ -577,25 +567,19 @@ pub(super) fn get_cell_from_excel(
 }
 
 fn load_sheet_rels<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
     tables: &mut HashMap<String, Table>,
     sheet_name: &str,
 ) -> Result<(Vec<Comment>, HashMap<String, String>), XlsxError> {
-    // ...xl/worksheets/sheet6.xml -> xl/worksheets/_rels/sheet6.xml.rels
     let mut comments = Vec::new();
     // relationship id ("rId4") -> target of the hyperlink
     let mut hyperlinks = HashMap::new();
-    let v: Vec<&str> = path.split("/worksheets/").collect();
-    let mut path = v[0].to_string();
-    path.push_str("/worksheets/_rels/");
-    path.push_str(v[1]);
-    path.push_str(".rels");
-    let file = archive.by_name(&path);
-    if file.is_err() {
+    let (folder, rels_path) = part_folder_and_rels(path);
+    let Some(file) = archive.open_optional(&rels_path)? else {
         return Ok((comments, hyperlinks));
-    }
-    let doc = XmlNode::parse(BufReader::new(file?))?;
+    };
+    let doc = XmlNode::parse(file)?;
 
     let rels = doc
         .children()
@@ -604,25 +588,16 @@ fn load_sheet_rels<R: Read + std::io::Seek>(
     for rel in rels {
         let t = get_attribute(rel, "Type")?.to_string();
         if t.ends_with("comments") {
-            let mut target = get_attribute(rel, "Target")?.to_string();
-            // Target="../comments1.xlsx"
-            target.replace_range(..2, v[0]);
+            // Target="../comments1.xml"
+            let target = resolve_target(folder, get_attribute(rel, "Target")?);
             comments = load_comments(archive, &target)?;
         } else if t.ends_with("hyperlink") {
             let id = get_attribute(rel, "Id")?.to_string();
             let target = get_attribute(rel, "Target")?.to_string();
             hyperlinks.insert(id, target);
         } else if t.ends_with("table") {
-            let mut target = get_attribute(rel, "Target")?.to_string();
-
-            let path = if let Some(p) = target.strip_prefix('/') {
-                p.to_string()
-            } else {
-                // Target="../table1.xlsx"
-                target.replace_range(..2, v[0]);
-                target
-            };
-
+            // Target="../tables/table1.xml"
+            let path = resolve_target(folder, get_attribute(rel, "Target")?);
             let table = load_table(archive, &path, sheet_name)?;
             tables.insert(table.name.clone(), table);
         }
@@ -850,7 +825,7 @@ pub(super) struct SheetSettings {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn load_sheet<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
     settings: SheetSettings,
     worksheets: &[String],
@@ -859,12 +834,14 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
     defined_names: Vec<DefinedNameS>,
     theme: &Theme,
     dxfs: &mut Vec<Dxf>,
+    rich_errors: &[Option<&'static str>],
 ) -> Result<(Worksheet, bool), XlsxError> {
     let sheet_name = &settings.name;
     let sheet_id = settings.id;
     let state = &settings.state;
 
-    let file = archive.by_name(path)?;
+    let limits = *archive.limits();
+    let file = archive.open(path)?;
     // One parser for the whole sheet: building one clones the defined names
     // and tables, which is far too much to do once per formula cell.
     let mut parser = new_parser_english(worksheets.to_owned(), defined_names, tables.clone());
@@ -876,10 +853,12 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
         rows,
         shared_formulas,
     } = read_sheet_data(
-        BufReader::new(file),
+        file,
         sheet_name,
         &mut parser,
         shared_strings,
+        &limits,
+        rich_errors,
     )?;
     let ws = &worksheet;
 
@@ -968,7 +947,7 @@ pub(super) fn load_sheet<R: Read + std::io::Seek>(
 }
 
 pub(super) fn load_sheets<R: Read + std::io::Seek>(
-    archive: &mut zip::read::ZipArchive<R>,
+    archive: &mut Package<R>,
     rels: &HashMap<String, Relationship>,
     workbook: &WorkbookXML,
     tables: &mut HashMap<String, Table>,
@@ -981,12 +960,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     for sheet in &workbook.worksheets {
         let rel = get_relationship(rels, &sheet.id)?;
         if rel.rel_type.ends_with("worksheet") {
-            let path = &rel.target;
-            let path = if let Some(p) = path.strip_prefix('/') {
-                p.to_string()
-            } else {
-                format!("xl/{path}")
-            };
+            let path = resolve_target("xl", &rel.target);
             sheet_rels.insert(
                 &sheet.id,
                 load_sheet_rels(archive, &path, tables, &sheet.name)?,
@@ -1001,6 +975,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
     let mut sheet_index = 0;
 
     let defined_names = workbook.get_defined_names_with_scope();
+    let rich_errors = load_value_metadata_errors(archive)?;
 
     for sheet in &workbook.worksheets {
         let sheet_name = &sheet.name;
@@ -1008,12 +983,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
         let state = &sheet.state;
         let rel = get_relationship(rels, rel_id)?;
         if rel.rel_type.ends_with("worksheet") {
-            let path = &rel.target;
-            let path = if let Some(p) = path.strip_prefix('/') {
-                p.to_string()
-            } else {
-                format!("xl/{path}")
-            };
+            let path = resolve_target("xl", &rel.target);
             let (comments, hyperlink_rels) = sheet_rels
                 .get(rel_id)
                 .ok_or_else(|| XlsxError::Xml("Corrupt XML structure".to_string()))?;
@@ -1034,6 +1004,7 @@ pub(super) fn load_sheets<R: Read + std::io::Seek>(
                 defined_names.clone(),
                 theme,
                 dxfs,
+                &rich_errors,
             )?;
             if is_selected {
                 selected_sheet = sheet_index;

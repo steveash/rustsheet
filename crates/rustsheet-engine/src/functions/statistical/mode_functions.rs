@@ -30,7 +30,23 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
+                // Excel: a text value or a blank single-cell reference is #VALUE!, while
+                // text/blanks inside ranges are skipped (coercion.md, MODE; T-0947). A
+                // single-cell reference to text is unprobed, so it keeps being skipped.
+                CalcResult::String(_) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MODE: text argument".to_string(),
+                    ));
+                }
+                CalcResult::EmptyCell if matches!(arg, Node::ReferenceKind { .. }) => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "MODE: blank cell reference".to_string(),
+                    ));
+                }
                 _ => {}
             }
         }

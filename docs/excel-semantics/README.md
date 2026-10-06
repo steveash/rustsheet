@@ -26,7 +26,9 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   Decision 0014 is the standing record for these; each one needs an entry here with
   `Status: DEVIATION (decision 0014)` stating Excel's behavior and ours. Example:
   BESSELJ/BESSELY orders above 100,000 return `#NUM!` (`engineering.md`). Any other kind of
-  deviation needs its own decision record.
+  deviation needs its own decision record, and its entries cite that record instead:
+  `Status: DEVIATION (decision NNNN)` (e.g. decision 0033, lone surrogates the engine's text
+  cannot hold).
 
 Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
 `arrays.md`, `lookup.md`, `number-formats.md`, `references.md`, `syntax.md`, … (create as needed). Format per rule:

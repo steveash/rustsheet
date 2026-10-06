@@ -36,10 +36,15 @@ Tasks: T-0236
 Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`); a start or length around 1E+15 is `#VALUE!`
 (`MID("ü",1000000000000000.0,4)`); in LEFT a length a hair below 1 (`TRUE - 1E-15`) counts as 1
 (seen for LEFT only, and the cell cannot tell whether the subtraction or LEFT rounds: probe in T-0219).
+Numeric text coerces too, literal or from a cell, and is then truncated like a number:
+`LEFT("a string","6")` is "a stri", `LEFT(E12,E17)` with E17 = "2.99999" (text) is "no",
+`LEFT("a string",TRUE)` is "a"; RIGHT the same ("string", "ce", "g").
 Evidence: gen-m2/ef5c55a81783b7d5 A40, d0c29dd5c530e28c A269, 78bc88199fc96650 A345,
 b4392a6514a36ade A14 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!E824, H824, K824 (LEFT),
+E1168, H1168, K1168 (RIGHT).
 Status: VERIFIED
-Tasks: T-0219
+Tasks: T-0219 (huge and near-integer counts), T-0259 (numeric text and booleans)
 
 ## Text comparison uses Excel's collation, not code-point order
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE
@@ -97,14 +102,32 @@ Tasks: T-0137, T-0138
 
 ## Text longer than 32,767 characters
 Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
-`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767. REPT with a
-longer result is `#VALUE!` (`REPT("a",32768)`).
-Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05).
-Open: the scalar cases are verified; per-element truncation in arrays and whether Excel counts UTF-16
-code units (the code counts `chars()`) are unprobed. Backend: excel-graph only; excel-desktop not used.
+`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767, and the
+kept text is the leading part (`RIGHT(CONCATENATE(REPT("a",32767),"b"),1)` is "a"). REPT with a
+longer result is `#VALUE!` (`REPT("a",32768)`). The limit counts UTF-16 code units, so an emoji
+(a surrogate pair) counts two: `REPT("😀",16383)` is fine, `REPT("😀",16384)` is `#VALUE!`, and
+`LEN(CONCATENATE(REPT("😀",16383),"ab"))` is 32767. Truncation applies per element of a spilled
+CONCATENATE (`LEN(CONCATENATE({"a";"bb"},REPT("c",32767)))` is {32767;32767}).
+Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E7, E12, G85–G104
+(excel-graph, 2026-10-06, T-0233). LEN and the other position-based text functions still count
+chars, not UTF-16 units (T-0249; E7, E13, G97 are known failures until then).
+Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240); CONCAT/TEXTJOIN not probed
-Tasks: T-0240
+Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
+REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
+CONCAT/TEXTJOIN not probed.
+Tasks: T-0240, T-0233, T-0249
+
+## Truncation inside a surrogate pair keeps a lone high surrogate
+Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the high surrogate:
+`LEN(CONCATENATE(REPT("a",32766),"😀"))` and `LEN(REPT("😀",16383)&"😀")` are 32767, and
+`UNICODE(RIGHT(CONCATENATE(REPT("a",32766),"😀"),1))` is `#VALUE!` (UNICODE of a lone surrogate).
+Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
+Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
+whole (32,766 units; E8–E11 stay known failures).
+Status: DEVIATION (decision 0033)
+Implemented in: `truncate_text` in cast.rs
+Tasks: T-0233
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same
@@ -115,6 +138,9 @@ Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingT
 G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9,J7:J12)` =
 105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
 Status: VERIFIED (Excel-cached)
+Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
+Open (unverified, T-0961): scalar text, boolean and empty arguments are currently one skipped pair
+(`#DIV/0!`); the first error in either array wins over the element-count `#N/A`.
 Tasks: T-0944
 
 ## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
@@ -142,6 +168,8 @@ although 2 appears twice. Blanks and text inside a multi-cell range are ignored
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
 K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
 Status: VERIFIED (Excel-cached)
+Implemented in: `collect_mode_values` (mode_functions.rs). MODE.SNGL/MODE.MULT share it by inference
+(unprobed), as do non-literal text-valued expressions (e.g. `A1&""`).
 Tasks: T-0947
 
 ## MAXA / MINA: single-cell references are read like ranges
@@ -149,6 +177,9 @@ Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1
 `MAXA(F14,E19,F12)` over three text cells is 0, `MINA(B16,B10,B9)` with B16 = TRUE is 1.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J888, F912.
 Status: VERIFIED (Excel-cached)
+Implemented in: `for_each_value_a` (statistical/count_and_average.rs); covers direct single-cell
+references only. A defined name pointing to one cell and numeric text in a referenced cell (counted as
+0 by inference) are unprobed.
 Tasks: T-0949
 
 ## "inf", "NaN" and out-of-range number text are text
@@ -159,3 +190,32 @@ Evidence: probes/text-number-words; full rule in numbers.md "Number text of 1E+3
 Oracle: excel-graph, 2026-10-05.
 Status: VERIFIED
 Tasks: T-0920, T-0140
+
+## Direct text arguments of COUNT coerce like arithmetic
+Rule: a direct text argument of COUNT counts whenever arithmetic would read it as a number: clock text
+(`"10:00"`), date text (`"1/2/2020"`, `"1/1/1900"`), currency, percent, thousands separators,
+a leading blank before plain number text (`" 1"`), `"6 PM"` and `"12:60"` all count (`COUNT("10:00","x")` = 1). "inf" and the text `"TRUE"` do
+not count. Reference cells holding text still never count.
+Evidence: probes/count-direct-text (excel-graph, 2026-10-06), clock-text-oddities F37.
+Implemented in: `functions/statistical/count_and_average.rs` `fn_count`.
+Status: VERIFIED
+Tasks: T-0252
+
+## Parenthesised number text is negative
+Rule: `"(1)"` is read as -1 wherever text is coerced to a number: `0+"(1)"` = -1, `SUM("(1)")` = -1,
+`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine does not read the form yet.
+Evidence: probes/paren-negative-text (excel-graph, 2026-10-06).
+Status: VERIFIED
+Tasks: T-0259
+
+## AND/OR/XOR text arguments
+Rule: an empty text literal is skipped (`AND("",TRUE)` = TRUE) and a text literal that is not
+"TRUE"/"FALSE" alone is `#VALUE!` (`AND("1")`, `OR("0")`). Next to a logical value, the literal "1"
+is `#VALUE!` in Excel 15 (`AND("1",1)`), yet text "1" returned by IFERROR is skipped in Microsoft 365
+(`AND(1E+15, IFERROR("1",…), FALSE)` is FALSE, not `#VALUE!`). Text in referenced cells is skipped.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J136, I136;
+ironcalc-calc LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53;
+gen-m2/893302d6c5b99e2e Calc!A108 (oracle: excel-graph).
+Status: UNVERIFIED (probe pending, T-0258): whether literal vs computed text, empty vs non-empty, or
+Excel version decides is not isolated.
+Tasks: T-0258

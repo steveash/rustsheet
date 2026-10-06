@@ -75,3 +75,25 @@ fn fn_concatenate_and_ampersand_truncate_at_32767_chars() {
     assert_eq!(model._get_text("D1"), *"32767");
     assert_eq!(model._get_text("D2"), *"32767");
 }
+
+#[test]
+fn fn_concatenate_limit_counts_utf16_units() {
+    // probes/concatenate-limit-spill E7–E9 (excel-graph): the 32,767 limit is in UTF-16 code
+    // units, so an emoji (a surrogate pair) counts two. LEN still counts chars here (T-0249),
+    // so the assertions read lengths in UTF-16 units directly.
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCATENATE(REPT(\"😀\",16383),\"ab\")");
+    model._set("A2", "=REPT(\"😀\",16383)&\"😀\"");
+    model._set("A3", "=CONCATENATE(REPT(\"é\",20000),REPT(\"é\",20000))");
+
+    model.evaluate();
+
+    // 32,766 units of emoji + "a"; "b" falls past the limit.
+    let a1 = model._get_text("A1");
+    assert_eq!(a1.encode_utf16().count(), 32767);
+    assert!(a1.ends_with("😀a"));
+    // The last emoji would straddle the limit; it is dropped whole (no lone surrogate).
+    assert_eq!(model._get_text("A2").encode_utf16().count(), 32766);
+    // "é" is one UTF-16 unit (two UTF-8 bytes).
+    assert_eq!(model._get_text("A3").chars().count(), 32767);
+}

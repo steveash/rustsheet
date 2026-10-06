@@ -26,8 +26,13 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 }
 
 /// Maps an Excel date serial (date part) to the `(year, month, day)` Excel shows for it,
-/// including the fictitious 1900-02-29 (serial 60). `None` outside `1..=MAXIMUM_DATE_SERIAL_NUMBER`.
+/// including the fictitious 1900-02-29 (serial 60) and "1900-01-00" (serial 0). `None` outside
+/// `0..=MAXIMUM_DATE_SERIAL_NUMBER`.
+/// Evidence: probes/dates-early-1900 A20-A22 (`DAY(0)` = 0, `MONTH(0)` = 1, `YEAR(0)` = 1900).
 pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
+    if serial == 0 {
+        return Some((1900, 1, 0));
+    }
     if !(i64::from(MINIMUM_DATE_SERIAL_NUMBER)..=i64::from(MAXIMUM_DATE_SERIAL_NUMBER))
         .contains(&serial)
     {
@@ -44,9 +49,26 @@ pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
     Some((date.year(), date.month(), date.day()))
 }
 
+/// The real calendar date EDATE/EOMONTH do month arithmetic on. Serial 60 (the fictitious
+/// 1900-02-29) counts as 1900-02-28 and serial 0 is out of range.
+/// Evidence: probes/dates-early-1900 A9/A10 (`EDATE(31,1)` = 59), A23/A25 (`EDATE(60,0)` =
+/// `EOMONTH(60,0)` = 59).
+pub fn month_arithmetic_date(serial: i64) -> Option<NaiveDate> {
+    let (year, month, day) = excel_serial_to_ymd(serial).filter(|&(_, _, day)| day > 0)?;
+    NaiveDate::from_ymd_opt(year, month, day).or_else(|| NaiveDate::from_ymd_opt(year, month, 28))
+}
+
+/// Excel serial of a real calendar date, `None` below serial 1 (e.g. December 1899).
+/// Evidence: probes/dates-early-1900 A18/A24 (`EOMONTH(1,-1)`, `EDATE(1,-1)` are #NUM!).
+pub fn real_date_to_serial(date: NaiveDate) -> Option<i32> {
+    let serial = convert_to_serial_number(date);
+    (MINIMUM_DATE_SERIAL_NUMBER..=MAXIMUM_DATE_SERIAL_NUMBER)
+        .contains(&serial)
+        .then_some(serial)
+}
+
 fn is_date_within_range(date: NaiveDate) -> bool {
-    convert_to_serial_number(date) >= MINIMUM_DATE_SERIAL_NUMBER
-        && convert_to_serial_number(date) <= MAXIMUM_DATE_SERIAL_NUMBER
+    real_date_to_serial(date).is_some()
 }
 
 pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
@@ -127,11 +149,30 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn month_arithmetic_and_real_serials_skip_the_fictitious_dates() {
+        use super::{month_arithmetic_date, real_date_to_serial};
+        use chrono::NaiveDate;
+        assert_eq!(month_arithmetic_date(0), None);
+        assert_eq!(
+            month_arithmetic_date(60),
+            NaiveDate::from_ymd_opt(1900, 2, 28)
+        );
+        assert_eq!(
+            month_arithmetic_date(61),
+            NaiveDate::from_ymd_opt(1900, 3, 1)
+        );
+        let feb_28 = NaiveDate::from_ymd_opt(1900, 2, 28).and_then(real_date_to_serial);
+        assert_eq!(feb_28, Some(59));
+        let dec_31 = NaiveDate::from_ymd_opt(1899, 12, 31).and_then(real_date_to_serial);
+        assert_eq!(dec_31, None);
+    }
+
     use super::*;
 
     #[test]
     fn test_excel_serial_to_ymd_early_1900() {
-        assert_eq!(excel_serial_to_ymd(0), None);
+        assert_eq!(excel_serial_to_ymd(0), Some((1900, 1, 0)));
         assert_eq!(excel_serial_to_ymd(1), Some((1900, 1, 1)));
         assert_eq!(excel_serial_to_ymd(59), Some((1900, 2, 28)));
         assert_eq!(excel_serial_to_ymd(60), Some((1900, 2, 29)));

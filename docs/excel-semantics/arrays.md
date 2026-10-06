@@ -3,7 +3,11 @@
 ## Cached rich errors (`#CALC!`, `#SPILL!`, `#BLOCKED!`, ...) are stored as `#VALUE!` plus a `vm` attribute
 Rule: Excel writes a dynamic-array `#CALC!` (e.g. DROP/TAKE to nothing, `SEQUENCE(0,0)`, FILTER with no
 match) or `#SPILL!` into the sheet XML as `t="e"` with `<v>#VALUE!</v>` and a `vm="N"` attribute. `vm`
-indexes `xl/metadata.xml` `<valueMetadata>`; its `<rc v=K>` indexes `xl/richData/rdrichvalue.xml`. The
+is 1-based into the `<bk>` blocks of `xl/metadata.xml` `<valueMetadata>`; a block's `<rc t=T v=K>` names
+metadata type T (1-based into `<metadataTypes>`, `XLRICHVALUE` here; files with dynamic arrays list
+`XLDAPR` first, so T is 2 there) and block K (0-based) of `<futureMetadata name="XLRICHVALUE">`, whose
+`<xlrd:rvb i=I>` indexes the `<rv>` values of `xl/richData/rdrichvalue.xml`. (K and I coincide in every
+evidence file; the specification says to follow the `rvb` hop, and both readers do, T-0921.) The
 `errorType` field (13 = `#CALC!`, 8 = `#SPILL!`) must be found **by key name** in that value's
 structure (`xl/richData/rdrichvaluestructure.xml`): desktop files put it first, but Excel for the web
 writes the `_error` keys alphabetically (`colOffset, errorType, rwOffset, subType`), so there the
@@ -33,7 +37,9 @@ ironcalc-calc/ERROR.TYPE.xlsx (A8 vm→13, ERROR.TYPE=14; A14 vm→8, ERROR.TYPE
 DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all errorType 13, subType 3).
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was
 wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was already right.)
-Implemented in: `read_rich_errors` in `crates/rustsheet-eval/src/xlsx_snapshot.rs` (eval expected values).
+Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/rich_errors.rs`, shared by
+the importer (cached `#CALC!`/`#SPILL!`; errors the engine has no kind for stay `#VALUE!`) and the eval
+snapshot reader (expected values; T-0921).
 
 ## NOT and CONCATENATE lift over array arguments
 Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the
@@ -46,8 +52,16 @@ gen-m2/75840b9c71a50596 Calc!A29 `=NOT(INDEX(Data!B2:E8,Data!C$10,3))` (C10 = FA
 gen-m2/f7e6d351c8538ef5 Calc!A106 `=NOT(INDEX(Data!B3:E9,(Data!B$10-0.1),4))` (B10 = 0.2);
 gen-m2/207a5753da48c7e0 Calc!A297 `=(AVERAGE(…)=CONCATENATE(INDEX(Data!C11:C12,0),("#N/A"&Data!D4)))`;
 gen-m2/b4392a6514a36ade Calc!A348 `=TRIM(CONCATENATE(INDEX(Data!A7:D11,Data!A8,3)))` (A8 = 0.3).
+Element values (probes/concatenate-limit-spill, excel-graph, 2026-10-06, T-0233): arguments
+broadcast like the arithmetic operators, so a row and a column give a grid
+(`CONCATENATE({"a","b"},{"x";"y"})` is {"ax","bx";"ay","by"}, `CONCATENATE(A1:A2,B1:C1)` likewise),
+a single-row or single-column argument stretches, and positions past a shorter argument are `#N/A`
+(`CONCATENATE({"a";"b";"c"},{"x";"y"})` is {"ax";"by";#N/A}; same for ranges, `A1:A3` with `B1:B2`).
+An error element stays in its position (`CONCATENATE({1;2},{#N/A;"x"})` is {#N/A;"2x"}); numbers and
+booleans in arrays become text as in `&` ({1;TRUE;FALSE;1.5} gives "1-","TRUE-","FALSE-","1.5-";
+1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array argument gives a single-cell result.
 Status: VERIFIED
-Tasks: T-0225 (NOT), T-0226 (CONCATENATE)
+Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values)
 Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226).
 
 ## CONCATENATE with a scalar error argument returns that error, not an array
@@ -120,3 +134,13 @@ H46:J48 is 1 in all 9 cells (also `MINVERSE(B54)` H54:J56, `MMULT(B58,E58)` H58:
 H66:J68 has row 68 `#N/A` (47 `#N/A` fill cells in H46:J136).
 Status: VERIFIED (Excel-cached)
 Tasks: T-0950
+
+## FILTER: an array `if_empty` spills as an array
+Rule: when FILTER finds no match, an array-constant `if_empty` is returned whole and spills like any
+array: `FILTER(L1:L2,M1:M2,{1,2,3})` fills three cells across, `{1;2;3}` three down, `{1,2;3,4}` a 2x2
+block, `SUM(..)` of it is 6. A blocked spill area (a value in the neighbouring cell) gives `#SPILL!`.
+Evidence: probes/filter-if-empty-array (oracle: excel-graph, 2026-10-06); upstream ISREF.xlsx D9 (`#SPILL!`),
+J17:L17 (spilled 1,2,3).
+Status: VERIFIED (web)
+Implemented in: `fn_filter` (crates/rustsheet-engine/src/functions/spill_functions.rs)
+Tasks: T-0964

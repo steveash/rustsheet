@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FILTER's if_empty given as an array constant: spills the array; #SPILL! when the spill area is blocked (T-0964; mirrors upstream ISREF.xlsx D9, J17:L17). See docs/excel-semantics/arrays.md",
+  "tags": ["M9", "lookup", "filter", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "L1": 10,
+        "L2": 20,
+        "M1": false,
+        "M2": false,
+        "A1": "=FILTER(L1:L2,M1:M2,{1,2,3})",
+        "A3": "=FILTER(L1:L2,M1:M2,{1,2,3})",
+        "B3": "x",
+        "A5": "=FILTER(L1:L2,M1:M2,{1;2;3})",
+        "A9": "=SUM(FILTER(L1:L2,M1:M2,{1,2,3}))",
+        "A10": "=FILTER(L1:L2,M1:M2,{1,2;3,4})"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1", "Sheet1!B1", "Sheet1!C1", "Sheet1!A3",
+    "Sheet1!A5", "Sheet1!A6", "Sheet1!A7", "Sheet1!A9",
+    "Sheet1!A10", "Sheet1!B10", "Sheet1!A11", "Sheet1!B11"
+  ]
+}
