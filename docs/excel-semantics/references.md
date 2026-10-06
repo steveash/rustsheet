@@ -12,8 +12,11 @@ excel-graph, 2026-10-04); poi/55906-MultiSheetRefs.xlsx A3 = 66, I6 = 4 (Excel-c
 probes/3d-ref-aggregates (excel-graph, 2026-10-06).
 Status: VERIFIED
 Implemented in: `get_sheet_span_range` (crates/rustsheet-engine/src/reference_operators.rs) and
-`for_each_cell_or_error_in_range` (crates/rustsheet-engine/src/functions/util.rs). AVERAGEA, MAXA,
-MINA, PRODUCT, CONCAT, LARGE and RANK are not yet (T-0196).
+`for_each_cell_or_error_in_range` (crates/rustsheet-engine/src/functions/util.rs); AVERAGEA, MAXA,
+MINA, PRODUCT, CONCAT, LARGE and RANK take their arguments through `evaluate_aggregate_arg` too (T-0196).
+CONCAT no longer rejects a cross-sheet range with #VALUE!. LARGE/RANK read 3-D spans through
+`values_from_range` (functions/statistical/chisq.rs), which stays unclipped and positional on a single sheet
+because two-input functions pair their lists by position.
 Tasks: T-0122, T-0196
 
 ## 3-D references outside the aggregates
@@ -85,10 +88,11 @@ values, never a reference (`FILTER(A1:A1,B1:B1,D1:D2)` spills D1:D2, `ISREF(FILT
 Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; to be added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
 bound to a reference is TRUE (A19-A26, not implemented: T-0963).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
-COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT);
+COUNT, MIN, MAX and every `for_each_value` caller: AVERAGE, MEDIAN, HARMEAN, GEOMEAN, SKEW, SKEW.P, KURT;
+also AVERAGEA, MAXA, MINA, PRODUCT, CONCAT, LARGE and RANK since T-0196, UNVERIFIED for those: probe in T-1003);
 ISREF of INDEX and of defined names in `fn_isref` (functions/information/mod.rs),
 FILTER if_empty range in `fn_filter` (functions/spill_functions.rs)
-Tasks: T-0216, T-0235, T-0940
+Tasks: T-0216, T-0235, T-0940, T-1003
 
 ## Intersection operator (space)
 Rule: `A B` (a space between two references) gives the reference to the cells both contain. In a
