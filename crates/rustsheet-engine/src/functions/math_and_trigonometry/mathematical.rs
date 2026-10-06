@@ -352,7 +352,7 @@ impl Model {
         if let Err(e) = self.apply_ifs(args, cell, true, sum) {
             return e;
         }
-        CalcResult::Number(total)
+        CalcResult::finite_number_or_num(total, cell)
     }
 
     /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal

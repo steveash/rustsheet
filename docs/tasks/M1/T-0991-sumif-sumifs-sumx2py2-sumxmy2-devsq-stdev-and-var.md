@@ -3,7 +3,7 @@ id: T-0991
 title: "SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR overflow is #NUM!"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Rule VERIFIED in docs/excel-semantics/numbers.md (Aggregate overflow), evidence 
 
 ## Out of scope
 -
+
+## Outcome
+SUMIF (scalar and array criteria), SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR return `#NUM!` on overflow via `CalcResult::finite_number_or_num` on the final result; unit test `overflowing_conditional_and_dispersion_aggregates_are_num`. Eval: probes known failures 271 -> 257 (fixed 14), regressions 0.
