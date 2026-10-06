@@ -43,6 +43,7 @@ C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-constants.case.json	24
 C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
+C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
