@@ -58,6 +58,7 @@ C	probes/literal-digits.case.json	6
 C	probes/lookup-approximate-search.case.json	44
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
+C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19

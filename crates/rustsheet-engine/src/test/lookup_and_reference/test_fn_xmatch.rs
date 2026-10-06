@@ -322,9 +322,11 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         model.evaluate();
         model._get_text("H3")
     };
-    assert_eq!(model_value("=XMATCH(0,A:A)"), "4");
-    assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "1048576");
-    assert_eq!(model_value("=XMATCH(0,1:1)"), "5");
+    // Excel: a blank never matches an exact XMATCH
+    // (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126).
+    assert_eq!(model_value("=XMATCH(0,A:A)"), "#N/A");
+    assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "#N/A");
+    assert_eq!(model_value("=XMATCH(0,1:1)"), "#N/A");
     // A blank lookup value equals the whole tail: the equal-run walk of the
     // binary searches must jump it, not step a million cells (directive 5).
     for formula in [

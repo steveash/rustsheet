@@ -159,3 +159,38 @@ fn test_hlookup_search_before_index() {
     assert_eq!(model._get_text("H7"), "1");
     assert_eq!(model._get_text("H8"), "#REF!");
 }
+
+/// Whole-row lookups with a blank tail (probes/lookup-whole-column-blank-tail,
+/// Row sheet; T-0126).
+#[test]
+fn whole_row_blank_tail_matches_excel() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "10"),
+        ("B1", "20"),
+        ("C1", "30"),
+        ("A2", "a"),
+        ("B2", "b"),
+        ("C2", "c"),
+    ] {
+        model._set(cell, value);
+    }
+    let cases = [
+        ("=HLOOKUP(99,1:2,2)", "c"),
+        ("=HLOOKUP(FALSE,1:2,2,FALSE)", "#N/A"),
+        ("=HLOOKUP(0,1:2,2,FALSE)", "#N/A"),
+        ("=HLOOKUP(5,1:2,2)", "#N/A"),
+        ("=HLOOKUP(99,A1:J2,2)", "c"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 10), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 10)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
