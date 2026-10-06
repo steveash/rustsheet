@@ -216,9 +216,9 @@ pub enum Node {
     OpUnionKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// The union was written in its own parentheses as an operand of an enclosing union
-        /// (`((A1,B2),C3)`), so printing keeps them; a plain chain `(A1,B2,C3)` is not grouped.
-        grouped: bool,
+        /// Parentheses levels written around the union: 0 for the left link of a plain chain
+        /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
+        written: usize,
     },
     OpConcatenateKind {
         left: Box<Node>,

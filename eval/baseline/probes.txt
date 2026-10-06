@@ -117,10 +117,6 @@ F	probes/aggregate-args.case.json	Misc!A37
 F	probes/aggregate-args.case.json	Misc!A38
 F	probes/aggregate-grid.case.json	Grid!B31
 F	probes/aggregate-grid.case.json	Grid!C31
-F	probes/aggregate-overflow.case.json	Calc!A47
-F	probes/aggregate-overflow.case.json	Calc!A48
-F	probes/aggregate-overflow.case.json	Calc!B47
-F	probes/aggregate-overflow.case.json	Calc!B48
 F	probes/aggregate-overflow.case.json	Calc!B51
 F	probes/aggregate-overflow.case.json	Calc!B52
 F	probes/aggregate-overflow.case.json	Calc!B53
@@ -324,9 +320,6 @@ F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9
 F	probes/union-accepted.case.json	Sheet1!H9
 F	probes/union-defined-name.case.json	!EngineError
-F	probes/union-operand-double-minus.case.json	Sheet1!H1
-F	probes/union-operand-nested-parens.case.json	Sheet1!H2
-F	probes/union-operand-nested-parens.case.json	Sheet1!H6
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1
