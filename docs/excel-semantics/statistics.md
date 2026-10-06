@@ -14,6 +14,7 @@ C38, C39 (large y), C10, C51; `ironcalc-calc/STATISTICAL/FISHER.xlsx` Sheet1!G2,
 reproduces every numeric FISHERINV cell in both workbooks bit for bit (32 cells, checked with
 glibc `exp` during T-0903, counting overflow as 1); `tanh` misses 6 of them.
 Status: VERIFIED (desktop cached values)
+Implemented in: `functions/statistical/fisher.rs` `fn_fisher_inv`
 Tasks: T-0976
 
 ## T.DIST.RT and T.DIST.2T are not 1 - T.DIST
