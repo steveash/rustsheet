@@ -78,11 +78,20 @@ fn parse_year(year_str: &str) -> Result<(i32, &'static str), String> {
         return Err("Not a valid year".to_string());
     }
     let year = year_str.parse::<i32>().map_err(|e| e.to_string())?;
-    Ok(match (year_str.len(), year) {
-        (2, y) if y < 30 => (2000 + y, "yy"),
-        (2, y) => (1900 + y, "yy"),
-        (_, y) => (y, "yyyy"),
+    Ok(if year_str.len() == 2 {
+        (two_digit_year(year), "yy")
+    } else {
+        (year, "yyyy")
     })
+}
+
+/// The year of a two-digit year: below 30 is 20xx, the rest 19xx.
+fn two_digit_year(year: i32) -> i32 {
+    if year < 30 {
+        2000 + year
+    } else {
+        1900 + year
+    }
 }
 
 /// The serial of a calendar date, including the fictitious 1900-02-29 (serial 60), or an error
@@ -100,18 +109,50 @@ fn serial_of(day: u32, month: u32, year: i32) -> Result<i32, String> {
     }
 }
 
-/// "Month year" text is the first of that month; the year must have four digits because Excel
-/// reads "Jul-26" as 26 July of the current year (clock-dependent, not implemented).
-fn parse_month_year(name: &str, year_str: &str, locale: &Locale) -> Result<(i32, String), String> {
-    let (month, _) = parse_month_name(name, locale).ok_or("Not a valid month")?;
-    if !is_digits(year_str, 4..=4) {
-        return Err("Not a valid year".to_string());
+/// Most days the month can have in any year; February's 29 depends on the year.
+fn max_days_in_month(month: u32) -> u32 {
+    match month {
+        2 => 29,
+        4 | 6 | 9 | 11 => 30,
+        _ => 31,
     }
-    let (year, _) = parse_year(year_str)?;
-    Ok((
-        serial_of(1, month, year)?,
-        MONTH_NAME_YEAR_FORMAT.to_string(),
-    ))
+}
+
+/// "Month year" text is the first of that month. A one- or two-digit number that can be a day
+/// of the month is a day of the current year (#VALUE! until T-0167), any other is a two-digit
+/// year: "Jul-45" is 1 July 1945 (probes/date-text-yearless). `numeric_month` admits a month
+/// number ("2/30"), only for separated words in month-first locales.
+fn parse_month_year(
+    name: &str,
+    year_str: &str,
+    locale: &Locale,
+    numeric_month: bool,
+) -> Result<(i32, String), String> {
+    let (month, format) = match parse_month_name(name, locale) {
+        Some((month, _)) => (month, MONTH_NAME_YEAR_FORMAT),
+        None if numeric_month && !locale.dates.date_formats.short.starts_with('d') => {
+            let (month, _) = parse_month_number(name)?;
+            (month, "m/yy")
+        }
+        None => return Err("Not a valid month".to_string()),
+    };
+    if !(1..=12).contains(&month) {
+        return Err("Not a valid month".to_string());
+    }
+    // A numeric month takes a one- or two-digit number, as "2/30" does in
+    // probes/date-text-yearless; "7/2026" is not probed.
+    let year = if is_digits(year_str, 4..=4) && format == MONTH_NAME_YEAR_FORMAT {
+        parse_year(year_str)?.0
+    } else if is_digits(year_str, 1..=2) {
+        let number = year_str.parse::<i32>().map_err(|e| e.to_string())?;
+        if u32::try_from(number).is_ok_and(|day| (1..=max_days_in_month(month)).contains(&day)) {
+            return Err("Year-less date text needs the current year".to_string());
+        }
+        two_digit_year(number)
+    } else {
+        return Err("Not a valid year".to_string());
+    };
+    Ok((serial_of(1, month, year)?, format.to_string()))
 }
 
 /// One word with a date separator: "7/1/2026", "2026-07-01", "1-Jul-2026", "1/Jul/26",
@@ -127,7 +168,7 @@ fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String>
     // At most 4 parts: enough to reject longer text without splitting all of it.
     let parts: Vec<&str> = word.splitn(4, separator).collect();
     let (day_str, month_str, year_str) = match parts.as_slice() {
-        [name, year] => return parse_month_year(name, year, locale),
+        [name, year] => return parse_month_year(name, year, locale, true),
         // Year first is numeric only: "2023/Jan/15" is #VALUE! (probes/date-text-grammar A20).
         [year, month, day] if is_digits(year, 4..=4) => {
             let (day, day_format) = parse_day(day)?;
@@ -188,7 +229,7 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
     let words: Vec<&str> = value.split_whitespace().take(4).collect();
     let (day, name, year) = match words.as_slice() {
         [word] => return parse_separated(word, locale),
-        [name, year] => return parse_month_year(name, year, locale),
+        [name, year] => return parse_month_year(name, year, locale, false),
         [name, day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
         [day, name, year] => (*day, *name, *year),
         _ => return Err("Not a valid date".to_string()),
@@ -266,6 +307,25 @@ mod tests {
     }
 
     #[test]
+    fn month_and_two_digit_year_when_the_number_cannot_be_a_day() {
+        // probes/date-text-yearless B13:B17
+        assert_eq!(en("Jul-45"), Some(16619));
+        assert_eq!(en("Jul-32"), Some(11871));
+        assert_eq!(en("Jul-0"), Some(36708));
+        assert_eq!(en("Jul-99"), Some(36342));
+        assert_eq!(en("2/30"), Some(10990));
+        // A possible day of the month is the current year's (not implemented yet, T-0167)
+        for text in [
+            "Jul-26", "7/1", "Jul 31", "Feb-29", "2/29", "13/1", "13/45", "0/45", "Jul-123",
+            // A numeric month needs a separator (a space between numbers is not probed), and a
+            // four-digit year with it is not probed either
+            "7 45", "1 0", "7/2026", "12-1999",
+        ] {
+            assert_eq!(en(text), None, "{text}");
+        }
+    }
+
+    #[test]
     fn malformed_month_name_forms_are_rejected() {
         for text in [
             "July 1 2026",
@@ -280,7 +340,6 @@ mod tests {
             "2026 July 1",
             "2023/Jan/15",
             "2023-Jan-15",
-            "Jul-26",
             "Ju 1, 2026",
             "July 32, 2026",
             "Feb 29, 2025",
