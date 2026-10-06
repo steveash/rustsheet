@@ -166,6 +166,19 @@ impl Model {
         }
     }
 
+    /// The bottom-right corner a walk of the range `left..=right` goes to:
+    /// whole-row and whole-column ranges are clipped to the used area
+    /// (`clip_to_used_area`), and the cells past the corner are empty.
+    pub(crate) fn clipped_corner(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<(i32, i32), CalcResult> {
+        self.clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))
+    }
+
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///
@@ -191,9 +204,7 @@ impl Model {
                 "Ranges are in different sheets".to_string(),
             ));
         }
-        let (row2, column2) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        let (row2, column2) = self.clipped_corner(left, right, cell)?;
         for row in left.row..=row2 {
             for column in left.column..=column2 {
                 match self.evaluate_cell(CellReferenceIndex {

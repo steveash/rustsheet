@@ -36,4 +36,4 @@ treat the rest as empty (what each function does with an empty cell must stay un
 -
 
 ## Outcome
-MULTINOMIAL, the NETWORKDAYS/WORKDAY holidays walk, and the range arms of AVERAGEA's `for_each_value_a` helper, AVERAGEA, COUNT, COUNTA and COUNTBLANK now walk to `clip_to_used_area`'s corner. COUNTBLANK adds the clipped-off cells (all empty) back to its count. Unit tests in test/test_clipped_range_walks.rs (before the change the whole-sheet cases ran for minutes). No eval delta.
+MULTINOMIAL, the NETWORKDAYS/WORKDAY holidays walk, and the range arms of AVERAGEA's `for_each_value_a` helper, AVERAGEA, COUNT, COUNTA and COUNTBLANK now walk to `clip_to_used_area`'s corner (new `Model::clipped_corner` in functions/util.rs wraps it with the CalcResult error mapping; `for_each_cell_in_range` uses it too). COUNT/COUNTA/COUNTBLANK moved to statistical/count.rs to keep count_and_average.rs under the 1000-line limit. COUNTBLANK adds the clipped-off cells (all empty) back to its count. Unit tests in test/test_clipped_range_walks.rs (before the change the whole-sheet cases ran for minutes). No eval delta.

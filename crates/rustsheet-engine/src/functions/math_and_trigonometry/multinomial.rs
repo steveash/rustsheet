@@ -46,15 +46,9 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    let (row2, column2) = match self.clip_to_used_area(
-                        left.sheet,
-                        left.row,
-                        left.column,
-                        right.row,
-                        right.column,
-                    ) {
+                    let (row2, column2) = match self.clipped_corner(left, right, cell) {
                         Ok(corner) => corner,
-                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                        Err(error) => return error,
                     };
                     // Cells past the used area are empty, and an empty cell counts
                     // as 0 here, which changes neither the sum nor the product of
