@@ -3,7 +3,7 @@ id: T-0170
 title: "Oracle fixture xlsx: LEN over a shared string with phonetic rPh runs"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
