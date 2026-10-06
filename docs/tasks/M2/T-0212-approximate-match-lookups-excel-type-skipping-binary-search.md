@@ -107,11 +107,11 @@ Also `gen-m2/ef5c55a81783b7d5` A32 (an inner HLOOKUP that our search wrongly mat
 ## Outcome
 `SearchVector::approximate_search` (lookup_table.rs) replaces the old cross-type binary search for
 VLOOKUP/HLOOKUP (range_lookup TRUE), LOOKUP and MATCH (any non-zero match_type), and
-`SearchVector::exact_position` makes VLOOKUP/HLOOKUP FALSE match only cells of the key's type. The new
-probe `probes/lookup-approximate-search` (28 cells, excel-graph) refined the fitted algorithm: an equal
+`SearchVector::exact_position` makes VLOOKUP/HLOOKUP FALSE and MATCH 0 match only cells of the key's type, with
+exact number equality and a blank key of 0. The new probe `probes/lookup-approximate-search` (44 cells, excel-graph) refined the fitted algorithm: an equal
 cell ends the search at the edge of its run of adjacent equal cells (last for ascending, first for
 descending; also MATCH.xlsx C7), the midpoint is the floor of the inclusive bounds, any negative
-match_type is descending, and a blank MATCH key is 0 in an approximate search.
-Eval: gen-m2 known failures 475 -> 59 (419 fixed, every cell listed above and the six decision-0034 cells
+match_type is descending, and a blank MATCH key is 0.
+Eval: gen-m2 known failures 475 -> 58 (420 fixed, every cell listed above and the six decision-0034 cells
 pass), poi 642 -> 641; 3 cells unmasked and accepted per decision 0037 (2 collation -> T-0220,
 1 `&` error broadcast -> T-0263, new). LOOKUP shares the search: no LOOKUP cell changed.

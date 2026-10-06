@@ -177,17 +177,8 @@ impl SearchVector {
                 value_kind(value) == Some(kind) && compare_values(value, target) == 0
             })
         };
-        // next[i]: the first index >= i holding a value of `kind`. Cells in
-        // the virtual tail are empty, so the search never needs to enter it.
+        // Cells in the virtual tail are empty, so the search never enters it.
         let evaluated = self.values.len();
-        let mut next = vec![usize::MAX; evaluated + 1];
-        for i in (0..evaluated).rev() {
-            next[i] = if value_kind(&self.values[i]) == Some(kind) {
-                i
-            } else {
-                next[i + 1]
-            };
-        }
         let mut best = None;
         let mut lo = 0;
         let mut hi = self.len;
@@ -195,13 +186,17 @@ impl SearchVector {
         // of the inclusive bounds' mean (the lower of two middles).
         while lo < hi {
             let mid = lo + (hi - 1 - lo) / 2;
-            let m = next[mid.min(evaluated)];
-            if m >= hi {
+            // Each scan stays inside the live range, which at least halves
+            // whenever a scan finds nothing, so all scans total O(n).
+            let Some(m) = (mid..hi.min(evaluated))
+                .find(|&index| value_kind(&self.values[index]) == Some(kind))
+            else {
                 hi = mid;
                 continue;
-            }
+            };
             match compare_values(&self.values[m], target) {
                 0 => {
+                    // Linear in the run's length, as Excel's answer needs it.
                     let mut edge = m;
                     if descending {
                         while edge > 0 && equal(edge - 1) {
@@ -224,14 +219,18 @@ impl SearchVector {
         best
     }
 
-    /// Exact-match search (range_lookup FALSE): the first value of `target`'s
-    /// own type equal to it. A blank never matches 0 or "" (T-0212).
+    /// Exact-match search (range_lookup FALSE, MATCH 0) for a non-text
+    /// `target`: the first value of its own type equal to it. A blank never
+    /// matches, a blank `target` is 0, and numbers must be exactly equal:
+    /// `MATCH(0.1+0.2,{0.3},0)` is #N/A (probes/lookup-approximate-search
+    /// N9, N32, N37, N42; T-0212).
     pub(super) fn exact_position(&self, target: &CalcResult) -> Option<usize> {
         let target = lookup_key(target);
         let kind = value_kind(target)?;
-        self.values
-            .iter()
-            .position(|value| value_kind(value) == Some(kind) && compare_values(value, target) == 0)
+        self.values.iter().position(|value| match (value, target) {
+            (CalcResult::Number(a), CalcResult::Number(b)) => a == b,
+            _ => value_kind(value) == Some(kind) && compare_values(value, target) == 0,
+        })
     }
 }
 

@@ -175,3 +175,19 @@ fn text_search_over_mixed_data() {
         ["ABC"]
     );
 }
+
+#[test]
+fn exact_match_blank_key_is_zero_and_numbers_are_exact() {
+    // probes/lookup-approximate-search N32, N37, N38, N41.
+    let results = eval_over(
+        'F',
+        &["1", "", "0", "", "2"],
+        &[
+            "=MATCH(G1,F1:F5,0)",
+            "=MATCH(0.1+0.2,{0.3},0)",
+            "=VLOOKUP(0.1+0.2,{0.3},1,FALSE)",
+            r#"=VLOOKUP("",G1:G3,1,FALSE)"#,
+        ],
+    );
+    assert_eq!(results, ["3", "#N/A", "#N/A", "#N/A"]);
+}

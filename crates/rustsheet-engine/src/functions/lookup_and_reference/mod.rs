@@ -10,7 +10,6 @@ use crate::{
 };
 
 use super::criteria::wildcard_text_matcher;
-use super::util::values_are_equal;
 use lookup_table::{LookupTable, SearchVector};
 
 mod address_areas;
@@ -30,7 +29,8 @@ mod xmatch;
 /// When `is_sorted` is true Excel's approximate-match search is used (the
 /// largest value of the lookup value's type smaller than or equal to it);
 /// otherwise a linear search for an exact match (supporting wildcards for
-/// text). Returns `None` when the value is not found.
+/// text), shared by VLOOKUP/HLOOKUP FALSE and MATCH 0. Returns `None` when
+/// the value is not found.
 fn lookup_index(
     lookup_value: &CalcResult,
     search_vector: &SearchVector,
@@ -302,7 +302,7 @@ impl Model {
     //   * match_type      Optional. The number -1, 0, or 1.
     //                     The match_type argument specifies how Excel matches lookup_value
     //                     with values in lookup_array. The default value for this argument is 1.
-    // NOTE: Please read the caveat above in binary search
+    // Excel: see docs/excel-semantics/lookup.md "Approximate-match lookups".
     pub(crate) fn fn_match(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
@@ -319,14 +319,6 @@ impl Model {
         } else {
             1
         };
-        // An approximate search looks a blank up as 0 (probes/lookup-approximate-search N13).
-        if match_type == 0 && matches!(target, CalcResult::EmptyCell) {
-            return CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Cannot match empty cell".to_string(),
-            };
-        }
         let match_range = self.evaluate_node_in_context(&args[1], cell);
 
         // MATCH operates on a vector (a single row or single column). We
@@ -338,13 +330,7 @@ impl Model {
         };
 
         let found = if match_type == 0 {
-            let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-                if let CalcResult::String(s) = &target {
-                    wildcard_text_matcher(s)
-                } else {
-                    Box::new(move |x| values_are_equal(x, &target))
-                };
-            values.position(result_matches)
+            lookup_index(&target, &values, false)
         } else {
             // Any negative match_type searches descending, any positive one
             // ascending (probes/lookup-approximate-search N20, N21).
@@ -489,11 +475,8 @@ impl Model {
     //     returns from the last row; otherwise it searches the first column and
     //     returns from the last column. (This subsumes the vector case where the
     //     "first" and "last" row/column coincide.)
-    // Important: The values being searched must be placed in ascending order:
-    // ..., -2, -1, 0, 1, 2, ..., A-Z, FALSE, TRUE;
-    // otherwise, LOOKUP might not return the correct value.
-    // Uppercase and lowercase text are equivalent.
-    // NOTE: Please read the caveat above in binary search
+    // The search is Excel's approximate-match search: see
+    // docs/excel-semantics/lookup.md "Approximate-match lookups".
     pub(crate) fn fn_lookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);

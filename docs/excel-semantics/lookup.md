@@ -95,10 +95,14 @@ The run of equal cells stops at the first cell that is not equal, whatever its t
 (`MATCH(2,{0,0,0,2,"x",2,9})` = 4). Any negative match_type searches descending and any positive one
 ascending (`MATCH(5,{9,5,5,5,1},-2)` = 2, `MATCH(2,…,2)` = `MATCH(2,…,1)`). A blank MATCH key is 0
 in an approximate search (`MATCH(blank,{1,blank,0,blank,2})` = 3).
-Exact match (range_lookup FALSE, MATCH 0) only matches cells of the key's type: a blank never
-matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `MATCH("",…,0)` are `#N/A`).
+Exact match (range_lookup FALSE, MATCH 0) only matches cells of the key's type: a blank cell never
+matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;blank},1,FALSE)` are
+`#N/A`), while a blank lookup value is 0 here too (`MATCH(blank,{1,blank,0,blank,2},0)` = 3,
+`MATCH(blank,{"";0},0)` = 2). Numbers must be exactly equal, without the 15-digit rounding of the
+comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
+A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
 Text comparison uses Excel's collation, not code-point order (T-0220).
-Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N28 (oracle: excel-graph,
+Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
 2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
 a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
 (excel-graph, 2026-10-04, T-0203); 419 gen-m2 cells fixed by T-0212;
