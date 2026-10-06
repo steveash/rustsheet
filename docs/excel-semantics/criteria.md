@@ -110,11 +110,23 @@ cell and `"<>3"` follow the shared grammar; an explicit `"=ab"` is exact, not a 
 Evidence: probes/criteria-operands C9-C16, D17-D25. Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 
-## COUNTIFS lifts an array criterion
-Rule: an array constant as a criterion makes COUNTIFS return an array of counts, one per element:
-`SUM(COUNTIFS(A1:F1,{"bar","baz"}))` = 3 and `{"foo","bar"}` = 4.
-Evidence: poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
+## *IF(S) lift array criteria
+Rule: an array or multi-cell range as a criterion makes COUNTIF(S), SUMIF(S), AVERAGEIF(S),
+MAXIFS and MINIFS return an array of results, one per criteria element:
+`SUM(COUNTIFS(A1:F1,{"bar","baz"}))` = 3. Several array criteria broadcast against each other like
+the element-wise operators (arrays.md): a row and a column give a grid
+(`COUNTIFS(A1:A6,{"a","b"},B1:B6,{1;2;3})` is 3x2), a length-1 dimension stretches, and a position
+past a shorter array uses an `#N/A` criterion, which counts the `#N/A` cells (usually 0, not an
+`#N/A` result: `COUNTIFS(E1:E3,{"q","q"},F1:F3,{1,1,1})` is 1 at position 3 because E1 is `#N/A`
+and F1 is 1). Each element is computed as the scalar function would be (an AVERAGEIFS element with no
+match is `#DIV/0!`). A 1x1 array criterion gives a single value. In a legacy (non-dynamic) formula
+Excel intersects a COUNTIF range criterion instead: poi/FormulaEvalTestData_Copy.xlsx
+EverythingTests!F296 `COUNTIF(G7:K7,E8:G8)` is 2 (Excel-cached).
+Evidence: probes/ifs-array-criteria H1-H39 (oracle: excel-graph, 2026-10-06, T-0207);
+poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
 Status: VERIFIED
+Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
+`criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207
 
 ## SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS: every range must have the first range's shape

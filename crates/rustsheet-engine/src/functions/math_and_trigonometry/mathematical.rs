@@ -334,7 +334,7 @@ impl Model {
     /// if sum_range is missing then criteria_range will be used.
     ///
     /// The `criteria` argument may be a single value, a range or an array; in the
-    /// latter two cases SUMIF spills one sum per criterion (see [`Model::sumif`]).
+    /// latter two cases SUMIF spills one sum per criterion (see `Model::lift_criteria`).
     pub(crate) fn fn_sumif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // When sum_range is missing, criteria_range doubles as the sum_range.
         let (criteria_range, criteria, sum_range) = match args.len() {
@@ -347,12 +347,13 @@ impl Model {
 
     /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut total = 0.0;
-        let sum = |value| total += value;
-        if let Err(e) = self.apply_ifs(args, cell, true, sum) {
-            return e;
-        }
-        CalcResult::Number(total)
+        self.lift_ifs(args, cell, |model, criteria| {
+            let mut total = 0.0;
+            match model.apply_ifs(args, criteria, cell, true, |v| total += v) {
+                Ok(()) => CalcResult::Number(total),
+                Err(e) => e,
+            }
+        })
     }
 
     /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
