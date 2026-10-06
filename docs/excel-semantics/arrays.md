@@ -25,11 +25,13 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 | 13 | `#CALC!` | 14 | FILTER with no match (rich-errors-calc A4, subType 3) |
 | (none: formula literal) | `#GETTING_DATA` | 8 | the literal `=#GETTING_DATA` (error-literals-new A2); not a rich-value error. The Graph API reports its value as `#N/A` (A1) though `ERROR.TYPE` is 8, `VALUETOTEXT` is "#GETTING_DATA" (A6), `ISERR` is TRUE, `ISNA` is FALSE (A3, A4) |
 
+The `#GETTING_DATA` row is a formula-literal error, not a rich-value error (no errorType).
+
 A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType in a different
 `_error` structure, `errorType, propagated` (`propagated` = 1, a boolean; no subType). The
 error names come from `VALUETOTEXT(cell)` (a text "#BLOCKED!" etc.), which also matches for
 `#SPILL!`, `#CALC!` and `#DIV/0!`. `#BUSY!`, `#UNKNOWN!` and other codes (11, 14+) were not
-produced, and are not accepted as formula literals either (syntax.md "Newer error literals") (no formula was found that yields them in a recalculated, saved workbook; none was tried); the
+produced (no formula was found that yields them in a recalculated, saved workbook; typing them as formula literals fails, syntax.md "Newer error literals"); the
 harness reads unmapped codes, and a `vm` that resolves to no errorType, as `#UNDECODED!` and never
 scores them.
 Evidence: probes/rich-errors-calc, -field, -image, -stockhistory (excel-graph, 2026-10-05, T-0030:
