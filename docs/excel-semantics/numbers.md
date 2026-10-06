@@ -139,8 +139,9 @@ Tasks: T-0173
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
 Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
-Status: UNVERIFIED beyond this one value: whether the digit loss depends on the exponent or on the
-digits is not established. Not implemented: T-0186.
+Leading hypothesis: the existing 20-character cap on E-notation text above applies; a 3-digit
+exponent leaves room for only 14 digits ("4.4942328371558E+307" is exactly 20 characters).
+Status: UNVERIFIED beyond this one value. Not implemented: T-0186.
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
