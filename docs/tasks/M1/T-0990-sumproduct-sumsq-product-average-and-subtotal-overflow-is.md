@@ -24,4 +24,4 @@ Rule VERIFIED in docs/excel-semantics/numbers.md (Aggregate overflow), evidence 
 -
 
 ## Outcome
-SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1/6/9 (and 101/106/109) return `#NUM!` on overflow via `CalcResult::finite_number_or_num` on the final result; unit test `overflowing_aggregates_are_num`. Eval: probes known failures 257 -> 225 (fixed 32), regressions 0.
+SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1/6/9 return `#NUM!` on overflow via `CalcResult::finite_number_or_num` on the final result; unit test `overflowing_aggregates_are_num`. Eval: probes known failures 257 -> 225 (fixed 32), regressions 0.
