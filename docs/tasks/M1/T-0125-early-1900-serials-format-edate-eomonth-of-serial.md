@@ -41,7 +41,7 @@ Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKN
 Next: fix or probe those two (or split them to their own tasks and fix first), then
 `make eval-baseline`, `make check`, review.
 
-## Handoff
+## Handoff (resumed)
 Unblocked by the 2026-10-06 steward: T-0213 is done on main. Notes from the previous opus round follow.
 The steward's trial merge of origin/main (2026-10-06) conflicts in
 `functions/math_and_trigonometry/mathematical.rs`: main replaced the ROUND family with
