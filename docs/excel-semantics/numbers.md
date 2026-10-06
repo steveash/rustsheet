@@ -131,7 +131,7 @@ The same truncation applies to numeric text in COUNTIF/SUMIF criteria (`COUNTIF(
 matches a cell holding 123456789012345000, and `"<…"`/`">=…"` compare against the cut value) and to
 `NUMBERVALUE` and `AVERAGE` text arguments (probes/text-number-15-digits B1-B8, B11-B13; excel-graph,
 2026-10-06).
-Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`. Sites that only test "is this a number" (COUNT, date-criterion check, utils.rs, sequence detector, conditional formatting) keep `parse_finite_number`: the digit count cannot change their answer.
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`. Other sites keep `parse_finite_number` because the digit count cannot change their answer: COUNT and the date-criterion check only test number-ness; the sequence detector (autofill sources are already 15-digit values), conditional-formatting date bounds, `formatter/lexer.rs` condition operands and utils.rs are not affected in practice. An oracle cell for `"<17 digits>"+0` (a different path from `SUM("…")`) is still open (T-0168).
 Tasks: T-0143, T-0150
 
 ## Subnormal results become 0
