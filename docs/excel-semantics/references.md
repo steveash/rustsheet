@@ -134,6 +134,7 @@ Evidence: poi/customIndexedColors.xlsx `_TGK_HIDDEN!B1` (Excel 16.0) and poi/497
 (Excel 14.0); desktop Excel cached values. The unquoted form `=Sheet1!#REF!` and the form inside a
 function (`=SUM(Sheet1!#REF!)`) have no Excel cell yet.
 Status: VERIFIED (cell formula with a quoted sheet, and defined-name body)
+Implemented in: `consume_range` in crates/rustsheet-engine/src/expressions/lexer/mod.rs (formula), `ParsedDefinedName::ErrorLiteral` in model.rs / new_empty.rs / defined_names.rs (name body); unit tests in test/test_sheet_qualified_ref_error.rs (unquoted and SUM forms are hand expectations).
 Tasks: T-0152
 
 ## Disjoint intersection is #NULL!

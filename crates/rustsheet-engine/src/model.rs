@@ -100,6 +100,8 @@ pub(crate) enum ParsedDefinedName {
     RangeReference(Range),
     /// `=LAMBDA(params..., body)`
     LambdaDefinition(Vec<NamedVariable>, Node),
+    /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
+    ErrorLiteral(Error),
     /// `=SomethingElse`
     InvalidDefinedNameFormula,
 }
@@ -716,6 +718,11 @@ impl Model {
                             self.lambdas.insert(lambda_id, (param_names, body));
                             CalcResult::Lambda(lambda_id)
                         }
+                        ParsedDefinedName::ErrorLiteral(error) => CalcResult::new_error(
+                            error,
+                            cell,
+                            format!("Defined name \"{name}\" is an error."),
+                        ),
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,

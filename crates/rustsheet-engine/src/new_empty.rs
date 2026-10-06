@@ -168,6 +168,8 @@ impl Model {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
+                    // Excel leaves `Sheet1!#REF!` as the body of a name whose range was deleted.
+                    Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
                     _ => ParsedDefinedName::InvalidDefinedNameFormula,
                 }
             };

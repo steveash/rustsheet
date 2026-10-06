@@ -155,7 +155,6 @@ F	poi/47889.xlsx	!EngineError
 F	poi/48539.xlsx	Instance1!E23
 F	poi/48703.xlsx	Sheet1!B2
 F	poi/49609.xlsx	!InvalidCase
-F	poi/49783.xlsx	Sheet1!A2
 F	poi/54288.xlsx	!EngineError
 F	poi/54436.xlsx	Sheet1!A14
 F	poi/54764-2.xlsx	!EngineError
@@ -1011,7 +1010,6 @@ F	poi/clone_sheet.xlsx	Arkusz1!M6
 F	poi/clone_sheet.xlsx	Arkusz1!M7
 F	poi/clone_sheet.xlsx	Arkusz1!M8
 F	poi/clone_sheet.xlsx	Arkusz1!M9
-F	poi/customIndexedColors.xlsx	_TGK_HIDDEN!B1
 F	poi/deep-data.xlsx	!InvalidCase
 F	poi/invalid_cell_reference.xlsx	!EngineError
 F	poi/link-external-workbook-b.xlsx	Sheet0!A1
