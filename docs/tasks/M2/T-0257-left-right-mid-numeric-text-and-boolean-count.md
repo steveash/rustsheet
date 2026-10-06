@@ -3,11 +3,11 @@ id: T-0257
 title: "LEFT/RIGHT/MID: numeric text and boolean count arguments coerce to numbers (6 poi + 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
-depends_on: []
+tier: opus
+depends_on: [T-0212]
 ---
 
 ## Goal
@@ -39,16 +39,36 @@ to 0, numeric text through `cast_number`, and other text to `#VALUE!`. `left_ele
 the negative-count and start < 1 checks after coercion.
 
 ## Acceptance criteria
-- [ ] These 8 lines disappear from the baselines (`make eval-baseline`), with no new F lines:
+- [x] These 8 lines disappear from the baselines (`make eval-baseline`), with no new F lines:
       eval/baseline/poi.txt `poi/FormulaEvalTestData_Copy.xlsx` EverythingTests!E824, H824, K824,
       E1168, H1168, K1168; eval/baseline/gen-m2.txt `gen-m2/ef5c55a81783b7d5.case.json` Calc!A40
       and `gen-m2/d04d501154afc771.case.json` Calc!A19.
-- [ ] Unit tests: `LEFT("abc","2")` "ab", `RIGHT("abc",TRUE)` "c", `MID("abcdef","2","2.9")` "bc",
+- [x] Unit tests: `LEFT("abc","2")` "ab", `RIGHT("abc",TRUE)` "c", `MID("abcdef","2","2.9")` "bc",
       `LEFT("abc",FALSE)` "", `LEFT("abc","x")` `#VALUE!`.
-- [ ] The coercion.md entry gets an `Implemented in:` line naming the helper.
-- [ ] `make check` green; reviewers approve.
+- [x] The coercion.md entry gets an `Implemented in:` line naming the helper.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Huge counts (about 1E+15 is `#VALUE!`) and near-integer counts: T-0219.
 - UTF-16 counting of LEFT/RIGHT/MID positions: T-0249.
 - LEFTB/RIGHTB/MIDB.
+
+## Handoff (resumed; resolved by T-0212)
+Implemented (commit on this branch): `fn_left`/`fn_right`/`fn_mid` in
+`crates/rustsheet-engine/src/functions/text/common.rs` now pass `self.array_node_to_number(..)` results
+into the element functions (the old `text_num_arg` is removed); unit test `counts_coerce_text_and_booleans`
+and the `Implemented in:` line in coercion.md are added. Unit tests pass.
+Blocker: `make eval-baseline` refuses with 1 REGRESSION, gen-m2/942bdade381b7537 Calc!A290
+`=IFERROR(RIGHT(Data!E10,HLOOKUP(Data!A5,Data!A2:B4,3,TRUE)),"a*")`: expected "a*" (HLOOKUP is #N/A in
+Excel: lookup TRUE against a row of [blank, -1] has no same-type cell), actual "". Our HLOOKUP wrongly
+returns FALSE (binary_search in lookup_and_reference/lookup_table.rs compares across types), which used to
+be masked because a boolean count was `#VALUE!` anyway. The root cause is T-0212 (type-skipping approximate
+lookups). Next: either land T-0212 first, or accept this one cell via a decision record, then run
+`make eval-baseline` (expect 8 fixed lines, 1 added) and finish review/PR.
+
+## Outcome
+LEFT/RIGHT `num_chars` and MID `start_num`/`num_chars` go through `Model::array_node_to_number` (booleans
+1/0, numeric text, blank 0; other text `#VALUE!`), replacing `text_num_arg`. It waited for T-0212 (#217),
+which fixed the HLOOKUP result this change unmasked (gen-m2/942bdade381b7537 A290 now passes).
+Eval: poi 641 -> 635 (E824, H824, K824, E1168, H1168, K1168), gen-m2 52 -> 49 (ef5c55a81783b7d5 A40,
+d04d501154afc771 A19, and 04cfd82f54dbc2b2 A285), no regressions.
