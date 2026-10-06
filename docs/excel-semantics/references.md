@@ -120,8 +120,10 @@ come from scratch runs of one formula each (T-0138, T-0161); each refusal was `F
 and the same CHOOSEROWS and IFERROR calls load on their own (=2).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
-functions above; functions not probed are refused by inference; `@` and union operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP
-to arrays, so those three intersections are `#VALUE!` (T-0165).
+functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
+future function names, LAMBDA definitions and calls, and `@` operands are accepted; `@` and union
+operands are T-0149). The engine still evaluates XLOOKUP, TAKE and DROP to arrays, so those three
+intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
 
 ## A defined name may be an intersection
