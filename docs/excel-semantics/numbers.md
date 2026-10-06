@@ -455,6 +455,6 @@ hidden and filter-hidden rows under odd options and keeps them otherwise) and ne
 larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
 Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
 option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
-Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), array function_num/option/k lifting (T-1033), the
+Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), array function_num/option/k lifting (T-1038), the
 VAR.P last digit (probes/aggregate-grid B31, C31; T-1037).
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs).

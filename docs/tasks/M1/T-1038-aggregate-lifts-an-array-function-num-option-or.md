@@ -1,5 +1,5 @@
 ---
-id: T-1033
+id: T-1038
 title: "AGGREGATE lifts an array function_num, option or k"
 milestone: M1
 lane: functions-math
