@@ -271,3 +271,38 @@ fn negated_reference_is_a_union_operand() {
     };
     assert!(matches!(**left, Node::UnaryKind { .. }));
 }
+
+#[test]
+fn double_minus_is_a_union_operand_but_three_are_not() {
+    // Excel loads `(--A1,B1)` (probes/union-operand-double-minus); three minuses are unprobed.
+    let mut parser = parser();
+    assert!(is_union(&parser.parse("(--A1,B1)", &context())));
+    assert!(is_parse_error(&parser.parse("(---A1,B1)", &context())));
+}
+
+#[test]
+fn union_with_a_negated_operand_cannot_be_cut_by_an_intersection() {
+    // Excel refuses both (`FileCorruptTryRepair`, no oracle value): references.md "Union:
+    // parsing and evaluation", operand forms.
+    let mut parser = parser();
+    assert!(is_parse_error(&parser.parse("(-A1,B1) A1", &context())));
+    assert!(is_parse_error(&parser.parse("(-A1,B1) B1", &context())));
+    // Without the negation the cut is fine.
+    assert!(!is_parse_error(&parser.parse("(A1,B1) A1", &context())));
+}
+
+#[test]
+fn parentheses_around_a_union_keep_every_level() {
+    // probes/union-operand-nested-parens: FORMULATEXT keeps each level Excel was given.
+    let mut parser = parser();
+    for formula in [
+        "(A1,B2)",
+        "((A1,B2))",
+        "((A1,B2),C1)",
+        "(((A1,B2),C1))",
+        "((((A1,B2))))",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert_eq!(to_english_localized_string(&node, &context()), formula);
+    }
+}

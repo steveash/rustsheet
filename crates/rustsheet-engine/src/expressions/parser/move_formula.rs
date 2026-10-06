@@ -403,7 +403,7 @@ fn to_string_moved(
         }
         OpUnionKind { left, right, .. } => {
             let text = |n| to_string_moved(n, move_context, locale, language);
-            union_text(&text(left), left, &text(right), locale)
+            union_text(node, &text(left), &text(right), locale)
         }
         OpConcatenateKind { left, right } => format!(
             "{}&{}",
