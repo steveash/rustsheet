@@ -3,7 +3,7 @@ id: T-0250
 title: "Probe VLOOKUP/HLOOKUP index shapes: range/INDEX/OFFSET indexes and the negative #VALUE!/#REF! cut-off"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ cut-off (-2147483648, -2147483647, -65536, -32769, -32768), each for a found and
 
 ## Out of scope
 -
+
+## Outcome
+Probe case probes/lookup-index-shapes (oracle-filled, excel-graph). Found: the negative cut-off is the 32-bit minimum itself (-2147483648 is #REF!, -2147483647 is #VALUE!), fixed in `resolve_lookup_index`; OFFSET/INDIRECT indexes and implicit-intersected range indexes already matched; INDEX(...) as an index is a reference in Excel, not implemented (4 new-coverage failures baselined, follow-up T-0251). lookup.md updated.
