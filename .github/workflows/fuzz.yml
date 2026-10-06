@@ -42,7 +42,7 @@ jobs:
         with:
           workspaces: fuzz
       # The corpus libFuzzer grew on earlier nights; seeds from the suites are added on top.
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: fuzz/corpus/${{ matrix.target }}
           key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
@@ -54,6 +54,13 @@ jobs:
           cargo fuzz run ${{ matrix.target }} corpus/${{ matrix.target }} --
           ${{ matrix.args }} -max_total_time=1200 -timeout=30 -rss_limit_mb=2048
           -print_final_stats=1
+      # Only runs on main grow the shared corpus (decision 0035).
+      - name: save the grown corpus
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
       - name: upload crashing inputs
         if: failure()
         uses: actions/upload-artifact@v4

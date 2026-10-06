@@ -4,7 +4,7 @@ title: "Bound memory when a whole-row/column range is lifted into an array (DATE
 milestone: M0
 lane: engine
 status: todo
-priority: P1
+priority: P0
 size: M
 tier: opus
 depends_on: []
@@ -15,6 +15,8 @@ A formula that lifts a whole-row or whole-column range into an array argument ca
 memory (CLAUDE.md directive 5), and returns what Excel returns.
 
 ## Context
+P0 per the fuzz-crash rule (docs/process/agent-workflow.md): the nightly `formula_eval` job
+is expected to stay red on this input until this task merges.
 Found by the `formula_eval` fuzz target (T-0021): `=DATE(11:1899,12,1)` in a small workbook
 exceeds libFuzzer's 2 GiB RSS limit. Rows 11:1899 are 1,889 × 16,384 ≈ 31M cells; `fn_date`
 (`functions/date_and_time.rs`, via `get_number_or_array` in `cast.rs`) evaluates every cell, and

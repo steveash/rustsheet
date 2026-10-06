@@ -167,7 +167,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
-                if is_scalar_arg(&signature, index)
+                // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
+                // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
+                if matches!(signature.get(index), Some(Signature::Scalar))
                     && matches!(
                         run_static_analysis_on_node(arg),
                         StaticResult::Range(_, _) | StaticResult::Unknown
@@ -272,7 +274,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             for (index, arg) in args.iter_mut().enumerate() {
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not.
-                let child_add = is_scalar_arg(&signature, index);
+                let child_add = matches!(signature.get(index), Some(Signature::Scalar));
                 remove_redundant_implicit_intersection(arg, child_add);
             }
         }
@@ -988,14 +990,6 @@ fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
 // Given a function and a number of arguments this returns the arguments at each position
 // are expected to be scalars or vectors (array/ranges).
 // Sets signature::Error to all arguments if the number of arguments is incorrect.
-/// Whether argument `index` is in a scalar (intersecting) position. Many signatures have a fixed
-/// length whatever the argument count (e.g. the D-functions), so an argument past the end is not
-/// scalar rather than an out-of-bounds index (`DMIN(A1:C4,C1,,C1,A6)` panicked; found by fuzzing,
-/// T-0021).
-fn is_scalar_arg(signature: &[Signature], index: usize) -> bool {
-    matches!(signature.get(index), Some(Signature::Scalar))
-}
-
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
     match kind {
         Function::And => vec![Signature::Vector; arg_count],
