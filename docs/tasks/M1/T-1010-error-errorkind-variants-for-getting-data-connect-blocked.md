@@ -23,6 +23,7 @@ Code: `crates/rustsheet-engine/src/expressions/token.rs` (`enum Error`, `error_t
 - [ ] The stored-name table has all sixteen names. The formula-literal table adds only `#GETTING_DATA`, case-insensitively, without touching `Language`, and `=#BLOCKED!` still fails to parse. Unit tests cover both tables.
 - [ ] `is_english_error_string` (COUNTIF-family criteria) is unchanged, with a test that `"#BLOCKED!"` is still not an error criterion. Tests for `Model::set_user_input` and `value_needs_quoting` pin the spec's choice: typed `#GETTING_DATA` is an error, typed `#BLOCKED!` is text.
 - [ ] The `error_type_code` comment keeps 12 (`#UNKNOWN!`) and 19 (`#EXTERNAL!`) as "no evidence of a producer". UPSTREAM.md records the divergence from IronCalc's `Error` enum and lexer.
+- [ ] `Error` gets no `#BUSY!` kind here; stored `#BUSY!` stays `#ERROR!` on import until T-1020 decides.
 - [ ] `Error::stored_literal()` exists (`#N/A` for `GETTINGDATA`) with a unit test. Its callers come in T-1011.
 - [ ] `ErrorKind` gains `GettingData`, `Connect`, `Blocked` and `Field`. `literals_match_engine` covers them, and `from_literal` uses the stored-name table and round-trips all kinds. A Python test builds `XlError("#BLOCKED!")` with code 11.
 - [ ] The ERROR.TYPE/ISNA/IFNA/TYPE/VALUETOTEXT cells of `probes/error-literals-new` (A2–A6, A12, A14, A16) pass. They are recorded with `make eval-baseline`, with no regressions.

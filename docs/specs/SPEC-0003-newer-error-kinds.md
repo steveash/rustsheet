@@ -115,8 +115,9 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
    Excel saves `#GETTING_DATA` as `#N/A`. It returns `"#N/A"` for `GETTINGDATA` and the `Display`
    text otherwise. The xlsx exporter and the eval harness both call it (see below). It is a
    storage rule, not a value rule: in memory the value stays `GETTINGDATA`, so `ERROR.TYPE` is 8
-   and `ISNA` FALSE. It also returns `#VALUE!` for `CONNECT`, `BLOCKED` and `FIELD` until X2 writes
-   their `vm` form (T-0999: Excel rejects those stored literals).
+   and `ISNA` FALSE. It is Excel's *logical* stored value, as the snapshot reader decodes it (with `vm`
+   followed), so the rich kinds keep their names here. How our exporter writes them while it
+   cannot yet emit `vm` is an exporter detail (below), not part of this rule.
 
 ### xlsx (`rustsheet-xlsx`)
 - **Import:**
@@ -131,19 +132,23 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
   - Error cells are written with `stored_literal()`, so `#GETTING_DATA` is saved as `#N/A`, as
     Excel does.
   - `#CONNECT!`, `#BLOCKED!` and `#FIELD!` must **not** be written as their literal: T-0999 shows that
-    Excel rejects such a workbook. The same applies to `#CALC!` (and so probably to `#SPILL!`), which
-    the exporter writes as a literal today, so that is an existing bug.
+    Excel rejects such a workbook. The same applies to `#CALC!`, which the exporter writes as a
+    literal today, so that is an existing bug. `#SPILL!` stored as a literal is **unprobed**; it
+    is treated the same way, and T-1014's oracle check confirms it.
   - The target is Excel's own form: `#VALUE!` plus `vm` and the rich-value parts (rollout X2,
-    T-1014), for all five rich kinds.
-  - Until X2 lands, X1 writes the three new kinds as plain `#VALUE!`, which loads in Excel and is
-    what a reader that ignores `vm` sees. The kind is lost on a round trip through xlsx until then;
-    that is accepted for the interim.
+    T-1014), for all five rich kinds (`#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!`).
+  - Until X2 lands, X1 adds one exporter-only helper in rustsheet-xlsx that writes those five as
+    plain `#VALUE!`. That form loads in Excel and is what Excel's own file holds without `vm`.
+    T-1014 deletes the helper. The kind is lost on a round trip through xlsx until then, now also
+    for `#CALC!`/`#SPILL!`. That is a deliberate interim regression, and T-1011's PR calls it
+    out.
 
 ### Harness (`rustsheet-eval`)
-- Expected values come from Excel's saved files, so a `#GETTING_DATA` cell is expected as
-  `#N/A`.
+- Expected values come from Excel's saved files, decoded through `vm`. A `#GETTING_DATA` cell
+  is therefore expected as `#N/A`, and a rich error as its real name (`#BLOCKED!`).
 - The engine-side value of an error cell is compared through `Error::stored_literal()`: the
-  same definition as the exporter, never a second mapping in the harness.
+  same logical rule the exporter starts from, never a second mapping in the harness. The
+  exporter-only `#VALUE!` fallback never applies to scoring.
 - Rich-value names already decode to `#BLOCKED!`/`#CONNECT!`/`#FIELD!`, and the engine's
   `Display` matches them.
 
@@ -208,7 +213,7 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
 - Facade: `literals_match_engine`, extended. Python: one round-trip test per kind.
 - xlsx:
   - a round trip writes a model holding all four kinds and reads them back. `#GETTING_DATA` comes
-    back as `#N/A`, matching Excel's own file. Until X2, the three rich kinds come back as `#VALUE!`.
+    back as `#N/A`, matching Excel's own file. Until X2, the five rich kinds (via the exporter-only fallback) come back as `#VALUE!`.
   - The importer reads the committed rich-errors-* oracle workbooks as the real kinds
     (`value_metadata_errors` tests).
 - Eval: `probes/error-literals-new` (18 cells) and `error-literals-new2` (15) pass, and the 13

@@ -1,6 +1,6 @@
 ---
 id: T-1014
-title: "Export rich-value errors as #VALUE! plus vm metadata if Excel rejects stored literals (SPEC-0003 X2)"
+title: "Export rich-value errors as #VALUE! plus vm metadata (SPEC-0003 X2)"
 milestone: M1
 lane: harness
 status: todo
@@ -12,7 +12,7 @@ spec: docs/specs/SPEC-0003-newer-error-kinds.md
 ---
 
 ## Goal
-Workbooks we save hold `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` in the form Excel writes them: `t="e"` with `<v>#VALUE!</v>` and a `vm` index into `xl/metadata.xml` and `xl/richData/*`. T-0999 showed that Excel for the web rejects a workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!` or `#CALC!` as a literal (syntax.md), so this is required. It also fixes today's `#CALC!` export.
+Workbooks we save hold `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` in the form Excel writes them: `t="e"` with `<v>#VALUE!</v>` and a `vm` index into `xl/metadata.xml` and `xl/richData/*`. T-0999 showed that Excel for the web rejects a workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!` or `#CALC!` as a literal (syntax.md), so this is required. It also replaces T-1011's interim `#VALUE!` export helper, which it deletes. The oracle recalc also confirms that a stored `#SPILL!` literal is rejected (unprobed).
 
 ## Context
 SPEC-0003 "xlsx" (rollout X2). The format is in arrays.md "Cached rich errors" (metadataTypes, futureMetadata `XLRICHVALUE`, `rvb`, `rdrichvalue.xml`, the `_error` structure with `errorType`/`subType`). The reader is `crates/rustsheet-xlsx/src/import/rich_errors.rs`.

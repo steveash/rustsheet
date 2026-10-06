@@ -122,4 +122,4 @@ rejections were run as throw-away one-cell cases (not committed; no value to rec
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020

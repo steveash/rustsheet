@@ -19,8 +19,8 @@ SPEC-0003 "Design", sections "xlsx" and "Harness" (rollout X1). Evidence: probes
 Code: `crates/rustsheet-xlsx/src/export/worksheets.rs` (the three `t="e"` writers), `import/worksheets.rs` (the rich-error guard), and the error comparison in `crates/rustsheet-eval`.
 
 ## Acceptance criteria
-- [ ] The exporter writes every error cell with `Error::stored_literal()`, which is `#N/A` for `#GETTING_DATA` and `#VALUE!` for `#CONNECT!`/`#BLOCKED!`/`#FIELD!` until T-1014 (Excel rejects those stored literals, T-0999). A round-trip test saves all four kinds and checks what reads back.
-- [ ] The eval harness compares engine errors through `Error::stored_literal()`. No second mapping exists, as checked with `rg`.
+- [ ] The exporter writes every error cell with `Error::stored_literal()` (`#N/A` for `#GETTING_DATA`). One exporter-only helper in rustsheet-xlsx writes `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` as plain `#VALUE!` until T-1014, because Excel rejects those stored literals (T-0999). Tests cover both rules, and the PR calls out that `#CALC!`/`#SPILL!` lose their kind on an xlsx round trip in the interim.
+- [ ] The eval harness compares engine errors through `Error::stored_literal()`, never through the exporter's `#VALUE!` fallback. No second mapping exists, as checked with `rg`.
 - [ ] The importer reads the committed rich-errors-* oracle workbooks as `#BLOCKED!`/`#CONNECT!`/`#FIELD!`, with tests. The "stay `#VALUE!`" wording in arrays.md and in `rich_errors.rs` now says "unmapped errorTypes".
 - [ ] The remaining `probes/error-literals-new` and `-new2` cells pass and are recorded with `make eval-baseline`, with no regressions.
 - [ ] `make check` green; reviewers approve.
