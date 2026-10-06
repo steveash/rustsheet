@@ -1,7 +1,8 @@
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 
-// Arbitrary limit to prevent creating huge arrays that would crash the program.
+// Arbitrary limit to prevent creating huge arrays that would crash the program. Excel builds larger
+// arrays (probes/resource-limits C12, C14): DEVIATION, see docs/excel-semantics/arrays.md ("Array results above 1,000,000 cells").
 // A better way would be to look at the memory available
 const MAX_SIZE: usize = 1_000_000;
 
@@ -20,7 +21,7 @@ pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> 
         ));
     }
 
-    // If rows * columns exceeds MAX_SIZE, return #VALUE!
+    // If rows * columns exceeds MAX_SIZE, return #ERROR!
     // Otherwise this would be an easy way to crash the program by trying to create a huge array.
     // NB: This is a limitation of IronCalc
     if rows * columns > MAX_SIZE {

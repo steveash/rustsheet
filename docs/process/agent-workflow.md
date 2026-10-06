@@ -74,7 +74,9 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
 - Tasks live in `docs/tasks/<milestone>/T-XXXX-slug.md` (format: `task-format.md`).
 - A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`, pushed at once; `make
-  next-task` skips claimed tasks and busy lanes, so parallel workers don't race. Workers resume their lane's open branch or PR before starting new work.
+  next-task` skips claimed tasks and busy lanes, so parallel workers don't race. A branch whose
+  task is `status: blocked` (on the branch) or `done` (on main) keeps its claim but frees its lane
+  (decision 0022). Workers resume their lane's open branch or PR before starting new work.
 - Sizing: S ≤ ~150 changed lines, M ≤ ~400 (excluding tests, fixtures and generated files).
   L tasks must be split by the planner before work starts (`scripts/tasks.py validate` enforces this).
 
@@ -90,10 +92,13 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 5. **Implement:** the smallest change. Run `make fmt && make check`.
 6. **Ratchet:** run `make eval-baseline` when cells newly pass, and `scripts/check_*.py --update`
    when debt went down.
+   A protected-path change needs a decision record: create it with `make new-decision TITLE="..."`
+   (it takes a number no pushed branch uses; decision 0029) and push it with your next commit.
 7. **Review:** `review` skill. All applicable reviewers must APPROVE. At most 3 rounds, then mark
    the task blocked.
 8. **PR:** use the template. Set the task to `done` with an Outcome note.
-9. **Merge:** once CI is green and reviews are approved, squash-merge. The squash commit title and the
+9. **Merge:** once CI is green and reviews are approved, and the PR head contains the current
+   `origin/main` (the steward skill's mechanical check, decision 0028), squash-merge. The squash commit title and the
    task's Outcome are the record; the steward's daily run lists merged work in `docs/status.md`
    (decision 0024), so PRs do not edit its log.
 

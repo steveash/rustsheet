@@ -265,14 +265,6 @@ fn long_dates_en_us() {
         Ok((45353.0, Some("m/dd/yyyy".to_string())))
     );
     assert_eq!(
-        parse("Mar/02/2024", &["$"]),
-        Ok((45353.0, Some("mmm/dd/yyyy".to_string())))
-    );
-    assert_eq!(
-        parse("March/02/2024", &["$"]),
-        Ok((45353.0, Some("mmmm/dd/yyyy".to_string())))
-    );
-    assert_eq!(
         parse("3/2/24", &["$"]),
         Ok((45353.0, Some("m/d/yy".to_string())))
     );
@@ -286,17 +278,35 @@ fn long_dates_en_us() {
         Ok((27435.0, Some("m-dd-yyyy".to_string())))
     );
     assert_eq!(
-        parse("Feb-10-1975", &["$"]),
-        Ok((27435.0, Some("mmm-dd-yyyy".to_string())))
-    );
-    assert_eq!(
-        parse("February-10-1975", &["$"]),
-        Ok((27435.0, Some("mmmm-dd-yyyy".to_string())))
-    );
-    assert_eq!(
         parse("2-10-75", &["$"]),
         Ok((27435.0, Some("m-dd-yy".to_string())))
     );
+}
+
+#[test]
+fn month_name_first_separated_dates_are_not_dates() {
+    // Excel en-US: probes/date-text-grammar A15, A16, A59-A62 are #VALUE!.
+    for text in [
+        "Mar/02/2024",
+        "March/02/2024",
+        "Feb-10-1975",
+        "February-10-1975",
+    ] {
+        assert!(parse(text, &["$"]).is_err(), "{text}");
+    }
+}
+
+#[test]
+fn month_name_dates_en_us() {
+    // probes/date-text-grammar A1, A8, A10, A17.
+    for text in ["July 1, 2026", "1 July 2026", "1-Jul-2026", "Jul 2026"] {
+        assert!(
+            matches!(parse(text, &["$"]), Ok((46204.0, Some(_)))),
+            "{text}"
+        );
+    }
+    // Number coercion does not trim date text (ironcalc-calc MROUND_TRUNC_INT.xlsx MROUND!C32).
+    assert!(parse(" July 1, 2026 ", &["$"]).is_err());
 }
 
 #[test]
@@ -313,8 +323,7 @@ fn iso_dates() {
 
 #[test]
 fn long_dates_with_dots() {
-    assert_eq!(
-        parse("03.02.2024", &["$"]),
-        Ok((45353.0, Some("mm.dd.yyyy".to_string())))
-    );
+    // en-US's short date does not use dots, so dotted text is not a date
+    // (probes/date-text-grammar A39/A40: "1.7.2026" and "7.1.2026" are #VALUE!).
+    assert!(parse("03.02.2024", &["$"]).is_err());
 }

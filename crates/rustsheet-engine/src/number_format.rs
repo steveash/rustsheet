@@ -102,6 +102,68 @@ pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
     index
 }
 
+/// Parses decimal number text the way Excel reads literals and numeric text: only the first 15
+/// significant digits are kept, later digits are truncated (not rounded), so
+/// `123456789012345678` reads as `123456789012345000` and `12345.6789012345678` as
+/// `12345.6789012345` (docs/excel-semantics/numbers.md "15-digit literal parsing").
+/// Accepts what `str::parse::<f64>` accepts, except that the value has to be below 1E+308 in
+/// magnitude, Excel's typeable range: "1e308", "1e400", "inf" and "NaN" are `None`
+/// (probes/text-number-words A6-A10, H3, K9, K10; docs/excel-semantics/numbers.md
+/// "Number text of 1E+308 or more is not a number").
+pub fn parse_excel_number(text: &str) -> Option<f64> {
+    let (mantissa, exp) = match text.find(['e', 'E']) {
+        Some(i) => text.split_at(i),
+        None => (text, ""),
+    };
+    let mut out = String::with_capacity(text.len());
+    let mut sig = 0usize;
+    let mut in_fraction = false;
+    for c in mantissa.chars() {
+        match c {
+            '.' => {
+                in_fraction = true;
+                out.push(c);
+            }
+            '0'..='9' => {
+                if sig > 0 || c != '0' {
+                    sig += 1;
+                }
+                if sig <= 15 {
+                    out.push(c);
+                } else if !in_fraction {
+                    out.push('0');
+                }
+            }
+            _ => out.push(c),
+        }
+    }
+    out.push_str(exp);
+    out.parse::<f64>()
+        .ok()
+        .filter(|number| in_excel_range(*number))
+}
+
+/// Excel's largest typeable number is 9.99999999999999E+307: text or a literal at or above
+/// 1E+308 in magnitude is not a number (docs/excel-semantics/numbers.md).
+const EXCEL_NUMBER_LIMIT: f64 = 1e308;
+
+/// Whether a parsed number is one Excel reads from text: below [`EXCEL_NUMBER_LIMIT`] in
+/// magnitude (false for infinities and NaN too).
+fn in_excel_range(number: f64) -> bool {
+    number.abs() < EXCEL_NUMBER_LIMIT
+}
+
+/// Reads a number written with digits (`12`, `-3.5`, `.5`, `1e5`) the way `str::parse::<f64>`
+/// does, minus its surprises: it also reads the words "NaN", "inf" and "infinity", and it reads
+/// numbers of 1E+308 or more, which Excel takes for text (`COUNTIF(r,"inf")` counts the text
+/// "inf", `COUNT("1e308",1)` is 1, `NUMBERVALUE("1e308")` is #VALUE!: probes/text-number-words
+/// E1, L1, L5). Unlike [`parse_excel_number`] it keeps every digit.
+pub fn parse_finite_number(text: &str) -> Option<f64> {
+    text.parse::<f64>()
+        .ok()
+        .filter(|number| in_excel_range(*number))
+}
+
 pub fn to_precision(value: f64, precision: usize) -> f64 {
     if value.is_infinite() || value.is_nan() {
         return value;
@@ -133,6 +195,126 @@ pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
 
     let s = format!("{:.*e}", precision.saturating_sub(1), value);
     s.parse::<f64>().unwrap_or(value)
+}
+
+/// More significant digits than any double's exact decimal expansion (at most 767).
+const EXACT_DIGITS: usize = 800;
+
+/// The exact decimal value of positive finite `value` cut to 15 significant digits:
+/// `(mantissa, exponent)` with `value ≈ mantissa / 10^14 * 10^exponent` and
+/// `10^14 <= mantissa < 10^15`. Digits past the 15th round to nearest; an exact tie goes away
+/// from zero when `tie_away`, otherwise toward zero. Excel's 15-digit cut, shared by the ROUND
+/// family (`decimal_round.rs`) and [`number_to_text`] (docs/excel-semantics/numbers.md).
+pub(crate) fn significant_15(value: f64, tie_away: bool) -> (u64, i64) {
+    // 25 correctly rounded digits decide every case except a possible exact tie, which needs
+    // the exact expansion (rare: only values with a 5 as 16th digit and zeros after it).
+    let (mut digits, mut exponent) = scientific_digits(value, 25);
+    if is_possible_tie(&digits) {
+        (digits, exponent) = scientific_digits(value, EXACT_DIGITS);
+    }
+    let lead = digits.get(..15).unwrap_or_default();
+    let mut mantissa = lead
+        .iter()
+        .fold(0_u64, |acc, d| acc * 10 + u64::from(d - b'0'));
+    let rest = digits.get(15..).unwrap_or_default();
+    let round_up = match rest.split_first() {
+        Some((&first, _)) if first > b'5' => true,
+        Some((&b'5', tail)) => tie_away || tail.iter().any(|&d| d != b'0'),
+        _ => false,
+    };
+    if round_up {
+        mantissa += 1;
+        if mantissa == 1_000_000_000_000_000 {
+            mantissa /= 10;
+            exponent += 1;
+        }
+    }
+    (mantissa, exponent)
+}
+
+/// True when the 16th significant digit is 5 and every later printed digit is 0.
+fn is_possible_tie(digits: &[u8]) -> bool {
+    digits.get(15) == Some(&b'5') && digits.iter().skip(16).all(|&d| d == b'0')
+}
+
+/// The first `count` significant digits of positive finite `value` (correctly rounded) and its
+/// decimal exponent.
+fn scientific_digits(value: f64, count: usize) -> (Vec<u8>, i64) {
+    let text = format!("{:.*e}", count - 1, value);
+    let (mantissa, exponent) = text.split_once('e').unwrap_or((&text, "0"));
+    let digits = mantissa.bytes().filter(u8::is_ascii_digit).collect();
+    (digits, exponent.parse().unwrap_or(0))
+}
+
+/// The text Excel makes of a number when it coerces it to text (`&`, CONCAT, TEXTJOIN, text
+/// function arguments). The one routine for every such coercion site.
+///
+/// Excel (docs/excel-semantics/numbers.md, "Number → text conversion"; probes
+/// number-to-text-notation and precision-and-rounding A9, oracle excel-graph): the value is cut
+/// to 15 significant digits (exact ties toward zero) and trailing zeros are dropped; it is
+/// written in plain notation when that string, without the sign, has at most 20 characters
+/// (`99999999999999900000`,
+/// `0.000000000000000001`), otherwise as `d.dddE±XX` with at least two exponent digits
+/// (`1E+20`, `1.23456789012345E-05`). Zero, negative zero and subnormals are `0`.
+///
+/// Not [`to_excel_precision_str`]: that one renders formula literals (JS `toPrecision`-style,
+/// no 20-character rule) and must not be used for coercion.
+pub(crate) fn number_to_text(value: f64) -> String {
+    /// Longest plain-notation string (sign excluded) before Excel switches to E notation.
+    const MAX_PLAIN_LEN: usize = 20;
+    if !value.is_finite() {
+        // Unreachable from formulas: Excel has no infinities or NaN (overflow is `#NUM!`).
+        return format!("{value}");
+    }
+    if value.abs() < f64::MIN_POSITIVE {
+        return "0".to_string();
+    }
+    let sign = if value < 0.0 { "-" } else { "" };
+    // An exact tie at the 16th digit goes toward zero, as in ROUND: `1E+15+15` → "1000000000000010",
+    // `1E+14+1.5` → "100000000000001" (probes/number-to-text-notation A45–A52).
+    let (mantissa, exponent) = significant_15(value.abs(), false);
+    let exponent = i32::try_from(exponent).unwrap_or(0);
+    let mantissa = mantissa.to_string();
+    let digits = mantissa.trim_end_matches('0');
+    let digits = if digits.is_empty() { "0" } else { digits };
+    if plain_len(digits.len(), exponent) <= MAX_PLAIN_LEN {
+        return format!("{sign}{}", plain_notation(digits, exponent));
+    }
+    let (first, rest) = digits.split_at(1);
+    let point = if rest.is_empty() { "" } else { "." };
+    let exponent_sign = if exponent < 0 { '-' } else { '+' };
+    format!(
+        "{sign}{first}{point}{rest}E{exponent_sign}{:02}",
+        exponent.unsigned_abs()
+    )
+}
+
+/// Length of [`plain_notation`] without building it (it can be ~300 zeros long).
+fn plain_len(count: usize, exponent: i32) -> usize {
+    match usize::try_from(exponent) {
+        Ok(int_len) if int_len + 1 >= count => int_len + 1,
+        Ok(_) => count + 1,
+        Err(_) => 1 + exponent.unsigned_abs() as usize + count,
+    }
+}
+
+/// `digits` (no leading or trailing zeros) times 10^(exponent + 1 - digits.len()) in plain
+/// decimal notation.
+fn plain_notation(digits: &str, exponent: i32) -> String {
+    let count = digits.len();
+    match usize::try_from(exponent) {
+        Ok(int_len) if int_len + 1 >= count => {
+            format!("{digits}{}", "0".repeat(int_len + 1 - count))
+        }
+        Ok(int_len) => {
+            let (int_part, frac) = digits.split_at(int_len + 1);
+            format!("{int_part}.{frac}")
+        }
+        Err(_) => {
+            let zeros = exponent.unsigned_abs().saturating_sub(1) as usize;
+            format!("0.{}{digits}", "0".repeat(zeros))
+        }
+    }
 }
 
 pub fn to_precision_str(value: f64, precision: usize) -> String {
@@ -241,5 +423,40 @@ mod tests {
         let out = format_number(175000.0, &get_num_fmt(39, &[]), "en");
         assert!(out.error.is_none());
         assert!(out.text.contains("175,000.00"), "got {:?}", out.text);
+    }
+}
+
+#[cfg(test)]
+mod number_to_text_tests {
+    use super::number_to_text;
+
+    #[test]
+    fn matches_the_oracle_probes() {
+        let cases: [(f64, &str); 21] = [
+            (0.1 + 0.2, "0.3"),
+            (1.0 / 3.0, "0.333333333333333"),
+            (-2.0 / 3.0, "-0.666666666666667"),
+            (2f64.sqrt(), "1.4142135623731"),
+            (1e15 + 0.3, "1000000000000000"),
+            (123_456_789_012_345_000.0, "123456789012345000"),
+            (99_999_999_999_999_900_000.0, "99999999999999900000"),
+            (1e20, "1E+20"),
+            (-1e19, "-10000000000000000000"),
+            (1e-18, "0.000000000000000001"),
+            (1e-19, "1E-19"),
+            (1.23e-17, "1.23E-17"),
+            (1.234_567_890_123_45e-5, "1.23456789012345E-05"),
+            (2.220_446_049_250_313e-16, "2.22044604925031E-16"),
+            (1.5e300, "1.5E+300"),
+            (-0.0, "0"),
+            (5e-324, "0"),
+            (42.0, "42"),
+            (1e15 + 15.0, "1000000000000010"),
+            (1e14 + 1.5, "100000000000001"),
+            (12_345_678_901_234.75, "12345678901234.7"),
+        ];
+        for (value, text) in cases {
+            assert_eq!(number_to_text(value), text, "{value}");
+        }
     }
 }

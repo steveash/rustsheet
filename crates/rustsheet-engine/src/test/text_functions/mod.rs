@@ -151,3 +151,17 @@ fn test_replace_basic() {
     assert_eq!(model._get_text("A2"), "start-hello");
     assert_eq!(model._get_text("A3"), "hello-end");
 }
+
+// ── VALUE ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_value_date_text_with_clock_suffix() {
+    // probes/date-text-grammar C30: VALUE("July 1, 2026 10:00") = 46204.416666666664.
+    let mut model = new_empty_model();
+    model._set("A1", "=VALUE(\"July 1, 2026 10:00\")");
+    model._set("A2", "=VALUE(\"1/2/2020 6 PM\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "46204.416666667");
+    // probes/date-text-grammar C63.
+    assert_eq!(model._get_text("A2"), "43832.75");
+}

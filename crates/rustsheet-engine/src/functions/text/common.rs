@@ -1,7 +1,9 @@
+use crate::functions::date_and_time::time_text::parse_time_serial;
+use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node},
+    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -10,7 +12,7 @@ use crate::{
     formatter::format::{format_number, parse_formatted_number},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{substitute, text_after, text_before, Case},
+        text::util::{self, substitute, text_after, text_before, Case},
     },
     model::Model,
     number_format::to_precision,
@@ -165,9 +167,10 @@ fn find_element(
 fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let text = array_node_to_string(text)?;
     let number_times = number_times?.floor();
-    // We normally don't follow Excel's sometimes archaic size's restrictions
-    // But this might be a security issue
-    if number_times < 0.0 || text.len() as f64 * number_times > 32767.0 {
+    // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
+    // it also bounds the allocation (CLAUDE.md directive 5).
+    let units = text.encode_utf16().count() as f64;
+    if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
         return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(text.repeat(number_times as usize)))
@@ -243,11 +246,22 @@ pub(super) fn broadcast_text(
         };
     }
 
+    let mut total_bytes: usize = 0;
     let mut result = Vec::with_capacity(rows);
     for i in 0..rows {
         let mut data_row = Vec::with_capacity(cols);
         for j in 0..cols {
-            data_row.push(compute(i, j).unwrap_or_else(ArrayNode::Error));
+            let value = compute(i, j).unwrap_or_else(ArrayNode::Error);
+            if let ArrayNode::String(s) = &value {
+                if !util::within_text_budget(&mut total_bytes, s.len()) {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Total text result is too large".to_string(),
+                    );
+                }
+            }
+            data_row.push(value);
         }
         result.push(data_row);
     }
@@ -297,7 +311,7 @@ impl Model {
         for arg in args {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::String(value) => result = format!("{result}{value}"),
-                CalcResult::Number(value) => result = format!("{result}{value}"),
+                CalcResult::Number(value) => result.push_str(&number_to_text(value)),
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
                 CalcResult::Boolean(value) => {
                     if value {
@@ -325,7 +339,9 @@ impl Model {
                                 CalcResult::String(value) => {
                                     result = format!("{result}{value}");
                                 }
-                                CalcResult::Number(value) => result = format!("{result}{value}"),
+                                CalcResult::Number(value) => {
+                                    result.push_str(&number_to_text(value))
+                                }
                                 CalcResult::Boolean(value) => {
                                     if value {
                                         result = format!("{result}TRUE");
@@ -492,23 +508,10 @@ impl Model {
             find_element(
                 find_text.elem(i, j),
                 within_text.elem(i, j),
-                self.text_number(start_num.elem(i, j)),
+                self.array_node_to_number(start_num.elem(i, j)),
                 is_search,
             )
         })
-    }
-
-    /// Coerces a single array element to a number the way a number argument
-    /// is: booleans are 0 and 1, text has to read as a number, empties are 0
-    /// and errors propagate.
-    pub(super) fn text_number(&self, node: &ArrayNode) -> Result<f64, Error> {
-        match node {
-            ArrayNode::Number(v) => Ok(*v),
-            ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-            ArrayNode::Empty => Ok(0.0),
-            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
-            ArrayNode::Error(e) => Err(e.clone()),
-        }
     }
 
     // LEN, LEFT, RIGHT, MID, LOWER, UPPER, TRIM
@@ -575,7 +578,7 @@ impl Model {
     pub(crate) fn fn_unicode(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 1 {
             let s = match self.evaluate_node_in_context(&args[0], cell) {
-                CalcResult::Number(v) => format!("{v}"),
+                CalcResult::Number(v) => number_to_text(v),
                 CalcResult::String(v) => v,
                 CalcResult::Boolean(b) => {
                     if b {
@@ -730,7 +733,10 @@ impl Model {
             Err(e) => return e,
         };
         broadcast_text(cell, &[&text, &number_times], |i, j| {
-            rept_element(text.elem(i, j), self.text_number(number_times.elem(i, j)))
+            rept_element(
+                text.elem(i, j),
+                self.array_node_to_number(number_times.elem(i, j)),
+            )
         })
     }
 
@@ -962,7 +968,7 @@ impl Model {
         let mut values = Vec::new();
         for arg in &args[2..] {
             match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(format!("{value}")),
+                CalcResult::Number(value) => values.push(number_to_text(value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         return CalcResult::new_error(
@@ -990,7 +996,7 @@ impl Model {
                                 column,
                             }) {
                                 CalcResult::Number(value) => {
-                                    values.push(format!("{value}"));
+                                    values.push(number_to_text(value));
                                 }
                                 CalcResult::String(value) => values.push(value),
                                 CalcResult::Boolean(value) => {
@@ -1084,26 +1090,10 @@ impl Model {
                 new_text.elem(i, j),
                 instance_num
                     .as_ref()
-                    .map(|n| self.text_number(n.elem(i, j))),
+                    .map(|n| self.array_node_to_number(n.elem(i, j))),
             )
         })
     }
-    pub(crate) fn fn_concatenate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count == 0 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let mut text_array = Vec::new();
-        for arg in args {
-            let text = match self.get_string(arg, cell) {
-                Ok(s) => s,
-                Err(error) => return error,
-            };
-            text_array.push(text)
-        }
-        CalcResult::String(text_array.join(""))
-    }
-
     // EXACT(text1, text2)
     // If any of the arguments is an array it compares element by element.
     pub(crate) fn fn_exact(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -1130,29 +1120,29 @@ impl Model {
         match self.evaluate_node_in_context(&args[0], cell) {
             CalcResult::String(text) => {
                 let currencies = vec!["$", "€"];
-                if let Ok((value, _)) = parse_formatted_number(&text, &currencies, self.locale) {
+                // VALUE trims spaces around date and clock text, unlike number coercion, but
+                // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
+                // (probes/date-text-grammar C7, value-clock-text B14, B44).
+                let text = text.trim_matches(' ');
+                if let Ok((value, _)) = parse_formatted_number(text, &currencies, self.locale) {
                     return CalcResult::Number(value);
                 };
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid number".to_string(),
+                // Clock text and date text with a clock suffix read as in number coercion,
+                // with surrounding spaces trimmed (probes/value-clock-text column B against C;
+                // date-text-grammar C30, C31, C53, C55, C63).
+                if let Some(serial) = parse_time_serial(text, self.locale) {
+                    return CalcResult::Number(serial);
                 }
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::Number(f) => CalcResult::Number(f),
-            CalcResult::Boolean(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid number".to_string(),
-            },
+            CalcResult::Boolean(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
+            }
             error @ CalcResult::Error { .. } => error,
             CalcResult::Range { .. } => {
                 // TODO Implicit Intersection
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid number".to_string(),
-                }
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(0.0),
             CalcResult::Array(_) | CalcResult::Lambda(_) => CalcResult::Error {

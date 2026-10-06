@@ -18,6 +18,7 @@ mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod hstack_vstack;
+mod index_arg;
 mod lookup_table;
 mod tocol_torow;
 mod transpose;
@@ -125,7 +126,13 @@ impl Model {
         &mut self,
         value: CalcResult,
         cell: CellReferenceIndex,
+        not_vector: Error,
     ) -> Result<SearchVector, CalcResult> {
+        let not_vector_error = || CalcResult::Error {
+            error: not_vector,
+            origin: cell,
+            message: "Argument must be a vector".to_string(),
+        };
         match value {
             CalcResult::Range { left, right } => {
                 let is_row_vector = if left.row == right.row {
@@ -133,11 +140,7 @@ impl Model {
                 } else if left.column == right.column {
                     true
                 } else {
-                    return Err(CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Argument must be a vector".to_string(),
-                    });
+                    return Err(not_vector_error());
                 };
                 Ok(self.range_search_vector(&left, &right, is_row_vector))
             }
@@ -145,11 +148,7 @@ impl Model {
                 // An array is a vector if it is a single row or a single column.
                 let is_vector = array.len() == 1 || array.iter().all(|row| row.len() == 1);
                 if !is_vector {
-                    return Err(CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Argument must be a vector".to_string(),
-                    });
+                    return Err(not_vector_error());
                 }
                 Ok(SearchVector::new(
                     array
@@ -173,6 +172,17 @@ impl Model {
     // At the moment IronCalc does not support references with multiple areas,
     // so area_num = 1 (or missing).
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.index_impl(args, cell, false)
+    }
+
+    /// INDEX; `as_reference` keeps a single selected cell as a 1x1 range, as an
+    /// aggregate argument sees it (T-0216; docs/excel-semantics/references.md).
+    pub(crate) fn index_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -184,20 +194,14 @@ impl Model {
                 Err(s) => return s,
             };
             if area_num < 1 {
-                return CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Argument must be >= 1".to_string(),
-                };
+                return CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 1".into());
             }
             if area_num != 1 {
-                return CalcResult::Error {
-                    error: Error::REF,
-                    origin: cell,
-                    message: "Area out of range".to_string(),
-                };
+                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
             }
         }
+        let negative_index =
+            || CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 0".to_string());
         // A missing or empty argument evaluates to 0, which means "the whole
         // row/column". A negative index is an error.
         let row_num = match self.get_number(&args[1], cell) {
@@ -205,11 +209,7 @@ impl Model {
             Err(s) => return s,
         };
         if row_num < 0.0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Argument must be >= 0".to_string(),
-            };
+            return negative_index();
         }
         let two_arg = args.len() == 2;
         let col_num = if two_arg {
@@ -221,11 +221,7 @@ impl Model {
             }
         };
         if col_num < 0.0 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Argument must be >= 0".to_string(),
-            };
+            return negative_index();
         }
         let row_num = row_num.floor() as usize;
         let col_num = col_num.floor() as usize;
@@ -236,7 +232,12 @@ impl Model {
                 let (row_eff, col_eff) =
                     index_effective_indices(num_rows, row_num, col_num, two_arg);
                 let num_cols = (right.column - left.column + 1) as usize;
-                if row_eff > num_rows || col_eff > num_cols {
+                // Excel: one index into a 2-D range is #REF!, while an array
+                // gives the row (docs/excel-semantics/lookup.md).
+                if row_eff > num_rows
+                    || col_eff > num_cols
+                    || (two_arg && num_rows > 1 && num_cols > 1)
+                {
                     return CalcResult::Error {
                         error: Error::REF,
                         origin: cell,
@@ -255,7 +256,7 @@ impl Model {
                     let c = left.column + col_eff as i32 - 1;
                     (c, c)
                 };
-                if row_start == row_end && col_start == col_end {
+                if !as_reference && row_start == row_end && col_start == col_end {
                     self.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row: row_start,
@@ -335,7 +336,7 @@ impl Model {
         // MATCH operates on a vector (a single row or single column). We
         // materialize the second argument, be it a range reference or an array
         // literal, into a flat list of values and then run the search on it.
-        let values = match self.as_vector(match_range, cell) {
+        let values = match self.as_vector(match_range, cell, Error::NA) {
             Ok(values) => values,
             Err(error) => return error,
         };
@@ -405,9 +406,9 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        let row_index = match self.get_number(&args[2], cell) {
-            Ok(v) => v.floor() as i32,
-            Err(s) => return s,
+        let row_index = match self.lookup_index_arg(&args[2], cell) {
+            Ok(index) => index,
+            Err(error) => return error,
         };
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
@@ -437,18 +438,14 @@ impl Model {
                 }
             }
         };
-        // `row_index` is 1-based and must point inside the table
-        if row_index < 1 || row_index > table.rows() {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
+        // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(column) => table.get(self, row_index - 1, column as i32, cell),
+            Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
+                Ok(row_index) => table.get(self, row_index, column as i32, cell),
+                Err(error) => error,
+            },
             None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
@@ -469,9 +466,9 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        let column_index = match self.get_number(&args[2], cell) {
-            Ok(v) => v.floor() as i32,
-            Err(s) => return s,
+        let column_index = match self.lookup_index_arg(&args[2], cell) {
+            Ok(index) => index,
+            Err(error) => return error,
         };
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
@@ -501,18 +498,14 @@ impl Model {
                 }
             }
         };
-        // `column_index` is 1-based and must point inside the table
-        if column_index < 1 || column_index > table.columns() {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
+        // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(row) => table.get(self, row as i32, column_index - 1, cell),
+            Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
+                Ok(column_index) => table.get(self, row as i32, column_index, cell),
+                Err(error) => error,
+            },
             None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
@@ -554,7 +547,7 @@ impl Model {
             // Vector form: search the lookup vector, return from the result
             // vector at the same position.
             let value = self.evaluate_node_in_context(&args[1], cell);
-            let lookup_vector = match self.as_vector(value, cell) {
+            let lookup_vector = match self.as_vector(value, cell, Error::ERROR) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
@@ -563,7 +556,7 @@ impl Model {
                 None => return not_found,
             };
             let result = self.evaluate_node_in_context(&args[2], cell);
-            let result_vector = match self.as_vector(result, cell) {
+            let result_vector = match self.as_vector(result, cell, Error::ERROR) {
                 Ok(values) => values,
                 Err(error) => return error,
             };
@@ -724,8 +717,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.row - c.left.row + 1) as f64),
+        match self.rows_columns_extent(&args[0], cell) {
+            Ok((rows, _)) => CalcResult::Number(rows as f64),
             Err(s) => s,
         }
     }
@@ -811,8 +804,8 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(c) => CalcResult::Number((c.right.column - c.left.column + 1) as f64),
+        match self.rows_columns_extent(&args[0], cell) {
+            Ok((_, columns)) => CalcResult::Number(columns as f64),
             Err(s) => s,
         }
     }
@@ -864,6 +857,33 @@ impl Model {
         }
     }
 
+    /// Height or width argument of OFFSET as the signed distance from the anchor cell to the far
+    /// edge of the area; `default` when the argument is missing or empty, `None` for exactly 0.
+    ///
+    /// Excel: see docs/excel-semantics/references.md "OFFSET negative and fractional height/width".
+    /// A positive size `h` reaches `floor(h - 1)` cells on, a negative one `ceil(h + 1)` cells (so
+    /// -3 reaches 2 back), and the fractions in (-1, 1) reach one cell back and on respectively.
+    fn offset_size(
+        &mut self,
+        arg: Option<&Node>,
+        default: i32,
+        cell: CellReferenceIndex,
+    ) -> Result<Option<i32>, CalcResult> {
+        match arg {
+            None | Some(Node::EmptyArgKind) => Ok(Some(default)),
+            Some(node) => {
+                let c = self.get_number(node, cell)?;
+                Ok(if c > 0.0 {
+                    Some((c - 1.0).floor() as i32)
+                } else if c < 0.0 {
+                    Some((c + 1.0).ceil() as i32)
+                } else {
+                    None
+                })
+            }
+        }
+    }
+
     // OFFSET(reference, rows, cols, [height], [width])
     // Returns a reference to a range that is a specified number of rows and columns from a cell or range of cells.
     // The reference that is returned can be a single cell or a range of cells.
@@ -897,67 +917,39 @@ impl Model {
             }
             Err(s) => return s,
         };
-        let row_start = reference.left.row + rows;
-        let column_start = reference.left.column + cols;
-        let width;
-        let height;
-        if l == 4 {
-            height = match self.get_number(&args[3], cell) {
-                Ok(c) => {
-                    if c < 1.0 {
-                        c.ceil() as i32 - 1
-                    } else {
-                        c.floor() as i32 - 1
-                    }
-                }
-                Err(s) => return s,
+        // `as i32` saturates, so sums saturate too (untrusted input must not overflow): any such
+        // result is outside the sheet and falls through to #REF!.
+        let row_start = reference.left.row.saturating_add(rows);
+        let column_start = reference.left.column.saturating_add(cols);
+        // A missing or empty height/width keeps the reference's size
+        // (poi/FormulaEvalTestData_Copy.xlsx EverythingTests!I1008, J1008, M1008, N1008).
+        let height =
+            match self.offset_size(args.get(3), reference.right.row - reference.left.row, cell) {
+                Ok(h) => h,
+                Err(e) => return e,
             };
-            width = reference.right.column - reference.left.column;
-        } else if l == 5 {
-            height = match self.get_number(&args[3], cell) {
-                Ok(c) => {
-                    if c < 1.0 {
-                        c.ceil() as i32 - 1
-                    } else {
-                        c.floor() as i32 - 1
-                    }
-                }
-                Err(s) => return s,
-            };
-            width = match self.get_number(&args[4], cell) {
-                Ok(c) => {
-                    if c < 1.0 {
-                        c.ceil() as i32 - 1
-                    } else {
-                        c.floor() as i32 - 1
-                    }
-                }
-                Err(s) => return s,
-            };
-        } else {
-            width = reference.right.column - reference.left.column;
-            height = reference.right.row - reference.left.row;
-        }
-        // This is what Excel does
-        if width == -1 || height == -1 {
+        let width = match self.offset_size(
+            args.get(4),
+            reference.right.column - reference.left.column,
+            cell,
+        ) {
+            Ok(w) => w,
+            Err(e) => return e,
+        };
+        let (Some(height), Some(width)) = (height, width) else {
+            // A size of exactly 0 is #REF!, not an empty area.
             return CalcResult::Error {
                 error: Error::REF,
                 origin: cell,
                 message: "Invalid reference".to_string(),
             };
-        }
-        // NB: Excel documentation says that negative values of width and height are not valid
-        // but in practice they are valid. We follow the documentation and not Excel
-        if width < -1 || height < -1 {
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "width and height cannot be negative".to_string(),
-            };
-        }
-
-        let column_end = column_start + width;
-        let row_end = row_start + height;
+        };
+        // A negative size extends the area up/left from the anchor cell.
+        let column_end = column_start.saturating_add(width);
+        let row_end = row_start.saturating_add(height);
+        let (row_start, row_end) = (row_start.min(row_end), row_start.max(row_end));
+        let (column_start, column_end) =
+            (column_start.min(column_end), column_start.max(column_end));
         if row_start < 1 || row_end > LAST_ROW || column_start < 1 || column_end > LAST_COLUMN {
             return CalcResult::Error {
                 error: Error::REF,

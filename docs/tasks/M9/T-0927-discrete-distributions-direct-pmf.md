@@ -20,6 +20,11 @@ Oracle-free: Excel's values are exact where the maths is exact, ours carry ~1e-1
 Code: `functions/statistical/{binom,poisson}.rs` (statrs `Binomial`, `NegativeBinomial`, `Poisson`).
 Approach to try: pmf via a stable product / log-free recurrence (e.g. C(n,k) p^k q^(n-k) built multiplicatively, Poisson via exp(-mean) * mean^k/k! recurrence), CDF as the ascending sum of pmf terms. Iterate against the cached cells; truncation rules for non-integer arguments already pass and must stay. Record which formulation matched in `docs/excel-semantics/`.
 
+Triage T-0903 (2026-10-06 report): this task owns 143 baseline lines (BINOM.xlsx 111: BINOM.DIST 41,
+NEGBINOM.DIST 42, BINOM.DIST.RANGE 28; POISSON.xlsx 32). If pmf summation does not fit, the accurate
+incomplete beta (T-0970) and incomplete gamma (T-0971) kernels are the alternative CDF route.
+HYPGEOM.DIST is separate (T-0977): Excel is not exact there, so a direct product does not fit it.
+
 ## Acceptance criteria
 - [ ] All NumericClose lines for BINOM.DIST, NEGBINOM.DIST, BINOM.DIST.RANGE, POISSON.DIST disappear from `eval/baseline/ironcalc-calc.txt` (state exact counts; ulp-only residue may remain only if listed in the PR with expected/actual), no new lines.
 - [ ] No panics for huge n/k (bounded loops; large-n CDF falls back to a bounded method); unit tests for n = 0, p in {0,1}.

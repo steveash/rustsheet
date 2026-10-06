@@ -1,3 +1,4 @@
+use crate::number_format::{number_to_text, parse_excel_number};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -39,11 +40,44 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// Longest text a cell can hold, in UTF-16 code units: an emoji (a surrogate pair) counts two
+/// (docs/excel-semantics/coercion.md "Text longer than 32,767 characters"). Also bounds the
+/// allocation a concatenation can make (CLAUDE.md directive 5).
+pub(crate) const MAX_TEXT_UNITS: usize = 32767;
+
+/// Truncates `text` to [`MAX_TEXT_UNITS`] UTF-16 code units, as Excel does for CONCATENATE and
+/// `&` (probes/resource-limits C9, C10; probes/concatenate-limit-spill, excel-graph). A character
+/// that would straddle the limit is dropped whole: Excel keeps its lone high surrogate, which a
+/// Rust `String` cannot hold (decision 0033).
+pub(crate) fn truncate_text(text: &mut String) {
+    // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
+    if text.len() <= MAX_TEXT_UNITS {
+        return;
+    }
+    let mut units = 0;
+    for (byte, ch) in text.char_indices() {
+        units += ch.len_utf16();
+        if units > MAX_TEXT_UNITS {
+            text.truncate(byte);
+            return;
+        }
+    }
+}
+
+/// Concatenates two strings, truncating the result to the cell text limit.
+pub(crate) fn concat_text(a: &str, b: &str) -> String {
+    let mut joined = String::with_capacity(a.len() + b.len());
+    joined.push_str(a);
+    joined.push_str(b);
+    truncate_text(&mut joined);
+    joined
+}
+
 /// Converts a single array element to a string using the same rules as
 /// [`Model::cast_to_string`]. Errors propagate.
 pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     match node {
-        ArrayNode::Number(f) => Ok(format!("{f}")),
+        ArrayNode::Number(f) => Ok(number_to_text(*f)),
         ArrayNode::String(s) => Ok(s.clone()),
         ArrayNode::Boolean(b) => Ok(if *b {
             "TRUE".to_string()
@@ -56,9 +90,22 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
 }
 
 impl Model {
+    /// Coerces a single array element to a number the way a scalar number argument is: booleans
+    /// are 1 and 0, text goes through `cast_number` (`Data!D7:D7/1` with D7 = " 2 " is 2,
+    /// gen-m1/1ce5b2467b3b19fd A14), empties are 0 and errors propagate.
+    pub(crate) fn array_node_to_number(&self, node: &ArrayNode) -> Result<f64, Error> {
+        match node {
+            ArrayNode::Number(v) => Ok(*v),
+            ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
+            ArrayNode::Empty => Ok(0.0),
+            ArrayNode::String(s) => self.cast_number(s).ok_or(Error::VALUE),
+            ArrayNode::Error(e) => Err(e.clone()),
+        }
+    }
+
     pub(crate) fn cast_number(&self, s: &str) -> Option<f64> {
-        match s.trim().parse::<f64>() {
-            Ok(f) => Some(f),
+        match parse_excel_number(s.trim()) {
+            Some(f) => Some(f),
             _ => {
                 let currency = &self.locale.currency.symbol;
                 let mut currencies = vec!["$", "€"];
@@ -70,7 +117,8 @@ impl Model {
                 {
                     return Some(v);
                 }
-                None
+                // Time and date-time text (`0+"10:11:12.5"`); probes/timevalue-*.
+                crate::functions::date_and_time::time_text::parse_time_serial(s, self.locale)
             }
         }
     }
@@ -338,11 +386,9 @@ impl Model {
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<String, CalcResult> {
-        // FIXME: I think when casting a number we should convert it to_precision(x, 15)
-        // See function Exact
         let result = self.dereference(result, cell);
         match result {
-            CalcResult::Number(f) => Ok(format!("{f}")),
+            CalcResult::Number(f) => Ok(number_to_text(f)),
             CalcResult::String(s) => Ok(s),
             CalcResult::Boolean(f) => {
                 if f {
@@ -436,6 +482,32 @@ impl Model {
                 origin: cell,
                 message: "Expected reference".to_string(),
             })
+        }
+    }
+
+    /// Rows and columns of the reference or array that ROWS/COLUMNS count. An array
+    /// is counted, never read: `ROWS(NA()-{1;2;3})` is 3 although every element is
+    /// `#N/A` (probes/error-operand-broadcast C1, C3, C6-C8, C10). A non-reference,
+    /// non-array argument counts as 1x1 (probes/rows-columns-args C1-C5, C12).
+    pub(crate) fn rows_columns_extent(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<(usize, usize), CalcResult> {
+        match self.evaluate_node_with_reference(node, cell) {
+            CalcResult::Range { left, right } => Ok((
+                (right.row - left.row + 1) as usize,
+                (right.column - left.column + 1) as usize,
+            )),
+            CalcResult::Array(array) => Ok((array.len(), array.first().map_or(0, Vec::len))),
+            error @ CalcResult::Error { .. } => Err(error),
+            // Excel: a scalar is 1x1 (probes/rows-columns-args); other kinds stay unprobed.
+            CalcResult::Number(_) | CalcResult::Boolean(_) | CalcResult::String(_) => Ok((1, 1)),
+            _ => Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Expected reference or array".to_string(),
+            )),
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, NumberOrArray, StringOrArray, ValueOrArray},
+    cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
         parser::{ArrayNode, Node},
         token::{Error, OpCompare},
@@ -23,18 +23,15 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
     }
 }
 
-/// Unify how we map booleans/strings to f64
-fn to_f64(value: &ArrayNode) -> Result<f64, Error> {
-    match value {
-        ArrayNode::Number(f) => Ok(*f),
-        ArrayNode::Boolean(b) => Ok(if *b { 1.0 } else { 0.0 }),
-        ArrayNode::String(s) => match s.parse::<f64>() {
-            Ok(f) => Ok(f),
-            Err(_) => Err(Error::VALUE),
-        },
-        ArrayNode::Error(err) => Err(err.clone()),
-        ArrayNode::Empty => Ok(0.0),
+/// `x * y`; a product beyond the double range is `#NUM!` at once, so it stays an error through
+/// `&`, CONCAT, TEXT and LEN (probes-numeric/4f413cc257ce15c4 Calc!A121:A124, excel-graph).
+/// Only `*` has evidence; `+`, `-` and `/` are left as they were (docs/excel-semantics/numbers.md).
+pub(crate) fn times(x: f64, y: f64) -> Result<f64, Error> {
+    let product = x * y;
+    if product.is_infinite() {
+        return Err(Error::NUM);
     }
+    Ok(product)
 }
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
@@ -76,6 +73,18 @@ fn is_one_over_an_odd_integer(y: f64) -> bool {
     (inverse - integer).abs() <= integer.abs() * TOLERANCE && integer % 2.0 != 0.0
 }
 
+/// A 1x1 array holding the error of `result`, which broadcasts against any
+/// array operand.
+fn error_as_array(result: CalcResult) -> NumberOrArray {
+    let error = match result {
+        CalcResult::Error { error, .. } => error,
+        // `get_number_or_array` only fails with an error value; anything else
+        // is not a number, which is #VALUE! like any failed coercion.
+        _ => Error::VALUE,
+    };
+    NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]])
+}
+
 impl Model {
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
@@ -85,19 +94,22 @@ impl Model {
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        let l = match self.get_number_or_array(left, cell) {
-            Ok(f) => f,
-            Err(s) => {
-                return s;
+        let l = self.get_number_or_array(left, cell);
+        let r = self.get_number_or_array(right, cell);
+        match (l, r) {
+            (Ok(l), Ok(r)) => self.arithmetic_on_values(l, r, cell, op),
+            // A scalar error against an array operand is lifted element-wise like
+            // any other scalar: `#VALUE!-{1;2}` is `{#VALUE!;#VALUE!}`, so the
+            // result keeps the array's size (gen-m2/dd99be1f2454159f Calc!A56 is
+            // #SPILL!, not #VALUE!; docs/excel-semantics/arrays.md).
+            (Err(e), Ok(NumberOrArray::Array(a))) => {
+                self.arithmetic_on_values(error_as_array(e), NumberOrArray::Array(a), cell, op)
             }
-        };
-        let r = match self.get_number_or_array(right, cell) {
-            Ok(f) => f,
-            Err(s) => {
-                return s;
+            (Ok(NumberOrArray::Array(a)), Err(e)) => {
+                self.arithmetic_on_values(NumberOrArray::Array(a), error_as_array(e), cell, op)
             }
-        };
-        self.arithmetic_on_values(l, r, cell, op)
+            (Err(e), _) | (_, Err(e)) => e,
+        }
     }
 
     /// Applies `op` element‐wise to operands that are already evaluated.
@@ -139,7 +151,7 @@ impl Model {
                 for row in a2 {
                     let mut data_row = Vec::new();
                     for node in row {
-                        match to_f64(&node) {
+                        match self.array_node_to_number(&node) {
                             Ok(f2) => match op(f1, f2) {
                                 Ok(x) => data_row.push(ArrayNode::Number(x)),
                                 Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
@@ -162,7 +174,7 @@ impl Model {
                 for row in a1 {
                     let mut data_row = Vec::new();
                     for node in row {
-                        match to_f64(&node) {
+                        match self.array_node_to_number(&node) {
                             Ok(f1) => match op(f1, f2) {
                                 Ok(x) => data_row.push(ArrayNode::Number(x)),
                                 Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
@@ -199,17 +211,22 @@ impl Model {
                         let val2 = row2.and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)));
 
                         match (val1, val2) {
-                            (Some(v1), Some(v2)) => match (to_f64(v1), to_f64(v2)) {
-                                (Ok(f1), Ok(f2)) => match op(f1, f2) {
-                                    Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                    Err(Error::DIV) => data_row.push(ArrayNode::Error(Error::DIV)),
-                                    Err(Error::VALUE) => {
-                                        data_row.push(ArrayNode::Error(Error::VALUE))
-                                    }
-                                    Err(e) => data_row.push(ArrayNode::Error(e)),
-                                },
-                                (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
-                            },
+                            (Some(v1), Some(v2)) => {
+                                match (self.array_node_to_number(v1), self.array_node_to_number(v2))
+                                {
+                                    (Ok(f1), Ok(f2)) => match op(f1, f2) {
+                                        Ok(x) => data_row.push(ArrayNode::Number(x)),
+                                        Err(Error::DIV) => {
+                                            data_row.push(ArrayNode::Error(Error::DIV))
+                                        }
+                                        Err(Error::VALUE) => {
+                                            data_row.push(ArrayNode::Error(Error::VALUE))
+                                        }
+                                        Err(e) => data_row.push(ArrayNode::Error(e)),
+                                    },
+                                    (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
+                                }
+                            }
                             // Mismatched dimensions => #VALUE!
                             _ => data_row.push(ArrayNode::Error(Error::VALUE)),
                         }
@@ -242,14 +259,14 @@ impl Model {
         // Concatenates two array elements, propagating errors as error nodes.
         let concat_nodes = |a: &ArrayNode, b: &ArrayNode| -> ArrayNode {
             match (array_node_to_string(a), array_node_to_string(b)) {
-                (Ok(sa), Ok(sb)) => ArrayNode::String(format!("{sa}{sb}")),
+                (Ok(sa), Ok(sb)) => ArrayNode::String(concat_text(&sa, &sb)),
                 (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
             }
         };
 
         match (l, r) {
             (StringOrArray::String(s1), StringOrArray::String(s2)) => {
-                CalcResult::String(format!("{s1}{s2}"))
+                CalcResult::String(concat_text(&s1, &s2))
             }
             (StringOrArray::String(s1), StringOrArray::Array(a2)) => CalcResult::Array(
                 a2.iter()

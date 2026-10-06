@@ -6,8 +6,11 @@
 use regex_lite as regex;
 
 use crate::{
-    calc_result::CalcResult, expressions::token::is_english_error_string,
-    formatter::format::parse_date, locale::Locale,
+    calc_result::CalcResult,
+    expressions::token::is_english_error_string,
+    formatter::date_text::parse_date,
+    locale::Locale,
+    number_format::{parse_excel_number, parse_finite_number},
 };
 
 /// If `s` looks like a date literal in the given locale, return its Excel
@@ -16,7 +19,7 @@ use crate::{
 /// must not shadow the simpler number path.
 fn parse_date_criterion(s: &str, locale: &Locale) -> Option<f64> {
     let trimmed = s.trim();
-    if trimmed.is_empty() || trimmed.parse::<f64>().is_ok() {
+    if trimmed.is_empty() || parse_finite_number(trimmed).is_some() {
         return None;
     }
     parse_date(trimmed, locale)
@@ -71,8 +74,10 @@ fn result_is_equal_to_number(calc_result: &CalcResult, target: f64) -> bool {
             }
             false
         }
+        // Excel: text cells are parsed with the same ASCII-space trimming as the criterion
+        // operand (docs/excel-semantics/criteria.md, probes/criteria-padded-text).
         CalcResult::String(s) => {
-            if let Ok(f) = s.parse::<f64>() {
+            if let Some(f) = parse_criterion_number(s) {
                 if (f - target).abs() < f64::EPSILON {
                     return true;
                 }
@@ -191,12 +196,11 @@ fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
     }
 }
 
+// Text `<=` / `>=` criteria compare the cell with the operand (probes/date-text-dotted-criteria
+// E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
 fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            let lower_case = &s.to_lowercase();
-            target.cmp(lower_case) == std::cmp::Ordering::Less || lower_case == target
-        }
+        CalcResult::String(s) => s.to_lowercase().as_str() <= target,
         _ => false,
     }
 }
@@ -210,10 +214,7 @@ fn result_is_greater_than_string(calc_result: &CalcResult, target: &str) -> bool
 
 fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            let lower_case = &s.to_lowercase();
-            target.cmp(lower_case) == std::cmp::Ordering::Greater || lower_case == target
-        }
+        CalcResult::String(s) => s.to_lowercase().as_str() >= target,
         _ => false,
     }
 }
@@ -308,6 +309,14 @@ fn bool_or_error_operand_matcher<'a>(
     }
 }
 
+/// Parses a numeric criterion operand. Excel ignores spaces around it (`"> 1"`,
+/// `">1 "`, `"=  1  "` all compare numerically); a tab is not ignored.
+/// Evidence: probes/criteria-padded-operand C1-C17 and probes/criteria-gaps C16-C18, C22.
+/// "inf", "NaN" and "1e400" are text criteria (probes/text-number-words E1-E5).
+fn parse_criterion_number(v: &str) -> Option<f64> {
+    parse_excel_number(v.trim_matches(' '))
+}
+
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].
 pub(crate) fn build_criteria_with<'a>(
     value: &'a CalcResult,
@@ -317,7 +326,7 @@ pub(crate) fn build_criteria_with<'a>(
     match value {
         CalcResult::String(s) => {
             if let Some(v) = s.strip_prefix("<=") {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_less_or_equal_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
                     m
@@ -329,7 +338,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_or_equal_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix(">=") {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_greater_or_equal_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, true) {
                     m
@@ -342,7 +351,7 @@ pub(crate) fn build_criteria_with<'a>(
                 }
             } else if let Some(v) = s.strip_prefix("<>") {
                 // Same for both flavors: `<>ab` is an exact not-equal, never a prefix test.
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_not_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_not_equal_to_bool(x, b))
@@ -362,7 +371,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_not_equal_to_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('<') {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_less_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
                     m
@@ -374,7 +383,7 @@ pub(crate) fn build_criteria_with<'a>(
                     Box::new(move |x| result_is_less_than_string(x, &v.to_lowercase()))
                 }
             } else if let Some(v) = s.strip_prefix('>') {
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_greater_than_number(x, f))
                 } else if let Some(m) = bool_or_error_operand_matcher(v, false) {
                     m
@@ -388,7 +397,7 @@ pub(crate) fn build_criteria_with<'a>(
             } else {
                 let explicit_equals = s.starts_with('=');
                 let v = s.strip_prefix('=').unwrap_or(s);
-                if let Ok(f) = v.parse::<f64>() {
+                if let Some(f) = parse_criterion_number(v) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
                 } else if let Ok(b) = v.to_lowercase().parse::<bool>() {
                     Box::new(move |x| result_is_equal_to_bool(x, b))
@@ -402,6 +411,10 @@ pub(crate) fn build_criteria_with<'a>(
                     }
                 } else if let Some(f) = parse_date_criterion(v, locale) {
                     Box::new(move |x| result_is_equal_to_number(x, f))
+                } else if flavor == CriteriaFlavor::Standard && explicit_equals && v.is_empty() {
+                    // Excel: a bare "=" does not match an empty-string cell (probes/criteria-grammar
+                    // Sheet1!C4); a blank cell still matches (probes/criteria-gaps C2).
+                    Box::new(move |x| matches!(x, CalcResult::EmptyCell))
                 } else if flavor == CriteriaFlavor::Database && !explicit_equals {
                     Box::new(move |x| result_starts_with_string(x, &v.to_lowercase()))
                 } else {

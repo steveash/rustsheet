@@ -3,26 +3,24 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::arithmetic::power;
+use crate::arithmetic::{power, times};
+use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
     cell::CellValue,
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
-        lexer::LexerMode,
         parser::{
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             static_analysis::StaticResult,
-            stringify::{
-                rename_defined_name_in_node, to_english_string, to_localized_string, to_rc_format,
-            },
-            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
+            stringify::{to_english_string, to_localized_string, to_rc_format},
+            ArrayNode, CompletionContext, NamedVariable, Node, Parser, TOO_DEEP_MESSAGE,
         },
         token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
         types::*,
-        utils::{self, is_valid_column_number, is_valid_identifier, is_valid_row},
+        utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
         format::{format_number, parse_formatted_number},
@@ -94,19 +92,6 @@ pub(crate) enum CellStructure {
     },
 }
 
-/// A parsed formula for a defined name
-#[derive(Clone)]
-pub(crate) enum ParsedDefinedName {
-    /// CellReference (`=C4`)
-    CellReference(CellReferenceIndex),
-    /// A Range (`=C4:D6`)
-    RangeReference(Range),
-    /// `=LAMBDA(params..., body)`
-    LambdaDefinition(Vec<NamedVariable>, Node),
-    /// `=SomethingElse`
-    InvalidDefinedNameFormula,
-}
-
 /// Formatting settings for a locale
 pub struct FmtSettings {
     /// Currency format
@@ -130,6 +115,12 @@ pub struct FmtSettings {
 fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
     match node {
         ArrayNode::Boolean(b) => FormulaValue::Boolean(b),
+        // An overflowed element is #NUM!, like the single-cell safety belt in `set_cells_with_result`
+        ArrayNode::Number(n) if !n.is_finite() => FormulaValue::Error {
+            ei: Error::NUM,
+            o: String::new(),
+            m: String::new(),
+        },
         ArrayNode::Number(n) => FormulaValue::Number(n),
         ArrayNode::String(s) => FormulaValue::Text(s),
         ArrayNode::Error(ei) => FormulaValue::Error {
@@ -142,12 +133,10 @@ fn array_node_to_formula_value(node: ArrayNode) -> FormulaValue {
 }
 
 fn array_node_to_spill_value(node: ArrayNode) -> SpillValue {
-    match node {
-        ArrayNode::Boolean(b) => SpillValue::Boolean(b),
-        ArrayNode::Number(n) => SpillValue::Number(n),
-        ArrayNode::String(s) => SpillValue::Text(s),
-        ArrayNode::Error(ei) => SpillValue::Error(ei),
-        ArrayNode::Empty => SpillValue::Number(0.0),
+    // Same rules as `array_node_to_formula_value`; text is moved, not cloned
+    match array_node_to_formula_value(node) {
+        FormulaValue::Text(s) => SpillValue::Text(s),
+        value => formula_value_to_spill_value(&value),
     }
 }
 
@@ -367,44 +356,6 @@ impl Model {
                 other => other,
             },
             _ => self.evaluate_node_in_context(node, cell),
-        }
-    }
-
-    fn get_range(&mut self, left: &Node, right: &Node, cell: CellReferenceIndex) -> CalcResult {
-        let left_result = self.evaluate_node_with_reference(left, cell);
-        let right_result = self.evaluate_node_with_reference(right, cell);
-        match (left_result, right_result) {
-            (
-                CalcResult::Range {
-                    left: left1,
-                    right: right1,
-                },
-                CalcResult::Range {
-                    left: left2,
-                    right: right2,
-                },
-            ) => {
-                if left1.row == right1.row
-                    && left1.column == right1.column
-                    && left2.row == right2.row
-                    && left2.column == right2.column
-                {
-                    return CalcResult::Range {
-                        left: left1,
-                        right: right2,
-                    };
-                }
-                CalcResult::Error {
-                    error: Error::VALUE,
-                    origin: cell,
-                    message: "Invalid range".to_string(),
-                }
-            }
-            _ => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Invalid range".to_string(),
-            },
         }
     }
 
@@ -633,6 +584,7 @@ impl Model {
                 CalcResult::new_error(Error::REF, cell, "Wrong reference".to_string())
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
+            OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
             WrongRangeKind { .. } => {
                 CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())
             }
@@ -683,9 +635,7 @@ impl Model {
             }
             OpConcatenateKind { left, right } => self.handle_concatenate(left, right, cell),
             OpProductKind { kind, left, right } => match kind {
-                OpProduct::Times => {
-                    self.handle_arithmetic(left, right, cell, &|f1, f2| Ok(f1 * f2))
-                }
+                OpProduct::Times => self.handle_arithmetic(left, right, cell, &times),
                 OpProduct::Divide => self.handle_arithmetic(left, right, cell, &|f1, f2| {
                     if f2 == 0.0 {
                         Err(Error::DIV)
@@ -752,6 +702,11 @@ impl Model {
                             self.lambdas.insert(lambda_id, (param_names, body));
                             CalcResult::Lambda(lambda_id)
                         }
+                        ParsedDefinedName::ErrorLiteral(error) => CalcResult::new_error(
+                            error,
+                            cell,
+                            format!("Defined name \"{name}\" is an error."),
+                        ),
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
@@ -787,18 +742,12 @@ impl Model {
                 format!("Variable name \"{name}\" not found."),
             ),
             CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
-            UnaryKind { kind, right } => {
-                let r = match self.get_number(right, cell) {
-                    Ok(f) => f,
-                    Err(s) => {
-                        return s;
-                    }
-                };
-                match kind {
-                    OpUnary::Minus => CalcResult::Number(-r),
-                    OpUnary::Percentage => CalcResult::Number(r / 100.0),
-                }
-            }
+            // What they are applied to is turned into a number, and they work
+            // element by element on a range or an array
+            UnaryKind { kind, right } => match kind {
+                OpUnary::Minus => self.apply_number_unary(right, cell, |f| Ok(-f)),
+                OpUnary::Percentage => self.apply_number_unary(right, cell, |f| Ok(f / 100.0)),
+            },
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..
@@ -2586,6 +2535,34 @@ impl Model {
         Ok(index)
     }
 
+    /// Parses a formula typed into a cell. A formula that fails to parse is
+    /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
+    /// otherwise kept as a parse error, except one nested too deep (no `)` helps), which
+    /// is rejected: the cell could never hold it.
+    fn parse_cell_formula(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        formula: &str,
+    ) -> Result<Node, String> {
+        let sheet = self.workbook.worksheet(sheet)?.get_name();
+        let cell_reference = &CellReferenceRC { sheet, row, column };
+        let mut node = self.parser.parse(formula, cell_reference);
+        if matches!(&node, Node::ParseErrorKind { message, .. } if message != TOO_DEEP_MESSAGE) {
+            let retry = self.parser.parse(&format!("{formula})"), cell_reference);
+            if !matches!(retry, Node::ParseErrorKind { .. }) {
+                node = retry;
+            }
+        }
+        match node {
+            Node::ParseErrorKind { message, .. } if message == TOO_DEEP_MESSAGE => {
+                Err(format!("Formula: {TOO_DEEP_MESSAGE}"))
+            }
+            node => Ok(node),
+        }
+    }
+
     fn set_cell_with_formula(
         &mut self,
         sheet: u32,
@@ -2594,22 +2571,7 @@ impl Model {
         formula: &str,
         style: i32,
     ) -> Result<i32, String> {
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        let cell_reference = CellReferenceRC {
-            sheet: worksheet.get_name(),
-            row,
-            column,
-        };
-        let mut parsed_formula = self.parser.parse(formula, &cell_reference);
-        // If the formula fails to parse try adding a parenthesis
-        // SUM(A1:A3  => SUM(A1:A3)
-        if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
-            match new_parsed_formula {
-                Node::ParseErrorKind { .. } => {}
-                _ => parsed_formula = new_parsed_formula,
-            }
-        }
+        let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
         let static_result = run_static_analysis_on_node(&parsed_formula);
         let is_dynamic = !matches!(static_result, StaticResult::Scalar);
 
@@ -2635,22 +2597,7 @@ impl Model {
         width: i32,
         height: i32,
     ) -> Result<i32, String> {
-        let worksheet = self.workbook.worksheet_mut(sheet)?;
-        let cell_reference = CellReferenceRC {
-            sheet: worksheet.get_name(),
-            row,
-            column,
-        };
-        let mut parsed_formula = self.parser.parse(formula, &cell_reference);
-        // If the formula fails to parse try adding a parenthesis
-        // SUM(A1:A3  => SUM(A1:A3)
-        if let Node::ParseErrorKind { .. } = parsed_formula {
-            let new_parsed_formula = self.parser.parse(&format!("{formula})"), &cell_reference);
-            match new_parsed_formula {
-                Node::ParseErrorKind { .. } => {}
-                _ => parsed_formula = new_parsed_formula,
-            }
-        }
+        let parsed_formula = self.parse_cell_formula(sheet, row, column, formula)?;
         let static_result = run_static_analysis_on_node(&parsed_formula);
 
         let formula_index = self.shared_formula_index(sheet, parsed_formula, static_result)?;
@@ -3373,218 +3320,6 @@ impl Model {
             .set_row_height(column, height)
     }
 
-    /// Adds a new defined name.
-    /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
-    pub fn new_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<u32>,
-        formula: &str,
-    ) -> Result<(), String> {
-        let sheet_id = self.is_valid_defined_name(name, scope, formula)?;
-        // Defined-name formulas are stored internally in English so they keep
-        // working when the user switches language/locale.
-        let context = self.defined_name_context();
-        let internal_formula = self.user_formula_to_internal(formula, &context)?;
-        self.workbook.defined_names.push(DefinedName {
-            name: name.to_string(),
-            formula: internal_formula,
-            sheet_id,
-        });
-        self.reset_parsed_structures();
-
-        Ok(())
-    }
-
-    /// The context used to parse/stringify defined-name formulas. Defined names
-    /// have no natural anchor cell, so we use the first worksheet's A1.
-    pub(crate) fn defined_name_context(&self) -> CellReferenceRC {
-        CellReferenceRC {
-            sheet: self
-                .workbook
-                .worksheets
-                .first()
-                .map(|ws| ws.get_name())
-                .unwrap_or_else(|| "Sheet1".to_string()),
-            row: 1,
-            column: 1,
-        }
-    }
-
-    /// Validates if a defined name can be created
-    pub fn is_valid_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<u32>,
-        formula: &str,
-    ) -> Result<Option<u32>, String> {
-        if !is_valid_identifier(name) {
-            return Err("Name: Invalid defined name".to_string());
-        }
-        let name_upper = name.to_uppercase();
-        let defined_names = &self.workbook.defined_names;
-        let sheet_id = match scope {
-            Some(index) => match self.workbook.worksheet(index) {
-                Ok(ws) => Some(ws.sheet_id),
-                Err(_) => return Err("Scope: Invalid sheet index".to_string()),
-            },
-            None => None,
-        };
-        // if the defined name already exist return error
-        for df in defined_names {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                return Err("Name: Defined name already exists".to_string());
-            }
-        }
-
-        // Make sure the formula is valid — accept cell/range references OR a LAMBDA definition.
-        let is_reference =
-            common::ParsedReference::parse_reference_formula(None, formula, self.locale, |name| {
-                self.get_sheet_index_by_name(name)
-            })
-            .is_ok();
-
-        if !is_reference {
-            // Try the full parser to see if it is a LAMBDA definition.
-            // Defined-name formulas may carry a leading '='; strip it before parsing.
-            use crate::expressions::types::CellReferenceRC;
-            let formula_body = formula.strip_prefix('=').unwrap_or(formula);
-            let dummy_ref = CellReferenceRC {
-                sheet: self
-                    .workbook
-                    .worksheets
-                    .first()
-                    .map(|ws| ws.get_name())
-                    .unwrap_or_else(|| "Sheet1".to_string()),
-                row: 1,
-                column: 1,
-            };
-            // Accept the formula whether it is written in the active language
-            // or already in the internal English form (e.g. generated by
-            // undo/redo or cut & paste).
-            let mut node = self.parser.parse(formula_body, &dummy_ref);
-            if let Node::ParseErrorKind { .. } = node {
-                node = self.parse_internal_formula(formula_body, &dummy_ref);
-            }
-            if !matches!(node, Node::LambdaDefKind { .. }) {
-                return Err("Formula: Invalid defined name formula".to_string());
-            }
-        }
-
-        Ok(sheet_id)
-    }
-
-    /// Delete defined name of name and scope
-    pub fn delete_defined_name(&mut self, name: &str, scope: Option<u32>) -> Result<(), String> {
-        let name_upper = name.to_uppercase();
-        let defined_names = &self.workbook.defined_names;
-        let sheet_id = match scope {
-            Some(index) => Some(self.workbook.worksheet(index)?.sheet_id),
-            None => None,
-        };
-        let mut index = None;
-        for (i, df) in defined_names.iter().enumerate() {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                index = Some(i);
-            }
-        }
-        if let Some(i) = index {
-            self.workbook.defined_names.remove(i);
-            self.reset_parsed_structures();
-            Ok(())
-        } else {
-            Err("Defined name not found".to_string())
-        }
-    }
-
-    /// Update defined name
-    pub fn update_defined_name(
-        &mut self,
-        name: &str,
-        scope: Option<u32>,
-        new_name: &str,
-        new_scope: Option<u32>,
-        new_formula: &str,
-    ) -> Result<(), String> {
-        if !is_valid_identifier(new_name) {
-            return Err("Name: Invalid defined name".to_string());
-        };
-        let name_upper = name.to_uppercase();
-        let new_name_upper = new_name.to_uppercase();
-
-        if name_upper != new_name_upper || scope != new_scope {
-            for key in self.parsed_defined_names.keys() {
-                if key.1.to_uppercase() == new_name_upper && key.0 == new_scope {
-                    return Err("Name: Defined name already exists".to_string());
-                }
-            }
-        }
-        let defined_names = &self.workbook.defined_names;
-        let sheet_id = match scope {
-            Some(index) => Some(
-                self.workbook
-                    .worksheet(index)
-                    .map_err(|_| "Scope: Invalid sheet index")?
-                    .sheet_id,
-            ),
-            None => None,
-        };
-
-        let new_sheet_id = match new_scope {
-            Some(index) => Some(
-                self.workbook
-                    .worksheet(index)
-                    .map_err(|_| "Scope: Invalid sheet index")?
-                    .sheet_id,
-            ),
-            None => None,
-        };
-
-        let mut index = None;
-        for (i, df) in defined_names.iter().enumerate() {
-            if df.name.to_uppercase() == name_upper && df.sheet_id == sheet_id {
-                index = Some(i);
-            }
-        }
-        // Defined-name formulas are stored internally in English.
-        let context = self.defined_name_context();
-        let internal_formula = self.user_formula_to_internal(new_formula, &context)?;
-        if let Some(i) = index {
-            if let Some(df) = self.workbook.defined_names.get_mut(i) {
-                if new_name != df.name {
-                    // We need to rename the name in every formula:
-
-                    // Parse all formulas with the old name
-                    // All internal formulas are R1C1
-                    self.parser.set_lexer_mode(LexerMode::R1C1);
-                    let worksheets = &mut self.workbook.worksheets;
-                    for worksheet in worksheets {
-                        let cell_reference = CellReferenceRC {
-                            sheet: worksheet.get_name(),
-                            row: 1,
-                            column: 1,
-                        };
-                        let mut formulas = Vec::new();
-                        for formula in &worksheet.shared_formulas {
-                            let mut t = self.parser.parse(formula, &cell_reference);
-                            rename_defined_name_in_node(&mut t, name, scope, new_name);
-                            formulas.push(to_rc_format(&t));
-                        }
-                        worksheet.shared_formulas = formulas;
-                    }
-                    // Se the mode back to A1
-                    self.parser.set_lexer_mode(LexerMode::A1);
-                }
-                df.name = new_name.to_string();
-                df.sheet_id = new_sheet_id;
-                df.formula = internal_formula;
-                self.reset_parsed_structures();
-            }
-            Ok(())
-        } else {
-            Err("Defined name not found".to_string())
-        }
-    }
     /// Returns the style object of a column, if any
     pub fn get_column_style(&self, sheet: u32, column: i32) -> Result<Option<Style>, String> {
         if let Some(worksheet) = self.workbook.worksheets.get(sheet as usize) {

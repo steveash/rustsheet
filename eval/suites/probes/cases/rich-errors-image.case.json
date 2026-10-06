@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Rich-value errors from IMAGE with an unreachable source, and their text via ARRAYTOTEXT/VALUETOTEXT (T-0030)",
+  "tags": [
+    "M0",
+    "probe",
+    "rich-value-errors"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=IMAGE(\"https://example.invalid/none.png\")",
+        "B1": "=ERROR.TYPE(A1)",
+        "C1": "=ISERROR(A1)",
+        "D1": "=ARRAYTOTEXT(A1)",
+        "E1": "=VALUETOTEXT(A1)",
+        "F1": "=ARRAYTOTEXT(IFERROR(A1,A1))",
+        "A3": "=SEQUENCE(2)",
+        "A4": 5,
+        "D3": "=ARRAYTOTEXT(A3)",
+        "E3": "=VALUETOTEXT(A3)",
+        "A6": "=FILTER({1;2},{FALSE;FALSE})",
+        "D6": "=ARRAYTOTEXT(A6)",
+        "E6": "=VALUETOTEXT(A6)",
+        "A8": "=1/0",
+        "D8": "=ARRAYTOTEXT(A8)",
+        "E8": "=VALUETOTEXT(A8)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!B1",
+    "Sheet1!C1",
+    "Sheet1!D1",
+    "Sheet1!E1",
+    "Sheet1!F1",
+    "Sheet1!A3",
+    "Sheet1!D3",
+    "Sheet1!E3",
+    "Sheet1!A6",
+    "Sheet1!D6",
+    "Sheet1!E6",
+    "Sheet1!A8",
+    "Sheet1!D8",
+    "Sheet1!E8"
+  ]
+}

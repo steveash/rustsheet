@@ -2,16 +2,35 @@
 
 ## AND / OR evaluate every argument; an error anywhere wins
 Rule: AND/OR do not short-circuit: `=OR(TRUE,(2<COUNTIFS(…shape mismatch…)))` → `#VALUE!`.
-Evidence: gen-m2/78bc88199fc96650 Calc!A217. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6c5b99e2e A170, dd99be1f2454159f A3; AND: 75840b9c71a50596 A56, 96a0952412cefa6c A126. Unprobed: which error wins with several errors, and an error inside the same range as the deciding value (T-0229). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
 Tasks: T-0215
 
-## MIN / MAX of a non-numeric text value argument is #VALUE!
-Rule: a text value passed directly (not in a range) that is not a number makes MIN/MAX `#VALUE!`:
-`=MAX(IFERROR(IF(Data!D4,"ü"),Data!$E$7),Data!D7:D9)` → `#VALUE!`.
-Evidence: gen-m2/f7e6d351c8538ef5 Calc!A14. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+## MIN / MAX coerce value arguments like SUM; ranges and arrays give only their numbers
+Rule: a value argument (literal or function result, e.g. IFERROR or CONCATENATE) is coerced like
+SUM's: non-numeric text is `#VALUE!` (`=MIN("a")`, `=MAX(CONCATENATE("x"))`), numeric text counts
+(`=MIN("2")` → 2, `=MAX("1e2",5)` → 100), TRUE/FALSE count as 1/0 (`=MIN(TRUE,5)` → 1), and an empty
+argument counts as 0 (`=MIN(5,)` → 0, `=MAX(-5,)` → 0). A reference, also one returned by IF/INDEX
+(references.md), and an array contribute only their numbers: `=MIN(A1)` with A1 = "a" → 0,
+`=MAX(IF(TRUE,A1),A2)` → A2, `=MIN({TRUE,5})` → 5, `=MAX({"9",-1})` → -1. IFERROR returns a value,
+so `=MIN(IFERROR(A1,1))` with A1 = "a" is `#VALUE!` and an IFERROR of a blank cell is 0.
+Evidence: probes/min-max-value-args (C1–C16); gen-m2/f7e6d351c8538ef5 Calc!A14,
+dd99be1f2454159f A73/A264, 2cfe279fe77a000d A138, 04cfd82f54dbc2b2 A182.
+Oracle: excel-graph, 2026-10-05 (probe), 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED
+Implemented in: functions/math_and_trigonometry/mathematical.rs (`fold_min_max`)
 Tasks: T-0217
+
+## AVERAGE, MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, STDEV/VAR, COUNT value arguments
+Rule: these coerce like MIN/MAX above: booleans inside an array are ignored (`=AVERAGE({TRUE,5})` → 5,
+`=MEDIAN({TRUE,1,3})` → 2, `=GEOMEAN({TRUE,4})` → 4, `=STDEV({TRUE,1,3})` → 1.414...), a direct boolean counts
+as 1/0 (`=AVERAGE(5,TRUE)` → 3), text inside an array is ignored, and an empty argument counts as 0
+(`=AVERAGE(5,)` → 2.5, `=MEDIAN(1,)` → 0.5, `=GEOMEAN(4,)` → `#NUM!`, `=STDEV(1,3,)` → 1.5275..., VAR/VARP/STDEVP likewise,
+`=COUNT(5,)` → 2, `=COUNT({TRUE,5})` → 1, HARMEAN/SKEW/SKEW.P/KURT likewise (`=HARMEAN({TRUE,4})` → 4, `=HARMEAN(4,)` → `#NUM!`, `=SKEW(1,2,4,)` → 0.7528...), `=AVERAGE(A1:A2,)` with A1 = TRUE, A2 = 5 → 2.5).
+Evidence: probes/average-value-args F1–F32 (oracle: excel-graph, 2026-10-05)
+Status: VERIFIED
+Implemented in: `for_each_value`, `fn_count` (also HARMEAN/SKEW/SKEW.P/KURT via `for_each_value`) in functions/statistical/count_and_average.rs; `fn_stdev_s/p`, `fn_var_s/p` (standard_dev.rs, variance.rs)
+Tasks: T-0236
 
 ## LEFT / RIGHT / MID numeric arguments
 Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`); a start or length around 1E+15 is `#VALUE!`
@@ -28,3 +47,141 @@ Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE
 Evidence: gen-m2/2cfe279fe77a000d Calc!A318, 96a0952412cefa6c Calc!A284. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED (two cells; the full collation table needs probes, T-0220)
 Tasks: T-0220
+
+## Double unary minus coerces to a number
+Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
+`--("">1.5)` = 1, `--""` (a cell holding empty text) = `#VALUE!`, `--100` = 100.
+Evidence: gen-m1/6462bf910ef9f28f Calc!A49 (`--Data!C4`, C4 = FALSE), A84 (`--Data!$A11`, A11 = ""),
+A17; gen-m1/57fe331cb7611dbf Calc!A167 (oracle: excel-graph, 2026-10-05, T-0109). Upstream IronCalc's
+Excel-authored `TEXT/MINUS_MINUS.xlsx` (`ironcalc@9b1ae3fd`; 72 of its 73 cells pass with T-0132)
+agrees: `--TRUE` = 1, `---TRUE` = -1, `--"3"` = 3, `--"abc"` = #VALUE!, `--A1:A4` lifts element-wise.
+A plus sign is a no-op (`+x` stays text or boolean).
+A single unary `-` or `%` also works element by element on a range or array: `INDEX(...,1,0)%`
+= 0 (gen-m2/f9d4df4efdfbcbd5 A125, oracle excel-graph); the spill shapes asserted in
+`test/test_unary_operators.rs` are upstream's, not yet oracle-checked.
+Status: VERIFIED
+Implemented in: `Parser::parse_power` keeps one `UnaryKind::Minus` per minus sign; `Model::apply_number_unary`
+evaluates it (element-wise over ranges and arrays); `stringify`/`move_formula` print `--x` as typed and
+parenthesise a lower-precedence operand (T-0132, `Ported-From: ironcalc@9b1ae3fd`). `--"12:00"`
+(MINUS_MINUS.xlsx C12, Excel 0.5) still fails: time text coercion is T-0146, which adds that workbook.
+Tasks: T-0132
+
+## Text in a range operand of arithmetic is coerced
+Rule: arithmetic on a range coerces a numeric text cell to a number, so `Data!D7:D7/1` with
+D7 = " 2 " (spaces around the digit) is 2 and `Data!D3:D3/0` with the same text is `#DIV/0!`. Every
+observed number-producing text cell is " 2 ". That this is the same routine as scalar text
+coercion is an inference for T-0131's probe to confirm.
+Evidence: gen-m1/1ce5b2467b3b19fd Calc!A14, A79, A99; gen-m1/9646257ac139cd1e Calc!A25, A81 (oracle:
+excel-graph, 2026-10-05, T-0109). The scalar form `-" 2 "*2` = -4 (gen-m1/10f579127ffb6d9b A106).
+The same holds for a one-cell intersection of a whole row: `('Q''1'!5:5 'Q''1'!B5)+2` with B5 = " 2 "
+is 4 (gen-m1/7cb99acdd82402f1 Calc!A72, A103, A217, A235; found in T-0105).
+Status: VERIFIED
+Implemented in: `Model::array_node_to_number` (crates/rustsheet-engine/src/cast.rs), via `cast_number`; only the " 2 " form is oracle-covered, other text forms follow the scalar path.
+Tasks: T-0131
+
+## An error in a range operand of arithmetic wins over the right operand's error
+Rule: when the left operand is a one-cell range holding an error and the right operand is an error,
+the result is the left error: `(Data!C1:C10 Data!B9:D9)/Data!D$5` with C9 = `#N/A` and
+D5 = `#DIV/0!` is `#N/A`. `handle_arithmetic` lifts a scalar right-hand error to a 1x1 array, so the
+left range's element error is seen first (`arithmetic_on_values`, case 4).
+The same holds element by element for a multi-cell range. Each element shows its own error if it has
+one, and otherwise the scalar's error. A text element fails with `#VALUE!` before the scalar's error.
+With C8 = 7, C9 = `#N/A`, C10 = "x" and D5 = `#DIV/0!`: `=Data!C8:C9/Data!D5` is {`#DIV/0!`; `#N/A`},
+`=Data!C9:C10/Data!D5` and `=Data!C9:C10+Data!D5` are {`#N/A`; `#VALUE!`}, and a scalar left error wins
+over every element (`=Data!D5/Data!C8:C9` is `#DIV/0!` twice).
+Evidence: gen-m1/4dc8ed1de05a61be Calc!A250 (oracle: excel-graph, 2026-10-05; found in T-0105);
+probes/arith-range-error-precedence (oracle: excel-graph, 2026-10-05, T-0138).
+Status: VERIFIED
+Implemented in: `Model::handle_arithmetic` (crates/rustsheet-engine/src/arithmetic.rs)
+Tasks: T-0137, T-0138
+
+## Text longer than 32,767 characters
+Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
+`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767, and the
+kept text is the leading part (`RIGHT(CONCATENATE(REPT("a",32767),"b"),1)` is "a"). REPT with a
+longer result is `#VALUE!` (`REPT("a",32768)`). The limit counts UTF-16 code units, so an emoji
+(a surrogate pair) counts two: `REPT("😀",16383)` is fine, `REPT("😀",16384)` is `#VALUE!`, and
+`LEN(CONCATENATE(REPT("😀",16383),"ab"))` is 32767. Truncation applies per element of a spilled
+CONCATENATE (`LEN(CONCATENATE({"a";"bb"},REPT("c",32767)))` is {32767;32767}).
+Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E7, E12, G85–G104
+(excel-graph, 2026-10-06, T-0233). LEN and the other position-based text functions still count
+chars, not UTF-16 units (T-0249; E7, E13, G97 are known failures until then).
+Backend: excel-graph only; excel-desktop not used.
+Status: VERIFIED
+Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
+REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
+CONCAT/TEXTJOIN not probed.
+Tasks: T-0240, T-0233, T-0249
+
+## Truncation inside a surrogate pair keeps a lone high surrogate
+Rule: when the 32,767-unit limit falls inside a surrogate pair, Excel keeps the high surrogate:
+`LEN(CONCATENATE(REPT("a",32766),"😀"))` and `LEN(REPT("😀",16383)&"😀")` are 32767, and
+`UNICODE(RIGHT(CONCATENATE(REPT("a",32766),"😀"),1))` is `#VALUE!` (UNICODE of a lone surrogate).
+Evidence: probes/concatenate-limit-spill E8–E11 (excel-graph, 2026-10-06, T-0233).
+Ours: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops the straddling pair
+whole (32,766 units; E8–E11 stay known failures).
+Status: DEVIATION (decision 0033)
+Implemented in: `truncate_text` in cast.rs
+Tasks: T-0233
+
+## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
+Rule: the two arrays are paired element by element in row-major order and need only the same
+element count, not the same shape (a 3x2 range pairs with a 6x1 range); a pair where either side
+is not a number (blank, text, boolean in a range) is skipped; no numeric pair left is `#DIV/0!`;
+different element counts are `#N/A`; scalar arguments are allowed (`SUMXMY2(2,4)` = 4).
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!D1336, E1336,
+G1336, I1336, J1336 (`#N/A`), K1336, E1340, F1340, H1340, J1340 (`SUMX2PY2(G7:H9,J7:J12)` =
+105.7931362501), K1340, F1344, G1344, H1344 (`#N/A`), I1344, J1344.
+Status: VERIFIED (Excel-cached)
+Implemented in: `Model::sumx_fold` / `sumx_values` (math_and_trigonometry/sum.rs); other `fn_get_two_matrices` callers are unchanged.
+Open (unverified, T-0961): scalar text, boolean and empty arguments are currently one skipped pair
+(`#DIV/0!`); the first error in either array wins over the element-count `#N/A`.
+Tasks: T-0944
+
+## STDEV / VAR / DEVSQ / AVEDEV / SUMSQ typed arguments; AVEDEV and DEVSQ of nothing is #NUM!
+Rule: numeric text and booleans typed directly as arguments are counted (`STDEV("1","2")` =
+0.7071…, `VAR(TRUE,FALSE,TRUE)` = 0.333…, `SUMSQ("2","3",4)` = 29, `AVEDEV(TRUE,FALSE)` = 0.5),
+while text and booleans in ranges are ignored. With no number at all AVEDEV and DEVSQ return
+`#NUM!`, whereas STDEV/VAR/VARP return `#DIV/0!` (inconsistent, but that is Excel).
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G1288, K1288,
+G1448, K1448, G1456, K1456, I392, L176, M1332, N1332; `#NUM!`: F176, G176, H392; `#DIV/0!`: F1288,
+F1448, F1456, H1288.
+Status: VERIFIED (Excel-cached)
+Implemented in: `Model::for_each_value` users `fn_stdev_s`/`fn_stdev_p`, `fn_var_s`/`fn_var_p`,
+`fn_devsq`, `fn_avedev`, `fn_sumsq`. Open: I392 (`DEVSQ("1","2",2)`) and K1456
+(`VARP(TRUE,FALSE,TRUE)`) differ in the last digit (accumulation order, like E392/F392/J392).
+Open: an empty argument (`DEVSQ(1,)`) is ignored by DEVSQ/AVEDEV/SUMSQ but counted as 0 by STDEV/VAR
+(probes/average-value-args); no evidence yet for the first group (T-0236).
+Tasks: T-0945
+
+## MODE: text arguments and blank single-cell references are #VALUE!
+Rule: a text value argument, even numeric text (`MODE(B8,"1",2,3)`), makes MODE `#VALUE!`, and so
+does a single-cell reference to a blank cell: `MODE(B9,2,D7)` with B9 = 2 and D7 blank is `#VALUE!`
+although 2 appears twice. Blanks and text inside a multi-cell range are ignored
+(`MODE(C16:E16,-1.1)` = -1.1 with D16 blank). Also
+`MODE("1",1,#DIV/0!,2,3)` is `#VALUE!` (whether argument order matters is unprobed). Not isolated yet: a single-cell reference to text on its own.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!G936, H936,
+K936, M936 (`#VALUE!`); D936, F936, I936, J936, L936.
+Status: VERIFIED (Excel-cached)
+Implemented in: `collect_mode_values` (mode_functions.rs). MODE.SNGL/MODE.MULT share it by inference
+(unprobed), as do non-literal text-valued expressions (e.g. `A1&""`).
+Tasks: T-0947
+
+## MAXA / MINA: single-cell references are read like ranges
+Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1/0, as in a range:
+`MAXA(F14,E19,F12)` over three text cells is 0, `MINA(B16,B10,B9)` with B16 = TRUE is 1.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J888, F912.
+Status: VERIFIED (Excel-cached)
+Implemented in: `for_each_value_a` (statistical/count_and_average.rs); covers direct single-cell
+references only. A defined name pointing to one cell and numeric text in a referenced cell (counted as
+0 by inference) are unprobed.
+Tasks: T-0949
+
+## "inf", "NaN" and out-of-range number text are text
+Rule: the words "inf", "infinity", "NaN" (any case, any sign) and number text of 1E+308 or more
+are never read as numbers: arithmetic, `--`, VALUE and COUNT/SUM/AVERAGE text arguments give
+#VALUE! or skip them, criteria compare them as text; `"+1"` is the number 1.
+Evidence: probes/text-number-words; full rule in numbers.md "Number text of 1E+308 or more is not a number".
+Oracle: excel-graph, 2026-10-05.
+Status: VERIFIED
+Tasks: T-0920, T-0140

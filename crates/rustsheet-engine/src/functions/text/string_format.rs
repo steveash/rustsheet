@@ -9,6 +9,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    number_format::parse_excel_number,
 };
 
 use super::common::broadcast_text;
@@ -185,14 +186,14 @@ impl Model {
             );
         }
 
-        match cleaned.parse::<f64>() {
-            Ok(mut v) => {
+        match parse_excel_number(&cleaned) {
+            Some(mut v) => {
                 for _ in 0..pct_count {
                     v /= 100.0;
                 }
                 CalcResult::Number(v)
             }
-            Err(_) => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
+            None => CalcResult::new_error(Error::VALUE, cell, "Cannot parse number".to_string()),
         }
     }
 
@@ -230,8 +231,8 @@ impl Model {
             |i, j| {
                 replace_element(
                     old_text.elem(i, j),
-                    self.text_number(start_num.elem(i, j)),
-                    self.text_number(num_chars.elem(i, j)),
+                    self.array_node_to_number(start_num.elem(i, j)),
+                    self.array_node_to_number(num_chars.elem(i, j)),
                     new_text.elem(i, j),
                 )
             },

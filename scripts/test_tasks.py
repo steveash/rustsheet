@@ -99,13 +99,15 @@ def write_task(
     body: str = "",
     lane: str = "harness",
     priority: str = "P1",
+    milestone: str = "M0",
+    depends_on: str = "",
 ) -> Path:
-    path = root / "docs/tasks/M0" / f"{tid}-x.md"
+    path = root / "docs/tasks" / milestone / f"{tid}-x.md"
     path.parent.mkdir(parents=True, exist_ok=True)
     tier_line = f"tier: {tier}\n" if tier else ""
     path.write_text(
-        f"---\nid: {tid}\ntitle: \"x\"\nmilestone: M0\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
-        f"size: S\n{tier_line}depends_on: []\n---\n{body}"
+        f"---\nid: {tid}\ntitle: \"x\"\nmilestone: {milestone}\nlane: {lane}\nstatus: {status}\npriority: {priority}\n"
+        f"size: S\n{tier_line}depends_on: [{depends_on}]\n---\n{body}"
     )
     return path
 
@@ -148,6 +150,27 @@ class Tiers(unittest.TestCase):
             write_task(root, "T-0002", tier="opus", body="\n## Handoff\nsonnet run stuck on X\n")
             write_task(root, "T-0003", tier="sonnet")
             self.assertEqual([run_next(root, "opus"), run_next(root, "sonnet")], ["T-0002", "T-0003"])
+
+    def test_earlier_milestone_comes_before_priority_and_m9_still_gets_picked(self) -> None:
+        # Decision 0026: an M2 function beats an M9 last-digit tail of higher priority.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0901", tier="opus", priority="P1", milestone="M9")
+            write_task(root, "T-0210", tier="opus", priority="P2", milestone="M2")
+            write_task(root, "T-0110", tier="opus", priority="P3", milestone="M10")
+            self.assertEqual(run_next(root, "opus"), "T-0210")
+            claims = ({"T-0210"}, set())
+            self.assertEqual(run_next(root, "opus", claims=claims), "T-0901")
+
+    def test_task_waiting_on_an_open_sweep_is_not_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_task(root, "T-0901", tier="opus", milestone="M9", depends_on="T-0942")
+            write_task(root, "T-0942", tier="opus", milestone="M9", lane="research")
+            write_task(root, "T-0939", tier="opus", milestone="M9", priority="P2")
+            self.assertEqual(run_next(root, "opus", lane="harness"), "T-0939")
+            write_task(root, "T-0942", tier="opus", milestone="M9", lane="research", status="done")
+            self.assertEqual(run_next(root, "opus", lane="harness"), "T-0901")
 
     def test_p0_comes_before_a_handoff(self) -> None:
         # T-0931 (P0 stack overflow) once waited behind the T-0125 (P2) handoff.
@@ -272,6 +295,29 @@ class BranchClaims(unittest.TestCase):
             # T-0001 is recent, so its lane is busy; T-0003's handoff waits for opus and keeps
             # harness free.
             self.assertEqual(tasks.branch_claims(fetch=False), ({"T-0001"}, {"T-0003"}, {("engine", "T-0001")}))
+
+    def test_blocked_task_on_its_branch_frees_the_lane_but_stays_claimed(self) -> None:
+        now = int(time.time())
+        refs = (
+            f"refs/remotes/origin/agent/engine/T-0001-working {now - 60}\n"
+            f"refs/remotes/origin/agent/research/T-0002-blocked {now - 60}\n"
+        )
+
+        def fake_run(cmd: list[str], **_: object) -> mock.Mock:
+            args = cmd[3:]
+            if args[0] == "for-each-ref":
+                return mock.Mock(stdout=refs)
+            if args[0] == "ls-tree":
+                tid = args[3].rsplit("/", 1)[-1][:6]
+                return mock.Mock(stdout=f"docs/tasks/M0/{tid}-x.md\n")
+            status = "blocked" if "T-0002" in args[1] else "in-progress"
+            return mock.Mock(stdout=f"---\nid: x\nstatus: {status}\n---\nbody\n")
+
+        with mock.patch.object(tasks.subprocess, "run", side_effect=fake_run):
+            # T-0002 was blocked a minute ago: nobody restarts it, but research may take its next task.
+            self.assertEqual(
+                tasks.branch_claims(fetch=False), ({"T-0001", "T-0002"}, set(), {("engine", "T-0001")})
+            )
 
 
 class Slug(unittest.TestCase):

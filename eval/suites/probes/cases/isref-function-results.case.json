@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ISREF of functions that can return a reference: INDEX, IF, CHOOSE",
+  "tags": ["M2", "references", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "C1": "=ISREF(INDEX(A1:A2,2))",
+        "C2": "=ISREF(INDEX(A1:A2,3))",
+        "C3": "=ISREF(IF(TRUE,A1))",
+        "C4": "=ISREF(IF(TRUE,1))",
+        "C5": "=ISREF(CHOOSE(1,A1))",
+        "C6": "=ISREF(CHOOSE(1,5))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": ["Sheet1!C1", "Sheet1!C2", "Sheet1!C3", "Sheet1!C4", "Sheet1!C5", "Sheet1!C6"]
+}

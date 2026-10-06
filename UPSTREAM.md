@@ -26,7 +26,9 @@ lint-debt allow-lists in each forked crate's `Cargo.toml`, `cargo fmt`.
 
 Not in upstream IronCalc; keep when porting nearby code: `Model::prepare_cell_for_user_input`
 (typed setters run the spill/array/merge checks), `Model::take_sheet` / `Model::restore_sheet`
-(`sheet_undo.rs`, undoable sheet delete) and `Model::evaluation_count`.
+(`sheet_undo.rs`, undoable sheet delete), `Model::evaluation_count` and `Model::define_name`
+(any parseable name body). The defined-name methods of upstream `model.rs` live in
+`defined_names.rs` (moved in T-0043 to shrink `model.rs`).
 
 ## Tracking upstream
 
@@ -37,4 +39,4 @@ Every port records the upstream SHA in its commit message (`Ported-From: ironcal
 
 | Last triaged upstream commit | Date |
 |---|---|
-| `9b1ae3fd8ed560511cb1cb8dc0b8a541bcf77edf` | 2026-10-03 |
+| `4deab8f6e6a858744f8966f67f70f4ed8d29c78d` | 2026-10-04 |

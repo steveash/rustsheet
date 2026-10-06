@@ -45,6 +45,9 @@ If the task is bigger than size M, split it (planner) instead of doing it.
 - `make fmt` then `make check`. Fix everything. Never weaken a gate to get green.
 - If eval cells newly pass: `make eval-baseline` and commit `eval/baseline/`.
 - If you paid down lint debt / duplication / oversized files: run the script with `--update`.
+- A decision record (needed for any protected-path change) is created with
+  `make new-decision TITLE="..."` (collision-free number; decision 0029); commit and push it with
+  the first commit after the claim so other sessions see the number.
 
 ## 5. Review
 Use the `review` skill. Fix every BLOCKING / REQUEST_CHANGES finding, re-run `make check`, and
@@ -79,8 +82,9 @@ file and its acceptance criteria.
    so resolve conflicts immediately per the `steward` skill ("Merge conflicts are never waiting
    on CI"). Then wait for CI (subscribe to PR activity and arm a check-in; do not poll with
    sleep). Fix failures per the `steward` skill. When CI is green and all reviewers approve:
-   **squash-merge**. If `main` moved, merge `origin/main` into the branch, re-run `make check`,
-   push, and check mergeability and CI again.
+   **squash-merge**, but only after the `steward` skill's mechanical up-to-date check (decision
+   0028: the PR head must contain the current `origin/main`). If it fails, follow the steward
+   remedy: merge `main` in, `make check`, push, and wait for CI on the new head.
 4. Delete the branch.
 5. Go back to step 1 for the next task while the session budget allows (110 minutes, 10 tasks;
    decision 0025); the opus tier first does step 6.5.

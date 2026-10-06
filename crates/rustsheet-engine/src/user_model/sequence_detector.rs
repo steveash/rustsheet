@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::locale::Locale;
+use crate::number_format::{parse_finite_number, to_excel_precision_str};
 
 enum DateCaseStyle {
     Uppercase,
@@ -96,8 +97,9 @@ pub(crate) enum Progression {
 }
 impl Progression {
     fn format_number(progression: &NumericProgression, i: usize) -> String {
-        round_sig(progression.next(i))
-            .to_string()
+        // The text is typed back in as user input, which keeps 15 significant digits (T-0143), so
+        // emit at most 15 digits instead of the shortest round-trip repr.
+        to_excel_precision_str(round_sig(progression.next(i)))
             .replace('.', &progression.decimal_sep.to_string())
     }
     pub(crate) fn next(&self, i: usize) -> String {
@@ -209,12 +211,12 @@ impl SequenceDetector for NumericProgressionDetector {
             .map(|num| {
                 self.validate_grouping(num, *primary, *secondary)?;
 
-                num.chars()
+                let number = num
+                    .chars()
                     .filter(|&c| c != group_sep)
                     .map(|c| if c == decimal_sep { '.' } else { c })
-                    .collect::<String>()
-                    .parse::<f64>()
-                    .map_err(|_| ())
+                    .collect::<String>();
+                parse_finite_number(&number).ok_or(())
             })
             .collect::<Result<Vec<_>, _>>()
             .ok()

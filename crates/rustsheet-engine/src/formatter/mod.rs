@@ -1,3 +1,4 @@
+pub(crate) mod date_text;
 pub mod dates;
 pub mod format;
 pub mod lexer;

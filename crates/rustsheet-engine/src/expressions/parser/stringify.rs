@@ -1,4 +1,5 @@
 mod bound_variables;
+use super::reference_operators::{intersection_operand, tight_operand};
 use super::{super::utils::quote_name, Node, Reference};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
@@ -419,6 +420,7 @@ fn stringify(
     language: &Language,
 ) -> String {
     use self::Node::*;
+    let sub = |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
     match node {
         BooleanKind(value) => {
             if *value {
@@ -576,64 +578,16 @@ fn stringify(
             );
             format!("{s1}:{s2}")
         }
-        OpRangeKind { left, right } => format!(
-            "{}:{}",
-            stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            ),
-            stringify(
-                right,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            )
-        ),
-        OpConcatenateKind { left, right } => format!(
-            "{}&{}",
-            stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            ),
-            stringify(
-                right,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            )
-        ),
-        CompareKind { kind, left, right } => format!(
-            "{}{}{}",
-            stringify(
-                left,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            ),
-            kind,
-            stringify(
-                right,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language
-            )
-        ),
+        OpRangeKind { left, right } => {
+            let operand = |n: &Node| tight_operand(sub(n), n);
+            format!("{}:{}", operand(left), operand(right))
+        }
+        OpIntersectKind { left, right } => {
+            let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
+            format!("{} {}", operand(left, true), operand(right, false))
+        }
+        OpConcatenateKind { left, right } => format!("{}&{}", sub(left), sub(right)),
+        CompareKind { kind, left, right } => format!("{}{kind}{}", sub(left), sub(right)),
         OpSumKind { kind, left, right } => {
             // CompareKind has lower precedence than +/-, so wrap it to preserve semantics
             let left_str = if matches!(**left, CompareKind { .. }) {
@@ -739,6 +693,7 @@ fn stringify(
                 | StringKind(_)
                 | ReferenceKind { .. }
                 | RangeKind { .. }
+                | OpIntersectKind { .. }
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
@@ -784,6 +739,7 @@ fn stringify(
                 | StringKind(_)
                 | ReferenceKind { .. }
                 | RangeKind { .. }
+                | OpIntersectKind { .. }
                 | WrongReferenceKind { .. }
                 | DefinedNameKind(_)
                 | TableNameKind(_)
@@ -895,7 +851,7 @@ fn stringify(
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
                     | OpRangeKind { .. }
-                    | OpConcatenateKind { .. }
+                    | OpIntersectKind { .. }
                     | OpProductKind { .. }
                     | FunctionKind { .. }
                     | NamedFunctionKind { .. }
@@ -907,12 +863,13 @@ fn stringify(
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
-                    | CompareKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
-
-                    OpPowerKind { .. } | OpSumKind { .. } | UnaryKind { .. } => true,
+                    // Looser than the minus: `-(A1=B1)` is not `-A1=B1`; `--x` needs none.
+                    UnaryKind { ref kind, .. } => *kind == OpUnary::Percentage,
+                    OpPowerKind { .. } | OpSumKind { .. } | OpConcatenateKind { .. } => true,
+                    CompareKind { .. } => true,
                 };
                 if needs_parentheses {
                     format!(
@@ -971,17 +928,7 @@ fn stringify(
                     )
                 );
             };
-            format!(
-                "{}#",
-                stringify(
-                    child,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language
-                )
-            )
+            format!("{}#", tight_operand(sub(child), child))
         }
         LambdaDefKind { parameters, body } => {
             let lambda_name = if export_to_excel {
@@ -1066,17 +1013,7 @@ fn stringify(
                     )
                 );
             }
-            format!(
-                "@{}",
-                stringify(
-                    child,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language
-                )
-            )
+            format!("@{}", tight_operand(sub(child), child))
         }
     }
 }
@@ -1116,11 +1053,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         }
 
         // Go next level
-        Node::OpRangeKind { left, right } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::OpConcatenateKind { left, right } => {
+        Node::OpRangeKind { left, right }
+        | Node::OpIntersectKind { left, right }
+        | Node::OpConcatenateKind { left, right } => {
             rename_sheet_in_node(left, sheet_index, new_name);
             rename_sheet_in_node(right, sheet_index, new_name);
         }
@@ -1219,11 +1154,9 @@ pub(crate) fn rename_defined_name_in_node(
             }
         }
         // Go next level
-        Node::OpRangeKind { left, right } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::OpConcatenateKind { left, right } => {
+        Node::OpRangeKind { left, right }
+        | Node::OpIntersectKind { left, right }
+        | Node::OpConcatenateKind { left, right } => {
             rename_defined_name_in_node(left, name, scope, new_name);
             rename_defined_name_in_node(right, name, scope, new_name);
         }

@@ -15,6 +15,7 @@ use rustsheet_engine::types::{Cell, Row, SheetData};
 
 use crate::error::XlsxError;
 
+use super::package::ImportLimits;
 use super::util::parse_bool_with_default;
 use super::worksheets::{
     find_or_add_formula, from_a1_to_rc, get_cell_from_excel, parse_cell_reference, parse_range,
@@ -129,6 +130,9 @@ struct SheetDataReader<'a> {
     sheet_name: &'a str,
     parser: &'a mut Parser,
     shared_strings: &'a mut Vec<String>,
+    limits: &'a ImportLimits,
+    /// The rich-value error of each value-metadata entry (`vm` is 1-based into it).
+    rich_errors: &'a [Option<&'static str>],
 
     sheet_data: SheetData,
     rows: Vec<Row>,
@@ -366,6 +370,9 @@ impl SheetDataReader<'_> {
         };
         let (r_index, column_index) =
             parse_cell_reference(&cell.reference).map_err(XlsxError::Xml)?;
+        for text in [&cell.value, &cell.rich_text].into_iter().flatten() {
+            self.limits.check_escaped_text(text)?;
+        }
         // A row without an `r` attribute takes its index from its first cell
         if row.index.is_none() {
             row.index = Some(r_index);
@@ -565,9 +572,14 @@ impl SheetDataReader<'_> {
             }
         }
         let anchor_cell = self.array_cell.get(&(r_index, column_index)).cloned();
+        let rich_error = cell
+            .value_metadata
+            .as_deref()
+            .and_then(|vm| vm.trim().parse::<usize>().ok())
+            .and_then(|vm| self.rich_errors.get(vm.checked_sub(1)?).copied().flatten());
         let cell = get_cell_from_excel(
             cell.value.as_deref(),
-            cell.value_metadata.as_deref(),
+            rich_error,
             cell_type,
             cell.style,
             formula_index,
@@ -590,6 +602,8 @@ pub(super) fn read_sheet_data<R: BufRead>(
     sheet_name: &str,
     parser: &mut Parser,
     shared_strings: &mut Vec<String>,
+    limits: &ImportLimits,
+    rich_errors: &[Option<&'static str>],
 ) -> Result<SheetDataXml, XlsxError> {
     let mut reader = quick_xml::Reader::from_reader(reader);
     let mut tree = XmlTreeBuilder::new();
@@ -599,6 +613,8 @@ pub(super) fn read_sheet_data<R: BufRead>(
         sheet_name,
         parser,
         shared_strings,
+        limits,
+        rich_errors,
         sheet_data: SheetData::new(),
         rows: Vec::new(),
         shared_formulas: Vec::new(),

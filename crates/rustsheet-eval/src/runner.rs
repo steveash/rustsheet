@@ -15,6 +15,7 @@ use crate::case::{
 };
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
+use crate::overrides;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
@@ -314,6 +315,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
     };
     let (scorable, skipped_volatile) = scorable_cells(
         &snapshot.sheets,
+        &snapshot.defined_names,
         pinned_clock_serial(&snapshot.sheets).is_some(),
     );
     let expectations = scorable
@@ -327,12 +329,40 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             })
         })
         .collect();
+    let expectations = apply_cached_overrides(suite, case, expectations)?;
     Ok(PreparedCase {
         input: Prepared::Xlsx { bytes },
         expectations,
         expected_source: source,
         skipped_volatile,
     })
+}
+
+/// Replaces the expectations a suite's `cached_overrides` file names for this case with their
+/// golden values (decision 0032). An override naming a cell that is not scored is an error, so a
+/// stale line cannot linger unnoticed.
+fn apply_cached_overrides(
+    suite: &Suite,
+    case: &CaseFile,
+    mut expectations: Vec<Expectation>,
+) -> Result<Vec<Expectation>, String> {
+    let Some(file) = &suite.manifest.cached_overrides else {
+        return Ok(expectations);
+    };
+    let path = suite.dir.join(file);
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let suites_dir = suite.dir.parent().unwrap_or(&suite.dir);
+    let prefix = format!("{}/", suite.manifest.name);
+    let rel = case.id.strip_prefix(&prefix).unwrap_or(&case.id);
+    for o in overrides::parse(&text)?.iter().filter(|o| o.case == rel) {
+        let expected = overrides::evidence_value(o, suites_dir)?;
+        let target = expectations
+            .iter_mut()
+            .find(|e| e.sheet == o.sheet && e.addr == o.addr)
+            .ok_or_else(|| format!("cached override for unscored cell {}!{}", o.sheet, o.addr))?;
+        target.expected = expected;
+    }
+    Ok(expectations)
 }
 
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
@@ -385,7 +415,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         })
         .collect();
     // Spec workbooks have no METADATA sheet, so the clock is never pinned: NOW/TODAY stay skipped.
-    let volatile = volatile_cells(&formulas, false);
+    let volatile = volatile_cells(&formulas, &[], false);
     let wanted: Vec<String> = if spec.check.is_empty() {
         expected.keys().cloned().collect()
     } else {
@@ -455,6 +485,9 @@ mod tests {
                 _ => Ok(Box::new(NoValues)),
             }
         }
+        fn implemented_functions(&self) -> Vec<String> {
+            Vec::new()
+        }
     }
 
     fn run_pending(description: &str) -> CaseResult {
@@ -494,6 +527,58 @@ mod tests {
         let r = run_pending("panic");
         assert_eq!(r.status, CaseStatus::Panic);
         assert_eq!(r.message.as_deref(), Some("boom"));
+    }
+
+    /// A `cached_overrides` line replaces exactly the named cached expectation with the golden
+    /// value it points at, and naming an unscored cell is an error (decision 0032).
+    #[test]
+    fn cached_override_replaces_the_named_expectation() {
+        let dir = std::env::temp_dir().join(format!("rs-runner-{}-overrides", std::process::id()));
+        let suite_dir = dir.join("calc");
+        std::fs::create_dir_all(suite_dir.join("cases")).expect("mkdir");
+        std::fs::create_dir_all(dir.join("probes")).expect("mkdir");
+        std::fs::write(
+            dir.join("probes/p.oracle.json"),
+            format!(
+                r#"{{"format":"{ORACLE_FORMAT}","source":{{"kind":"excel-graph"}},
+                "sheets":{{"Sheet1":{{"B1":{{"t":"n","v":30.0}}}}}}}}"#
+            ),
+        )
+        .expect("write oracle");
+        let manifest: SuiteManifest = toml::from_str(
+            "name = \"calc\"\nkind = \"xlsx\"\nlicense = \"MIT\"\n\
+             cached_overrides = \"o.tsv\"\n",
+        )
+        .expect("manifest");
+        let suite = Suite {
+            manifest,
+            dir: suite_dir.clone(),
+            cache_dir: PathBuf::new(),
+        };
+        let case = CaseFile {
+            id: "calc/D/x.xlsx".into(),
+            path: suite_dir.join("cases/D/x.xlsx"),
+            sidecar: PathBuf::new(),
+        };
+        let cached = |a1: &str| Expectation {
+            sheet: "S".into(),
+            addr: Addr::parse(a1).expect("addr"),
+            formula: None,
+            expected: Value::Error("#VALUE!".into()),
+        };
+        let write_overrides = |cell: &str| {
+            let line = format!("D/x.xlsx\tS!{cell}\tprobes/p.oracle.json\tSheet1!B1\n");
+            std::fs::write(suite_dir.join("o.tsv"), line).expect("write overrides");
+        };
+        write_overrides("C71");
+        let got = apply_cached_overrides(&suite, &case, vec![cached("C70"), cached("C71")])
+            .expect("apply");
+        assert_eq!(got[0].expected, Value::Error("#VALUE!".into()));
+        assert_eq!(got[1].expected, Value::Number(30.0));
+        write_overrides("Z9");
+        let unscored = apply_cached_overrides(&suite, &case, vec![cached("C70")]);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(unscored.is_err_and(|e| e.contains("unscored cell S!Z9")));
     }
 
     /// An oracle sidecar replaces the hand expectation for the same cell, however the hand key

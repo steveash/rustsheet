@@ -51,3 +51,84 @@ fn fn_rows_of_at_offset() {
 
     assert_eq!(model._get_text("D2"), *"1");
 }
+
+// An empty height or width argument keeps the reference's size
+// (poi/FormulaEvalTestData_Copy.xlsx EverythingTests row 1008).
+#[test]
+fn fn_offset_empty_height_width() {
+    let mut model = new_empty_model();
+    model._set("K7", "1");
+    model._set("L7", "1.001");
+    model._set("K8", "2");
+    model._set("L8", "2.9999");
+    model._set("A1", "=SUM(OFFSET(K7:L8, 0,0,1,))");
+    model._set("A2", "=SUM(OFFSET(K7:L8, 0,0,,1))");
+    model._set("A3", "=SUM(OFFSET(K7:L8, 0,0,,))");
+    model._set("A4", "=SUM(OFFSET(K7:L8, 0,0,))");
+    model._set("A5", "=SUM(OFFSET(K7:L8, 0,0,1,1))");
+    model._set("A6", "=SUM(OFFSET(K7:L8, 0,0,1))");
+    model._set("A7", "=SUM(OFFSET(K7:L8, 0,0))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"2.001");
+    assert_eq!(model._get_text("A2"), *"3");
+    assert_eq!(model._get_text("A3"), *"7.0009");
+    assert_eq!(model._get_text("A4"), *"7.0009");
+    assert_eq!(model._get_text("A5"), *"1");
+    assert_eq!(model._get_text("A6"), *"2.001");
+    assert_eq!(model._get_text("A7"), *"7.0009");
+}
+
+// Huge arguments saturate instead of overflowing i32 (untrusted input must not panic).
+#[test]
+fn fn_offset_huge_arguments_are_ref_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OFFSET(B2,1E10,0)");
+    model._set("A2", "=OFFSET(B2,-1E10,0)");
+    model._set("A3", "=OFFSET(B2,0,1E10)");
+    model._set("A4", "=OFFSET(B2,0,-1E10)");
+    model._set("A5", "=OFFSET(B2,1,0,1E10)");
+    model._set("A6", "=OFFSET(B2,1,0,1,1E10)");
+    model._set("A7", "=OFFSET(B2,1,0,-1E10)");
+    model._set("A8", "=OFFSET(B2,1,0,1,-1E10)");
+    model._set("A9", "=OFFSET(B2,1E300,1E300,1E300,1E300)");
+    model.evaluate();
+
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"] {
+        assert_eq!(model._get_text(cell), *"#REF!", "{cell}");
+    }
+    // A9 only pins "no panic": the result for 1E300 arguments has no oracle evidence.
+}
+
+// A negative height/width extends the area up/left from the anchor; fractions and 0 are quirky.
+// Excel: probes/offset-negative-height-width (docs/excel-semantics/references.md).
+#[test]
+fn fn_offset_negative_height_width() {
+    let mut model = new_empty_model();
+    for r in 1..=12 {
+        model._set(&format!("A{r}"), &r.to_string());
+        model._set(&format!("B{r}"), &(r * 100).to_string());
+    }
+    model._set("D1", "=SUM(OFFSET(A10,0,0,-3,1))");
+    model._set("D2", "=SUM(OFFSET(B10,0,0,1,-2))");
+    model._set("D3", "=SUM(OFFSET(B10,0,0,-2,-2))");
+    model._set("D4", "=SUM(OFFSET(A5:B6,1,1,-2,-2))");
+    model._set("D5", "=SUM(OFFSET(A2,0,0,-3,1))");
+    model._set("D6", "=OFFSET(A10,0,0,0,1)");
+    model._set("D7", "=SUM(OFFSET(A10,0,0,0.5,1))");
+    model._set("D8", "=SUM(OFFSET(A10,0,0,-0.5,1))");
+    model._set("D9", "=SUM(OFFSET(A10,0,0,-2.9,1))");
+    model._set("D10", "=SUM(OFFSET(A5:B6,0,0,,-2))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"27");
+    assert_eq!(model._get_text("D2"), *"1010");
+    assert_eq!(model._get_text("D3"), *"1919");
+    assert_eq!(model._get_text("D4"), *"1111");
+    assert_eq!(model._get_text("D5"), *"#REF!");
+    assert_eq!(model._get_text("D6"), *"#REF!");
+    assert_eq!(model._get_text("D7"), *"19");
+    assert_eq!(model._get_text("D8"), *"21");
+    assert_eq!(model._get_text("D9"), *"19");
+    assert_eq!(model._get_text("D10"), *"#REF!");
+}

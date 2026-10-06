@@ -3,11 +3,11 @@ id: T-0213
 title: "INDEX: one index into a 2-D range is #REF! (164 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P1
 size: S
-tier: sonnet
-depends_on: []
+tier: opus
+depends_on: [T-0209]
 ---
 
 ## Goal
@@ -73,3 +73,17 @@ These cells also need another task:
 
 ## Out of scope
 - INDEX returning references in aggregates (T-0216). Spill/`#SPILL!` decoding (T-0208).
+
+## Handoff (resumed)
+A sonnet run implemented the range rule and handed off on one regression (78bc88199fc96650 A301) that
+needed T-0209; it cleared once T-0209 merged.
+
+## Outcome
+`INDEX(range, n)` with a single index into a range with more than one row and more than one column is
+`#REF!` (also for 0 and fractions); argument errors still win, and vectors keep selecting along the
+vector. The new probe `probes/index-single-index` shows that arrays differ: a single index selects the
+whole row (`INDEX({1,2;3,4},1)` spills `{1,2}`), which the engine already did, so they are left as is
+(docs/excel-semantics/lookup.md). Once T-0209 landed, the handoff's regression (78bc88199fc96650 A301)
+cleared. Eval: gen-m2 known failures 1049 -> 880 (169 fixed, all 164 listed cells included), 0 regressions;
+probes gain 6 passing cells.
+

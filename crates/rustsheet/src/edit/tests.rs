@@ -190,6 +190,51 @@ fn sheet_ops_apply_and_roll_back() {
 }
 
 #[test]
+fn defined_names_apply_and_roll_back() {
+    let mut wb = book();
+    let ((), changes) = wb
+        .edit(|tx| {
+            tx.set("A1", 2.0)?;
+            tx.set("B2", 20.0)?;
+            tx.define_name("src", "=Sheet1!$A$1")?;
+            tx.define_name("rate", "0.5")?;
+            // An intersection is a valid name body (docs/excel-semantics/references.md).
+            tx.define_name("isect", "=Sheet1!$A$1:$A$3 Sheet1!$A$1:$B$1")?;
+            tx.set("C1", Input::Formula("=src/2".into()))
+        })
+        .unwrap();
+    assert_eq!(wb.value("C1").unwrap(), Value::Number(1.0));
+    assert!(changes.values.iter().any(|v| v.cell.to_string() == "C1"));
+
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.define_name("extra", "=Sheet1!$B$2")?;
+        tx.set("C1", Input::Formula("=extra".into()))?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    // The rolled-back name is gone: defining it again succeeds.
+    wb.edit(|tx| tx.define_name("extra", "=Sheet1!$B$2"))
+        .unwrap();
+}
+
+#[test]
+fn defined_name_errors_are_typed() {
+    let mut wb = book();
+    wb.edit(|tx| tx.define_name("rate", "=1")).unwrap();
+    for (name, formula) in [("rate", "=2"), ("RATE", "=2"), ("A1", "=2"), ("ok", "=1+")] {
+        assert!(
+            matches!(
+                wb.edit(|tx| tx.define_name(name, formula)),
+                Err(EditError::DefinedName(_))
+            ),
+            "{name} {formula}"
+        );
+    }
+}
+
+#[test]
 fn deleting_a_sheet_reports_its_cells_and_dependents() {
     let mut wb = book();
     let (data, _) = wb.edit(|tx| tx.add_sheet("Data")).unwrap();
@@ -440,4 +485,56 @@ fn oversized_spill_footprints_are_rejected() {
     ws.sheet_data.set_cell(1, 1, anchor);
     let err = wb.set("A1", 1.0).unwrap_err();
     assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
+}
+
+/// Runs `f` on a 1 MiB stack (the smallest common one, WebAssembly's) in an optimized build, the
+/// stack the engine's formula depth limit is sized for; an unoptimized build spends about ten
+/// times more stack per nesting level, so it gets 16 MiB. Same helper as the engine's
+/// `parser/tests/test_nesting_depth.rs` (test code cannot be shared across crates); keep in sync.
+fn on_small_stack(f: impl FnOnce() + Send + 'static) {
+    let stack = if cfg!(debug_assertions) {
+        16 << 20
+    } else {
+        1 << 20
+    };
+    let handle = std::thread::Builder::new().stack_size(stack).spawn(f);
+    assert!(handle.is_ok_and(|h| h.join().is_ok()));
+}
+
+#[test]
+fn over_nested_formula_is_rejected_not_a_crash() {
+    // T-0931: deep nesting used to overflow the parser's stack.
+    on_small_stack(|| {
+        let mut wb = book();
+        wb.set("A1", 1.0).unwrap();
+        for formula in [
+            format!("={}1{}", "(".repeat(10_000), ")".repeat(10_000)),
+            format!("={}1{}", "ABS(".repeat(10_000), ")".repeat(10_000)),
+            format!("={}1{}", "{".repeat(10_000), "}".repeat(10_000)),
+            format!("={}1", "-(".repeat(10_000)),
+            format!("={}", vec!["1"; 10_000].join("+")),
+            format!("=1{}", "%".repeat(10_000)),
+        ] {
+            let err = wb.set("A1", Input::Formula(formula)).unwrap_err();
+            assert!(matches!(err, EditError::InvalidInput { .. }), "{err:?}");
+            assert_eq!(wb.value("A1").unwrap(), Value::Number(1.0));
+        }
+    });
+}
+
+#[test]
+fn formulas_at_the_depth_limit_evaluate() {
+    on_small_stack(|| {
+        let mut wb = book();
+        // 127 nested calls (Excel itself allows 64) and a 255-term chain are the deepest accepted.
+        let calls = format!("={}1{}", "ABS(".repeat(127), ")".repeat(127));
+        wb.set("A1", Input::Formula(calls)).unwrap();
+        assert_eq!(wb.value("A1").unwrap(), Value::Number(1.0));
+        wb.set(
+            "A2",
+            Input::Formula(format!("={}", vec!["1"; 255].join("+"))),
+        )
+        .unwrap();
+        assert_eq!(wb.value("A2").unwrap(), Value::Number(255.0));
+    });
 }

@@ -1,0 +1,12 @@
+# Cached values that are not en-US Excel evidence, replaced by en-US oracle values (decision 0032).
+# The workbooks were saved by a day-first Excel (docs/research/oracle-calibration.md); each line names
+# the probe cell computing the same formula on the same inputs. Read by crates/rustsheet-eval
+# (overrides.rs) and by crates/rustsheet-xlsx/build.rs (which skips these cells).
+# case	cell	oracle sidecar (relative to eval/suites)	cell
+DATE_AND_TIME/DATEVALUE.xlsx	DATEVALUE!B48	probes/cases/date-text-locale.oracle.json	Sheet1!B1
+DATE_AND_TIME/DAYS_DAYS360.xlsx	Sheet1!C71	probes/cases/date-text-locale.oracle.json	Sheet1!B4
+DATE_AND_TIME/DAYS_DAYS360.xlsx	Sheet1!D71	probes/cases/date-text-locale.oracle.json	Sheet1!B5
+DATE_AND_TIME/NETWORKDAYS_NETWORKDAYS.INTL.xlsx	Sheet1!C60	probes/cases/date-text-locale.oracle.json	Sheet1!B6
+DATE_AND_TIME/NETWORKDAYS_NETWORKDAYS.INTL.xlsx	Sheet1!D60	probes/cases/date-text-locale.oracle.json	Sheet1!B7
+TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!C15	probes/cases/date-text-locale.oracle.json	Sheet1!B2
+TEXT/T_VALUE_VALUETOTEXT.xlsx	Sheet1!I5	probes/cases/date-text-locale.oracle.json	Sheet1!B3

@@ -12,6 +12,41 @@ use crate::{
 /// A compiled criterion predicate, as returned by `build_criteria`.
 type Criterion<'c> = Box<dyn Fn(&CalcResult) -> bool + 'c>;
 
+/// Rows and columns spanned by a range.
+fn range_shape(range: &Range) -> (i32, i32) {
+    (
+        range.right.row - range.left.row,
+        range.right.column - range.left.column,
+    )
+}
+
+/// True when every range has the same rows x columns as the first one.
+fn same_shape(ranges: &[Range]) -> bool {
+    ranges
+        .first()
+        .is_none_or(|first| ranges.iter().all(|r| range_shape(r) == range_shape(first)))
+}
+
+/// `anchor`'s top-left cell with `shape_of`'s rows x columns, clamped to the grid.
+fn resize_to(anchor: &Range, shape_of: &Range) -> Range {
+    let (rows, columns) = range_shape(shape_of);
+    let mut resized = Range {
+        left: anchor.left,
+        right: anchor.left,
+    };
+    resized.right.row = (anchor.left.row + rows).min(LAST_ROW);
+    resized.right.column = (anchor.left.column + columns).min(LAST_COLUMN);
+    resized
+}
+
+fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "Ranges must have the same shape".to_string(),
+    )
+}
+
 impl Model {
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
@@ -27,10 +62,12 @@ impl Model {
     pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() == 2 {
             let arguments = vec![args[0].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
+            self.average_ifs(&arguments, cell, false)
         } else if args.len() == 3 {
+            // Unlike AVERAGEIFS, a differently shaped average_range is not an
+            // error: it is resized to the criteria range (probes/ifs-shape-mismatch F9–F11).
             let arguments = vec![args[2].clone(), args[0].clone(), args[1].clone()];
-            self.fn_averageifs(&arguments, cell)
+            self.average_ifs(&arguments, cell, false)
         } else {
             CalcResult::new_args_number_error(cell)
         }
@@ -55,7 +92,9 @@ impl Model {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2], cell);
+            // By reference: a single-cell criteria range (`A1`) is a 1x1 range
+            // (probes/sumif-edge-single-cell F11-F15).
+            let result = self.evaluate_node_with_reference(&args[case_index * 2], cell);
             if result.is_error() {
                 return result;
             }
@@ -67,11 +106,14 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     );
                 }
-                // TODO test ranges are of the same size as sum_range
                 ranges.push(Range { left, right });
             } else {
                 return CalcResult::new_error(Error::VALUE, cell, "Expected a range".to_string());
             }
+        }
+        // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
+        if !same_shape(ranges) {
+            return shape_mismatch(cell);
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -180,6 +222,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
+        strict_shape: bool,
         apply: F,
     ) -> Result<(), CalcResult>
     where
@@ -189,11 +232,12 @@ impl Model {
         if args_count < 3 || args_count.is_multiple_of(2) {
             return Err(CalcResult::new_args_number_error(cell));
         }
-        let arg_0 = self.evaluate_node_in_context(&args[0], cell);
+        // By reference: a single-cell sum_range (`A1`) is a 1x1 range to resize from.
+        let arg_0 = self.evaluate_node_with_reference(&args[0], cell);
         if arg_0.is_error() {
             return Err(arg_0);
         }
-        let sum_range = if let CalcResult::Range { left, right } = arg_0 {
+        let mut sum_range = if let CalcResult::Range { left, right } = arg_0 {
             if left.sheet != right.sheet {
                 return Err(CalcResult::new_error(
                     Error::VALUE,
@@ -223,7 +267,8 @@ impl Model {
             // NB: We cannot do:
             // fn_criteria.push(build_criteria(&criterion));
             // because criterion doesn't live long enough
-            let result = self.evaluate_node_in_context(&args[case_index * 2 - 1], cell);
+            // By reference, as above (probes/sumif-edge-single-cell F11-F15).
+            let result = self.evaluate_node_with_reference(&args[case_index * 2 - 1], cell);
             if result.is_error() {
                 return Err(result);
             }
@@ -235,7 +280,6 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     ));
                 }
-                // TODO test ranges are of the same size as sum_range
                 ranges.push(Range { left, right });
             } else {
                 return Err(CalcResult::new_error(
@@ -244,6 +288,21 @@ impl Model {
                     "Expected a range".to_string(),
                 ));
             }
+        }
+        // Every range shaped like sum_range, else #VALUE! (T-0209; SUMIFS from
+        // gen-m2, AVERAGEIFS/MINIFS/MAXIFS from probes/ifs-shape-mismatch). Only
+        // SUMIF's single-criterion path opts out: it never errors (T-0214).
+        if strict_shape
+            && (!same_shape(ranges)
+                || ranges.first().map(range_shape) != Some(range_shape(&sum_range)))
+        {
+            return Err(shape_mismatch(cell));
+        }
+        if !strict_shape {
+            // SUMIF/AVERAGEIF sum a sum_range resized to the shape of the criteria
+            // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
+            // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
+            sum_range = resize_to(&sum_range, &ranges[0]);
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale));
@@ -325,7 +384,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        let value = self.evaluate_node_in_context(node, cell);
+        let value = self.evaluate_node_with_reference(node, cell);
         if value.is_error() {
             return Err(value);
         }
@@ -393,9 +452,14 @@ impl Model {
                 })
                 .collect(),
             _ => {
-                // Single criterion: delegate to SUMIFS, which returns a scalar.
+                // Single criterion: the SUMIFS walk, minus its shape check, since
+                // SUMIF never errors on a shape mismatch (T-0214).
                 let arguments = vec![sum_range.clone(), criteria_range.clone(), criteria.clone()];
-                return self.fn_sumifs(&arguments, cell);
+                let mut total = 0.0;
+                if let Err(e) = self.apply_ifs(&arguments, cell, false, |v| total += v) {
+                    return e;
+                }
+                return CalcResult::Number(total);
             }
         };
 
@@ -409,6 +473,7 @@ impl Model {
             Ok(r) => r,
             Err(e) => return e,
         };
+        let sum_range = resize_to(&sum_range, &criteria_range);
 
         let mut output: Vec<Vec<ArrayNode>> = Vec::with_capacity(criteria_grid.len());
         for criteria_row in &criteria_grid {
@@ -435,6 +500,16 @@ impl Model {
     }
 
     pub(crate) fn fn_averageifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.average_ifs(args, cell, true)
+    }
+
+    /// The AVERAGEIFS walk; AVERAGEIF passes `strict_shape: false`.
+    fn average_ifs(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        strict_shape: bool,
+    ) -> CalcResult {
         let mut total = 0.0;
         let mut count = 0.0;
 
@@ -442,7 +517,7 @@ impl Model {
             total += value;
             count += 1.0;
         };
-        if let Err(e) = self.apply_ifs(args, cell, average) {
+        if let Err(e) = self.apply_ifs(args, cell, strict_shape, average) {
             return e;
         }
 
@@ -459,7 +534,7 @@ impl Model {
     pub(crate) fn fn_minifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut min = f64::INFINITY;
         let apply_min = |value: f64| min = value.min(min);
-        if let Err(e) = self.apply_ifs(args, cell, apply_min) {
+        if let Err(e) = self.apply_ifs(args, cell, true, apply_min) {
             return e;
         }
 
@@ -472,7 +547,7 @@ impl Model {
     pub(crate) fn fn_maxifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut max = -f64::INFINITY;
         let apply_max = |value: f64| max = value.max(max);
-        if let Err(e) = self.apply_ifs(args, cell, apply_max) {
+        if let Err(e) = self.apply_ifs(args, cell, true, apply_max) {
             return e;
         }
         if max.is_infinite() {

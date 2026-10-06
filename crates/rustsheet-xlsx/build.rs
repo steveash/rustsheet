@@ -2,6 +2,7 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 
+use std::collections::BTreeMap;
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::Path;
@@ -29,6 +30,10 @@ struct FolderConfig {
     skip: &'static [&'static str],
     /// Whether to recurse into subdirectories
     recursive: bool,
+    /// The eval suite's `cached_overrides` file for these workbooks (decision 0032): its cells
+    /// hold cached values that are not en-US Excel evidence, so the tests do not compare them
+    /// (the eval gate scores them against en-US oracle values).
+    cached_overrides: Option<&'static str>,
 }
 
 const FOLDERS: &[FolderConfig] = &[
@@ -38,6 +43,7 @@ const FOLDERS: &[FolderConfig] = &[
         test_save: true,
         skip: &[],
         recursive: true,
+        cached_overrides: Some("../../eval/suites/ironcalc-calc/cached-overrides.tsv"),
     },
     FolderConfig {
         dir: "tests/calc_test_no_export",
@@ -45,6 +51,7 @@ const FOLDERS: &[FolderConfig] = &[
         test_save: false,
         skip: &[],
         recursive: false,
+        cached_overrides: None,
     },
     FolderConfig {
         dir: "tests/templates",
@@ -52,6 +59,7 @@ const FOLDERS: &[FolderConfig] = &[
         test_save: true,
         skip: &[],
         recursive: false,
+        cached_overrides: None,
     },
     FolderConfig {
         dir: "tests/docs",
@@ -60,6 +68,7 @@ const FOLDERS: &[FolderConfig] = &[
         // Volatile (date-dependent) or numerically unstable
         skip: &["DATE", "DAY", "MONTH", "YEAR", "TAN"],
         recursive: false,
+        cached_overrides: None,
     },
 ];
 
@@ -119,6 +128,34 @@ fn collect_xlsx(
     }
 }
 
+/// Cells to skip per workbook path (`<dir>/<case>`), from a `cached_overrides` file: tab-separated
+/// lines `case<TAB>Sheet!A1<TAB>...`, `#` comments. The format's definition is
+/// crates/rustsheet-eval/src/overrides.rs; this reads only its first two fields, deliberately
+/// without depending on the eval crate (a build script of this crate cannot).
+fn read_cached_overrides(dir: &str, file: &str) -> BTreeMap<String, Vec<String>> {
+    println!("cargo:rerun-if-changed={file}");
+    // Like a missing workbook folder, a missing file (crate built outside the repository) just
+    // generates no skips.
+    let Ok(text) = fs::read_to_string(file) else {
+        return BTreeMap::new();
+    };
+    let mut cells: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for line in text.lines() {
+        if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut fields = line.split('\t');
+        let (Some(case), Some(cell)) = (fields.next(), fields.next()) else {
+            panic!("malformed cached_overrides line: {line}");
+        };
+        cells
+            .entry(format!("{dir}/{case}"))
+            .or_default()
+            .push(cell.to_string());
+    }
+    cells
+}
+
 fn main() {
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
     let dest = Path::new(&out_dir).join("generated_tests.rs");
@@ -140,8 +177,15 @@ fn main() {
             &mut files,
         );
 
+        let overrides = cfg
+            .cached_overrides
+            .map(|file| read_cached_overrides(cfg.dir, file))
+            .unwrap_or_default();
+
         for (fn_suffix, file_path) in files {
             let fn_name = format!("{}_{}", cfg.prefix, fn_suffix);
+            let skip_cells = overrides.get(&file_path).cloned().unwrap_or_default();
+            let skip = format!("&{skip_cells:?}");
 
             if cfg.test_save {
                 writeln!(
@@ -153,8 +197,8 @@ fn {fn_name}() {{
     let dir = temp_folder.join(format!("{{}}", uuid::Uuid::new_v4()));
     std::fs::create_dir(&dir).unwrap();
     let result = std::panic::catch_unwind(|| {{
-        rustsheet_xlsx::compare::test_file("{file_path}").unwrap_or_else(|e| panic!("{{}}", e));
-        rustsheet_xlsx::compare::test_load_and_saving("{file_path}", &dir)
+        rustsheet_xlsx::compare::test_file("{file_path}", {skip}).unwrap_or_else(|e| panic!("{{}}", e));
+        rustsheet_xlsx::compare::test_load_and_saving("{file_path}", &dir, {skip})
             .unwrap_or_else(|e| panic!("{{}}", e));
     }});
     std::fs::remove_dir_all(&dir).unwrap();
@@ -169,7 +213,7 @@ fn {fn_name}() {{
                     r#"#[allow(non_snake_case)]
 #[test]
 fn {fn_name}() {{
-    rustsheet_xlsx::compare::test_file("{file_path}").unwrap_or_else(|e| panic!("{{}}", e));
+    rustsheet_xlsx::compare::test_file("{file_path}", {skip}).unwrap_or_else(|e| panic!("{{}}", e));
 }}
 "#
                 )

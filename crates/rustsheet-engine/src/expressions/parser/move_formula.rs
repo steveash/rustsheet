@@ -1,4 +1,5 @@
 use super::{
+    reference_operators::{intersection_operand, tight_operand},
     stringify::{stringify_reference, DisplaceData},
     ArrayNode, Node, Reference,
 };
@@ -370,11 +371,17 @@ fn to_string_moved(
             );
             format!("{s1}:{s2}")
         }
-        OpRangeKind { left, right } => format!(
-            "{}:{}",
-            to_string_moved(left, move_context, locale, language),
-            to_string_moved(right, move_context, locale, language),
-        ),
+        OpRangeKind { left, right } => {
+            let operand = |n| tight_operand(to_string_moved(n, move_context, locale, language), n);
+            format!("{}:{}", operand(left), operand(right))
+        }
+        OpIntersectKind { left, right } => {
+            let operand = |n, is_left| {
+                let text = to_string_moved(n, move_context, locale, language);
+                intersection_operand(text, n, is_left)
+            };
+            format!("{} {}", operand(left, true), operand(right, false))
+        }
         OpConcatenateKind { left, right } => format!(
             "{}&{}",
             to_string_moved(left, move_context, locale, language),
@@ -484,10 +491,27 @@ fn to_string_moved(
             to_string_moved(right, move_context, locale, language),
         ),
         UnaryKind { kind, right } => match kind {
-            OpUnary::Minus => format!(
-                "-{}",
-                to_string_moved(right, move_context, locale, language)
-            ),
+            OpUnary::Minus => {
+                let x = to_string_moved(right, move_context, locale, language);
+                // What binds less than the minus needs its parentheses:
+                // `-(A1=B1)` is not `-A1=B1`
+                let needs_parentheses = matches!(
+                    **right,
+                    OpPowerKind { .. }
+                        | OpSumKind { .. }
+                        | OpConcatenateKind { .. }
+                        | CompareKind { .. }
+                        | UnaryKind {
+                            kind: OpUnary::Percentage,
+                            ..
+                        }
+                );
+                if needs_parentheses {
+                    format!("-({x})")
+                } else {
+                    format!("-{x}")
+                }
+            }
             OpUnary::Percentage => format!(
                 "{}%",
                 to_string_moved(right, move_context, locale, language)
@@ -500,16 +524,12 @@ fn to_string_moved(
             automatic: _,
             child,
         } => {
-            format!(
-                "@{}",
-                to_string_moved(child, move_context, locale, language)
-            )
+            let text = to_string_moved(child, move_context, locale, language);
+            format!("@{}", tight_operand(text, child))
         }
         SpillRangeOperator { child } => {
-            format!(
-                "{}#",
-                to_string_moved(child, move_context, locale, language)
-            )
+            let text = to_string_moved(child, move_context, locale, language);
+            format!("{}#", tight_operand(text, child))
         }
         LambdaDefKind { parameters, body } => {
             let mut parts: Vec<String> = parameters.iter().map(|p| p.name.clone()).collect();

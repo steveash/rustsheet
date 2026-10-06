@@ -118,14 +118,11 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 };
             }
         }
-        Node::OpRangeKind { left, right } => {
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
-                    child: Box::new(Node::OpRangeKind {
-                        left: left.clone(),
-                        right: right.clone(),
-                    }),
+                    child: Box::new(node.clone()),
                 }
             }
         }
@@ -234,6 +231,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
         | Node::OpRangeKind { .. }
+        | Node::OpIntersectKind { .. }
         | Node::DefinedNameKind(_)
         | Node::NamedVariableKind { .. }
         | Node::TableNameKind(_)
@@ -362,7 +360,7 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             column2,
             ..
         } => StaticResult::Range(row2 - row1, column2 - column1),
-        Node::OpRangeKind { .. } => {
+        Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             // TODO: We could do a bit better here
             StaticResult::Unknown
         }
@@ -1734,7 +1732,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
-        Function::Xlookup => not_implemented(args),
+        Function::Xlookup => StaticResult::Unknown,
         Function::Xmatch => not_implemented(args),
         Function::Trimrange => StaticResult::Unknown,
         Function::Sort => StaticResult::Unknown,
@@ -1757,7 +1755,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Randarray => StaticResult::Unknown,
         Function::Textsplit => StaticResult::Unknown,
         Function::Concat => not_implemented(args),
-        Function::Concatenate => not_implemented(args),
+        Function::Concatenate => scalar_arguments(args),
         Function::Exact => scalar_arguments(args),
         Function::Find => scalar_arguments(args),
         // LEFT/MID/RIGHT broadcast element-wise: an array/range argument yields an array.
