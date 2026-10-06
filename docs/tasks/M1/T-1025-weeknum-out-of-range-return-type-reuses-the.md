@@ -3,7 +3,7 @@ id: T-1025
 title: "WEEKNUM out-of-range return_type reuses the last valid start weekday: model or decline (decision)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,9 +27,17 @@ Open question for the decision: does the state cross sheets? In probes/weeknum-s
 Down!A2 is `#NUM!` although other sheets hold valid WEEKNUMs (per-sheet reset, or Down evaluated first).
 
 ## Acceptance criteria
-- [ ] A decision record (`make new-decision`) chooses model or DEVIATION, with reasons.
-- [ ] dates.md and the code comment follow the decision; probe cells pass or stay as documented known failures.
-- [ ] `make check` green; reviewers approve.
+- [x] A decision record (`make new-decision`) chooses model or DEVIATION, with reasons.
+- [x] dates.md and the code comment follow the decision; probe cells pass or stay as documented known failures.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Reproducing Excel's full calc order.
+
+## Outcome
+Declined: decision 0038 keeps `#NUM!` for every WEEKNUM return_type of 22+ or negative and records
+the stale state as `DEVIATION (decision 0038)` in docs/excel-semantics/dates.md. The value depends
+on Excel's calc order (bottom to top on load, then the calc chain), which RustSheet neither
+reproduces nor keeps stable across pass restarts; modelling it in our order would fix 3 probe cells
+by accident and break Down!A2. `fn_weeknum` comment and test cite the decision; T-0191 notes the 5
+cells to move to the probes `deviations` file. Eval delta: none (0 fixed, 0 regressions).
