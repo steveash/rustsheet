@@ -206,18 +206,23 @@ text, never numbers (NUMBERVALUE too: `NUMBERVALUE("1e308")` and `NUMBERVALUE("i
 "1e400","+1")` is 1 (only "+1" counts), and `COUNTIF(r,"inf")` / `">1e400"` compare as text. A
 `TEXT` format condition whose number is out of range (`[>1e400]`) makes the format invalid
 (#VALUE!), `[>1e308]` included.
-Small magnitudes are not yet matched (follow-up T-0154): a nonzero value below about 1E-309
-is #VALUE! (`"1e-310"+0`, `"1e-323"+0`, `"4.9e-324"+0`, `VALUE("1e-400")`), values from about
-1E-309 up to at least the smallest normal double read as 0 (`"1e-309"`, `"1e-308"`,
-`"2.2250738585072014e-308"` → 0; `"1e-307"` stays 1E-307), and a zero mantissa with an exponent
-above 308 is #VALUE! (`"0e309"`, `"0e400"`) while `"0e308"` is 0.
-Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8).
-Oracle: excel-graph, 2026-10-05.
+Small magnitudes are not yet matched (follow-up T-0154). Boundaries pinned by probes/text-number-tiny
+(Excel, `0+A1` and `VALUE(A1)` agree on every row): a nonzero value below 1E-309 is #VALUE!
+(`5e-310`, `9.99e-310`, `9.9999e-310`, `-1e-310`, `"1e-323"`, `"4.9e-324"`, `VALUE("1e-400")`), while
+`1e-309` and `1.000001e-309` are numbers (the cut-off is exactly 1E-309). From 1E-309 up to and
+including the smallest normal double 2.2250738585072E-308 (`2.2250738585072e-308`, `2e-308`,
+`1.5e-309`, `-2e-308`, `-1e-309`) the text reads as 0 (not the subnormal value; sign dropped); the
+first value above, `2.2250738585073e-308`, keeps its value, as do `9.9e-308`, `1e-307`, `1.1e-307`.
+Zero mantissas: `"0e308"` and `"0.0e309"` are 0 but `"0e309"`, `"-0e309"` and `"0e-400"` are #VALUE!
+(so the cut-off tests the exponent of the text, not the value, when the mantissa is a bare `0`;
+`0.0e309` differs from `0e309`).
+Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8); probes/text-number-tiny (Data!B1:D20).
+Oracle: excel-graph, 2026-10-05 and 2026-10-06.
 Status: VERIFIED
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
 lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
 in crates/rustsheet-engine/src/number_format.rs.
-Tasks: T-0920, T-0140, T-0154
+Tasks: T-0920, T-0140, T-0154, T-0174
 
 ## MOD is an exact remainder
 Rule: `MOD(n,d)` = exact `fmod(n,d)`, plus `d` when the result is non-zero and its sign differs from `d`.

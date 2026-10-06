@@ -3,7 +3,7 @@ id: T-0174
 title: "Probe the tiny-magnitude cut-offs of number text (5e-310, 2e-308, 9.9e-308, 0e-400) for T-0154"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -44,3 +44,6 @@ to 3 significant digits; record each round's inputs.
 ## Out of scope
 - Changing `parse_excel_number` (T-0154).
 - Formula number literals (T-0144) and huge magnitudes (already VERIFIED).
+
+## Outcome
+Probe probes/text-number-tiny (20 inputs, B=0+A, C=VALUE(A), D=ISERROR) filled from excel-graph 2026-10-06. Cut-off is exactly 1E-309 (9.9999e-310 is #VALUE!, 1e-309 is 0), flush range ends at the smallest normal double 2.2250738585072E-308, no bisection round needed. Zero-mantissa quirk: `0e309`, `-0e309`, `0e-400` #VALUE! but `0e308`, `0.0e309` are 0. numbers.md updated; engine mismatches are baselined for T-0154.
