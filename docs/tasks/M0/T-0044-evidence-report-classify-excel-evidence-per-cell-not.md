@@ -3,7 +3,7 @@ id: T-0044
 title: "Evidence report: classify Excel evidence per cell, not per case"
 milestone: M0
 lane: harness
-status: done
+status: todo
 priority: P3
 size: S
 tier: sonnet
@@ -32,8 +32,3 @@ Review findings on T-0020 (reviewer-excel-fidelity, 2026-10-05). `RunReport::bui
 
 ## Out of scope
 - Counting only the branches a formula actually evaluates (the counts stay an upper bound).
-
-## Outcome
-`CellResult.from_excel` records per cell whether the expectation came from an Excel oracle sidecar
-(only cells the sidecar supplies) or an Excel-authored cached value; the evidence report counts only
-those cells. Unit tests: partly covering sidecar (runner) and hand/non-Excel cells (report). No eval delta.

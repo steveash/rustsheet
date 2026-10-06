@@ -92,7 +92,7 @@ pub const EVIDENCE_THRESHOLD: usize = 25;
 
 /// Whether a case's expectations come from Excel (an oracle backend or Excel-cached values),
 /// not from hand-written or engine-derived values.
-pub(crate) fn is_excel_evidence(expected_source: &str) -> bool {
+fn is_excel_evidence(expected_source: &str) -> bool {
     expected_source.starts_with("excel")
 }
 
@@ -145,10 +145,11 @@ impl RunReport {
             s.cells += r.checked;
             s.cells_passed += r.passed;
             s.millis += r.millis;
+            let from_excel = is_excel_evidence(&r.expected_source);
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
                 for f in c.formula.as_deref().map(functions_in).unwrap_or_default() {
-                    if c.from_excel {
+                    if from_excel {
                         let ev = evidence
                             .entry(f.clone())
                             .or_insert_with(|| FunctionEvidence {
@@ -460,14 +461,6 @@ mod tests {
             expected: crate::value::Value::Number(1.0),
             actual: crate::value::Value::Number(1.0),
             verdict,
-            from_excel: false,
-        }
-    }
-
-    fn excel_cell(formula: &str, verdict: Verdict) -> CellResult {
-        CellResult {
-            from_excel: true,
-            ..cell(formula, verdict)
         }
     }
 
@@ -476,22 +469,16 @@ mod tests {
         let mut oracle = case("probes/a", 1);
         oracle.expected_source = "excel-graph".into();
         oracle.cells = vec![
-            excel_cell("SUM(A1:A2)", Verdict::Pass),
-            excel_cell("SUM(A1)+ABS(1)", Verdict::NumericMismatch),
-            // A hand-written cell beside a partly covering sidecar is not evidence.
-            cell("SUM(A3)+IF(TRUE,1,0)", Verdict::Pass),
+            cell("SUM(A1:A2)", Verdict::Pass),
+            cell("SUM(A1)+ABS(1)", Verdict::NumericMismatch),
         ];
         let mut cached = case("poi/b", 1);
         cached.expected_source = "excel-cached (Microsoft Excel)".into();
-        cached.cells = vec![
-            excel_cell("_xlfn.XLOOKUP(1,A:A,B:B)", Verdict::Pass),
-            // Non-Excel cached values (e.g. LibreOffice) do not count.
-            cell("TRIM(\"a\")", Verdict::Pass),
-        ];
+        cached.cells = vec![cell("_xlfn.XLOOKUP(1,A:A,B:B)", Verdict::Pass)];
         let mut hand = case("smoke/c", 1);
         hand.expected_source = "hand".into();
         hand.cells = vec![cell("IF(TRUE,SUM(1),0)", Verdict::Pass)];
-        let implemented = ["ABS", "IF", "SUM", "TRIM", "XLOOKUP"].map(String::from);
+        let implemented = ["ABS", "IF", "SUM", "XLOOKUP"].map(String::from);
         let report = RunReport::build("e", &[oracle, cached, hand], &implemented);
         let got: Vec<(&str, usize, Vec<&str>)> = report
             .evidence
@@ -512,10 +499,10 @@ mod tests {
                 ("SUM", 2, vec!["probes"])
             ]
         );
-        assert_eq!(report.unevidenced, ["IF", "TRIM"]);
+        assert_eq!(report.unevidenced, ["IF"]);
         let md = report.to_markdown(1);
-        assert!(md.contains("Excel evidence: 0 functions with ≥25 oracle/cached cells, 3 with fewer, 2 implemented with none"));
-        assert!(md.contains("Implemented, no Excel evidence (2): IF, TRIM"));
+        assert!(md.contains("Excel evidence: 0 functions with ≥25 oracle/cached cells, 3 with fewer, 1 implemented with none"));
+        assert!(md.contains("Implemented, no Excel evidence (1): IF"));
         assert!(md.contains("| SUM | 2 | probes | yes |"));
     }
 
