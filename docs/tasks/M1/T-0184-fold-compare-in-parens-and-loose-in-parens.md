@@ -3,7 +3,7 @@ id: T-0184
 title: "Fold compare_in_parens and loose_in_parens in stringify into one predicate"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -17,8 +17,11 @@ depends_on: []
 Follow-up to T-0157 (architecture and quality review MINOR findings). `crates/rustsheet-engine/src/expressions/parser/stringify.rs`. Pure refactor; printed text must not change.
 
 ## Acceptance criteria
-- [ ] Existing stringify round-trip tests pass unchanged; no printed formula changes.
-- [ ] `make check` green; reviewers approve.
+- [x] Existing stringify round-trip tests pass unchanged; no printed formula changes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+One `paren_if` helper plus an `is_loose` predicate now serve the Concatenate, Sum and Product arms of `stringify`; printed text unchanged (existing round-trip tests pass). No eval delta.
