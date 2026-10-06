@@ -7,18 +7,24 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-0177]
+spec: docs/specs/SPEC-0003-newer-error-kinds.md
 ---
 
 ## Goal
-TODO(fill): the outcome, not the implementation.
+The engine and the public API represent `#GETTING_DATA`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` as their own error kinds, with Excel's ERROR.TYPE codes, and `=#GETTING_DATA` parses.
 
 ## Context
-TODO(fill): why; failing case ids; semantics notes; code paths.
+SPEC-0003 "Design", sections "Engine" and "Facade and Python" (rollout E1). The fixed cells are `probes/error-literals-new` and `error-literals-new2`. Cells whose expected value is the stored `#N/A` pass only after T-1011, so count them there.
+Code: `crates/rustsheet-engine/src/expressions/token.rs` (`enum Error`, `error_type_code`, `get_error_by_english_name`, `is_english_error_string`), `expressions/lexer/mod.rs` (`consume_error`), `crates/rustsheet/src/value.rs` (`ErrorKind`), and `bindings/python` tests.
 
 ## Acceptance criteria
-- [ ] TODO(fill): verifiable statements.
+- [ ] New `Error` variants `GETTINGDATA`, `CONNECT`, `BLOCKED`, `FIELD` are appended after `NULL`. `error_type_code` gives 8/10/11/13, and no `_` match arm is added anywhere.
+- [ ] The stored-name table has all sixteen names. The formula-literal table adds only `#GETTING_DATA`, case-insensitively, without touching `Language`, and `=#BLOCKED!` still fails to parse. Unit tests cover both tables.
+- [ ] `Error::stored_literal()` exists (`#N/A` for `GETTINGDATA`) with a unit test. Its callers come in T-1011.
+- [ ] `ErrorKind` gains `GettingData`, `Connect`, `Blocked` and `Field`. `literals_match_engine` covers them, and `from_literal` uses the stored-name table and round-trips all kinds. A Python test builds `XlError("#BLOCKED!")` with code 11.
+- [ ] The ERROR.TYPE/ISNA/IFNA/TYPE/VALUETOTEXT cells of `probes/error-literals-new` (A2–A6, A12, A14, A16) pass. They are recorded with `make eval-baseline`, with no regressions.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- IMAGE/STOCKHISTORY/FIELDVALUE (T-1013) and xlsx export (T-1011).

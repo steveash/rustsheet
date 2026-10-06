@@ -1,6 +1,6 @@
 # SPEC-0003 — Excel's newer error kinds (#GETTING_DATA, #CONNECT!, #BLOCKED!, #FIELD!)
 
-- **Status:** draft
+- **Status:** accepted (on merge of T-0177)
 - **Milestone / lane:** M1 / api (implementation in engine, harness, research, functions-logic)
 - **Tasks:** T-0177 (this spec); rollout tasks below
 
@@ -97,9 +97,9 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
      decoding (non-goal: localization). `=#BLOCKED!` and the other names stay an unparseable
      formula, as today, which matches Excel refusing them.
    - Typed cell input (`Model::set_user_input` → `get_error_by_name`) and `value_needs_quoting`
-     keep today's table until R1 shows what Excel does with typed `#BLOCKED!`. With that table, a
+     keep today's table until there is evidence of what Excel does with typed `#BLOCKED!` (desktop UI; not reachable by the web oracle). With that table, a
      typed `#BLOCKED!` stays text, and a typed `#GETTING_DATA` becomes the error because it is in
-     the formula table. That choice **needs evidence** (R1) and is recorded as UNVERIFIED in
+     the formula table. That choice **needs evidence** (desktop) and is recorded as UNVERIFIED in
      syntax.md.
 3. **Stored form: `Error::stored_literal(&self) -> &'static str`**, the single place that knows
    Excel saves `#GETTING_DATA` as `#N/A`. It returns `"#N/A"` for `GETTINGDATA` and the `Display`
