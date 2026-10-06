@@ -96,6 +96,9 @@ C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/union-accepted.case.json	9
 C	probes/union-defined-name.case.json	0
 C	probes/union-neg-operand.case.json	2
+C	probes/union-operand-double-minus.case.json	2
+C	probes/union-operand-neg-cut-group.case.json	2
+C	probes/union-operand-nested-parens.case.json	6
 C	probes/value-clock-text.case.json	135
 C	probes/weeknum-1900-later.case.json	23
 C	probes/weeknum-invalid-type.case.json	8
@@ -309,6 +312,9 @@ F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9
 F	probes/union-accepted.case.json	Sheet1!H9
 F	probes/union-defined-name.case.json	!EngineError
+F	probes/union-operand-double-minus.case.json	Sheet1!H1
+F	probes/union-operand-nested-parens.case.json	Sheet1!H2
+F	probes/union-operand-nested-parens.case.json	Sheet1!H6
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1
