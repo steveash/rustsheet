@@ -3,7 +3,7 @@ id: T-0166
 title: "spec2xlsx: write LET/LAMBDA bound names with the _xlpm. prefix"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
