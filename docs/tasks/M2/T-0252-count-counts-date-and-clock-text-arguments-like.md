@@ -3,7 +3,7 @@ id: T-0252
 title: "COUNT counts date and clock text arguments like SUM coerces them"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
