@@ -3,7 +3,7 @@ id: T-1033
 title: "Conditional-format Equal/NotEqual and CalcResult Ord NaN: drop absolute epsilon, total order"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
