@@ -32,10 +32,10 @@ Also probe the value-operator operands refused by inference in T-0148: `=A1 (B1+
 - `@` and union operands (T-0149).
 
 ## Outcome
-Probed 29 operands in Excel for the web (excel-graph, 2026-10-06), one scratch workbook each.
-Accepted (give 2): INDIRECT, CHOOSE, XLOOKUP, LET (with `_xlpm.` names), SWITCH, IFS, TAKE, DROP.
+Probed 32 operands in Excel for the web (excel-graph, 2026-10-06), one scratch workbook each.
+Accepted (give 2): INDIRECT, CHOOSE, XLOOKUP, LET (with `_xlpm.` names), SWITCH, IFS, TAKE, DROP, TRIMRANGE.
 Workbook refused (`FileCorruptTryRepair`): ABS, ROW, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
-VSTACK, SORT, UNIQUE, VLOOKUP, MATCH, ROWS, and the value operators `(B1+C1)`, `(-B1)`, `(B1&"")`,
+VSTACK, SORT, UNIQUE, VLOOKUP, HLOOKUP, LOOKUP, MATCH, ROWS, and the value operators `(B1+C1)`, `(-B1)`, `(B1&"")`,
 `(B1=1)`, `(B1%)`, `(B1*C1)`, `(B1/C1)`, `(B1^2)`.
 `is_reference_operand` is now an allowlist of the evidenced reference-returning functions; parser
 tests cover every probed form. probes/intersection-function-operands gains H6:H12 (oracle-filled).

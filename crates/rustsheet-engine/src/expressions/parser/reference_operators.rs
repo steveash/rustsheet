@@ -165,7 +165,7 @@ fn is_constant(node: &Node) -> bool {
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as
-/// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
+/// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
 /// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
 /// probed are refused by inference.
 fn is_reference_operand(node: &Node) -> bool {
@@ -194,6 +194,7 @@ fn is_reference_operand(node: &Node) -> bool {
                 | Function::Ifs
                 | Function::Take
                 | Function::Drop
+                | Function::Trimrange
         ),
         _ => true,
     }

@@ -275,6 +275,8 @@ fn intersection_operands_must_be_references() {
         "A1:A3 VLOOKUP(2,A1:B3,1)",
         "A1:A3 MATCH(2,A1:A3,0)",
         "A1:A3 ROWS(A2:B2)",
+        "A1:A3 HLOOKUP(2,A2:B3,1)",
+        "A1:A3 LOOKUP(2,A1:A3,A1:A3)",
     ] {
         let node = parser.parse(formula, &context());
         assert!(
@@ -296,6 +298,7 @@ fn intersection_operands_must_be_references() {
         "A1:A3 IFS(TRUE,A2:B2)",
         "A1:A3 TAKE(A2:B3,1)",
         "A1:A3 DROP(A1:B2,1)",
+        "A1:A3 TRIMRANGE(A2:B2)",
     ] {
         let node = parser.parse(formula, &context());
         assert!(is_intersection(&node), "{formula}: {node:?}");

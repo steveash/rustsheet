@@ -22,7 +22,8 @@ workbook `=A1:A3 _xlfn.LET(x,A2:B2,x)` was refused (`FileCorruptTryRepair`) whil
 
 ## Acceptance criteria
 - [ ] LET and LAMBDA parameter names (and their uses) are written with `_xlpm.`; a unit test on the generated sheet XML.
-- [ ] `=A1:A3 LET(x,A2:B2,x)` added to probes/intersection-function-operands and oracle-filled (2 expected).
+- [ ] Functions XlsxWriter does not know get their `_xlfn.` prefix too: T-0161's `=A1:A3 TRIMRANGE(A2:B2)` came back `#NAME?` from the case builder but 2 with `_xlfn.TRIMRANGE` written by hand. Take the prefix list from the engine's exporter rather than a second copy.
+- [ ] `=A1:A3 LET(x,A2:B2,x)` and `=A1:A3 TRIMRANGE(A2:B2)` added to probes/intersection-function-operands and oracle-filled (2 expected).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
