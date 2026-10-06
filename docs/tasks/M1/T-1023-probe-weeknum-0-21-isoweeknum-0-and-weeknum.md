@@ -3,7 +3,7 @@ id: T-1023
 title: "Probe WEEKNUM(0,21), ISOWEEKNUM(0) and WEEKNUM error precedence at serial 0 (return_type 0/3)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
