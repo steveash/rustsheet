@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Result-length limit of SUBSTITUTE, CONCAT, TEXTJOIN past 32767 chars (T-0241)",
+ "tags": [
+  "M2",
+  "limits",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "C1": "=LEN(SUBSTITUTE(REPT(\"a\",20000),\"a\",\"bb\"))",
+    "C2": "=LEN(SUBSTITUTE(REPT(\"a\",16383),\"a\",\"bb\"))",
+    "C3": "=LEN(SUBSTITUTE(REPT(\"a\",16384),\"a\",\"bb\"))",
+    "C4": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"a\",\"b\"))",
+    "C5": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"a\",\"bb\",1))",
+    "C6": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"a\",\"bb\",2))",
+    "C7": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"a\",REPT(\"b\",32767),1))",
+    "C8": "=LEN(CONCAT(REPT(\"a\",32767),\"b\"))",
+    "C9": "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\"))",
+    "C10": "=ISERROR(SUBSTITUTE(REPT(\"a\",20000),\"a\",\"bb\"))",
+    "C11": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"z\",REPT(\"b\",32767),1))",
+    "C12": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"z\",REPT(\"b\",32767)))",
+    "C13": "=LEN(SUBSTITUTE(REPT(\"a\",20000),\"z\",REPT(\"b\",20000)))",
+    "C14": "=LEN(SUBSTITUTE(REPT(\"a\",20000),\"a\",REPT(\"b\",20000),1))"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!C1",
+  "Sheet1!C2",
+  "Sheet1!C3",
+  "Sheet1!C4",
+  "Sheet1!C5",
+  "Sheet1!C6",
+  "Sheet1!C7",
+  "Sheet1!C8",
+  "Sheet1!C9",
+  "Sheet1!C10",
+  "Sheet1!C11",
+  "Sheet1!C12",
+  "Sheet1!C13",
+  "Sheet1!C14"
+ ]
+}

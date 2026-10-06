@@ -3,7 +3,7 @@ id: T-0247
 title: "IS* functions (ISERROR, ISNUMBER, ...) lift over array arguments and spill"
 milestone: M2
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,12 @@ IS* functions already lift (functions/information/) and reuse the existing array
 
 ## Out of scope
 -
+
+## Outcome
+ISNUMBER/ISTEXT/ISNONTEXT/ISLOGICAL/ISBLANK/ISERROR/ISERR/ISNA now share one `is_predicate` helper
+that lifts over ranges/arrays, and their static analysis reports array results so they spill.
+New probe `probes/is-functions-array-lift` (excel-graph). Eval: probes known failures 61 -> 58
+(text-number-words F12:H12 fixed). ISEVEN/ISODD over a text-containing range gave a single
+`#VALUE!` in Excel; recorded UNVERIFIED in `docs/excel-semantics/information.md`, not implemented.
+
+Follow-up: T-0248 (ISEVEN/ISODD probe, extra IS* probe coverage).
