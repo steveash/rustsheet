@@ -154,6 +154,12 @@ impl Model {
     ) -> CalcResult {
         match node {
             Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } => self.get_sheet_span_range(*first_index, *last_index, reference, cell),
             Node::FunctionKind {
                 kind: Function::If,
                 args,
@@ -169,9 +175,11 @@ impl Model {
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///
-    /// The one range walk behind every aggregate function. Ranges spanning two
-    /// sheets are `#VALUE!`; whole-row and whole-column ranges are clipped to
-    /// the used area so the walk stays proportional to the data. The first
+    /// The one range walk behind every aggregate function. A range whose corners
+    /// sit on two sheets is a 3-D reference (only [`Self::evaluate_aggregate_arg`]
+    /// builds one) and is walked sheet by sheet in tab order; whole-row and
+    /// whole-column ranges are clipped to each sheet's used area so the walk
+    /// stays proportional to the data. The first
     /// error cell aborts the walk and is returned as `Err`, as does an `Err`
     /// from `f`. `f` never sees `CalcResult::Error`.
     pub(crate) fn for_each_cell_in_range<F>(
@@ -202,24 +210,18 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
-        if left.sheet != right.sheet {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Ranges are in different sheets".to_string(),
-            ));
-        }
-        let (row2, column2) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-        for row in left.row..=row2 {
-            for column in left.column..=column2 {
-                let value = self.evaluate_cell(CellReferenceIndex {
-                    sheet: left.sheet,
-                    row,
-                    column,
-                });
-                f(self, value)?;
+        // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
+        // clipped to its own used area, so a span of whole columns walks only data.
+        debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
+        for sheet in left.sheet..=right.sheet {
+            let (row2, column2) = self
+                .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            for row in left.row..=row2 {
+                for column in left.column..=column2 {
+                    let value = self.evaluate_cell(CellReferenceIndex { sheet, row, column });
+                    f(self, value)?;
+                }
             }
         }
         Ok(())

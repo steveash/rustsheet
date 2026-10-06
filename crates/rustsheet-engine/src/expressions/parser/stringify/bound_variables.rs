@@ -84,6 +84,7 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         | Node::StringKind(_)
         | Node::ReferenceKind { .. }
         | Node::RangeKind { .. }
+        | Node::SheetSpanKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::ArrayKind(_)
