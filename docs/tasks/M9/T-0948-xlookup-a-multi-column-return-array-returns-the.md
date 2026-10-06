@@ -3,7 +3,7 @@ id: T-0948
 title: "XLOOKUP: a multi-column return_array returns the whole matched row (2 poi known failures)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
