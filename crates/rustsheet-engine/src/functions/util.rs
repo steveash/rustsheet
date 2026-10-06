@@ -53,7 +53,10 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
             let value1 = to_excel_precision(*value1, 15);
             let value2 = to_excel_precision(*value2, 15);
-            if (value2 - value1).abs() < f64::EPSILON {
+            // Equality is decided on the 15-digit values alone: an absolute tolerance would equate
+            // every tiny value with 0, but Excel says `EXP(-708)=0` is FALSE (docs/excel-semantics/numbers.md,
+            // probes/subnormal-function-results C4-C6).
+            if value1 == value2 {
                 return 0;
             }
             if value1 < value2 {

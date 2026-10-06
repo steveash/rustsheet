@@ -3,7 +3,7 @@ id: T-0989
 title: "Comparison of tiny nonzero values with 0 is not tolerant (EXP(-708)=0 is FALSE)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ Graph reports 0.0 for a kept subnormal, so A4, A6, A60-A62, A65 (and A69) stay k
 
 ## Out of scope
 -
+
+## Outcome
+Comparison now decides on the two 15-digit values with no absolute epsilon (`compare_values`), and a numeric literal below the smallest normal is flushed to 0 at lex time. probes: 7 cells fixed (C5, C6, C60-C62, C65 and C4), 0 regressions. Remaining C69, C73-C75 (and the unscoreable A cells) need `+`/`-` to keep subnormals plus a scoring decision: moved to T-1027 (tier opus).
