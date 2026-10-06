@@ -222,7 +222,7 @@ Evidence: gen-m1/c940d3cfb0d3b083 Calc!A1, A2, A14, A25, A12; all 218 value-cont
 An intersection that leaves two areas is `#VALUE!` even when both are the same cell:
 `=A1:A3 (A2:B2,A2)` (probes/intersection-function-operands H5, see "Intersection operands must be references").
 Status: VERIFIED
-Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`, `union_text`);
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`, `union_text`);
 reference_operators.rs (`Model::get_union`, `Model::get_intersection` over the areas of a union)
 Tasks: T-0134
 
@@ -234,16 +234,16 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Operands must be references. Excel for the web refuses a workbook (`FileCorruptTryRepair`) that
   holds `=(A1+B1,C1)`, `=(1,A1)`, `=(A1,"a")`, `=(A1,#N/A)`, `=(A1,SUM(B1))` or `=(A1,(B1+1))`
   (one scratch workbook per formula, T-0187). The engine reads the five non-reference operands as
-  syntax errors, but wrongly accepts `(A1+B1,C1)` as `A1+(B1,C1)` (`#VALUE!`), and should store it
-  as a parse error (T-0193).
+  syntax errors, and so is `(A1+B1,C1)` since T-0193 (it used to read as `A1+(B1,C1)`).
 - A negated reference is accepted: `=(-A1,B1)` loads, gives `#VALUE!`, and FORMULATEXT prints it as
-  `=(-A1,B1)`. The engine parses it as `-(A1,B1)` and prints that (T-0193).
+  `=(-A1,B1)`. The engine reads it as a union of `-A1` and `B1` and prints that (T-0193).
 - An error operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` and `=(#REF!,A1) A1` are
   `#REF!`, and `ISREF((A1,#REF!))` is FALSE (the engine gives TRUE, T-0194). `ISREF((A1,B2))` is
   TRUE, and `=(A1,B2) A1` is 1.
 - Cross-sheet: `=(Data!A1,Other!A1)` and `=(Data!A1:A3,Other!A1:A3) Data!A2` are `#VALUE!`.
 - Printing: Excel keeps the user's parentheses, so FORMULATEXT of `=((Data!A2,Data!E8),Data!B6)` is
-  exactly that. The engine flattens it to `(Data!A2,Data!E8,Data!B6)` (T-0193).
+  exactly that. The engine keeps a union operand's own parentheses (`grouped` on `OpUnionKind`), while a
+  plain chain `(A1,B2,C3)` still prints as written (T-0193).
 - Multi-area defined names: with `mu` = `Sheet1!$A$1,Sheet1!$B$2` (A1 = 1, B2 = 5), `=SUM(mu)` is 6,
   `=COUNT(mu)` is 2, `=ISREF(mu)` is TRUE, `=mu A1` is 1 and `=mu` is `#VALUE!`. The engine refuses
   the name body ("invalid defined name"), so the whole case is an engine error. Multi-area values are
@@ -251,8 +251,11 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
-- Engine choices still unprobed: the union binds tighter than every operator but the other
-  reference operators, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
+- Engine choices still unprobed: only a single unary minus is accepted on an operand (`(--A1,B1)`
+  and `(A1%,B1)` are refused, `(-(A1,B2),C1)` is accepted); only one level of written parentheses
+  is kept in printing (`((A1,B2))` prints as `(A1,B2)`); a negated operand cut by an intersection is
+  unknown. The union is the loosest operator inside its parenthesis and the
+  intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
   function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently
@@ -262,7 +265,7 @@ Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/un
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
 Status: VERIFIED (except the parts marked as engine choices)
-Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`); reference_operators.rs
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
 Tasks: T-0134, T-0187, T-0193, T-0194, T-0133
 
 ## Union area cap

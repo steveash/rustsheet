@@ -71,7 +71,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         }
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right }
-        | Node::OpUnionKind { left, right } => {
+        | Node::OpUnionKind { left, right, .. } => {
             assign_variable_ids(left, target, id);
             assign_variable_ids(right, target, id);
         }

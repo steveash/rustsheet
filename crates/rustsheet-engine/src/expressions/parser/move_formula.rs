@@ -401,7 +401,7 @@ fn to_string_moved(
             };
             format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpUnionKind { left, right } => {
+        OpUnionKind { left, right, .. } => {
             let text = |n| to_string_moved(n, move_context, locale, language);
             union_text(&text(left), left, &text(right), locale)
         }

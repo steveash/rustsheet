@@ -595,7 +595,7 @@ impl Model {
                 reference,
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
-            OpUnionKind { left, right } => self.get_union(left, right, cell),
+            OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
             WrongRangeKind { .. } => {
                 CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())
             }

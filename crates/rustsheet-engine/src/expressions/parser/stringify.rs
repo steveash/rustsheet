@@ -636,7 +636,7 @@ fn stringify(
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
             format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpUnionKind { left, right } => union_text(&sub(left), left, &sub(right), locale),
+        OpUnionKind { left, right, .. } => union_text(&sub(left), left, &sub(right), locale),
         OpConcatenateKind { left, right } => {
             // `&` binds tighter than the comparisons: `"a"&(2<3)` printed bare re-parses as
             // `("a"&2)<3` (T-0151).
@@ -965,7 +965,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         // Go next level
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right }
-        | Node::OpUnionKind { left, right }
+        | Node::OpUnionKind { left, right, .. }
         | Node::OpConcatenateKind { left, right } => {
             rename_sheet_in_node(left, sheet_index, new_name);
             rename_sheet_in_node(right, sheet_index, new_name);
@@ -1067,7 +1067,7 @@ pub(crate) fn rename_defined_name_in_node(
         // Go next level
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right }
-        | Node::OpUnionKind { left, right }
+        | Node::OpUnionKind { left, right, .. }
         | Node::OpConcatenateKind { left, right } => {
             rename_defined_name_in_node(left, name, scope, new_name);
             rename_defined_name_in_node(right, name, scope, new_name);
