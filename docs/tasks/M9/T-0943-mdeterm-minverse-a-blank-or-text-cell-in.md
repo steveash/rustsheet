@@ -3,7 +3,7 @@ id: T-0943
 title: "MDETERM/MINVERSE: a blank cell in the matrix is #VALUE! (20 poi known failures)"
 milestone: M9
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -44,3 +44,8 @@ helper exists rather than adding a second one.
   smaller than its range (a 1x1 or single row/column result is repeated, other cells are `#N/A`).
   That is CSE range filling, an engine change; T-0950 (rule in docs/excel-semantics/arrays.md).
 - Text or boolean cells inside the matrix (no evidence in this workbook).
+
+## Outcome
+`coerce_to_f64` (matrix.rs) now maps a blank cell to `#VALUE!` like MMULT, so MDETERM and MINVERSE
+return `#VALUE!` for any matrix with a blank cell. Unit tests added for both. Eval delta: poi known
+failures 916 -> 896 (20 fixed, 0 regressions).
