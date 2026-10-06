@@ -8,8 +8,11 @@ cached in the same workbooks where it saved them. In each workbook `Tests!An` is
 ## An empty format string returns empty text
 Rule: `TEXT(<blank>, <blank format>)` returns `""`, not `#VALUE!`. Only a blank value has been
 probed.
-Evidence: poi/ElapsedFormatTests.xlsx A52:A215; poi/FormatChoiceTests.xlsx A27:A53.
+Evidence: poi/ElapsedFormatTests.xlsx A52:A215; poi/FormatChoiceTests.xlsx A27:A53; poi/GeneralFormatTests.xlsx
+A69, A71; poi/NumberFormatApproxTests.xlsx A249; poi/FormatConditionTests.xlsx A38, A51:A54 (Excel-cached).
+Unprobed: an omitted value argument (`TEXT(,"")`) and `TEXT(0,"")`.
 Status: VERIFIED
+Implemented in: `format_text` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), blank value only; other values with `""` stay unprobed.
 Tasks: T-0933
 
 ## Text and booleans use the format's text section
