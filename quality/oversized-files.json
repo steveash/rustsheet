@@ -11,7 +11,7 @@
   "crates/rustsheet-engine/src/functions/financial/mod.rs": 2329,
   "crates/rustsheet-engine/src/functions/mod.rs": 2874,
   "crates/rustsheet-engine/src/functions/text/common.rs": 1128,
-  "crates/rustsheet-engine/src/model.rs": 3551,
+  "crates/rustsheet-engine/src/model.rs": 3555,
   "crates/rustsheet-engine/src/user_model/common.rs": 2373,
   "crates/rustsheet-engine/src/user_model/ui.rs": 1088,
   "crates/rustsheet-engine/src/user_model/undo_redo.rs": 1103,
