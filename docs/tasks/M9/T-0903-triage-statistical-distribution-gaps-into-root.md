@@ -3,7 +3,7 @@ id: T-0903
 title: "Triage statistical-distribution gaps into root-cause tasks"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
