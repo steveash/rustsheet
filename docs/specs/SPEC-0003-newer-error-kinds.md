@@ -58,11 +58,14 @@ Behavior shared by all four:
   **need evidence** (probe task R1 below).
 - **VALUETOTEXT and ARRAYTOTEXT** give the literal text (`"#GETTING_DATA"`, `"#BLOCKED!"`, …;
   error-literals-new A6, rich-errors-* E1/D1).
+- **Stored constants (T-0999, syntax.md).** Excel for the web **rejects** a workbook that stores
+  `<c t="e"><v>#BLOCKED!</v></c>`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` as a literal
+  (501 `unsupportedWorkbook`). It loads stored `#GETTING_DATA`, `#N/A` and `#BUSY!`. A stored `#BUSY!`
+  is an error with `ERROR.TYPE` 0; it stays a non-goal here (follow-up T-1020).
 - **Formula literals.** The other names (`=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!`, and `#BUSY!`,
   `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!`) make Excel for the web reject the whole workbook. They are
   not formula grammar.
 - **Unknown, need evidence:**
-  - whether a stored constant `<c t="e"><v>#BLOCKED!</v></c>` loads in Excel (T-0999);
   - what typing `#BLOCKED!` as cell input gives;
   - whether a COUNTIF criterion `"#BLOCKED!"` matches the error (R1).
 
@@ -112,7 +115,8 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
    Excel saves `#GETTING_DATA` as `#N/A`. It returns `"#N/A"` for `GETTINGDATA` and the `Display`
    text otherwise. The xlsx exporter and the eval harness both call it (see below). It is a
    storage rule, not a value rule: in memory the value stays `GETTINGDATA`, so `ERROR.TYPE` is 8
-   and `ISNA` FALSE.
+   and `ISNA` FALSE. It also returns `#VALUE!` for `CONNECT`, `BLOCKED` and `FIELD` until X2 writes
+   their `vm` form (T-0999: Excel rejects those stored literals).
 
 ### xlsx (`rustsheet-xlsx`)
 - **Import:**
@@ -126,11 +130,14 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 - **Export:**
   - Error cells are written with `stored_literal()`, so `#GETTING_DATA` is saved as `#N/A`, as
     Excel does.
-  - `#CONNECT!`, `#BLOCKED!` and `#FIELD!` are written as `t="e"` with their literal, which is
-    exactly how `#SPILL!` and `#CALC!` are written today. Our importer reads them back losslessly.
-  - Whether Excel reads that form is T-0999's question. If Excel rejects or changes it, rollout
-    task X2 writes every rich error (including `#SPILL!`/`#CALC!`) the way Excel does: `#VALUE!`
-    plus `vm` and the rich-value parts.
+  - `#CONNECT!`, `#BLOCKED!` and `#FIELD!` must **not** be written as their literal: T-0999 shows that
+    Excel rejects such a workbook. The same applies to `#CALC!` (and so probably to `#SPILL!`), which
+    the exporter writes as a literal today, so that is an existing bug.
+  - The target is Excel's own form: `#VALUE!` plus `vm` and the rich-value parts (rollout X2,
+    T-1014), for all five rich kinds.
+  - Until X2 lands, X1 writes the three new kinds as plain `#VALUE!`, which loads in Excel and is
+    what a reader that ignores `vm` sees. The kind is lost on a round trip through xlsx until then;
+    that is accepted for the interim.
 
 ### Harness (`rustsheet-eval`)
 - Expected values come from Excel's saved files, so a `#GETTING_DATA` cell is expected as
@@ -187,6 +194,8 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
   and needs a `language.bin` rebuild. Rejected; `#GETTING_DATA` is a constant in the lexer.
 - **Store `#GETTING_DATA` as its own name on export.** Excel itself writes `#N/A`, and other
   readers know `#N/A`. Rejected; `stored_literal` follows Excel.
+- **Write the rich kinds as their literal on export.** Excel rejects such a workbook (T-0999).
+  Rejected.
 - **Make IMAGE/STOCKHISTORY `#N/IMPL!` or `#NAME?`.** Both are wrong for the evidenced cells, and
   a parity engine should give Excel's offline answer. Rejected.
 
@@ -199,7 +208,7 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
 - Facade: `literals_match_engine`, extended. Python: one round-trip test per kind.
 - xlsx:
   - a round trip writes a model holding all four kinds and reads them back. `#GETTING_DATA` comes
-    back as `#N/A`, matching Excel's own file.
+    back as `#N/A`, matching Excel's own file. Until X2, the three rich kinds come back as `#VALUE!`.
   - The importer reads the committed rich-errors-* oracle workbooks as the real kinds
     (`value_metadata_errors` tests).
 - Eval: `probes/error-literals-new` (18 cells) and `error-literals-new2` (15) pass, and the 13
@@ -214,8 +223,9 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
 | X1 | T-1011: xlsx export and eval harness use `Error::stored_literal`; import keeps rich-value kinds (doc updates in arrays.md and rich_errors.rs) | harness | S | sonnet | E1 |
 | R1 | T-1012: Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
 | F1 | T-1013: IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (DEVIATION entries for IMAGE and STOCKHISTORY) | functions-logic | S | sonnet | E1, R1 |
-| X2 | T-1014: Export rich-value errors as `#VALUE!` plus `vm` metadata, if T-0999 shows Excel does not read stored literals | harness | M | opus | T-0999, X1 |
+| X2 | T-1014: Export rich-value errors (`#SPILL!`, `#CALC!`, and the three new kinds) as `#VALUE!` plus `vm` metadata; T-0999 showed that stored literals make Excel reject the workbook | harness | M | opus | X1 |
 | R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |
+| B1 | T-1020: Stored `#BUSY!` constant (ERROR.TYPE 0): decide its representation | engine | S | opus | E1 |
 | — | T-0124 (existing): uncached external reference is `#BLOCKED!` | engine | S | — | E1 |
 
 Nothing stays behind an old path: each task replaces behavior in place. Until E1 lands, cells

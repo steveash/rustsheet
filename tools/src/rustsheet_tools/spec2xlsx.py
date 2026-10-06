@@ -6,7 +6,9 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
   * Every formula is written as a *dynamic-array* formula, i.e. with the semantics of a
     formula typed into current Microsoft 365 Excel (no implicit intersection).
   * Error literals are written as the formula `=#N/A` etc. (xlsx writers cannot emit
-    error constants); they behave identically for dependants.
+    error constants); they behave identically for dependants. A typed error with `"stored": true`
+    (`{"t":"e","v":"#BLOCKED!","stored":true}`) is instead patched into the file as a stored
+    constant `<c t="e"><v>#BLOCKED!</v></c>`, for names Excel rejects as formula grammar (T-0999).
   * The empty-string text constant "" is written as the formula `=""` (XlsxWriter turns an
     empty string into a blank cell, which has different semantics).
   * Spill references (`A1#`) are written in their file form `_xlfn.ANCHORARRAY(A1)`; Excel for the
@@ -22,10 +24,12 @@ import functools
 import io
 import json
 import re
+import zipfile
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape
 
 import xlsxwriter
 
@@ -182,15 +186,43 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         },
     )
     wb.set_properties({"created": _FIXED_CREATED})
-    for sheet in spec["sheets"]:
+    stored: list[tuple[int, str, str]] = []  # (sheet number, cell ref, error name)
+    for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
+            if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
+                # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
+                ws.write_formula(row, col, "=0", None, "#N/A")
+                stored.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["v"])))
+                continue
             _write(ws, row, col, raw)
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, formula)
     wb.close()
-    return buf.getvalue()
+    return _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
+
+
+def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
+    """Replaces the placeholder cells by stored error constants (XlsxWriter has no API for them)."""
+    by_sheet: dict[str, list[tuple[str, str]]] = {}
+    for number, ref, name in stored:
+        by_sheet.setdefault(f"xl/worksheets/sheet{number}.xml", []).append((ref, name))
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info.filename)
+            if info.filename in by_sheet:
+                text = data.decode()
+                for ref, name in by_sheet[info.filename]:
+                    placeholder = f'<c r="{ref}" t="e"><f>0</f><v>#N/A</v></c>'
+                    if text.count(placeholder) != 1:
+                        msg = f"cannot store error {name} in {ref}: placeholder not found"
+                        raise ValueError(msg)
+                    text = text.replace(placeholder, f'<c r="{ref}" t="e"><v>{escape(name)}</v></c>')
+                data = text.encode()
+            dst.writestr(info, data)
+    return out.getvalue()
 
 
 def _write(ws: Any, row: int, col: int, raw: Any) -> None:

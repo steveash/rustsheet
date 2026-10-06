@@ -61,6 +61,6 @@ are left out because nothing produces them.
 - IMAGE is `#BLOCKED!` and STOCKHISTORY `#CONNECT!`, both DEVIATION (decision 0014) for
   reachable sources. FIELDVALUE is `#FIELD!`.
 Rollout tasks: T-1010 (engine/facade), T-1011 (xlsx/harness), T-1012 (probe), T-1013
-(functions), T-1014 (vm export, conditional on T-0999), and T-1016 (desktop probe of typed input; blocked on the desktop oracle).
+(functions), T-1014 (vm export, required by T-0999: Excel rejects stored rich literals), T-1016 (desktop probe of typed input; blocked on the desktop oracle), and T-1020 (stored `#BUSY!`).
 COUNTIF-family criteria keep today's names until T-1012 has evidence. T-0124 now depends on T-1010.
 No code change, so the eval delta is 0.

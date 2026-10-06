@@ -85,7 +85,7 @@ Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::expect_end`, `Parser::parse_intersection`)
 Tasks: T-0105, T-0138, T-0149
 
-## Newer error literals: only `#GETTING_DATA` loads
+## Newer error literals: only `#GETTING_DATA` loads as a formula literal (stored: also `#BUSY!`)
 Rule: of the error names beyond the classic eight plus `#SPILL!`/`#CALC!`, Excel for the web accepts
 only `=#GETTING_DATA` (also lower case `=#getting_data`) as a formula literal. A workbook with the
 formula `=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!`, `=#BUSY!`, `=#UNKNOWN!`, `=#PYTHON!`, `=#EXTERNAL!` or
@@ -102,13 +102,24 @@ Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and
 `#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
 `#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
 `#GETTING_DATA` special precedence: it is an ordinary error kind.
-Not probed (harness gap, T-0999): error constants as `t="e"` cell values, since spec2xlsx writes error
-literals as formulas (`<v>#BLOCKED!</v>` cannot be emitted), so whether a stored `#BLOCKED!` etc.
-cell loads is unknown. Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input
-gives, and whether a COUNTIF criterion `"#BLOCKED!"` matches the error (SPEC-0003 keeps today's
-input table plus `#GETTING_DATA`, and keeps COUNTIF-family criteria on today's twelve names; T-1012
-probes the criterion, T-1016 typed input on desktop; UNVERIFIED).
+Stored constants (`<c t="e"><v>#BUSY!</v></c>`, spec2xlsx `{"t":"e","v":"#BUSY!","stored":true}`, T-0999)
+are different from formula literals: of the newer names only `#BUSY!` (and `#GETTING_DATA`, `#N/A`) load.
+A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` is rejected on load
+(createSession 501 `unsupportedWorkbook`), like the formula literals (`=#CALC!` itself loads). A
+stored `#BUSY!` is an error that is not `#N/A`: `ISERROR` and `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA`
+passes it through, `A1&""` is `#BUSY!`, and `ERROR.TYPE` is 0 (not 7; confirmed by `ERROR.TYPE(A1)+100` =
+100, since XlsxWriter caches 0 for every formula and a stale cell would be indistinguishable from the bare
+0). `#GETTING_DATA` stored: `ERROR.TYPE` 8, `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA` passes through
+(reported `#N/A`), `&""` is reported `#N/A`; stored `#N/A`: 7, `ISNA` TRUE, `IFNA` gives the fallback.
+Unprobed: `#PYTHON!`, `#EXTERNAL!` stored. The rejected names were re-run as throw-away one-cell cases
+(`A1` = `{"t":"e","v":"<name>","stored":true}`, nothing else), so to reproduce one, write that case.
+Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives, and whether a
+COUNTIF criterion `"#BLOCKED!"` matches the error (SPEC-0003 keeps today's input table plus
+`#GETTING_DATA`, and keeps COUNTIF-family criteria on today's twelve names; T-1012 probes the
+criterion, T-1016 typed input on desktop; UNVERIFIED).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
-rejections were run as throw-away one-cell cases (not committed; no value to record).
+rejections were run as throw-away one-cell cases (not committed; no value to record);
+probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
+stored rejections as throw-away one-cell cases (same).
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016
