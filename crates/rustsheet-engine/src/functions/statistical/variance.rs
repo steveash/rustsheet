@@ -82,7 +82,7 @@ impl Model {
             var = 0.0;
         }
 
-        CalcResult::Number(var)
+        CalcResult::finite_number_or_num(var, cell)
     }
 
     pub(crate) fn fn_vara(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

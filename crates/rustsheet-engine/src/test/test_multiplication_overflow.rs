@@ -147,3 +147,31 @@ fn overflowing_aggregates_are_num() {
         assert_eq!(model._get_text(&format!("A{row}")), *"6", "A{row}");
     }
 }
+
+/// SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR overflow to `#NUM!` (ERROR.TYPE 6)
+/// (probes/aggregate-overflow B37:B38, B42:B46, T-0991), also per criterion in the spilling form.
+#[test]
+fn overflowing_conditional_and_dispersion_aggregates_are_num() {
+    let mut model = new_empty_model();
+    for (cell, value) in [("F1", "9E+307"), ("F2", "9E+307"), ("F3", "-9E+307")] {
+        model._set(cell, value);
+    }
+    model._set("F5", "1E+200");
+    model._set("F6", "1E+200");
+    for (cell, formula) in [
+        ("A1", "SUMIF(F1:F3,\">0\")"),
+        ("A2", "SUMIFS(F1:F3,F1:F3,\">0\")"),
+        ("A3", "SUMX2PY2({1E+154},{1E+154})"),
+        ("A4", "SUMXMY2({9E+307},{-9E+307})"),
+        ("A5", "DEVSQ(F1:F2)"),
+        ("A6", "STDEV(F1:F2)"),
+        ("A7", "VAR(F5:F6)"),
+        ("A8", "INDEX(SUMIF(F1:F3,{\">0\",\"<0\"}),1,1)"),
+    ] {
+        model._set(cell, &format!("=IFERROR(ERROR.TYPE({formula}),0)"));
+    }
+    model.evaluate();
+    for row in 1..=8 {
+        assert_eq!(model._get_text(&format!("A{row}")), *"6", "A{row}");
+    }
+}
