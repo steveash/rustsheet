@@ -3,7 +3,7 @@ id: T-0174
 title: "Probe the tiny-magnitude cut-offs of number text (5e-310, 2e-308, 9.9e-308, 0e-400) for T-0154"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
