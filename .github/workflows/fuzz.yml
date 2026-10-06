@@ -1,0 +1,64 @@
+name: Nightly fuzz
+
+# Fuzzes untrusted formulas and workbooks (CLAUDE.md directive 5; T-0021, decision 0035).
+# A crash, timeout or out-of-memory fails the job and uploads only the offending inputs; the
+# steward files one task per distinct crash (docs/process/agent-workflow.md).
+on:
+  schedule:
+    - cron: "37 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: fuzz (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: formula_parse
+            args: -dict=dict/formula.dict -max_len=512
+          - target: formula_eval
+            args: -dict=dict/formula.dict -max_len=512
+          - target: xlsx_import
+            args: -max_len=1048576
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz
+      # The corpus libFuzzer grew on earlier nights; seeds from the suites are added on top.
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - run: python3 fuzz/seed_corpus.py
+      - name: fuzz for 20 minutes
+        working-directory: fuzz
+        run: >-
+          cargo fuzz run ${{ matrix.target }} corpus/${{ matrix.target }} --
+          ${{ matrix.args }} -max_total_time=1200 -timeout=30 -rss_limit_mb=2048
+          -print_final_stats=1
+      - name: upload crashing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}-${{ github.run_id }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore
+          retention-days: 30

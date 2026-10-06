@@ -29,6 +29,20 @@ fn test_column_to_number() {
         column_to_number("ab"),
         Err("Column identifier can use only A-Z characters".to_string())
     );
+    // Long letter runs overflow i32: they must be rejected, not wrap (T-0021). Wrapping,
+    // `NKJDCLBT` would come out as column 1584 and `NKJDCLBT1` would lex as a reference.
+    assert_eq!(
+        column_to_number("ISERROR"),
+        Err("Column is not valid.".to_string())
+    );
+    assert_eq!(
+        column_to_number("NKJDCLBT"),
+        Err("Column is not valid.".to_string())
+    );
+    assert_eq!(
+        column_to_number(&"Z".repeat(100)),
+        Err("Column is not valid.".to_string())
+    );
 }
 
 #[test]

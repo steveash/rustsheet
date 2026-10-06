@@ -168,7 +168,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             let arg_count = args.len();
             let signature = get_function_args_signature(kind, arg_count);
             for index in 0..arg_count {
-                if matches!(signature[index], Signature::Scalar)
+                if is_scalar_arg(&signature, index)
                     && matches!(
                         run_static_analysis_on_node(&args[index]),
                         StaticResult::Range(_, _) | StaticResult::Unknown
@@ -274,7 +274,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             for index in 0..arg_count {
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not.
-                let child_add = matches!(signature[index], Signature::Scalar);
+                let child_add = is_scalar_arg(&signature, index);
                 remove_redundant_implicit_intersection(&mut args[index], child_add);
             }
         }
@@ -990,6 +990,14 @@ fn args_signature_wrapcols(arg_count: usize) -> Vec<Signature> {
 // Given a function and a number of arguments this returns the arguments at each position
 // are expected to be scalars or vectors (array/ranges).
 // Sets signature::Error to all arguments if the number of arguments is incorrect.
+/// Whether argument `index` is in a scalar (intersecting) position. Many signatures have a fixed
+/// length whatever the argument count (e.g. the D-functions), so an argument past the end is not
+/// scalar rather than an out-of-bounds index (`DMIN(A1:C4,C1,,C1,A6)` panicked; found by fuzzing,
+/// T-0021).
+fn is_scalar_arg(signature: &[Signature], index: usize) -> bool {
+    matches!(signature.get(index), Some(Signature::Scalar))
+}
+
 fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signature> {
     match kind {
         Function::And => vec![Signature::Vector; arg_count],
