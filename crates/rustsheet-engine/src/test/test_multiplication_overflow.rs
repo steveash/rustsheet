@@ -74,3 +74,19 @@ fn subnormal_results_become_zero() {
     // The smallest normal double itself is kept.
     assert_eq!(model._get_text("A4"), *"1");
 }
+
+/// SUM beyond the double range is `#NUM!` (ERROR.TYPE 6), not infinity
+/// (probes/arith-overflow Calc!A4:D4, excel-graph).
+#[test]
+fn overflowing_sum_function_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", "=(SUM(9E+307,9E+307))&\"\"");
+    model._set("A2", "=ISERROR(SUM(9E+307,9E+307))");
+    model._set("A3", "=IFERROR(ERROR.TYPE(SUM(9E+307,9E+307)),0)");
+    model._set("A4", "=SUM(9E+307,1E+307)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"TRUE");
+    assert_eq!(model._get_text("A3"), *"6");
+    assert_eq!(model._get_text("A4"), *"1E+308");
+}

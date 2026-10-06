@@ -43,6 +43,15 @@ impl CalcResult {
             message: "Wrong number of arguments".to_string(),
         }
     }
+    /// `value` as a number, or `#NUM!` when it is beyond the double range: Excel errors at once
+    /// instead of carrying an infinity (probes/arith-overflow Calc!A4:D4, ERROR.TYPE 6).
+    pub fn finite_number_or_num(value: f64, origin: CellReferenceIndex) -> CalcResult {
+        if value.is_finite() {
+            CalcResult::Number(value)
+        } else {
+            CalcResult::new_error(Error::NUM, origin, "Number too large".to_string())
+        }
+    }
     pub fn is_error(&self) -> bool {
         matches!(self, CalcResult::Error { .. })
     }

@@ -75,6 +75,15 @@ pub struct OracleSource {
     pub input_sha256: Option<String>,
 }
 
+/// Whether an oracle `source.kind` string (see [`OracleSource::kind`]) is Excel evidence rather
+/// than hand-written or engine-derived values.
+///
+/// Only call this on oracle `source.kind` values: case-level labels such as
+/// `excel-cached (<app>)` also start with "excel" even when `<app>` is not Excel.
+pub(crate) fn is_excel_evidence(expected_source: &str) -> bool {
+    expected_source.starts_with("excel")
+}
+
 /// Oracle results for one workbook: sheet → A1 → value.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OracleFile {

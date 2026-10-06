@@ -82,9 +82,6 @@ C	probes/union-defined-name.case.json	0
 C	probes/union-neg-operand.case.json	2
 C	probes/value-clock-text.case.json	135
 F	probes/arith-overflow.case.json	Calc!B16
-F	probes/arith-overflow.case.json	Calc!B4
-F	probes/arith-overflow.case.json	Calc!C4
-F	probes/arith-overflow.case.json	Calc!D4
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13

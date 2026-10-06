@@ -11,12 +11,12 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::case::{
-    canonical_key, cell_key, split_qualified, CaseSpec, CellInput, OracleFile, CASE_FORMAT,
+    canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
+    CASE_FORMAT,
 };
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
 use crate::overrides;
-use crate::report::is_excel_evidence;
 use crate::suite::{CaseFile, Suite, SuiteKind};
 use crate::value::{compare, Value, Verdict};
 use crate::volatile::{pinned_clock_serial, scorable_cells, volatile_cells, FormulaCell};
