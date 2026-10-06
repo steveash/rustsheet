@@ -82,5 +82,7 @@ Evidence: ECMA-376 Part 1 §18.3.1.73 (row) and §18.3.1.4 (c) make `r` optional
 written this way by other tools: poi/54288.xlsx (r-less cells after `C3`), poi/59746_NoRowNums.xlsx
 and poi/InlineString.xlsx (r-less rows and cells). They hold no formulas, so no Excel value is
 scored; the placement is the schema's, as the eval snapshot reader already applies it.
+DEVIATION (directive 5, decision 0014): an r-less cell past XFD or r-less row past row 1,048,576 is an import error, not a placed cell; an explicit `r` of i32::MAX followed by an r-less row is the same error, never an overflow.
+Implemented in: `rustsheet-xlsx` `import/sheet_data.rs` `start_row` and `start_cell` (an r-less cell or row past XFD or row 1,048,576 is an import error).
 Status: UNVERIFIED (probe pending; ECMA-376 and POI files only, no Excel observation)
 Tasks: T-0181
