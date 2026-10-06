@@ -272,7 +272,7 @@ impl Model {
         let mut count = 0;
         for node in [left, right] {
             count += match node {
-                Node::OpUnionKind { left, right } => {
+                Node::OpUnionKind { left, right, .. } => {
                     self.count_union_areas(left, right, cell, budget)?
                 }
                 _ => self.evaluate_areas(node, cell, budget)?.len(),
@@ -294,7 +294,7 @@ impl Model {
         budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
         match node {
-            Node::OpUnionKind { left, right } => self.union_areas(left, right, cell, budget),
+            Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
             Node::OpIntersectKind { left, right } => {
                 self.intersect_areas(left, right, cell, budget)
             }
