@@ -77,6 +77,9 @@ C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
+C	probes/union-accepted.case.json	9
+C	probes/union-defined-name.case.json	0
+C	probes/union-neg-operand.case.json	2
 C	probes/value-clock-text.case.json	135
 F	probes/arith-overflow.case.json	Calc!B16
 F	probes/arith-overflow.case.json	Calc!B4
@@ -145,3 +148,7 @@ F	probes/text-number-words.case.json	Calc!K3
 F	probes/text-number-words.case.json	Calc!K7
 F	probes/text-result-limit.case.json	Sheet1!C8
 F	probes/text-result-limit.case.json	Sheet1!C9
+F	probes/union-accepted.case.json	Sheet1!H7
+F	probes/union-accepted.case.json	Sheet1!H9
+F	probes/union-defined-name.case.json	!EngineError
+F	probes/union-neg-operand.case.json	Sheet1!H2

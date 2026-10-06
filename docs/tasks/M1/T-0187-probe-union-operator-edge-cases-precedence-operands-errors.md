@@ -3,7 +3,7 @@ id: T-0187
 title: "Probe union operator edge cases (precedence, operands, errors, cross-sheet, ISREF, FORMULATEXT, multi-area names)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -35,11 +35,24 @@ Probe in one workbook per group, since Excel for the web refuses a whole workboo
 parse (T-0138).
 
 ## Acceptance criteria
-- [ ] Each of the 8 groups has oracle evidence recorded in docs/excel-semantics/references.md
+- [x] Each of the 8 groups has oracle evidence recorded in docs/excel-semantics/references.md
   (VERIFIED or corrected), and the UNVERIFIED entry is removed or narrowed.
-- [ ] Every engine mismatch found has a fix task filed (multi-area values go to T-0133).
-- [ ] `make check` green; reviewers approve.
+- [x] Every engine mismatch found has a fix task filed (multi-area values go to T-0133).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the engine (follow-up tasks; multi-area values are spec T-0133).
 - Unions as function arguments (`SUM((A1,B2))`, AREAS, INDEX area_num): T-0133's probe list.
+
+## Outcome
+Probed with excel-graph (2026-10-06). Three new cases are kept: probes/union-accepted (9 cells),
+union-neg-operand (2) and union-defined-name (5). Six scratch workbooks were refused by Excel
+(`FileCorruptTryRepair`): `(A1+B1,C1)` and all five non-reference operands, which confirms the
+engine's syntax errors. Groups 3-5 match the engine, except that `ISREF((A1,#REF!))` is FALSE
+(T-0194). Group 1: `(-A1,B1)` loads and gives #VALUE!, but the engine parses it as `-(A1,B1)`. Group
+6: Excel keeps nested union parentheses in FORMULATEXT, but the engine flattens them (T-0193 covers
+both). Group 7: multi-area names work in SUM, COUNT, ISREF and intersection, but the engine refuses
+the name body (spec T-0133). Group 8: not probeable through a file, since xlsx stores `,`.
+references.md "Union: parsing and evaluation" is now VERIFIED, apart from the parts marked as engine
+choices. Eval: probes new coverage 16 cells, 4 known failures added (the mismatches above,
+baselined as new coverage), 0 regressions.

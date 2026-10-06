@@ -1,0 +1,32 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0187 group 7: a multi-area defined name (mu = Sheet1!$A$1,Sheet1!$B$2) used as =SUM(mu), =mu, =ISREF(mu) and cut by an intersection.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "names": {
+    "mu": "=Sheet1!$A$1,Sheet1!$B$2"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": 4,
+        "B2": 5,
+        "A3": 6,
+        "H1": "=SUM(mu)",
+        "H2": "=mu",
+        "H3": "=ISREF(mu)",
+        "H4": "=mu A1",
+        "H5": "=COUNT(mu)"
+      }
+    }
+  ],
+  "expected": {}
+}
