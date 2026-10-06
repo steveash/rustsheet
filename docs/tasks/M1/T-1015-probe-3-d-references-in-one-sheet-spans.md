@@ -3,7 +3,7 @@ id: T-1015
 title: "Probe 3-D references in one-sheet spans and wrapped in IF/CHOOSE for INDEX, AREAS, MATCH, COUNTBLANK"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
