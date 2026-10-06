@@ -270,11 +270,11 @@ impl Model {
                         // Excel: SHEET of a name whose body is an error literal is that error
                         // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!").
                         ParsedDefinedName::ErrorLiteral(error) => {
-                            return CalcResult::Error {
-                                error: error.clone(),
-                                origin: cell,
-                                message: "Defined name is an error".to_string(),
-                            };
+                            return CalcResult::new_error(
+                                error.clone(),
+                                cell,
+                                format!("Defined name \"{name}\" is an error."),
+                            );
                         }
                         ParsedDefinedName::InvalidDefinedNameFormula
                         | ParsedDefinedName::LambdaDefinition(..) => {
