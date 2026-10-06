@@ -3,7 +3,7 @@ id: T-0173
 title: "Probe arithmetic overflow in +, - and /, negative overflow and per-element array overflow"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
