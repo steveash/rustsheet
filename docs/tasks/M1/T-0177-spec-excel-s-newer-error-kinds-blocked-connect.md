@@ -3,7 +3,7 @@ id: T-0177
 title: "Spec: Excel's newer error kinds (#BLOCKED!, #CONNECT!, #FIELD!, ...) in engine, importer, facade ErrorKind and Python"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
