@@ -3,7 +3,7 @@ id: T-0181
 title: "Importer: cells and rows without an r attribute take the next position (3 poi !EngineError cases)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -52,3 +52,6 @@ first to get the workbooks.
 ## Out of scope
 - `poi/47889.xlsx` (`Missing <cellXfs> section in styles.xml`) and the other import failures listed
   in report.md (missing rels and Strict OOXML: T-0112).
+
+## Outcome
+The sheet-data reader places r-less rows (previous row + 1) and cells (previous column + 1) positionally; out-of-grid positions are import errors. Unit tests in `import/sheet_data.rs`. poi baseline: 54288, 59746_NoRowNums and InlineString `!EngineError` lines gone, 690 -> 679 known failures (the baseline tool also dropped 5 other lines already fixed on main), 0 regressions.
