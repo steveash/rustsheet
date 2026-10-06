@@ -2,10 +2,12 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 
-// Arbitrary limit to prevent creating huge arrays that would crash the program. Excel builds larger
-// arrays (probes/resource-limits C12, C14): DEVIATION, see docs/excel-semantics/arrays.md ("Array results above 1,000,000 cells").
-// A better way would be to look at the memory available
-const MAX_SIZE: usize = 1_000_000;
+// Limit on the cells of any array the engine builds, so an untrusted formula cannot exhaust
+// memory (CLAUDE.md directive 5). One whole column (2^20 cells), so a whole-column range lifts
+// (`SUM(ABS(A:A))`, probes/lifted-range-size). Excel builds larger arrays
+// (probes/lifted-range-rows C1): DEVIATION, see docs/excel-semantics/arrays.md ("Array results
+// above 1,048,576 cells").
+const MAX_SIZE: usize = LAST_ROW as usize;
 
 pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> {
     if columns > LAST_COLUMN as usize {
@@ -34,9 +36,9 @@ pub fn check_array_size(rows: usize, columns: usize) -> Option<(Error, String)> 
     None
 }
 
-/// [`check_array_size`] for the array a range `left:right` would become when a function lifts
-/// over it element by element (IS*, NOT): Excel spills any range that fits the grid, so this is
-/// the shared allocation bound (DEVIATION, docs/excel-semantics/arrays.md).
+/// [`check_array_size`] for the array a range `left:right` would become when it is lifted
+/// element by element (`Model::evaluate_range`): Excel lifts any range that fits the grid, so this
+/// is the shared allocation bound (DEVIATION, docs/excel-semantics/arrays.md).
 pub fn check_range_size(
     left: &CellReferenceIndex,
     right: &CellReferenceIndex,

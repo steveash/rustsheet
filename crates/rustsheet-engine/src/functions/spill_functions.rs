@@ -139,7 +139,7 @@ impl Model {
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
         match result {
-            CalcResult::Range { left, right } => Ok(self.evaluate_range(left, right)),
+            CalcResult::Range { left, right } => self.evaluate_range(left, right, cell),
             CalcResult::Array(arr) => Ok(arr),
             CalcResult::Number(n) => Ok(vec![vec![ArrayNode::Number(n)]]),
             CalcResult::Boolean(b) => Ok(vec![vec![ArrayNode::Boolean(b)]]),
@@ -612,7 +612,10 @@ impl Model {
                     // A range is its values: FILTER gives values, never a reference, found or not
                     // (Excel-cached: upstream ISREF.xlsx Sheet1!D11, D14, D17, D20; probes/isref-names-filter-if-empty).
                     CalcResult::Range { left, right } => {
-                        CalcResult::Array(self.evaluate_range(left, right))
+                        match self.evaluate_range(left, right, cell) {
+                            Ok(array) => CalcResult::Array(array),
+                            Err(error) => error,
+                        }
                     }
                     // An array if_empty spills as is (Excel: probes/filter-if-empty-array).
                     CalcResult::Array(a) => CalcResult::Array(a),

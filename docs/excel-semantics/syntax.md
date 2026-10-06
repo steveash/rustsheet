@@ -84,3 +84,24 @@ RustSheet's hand expectations.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::expect_end`, `Parser::parse_intersection`)
 Tasks: T-0105, T-0138, T-0149
+
+## Newer error literals: only `#GETTING_DATA` loads
+Rule: of the error names beyond the classic eight plus `#SPILL!`/`#CALC!`, Excel for the web accepts
+only `=#GETTING_DATA` (also lower case `=#getting_data`) as a formula literal. A workbook with the
+formula `=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!`, `=#BUSY!`, `=#UNKNOWN!`, `=#PYTHON!`, `=#EXTERNAL!` or
+`=#blocked!` is rejected on load (createSession 501 `unsupportedWorkbook`, "The workbook contains
+unsupported features", the same refusal as 1E+308 literals in numbers.md), so those names are not
+formula grammar there (they only arise as results, arrays.md).
+`#GETTING_DATA` behaves as an error that is not `#N/A`: the Graph API reports the cell value as
+`#N/A`, `ERROR.TYPE` is 8, `ISERR` TRUE, `ISNA` FALSE, `ISERROR` TRUE, `IFERROR(...)` takes the
+fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
+"#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
+Because `#GETTING_DATA` is reported as `#N/A`, only `#DIV/0!+#GETTING_DATA` (reports `#DIV/0!`) proves a winner; the other precedence and comparison results cannot tell the two apart (follow-up T-0195 re-probes them through `ERROR.TYPE`). Observed: `#GETTING_DATA+#DIV/0!` reports `#N/A`, `#DIV/0!+#GETTING_DATA`
+reports `#DIV/0!`; `#N/A=#GETTING_DATA` and `#GETTING_DATA=#N/A` both report `#N/A`.
+Not probed (harness gap): error constants as `t="e"` cell values, since spec2xlsx writes error
+literals as formulas (`<v>#BLOCKED!</v>` cannot be emitted), so whether a stored `#BLOCKED!` etc.
+cell loads is unknown.
+Evidence: probes/error-literals-new (S!A1:A18, excel-graph 2026-10-06); the eight single-cell
+rejections were run as throw-away one-cell cases (not committed; no value to record).
+Status: VERIFIED
+Tasks: T-0175, T-0177

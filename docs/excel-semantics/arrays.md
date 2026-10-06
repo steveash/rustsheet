@@ -23,12 +23,15 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 | 10 | `#BLOCKED!` | 11 | `IMAGE` of an unreachable URL (rich-errors-image A1, subType 12); an uncached external reference (poi/link-external-workbook-b A1, subType 2) |
 | 12 | `#FIELD!` | 13 | `FIELDVALUE` of a plain number (rich-errors-field A1; extra `Price` field) |
 | 13 | `#CALC!` | 14 | FILTER with no match (rich-errors-calc A4, subType 3) |
+| (none: formula literal) | `#GETTING_DATA` | 8 | the literal `=#GETTING_DATA` (error-literals-new S!A2); not a rich-value error. The Graph API reports its value as `#N/A` (S!A1) though `ERROR.TYPE` is 8, `VALUETOTEXT` is "#GETTING_DATA" (S!A6), `ISERR` is TRUE, `ISNA` is FALSE (S!A3, S!A4) |
+
+The `#GETTING_DATA` row is a formula-literal error, not a rich-value error (no errorType).
 
 A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType in a different
 `_error` structure, `errorType, propagated` (`propagated` = 1, a boolean; no subType). The
 error names come from `VALUETOTEXT(cell)` (a text "#BLOCKED!" etc.), which also matches for
 `#SPILL!`, `#CALC!` and `#DIV/0!`. `#BUSY!`, `#UNKNOWN!` and other codes (11, 14+) were not
-produced (no formula was found that yields them in a recalculated, saved workbook; none was tried); the
+produced (no formula was found that yields them in a recalculated, saved workbook; typing them as formula literals fails, syntax.md "Newer error literals"); the
 harness reads unmapped codes, and a `vm` that resolves to no errorType, as `#UNDECODED!` and never
 scores them.
 Evidence: probes/rich-errors-calc, -field, -image, -stockhistory (excel-graph, 2026-10-05, T-0030:
@@ -97,15 +100,30 @@ Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.r
 Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
 Tasks: T-0209, T-0228
 
-## Array results above 1,000,000 cells are #ERROR!
-Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000 and
-`ROWS(SEQUENCE(1048576))` = 1048576; only a dimension past the grid is `#VALUE!`
-(`SEQUENCE(1048577)`). RustSheet returns `#ERROR!` (not even an Excel error value) for SEQUENCE,
-RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results and a range lifted by IS* or NOT (T-0225) above 1,000,000 cells, to bound
-allocation on untrusted input (CLAUDE.md directive 5); past-the-grid dimensions are `#VALUE!` as in Excel.
-Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05; C12 and C14 are known failures by design).
+## Array results above 1,048,576 cells are #ERROR!
+Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
+`ROWS(SEQUENCE(1048576))` = 1048576, and a range lifted element-wise by a scalar function becomes
+an array of the range's size however large: `ROWS(DATE(11:1899,12,1))` = 1889 and
+`COLUMNS(DATE(11:1899,12,1))` = 16384 (31M cells), `INDEX(DATE(11:1899,12,1),5,7)` = 336;
+`=DATE(11:1899,12,1)` in C3 is `#SPILL!` (no room). A whole column lifts like any range:
+with A1 = -2, A2 = 3, `ROWS(ABS(A:A))` = `ROWS(A:A+0)` = 1048576, `SUM(ABS(A:A))` = 5,
+`INDEX(ABS(A:A),2)` = 3, `SUM(--ISNUMBER(A:A))` = 2, and `=ABS(A:A)` in C7 is `#SPILL!`.
+Only a dimension past the grid is `#VALUE!` (`SEQUENCE(1048577)`).
+RustSheet returns `#ERROR!` (not even an Excel error value) for any array above 1,048,576 cells
+(one whole column): SEQUENCE, RANDARRAY, MAKEARRAY/BYROW/BYCOL results, matrix results, a SUMIF
+criteria grid, and every range lifted into an array (`Model::evaluate_range`: scalar functions
+over a range, operators, IF/IFERROR, TEXT, IS*, NOT, a bare range spilled from a cell), checked
+before any cell is read, to bound allocation on untrusted input (CLAUDE.md directive 5); so
+`DATE(11:1899,12,1)` and `ROWS(DATE(11:1899,12,1))` are `#ERROR!`. Past-the-grid dimensions are
+`#VALUE!` as in Excel. Excel for the web refuses to open a workbook whose formula sums such a
+31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
+Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
+C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are known
+failures by design).
 Status: DEVIATION (decision 0014)
-Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`, `check_range_size` for lifted ranges)
+Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`,
+`check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs
+Tasks: T-0047
 
 ## The edit API refuses a cell inside a spill extent above 4,194,304 cells
 Rule: Excel lets you edit any cell. `Workbook` edits (crates/rustsheet) snapshot the spill footprint
