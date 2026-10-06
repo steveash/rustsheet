@@ -296,8 +296,6 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!A1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!B1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
-F	probes/subnormal-function-results.case.json	Calc!A1
-F	probes/subnormal-function-results.case.json	Calc!A21
 F	probes/subnormal-function-results.case.json	Calc!A4
 F	probes/subnormal-function-results.case.json	Calc!A6
 F	probes/subnormal-function-results.case.json	Calc!A60
