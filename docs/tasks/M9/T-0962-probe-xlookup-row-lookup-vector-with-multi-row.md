@@ -24,5 +24,9 @@ keeps the same-shape rule (`#VALUE!`) without evidence. Code: `fn_xlookup`, `xlo
 - [ ] Implementation matches the oracle values.
 - [ ] `make check` green; reviewers approve.
 
+Also probe (reviewer findings on T-0948): ISREF and implicit intersection of a wide result, a blank
+matched cell in the row (0 vs empty), `UPPER(XLOOKUP(2,A1:A3,B1:C3))` spilling, `XLOOKUP(x,A1:A1,B1:C1)`,
+and a wide return range with a different row count.
+
 ## Out of scope
 - Binary-search/other XLOOKUP modes.
