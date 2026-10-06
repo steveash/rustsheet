@@ -3,7 +3,7 @@ id: T-0944
 title: "SUMX2MY2/SUMX2PY2/SUMXMY2: skip non-numeric pairs, #DIV/0! when none remain, pair by element count (17 poi known failures)"
 milestone: M9
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -50,3 +50,6 @@ element-count check and pair filter in sum.rs on top of the shared value extract
 
 ## Out of scope
 - Pairing in the other `fn_get_two_matrices` callers (no evidence here; file a follow-up if they differ).
+
+## Outcome
+SUMX2MY2/SUMX2PY2/SUMXMY2 now share `sumx_fold` (pair row-major, skip non-numeric pairs, `#N/A` on unequal counts, `#DIV/0!` when none remain, scalars allowed). poi known failures 916 -> 899 (17 fixed, 0 regressions). Unit tests in `test_sumx_pairing.rs`.
