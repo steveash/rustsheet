@@ -6,5 +6,6 @@ mod concatenate;
 mod encodeurl;
 mod regex_functions;
 mod string_format;
+mod text_arg;
 mod textsplit;
 mod util;
