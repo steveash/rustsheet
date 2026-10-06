@@ -11,14 +11,16 @@ Evidence: probes/is-functions-array-lift (excel-graph) `Calc!A1:H6`, `A9:C9`, `A
 Status: VERIFIED (excel-graph)
 Tasks: T-0247
 
-## ISEVEN/ISODD over a range containing text
-Rule (UNEXPLAINED): `ISEVEN(Data!A1:A6)` / `ISODD(Data!A1:A6)` over 1, "x", TRUE, #N/A, empty,
-#DIV/0! returned a single `#VALUE!` with no spill. Not implemented; needs a probe over a
-numbers-only range and a desktop check to tell lifting from implicit intersection.
-Evidence: probes/is-functions-array-lift (removed cells I1/J1; excel-graph oracle sidecar of
-T-0247 run, 2026-10-05).
-Status: UNVERIFIED
-Tasks: T-0247
+## ISEVEN/ISODD over a range
+Rule: `ISEVEN(range)` / `ISODD(range)` with a multi-cell range argument return a single `#VALUE!`
+with no spill, over a numbers-only range (2, 3, 4.5, -7, 0) as well as over a mixed one (1, "x",
+TRUE, #N/A, empty, #DIV/0!). They do not lift element-wise like the other IS* functions. RustSheet
+already matches; no implementation change was needed.
+Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15; excel-graph oracle sidecar,
+2026-10-06). A desktop check would still be needed to tell this from an implicit-intersection
+result in the desktop app.
+Status: VERIFIED (excel-graph)
+Tasks: T-0247, T-0248
 
 ## Resource bound on lifted IS* ranges
 Rule: Excel spills `ISBLANK(A:A)` (1,048,576 rows) and even `ISBLANK(A:XFD)`. RustSheet returns

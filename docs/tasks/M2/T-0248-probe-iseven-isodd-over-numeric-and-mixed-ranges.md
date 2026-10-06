@@ -3,7 +3,7 @@ id: T-0248
 title: "Probe ISEVEN/ISODD over numeric and mixed ranges; extend IS* lift probe coverage"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0247 saw a single `#VALUE!` (no spill) for ISEVEN/ISODD over a mixed range (do
 
 ## Out of scope
 -
+
+## Outcome
+ISEVEN/ISODD over a range return one `#VALUE!` (no spill) for numbers-only and mixed ranges (excel-graph); the engine already matched, so semantics entry is now VERIFIED. IS* lift probe check list extended (B12, A13, B13, ISEVEN/ISODD block, OFFSET/INDEX reference arguments); all new cells pass. Baseline: probes case coverage 57 -> 68 checked cells, no fixes or regressions.

@@ -17,7 +17,12 @@
         "A4": "=NA()",
         "A6": "=1/0",
         "B1": "y",
-        "B3": 4
+        "B3": 4,
+        "C1": 2,
+        "C2": 3,
+        "C3": 4.5,
+        "C4": -7,
+        "C5": 0
       }
     },
     {
@@ -33,7 +38,15 @@
         "H1": "=ISBLANK(Data!A1:A6)",
         "A9": "=ISNUMBER({1,\"a\",TRUE})",
         "A10": "=ISERROR({1,\"a\",TRUE}*1)",
-        "A11": "=ISBLANK(Data!A1:B3)"
+        "A11": "=ISBLANK(Data!A1:B3)",
+        "A15": "=ISEVEN(Data!C1:C5)",
+        "B15": "=ISODD(Data!C1:C5)",
+        "D15": "=ISEVEN(Data!A1:A6)",
+        "E15": "=ISODD(Data!A1:A6)",
+        "A22": "=ISBLANK(OFFSET(Data!A5,0,0))",
+        "B22": "=ISNUMBER(INDEX(Data!A1:A6,1))",
+        "C22": "=ISBLANK(INDEX(Data!A1:A6,5))",
+        "D22": "=ISTEXT(INDEX(Data!A1:A6,2))"
       }
     }
   ],
@@ -95,6 +108,37 @@
     "Calc!C10",
     "Calc!A11",
     "Calc!B11",
-    "Calc!A12"
+    "Calc!A12",
+    "Calc!B12",
+    "Calc!A13",
+    "Calc!B13",
+    "Calc!A15",
+    "Calc!A16",
+    "Calc!A17",
+    "Calc!A18",
+    "Calc!A19",
+    "Calc!A20",
+    "Calc!B15",
+    "Calc!B16",
+    "Calc!B17",
+    "Calc!B18",
+    "Calc!B19",
+    "Calc!B20",
+    "Calc!D15",
+    "Calc!D16",
+    "Calc!D17",
+    "Calc!D18",
+    "Calc!D19",
+    "Calc!D20",
+    "Calc!E15",
+    "Calc!E16",
+    "Calc!E17",
+    "Calc!E18",
+    "Calc!E19",
+    "Calc!E20",
+    "Calc!A22",
+    "Calc!B22",
+    "Calc!C22",
+    "Calc!D22"
   ]
 }
