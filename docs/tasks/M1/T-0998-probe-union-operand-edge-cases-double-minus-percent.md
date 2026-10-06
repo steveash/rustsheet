@@ -3,7 +3,7 @@ id: T-0998
 title: "Probe union operand edge cases: double minus, percent, nested parentheses, negated operand cut by intersection"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
