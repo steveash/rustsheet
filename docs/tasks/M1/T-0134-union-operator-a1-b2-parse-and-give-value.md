@@ -84,6 +84,6 @@ top-level unions in defined names (Print_Area). Known gaps left to the T-0133 sp
 function arguments (`SUM((A1,B2))`, AREAS, INDEX area_num), and unions returned by IF, CHOOSE or LET.
 Probe task for the UNVERIFIED choices: T-0187.
 
-Follow-up: T-0184. The R1C1 lexer does not read a sheet prefix
+Follow-up: T-0188. The R1C1 lexer does not read a sheet prefix
 on the second corner, so `SUM(Data!B8:Data!E12,A1)` fails its R1C1 round trip. This was already
 broken on main and is not specific to unions.

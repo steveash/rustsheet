@@ -210,7 +210,7 @@ fn unions_round_trip_through_stringify() {
 #[test]
 fn sheet_qualified_corner_pairs_are_union_operands() {
     // T-0130: `Data!B8:Data!E12` is one range. Only A1 is checked: the R1C1 lexer does not
-    // read a second sheet prefix yet (T-0184, which affects any such range).
+    // read a second sheet prefix yet (T-0188, which affects any such range).
     let mut parser = parser();
     let node = parser.parse("(Data!B8:Data!E12,A1)", &context());
     let Node::OpUnionKind { left, .. } = &node else {
