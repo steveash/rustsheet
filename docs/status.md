@@ -29,11 +29,15 @@ T-0903/0910/0920/0921/0940/0944/0945/0946/0947/0948/0949/0955/0956/0964) plus 5 
 Blocked: only the Phase 2 tasks T-0400/T-0401/T-0402 (by decision 0027). T-0125 (#68) was blocked on T-0213, which is now done, so this run unblocked it and handed it back to opus. Its branch conflicts with `main` in the ROUND family.
 CI on `main` (86e5ddb): green. Open PRs: 13 — #68 T-0125 (draft, >24 h, see above), #83 T-0403, #93 T-0225, #105 T-0040 (draft, blocked), #125 T-0241, #129 T-0222,
 #143 T-0151, #144 T-0957, #145 T-0247, #146 T-0943, #148 T-0044, #175 T-0153 (draft handoff), #177 T-0250; all except #68 are under 24 h old.
-QUEUES
+Queues: functions 28 ready at the start of the run, which is enough. The sonnet buffer was 9 (below 10) and research had 0 ready, so this run ran the gap-triager and the planner.
+New tasks: sonnet T-0173/0174/0175/0178/0179/0254/0256/0979/0980/0981, opus T-0176/0177/0180/0982, and T-0255 (waits on T-0254).
+The triager's LEFT/RIGHT/MID task was renumbered T-0253→T-0256 because a concurrent refill branch had claimed T-0253.
+At commit time `make ready-tasks` shows functions 16, sonnet 9, research 8, api 3, quality 4. Workers' busy lanes hide the rest: engine 0 ready with 19 todo, functions-text busy.
+Not filed, for the planner/owner to decide: 1904-date-system cells in POI DateFormat*Tests (~35 cells); R1C1 parse/print has no Excel evidence (would need a `formulasR1C1` oracle capture).
 Upstream IronCalc: no new commits past 4deab8f6. Oracle: excel-graph OK; fill on ironcalc-calc wrote 0 sidecars (207 skipped) and on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
 Spot-audit: none yet; the first weekly audit is due 2026-10-09 (with the decision 0015 reviewer-model check).
 
-**Critical lane:** CRIT
+**Critical lane:** engine, research, api
 
 (Ordered list read by both tier workers, which then fall back to `functions`. M1 exit needs gen-m1 at 100% (258 cells left; T-0134 and T-0221 still open)
 and the remaining engine parity tasks (T-0110, T-0122, T-0128, T-0129, T-0144, T-0149, T-0154, T-0158); research holds the probes that unblock them.

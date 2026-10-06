@@ -77,7 +77,11 @@ in fixed notation where `%.15g` would switch: `123456789012345678` → "12345678
 "1E+20100"; the exact switch is the 20-character rule below.
 Under `&`: `0.1+0.2&100` → "0.3100", `1/3&7` → "0.3333333333333337", `=7+Data!$E5&10` with E5 = 1E-15 → "710". Snapping does not apply inside the CONCAT argument:
 `CONCAT(0.1+0.2-0.3)` → "5.55111512312578E-17". `TEXT(x,"0.000…")` also pads after 15
-significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`.
+significant digits: `TEXT(1/3,"0.000000000000000000")` = `0.333333333333333000`. The 15th digit is rounded, not cut,
+and the count is of significant digits, not decimal places: `TEXT(2/3,…)` = `0.666666666666667000`,
+`TEXT(0.000123456789012345,…)` = `0.000123456789012345`, `TEXT(1.005*1000,…)` = `1005.000000000000000000`,
+`TEXT(2^53+1,…)` = `9007199254740990.000000000000000000`, `TEXT(0.1+0.2-0.3,…)` = `0.000000000000000056`
+(probes-numeric/4f413cc257ce15c4 A23, A51, A79, A71, A7; T-0980).
 Notation rule (T-0107): plain notation whenever the plain string, without the sign, has at most
 20 characters, otherwise `d.dddE±XX` with at least two exponent digits: `99999999999999900000`
 and `-10000000000000000000` stay plain, `1E+20`/`-1E+20`/`1E+21` do not; `0.000000000000000001`

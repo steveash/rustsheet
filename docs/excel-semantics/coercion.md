@@ -6,6 +6,14 @@ Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6
 Status: VERIFIED
 Tasks: T-0215
 
+## AND: a literal text argument that is not TRUE/FALSE is #VALUE!
+Rule: a text literal passed directly to AND that does not read as TRUE/FALSE makes the result `#VALUE!`
+instead of being ignored: `AND("1",1)` → `#VALUE!`, `AND(E14,E17,"1")` → `#VALUE!`.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J136, I136 (desktop Excel cached values).
+Status: VERIFIED for AND with a literal. UNVERIFIED for OR/XOR, for text returned by a function and for
+"TRUE"/"" literals (probe: T-0254).
+Tasks: T-0254, T-0255
+
 ## MIN / MAX coerce value arguments like SUM; ranges and arrays give only their numbers
 Rule: a value argument (literal or function result, e.g. IFERROR or CONCATENATE) is coerced like
 SUM's: non-numeric text is `#VALUE!` (`=MIN("a")`, `=MAX(CONCATENATE("x"))`), numeric text counts
