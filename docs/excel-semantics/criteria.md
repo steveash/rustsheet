@@ -125,6 +125,10 @@ EverythingTests!F296 `COUNTIF(G7:K7,E8:G8)` is 2 (Excel-cached).
 Evidence: probes/ifs-array-criteria H1-H39 (oracle: excel-graph, 2026-10-06, T-0207);
 poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
 Status: VERIFIED
+DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
+(used cells of the walked range x criteria count x distinct consecutive criteria elements) is
+`#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
+over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)
 Tasks: T-0207

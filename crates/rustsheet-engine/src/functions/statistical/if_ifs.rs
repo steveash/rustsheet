@@ -73,6 +73,32 @@ impl CriteriaArg {
     }
 }
 
+/// Most cells all the per-element walks of one lifted *IF(S) call may visit, so a crafted formula
+/// (`COUNTIFS(A:A,SEQUENCE(1048576))` over a filled column) cannot run for hours (CLAUDE.md
+/// directive 5). Excel has no such limit: DEVIATION, docs/excel-semantics/criteria.md
+/// ("*IF(S) lift array criteria").
+const MAX_LIFTED_CELL_VISITS: u64 = 1 << 27;
+
+/// Elements [`Model::lift_criteria`] computes: one per run of equal consecutive criteria, in
+/// row-major order (the rest reuse the previous result).
+fn count_walks(args: &[CriteriaArg], rows: usize, columns: usize) -> u64 {
+    let mut walks = 0;
+    let mut previous: Option<(usize, usize)> = None;
+    for row in 0..rows {
+        for column in 0..columns {
+            let same = previous.is_some_and(|(r, c)| {
+                args.iter()
+                    .all(|arg| arg.element(row, column) == arg.element(r, c))
+            });
+            if !same {
+                walks += 1;
+            }
+            previous = Some((row, column));
+        }
+    }
+    walks
+}
+
 fn shape_mismatch(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(
         Error::VALUE,
@@ -102,9 +128,14 @@ impl Model {
     /// shorter array uses an `#N/A` criterion). Otherwise `compute` runs once with the
     /// criteria as they are. Evidence: probes/ifs-array-criteria, poi/70005-countifs.xlsx
     /// (docs/excel-semantics/criteria.md "*IF(S) lift array criteria").
+    ///
+    /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
+    /// range): the call is `#ERROR!` when its used cells times the criteria count times the
+    /// elements to compute exceed [`MAX_LIFTED_CELL_VISITS`].
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
+        walked: &Node,
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
@@ -141,6 +172,20 @@ impl Model {
         if let Some((error, message)) = check_array_size(rows, columns) {
             return CalcResult::new_error(error, cell, message);
         }
+        // Refuse before walking anything when the walks would visit too many cells.
+        let walks = count_walks(&args, rows, columns);
+        let criteria_count = u64::try_from(args.len()).unwrap_or(u64::MAX);
+        let visits = self
+            .walk_cost(walked, cell)
+            .saturating_mul(criteria_count)
+            .saturating_mul(walks);
+        if visits > MAX_LIFTED_CELL_VISITS {
+            return CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Too many cells to visit for array criteria".to_string(),
+            );
+        }
         // Consecutive equal criteria (the blank tail of a whole-column criteria range) reuse
         // the previous result instead of walking the ranges again.
         let mut previous: Option<(Vec<Option<ArrayNode>>, ArrayNode)> = None;
@@ -176,6 +221,22 @@ impl Model {
         CalcResult::Array(output)
     }
 
+    /// Cells of `node`'s range inside the used area (at least 1): what one criteria walk visits.
+    fn walk_cost(&mut self, node: &Node, cell: CellReferenceIndex) -> u64 {
+        let CalcResult::Range { left, right } = self.evaluate_node_with_reference(node, cell)
+        else {
+            return 1;
+        };
+        let Ok((last_row, last_column)) =
+            self.clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+        else {
+            return 1;
+        };
+        let rows = u64::try_from(last_row - left.row + 1).unwrap_or(0);
+        let columns = u64::try_from(last_column - left.column + 1).unwrap_or(0);
+        (rows * columns).max(1)
+    }
+
     /// The SUMIFS-shaped functions `(value_range, criteria_range1, criteria1, ...)`: checks the
     /// argument count, then lifts `compute` over the criteria (see [`Model::lift_criteria`]).
     pub(crate) fn lift_ifs(
@@ -188,7 +249,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let criteria = self.criteria_values(args, 2, cell);
-        self.lift_criteria(criteria, cell, compute)
+        self.lift_criteria(criteria, &args[0], cell, compute)
     }
 
     pub(crate) fn fn_countif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -218,13 +279,13 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let criteria = self.criteria_values(args, 1, cell);
-        self.lift_criteria(criteria, cell, |model, criteria| {
+        self.lift_criteria(criteria, &args[0], cell, |model, criteria| {
             model.count_ifs(args, criteria, cell)
         })
     }
 
     /// COUNTIFS with the criteria already evaluated (`criteria[k]` is `args[2k + 1]`'s value).
-    // FIXME: This function shares a lot of code with apply_ifs. Can we merge them?
+    // TODO(T-0408): share the range resolution and walk with apply_ifs.
     fn count_ifs(
         &mut self,
         args: &[Node],

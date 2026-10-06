@@ -97,3 +97,18 @@ fn scalar_criteria_still_give_a_scalar() {
     model.evaluate();
     assert_eq!(texts(&model, &["H1", "I1", "H2"]), ["2", "", "4"]);
 }
+
+#[test]
+fn too_many_cell_visits_is_an_error_without_walking() {
+    // 50,000 distinct criteria over 3,000 used cells: 1.5E+8 visits, over the cap
+    // (DEVIATION: Excel computes it; docs/excel-semantics/criteria.md).
+    let mut model = new_empty_model();
+    for row in 1..=3000 {
+        model._set(&format!("A{row}"), &row.to_string());
+    }
+    model._set("C1", "=SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))");
+    model._set("C2", "=SUM(COUNTIF(A1:A3000,SEQUENCE(3000)))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#ERROR!");
+    assert_eq!(model._get_text("C2"), "3000");
+}
