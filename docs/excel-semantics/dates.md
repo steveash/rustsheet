@@ -210,7 +210,7 @@ from the model's clock and timezone (`Model::current_year`, the clock NOW and TO
 the parser, which asks for it only when the number can be a day of the month. Typed year-less text
 gets the format `d-mmm` (UNVERIFIED). A typed `+`/`-` input is a formula unless the whole input,
 sign included, is a number, so `-4-2` stays the formula -6 although `4-2` is a date.
-Implemented in: `formatter::date_text::parse_date`, `functions::date_and_time::parse_datevalue_text`,
+Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
 `functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
 
 ## WORKDAY holidays take the whole range
