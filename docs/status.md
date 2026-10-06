@@ -32,7 +32,7 @@ CI on `main` (86e5ddb): green. Merged during this run (not in the table above): 
 Queues: functions 28 ready at the start of the run, which is enough. The sonnet buffer was 9 (below 10) and research had 0 ready, so this run ran the gap-triager and the planner.
 New tasks: sonnet T-0173/0174/0175/0178/0179/0980/0981, opus T-0176/0177/0180/0982.
 A concurrent refill (#182) filed the same LEFT/RIGHT/MID, AND/OR/XOR-text and WORKDAY-holidays gaps (T-0257, T-0258, T-0983) first, so this run dropped its duplicates.
-At commit time (after #182) `make ready-tasks` shows functions FN, sonnet SN, research RN, api AN. Workers' busy lanes hide the rest: engine 0 ready with 19 todo, functions-text busy.
+At commit time (after #182) `make ready-tasks` shows functions 32, sonnet 24 (buffer met), research 8, api 3. Workers' busy lanes hide the rest: engine 0 ready with 19 todo, functions-text busy.
 Not filed, for the planner/owner to decide: 1904-date-system cells in POI DateFormat*Tests (~35 cells); R1C1 parse/print has no Excel evidence (would need a `formulasR1C1` oracle capture).
 Upstream IronCalc: no new commits past 4deab8f6. Oracle: excel-graph OK; fill on ironcalc-calc wrote 0 sidecars (207 skipped) and on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
 Spot-audit: none yet; the first weekly audit is due 2026-10-09 (with the decision 0015 reviewer-model check).
