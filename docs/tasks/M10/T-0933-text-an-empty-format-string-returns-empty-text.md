@@ -3,7 +3,7 @@ id: T-0933
 title: "TEXT: an empty format string returns empty text (194 known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -33,11 +33,14 @@ number or text with `""`; if the implementation must decide, use the `excel-prob
 the rule in `docs/excel-semantics/` (new file `number-formats.md`).
 
 ## Acceptance criteria
-- [ ] The 194 known-failure lines above disappear from eval/baseline/poi.txt with no new F lines.
-- [ ] The 5 FormatConditionTests lines (A38, A51:A54) disappear too, or the Outcome explains why not.
-- [ ] Unit test in the formatter or TEXT tests: `TEXT(<blank>, "")` = `""`.
-- [ ] Rule recorded in `docs/excel-semantics/number-formats.md` citing the cells above.
-- [ ] `make check` green; reviewers approve.
+- [x] The 194 known-failure lines above disappear from eval/baseline/poi.txt with no new F lines.
+- [x] The 5 FormatConditionTests lines (A38, A51:A54) disappear too, or the Outcome explains why not.
+- [x] Unit test in the formatter or TEXT tests: `TEXT(<blank>, "")` = `""`.
+- [x] Rule recorded in `docs/excel-semantics/number-formats.md` citing the cells above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Any other TEXT format feature (T-0934..T-0938).
+
+## Outcome
+`fn_text` returns `""` for a blank value with an empty format (scalar and array paths); non-blank values with `""` are unprobed and unchanged. Unit test added; number-formats.md has the `Implemented in:` line. Eval: poi known failures 889 -> 690 (199 fixed: the 194 listed plus the 5 FormatConditionTests cells), no regressions.
