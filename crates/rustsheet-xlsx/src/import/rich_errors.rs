@@ -14,7 +14,7 @@
 //! (`xl/richData/rdrichvaluestructure.xml`): Excel for the web writes `_error` keys alphabetically
 //! (`colOffset, errorType, rwOffset, subType`), so it is not always the first field (T-0208,
 //! gen-m2/78bc88199fc96650 Calc!A61). This is the one decoder shared by the importer and the eval
-//! snapshot reader (T-0921).
+//! snapshot reader (T-0921). It is public only for that reader, not a stable API.
 
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::{Reader, XmlVersion};
@@ -90,7 +90,9 @@ pub fn value_metadata_errors(
 
 /// The value-metadata errors of the package being imported (see [`value_metadata_errors`]);
 /// empty when it has no metadata or rich values, or they do not parse, so every cell keeps the
-/// error it caches.
+/// error it caches. The importer is lenient on purpose (an untrusted workbook with broken rich
+/// data still opens, as it would in a reader that ignores `vm`); the eval snapshot reader reports
+/// the same failure as an error, because a golden it cannot decode must not be scored.
 pub(super) fn load_value_metadata_errors<R: Read + Seek>(
     archive: &mut Package<R>,
 ) -> Result<Vec<Option<&'static str>>, XlsxError> {
@@ -104,7 +106,7 @@ pub(super) fn load_value_metadata_errors<R: Read + Seek>(
     Ok(value_metadata_errors(&metadata, &rich_values, structures.as_deref()).unwrap_or_default())
 }
 
-/// The text of the part `name`, or `None` if the package has none. Reads count against the
+/// The text of the part `name`, or `None` if the package has none or it is not UTF-8. Reads count against the
 /// package's byte budget like every other part.
 fn read_optional<R: Read + Seek>(
     archive: &mut Package<R>,
@@ -113,9 +115,11 @@ fn read_optional<R: Read + Seek>(
     let Some(mut part) = archive.open_optional(name)? else {
         return Ok(None);
     };
-    let mut text = String::new();
-    part.read_to_string(&mut text)?;
-    Ok(Some(text))
+    let mut bytes = Vec::new();
+    part.read_to_end(&mut bytes)?;
+    // Text that is not UTF-8 is treated like XML that does not parse: no rich errors, rather
+    // than a failed import. Read errors (the byte budget among them) still propagate.
+    Ok(String::from_utf8(bytes).ok())
 }
 
 fn xml_error(part: &str, error: impl std::fmt::Display) -> XlsxError {
