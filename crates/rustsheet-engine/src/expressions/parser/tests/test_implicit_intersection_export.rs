@@ -211,16 +211,11 @@ fn array_formulas_keep_every_intersection() {
 // fuzzing, T-0021). The extra arguments are simply not scalar positions.
 #[test]
 fn too_many_arguments_for_a_fixed_signature_do_not_panic() {
-    check(&[
-        (
-            "DMIN(A1:C4,C1,,C1,A6:A7)",
-            "DMIN(A1:C4,C1,,C1,A6:A7)",
-            "DMIN(A1:C4,C1,,C1,A6:A7)",
-        ),
-        (
-            "SMALL(A1:A3,1,B1:B2)",
-            "SMALL(A1:A3,1,B1:B2)",
-            "SMALL(A1:A3,1,B1:B2)",
-        ),
-    ]);
+    for formula in [
+        "DMIN(A1:C4,C1,,C1,A6:A7)",
+        "DMIN(A1:C4,C1,,C1,A6:A6:A7)",
+        "SMALL(A1:A3,1,B1:B2)",
+    ] {
+        check(&[(formula, formula, formula)]);
+    }
 }
