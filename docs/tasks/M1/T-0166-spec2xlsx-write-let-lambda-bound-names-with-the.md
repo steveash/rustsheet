@@ -3,7 +3,7 @@ id: T-0166
 title: "spec2xlsx: write LET/LAMBDA bound names with the _xlpm. prefix"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,10 @@ workbook `=A1:A3 _xlfn.LET(x,A2:B2,x)` was refused (`FileCorruptTryRepair`) whil
 
 ## Out of scope
 - Generic formula translation beyond bound names.
+
+## Outcome
+spec2xlsx now writes LET/LAMBDA names as `_xlpm.x` and prefixes engine-known future functions
+(list read from `Function::to_xlsx_string`, except the classic CEILING, which the exporter wrongly
+writes as `_xlfn.CEILING`). Probes H13 (LET) and H14 (TRIMRANGE) added and oracle-filled (both 2).
+Eval delta: probes known failures 103 -> 104 (H14: the engine's TRIMRANGE as an intersection
+operand gives #VALUE!, like TAKE/DROP). Follow-up: the exporter's CEILING prefix (T-0172).

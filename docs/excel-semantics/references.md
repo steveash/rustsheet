@@ -114,10 +114,11 @@ operands. Accepted forms:
 - `=Data!A1 Other!Z99` (different sheets, no shared coordinates) is `#VALUE!`, like overlapping cross-sheet
   operands: the sheet check comes before the disjoint check.
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5
-(oracle: excel-graph, 2026-10-05, T-0138), H6:H12 (2026-10-06, T-0161). The refused workbooks, LET and
-TRIMRANGE (the case builder cannot write `_xlpm.` names or the `_xlfn.TRIMRANGE` prefix yet, T-0166),
-come from scratch runs of one formula each (T-0138, T-0161); each refusal was `FileCorruptTryRepair`,
-and the same CHOOSEROWS and IFERROR calls load on their own (=2).
+(oracle: excel-graph, 2026-10-05, T-0138), H6:H12 (2026-10-06, T-0161). H13 `=A1:A3 LET(x,A2:B2,x)` and
+H14 `=A1:A3 TRIMRANGE(A2:B2)` are both 2 (2026-10-06, T-0166; the case builder now writes `_xlpm.` bound
+names and `_xlfn.` prefixes; without them Excel refuses the file or gives `#NAME?`). The refused
+workbooks come from scratch runs of one formula each (T-0138, T-0161); each refusal was
+`FileCorruptTryRepair`, and the same CHOOSEROWS and IFERROR calls load on their own (=2).
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or

@@ -28,7 +28,9 @@
         "H9": "=A1:A3 SWITCH(1,1,A2:B2)",
         "H10": "=A1:A3 IFS(TRUE,A2:B2)",
         "H11": "=A1:A3 TAKE(A2:B3,1)",
-        "H12": "=A1:A3 DROP(A1:B2,1)"
+        "H12": "=A1:A3 DROP(A1:B2,1)",
+        "H13": "=A1:A3 LET(x,A2:B2,x)",
+        "H14": "=A1:A3 TRIMRANGE(A2:B2)"
       }
     }
   ],
@@ -45,6 +47,8 @@
     "Sheet1!H9",
     "Sheet1!H10",
     "Sheet1!H11",
-    "Sheet1!H12"
+    "Sheet1!H12",
+    "Sheet1!H13",
+    "Sheet1!H14"
   ]
 }
