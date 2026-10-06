@@ -1,0 +1,264 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Calc": {
+   "A1": {
+    "t": "b",
+    "v": false
+   },
+   "A10": {
+    "t": "b",
+    "v": false
+   },
+   "A11": {
+    "t": "b",
+    "v": false
+   },
+   "A12": {
+    "t": "b",
+    "v": false
+   },
+   "A13": {
+    "t": "b",
+    "v": false
+   },
+   "A2": {
+    "t": "b",
+    "v": false
+   },
+   "A3": {
+    "t": "b",
+    "v": false
+   },
+   "A4": {
+    "t": "b",
+    "v": true
+   },
+   "A5": {
+    "t": "b",
+    "v": false
+   },
+   "A6": {
+    "t": "b",
+    "v": true
+   },
+   "A9": {
+    "t": "b",
+    "v": true
+   },
+   "B1": {
+    "t": "b",
+    "v": false
+   },
+   "B10": {
+    "t": "b",
+    "v": true
+   },
+   "B11": {
+    "t": "b",
+    "v": false
+   },
+   "B12": {
+    "t": "b",
+    "v": true
+   },
+   "B13": {
+    "t": "b",
+    "v": false
+   },
+   "B2": {
+    "t": "b",
+    "v": false
+   },
+   "B3": {
+    "t": "b",
+    "v": false
+   },
+   "B4": {
+    "t": "b",
+    "v": false
+   },
+   "B5": {
+    "t": "b",
+    "v": false
+   },
+   "B6": {
+    "t": "b",
+    "v": true
+   },
+   "B9": {
+    "t": "b",
+    "v": false
+   },
+   "C1": {
+    "t": "b",
+    "v": false
+   },
+   "C10": {
+    "t": "b",
+    "v": false
+   },
+   "C2": {
+    "t": "b",
+    "v": false
+   },
+   "C3": {
+    "t": "b",
+    "v": false
+   },
+   "C4": {
+    "t": "b",
+    "v": true
+   },
+   "C5": {
+    "t": "b",
+    "v": false
+   },
+   "C6": {
+    "t": "b",
+    "v": false
+   },
+   "C9": {
+    "t": "b",
+    "v": false
+   },
+   "D1": {
+    "t": "b",
+    "v": true
+   },
+   "D2": {
+    "t": "b",
+    "v": false
+   },
+   "D3": {
+    "t": "b",
+    "v": false
+   },
+   "D4": {
+    "t": "b",
+    "v": false
+   },
+   "D5": {
+    "t": "b",
+    "v": false
+   },
+   "D6": {
+    "t": "b",
+    "v": false
+   },
+   "E1": {
+    "t": "b",
+    "v": false
+   },
+   "E2": {
+    "t": "b",
+    "v": true
+   },
+   "E3": {
+    "t": "b",
+    "v": false
+   },
+   "E4": {
+    "t": "b",
+    "v": false
+   },
+   "E5": {
+    "t": "b",
+    "v": false
+   },
+   "E6": {
+    "t": "b",
+    "v": false
+   },
+   "F1": {
+    "t": "b",
+    "v": true
+   },
+   "F2": {
+    "t": "b",
+    "v": false
+   },
+   "F3": {
+    "t": "b",
+    "v": true
+   },
+   "F4": {
+    "t": "b",
+    "v": true
+   },
+   "F5": {
+    "t": "b",
+    "v": true
+   },
+   "F6": {
+    "t": "b",
+    "v": true
+   },
+   "G1": {
+    "t": "b",
+    "v": false
+   },
+   "G2": {
+    "t": "b",
+    "v": false
+   },
+   "G3": {
+    "t": "b",
+    "v": true
+   },
+   "G4": {
+    "t": "b",
+    "v": false
+   },
+   "G5": {
+    "t": "b",
+    "v": false
+   },
+   "G6": {
+    "t": "b",
+    "v": false
+   },
+   "H1": {
+    "t": "b",
+    "v": false
+   },
+   "H2": {
+    "t": "b",
+    "v": false
+   },
+   "H3": {
+    "t": "b",
+    "v": false
+   },
+   "H4": {
+    "t": "b",
+    "v": false
+   },
+   "H5": {
+    "t": "b",
+    "v": true
+   },
+   "H6": {
+    "t": "b",
+    "v": false
+   }
+  },
+  "Data": {
+   "A4": {
+    "t": "e",
+    "v": "#N/A"
+   },
+   "A6": {
+    "t": "e",
+    "v": "#DIV/0!"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "106e7d9415f72037210b8a76fcbbd58e300d7ed04dae0cb60196c7626e784bc0",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-05T19:58:40+00:00",
+  "version": null
+ }
+}
