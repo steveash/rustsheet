@@ -190,11 +190,10 @@ pub fn to_excel_precision_str(value: f64) -> String {
 
 /// Orders two numbers on their 15-digit values, Excel's comparison rule. There is no absolute
 /// tolerance: tiny values never equal 0 (docs/excel-semantics/numbers.md#criteria-equality). NaN
-/// falls back to `Equal` (TODO(T-1033)).
+/// is a total order (above every number, equal to itself) so sorts stay consistent.
 pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
-    to_excel_precision(a, 15)
-        .partial_cmp(&to_excel_precision(b, 15))
-        .unwrap_or(std::cmp::Ordering::Equal)
+    // `+ 0.0` turns -0.0 into 0.0, which total_cmp would otherwise order below it.
+    (to_excel_precision(a, 15) + 0.0).total_cmp(&(to_excel_precision(b, 15) + 0.0))
 }
 
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
