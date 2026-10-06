@@ -129,3 +129,22 @@ fn paired_whole_columns_keep_positions() {
     let result = eval(&mut model, "=CHISQ.TEST(Data1!A:A,SEQUENCE(1048576))");
     assert!(!result.is_empty());
 }
+
+// Where one sheet's reference is needed a 3-D reference is #VALUE! (T-0197,
+// probes/3d-ref-functions C1, C5, C6, C10, C13).
+#[test]
+fn single_sheet_lookup_functions_give_value_error() {
+    let mut model = sample();
+    for formula in [
+        "=INDEX(Data1:Data3!A1:A2,1)",
+        "=AREAS(Data1:Data3!A1)",
+        "=VLOOKUP(1,Data1:Data3!A1:B2,1,FALSE)",
+        "=MATCH(1,Data1:Data3!A1:A2,0)",
+        "=COUNTBLANK(Data1:Data3!A1:A2)",
+    ] {
+        assert_eq!(eval(&mut model, formula), "#VALUE!", "{formula}");
+    }
+    // A span of one sheet is that sheet's reference.
+    assert_eq!(eval(&mut model, "=AREAS(Data1:Data1!A1)"), "1");
+    assert_eq!(eval(&mut model, "=COUNTBLANK(Data1:Data1!A1:A5)"), "2");
+}

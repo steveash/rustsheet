@@ -95,11 +95,6 @@ C	probes/union-accepted.case.json	9
 C	probes/union-defined-name.case.json	0
 C	probes/union-neg-operand.case.json	2
 C	probes/value-clock-text.case.json	135
-F	probes/3d-ref-functions.case.json	Calc!C1
-F	probes/3d-ref-functions.case.json	Calc!C10
-F	probes/3d-ref-functions.case.json	Calc!C13
-F	probes/3d-ref-functions.case.json	Calc!C5
-F	probes/3d-ref-functions.case.json	Calc!C6
 F	probes/aggregate-overflow.case.json	Calc!A27
 F	probes/aggregate-overflow.case.json	Calc!A28
 F	probes/aggregate-overflow.case.json	Calc!A29
