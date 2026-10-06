@@ -3,7 +3,7 @@ id: T-0257
 title: "LEFT/RIGHT/MID: numeric text and boolean count arguments coerce to numbers (6 poi + 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -53,7 +53,7 @@ the negative-count and start < 1 checks after coercion.
 - UTF-16 counting of LEFT/RIGHT/MID positions: T-0249.
 - LEFTB/RIGHTB/MIDB.
 
-## Handoff
+## Handoff (resumed)
 Implemented (commit on this branch): `fn_left`/`fn_right`/`fn_mid` in
 `crates/rustsheet-engine/src/functions/text/common.rs` now pass `self.array_node_to_number(..)` results
 into the element functions (the old `text_num_arg` is removed); unit test `counts_coerce_text_and_booleans`
