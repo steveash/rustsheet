@@ -3,7 +3,7 @@ id: T-0998
 title: "Probe union operand edge cases: double minus, percent, nested parentheses, negated operand cut by intersection"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0193 accepts one unary minus on a union operand and refuses `(--A1,B1)`, `(A1%
 
 ## Out of scope
 -
+
+## Outcome
+Probes union-operand-{double-minus,nested-parens,neg-cut-group} oracle-filled; Excel refuses `(A1%,B1)` and `(-A1,B1) A1`/`B1` as unloadable workbooks (documented, no case possible). references.md updated. Engine mismatches: 3 cells (new-coverage), filed as T-1024.
