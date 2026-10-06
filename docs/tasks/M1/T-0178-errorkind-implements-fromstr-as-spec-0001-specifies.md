@@ -3,7 +3,7 @@ id: T-0178
 title: "ErrorKind implements FromStr as SPEC-0001 specifies"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
