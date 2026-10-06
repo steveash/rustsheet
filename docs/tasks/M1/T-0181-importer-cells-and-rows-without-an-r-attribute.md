@@ -3,7 +3,7 @@ id: T-0181
 title: "Importer: cells and rows without an r attribute take the next position (3 poi !EngineError cases)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
