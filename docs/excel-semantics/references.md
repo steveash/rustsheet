@@ -264,7 +264,8 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   `#VALUE!` and FORMULATEXT prints `=(--A1,B1)` (the engine matches since T-1024; three or more
   minuses are unprobed and stay refused); `=(A1%,B1)` is refused by Excel (`FileCorruptTryRepair`, as the engine does); `=(-(A1,B2),C1)` loads and is
   `#VALUE!`; `=(-A1,B1) A1` and `=(-A1,B1) B1` (a negated operand cut by an intersection) are refused by Excel
-  (`FileCorruptTryRepair`; the engine refuses them since T-1024, as a parse error with no oracle value). Excel keeps every level of written parentheses: FORMULATEXT of
+  (`FileCorruptTryRepair`; the engine refuses them since T-1024, as a parse error with no oracle value).
+  Not probed, so the engine keeps accepting them: a negation nested deeper or on the right of the cut (`A1 (-A1,B1)`, `((-A1,B1),C1) A1`), and refuses three minuses `(---A1,B1)`; `(-(A1,B2),C1) A1` is refused by the same rule as `(-A1,B1) A1` (a directly negated operand; UNVERIFIED, T-1031). Excel keeps every level of written parentheses: FORMULATEXT of
   `=((A1,B2))` is `=((A1,B2))` and of `=(((A1,B2),C1))` is `=(((A1,B2),C1))` (the engine keeps them since T-1024: `written` on `OpUnionKind`).
 - Engine behavior, not probed: the union is the loosest operator inside its parenthesis and the
   intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,

@@ -289,6 +289,13 @@ fn union_with_a_negated_operand_cannot_be_cut_by_an_intersection() {
     assert!(is_parse_error(&parser.parse("(-A1,B1) B1", &context())));
     // Without the negation the cut is fine.
     assert!(!is_parse_error(&parser.parse("(A1,B1) A1", &context())));
+    // Unprobed shapes stay accepted (T-1031).
+    for formula in ["A1 (-A1,B1)", "((-A1,B1),C1) A1"] {
+        assert!(
+            !is_parse_error(&parser.parse(formula, &context())),
+            "{formula}"
+        );
+    }
 }
 
 #[test]
