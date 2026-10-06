@@ -3,7 +3,7 @@ id: T-0966
 title: "Oracle sweeps for statistical-distribution kernels (normal CDF/PDF, gamma, incomplete beta/gamma, t, Weibull) and compat-alias evidence"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
