@@ -42,6 +42,8 @@ fn fill_two(locale: &str, first: &str, second: &str) -> (f64, f64) {
     (number(3), number(4))
 }
 
+// Expectations are hand-written (the Graph oracle has no fill handle); they check that the engine
+// keeps the values it writes, not Excel's fill rules (T-0171).
 #[test]
 fn small_and_large_steps_keep_their_values() {
     for locale in ["en", "de"] {
