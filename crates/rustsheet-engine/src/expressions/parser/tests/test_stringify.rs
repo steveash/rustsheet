@@ -123,3 +123,29 @@ fn comparison_operands_keep_their_parentheses() {
         assert_eq!(again, t, "{formula}");
     }
 }
+
+#[test]
+fn concatenation_operands_of_arithmetic_keep_their_parentheses() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    // T-0157: `&` binds looser than `+ - * /`; the printed text must parse back to the same tree.
+    for formula in [
+        "(\"a\"&1)+1",
+        "1+(\"a\"&1)",
+        "(\"a\"&1)*2",
+        "2/(\"a\"&1)",
+        "1-(\"a\"&1)",
+        "(\"a\"&1)-1",
+    ] {
+        let t = parser.parse(formula, &cell_reference);
+        let printed = to_english_localized_string(&t, &cell_reference);
+        assert_eq!(printed, formula);
+        let again = parser.parse(&printed, &cell_reference);
+        assert_eq!(again, t, "{formula}");
+    }
+}
