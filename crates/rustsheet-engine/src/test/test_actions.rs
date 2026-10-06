@@ -797,3 +797,17 @@ fn test_column_move_right_two_updates_intermediate_refs_by_one() {
 
 // A  B  C  D  E  F  G   H  I  J   K   L   M   N   O   P   Q   R
 // 1  2  3  4  5  6  7   8  9  10  11  12  13  14  15  16  17  18
+
+#[test]
+fn last_used_column_follows_structural_edits_and_decoding() {
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 2, "1".to_string()).unwrap();
+    model.set_user_input(0, 2, 5, "1".to_string()).unwrap();
+    assert_eq!(model.workbook.worksheet(0).unwrap().last_used_column(), 5);
+    model.delete_columns(0, 5, 1).unwrap();
+    assert_eq!(model.workbook.worksheet(0).unwrap().last_used_column(), 2);
+    model.insert_columns(0, 1, 3).unwrap();
+    assert_eq!(model.workbook.worksheet(0).unwrap().last_used_column(), 5);
+    let model = crate::Model::from_bytes(&model.to_bytes(), "en").unwrap();
+    assert_eq!(model.workbook.worksheet(0).unwrap().last_used_column(), 5);
+}
