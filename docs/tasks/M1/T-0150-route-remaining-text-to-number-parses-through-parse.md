@@ -3,7 +3,7 @@ id: T-0150
 title: "Route remaining text-to-number parses through parse_excel_number (VALUE, criteria, COUNT, utils)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ T-0143 added `parse_excel_number` (number_format.rs). Done in T-0143: lexer, `ca
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/text-number-15-digits` (excel-graph) shows criteria operands (COUNTIF/SUMIF), `NUMBERVALUE`
+and `AVERAGE` text args truncate to 15 digits like literals. Switched criteria.rs `parse_criterion_number`,
+NUMBERVALUE and AVERAGE to `parse_excel_number`; the remaining raw sites only test number-ness (or the
+digits cannot matter) and are documented in numbers.md. Eval: probes +6 cells passing.

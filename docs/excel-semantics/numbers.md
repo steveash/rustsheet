@@ -127,7 +127,11 @@ digits 16+ are **truncated**, not rounded: `VALUE("9307149050110945.41")` = 9307
 Evidence: probes-numeric/23733e52a2ff91ab `literal-15-digit/*`; probes/precision-and-rounding A11.
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number` and `parse_formatted_number` (so `VALUE`); other raw `str::parse::<f64>` sites and an oracle case for `"<17 digits>"+0` are T-0150.
+The same truncation applies to numeric text in COUNTIF/SUMIF criteria (`COUNTIF(r,"123456789012345678")`
+matches a cell holding 123456789012345000, and `"<…"`/`">=…"` compare against the cut value) and to
+`NUMBERVALUE` and `AVERAGE` text arguments (probes/text-number-15-digits B1-B8, B11-B13; excel-graph,
+2026-10-06).
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`. Sites that only test "is this a number" (COUNT, date-criterion check, utils.rs, sequence detector, conditional formatting) keep `parse_finite_number`: the digit count cannot change their answer.
 Tasks: T-0143, T-0150
 
 ## Subnormal results become 0
