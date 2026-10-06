@@ -9,6 +9,10 @@ C	probes/ceiling-xlfn-prefix.case.json	4
 C	probes/clock-text-oddities.case.json	115
 C	probes/clock-text-oddities2.case.json	50
 C	probes/clock-text-oddities3.case.json	32
+C	probes/clock-text-oddities4.case.json	20
+C	probes/clock-text-oddities5.case.json	40
+C	probes/clock-text-oddities6.case.json	35
+C	probes/clock-text-oddities7.case.json	12
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12

@@ -29,9 +29,10 @@ Done on this branch: `TEXT/MINUS_MINUS.xlsx` (from IronCalc 9b1ae3fd) added unde
 Not done: the `"10:11.5:12"` oddity (B26/C26 stay in eval/baseline/probes.txt) and probing the unverified edges listed in the acceptance criteria. Why: the only datum is `TIMEVALUE("10:11.5:12")` = 36665.5 s = 10h 11m 5.5s, and nothing says how a `H:M.f:S` string maps to that (the trailing `:12` seems to vanish); a rule needs several new oracle probes (vary the pieces: `10:11.5:13`, `10:12.5:12`, `10:11.25:12`, `1:11.5:12`) before implementing, which is beyond a sonnet-sized change. Next: write the probe case with those variants (excel-probe skill, oracle excel-graph is OK), fit the rule, implement in `time_text::parse_clock_text`/`parse_time_serial`, record in dates.md, drop B26/C26 via `make eval-baseline`.
 
 ## Outcome
-- Three oracle probes (probes/clock-text-oddities, -2, -3; excel-graph) settle the `"10:11.5:12"`
+- Seven oracle probes (probes/clock-text-oddities, -2 to -7; excel-graph) settle the `"10:11.5:12"`
   oddity: in `H:M.f:S` the fraction digits are read as whole seconds and as the fraction and `S`
-  is checked then ignored; minutes plus the seconds' whole minutes must stay within 9999; one
+  is checked then ignored; at most one clock component may be out of range (hours >= 24,
+  minutes or whole seconds >= 60), in every clock form; one
   trailing `:` is ignored. Implemented in `time_text::parse_clock_text` (TIMEVALUE, VALUE,
   coercion, date-clock text). Recorded in docs/excel-semantics/dates.md "Time text".
 - Direct arguments of SUM/AVERAGE/MAX/MIN/PRODUCT/LARGE/SMALL/HOUR/MINUTE/SECOND/DAY/array math
@@ -39,4 +40,4 @@ Not done: the `"10:11.5:12"` oddity (B26/C26 stay in eval/baseline/probes.txt) a
   `+10:00` typed into a cell is out of the oracle's reach (it uploads xlsx), noted in dates.md.
 - MINUS_MINUS.xlsx (73/73) added by the sonnet run.
 - Eval delta: probes known failures 105 -> 104 (fixed 2: timevalue-component-limits B26/C26;
-  new coverage 197 cells, 1 failure: clock-text-oddities F37 = T-0252); regressions 0.
+  new coverage 304 cells in 7 probe cases, 1 failure: clock-text-oddities F37 = T-0252); regressions 0.

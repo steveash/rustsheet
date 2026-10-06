@@ -73,11 +73,11 @@ fn timevalue_clock_text_grammar() {
 }
 
 // `H:M.f:S` clock text reads the fraction digits as whole seconds and as the fraction, ignores
-// `S`, and requires the minutes plus the seconds' whole minutes to stay within 9999; one trailing
-// `:` is ignored. Oracle values (0+text) from probes/clock-text-oddities*.case.json (excel-graph).
+// `S`; at most one component may be out of range (hours from 24, minutes or whole seconds from
+// 60); one trailing `:` is ignored. Oracle values (0+text) from probes/clock-text-oddities*.case.json (excel-graph).
 #[test]
 fn coercion_of_minutes_fraction_clock_text() {
-    let cases: [(&str, Option<f64>); 17] = [
+    let cases: [(&str, Option<f64>); 22] = [
         ("10:11.5:12", Some(0.424_369_212_962_963)),
         ("10:11.5:99", Some(0.424_369_212_962_963)),
         ("10:11.0123:12", Some(0.425_729_305_555_555_6)),
@@ -95,6 +95,11 @@ fn coercion_of_minutes_fraction_clock_text() {
         ("0:9998.9999:1", None),
         ("0:9999:9999.9999", None),
         ("0:9999.9998:1", None),
+        ("0:9999:59.9999", Some(6.944_444_444_444_445)),
+        ("0:24:60", Some(0.017_361_111_111_111_112)),
+        ("24:60", None),
+        ("24:0:60", None),
+        ("60:60.5", None),
     ];
     let mut model = new_empty_model();
     for (i, (text, _)) in cases.iter().enumerate() {

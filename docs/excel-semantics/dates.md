@@ -99,15 +99,18 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   is #VALUE!), and only a two-component head takes it (`"10:11:12.5:13"` is #VALUE!). With AM/PM the
   whole seconds count against the 59 limit (`"10:11.59:12 PM"` parses, `"10:11.60:12 PM"` is
   #VALUE!). Also in date-clock text (`0+"1/2/2020 10:11.5:12"` = 43832.42436921296).
-- **Minutes plus the seconds' whole minutes** (after millisecond rounding) must stay within 9999:
-  `"0:11.9999:1"` (11 min + 10000 s) parses, but `"0:9999.9998:1"` (9999 min + 9999 s),
-  `"0:9998.9999:1"` and `"0:9999:9999.9999"` are #VALUE!, while `"0:9999.5:1"` and `"0:9999"`
-  parse. Unprobed: whether hours plus the minutes' whole hours have the same limit.
+- **At most one component may be out of its usual range** (hours from 24, minutes from 60,
+  whole seconds from 60, counted before millisecond rounding), in every clock form: `"10:61"`,
+  `"23:60"` (= 1), `"0:24:60"`, `"24:59:59"`, `"0:59:9999.9999"`, `"0:9999:59.9999"`, `"59:60.5"`,
+  `"0:11.9999:1"` (11 min + 10000 s) and `"10:9999.5:12"` parse, but `"24:60"`, `"24:0:60"`,
+  `"0:60:60"`, `"9998:60:00"`, `"0:9990:599"`, `"60:60.5"` (M:S.f), `"0:9998.60:1"` and
+  `"0:9999:9999.9999"` are #VALUE!. Evidence: probes/clock-text-oddities4 to -7 (excel-graph,
+  2026-10-06). Unprobed: an `H:M.f:S` fraction of more than 12 significant digits (the engine
+  gives #VALUE!, a bound that keeps the serial exact; `"10:11.12345:12"` parses).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
-  Evidence for these three bullets: probes/clock-text-oddities, clock-text-oddities2,
-  clock-text-oddities3 (excel-graph, 2026-10-06, T-0153), TIMEVALUE, `0+text` and VALUE agree.
+  Evidence for these bullets: probes/clock-text-oddities, clock-text-oddities2 to -7 (excel-graph, 2026-10-06, T-0153), TIMEVALUE, `0+text` and VALUE agree.
 - **Clock text as a direct argument** is read as its coercion serial by SUM, AVERAGE, MAX, MIN,
   PRODUCT, LARGE, SMALL, ABS, INT, MOD, HOUR/MINUTE/SECOND, DAY and array math (`SUM("10:00","6 PM")`
   = 1.1666666666666667, `AVERAGE("10:00 ")` = 0.4166666666666667, `HOUR("25:00")` = 1,
@@ -119,7 +122,7 @@ Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_t
 Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: hour-only AM/PM
 coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
 43832.416666666664, value-clock-text row 27; the engine already matched).
-`H:M.f:S`, the minute limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
+`H:M.f:S`, the one-out-of-range limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
 Out of the oracle's reach: `+10:00` typed into a cell (the oracle uploads xlsx files, so it
 cannot type; the engine stores it as text).
 
