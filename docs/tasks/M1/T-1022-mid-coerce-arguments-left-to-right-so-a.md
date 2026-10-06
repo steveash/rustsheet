@@ -14,7 +14,7 @@ depends_on: []
 `MID("abc","x",NA())` and `MID({"abc"},"x",NA())` are `#VALUE!` as in Excel.
 
 ## Context
-Found by T-0994. Failing cells: probes/error-precedence-text Calc!C11, Calc!C12 (engine returns #N/A). Rule in docs/excel-semantics/arrays.md ("Errors broadcast through..."). Code: `broadcast_text` in crates/rustsheet-engine/src/functions/text/common.rs.
+Found by T-0994. Failing cells: probes/error-precedence-text.case.json Calc!C11, Calc!C12 (engine returns #N/A). Rule in docs/excel-semantics/arrays.md ("Errors broadcast through..."). Code: `broadcast_text` in crates/rustsheet-engine/src/functions/text/common.rs.
 
 ## Acceptance criteria
 - [ ] Both cells pass; MID cases C13/C14 (`#N/A`) keep passing; baseline shrinks.

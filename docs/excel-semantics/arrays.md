@@ -121,7 +121,9 @@ failing argument decides, an error argument and a failed text-to-number coercion
 the array form: `MID("abc","x",NA())` and `MID({"abc"},"x",NA())` are both `#VALUE!` (the "x" start is
 reached before the error), `MID("abc",NA(),"x")` and `MID("x",1,NA())` are `#N/A`, `LEFT("abc","x")`,
 `RIGHT`, `REPT("a","x")` and `FIND("a","abc","x")` are `#VALUE!`, and `REPT({"a"},NA())` is `#N/A`.
-RustSheet differs for MID only: it returns `#N/A` for the two `#VALUE!` MID cases (follow-up task).
+RustSheet differs for MID only: it returns `#N/A` for the two `#VALUE!` MID cases (T-1022). TRUE in a range
+behaves like TRUE in an array (`#N/A`), and `WEEKDAY(NA(),"x")` is `#N/A` (left to right).
+Probe cells: probes/error-precedence-text Calc!C1-C30 (oracle: excel-graph, 2026-10-06).
 Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/arithmetic.rs),
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
 Tasks: T-0129, T-0994, T-1022
