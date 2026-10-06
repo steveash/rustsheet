@@ -45,6 +45,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **CI failures**: reproduce locally with the same `make` target first. A failing test is never
   "flaky" without proof; fix the root cause. Never skip/disable/quarantine tests, never add lint
   allows or lint-debt entries, never use `--allow-regressions` without a decision record.
+- **Nightly fuzz failures** (`.github/workflows/fuzz.yml`, decision 0035): a red run is a
+  directive-5 bug, not a flake. File one P0 task per distinct crash (dedupe by panic site/stack
+  against open tasks) per docs/process/agent-workflow.md "When something goes wrong".
 - **Eval regressions** in CI (`eval-check`): the PR broke previously-passing Excel behavior. Fix
   the code, do not touch the baseline.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,

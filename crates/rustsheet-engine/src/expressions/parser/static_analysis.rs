@@ -166,18 +166,19 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             // noop for now
         }
         Node::FunctionKind { kind, args } => {
-            let arg_count = args.len();
-            let signature = get_function_args_signature(kind, arg_count);
-            for index in 0..arg_count {
-                if matches!(signature[index], Signature::Scalar)
+            let signature = get_function_args_signature(kind, args.len());
+            for (index, arg) in args.iter_mut().enumerate() {
+                // Fixed-length signatures (D-functions, SMALL, ...) can be shorter than `args`; an
+                // extra argument is not scalar (indexing it panicked; found by fuzzing, T-0021).
+                if matches!(signature.get(index), Some(Signature::Scalar))
                     && matches!(
-                        run_static_analysis_on_node(&args[index]),
+                        run_static_analysis_on_node(arg),
                         StaticResult::Range(_, _) | StaticResult::Unknown
                     )
                 {
-                    add_implicit_intersection(&mut args[index], true);
+                    add_implicit_intersection(arg, true);
                 } else {
-                    add_implicit_intersection(&mut args[index], false);
+                    add_implicit_intersection(arg, false);
                 }
             }
             // There are some function that will never add an automatic II:
@@ -271,13 +272,12 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             remove_redundant_implicit_intersection(right, add);
         }
         Node::FunctionKind { kind, args } => {
-            let arg_count = args.len();
-            let signature = get_function_args_signature(kind, arg_count);
-            for index in 0..arg_count {
+            let signature = get_function_args_signature(kind, args.len());
+            for (index, arg) in args.iter_mut().enumerate() {
                 // Scalar arguments are an intersecting context; vector arguments
                 // (ranges/arrays) are not.
-                let child_add = matches!(signature[index], Signature::Scalar);
-                remove_redundant_implicit_intersection(&mut args[index], child_add);
+                let child_add = matches!(signature.get(index), Some(Signature::Scalar));
+                remove_redundant_implicit_intersection(arg, child_add);
             }
         }
     };

@@ -1,0 +1,5 @@
+# cargo-fuzz needs nightly (`-Zsanitizer`); this overrides the workspace's pinned stable toolchain
+# inside fuzz/ only, so `cargo fuzz run <target>` works from here without `+nightly`.
+[toolchain]
+channel = "nightly"
+profile = "minimal"
