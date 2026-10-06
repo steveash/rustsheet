@@ -23,7 +23,7 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 | 10 | `#BLOCKED!` | 11 | `IMAGE` of an unreachable URL (rich-errors-image A1, subType 12); an uncached external reference (poi/link-external-workbook-b A1, subType 2) |
 | 12 | `#FIELD!` | 13 | `FIELDVALUE` of a plain number (rich-errors-field A1; extra `Price` field) |
 | 13 | `#CALC!` | 14 | FILTER with no match (rich-errors-calc A4, subType 3) |
-| (none: formula literal) | `#GETTING_DATA` | 8 | the literal `=#GETTING_DATA` (error-literals-new A2); not a rich-value error. The Graph API reports its value as `#N/A` (A1) though `ERROR.TYPE` is 8, `VALUETOTEXT` is "#GETTING_DATA" (A6), `ISERR` is TRUE, `ISNA` is FALSE (A3, A4) |
+| (none: formula literal) | `#GETTING_DATA` | 8 | the literal `=#GETTING_DATA` (error-literals-new S!A2); not a rich-value error. The Graph API reports its value as `#N/A` (S!A1) though `ERROR.TYPE` is 8, `VALUETOTEXT` is "#GETTING_DATA" (S!A6), `ISERR` is TRUE, `ISNA` is FALSE (S!A3, S!A4) |
 
 The `#GETTING_DATA` row is a formula-literal error, not a rich-value error (no errorType).
 

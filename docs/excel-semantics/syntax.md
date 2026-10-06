@@ -96,7 +96,7 @@ formula grammar there (they only arise as results, arrays.md).
 `#N/A`, `ERROR.TYPE` is 8, `ISERR` TRUE, `ISNA` FALSE, `ISERROR` TRUE, `IFERROR(...)` takes the
 fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
 "#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
-Precedence is left to right: `#GETTING_DATA+#DIV/0!` reports `#N/A`, `#DIV/0!+#GETTING_DATA`
+Because `#GETTING_DATA` is reported as `#N/A`, only `#DIV/0!+#GETTING_DATA` (reports `#DIV/0!`) proves a winner; the other precedence and comparison results cannot tell the two apart (follow-up T-0195 re-probes them through `ERROR.TYPE`). Observed: `#GETTING_DATA+#DIV/0!` reports `#N/A`, `#DIV/0!+#GETTING_DATA`
 reports `#DIV/0!`; `#N/A=#GETTING_DATA` and `#GETTING_DATA=#N/A` both report `#N/A`.
 Not probed (harness gap): error constants as `t="e"` cell values, since spec2xlsx writes error
 literals as formulas (`<v>#BLOCKED!</v>` cannot be emitted), so whether a stored `#BLOCKED!` etc.
