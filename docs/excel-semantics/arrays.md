@@ -124,7 +124,7 @@ reached before the error), `MID("abc",NA(),"x")` and `MID("x",1,NA())` are `#N/A
 RustSheet differs for MID only: it returns `#N/A` for the two `#VALUE!` MID cases (follow-up task).
 Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/arithmetic.rs),
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
-Tasks: T-0129
+Tasks: T-0129, T-0994, T-1022
 
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,

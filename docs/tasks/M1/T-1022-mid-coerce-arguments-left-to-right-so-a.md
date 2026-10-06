@@ -21,4 +21,4 @@ Found by T-0994. Failing cells: probes/error-precedence-text Calc!C11, Calc!C12 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other text functions (already match Excel in the probe).
