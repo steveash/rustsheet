@@ -140,6 +140,7 @@ fn union_operands_must_be_references() {
     let mut parser = parser();
     for formula in [
         "(A1+B1,C1)",
+        "(-1,A1)",
         "(1,A1)",
         "(A1,1)",
         "(A1,\"a\")",
@@ -176,6 +177,9 @@ fn unions_round_trip_through_stringify() {
         ("((Data!A2,Data!E8),Data!B6)", "((Data!A2,Data!E8),Data!B6)"),
         ("(Data!A2,Data!E8,Data!B6)", "(Data!A2,Data!E8,Data!B6)"),
         ("(-A1,B1)", "(-A1,B1)"),
+        ("(A1,-B1)", "(A1,-B1)"),
+        ("((A1,B2),C3,D4)", "((A1,B2),C3,D4)"),
+        ("(A1,B2,(C3,D4))", "(A1,B2,(C3,D4))"),
         ("(A1,(B2,C3))", "(A1,(B2,C3))"),
         (
             "(Data!C1:C12,Data!E1:E12) Data!C9",

@@ -220,14 +220,8 @@ fn is_constant(node: &Node) -> bool {
     )
 }
 
-/// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection (docs/excel-semantics/references.md "Intersection operands must be
-/// references"): values, value operators, error literals other than `#REF!` and value
-/// functions make Excel refuse the formula. The accepted calls are the reference-returning
-/// functions below (probes/intersection-function-operands; T-0161); value functions such as
-/// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
-/// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
-/// probed are refused by inference.
+/// Whether `node` may be an operand of a union: a reference expression, or a negated one
+/// (Excel loads `(-A1,B1)`, probes/union-neg-operand H2, T-0187).
 fn is_union_operand(node: &Node) -> bool {
     match node {
         Node::UnaryKind {
@@ -245,6 +239,14 @@ fn group(node: &mut Node) {
     }
 }
 
+/// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
+/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// references"): values, value operators, error literals other than `#REF!` and value
+/// functions make Excel refuse the formula. The accepted calls are the reference-returning
+/// functions below (probes/intersection-function-operands; T-0161); value functions such as
+/// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
+/// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
+/// probed are refused by inference.
 fn is_reference_operand(node: &Node) -> bool {
     match node {
         Node::NumberKind(_)

@@ -222,7 +222,7 @@ Evidence: gen-m1/c940d3cfb0d3b083 Calc!A1, A2, A14, A25, A12; all 218 value-cont
 An intersection that leaves two areas is `#VALUE!` even when both are the same cell:
 `=A1:A3 (A2:B2,A2)` (probes/intersection-function-operands H5, see "Intersection operands must be references").
 Status: VERIFIED
-Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`, `union_text`);
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`, `union_text`);
 reference_operators.rs (`Model::get_union`, `Model::get_intersection` over the areas of a union)
 Tasks: T-0134
 
@@ -262,7 +262,7 @@ Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/un
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
 Status: VERIFIED (except the parts marked as engine choices)
-Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_union`); reference_operators.rs
+Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
 Tasks: T-0134, T-0187, T-0193, T-0194, T-0133
 
 ## Union area cap
