@@ -263,23 +263,33 @@ impl Model {
         right: CellReferenceIndex,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
         let mut values = Vec::new();
+        let mut push = |value: CalcResult| match value {
+            CalcResult::Number(v) => {
+                values.push(Some(v));
+                Ok(())
+            }
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => {
+                values.push(None);
+                Ok(())
+            }
+        };
+        if left.sheet != right.sheet {
+            // 3-D reference (T-0196): the shared walk goes sheet by sheet. It clips to each
+            // sheet's used area, so it is only used here, where no two-input caller pairs
+            // the list by position.
+            self.for_each_cell_or_error_in_range(left, right, left, |_, value| push(value))?;
+            return Ok(values);
+        }
+        // Single sheet: one entry per cell of the range, unclipped, because CHISQ.TEST, SUMXMY2,
+        // COVARIANCE and friends pair two such lists by position.
         for row_offset in 0..=(right.row - left.row) {
             for col_offset in 0..=(right.column - left.column) {
-                let cell_ref = CellReferenceIndex {
+                push(self.evaluate_cell(CellReferenceIndex {
                     sheet: left.sheet,
                     row: left.row + row_offset,
                     column: left.column + col_offset,
-                };
-                let cell_value = self.evaluate_cell(cell_ref);
-                match cell_value {
-                    CalcResult::Number(v) => {
-                        values.push(Some(v));
-                    }
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    _ => {
-                        values.push(None);
-                    }
-                }
+                }))?;
             }
         }
         Ok(values)
@@ -321,8 +331,8 @@ impl Model {
         // Now we have:
         // - values: flattened (observed, expected)
         // - width, height: shape
-        for i in 0..values_left.len() {
-            match (values_left[i], values_right[i]) {
+        for (left_value, right_value) in values_left.iter().zip(&values_right) {
+            match (*left_value, *right_value) {
                 (Some(v1), Some(v2)) => {
                     values.push((v1, v2));
                 }

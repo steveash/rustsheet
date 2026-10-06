@@ -173,7 +173,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 let exponent = value_abs.log10().floor();
                 value /= 10.0_f64.powf(exponent);
                 let sign = if exponent < 0.0 { '-' } else { '+' };
-                let s = format!("{value:.5}");
+                // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
+                // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
+                // "Exponent width").
+                let decimals = if exponent.abs() >= 99.0 { 4 } else { 5 };
+                let s = format!("{value:.decimals$}");
                 let mut text = format!(
                     "{}E{}{:02}",
                     s.trim_end_matches('0').trim_end_matches('.'),
