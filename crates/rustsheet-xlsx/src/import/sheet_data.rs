@@ -83,6 +83,10 @@ fn is_sheet_data_end(element: &BytesEnd) -> bool {
 struct RowXml {
     /// From the `r` attribute, or the row after the previous one if the row has none.
     index: i32,
+    /// The row had no `r`, so its first cell with an `r` still decides its index.
+    positional: bool,
+    /// Where the row's own entry is in `SheetDataReader::rows`, if it has one.
+    format_slot: Option<usize>,
     /// The column of the previous cell in the row, 0 before the first cell.
     last_column: i32,
     cells: HashMap<i32, Cell>,
@@ -108,6 +112,8 @@ struct FormulaXml {
 #[derive(Default)]
 struct CellXml {
     reference: String,
+    /// The cell has an `r` attribute.
+    has_reference: bool,
     /// The style index, the default style being 0.
     style: i32,
     /// The `t` attribute.
@@ -310,7 +316,9 @@ impl SheetDataReader<'_> {
         // The height of the row is always the visible height of the row.
         // If custom_height is false the height was computed automatically,
         // for example because a cell has many lines or a larger font.
+        let mut format_slot = None;
         if custom_height || custom_format || style != 0 || has_height_attribute || hidden {
+            format_slot = Some(self.rows.len());
             self.rows.push(Row {
                 r: index,
                 height,
@@ -322,6 +330,8 @@ impl SheetDataReader<'_> {
         }
         self.row = Some(RowXml {
             index,
+            positional: explicit_index.is_none(),
+            format_slot,
             last_column: 0,
             cells: HashMap::new(),
         });
@@ -357,6 +367,7 @@ impl SheetDataReader<'_> {
             match attribute.key.as_ref() {
                 "r" => {
                     has_reference = true;
+                    cell.has_reference = true;
                     cell.reference = value.into_owned();
                 }
                 "s" => cell.style = value.parse::<i32>().unwrap_or(0),
@@ -393,6 +404,16 @@ impl SheetDataReader<'_> {
             parse_cell_reference(&cell.reference).map_err(XlsxError::Xml)?;
         for text in [&cell.value, &cell.rich_text].into_iter().flatten() {
             self.limits.check_escaped_text(text)?;
+        }
+        // A row without `r` whose first cell has one takes the row of that cell, as the
+        // snapshot reader does; otherwise the stored row and `r_index` could disagree.
+        if row.positional && cell.has_reference {
+            row.positional = false;
+            row.index = r_index;
+            self.last_row = r_index;
+            if let Some(entry) = row.format_slot.and_then(|slot| self.rows.get_mut(slot)) {
+                entry.r = r_index;
+            }
         }
         row.last_column = column_index;
 
@@ -731,6 +752,14 @@ mod tests {
         let positions =
             read_positions(r#"<row r="1"><c r="XFD1"><v>1</v></c><c><v>2</v></c></row>"#);
         assert!(positions.is_err());
+    }
+
+    #[test]
+    fn row_without_r_takes_the_row_of_its_first_cell_with_r() {
+        let positions = read_positions(
+            r#"<row><c r="B7"><v>1</v></c><c><v>2</v></c></row><row><c><v>3</v></c></row>"#,
+        );
+        assert_eq!(positions.unwrap(), vec![(7, 2), (7, 3), (8, 1)]);
     }
 
     #[test]
