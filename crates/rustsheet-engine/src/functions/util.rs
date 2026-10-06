@@ -184,6 +184,24 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
+        self.for_each_cell_or_error_in_range(left, right, cell, |model, value| match value {
+            error @ CalcResult::Error { .. } => Err(error),
+            value => f(model, value),
+        })
+    }
+
+    /// [`Self::for_each_cell_in_range`] that also hands `f` the error cells
+    /// (COUNTA counts them, COUNT and COUNTBLANK skip them).
+    pub(crate) fn for_each_cell_or_error_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
+    {
         if left.sheet != right.sheet {
             return Err(CalcResult::new_error(
                 Error::VALUE,
@@ -196,14 +214,12 @@ impl Model {
             .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
         for row in left.row..=row2 {
             for column in left.column..=column2 {
-                match self.evaluate_cell(CellReferenceIndex {
+                let value = self.evaluate_cell(CellReferenceIndex {
                     sheet: left.sheet,
                     row,
                     column,
-                }) {
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    value => f(self, value)?,
-                }
+                });
+                f(self, value)?;
             }
         }
         Ok(())
