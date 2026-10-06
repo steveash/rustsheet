@@ -51,7 +51,8 @@
         "K2": "=ISODD(Data!C1:C5)",
         "L3": "=ISEVEN(Data!C1:D3)",
         "M30": "=ISEVEN({2,3})",
-        "M32": "=ISODD({2,3})"
+        "M32": "=ISODD({2,3})",
+        "M34": "=ISEVEN({4.5,-7,\"3\",TRUE})"
       }
     }
   ],
@@ -131,6 +132,10 @@
     "Calc!M30",
     "Calc!N30",
     "Calc!M32",
-    "Calc!N32"
+    "Calc!N32",
+    "Calc!M34",
+    "Calc!N34",
+    "Calc!O34",
+    "Calc!P34"
   ]
 }

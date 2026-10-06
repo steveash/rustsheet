@@ -31,4 +31,4 @@ constant lifts. RustSheet implicitly intersected the range, so ISEVEN/ISODD now 
 `parity_predicate` that returns `#VALUE!` for a multi-cell range and lifts arrays (static analysis
 updated to match). Semantics entry VERIFIED. IS* lift probe extended (rest of the ISBLANK block,
 OFFSET/INDEX reference arguments); the unscored "no spill" check cells were dropped. Eval: the
-probe case now checks 75 cells, all passing; probes suite 2362 -> 2369 passing cells.
+probe case now checks 79 cells, all passing; probes suite 2362 -> 2373 passing cells.

@@ -21,6 +21,10 @@ lift: `=ISEVEN({2,3})` spills {TRUE, FALSE}, `=ISODD({2,3})` spills {FALSE, TRUE
 reference is an ordinary value.
 Evidence: probes/is-functions-array-lift (Calc!A15, B15, D15, E15, J2, K2, L3, M30:N30, M32:N32;
 excel-graph oracle sidecar, 2026-10-06). Desktop Excel was not checked.
+Also covered by M34:P34 (`{4.5,-7,"3",TRUE}` -> TRUE, FALSE, FALSE, #VALUE!: parity of the truncated
+absolute value, text cast, boolean #VALUE!). UNVERIFIED sub-rules (no probe yet): an array
+expression derived from a range (`ISEVEN(Data!C1:C5+0)`), arguments of magnitude >= 2^63, and the
+dynamic-array flag Excel writes for the range form.
 Implemented in: `Model::parity_predicate` (functions/information/mod.rs).
 Status: VERIFIED (excel-graph)
 Tasks: T-0247, T-0248

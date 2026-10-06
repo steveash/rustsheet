@@ -10,6 +10,7 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
+    functions::util::array_node_to_calc_result,
     get_all_timezones,
     model::Model,
 };
@@ -151,15 +152,7 @@ impl Model {
                     .map(|row| {
                         row.into_iter()
                             .map(|v| {
-                                let element = match v {
-                                    ArrayNode::Number(n) => CalcResult::Number(n),
-                                    ArrayNode::Boolean(b) => CalcResult::Boolean(b),
-                                    ArrayNode::String(s) => CalcResult::String(s),
-                                    ArrayNode::Error(e) => {
-                                        CalcResult::new_error(e, cell, String::new())
-                                    }
-                                    ArrayNode::Empty => CalcResult::EmptyCell,
-                                };
+                                let element = array_node_to_calc_result(&v, cell);
                                 calc_result_to_array_node(self.parity_of(element, even, cell))
                             })
                             .collect()
@@ -171,6 +164,8 @@ impl Model {
     }
 
     fn parity_of(&mut self, value: CalcResult, even: bool, cell: CellReferenceIndex) -> CalcResult {
+        // Parity is taken on the truncated absolute value (4.5 is even, -7 is odd:
+        // probes/is-functions-array-lift, Data!C3:C4); a boolean is #VALUE!, text is cast.
         let value = self.dereference(value, cell);
         if matches!(value, CalcResult::Boolean(_)) {
             return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
