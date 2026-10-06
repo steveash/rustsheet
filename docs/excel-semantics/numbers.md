@@ -333,6 +333,20 @@ excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
 Tasks: T-0221
 
+### Integer exponents: right-to-left square-and-multiply
+Rule: for an integer exponent n, `x^n` and `POWER(x,n)` equal binary exponentiation in doubles,
+scanning n's bits from the low end (`r=1; b=x; while n: if n&1: r*=b; b*=b; n>>=1`), and
+`x^-n` equals `1/` that result. 154 of 154 cells match for each of `(1+r)^n`, `POWER(1+r,n)` and
+`(1+r)^-n` on 11 rates by 14 nper values (1..360); per form (`^n` / `POWER` / `^-n`) libm `pow`
+matches 58/58/59, left-to-right square-and-multiply 84/84/86, and correctly rounded pow and
+repeated multiplication at most 66. It also reproduces the
+integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)^2` =
+1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
+Non-integer exponents are not explained by this rule.
+Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06, T-0942).
+Status: VERIFIED (integer exponents)
+Tasks: T-0221, T-0901
+
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
 unchanged (`=ROUNDDOWN(Data!E3,123456789.123)` → 0.5; `ROUND(Data!$B3,123456789.123)` keeps 1E-15;
