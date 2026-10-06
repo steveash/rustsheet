@@ -95,8 +95,10 @@ decimal exponent magnitude is at most 98 (`1.23456789012345E+98`, `E-98`, `E+51`
 digits), and 14 when it is 99 or more (`1.23456789012345E+99` → "1.2345678901235E+99",
 `E+100`, `E+307`, `E-99`, `E-300` likewise; `9.87654321098765E-99` → "9.8765432109877E-99"). Note
 `E+99` has a 2-digit exponent yet already loses a digit, so this is not the 20-character cap alone:
-the cut is decided by `|exp| >= 99`. `&""`, `CONCAT` and `TEXT(x,"General")` (5 digits, a separate
-rule) agree; `(1/(2^-1022))&""` is "4.4942328371558E+307". Evidence:
+the cut is decided by `|exp| >= 99`. `&""` and `CONCAT` agree. `TEXT(x,"General")` shows the same
+cut one digit lower: 6 digits for `|exp| <= 98` ("1.23457E-05", "1.23457E-50") and 5 for
+`|exp| >= 99` ("1.2346E+100", "1.2346E-99", though "1.23457E-99" would fit its 11-character
+limit; probe D8-D10). `(1/(2^-1022))&""` is "4.4942328371558E+307". Evidence:
 probes/number-text-exponent-digits (excel-graph, 2026-10-06).
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
 probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
