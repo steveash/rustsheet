@@ -338,12 +338,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // StaticResult::Unknown is also valid
             StaticResult::Scalar
         }
-        Node::WrongReferenceKind { .. } => {
-            // StaticResult::Unknown is also valid
-            StaticResult::Scalar
-        }
-        Node::WrongRangeKind { .. } => {
-            // StaticResult::Unknown or Array is also valid
+        Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
+            // StaticResult::Unknown (or Array for a range) is also valid
             StaticResult::Scalar
         }
         Node::NamedFunctionKind { .. } => {
@@ -367,9 +363,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
-        Node::ReferenceKind { .. } => StaticResult::Scalar,
         // A 3-D reference is a value only as an error (`#REF!`), so it never spills.
-        Node::SheetSpanKind { .. } => StaticResult::Scalar,
+        Node::ReferenceKind { .. } | Node::SheetSpanKind { .. } => StaticResult::Scalar,
 
         // binary operations
         Node::OpConcatenateKind { left, right }

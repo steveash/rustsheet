@@ -50,6 +50,7 @@ use super::token::TokenType;
 use super::types::*;
 use super::utils::number_to_column;
 
+use sheet_span::with_sheet_span;
 use token::OpCompare;
 
 mod depth;
@@ -57,6 +58,7 @@ mod lambda;
 mod lists;
 pub mod move_formula;
 mod reference_operators;
+mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
 
@@ -115,28 +117,6 @@ pub enum ArrayNode {
     Error(token::Error),
     /// An empty (blank) cell from a range reference.
     Empty,
-}
-
-/// The two ends of a 3-D reference prefix (`First:Last!`), as written and as sheet indices.
-struct SheetSpan {
-    first_sheet: String,
-    last_sheet: String,
-    first_index: u32,
-    last_index: u32,
-}
-
-/// `node`, a reference written without a sheet prefix, under the 3-D prefix `span` if any.
-fn with_sheet_span(span: Option<SheetSpan>, node: Node) -> Node {
-    match span {
-        Some(span) => Node::SheetSpanKind {
-            first_sheet: span.first_sheet,
-            last_sheet: span.last_sheet,
-            first_index: span.first_index,
-            last_index: span.last_index,
-            reference: Box::new(node),
-        },
-        None => node,
-    }
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -480,29 +460,6 @@ impl Parser {
         }
     }
 
-    /// The sheets of a 3-D reference prefix `First:Last` (a `:` cannot occur in a sheet name),
-    /// or `None` if `name` is not a span or either end is not a sheet (then the reference is
-    /// `#REF!` like any other on a missing sheet).
-    fn get_sheet_span(&self, name: &str) -> Option<SheetSpan> {
-        let (first, last) = name.split_once(':')?;
-        Some(SheetSpan {
-            first_index: self.get_sheet_index_by_name(first)?,
-            last_index: self.get_sheet_index_by_name(last)?,
-            first_sheet: first.to_string(),
-            last_sheet: last.to_string(),
-        })
-    }
-
-    fn get_sheet_index_by_name(&self, name: &str) -> Option<u32> {
-        let worksheets = &self.worksheets;
-        for (i, sheet) in worksheets.iter().enumerate() {
-            if sheet == name {
-                return Some(i as u32);
-            }
-        }
-        None
-    }
-
     // Returns:
     //  * None: If there is no defined name by that name
     //  * Some((Some(index), formula)): If there is a defined name local to that sheet
@@ -748,17 +705,7 @@ impl Parser {
                 absolute_column,
                 absolute_row,
             } => {
-                let span = sheet.as_deref().and_then(|name| self.get_sheet_span(name));
-                let (sheet, sheet_index) = match &span {
-                    Some(span) => (None, Some(span.first_index)),
-                    None => {
-                        let index = match &sheet {
-                            Some(name) => self.get_sheet_index_by_name(name),
-                            None => self.get_sheet_index_by_name(&self.context.sheet),
-                        };
-                        (sheet, index)
-                    }
-                };
+                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
                 let context = &self.context;
                 let a1_mode = self.lexer.is_a1_mode();
                 let row = if absolute_row || !a1_mode {
@@ -791,17 +738,7 @@ impl Parser {
                 with_sheet_span(span, node)
             }
             TokenType::Range { sheet, left, right } => {
-                let span = sheet.as_deref().and_then(|name| self.get_sheet_span(name));
-                let (sheet, sheet_index) = match &span {
-                    Some(span) => (None, Some(span.first_index)),
-                    None => {
-                        let index = match &sheet {
-                            Some(name) => self.get_sheet_index_by_name(name),
-                            None => self.get_sheet_index_by_name(&self.context.sheet),
-                        };
-                        (sheet, index)
-                    }
-                };
+                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
                 let context = &self.context;
                 let mut row1 = left.row;
                 let mut column1 = left.column;
