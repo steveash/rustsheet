@@ -3,7 +3,7 @@ id: T-0942
 title: "Oracle sweeps for M9 numeric fits (financial, IRR/RATE, trig reduction, Bessel, inverse hyperbolics, inverse normal)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
