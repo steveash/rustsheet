@@ -3,7 +3,7 @@ id: T-0188
 title: "R1C1 lexer: read a sheet prefix on the second corner (Data!R1C1:Data!R2C2)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
