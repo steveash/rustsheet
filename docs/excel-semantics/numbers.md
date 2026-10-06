@@ -120,7 +120,8 @@ Evidence: probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
 Status: VERIFIED
 Implemented in: `arithmetic::{plus, minus, times, divide}` (crates/rustsheet-engine/src/arithmetic.rs);
-test `overflowing_product_is_num_inside_formulas`. SUM overflow is not implemented: T-0185.
+tests `overflowing_product_is_num_inside_formulas` and
+`overflowing_sum_and_quotient_are_num_and_a_subnormal_divisor_is_zero`. SUM overflow is not implemented: T-0185.
 Tasks: T-0136, T-0173
 
 ## A subnormal divisor is zero

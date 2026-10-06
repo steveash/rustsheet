@@ -50,8 +50,9 @@ pub(crate) fn divide(x: f64, y: f64) -> Result<f64, Error> {
     finite_or_num(x / y)
 }
 
+/// An infinite (or NaN) result is the error `#NUM!`.
 fn finite_or_num(value: f64) -> Result<f64, Error> {
-    if value.is_infinite() {
+    if !value.is_finite() {
         return Err(Error::NUM);
     }
     Ok(value)
