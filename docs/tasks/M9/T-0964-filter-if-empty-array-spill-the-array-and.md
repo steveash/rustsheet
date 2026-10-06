@@ -3,7 +3,7 @@ id: T-0964
 title: "FILTER if_empty array: spill the array and #SPILL! on {1,2,3} cases (ISREF.xlsx D9, J17:L17)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
