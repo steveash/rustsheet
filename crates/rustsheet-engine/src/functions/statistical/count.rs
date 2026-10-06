@@ -1,4 +1,5 @@
 use crate::expressions::parser::ArrayNode;
+use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -102,7 +103,7 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_single_sheet_arg(arg, cell) {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s) if s.is_empty() => result += 1.0,
                 CalcResult::Range { left, right } => {
@@ -123,6 +124,13 @@ impl Model {
                     }
                     let side = |first: i32, last: i32| f64::from(last - first + 1);
                     result += side(left.row, right.row) * side(left.column, right.column) - filled;
+                }
+                // Only the 3-D reference error; other errors count nothing, as before.
+                error @ CalcResult::Error {
+                    error: Error::VALUE,
+                    ..
+                } if matches!(arg, Node::SheetSpanKind { .. }) => {
+                    return error;
                 }
                 _ => {}
             };

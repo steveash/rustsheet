@@ -120,6 +120,27 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
 }
 
 impl Model {
+    /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
+    /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
+    /// value (probes/3d-ref-functions; docs/excel-semantics/references.md).
+    pub(crate) fn evaluate_single_sheet_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } if first_index != last_index => {
+                self.get_sheet_span_reference(*first_index, *last_index, reference, cell)
+            }
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
     /// Evaluates one argument of an aggregate (SUM, COUNT, AVERAGE, MIN, ...).
     /// A cell reference, and an IF or INDEX that selects one, comes back as a
     /// `Range`, so the caller skips its text, booleans and blanks like any range
