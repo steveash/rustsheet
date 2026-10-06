@@ -410,7 +410,7 @@ fn test_weeknum_function() {
     // Error cases - invalid return_type
     model._set("A14", "=WEEKNUM(44561,0)");
     model._set("A15", "=WEEKNUM(44561,3)");
-    model._set("A16", "=WEEKNUM(44561,-1)");
+    model._set("A16", "=WEEKNUM(44561,18)");
 
     // Error cases - invalid dates
     model._set("A17", "=WEEKNUM(-1)");
@@ -444,8 +444,8 @@ fn test_weeknum_function() {
     // Error cases
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
-    // Excel: any invalid return_type is #NUM! (probes/weeknum-serial-0 C3, C4, C18, C19,
-    // probes/weeknum-invalid-type A4, A7; T-1023).
+    // Excel: return_type 0, 3-10 and 18-20 are always #NUM! (probes/weeknum-serial-0 C3, C4,
+    // C18, C19, C25; T-1023). 22+ and negatives depend on calc order (T-1025).
     assert_eq!(model._get_text("A14"), *"#NUM!");
     assert_eq!(model._get_text("A15"), *"#NUM!");
     assert_eq!(model._get_text("A16"), *"#NUM!");

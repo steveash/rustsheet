@@ -23,6 +23,8 @@ gives 16, 16 while the swapped layout gives 16, `#NUM!`. ISOWEEKNUM does not set
 Evidence: probes/weeknum-stale-return-type (known failures), docs/excel-semantics/dates.md
 "WEEKNUM return_type edge cases". The engine currently always gives `#NUM!` (`fn_weeknum`,
 `TODO(T-1025)`); modelling it needs Excel's calc order, which RustSheet does not reproduce.
+Open question for the decision: does the state cross sheets? In probes/weeknum-stale-return-type
+Down!A2 is `#NUM!` although other sheets hold valid WEEKNUMs (per-sheet reset, or Down evaluated first).
 
 ## Acceptance criteria
 - [ ] A decision record (`make new-decision`) chooses model or DEVIATION, with reasons.
