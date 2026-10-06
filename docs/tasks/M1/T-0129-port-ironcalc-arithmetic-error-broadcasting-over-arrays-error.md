@@ -3,7 +3,7 @@ id: T-0129
 title: "Port IronCalc arithmetic error broadcasting over arrays (error_broadcast.xlsx)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -25,10 +25,20 @@ already carries RustSheet changes (POWER ranges from T-0920, MOD fmod from T-091
 Split if the port exceeds size M.
 
 ## Acceptance criteria
-- [ ] `4deab8f6` ported with `Ported-From: ironcalc@4deab8f6`, including its unit tests.
-- [ ] `error_broadcast.xlsx` added to `crates/rustsheet-xlsx/tests/calc_tests`; its cells pass or are baselined as new coverage with reasons; 0 eval regressions.
-- [ ] Error-precedence rules the workbook shows recorded in `docs/excel-semantics/`.
-- [ ] `make check` green; reviewers approve.
+- [x] `4deab8f6` ported with `Ported-From: ironcalc@4deab8f6`, including its unit tests.
+- [x] `error_broadcast.xlsx` added to `crates/rustsheet-xlsx/tests/calc_tests`; its cells pass or are baselined as new coverage with reasons; 0 eval regressions.
+- [x] Error-precedence rules the workbook shows recorded in `docs/excel-semantics/`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - MAX/MIN (T-0223), ISREF (T-0940).
+
+## Outcome
+Done 2026-10-06. Ported ironcalc@4deab8f6 with its 26 unit tests (`test_arrays_and_errors.rs`) and
+`error_broadcast.xlsx` (230 cells, all pass). Reconciled with RustSheet's existing scalar-error lift
+in `handle_arithmetic` (T-0209): `arithmetic_on_values` now takes `Result` operands and lifts through
+`array_of_errors`; the WEEKDAY hunk, which upstream fuzz put on WEEKNUM, sits on `fn_weekday`.
+`TextArg` moved to `functions/text/text_arg.rs` and reuses arithmetic's `MISSING` (the copy in
+text/common.rs is gone); `own_error` replaces three copies of the same closure.
+Eval delta: gen-m2 known failures 475 → 470 (5 fixed); ironcalc-calc +1 case, 0 new failures;
+0 regressions. Rule recorded in docs/excel-semantics/arrays.md.

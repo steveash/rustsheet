@@ -8,7 +8,7 @@ use crate::model::Model;
 use crate::test::util::new_empty_model;
 
 /// A1:C2 holds 1, 2, 3 / 4, 5, 6
-fn model_with_numbers<'a>() -> Model<'a> {
+fn model_with_numbers() -> Model {
     let mut model = new_empty_model();
     for (cell, value) in [
         ("A1", "1"),

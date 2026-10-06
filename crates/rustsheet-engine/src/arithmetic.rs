@@ -104,7 +104,16 @@ fn is_one_over_an_odd_integer(y: f64) -> bool {
 /// What an array has beyond its end, when it is combined with a larger one:
 /// `#N/A`, as in Excel. It is an error like any other, so if the element on
 /// the other side is an error too, the one on the left comes first.
-static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
+pub(crate) static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
+
+/// The error an element holds, if it is one: the `element_error` of [`array_of_errors`] for an
+/// array whose elements are not coerced.
+pub(crate) fn own_error(node: &ArrayNode) -> Option<Error> {
+    match node {
+        ArrayNode::Error(error) => Some(error.clone()),
+        _ => None,
+    }
+}
 
 /// What an operator, or a function that works element by element, gives when
 /// one operand is an array and the other one an error: an array of the same
@@ -381,10 +390,7 @@ impl Model {
                 return array_of_errors(&array, error, |_| None);
             }
             (Ok(ValueOrArray::Array(array)), Err(error)) => {
-                return array_of_errors(&array, error, |node| match node {
-                    ArrayNode::Error(error) => Some(error.clone()),
-                    _ => None,
-                });
+                return array_of_errors(&array, error, own_error);
             }
             (Err(error), _) | (_, Err(error)) => return error,
         };

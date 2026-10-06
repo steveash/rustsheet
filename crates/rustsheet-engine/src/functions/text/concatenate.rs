@@ -1,4 +1,4 @@
-use super::common::{broadcast_text, TextArg};
+use super::{common::broadcast_text, text_arg::TextArg};
 use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, truncate_text},

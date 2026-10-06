@@ -100,6 +100,24 @@ Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.r
 Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
 Tasks: T-0209, T-0228
 
+## Errors broadcast through `&`, comparisons, POWER and the element-wise functions
+Rule: the scalar-error broadcast above holds for every element-wise operation, not only arithmetic:
+`&` (`A1:C1&1/0`), the comparisons (`A1:C1=1/0`, `1/0<A1:C1`), POWER, LEFT/RIGHT/MID, EXACT, TEXT
+(also the format argument: `TEXT(A1:C1,NA())`), DATE, WEEKDAY, REPT, FIND, SUBSTITUTE and REPLACE all
+give an array of errors of the array's size. Per element the leftmost error wins, including an
+error element of the array itself (`A5:C5&1/0` keeps `#N/A` where A5:C5 holds it). A comparison keeps
+an error element instead of turning it into TRUE/FALSE (`{1,#DIV/0!,3}>=3` is `{FALSE,#DIV/0!,TRUE}`),
+so `SUM((A6:C6=1)*1)` over a range holding an error is that error. Where two arrays of different
+sizes meet, the positions only one covers are `#N/A`, not `#VALUE!` (`A6:C6+{1,2}`). With no array
+argument the leftmost error is the result: `WEEKDAY(1/0,NA())` is `#DIV/0!`, `TEXT("x",NA())` is
+`#N/A` (the format's error wins over a text value).
+Evidence: crates/rustsheet-xlsx/tests/calc_tests/INFORMATION/error_broadcast.xlsx (Excel-authored,
+upstream IronCalc 4deab8f6; 230 cells, all pass).
+Status: VERIFIED
+Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/arithmetic.rs),
+`TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
+Tasks: T-0129
+
 ## Array results above 1,048,576 cells are #ERROR!
 Rule: Excel builds any array that fits the grid: `ROWS(SEQUENCE(1000,1001))` = 1000,
 `ROWS(SEQUENCE(1048576))` = 1048576, and a range lifted element-wise by a scalar function becomes

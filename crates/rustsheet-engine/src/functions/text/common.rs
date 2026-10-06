@@ -1,6 +1,7 @@
+use super::text_arg::TextArg;
 use crate::number_format::number_to_text;
 use crate::{
-    arithmetic::{array_of_errors, bcast_idx},
+    arithmetic::{array_of_errors, own_error},
     calc_result::CalcResult,
     cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
@@ -17,48 +18,6 @@ use crate::{
     model::Model,
     number_format::to_precision,
 };
-
-/// An argument of a text function that works element by element (LEFT, MID,
-/// EXACT, FIND, ...): a single scalar value or a 2-D array of values.
-/// When any argument is an array (e.g. a SEQUENCE or a multi-cell range) the
-/// scalar arguments are broadcast across it and the result is an array.
-pub(super) enum TextArg {
-    Scalar(ArrayNode),
-    Array(Vec<Vec<ArrayNode>>),
-    /// An argument that is an error. It is broadcast like any other scalar, so
-    /// that next to an array it gives an array of errors. The error is kept
-    /// twice: as the element to broadcast and as it was, to be returned whole
-    /// when no argument is an array.
-    Error(ArrayNode, CalcResult),
-}
-
-/// What an array has beyond its end, when it is used next to a longer one.
-static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
-
-impl TextArg {
-    /// The (rows, columns) shape of this argument.
-    pub(super) fn dims(&self) -> (usize, usize) {
-        match self {
-            TextArg::Scalar(_) | TextArg::Error(..) => (1, 1),
-            TextArg::Array(a) => (a.len(), a.first().map(|r| r.len()).unwrap_or(0)),
-        }
-    }
-
-    /// Returns the element at (`i`, `j`), broadcasting scalars and length-1 dimensions.
-    ///
-    /// Where the array is too short for that position the element is `#N/A`,
-    /// as in Excel. It is an error like any other: if an earlier argument of
-    /// the function is an error too, that one comes first.
-    pub(super) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
-        match self {
-            TextArg::Scalar(n) | TextArg::Error(n, _) => n,
-            TextArg::Array(a) => bcast_idx(a.len(), i)
-                .and_then(|ri| a.get(ri))
-                .and_then(|row| bcast_idx(row.len(), j).and_then(|cj| row.get(cj)))
-                .unwrap_or(&MISSING),
-        }
-    }
-}
 
 /// Coerces a single array element to a number for the start/length arguments of
 /// LEFT/RIGHT/MID. Booleans and strings are rejected with `#VALUE!`, matching the
@@ -246,10 +205,10 @@ pub(super) fn broadcast_text(
     // All scalars: return a single value.
     if rows <= 1 && cols <= 1 {
         // An argument that is an error is the result, as it came.
-        for operand in operands {
-            if let TextArg::Error(_, error) = operand {
-                return error.clone();
-            }
+        if let Some(TextArg::Error(_, error)) =
+            operands.iter().find(|o| matches!(o, TextArg::Error(..)))
+        {
+            return error.clone();
         }
         return match compute(0, 0) {
             Ok(ArrayNode::String(s)) => CalcResult::String(s),
@@ -413,14 +372,8 @@ impl Model {
             CalcResult::Array(arr) => {
                 let format_code = match self.get_string(&args[1], cell) {
                     Ok(s) => s,
-                    // An error in every element; the ones that already are
-                    // an error keep theirs.
-                    Err(e) => {
-                        return array_of_errors(&arr, e, |node| match node {
-                            ArrayNode::Error(error) => Some(error.clone()),
-                            _ => None,
-                        })
-                    }
+                    // An error in every element; error elements keep theirs.
+                    Err(e) => return array_of_errors(&arr, e, own_error),
                 };
                 let locale = self.locale;
                 let mut output = Vec::with_capacity(arr.len());
@@ -442,9 +395,7 @@ impl Model {
             }
             error @ CalcResult::Error { .. } => error,
             other => {
-                // The format comes before the value is looked at: an error in
-                // it is the result, also for text and booleans
-                // (error_broadcast.xlsx Sheet2!A1:A2).
+                // An error in the format wins, also for text (error_broadcast.xlsx Sheet2!A1).
                 let format_code = match self.get_string(&args[1], cell) {
                     Ok(s) => s,
                     Err(s) => return s,
@@ -454,7 +405,6 @@ impl Model {
                     CalcResult::Number(f) => f,
                     CalcResult::String(s) => return CalcResult::String(s),
                     CalcResult::Boolean(b) => return CalcResult::Boolean(b),
-                    error @ CalcResult::Error { .. } => return error,
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,
@@ -463,7 +413,9 @@ impl Model {
                         };
                     }
                     CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
-                    CalcResult::Array(_) | CalcResult::Lambda(_) => unreachable!(),
+                    CalcResult::Error { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                        unreachable!()
+                    }
                 };
                 let d = format_text((!is_blank).then_some(value), &format_code, self.locale);
                 if let Some(_e) = d.error {
@@ -662,18 +614,9 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<TextArg, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Error {
-                error,
-                origin,
-                message,
-            } => Ok(TextArg::Error(
-                ArrayNode::Error(error.clone()),
-                CalcResult::Error {
-                    error,
-                    origin,
-                    message,
-                },
-            )),
+            err @ CalcResult::Error { .. } => {
+                Ok(TextArg::Error(calc_result_to_array_node(err.clone()), err))
+            }
             CalcResult::Range { left, right } => {
                 Ok(TextArg::Array(self.evaluate_range(left, right, cell)?))
             }
