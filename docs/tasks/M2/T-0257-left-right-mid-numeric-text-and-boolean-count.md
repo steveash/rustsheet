@@ -53,7 +53,7 @@ the negative-count and start < 1 checks after coercion.
 - UTF-16 counting of LEFT/RIGHT/MID positions: T-0249.
 - LEFTB/RIGHTB/MIDB.
 
-## Handoff (resumed)
+## Handoff (resumed; resolved by T-0212)
 Implemented (commit on this branch): `fn_left`/`fn_right`/`fn_mid` in
 `crates/rustsheet-engine/src/functions/text/common.rs` now pass `self.array_node_to_number(..)` results
 into the element functions (the old `text_num_arg` is removed); unit test `counts_coerce_text_and_booleans`
