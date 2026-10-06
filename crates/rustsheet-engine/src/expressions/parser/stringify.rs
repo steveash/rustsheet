@@ -628,68 +628,27 @@ fn stringify(
             format!("{x}{kind}{}", paren_if(right, right_wrap))
         }
         OpPowerKind { left, right } => {
-            let x = match **left {
-                BooleanKind(_)
-                | NumberKind(_)
-                | UnaryKind { .. }
-                | StringKind(_)
-                | ReferenceKind { .. }
-                | RangeKind { .. }
-                | OpIntersectKind { .. }
-                | OpUnionKind { .. }
-                | WrongReferenceKind { .. }
-                | DefinedNameKind(_)
-                | TableNameKind(_)
-                | NamedVariableKind { .. }
-                | WrongRangeKind { .. } => sub(left),
-                OpRangeKind { .. }
-                | OpConcatenateKind { .. }
-                | OpProductKind { .. }
-                | OpPowerKind { .. }
-                | FunctionKind { .. }
-                | NamedFunctionKind { .. }
-                | LambdaDefKind { .. }
-                | LambdaCallKind { .. }
-                | ArrayKind(_)
-                | ErrorKind(_)
-                | ParseErrorKind { .. }
-                | OpSumKind { .. }
-                | CompareKind { .. }
-                | ImplicitIntersection { .. }
-                | SpillRangeOperator { .. }
-                | EmptyArgKind => format!("({})", sub(left)),
+            // Only these operands print bare; everything else gets parentheses. A unary operand
+            // is bare on the left and parenthesised on the right (unchanged by the T-0190 fold).
+            let is_atom = |n: &Node| {
+                matches!(
+                    n,
+                    BooleanKind(_)
+                        | NumberKind(_)
+                        | StringKind(_)
+                        | ReferenceKind { .. }
+                        | RangeKind { .. }
+                        | OpIntersectKind { .. }
+                        | OpUnionKind { .. }
+                        | WrongReferenceKind { .. }
+                        | DefinedNameKind(_)
+                        | TableNameKind(_)
+                        | NamedVariableKind { .. }
+                        | WrongRangeKind { .. }
+                )
             };
-            let y = match **right {
-                BooleanKind(_)
-                | NumberKind(_)
-                | StringKind(_)
-                | ReferenceKind { .. }
-                | RangeKind { .. }
-                | OpIntersectKind { .. }
-                | OpUnionKind { .. }
-                | WrongReferenceKind { .. }
-                | DefinedNameKind(_)
-                | TableNameKind(_)
-                | NamedVariableKind { .. }
-                | WrongRangeKind { .. } => sub(right),
-                OpRangeKind { .. }
-                | OpConcatenateKind { .. }
-                | OpProductKind { .. }
-                | OpPowerKind { .. }
-                | FunctionKind { .. }
-                | NamedFunctionKind { .. }
-                | LambdaDefKind { .. }
-                | LambdaCallKind { .. }
-                | ArrayKind(_)
-                | UnaryKind { .. }
-                | ErrorKind(_)
-                | ParseErrorKind { .. }
-                | OpSumKind { .. }
-                | CompareKind { .. }
-                | ImplicitIntersection { .. }
-                | SpillRangeOperator { .. }
-                | EmptyArgKind => format!("({})", sub(right)),
-            };
+            let x = paren_if(left, !(is_atom(left) || matches!(**left, UnaryKind { .. })));
+            let y = paren_if(right, !is_atom(right));
             format!("{x}^{y}")
         }
         NamedFunctionKind { name, args, id: _ } => format_function(
