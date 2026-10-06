@@ -3,7 +3,7 @@ id: T-0182
 title: "Probe early-1900 edges: WEEKNUM return types on serials 1-60, ddd/dddd of serial 0, EDATE/EOMONTH of serial 0"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
