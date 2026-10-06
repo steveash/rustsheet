@@ -3,7 +3,7 @@ id: T-0987
 title: "PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE flush subnormal results and literals to 0"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
