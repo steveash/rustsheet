@@ -3,11 +3,11 @@ id: T-0257
 title: "LEFT/RIGHT/MID: numeric text and boolean count arguments coerce to numbers (6 poi + 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: blocked
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-0212]
 ---
 
 ## Goal
@@ -65,3 +65,9 @@ returns FALSE (binary_search in lookup_and_reference/lookup_table.rs compares ac
 be masked because a boolean count was `#VALUE!` anyway. The root cause is T-0212 (type-skipping approximate
 lookups). Next: either land T-0212 first, or accept this one cell via a decision record, then run
 `make eval-baseline` (expect 8 fixed lines, 1 added) and finish review/PR.
+
+## Blocked because
+Landing this unmasks a wrong HLOOKUP result (gen-m2/942bdade381b7537 Calc!A290, see the handoff
+notes), which `make eval-baseline` refuses as a regression. The fix belongs to T-0212 (type-skipping
+approximate lookups), which the same opus session takes next; unblock and finish this branch once
+T-0212 has merged.
