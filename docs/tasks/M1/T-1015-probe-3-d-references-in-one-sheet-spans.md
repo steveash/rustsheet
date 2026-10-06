@@ -3,7 +3,7 @@ id: T-1015
 title: "Probe 3-D references in one-sheet spans and wrapped in IF/CHOOSE for INDEX, AREAS, MATCH, COUNTBLANK"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ Follow-up of T-0197. Its tests assert the one-sheet-span cases without oracle ev
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/3d-ref-functions C15:C22 with excel-graph values (one-sheet spans in AREAS, COUNTBLANK, INDEX;
+wrapped spans in INDEX/MATCH/SUM). Engine matches 6 of 8; INDEX and MATCH over `IF(TRUE,span)` give
+`#REF!` where Excel gives `#VALUE!` (baselined: C18, C20). Findings in docs/excel-semantics/references.md.
+Follow-up: see the task filed for the IF-wrapped span gap.

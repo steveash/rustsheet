@@ -25,6 +25,12 @@ operator (`+1`), and value functions such as ABS; so ERROR.TYPE gives 4, ISERROR
 ISBLANK FALSE and IFERROR its fallback. Where one sheet's reference is needed it is `#VALUE!`: INDEX,
 ROWS, COLUMNS, ROW, AREAS, VLOOKUP, MATCH, SUMIF, COUNTIF and COUNTBLANK. SUMPRODUCT gives `#REF!`.
 A span of one sheet (`=Data1:Data1!A1`) is that sheet's reference: 1.
+A span of one sheet is also that sheet's reference for the functions that need a reference: AREAS gives 1,
+COUNTBLANK counts the blanks (2 for `Data1:Data1!A1:B3`) and INDEX reads the cell.
+A span wrapped in IF or CHOOSE inside INDEX or MATCH gives `#VALUE!` (the one-sheet-reference error), not
+`#REF!`; `SUM(IF(TRUE,Data1:Data3!A1:A2))` is 113 (numbers of all three sheets, the text "5" skipped).
+Evidence also: probes/3d-ref-functions C15:C22 (excel-graph, 2026-10-06).
+Engine gap: `INDEX(IF(TRUE,span),1)` and `MATCH(1,IF(TRUE,span),0)` give `#REF!` (baselined; CHOOSE matches).
 Evidence: probes/3d-ref-values, probes/3d-ref-functions (excel-graph, 2026-10-06).
 Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span whose end is not a
 sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
