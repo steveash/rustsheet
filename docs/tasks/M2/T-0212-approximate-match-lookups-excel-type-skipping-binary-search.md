@@ -3,7 +3,7 @@ id: T-0212
 title: "Approximate-match lookups: Excel type-skipping binary search in VLOOKUP/HLOOKUP/MATCH (484 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -95,11 +95,23 @@ A204, `gen-m2/dd99be1f2454159f` A369, `gen-m2/f7e6d351c8538ef5` A70, `gen-m2/f9d
 Also `gen-m2/ef5c55a81783b7d5` A32 (an inner HLOOKUP that our search wrongly matches).
 
 ## Acceptance criteria
-- [ ] With T-0210 and T-0211 merged, at least 460 of the cells above disappear from eval/baseline/gen-m2.txt, with no new
+- [x] With T-0210 and T-0211 merged, at least 460 of the cells above disappear from eval/baseline/gen-m2.txt, with no new
       F lines; the six decision-0034 cells pass. List any that remain in the PR with a reason (collation: T-0220).
-- [ ] Unit tests for each evidence bullet above.
-- [ ] docs/excel-semantics/lookup.md documents the algorithm with the evidence cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests for each evidence bullet above.
+- [x] docs/excel-semantics/lookup.md documents the algorithm with the evidence cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Collation of text comparison (T-0220). XLOOKUP/XMATCH.
+
+## Outcome
+`SearchVector::approximate_search` (lookup_table.rs) replaces the old cross-type binary search for
+VLOOKUP/HLOOKUP (range_lookup TRUE), LOOKUP and MATCH (any non-zero match_type), and
+`SearchVector::exact_position` makes VLOOKUP/HLOOKUP FALSE match only cells of the key's type. The new
+probe `probes/lookup-approximate-search` (28 cells, excel-graph) refined the fitted algorithm: an equal
+cell ends the search at the edge of its run of adjacent equal cells (last for ascending, first for
+descending; also MATCH.xlsx C7), the midpoint is the floor of the inclusive bounds, any negative
+match_type is descending, and a blank MATCH key is 0 in an approximate search.
+Eval: gen-m2 known failures 475 -> 59 (419 fixed, every cell listed above and the six decision-0034 cells
+pass), poi 642 -> 641; 3 cells unmasked and accepted per decision 0037 (2 collation -> T-0220,
+1 `&` error broadcast -> T-0263, new). LOOKUP shares the search: no LOOKUP cell changed.

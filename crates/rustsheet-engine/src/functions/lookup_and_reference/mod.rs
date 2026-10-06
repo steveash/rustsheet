@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::criteria::wildcard_text_matcher;
-use super::util::{compare_values, values_are_equal};
+use super::util::values_are_equal;
 use lookup_table::{LookupTable, SearchVector};
 
 mod address_areas;
@@ -27,26 +27,21 @@ mod wrapcols_wraprows;
 mod xmatch;
 
 /// Finds the 0-based index of `lookup_value` within `search_vector`.
-/// When `is_sorted` is true a binary search is used (assuming ascending order)
-/// returning the largest value smaller than or equal to the target; otherwise a
-/// linear search for an exact match (supporting wildcards for text) is used.
-/// Returns `None` when the value is not found.
+/// When `is_sorted` is true Excel's approximate-match search is used (the
+/// largest value of the lookup value's type smaller than or equal to it);
+/// otherwise a linear search for an exact match (supporting wildcards for
+/// text). Returns `None` when the value is not found.
 fn lookup_index(
     lookup_value: &CalcResult,
     search_vector: &SearchVector,
     is_sorted: bool,
 ) -> Option<usize> {
     if is_sorted {
-        search_vector.binary_search(lookup_value)
+        search_vector.approximate_search(lookup_value, false)
+    } else if let CalcResult::String(s) = lookup_value {
+        search_vector.position(wildcard_text_matcher(s))
     } else {
-        let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-            if let CalcResult::String(s) = lookup_value {
-                wildcard_text_matcher(s)
-            } else {
-                let lookup_value = lookup_value.clone();
-                Box::new(move |x| compare_values(x, &lookup_value) == 0)
-            };
-        search_vector.position(result_matches)
+        search_vector.exact_position(lookup_value)
     }
 }
 
@@ -316,13 +311,6 @@ impl Model {
         if target.is_error() {
             return target;
         }
-        if matches!(target, CalcResult::EmptyCell) {
-            return CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Cannot match empty cell".to_string(),
-            };
-        }
         let match_type = if args.len() == 3 {
             match self.get_number(&args[2], cell) {
                 Ok(v) => v as i32,
@@ -331,6 +319,14 @@ impl Model {
         } else {
             1
         };
+        // An approximate search looks a blank up as 0 (probes/lookup-approximate-search N13).
+        if match_type == 0 && matches!(target, CalcResult::EmptyCell) {
+            return CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Cannot match empty cell".to_string(),
+            };
+        }
         let match_range = self.evaluate_node_in_context(&args[1], cell);
 
         // MATCH operates on a vector (a single row or single column). We
@@ -341,55 +337,25 @@ impl Model {
             Err(error) => return error,
         };
 
-        match match_type {
-            -1 => {
-                // We apply binary search leftmost for value in the vector
-                let mut l = 0;
-                let mut r = values.len();
-                while l < r {
-                    let m = (l + r) / 2;
-                    if compare_values(values.get(m), &target) >= 0 {
-                        l = m + 1;
-                    } else {
-                        r = m;
-                    }
-                }
-                // r is the number of elements less than target in the vector
-                // If target is less than the minimum return #N/A
-                if l == 0 {
-                    return CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Not found".to_string(),
-                    };
-                }
-                // Now l points to the leftmost element
-                CalcResult::Number(l as f64)
-            }
-            0 => {
-                // We apply linear search
-                let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
-                    if let CalcResult::String(s) = &target {
-                        wildcard_text_matcher(s)
-                    } else {
-                        Box::new(move |x| values_are_equal(x, &target))
-                    };
-                match values.position(result_matches) {
-                    Some(l) => CalcResult::Number(l as f64 + 1.0),
-                    None => CalcResult::Error {
-                        error: Error::NA,
-                        origin: cell,
-                        message: "Not found".to_string(),
-                    },
-                }
-            }
-            _ => match values.binary_search(&target) {
-                Some(l) => CalcResult::Number(l as f64 + 1.0),
-                None => CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Not found".to_string(),
-                },
+        let found = if match_type == 0 {
+            let result_matches: Box<dyn Fn(&CalcResult) -> bool> =
+                if let CalcResult::String(s) = &target {
+                    wildcard_text_matcher(s)
+                } else {
+                    Box::new(move |x| values_are_equal(x, &target))
+                };
+            values.position(result_matches)
+        } else {
+            // Any negative match_type searches descending, any positive one
+            // ascending (probes/lookup-approximate-search N20, N21).
+            values.approximate_search(&target, match_type < 0)
+        };
+        match found {
+            Some(l) => CalcResult::Number(l as f64 + 1.0),
+            None => CalcResult::Error {
+                error: Error::NA,
+                origin: cell,
+                message: "Not found".to_string(),
             },
         }
     }

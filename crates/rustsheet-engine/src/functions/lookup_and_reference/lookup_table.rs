@@ -118,10 +118,6 @@ impl SearchVector {
         SearchVector { values, len }
     }
 
-    pub(super) fn len(&self) -> usize {
-        self.len
-    }
-
     /// The value at `index`, which must be below `len`.
     pub(super) fn get(&self, index: usize) -> &CalcResult {
         self.values.get(index).unwrap_or(&EMPTY_CELL)
@@ -159,23 +155,111 @@ impl SearchVector {
         }
     }
 
-    /// Old style binary search, assuming ascending order. Returns the index of
-    /// a matching element or of the largest element smaller than `target`, and
-    /// `None` if `target` is smaller than every element.
-    // NOTE: We don't know how Excel exactly implements binary search
-    // internally: on unsorted values our results and Excel's may differ.
-    pub(super) fn binary_search(&self, target: &CalcResult) -> Option<usize> {
-        let mut l = 0;
-        let mut r = self.len;
-        while l < r {
-            let m = (l + r) / 2;
-            match compare_values(self.get(m), target) {
-                -1 => l = m + 1,
-                1 => r = m,
-                _ => return Some(m),
+    /// Excel's approximate-match search (VLOOKUP/HLOOKUP with range_lookup
+    /// TRUE, LOOKUP, MATCH with a positive or negative match_type; T-0212).
+    /// A binary search that only ever compares values of `target`'s own type:
+    /// from each midpoint it skips upwards past blanks, errors and other types,
+    /// and a midpoint with none left in the live range narrows the search below
+    /// it. An equal value ends the search at the edge of its run of adjacent
+    /// equal values: the last one, or the first when `descending` (MATCH -1).
+    /// Otherwise the result is the last value probed that is smaller than
+    /// `target` (larger when `descending`), `None` if there is none.
+    /// Excel: see docs/excel-semantics/lookup.md "Approximate match".
+    pub(super) fn approximate_search(
+        &self,
+        target: &CalcResult,
+        descending: bool,
+    ) -> Option<usize> {
+        let target = lookup_key(target);
+        let kind = value_kind(target)?;
+        let equal = |index: usize| {
+            self.values.get(index).is_some_and(|value| {
+                value_kind(value) == Some(kind) && compare_values(value, target) == 0
+            })
+        };
+        // next[i]: the first index >= i holding a value of `kind`. Cells in
+        // the virtual tail are empty, so the search never needs to enter it.
+        let evaluated = self.values.len();
+        let mut next = vec![usize::MAX; evaluated + 1];
+        for i in (0..evaluated).rev() {
+            next[i] = if value_kind(&self.values[i]) == Some(kind) {
+                i
+            } else {
+                next[i + 1]
+            };
+        }
+        let mut best = None;
+        let mut lo = 0;
+        let mut hi = self.len;
+        // The live range is lo..hi (hi exclusive); the midpoint is the floor
+        // of the inclusive bounds' mean (the lower of two middles).
+        while lo < hi {
+            let mid = lo + (hi - 1 - lo) / 2;
+            let m = next[mid.min(evaluated)];
+            if m >= hi {
+                hi = mid;
+                continue;
+            }
+            match compare_values(&self.values[m], target) {
+                0 => {
+                    let mut edge = m;
+                    if descending {
+                        while edge > 0 && equal(edge - 1) {
+                            edge -= 1;
+                        }
+                    } else {
+                        while equal(edge + 1) {
+                            edge += 1;
+                        }
+                    }
+                    return Some(edge);
+                }
+                c if (c < 0) != descending => {
+                    best = Some(m);
+                    lo = m + 1;
+                }
+                _ => hi = m,
             }
         }
-        l.checked_sub(1)
+        best
+    }
+
+    /// Exact-match search (range_lookup FALSE): the first value of `target`'s
+    /// own type equal to it. A blank never matches 0 or "" (T-0212).
+    pub(super) fn exact_position(&self, target: &CalcResult) -> Option<usize> {
+        let target = lookup_key(target);
+        let kind = value_kind(target)?;
+        self.values
+            .iter()
+            .position(|value| value_kind(value) == Some(kind) && compare_values(value, target) == 0)
+    }
+}
+
+/// The value a lookup searches for: a blank lookup value is the number 0.
+fn lookup_key(target: &CalcResult) -> &CalcResult {
+    static ZERO: CalcResult = CalcResult::Number(0.0);
+    if matches!(target, CalcResult::EmptyCell) {
+        &ZERO
+    } else {
+        target
+    }
+}
+
+/// The type classes the lookup searches compare within: numbers, text and
+/// booleans. Blanks and errors belong to none, so they never match.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ValueKind {
+    Number,
+    Text,
+    Boolean,
+}
+
+fn value_kind(value: &CalcResult) -> Option<ValueKind> {
+    match value {
+        CalcResult::Number(_) => Some(ValueKind::Number),
+        CalcResult::String(_) => Some(ValueKind::Text),
+        CalcResult::Boolean(_) => Some(ValueKind::Boolean),
+        _ => None,
     }
 }
 
