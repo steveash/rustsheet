@@ -3,7 +3,7 @@ id: T-0172
 title: "xlsx export writes classic CEILING as _xlfn.CEILING (check against Excel)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
