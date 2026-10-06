@@ -402,26 +402,22 @@ mod tests {
     #[test]
     fn year_less_text_is_a_day_of_the_current_year() {
         // probes/date-text-yearless rows 1-10, date-text-yearless-3 rows 1-5, 12-13
-        for (text, serial) in [
-            ("Jul-26", 46229),
-            ("Jul 26", 46229),
-            ("Jul/26", 46229),
-            ("7/1", 46204),
-            ("7-1", 46204),
-            ("1-Jul", 46204),
-            ("1 Jul", 46204),
-            ("1/Jul", 46204),
-            ("01-Jul", 46204),
-            ("Jul-01", 46204),
-            ("July 1", 46204),
-            ("July-1", 46204),
-            ("1 July", 46204),
-            ("Jul-31", 46234),
-            ("12/31", 46387),
-            ("1-Sept", 46266),
-        ] {
-            assert_eq!(en(text), Some(serial), "{text}");
+        let days: [(i32, &[&str]); 5] = [
+            (46229, &["Jul-26", "Jul 26", "Jul/26"]),
+            (
+                46204,
+                &["7/1", "7-1", "1-Jul", "1 Jul", "1/Jul", "01-Jul", "Jul-01"],
+            ),
+            (46204, &["July 1", "July-1", "1 July"]),
+            (46234, &["Jul-31"]),
+            (46387, &["12/31"]),
+        ];
+        for (serial, texts) in days {
+            for text in texts {
+                assert_eq!(en(text), Some(serial), "{text}");
+            }
         }
+        assert_eq!(en("1-Sept"), Some(46266));
         // The year comes from the clock: 26 July 2024.
         assert_eq!(en_in("Jul-26", Some(2024)), Some(45499));
     }
