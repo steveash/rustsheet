@@ -1034,5 +1034,3 @@ F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!G9
 F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!H4
 F	poi/simple-table-named-range.xlsx	Sheet1!B7
 F	poi/style-alternate-content.xlsx	!EngineError
-F	poi/xlookup.xlsx	Sheet1!C2
-F	poi/xlookup.xlsx	Sheet1!D2
