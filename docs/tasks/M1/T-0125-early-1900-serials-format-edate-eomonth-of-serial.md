@@ -24,44 +24,6 @@ T-0108 fixed DATE, DAY/MONTH/YEAR and number formatting for serials 1..60 but le
 ## Out of scope
 -
 
-## Handoff (resumed, earlier round)
-Branch has the implementation (commit "early-1900 serials in EDATE/EOMONTH/WEEKNUM/TEXT/DAY-MONTH-YEAR"):
-`excel_serial_to_ymd` accepts serial 0, new `month_arithmetic_date`/`real_date_to_serial` in
-`formatter/dates.rs` used by EDATE/EOMONTH, WEEKNUM year fix, TEXT uses ymd validity; probe
-`dates-early-1900` extended (A17-A25, oracle filled) and passes 25/25; semantics note added.
-`make eval-check` shows 41 gen-m2 cells fixed but 2 REGRESSIONS that passed only by accident
-(DAY/YEAR(0) used to be #NUM!, hiding other engine bugs):
-- gen-m2/a339ea84ef64382e Calc!A138 `=DAY(ROUNDDOWN(123456789.123,ROUNDUP(1,-5)))` expected #NUM!, now 0:
-  the engine's ROUNDDOWN with huge digits (100000) returns 0; Excel evidently returns the value
-  unchanged (DAY of 123456789 is #NUM!). Fix ROUNDDOWN/ROUNDUP/ROUND with out-of-range digits (probe first).
-- gen-m2/a6d4377c7b1b92cd Calc!A278 `=IFERROR(YEAR(INDEX(Data!C11:E12,1)),-SUM(Data!C3:C5))` expected 1:
-  my reading is that the legacy (non-spilling) formula implicit-intersects the INDEX row range
-  and gives #VALUE!, so IFERROR falls back; the engine computes YEAR of the first element (1900).
-  Needs an implicit-intersection probe.
-Next: fix or probe those two (or split them to their own tasks and fix first), then
-`make eval-baseline`, `make check`, review.
-
-## Handoff (resumed)
-Unblocked by the 2026-10-06 steward: T-0213 is done on main. Notes from the previous opus round follow.
-The steward's trial merge of origin/main (2026-10-06) conflicts in
-`functions/math_and_trigonometry/mathematical.rs`: main replaced the ROUND family with
-`round_family`/`round_decimal` (decimal_round.rs), so this branch's `round_beyond_double_range`
-must be folded into that path (or dropped if main already covers A138; T-0218 is still todo).
-
-After the opus resume
-(2026-10-05), the branch fixes 46 gen-m2 cells and 4 probe cells. One regression is left:
-- `gen-m2/a6d4377c7b1b92cd` Calc!A278 `=IFERROR(YEAR(INDEX(Data!C11:E12,1)),-SUM(Data!C3:C5))`
-  expects 1. This is not implicit intersection, as the handoff guessed: in Excel,
-  `INDEX(C11:E12,1)` is #REF! (T-0213; A17 of the same case), so IFERROR falls back. The engine
-  returns C11 (blank). YEAR of blank used to be #NUM!, which made the cell pass by accident; it is
-  now 1900.
-
-The handoff's other regression (A138, ROUNDDOWN with 100000 digits) is fixed on this branch by
-`round_beyond_double_range`, a partial T-0218 fix limited to digits whose magnitude is below
-2^31. To resume once T-0213 is merged: merge main, run `make eval-check` (expect 0 regressions),
-`make eval-baseline` (probes also reports one new-coverage failure, from the dates-early-1900
-case growing from 16 to 25 cells; check it), then `make check` and review.
-
 ## Outcome
 - Early-1900 serials (serial 0, the fictitious 29 February 1900 and serials 1-60) handled in
   EDATE, EOMONTH, WEEKNUM, TEXT and DAY/MONTH/YEAR (`excel_serial_to_ymd` accepts 0;
@@ -71,5 +33,7 @@ case growing from 16 to 25 cells; check it), then `make check` and review.
   dropped because main's `round_family` already gives the same results (the ROUND unit test is
   kept as coverage; gen-m2 a339ea84ef64382e A138 still passes). T-0213 removed the masked
   regression (A278).
+- EDATE/EOMONTH month shifts use chrono's checked arithmetic (`shift_months`): a huge offset
+  such as `EDATE(40000,2000000000)` panicked the engine and is now #NUM! (security review).
 - Eval delta: gen-m2 known failures 522 -> 477 (fixed 45), probes 108 -> 104 (fixed 4),
   regressions 0.

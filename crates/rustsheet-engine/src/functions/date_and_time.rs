@@ -19,6 +19,17 @@ fn last_day_of_feb(year: i32) -> u32 {
     }
 }
 
+/// `date` moved by `months` calendar months (EDATE/EOMONTH), `None` past chrono's range so a huge
+/// offset (`EDATE(40000,2000000000)`) is #NUM! instead of a panic.
+fn shift_months(date: chrono::NaiveDate, months: i32) -> Option<chrono::NaiveDate> {
+    let shift = Months::new(months.unsigned_abs());
+    if months > 0 {
+        date.checked_add_months(shift)
+    } else {
+        date.checked_sub_months(shift)
+    }
+}
+
 // Converts a raw numeric argument to a date serial (date part) for DAYS360,
 // rounding the time-of-day to the nearest second before discarding it. Excel
 // rolls e.g. 46000.999999 up to 46001 when extracting the date part.
@@ -343,12 +354,8 @@ impl Model {
             Err(s) => return s,
         };
 
-        let months_abs = months.unsigned_abs();
-
-        let native_date = if months > 0 {
-            date + Months::new(months_abs)
-        } else {
-            date - Months::new(months_abs)
+        let Some(native_date) = shift_months(date, months) else {
+            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
 
         // The last day of the month is a real calendar date: EOMONTH(31,1) is 28 February 1900
@@ -506,12 +513,8 @@ impl Model {
             Err(s) => return s,
         };
 
-        let months_abs = months.unsigned_abs();
-
-        let native_date = if months > 0 {
-            date + Months::new(months_abs)
-        } else {
-            date - Months::new(months_abs)
+        let Some(native_date) = shift_months(date, months) else {
+            return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
 
         match real_date_to_serial(native_date) {

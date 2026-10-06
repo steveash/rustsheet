@@ -68,8 +68,7 @@ pub fn real_date_to_serial(date: NaiveDate) -> Option<i32> {
 }
 
 fn is_date_within_range(date: NaiveDate) -> bool {
-    convert_to_serial_number(date) >= MINIMUM_DATE_SERIAL_NUMBER
-        && convert_to_serial_number(date) <= MAXIMUM_DATE_SERIAL_NUMBER
+    real_date_to_serial(date).is_some()
 }
 
 pub fn from_excel_date(days: i64) -> Result<NaiveDate, String> {
@@ -150,6 +149,25 @@ pub fn permissive_date_to_serial_number(day: i32, month: i32, year: i32) -> Resu
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn month_arithmetic_and_real_serials_skip_the_fictitious_dates() {
+        use super::{month_arithmetic_date, real_date_to_serial};
+        use chrono::NaiveDate;
+        assert_eq!(month_arithmetic_date(0), None);
+        assert_eq!(
+            month_arithmetic_date(60),
+            NaiveDate::from_ymd_opt(1900, 2, 28)
+        );
+        assert_eq!(
+            month_arithmetic_date(61),
+            NaiveDate::from_ymd_opt(1900, 3, 1)
+        );
+        let feb_28 = NaiveDate::from_ymd_opt(1900, 2, 28).and_then(real_date_to_serial);
+        assert_eq!(feb_28, Some(59));
+        let dec_31 = NaiveDate::from_ymd_opt(1899, 12, 31).and_then(real_date_to_serial);
+        assert_eq!(dec_31, None);
+    }
+
     use super::*;
 
     #[test]
