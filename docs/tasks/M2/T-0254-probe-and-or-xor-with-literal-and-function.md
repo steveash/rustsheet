@@ -26,7 +26,7 @@ Probe case `eval/suites/probes/logical-text-args.case.json` (excel-probe skill),
 OR and XOR:
 - literal text: `("1",1)`, `("abc",TRUE)`, `("",TRUE)`, `(" ",TRUE)`, `("TRUE",1)`, `("true",0)`,
   `("FALSE",1)`, `("0",1)`, and `("abc")` alone;
-- function-returned text: `(IFERROR("abc",0),TRUE)`, `(CONCATENATE("TRU","E"),0)`, `(IF(TRUE,"x"),1)`,
+- function-returned text: `(IFERROR("abc",0),TRUE)`, `(CONCATENATE("T","RUE"),0)`, `(IF(TRUE,"x"),1)`,
   `(T("TRUE"),0)`;
 - text inside an array constant and a range (control: ignored today), `({"abc",TRUE})`, `(A1:A2,TRUE)`
   with A1 = "abc";
