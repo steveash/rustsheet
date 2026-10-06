@@ -133,3 +133,13 @@ H46:J48 is 1 in all 9 cells (also `MINVERSE(B54)` H54:J56, `MMULT(B58,E58)` H58:
 H66:J68 has row 68 `#N/A` (47 `#N/A` fill cells in H46:J136).
 Status: VERIFIED (Excel-cached)
 Tasks: T-0950
+
+## FILTER: an array `if_empty` spills as an array
+Rule: when FILTER finds no match, an array-constant `if_empty` is returned whole and spills like any
+array: `FILTER(L1:L2,M1:M2,{1,2,3})` fills three cells across, `{1;2;3}` three down, `{1,2;3,4}` a 2x2
+block, `SUM(..)` of it is 6. A blocked spill area (a value in the neighbouring cell) gives `#SPILL!`.
+Evidence: probes/filter-if-empty-array (oracle: excel-graph, 2026-10-06); upstream ISREF.xlsx D9 (`#SPILL!`),
+J17:L17 (spilled 1,2,3).
+Status: VERIFIED (web)
+Implemented in: `fn_filter` (crates/rustsheet-engine/src/functions/spill_functions.rs)
+Tasks: T-0964

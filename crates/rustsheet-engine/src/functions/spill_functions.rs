@@ -614,6 +614,8 @@ impl Model {
                     CalcResult::Range { left, right } => {
                         CalcResult::Array(self.evaluate_range(left, right))
                     }
+                    // An array if_empty spills as is (Excel: probes/filter-if-empty-array).
+                    CalcResult::Array(a) => CalcResult::Array(a),
                     v => CalcResult::Array(vec![vec![calc_result_to_array_node(v)]]),
                 }
             } else {
