@@ -40,16 +40,26 @@ pub(crate) fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-/// Longest text a cell can hold (docs/excel-semantics/coercion.md). Also bounds the allocation
-/// a concatenation can make (CLAUDE.md directive 5).
-pub(crate) const MAX_TEXT_CHARS: usize = 32767;
+/// Longest text a cell can hold, in UTF-16 code units: an emoji (a surrogate pair) counts two
+/// (docs/excel-semantics/coercion.md "Text longer than 32,767 characters"). Also bounds the
+/// allocation a concatenation can make (CLAUDE.md directive 5).
+pub(crate) const MAX_TEXT_UNITS: usize = 32767;
 
-/// Truncates `text` to [`MAX_TEXT_CHARS`] characters, as Excel does for CONCATENATE and `&`
-/// (probes/resource-limits C9, C10, excel-graph).
+/// Truncates `text` to [`MAX_TEXT_UNITS`] UTF-16 code units, as Excel does for CONCATENATE and
+/// `&` (probes/resource-limits C9, C10; probes/concatenate-limit-spill, excel-graph). A character
+/// that would straddle the limit is dropped whole: Excel keeps its lone high surrogate, which a
+/// Rust `String` cannot hold.
 pub(crate) fn truncate_text(text: &mut String) {
-    if text.len() > MAX_TEXT_CHARS {
-        if let Some((byte, _)) = text.char_indices().nth(MAX_TEXT_CHARS) {
+    // UTF-8 never takes fewer bytes than UTF-16 takes code units, so short text skips the scan.
+    if text.len() <= MAX_TEXT_UNITS {
+        return;
+    }
+    let mut units = 0;
+    for (byte, ch) in text.char_indices() {
+        units += ch.len_utf16();
+        if units > MAX_TEXT_UNITS {
             text.truncate(byte);
+            return;
         }
     }
 }

@@ -97,14 +97,25 @@ Tasks: T-0137, T-0138
 
 ## Text longer than 32,767 characters
 Rule: concatenation does not fail past Excel's 32,767-character cell limit, it truncates:
-`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767. REPT with a
-longer result is `#VALUE!` (`REPT("a",32768)`).
-Evidence: probes/resource-limits C9–C11 (excel-graph, 2026-10-05).
-Open: the scalar cases are verified; per-element truncation in arrays and whether Excel counts UTF-16
-code units (the code counts `chars()`) are unprobed. Backend: excel-graph only; excel-desktop not used.
+`LEN(CONCATENATE(REPT("a",32767),"b"))` and `LEN(REPT("a",32767)&"b")` are both 32767, and the
+kept text is the leading part (`RIGHT(CONCATENATE(REPT("a",32767),"b"),1)` is "a"). REPT with a
+longer result is `#VALUE!` (`REPT("a",32768)`). The limit counts UTF-16 code units, so an emoji
+(a surrogate pair) counts two: `REPT("😀",16383)` is fine, `REPT("😀",16384)` is `#VALUE!`, and
+`LEN(CONCATENATE(REPT("😀",16383),"ab"))` is 32767. Truncation applies per element of a spilled
+CONCATENATE (`LEN(CONCATENATE({"a";"bb"},REPT("c",32767)))` is {32767;32767}). When the limit
+falls inside a surrogate pair Excel keeps the lone high surrogate: `LEN(CONCATENATE(REPT("a",32766),"😀"))`
+is 32767 and `UNICODE(RIGHT(…,1))` of it is `#VALUE!`.
+Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E12, G85–G104
+(excel-graph, 2026-10-06, T-0233).
+Known difference: a Rust `String` cannot hold a lone surrogate, so `truncate_text` drops a pair
+that straddles the limit whole (32,766 units; E8–E10 stay known failures). LEN and the other
+position-based text functions still count chars, not UTF-16 units (T-0249; E7, E11, E13, G97).
+Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
-Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240); CONCAT/TEXTJOIN not probed
-Tasks: T-0240
+Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
+REPT's limit in `rept_element` (functions/text/common.rs); both count UTF-16 units (T-0233).
+CONCAT/TEXTJOIN not probed.
+Tasks: T-0240, T-0233, T-0249
 
 ## SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing
 Rule: the two arrays are paired element by element in row-major order and need only the same

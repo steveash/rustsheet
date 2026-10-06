@@ -5,6 +5,7 @@
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
+C	probes/concatenate-limit-spill.case.json	68
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
@@ -57,6 +58,13 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/value-clock-text.case.json	135
+F	probes/concatenate-limit-spill.case.json	Sheet1!E10
+F	probes/concatenate-limit-spill.case.json	Sheet1!E11
+F	probes/concatenate-limit-spill.case.json	Sheet1!E13
+F	probes/concatenate-limit-spill.case.json	Sheet1!E7
+F	probes/concatenate-limit-spill.case.json	Sheet1!E8
+F	probes/concatenate-limit-spill.case.json	Sheet1!E9
+F	probes/concatenate-limit-spill.case.json	Sheet1!G97
 F	probes/criteria-padded-text.case.json	Sheet1!C13
 F	probes/date-text-yearless.case.json	Sheet1!B1
 F	probes/date-text-yearless.case.json	Sheet1!B10

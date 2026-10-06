@@ -3,7 +3,7 @@ use crate::number_format::number_to_text;
 use crate::{
     arithmetic::bcast_idx,
     calc_result::CalcResult,
-    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_CHARS},
+    cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -167,9 +167,10 @@ fn find_element(
 fn rept_element(text: &ArrayNode, number_times: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let text = array_node_to_string(text)?;
     let number_times = number_times?.floor();
-    // We normally don't follow Excel's sometimes archaic size's restrictions
-    // But this might be a security issue
-    if number_times < 0.0 || text.len() as f64 * number_times > MAX_TEXT_CHARS as f64 {
+    // Excel's cell text limit, counted in UTF-16 code units (probes/concatenate-limit-spill E12);
+    // it also bounds the allocation (CLAUDE.md directive 5).
+    let units = text.encode_utf16().count() as f64;
+    if number_times < 0.0 || units * number_times > MAX_TEXT_UNITS as f64 {
         return Err(Error::VALUE);
     }
     Ok(ArrayNode::String(text.repeat(number_times as usize)))
