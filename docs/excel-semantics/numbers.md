@@ -156,9 +156,9 @@ Tasks: T-0173
 Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cell value is
 4.49423283715579E+307 (15 digits, A16); the engine prints 4.49423283715579E+307.
 Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
-Leading hypothesis: the existing 20-character cap on E-notation text above applies; a 3-digit
-exponent leaves room for only 14 digits ("4.4942328371558E+307" is exactly 20 characters).
-Status: UNVERIFIED beyond this one value. Not implemented: T-0186.
+The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
+"Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
+Status: VERIFIED. Not implemented: T-0199.
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
@@ -189,8 +189,26 @@ Evidence: probes/precision-and-rounding A14; probes-numeric `number-to-text/*/1e
 probes/text-number-words H6, H7, K1, K4, K5 (`="1e-308"+0` is 0).
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `arithmetic::finite_or_num` (operators `+ - * / ^` and POWER); the postfix `%` and other function
-results are not flushed yet (UNVERIFIED, T-0189).
+Per function group (T-0189, VERIFIED, probes/subnormal-function-results, excel-graph 2026-10-06;
+`C` companion cells `(x)=0` tell a true 0 from a kept subnormal, since the Graph API reports 0.0 and
+`&""` prints "0" for both). The result is a true 0 (`(x)=0` TRUE) for the postfix `%`
+(`=1E-306%`, `=-1E-306%`), `/` and `*` (`1E-307/10`), PRODUCT (`PRODUCT(3E-308,0.5)`,
+`PRODUCT(1E-200,1E-110)`), SUMPRODUCT, SUMSQ (`SUMSQ(1E-160)`), AVERAGE (`AVERAGE(3E-308,-2.9E-308)`)
+and POWER. The subnormal is KEPT (`(x)=0` FALSE although it prints "0") for `-` (`=3E-308-2.5E-308`),
+`SUM` / `SUBTOTAL(9,..)` of the same operands, `EXP(-745)`, `EXP(-720)` and for MIN, ABS and SIN
+of such a value. So the flush belongs to multiplication and division (`%`, PRODUCT, SUMPRODUCT, SUMSQ,
+AVERAGE all multiply or divide), not to addition. `EXP(-708)` (3.3E-308, normal) prints with 14
+digits ("3.3075530036384E-308"; see "Exponent width" under "Number → text conversion uses 15
+significant digits"). `TEXT(1E-307/10,"0.00E+00")` is "0.00E+00". A literal below the smallest normal
+reads as 0: `=1E-308=0` is TRUE and `ISNUMBER(1E-308)` is TRUE (A70, A71; `=1E-308*1=0` cannot tell this from the
+`*` flush). Oracle artifact: for a kept subnormal the Graph API reports the value 0.0, so the numeric
+cells A4, A6, A60-A62, A65 and A69 cannot score the engine; only their `C` companions can (T-0989).
+The probe leaves out
+literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
+file (`unsupportedWorkbook`) when they appeared.
+Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER. Not implemented: postfix `%`
+(T-0988), PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987). The engine also compares a tiny nonzero
+value equal to 0, which Excel does not (C4-C6, C60-C62, C65, C69, C73-C75; T-0989).
 Tasks: T-0179
 
 ## Formula literals of 1E+308 or more are invalid
