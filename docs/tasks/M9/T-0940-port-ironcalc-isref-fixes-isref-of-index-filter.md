@@ -3,7 +3,7 @@ id: T-0940
 title: "Port IronCalc ISREF fixes (ISREF of INDEX/FILTER) with ISREF.xlsx evidence"
 milestone: M9
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
