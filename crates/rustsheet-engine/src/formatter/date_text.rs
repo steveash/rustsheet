@@ -139,9 +139,9 @@ fn parse_month_year(
     if !(1..=12).contains(&month) {
         return Err("Not a valid month".to_string());
     }
-    // A numeric month takes a one- or two-digit number, as "2/30" does in
-    // probes/date-text-yearless; "7/2026" is not probed.
-    let year = if is_digits(year_str, 4..=4) && format == MONTH_NAME_YEAR_FORMAT {
+    // A four-digit year gives the first of that month for a numeric month too: "7/2026",
+    // "7-2026" and "12/1999" (probes/date-text-yearless-2 rows 7-9).
+    let year = if is_digits(year_str, 4..=4) {
         parse_year(year_str)?.0
     } else if is_digits(year_str, 1..=2) {
         let number = year_str.parse::<i32>().map_err(|e| e.to_string())?;
@@ -314,12 +314,17 @@ mod tests {
         assert_eq!(en("Jul-0"), Some(36708));
         assert_eq!(en("Jul-99"), Some(36342));
         assert_eq!(en("2/30"), Some(10990));
+        // A numeric month with a four-digit year is the first of that month
+        // (probes/date-text-yearless-2 rows 7-9).
+        assert_eq!(en("7/2026"), Some(46204));
+        assert_eq!(en("7-2026"), Some(46204));
+        assert_eq!(en("12-1999"), Some(36495));
         // A possible day of the month is the current year's (not implemented yet, T-0167)
         for text in [
             "Jul-26", "7/1", "Jul 31", "Feb-29", "2/29", "13/1", "13/45", "0/45", "Jul-123",
-            // A numeric month needs a separator (a space between numbers is not probed), and a
-            // four-digit year with it is not probed either
-            "7 45", "1 0", "7/2026", "12-1999",
+            // A numeric month needs a separator: a space between numbers is #VALUE!
+            // (probes/date-text-yearless-2 row 6)
+            "7 45", "1 0",
         ] {
             assert_eq!(en(text), None, "{text}");
         }
