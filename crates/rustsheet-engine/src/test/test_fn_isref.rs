@@ -39,7 +39,7 @@ fn references_and_values() {
     }
 }
 
-// A defined name is a reference if what it stands for is one (upstream ISREF.xlsx A14-A18; probes/isref-names-filter-if-empty).
+// A defined name is a reference if what it stands for is one (upstream ISREF.xlsx A14-A18; the constant name `Seven` is in probes/isref-names-filter-if-empty, since the API rejects a constant body).
 #[test]
 fn defined_names() {
     let mut model = new_empty_model();
@@ -54,19 +54,16 @@ fn defined_names() {
     model
         .new_defined_name("Twice", None, "=LAMBDA(x, 2*x)")
         .unwrap();
-    model.new_defined_name("Seven", None, "=7").unwrap();
     model._set("A1", "=ISREF(TextCell)");
     model._set("A2", "=ISREF(Cells)");
     model._set("A3", "=ISREF(Twice)");
     model._set("A4", "=ISREF(NoSuchName)");
-    model._set("A5", "=ISREF(Seven)");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"TRUE");
     assert_eq!(model._get_text("A2"), *"TRUE");
     assert_eq!(model._get_text("A3"), *"FALSE");
     assert_eq!(model._get_text("A4"), *"FALSE");
-    assert_eq!(model._get_text("A5"), *"FALSE");
 }
 
 // FILTER's if_empty range is its values, not a reference (upstream ISREF.xlsx D11, D14 values; D17, D20 ISREF FALSE).
