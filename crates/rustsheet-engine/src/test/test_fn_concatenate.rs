@@ -99,7 +99,7 @@ fn fn_concatenate_limit_counts_utf16_units() {
 }
 
 // Oracle: probes/text-result-limit C8, C9 (excel-graph): CONCAT and TEXTJOIN text over 32767
-// chars is #CALC!, exactly 32767 is fine.
+// chars is #CALC!. The exactly-32767 cases are hand-written, pending an oracle probe (T-0262).
 #[test]
 fn concat_and_textjoin_over_32767_chars_are_calc_error() {
     let mut model = new_empty_model();
