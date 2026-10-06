@@ -3,7 +3,7 @@ id: T-0169
 title: "Probe sheet-qualified #REF! edge forms (unquoted, SUM, missing sheet, SHEET(name), bare error-literal name bodies)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
