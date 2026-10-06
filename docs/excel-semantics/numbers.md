@@ -109,7 +109,9 @@ and `LEN((1e307*100)&"")` are all `#NUM!`. A result of exactly 1e308 is finite:
 `=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
 Evidence: probes-numeric/4f413cc257ce15c4 Calc!A121-A124; probes/precision-and-rounding A12, A13.
 Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet).
+Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet), for negative overflow
+(`-1e307*100`) and for the per-element array form (`{1e307,1}*100`); the unit tests pin our
+expectation only.
 Implemented in: `arithmetic::times` (crates/rustsheet-engine/src/arithmetic.rs); test
 `overflowing_product_is_num_inside_formulas`.
 Tasks: T-0136
