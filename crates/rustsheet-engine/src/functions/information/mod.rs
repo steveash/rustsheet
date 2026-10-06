@@ -2,6 +2,7 @@ mod isomitted;
 
 use crate::{
     calc_result::CalcResult,
+    defined_names::ParsedDefinedName,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -9,7 +10,7 @@ use crate::{
         utils::number_to_column,
     },
     get_all_timezones,
-    model::{Model, ParsedDefinedName},
+    model::Model,
 };
 
 #[cfg(not(target_arch = "wasm32"))]

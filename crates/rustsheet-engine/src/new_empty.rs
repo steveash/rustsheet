@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::{
     calc_result::Range,
     constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
+    defined_names::ParsedDefinedName,
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -18,7 +19,7 @@ use crate::{
     },
     language::{get_default_language, get_language},
     locale::{get_default_locale, get_locale},
-    model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
+    model::{get_milliseconds_since_epoch, Model},
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
         WorksheetView,

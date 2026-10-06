@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::arithmetic::power;
+use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
     calc_result::{CalcResult, Range},
@@ -89,21 +90,6 @@ pub(crate) enum CellStructure {
         anchor: (i32, i32),
         range: (i32, i32),
     },
-}
-
-/// A parsed formula for a defined name
-#[derive(Clone)]
-pub(crate) enum ParsedDefinedName {
-    /// CellReference (`=C4`)
-    CellReference(CellReferenceIndex),
-    /// A Range (`=C4:D6`)
-    RangeReference(Range),
-    /// `=LAMBDA(params..., body)`
-    LambdaDefinition(Vec<NamedVariable>, Node),
-    /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
-    ErrorLiteral(Error),
-    /// `=SomethingElse`
-    InvalidDefinedNameFormula,
 }
 
 /// Formatting settings for a locale
