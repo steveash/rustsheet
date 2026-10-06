@@ -54,6 +54,7 @@ C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
+C	probes/value-clock-text.case.json	135
 F	probes/criteria-padded-text.case.json	Sheet1!C13
 F	probes/date-text-yearless.case.json	Sheet1!B1
 F	probes/date-text-yearless.case.json	Sheet1!B10

@@ -3,7 +3,7 @@ id: T-0170
 title: "Oracle fixture xlsx: LEN over a shared string with phonetic rPh runs"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ T-0164 excludes `<rPh>` from imported shared strings on ECMA-376 evidence alone 
 
 ## Out of scope
 -
+
+## Outcome
+New `fixtures` xlsx suite (eval/suites/fixtures, README there) with a hand-patched workbook holding a
+shared string with `<rPh>` runs. Excel (excel-graph) gives LEN = 5, so the engine's behavior was
+right; xlsx-storage.md entry is now VERIFIED. Eval delta: new suite fixtures 3/3 cells pass, no
+change elsewhere.
