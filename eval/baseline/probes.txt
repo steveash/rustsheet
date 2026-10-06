@@ -54,6 +54,7 @@ C	probes/lcm-result-edge.case.json	6
 C	probes/lifted-range-rows.case.json	4
 C	probes/lifted-range-size.case.json	6
 C	probes/literal-digits.case.json	6
+C	probes/lookup-approximate-search.case.json	44
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/min-max-value-args.case.json	16

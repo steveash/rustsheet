@@ -43,29 +43,6 @@ fn error_sort_rank(e: &Error) -> u8 {
     }
 }
 
-/// This test for exact match (modulo case).
-///   * strings are not cast into bools or numbers
-///   * empty cell is not cast into empty string or zero
-pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
-    match (left, right) {
-        (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            if (value2 - value1).abs() < f64::EPSILON {
-                return true;
-            }
-            false
-        }
-        (CalcResult::String(value1), CalcResult::String(value2)) => {
-            let value1 = value1.to_uppercase();
-            let value2 = value2.to_uppercase();
-            value1 == value2
-        }
-        (CalcResult::Boolean(value1), CalcResult::Boolean(value2)) => value1 == value2,
-        (CalcResult::EmptyCell, CalcResult::EmptyCell) => true,
-        // NOTE: Errors and Ranges are not covered
-        (_, _) => false,
-    }
-}
-
 // In Excel there are two ways of comparing cell values.
 // The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
 // For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
