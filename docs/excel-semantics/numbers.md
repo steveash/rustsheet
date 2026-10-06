@@ -168,7 +168,8 @@ Rule: `=(1/(2^-1022))&""` is "4.4942328371558E+307" (14 digits) although the cel
 Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
 The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
 "Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
-Status: VERIFIED. Not implemented: T-0199.
+Status: VERIFIED. Implemented in `number_to_text` (T-0199); the rounding is half up on the 15-digit string,
+and a carry that reaches 10^14 raises the exponent (unprobed).
 
 ## Comparison tolerance
 Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.

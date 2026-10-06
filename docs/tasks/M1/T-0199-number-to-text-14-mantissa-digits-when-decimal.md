@@ -3,7 +3,7 @@ id: T-0199
 title: "Number-to-text: 14 mantissa digits when decimal exponent magnitude is 99 or more"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Rule VERIFIED in docs/excel-semantics/numbers.md (Exponent width), evidence prob
 
 ## Out of scope
 -
+
+## Outcome
+`number_to_text` keeps 14 mantissa digits (half up on the 15-digit string) when the decimal exponent magnitude is 99 or more. Probes known failures 337 -> 277 (fixed 60), no regressions; unit tests added.
