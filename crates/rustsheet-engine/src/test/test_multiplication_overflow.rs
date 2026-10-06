@@ -90,3 +90,27 @@ fn overflowing_sum_function_is_num() {
     assert_eq!(model._get_text("A3"), *"6");
     assert_eq!(model._get_text("A4"), *"1E+308");
 }
+
+/// PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE flush a subnormal result to a true 0, while SUM keeps
+/// it (probes/subnormal-function-results A9, A10, A41, A63, A64, A66:A68, T-0189). The results
+/// print as "0" either way, so they are scaled back up: a kept subnormal would show as 1E+..
+#[test]
+fn multiplying_functions_flush_subnormal_results() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=PRODUCT(1E-200,1E-110)*1E+300*1E+300", "0"),
+        ("A2", "=SUMPRODUCT({1E-200},{1E-110})*1E+300*1E+300", "0"),
+        ("A3", "=PRODUCT(3E-308,0.5)*1E+300*1E+300", "0"),
+        ("A4", "=SUMSQ(1E-160)*1E+300*1E+300", "0"),
+        ("A5", "=AVERAGE(3E-308,-2.9E-308)*1E+300*1E+300", "0"),
+        // Addition keeps the subnormal: 3E-308 - 2.5E-308 = 5E-309.
+        ("A6", "=SUM(3E-308,-2.5E-308)*1E+300*1E+300", "5E+291"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, _, expected) in cases {
+        assert_eq!(model._get_text(cell), *expected, "{cell}");
+    }
+}

@@ -56,10 +56,19 @@ fn finite_or_num(value: f64) -> Result<f64, Error> {
     if !value.is_finite() {
         return Err(Error::NUM);
     }
+    Ok(flush_subnormal(value))
+}
+
+/// 0 for a value below the smallest normal double, `value` otherwise. Multiplying and dividing
+/// functions (PRODUCT, SUMPRODUCT, SUMSQ, AVERAGE) flush their result like `*` and `/`; addition
+/// keeps subnormals (docs/excel-semantics/numbers.md "Subnormal results become 0",
+/// probes/subnormal-function-results, T-0189).
+pub(crate) fn flush_subnormal(value: f64) -> f64 {
     if value.abs() < f64::MIN_POSITIVE {
-        return Ok(0.0);
+        0.0
+    } else {
+        value
     }
-    Ok(value)
 }
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.

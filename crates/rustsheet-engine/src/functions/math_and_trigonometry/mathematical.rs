@@ -1,4 +1,4 @@
-use crate::arithmetic::power;
+use crate::arithmetic::{flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
@@ -255,7 +255,7 @@ impl Model {
         {
             return error;
         }
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 
     /// PRODUCT(number1, [number2], ...)
@@ -327,7 +327,7 @@ impl Model {
         if !seen_value {
             return CalcResult::Number(0.0);
         }
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 
     /// SUMIF(criteria_range, criteria, [sum_range])
