@@ -3,7 +3,7 @@ id: T-0126
 title: "Probe sorted MATCH/LOOKUP/HLOOKUP over whole column/row with blank tail"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
