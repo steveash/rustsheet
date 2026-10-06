@@ -115,8 +115,41 @@ fn multiplying_functions_flush_subnormal_results() {
     }
 }
 
+/// SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9 overflow to `#NUM!` (ERROR.TYPE 6),
+/// also with a later 0 or 1E-200 factor (probes/aggregate-overflow B11:B26, T-0990).
+#[test]
+fn overflowing_aggregates_are_num() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("F1", "9E+307"),
+        ("F2", "9E+307"),
+        ("F3", "1E+200"),
+        ("F4", "1E+200"),
+    ] {
+        model._set(cell, value);
+    }
+    for (cell, formula) in [
+        ("A1", "=SUMPRODUCT({1E+200},{1E+200})"),
+        ("A2", "=SUMSQ(1E+200)"),
+        ("A3", "=PRODUCT(1E+200,1E+200)"),
+        ("A4", "=PRODUCT(1E+200,1E+200,0)"),
+        ("A5", "=PRODUCT(1E+200,1E+200,1E-200)"),
+        ("A6", "=AVERAGE(9E+307,9E+307)"),
+        ("A7", "=AVERAGE(9E+307,9E+307,-9E+307)"),
+        ("A8", "=SUBTOTAL(9,F1:F2)"),
+        ("A9", "=SUBTOTAL(1,F1:F2)"),
+        ("A10", "=SUBTOTAL(6,F3:F4)"),
+    ] {
+        model._set(cell, &format!("=IFERROR(ERROR.TYPE({}),0)", &formula[1..]));
+    }
+    model.evaluate();
+    for row in 1..=10 {
+        assert_eq!(model._get_text(&format!("A{row}")), *"6", "A{row}");
+    }
+}
+
 /// SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR overflow to `#NUM!` (ERROR.TYPE 6)
-/// (probes/aggregate-overflow B37:B38, B42:B46, T-0991).
+/// (probes/aggregate-overflow B37:B38, B42:B46, T-0991), also per criterion in the spilling form.
 #[test]
 fn overflowing_conditional_and_dispersion_aggregates_are_num() {
     let mut model = new_empty_model();
@@ -133,11 +166,12 @@ fn overflowing_conditional_and_dispersion_aggregates_are_num() {
         ("A5", "DEVSQ(F1:F2)"),
         ("A6", "STDEV(F1:F2)"),
         ("A7", "VAR(F5:F6)"),
+        ("A8", "INDEX(SUMIF(F1:F3,{\">0\",\"<0\"}),1,1)"),
     ] {
         model._set(cell, &format!("=IFERROR(ERROR.TYPE({formula}),0)"));
     }
     model.evaluate();
-    for row in 1..=7 {
+    for row in 1..=8 {
         assert_eq!(model._get_text(&format!("A{row}")), *"6", "A{row}");
     }
 }

@@ -3,7 +3,7 @@ id: T-0990
 title: "SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL overflow is #NUM!"
 milestone: M1
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Rule VERIFIED in docs/excel-semantics/numbers.md (Aggregate overflow), evidence 
 
 ## Out of scope
 -
+
+## Outcome
+SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1/6/9 return `#NUM!` on overflow via `CalcResult::finite_number_or_num` on the final result; unit test `overflowing_aggregates_are_num`. Eval: probes known failures 257 -> 225 (fixed 32), regressions 0.
