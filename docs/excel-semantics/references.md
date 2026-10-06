@@ -256,8 +256,8 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
 - Operand forms (T-0998, probes/union-operand-*, oracle: excel-graph, 2026-10-06): `=(--A1,B1)` loads, is
-  `#VALUE!` and FORMULATEXT prints `=(--A1,B1)` (the engine refuses it, `#ERROR!`: any number of unary minuses is
-  accepted); `=(A1%,B1)` is refused by Excel (`FileCorruptTryRepair`, as the engine does); `=(-(A1,B2),C1)` loads and is
+  `#VALUE!` and FORMULATEXT prints `=(--A1,B1)` (the engine refuses it, `#ERROR!`, though it
+  prints it; three or more minuses are unprobed); `=(A1%,B1)` is refused by Excel (`FileCorruptTryRepair`, as the engine does); `=(-(A1,B2),C1)` loads and is
   `#VALUE!`; `=(-A1,B1) A1` and `=(-A1,B1) B1` (a negated operand cut by an intersection) are refused by Excel
   (`FileCorruptTryRepair`; the engine accepts them). Excel keeps every level of written parentheses: FORMULATEXT of
   `=((A1,B2))` is `=((A1,B2))` and of `=(((A1,B2),C1))` is `=(((A1,B2),C1))` (the engine drops one level of a
@@ -272,6 +272,8 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
+T-0998: probes/union-operand-{double-minus,nested-parens,neg-cut-group} (same oracle and date); its refusals (percent,
+negated operand cut by an intersection) came from scratch fills that failed with FileCorruptTryRepair and were not kept.
 Status: VERIFIED (except the parts marked as engine choices; engine mismatches tracked in T-1024)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
 Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024
