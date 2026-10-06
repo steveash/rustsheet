@@ -129,6 +129,7 @@ A pending probe is better than a confident wrong implementation.
 | Task turns out to be bigger than M | stop, commit the analysis to the task file, ask the planner to split it |
 | Missing capability (oracle, credentials, network) | mark blocked with the exact need and the command that proves it is available (oracle: `rustsheet-oracle status` shows `excel-graph OK`); record it in `docs/status.md` under "Needs owner" |
 | A blocking capability is now available | unblock it (see "Unblocking" under Task lifecycle); never wait for the owner to edit task files |
+| Nightly fuzz run red (`.github/workflows/fuzz.yml`) | the steward downloads each `fuzz-crash-*` artifact, reproduces it with `cd fuzz && cargo fuzz run <target> <file>`, and files one P0 task per distinct crash (same panic site or stack = same crash) in the owning lane with the reproducer's bytes in the task (escaped; never the job environment); the fix adds the reproducer as a unit test (decision 0035) |
 
 ## Scheduled routines (how the loop runs unattended)
 
