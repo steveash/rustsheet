@@ -61,7 +61,7 @@ Status: VERIFIED, except the stale state: DEVIATION (decision 0038). RustSheet a
 `#NUM!` for 22+ and negatives, which is Excel's value only when no valid WEEKNUM ran earlier in
 the recalc. The stale value depends on Excel's calc order (and so on its calc chain and edit
 history), which RustSheet does not reproduce; probes/weeknum-stale-return-type Up!A1, Mixed!A3,
-Mixed!A4, Type21!A1 and Type1!A1 stay known failures (deviation cells once T-0191 lands).
+Mixed!A4, Type21!A1 and Type1!A1 stay known failures.
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
 ## DATE adds 1900 to years below 1900

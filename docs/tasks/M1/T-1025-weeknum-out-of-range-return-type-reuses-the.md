@@ -39,5 +39,5 @@ Declined: decision 0038 keeps `#NUM!` for every WEEKNUM return_type of 22+ or ne
 the stale state as `DEVIATION (decision 0038)` in docs/excel-semantics/dates.md. The value depends
 on Excel's calc order (bottom to top on load, then the calc chain), which RustSheet neither
 reproduces nor keeps stable across pass restarts; modelling it in our order would fix 3 probe cells
-by accident and break Down!A2. `fn_weeknum` comment and test cite the decision; T-0191 notes the 5
-cells to move to the probes `deviations` file. Eval delta: none (0 fixed, 0 regressions).
+by accident and break Down!A2. `fn_weeknum` comment and test cite the decision; the 5 cells stay
+known failures in eval/baseline (decision 0036's `deviations` file is for directive 5 only). Eval delta: none (0 fixed, 0 regressions).

@@ -19,6 +19,9 @@
     reorders anchors, so a cell may be evaluated more than once per recalc. Its order is neither
     Excel's nor stable across restarts.
   - This is not a directive 5 (untrusted input) deviation, so decision 0014 does not cover it.
+    The exception rests on Excel's value not being a function of the workbook at all, so no
+    deterministic engine can match it from the file alone (the route of
+    docs/excel-semantics/README.md "Deliberate deviations" and decision 0033).
 - **Options considered:**
   - *(a) Model the state in RustSheet's own order:* a per-recalc "last valid start weekday" in
     the evaluation state, set by valid WEEKNUMs and read by invalid ones. In storage order it
@@ -42,7 +45,8 @@
 - **Consequences:**
   - `fn_weeknum` keeps its current behavior; its comment cites this decision instead of a TODO.
   - probes/weeknum-stale-return-type Up!A1, Mixed!A3, Mixed!A4, Type21!A1 and Type1!A1 stay F
-    lines in eval/baseline/probes.txt. Once T-0191 lands they move to the probes `deviations`
-    file (decision 0036) with pinned value `#NUM!`, via `make eval-baseline`.
+    lines in eval/baseline/probes.txt, as decision 0033's cells do. They do not go into a
+    `deviations` file: decision 0036 limits that file to directive 5 deviations, and moving them
+    would need a decision that amends 0036.
   - Revisit if RustSheet ever reproduces Excel's calc order (calc chain import and ordering), or
     if other calc-order-dependent functions turn up that the same mechanism would serve.
