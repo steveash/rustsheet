@@ -55,11 +55,10 @@ crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
 ## Phonetic (furigana) runs are not cell text
 Rule: a shared string's text is its plain `<t>` plus the `<r><t>` rich-text runs. `<rPh><t>` phonetic
 runs (ECMA-376 §18.4.6) are annotations and are not part of the cell value, so they do not count
-towards `LEN` or the 32,767-character limit. Evidence: ECMA-376 §18.4.6 only; there is no Excel oracle value. poi/50299.xlsx and poi/51519.xlsx
-(Excel-authored, with `<rPh>` runs) have no formula reading the text, and our eval snapshot reader
-skips `<rPh>` too, which is an internal consistency check, not evidence. A spec case cannot carry
-phonetic markup, so confirming it needs a hand-built fixture xlsx with `=LEN(A1)` (T-0170). The unit
-test `test_phonetic_runs_are_not_cell_text` pins the behavior. PHONETIC() is not implemented.
-Status: PLAUSIBLE (spec-backed, no formula-level oracle value)
+towards `LEN` (and so, by inference only, not towards the 32,767-character limit: not probed). Evidence: fixtures/shared-string-phonetic-runs.xlsx
+(oracle: excel-graph, 2026-10-06, T-0170): A1 is "Tokyo" with an `<rPh>` run of 5 katakana;
+`=LEN(A1)` is 5 (not 10), `=A1&"!"` is "Tokyo!" and `=EXACT(A1,"Tokyo")` is TRUE. The unit test
+`test_phonetic_runs_are_not_cell_text` pins the behavior. PHONETIC() is not implemented.
+Status: VERIFIED
 Implemented in: `read_shared_strings_from_xml` in crates/rustsheet-xlsx/src/import/shared_strings.rs
-Tasks: T-0164
+Tasks: T-0164, T-0170
