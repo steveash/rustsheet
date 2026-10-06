@@ -3,7 +3,7 @@ id: T-0992
 title: "MEDIAN and GEOMEAN of values near 9E+307 do not overflow"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
