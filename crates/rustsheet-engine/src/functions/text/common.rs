@@ -277,7 +277,7 @@ impl Model {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = "".to_string();
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::String(value) => result = format!("{result}{value}"),
                 CalcResult::Number(value) => result.push_str(&number_to_text(value)),
                 CalcResult::EmptyCell | CalcResult::EmptyArg => {}
@@ -290,45 +290,30 @@ impl Model {
                 }
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::String(value) => {
-                                    result = format!("{result}{value}");
-                                }
+                    // 3-D references are walked sheet by sheet by the shared range walk.
+                    if let Err(error) =
+                        self.for_each_cell_in_range(left, right, cell, |_, value| {
+                            match value {
+                                CalcResult::String(value) => result.push_str(&value),
                                 CalcResult::Number(value) => {
                                     result.push_str(&number_to_text(value))
                                 }
                                 CalcResult::Boolean(value) => {
-                                    if value {
-                                        result = format!("{result}TRUE");
-                                    } else {
-                                        result = format!("{result}FALSE");
-                                    }
+                                    result.push_str(if value { "TRUE" } else { "FALSE" });
                                 }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                                CalcResult::Range { .. } => {}
                                 CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return CalcResult::Error {
+                                    return Err(CalcResult::Error {
                                         error: Error::NIMPL,
                                         origin: cell,
                                         message: "Arrays not supported yet".to_string(),
-                                    }
+                                    });
                                 }
+                                _ => {}
                             }
-                        }
+                            Ok(())
+                        })
+                    {
+                        return error;
                     }
                 }
                 CalcResult::Array(_) | CalcResult::Lambda(_) => {
