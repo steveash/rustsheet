@@ -294,26 +294,31 @@ impl SheetDataReader<'_> {
         }
         // `r` is optional: a row without it is the row after the previous one
         // (docs/excel-semantics/xlsx-storage.md "Cells and rows without r are positional").
+        // `r` is untrusted, so the successor is a checked add.
         let index = match explicit_index {
             Some(index) => index,
-            None if is_valid_row(self.last_row + 1) => self.last_row + 1,
-            None => return Err(XlsxError::Xml("Row past the last row".to_string())),
+            None => match self
+                .last_row
+                .checked_add(1)
+                .filter(|row| is_valid_row(*row))
+            {
+                Some(index) => index,
+                None => return Err(XlsxError::Xml("Row past the last row".to_string())),
+            },
         };
         self.last_row = index;
-        {
-            // The height of the row is always the visible height of the row.
-            // If custom_height is false the height was computed automatically,
-            // for example because a cell has many lines or a larger font.
-            if custom_height || custom_format || style != 0 || has_height_attribute || hidden {
-                self.rows.push(Row {
-                    r: index,
-                    height,
-                    s: style,
-                    custom_height,
-                    custom_format,
-                    hidden,
-                });
-            }
+        // The height of the row is always the visible height of the row.
+        // If custom_height is false the height was computed automatically,
+        // for example because a cell has many lines or a larger font.
+        if custom_height || custom_format || style != 0 || has_height_attribute || hidden {
+            self.rows.push(Row {
+                r: index,
+                height,
+                s: style,
+                custom_height,
+                custom_format,
+                hidden,
+            });
         }
         self.row = Some(RowXml {
             index,
@@ -368,8 +373,7 @@ impl SheetDataReader<'_> {
             let Some(row) = self.row.as_ref() else {
                 return Err(XlsxError::Xml("Cell outside of a row".to_string()));
             };
-            let column = row.last_column + 1;
-            let Some(name) = number_to_column(column) else {
+            let Some(name) = row.last_column.checked_add(1).and_then(number_to_column) else {
                 return Err(XlsxError::Xml("Cell past the last column".to_string()));
             };
             cell.reference = format!("{name}{}", row.index);
@@ -726,6 +730,12 @@ mod tests {
     fn cell_without_r_after_the_last_column_is_an_error() {
         let positions =
             read_positions(r#"<row r="1"><c r="XFD1"><v>1</v></c><c><v>2</v></c></row>"#);
+        assert!(positions.is_err());
+    }
+
+    #[test]
+    fn row_without_r_after_an_i32_max_row_is_an_error() {
+        let positions = read_positions(r#"<row r="2147483647"/><row><c><v>1</v></c></row>"#);
         assert!(positions.is_err());
     }
 
