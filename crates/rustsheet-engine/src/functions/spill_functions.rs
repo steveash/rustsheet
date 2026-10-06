@@ -609,6 +609,13 @@ impl Model {
                         cell,
                         "No data returned by FILTER".to_string(),
                     ),
+                    // A range is its values: FILTER gives values, never a reference, found or not
+                    // (Excel-cached: upstream ISREF.xlsx Sheet1!D11, D14, D17, D20; probes/isref-names-filter-if-empty).
+                    CalcResult::Range { left, right } => {
+                        CalcResult::Array(self.evaluate_range(left, right))
+                    }
+                    // An array if_empty spills as is (Excel: probes/filter-if-empty-array).
+                    CalcResult::Array(a) => CalcResult::Array(a),
                     v => CalcResult::Array(vec![vec![calc_result_to_array_node(v)]]),
                 }
             } else {

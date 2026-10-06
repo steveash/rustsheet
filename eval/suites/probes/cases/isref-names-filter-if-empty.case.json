@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ISREF of a defined name for a cell/range/constant/LAMBDA/missing name, and FILTER's if_empty range spilling its values (T-0940; mirrors upstream ISREF.xlsx A14-A18, D11-D20). See docs/excel-semantics/references.md",
+  "tags": [
+    "M9",
+    "information",
+    "isref",
+    "probe"
+  ],
+  "names": {
+    "TextCell": "=Sheet1!$K$1",
+    "Cells": "=Sheet1!$K$1:$K$2",
+    "Twice": "=LAMBDA(x, 2*x)",
+    "Seven": "=7"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "K1": "text",
+        "K2": 7,
+        "L1": 10,
+        "L2": 20,
+        "M1": false,
+        "M2": false,
+        "A1": "=ISREF(TextCell)",
+        "A2": "=ISREF(Cells)",
+        "A3": "=ISREF(Twice)",
+        "A4": "=ISREF(Seven)",
+        "A5": "=ISREF(NoSuchName)",
+        "D1": "=FILTER(L1:L2,M1:M2,L1:L2)",
+        "D4": "=SUM(FILTER(L1:L2,M1:M2,L1:L2))",
+        "D5": "=ISREF(FILTER(L1:L2,M1:M2,L1:L2))",
+        "D6": "=ISREF(FILTER(L1:L2,L1:L2>0))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!D1",
+    "Sheet1!D2",
+    "Sheet1!D4",
+    "Sheet1!D5",
+    "Sheet1!D6"
+  ]
+}

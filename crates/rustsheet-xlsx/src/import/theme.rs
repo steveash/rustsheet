@@ -1,4 +1,6 @@
-use std::io::{BufReader, Read};
+use std::io::Read;
+
+use super::package::Package;
 
 use super::xml::XmlNode;
 use rustsheet_engine::types::Theme;
@@ -7,10 +9,7 @@ use crate::error::XlsxError;
 
 /// Reads the theme part at `path`. Returns `Theme::default()` if the workbook
 /// has no theme relationship or if parsing fails.
-pub(crate) fn load<R: Read + std::io::Seek>(
-    archive: &mut zip::ZipArchive<R>,
-    path: Option<&str>,
-) -> Theme {
+pub(crate) fn load<R: Read + std::io::Seek>(archive: &mut Package<R>, path: Option<&str>) -> Theme {
     let Some(path) = path else {
         return Theme::default();
     };
@@ -43,11 +42,11 @@ const SLOTS: [(&str, Setter); 12] = [
 ];
 
 fn try_load<R: Read + std::io::Seek>(
-    archive: &mut zip::ZipArchive<R>,
+    archive: &mut Package<R>,
     path: &str,
 ) -> Result<Theme, XlsxError> {
-    let file = archive.by_name(path)?;
-    let doc = XmlNode::parse(BufReader::new(file))?;
+    let file = archive.open(path)?;
+    let doc = XmlNode::parse(file)?;
 
     let scheme = doc
         .descendants()

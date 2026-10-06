@@ -40,7 +40,7 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    // FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1) = tanh(y)
+    // FISHERINV(y) = (e^(2y) - 1) / (e^(2y) + 1), evaluated as written (not tanh)
     pub(crate) fn fn_fisher_inv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -51,8 +51,15 @@ impl Model {
             Err(e) => return e,
         };
 
-        // Use tanh directly to avoid overflow from exp(2y)
-        let result = y.tanh();
+        // Excel evaluates (exp(2y)-1)/(exp(2y)+1) in doubles, not a correctly rounded tanh, and
+        // is 1 once exp(2y) overflows (docs/excel-semantics/statistics.md, "FISHERINV is
+        // (EXP(2y)-1)/(EXP(2y)+1)").
+        let e = (2.0 * y).exp();
+        let result = if e.is_infinite() {
+            1.0
+        } else {
+            (e - 1.0) / (e + 1.0)
+        };
 
         if result.is_nan() || result.is_infinite() {
             return CalcResult::Error {

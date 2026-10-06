@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-0257]
 ---
 
 ## Goal
@@ -15,8 +15,10 @@ LEFT, RIGHT and MID coerce their numeric arguments the way Excel does. Booleans 
 start_num/num_chars give `#VALUE!`. A num_chars a hair below an integer counts as that integer.
 
 ## Context
+Triage 2026-10-06: the two boolean cells below, and numeric-text counts, moved to sonnet task T-0257;
+this task keeps the 7 huge-value and near-integer cells (do T-0257 first, it owns the coercion helper).
 gen-m2 (T-0203): 9 failing cells. Evidence (excel-graph):
-- Booleans: `gen-m2/ef5c55a81783b7d5` Calc!A40 `=MID((Data!E$4&(Data!A10&"x~*")),Data!B$4,5)` (B4 = TRUE):
+- Booleans (T-0257): `gen-m2/ef5c55a81783b7d5` Calc!A40 `=MID((Data!E$4&(Data!A10&"x~*")),Data!B$4,5)` (B4 = TRUE):
   expected "0.1x~", actual `#VALUE!`. `gen-m2/d04d501154afc771` Calc!A19 `UPPER(RIGHT(Data!A11,Data!B1))`
   (B1 = FALSE gives ""): expected TRUE overall, actual `#VALUE!`.
 - Huge arguments are `#VALUE!`: `gen-m2/78bc88199fc96650` Calc!A345 `MID(Data!D12,2,1000000000000000.0)`;
@@ -34,7 +36,7 @@ Code: `crates/rustsheet-engine/src/functions/text/` (LEFT/RIGHT/MID argument par
 
 ## Acceptance criteria
 - [ ] Probe case(s) pin the huge-value threshold and the near-integer rule. docs/excel-semantics/ entry added.
-- [ ] The 9 cells above disappear from eval/baseline/gen-m2.txt with no new F lines.
+- [ ] The 7 huge-value and near-integer cells above disappear from eval/baseline/gen-m2.txt with no new F lines (the 2 boolean cells are T-0257's).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -2,6 +2,7 @@ mod isomitted;
 
 use crate::{
     calc_result::CalcResult,
+    defined_names::ParsedDefinedName,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -9,7 +10,7 @@ use crate::{
         utils::number_to_column,
     },
     get_all_timezones,
-    model::{Model, ParsedDefinedName},
+    model::Model,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -142,6 +143,13 @@ impl Model {
                 CalcResult::Range { .. }
             )),
             Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
+            // A defined name is a reference if what it stands for is one, a single cell included
+            // (Excel-cached: upstream ISREF.xlsx Sheet1!A14-A18; probes/isref-names-filter-if-empty).
+            Node::DefinedNameKind((name, scope, _)) => CalcResult::Boolean(matches!(
+                self.parsed_defined_names
+                    .get(&(*scope, name.to_lowercase())),
+                Some(ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_))
+            )),
             _ => CalcResult::Boolean(false),
         }
     }
@@ -265,6 +273,15 @@ impl Model {
                         }
                         ParsedDefinedName::RangeReference(range) => {
                             return CalcResult::Number(range.left.sheet as f64 + 1.0)
+                        }
+                        // Excel: SHEET of a name whose body is an error literal is that error
+                        // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!").
+                        ParsedDefinedName::ErrorLiteral(error) => {
+                            return CalcResult::new_error(
+                                error.clone(),
+                                cell,
+                                format!("Defined name \"{name}\" is an error."),
+                            );
                         }
                         ParsedDefinedName::InvalidDefinedNameFormula
                         | ParsedDefinedName::LambdaDefinition(..) => {

@@ -9,7 +9,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
-    number_format::parse_finite_number,
+    number_format::parse_excel_number,
 };
 
 use super::common::broadcast_text;
@@ -186,7 +186,7 @@ impl Model {
             );
         }
 
-        match parse_finite_number(&cleaned) {
+        match parse_excel_number(&cleaned) {
             Some(mut v) => {
                 for _ in 0..pct_count {
                     v /= 100.0;

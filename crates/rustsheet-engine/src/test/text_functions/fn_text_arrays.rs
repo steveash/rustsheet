@@ -322,3 +322,16 @@ fn a_missing_element_in_an_earlier_argument_comes_first() {
         ["#N/A", "#N/A", "#N/A", "#N/A", ""]
     );
 }
+
+// poi ElapsedFormatTests A52:A215, FormatChoiceTests A27:A53: `=TEXT(Cn, Bn)` over blanks is "".
+#[test]
+fn text_blank_value_with_empty_format_is_empty() {
+    let mut model = new_empty_model();
+    model._set("A1", "=TEXT(C1,B1)");
+    model._set("A2", "=TEXT(C1,\"\")");
+    model._set("A3", "=ISTEXT(TEXT(C1,B1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "");
+    assert_eq!(model._get_text("A2"), "");
+    assert_eq!(model._get_text("A3"), "TRUE");
+}
