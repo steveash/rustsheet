@@ -302,7 +302,7 @@ impl Model {
                 },
                 _ => arg,
             };
-            let cell_value = self.evaluate_node_in_context(arg, cell);
+            let cell_value = self.evaluate_aggregate_arg(arg, cell);
 
             match cell_value {
                 CalcResult::Range { left, right } => {

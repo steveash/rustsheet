@@ -118,3 +118,14 @@ fn whole_columns_walk_only_the_used_area() {
     assert_eq!(eval(&mut model, "=SUM(Data1:Extra19!A:C)"), "1116");
     assert!(start.elapsed() < Duration::from_secs(10));
 }
+
+// Two-input functions pair their lists by position, so a whole column must keep one entry per
+// cell even when the two sheets' used areas differ (review of T-0196).
+#[test]
+fn paired_whole_columns_keep_positions() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SUMXMY2(Data1!A:A,Data2!A:A)"), "81");
+    // A length mismatch must not panic.
+    let result = eval(&mut model, "=CHISQ.TEST(Data1!A:A,SEQUENCE(1048576))");
+    assert!(!result.is_empty());
+}

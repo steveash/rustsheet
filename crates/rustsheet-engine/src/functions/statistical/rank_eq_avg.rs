@@ -10,7 +10,7 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        let values = match self.evaluate_node_in_context(arg, cell) {
+        let values = match self.evaluate_aggregate_arg(arg, cell) {
             CalcResult::Array(array) => match self.values_from_array(array) {
                 Ok(v) => v,
                 Err(e) => {

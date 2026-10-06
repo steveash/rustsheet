@@ -107,7 +107,7 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => {
                     f(value);
                 }
@@ -216,7 +216,7 @@ impl Model {
         let mut count = 0.0;
         let mut sum = 0.0;
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Range { left, right } => {
                     if let Err(error) =
                         self.for_each_cell_in_range(left, right, cell, |_, value| match value {
@@ -618,7 +618,7 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match self.evaluate_node_in_context(&args[0], cell) {
+        let values = match self.evaluate_aggregate_arg(&args[0], cell) {
             CalcResult::Array(array) => match self.values_from_array(array) {
                 Ok(v) => v,
                 Err(e) => {
