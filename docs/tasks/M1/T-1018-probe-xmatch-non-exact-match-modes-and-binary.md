@@ -3,7 +3,7 @@ id: T-1018
 title: "Probe XMATCH non-exact match modes and binary search over blanks"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
