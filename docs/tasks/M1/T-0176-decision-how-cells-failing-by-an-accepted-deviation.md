@@ -46,3 +46,4 @@ hand-edited baselines), decision 0002 (strict scoring), decision 0014.
 ## Out of scope
 - Implementing any harness change the decision calls for (file it).
 - Changing the 1,000,000-cell limit itself.
+- Editing the probes/resource-limits C12/C14 cases or the M1 exit text before this decision lands.
