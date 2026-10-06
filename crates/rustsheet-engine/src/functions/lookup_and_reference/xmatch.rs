@@ -132,6 +132,7 @@ fn linear_search(
                 re.is_match(&text)
             })
         }
+        // Regex is handled above; the other modes share XLOOKUP's blank-aware scan.
         _ => linear_scan(lookup_value, candidates, |idx| array.get(idx), match_mode),
     }
 }
