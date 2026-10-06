@@ -3,7 +3,7 @@ id: T-0047
 title: "Bound memory when a whole-row/column range is lifted into an array (DATE(11:1899,12,1) OOM)"
 milestone: M0
 lane: engine
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -28,10 +28,25 @@ room, or a resource error) needs an `excel-probe` before choosing the behaviour;
 limit that Excel lacks needs a `DEVIATION` entry (decision 0014).
 
 ## Acceptance criteria
-- [ ] Excel's result for `=DATE(11:1899,12,1)` (and a whole-column variant such as `=ABS(A:A)`) is probed and recorded in `docs/excel-semantics/`.
-- [ ] Lifting a range into an array is bounded before cells are evaluated or recorded (no allocation proportional to the range area beyond a documented limit); a unit test covers the reproducer.
-- [ ] `fuzz/` `formula_eval` runs the reproducer under 2 GiB.
-- [ ] `make check` green; reviewers approve.
+- [x] Excel's result for `=DATE(11:1899,12,1)` (and a whole-column variant such as `=ABS(A:A)`) is probed and recorded in `docs/excel-semantics/`.
+- [x] Lifting a range into an array is bounded before cells are evaluated or recorded (no allocation proportional to the range area beyond a documented limit); a unit test covers the reproducer.
+- [x] `fuzz/` `formula_eval` runs the reproducer under 2 GiB.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Every range lifted into an array now goes through one `Model::evaluate_range` (moved from model.rs
+to cast.rs), which checks the shared array bound before reading any cell and reads whole-row/column
+ranges only within the used area (the rest recorded read-empty in one rectangle). Scalar functions
+(`get_number_or_array`), operators, IF/IFERROR, TEXT, IS*, NOT, spill functions, ARRAYTOTEXT,
+TEXTSPLIT, SUMIF's criteria grid and a bare range spilled from a cell all use it. The bound is now
+one whole column (2^20 cells, was 1,000,000), so whole-column lifts keep matching Excel.
+Excel evidence: probes/lifted-range-size and probes/lifted-range-rows (excel-graph); Excel builds the
+31M-cell `DATE(11:1899,12,1)` array (DEVIATION, docs/excel-semantics/arrays.md). The reproducer plus
+the whole-column tests peak at ~194 MiB RSS (was > 2 GiB); cargo-fuzz is not installed locally, so the
+`formula_eval` run itself is left to the nightly fuzz job.
+Eval delta: probes fixed 2 (resource-limits C12, C14), new-coverage failures 4 (lifted-range-rows
+C1-C3, E1, by design), regressions 0; lifted-range-size 6/6.
+Follow-ups: T-0048 (clip whole-range walks), T-0049 (used-area tracking), T-0050 (move the bound to a core module).

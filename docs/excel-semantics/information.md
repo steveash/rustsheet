@@ -28,4 +28,4 @@ probes/lifted-range-size C8), a whole-row range of more than 64 rows does not.
 Evidence: probes/lifted-range-size C8; resource limit, see arrays.md "Array results above 1,048,576 cells".
 Status: DEVIATION (decision 0014)
 Implemented in: functions/information/mod.rs (`is_predicate`, via `Model::evaluate_range`)
-Tasks: T-0247
+Tasks: T-0247, T-0047
