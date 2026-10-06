@@ -247,7 +247,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - A negated reference is accepted: `=(-A1,B1)` loads, gives `#VALUE!`, and FORMULATEXT prints it as
   `=(-A1,B1)`. The engine reads it as a union of `-A1` and `B1` and prints that (T-0193).
 - An error operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` and `=(#REF!,A1) A1` are
-  `#REF!`, and `ISREF((A1,#REF!))` is FALSE (the engine gives TRUE, T-0194). `ISREF((A1,B2))` is
+  `#REF!`, and `ISREF((A1,#REF!))` is FALSE (probes/union-accepted H9; implemented in `Model::union_is_reference`, T-0194). `ISREF((A1,B2))` is
   TRUE, and `=(A1,B2) A1` is 1.
 - Cross-sheet: `=(Data!A1,Other!A1)` and `=(Data!A1:A3,Other!A1:A3) Data!A2` are `#VALUE!`.
 - Printing: Excel keeps the user's parentheses, so FORMULATEXT of `=((Data!A2,Data!E8),Data!B6)` is
