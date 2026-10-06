@@ -97,3 +97,29 @@ fn names_with_backslash_round_trip() {
         assert_eq!(to_english_localized_string(&t, &cell_reference), formula);
     }
 }
+
+#[test]
+fn comparison_operands_keep_their_parentheses() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    // T-0151: the printed text must parse back to the same tree.
+    for formula in [
+        "\"a\"&(2<3)",
+        "(2<3)&\"b\"",
+        "1&(2<3)&1",
+        "\"a\"&(2=3)&\"b\"",
+        "1<(2<3)",
+        "1<2<3",
+    ] {
+        let t = parser.parse(formula, &cell_reference);
+        let printed = to_english_localized_string(&t, &cell_reference);
+        assert_eq!(printed, formula);
+        let again = parser.parse(&printed, &cell_reference);
+        assert_eq!(again, t, "{formula}");
+    }
+}
