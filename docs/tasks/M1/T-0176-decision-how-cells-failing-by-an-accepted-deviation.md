@@ -3,7 +3,7 @@ id: T-0176
 title: "Decision: how cells failing by an accepted DEVIATION count toward milestone exit (probes/resource-limits C12, C14)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
