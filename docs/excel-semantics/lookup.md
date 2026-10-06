@@ -25,11 +25,24 @@ Tasks: T-0210, T-0224
 
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
-(`=VLOOKUP("a",Data!E2:E6,3)` → `#N/A`; index -2.5 too). Found, a non-numeric text index is `#REF!`
-(not `#VALUE!`), an index of -1E+15 is `#REF!`, and "1.5" coerces to 1.
-Evidence: gen-m2/1b6ceed7489e0800 A24, 2cfe279fe77a000d A85, 61cacc22c4244179 A310,
-caa981b0753f455c A182, 629e6e8b76fab8b9 A53, cbdabe32a32a4012 A87 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+(`=VLOOKUP("a",Data!E2:E6,3)` → `#N/A`; indexes -1, 0, -2.5 and past the table too). Only a found
+value goes on to index validation:
+- An index below 1 after truncation (-1, 0, 0.5, a blank cell) is `#VALUE!`; one past the table, or
+  below the 32-bit integer range (-1E+15, -2147483649), is `#REF!`.
+- A *reference* index is read only then: a referenced cell holding non-numeric text or an error is
+  `#REF!` (not `#VALUE!`, not the error itself); numeric text ("1.5") and booleans coerce.
+- A *value* index (a literal or a formula result) is coerced before the search, so literal text
+  (`"a"`, `""`) is `#VALUE!` and an error (`1/0`, `NA()`) is that error even when nothing is found.
+  Arguments fail left to right: lookup_value, then the index, then range_lookup (`VLOOKUP(2,A1:C3,"a",1/0)`
+  is `#VALUE!`).
+Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); gen-m2/1b6ceed7489e0800 A24,
+2cfe279fe77a000d A85, 61cacc22c4244179 A310, caa981b0753f455c A182, 629e6e8b76fab8b9 A53,
+cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
+Open: the exact low cut-off between `#VALUE!` and `#REF!` is unprobed between -2147483649 and -1
+(the code treats anything below -2^31 as `#REF!`).
 Status: VERIFIED
+Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
+(crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs), shared by VLOOKUP and HLOOKUP.
 Tasks: T-0211
 
 ## Approximate-match lookups: type-skipping binary search
