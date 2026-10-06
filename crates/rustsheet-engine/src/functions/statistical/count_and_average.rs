@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::number_format::parse_finite_number;
+use crate::number_format::{parse_excel_number, parse_finite_number};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -281,7 +281,7 @@ impl Model {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
-                    } else if let Some(t) = parse_finite_number(&s) {
+                    } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;
                     } else {
@@ -336,6 +336,8 @@ impl Model {
                 }
                 // COUNT(5,) is 2 (probes/average-value-args F16).
                 CalcResult::EmptyArg => result += 1.0,
+                // Only tests number-ness, so the 15-digit cut cannot change the answer
+                // (docs/excel-semantics/numbers.md "15-digit literal parsing").
                 CalcResult::String(s)
                     if !matches!(arg, Node::ReferenceKind { .. })
                         && parse_finite_number(&s).is_some() =>
