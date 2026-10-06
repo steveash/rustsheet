@@ -261,6 +261,9 @@ rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `
 is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
 vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
 differ in the last digit and need oracle probes (T-0004).
+Some of those 12 are not correctly rounded: `GAMMALN(3)` (B5) is 0.6931471805599454, one ulp above
+the correctly rounded ln 2 = 0.6931471805599453, so "correctly rounded" only describes the cells
+T-0926 fixed. Follow-up: T-0973 (see also `statistics.md`).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,
