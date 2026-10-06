@@ -3,7 +3,7 @@ id: T-0250
 title: "Probe VLOOKUP/HLOOKUP index shapes: range/INDEX/OFFSET indexes and the negative #VALUE!/#REF! cut-off"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
