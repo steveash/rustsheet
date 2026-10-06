@@ -635,10 +635,7 @@ fn load_hyperlinks(
         let (row_start, column_start, row_end, column_end) =
             parse_range(cell_ref).map_err(XlsxError::Xml)?;
         let tooltip = node.attribute("tooltip").map(str::to_string);
-        let rel_id = node.attribute_ns(
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-            "id",
-        );
+        let rel_id = node.relationship_id();
         let link = match rel_id {
             Some(rel_id) => {
                 let target = match hyperlink_rels.get(rel_id) {
