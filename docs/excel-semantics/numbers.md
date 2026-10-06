@@ -200,8 +200,10 @@ of such a value. So the flush belongs to multiplication and division (`%`, PRODU
 AVERAGE all multiply or divide), not to addition. `EXP(-708)` (3.3E-308, normal) prints with 14
 digits ("3.3075530036384E-308"; see "Exponent width" under "Number → text conversion uses 15
 significant digits"). `TEXT(1E-307/10,"0.00E+00")` is "0.00E+00". A literal below the smallest normal
-reads as 0: `=1E-308=0`, `=1E-308*1=0` are TRUE and `ISNUMBER(1E-308)` is TRUE (`2E-308`,
-`-2E-308` too: a probe using them as a subtrahend gave the other operand back). The probe leaves out
+reads as 0: `=1E-308=0` is TRUE and `ISNUMBER(1E-308)` is TRUE (A70, A71; `=1E-308*1=0` cannot tell this from the
+`*` flush). Oracle artifact: for a kept subnormal the Graph API reports the value 0.0, so the numeric
+cells A4, A6, A60-A62, A65 and A69 cannot score the engine; only their `C` companions can (T-0989).
+The probe leaves out
 literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
 file (`unsupportedWorkbook`) when they appeared.
 Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER. Not implemented: postfix `%`

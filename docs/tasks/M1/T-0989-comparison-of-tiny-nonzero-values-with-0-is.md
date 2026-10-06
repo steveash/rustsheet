@@ -20,5 +20,8 @@ Evidence probes/subnormal-function-results C4-C6, C60-C62, C65, C69, C73-C75 (T-
 - [ ] probes/subnormal-function-results C4-C6, C60-C62, C65, C69, C73-C75 pass; baseline shrinks; no regression in compare-tolerance cases.
 - [ ] `make check` green; reviewers approve.
 
+## Scoring note
+Graph reports 0.0 for a kept subnormal, so A4, A6, A60-A62, A65 (and A69) stay known failures even once the engine keeps the subnormal correctly. Decide in this task (decision record if a protected path is needed) how to score them; do not hand-edit the baseline.
+
 ## Out of scope
 -
