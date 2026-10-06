@@ -115,8 +115,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   PRODUCT, LARGE, SMALL, ABS, INT, MOD, HOUR/MINUTE/SECOND, DAY and array math (`SUM("10:00","6 PM")`
   = 1.1666666666666667, `AVERAGE("10:00 ")` = 0.4166666666666667, `HOUR("25:00")` = 1,
   `SECOND("10:11.5")` = 11, `SUM(-{"10:00";"6 PM"})` = -1.1666666666666667); a leading space is
-  #VALUE! like coercion (`SUM(" 10:00")`); `COUNT("10:00","x")` is 1 (the engine gives 0:
-  T-0252). Evidence: probes/clock-text-oddities F31:F55 (excel-graph, 2026-10-06).
+  #VALUE! like coercion (`SUM(" 10:00")`); `COUNT("10:00","x")` is 1 (implemented in T-0252). Evidence: probes/clock-text-oddities F31:F55 (excel-graph, 2026-10-06).
 Status: VERIFIED. Implemented for TIMEVALUE in `functions::date_and_time::time_text::parse_clock_text`
 (T-0910); text-to-number coercion (`cast_number`) uses `time_text::parse_time_serial` (T-0146).
 Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: hour-only AM/PM
