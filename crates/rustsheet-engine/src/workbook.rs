@@ -3,6 +3,14 @@ use std::vec::Vec;
 use crate::{expressions::parser::DefinedNameS, types::*};
 
 impl Workbook {
+    /// Recomputes per-sheet state that is derived from the cells and so is not
+    /// serialised (see `SheetData`); call it on a workbook that was decoded.
+    pub(crate) fn rebuild_derived_state(&mut self) {
+        for worksheet in &mut self.worksheets {
+            worksheet.sheet_data.rebuild_column_counts();
+        }
+    }
+
     pub fn get_worksheet_names(&self) -> Vec<String> {
         self.worksheets
             .iter()

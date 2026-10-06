@@ -120,6 +120,7 @@ does the same); a blank does not count as 0. `MDETERM` of a single numeric cell 
 Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1!H10 `MDETERM(B10:D12)`
 and H30 `MDETERM(B30:D32)` (all blank / only B30 = 1) are `#VALUE!`; H14:J16 `MINVERSE(B14:D16)` and
 H34:J36 `MINVERSE(B34:D36)` are `#VALUE!` in every cell; H50 `MDETERM(B50)` = 1.
+Implemented in: `coerce_to_f64` (crates/rustsheet-engine/src/functions/math_and_trigonometry/matrix.rs, T-0943)
 Status: VERIFIED (Excel-cached)
 Tasks: T-0943
 
