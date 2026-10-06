@@ -3,7 +3,7 @@ id: T-0162
 title: "Probe VALUE of plain clock text (VALUE(10:00))"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
