@@ -172,6 +172,7 @@ Rule: a single-cell reference argument to text counts as 0 and to a boolean as 1
 `MAXA(F14,E19,F12)` over three text cells is 0, `MINA(B16,B10,B9)` with B16 = TRUE is 1.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J888, F912.
 Status: VERIFIED (Excel-cached)
+Implemented in: `for_each_value_a` (statistical/count_and_average.rs).
 Tasks: T-0949
 
 ## "inf", "NaN" and out-of-range number text are text

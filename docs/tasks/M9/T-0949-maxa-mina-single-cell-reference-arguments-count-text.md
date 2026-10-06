@@ -3,7 +3,7 @@ id: T-0949
 title: "MAXA/MINA: single-cell reference arguments count text as 0 and booleans as 1/0 (2 poi known failures)"
 milestone: M9
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -42,3 +42,6 @@ change is local; still, no new F lines anywhere.
 
 ## Out of scope
 - MAXA/MINA with no arguments counted at all (today `#VALUE!`; no evidence).
+
+## Outcome
+`for_each_value_a` (MAXA/MINA only) now counts a single-cell reference to text as 0 and to a boolean as 1/0, like a one-cell range. Unit test added; coercion.md has the `Implemented in:` line. Eval: poi known failures 891 -> 889 (J888, F912 fixed), no regressions.
