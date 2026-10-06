@@ -71,6 +71,27 @@ pub(crate) fn flush_subnormal(value: f64) -> f64 {
     }
 }
 
+/// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
+/// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
+/// Excel returns exactly 0. It applies only when the cell formula's outermost operation is `+`/`-`
+/// or SUM (the callers decide that). Across the 1,296 probe cells, snapped results are at most
+/// 7 ULP of the smaller addend and kept ones at least 8 (docs/excel-semantics/numbers.md
+/// "Near-zero snapping in addition and subtraction", probes-numeric/30bc5f8fab02d0a2).
+pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
+    if x == 0.0 || y == 0.0 || x.is_sign_negative() == y.is_sign_negative() {
+        return total;
+    }
+    let smaller = x.abs().min(y.abs());
+    // 2^floor(log2(smaller)) for a normal double (its exponent bits alone); 0 for a subnormal.
+    let scale = f64::from_bits(smaller.to_bits() & 0x7FF0_0000_0000_0000);
+    // 8 ULP of `smaller` is scale * 2^-49.
+    if total.abs() < scale * 2f64.powi(-49) {
+        0.0
+    } else {
+        total
+    }
+}
+
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
@@ -150,6 +171,28 @@ pub(crate) fn array_of_errors(
 }
 
 impl Model {
+    /// A formula's outermost `+`/`-`: like [`Model::handle_arithmetic`], but a scalar result is
+    /// snapped to 0 by [`snap_near_zero`]. Array operands are not snapped (no evidence).
+    pub(crate) fn handle_outermost_sum(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+        subtract: bool,
+    ) -> CalcResult {
+        let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
+        let l = self.get_number_or_array(left, cell);
+        let r = self.get_number_or_array(right, cell);
+        if let (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) = (&l, &r) {
+            let y = if subtract { -*y } else { *y };
+            return match plus(*x, y) {
+                Ok(total) => CalcResult::Number(snap_near_zero(*x, y, total)),
+                Err(error) => CalcResult::new_error(error, cell, "Invalid number".to_string()),
+            };
+        }
+        self.arithmetic_on_values(l, r, cell, op)
+    }
+
     /// Applies `op` element‐wise for arrays/numbers.
     pub(crate) fn handle_arithmetic(
         &mut self,

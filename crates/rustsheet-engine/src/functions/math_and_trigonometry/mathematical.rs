@@ -1,4 +1,4 @@
-use crate::arithmetic::{flush_subnormal, power};
+use crate::arithmetic::{flush_subnormal, power, snap_near_zero};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
@@ -10,6 +10,23 @@ use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 use std::f64::consts::PI;
+
+/// A running SUM: the total and the two addends of the latest addition, which
+/// [`snap_near_zero`] needs when SUM is a formula's outermost operation.
+#[derive(Default)]
+struct SumParts {
+    total: f64,
+    before_last: f64,
+    last: f64,
+}
+
+impl SumParts {
+    fn add(&mut self, value: f64) {
+        self.before_last = self.total;
+        self.last = value;
+        self.total += value;
+    }
+}
 
 /// Smallest `|number/divisor|` for which Excel's `MOD` returns `#NUM!`: a decimal limit, not a
 /// power of two (probes/mod-quotient-threshold5).
@@ -195,34 +212,56 @@ impl Model {
     ///   referenced cell and errors are propagated.
     /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        match self.sum_with_last_addition(args, cell) {
+            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
+            Err(error) => error,
+        }
+    }
+
+    /// SUM as a formula's outermost operation: its final addition snaps to 0 like `+`/`-` do
+    /// (`=SUM(0.1,0.2,-0.3)` is 0; docs/excel-semantics/numbers.md "Near-zero snapping").
+    pub(crate) fn fn_sum_outermost(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.sum_with_last_addition(args, cell) {
+            Ok(sum) => CalcResult::finite_number_or_num(
+                snap_near_zero(sum.before_last, sum.last, sum.total),
+                cell,
+            ),
+            Err(error) => error,
+        }
+    }
+
+    /// The sum of SUM's arguments, with the two addends of its final addition.
+    fn sum_with_last_addition(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<SumParts, CalcResult> {
         if args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
+            return Err(CalcResult::new_args_number_error(cell));
         }
 
-        let mut result = 0.0;
+        let mut sum = SumParts::default();
         for arg in args {
             // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
             match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        result += value;
-                    }) {
-                        return error;
-                    }
+                    self.for_each_number_in_range(left, right, cell, |value| sum.add(value))?;
                 }
                 CalcResult::Array(array) => {
                     for row in array {
                         for value in row {
                             match value {
-                                ArrayNode::Number(value) => {
-                                    result += value;
-                                }
+                                ArrayNode::Number(value) => sum.add(value),
                                 ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
+                                    return Err(CalcResult::Error {
                                         error,
                                         origin: cell,
                                         message: "Error in array".to_string(),
-                                    }
+                                    })
                                 }
                                 _ => {
                                     // We ignore booleans and strings
@@ -231,17 +270,11 @@ impl Model {
                         }
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                calc_result => {
-                    let cast_result = self.cast_to_number(calc_result, cell);
-                    match cast_result {
-                        Ok(f) => result += f,
-                        Err(s) => return s,
-                    }
-                }
+                error @ CalcResult::Error { .. } => return Err(error),
+                calc_result => sum.add(self.cast_to_number(calc_result, cell)?),
             };
         }
-        CalcResult::finite_number_or_num(result, cell)
+        Ok(sum)
     }
 
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
