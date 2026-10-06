@@ -3,7 +3,7 @@ id: T-0173
 title: "Probe arithmetic overflow in +, - and /, negative overflow and per-element array overflow"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -52,3 +52,10 @@ crates/rustsheet-engine/src/arithmetic.rs.
 ## Out of scope
 - `^`/POWER overflow (T-0959) and function results (SUM of ranges, PRODUCT) beyond the cells above.
 - Changing the subnormal flush (numbers.md "Subnormal results become 0" has its own evidence).
+
+## Outcome
+Probe `probes/arith-overflow` (18 questions, 4 cells each, excel-graph) shows `+`, `-`, `/`, negative
+products and per-element array overflow all give `#NUM!` (also `SUM`), and that a divisor below the
+smallest normal double is `#DIV/0!`. Fixed in `arithmetic.rs` (`plus`, `minus`, `divide`) with a
+unit test. Known failures left: `SUM` overflow (T-0185) and the 14-digit text of 4.4942328371558E+307
+(T-0186). numbers.md updated.
