@@ -3,7 +3,7 @@ id: T-0167
 title: "Year-less date text: read it in the current year (engine clock access)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
