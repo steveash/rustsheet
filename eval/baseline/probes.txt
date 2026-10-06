@@ -32,6 +32,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/literal-digits.case.json	6
+C	probes/lookup-index-order.case.json	50
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
@@ -148,12 +149,6 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!A1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!B1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
-F	probes/sheet-qualified-both-corners.case.json	Calc!A1
-F	probes/sheet-qualified-both-corners.case.json	Calc!A11
-F	probes/sheet-qualified-both-corners.case.json	Calc!A12
-F	probes/sheet-qualified-both-corners.case.json	Calc!A5
-F	probes/sheet-qualified-both-corners.case.json	Calc!A6
-F	probes/sheet-qualified-both-corners.case.json	Calc!A7
 F	probes/text-number-words.case.json	Calc!A9
 F	probes/text-number-words.case.json	Calc!B5
 F	probes/text-number-words.case.json	Calc!F12

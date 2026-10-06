@@ -3,7 +3,7 @@ id: T-0211
 title: "VLOOKUP/HLOOKUP: search before validating the column/row index (201 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -67,11 +67,22 @@ Cells that pass with this fix alone:
 - `gen-m2/fa437879253827be.case.json`: A57 A114 A124 A227 A273 A279 A303
 
 ## Acceptance criteria
-- [ ] The 205 cells above disappear from eval/baseline/gen-m2.txt with no new F lines.
-- [ ] Unit tests for each bullet above (not found beats any index; found plus text index is `#REF!`;
+- [x] The 205 cells above disappear from eval/baseline/gen-m2.txt with no new F lines.
+- [x] Unit tests for each bullet above (not found beats any index; found plus text index is `#REF!`;
       found plus numeric text index coerces).
-- [ ] docs/excel-semantics/lookup.md has the rule with the evidence cells above.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/excel-semantics/lookup.md has the rule with the evidence cells above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The search algorithm itself (T-0212). MATCH (T-0210).
+
+## Outcome
+VLOOKUP/HLOOKUP now search first and validate the index only for a found value, via shared
+`lookup_index_arg`/`resolve_lookup_index`. A new probe, probes/lookup-index-order (50 cells,
+excel-graph), refined the rule: an index below 1 is `#VALUE!` (not `#REF!`), and only a *reference*
+index is deferred (text/error cell → `#REF!`). A literal text or error index fails before the search.
+lookup.md records it. Eval: gen-m2 known failures 779 → 522 (263 fixed: 203 of the 205 listed plus
+60 more). Two listed cells remain for other causes: 1b6ceed7489e0800 A400 (`MONTH(1e-15)` is `#NUM!`
+in the index; T-0125) and ef5c55a81783b7d5 A32 (inner HLOOKUP search; T-0212). Six cells regress
+because the early `#REF!` had masked a wrong approximate search; they are allowed by decision 0034
+and moved to T-0212. probes +50 cells, all passing.

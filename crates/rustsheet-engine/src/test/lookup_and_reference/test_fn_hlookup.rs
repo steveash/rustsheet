@@ -125,3 +125,37 @@ fn test_hlookup_whole_row_sees_a_spill_beyond_the_used_area() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "5");
 }
+
+#[test]
+fn test_hlookup_search_before_index() {
+    // probes/lookup-index-order H37–H46 (excel-graph).
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("B1", "2"),
+        ("C1", "3"),
+        ("A2", "x"),
+        ("A3", "10"),
+        ("E1", "a"),
+        ("E2", "'1.5"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=HLOOKUP(1,A1:C3,0)");
+    model._set("H2", "=HLOOKUP(1,A1:C3,4)");
+    model._set("H3", "=HLOOKUP(9,A1:C3,4,FALSE)");
+    model._set("H4", "=HLOOKUP(9,A1:C3,\"a\",FALSE)");
+    model._set("H5", "=HLOOKUP(1,A1:C3,E1)");
+    model._set("H6", "=HLOOKUP(9,A1:C3,E1,FALSE)");
+    model._set("H7", "=HLOOKUP(1,A1:C3,E2)");
+    model._set("H8", "=HLOOKUP(1,A1:C3,-1E+15)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "#VALUE!");
+    assert_eq!(model._get_text("H2"), "#REF!");
+    assert_eq!(model._get_text("H3"), "#N/A");
+    assert_eq!(model._get_text("H4"), "#VALUE!");
+    assert_eq!(model._get_text("H5"), "#REF!");
+    assert_eq!(model._get_text("H6"), "#N/A");
+    assert_eq!(model._get_text("H7"), "1");
+    assert_eq!(model._get_text("H8"), "#REF!");
+}

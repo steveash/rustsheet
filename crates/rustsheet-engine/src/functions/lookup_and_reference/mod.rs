@@ -18,6 +18,7 @@ mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod hstack_vstack;
+mod index_arg;
 mod lookup_table;
 mod tocol_torow;
 mod transpose;
@@ -405,9 +406,9 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        let row_index = match self.get_number(&args[2], cell) {
-            Ok(v) => v.floor() as i32,
-            Err(s) => return s,
+        let row_index = match self.lookup_index_arg(&args[2], cell) {
+            Ok(index) => index,
+            Err(error) => return error,
         };
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
@@ -437,18 +438,14 @@ impl Model {
                 }
             }
         };
-        // `row_index` is 1-based and must point inside the table
-        if row_index < 1 || row_index > table.rows() {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
+        // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(column) => table.get(self, row_index - 1, column as i32, cell),
+            Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
+                Ok(row_index) => table.get(self, row_index, column as i32, cell),
+                Err(error) => error,
+            },
             None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
@@ -469,9 +466,9 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        let column_index = match self.get_number(&args[2], cell) {
-            Ok(v) => v.floor() as i32,
-            Err(s) => return s,
+        let column_index = match self.lookup_index_arg(&args[2], cell) {
+            Ok(index) => index,
+            Err(error) => return error,
         };
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
@@ -501,18 +498,14 @@ impl Model {
                 }
             }
         };
-        // `column_index` is 1-based and must point inside the table
-        if column_index < 1 || column_index > table.columns() {
-            return CalcResult::Error {
-                error: Error::REF,
-                origin: cell,
-                message: "Invalid reference".to_string(),
-            };
-        }
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
+        // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(row) => table.get(self, row as i32, column_index - 1, cell),
+            Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
+                Ok(column_index) => table.get(self, row as i32, column_index, cell),
+                Err(error) => error,
+            },
             None => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
