@@ -68,8 +68,9 @@ fn invalid_date(value: f64) -> Formatted {
     }
 }
 
-/// Formats a TEXT value, `None` being a blank: with an empty format a blank gives "" (docs/excel-semantics/
-/// number-formats.md "An empty format string returns empty text"); otherwise it formats as 0.
+/// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
+/// blank formats as 0 (see "An empty format string returns empty text" in
+/// docs/excel-semantics/number-formats.md).
 pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatted {
     if value.is_none() && format.is_empty() {
         return Formatted {

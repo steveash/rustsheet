@@ -10,7 +10,7 @@ Rule: `TEXT(<blank>, <blank format>)` returns `""`, not `#VALUE!`. Only a blank 
 probed.
 Evidence: poi/ElapsedFormatTests.xlsx A52:A215; poi/FormatChoiceTests.xlsx A27:A53.
 Status: VERIFIED
-Implemented in: `fn_text` (functions/text/common.rs), blank value only; other values with `""` stay unprobed.
+Implemented in: `format_text` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), blank value only; other values with `""` stay unprobed.
 Tasks: T-0933
 
 ## Text and booleans use the format's text section

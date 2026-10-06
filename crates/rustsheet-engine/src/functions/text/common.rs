@@ -14,6 +14,7 @@ use crate::{
         criteria::from_wildcard_to_regex,
         text::util::{self, substitute, text_after, text_before, Case},
     },
+    locale::Locale,
     model::Model,
     number_format::to_precision,
 };
@@ -306,7 +307,7 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
 }
 
 /// The TEXT array element for a number (`None`: a blank): its text, or `#VALUE!` for a bad format.
-fn text_node(value: Option<f64>, format: &str, locale: &crate::locale::Locale) -> ArrayNode {
+fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
     let d = format_text(value, format, locale);
     d.error.map_or(ArrayNode::String(d.text), |_| {
         ArrayNode::Error(Error::VALUE)
