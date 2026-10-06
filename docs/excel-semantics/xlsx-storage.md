@@ -55,7 +55,7 @@ crates/rustsheet-xlsx/src/import/xml.rs (`reference_of`)
 ## Phonetic (furigana) runs are not cell text
 Rule: a shared string's text is its plain `<t>` plus the `<r><t>` rich-text runs. `<rPh><t>` phonetic
 runs (ECMA-376 §18.4.6) are annotations and are not part of the cell value, so they do not count
-towards `LEN` or the 32,767-character limit. Evidence: fixtures/shared-string-phonetic-runs.xlsx
+towards `LEN` (and so, by inference only, not towards the 32,767-character limit: not probed). Evidence: fixtures/shared-string-phonetic-runs.xlsx
 (oracle: excel-graph, 2026-10-06, T-0170): A1 is "Tokyo" with an `<rPh>` run of 5 katakana;
 `=LEN(A1)` is 5 (not 10), `=A1&"!"` is "Tokyo!" and `=EXACT(A1,"Tokyo")` is TRUE. The unit test
 `test_phonetic_runs_are_not_cell_text` pins the behavior. PHONETIC() is not implemented.
