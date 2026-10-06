@@ -3,7 +3,7 @@ id: T-0164
 title: "Shared strings: leave phonetic rPh runs out of the cell text"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
