@@ -22,7 +22,7 @@ reads as TRUE/FALSE, so it returns TRUE for J136. OR and XOR share that code but
 neither has a text value returned by a function (IFERROR, CONCATENATE, IF). Recorded so far in
 docs/excel-semantics/coercion.md, "AND: a literal text argument that is not TRUE/FALSE is #VALUE!".
 
-Probe case `eval/suites/probes/logical-text-args.case.json` (excel-probe skill), one cell each for AND,
+Probe case `eval/suites/probes/cases/logical-text-args.case.json` (excel-probe skill), one cell each for AND,
 OR and XOR:
 - literal text: `("1",1)`, `("abc",TRUE)`, `("",TRUE)`, `(" ",TRUE)`, `("TRUE",1)`, `("true",0)`,
   `("FALSE",1)`, `("0",1)`, and `("abc")` alone;

@@ -40,8 +40,8 @@ reference holding a boolean): `gen-m2/ef5c55a81783b7d5` Calc!A40 (`MID(...,Data!
 expected "0.1x~") and `gen-m2/d04d501154afc771` Calc!A19 (`RIGHT(Data!A11,Data!B1)`, B1 = FALSE).
 T-0219 keeps the huge-value and near-integer parts.
 
-Rule recorded in docs/excel-semantics/text.md, "LEFT/RIGHT/MID count arguments coerce numeric text and
-booleans".
+Rule recorded in docs/excel-semantics/coercion.md, "LEFT / RIGHT / MID numeric arguments" (MID numeric
+text is UNVERIFIED there: add a probe cell or leave MID unchanged).
 
 ## Acceptance criteria
 - [ ] The 6 lines `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E824`, H824, K824, E1168,
@@ -50,7 +50,7 @@ booleans".
       eval/baseline/gen-m2.txt too, or the Outcome says which other cause keeps them (T-0219).
 - [ ] Unit tests for LEFT, RIGHT and MID with a numeric-text count, a fractional numeric-text count,
       TRUE/FALSE, and non-numeric text (`#VALUE!`), scalar and array forms.
-- [ ] The text.md entry gets an `Implemented in:` line.
+- [ ] The coercion.md entry gets an `Implemented in:` line.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

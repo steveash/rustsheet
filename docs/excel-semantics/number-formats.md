@@ -138,7 +138,7 @@ many digits: on 36191.1702084375 (04:05:06.009) `hh:mm:ss.000 am/pm` → "04:05:
 `HH:MM:SS.000 AM/PM` → "04:05:06.009 AM" (A37), `h:m:s.00` → "4:5:6.01" (A40); on 17816.607951388887
 `hh:mm:ss.000 am/pm` and `HH:MM:SS.000 AM/PM` → "02:35:27.000 PM" (A13, A18). With the short marker:
 `h:m:s.000 A/P` → "2:35:27.000 P" (A12), `H:M:S.00 a/p` → "2:35:27.00 p" (A17), `h:m:s.00 A/P` →
-"4:5:6.01 A" (A31), `H:M:S.00 a/p` → "4:5:6.01 a" (A36). Only A40 tells rounding from truncation.
+"4:5:6.01 A" (A31), `H:M:S.00 a/p` → "4:5:6.01 a" (A36). Every cell shows rounding, not truncation: 36191.1702084375 is 04:05:06.008999934 and 17816.607951388887 is 14:35:26.99999985 (truncation would give .008, .00 and 26.999).
 Evidence: poi/DateFormatTests.xlsx Tests!A12, A13, A17, A18, A31, A32, A36, A37, A40 (desktop Excel cached
 values, Microsoft Macintosh Excel 16.0; the 1904 date system does not change the time of day).
 Status: VERIFIED

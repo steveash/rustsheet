@@ -209,7 +209,7 @@ Rule: the holidays argument of WORKDAY is a range/array argument. A legacy (non-
 `=WORKDAY(C2,6,D2:D5)` saved by desktop Excel uses every holiday in D2:D5; it is not implicitly
 intersected with the formula's row. With C2 = 42429 and D2:D5 = 42422, 42423, 42437, 42499 the result
 is 42438 (2016-03-09), skipping the 2016-03-08 holiday in D4.
-Evidence: poi/59106.xlsx Test!B2, A2 (desktop Excel cached values).
+Evidence: poi/59106.xlsx Test!B2, A2 (desktop Excel 14.0300 (2010) cached values; no M365 cell yet).
 Status: VERIFIED for WORKDAY. UNVERIFIED for WORKDAY.INTL's holidays argument (no Excel cell yet; the
 engine already treats NETWORKDAYS/NETWORKDAYS.INTL holidays as ranges).
 Tasks: T-0979

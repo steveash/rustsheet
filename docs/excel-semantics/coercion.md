@@ -8,8 +8,9 @@ Tasks: T-0215
 
 ## AND: a literal text argument that is not TRUE/FALSE is #VALUE!
 Rule: a text literal passed directly to AND that does not read as TRUE/FALSE makes the result `#VALUE!`
-instead of being ignored: `AND("1",1)` → `#VALUE!`, `AND(E14,E17,"1")` → `#VALUE!`.
-Evidence: poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J136, I136 (desktop Excel cached values).
+instead of being ignored: `AND("1",1)` → `#VALUE!`.
+Evidence: poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J136 (desktop Excel 15.0300 (2013) cached value). I136 agrees
+but cannot tell the readings apart (its other arguments are text in cells, which already make AND #VALUE!).
 Status: VERIFIED for AND with a literal. UNVERIFIED for OR/XOR, for text returned by a function and for
 "TRUE"/"" literals (probe: T-0254).
 Tasks: T-0254, T-0255
@@ -41,13 +42,18 @@ Implemented in: `for_each_value`, `fn_count` (also HARMEAN/SKEW/SKEW.P/KURT via 
 Tasks: T-0236
 
 ## LEFT / RIGHT / MID numeric arguments
-Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`); a start or length around 1E+15 is `#VALUE!`
+Rule: booleans coerce (TRUE = 1: `MID(…,TRUE,5)`, `LEFT("a string",TRUE)` → "a", `RIGHT("a string",TRUE)` → "g");
+numeric text counts as its number: `LEFT("a string","6")` → "a stri", `RIGHT("a string","6")` → "string", and with
+E17 = `="2.99999"` (text) `LEFT("non-numeric",E17)` → "no", `RIGHT(" beginsWithSpace",E17)` → "ce" (2.99999 → 2);
+numeric text for MID's start_num/num_chars is UNVERIFIED (expected by analogy; no cell yet). A start or length around 1E+15 is `#VALUE!`
 (`MID("ü",1000000000000000.0,4)`); in LEFT a length a hair below 1 (`TRUE - 1E-15`) counts as 1
 (seen for LEFT only, and the cell cannot tell whether the subtraction or LEFT rounds: probe in T-0219).
 Evidence: gen-m2/ef5c55a81783b7d5 A40, d0c29dd5c530e28c A269, 78bc88199fc96650 A345,
 b4392a6514a36ade A14 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-Status: VERIFIED
-Tasks: T-0219
+Numeric text: poi/FormulaEvalTestData_Copy.xlsx EverythingTests!E824, H824, K824, E1168, H1168, K1168 (desktop Excel
+15.0300 (2013) cached values).
+Status: VERIFIED (except MID numeric text, above)
+Tasks: T-0219, T-0256
 
 ## Text comparison uses Excel's collation, not code-point order
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE
