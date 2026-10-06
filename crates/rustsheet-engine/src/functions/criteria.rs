@@ -6,8 +6,11 @@
 use regex_lite as regex;
 
 use crate::{
-    calc_result::CalcResult, expressions::token::is_english_error_string,
-    formatter::format::parse_date, locale::Locale, number_format::parse_finite_number,
+    calc_result::CalcResult,
+    expressions::token::is_english_error_string,
+    formatter::date_text::parse_date,
+    locale::Locale,
+    number_format::{parse_excel_number, parse_finite_number},
 };
 
 /// If `s` looks like a date literal in the given locale, return its Excel
@@ -193,12 +196,11 @@ fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
     }
 }
 
+// Text `<=` / `>=` criteria compare the cell with the operand (probes/date-text-dotted-criteria
+// E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
 fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            let lower_case = &s.to_lowercase();
-            target.cmp(lower_case) == std::cmp::Ordering::Less || lower_case == target
-        }
+        CalcResult::String(s) => s.to_lowercase().as_str() <= target,
         _ => false,
     }
 }
@@ -212,10 +214,7 @@ fn result_is_greater_than_string(calc_result: &CalcResult, target: &str) -> bool
 
 fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => {
-            let lower_case = &s.to_lowercase();
-            target.cmp(lower_case) == std::cmp::Ordering::Greater || lower_case == target
-        }
+        CalcResult::String(s) => s.to_lowercase().as_str() >= target,
         _ => false,
     }
 }
@@ -315,7 +314,7 @@ fn bool_or_error_operand_matcher<'a>(
 /// Evidence: probes/criteria-padded-operand C1-C17 and probes/criteria-gaps C16-C18, C22.
 /// "inf", "NaN" and "1e400" are text criteria (probes/text-number-words E1-E5).
 fn parse_criterion_number(v: &str) -> Option<f64> {
-    parse_finite_number(v.trim_matches(' '))
+    parse_excel_number(v.trim_matches(' '))
 }
 
 /// Same as [`build_criteria`] with an explicit [`CriteriaFlavor`].

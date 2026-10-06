@@ -94,9 +94,41 @@ fn fn_offset_huge_arguments_are_ref_errors() {
     model._set("A9", "=OFFSET(B2,1E300,1E300,1E300,1E300)");
     model.evaluate();
 
-    for cell in ["A1", "A2", "A3", "A4", "A5", "A6"] {
+    for cell in ["A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8"] {
         assert_eq!(model._get_text(cell), *"#REF!", "{cell}");
     }
-    // A7-A9 only pin "no panic": Excel accepts negative height/width (TODO(T-0956)) and the
-    // result for 1E300 arguments has no oracle evidence, so their values are not asserted.
+    // A9 only pins "no panic": the result for 1E300 arguments has no oracle evidence.
+}
+
+// A negative height/width extends the area up/left from the anchor; fractions and 0 are quirky.
+// Excel: probes/offset-negative-height-width (docs/excel-semantics/references.md).
+#[test]
+fn fn_offset_negative_height_width() {
+    let mut model = new_empty_model();
+    for r in 1..=12 {
+        model._set(&format!("A{r}"), &r.to_string());
+        model._set(&format!("B{r}"), &(r * 100).to_string());
+    }
+    model._set("D1", "=SUM(OFFSET(A10,0,0,-3,1))");
+    model._set("D2", "=SUM(OFFSET(B10,0,0,1,-2))");
+    model._set("D3", "=SUM(OFFSET(B10,0,0,-2,-2))");
+    model._set("D4", "=SUM(OFFSET(A5:B6,1,1,-2,-2))");
+    model._set("D5", "=SUM(OFFSET(A2,0,0,-3,1))");
+    model._set("D6", "=OFFSET(A10,0,0,0,1)");
+    model._set("D7", "=SUM(OFFSET(A10,0,0,0.5,1))");
+    model._set("D8", "=SUM(OFFSET(A10,0,0,-0.5,1))");
+    model._set("D9", "=SUM(OFFSET(A10,0,0,-2.9,1))");
+    model._set("D10", "=SUM(OFFSET(A5:B6,0,0,,-2))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"27");
+    assert_eq!(model._get_text("D2"), *"1010");
+    assert_eq!(model._get_text("D3"), *"1919");
+    assert_eq!(model._get_text("D4"), *"1111");
+    assert_eq!(model._get_text("D5"), *"#REF!");
+    assert_eq!(model._get_text("D6"), *"#REF!");
+    assert_eq!(model._get_text("D7"), *"19");
+    assert_eq!(model._get_text("D8"), *"21");
+    assert_eq!(model._get_text("D9"), *"19");
+    assert_eq!(model._get_text("D10"), *"#REF!");
 }

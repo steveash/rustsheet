@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::{
     calc_result::Range,
     constants::{DEFAULT_WINDOW_HEIGHT, DEFAULT_WINDOW_WIDTH},
+    defined_names::ParsedDefinedName,
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -18,7 +19,7 @@ use crate::{
     },
     language::{get_default_language, get_language},
     locale::{get_default_locale, get_locale},
-    model::{get_milliseconds_since_epoch, Model, ParsedDefinedName},
+    model::{get_milliseconds_since_epoch, Model},
     types::{
         DefinedName, Metadata, SheetState, Workbook, WorkbookSettings, WorkbookView, Worksheet,
         WorksheetView,
@@ -168,6 +169,8 @@ impl Model {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
+                    // Excel leaves `Sheet1!#REF!` as the body of a name whose range was deleted.
+                    Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
                     _ => ParsedDefinedName::InvalidDefinedNameFormula,
                 }
             };

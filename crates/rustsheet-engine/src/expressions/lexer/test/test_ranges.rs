@@ -518,3 +518,42 @@ fn range_operator() {
     assert!(matches!(lx.next_token(), RightParenthesis));
     assert_eq!(lx.next_token(), EOF);
 }
+
+#[test]
+fn test_sheet_qualified_malformed_corner_pairs_are_names() {
+    // Excel reads these as a sheet-scoped name, `#NAME?` (references.md, T-0145).
+    for formula in [
+        "Data!A:Data!B",
+        "Data!A1:Data!B",
+        "Data!A:Data!B1",
+        "Data!A:Data!A",
+        "Data!A1:B",
+        "'My Data'!A:'My Data'!B",
+    ] {
+        let mut lx = new_lexer(formula);
+        // The sheet prefix stays in the identifier so the formula text round-trips.
+        assert_eq!(lx.next_token(), Ident(formula.to_string()), "{formula}");
+        assert_eq!(lx.next_token(), EOF, "{formula}");
+    }
+}
+
+#[test]
+fn test_sheet_qualified_valid_corner_pairs_stay_ranges() {
+    // Unprobed shapes keep their original parse error.
+    for formula in [
+        "Data!A1:INDEX(Data!B:B,2)",
+        "Data!A1:B1048577",
+        "Data!A1:Data!$B",
+        "Data!A1:Data!XFE1",
+    ] {
+        let mut lx = new_lexer(formula);
+        assert!(!matches!(lx.next_token(), Ident(_)), "{formula}");
+    }
+    for formula in ["Data!A:B", "Data!A1:B2", "Data!1:2", "Data!A1:Data!B2"] {
+        let mut lx = new_lexer(formula);
+        assert!(
+            !matches!(lx.next_token(), Ident(_) | Illegal(_)),
+            "{formula}"
+        );
+    }
+}

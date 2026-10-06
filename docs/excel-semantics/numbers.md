@@ -109,7 +109,11 @@ and `LEN((1e307*100)&"")` are all `#NUM!`. A result of exactly 1e308 is finite:
 `=1E+307*10-10^308` is 0, and `=10^308*10` is `#NUM!`.
 Evidence: probes-numeric/4f413cc257ce15c4 Calc!A121-A124; probes/precision-and-rounding A12, A13.
 Oracle: excel-graph, 2026-10-04.
-Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet).
+Status: VERIFIED for `*`. UNVERIFIED for `+`, `-`, `/` (no probe yet), for negative overflow
+(`-1e307*100`) and for the per-element array form (`{1e307,1}*100`); the unit tests pin our
+expectation only.
+Implemented in: `arithmetic::times` (crates/rustsheet-engine/src/arithmetic.rs); test
+`overflowing_product_is_num_inside_formulas`.
 Tasks: T-0136
 
 ## Comparison tolerance
@@ -127,7 +131,11 @@ digits 16+ are **truncated**, not rounded: `VALUE("9307149050110945.41")` = 9307
 Evidence: probes-numeric/23733e52a2ff91ab `literal-15-digit/*`; probes/precision-and-rounding A11.
 Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number` and `parse_formatted_number` (so `VALUE`); other raw `str::parse::<f64>` sites and an oracle case for `"<17 digits>"+0` are T-0150.
+The same truncation applies to numeric text in COUNTIF/SUMIF criteria (`COUNTIF(r,"123456789012345678")`
+matches a cell holding 123456789012345000, and `"<…"`/`">=…"` compare against the cut value) and to
+`NUMBERVALUE` and `AVERAGE` text arguments (probes/text-number-15-digits B1-B8, B11-B13; excel-graph,
+2026-10-06).
+Implemented in: `parse_excel_number` in crates/rustsheet-engine/src/number_format.rs, used by the lexer number token, `cast_number`, `parse_formatted_number` (so `VALUE`), criteria operands, `NUMBERVALUE` and `AVERAGE`, and COUNT's direct text (via `cast_number`, T-0252). Other sites keep `parse_finite_number` because the digit count cannot change their answer: the date-criterion check only tests number-ness; the sequence detector (autofill sources are already 15-digit values), conditional-formatting date bounds, `formatter/lexer.rs` condition operands and utils.rs are not affected in practice. `"<17 digits>"+0` is cut the same way (probes/text-number-15-digits B14, excel-graph 2026-10-06). Unverified: autofill over E-notation numbers (1E-10, 2E-10) copies instead of extending in our engine; Excel's behavior is unknown (T-0171).
 Tasks: T-0143, T-0150
 
 ## Subnormal results become 0
@@ -169,7 +177,7 @@ Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, 
 Oracle: excel-graph, 2026-10-05.
 Status: VERIFIED
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
-lexer) and `parse_finite_number` (criteria, COUNT/AVERAGE text, NUMBERVALUE, format conditions),
+lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
 in crates/rustsheet-engine/src/number_format.rs.
 Tasks: T-0920, T-0140, T-0154
 
@@ -253,6 +261,9 @@ rounded ln|Gamma(x)|: exactly 0 at x = 1 and 2, GAMMALN(4) = ln 6. The Lanczos `
 is off by a few ulp, so `special::ln_gamma` uses fdlibm's `lgamma` (`libm` crate; chosen over a
 vendored port to keep one maintained definition). 12 cells (B/C rows 5, 9, 15, 23, 24, 26) still
 differ in the last digit and need oracle probes (T-0004).
+Some of those 12 are not correctly rounded: `GAMMALN(3)` (B5) is 0.6931471805599454, one ulp above
+the correctly rounded ln 2 = 0.6931471805599453, so "correctly rounded" only describes the cells
+T-0926 fixed. Follow-up: T-0973 (see also `statistics.md`).
 
 ## Excel for the web and desktop Excel differ in the last digits of some functions
 Rule: for ATAN2, IMARGUMENT, IMREAL∘IMSQRT, IMCOS, IMTAN, ERFC/ERFC.PRECISE, BESSELJ/BESSELY,

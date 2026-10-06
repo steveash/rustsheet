@@ -15,6 +15,7 @@ pub mod case;
 pub mod cellref;
 pub mod engine;
 pub mod fetch;
+pub mod overrides;
 pub mod report;
 pub mod runner;
 pub mod suite;

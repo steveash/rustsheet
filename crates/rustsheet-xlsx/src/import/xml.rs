@@ -19,7 +19,7 @@ use quick_xml::events::attributes::Attribute;
 use quick_xml::events::{BytesRef, BytesStart, Event};
 use quick_xml::XmlVersion;
 
-use crate::error::XlsxError;
+use crate::error::{ImportLimit, XlsxError};
 
 /// The namespace of the `xml:` prefix, which needs no declaration.
 const XML_NAMESPACE: &str = "http://www.w3.org/XML/1998/namespace";
@@ -144,15 +144,19 @@ impl<'a> Iterator for Descendants<'a> {
 }
 
 /// The text of a reference event: a character reference such as `&#10;`
-/// or one of the five predefined entities. Any other entity is an error,
-/// since xlsx parts declare none.
+/// or one of the five predefined entities. Any other entity is a limit
+/// error: xlsx parts declare none, and a declared one is never expanded, so
+/// an entity-expansion bomb ("billion laughs") is rejected at its first use.
 pub(crate) fn reference_of(reference: &BytesRef) -> Result<Cow<'static, str>, XlsxError> {
     if let Some(character) = reference.resolve_char_ref()? {
         return Ok(Cow::Owned(character.to_string()));
     }
     quick_xml::escape::resolve_predefined_entity(reference)
         .map(Cow::Borrowed)
-        .ok_or_else(|| XlsxError::Xml(format!("Unknown entity: &{};", &**reference)))
+        .ok_or(XlsxError::Limit {
+            limit: ImportLimit::EntityExpansion,
+            max: 0,
+        })
 }
 
 /// The value of an attribute, normalized as XML 1.0 requires: entities
@@ -354,6 +358,22 @@ mod tests {
         assert_eq!(root.attribute("v"), Some("1 2"));
         assert_eq!(root.child("t").unwrap().text(), Some(" "));
         assert_eq!(root.child("u").unwrap().text(), Some("x\ny\nz"));
+    }
+
+    #[test]
+    fn declared_entities_are_never_expanded() {
+        let bomb = concat!(
+            "<?xml version=\"1.0\"?>",
+            "<!DOCTYPE a [<!ENTITY a0 \"lol\"><!ENTITY a1 \"&a0;&a0;&a0;&a0;&a0;\">]>",
+            "<a>&a1;</a>"
+        );
+        assert_eq!(
+            XmlNode::parse_str(bomb),
+            Err(XlsxError::Limit {
+                limit: ImportLimit::EntityExpansion,
+                max: 0
+            })
+        );
     }
 
     #[test]
