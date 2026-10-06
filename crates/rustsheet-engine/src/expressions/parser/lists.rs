@@ -2,7 +2,7 @@
 //! of an array constant.
 
 use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser};
-use crate::expressions::token::{OpUnary, TokenType};
+use crate::expressions::token::{OpSum, TokenType};
 
 impl Parser {
     /// One row of an array constant `{1,2;3,4}`. Items may only be numbers,
@@ -19,18 +19,24 @@ impl Parser {
     }
 
     fn parse_array_item(&mut self) -> Result<ArrayNode, Node> {
+        // Excel: one sign, directly attached to a number literal, and nothing else
+        // (docs/excel-semantics/syntax.md "Array constants take a single optional sign").
+        if let TokenType::Addition(op) = self.lexer.peek_token() {
+            self.lexer.advance_token();
+            if self.lexer.whitespace_follows() {
+                return Err(self.invalid_array_value());
+            }
+            return match self.lexer.next_token() {
+                TokenType::Number(n) if op == OpSum::Minus => Ok(ArrayNode::Number(-n)),
+                TokenType::Number(n) => Ok(ArrayNode::Number(n)),
+                _ => Err(self.invalid_array_value()),
+            };
+        }
         match self.parse_expr() {
             Node::BooleanKind(s) => Ok(ArrayNode::Boolean(s)),
             Node::NumberKind(s) => Ok(ArrayNode::Number(s)),
             Node::StringKind(s) => Ok(ArrayNode::String(s)),
             Node::ErrorKind(kind) => Ok(ArrayNode::Error(kind)),
-            Node::UnaryKind {
-                kind: OpUnary::Minus,
-                right,
-            } => match *right {
-                Node::NumberKind(n) => Ok(ArrayNode::Number(-n)),
-                _ => Err(self.invalid_array_value()),
-            },
             error @ Node::ParseErrorKind { .. } => Err(error),
             _ => Err(self.invalid_array_value()),
         }
