@@ -44,7 +44,7 @@ b4392a6514a36ade A14 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidec
 poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!E824, H824, K824 (LEFT),
 E1168, H1168, K1168 (RIGHT).
 Status: VERIFIED
-Tasks: T-0219 (huge and near-integer counts), T-0257 (numeric text and booleans)
+Tasks: T-0219 (huge and near-integer counts), T-0259 (numeric text and booleans)
 
 ## Text comparison uses Excel's collation, not code-point order
 Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE, "1.5" > "?b" is TRUE
@@ -206,7 +206,7 @@ Rule: `"(1)"` is read as -1 wherever text is coerced to a number: `0+"(1)"` = -1
 `0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine does not read the form yet.
 Evidence: probes/paren-negative-text (excel-graph, 2026-10-06).
 Status: VERIFIED
-Tasks: T-0257
+Tasks: T-0259
 
 ## AND/OR/XOR text arguments
 Rule: an empty text literal is skipped (`AND("",TRUE)` = TRUE) and a text literal that is not

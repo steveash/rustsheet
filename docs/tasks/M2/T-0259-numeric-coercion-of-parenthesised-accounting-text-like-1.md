@@ -1,5 +1,5 @@
 ---
-id: T-0257
+id: T-0259
 title: "Numeric coercion of parenthesised accounting text like (1) = -1"
 milestone: M2
 lane: functions-stat
