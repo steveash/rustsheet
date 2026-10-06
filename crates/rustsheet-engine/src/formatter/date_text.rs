@@ -13,8 +13,15 @@ use super::dates::date_to_serial_number;
 
 /// Display format Excel gives typed text in the "day month-name year" family (`1-Jul-26`).
 const DAY_MONTH_NAME_YEAR_FORMAT: &str = "d-mmm-yy";
-/// Display format Excel gives typed "month-name year" text (`Jul-26`).
+/// Display format Excel gives typed "month-name year" text (`Jul-2026`).
 const MONTH_NAME_YEAR_FORMAT: &str = "mmm-yy";
+/// Display format given to typed year-less text (`Jul-26`, `7/1`, `1-Jul`).
+const DAY_MONTH_NAME_FORMAT: &str = "d-mmm";
+
+/// The current year, asked for only when year-less text ("7/1", "Jul-26") needs it: it reads
+/// the clock, which other date text must not pay for. `None` (no clock) makes such text an error.
+pub(crate) type CurrentYear<'a> = &'a dyn Fn() -> Option<i32>;
+const NO_CLOCK: &str = "Year-less date text needs the current year";
 
 fn is_digits(s: &str, lengths: std::ops::RangeInclusive<usize>) -> bool {
     lengths.contains(&s.len()) && s.bytes().all(|b| b.is_ascii_digit())
@@ -118,15 +125,17 @@ fn max_days_in_month(month: u32) -> u32 {
     }
 }
 
-/// "Month year" text is the first of that month. A one- or two-digit number that can be a day
-/// of the month is a day of the current year (#VALUE! until T-0167), any other is a two-digit
-/// year: "Jul-45" is 1 July 1945 (probes/date-text-yearless). `numeric_month` admits a month
-/// number ("2/30"), only for separated words in month-first locales.
+/// "Month year" text is the first of that month. A one- or two-digit number that is a day of
+/// the month in the current year makes it that day of the current year ("Jul-26", "7/1"), any
+/// other is a two-digit year: "Jul-45" is 1 July 1945, and in 2026 "Feb-29" is 1 February 2029
+/// (probes/date-text-yearless). `numeric_month` admits a month number ("2/30"), only for
+/// separated words in month-first locales.
 fn parse_month_year(
     name: &str,
     year_str: &str,
     locale: &Locale,
     numeric_month: bool,
+    current_year: CurrentYear,
 ) -> Result<(i32, String), String> {
     let (month, format) = match parse_month_name(name, locale) {
         Some((month, _)) => (month, MONTH_NAME_YEAR_FORMAT),
@@ -139,26 +148,59 @@ fn parse_month_year(
     if !(1..=12).contains(&month) {
         return Err("Not a valid month".to_string());
     }
-    // A numeric month takes a one- or two-digit number, as "2/30" does in
-    // probes/date-text-yearless; "7/2026" is not probed.
-    let year = if is_digits(year_str, 4..=4) && format == MONTH_NAME_YEAR_FORMAT {
+    // A four-digit year gives the first of that month for a numeric month too: "7/2026",
+    // "7-2026" and "12/1999" (probes/date-text-yearless-2 rows 7-9).
+    let year = if is_digits(year_str, 4..=4) {
         parse_year(year_str)?.0
     } else if is_digits(year_str, 1..=2) {
-        let number = year_str.parse::<i32>().map_err(|e| e.to_string())?;
-        if u32::try_from(number).is_ok_and(|day| (1..=max_days_in_month(month)).contains(&day)) {
-            return Err("Year-less date text needs the current year".to_string());
+        let number = year_str.parse::<u32>().map_err(|e| e.to_string())?;
+        // The cheap bound first: only a possible day of the month reads the clock.
+        if (1..=max_days_in_month(month)).contains(&number) {
+            let this_year = current_year().ok_or(NO_CLOCK)?;
+            if let Ok(serial) = serial_of(number, month, this_year) {
+                return Ok((serial, DAY_MONTH_NAME_FORMAT.to_string()));
+            }
         }
-        two_digit_year(number)
+        two_digit_year(i32::try_from(number).map_err(|e| e.to_string())?)
     } else {
         return Err("Not a valid year".to_string());
     };
     Ok((serial_of(1, month, year)?, format.to_string()))
 }
 
+/// The serial of a day of the current year, or an error when it is not a date this year
+/// ("Feb 29" outside a leap year) or there is no clock.
+fn serial_of_this_year(day: u32, month: u32, current_year: CurrentYear) -> Result<i32, String> {
+    let year = current_year().ok_or(NO_CLOCK)?;
+    serial_of(day, month, year)
+}
+
+/// "Day month" text ("1-Jul", "1/Jul", "1 July"): that day of the current year. Unlike
+/// month-first text, a number that is not a day of the month this year is #VALUE!, never a
+/// year ("45-Jul", "0-Jul", "32 Jul"; probes/date-text-yearless-2, date-text-yearless-3).
+fn parse_day_month(
+    day_str: &str,
+    month: u32,
+    current_year: CurrentYear,
+) -> Result<(i32, String), String> {
+    let (day, _) = parse_day(day_str)?;
+    if !(1..=max_days_in_month(month)).contains(&day) {
+        return Err("Not a valid day".to_string());
+    }
+    Ok((
+        serial_of_this_year(day, month, current_year)?,
+        DAY_MONTH_NAME_FORMAT.to_string(),
+    ))
+}
+
 /// One word with a date separator: "7/1/2026", "2026-07-01", "1-Jul-2026", "1/Jul/26",
 /// "Jul-2026". Separators are `/` and `-`, plus `.` in locales whose short date uses it (en-US
 /// rejects "1.7.2026"; probes/date-text-grammar A39/A40).
-fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String> {
+fn parse_separated(
+    word: &str,
+    locale: &Locale,
+    current_year: CurrentYear,
+) -> Result<(i32, String), String> {
     let short_format = &locale.dates.date_formats.short;
     let separator = ['/', '-', '.']
         .into_iter()
@@ -168,7 +210,12 @@ fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String>
     // At most 4 parts: enough to reject longer text without splitting all of it.
     let parts: Vec<&str> = word.splitn(4, separator).collect();
     let (day_str, month_str, year_str) = match parts.as_slice() {
-        [name, year] => return parse_month_year(name, year, locale, true),
+        [first, second] => {
+            return match parse_month_name(second, locale) {
+                Some((month, _)) => parse_day_month(first, month, current_year),
+                None => parse_month_year(first, second, locale, true, current_year),
+            };
+        }
         // Year first is numeric only: "2023/Jan/15" is #VALUE! (probes/date-text-grammar A20).
         [year, month, day] if is_digits(year, 4..=4) => {
             let (day, day_format) = parse_day(day)?;
@@ -221,15 +268,24 @@ fn parse_separated(word: &str, locale: &Locale) -> Result<(i32, String), String>
 ///
 /// Month names follow [`parse_month_name`]; a month name never comes first in a separated word
 /// ("Jul-1-2026" is #VALUE!). Text with a clock time is `time_text`'s ("date clock" text).
-pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), String> {
+pub(crate) fn parse_date(
+    value: &str,
+    locale: &Locale,
+    current_year: CurrentYear,
+) -> Result<(i32, String), String> {
     if value.trim() != value {
         return Err("Not a valid date".to_string());
     }
     // At most 4 words: enough to reject longer text without splitting all of it.
     let words: Vec<&str> = value.split_whitespace().take(4).collect();
     let (day, name, year) = match words.as_slice() {
-        [word] => return parse_separated(word, locale),
-        [name, year] => return parse_month_year(name, year, locale, false),
+        [word] => return parse_separated(word, locale, current_year),
+        [first, second] => {
+            return match parse_month_name(second, locale) {
+                Some((month, _)) => parse_day_month(first, month, current_year),
+                None => parse_month_year(first, second, locale, false, current_year),
+            };
+        }
         [name, day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
         [day, name, year] => (*day, *name, *year),
         _ => return Err("Not a valid date".to_string()),
@@ -246,11 +302,19 @@ pub(crate) fn parse_date(value: &str, locale: &Locale) -> Result<(i32, String), 
 #[cfg(test)]
 mod tests {
     use super::parse_date;
+    use crate::functions::date_and_time::time_text::parse_date_clock_serial;
     use crate::locale::get_locale;
 
-    fn en(text: &str) -> Option<i32> {
+    /// The serial of en-US date text read with the clock in `year` (`None`: no clock).
+    fn en_in(text: &str, year: Option<i32>) -> Option<i32> {
         let locale = get_locale("en").ok()?;
-        parse_date(text, locale).ok().map(|(serial, _)| serial)
+        parse_date(text, locale, &|| year)
+            .ok()
+            .map(|(serial, _)| serial)
+    }
+
+    fn en(text: &str) -> Option<i32> {
+        en_in(text, Some(2026))
     }
 
     #[test]
@@ -314,15 +378,81 @@ mod tests {
         assert_eq!(en("Jul-0"), Some(36708));
         assert_eq!(en("Jul-99"), Some(36342));
         assert_eq!(en("2/30"), Some(10990));
-        // A possible day of the month is the current year's (not implemented yet, T-0167)
+        // A numeric month with a four-digit year is the first of that month
+        // (probes/date-text-yearless-2 rows 7-9).
+        assert_eq!(en("7/2026"), Some(46204));
+        assert_eq!(en("7-2026"), Some(46204));
+        assert_eq!(en("12-1999"), Some(36495));
+        // Not a day of February in 2026: a two-digit year, 2029-02-01.
+        assert_eq!(en("Feb-29"), Some(47150));
+        assert_eq!(en("2/29"), Some(47150));
         for text in [
-            "Jul-26", "7/1", "Jul 31", "Feb-29", "2/29", "13/1", "13/45", "0/45", "Jul-123",
-            // A numeric month needs a separator (a space between numbers is not probed), and a
-            // four-digit year with it is not probed either
-            "7 45", "1 0", "7/2026", "12-1999",
+            "13/1", "13/45", "0/45", "Jul-123",
+            // A numeric month needs a separator: a space between numbers is #VALUE!
+            // (probes/date-text-yearless-2 row 6)
+            "7 45", "1 0",
+            // Day first, a number that is not a day is never a year
+            // (probes/date-text-yearless-2, date-text-yearless-3 rows 9-11)
+            "45-Jul", "45 Jul", "45/Jul", "0-Jul", "32 Jul",
         ] {
             assert_eq!(en(text), None, "{text}");
         }
+    }
+
+    #[test]
+    fn year_less_text_is_a_day_of_the_current_year() {
+        // probes/date-text-yearless rows 1-10, date-text-yearless-3 rows 1-5, 12-13
+        let days: [(i32, &[&str]); 5] = [
+            (46229, &["Jul-26", "Jul 26", "Jul/26"]),
+            (
+                46204,
+                &["7/1", "7-1", "1-Jul", "1 Jul", "1/Jul", "01-Jul", "Jul-01"],
+            ),
+            (46204, &["July 1", "July-1", "1 July"]),
+            (46234, &["Jul-31"]),
+            (46387, &["12/31"]),
+        ];
+        for (serial, texts) in days {
+            for text in texts {
+                assert_eq!(en(text), Some(serial), "{text}");
+            }
+        }
+        assert_eq!(en("1-Sept"), Some(46266));
+        // The year comes from the clock: 26 July 2024.
+        assert_eq!(en_in("Jul-26", Some(2024)), Some(45499));
+    }
+
+    #[test]
+    fn february_29_follows_the_current_year() {
+        // Hand-derived from the rule (UNVERIFIED: the oracle has only run in 2026).
+        for text in ["2/29", "Feb-29", "29-Feb", "Feb 29"] {
+            assert_eq!(en_in(text, Some(2024)), Some(45351), "{text}");
+        }
+        assert_eq!(en_in("29-Feb", Some(2026)), None);
+    }
+
+    #[test]
+    fn year_less_text_needs_a_clock() {
+        for text in ["Jul-26", "7/1", "1-Jul"] {
+            assert_eq!(en_in(text, None), None, "{text}");
+        }
+        // A two-digit year needs no clock.
+        assert_eq!(en_in("Jul-45", None), Some(16619));
+    }
+
+    #[test]
+    fn year_less_text_with_a_clock_time() {
+        // probes/date-text-yearless D11, date-text-yearless-3 rows 6-8: VALUE - DATEVALUE
+        let locale = get_locale("en").ok();
+        let serial = |text| locale.and_then(|l| parse_date_clock_serial(text, l, &|| Some(2026)));
+        for text in ["7/1 10:00", "Jul 1 10:00", "1-Jul 10:00"] {
+            assert_eq!(
+                serial(text).map(|s| s - 46204.0),
+                Some(0.416_666_666_664_241_35),
+                "{text}"
+            );
+        }
+        assert_eq!(serial("Jul-26 6 PM"), Some(46229.75));
     }
 
     #[test]
@@ -358,7 +488,7 @@ mod tests {
     #[test]
     fn day_first_locale_keeps_its_order() {
         let en_gb = get_locale("en-GB").ok();
-        let parsed = en_gb.and_then(|l| parse_date("13/1/2026", l).ok());
+        let parsed = en_gb.and_then(|l| parse_date("13/1/2026", l, &|| Some(2026)).ok());
         assert_eq!(parsed.map(|(serial, _)| serial), Some(46035));
     }
 }
