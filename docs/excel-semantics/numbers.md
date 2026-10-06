@@ -152,7 +152,7 @@ F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-c
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
 VAR.P, STDEV.P, VARA and STDEVA still yield NaN internally (the A cells pass because a top-level NaN shows as `#NUM!`; the `&""` and ERROR.TYPE forms are wrong; baselined, T-1029).
 Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60), so Excel does not use a stable deviation; do not "fix" this to 0.
-Not implemented: MEDIAN and GEOMEAN of huge values are wrong the other way (T-0992); the engine has no AGGREGATE
+MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. Not implemented: the engine has no AGGREGATE
 (`#NAME?`, A27-A29; T-0993).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
