@@ -188,6 +188,14 @@ pub fn to_excel_precision_str(value: f64) -> String {
     to_precision_str(value, 15)
 }
 
+/// Orders two numbers on their 15-digit values, Excel's comparison rule. There is no absolute
+/// tolerance: tiny values never equal 0 (docs/excel-semantics/numbers.md#comparison-tolerance).
+pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
+    to_excel_precision(a, 15)
+        .partial_cmp(&to_excel_precision(b, 15))
+        .unwrap_or(std::cmp::Ordering::Equal)
+}
+
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
     if !value.is_finite() {
         return value;

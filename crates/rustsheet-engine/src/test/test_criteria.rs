@@ -408,3 +408,11 @@ fn test_build_criteria_number_tolerance_is_relative() {
     let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
     assert!(!fn_criteria(&CalcResult::Number(one_plus_ulp)));
 }
+
+#[test]
+fn test_calc_result_ord_uses_15_digit_values() {
+    use std::cmp::Ordering;
+    let num = CalcResult::Number;
+    assert_eq!(num(0.0).cmp(&num(1e-17)), Ordering::Less);
+    assert_eq!(num(1.0).cmp(&num(1.0 + f64::EPSILON)), Ordering::Equal);
+}
