@@ -445,7 +445,8 @@ fn test_weeknum_function() {
     assert_eq!(model._get_text("A12"), *"#ERROR!");
     assert_eq!(model._get_text("A13"), *"#ERROR!");
     // Excel: return_type 0, 3-10 and 18-20 are always #NUM! (probes/weeknum-serial-0 C3, C4,
-    // C18, C19, C25; T-1023). 22+ and negatives depend on calc order (T-1025).
+    // C18, C19, C25; T-1023). 22+ and negatives depend on calc order in Excel;
+    // we always give #NUM! (decision 0038).
     assert_eq!(model._get_text("A14"), *"#NUM!");
     assert_eq!(model._get_text("A15"), *"#NUM!");
     assert_eq!(model._get_text("A16"), *"#NUM!");
