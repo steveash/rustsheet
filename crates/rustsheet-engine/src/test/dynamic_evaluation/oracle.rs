@@ -137,7 +137,10 @@ pub(crate) fn violations(model: &mut Model) -> Vec<String> {
             result = if left == right {
                 model.evaluate_cell(left)
             } else {
-                CalcResult::Array(model.evaluate_range(left, right))
+                match model.evaluate_range(left, right, cell_ref) {
+                    Ok(array) => CalcResult::Array(array),
+                    Err(error) => error,
+                }
             };
         }
         if matches!(result, CalcResult::Lambda(_)) {

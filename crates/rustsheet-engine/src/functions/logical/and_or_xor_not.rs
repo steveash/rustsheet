@@ -5,9 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::{
-        math_and_trigonometry::array_size::check_range_size, util::array_node_to_calc_result,
-    },
+    functions::util::array_node_to_calc_result,
     model::Model,
 };
 
@@ -20,13 +18,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         let array = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => {
-                // DEVIATION (decision 0014): the shared allocation bound on lifted ranges.
-                if let Some((error, message)) = check_range_size(&left, &right) {
-                    return CalcResult::new_error(error, cell, message);
-                }
-                self.evaluate_range(left, right)
-            }
+            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(array) => array,
+                Err(error) => return error,
+            },
             CalcResult::Array(array) => array,
             error @ CalcResult::Error { .. } => return error,
             value => {

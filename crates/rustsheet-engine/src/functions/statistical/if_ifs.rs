@@ -422,9 +422,7 @@ impl Model {
     ) -> CalcResult {
         // Collect the criteria into a 2-D grid of scalar values. A scalar
         // criterion takes the ordinary (non-spilling) SUMIFS path.
-        let criteria_grid: Vec<Vec<CalcResult>> = match self
-            .evaluate_node_in_context(criteria, cell)
-        {
+        let criteria_array = match self.evaluate_node_in_context(criteria, cell) {
             CalcResult::Range { left, right } => {
                 if left.sheet != right.sheet {
                     return CalcResult::new_error(
@@ -433,28 +431,12 @@ impl Model {
                         "Ranges are in different sheets".to_string(),
                     );
                 }
-                let mut grid = Vec::new();
-                for r in left.row..=right.row {
-                    let mut row = Vec::new();
-                    for c in left.column..=right.column {
-                        row.push(self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row: r,
-                            column: c,
-                        }));
-                    }
-                    grid.push(row);
+                match self.evaluate_range(left, right, cell) {
+                    Ok(array) => array,
+                    Err(error) => return error,
                 }
-                grid
             }
-            CalcResult::Array(array) => array
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|node| array_node_to_calc_result(node, cell))
-                        .collect()
-                })
-                .collect(),
+            CalcResult::Array(array) => array,
             _ => {
                 // Single criterion: the SUMIFS walk, minus its shape check, since
                 // SUMIF never errors on a shape mismatch (T-0214).
@@ -466,6 +448,14 @@ impl Model {
                 return CalcResult::Number(total);
             }
         };
+        let criteria_grid: Vec<Vec<CalcResult>> = criteria_array
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|node| array_node_to_calc_result(node, cell))
+                    .collect()
+            })
+            .collect();
 
         // Range/array criteria: resolve the ranges once, then compute one sum
         // per criterion and spill the results.

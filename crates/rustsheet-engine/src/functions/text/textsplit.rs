@@ -209,7 +209,7 @@ impl Model {
                 Ok(delims)
             }
             CalcResult::Range { left, right } => {
-                let range = self.evaluate_range(left, right);
+                let range = self.evaluate_range(left, right, cell)?;
                 let mut delims = Vec::new();
                 for row in range {
                     for item in row {
