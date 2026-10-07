@@ -171,7 +171,7 @@ Tasks: T-0234
 
 ### Conditional-format Equal/NotEqual compare on 15 digits (no absolute epsilon)
 Rule: the engine's conditional-format "cell value equal to / not equal to" rules compare with the same 15-significant-digit rule as `=` and criteria equality (`cmp_excel_precision`), not an absolute `f64::EPSILON` tolerance, so tiny values never equal 0. NaN orders above every number and equals itself in `CalcResult`'s `Ord`; -0.0 equals 0.0.
-Evidence: none direct. The Graph oracle cannot evaluate conditional formats, so the Excel behavior for tiny values is inferred from the 15-digit comparison rule.
+Tests: `test_equal_and_not_equal_use_15_digit_comparison`, `cmp_excel_precision_total_order_on_nan_and_signed_zero`; callers of `cmp_excel_precision` (e.g. `functions/criteria.rs`) now see NaN == NaN. Evidence: none direct. The Graph oracle cannot evaluate conditional formats, so the Excel behavior for tiny values is inferred from the 15-digit comparison rule.
 Status: UNVERIFIED
 Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/src/conditional_formatting.rs`, `cmp_excel_precision` in `number_format.rs`
 Tasks: T-1033

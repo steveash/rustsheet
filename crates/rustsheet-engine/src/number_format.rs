@@ -192,8 +192,16 @@ pub fn to_excel_precision_str(value: f64) -> String {
 /// tolerance: tiny values never equal 0 (docs/excel-semantics/numbers.md#criteria-equality). NaN
 /// is a total order (above every number, equal to itself) so sorts stay consistent.
 pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
-    // `+ 0.0` turns -0.0 into 0.0, which total_cmp would otherwise order below it.
-    (to_excel_precision(a, 15) + 0.0).total_cmp(&(to_excel_precision(b, 15) + 0.0))
+    // total_cmp orders -0.0 below 0.0 and negative-sign NaN below every number, so canonicalise
+    // both first (`+ 0.0` turns -0.0 into 0.0).
+    let canon = |x: f64| {
+        if x.is_nan() {
+            f64::NAN
+        } else {
+            to_excel_precision(x, 15) + 0.0
+        }
+    };
+    canon(a).total_cmp(&canon(b))
 }
 
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {

@@ -254,3 +254,39 @@ fn inverted_ranges() {
         "row 4 (8 cores) should not match NotEqual 8"
     );
 }
+
+// No absolute epsilon: 1e-17 is not 0, but values equal on 15 digits are equal (T-1033).
+#[test]
+fn test_equal_and_not_equal_use_15_digit_comparison() {
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 1, "1E-17".to_string()).unwrap();
+    model
+        .set_user_input(0, 2, 1, "1.0000000000000001".to_string())
+        .unwrap();
+    model.evaluate();
+    model
+        .add_conditional_formatting(0, "A1", cell_is(ValueOperator::Equal, "0", None))
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A2", cell_is(ValueOperator::Equal, "1", None))
+        .unwrap();
+    model.evaluate();
+    assert!(!is_red(&model, 1));
+    assert!(is_red(&model, 2));
+
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 1, "1E-17".to_string()).unwrap();
+    model
+        .set_user_input(0, 2, 1, "1.0000000000000001".to_string())
+        .unwrap();
+    model.evaluate();
+    model
+        .add_conditional_formatting(0, "A1", cell_is(ValueOperator::NotEqual, "0", None))
+        .unwrap();
+    model
+        .add_conditional_formatting(0, "A2", cell_is(ValueOperator::NotEqual, "1", None))
+        .unwrap();
+    model.evaluate();
+    assert!(is_red(&model, 1));
+    assert!(!is_red(&model, 2));
+}
