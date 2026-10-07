@@ -71,8 +71,6 @@ impl Model {
         if target.is_error() {
             return target;
         }
-        // LOOKUP always assumes the values being searched are in ascending order.
-
         let value = self.evaluate_node_in_context(&args[1], cell);
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
@@ -87,6 +85,7 @@ impl Model {
         } else {
             table.first_column(self, cell)
         };
+        // LOOKUP always assumes the values being searched are in ascending order.
         let Some(position) = lookup_index(&target, &search_vector, true) else {
             return not_found(cell);
         };
@@ -103,7 +102,7 @@ impl Model {
         }
     }
 
-    /// LOOKUP's lookup_vector or array as a table: a range or an array, its own error, and
+    /// A LOOKUP or MATCH argument read as a table: a range or an array, its own error, and
     /// `#N/A` for anything else.
     fn lookup_table(
         value: CalcResult,
