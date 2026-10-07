@@ -3,7 +3,7 @@ id: T-1107
 title: "SUM and AVERAGE of number text over 255 characters is #N/A, not #VALUE!"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
