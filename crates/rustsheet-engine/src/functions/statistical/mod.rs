@@ -32,6 +32,6 @@ mod standard_dev;
 mod standardize;
 mod t_dist;
 mod trimmean;
-mod variance;
+pub(super) mod variance;
 mod weibull;
 mod z_test;

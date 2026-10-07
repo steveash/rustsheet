@@ -89,6 +89,7 @@ C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
 C	probes/defined-name-intersection.case.json	10
+C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
 C	probes/error-arg-vs-range-check.case.json	10
 C	probes/error-literals-new.case.json	18
