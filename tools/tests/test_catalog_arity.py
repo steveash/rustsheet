@@ -6,32 +6,17 @@ from typing import Any
 import pytest
 import yaml
 
+from rustsheet_tools.gen.generator import load_excel_functions
+
 CATALOG = Path(__file__).resolve().parents[2] / "eval" / "catalog" / "functions.yaml"
+SOURCE = CATALOG.with_name("excel-functions.tsv")
 
 # Excel's minimum argument counts. A formula with fewer is a syntax error, and Excel for the web
-# then rejects the whole workbook (T-0203: one `=IF(x)` cell failed every gen-m2 case).
-EXCEL_MIN_ARGS = {
-    "IF": 2,
-    "IFERROR": 2,
-    "ROUND": 2,
-    "ROUNDUP": 2,
-    "ROUNDDOWN": 2,
-    "VLOOKUP": 3,
-    "HLOOKUP": 3,
-    "INDEX": 2,
-    "MATCH": 2,
-    "SUMIF": 2,
-    "COUNTIF": 2,
-    "LEFT": 1,
-    "RIGHT": 1,
-    "MID": 3,
-    "LEN": 1,
-    "YEAR": 1,
-    "MONTH": 1,
-    "DAY": 1,
-    "NOT": 1,
-    "ABS": 1,
-}
+# then rejects the whole workbook (T-0203: one `=IF(x)` cell failed every gen-m2 case). The counts
+# come from Microsoft's syntax lines, vetted in eval/catalog/excel-functions.tsv (T-0040). The
+# probes/catalog/availability-* cases only show that Excel accepts each `min_args`; that one fewer
+# is rejected was shown only for REDUCE, SCAN and PROB (docs/excel-semantics/syntax.md).
+EXCEL_MIN_ARGS = {name: int(row["min_args"]) for name, row in load_excel_functions(SOURCE).items()}
 
 
 def _required(fn: dict[str, Any]) -> int:
@@ -43,8 +28,10 @@ def _required(fn: dict[str, Any]) -> int:
     return total
 
 
-@pytest.mark.parametrize("name", sorted(EXCEL_MIN_ARGS))
+SIGNATURES = {f["name"]: f for f in yaml.safe_load(CATALOG.read_text())["functions"] if "params" in f}
+
+
+@pytest.mark.parametrize("name", sorted(SIGNATURES))
 def test_catalog_requires_at_least_excels_minimum(name: str) -> None:
-    catalog = {f["name"]: f for f in yaml.safe_load(CATALOG.read_text())["functions"]}
-    assert name in catalog, f"{name} disappeared from the catalog; update EXCEL_MIN_ARGS"
-    assert _required(catalog[name]) == EXCEL_MIN_ARGS[name]
+    assert name in EXCEL_MIN_ARGS, f"{name} is not in eval/catalog/excel-functions.tsv"
+    assert _required(SIGNATURES[name]) == EXCEL_MIN_ARGS[name]

@@ -44,3 +44,13 @@ Open: whether an error argument after the limit is passed wins over `#CALC!` is 
 Status: VERIFIED (web only)
 Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments (T-0243)
 Tasks: T-0243
+
+## JIS is `#NAME?` in en-US Excel for the web
+Rule: `JIS`, although Microsoft's en-US function list includes it, is not a known function in
+en-US Excel for the web: `JIS(1)` is `#NAME?`, stored bare or as `_xlfn.JIS`. `_xlfn.DBCS(1)` is
+recognised.
+Evidence: probes/catalog/availability-22 A8 (TRUE = #NAME?), function-name-forms-2 A1 and A2
+(ERROR.TYPE 5), availability-10 A4 (`_xlfn.DBCS`, recognised) (oracle: excel-graph, 2026-10-07,
+T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+

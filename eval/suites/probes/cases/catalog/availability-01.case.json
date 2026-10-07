@@ -1,0 +1,44 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0040 availability probe 1: ABS, ACCRINT, ACCRINTM, ACOS, ACOSH, ACOT, ACOTH, ADDRESS, AGGREGATE, AMORDEGRC, AMORLINC, AND. Each cell calls one function with its minimum argument count (eval/catalog/excel-functions.tsv), every argument $Z$1 = 1. TRUE means the call is #NAME? (function unknown to the oracle); FALSE means it exists, whatever it returns. Groups are small because one arity-invalid call makes Excel for the web reject the whole workbook.",
+ "tags": [
+  "M0",
+  "probe",
+  "catalog"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "Z1": 1,
+    "A1": "=OR(IFERROR(ERROR.TYPE(ABS($Z$1))=5,FALSE))",
+    "A2": "=OR(IFERROR(ERROR.TYPE(ACCRINT($Z$1,$Z$1,$Z$1,$Z$1,$Z$1,$Z$1))=5,FALSE))",
+    "A3": "=OR(IFERROR(ERROR.TYPE(ACCRINTM($Z$1,$Z$1,$Z$1,$Z$1))=5,FALSE))",
+    "A4": "=OR(IFERROR(ERROR.TYPE(ACOS($Z$1))=5,FALSE))",
+    "A5": "=OR(IFERROR(ERROR.TYPE(ACOSH($Z$1))=5,FALSE))",
+    "A6": "=OR(IFERROR(ERROR.TYPE(ACOT($Z$1))=5,FALSE))",
+    "A7": "=OR(IFERROR(ERROR.TYPE(ACOTH($Z$1))=5,FALSE))",
+    "A8": "=OR(IFERROR(ERROR.TYPE(ADDRESS($Z$1,$Z$1))=5,FALSE))",
+    "A9": "=OR(IFERROR(ERROR.TYPE(AGGREGATE($Z$1,$Z$1,$Z$1))=5,FALSE))",
+    "A10": "=OR(IFERROR(ERROR.TYPE(AMORDEGRC($Z$1,$Z$1,$Z$1,$Z$1,$Z$1,$Z$1))=5,FALSE))",
+    "A11": "=OR(IFERROR(ERROR.TYPE(AMORLINC($Z$1,$Z$1,$Z$1,$Z$1,$Z$1,$Z$1))=5,FALSE))",
+    "A12": "=OR(IFERROR(ERROR.TYPE(AND($Z$1))=5,FALSE))"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11",
+  "Sheet1!A12"
+ ]
+}

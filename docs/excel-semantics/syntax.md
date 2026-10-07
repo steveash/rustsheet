@@ -13,6 +13,20 @@ workbook from the old catalog was refused; bisecting one isolated
 `=MIN(ROUND(LEN(Data!$B5),6),IF(IFERROR(Data!C10,Data!$B3)),YEAR(59343))`.
 Status: VERIFIED
 
+## Minimum argument counts: a leading optional still takes its position, and PROB needs 3
+Rule: a call with fewer arguments than a function's minimum makes Excel for the web reject the
+whole workbook (as for `IF`, above). The minimum is not always what Microsoft's syntax line suggests:
+`REDUCE([initial_value], array, lambda)` and `SCAN([initial_value], array, lambda)` need all three
+positions (the optional `initial_value` is left empty, not dropped), and `PROB(x_range, prob_range,
+[lower_limit], [upper_limit])` needs three although its page marks `lower_limit` Optional.
+eval/catalog/excel-functions.tsv records the corrected counts in its `note` column.
+Evidence: probes/catalog/availability-30 (PROB) and -32/-33 (REDUCE, SCAN) load and calculate with
+three `$Z$1` arguments (oracle: excel-graph, 2026-10-07). With two, single-call workbooks sent with
+`rustsheet-oracle recalc -b excel-graph` got createSession 501 `FileCorruptTryRepair` /
+`unsupportedWorkbook` (2026-10-07, T-0040; rejected inputs cannot be committed). Every other
+in-scope catalog function loaded at the count in excel-functions.tsv (probes/catalog/availability-*).
+Status: VERIFIED
+
 ## Unary minus binds tighter than `^`
 Rule: `-x^y` is `(-x)^y`: `-1^2` = 1 and `-3^0` = 1 (not -1). A text operand of the minus is
 coerced first: `-" 2 "^2` = 4, `-"0.5"^2` = 0.25, `-"1e3"^2` = 1000000, `-"TRUE"^2` = `#VALUE!`.

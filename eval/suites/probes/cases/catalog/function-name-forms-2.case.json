@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0040 review follow-up to function-name-forms. A1/A2: JIS with and without the _xlfn. prefix (the case builder prefixes neither form; ERROR.TYPE 5 = #NAME?, IFERROR(..., 0) = no error). A3: the value of a hand-prefixed classic function, _xlfn.SUM(1,2).",
+ "tags": ["M0", "probe", "catalog", "xlsx"],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "Z1": 1,
+    "A1": "=IFERROR(ERROR.TYPE(_xlfn.JIS($Z$1)),0)",
+    "A2": "=IFERROR(ERROR.TYPE(JIS($Z$1)),0)",
+    "A3": "=_xlfn.SUM(1,2)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": ["Sheet1!A1", "Sheet1!A2", "Sheet1!A3"]
+}
