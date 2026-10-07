@@ -35,8 +35,10 @@ short vectors"):
   for a row or a single cell). A short result array is `#N/A`.
 - MATCH on a 2-D array is `#N/A`, so the lookup.md sub-rule is now VERIFIED.
 
-`fn_lookup` now shares one table path between its two forms (`lookup_table`), and `lookup_result`
-reads the result vector; `SearchVector::into_value` became dead and was removed. The result range
+LOOKUP moved to its own file, `functions/lookup_and_reference/lookup.rs`, which keeps mod.rs under
+the 1,000-line limit. Its two forms share one table path (`lookup_table`), MATCH's `as_vector` is
+built on it, and `lookup_result` reads the result vector. `SearchVector::into_value` became dead and
+was removed. The result range
 is still evaluated in full, so a result range holding the formula's own cell stays circular. The
 engine no longer returns `#ERROR!` from LOOKUP.
 Eval: probes +32 checked cells, all passing (new coverage); 0 regressions.

@@ -206,6 +206,11 @@ fn test_lookup_2d_lookup_vector_and_short_result() {
     model._set("A3", "5");
     model._set("H7", "=LOOKUP(99,A1:A3,F1048575:F1048576)");
     model._set("H8", "=LOOKUP(99,A1:B1,XFD1)");
+    model._set("H9", "=LOOKUP(0,A1:B2,F1:F2)");
+    // Wide: A1:C2 has more columns than rows, so A1:C1 is searched.
+    model._set("C1", "5");
+    model._set("C2", "6");
+    model._set("H10", "=LOOKUP(5,A1:C2,F1:F3)");
     model.evaluate();
     assert_eq!(model._get_text("H1"), "10");
     assert_eq!(model._get_text("H2"), "#N/A");
@@ -216,4 +221,6 @@ fn test_lookup_2d_lookup_vector_and_short_result() {
     // Past the sheet's edge (engine choice, not probed).
     assert_eq!(model._get_text("H7"), "#N/A");
     assert_eq!(model._get_text("H8"), "#N/A");
+    assert_eq!(model._get_text("H9"), "#N/A");
+    assert_eq!(model._get_text("H10"), "30");
 }

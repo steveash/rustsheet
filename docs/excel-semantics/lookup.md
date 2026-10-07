@@ -60,7 +60,7 @@ Engine choices (not probed): reading past the sheet's last row or column is `#N/
 lookup_vector (`LOOKUP(2,C1,…)`) is `#N/A` as before.
 Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224).
 Status: VERIFIED
-Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs`
+Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
 Tasks: T-0224
 
 ## VLOOKUP / HLOOKUP search before validating the index
