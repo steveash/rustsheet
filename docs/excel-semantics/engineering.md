@@ -15,11 +15,19 @@ Evidence: Excel-cached cells in `ironcalc-calc/ENGINEERING/BESSEL.xlsx`
   branch (e.g. `BESSELJ(10,1)` = 0.04347224965 vs true 0.04347274617), so another algorithm is
   used there. UNRESOLVED; tracked in T-0908. fdlibm is kept for `|x| >= 8`.
 
-Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells: x in {8..100} x orders 0-10 for both functions):
-- For x in [8,100] Excel's values are off the true values at about 1e-9 to 1e-8 relative (e.g.
-  `BESSELJ(30,1)` = -0.11875106091123117, `BESSELY(8,0)` = 0.22352148924968093). The engine's
-  fdlibm fallback is bit-exact on only 14 of the 364 cells; `rustsheet-eval show` lists the other 350 as
-  non-exact (164 within tolerance, 184 beyond it, 2 type mismatches).
+Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cells (14 x values in 8..100 x
+orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
+- For x in [8,100] Excel is NOT uniformly off by one amount; its relative error against the true value
+  (measured with the engine's fdlibm value as the reference) has this profile, so fit against the cells, not a band:
+  BESSELJ is worst near x = 8..10 where order < x (up to 7e-5, e.g. `BESSELJ(8,1)` = 0.2346283865070744
+  vs true 0.2346363468539146), falls to ~2e-7 at x = 30 and ~1e-9 at x >= 50; BESSELJ with order >= x is
+  nearly exact (5e-15 for `BESSELJ(8,10)`, up to 5e-10 elsewhere), which fits Miller downward recurrence for
+  n >= x and upward recurrence from an inaccurate J1 below. BESSELY stays at or below 2e-7 (worst at
+  x = 10; 6e-9 at x = 8, 3e-9 at x = 100). Values are at the oracle sidecar's cells, e.g. `BESSELJ(30,1)` =
+  -0.11875106091123117, `BESSELY(8,0)` = 0.22352148924968093.
+- At x = 10 the sweep equals the Excel-desktop cached values of `ironcalc-calc/ENGINEERING/BESSEL.xlsx`.
+- The engine's fdlibm fallback is bit-exact on only 14 of the 364 cells; `rustsheet-eval show` lists the other
+  350 as non-exact (164 within tolerance, 184 beyond it, 2 type mismatches).
 - A fractional order truncates: `BESSELJ(8,9.99)` equals `BESSELJ(8,9)`, `BESSELY(30,1.99)` equals `BESSELY(30,1)`.
 - Large orders: `BESSELJ(x,n)` is `0` (not an error) for n = 1000, 10000, 100000 and 1000000 (x = 10, 50), and
   `BESSELY(x,n)` is `#NUM!` for those n. The engine matches this up to n = 100000 but gives `#NUM!` for
