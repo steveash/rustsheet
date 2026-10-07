@@ -255,16 +255,19 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   `=(-A1,B1)`. The engine reads it as a union of `-A1` and `B1` and prints that (T-0193).
 - An error operand's own error comes before the `#VALUE!`: `=(A1,#REF!)` and `=(#REF!,A1) A1` are
   `#REF!`, and `ISREF((A1,#REF!))` is FALSE (probes/union-accepted H9; implemented in `Model::union_is_reference`, T-0194). `ISREF((A1,B2))` is
-  TRUE, and `=(A1,B2) A1` is 1. The engine's ISREF is also FALSE for any other union that fails to
-  evaluate to areas (`(-A1,B1)`, `(A1 B2,C1)`, a 3D operand); those are unprobed (T-1039).
+  TRUE, and `=(A1,B2) A1` is 1. ISREF is also FALSE for a union with a negated operand (`(-A1,B1)`), with an
+  empty-intersection operand (`(A1 B2,C1)`) and with a 3D operand (`(Sheet1:Sheet2!A1,B1)`), and for an intersection
+  that is empty: `ISREF(A1 B2)` is FALSE (`#NULL!`), while `ISREF(A1 A1)`, `ISREF((A1 A1,C1))` and a multi-area cut `ISREF((A1:B2,A1:C1) A1:B1)` are TRUE, and a cross-sheet intersection
+  `ISREF(Sheet1!A1 Sheet2!A1)` is FALSE (probes/isref-union-operands H1:H9, oracle: excel-graph, 2026-10-07, T-1039). The engine matches since T-1039
+  (`ISREF` of an intersection evaluates its areas like a union does).
 - Cross-sheet: `=(Data!A1,Other!A1)` and `=(Data!A1:A3,Other!A1:A3) Data!A2` are `#VALUE!`.
 - Printing: Excel keeps the user's parentheses, so FORMULATEXT of `=((Data!A2,Data!E8),Data!B6)` is
   exactly that. The engine keeps a union operand's own parentheses (`grouped` on `OpUnionKind`), while a
   plain chain `(A1,B2,C3)` still prints as written (T-0193).
 - Multi-area defined names: with `mu` = `Sheet1!$A$1,Sheet1!$B$2` (A1 = 1, B2 = 5), `=SUM(mu)` is 6,
   `=COUNT(mu)` is 2, `=ISREF(mu)` is TRUE, `=mu A1` is 1 and `=mu` is `#VALUE!`. The engine refuses
-  the name body ("invalid defined name"), so the whole case is an engine error. Multi-area values are
-  spec T-0133.
+  the name body ("invalid defined name"), so the whole case is an engine error. Multi-area name
+  bodies are SPEC-0004 step 5 (T-1065).
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
@@ -281,8 +284,9 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
   function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently
-  takes its fallback for one, and so does a union returned by IF, CHOOSE or LET (T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
-  `OpUnionKind` unwrapped; T-0133 should revisit it.
+  takes its fallback for one, and so does a union returned by IF, CHOOSE or LET. docs/specs/SPEC-0004-multi-area-references.md
+  (T-0133) designs multi-area arguments, with rollout T-1061 to T-1065. `add_implicit_intersection` (static_analysis.rs) leaves
+  `OpUnionKind` unwrapped, and SPEC-0004 keeps it so: a union is already `#VALUE!` where a scalar is expected (planned, probe rows 15 and 18).
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
@@ -290,7 +294,7 @@ T-0998: probes/union-operand-{double-minus,nested-parens,neg-cut-group} (same or
 negated operand cut by an intersection, and the T-1031 forms) came from scratch fills that failed with FileCorruptTryRepair and were not kept.
 Status: VERIFIED (except the parts marked as engine choices; engine mismatches tracked in T-1024)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
-Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024, T-1031
+Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024, T-1031, T-1039
 
 ## Union area cap
 (ISREF of a union over the cap is FALSE in the engine, where Excel presumably says TRUE; same DEVIATION.)
