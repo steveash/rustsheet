@@ -139,6 +139,7 @@ C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
+C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
@@ -342,6 +343,7 @@ F	probes/lifted-range-rows.case.json	Sheet1!E1
 F	probes/literal-digits.case.json	Sheet1!C4
 F	probes/lookup-vector-edges.case.json	Calc!A12
 F	probes/lookup-vector-edges.case.json	Calc!A9
+F	probes/min-max-reference-forms.case.json	Sheet1!D8
 F	probes/multiarea-3d-ref.case.json	Sheet1!H1
 F	probes/multiarea-3d-ref.case.json	Sheet1!H2
 F	probes/multiarea-agg.case.json	Sheet1!H1

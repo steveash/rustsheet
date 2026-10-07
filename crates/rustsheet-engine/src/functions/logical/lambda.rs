@@ -69,7 +69,9 @@ impl Model {
 
         for (i, raw_id) in bound_ids.iter().enumerate() {
             let val = if i < call_args.len() {
-                self.evaluate_node_in_context(&call_args[i], cell)
+                // A reference is passed as a reference, a single cell too, so that
+                // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
+                self.evaluate_node_with_reference(&call_args[i], cell)
             } else {
                 CalcResult::EmptyArg
             };
