@@ -3,7 +3,7 @@ id: T-1039
 title: "Probe ISREF of unions with non-reference, 3D and empty-intersection operands"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
