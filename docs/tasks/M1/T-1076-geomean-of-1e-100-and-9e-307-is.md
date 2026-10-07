@@ -27,4 +27,6 @@ Found by T-1032: probes/geomean-mixed-magnitude Sheet1!A1 (baselined). The plain
 In the overflow path `fn_geomean` now splits the summed power-of-two exponent `e` by integer division,
 `q = floor(e/n)`, `r = e mod n`, and returns `(m * 2^r)^(1/n) * 2^q`. It matches all five
 probes/geomean-mixed-magnitude cells and the 9E+307 pair bit for bit; the float power `2^(e/n)` was one ulp
-high on A1, and a decimal split misses A2. Eval: probes known failures 240 -> 239, 0 regressions.
+high on A1, and a decimal split misses A2. `2^q` is applied in two halves so it cannot underflow to
+0 on its own. Eval: probes known failures 240 -> 239, 0 regressions. Follow-up: T-1095 (probe the
+over-500-values branch).

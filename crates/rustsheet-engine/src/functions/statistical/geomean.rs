@@ -62,11 +62,15 @@ impl Model {
         // past that (over 500 values) it gets its own root (UNVERIFIED rounding, not probed).
         let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
         let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
-        let whole = 2f64.powi(i32::try_from(q).unwrap_or(i32::MAX));
-        let result = match i32::try_from(r) {
-            Ok(r) if r <= 500 => (product * 2f64.powi(r)).powf(1.0 / n) * whole,
-            _ => product.powf(1.0 / n) * 2f64.powf(r as f64 / n) * whole,
+        let root = match i32::try_from(r) {
+            Ok(r) if r <= 500 => (product * 2f64.powi(r)).powf(1.0 / n),
+            _ => product.powf(1.0 / n) * 2f64.powf(r as f64 / n),
         };
+        // `2^q` in two halves: `powi` of an exponent below -1023 is 0, not the subnormal. Inputs
+        // are normal (subnormal results become 0, numbers.md), so `q >= -1022` today; the split
+        // keeps the scaling exact should a subnormal input ever reach here.
+        let q = i32::try_from(q).unwrap_or(i32::MAX);
+        let result = root * 2f64.powi(q / 2) * 2f64.powi(q - q / 2);
         // Defensive only: a geometric mean of finite positives never exceeds the largest value.
         if result.is_finite() {
             CalcResult::Number(result)
