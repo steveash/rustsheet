@@ -338,7 +338,7 @@ Number text longer than 255 characters is #VALUE! for every form probed (the sam
 fraction (`0.`, zeros, `1`, which keeps its value, 1E-253 at LEN 255) read as numbers (0, 1, 1, 0, 1, 1E-253), and at LEN 256, 257, 260,
 300, 306, 307, 308 and 320 all six forms are #VALUE!. This explains the 305- and 320-zero cells above (LEN 307 and 322).
 The engine applies the limit through the shared number-text coercion (`cast_number_in`), VALUE and NUMBERVALUE, counting surrounding spaces (`MAX_NUMBER_TEXT_LEN`, shared with clock text; T-1101).
-Other paths (probes/text-number-long-paths, excel-graph 2026-10-07, text of LEN 255 vs 256): `SUM(text,1)` and `AVERAGE(text,2)` read 255 and give `#N/A` at 256 (QUIRK; T-1107), `COUNT(text,1)` counts the text at 255 and skips it at 256 (2 vs 1), `ROUND`, `ABS`, unary minus, `(text)%` and NUMBERVALUE are `#VALUE!` at 256. Criteria (COUNTIF/SUMIF), DATEVALUE with padding and cell input (`-` plus long text typed into a cell) are unprobed.
+Other paths (probes/text-number-long-paths, excel-graph 2026-10-07, text of LEN 255 vs 256): `SUM(text,1)` and `AVERAGE(text,2)` read 255 and give `#N/A` at 256 (QUIRK; T-1107: any direct text argument over 255 characters, numeric or not, padded with spaces or not, is `#N/A` in SUM, AVERAGE, SUMSQ, PRODUCT and MAX, while 255 characters of non-numeric text is `#VALUE!`; probes/sum-long-text-args), `COUNT(text,1)` counts the text at 255 and skips it at 256 (2 vs 1), `ROUND`, `ABS`, unary minus, `(text)%` and NUMBERVALUE are `#VALUE!` at 256. Criteria (COUNTIF/SUMIF), DATEVALUE with padding and cell input (`-` plus long text typed into a cell) are unprobed.
 Formula literals follow the same rule: `=1E-309`, `=-1E-309`, `=2E-308`, `=0E308`, `=0.0E309`,
 `=0E-308` evaluate to 0 and `=2.2250738585073E-308` keeps its value (probes/literal-number-tiny),
 while Excel refuses to open a workbook holding `=1E-310`, `=-1E-310`, `=5E-324`, `=0E309` or
@@ -450,18 +450,31 @@ match.
 Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108).
 Tasks: T-1099, T-1108, T-0221
 
-## GEOMEAN over about 1100 overflowing values is #NUM!
-Rule: GEOMEAN over 1100 copies of 5E+204, or 1100 copies of 5E+204 or 3E+200 followed by one half-size
-value, is `#NUM!`, while 1001, 1024 and 1025 copies of 5E+204, 1000 copies of 1E+300, 1001 copies of
-1E-300 and 1101 copies of 2 are finite. The rule behind the cut is not established: it is not the count
-alone (1101 copies of 2 work), and it is not the size of the product's exponent (1000 x 1E+300 works).
-Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204 and
-1024 copies 4.9999999999999995E+204, but 1025 copies give 5E+204.
-In range, 1101 copies of 1.5 give exactly 1.5; the engine's log-sum gives 1.499999999999995.
-Evidence: probes/geomean-root-models Fallback!D1-D2 and probes/geomean-overflow-count A1-K1 (excel-graph,
-2026-10-07, T-1108). RustSheet today: the cut is not implemented (finite results), A1-C1 are one ulp
-off, and H1 is 5E-15 low.
-Status: VERIFIED (the values); the rule is open (T-1112), and so is the in-range precision (T-1113).
+## GEOMEAN is #NUM! when the product of significands overflows
+Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
+the significands into one double without rescaling (the order is unprobed: the probes use equal or
+alternating values), and is `#NUM!` when that product
+overflows, i.e. when the sum of log2(M) reaches 1024. Magnitude does not matter, only M:
+1028 copies of 5E+204 (M = 1.9934) are finite and 1029 are `#NUM!`; so are 1100 copies of 1.25E+204
+(the same M) and 3E+200 (M = 1.96), while 1100 copies of 1E+300 (M = 1.49), 5E+300, 9E+204 or
+7E+150 are finite; for M = 1.5 (1.5, 3, 0.75) the cut is 1750 finite / 1751 `#NUM!`; 1E+300
+1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); powers of two (M = 1) never trip it
+(2000 copies of 2). It applies even when the plain product is in range: 1752 values alternating 1.5
+and 0.75 (plain product 1.125^876) are `#NUM!`, 1750 are 1.0606601717798212.
+Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204,
+1024 copies 4.9999999999999995E+204, 1025 and 1027 copies 5E+204, 1028 copies
+5.0000000000000006E+204, 1100 copies of 5E+300 5.000000000000001E+300. In range, 1101 copies of 1.5
+give exactly 1.5; the engine's log-sum gives 1.499999999999995. 2400 copies of 1E-300 give
+1.8066704015823645E-300 = 1E-300 * 2^(2048/2400): the power-of-two sum is 2048 too high there (1100
+copies give 1E-300 exactly; T-1120).
+Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
+probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
+range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
+for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, and all held.
+Status: VERIFIED. RustSheet implements the cut (T-1112). Still open: the root's last-ulp rounding
+(numbers.md, "GEOMEAN root rounding"; T-1108), the in-range precision (T-1113) and the 1E-300 x 2400
+exponent (T-1120).
+Tasks: T-1108, T-1112, T-1113, T-1120
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =

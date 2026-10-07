@@ -108,6 +108,9 @@ C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-mixed-magnitude.case.json	5
 C	probes/geomean-overflow-count.case.json	11
+C	probes/geomean-overflow-cut-2.case.json	22
+C	probes/geomean-overflow-cut-3.case.json	18
+C	probes/geomean-overflow-cut.case.json	27
 C	probes/geomean-overflow-many-values.case.json	7
 C	probes/geomean-product-order.case.json	17
 C	probes/geomean-root-models.case.json	112
@@ -209,6 +212,7 @@ C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-results.case.json	129
 C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
+C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
@@ -317,8 +321,17 @@ F	probes/error-stored-constants.case.json	S!I2
 F	probes/geomean-overflow-count.case.json	Sheet1!A1
 F	probes/geomean-overflow-count.case.json	Sheet1!B1
 F	probes/geomean-overflow-count.case.json	Sheet1!C1
-F	probes/geomean-overflow-count.case.json	Sheet1!D1
 F	probes/geomean-overflow-count.case.json	Sheet1!H1
+F	probes/geomean-overflow-cut-2.case.json	Sheet1!C2
+F	probes/geomean-overflow-cut-2.case.json	Sheet1!C9
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!C1
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!C11
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!C13
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!C5
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!C7
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!E1
+F	probes/geomean-overflow-cut-3.case.json	Sheet1!E4
+F	probes/geomean-overflow-cut.case.json	Sheet1!C1
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
 F	probes/geomean-product-order.case.json	Sheet1!Z10
 F	probes/geomean-product-order.case.json	Sheet1!Z11
@@ -327,8 +340,6 @@ F	probes/geomean-product-order.case.json	Sheet1!Z14
 F	probes/geomean-product-order.case.json	Sheet1!Z6
 F	probes/geomean-product-order.case.json	Sheet1!Z7
 F	probes/geomean-product-order.case.json	Sheet1!Z8
-F	probes/geomean-root-models.case.json	Fallback!D1
-F	probes/geomean-root-models.case.json	Fallback!D2
 F	probes/geomean-root-models.case.json	Pin!C60
 F	probes/geomean-root-models.case.json	Pin!F60
 F	probes/geomean-root-models.case.json	Root!F10
@@ -479,8 +490,6 @@ F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
 F	probes/subnormal-function-results.case.json	Calc!C75
-F	probes/text-number-long-paths.case.json	Sheet1!A2
-F	probes/text-number-long-paths.case.json	Sheet1!A4
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4

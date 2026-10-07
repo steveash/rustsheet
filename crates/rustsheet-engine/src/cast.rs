@@ -436,6 +436,27 @@ impl Model {
         }
     }
 
+    /// [`Model::cast_to_number`] for a direct argument of the aggregates (SUM, PRODUCT, MIN, MAX,
+    /// AVERAGE, SUMSQ, ...): text of more than 255 characters, numeric or not, is `#N/A` there
+    /// where every other path gives `#VALUE!` (probes/sum-long-text-args, excel-graph;
+    /// docs/excel-semantics/numbers.md).
+    pub(crate) fn cast_aggregate_arg_to_number(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        if let CalcResult::String(text) = &result {
+            if number_text_too_long(text) {
+                return Err(CalcResult::new_error(
+                    Error::NA,
+                    cell,
+                    "Text too long".to_string(),
+                ));
+            }
+        }
+        self.cast_to_number(result, cell)
+    }
+
     pub(crate) fn cast_to_number(
         &mut self,
         result: CalcResult,
