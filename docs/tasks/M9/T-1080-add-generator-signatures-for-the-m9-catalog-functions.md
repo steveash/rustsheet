@@ -1,6 +1,6 @@
 ---
 id: T-1080
-title: "Add generator signatures for the M9 catalog functions"
+title: "Add generator signatures for the M9 statistical catalog functions"
 milestone: M9
 lane: harness
 status: todo
@@ -11,7 +11,7 @@ depends_on: [T-0040]
 ---
 
 ## Goal
-`rustsheet-gen --milestone M9` can generate formulas for the statistical, financial, engineering and database functions (263 in scope): each in-scope catalog
+`rustsheet-gen --milestone M9` can generate formulas for the statistical functions (142 in scope): each in-scope catalog
 entry with milestone M9 has a full signature (`returns`, `params` with `mode`, `type`, `domain`, `prior`).
 
 ## Context
@@ -21,11 +21,10 @@ are one-line entries (`name`, `category`, `milestone`, `scope`) that the generat
 and tools/tests/test_catalog_arity.py checks every signature against them. Argument modes
 (value / aggregate / range / criteria) decide coercion, so take them from oracle evidence
 (excel-probe skill), not from the documentation alone. Functions marked `oracle: none` need
-another evidence source before a generated suite can score them. Size M: split by category
-if the signatures do not fit one PR.
+another evidence source before a generated suite can score them. One of the per-category tasks split from the M9 signature work; categories here: statistical.
 
 ## Acceptance criteria
-- [ ] Every `scope: in` catalog entry with `milestone: M9` (and no `oracle: none`) has a signature
+- [ ] Every `scope: in` catalog entry with `milestone: M9` and category statistical (and no `oracle: none`) has a signature
   whose required-argument count matches excel-functions.tsv.
 - [ ] A seeded `gen-m9` sample (`rustsheet-gen --milestone M9`) builds, and Excel for the web
   accepts every generated workbook (no arity-invalid calls).

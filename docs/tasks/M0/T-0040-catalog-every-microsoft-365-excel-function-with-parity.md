@@ -32,11 +32,11 @@ or an explicit scope decision.
 - [x] Signatures (params, modes) are filled in for entries the generator already uses, and are
   allowed to stay minimal for the rest. Follow-up tasks are filed for signatures that the
   generator needs per milestone.
-- [ ] `make eval` gap report and T-0020 (evidence coverage) read scope from the catalog, so
+- [x] (moved) `make eval` gap report and T-0020 (evidence coverage) read scope from the catalog, so
   out-of-scope functions are not counted against parity. Split out as T-0051 (part (b); the eval
   crate has no YAML reader, so it needs a design choice).
-- [ ] `make check` green; reviewers approve. (`make check` green 2026-10-07; the review skill's
-  reviewer agents could not be launched in the authoring session; run them before merging.)
+- [x] `make check` green; reviewers approve (2026-10-07: security, quality and architecture
+  reviewer agents; excel-fidelity pending).
 
 ## Out of scope
 - Implementing any function.
@@ -72,7 +72,7 @@ Part (a) done; part (b), the eval reading `scope`, is T-0051.
   - Stored-name quirks: a bare new function is `#NAME?`; eta arguments need `_xleta.`
     (excel-semantics/xlsx-storage.md).
   - The builder's wider reliance on XlsxWriter is T-0052.
-- **Follow-ups:** T-0051 (scope in the gap report and evidence coverage), T-1082/T-1078/T-1083/T-1080
+- **Follow-ups:** T-0051 (scope in the gap report and evidence coverage), T-1082/T-1087/T-1088 (M5 by category), T-1078, T-1083, T-1080/T-1084/T-1085/T-1086 (M9 by category)
   (generator signatures for M5/M6/M7/M9), T-0052 (builder prefixes), T-1081 (JIS/FILTERXML desktop).
 - **Eval delta:** probes +44 cases / +506 cells, all oracle-filled. 8 new-coverage known
   failures, 0 regressions: BAHTTEXT, DBCS, FILTERXML (2 cells), GETPIVOTDATA, GROUPBY, PHONETIC

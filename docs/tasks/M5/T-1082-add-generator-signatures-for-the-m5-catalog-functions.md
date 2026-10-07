@@ -1,6 +1,6 @@
 ---
 id: T-1082
-title: "Add generator signatures for the M5 catalog functions"
+title: "Add generator signatures for the M5 math catalog functions"
 milestone: M5
 lane: harness
 status: todo
@@ -21,11 +21,10 @@ are one-line entries (`name`, `category`, `milestone`, `scope`) that the generat
 and tools/tests/test_catalog_arity.py checks every signature against them. Argument modes
 (value / aggregate / range / criteria) decide coercion, so take them from oracle evidence
 (excel-probe skill), not from the documentation alone. Functions marked `oracle: none` need
-another evidence source before a generated suite can score them. Size M: split by category
-if the signatures do not fit one PR.
+another evidence source before a generated suite can score them. One of the per-category tasks split from the M5 signature work; categories here: math.
 
 ## Acceptance criteria
-- [ ] Every `scope: in` catalog entry with `milestone: M5` (and no `oracle: none`) has a signature
+- [ ] Every `scope: in` catalog entry with `milestone: M5` and category math (and no `oracle: none`) has a signature
   whose required-argument count matches excel-functions.tsv.
 - [ ] A seeded `gen-m5` sample (`rustsheet-gen --milestone M5`) builds, and Excel for the web
   accepts every generated workbook (no arity-invalid calls).
