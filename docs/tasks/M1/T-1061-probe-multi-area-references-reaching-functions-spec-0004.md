@@ -27,10 +27,10 @@ SPEC-0004 settles how the engine represents a multi-area reference, but which fu
 - Engine changes (T-1062 to T-1065).
 
 ## Outcome
-18 probe workbooks (probes/multiarea-*, 40 new oracle-backed cells; the AREAS rows are split one workbook per formula) with oracle
+21 probe cases (probes/multiarea-*, 61 new baseline lines for cells the engine does not yet match; the AREAS rows are split one workbook per formula) with oracle
 values; AREAS(1) and AREAS("A1") were refused by Excel for the web (recorded, not kept). Findings in
 references.md "Multi-area references in functions". Differences from SPEC-0004's plan, corrected in its table: row 4
 (FREQUENCY accepted), 5 (`#VALUE!`/`#REF!`/`#REF!`), 13 (`#NAME?`), 18 (CELL accepts, ROW `#REF!`), 19 (file loads),
 20. No change for rows 12 and 16 (`@` is not added to a legacy union, so no wrap follow-up). Follow-ups, all
 depending on T-1062: T-1068 (rows 3-4), T-1069 (5), T-1070 (13), T-1071 (17), T-1072 (18), T-1073 (19-20).
-Eval: probes known failures 195 -> 235 (40 new-coverage failures, engine rollout pending; no regressions).
+Eval: probes known failures 195 -> 235 (the harness counts 40 new-coverage failures, engine rollout pending; no regressions).

@@ -21,4 +21,4 @@ Oracle (probes/multiarea-cellfn); SPEC-0004 planned #VALUE! for CELL and ROW, bo
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other functions' union support (their own tasks under SPEC-0004).

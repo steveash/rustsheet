@@ -14,11 +14,11 @@ depends_on: [T-1062]
 COUNTBLANK, ROWS and COLUMNS of a union give #VALUE!, #REF!, #REF!.
 
 ## Context
-Oracle (probes/multiarea-count): COUNTBLANK((A1,B2))=#VALUE!, ROWS=#REF!, COLUMNS=#REF!. The engine gives 0, #VALUE!, #VALUE!. Plain-engine fix; may need no `Areas` (a union where one reference is needed). Spec: docs/specs/SPEC-0004-multi-area-references.md; evidence: docs/excel-semantics/references.md "Multi-area references in functions".
+Oracle (probes/multiarea-count): COUNTBLANK((A1,B2))=#VALUE!, ROWS=#REF!, COLUMNS=#REF!. The engine gives 0, #VALUE!, #VALUE!. The engine's current outputs above are in eval/baseline/probes.txt; the fix needs T-1062's `Areas`/`RefArg` to tell a union from other arguments. Spec: docs/specs/SPEC-0004-multi-area-references.md; evidence: docs/excel-semantics/references.md "Multi-area references in functions".
 
 ## Acceptance criteria
 - [ ] The three cells of multiarea-count pass
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other functions' union support (their own tasks under SPEC-0004).

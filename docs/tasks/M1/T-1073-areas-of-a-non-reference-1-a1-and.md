@@ -21,4 +21,4 @@ Oracle (T-1061): a workbook holding AREAS(1) or AREAS("A1") is refused by Excel 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other functions' union support (their own tasks under SPEC-0004).

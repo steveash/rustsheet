@@ -21,4 +21,4 @@ Oracle (probes/multiarea-subtotal): both give 6 for (A1,B2) with A1=1, B2=5. Eng
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other functions' union support (their own tasks under SPEC-0004).

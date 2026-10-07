@@ -21,4 +21,4 @@ Oracle (probes/multiarea-rank, multiarea-cond): LARGE((A1,B2,C3),2)=5, SMALL(..,
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other functions' union support (their own tasks under SPEC-0004).

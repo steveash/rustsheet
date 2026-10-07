@@ -21,4 +21,4 @@ Oracle (probes/multiarea-3d-ref): SUM(Sheet1:Sheet2!A1,(A1,B2))=107 (3-D argumen
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Other functions' union support (their own tasks under SPEC-0004).
