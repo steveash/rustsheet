@@ -20,6 +20,10 @@ Approach: for IRR/RATE/XIRR, fit a Newton (or secant) iteration with candidate s
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
 cached workbooks give. Fit against the T-1009 sweep (`probes-numeric/m9-fin-irr-rate`), never blind.
+The sweep has landed (691 cells, oracle-filled). Its observations are in
+`docs/excel-semantics/financial.md`, "IRR, RATE and XIRR stop early": the default guess is 0.1, IRR's
+last digits depend on the guess and on the flow scale and sign, XIRR stops at about 1e-8 to 1e-7 relative and is
+scale-invariant, and some guesses give `#NUM!`. RATE's guess argument is unreachable today (T-1050).
 
 ## Acceptance criteria
 - [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.
