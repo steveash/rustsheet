@@ -38,3 +38,33 @@ Evidence: probes/lifted-range-size C8; resource limit, see arrays.md "Array resu
 Status: DEVIATION (decision 0014)
 Implemented in: functions/information/mod.rs (`is_predicate`, via `Model::evaluate_range`)
 Tasks: T-0247, T-0047
+
+## IS*, TYPE, IFNA and COUNTIF on the newer rich errors (`#BLOCKED!`, `#CONNECT!`, `#FIELD!`)
+Rule: an error cell from IMAGE (`#BLOCKED!`), STOCKHISTORY (`#CONNECT!`) or FIELDVALUE (`#FIELD!`)
+behaves the same way for every test: ISERROR and ISERR are TRUE, ISNA is FALSE, TYPE is 16,
+`IFNA(cell,"y")` returns the error unchanged (it is not `#N/A`), and `ERROR.TYPE` is 11 for
+`#BLOCKED!`, 10 for `#CONNECT!` and 13 for `#FIELD!`; `ERROR.TYPE(cell+#DIV/0!)` is the same code, so the
+first error operand propagates (the rich kind wins over the later `#DIV/0!`). `COUNTIF(range,"#BLOCKED!")`,
+`"#CONNECT!"` and `"#FIELD!"` all count 0, even over the cell holding that error, and the negated
+`COUNTIF(range,"<>#BLOCKED!")` (likewise `<>#CONNECT!`, `<>#FIELD!`) counts that cell (1), so the error is
+never equal to the criterion text: the criteria
+table stays at today's twelve names (SPEC-0003 criteria bullet; T-1013 changes nothing there).
+Evidence: probes/rich-errors-args A40:C41 and B42:B48 (IMAGE), A50:C51, B52:B58 (STOCKHISTORY), A60:C61, B62:B68 (FIELDVALUE);
+excel-graph, 2026-10-07 (T-1012).
+Status: VERIFIED (excel-graph)
+Tasks: T-1012
+
+## IMAGE/STOCKHISTORY/FIELDVALUE argument errors
+Rule: for IMAGE and STOCKHISTORY an error argument wins: `IMAGE(1/0)`, `IMAGE("x",1/0)`,
+`STOCKHISTORY(1/0,DATE(2020,1,2))` and `STOCKHISTORY("QZXQZXQ",1/0)` are `#DIV/0!`. FIELDVALUE
+does not follow that rule for its first argument: `FIELDVALUE(1/0,"Price")` is `#FIELD!`, while
+an error in `field_name` wins (`FIELDVALUE(A10,1/0)` is `#DIV/0!`). `IMAGE(A1)` of an empty cell
+and `IMAGE(A10)` of a number evaluate as `#VALUE!` (ERROR.TYPE 3, TYPE 16, `VALUETOTEXT` "#VALUE!"), not
+`#BLOCKED!`. Excel stores those two cells as rich values (the oracle cannot decode their errorType), so
+their stored form is UNVERIFIED. `FIELDVALUE({1,2},"Price")` is an array result (`#FIELD!` in both cells, the second
+spilling into B28), not a scalar.
+Evidence: probes/rich-errors-args A20:A28, B28 and C22:G23; excel-graph, 2026-10-07 (T-1012).
+The raw `IMAGE(A1)`/`IMAGE(A10)` cells could not be decoded by the oracle (rich-value error type
+unknown), so they are probed through ERROR.TYPE/ISERROR/VALUETOTEXT/TYPE wrappers.
+Status: VERIFIED (excel-graph) for values; stored form of IMAGE(empty/number) UNVERIFIED
+Tasks: T-1012

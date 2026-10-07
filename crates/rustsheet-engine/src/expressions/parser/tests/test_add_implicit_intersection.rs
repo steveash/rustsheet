@@ -79,6 +79,17 @@ fn simple_test() {
         ("COLUMN()", "COLUMN()"),
         ("SUM(ROW(A1:A10))", "SUM(ROW(A1:A10))"),
         ("SIN(ROW(A1:A10))", "SIN(@ROW(A1:A10))"),
+        // `holidays` takes the whole range (poi/59106.xlsx Test!B2, docs/excel-semantics/dates.md);
+        // the date, day-count and weekend arguments stay scalar.
+        ("WORKDAY(A1:A10,6,B1:B4)", "WORKDAY(@A1:A10,6,B1:B4)"),
+        ("WORKDAY(A1,B1:B10)", "WORKDAY(A1,@B1:B10)"),
+        ("WORKDAY.INTL(A1,6,1,B1:B4)", "WORKDAY.INTL(A1,6,1,B1:B4)"),
+        ("WORKDAY.INTL(A1,6,B1:B4)", "WORKDAY.INTL(A1,6,@B1:B4)"),
+        ("NETWORKDAYS(A1,B1,C1:C4)", "NETWORKDAYS(A1,B1,C1:C4)"),
+        (
+            "NETWORKDAYS.INTL(A1,B1,C1:C4)",
+            "NETWORKDAYS.INTL(A1,B1,@C1:C4)",
+        ),
         // Information
         // ("ISBLANK(A1:A10)", "ISBLANK(A1:A10)"),
         // ("ISERR(A1:A10)", "ISERR(A1:A10)"),
