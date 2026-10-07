@@ -3,7 +3,7 @@ id: T-1052
 title: "Probe EDATE of serial 0 with months 2 and negative (day 0 of March 1900)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
