@@ -3,7 +3,7 @@ id: T-0224
 title: "LOOKUP with a 2-D lookup/result vector: probe Excel's error (engine returns #ERROR!)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
