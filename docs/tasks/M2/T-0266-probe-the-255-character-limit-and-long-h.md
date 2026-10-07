@@ -3,7 +3,7 @@ id: T-0266
 title: "Probe the 255-character limit and long H:M.f:S fractions inside date-clock text"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
