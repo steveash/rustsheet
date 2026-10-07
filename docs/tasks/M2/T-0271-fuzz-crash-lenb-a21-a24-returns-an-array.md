@@ -50,3 +50,6 @@ Audit: a throwaway debug-build test ran 60 other functions that are `not_impleme
 financial and conversion functions, ...) with range arguments in 1-4 argument positions; none hit the
 assert, while the same test caught `LENB` with the fix reverted. Functions not in that list (the D*
 database functions, lookups, IFS/SWITCH, aggregates) were not probed; no further instance found.
+Excel evidence: probes/text-b-functions-broadcast (oracle excel-graph, 29/29 match); recorded in
+docs/excel-semantics/text.md "The *B text functions equal their non-B twins and spill". The unaudited
+remainder is T-0272.
