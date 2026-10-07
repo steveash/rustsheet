@@ -179,8 +179,6 @@ F	probes/error-literals-new2.case.json	S!A6
 F	probes/error-literals-new2.case.json	S!A7
 F	probes/error-literals-new2.case.json	S!A8
 F	probes/error-literals-new2.case.json	S!A9
-F	probes/error-precedence-text.case.json	Calc!C11
-F	probes/error-precedence-text.case.json	Calc!C12
 F	probes/error-stored-constants.case.json	S!B1
 F	probes/error-stored-constants.case.json	S!B2
 F	probes/error-stored-constants.case.json	S!C1

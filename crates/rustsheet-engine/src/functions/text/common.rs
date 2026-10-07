@@ -1,4 +1,4 @@
-use super::text_arg::TextArg;
+use super::text_arg::{broadcast_text, TextArg};
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
@@ -12,7 +12,7 @@ use crate::{
     formatter::format::format_text,
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
     },
     locale::Locale,
     model::Model,
@@ -171,61 +171,6 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
     let string1 = array_node_to_string(text1)?;
     let string2 = array_node_to_string(text2)?;
     Ok(ArrayNode::Boolean(string1 == string2))
-}
-
-/// Broadcasts `compute` over the (possibly array) `operands`. When every operand
-/// is a scalar the result is a single value; otherwise it is an array whose shape
-/// is the element-wise maximum of the operand shapes.
-pub(super) fn broadcast_text(
-    cell: CellReferenceIndex,
-    operands: &[&TextArg],
-    compute: impl Fn(usize, usize) -> Result<ArrayNode, Error>,
-) -> CalcResult {
-    let mut rows = 1;
-    let mut cols = 1;
-    for operand in operands {
-        let (r, c) = operand.dims();
-        rows = rows.max(r);
-        cols = cols.max(c);
-    }
-
-    // All scalars: return a single value.
-    if rows <= 1 && cols <= 1 {
-        // An argument that is an error is the result, as it came.
-        if let Some(TextArg::Error(_, error)) =
-            operands.iter().find(|o| matches!(o, TextArg::Error(..)))
-        {
-            return error.clone();
-        }
-        return match compute(0, 0) {
-            Ok(ArrayNode::String(s)) => CalcResult::String(s),
-            Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
-            Ok(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
-            Ok(ArrayNode::Empty) => CalcResult::String(String::new()),
-            Ok(ArrayNode::Error(e)) | Err(e) => CalcResult::new_error(e, cell, String::new()),
-        };
-    }
-
-    let mut total_bytes: usize = 0;
-    let mut result = Vec::with_capacity(rows);
-    for i in 0..rows {
-        let mut data_row = Vec::with_capacity(cols);
-        for j in 0..cols {
-            let value = compute(i, j).unwrap_or_else(ArrayNode::Error);
-            if let ArrayNode::String(s) = &value {
-                if !util::within_text_budget(&mut total_bytes, s.len()) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Total text result is too large".to_string(),
-                    );
-                }
-            }
-            data_row.push(value);
-        }
-        result.push(data_row);
-    }
-    CalcResult::Array(result)
 }
 
 /// Finds the first instance of 'search_for' in text starting at char index start
