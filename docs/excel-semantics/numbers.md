@@ -42,6 +42,36 @@ Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-roundi
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
 
+## ROUND family: huge num_digits wrap
+Rule: a `num_digits` of huge magnitude is narrowed to an integer, and ROUND narrows it differently
+from ROUNDUP and ROUNDDOWN (after truncation toward zero; Excel is right, however odd):
+- ROUNDUP and ROUNDDOWN keep the sign and take the magnitude, capped at 2^32-1, modulo 65,536.
+  `ROUNDUP(123.456,65536)` = 124 (digits 0), `ROUNDDOWN(123.456,65537)` = 123.4 (digits 1),
+  `ROUNDUP(123.456,-65537)` = 130, `ROUNDDOWN(123.456,-65535)` = 0 and `ROUNDUP(123.456,-65535)` =
+  `#NUM!`, `ROUNDDOWN(0.5,2^31)` = 0 and `ROUNDUP(0.5,2^31)` = 1, `ROUNDUP(42,-2147483649)` = 50.
+  2^32 and anything larger act as 65,535 (`ROUNDUP(123.456,2^32+2)` = 123.456), and -2^32 and below
+  as -65,535 (`ROUNDDOWN(123.456,-1E+300)` = 0, `ROUNDUP(…)` = `#NUM!`).
+- ROUND saturates `num_digits` to a 32-bit integer k (1E+15 acts as 2147483647), then counts the
+  digits it keeps, k + e + 1 (e the decimal exponent of the value), in 32 bits with wraparound.
+  Past the top the count wraps negative and the result is 0. Past the bottom it wraps positive and
+  the value is returned unrounded. So `ROUND(5,2147483647)` = 0 but `ROUND(5,2147483646)` = 5,
+  `ROUND(50,2147483646)` = 0, `ROUND(5E+14,2147483633)` = 0 but `…,2147483632)` = 5E+14,
+  `ROUND(1E+15,1E+15)` = 0, `ROUND(0.5,1E+15)` = 0.5, `ROUND(42,123456789.123)` = 42,
+  `ROUND(123.456,65536)` = 123.456; `ROUND(5E-10,-2147483640)` = 5E-10 but `…,-2147483639)` = 0,
+  `ROUND(5E-300,-2147483350)` = 5E-300 but `…,-2147483349)` = 0.
+- Where ROUNDUP uses a wrapped digit count, its result can be one ulp above the decimal-correct one:
+  `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, while `ROUNDDOWN` there is 123.45.
+  The engine gives 123.46 (3 cells, follow-up T-0268).
+- e is taken from the value after its 15-digit cut: `ROUND(10-1E-15,2147483646)` = 0 and
+  `…,2147483645)` = 10 (the cut carries 9.99999999999999… to 10, e = 1), `ROUND(1-1E-16,2147483647)` = 0.
+Evidence: probes/round-huge-digits (216 cells), probes/round-huge-digits-wrap (A:C by d, E:O ROUND by
+the exponent), probes/round-huge-digits-negative (91 cells), probes/round-huge-digits-carry (6 cells); oracle: excel-graph, 2026-10-07 (T-0218).
+gen-m2/caa981b0753f455c Calc!A270 (`ROUND(1E+15,1E+15)` = 0, so the quotient is `#DIV/0!`) and
+gen-m2/dd99be1f2454159f Calc!A159.
+Status: VERIFIED
+Implemented in: `effective_digits` in crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs (T-0218).
+Tasks: T-0218, T-0268
+
 ## MOD is #NUM! for a huge quotient
 Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
 `MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
