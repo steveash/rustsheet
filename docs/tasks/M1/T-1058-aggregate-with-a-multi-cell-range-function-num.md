@@ -3,7 +3,7 @@ id: T-1058
 title: "AGGREGATE with a multi-cell range function_num or options"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
