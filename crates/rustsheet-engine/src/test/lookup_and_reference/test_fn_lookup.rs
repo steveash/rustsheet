@@ -218,9 +218,9 @@ fn test_lookup_2d_lookup_vector_and_short_result() {
     assert_eq!(model._get_text("H4"), "100");
     assert_eq!(model._get_text("H5"), "#N/A");
     assert_eq!(model._get_text("H6"), "8");
-    // Past the sheet's edge (engine choice, not probed).
-    assert_eq!(model._get_text("H7"), "#N/A");
-    assert_eq!(model._get_text("H8"), "#N/A");
+    // Past the sheet's edge reads a blank: 0 (probes/lookup-vector-edges A15, A17).
+    assert_eq!(model._get_text("H7"), "0");
+    assert_eq!(model._get_text("H8"), "0");
     assert_eq!(model._get_text("H9"), "#N/A");
     assert_eq!(model._get_text("H10"), "30");
 }
