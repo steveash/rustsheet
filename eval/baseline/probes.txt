@@ -112,6 +112,7 @@ C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
 C	probes/offset-negative-height-width.case.json	80
+C	probes/operator-chain-limit.case.json	6
 C	probes/paren-negative-text.case.json	5
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14

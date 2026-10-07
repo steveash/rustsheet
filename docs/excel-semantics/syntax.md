@@ -59,19 +59,21 @@ Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) ar
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
 Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
-characters), so no formula Excel accepts is refused for its chains. Probe `operator-chain-limit`
+characters), so no formula within the published limit is refused for its chains. Whether Excel
+accepts longer chains on load (and so whether RustSheet refuses one Excel accepts) is not probed
+(follow-up T-1084). Probe `operator-chain-limit`
 (T-1060, excel-graph): `=1+1+...` of 8,191, 8,192 and 8,193 formula characters (4,095 to 4,096
-terms; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
+terms; `&` chains 4,093 to 4,094; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
 so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
 Excel for the web did not refuse the 8,193 character formula when loaded from a file, so the
-published limit was not enforced on file load (typing was not probed).
+published limit was not enforced on file load (typing and desktop Excel were not probed).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains within the published limit); otherwise only the published limits; this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit); otherwise only the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
 
