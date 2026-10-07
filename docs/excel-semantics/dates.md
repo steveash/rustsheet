@@ -167,8 +167,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   301-digit `H:M.f:S` fraction (316 characters) is #VALUE! while a 238-digit one (253 characters)
   gives 1.1574074074074075e+232. Whole seconds around the 2^53 ms formula switch
   (`1/2/2020 0:0.9007199254730:0` to `...50:0`) match the engine. The engine has no limit on
-  date-clock text, so it diverges on 256 or more characters (follow-up T-0273). Number text is
-  still unprobed.
+  date-clock text, so it diverges on 256 or more characters (follow-up T-0273). Plain number text has the same limit (numbers.md "Number text of 1E+308 or more is not a number", T-1097).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
