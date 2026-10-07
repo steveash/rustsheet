@@ -30,4 +30,4 @@ crates/rustsheet-engine/src/number_format.rs, which reads both strings as 0 toda
 -
 
 ## Outcome
-Probed (probes/text-number-long-zero, excel-graph, 78 text cells): number text longer than 255 characters is `#VALUE!`, 255 or fewer reads normally, for zero and nonzero forms alike. Recorded in numbers.md; engine follow-up T-1101. Eval: the new probe fails 138 of 312 cells today (engine reads long text as a number); the failures are not in the baseline yet.
+Probed (probes/text-number-long-zero, excel-graph, 78 text cells): number text longer than 255 characters is `#VALUE!`, 255 or fewer reads normally, for zero and nonzero forms alike. Recorded in numbers.md; engine follow-up T-1101. Eval: the new probe fails 138 of 312 cells today (engine reads long text as a number); those cells are recorded as known failures in eval/baseline/probes.txt (made with `make eval-baseline`).
