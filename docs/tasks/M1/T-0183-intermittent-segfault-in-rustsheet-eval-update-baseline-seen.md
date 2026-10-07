@@ -19,7 +19,7 @@ A segfault in safe Rust on untrusted input points to a stack overflow (deep recu
 Start by running `update-baseline` in a loop (e.g. 50 times), with `ulimit -c unlimited` or under `gdb -batch -ex run -ex bt`, and capture the backtrace. Check which suite or case was running, and whether the eval runs cases on threads with a non-default stack size.
 
 ## Acceptance criteria
-- [x] (no reproducer; see Outcome) A reproducer (case and command) and a backtrace are recorded in this task; the root cause is fixed with a regression test, or, if it is a resource limit, bounded with a DEVIATION entry; 50 consecutive `rustsheet-eval update-baseline` runs exit 0.
+- [ ] (unmet: not reproducible, see Outcome; the 50-run part holds) A reproducer (case and command) and a backtrace are recorded in this task; the root cause is fixed with a regression test, or, if it is a resource limit, bounded with a DEVIATION entry; 50 consecutive `rustsheet-eval update-baseline` runs exit 0.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
