@@ -29,15 +29,15 @@ A span of one sheet is also that sheet's reference (unlike multi-sheet spans abo
 COUNTBLANK counts the blanks (2 for `Data1:Data1!A1:B3`) and INDEX reads the cell.
 A span wrapped in IF or CHOOSE inside INDEX or MATCH gives `#VALUE!`, not
 `#REF!`; `SUM(IF(TRUE,Data1:Data3!A1:A2))` is 113 (numbers of all three sheets, the text "5" skipped).
-Engine gap: `INDEX(IF(TRUE,span),1)` and `MATCH(1,IF(TRUE,span),0)` give `#REF!` (baselined; CHOOSE matches).
 Evidence: probes/3d-ref-values, probes/3d-ref-functions incl. C15:C22 (excel-graph, 2026-10-06).
 Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span whose end is not a
 sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
 implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
 crates/rustsheet-engine/src/reference_operators.rs; INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK reach
-the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs).
-Tasks: T-0122, T-0197
+the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
+the same check (`IfBranchMode::SingleSheet`, T-1026); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
+Tasks: T-0122, T-0197, T-1026
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a

@@ -1,0 +1,61 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "LOOKUP vector form, second round: a wide 2-D lookup_vector (more columns than rows), and result vectors shorter than the match position or a single cell (T-0224; see docs/excel-semantics/lookup.md)",
+  "tags": [
+    "M2",
+    "probe",
+    "LOOKUP"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 5,
+        "D1": 7,
+        "A2": 3,
+        "B2": 4,
+        "C2": 6,
+        "D2": 8,
+        "F1": 10,
+        "F2": 20,
+        "F3": 30,
+        "F4": 40,
+        "G1": 100,
+        "H1": 200,
+        "I1": 300,
+        "J1": 400,
+        "L1": "=LOOKUP(5,A1:D2,F1:F4)",
+        "L2": "=LOOKUP(5,A1:D2,G1:J1)",
+        "L3": "=LOOKUP(99,A1:D2,F1:F4)",
+        "L4": "=LOOKUP(3,A1:D2,F1:F4)",
+        "L5": "=LOOKUP(5,A1:C2,F1:F2)",
+        "L6": "=LOOKUP(99,A1:B2,F1)",
+        "L7": "=LOOKUP(3,A1:A2,F1)",
+        "L8": "=LOOKUP(5,{1,2,5;3,4,6},{10,20,30})",
+        "L9": "=LOOKUP(99,A1:B2,F1:F1)",
+        "L10": "=LOOKUP(99,A1:A2,G1:H1)",
+        "L11": "=LOOKUP(7,A1:D1,F1:F2)",
+        "L12": "=LOOKUP(2,A1:B2,{10})",
+        "L13": "=LOOKUP(99,A1:B2,{10})"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!L1",
+    "Sheet1!L2",
+    "Sheet1!L3",
+    "Sheet1!L4",
+    "Sheet1!L5",
+    "Sheet1!L6",
+    "Sheet1!L7",
+    "Sheet1!L8",
+    "Sheet1!L9",
+    "Sheet1!L10",
+    "Sheet1!L11",
+    "Sheet1!L12",
+    "Sheet1!L13"
+  ]
+}

@@ -15,10 +15,17 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 **not** happen when the whole formula is parenthesized (`=(X-b)`) or another operation follows
 (`=X-b+0`, `=(X-b)*1`). For X = b·(1±k·2^-52): k ≤ 3 always snaps, k = 4–7 snaps for some bases only
 (15, 9, 9, 9 of 24), k = 8 never; identical for `X-b`, `X+(-b)` and `SUM(X,-b)`. The exact
-threshold is left to T-0110. The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
+threshold (T-0110, fitted on all 1,296 cells): snap iff the two addends of the final addition
+have opposite signs and |result| < 8 ULP of the **smaller** addend in magnitude (= 2^(e-49), e
+its binary exponent). The opposite-sign condition is implied, not observed: every probe cell
+subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
+addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
+up to k = 7 but the `-` side, whose smaller addend 1-k·2^-52 has half the ULP, only up to k = 3.
+The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Tasks: T-0110 (implementation, waits on T-1017: the AST must keep the outer parentheses)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact

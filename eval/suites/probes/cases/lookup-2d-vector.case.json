@@ -1,0 +1,68 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "LOOKUP vector form with a 2-D lookup_vector or result_vector (ranges, arrays, computed), and MATCH on a 2-D array (T-0224; see docs/excel-semantics/lookup.md)",
+  "tags": [
+    "M2",
+    "probe",
+    "LOOKUP",
+    "MATCH"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "C1": 10,
+        "C2": 20,
+        "D1": 30,
+        "D2": 40,
+        "A3": 5,
+        "B3": 6,
+        "H1": "=LOOKUP(2,A1:B2,C1:C2)",
+        "H2": "=LOOKUP(2,A1:A2,C1:D2)",
+        "H3": "=LOOKUP(2,A1:B2,C1:D2)",
+        "H4": "=LOOKUP(3,A1:A2,C1:D2)",
+        "H5": "=LOOKUP(2,{1,2;3,4},{5,6})",
+        "H6": "=LOOKUP(2,{1,2},{5,6;7,8})",
+        "H7": "=LOOKUP(2,A1:B2*1,C1:C2)",
+        "H8": "=LOOKUP(99,A1:B2,C1:C2)",
+        "H9": "=LOOKUP(2,A1:B2)",
+        "H10": "=LOOKUP(2,A1:B3,C1:C3)",
+        "H11": "=LOOKUP(2,A1:B2,C1)",
+        "H12": "=LOOKUP(#N/A,A1:B2,C1:C2)",
+        "H13": "=LOOKUP(2,A1:B1,C1:D2)",
+        "H14": "=MATCH(2,{1,2;3,4},0)",
+        "H15": "=MATCH(2,A1:B2*1,0)",
+        "H16": "=MATCH(2,{1,2;3,4})",
+        "H17": "=MATCH(2,{1,2;3,4},-1)",
+        "H18": "=ERROR.TYPE(LOOKUP(2,A1:B2,C1:C2))",
+        "H19": "=LOOKUP(0,A1:B2,C1:C2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9",
+    "Sheet1!H10",
+    "Sheet1!H11",
+    "Sheet1!H12",
+    "Sheet1!H13",
+    "Sheet1!H14",
+    "Sheet1!H15",
+    "Sheet1!H16",
+    "Sheet1!H17",
+    "Sheet1!H18",
+    "Sheet1!H19"
+  ]
+}
