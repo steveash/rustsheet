@@ -3,7 +3,7 @@ id: T-1033
 title: "Conditional-format Equal/NotEqual and CalcResult Ord NaN: drop absolute epsilon, total order"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Follow-ups of T-1028 review. `conditional_formatting.rs` ~612/617 (ValueOperator
 
 ## Out of scope
 -
+
+## Outcome
+CF Equal/NotEqual use `cmp_excel_precision`; it is now a NaN-safe total order (NaN above numbers, -0 == 0), unit-tested. The Excel probe could not be run (Graph oracle cannot evaluate conditional formats), so the first acceptance criterion is deferred to T-1051 (probe, plus the other CF operators) and the behavior is recorded as UNVERIFIED (probe pending) in `docs/excel-semantics/criteria.md`. Eval delta: none.
