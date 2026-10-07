@@ -89,7 +89,8 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
         Node::SpillRangeOperator { child } => {
-            add_implicit_intersection(child, add);
+            // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
+            add_implicit_intersection(child, false);
         }
         Node::RangeKind {
             row1,

@@ -22,6 +22,7 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
+        let after_at = std::mem::take(&mut self.at_paren);
         let mut t = self.parse_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -64,6 +65,10 @@ impl Parser {
         // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
+        }
+        // Only an `@` operand prints them back, so no other intersection records them.
+        if let Node::OpIntersectKind { parenthesized, .. } = &mut t {
+            *parenthesized = after_at;
         }
         t
     }
@@ -114,6 +119,7 @@ impl Parser {
             t = Node::OpIntersectKind {
                 left: Box::new(t),
                 right: Box::new(p),
+                parenthesized: false,
             };
         }
         if as_name {
@@ -173,6 +179,7 @@ impl Parser {
             if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
                 return self.too_deep();
             }
+            self.at_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
@@ -378,9 +385,17 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
-/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102).
+/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and an intersection keeps the
+/// ones it was written in, `@(A1 B1)` (T-1109).
 pub(crate) fn at_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::ImplicitIntersection { .. }) {
+    if matches!(
+        node,
+        Node::ImplicitIntersection { .. }
+            | Node::OpIntersectKind {
+                parenthesized: true,
+                ..
+            }
+    ) {
         format!("({text})")
     } else {
         text

@@ -395,7 +395,7 @@ fn to_string_moved(
             let operand = |n| tight_operand(to_string_moved(n, move_context, locale, language), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind { left, right } => {
+        OpIntersectKind { left, right, .. } => {
             let operand = |n, is_left| {
                 let text = to_string_moved(n, move_context, locale, language);
                 intersection_operand(text, n, is_left)

@@ -24,6 +24,8 @@ fn simple_test() {
     let cases = vec![
         ("A1:A10*SUM(A1:A10)", "@A1:A10*SUM(A1:A10)"),
         ("A1:A10", "@A1:A10"),
+        // The anchor of a spill operator is not intersected (T-1109).
+        ("_xlfn.ANCHORARRAY(INDEX(A1:A10,1))", "INDEX(A1:A10,1)#"),
         // Math and trigonometry functions
         ("SUM(A1:A10)", "SUM(A1:A10)"),
         ("SIN(A1:A10)", "SIN(@A1:A10)"),
