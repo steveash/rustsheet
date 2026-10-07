@@ -6,7 +6,7 @@ lane: harness
 status: todo
 priority: P0
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -35,3 +35,10 @@ reviewer-architecture and reviewer-security. Until fixed, directive-5 fuzzing gi
 
 ## Out of scope
 - Fixing crashes the fuzzer finds once it runs (one P0 task each).
+
+## Handoff
+Escalated by a sonnet run without implementing: the fix edits `.github/workflows/fuzz.yml` (protected CI path), which
+needs a decision-record note and reviewer-architecture/reviewer-security approval (work-loop 5b).
+Tried: nothing beyond reading the task. Next: pass the host triple explicitly to `cargo fuzz run`/`build`
+(`--target "$(rustc -vV | sed -n 's/^host: //p')"`), create the decision note with `make new-decision`, update decision
+0035's local command if needed, then run the workflow via `workflow_dispatch` on the PR head.
