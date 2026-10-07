@@ -3,7 +3,7 @@ id: T-0262
 title: "Probe CONCAT/TEXTJOIN limit boundary, UTF-16 and error precedence"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
