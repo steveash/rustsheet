@@ -1415,8 +1415,6 @@ F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B3
 F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B31
 F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B34
 F	ironcalc-calc/STATISTICAL/GAUSS.xlsx	GAUSS!B4
-F	ironcalc-calc/STATISTICAL/GEOMEAN.xlsx	Sheet1!B27
-F	ironcalc-calc/STATISTICAL/GEOMEAN.xlsx	Sheet1!G27
 F	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	Sheet1!F2
 F	ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx	Sheet1!F3
 F	ironcalc-calc/STATISTICAL/LINEST_LOGEST.xlsx	Sheet1!D2
