@@ -183,10 +183,11 @@ Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
 future function names, LAMBDA definitions and calls, and `@` operands are accepted); `Parser::parse_implicit`
 (`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection in
-parentheses, `=A1 (@A1)`, since a bare one could take in a following intersection (engine choice; FORMULATEXT
-of `=A1 @A1` is not probed). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
+parentheses, `=A1 (@A1)`, and `=@A1:A3 A2:B2` as `=@(A1:A3 A2:B2)`. Excel's FORMULATEXT prints both as written,
+`=A1 @A1` and `=@A1:A3 A2:B2` (probes/intersection-at-formulatext H2, H4, oracle: excel-graph, 2026-10-07,
+T-1094), so the engine's printing is a mismatch (T-1098). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
-Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098
 
 ## Calling a parenthesized operand
 Rule: a parenthesized operand written directly before `(`, with no space, is called like a LAMBDA
@@ -207,9 +208,13 @@ LET name plays a part). The engine gives `#VALUE!` for those calls (T-1092).
 Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probes/paren-call-lambda-cell,
 probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
 probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149).
-UNVERIFIED by inference: the callees the engine accepts are the intersection's reference operands
+Callee forms (probes/paren-call-callee-offset and -indirect H1, oracle: excel-graph, 2026-10-07, T-1094):
+`=(OFFSET(A1,0,0))(2)` and `=(INDIRECT("A1"))(2)` load and are `#REF!`, calls of a reference. Excel for the
+web refuses a workbook holding `=(1+1)(2)` or `=(SUM(A1))(2)` (`FileCorruptTryRepair`, one scratch
+workbook each, not committed), so the engine's syntax error for a value callee is right. UNVERIFIED by
+inference: the callees the engine accepts are the intersection's reference operands
 (`is_reference_operand`), which include LAMBDA, calls of the reference-returning functions and names;
-other callees (`(1+1)(2)`, `(SUM(A1))(2)`) are syntax errors like `(1)(2)`. A second call,
+other value-returning callees are refused like `(1)(2)`. A second call,
 `(A1)(1)(2)`, is left-over input (not probed).
 Status: VERIFIED
 Implemented in: expressions/parser/lambda.rs (`Parser::parse_parenthesized_call`);

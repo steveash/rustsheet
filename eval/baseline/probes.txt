@@ -107,6 +107,7 @@ C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
+C	probes/intersection-at-formulatext.case.json	4
 C	probes/intersection-at-operands.case.json	5
 C	probes/intersection-function-operands.case.json	14
 C	probes/intersection-operands.case.json	16
@@ -163,6 +164,8 @@ C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
 C	probes/offset-negative-height-width.case.json	80
 C	probes/operator-chain-limit.case.json	6
+C	probes/paren-call-callee-indirect.case.json	1
+C	probes/paren-call-callee-offset.case.json	1
 C	probes/paren-call-empty-args.case.json	1
 C	probes/paren-call-function-ref.case.json	1
 C	probes/paren-call-if-lambda.case.json	1
@@ -313,6 +316,8 @@ F	probes/if-index-ref-args-aggregates.case.json	Calc!A48
 F	probes/if-index-ref-args-aggregates.case.json	Calc!A49
 F	probes/if-index-ref-args-aggregates.case.json	Calc!A50
 F	probes/if-index-ref-args-aggregates.case.json	Calc!A51
+F	probes/intersection-at-formulatext.case.json	Sheet1!H2
+F	probes/intersection-at-formulatext.case.json	Sheet1!H4
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
 F	probes/intersection-function-operands.case.json	Sheet1!H14
