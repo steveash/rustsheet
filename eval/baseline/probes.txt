@@ -6,6 +6,7 @@ C	probes/3d-ref-aggregates.case.json	20
 C	probes/3d-ref-functions.case.json	22
 C	probes/3d-ref-values.case.json	10
 C	probes/aggregate-args.case.json	53
+C	probes/aggregate-array-args.case.json	48
 C	probes/aggregate-grid.case.json	217
 C	probes/aggregate-overflow.case.json	178
 C	probes/arith-overflow.case.json	72
@@ -127,9 +128,6 @@ F	probes/3d-ref-functions.case.json	Calc!C18
 F	probes/3d-ref-functions.case.json	Calc!C20
 F	probes/aggregate-args.case.json	Misc!A11
 F	probes/aggregate-args.case.json	Misc!A13
-F	probes/aggregate-args.case.json	Misc!A36
-F	probes/aggregate-args.case.json	Misc!A37
-F	probes/aggregate-args.case.json	Misc!A38
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E13

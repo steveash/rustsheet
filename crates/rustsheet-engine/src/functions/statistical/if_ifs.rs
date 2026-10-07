@@ -132,10 +132,28 @@ impl Model {
     /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
     /// range): the call is `#ERROR!` when its used cells times the criteria count times the
     /// elements to compute exceed [`MAX_LIFTED_CELL_VISITS`].
+    ///
     fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
         walked: &Node,
+        cell: CellReferenceIndex,
+        compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
+    ) -> CalcResult {
+        self.lift_with_cost(
+            criteria,
+            |model| model.walk_cost(walked, cell),
+            cell,
+            compute,
+        )
+    }
+
+    /// [`Model::lift_criteria`] with the cells one element visits given by `walk_cost` (called
+    /// only when something lifts). AGGREGATE lifts its function_num, options and k this way.
+    pub(crate) fn lift_with_cost(
+        &mut self,
+        criteria: Vec<CalcResult>,
+        walk_cost: impl FnOnce(&mut Self) -> u64,
         cell: CellReferenceIndex,
         mut compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
@@ -175,8 +193,7 @@ impl Model {
         // Refuse before walking anything when the walks would visit too many cells.
         let walks = count_walks(&args, rows, columns);
         let criteria_count = u64::try_from(args.len()).unwrap_or(u64::MAX);
-        let visits = self
-            .walk_cost(walked, cell)
+        let visits = walk_cost(self)
             .saturating_mul(criteria_count)
             .saturating_mul(walks);
         if visits > MAX_LIFTED_CELL_VISITS {
@@ -222,7 +239,7 @@ impl Model {
     }
 
     /// Cells of `node`'s range inside the used area (at least 1): what one criteria walk visits.
-    fn walk_cost(&mut self, node: &Node, cell: CellReferenceIndex) -> u64 {
+    pub(crate) fn walk_cost(&mut self, node: &Node, cell: CellReferenceIndex) -> u64 {
         let CalcResult::Range { left, right } = self.evaluate_node_with_reference(node, cell)
         else {
             return 1;

@@ -459,8 +459,26 @@ idiom) and k: three arguments is `#VALUE!`, an error in k is returned even under
 and k follows the named function (`AGGREGATE(14,0,E1:E6,2.9)` = `LARGE(E1:E6,2.9)` = the 3rd largest).
 Excel for the web refuses to open a workbook holding `AGGREGATE(14,0,E1:E3,E4:E6,2)`, `AGGREGATE(14,6,E1:E6,2,3)`,
 `AGGREGATE(9,0,1,2,3)` or `AGGREGATE(2,0,E1:E6,"3",TRUE)` (`createSession` 501 unsupportedWorkbook), so those
-forms have no evidence. An array function_num or option (`AGGREGATE({9,4},0,..)`) gives a single value in the
-checked cell (23, the SUM).
+forms have no evidence.
+An array function_num, options or fourth argument lifts: each element is its own AGGREGATE call, and the results
+spill, broadcast like element-wise operators (a dimension of 1 stretches, a row and a column make a grid, and a
+position past a shorter array is `#N/A`). Examples:
+- `AGGREGATE({9,4},0,E1:E6)` spills 23, 9 (SUM, MAX), and `{9;4}` spills down.
+- `AGGREGATE({9,4,1},{0,6},D1:D11)` spills `#DIV/0!`, 10, `#N/A`.
+- `AGGREGATE(14,6,D1:D11,{1,2,3})` spills 10, 4, 3, and `AGGREGATE(15,6,E1:E6,{1,2;3,4})` spills a 2x2.
+- An array k lifts even in the reference form: `AGGREGATE(9,0,E1:E6,{1,2})` spills `#VALUE!` twice.
+- Each element keeps its own form: `AGGREGATE({9,14},0,E1:E6,2)` is `#VALUE!` (2 is not a reference), then 5.
+- Invalid elements fail alone: `{1,"x",TRUE}` gives 3.83, `#VALUE!`, 3.83, and `{9,99}` gives 23, `#VALUE!`.
+- A range fourth argument is a reference, not lifted: `AGGREGATE({9,4},0,E1:E6,E1:E2)` spills 27, 9.
+
+A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
+the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
+computed array, which is evaluated once per call), times the lifted argument count, above 2^27 is `#ERROR!`
+(`AGGREGATE(14,6,SEQUENCE(1048576),SEQUENCE(1048576))`, unit test `lifted_calls_over_large_arrays_hit_the_visit_cap`).
+A multi-cell range function_num or options is not lifted: the engine reads it as a scalar and gives `#N/IMPL!`
+(unprobed, T-1058).
+Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
+Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
 Oracle: excel-graph, 2026-10-06 (T-0993).
 Status: VERIFIED, except hidden and filtered rows (UNVERIFIED: the case format cannot hide rows; the engine skips
@@ -468,6 +486,7 @@ hidden and filter-hidden rows under odd options and keeps them otherwise) and ne
 larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
 Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
 option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
-Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034) and array function_num/option/k lifting (T-1038).
+Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
 The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
-Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs).
+Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
+`Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
