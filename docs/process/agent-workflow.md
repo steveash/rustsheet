@@ -127,7 +127,7 @@ A pending probe is better than a confident wrong implementation.
 | Eval regression found later | file a P0 task in the owning lane with the regressing case ids; bisect with `git bisect run make eval-check` |
 | Reviewer disagreement you believe is wrong | answer in the PR with evidence; if still blocked after 3 rounds, mark blocked and let the steward run decide |
 | Task turns out to be bigger than M | stop, commit the analysis to the task file, ask the planner to split it |
-| Missing capability (oracle, credentials, network) | mark blocked with the exact need and the command that proves it is available (oracle: `rustsheet-oracle status` shows `excel-graph OK`); record it in `docs/status.md` under "Needs owner" |
+| Missing capability (oracle, credentials, network) | mark blocked with the exact need and the command that proves it is available (oracle: `rustsheet-oracle status` shows `excel-graph OK`); record it in `docs/status.md` under "Needs owner". Exception: a need for the excel-desktop oracle (desktop-only or conditional-format evidence) is not a "Needs owner" item and blocks nothing else; move the task to M14 (Phase 4) or add the item to T-1075 (decision 0039) |
 | A blocking capability is now available | unblock it (see "Unblocking" under Task lifecycle); never wait for the owner to edit task files |
 | Nightly fuzz run red (`.github/workflows/fuzz.yml`) | the steward downloads each `fuzz-crash-*` artifact, reproduces it with `cd fuzz && cargo fuzz run <target> <file>`, and files one P0 task per distinct crash (same panic site or stack = same crash) in the owning lane with the reproducer's bytes in the task (escaped; never the job environment); the fix adds the reproducer as a unit test (decision 0035) |
 
