@@ -3,7 +3,7 @@ id: T-1103
 title: "Probe whether Excel loads _xlfn.SINGLE as an intersection operand"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
