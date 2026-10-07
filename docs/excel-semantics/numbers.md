@@ -560,7 +560,7 @@ copies of one value, 50-1100; excel-graph, 2026-10-07, T-1113), ironcalc-calc GE
 probes/geomean-overflow-count H1, probes/geomean-overflow-cut-3 C1, C5, C11, E1.
 Status: VERIFIED for the probed cells; the formulation is a best fit (5 of 72 one-ulp misses).
 Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108
+Tasks: T-1113, T-1108, T-1123
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
