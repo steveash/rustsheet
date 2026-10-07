@@ -34,3 +34,8 @@ def test_malformed_property_is_a_value_error() -> None:
             dst.writestr(info, data)
     with pytest.raises(ValueError, match="malformed"):
         entered_cells(out.getvalue())
+
+
+def test_overlong_entry_is_refused() -> None:
+    with pytest.raises(ValueError, match="too long"):
+        build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "x" * 300}}}]})

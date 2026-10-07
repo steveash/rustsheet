@@ -253,7 +253,11 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, formula)
     for n, entry in enumerate(entered, start=1):
-        wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", json.dumps(entry, ensure_ascii=False))
+        value = json.dumps(entry, ensure_ascii=False)
+        if len(value) > 255:  # Excel's custom-property limit; fail here, not at the oracle
+            msg = f"entered cell {entry[0]}!{entry[1]} is too long for a custom property ({len(value)} > 255)"
+            raise ValueError(msg)
+        wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", value)
     wb.close()
     return _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
 

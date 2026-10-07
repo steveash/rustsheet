@@ -49,7 +49,7 @@ Input conventions:
   the value and number format. spec2xlsx leaves the cell blank and lists it in docProps custom
   properties `rustsheet.entered.<n>`; the excel-graph backend writes it with a range `values`
   PATCH before calculating (and logs the `numberFormat` Excel chose as `ENTERED ...` on stderr),
-  excel-desktop sets `Range.Value`, libreoffice refuses. The engine adapter enters it as
+  excel-desktop sets `Range.Value` (that this parses exactly like typing is UNVERIFIED: no desktop run yet), libreoffice refuses. The engine adapter enters it as
   `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
