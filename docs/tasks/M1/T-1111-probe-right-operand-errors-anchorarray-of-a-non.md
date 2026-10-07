@@ -3,7 +3,7 @@ id: T-1111
 title: "Probe : right-operand errors, ANCHORARRAY of a non-reference and @-operand parentheses"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
