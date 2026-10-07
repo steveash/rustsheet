@@ -3,7 +3,7 @@ id: T-0406
 title: "Import t=d (ISO 8601) date cells as serials"
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
