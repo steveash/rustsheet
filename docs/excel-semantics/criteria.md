@@ -168,3 +168,10 @@ Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph)
 Status: VERIFIED
 Implemented in: `resize_to`, `apply_ifs`, `fn_countifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0234
+
+### Conditional-format Equal/NotEqual compare on 15 digits (no absolute epsilon)
+Rule: the engine's conditional-format "cell value equal to / not equal to" rules compare with the same 15-significant-digit rule as `=` and criteria equality (`cmp_excel_precision`), not an absolute `f64::EPSILON` tolerance, so tiny values never equal 0. NaN orders above every number and equals itself in `CalcResult`'s `Ord`; -0.0 equals 0.0.
+Evidence: none direct. The Graph oracle cannot evaluate conditional formats, so the Excel behavior for tiny values is inferred from the 15-digit comparison rule.
+Status: UNVERIFIED
+Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/src/conditional_formatting.rs`, `cmp_excel_precision` in `number_format.rs`
+Tasks: T-1033

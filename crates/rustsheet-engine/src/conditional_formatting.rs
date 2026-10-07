@@ -11,13 +11,11 @@ use crate::{
         PeriodType, TextOperator, ValueOperator,
     },
     expressions::types::{CellReferenceIndex, CellReferenceRC},
+    number_format::cmp_excel_precision,
     types::{Color, Dxf},
     Model,
 };
-
-use crate::number_format::cmp_excel_precision;
 use chrono::{Datelike, Duration, Months, NaiveDate};
-use std::cmp::Ordering;
 
 // ---------------------------------------------------------------------------
 // Free helper functions for CF evaluation
@@ -611,16 +609,12 @@ impl Model {
                     if let Ok(CellValue::Number(v)) = self.get_cell_value_by_index(sheet, row, col)
                     {
                         let matches = match operator {
-                            ValueOperator::Equal => {
-                                cmp_excel_precision(v, threshold) == Ordering::Equal
-                            }
+                            ValueOperator::Equal => cmp_excel_precision(v, threshold).is_eq(),
                             ValueOperator::GreaterThan => v > threshold,
                             ValueOperator::GreaterThanOrEqual => v >= threshold,
                             ValueOperator::LessThan => v < threshold,
                             ValueOperator::LessThanOrEqual => v <= threshold,
-                            ValueOperator::NotEqual => {
-                                cmp_excel_precision(v, threshold) != Ordering::Equal
-                            }
+                            ValueOperator::NotEqual => cmp_excel_precision(v, threshold).is_ne(),
                             ValueOperator::Between => {
                                 let t2 = threshold2.unwrap_or(threshold);
                                 v >= threshold.min(t2) && v <= threshold.max(t2)
