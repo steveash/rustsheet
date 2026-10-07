@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXT(x,\"General\") digit count at the exponent 98/99 boundary and for a mantissa that rounds up to 10 (T-1001).",
+  "tags": ["M1", "number-format", "text-general", "probe"],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=TEXT(1.23456789012345E+98,\"General\")",
+        "A2": "=TEXT(1.23456789012345E+99,\"General\")",
+        "A3": "=TEXT(1.23456789012345E-98,\"General\")",
+        "A4": "=TEXT(9.87654321098765E-99,\"General\")",
+        "A5": "=TEXT(9.9999996E+98,\"General\")",
+        "A6": "=TEXT(9.9999996E+99,\"General\")",
+        "A7": "=TEXT(9.9999996E-98,\"General\")",
+        "A8": "=TEXT(9.9999996E-99,\"General\")",
+        "A9": "=TEXT(9.9999996E+10,\"General\")",
+        "A10": "=TEXT(9.9999996E-10,\"General\")"
+      }
+    }
+  ],
+  "expected": {}
+}
