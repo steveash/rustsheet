@@ -13,6 +13,31 @@
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report).
+#
+# The catalog lists every Microsoft 365 Excel (en-US) function (T-0040). Names and minimum
+# argument counts come from eval/catalog/excel-functions.tsv, the vetted copy of Microsoft's
+# function list with its provenance; tools/tests/test_catalog.py keeps the two in step.
+# Entries with `params` are generator-ready signatures. The rest (after the M2 block, one line
+# each) carry only these fields until a milestone needs their signature:
+#   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
+#              statistical, financial, engineering, database, cube (M9). Compatibility functions take
+#              their family (CEILING/FLOOR math, the rest statistical).
+#   milestone  the category's milestone, except the docs/milestones.md scope lists that name a function:
+#              TODAY, NOW (M2) and the dynamic-array and LAMBDA families (M7: FILTER, SORT, SORTBY, UNIQUE,
+#              SEQUENCE, RANDARRAY, LET, LAMBDA, MAP, REDUCE, SCAN, MAKEARRAY, BYROW, BYCOL, ISOMITTED,
+#              TEXTSPLIT, TEXTBEFORE, TEXTAFTER, VSTACK, HSTACK, TAKE, DROP, WRAPROWS, WRAPCOLS, TOCOL, TOROW,
+#              EXPAND, GROUPBY, PIVOTBY, REGEX*).
+#   scope      in | out. `out` (with `reason`) = the result depends on systems outside the workbook.
+#              That is decision 0027's principle, applied beyond its named list where the same
+#              reason holds (IMPORTCSV/IMPORTTEXT read external files, which CLAUDE.md directive 5
+#              also forbids during evaluation). Entries without `scope` (the M2 signatures) are in.
+#              SQL.REQUEST (in decision 0027's list) is absent: Microsoft no longer lists it and
+#              its page is gone, so it is not a current Excel function.
+#   oracle     none = the excel-graph oracle cannot return any value for the function (today
+#              INFO and SHEETS: the canary refuses workbooks that call them). A web value, error
+#              values included, is a golden (decision 0039), so a function that is #NAME? or
+#              fails on the web is not `none`. Absent = the oracle evaluates it
+#              (probes/catalog/availability-*).
 
 operators:
   - { op: "+", args: [number, number], returns: number, milestone: M1, prior: 62 }
@@ -283,3 +308,494 @@ functions:
     prior: 2
     returns: number
     params: [{ name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }]
+  - { name: ACCRINT, category: financial, milestone: M9, scope: in }
+  - { name: ACCRINTM, category: financial, milestone: M9, scope: in }
+  - { name: ACOS, category: math, milestone: M5, scope: in }
+  - { name: ACOSH, category: math, milestone: M5, scope: in }
+  - { name: ACOT, category: math, milestone: M5, scope: in }
+  - { name: ACOTH, category: math, milestone: M5, scope: in }
+  - { name: ADDRESS, category: lookup, milestone: M6, scope: in }
+  - { name: AGGREGATE, category: math, milestone: M5, scope: in }
+  - { name: AMORDEGRC, category: financial, milestone: M9, scope: in }
+  - { name: AMORLINC, category: financial, milestone: M9, scope: in }
+  - { name: ARABIC, category: math, milestone: M5, scope: in }
+  - { name: AREAS, category: lookup, milestone: M6, scope: in }
+  - { name: ARRAYTOTEXT, category: text, milestone: M5, scope: in }
+  - { name: ASC, category: text, milestone: M5, scope: in }
+  - { name: ASIN, category: math, milestone: M5, scope: in }
+  - { name: ASINH, category: math, milestone: M5, scope: in }
+  - { name: ATAN, category: math, milestone: M5, scope: in }
+  - { name: ATAN2, category: math, milestone: M5, scope: in }
+  - { name: ATANH, category: math, milestone: M5, scope: in }
+  - { name: AVEDEV, category: statistical, milestone: M9, scope: in }
+  - { name: AVERAGEA, category: statistical, milestone: M9, scope: in }
+  - { name: AVERAGEIF, category: statistical, milestone: M9, scope: in }
+  - { name: AVERAGEIFS, category: statistical, milestone: M9, scope: in }
+  - { name: BAHTTEXT, category: text, milestone: M5, scope: in }
+  - { name: BASE, category: math, milestone: M5, scope: in }
+  - { name: BESSELI, category: engineering, milestone: M9, scope: in }
+  - { name: BESSELJ, category: engineering, milestone: M9, scope: in }
+  - { name: BESSELK, category: engineering, milestone: M9, scope: in }
+  - { name: BESSELY, category: engineering, milestone: M9, scope: in }
+  - { name: BETA.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: BETA.INV, category: statistical, milestone: M9, scope: in }
+  - { name: BETADIST, category: statistical, milestone: M9, scope: in }
+  - { name: BETAINV, category: statistical, milestone: M9, scope: in }
+  - { name: BIN2DEC, category: engineering, milestone: M9, scope: in }
+  - { name: BIN2HEX, category: engineering, milestone: M9, scope: in }
+  - { name: BIN2OCT, category: engineering, milestone: M9, scope: in }
+  - { name: BINOM.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: BINOM.DIST.RANGE, category: statistical, milestone: M9, scope: in }
+  - { name: BINOM.INV, category: statistical, milestone: M9, scope: in }
+  - { name: BINOMDIST, category: statistical, milestone: M9, scope: in }
+  - { name: BITAND, category: engineering, milestone: M9, scope: in }
+  - { name: BITLSHIFT, category: engineering, milestone: M9, scope: in }
+  - { name: BITOR, category: engineering, milestone: M9, scope: in }
+  - { name: BITRSHIFT, category: engineering, milestone: M9, scope: in }
+  - { name: BITXOR, category: engineering, milestone: M9, scope: in }
+  - { name: BYCOL, category: logical, milestone: M7, scope: in }
+  - { name: BYROW, category: logical, milestone: M7, scope: in }
+  - { name: CALL, category: addin, milestone: M5, scope: out, reason: "calls a DLL or code resource (decision 0027)" }
+  - { name: CEILING, category: math, milestone: M5, scope: in }
+  - { name: CEILING.MATH, category: math, milestone: M5, scope: in }
+  - { name: CEILING.PRECISE, category: math, milestone: M5, scope: in }
+  - { name: CELL, category: information, milestone: M5, scope: in }
+  - { name: CHAR, category: text, milestone: M5, scope: in }
+  - { name: CHIDIST, category: statistical, milestone: M9, scope: in }
+  - { name: CHIINV, category: statistical, milestone: M9, scope: in }
+  - { name: CHISQ.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: CHISQ.DIST.RT, category: statistical, milestone: M9, scope: in }
+  - { name: CHISQ.INV, category: statistical, milestone: M9, scope: in }
+  - { name: CHISQ.INV.RT, category: statistical, milestone: M9, scope: in }
+  - { name: CHISQ.TEST, category: statistical, milestone: M9, scope: in }
+  - { name: CHITEST, category: statistical, milestone: M9, scope: in }
+  - { name: CHOOSE, category: lookup, milestone: M6, scope: in }
+  - { name: CHOOSECOLS, category: lookup, milestone: M6, scope: in }
+  - { name: CHOOSEROWS, category: lookup, milestone: M6, scope: in }
+  - { name: CLEAN, category: text, milestone: M5, scope: in }
+  - { name: CODE, category: text, milestone: M5, scope: in }
+  - { name: COLUMN, category: lookup, milestone: M6, scope: in }
+  - { name: COLUMNS, category: lookup, milestone: M6, scope: in }
+  - { name: COMBIN, category: math, milestone: M5, scope: in }
+  - { name: COMBINA, category: math, milestone: M5, scope: in }
+  - { name: COMPLEX, category: engineering, milestone: M9, scope: in }
+  - { name: CONFIDENCE, category: statistical, milestone: M9, scope: in }
+  - { name: CONFIDENCE.NORM, category: statistical, milestone: M9, scope: in }
+  - { name: CONFIDENCE.T, category: statistical, milestone: M9, scope: in }
+  - { name: CONVERT, category: engineering, milestone: M9, scope: in }
+  - { name: COPILOT, category: text, milestone: M5, scope: out, reason: "AI service (decision 0027); no longer available from 2026-09-14 per https://support.microsoft.com/en-us/excel/functions/copilot-function (fetched 2026-10-07)" }
+  - { name: CORREL, category: statistical, milestone: M9, scope: in }
+  - { name: COS, category: math, milestone: M5, scope: in }
+  - { name: COSH, category: math, milestone: M5, scope: in }
+  - { name: COT, category: math, milestone: M5, scope: in }
+  - { name: COTH, category: math, milestone: M5, scope: in }
+  - { name: COUNTBLANK, category: statistical, milestone: M9, scope: in }
+  - { name: COUPDAYBS, category: financial, milestone: M9, scope: in }
+  - { name: COUPDAYS, category: financial, milestone: M9, scope: in }
+  - { name: COUPDAYSNC, category: financial, milestone: M9, scope: in }
+  - { name: COUPNCD, category: financial, milestone: M9, scope: in }
+  - { name: COUPNUM, category: financial, milestone: M9, scope: in }
+  - { name: COUPPCD, category: financial, milestone: M9, scope: in }
+  - { name: COVAR, category: statistical, milestone: M9, scope: in }
+  - { name: COVARIANCE.P, category: statistical, milestone: M9, scope: in }
+  - { name: COVARIANCE.S, category: statistical, milestone: M9, scope: in }
+  - { name: CRITBINOM, category: statistical, milestone: M9, scope: in }
+  - { name: CSC, category: math, milestone: M5, scope: in }
+  - { name: CSCH, category: math, milestone: M5, scope: in }
+  - { name: CUBEKPIMEMBER, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUBEMEMBER, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUBEMEMBERPROPERTY, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUBERANKEDMEMBER, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUBESET, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUBESETCOUNT, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUBEVALUE, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
+  - { name: CUMIPMT, category: financial, milestone: M9, scope: in }
+  - { name: CUMPRINC, category: financial, milestone: M9, scope: in }
+  - { name: DATE, category: date, milestone: M6, scope: in }
+  - { name: DATEDIF, category: date, milestone: M6, scope: in }
+  - { name: DATEVALUE, category: date, milestone: M6, scope: in }
+  - { name: DAVERAGE, category: database, milestone: M9, scope: in }
+  - { name: DAYS, category: date, milestone: M6, scope: in }
+  - { name: DAYS360, category: date, milestone: M6, scope: in }
+  - { name: DB, category: financial, milestone: M9, scope: in }
+  - { name: DBCS, category: text, milestone: M5, scope: in }
+  - { name: DCOUNT, category: database, milestone: M9, scope: in }
+  - { name: DCOUNTA, category: database, milestone: M9, scope: in }
+  - { name: DDB, category: financial, milestone: M9, scope: in }
+  - { name: DEC2BIN, category: engineering, milestone: M9, scope: in }
+  - { name: DEC2HEX, category: engineering, milestone: M9, scope: in }
+  - { name: DEC2OCT, category: engineering, milestone: M9, scope: in }
+  - { name: DECIMAL, category: math, milestone: M5, scope: in }
+  - { name: DEGREES, category: math, milestone: M5, scope: in }
+  - { name: DELTA, category: engineering, milestone: M9, scope: in }
+  - { name: DETECTLANGUAGE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
+  - { name: DEVSQ, category: statistical, milestone: M9, scope: in }
+  - { name: DGET, category: database, milestone: M9, scope: in }
+  - { name: DISC, category: financial, milestone: M9, scope: in }
+  - { name: DMAX, category: database, milestone: M9, scope: in }
+  - { name: DMIN, category: database, milestone: M9, scope: in }
+  - { name: DOLLAR, category: text, milestone: M5, scope: in }
+  - { name: DOLLARDE, category: financial, milestone: M9, scope: in }
+  - { name: DOLLARFR, category: financial, milestone: M9, scope: in }
+  - { name: DPRODUCT, category: database, milestone: M9, scope: in }
+  - { name: DROP, category: lookup, milestone: M7, scope: in }
+  - { name: DSTDEV, category: database, milestone: M9, scope: in }
+  - { name: DSTDEVP, category: database, milestone: M9, scope: in }
+  - { name: DSUM, category: database, milestone: M9, scope: in }
+  - { name: DURATION, category: financial, milestone: M9, scope: in }
+  - { name: DVAR, category: database, milestone: M9, scope: in }
+  - { name: DVARP, category: database, milestone: M9, scope: in }
+  - { name: EDATE, category: date, milestone: M6, scope: in }
+  - { name: EFFECT, category: financial, milestone: M9, scope: in }
+  - { name: ENCODEURL, category: web, milestone: M5, scope: in }
+  - { name: EOMONTH, category: date, milestone: M6, scope: in }
+  - { name: ERF, category: engineering, milestone: M9, scope: in }
+  - { name: ERF.PRECISE, category: engineering, milestone: M9, scope: in }
+  - { name: ERFC, category: engineering, milestone: M9, scope: in }
+  - { name: ERFC.PRECISE, category: engineering, milestone: M9, scope: in }
+  - { name: ERROR.TYPE, category: information, milestone: M5, scope: in }
+  - { name: EUROCONVERT, category: addin, milestone: M5, scope: out, reason: "Euro Currency Tools add-in (decision 0027)" }
+  - { name: EVEN, category: math, milestone: M5, scope: in }
+  - { name: EXACT, category: text, milestone: M5, scope: in }
+  - { name: EXP, category: math, milestone: M5, scope: in }
+  - { name: EXPAND, category: lookup, milestone: M7, scope: in }
+  - { name: EXPON.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: EXPONDIST, category: statistical, milestone: M9, scope: in }
+  - { name: F.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: F.DIST.RT, category: statistical, milestone: M9, scope: in }
+  - { name: F.INV, category: statistical, milestone: M9, scope: in }
+  - { name: F.INV.RT, category: statistical, milestone: M9, scope: in }
+  - { name: F.TEST, category: statistical, milestone: M9, scope: in }
+  - { name: FACT, category: math, milestone: M5, scope: in }
+  - { name: FACTDOUBLE, category: math, milestone: M5, scope: in }
+  - { name: "FALSE", category: logical, milestone: M5, scope: in }
+  - { name: FDIST, category: statistical, milestone: M9, scope: in }
+  - { name: FIELDVALUE, category: lookup, milestone: M6, scope: out, reason: "reads linked data types (decision 0027)" }
+  - { name: FILTER, category: lookup, milestone: M7, scope: in }
+  - { name: FILTERXML, category: web, milestone: M5, scope: in }  # #VALUE! on the web for valid input (function-name-forms A7); desktop confirmation T-1081
+  - { name: FIND, category: text, milestone: M5, scope: in }
+  - { name: FINDB, category: text, milestone: M5, scope: in }
+  - { name: FINV, category: statistical, milestone: M9, scope: in }
+  - { name: FISHER, category: statistical, milestone: M9, scope: in }
+  - { name: FISHERINV, category: statistical, milestone: M9, scope: in }
+  - { name: FIXED, category: text, milestone: M5, scope: in }
+  - { name: FLOOR, category: math, milestone: M5, scope: in }
+  - { name: FLOOR.MATH, category: math, milestone: M5, scope: in }
+  - { name: FLOOR.PRECISE, category: math, milestone: M5, scope: in }
+  - { name: FORECAST, category: statistical, milestone: M9, scope: in }
+  - { name: FORECAST.ETS, category: statistical, milestone: M9, scope: in }
+  - { name: FORECAST.ETS.CONFINT, category: statistical, milestone: M9, scope: in }
+  - { name: FORECAST.ETS.SEASONALITY, category: statistical, milestone: M9, scope: in }
+  - { name: FORECAST.ETS.STAT, category: statistical, milestone: M9, scope: in }
+  - { name: FORECAST.LINEAR, category: statistical, milestone: M9, scope: in }
+  - { name: FORMULATEXT, category: lookup, milestone: M6, scope: in }
+  - { name: FREQUENCY, category: statistical, milestone: M9, scope: in }
+  - { name: FTEST, category: statistical, milestone: M9, scope: in }
+  - { name: FV, category: financial, milestone: M9, scope: in }
+  - { name: FVSCHEDULE, category: financial, milestone: M9, scope: in }
+  - { name: GAMMA, category: statistical, milestone: M9, scope: in }
+  - { name: GAMMA.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: GAMMA.INV, category: statistical, milestone: M9, scope: in }
+  - { name: GAMMADIST, category: statistical, milestone: M9, scope: in }
+  - { name: GAMMAINV, category: statistical, milestone: M9, scope: in }
+  - { name: GAMMALN, category: statistical, milestone: M9, scope: in }
+  - { name: GAMMALN.PRECISE, category: statistical, milestone: M9, scope: in }
+  - { name: GAUSS, category: statistical, milestone: M9, scope: in }
+  - { name: GCD, category: math, milestone: M5, scope: in }
+  - { name: GEOMEAN, category: statistical, milestone: M9, scope: in }
+  - { name: GESTEP, category: engineering, milestone: M9, scope: in }
+  - { name: GETPIVOTDATA, category: lookup, milestone: M6, scope: in }
+  - { name: GROUPBY, category: lookup, milestone: M7, scope: in }
+  - { name: GROWTH, category: statistical, milestone: M9, scope: in }
+  - { name: HARMEAN, category: statistical, milestone: M9, scope: in }
+  - { name: HEX2BIN, category: engineering, milestone: M9, scope: in }
+  - { name: HEX2DEC, category: engineering, milestone: M9, scope: in }
+  - { name: HEX2OCT, category: engineering, milestone: M9, scope: in }
+  - { name: HOUR, category: date, milestone: M6, scope: in }
+  - { name: HSTACK, category: lookup, milestone: M7, scope: in }
+  - { name: HYPERLINK, category: lookup, milestone: M6, scope: in }
+  - { name: HYPGEOM.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: HYPGEOMDIST, category: statistical, milestone: M9, scope: in }
+  - { name: IFNA, category: logical, milestone: M5, scope: in }
+  - { name: IFS, category: logical, milestone: M5, scope: in }
+  - { name: IMABS, category: engineering, milestone: M9, scope: in }
+  - { name: IMAGE, category: lookup, milestone: M6, scope: out, reason: "loads an image from the web (decision 0027)" }
+  - { name: IMAGINARY, category: engineering, milestone: M9, scope: in }
+  - { name: IMARGUMENT, category: engineering, milestone: M9, scope: in }
+  - { name: IMCONJUGATE, category: engineering, milestone: M9, scope: in }
+  - { name: IMCOS, category: engineering, milestone: M9, scope: in }
+  - { name: IMCOSH, category: engineering, milestone: M9, scope: in }
+  - { name: IMCOT, category: engineering, milestone: M9, scope: in }
+  - { name: IMCSC, category: engineering, milestone: M9, scope: in }
+  - { name: IMCSCH, category: engineering, milestone: M9, scope: in }
+  - { name: IMDIV, category: engineering, milestone: M9, scope: in }
+  - { name: IMEXP, category: engineering, milestone: M9, scope: in }
+  - { name: IMLN, category: engineering, milestone: M9, scope: in }
+  - { name: IMLOG10, category: engineering, milestone: M9, scope: in }
+  - { name: IMLOG2, category: engineering, milestone: M9, scope: in }
+  - { name: IMPORTCSV, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
+  - { name: IMPORTTEXT, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
+  - { name: IMPOWER, category: engineering, milestone: M9, scope: in }
+  - { name: IMPRODUCT, category: engineering, milestone: M9, scope: in }
+  - { name: IMREAL, category: engineering, milestone: M9, scope: in }
+  - { name: IMSEC, category: engineering, milestone: M9, scope: in }
+  - { name: IMSECH, category: engineering, milestone: M9, scope: in }
+  - { name: IMSIN, category: engineering, milestone: M9, scope: in }
+  - { name: IMSINH, category: engineering, milestone: M9, scope: in }
+  - { name: IMSQRT, category: engineering, milestone: M9, scope: in }
+  - { name: IMSUB, category: engineering, milestone: M9, scope: in }
+  - { name: IMSUM, category: engineering, milestone: M9, scope: in }
+  - { name: IMTAN, category: engineering, milestone: M9, scope: in }
+  - { name: INDIRECT, category: lookup, milestone: M6, scope: in }
+  - { name: INFO, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
+  - { name: INT, category: math, milestone: M5, scope: in }
+  - { name: INTERCEPT, category: statistical, milestone: M9, scope: in }
+  - { name: INTRATE, category: financial, milestone: M9, scope: in }
+  - { name: IPMT, category: financial, milestone: M9, scope: in }
+  - { name: IRR, category: financial, milestone: M9, scope: in }
+  - { name: ISBLANK, category: information, milestone: M5, scope: in }
+  - { name: ISERR, category: information, milestone: M5, scope: in }
+  - { name: ISERROR, category: information, milestone: M5, scope: in }
+  - { name: ISEVEN, category: information, milestone: M5, scope: in }
+  - { name: ISFORMULA, category: information, milestone: M5, scope: in }
+  - { name: ISLOGICAL, category: information, milestone: M5, scope: in }
+  - { name: ISNA, category: information, milestone: M5, scope: in }
+  - { name: ISNONTEXT, category: information, milestone: M5, scope: in }
+  - { name: ISNUMBER, category: information, milestone: M5, scope: in }
+  - { name: ISO.CEILING, category: math, milestone: M5, scope: in }
+  - { name: ISODD, category: information, milestone: M5, scope: in }
+  - { name: ISOMITTED, category: information, milestone: M7, scope: in }
+  - { name: ISOWEEKNUM, category: date, milestone: M6, scope: in }
+  - { name: ISPMT, category: financial, milestone: M9, scope: in }
+  - { name: ISREF, category: information, milestone: M5, scope: in }
+  - { name: ISTEXT, category: information, milestone: M5, scope: in }
+  - { name: JIS, category: text, milestone: M5, scope: in }  # #NAME? on the web (availability-22 A8, function-name-forms-2 A1/A2); desktop confirmation T-1081
+  - { name: KURT, category: statistical, milestone: M9, scope: in }
+  - { name: LAMBDA, category: logical, milestone: M7, scope: in }
+  - { name: LARGE, category: statistical, milestone: M9, scope: in }
+  - { name: LCM, category: math, milestone: M5, scope: in }
+  - { name: LEFTB, category: text, milestone: M5, scope: in }
+  - { name: LENB, category: text, milestone: M5, scope: in }
+  - { name: LET, category: logical, milestone: M7, scope: in }
+  - { name: LINEST, category: statistical, milestone: M9, scope: in }
+  - { name: LN, category: math, milestone: M5, scope: in }
+  - { name: LOG, category: math, milestone: M5, scope: in }
+  - { name: LOG10, category: math, milestone: M5, scope: in }
+  - { name: LOGEST, category: statistical, milestone: M9, scope: in }
+  - { name: LOGINV, category: statistical, milestone: M9, scope: in }
+  - { name: LOGNORM.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: LOGNORM.INV, category: statistical, milestone: M9, scope: in }
+  - { name: LOGNORMDIST, category: statistical, milestone: M9, scope: in }
+  - { name: LOOKUP, category: lookup, milestone: M6, scope: in }
+  - { name: MAKEARRAY, category: logical, milestone: M7, scope: in }
+  - { name: MAP, category: logical, milestone: M7, scope: in }
+  - { name: MAXA, category: statistical, milestone: M9, scope: in }
+  - { name: MAXIFS, category: statistical, milestone: M9, scope: in }
+  - { name: MDETERM, category: math, milestone: M5, scope: in }
+  - { name: MDURATION, category: financial, milestone: M9, scope: in }
+  - { name: MEDIAN, category: statistical, milestone: M9, scope: in }
+  - { name: MIDB, category: text, milestone: M5, scope: in }
+  - { name: MINA, category: statistical, milestone: M9, scope: in }
+  - { name: MINIFS, category: statistical, milestone: M9, scope: in }
+  - { name: MINUTE, category: date, milestone: M6, scope: in }
+  - { name: MINVERSE, category: math, milestone: M5, scope: in }
+  - { name: MIRR, category: financial, milestone: M9, scope: in }
+  - { name: MMULT, category: math, milestone: M5, scope: in }
+  - { name: MOD, category: math, milestone: M5, scope: in }
+  - { name: MODE, category: statistical, milestone: M9, scope: in }
+  - { name: MODE.MULT, category: statistical, milestone: M9, scope: in }
+  - { name: MODE.SNGL, category: statistical, milestone: M9, scope: in }
+  - { name: MROUND, category: math, milestone: M5, scope: in }
+  - { name: MULTINOMIAL, category: math, milestone: M5, scope: in }
+  - { name: MUNIT, category: math, milestone: M5, scope: in }
+  - { name: "N", category: information, milestone: M5, scope: in }
+  - { name: NA, category: information, milestone: M5, scope: in }
+  - { name: NEGBINOM.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: NEGBINOMDIST, category: statistical, milestone: M9, scope: in }
+  - { name: NETWORKDAYS, category: date, milestone: M6, scope: in }
+  - { name: NETWORKDAYS.INTL, category: date, milestone: M6, scope: in }
+  - { name: NOMINAL, category: financial, milestone: M9, scope: in }
+  - { name: NORM.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: NORM.INV, category: statistical, milestone: M9, scope: in }
+  - { name: NORM.S.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: NORM.S.INV, category: statistical, milestone: M9, scope: in }
+  - { name: NORMDIST, category: statistical, milestone: M9, scope: in }
+  - { name: NORMINV, category: statistical, milestone: M9, scope: in }
+  - { name: NORMSDIST, category: statistical, milestone: M9, scope: in }
+  - { name: NORMSINV, category: statistical, milestone: M9, scope: in }
+  - { name: NOW, category: date, milestone: M2, scope: in }
+  - { name: NPER, category: financial, milestone: M9, scope: in }
+  - { name: NPV, category: financial, milestone: M9, scope: in }
+  - { name: NUMBERVALUE, category: text, milestone: M5, scope: in }
+  - { name: OCT2BIN, category: engineering, milestone: M9, scope: in }
+  - { name: OCT2DEC, category: engineering, milestone: M9, scope: in }
+  - { name: OCT2HEX, category: engineering, milestone: M9, scope: in }
+  - { name: ODD, category: math, milestone: M5, scope: in }
+  - { name: ODDFPRICE, category: financial, milestone: M9, scope: in }
+  - { name: ODDFYIELD, category: financial, milestone: M9, scope: in }
+  - { name: ODDLPRICE, category: financial, milestone: M9, scope: in }
+  - { name: ODDLYIELD, category: financial, milestone: M9, scope: in }
+  - { name: OFFSET, category: lookup, milestone: M6, scope: in }
+  - { name: PDURATION, category: financial, milestone: M9, scope: in }
+  - { name: PEARSON, category: statistical, milestone: M9, scope: in }
+  - { name: PERCENTILE, category: statistical, milestone: M9, scope: in }
+  - { name: PERCENTILE.EXC, category: statistical, milestone: M9, scope: in }
+  - { name: PERCENTILE.INC, category: statistical, milestone: M9, scope: in }
+  - { name: PERCENTOF, category: math, milestone: M5, scope: in }
+  - { name: PERCENTRANK, category: statistical, milestone: M9, scope: in }
+  - { name: PERCENTRANK.EXC, category: statistical, milestone: M9, scope: in }
+  - { name: PERCENTRANK.INC, category: statistical, milestone: M9, scope: in }
+  - { name: PERMUT, category: statistical, milestone: M9, scope: in }
+  - { name: PERMUTATIONA, category: statistical, milestone: M9, scope: in }
+  - { name: PHI, category: statistical, milestone: M9, scope: in }
+  - { name: PHONETIC, category: text, milestone: M5, scope: in }
+  - { name: PI, category: math, milestone: M5, scope: in }
+  - { name: PIVOTBY, category: lookup, milestone: M7, scope: in }
+  - { name: PMT, category: financial, milestone: M9, scope: in }
+  - { name: POISSON, category: statistical, milestone: M9, scope: in }
+  - { name: POISSON.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: POWER, category: math, milestone: M5, scope: in }
+  - { name: PPMT, category: financial, milestone: M9, scope: in }
+  - { name: PRICE, category: financial, milestone: M9, scope: in }
+  - { name: PRICEDISC, category: financial, milestone: M9, scope: in }
+  - { name: PRICEMAT, category: financial, milestone: M9, scope: in }
+  - { name: PROB, category: statistical, milestone: M9, scope: in }
+  - { name: PRODUCT, category: math, milestone: M5, scope: in }
+  - { name: PROPER, category: text, milestone: M5, scope: in }
+  - { name: PV, category: financial, milestone: M9, scope: in }
+  - { name: PY, category: addin, milestone: M5, scope: out, reason: "runs Python in the Microsoft Cloud (decision 0027)" }
+  - { name: QUARTILE, category: statistical, milestone: M9, scope: in }
+  - { name: QUARTILE.EXC, category: statistical, milestone: M9, scope: in }
+  - { name: QUARTILE.INC, category: statistical, milestone: M9, scope: in }
+  - { name: QUOTIENT, category: math, milestone: M5, scope: in }
+  - { name: RADIANS, category: math, milestone: M5, scope: in }
+  - { name: RAND, category: math, milestone: M5, scope: in }
+  - { name: RANDARRAY, category: math, milestone: M7, scope: in }
+  - { name: RANDBETWEEN, category: math, milestone: M5, scope: in }
+  - { name: RANK, category: statistical, milestone: M9, scope: in }
+  - { name: RANK.AVG, category: statistical, milestone: M9, scope: in }
+  - { name: RANK.EQ, category: statistical, milestone: M9, scope: in }
+  - { name: RATE, category: financial, milestone: M9, scope: in }
+  - { name: RECEIVED, category: financial, milestone: M9, scope: in }
+  - { name: REDUCE, category: logical, milestone: M7, scope: in }
+  - { name: REGEXEXTRACT, category: text, milestone: M7, scope: in }
+  - { name: REGEXREPLACE, category: text, milestone: M7, scope: in }
+  - { name: REGEXTEST, category: text, milestone: M7, scope: in }
+  - { name: REGISTER.ID, category: addin, milestone: M5, scope: out, reason: "registers a DLL or code resource (decision 0027)" }
+  - { name: REPLACE, category: text, milestone: M5, scope: in }
+  - { name: REPLACEB, category: text, milestone: M5, scope: in }
+  - { name: REPT, category: text, milestone: M5, scope: in }
+  - { name: RIGHTB, category: text, milestone: M5, scope: in }
+  - { name: ROMAN, category: math, milestone: M5, scope: in }
+  - { name: ROW, category: lookup, milestone: M6, scope: in }
+  - { name: ROWS, category: lookup, milestone: M6, scope: in }
+  - { name: RRI, category: financial, milestone: M9, scope: in }
+  - { name: RSQ, category: statistical, milestone: M9, scope: in }
+  - { name: RTD, category: lookup, milestone: M6, scope: out, reason: "real-time data server (decision 0027)" }
+  - { name: SCAN, category: logical, milestone: M7, scope: in }
+  - { name: SEARCH, category: text, milestone: M5, scope: in }
+  - { name: SEARCHB, category: text, milestone: M5, scope: in }
+  - { name: SEC, category: math, milestone: M5, scope: in }
+  - { name: SECH, category: math, milestone: M5, scope: in }
+  - { name: SECOND, category: date, milestone: M6, scope: in }
+  - { name: SEQUENCE, category: math, milestone: M7, scope: in }
+  - { name: SERIESSUM, category: math, milestone: M5, scope: in }
+  - { name: SHEET, category: information, milestone: M5, scope: in }
+  - { name: SHEETS, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
+  - { name: SIGN, category: math, milestone: M5, scope: in }
+  - { name: SIN, category: math, milestone: M5, scope: in }
+  - { name: SINH, category: math, milestone: M5, scope: in }
+  - { name: SKEW, category: statistical, milestone: M9, scope: in }
+  - { name: SKEW.P, category: statistical, milestone: M9, scope: in }
+  - { name: SLN, category: financial, milestone: M9, scope: in }
+  - { name: SLOPE, category: statistical, milestone: M9, scope: in }
+  - { name: SMALL, category: statistical, milestone: M9, scope: in }
+  - { name: SORT, category: lookup, milestone: M7, scope: in }
+  - { name: SORTBY, category: lookup, milestone: M7, scope: in }
+  - { name: SQRT, category: math, milestone: M5, scope: in }
+  - { name: SQRTPI, category: math, milestone: M5, scope: in }
+  - { name: STANDARDIZE, category: statistical, milestone: M9, scope: in }
+  - { name: STDEV, category: statistical, milestone: M9, scope: in }
+  - { name: STDEV.P, category: statistical, milestone: M9, scope: in }
+  - { name: STDEV.S, category: statistical, milestone: M9, scope: in }
+  - { name: STDEVA, category: statistical, milestone: M9, scope: in }
+  - { name: STDEVP, category: statistical, milestone: M9, scope: in }
+  - { name: STDEVPA, category: statistical, milestone: M9, scope: in }
+  - { name: STEYX, category: statistical, milestone: M9, scope: in }
+  - { name: STOCKHISTORY, category: information, milestone: M5, scope: out, reason: "online financial data service (decision 0027)" }
+  - { name: SUBSTITUTE, category: text, milestone: M5, scope: in }
+  - { name: SUBTOTAL, category: math, milestone: M5, scope: in }
+  - { name: SUMPRODUCT, category: math, milestone: M5, scope: in }
+  - { name: SUMSQ, category: math, milestone: M5, scope: in }
+  - { name: SUMX2MY2, category: math, milestone: M5, scope: in }
+  - { name: SUMX2PY2, category: math, milestone: M5, scope: in }
+  - { name: SUMXMY2, category: math, milestone: M5, scope: in }
+  - { name: SWITCH, category: logical, milestone: M5, scope: in }
+  - { name: SYD, category: financial, milestone: M9, scope: in }
+  - { name: T, category: text, milestone: M5, scope: in }
+  - { name: T.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: T.DIST.2T, category: statistical, milestone: M9, scope: in }
+  - { name: T.DIST.RT, category: statistical, milestone: M9, scope: in }
+  - { name: T.INV, category: statistical, milestone: M9, scope: in }
+  - { name: T.INV.2T, category: statistical, milestone: M9, scope: in }
+  - { name: T.TEST, category: statistical, milestone: M9, scope: in }
+  - { name: TAKE, category: lookup, milestone: M7, scope: in }
+  - { name: TAN, category: math, milestone: M5, scope: in }
+  - { name: TANH, category: math, milestone: M5, scope: in }
+  - { name: TBILLEQ, category: financial, milestone: M9, scope: in }
+  - { name: TBILLPRICE, category: financial, milestone: M9, scope: in }
+  - { name: TBILLYIELD, category: financial, milestone: M9, scope: in }
+  - { name: TDIST, category: statistical, milestone: M9, scope: in }
+  - { name: TEXT, category: text, milestone: M5, scope: in }
+  - { name: TEXTAFTER, category: text, milestone: M7, scope: in }
+  - { name: TEXTBEFORE, category: text, milestone: M7, scope: in }
+  - { name: TEXTJOIN, category: text, milestone: M5, scope: in }
+  - { name: TEXTSPLIT, category: text, milestone: M7, scope: in }
+  - { name: TIME, category: date, milestone: M6, scope: in }
+  - { name: TIMEVALUE, category: date, milestone: M6, scope: in }
+  - { name: TINV, category: statistical, milestone: M9, scope: in }
+  - { name: TOCOL, category: lookup, milestone: M7, scope: in }
+  - { name: TODAY, category: date, milestone: M2, scope: in }
+  - { name: TOROW, category: lookup, milestone: M7, scope: in }
+  - { name: TRANSLATE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
+  - { name: TRANSPOSE, category: lookup, milestone: M6, scope: in }
+  - { name: TREND, category: statistical, milestone: M9, scope: in }
+  - { name: TRIMMEAN, category: statistical, milestone: M9, scope: in }
+  - { name: TRIMRANGE, category: lookup, milestone: M6, scope: in }
+  - { name: "TRUE", category: logical, milestone: M5, scope: in }
+  - { name: TRUNC, category: math, milestone: M5, scope: in }
+  - { name: TTEST, category: statistical, milestone: M9, scope: in }
+  - { name: TYPE, category: information, milestone: M5, scope: in }
+  - { name: UNICHAR, category: text, milestone: M5, scope: in }
+  - { name: UNICODE, category: text, milestone: M5, scope: in }
+  - { name: UNIQUE, category: lookup, milestone: M7, scope: in }
+  - { name: VALUE, category: text, milestone: M5, scope: in }
+  - { name: VALUETOTEXT, category: text, milestone: M5, scope: in }
+  - { name: VAR, category: statistical, milestone: M9, scope: in }
+  - { name: VAR.P, category: statistical, milestone: M9, scope: in }
+  - { name: VAR.S, category: statistical, milestone: M9, scope: in }
+  - { name: VARA, category: statistical, milestone: M9, scope: in }
+  - { name: VARP, category: statistical, milestone: M9, scope: in }
+  - { name: VARPA, category: statistical, milestone: M9, scope: in }
+  - { name: VDB, category: financial, milestone: M9, scope: in }
+  - { name: VSTACK, category: lookup, milestone: M7, scope: in }
+  - { name: WEBSERVICE, category: web, milestone: M5, scope: out, reason: "calls a web service (decision 0027)" }
+  - { name: WEEKDAY, category: date, milestone: M6, scope: in }
+  - { name: WEEKNUM, category: date, milestone: M6, scope: in }
+  - { name: WEIBULL, category: statistical, milestone: M9, scope: in }
+  - { name: WEIBULL.DIST, category: statistical, milestone: M9, scope: in }
+  - { name: WORKDAY, category: date, milestone: M6, scope: in }
+  - { name: WORKDAY.INTL, category: date, milestone: M6, scope: in }
+  - { name: WRAPCOLS, category: lookup, milestone: M7, scope: in }
+  - { name: WRAPROWS, category: lookup, milestone: M7, scope: in }
+  - { name: XIRR, category: financial, milestone: M9, scope: in }
+  - { name: XLOOKUP, category: lookup, milestone: M6, scope: in }
+  - { name: XMATCH, category: lookup, milestone: M6, scope: in }
+  - { name: XNPV, category: financial, milestone: M9, scope: in }
+  - { name: XOR, category: logical, milestone: M5, scope: in }
+  - { name: YEARFRAC, category: date, milestone: M6, scope: in }
+  - { name: YIELD, category: financial, milestone: M9, scope: in }
+  - { name: YIELDDISC, category: financial, milestone: M9, scope: in }
+  - { name: YIELDMAT, category: financial, milestone: M9, scope: in }
+  - { name: Z.TEST, category: statistical, milestone: M9, scope: in }
+  - { name: ZTEST, category: statistical, milestone: M9, scope: in }

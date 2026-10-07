@@ -54,3 +54,12 @@ def test_engine_prefix_list_is_not_empty() -> None:
     prefixes = future_function_prefixes()
     assert {"LET", "TRIMRANGE", "FILTER"} <= prefixes.keys()
     assert "CEILING" not in prefixes  # classic: stored without a prefix (T-0172)
+
+
+def test_classic_names_xlsxwriter_misreads_keep_their_function() -> None:
+    # XlsxWriter's unescaped `.` turned NORMSDIST( into _xlfn.NORM.DIST( (T-0040).
+    assert prefix_future_functions("=NORMSDIST(1)+NORMSINV(0.5)") == "=_xlfn.NORMSDIST(1)+_xlfn.NORMSINV(0.5)"
+    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": "=NORMSDIST(0)", "A2": "=NORM.DIST(0,0,1,TRUE)"}}]}
+    sheet = zipfile.ZipFile(io.BytesIO(build_xlsx(spec))).read("xl/worksheets/sheet1.xml").decode()
+    assert ">_xlfn.NORMSDIST(0)</f>" in sheet
+    assert ">_xlfn.NORM.DIST(0,0,1,TRUE)</f>" in sheet

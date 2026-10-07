@@ -75,6 +75,24 @@ Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/function
 `test_export_ceiling_has_no_xlfn_prefix`.
 Tasks: T-0172
 
+## Newer functions need `_xlfn.` in the file, eta arguments `_xleta.`
+Rule: a function added after Excel 2007 is recognised only under its stored prefix: `PERCENTOF(1,2)`
+stored bare is `#NAME?`, `_xlfn.PERCENTOF(1,2)` calculates. A function passed by name as a LAMBDA
+argument (eta-reduced, as in `GROUPBY(..., SUM)`) is stored `_xleta.SUM`; a bare `SUM` there is `#NAME?`.
+A prefix on a classic function is accepted (`_xlfn.SUM(1,2)` = 3, `_xlfn.NORMSDIST(0)` = 0.5, see
+also CEILING above); an unknown name with the prefix is still `#NAME?`, and so is `_xlfn.JIS`
+(text.md).
+Evidence: probes/catalog/function-name-forms A1 (5 = #NAME?), A2 (no error), A3 (5), A4 (no error),
+A5 (no error), A6 (5); function-name-forms-2 A3 `_xlfn.SUM(1,2)` = 3; probes/catalog/normsdist-stored-form
+A1 `_xlfn.NORMSDIST(0)` = 0.5 (oracle: excel-graph, 2026-10-07, T-0040). Consequence for case specs: the
+case builder (tools/src/rustsheet_tools/spec2xlsx.py) prefixes names it knows (XlsxWriter's list plus
+the engine exporter's); GROUPBY, PIVOTBY and PERCENTOF are on neither list, so specs spell them
+`_xlfn.` (probes/catalog/availability-*).
+Status: VERIFIED
+Implemented in: not yet. The engine parser resolves a bare newer name read from a file, and the
+exporter never writes `_xleta.` (T-1089).
+Tasks: T-0040, T-1089
+
 ## Cells and rows without r are positional
 Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
 1 if first); a cell without `r` is the column after the previous cell in its row (column A if first).
