@@ -54,9 +54,19 @@ impl Model {
                 exp2 += 500;
             }
         }
-        // `exp2 / n` is the exponent of the root; split it so the final scaling cannot overflow
-        // before the mantissa root shrinks it.
-        let result = product.powf(1.0 / n) * 2f64.powf(exp2 as f64 / n);
+        // The root's power of two is `exp2 / n`: its whole part `q` scales the result exactly and
+        // the remainder `r` (0 <= r < n) goes under the root, `(product * 2^r)^(1/n) * 2^q`. That
+        // matches every probed overflow case bit for bit, where taking `2^(exp2 / n)` as a float
+        // power is one ulp high on GEOMEAN(1E+100,9E+307) (probes/geomean-mixed-magnitude A1,
+        // T-1076). `product` is below 2^501, so the remainder fits under the root up to 500;
+        // past that (over 500 values) it gets its own root (UNVERIFIED rounding, not probed).
+        let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
+        let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
+        let whole = 2f64.powi(i32::try_from(q).unwrap_or(i32::MAX));
+        let result = match i32::try_from(r) {
+            Ok(r) if r <= 500 => (product * 2f64.powi(r)).powf(1.0 / n) * whole,
+            _ => product.powf(1.0 / n) * 2f64.powf(r as f64 / n) * whole,
+        };
         // Defensive only: a geometric mean of finite positives never exceeds the largest value.
         if result.is_finite() {
             CalcResult::Number(result)

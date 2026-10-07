@@ -284,7 +284,6 @@ F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!H2
 F	probes/error-stored-constants.case.json	S!I1
 F	probes/error-stored-constants.case.json	S!I2
-F	probes/geomean-mixed-magnitude.case.json	Sheet1!A1
 F	probes/if-index-ref-args-aggregates.case.json	Calc!A46
 F	probes/if-index-ref-args-aggregates.case.json	Calc!A47
 F	probes/if-index-ref-args-aggregates.case.json	Calc!A48
