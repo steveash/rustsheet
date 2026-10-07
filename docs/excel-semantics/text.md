@@ -39,11 +39,11 @@ Tasks: T-0241
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
-Evidence: probes/text-result-limit C8-C9 (excel-graph, 2026-10-05; excel-desktop not used).
-Open: whether an error argument after the limit is passed wins over `#CALC!` is unprobed (we evaluate every argument, so the error wins); the limit counts UTF-16 code units as for CONCATENATE and REPT, unprobed for these two functions; the exact 32,767 boundary is only unit-tested.
-Status: VERIFIED (web only)
-Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments (T-0243)
-Tasks: T-0243
+Evidence: probes/text-result-limit C8-C9, C15-C23 (excel-graph, 2026-10-05 and 2026-10-07; excel-desktop not used).
+Exactly 32,767 characters is fine (C15, C21); the limit counts UTF-16 code units, so an emoji is 2 (C16/C22 fit at 32,767, C17/C23 are `#CALC!` one unit over). An error *argument* after the limit wins over `#CALC!` (`CONCAT(REPT("a",32767),"b",NA())` and the TEXTJOIN equivalent are `#N/A`, C18-C19), but an error in a later *cell of a range* does not: `TEXTJOIN(",",TRUE,REPT("a",32767),A1:A2)` with `A1` = "b" and `A2` = `#N/A` is `#CALC!` (C20), as if the range walk stopped at the first cell past the limit. Unprobed: an error in the first cell of a range that follows an argument already over the limit.
+Status: VERIFIED
+Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments; a range cell error met once over the limit is `#CALC!` (T-0243, T-0262)
+Tasks: T-0243, T-0262
 
 ## JIS is `#NAME?` in en-US Excel for the web
 Rule: `JIS`, although Microsoft's en-US function list includes it, is not a known function in

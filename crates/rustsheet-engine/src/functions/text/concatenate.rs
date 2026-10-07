@@ -230,6 +230,12 @@ impl Model {
                                         values.push("".to_string())
                                     }
                                 }
+                                // Excel: a cell error met after the walk is past the limit is
+                                // #CALC!, while an error argument still wins
+                                // (probes/text-result-limit C18-C20).
+                                CalcResult::Error { .. } if over_limit => {
+                                    return text_limit_error(cell)
+                                }
                                 error @ CalcResult::Error { .. } => return error,
                                 CalcResult::EmptyArg | CalcResult::Range { .. } => {}
                                 CalcResult::Array(_) | CalcResult::Lambda(_) => {

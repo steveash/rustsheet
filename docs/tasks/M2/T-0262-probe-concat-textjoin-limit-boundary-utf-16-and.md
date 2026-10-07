@@ -3,7 +3,7 @@ id: T-0262
 title: "Probe CONCAT/TEXTJOIN limit boundary, UTF-16 and error precedence"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0243 implemented the #CALC! rule from probes/text-result-limit C8, C9. Unprobe
 
 ## Out of scope
 -
+
+## Outcome
+Probed text-result-limit C15-C24 on excel-graph. Boundary (32,767) and UTF-16 counting match the engine; an error argument after the limit wins, matching us; an error in a later cell of a TEXTJOIN range is #CALC! (C20), which the engine now returns. text.md entry is VERIFIED. C16 and C22 use ISTEXT because our LEN counts an emoji as 1 (Excel: 2); C24 records that and stays a known failure for T-0249. Eval: 1 new known failure (C24), 0 regressions.
