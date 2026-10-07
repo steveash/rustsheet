@@ -295,7 +295,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(sum / count)
+        CalcResult::Number(flush_subnormal(sum / count))
     }
 
     pub(crate) fn fn_avedev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

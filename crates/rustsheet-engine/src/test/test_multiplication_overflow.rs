@@ -115,6 +115,32 @@ fn multiplying_functions_flush_subnormal_results() {
     }
 }
 
+/// PRODUCT and SUMPRODUCT flush each running product, not only the total, and the other averaging
+/// functions flush like AVERAGE (probes/subnormal-flush-edges, T-1007). Scaled back up as above.
+#[test]
+fn subnormal_flush_per_step_and_in_every_average() {
+    let mut model = new_empty_model();
+    model._set("F1", "=3E-308");
+    model._set("F2", "=-2.9E-308");
+    let cases = [
+        ("A1", "=PRODUCT(1E-200,1E-110,1E+300)", "0"),
+        ("A2", "=SUMPRODUCT({1E-200,1},{1E-110,1E-300})*1E+300", "1"),
+        ("A3", "=AVERAGEA(F1:F2)*1E+300*1E+300", "0"),
+        ("A4", "=AVERAGEIF(F1:F2,\">-1\")*1E+300*1E+300", "0"),
+        ("A5", "=AVERAGEIFS(F1:F2,F1:F2,\">-1\")*1E+300*1E+300", "0"),
+        ("A6", "=SUBTOTAL(1,F1:F2)*1E+300*1E+300", "0"),
+        ("A7", "=SUBTOTAL(101,F1:F2)*1E+300*1E+300", "0"),
+        ("A8", "=PRODUCT(1E-308,1E+300)", "0"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, _, expected) in cases {
+        assert_eq!(model._get_text(cell), *expected, "{cell}");
+    }
+}
+
 /// SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9 overflow to `#NUM!` (ERROR.TYPE 6),
 /// also with a later 0 or 1E-200 factor (probes/aggregate-overflow B11:B26, T-0990).
 #[test]
