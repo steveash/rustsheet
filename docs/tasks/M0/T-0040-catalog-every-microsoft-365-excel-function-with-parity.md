@@ -35,8 +35,8 @@ or an explicit scope decision.
 - [x] (moved) `make eval` gap report and T-0020 (evidence coverage) read scope from the catalog, so
   out-of-scope functions are not counted against parity. Split out as T-0051 (part (b); the eval
   crate has no YAML reader, so it needs a design choice).
-- [x] `make check` green; reviewers approve (2026-10-07: security, quality and architecture
-  reviewer agents; excel-fidelity pending).
+- [x] `make check` green; reviewers approve (2026-10-07: security, quality, architecture and
+  excel-fidelity reviewer agents; fidelity approved after one round of fixes).
 
 ## Out of scope
 - Implementing any function.
