@@ -7,6 +7,7 @@ use std::sync::LazyLock;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+use crate::catalog::Catalog;
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::value::Verdict;
 
@@ -100,30 +101,60 @@ pub struct FunctionEvidence {
     pub suites: BTreeSet<String>,
 }
 
+/// An out-of-scope catalog function (decision 0027) and the cells the run checked for it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OutOfScope {
+    pub name: String,
+    /// The catalog's reason for leaving it out.
+    pub reason: String,
+    /// Cells calling the function that the run checked (passing or not).
+    pub cells: usize,
+    /// Of those, the failing ones.
+    pub failing: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunReport {
     pub engine: String,
     pub suites: Vec<SuiteSummary>,
-    /// Sorted by number of failing cells, descending.
+    /// In-scope functions only (decision 0027), sorted by number of failing cells, descending.
     pub functions: Vec<FunctionStat>,
     /// Cases with only their *failing* cells retained.
     pub cases: Vec<CaseResult>,
     /// Slowest cases of the run (informational; never part of the gate).
     #[serde(default)]
     pub slowest: Vec<SlowCase>,
-    /// Excel evidence per function, fewest cells first (informational; never part of the gate).
+    /// Excel evidence per in-scope function, fewest cells first (informational; never part of
+    /// the gate).
     #[serde(default)]
     pub evidence: Vec<FunctionEvidence>,
-    /// Implemented functions that no Excel-evidence cell calls.
+    /// Implemented in-scope functions that no Excel-evidence cell calls.
     #[serde(default)]
     pub unevidenced: Vec<String>,
+    /// In-scope catalog functions, implemented or not, that no Excel-evidence cell calls (the
+    /// oracle can evaluate them).
+    #[serde(default)]
+    pub catalog_unevidenced: Vec<String>,
+    /// In-scope catalog functions the oracle cannot evaluate (`oracle: none`): their evidence
+    /// must come from another source.
+    #[serde(default)]
+    pub needs_other_evidence: Vec<String>,
+    /// Out-of-scope catalog functions, kept out of every parity count above.
+    #[serde(default)]
+    pub out_of_scope: Vec<OutOfScope>,
 }
 
 impl RunReport {
-    /// Aggregates `results`; `implemented` lists the engine's functions, so that functions
-    /// without any Excel evidence show up too.
+    /// Aggregates `results`; `implemented` lists the engine's functions and `catalog` every
+    /// Excel function, so that functions without any Excel evidence show up too. Functions the
+    /// catalog puts out of scope are kept out of the parity counts and listed on their own.
     #[must_use]
-    pub fn build(engine: &str, results: &[CaseResult], implemented: &[String]) -> RunReport {
+    pub fn build(
+        engine: &str,
+        results: &[CaseResult],
+        implemented: &[String],
+        catalog: &Catalog,
+    ) -> RunReport {
         let mut suites: BTreeMap<String, SuiteSummary> = BTreeMap::new();
         let mut functions: BTreeMap<String, FunctionStat> = BTreeMap::new();
         let mut evidence: BTreeMap<String, FunctionEvidence> = BTreeMap::new();
@@ -164,7 +195,12 @@ impl RunReport {
                 }
             }
         }
-        let mut functions: Vec<FunctionStat> = functions.into_values().collect();
+        let (mut functions, out): (Vec<FunctionStat>, Vec<FunctionStat>) = functions
+            .into_values()
+            .partition(|f| catalog.in_scope(&f.name));
+        let out: BTreeMap<String, FunctionStat> =
+            out.into_iter().map(|f| (f.name.clone(), f)).collect();
+        evidence.retain(|name, _| catalog.in_scope(name));
         functions.sort_by(|a, b| {
             (b.cells - b.passed)
                 .cmp(&(a.cells - a.passed))
@@ -178,10 +214,38 @@ impl RunReport {
                 r
             })
             .collect();
+        let lacks_evidence = |f: &str| {
+            !evidence.contains_key(f) && catalog.in_scope(f) && !catalog.needs_other_evidence(f)
+        };
         let unevidenced = implemented
             .iter()
-            .filter(|f| !evidence.contains_key(f.as_str()))
+            .filter(|f| lacks_evidence(f))
             .cloned()
+            .collect();
+        let catalog_unevidenced = catalog
+            .functions()
+            .map(|f| &f.name)
+            .filter(|f| lacks_evidence(f))
+            .cloned()
+            .collect();
+        let needs_other_evidence = catalog
+            .functions()
+            .map(|f| &f.name)
+            .filter(|f| catalog.needs_other_evidence(f))
+            .cloned()
+            .collect();
+        let out_of_scope = catalog
+            .functions()
+            .filter(|f| !catalog.in_scope(&f.name))
+            .map(|f| {
+                let stat = out.get(&f.name);
+                OutOfScope {
+                    name: f.name.clone(),
+                    reason: f.reason.clone().unwrap_or_default(),
+                    cells: stat.map_or(0, |s| s.cells),
+                    failing: stat.map_or(0, |s| s.cells - s.passed),
+                }
+            })
             .collect();
         let mut evidence: Vec<FunctionEvidence> = evidence.into_values().collect();
         evidence.sort_by(|a, b| a.cells.cmp(&b.cells).then_with(|| a.name.cmp(&b.name)));
@@ -193,6 +257,9 @@ impl RunReport {
             slowest: slowest(results, SLOWEST_CASES),
             evidence,
             unevidenced,
+            catalog_unevidenced,
+            needs_other_evidence,
+            out_of_scope,
         }
     }
 
@@ -205,9 +272,10 @@ impl RunReport {
             .filter(|f| f.cells < EVIDENCE_THRESHOLD)
             .count();
         format!(
-            "Excel evidence: {} functions with ≥{EVIDENCE_THRESHOLD} oracle/cached cells, {thin} with fewer, {} implemented with none",
+            "Excel evidence: {} functions with ≥{EVIDENCE_THRESHOLD} oracle/cached cells, {thin} with fewer, {} implemented with none, {} in-scope catalog functions with none",
             self.evidence.len() - thin,
-            self.unevidenced.len()
+            self.unevidenced.len(),
+            self.catalog_unevidenced.len()
         )
     }
 
@@ -218,13 +286,21 @@ impl RunReport {
             "{}. Cells count when their expectations come from Excel (oracle sidecar or Excel-cached values), pass or fail; hand-written expectations do not count.\n",
             self.evidence_summary()
         );
-        if !self.unevidenced.is_empty() {
-            let _ = writeln!(
-                md,
-                "Implemented, no Excel evidence ({}): {}\n",
-                self.unevidenced.len(),
-                self.unevidenced.join(", ")
-            );
+        let lists = [
+            ("Implemented, no Excel evidence", &self.unevidenced),
+            (
+                "In-scope catalog functions with no Excel evidence (gaps)",
+                &self.catalog_unevidenced,
+            ),
+            (
+                "Need an evidence source other than the oracle (`oracle: none`)",
+                &self.needs_other_evidence,
+            ),
+        ];
+        for (title, names) in lists {
+            if !names.is_empty() {
+                let _ = writeln!(md, "{title} ({}): {}\n", names.len(), names.join(", "));
+            }
         }
         let _ = writeln!(
             md,
@@ -392,7 +468,31 @@ impl RunReport {
             let _ = writeln!(md);
         }
         self.write_evidence(&mut md);
+        self.write_out_of_scope(&mut md);
         md
+    }
+
+    fn write_out_of_scope(&self, md: &mut String) {
+        if self.out_of_scope.is_empty() {
+            return;
+        }
+        let _ = writeln!(
+            md,
+            "\n## Out of scope ({})\n\nCatalog functions whose results depend on systems outside the workbook (decision 0027). They are left out of every count above.\n",
+            self.out_of_scope.len()
+        );
+        let _ = writeln!(md, "| function | cells checked | failing | reason |");
+        let _ = writeln!(md, "|---|---|---|---|");
+        for f in &self.out_of_scope {
+            let _ = writeln!(
+                md,
+                "| {} | {} | {} | {} |",
+                f.name,
+                f.cells,
+                f.failing,
+                f.reason.replace('|', "\\|")
+            );
+        }
     }
 
     fn examples_for(&self, function: &str, n: usize) -> Vec<(&str, &CellResult)> {
@@ -486,7 +586,12 @@ mod tests {
         hand.expected_source = "hand".into();
         hand.cells = vec![cell("IF(TRUE,SUM(1),0)", Verdict::Pass)];
         let implemented = ["ABS", "IF", "SUM", "TRIM", "XLOOKUP"].map(String::from);
-        let report = RunReport::build("e", &[oracle, cached, hand], &implemented);
+        let report = RunReport::build(
+            "e",
+            &[oracle, cached, hand],
+            &implemented,
+            &Catalog::default(),
+        );
         let got: Vec<(&str, usize, Vec<&str>)> = report
             .evidence
             .iter()
@@ -508,14 +613,69 @@ mod tests {
         );
         assert_eq!(report.unevidenced, ["IF", "TRIM"]);
         let md = report.to_markdown(1);
-        assert!(md.contains("Excel evidence: 0 functions with ≥25 oracle/cached cells, 3 with fewer, 2 implemented with none"));
+        assert!(md.contains("Excel evidence: 0 functions with ≥25 oracle/cached cells, 3 with fewer, 2 implemented with none, 0 in-scope catalog functions with none"));
         assert!(md.contains("Implemented, no Excel evidence (2): IF, TRIM"));
         assert!(md.contains("| SUM | 2 | probes | yes |"));
     }
 
     #[test]
+    fn out_of_scope_functions_leave_parity_counts_and_list_with_their_reason() {
+        use crate::catalog::{CatalogFunction, OracleSupport, Scope};
+        let entry = |name: &str, scope, reason: Option<&str>, oracle| CatalogFunction {
+            name: name.into(),
+            milestone: "M5".into(),
+            scope,
+            reason: reason.map(String::from),
+            oracle,
+        };
+        let catalog = Catalog::from_functions([
+            entry("ABS", Scope::In, None, None),
+            entry("COS", Scope::In, None, None),
+            entry("INFO", Scope::In, None, Some(OracleSupport::None)),
+            entry("RTD", Scope::Out, Some("real-time server"), None),
+            entry("WEBSERVICE", Scope::Out, Some("web | service"), None),
+        ]);
+        let mut probe = case("probes/a", 1);
+        probe.cells = vec![
+            excel_cell("ABS(1)", Verdict::NumericMismatch),
+            excel_cell("WEBSERVICE(\"x\")", Verdict::ErrorMismatch),
+        ];
+        let implemented = ["ABS", "INFO", "SUM", "WEBSERVICE"].map(String::from);
+        let report = RunReport::build("e", &[probe], &implemented, &catalog);
+        let parity: Vec<&str> = report.functions.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(parity, ["ABS"]);
+        let evidenced: Vec<&str> = report.evidence.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(evidenced, ["ABS"]);
+        // SUM is not in this catalog, so it stays in scope; INFO needs another source.
+        assert_eq!(report.unevidenced, ["SUM"]);
+        assert_eq!(report.catalog_unevidenced, ["COS"]);
+        assert_eq!(report.needs_other_evidence, ["INFO"]);
+        let out: Vec<(&str, usize, usize)> = report
+            .out_of_scope
+            .iter()
+            .map(|f| (f.name.as_str(), f.cells, f.failing))
+            .collect();
+        assert_eq!(out, [("RTD", 0, 0), ("WEBSERVICE", 1, 1)]);
+        let md = report.to_markdown(1);
+        assert!(md.contains("## Functions with failing cells (1)"), "{md}");
+        assert!(md.contains("In-scope catalog functions with no Excel evidence (gaps) (1): COS"));
+        assert!(md.contains("(`oracle: none`) (1): INFO"));
+        assert!(md.contains("## Out of scope (2)"));
+        assert!(
+            md.contains("| WEBSERVICE | 1 | 1 | web \\| service |"),
+            "{md}"
+        );
+        assert!(!md.contains("### WEBSERVICE"));
+    }
+
+    #[test]
     fn report_sums_suite_time_and_renders_timing() {
-        let report = RunReport::build("e", &[case("s/a", 5), case("s/b", 7), case("t/c", 1)], &[]);
+        let report = RunReport::build(
+            "e",
+            &[case("s/a", 5), case("s/b", 7), case("t/c", 1)],
+            &[],
+            &Catalog::default(),
+        );
         assert_eq!(report.suites[0].millis, 12);
         let md = report.to_markdown(1);
         assert!(
