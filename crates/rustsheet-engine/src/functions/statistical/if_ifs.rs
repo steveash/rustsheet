@@ -146,11 +146,6 @@ impl Model {
         cell: CellReferenceIndex,
         compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
-        // A criterion over 255 characters is #VALUE!, from a literal or a cell alike
-        // (probes/long-text-args-min-criteria A10-A18, excel-graph 2026-10-07).
-        if criteria.iter().any(criterion_too_long) {
-            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
-        }
         self.lift_with_cost(
             criteria,
             |model| model.walk_cost(walked, cell),
@@ -237,13 +232,7 @@ impl Model {
                                 (_, None) => CalcResult::EmptyCell,
                             })
                             .collect();
-                        // An element over 255 characters is #VALUE! for that element only
-                        // (probes/long-text-args-min-criteria A24-A26).
-                        let result = if values.iter().any(criterion_too_long) {
-                            CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string())
-                        } else {
-                            compute(self, &values)
-                        };
+                        let result = compute(self, &values);
                         let value = calc_result_to_array_node(result);
                         previous = Some((key, value.clone()));
                         value
@@ -353,6 +342,12 @@ impl Model {
         // Excel: any criteria range shaped unlike the first is #VALUE! (T-0209).
         if !same_shape(ranges) {
             return shape_mismatch(cell);
+        }
+        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
+        // range), but only once the ranges resolved: a bad range wins
+        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+        if criteria.iter().any(criterion_too_long) {
+            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale, &|| {
@@ -532,6 +527,16 @@ impl Model {
             // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
             // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
             sum_range = resize_to(&sum_range, &ranges[0]);
+        }
+        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
+        // range), but only once the ranges resolved: a bad range wins
+        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+        if criteria.iter().any(criterion_too_long) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                TOO_LONG.to_string(),
+            ));
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale, &|| {
