@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1055: RANK/RANK.EQ/RANK.AVG when the number is absent from the reference: numeric multi-cell range, range with no numbers (text, boolean), empty range, one-cell references.",
+  "tags": [
+    "M1",
+    "stat",
+    "rank",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 5,
+        "A2": 7,
+        "A3": "x",
+        "A4": true,
+        "A5": {
+          "t": "s",
+          "v": "y"
+        },
+        "C1": "=RANK(3,A1:A2)",
+        "C2": "=RANK(3,A3:A4)",
+        "C3": "=RANK(3,A3:A4,1)",
+        "C4": "=RANK(3,A6:A7)",
+        "C5": "=RANK.EQ(3,A3:A4)",
+        "C6": "=RANK.AVG(3,A3:A4)",
+        "C7": "=RANK.EQ(3,A1:A2)",
+        "C8": "=RANK.AVG(3,A1:A2)",
+        "C9": "=RANK.EQ(3,A6)",
+        "C10": "=RANK.AVG(3,A3)",
+        "C11": "=RANK(3,A1)",
+        "C12": "=RANK(5,A1:A2)"
+      }
+    }
+  ],
+  "expected": {}
+}

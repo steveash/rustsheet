@@ -171,6 +171,7 @@ C	probes/paren-call-lambda-cell.case.json	2
 C	probes/paren-call-operands.case.json	10
 C	probes/paren-negative-text.case.json	5
 C	probes/precision-and-rounding.case.json	18
+C	probes/rank-absent-number.case.json	12
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-args.case.json	54
 C	probes/rich-errors-calc.case.json	10
@@ -307,12 +308,6 @@ F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!H2
 F	probes/error-stored-constants.case.json	S!I1
 F	probes/error-stored-constants.case.json	S!I2
-F	probes/if-index-ref-args-aggregates.case.json	Calc!A46
-F	probes/if-index-ref-args-aggregates.case.json	Calc!A47
-F	probes/if-index-ref-args-aggregates.case.json	Calc!A48
-F	probes/if-index-ref-args-aggregates.case.json	Calc!A49
-F	probes/if-index-ref-args-aggregates.case.json	Calc!A50
-F	probes/if-index-ref-args-aggregates.case.json	Calc!A51
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
 F	probes/intersection-function-operands.case.json	Sheet1!H14
