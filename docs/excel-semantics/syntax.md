@@ -61,9 +61,11 @@ may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too
 Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
 characters), so no formula Excel accepts is refused for its chains. Probe `operator-chain-limit`
 (T-1060, excel-graph): `=1+1+...` of 8,191, 8,192 and 8,193 formula characters (4,095 to 4,096
-terms) all evaluate (4105, 4096, 4106), and so do `=LEN(1&1&...)` chains of the same lengths (4093,
-4094, 4094); RustSheet matches all six. Excel for the web did not refuse the 8,193 character
-formula when loaded from a file, so the published limit is enforced on typing, not on load. Before T-0128 chains were capped at 255 terms.
+terms; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
+so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
+Excel for the web did not refuse the 8,193 character formula when loaded from a file, so the
+published limit was not enforced on file load (typing was not probed).
+Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
