@@ -3,7 +3,7 @@ id: T-1097
 title: "Probe why long zero number text (0. then 305 zeros) is #VALUE!"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
