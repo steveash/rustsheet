@@ -92,6 +92,16 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     }
 }
 
+/// Longest text Excel reads as a number or as clock text, counted in characters with any
+/// surrounding spaces: at 255 it parses, at 256 it is #VALUE! (docs/excel-semantics/numbers.md,
+/// probes/text-number-long-zero, probes/clock-text-length-limit).
+pub(crate) const MAX_NUMBER_TEXT_LEN: usize = 255;
+
+/// True when `text`, counted with its surrounding spaces, is too long to read as a number.
+pub(crate) fn number_text_too_long(text: &str) -> bool {
+    text.len() > MAX_NUMBER_TEXT_LEN && text.chars().count() > MAX_NUMBER_TEXT_LEN
+}
+
 impl Model {
     /// Coerces a single array element to a number the way a scalar number argument is: booleans
     /// are 1 and 0, text goes through `cast_number` (`Data!D7:D7/1` with D7 = " 2 " is 2,
@@ -112,6 +122,9 @@ impl Model {
 
     /// [`Model::cast_number`] with year-less date text read in `current_year`.
     pub(crate) fn cast_number_in(&self, s: &str, current_year: CurrentYear) -> Option<f64> {
+        if number_text_too_long(s) {
+            return None;
+        }
         match parse_excel_number(s.trim()) {
             Some(f) => Some(f),
             _ => {
