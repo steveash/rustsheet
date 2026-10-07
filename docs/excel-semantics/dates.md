@@ -36,7 +36,7 @@ and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
 type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
-`(serial - 1) mod 7` from Sunday, one formula for every serial). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day.
+`(serial - 1) mod 7` from Sunday, one formula for every serial). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED only for months 0, 1 and 12; UNVERIFIED for EDATE(0,2), where day 0 of March may be 59 or 60, and for negative months, which give #NUM!).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
