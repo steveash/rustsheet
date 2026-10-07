@@ -18,7 +18,8 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 /// `=` are formulas, other strings are literal text. Use the tagged form
 /// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
 /// carry `"stored":true`, which only changes how spec2xlsx writes it (a stored constant, T-0999);
-/// the engine adapter ignores it.
+/// the engine adapter ignores it. `{"entered":"(1)"}` is text entered as a user types it, so
+/// Excel picks the value and number format (T-0280).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellInput {
@@ -27,6 +28,11 @@ pub enum CellInput {
     /// Formula (leading `=`) or literal text.
     Str(String),
     Typed(Value),
+    /// Typed entry: spec2xlsx leaves the cell blank and records it for the oracle backend, which
+    /// writes it into the cell through Excel's own input parser.
+    Entered {
+        entered: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -129,7 +135,7 @@ mod tests {
     #[test]
     fn parses_case_inputs() {
         let json = r##"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
-            "A1":1,"A2":"x","A3":"=A1+1","A4":true,"A5":{"t":"e","v":"#N/A"}}}],
+            "A1":1,"A2":"x","A3":"=A1+1","A4":true,"A5":{"t":"e","v":"#N/A"},"A6":{"entered":"(1)"}}}],
             "expected":{"S!A3":{"t":"n","v":2}}}"##;
         let spec: Result<CaseSpec, _> = serde_json::from_str(json);
         let spec = spec.unwrap_or_else(|e| panic!("{e}"));
@@ -138,6 +144,12 @@ mod tests {
         assert_eq!(cells["A3"], CellInput::Str("=A1+1".into()));
         assert_eq!(cells["A4"], CellInput::Bool(true));
         assert_eq!(cells["A5"], CellInput::Typed(Value::Error("#N/A".into())));
+        assert_eq!(
+            cells["A6"],
+            CellInput::Entered {
+                entered: "(1)".into()
+            }
+        );
     }
 
     #[test]

@@ -18,6 +18,7 @@ import io
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
@@ -28,6 +29,8 @@ from typing import Any, Protocol
 from urllib.parse import quote
 
 import requests
+
+from rustsheet_tools.spec2xlsx import entered_cells
 
 
 class OracleError(RuntimeError):
@@ -70,6 +73,14 @@ def force_full_calc_on_load(xlsx: bytes) -> bytes:
                 data = text.encode("utf-8")
             out.writestr(item, data)
     return out_buf.getvalue()
+
+
+def typed_entries(xlsx: bytes) -> list[tuple[str, str, str]]:
+    """The cells a backend must enter as typed text before recalculating (spec2xlsx, T-0280)."""
+    try:
+        return entered_cells(xlsx)
+    except ValueError as e:
+        raise OracleError(str(e)) from e
 
 
 # --------------------------------------------------------------------------- Graph
@@ -251,6 +262,21 @@ class GraphBackend:
                 "POST", f"{item_url}/workbook/createSession", json={"persistChanges": True}
             ).json()
             sid = {"workbook-session-id": session["id"]}
+            for sheet, a1, text in typed_entries(xlsx):
+                # Writing `values` runs Excel's typed-input parser: "(1)" becomes -1 with a number
+                # format Excel picks, as if typed into the cell (T-0280).
+                sheet_ref = quote(sheet.replace("'", "''"), safe="")
+                rng = self._call(
+                    "PATCH",
+                    f"{item_url}/workbook/worksheets('{sheet_ref}')/range(address='{quote(a1, safe='')}')",
+                    json={"values": [[text]]},
+                    headers=sid,
+                ).json()
+                print(
+                    f"ENTERED {sheet}!{a1} {text!r}: values={rng.get('values')} "
+                    f"numberFormat={rng.get('numberFormat')}",
+                    file=sys.stderr,
+                )
             self._call(
                 "POST",
                 f"{item_url}/workbook/application/calculate",
@@ -320,6 +346,8 @@ class ExcelDesktopBackend:
                 excel.AskToUpdateLinks = False
                 excel.AutomationSecurity = 3  # msoAutomationSecurityForceDisable
                 wb = excel.Workbooks.Open(str(src), UpdateLinks=0, ReadOnly=True, AddToMru=False)
+                for sheet, a1, text in typed_entries(xlsx):
+                    wb.Worksheets(sheet).Range(a1).Value = text  # parsed as typed input (T-0280)
                 excel.CalculateFullRebuild()
                 wb.SaveAs(str(dst), FileFormat=51)
                 wb.Close(SaveChanges=False)
@@ -349,6 +377,8 @@ class LibreOfficeBackend:
         return True, "soffice + Calc"
 
     def recalc(self, xlsx: bytes) -> tuple[bytes, OracleInfo]:
+        if typed_entries(xlsx):
+            raise OracleError("libreoffice cannot enter typed cell input (spec `entered` cells)")
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "in.xlsx"
             outdir = Path(tmp) / "out"
