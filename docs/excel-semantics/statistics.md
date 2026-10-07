@@ -91,3 +91,32 @@ not the exact value.
 Evidence: `ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx` BETA_DIST!G3, G4.
 Status: VERIFIED (observation); algorithm UNVERIFIED (T-0970)
 Tasks: T-0970
+
+## VAR/STDEV switch between a one-pass and a two-pass formula
+Rule: Excel computes VAR.P/VARP/STDEV.P with the one-pass form `(n*Σx² - (Σx)²)/(n*n)` and
+VAR.S/VAR/STDEV.S with `(Σx² - (Σx)²/n)/(n-1)` (plain left-to-right double sums, STDEV = sqrt
+of that). It uses the two-pass form `Σ(x - Σx/n)²/(n-d)` instead when the data cancel or are small.
+Every cell probed so far fits exactly one of these rules:
+- two-pass when `(n*Σx² - (Σx)²)/(n*Σx²) < t`, with t somewhere in (6.93e-4, 1.01e-2), or
+- two-pass when the one-pass population variance `(n*Σx² - (Σx)²)/(n*n) < a`, with a somewhere in
+  (1.56e-6, 7.47e-6).
+
+The exact constants and the form of the test are still open. The same brackets fit if the
+absolute test uses N = n*Σx² - (Σx)² with a in (1.4e-5, 2.69e-4), or Σx² with a in (2.1e-5, 1.33e-4).
+Evidence (oracle: excel-graph, 2026-10-07, T-1037; probes/variance-digits, 234 cells, and
+probes/variance-switch, 82 cells; all 316 cells are one of the two forms bit for bit):
+- Small integer sets use the one-pass form and are not the correctly rounded variance.
+  `VAR.S({1,2,4})` is 2.333333333333334, while 7/3 correctly rounded is 2.3333333333333335.
+  `VAR.P({3,1,4,1,5,9})` is 7.472222222222222, the one-pass value; two-pass gives …221. This is
+  probes/aggregate-grid B31.
+- Offset data use the two-pass form. `VAR.P` of {1000000003,1000000001,…} is
+  7.472222222222224, which is exactly the two-pass value; one-pass gives -113.78. The switch lies
+  between offset 10 (one-pass, for example `VAR.S({11,12,14})` 2.333333333333343) and offset 100
+  (two-pass).
+- Small magnitudes use the two-pass form. {1,2,4}×10^k uses two-pass for k ≤ -3 and one-pass
+  for k ≥ -2. {3,1,4,1,5,9}×10^k uses two-pass for k ≤ -4 and one-pass for k ≥ -3. This holds even
+  though nothing cancels (ratio 0.22 and 0.34).
+- This explains the overflow in numbers.md, "Overflow": `VAR.P` of 1E+200 twice is `#NUM!` because
+  the one-pass Σx² overflows before any switch.
+Status: VERIFIED (two forms and the brackets); the exact switch constants are UNVERIFIED (T-1037)
+Implemented in: n/a (the engine uses the one-pass form only)
