@@ -87,23 +87,23 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string())
 }
 
-/// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
-/// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
-pub(crate) fn evaluate_spill_anchor(
-    &mut self,
-    node: &Node,
-    cell: CellReferenceIndex,
-) -> CalcResult {
-    match node {
-        Node::FunctionKind {
-            kind: Function::Index,
-            args,
-        } => self.index_impl(args, cell, true),
-        _ => self.evaluate_node_with_reference(node, cell),
-    }
-}
-
 impl Model {
+    /// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
+    /// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
+    pub(crate) fn evaluate_spill_anchor(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_impl(args, cell, true),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
     /// token (the lexer builds those): only two single cells on one sheet are joined, so
     /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets

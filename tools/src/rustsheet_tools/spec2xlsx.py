@@ -17,8 +17,9 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     empty string into a blank cell, which has different semantics).
   * Spill references (`A1#`) are written in their file form `_xlfn.ANCHORARRAY(A1)`; Excel for the
     web rejects a literal `A1#` in `<f>` (T-0042). The engine reads the spec text, so cases keep `A1#`.
-  * Future functions get their `_xlfn.` prefixes from XlsxWriter (use_future_functions) and, for the
-    ones it does not know, from the engine exporter's list; LET/LAMBDA names are written as `_xlpm.x`.
+  * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
+    list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
+    whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
 """
 
 from __future__ import annotations
@@ -140,17 +141,33 @@ def prefix_bound_names(formula: str) -> str:
     return "".join(out)
 
 
-# XlsxWriter (3.2.9) builds its future-function regexes from dotted names with `.` unescaped, so
-# `\bNORM.DIST\(` also matches the classic `NORMSDIST(` and stores `_xlfn.NORM.DIST(` (and NORMSINV
-# becomes NORM.INV): another function. It skips any formula that already contains `_xlfn.`, and
-# Excel loads a prefixed classic name as that function (docs/excel-semantics/xlsx-storage.md), so
-# these two are written prefixed (T-0040; probes/catalog/normsdist-stored-form).
-_XLSXWRITER_MISREAD = {"NORMSDIST": "_xlfn.NORMSDIST", "NORMSINV": "_xlfn.NORMSINV"}
+# Newer functions XlsxWriter (3.2.9) prefixes that the engine exporter's list lacks. The builder owns
+# every prefix: XlsxWriter leaves a formula alone once it contains `_xlfn.`, so with its rewrite on,
+# `=TRIMRANGE(A2)+DAYS(1,2)` stored a bare `DAYS`, which Excel reads as `#NAME?` (T-0052;
+# docs/excel-semantics/xlsx-storage.md, "Newer functions need `_xlfn.`"). Its regexes also leave `.`
+# unescaped (`NORM.DIST` matched `NORMSDIST`, T-0040), which the builder's tokenizer cannot do.
+# tools/tests/test_spec2xlsx_prefixes.py checks this table still covers XlsxWriter's list.
+_BUILDER_ONLY_PREFIXES = {
+    name: f"_xlfn.{name}"
+    for name in (
+        "ANCHORARRAY",
+        "DAYS",
+        "FILTERXML",
+        "FORECAST.LINEAR",
+        "GAMMA.DIST",
+        "GAUSS",
+        "IMAGE",
+        "IMSECH",
+        "QUERYSTRING",
+        "SINGLE",
+        "WEBSERVICE",
+    )
+}
 
 
 def prefix_future_functions(formula: str) -> str:
-    """Adds `_xlfn.` to calls of functions XlsxWriter does not know (e.g. TRIMRANGE) or misreads."""
-    prefixes = {**future_function_prefixes(), **_XLSXWRITER_MISREAD}
+    """Writes every call of a newer function with its stored prefix (`TRIMRANGE(` → `_xlfn.TRIMRANGE(`)."""
+    prefixes = {**future_function_prefixes(), **_BUILDER_ONLY_PREFIXES}
     out: list[str] = []
     for is_name, word, i in _words(formula):
         if is_name and formula[i + len(word) : i + len(word) + 1] == "(" and word.upper() in prefixes:
@@ -191,7 +208,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         buf,
         {
             "in_memory": True,
-            "use_future_functions": True,
+            "use_future_functions": False,
             "strings_to_numbers": False,
             "strings_to_formulas": False,
             "strings_to_urls": False,

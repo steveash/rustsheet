@@ -489,3 +489,26 @@ fn fn_npv_whole_column_sees_a_spill_beyond_the_used_area() {
     assert_eq!(model._get_text("A1"), "10.652588311");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
 }
+
+// Excel rejects a workbook whose XNPV call has fewer than three arguments
+// (docs/excel-semantics/syntax.md, "Minimum argument counts"); we give #ERROR! and must not panic
+// (T-0275). The three-argument value is probes/xnpv-argument-count D1; the four-argument row is
+// only a no-panic check (no oracle evidence: such a workbook would not load either).
+#[test]
+fn fn_xnpv_argument_count() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "3");
+    model._set("B2", "4");
+    model._set("D1", "=XNPV(1,A1:B2)");
+    model._set("D2", "=XNPV(1)");
+    model._set("D3", "=XNPV(1,A1:B2,A1:B2,A1:B2)");
+    model._set("D4", "=XNPV(1,A1:B2,A1:B2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"#ERROR!");
+    assert_eq!(model._get_text("D2"), *"#ERROR!");
+    assert_eq!(model._get_text("D3"), *"#ERROR!");
+    assert_eq!(model._get_text("D4"), *"9.962109338");
+}

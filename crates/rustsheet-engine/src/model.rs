@@ -363,6 +363,27 @@ impl Model {
                 reference,
                 ..
             } => self.get_sheet_span_reference(*first_index, *last_index, reference, cell),
+            // A variable holds what it was bound to, a reference included.
+            Node::NamedVariableKind { .. } => self.variable_value(node, cell),
+            // A defined name that stands for a reference is that reference, to a single cell as
+            // well: `MAX(TextCell)` ignores the text in it (upstream MIN_MAX_extras.xlsx A1-A3).
+            Node::DefinedNameKind((name, scope, _)) => {
+                match self
+                    .parsed_defined_names
+                    .get(&(*scope, name.to_lowercase()))
+                {
+                    Some(&ParsedDefinedName::CellReference(reference)) => CalcResult::Range {
+                        left: reference,
+                        right: reference,
+                    },
+                    // Answered here so the name is not looked up a second time.
+                    Some(ParsedDefinedName::RangeReference(range)) => CalcResult::Range {
+                        left: range.left,
+                        right: range.right,
+                    },
+                    _ => self.evaluate_node_in_context(node, cell),
+                }
+            }
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -717,21 +738,12 @@ impl Model {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(&(*id as usize)) {
-                    Some(v) => v.clone(),
-                    None => CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        format!("Variable \"{name}\" not found in scope."),
-                    ),
-                }
-            }
-            NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
+            // A variable bound to a single cell is that cell's value where a value is wanted, and
+            // the reference itself where a reference is wanted (`evaluate_node_with_reference`).
+            NamedVariableKind { .. } => match self.variable_value(node, cell) {
+                CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+                value => value,
+            },
             // What they are applied to is turned into a number, and they work
             // element by element on a range or an array
             UnaryKind { .. } => self.apply_unary_chain(node, cell),

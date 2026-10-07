@@ -3,7 +3,7 @@ id: T-0263
 title: "Probe *IFS legacy range criteria and lifted-criteria edge cases"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ an array criterion.
 
 ## Out of scope
 - Implementing fixes.
+
+## Outcome
+Fixture `fixtures/ifs-legacy-range-criteria.xlsx` (legacy formulas, XlsxWriter, app name replaced; oracle-filled) and probe `probes/ifs-array-criteria-edges` (19 cells, oracle-filled). Findings in criteria.md "*IF(S) lift array criteria". Engine mismatch (legacy range criterion is intersected by every *IF(S); we do it only for COUNTIF and AVERAGEIF): T-0278. The probe case already passes. Unprobed: `NA()`/scalar first argument with an array criterion (excel-graph rejects the workbook). Eval delta: fixtures +14 known failures (new coverage), probes unchanged.
