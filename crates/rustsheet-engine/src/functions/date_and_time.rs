@@ -327,9 +327,6 @@ impl Model {
             }
             Err(s) => return s,
         };
-        if let Err(e) = self.excel_date(serial_number, cell) {
-            return e;
-        }
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -505,9 +502,6 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        if let Err(e) = self.excel_date(serial_number, cell) {
-            return e;
-        }
         let Some(date) = month_arithmetic_date(serial_number) else {
             return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
@@ -523,8 +517,11 @@ impl Model {
             return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
 
+        // Serial 0 is day 0 of January 1900, so its result is day 0 of the shifted month: one
+        // serial before that month's first day (EDATE(0,1) = 31, EDATE(0,12) = 366).
+        let day_offset = i32::from(serial_number == 0);
         match real_date_to_serial(native_date) {
-            Some(serial) => CalcResult::Number(f64::from(serial)),
+            Some(serial) => CalcResult::Number(f64::from(serial - day_offset)),
             None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,

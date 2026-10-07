@@ -50,11 +50,13 @@ pub fn excel_serial_to_ymd(serial: i64) -> Option<(i32, u32, u32)> {
 }
 
 /// The real calendar date EDATE/EOMONTH do month arithmetic on. Serial 60 (the fictitious
-/// 1900-02-29) counts as 1900-02-28 and serial 0 is out of range.
+/// 1900-02-29) counts as 1900-02-28 and serial 0 (day 0 of January 1900) stands in as 1900-01-01:
+/// EOMONTH uses only its month, and EDATE steps back one serial from the shifted result.
 /// Evidence: probes/dates-early-1900 A9/A10 (`EDATE(31,1)` = 59), A23/A25 (`EDATE(60,0)` =
-/// `EOMONTH(60,0)` = 59).
+/// `EOMONTH(60,0)` = 59); probes/dates-early-1900-edges A36-A44 (`EOMONTH(0,0)` = 31, `EDATE(0,1)` = 31).
 pub fn month_arithmetic_date(serial: i64) -> Option<NaiveDate> {
-    let (year, month, day) = excel_serial_to_ymd(serial).filter(|&(_, _, day)| day > 0)?;
+    let (year, month, day) = excel_serial_to_ymd(serial)?;
+    let day = day.max(1);
     NaiveDate::from_ymd_opt(year, month, day).or_else(|| NaiveDate::from_ymd_opt(year, month, 28))
 }
 
@@ -153,7 +155,10 @@ mod tests {
     fn month_arithmetic_and_real_serials_skip_the_fictitious_dates() {
         use super::{month_arithmetic_date, real_date_to_serial};
         use chrono::NaiveDate;
-        assert_eq!(month_arithmetic_date(0), None);
+        assert_eq!(
+            month_arithmetic_date(0),
+            NaiveDate::from_ymd_opt(1900, 1, 1)
+        );
         assert_eq!(
             month_arithmetic_date(60),
             NaiveDate::from_ymd_opt(1900, 2, 28)
