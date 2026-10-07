@@ -54,10 +54,8 @@ const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
 pub(crate) struct DefinedNameRun {
     /// Bodies evaluated inside one another.
     depth: usize,
-    /// Bodies evaluated for `owner` so far.
+    /// Bodies evaluated so far in this cell's formula, or in this outermost use outside a cell.
     evaluations: usize,
-    /// The evaluation pass and the cell the count belongs to.
-    owner: Option<(u64, Option<CellReferenceIndex>)>,
     /// Where the stack was when the outermost one started.
     stack_base: usize,
 }
@@ -68,22 +66,16 @@ impl Model {
     /// referring to themselves stay bounded in depth, time and stack.
     pub(crate) fn within_defined_name<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
         let here = stack_address();
-        // Inside a cell the budget belongs to that cell's formula in this `evaluate()`; outside
-        // one (conditional formats, `evaluate_formula`) every outermost use starts afresh.
-        let owner = (self.evaluation.depth > 0).then(|| {
-            (
-                self.evaluation.evaluations,
-                self.evaluation.stack.last().copied(),
-            )
-        });
         // Inside a cell, measure from where its recursion started, so that names and cells
         // share one stack budget (evaluation.rs).
-        let cell_base = (self.evaluation.depth > 0).then_some(self.evaluation.stack_base);
+        let in_cell = self.evaluation.depth > 0;
+        let cell_base = in_cell.then_some(self.evaluation.stack_base);
         let run = &mut self.defined_names_running;
         if run.depth == 0 {
-            // One budget per cell formula, however many names it uses (`=x+x+x`).
-            if owner.is_none() || run.owner != owner {
-                run.owner = owner;
+            // A cell's formula has one budget however many names it uses (`=x+x+x`), set up by
+            // `run_cell_formula`; outside a cell (conditional formats, `evaluate_formula`) every
+            // outermost use starts afresh.
+            if !in_cell {
                 run.evaluations = 0;
             }
             run.stack_base = cell_base.unwrap_or(here);
@@ -99,6 +91,16 @@ impl Model {
         let result = f(self);
         self.defined_names_running.depth -= 1;
         Some(result)
+    }
+
+    /// Evaluates the formula `node` of the cell `cell` with a name budget of its own, so that
+    /// the budget belongs to this one run of this one formula: a cell evaluated inside another
+    /// cell's name body, or the same cell run again after a restart, does not inherit it.
+    pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        let outer = std::mem::take(&mut self.defined_names_running);
+        let result = self.evaluate_node_in_context(node, cell);
+        self.defined_names_running = outer;
+        result
     }
 
     /// The value of the defined name `name` whose body is the formula `body`, used in `cell`.

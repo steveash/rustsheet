@@ -919,7 +919,7 @@ impl Model {
         // Shares the formula, it does not copy it.
         let node =
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
-        match self.evaluate_node_in_context(&node, cell_reference) {
+        match self.run_cell_formula(&node, cell_reference) {
             CalcResult::Range { left, right } => {
                 if left == right {
                     self.evaluate_cell(left)
