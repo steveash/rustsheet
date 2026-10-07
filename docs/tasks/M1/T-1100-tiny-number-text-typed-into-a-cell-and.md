@@ -6,7 +6,7 @@ lane: engine
 status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -36,3 +36,13 @@ crates/rustsheet-engine/src/test/test_nan_inf.rs).
 
 ## Out of scope
 -
+
+## Handoff
+Sonnet run, no code written. Beyond sonnet: the first acceptance criterion needs a typed-input
+oracle path, and none exists. `rustsheet-oracle status` shows excel-graph OK (app-only) and
+excel-desktop n/a; `rg` over tools/ and docs/architecture/oracle.md finds no Graph range-PATCH
+(typed value) support, and an xlsx probe cannot show what typing does. Next: add a typed-input path
+to the oracle client (PATCH range values with the raw text, read back value/valueTypes), probe
+`1e-310`, `1e-309`, `2e-308`, `0e309` and a CF rule `Cell value > 1e-310`, record in numbers.md,
+then make `parse_formatted_number` / `parse_finite_number` / `value_needs_quoting` reuse
+`parse_excel_number`.
