@@ -13,14 +13,18 @@
    "A3": {
     "t": "n",
     "v": 0.5
+   },
+   "A4": {
+    "t": "n",
+    "v": 0.5
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "f30a070163bf85bdfee28ff9ff764d440b12eacdd57060df7f0695bdb534945c",
+  "input_sha256": "5994593dd70ec58a8ff35828ca6224062a195206fbe783d0c27f95cc6c3d84d2",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T18:05:14+00:00",
+  "produced_at": "2026-10-07T18:15:26+00:00",
   "version": null
  }
 }

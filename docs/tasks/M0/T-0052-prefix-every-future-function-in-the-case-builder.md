@@ -43,6 +43,6 @@ The case builder owns every future-function prefix: one table (the engine export
 XlsxWriter's `use_future_functions` is off. `=TRIMRANGE(A2)+DAYS(1,2)` now stores `_xlfn.DAYS`;
 NORMSDIST/NORMSINV are stored bare, as Excel stores them (the `_XLSXWRITER_MISREAD` workaround is
 gone). A test checks the table still covers XlsxWriter's own list. Of 298 committed specs, only
-probes/catalog/normsdist-stored-form and availability-27 changed bytes; both were refilled
+probes/catalog/normsdist-stored-form and availability-27 changed bytes; both were refilled (normsdist-stored-form also gained A4 `_xlfn.NORMSDIST(0)`, keeping the prefixed-classic evidence reproducible)
 (excel-graph 2026-10-07) with identical values. Eval delta: none (0 regressions). Filed T-0411
 (the engine exporter writes five newer names bare).

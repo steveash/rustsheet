@@ -84,13 +84,13 @@ also CEILING above); an unknown name with the prefix is still `#NAME?`, and so i
 (text.md).
 Evidence: probes/catalog/function-name-forms A1 (5 = #NAME?), A2 (no error), A3 (5), A4 (no error),
 A5 (no error), A6 (5); function-name-forms-2 A3 `_xlfn.SUM(1,2)` = 3; probes/catalog/normsdist-stored-form
-A1 `_xlfn.NORMSDIST(0)` = 0.5 (oracle: excel-graph, 2026-10-07, T-0040). Consequence for case specs: the
+A4 `_xlfn.NORMSDIST(0)` = 0.5 (oracle: excel-graph, 2026-10-07, T-0040; A1 until T-0052). Consequence for case specs: the
 case builder (tools/src/rustsheet_tools/spec2xlsx.py) prefixes every call of a name on its own table
 (the engine exporter's list plus the names only XlsxWriter knew; T-0052), whatever else shares the
 formula; GROUPBY, PIVOTBY and PERCENTOF are not on it, so specs spell them `_xlfn.`
-(probes/catalog/availability-*). The classic NORMSDIST/NORMSINV give the same values bare (how Excel
-stores them; normsdist-stored-form A1-A2 and availability-27 A8-A9 refilled bare, excel-graph
-2026-10-07) as prefixed.
+(probes/catalog/availability-*). The classic NORMSDIST/NORMSINV give the same values bare as
+prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) and A4
+`_xlfn.NORMSDIST(0)` = 0.5 (excel-graph, 2026-10-07, T-0052).
 Status: VERIFIED
 Implemented in: not yet. The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
