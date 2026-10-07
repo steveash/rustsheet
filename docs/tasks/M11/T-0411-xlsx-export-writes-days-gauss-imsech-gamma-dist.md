@@ -35,3 +35,4 @@ its list with the catalog.
 
 ## Outcome
 `Function::to_xlsx_string` now stores DAYS, GAUSS, IMSECH, GAMMA.DIST and FORECAST.LINEAR with `_xlfn.`; unit test added; the five names left `_BUILDER_ONLY_PREFIXES` (the builder reads the engine list). Eval: no change.
+The comparison of the whole exporter list with the catalog (task Context) is filed as T-0412.
