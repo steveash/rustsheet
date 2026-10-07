@@ -142,15 +142,24 @@ fn concat_and_textjoin_limit_with_multibyte_and_range_arguments() {
     assert_eq!(model._get_text("B6"), *"#CALC!");
 }
 
-// Unprobed (text.md): an error in a later argument wins over the length error.
+// Oracle: probes/text-result-limit C18-C20 (excel-graph): an error argument after the limit wins
+// over `#CALC!`, but an error in a later cell of a range does not: the walk has already gone past
+// the limit, so the length error comes first.
 #[test]
-fn concat_and_textjoin_error_after_the_limit_wins() {
+fn concat_and_textjoin_error_after_the_limit() {
     let mut model = new_empty_model();
+    model._set("B1", "b");
+    model._set("B2", "=NA()");
     model._set("A1", "=CONCAT(REPT(\"a\",32767),\"b\",NA())");
     model._set("A2", "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\",NA())");
+    model._set("A3", "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),B1:B2)");
+    // Under the limit the cell error is the result, as ever.
+    model._set("A4", "=TEXTJOIN(\",\",TRUE,REPT(\"a\",100),B1:B2)");
 
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), *"#N/A");
     assert_eq!(model._get_text("A2"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#CALC!");
+    assert_eq!(model._get_text("A4"), *"#N/A");
 }
