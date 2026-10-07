@@ -36,7 +36,10 @@ VALUE and the lexer share it: nonzero text below 1E-309 is not a number, 1E-309 
 reads as 0, and a zero mantissa is a number only when its exponent less its fraction digits lies
 within ±308. The zero rule and literal behavior were pinned by two new probes
 (text-number-tiny-zero, literal-number-tiny; excel-graph 2026-10-07): Excel refuses to open a
-workbook with `=1E-310` or `=0E309`, so such literals are parse errors here. Eval: probes known
+workbook with `=1E-310` or `=0E309`, so such literals are parse errors here. A third probe
+(text-number-tiny-paths, after review) confirmed criteria, AVERAGE text, NUMBERVALUE and
+formatted text follow the same rule, and that `[>1e-310]` invalidates a TEXT format, which the
+format-condition lexer now matches. Eval: probes known
 failures 236 -> 204 (35 fixed, 3 new-coverage cells baselined: text-number-tiny-zero B15:D15, the
-305-zero text, filed as T-1097). Follow-ups: T-1097 (long zero text), T-1098 (`parse_finite_number`
-callers).
+305-zero text, filed as T-1097). Follow-ups: T-1097 (long zero text), T-1098 (cell entry and
+conditional formats).

@@ -338,17 +338,26 @@ Formula literals follow the same rule: `=1E-309`, `=-1E-309`, `=2E-308`, `=0E308
 `=0E-308` evaluate to 0 and `=2.2250738585073E-308` keeps its value (probes/literal-number-tiny),
 while Excel refuses to open a workbook holding `=1E-310`, `=-1E-310`, `=5E-324`, `=0E309` or
 `=0E-400`, one per workbook (excel-graph createSession: FileCorruptTryRepair, 2026-10-07).
+Every other text-to-number path follows the same rule (probes/text-number-tiny-paths):
+`AVERAGE("1e-310",2)`, `AVERAGEA("1e-310",2)`, `SUM("1e-310",1)`, `NUMBERVALUE("1e-310")`,
+`NUMBERVALUE("0e309")`, `="1,000e-313"+0`, `="$1e-310"+0` and `="1e-310%"+0` are #VALUE!, while
+`AVERAGE("1e-309",2)` is 1, `NUMBERVALUE("1e-309")` and `="1,000e-312"+0` are 0 and
+`COUNT("1e-310","1e-309",1)` is 2. A criterion `"1e-310"` or `">1e-310"` is a text criterion
+(it matches the text "1e-310" and compares as text), `"1e-309"` and `"<1e-309"` compare with 0,
+and a `TEXT` format condition `[>1e-310]` or `[>0e309]` makes the format invalid (#VALUE!). The
+cut-off is on the written leading digit, not on a rounded value:
+`"0.9999999999999999999e-309"+0` is #VALUE!.
 The sign of negative flushed values is unverified (the oracle JSON cannot tell -0 from 0).
-Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8); probes/text-number-tiny (Data!B1:D20); probes/text-number-tiny-zero (Data!B1:E22); probes/literal-number-tiny (Lit!A1:C8).
+Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8); probes/text-number-tiny (Data!B1:D20); probes/text-number-tiny-zero (Data!B1:E22); probes/literal-number-tiny (Lit!A1:C8); probes/text-number-tiny-paths (Paths!C1:D23).
 Oracle: excel-graph, 2026-10-05, 2026-10-06 and 2026-10-07.
 Status: VERIFIED
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
 lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
 in crates/rustsheet-engine/src/number_format.rs; the tiny side (T-0154) in `parse_excel_number`
-only. That covers the evidenced paths (`cast_number`, VALUE, the lexer) and, without probes of
-their own yet, criteria operands, AVERAGEA text arguments, formatted-number text and NUMBERVALUE;
-`parse_finite_number` callers (TEXT format conditions, conditional formats) still read tiny text
-unchanged (T-1098 probes both groups).
+(`cast_number`, VALUE, the lexer, criteria operands, AVERAGE/AVERAGEA text arguments, formatted
+number text, NUMBERVALUE) and, for validity only, the TEXT format-condition lexer. Cell entry
+(`set_user_input`) shares `parse_excel_number` unprobed, and conditional formats still read tiny
+text unchanged (T-1098).
 Tasks: T-0920, T-0140, T-0154, T-0174, T-1097
 
 ## MOD is an exact remainder

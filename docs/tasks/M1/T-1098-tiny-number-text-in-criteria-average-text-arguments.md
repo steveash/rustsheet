@@ -1,6 +1,6 @@
 ---
 id: T-1098
-title: "Tiny number text in criteria, AVERAGE text arguments, NUMBERVALUE and format conditions"
+title: "Tiny number text typed into a cell and in conditional-format rule values"
 milestone: M1
 lane: engine
 status: todo
@@ -11,24 +11,25 @@ depends_on: []
 ---
 
 ## Goal
-Tiny number text (`"1e-310"`, `"1e-309"`, `"0e309"`) reads the way Excel reads it in every
-text-to-number path, not only the three T-0154 had evidence for.
+Typing tiny number text into a cell (`1e-310`, `1e-309`, `0e309`) and tiny numbers in
+conditional-format rule values behave as Excel does, with evidence.
 
 ## Context
 T-0154 put the small-magnitude rule (numbers.md "Number text of 1E+308 or more is not a
 number": nonzero below 1E-309 is not a number, 1E-309 up to DBL_MIN reads as 0, zero mantissas
 need exponent less fraction digits within ±308) in `parse_excel_number`
-(crates/rustsheet-engine/src/number_format.rs). Evidence covers `cast_number`, VALUE and the lexer
-(probes/text-number-tiny, text-number-tiny-zero, text-number-words, literal-number-tiny). Other
-callers now get the rule unprobed: criteria operands (`parse_criterion_number`, criteria.rs),
-AVERAGEA text arguments (count_and_average.rs), NUMBERVALUE (string_format.rs) and formatted
-number text (formatter/format.rs). `parse_finite_number` callers keep the old reading (`"1e-400"`
-is 0, subnormals kept): TEXT format conditions (formatter/lexer.rs) and conditional formats
-(conditional_formatting.rs); see TODO(T-1098) in crates/rustsheet-engine/src/test/test_nan_inf.rs.
+(crates/rustsheet-engine/src/number_format.rs), with evidence for coercion, VALUE, literals,
+criteria, AVERAGE text, NUMBERVALUE and format conditions (probes/text-number-tiny*,
+literal-number-tiny). Two paths have no evidence: cell entry, `set_user_input` via
+`parse_formatted_number` (formatter/format.rs), which now stores typed `1e-310` as text; an
+xlsx probe cannot show what typing does, so this needs a typed-input oracle path (Graph range
+PATCH) or desktop Excel. And conditional formats (`parse_finite_number` in
+conditional_formatting.rs) still read `1e-400` as 0 (TODO(T-1098) in
+crates/rustsheet-engine/src/test/test_nan_inf.rs).
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers `COUNTIF(r,"1e-310")`, `COUNTIF(r,">1e-310")`, `COUNTIF(r,"<1e-309")`, `AVERAGEA` with `"1e-310"` and `"1e-309"` text arguments, `NUMBERVALUE("1e-310")`, `NUMBERVALUE("0e309")`, `="1,000e-312"+0` and a `TEXT` format condition `[>1e-310]`.
-- [ ] Each path follows the evidence, reusing the T-0154 rule in number_format.rs (no copy); numbers.md records the result.
+- [ ] Evidence for what Excel stores when `1e-310`, `1e-309`, `2e-308` and `0e309` are typed into a cell, and for a conditional-format rule `Cell value > 1e-310`; numbers.md records it.
+- [ ] The engine follows it, reusing the T-0154 rule (no copy).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -192,6 +192,7 @@ C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-number-15-digits.case.json	16
+C	probes/text-number-tiny-paths.case.json	46
 C	probes/text-number-tiny-zero.case.json	88
 C	probes/text-number-tiny.case.json	60
 C	probes/text-number-words.case.json	62
