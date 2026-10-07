@@ -3,7 +3,7 @@ id: T-1000
 title: "Probe number-to-text carry at exponent magnitude 99 (9.99999999999995E+99, E-100)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
