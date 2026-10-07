@@ -3,7 +3,7 @@ id: T-1012
 title: "Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors and IS* of rich errors (SPEC-0003 R1)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
