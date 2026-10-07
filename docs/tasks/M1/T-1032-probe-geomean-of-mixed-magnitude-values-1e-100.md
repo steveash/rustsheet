@@ -24,4 +24,4 @@ T-0992 made the engine return the bounded value for these (unit tests in test_ge
 -
 
 ## Outcome
-Added probes/geomean-mixed-magnitude (5 cells, excel-graph). Engine matches 4; GEOMEAN(1E+100,9E+307) is one ulp high, baselined and filed as T-1074 (opus, numeric fitting). numbers.md updated. Eval delta: +4 passing, 1 new known failure (new coverage, 0 regressions).
+Added probes/geomean-mixed-magnitude (5 cells, excel-graph). Engine matches 4; GEOMEAN(1E+100,9E+307) is one ulp high, baselined and filed as T-1076 (opus, numeric fitting). numbers.md updated. Eval delta: +4 passing, 1 new known failure (new coverage, 0 regressions).

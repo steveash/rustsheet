@@ -1,6 +1,6 @@
 ---
-id: T-1074
-title: "GEOMEAN(1E+100,9E+307) is 1 ulp high in the overflow path"
+id: T-1076
+title: "GEOMEAN of 1E+100 and 9E+307 is 1 ulp high in the overflow path"
 milestone: M1
 lane: functions-stat
 status: todo
