@@ -3,7 +3,7 @@ id: T-0051
 title: "Read catalog scope in the eval gap report and evidence coverage"
 milestone: M0
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -27,13 +27,25 @@ function (526) with `scope: in | out` (an entry without `scope` is in), `reason`
   than drop them silently, and list catalog functions with no evidence at all as gaps.
 
 ## Acceptance criteria
-- [ ] The gap report (eval/runs/latest/report.md) excludes `scope: out` functions from parity
+- [x] The gap report (eval/runs/latest/report.md) excludes `scope: out` functions from parity
   counts and lists them in their own section with their reason.
-- [ ] The "Excel evidence per function" section (T-0020) reads scope the same way, flags in-scope
+- [x] The "Excel evidence per function" section (T-0020) reads scope the same way, flags in-scope
   catalog functions with zero evidence, and marks `oracle: none` functions as needing another
   evidence source.
-- [ ] A test fails if the harness's view of the catalog drifts from eval/catalog/functions.yaml.
-- [ ] `make check` green; reviewers approve.
+- [x] A test fails if the harness's view of the catalog drifts from eval/catalog/functions.yaml.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing any catalog entry's scope (that needs probe evidence or a decision).
+
+## Outcome
+- tools/ writes `eval/catalog/scope.json` (`cd tools && uv run rustsheet-catalog-view`), a
+  one-line-per-function view of the catalog's name, milestone, scope, reason and oracle. The
+  harness reads it through the new `catalog` module (decision 0040: no YAML crate, since
+  serde_yaml is unmaintained). `tools/tests/test_catalog_view.py` fails if the view drifts.
+- report.md: `scope: out` functions leave "Functions with failing cells", the examples and the
+  evidence table. They get an "Out of scope (21)" section with cells checked, failing and reason.
+  The evidence section adds "In-scope catalog functions with no Excel evidence (gaps)" (3 on
+  2026-10-07: RAND, RANDARRAY, RANDBETWEEN) and "Need an evidence source other than the oracle"
+  (INFO, SHEETS). Suite cell counts and baselines are unchanged.
+- Eval delta: none (report only; 0 regressions, no baseline change).

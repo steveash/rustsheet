@@ -7,7 +7,6 @@ when the committed view drifts from the YAML; regenerate it with `uv run rustshe
 
 from __future__ import annotations
 
-import argparse
 import json
 from pathlib import Path
 from typing import Any
@@ -41,15 +40,7 @@ def render(catalog: Path = CATALOG) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="fail if the view is stale")
-    args = parser.parse_args()
-    text = render()
-    if args.check:
-        if VIEW.read_text() != text:
-            raise SystemExit(f"{VIEW} is stale; run `cd tools && uv run rustsheet-catalog-view`")
-        return
-    VIEW.write_text(text)
+    VIEW.write_text(render())
     print(f"wrote {VIEW}")
 
 

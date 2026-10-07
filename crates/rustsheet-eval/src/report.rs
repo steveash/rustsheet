@@ -113,6 +113,65 @@ pub struct OutOfScope {
     pub failing: usize,
 }
 
+/// The report's lists that come from comparing the run with the catalog.
+struct CatalogLists {
+    unevidenced: Vec<String>,
+    catalog_unevidenced: Vec<String>,
+    needs_other_evidence: Vec<String>,
+    out_of_scope: Vec<OutOfScope>,
+}
+
+impl CatalogLists {
+    /// `evidence` holds the in-scope functions with Excel evidence, `out` the run's stats for
+    /// out-of-scope functions.
+    fn build(
+        catalog: &Catalog,
+        implemented: &[String],
+        evidence: &BTreeMap<String, FunctionEvidence>,
+        out: &BTreeMap<String, FunctionStat>,
+    ) -> CatalogLists {
+        let lacks_evidence = |f: &str| {
+            !evidence.contains_key(f) && catalog.in_scope(f) && !catalog.needs_other_evidence(f)
+        };
+        let unevidenced = implemented
+            .iter()
+            .filter(|f| lacks_evidence(f))
+            .cloned()
+            .collect();
+        let catalog_unevidenced = catalog
+            .functions()
+            .map(|f| &f.name)
+            .filter(|f| lacks_evidence(f))
+            .cloned()
+            .collect();
+        let needs_other_evidence = catalog
+            .functions()
+            .map(|f| &f.name)
+            .filter(|f| catalog.needs_other_evidence(f))
+            .cloned()
+            .collect();
+        let out_of_scope = catalog
+            .functions()
+            .filter(|f| !catalog.in_scope(&f.name))
+            .map(|f| {
+                let stat = out.get(&f.name);
+                OutOfScope {
+                    name: f.name.clone(),
+                    reason: f.reason.clone().unwrap_or_default(),
+                    cells: stat.map_or(0, |s| s.cells),
+                    failing: stat.map_or(0, |s| s.cells.saturating_sub(s.passed)),
+                }
+            })
+            .collect();
+        CatalogLists {
+            unevidenced,
+            catalog_unevidenced,
+            needs_other_evidence,
+            out_of_scope,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunReport {
     pub engine: String,
@@ -132,7 +191,7 @@ pub struct RunReport {
     #[serde(default)]
     pub unevidenced: Vec<String>,
     /// In-scope catalog functions, implemented or not, that no Excel-evidence cell calls (the
-    /// oracle can evaluate them).
+    /// oracle can evaluate them). Includes the catalog-listed entries of `unevidenced`.
     #[serde(default)]
     pub catalog_unevidenced: Vec<String>,
     /// In-scope catalog functions the oracle cannot evaluate (`oracle: none`): their evidence
@@ -214,39 +273,7 @@ impl RunReport {
                 r
             })
             .collect();
-        let lacks_evidence = |f: &str| {
-            !evidence.contains_key(f) && catalog.in_scope(f) && !catalog.needs_other_evidence(f)
-        };
-        let unevidenced = implemented
-            .iter()
-            .filter(|f| lacks_evidence(f))
-            .cloned()
-            .collect();
-        let catalog_unevidenced = catalog
-            .functions()
-            .map(|f| &f.name)
-            .filter(|f| lacks_evidence(f))
-            .cloned()
-            .collect();
-        let needs_other_evidence = catalog
-            .functions()
-            .map(|f| &f.name)
-            .filter(|f| catalog.needs_other_evidence(f))
-            .cloned()
-            .collect();
-        let out_of_scope = catalog
-            .functions()
-            .filter(|f| !catalog.in_scope(&f.name))
-            .map(|f| {
-                let stat = out.get(&f.name);
-                OutOfScope {
-                    name: f.name.clone(),
-                    reason: f.reason.clone().unwrap_or_default(),
-                    cells: stat.map_or(0, |s| s.cells),
-                    failing: stat.map_or(0, |s| s.cells - s.passed),
-                }
-            })
-            .collect();
+        let lists = CatalogLists::build(catalog, implemented, &evidence, &out);
         let mut evidence: Vec<FunctionEvidence> = evidence.into_values().collect();
         evidence.sort_by(|a, b| a.cells.cmp(&b.cells).then_with(|| a.name.cmp(&b.name)));
         RunReport {
@@ -256,10 +283,10 @@ impl RunReport {
             cases,
             slowest: slowest(results, SLOWEST_CASES),
             evidence,
-            unevidenced,
-            catalog_unevidenced,
-            needs_other_evidence,
-            out_of_scope,
+            unevidenced: lists.unevidenced,
+            catalog_unevidenced: lists.catalog_unevidenced,
+            needs_other_evidence: lists.needs_other_evidence,
+            out_of_scope: lists.out_of_scope,
         }
     }
 
@@ -631,7 +658,7 @@ mod tests {
         let catalog = Catalog::from_functions([
             entry("ABS", Scope::In, None, None),
             entry("COS", Scope::In, None, None),
-            entry("INFO", Scope::In, None, Some(OracleSupport::None)),
+            entry("INFO", Scope::In, None, Some(OracleSupport::Unavailable)),
             entry("RTD", Scope::Out, Some("real-time server"), None),
             entry("WEBSERVICE", Scope::Out, Some("web | service"), None),
         ]);

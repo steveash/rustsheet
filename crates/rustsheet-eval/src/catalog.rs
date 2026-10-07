@@ -23,12 +23,14 @@ pub enum Scope {
     Out,
 }
 
-/// What the excel-graph oracle can do for a function, when the catalog says anything.
+/// What the excel-graph oracle can do for a function, when the catalog says anything (absent =
+/// it evaluates the function). One variant today; the catalog may grow others.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
 pub enum OracleSupport {
-    /// The oracle cannot return any value (INFO, SHEETS): evidence must come from elsewhere.
-    None,
+    /// `oracle: none`: the oracle cannot return any value (INFO, SHEETS), so evidence must come
+    /// from elsewhere.
+    #[serde(rename = "none")]
+    Unavailable,
 }
 
 /// One catalog entry, as far as the harness needs it.
@@ -126,7 +128,7 @@ impl Catalog {
     pub fn needs_other_evidence(&self, name: &str) -> bool {
         self.functions
             .get(name)
-            .is_some_and(|f| f.scope == Scope::In && f.oracle == Some(OracleSupport::None))
+            .is_some_and(|f| f.scope == Scope::In && f.oracle == Some(OracleSupport::Unavailable))
     }
 }
 
