@@ -1,5 +1,5 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal, MISSING};
-use crate::cast::calc_result_to_array_node;
+use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
@@ -140,6 +140,14 @@ impl Model {
         cell: CellReferenceIndex,
         compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
+        // A criterion over 255 characters is #VALUE!, from a literal or a cell alike
+        // (probes/long-text-args-min-criteria A10-A18, excel-graph 2026-10-07).
+        if criteria
+            .iter()
+            .any(|c| matches!(c, CalcResult::String(text) if number_text_too_long(text)))
+        {
+            return CalcResult::new_error(Error::VALUE, cell, "Criterion too long".to_string());
+        }
         self.lift_with_cost(
             criteria,
             |model| model.walk_cost(walked, cell),
