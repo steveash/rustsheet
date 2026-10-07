@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::arithmetic::flush_subnormal;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -19,7 +18,7 @@ use crate::{
             stringify::{to_english_string, to_localized_string, to_rc_format},
             ArrayNode, CompletionContext, NamedVariable, Node, Parser,
         },
-        token::{get_error_by_name, Error, OpUnary},
+        token::{get_error_by_name, Error},
         types::*,
         utils::{self, is_valid_column_number, is_valid_row},
     },
@@ -729,14 +728,7 @@ impl Model {
             ),
             // What they are applied to is turned into a number, and they work
             // element by element on a range or an array
-            UnaryKind { kind, right } => match kind {
-                OpUnary::Minus => self.apply_number_unary(right, cell, |f| Ok(-f)),
-                // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
-                // become 0", probes/subnormal-function-results A1, A21).
-                OpUnary::Percentage => {
-                    self.apply_number_unary(right, cell, |f| Ok(flush_subnormal(f / 100.0)))
-                }
-            },
+            UnaryKind { .. } => self.apply_unary_chain(node, cell),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..

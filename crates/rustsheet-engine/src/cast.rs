@@ -1,10 +1,11 @@
+use crate::arithmetic::flush_subnormal;
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
         parser::{ArrayNode, Node},
-        token::Error,
+        token::{Error, OpUnary},
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
@@ -302,6 +303,30 @@ impl Model {
         }
     }
 
+    /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
+    /// in one element-wise pass, innermost operator first, so a whole column is lifted once
+    /// rather than once per operator (the formula_eval fuzz timeout, T-1078).
+    pub(crate) fn apply_unary_chain(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let mut kinds = Vec::new();
+        let mut operand = node;
+        while let Node::UnaryKind { kind, right } = operand {
+            kinds.push(kind);
+            operand = right;
+        }
+        self.apply_number_unary(operand, cell, |f| {
+            Ok(kinds.iter().rev().fold(f, |f, kind| match kind {
+                OpUnary::Minus => -f,
+                // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
+                // become 0", probes/subnormal-function-results A1, A21).
+                OpUnary::Percentage => flush_subnormal(f / 100.0),
+            }))
+        })
+    }
+
     /// Applies a scalar numeric transform element-wise over a node that may evaluate
     /// to a number, a range, or an array. Mirrors the `single_number_fn!` /
     /// `date_part_fn!` macros but accepts a closure, so callers can capture extra
@@ -322,31 +347,24 @@ impl Model {
                 Ok(x) => CalcResult::Number(x),
                 Err(e) => CalcResult::new_error(e, cell, String::new()),
             },
-            Ok(NumberOrArray::Array(a)) => {
-                let mut array = Vec::with_capacity(a.len());
-                for row in a {
-                    let mut data_row = Vec::with_capacity(row.len());
-                    for value in row {
-                        let n = match value {
-                            ArrayNode::Number(n) => Some(n),
-                            ArrayNode::Boolean(b) => Some(if b { 1.0 } else { 0.0 }),
-                            ArrayNode::Empty => Some(0.0),
-                            ArrayNode::String(s) => self.cast_number(&s),
-                            ArrayNode::Error(e) => {
-                                data_row.push(ArrayNode::Error(e));
-                                continue;
-                            }
-                        };
-                        let out = match n {
-                            Some(f) => match op(f) {
-                                Ok(x) => ArrayNode::Number(x),
-                                Err(e) => ArrayNode::Error(e),
-                            },
-                            None => ArrayNode::Error(Error::VALUE),
-                        };
-                        data_row.push(out);
-                    }
-                    array.push(data_row);
+            // Rewritten in place: a whole column is a million one-element rows, and
+            // reallocating each of them per operator dominated the cost (T-1078).
+            Ok(NumberOrArray::Array(mut array)) => {
+                for value in array.iter_mut().flatten() {
+                    let n = match value {
+                        ArrayNode::Number(n) => Some(*n),
+                        ArrayNode::Boolean(b) => Some(if *b { 1.0 } else { 0.0 }),
+                        ArrayNode::Empty => Some(0.0),
+                        ArrayNode::String(s) => self.cast_number(s),
+                        ArrayNode::Error(_) => continue,
+                    };
+                    *value = match n {
+                        Some(f) => match op(f) {
+                            Ok(x) => ArrayNode::Number(x),
+                            Err(e) => ArrayNode::Error(e),
+                        },
+                        None => ArrayNode::Error(Error::VALUE),
+                    };
                 }
                 CalcResult::Array(array)
             }
