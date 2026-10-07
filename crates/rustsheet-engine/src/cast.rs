@@ -197,7 +197,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<NumberOrArray, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.number_or_array(value, cell)
+    }
+
+    /// [`Model::get_number_or_array`] of an already evaluated `value`.
+    pub(crate) fn number_or_array(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<NumberOrArray, CalcResult> {
+        match value {
             CalcResult::Number(f) => Ok(NumberOrArray::Number(f)),
             CalcResult::String(s) => match self.cast_number(&s) {
                 Some(f) => Ok(NumberOrArray::Number(f)),
@@ -245,7 +255,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<ValueOrArray, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.value_or_array(value, cell)
+    }
+
+    /// [`Model::get_value_or_array`] of an already evaluated `value`.
+    pub(crate) fn value_or_array(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<ValueOrArray, CalcResult> {
+        match value {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => {
                 Ok(ValueOrArray::Array(self.evaluate_range(left, right, cell)?))
@@ -262,7 +282,17 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<StringOrArray, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.string_or_array(value, cell)
+    }
+
+    /// [`Model::get_string_or_array`] of an already evaluated `value`.
+    pub(crate) fn string_or_array(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<StringOrArray, CalcResult> {
+        match value {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => Ok(StringOrArray::Array(
                 self.evaluate_range(left, right, cell)?,
