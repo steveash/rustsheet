@@ -3,7 +3,7 @@ id: T-0275
 title: "XNPV with two arguments panics (index out of bounds on args[2])"
 milestone: M2
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
