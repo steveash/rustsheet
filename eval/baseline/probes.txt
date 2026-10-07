@@ -14,6 +14,11 @@ C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/average-value-args.case.json	32
 C	probes/ceiling-xlfn-prefix.case.json	4
+C	probes/clock-text-length-limit.case.json	16
+C	probes/clock-text-long-fraction.case.json	33
+C	probes/clock-text-long-fraction2.case.json	51
+C	probes/clock-text-long-fraction3.case.json	18
+C	probes/clock-text-long-fraction4.case.json	28
 C	probes/clock-text-oddities.case.json	115
 C	probes/clock-text-oddities2.case.json	50
 C	probes/clock-text-oddities3.case.json	32
