@@ -3,7 +3,7 @@ id: T-1059
 title: "eval-check: a new passing case missing from the baseline must mark it dirty"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
