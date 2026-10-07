@@ -3,7 +3,7 @@ id: T-1026
 title: "INDEX and MATCH over an IF-wrapped 3-D span give #VALUE!, not #REF!"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
