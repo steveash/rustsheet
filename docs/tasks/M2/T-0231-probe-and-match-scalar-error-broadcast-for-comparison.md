@@ -3,7 +3,7 @@ id: T-0231
 title: "Probe and match scalar-error broadcast for comparison and & operators"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
