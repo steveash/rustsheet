@@ -60,4 +60,5 @@ a half-size one. The follow-up probe probes/geomean-overflow-count brackets this
 Recorded as a new numbers.md entry. Filed T-1112 (the `#NUM!` cut) and T-1113 (in-range precision).
 Eval delta: probes +2 cases, 0 fixed, 0 regressions. The new-coverage failures are baselined: the
 F/G/H/I root-form cells where Excel's own `^` differs from glibc's, the two pins, the fallbacks and
-geomean-overflow-count A1-D1 and H1.
+geomean-overflow-count A1-D1 and H1. `make eval-baseline` also adds the missing coverage line for
+probes/xnpv-argument-count (merged in #322 without one).

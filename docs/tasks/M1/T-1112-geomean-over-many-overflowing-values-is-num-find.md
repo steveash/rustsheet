@@ -32,4 +32,5 @@ Found in T-1108. docs/excel-semantics/numbers.md, "GEOMEAN over about 1100 overf
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The GEOMEAN root rounding (numbers.md, "GEOMEAN root rounding"; no reproducible model, T-1108).
+- The in-range path (T-1113).

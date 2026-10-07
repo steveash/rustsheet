@@ -27,4 +27,4 @@ compensated log-sum, or a product root for this case. Probe a few more in-range 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The over/underflow path (T-1112, and numbers.md "GEOMEAN root rounding").
