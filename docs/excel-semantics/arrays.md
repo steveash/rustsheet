@@ -27,6 +27,10 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 The `#GETTING_DATA` row is a formula-literal error, not a rich-value error (no errorType).
 
+Behavior of these errors under ISERR/ISNA/TYPE/IFNA/COUNTIF, and of IMAGE, STOCKHISTORY and FIELDVALUE with error
+arguments (including `FIELDVALUE({1,2},"Price")` spilling two `#FIELD!` cells), is in information.md
+(probes/rich-errors-args, T-1012). An IMAGE source that is empty or a number is a plain `#VALUE!`, not a rich error.
+
 A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType in a different
 `_error` structure, `errorType, propagated` (`propagated` = 1, a boolean; no subType). The
 error names come from `VALUETOTEXT(cell)` (a text "#BLOCKED!" etc.), which also matches for
