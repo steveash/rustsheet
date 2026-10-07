@@ -3,7 +3,7 @@ id: T-0271
 title: "Fuzz crash: LENB(A21:A24) returns an array into a scalar cell (static analysis says not_implemented)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
