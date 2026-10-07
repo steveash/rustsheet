@@ -3,7 +3,7 @@ id: T-0983
 title: "WORKDAY/WORKDAY.INTL holidays is a range argument: no implicit intersection in legacy formulas (2 poi known failures)"
 milestone: M9
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -46,3 +46,6 @@ Run `target/release/rustsheet-eval fetch --suite poi` first to get the workbook.
 ## Out of scope
 - Auditing every other function signature for range arguments marked scalar (file a task if you
   find more).
+
+## Outcome
+One `args_signature_with_holidays(arg_count, required, middle)` replaces the two NETWORKDAYS signature helpers and now also serves WORKDAY (2, 0) and WORKDAY.INTL (2, 1): `holidays` is `Signature::Vector`, so a legacy formula no longer intersects it. Parser tests (`test_add_implicit_intersection`) fail before the fix and pass after; a typed formula never gets implicit intersection, so the evaluation check is the poi workbook. Eval delta: see PR.
