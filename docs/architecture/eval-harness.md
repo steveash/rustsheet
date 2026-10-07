@@ -45,6 +45,9 @@ Input conventions:
 - A string starting with `=` is a formula, written with **dynamic-array (M365) semantics**.
 - Any other string is text. Use the tagged form for text that starts with `=` or for errors.
 - The empty string `""` is materialized as `=""`.
+- Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
+  legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
+  (T-1077). The engine adapter ignores it.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 

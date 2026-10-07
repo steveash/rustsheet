@@ -5,6 +5,10 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
   * Tagged values: {"t":"s"} text, {"t":"n"} number, {"t":"b"} bool, {"t":"e"} error.
   * Every formula is written as a *dynamic-array* formula, i.e. with the semantics of a
     formula typed into current Microsoft 365 Excel (no implicit intersection).
+    A sheet may list cells in `"legacy_formulas": ["H1", ...]`; those are written as plain `<f>`
+    formulas (no `cm` dynamic-array metadata), as a pre-dynamic-array file holds them (T-1077).
+    The engine adapter ignores the list. `@` in such a cell is still written as raw `@`, not the
+    stored `_xlfn.SINGLE`, so it shows Excel's parse of the text, not of a genuine legacy file.
   * Error literals are written as the formula `=#N/A` etc. (xlsx writers cannot emit
     error constants); they behave identically for dependants. A typed error with `"stored": true`
     (`{"t":"e","v":"#BLOCKED!","stored":true}`) is instead patched into the file as a stored
@@ -197,8 +201,18 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     stored: list[tuple[int, str, str]] = []  # (sheet number, cell ref, error name)
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
+        legacy = set(sheet.get("legacy_formulas", ()))
+        if unknown := legacy - sheet["cells"].keys():
+            msg = f"legacy_formulas names cells not in the sheet: {sorted(unknown)}"
+            raise ValueError(msg)
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
+            if a1 in legacy:
+                if not (isinstance(raw, str) and raw.startswith("=")):
+                    msg = f"legacy_formulas cell {a1} is not a formula"
+                    raise ValueError(msg)
+                ws.write_formula(row, col, _formula_text(raw))
+                continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
                 ws.write_formula(row, col, "=0", None, "#N/A")
@@ -233,6 +247,11 @@ def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
     return out.getvalue()
 
 
+def _formula_text(raw: str) -> str:
+    """The formula as written to the file: spill refs anchored, bound names and future functions prefixed."""
+    return prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
+
+
 def _write(ws: Any, row: int, col: int, raw: Any) -> None:
     if isinstance(raw, bool):
         ws.write_boolean(row, col, raw)
@@ -240,9 +259,7 @@ def _write(ws: Any, row: int, col: int, raw: Any) -> None:
         ws.write_number(row, col, float(raw))
     elif isinstance(raw, str):
         if raw.startswith("="):
-            ws.write_dynamic_array_formula(
-                row, col, row, col, prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
-            )
+            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw))
         elif raw == "":
             ws.write_formula(row, col, '=""')
         else:

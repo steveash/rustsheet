@@ -102,7 +102,7 @@ the same result for `IF(TRUE,ref)` and `INDEX(ref,n)` as for the direct referenc
 range. A single text cell counts as 0 to MAXA, MINA and AVERAGEA (`MAXA(IF(TRUE,A1))` with A1 = "5" is 0) and a single TRUE as 1;
 PRODUCT skips a text or boolean cell from a reference, so with no number left it gives 0 (numbers.md, "over no numbers");
 LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
-from a one-cell reference is `#N/A` (the engine gives `#NUM!`, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
+from a one-cell reference is `#N/A` (statistics.md, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
 AVERAGEA 2.2, PRODUCT 21, LARGE(,1) 7, RANK(3,) 2.
 Tasks: T-0216, T-0235, T-0940, T-1003
 
@@ -183,10 +183,11 @@ Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
 future function names, LAMBDA definitions and calls, and `@` operands are accepted); `Parser::parse_implicit`
 (`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection in
-parentheses, `=A1 (@A1)`, since a bare one could take in a following intersection (engine choice; FORMULATEXT
-of `=A1 @A1` is not probed). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
+parentheses, `=A1 (@A1)`, and `=@A1:A3 A2:B2` as `=@(A1:A3 A2:B2)`. Excel's FORMULATEXT prints both as written,
+`=A1 @A1` and `=@A1:A3 A2:B2` (probes/intersection-at-formulatext H2, H4, oracle: excel-graph, 2026-10-07,
+T-1094), so the engine's printing is a mismatch (T-1098). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
-Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098
 
 ## Calling a parenthesized operand
 Rule: a parenthesized operand written directly before `(`, with no space, is called like a LAMBDA
@@ -207,9 +208,13 @@ LET name plays a part). The engine gives `#VALUE!` for those calls (T-1092).
 Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probes/paren-call-lambda-cell,
 probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
 probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149).
-UNVERIFIED by inference: the callees the engine accepts are the intersection's reference operands
+Callee forms (probes/paren-call-callee-offset and -indirect H1, oracle: excel-graph, 2026-10-07, T-1094):
+`=(OFFSET(A1,0,0))(2)` and `=(INDIRECT("A1"))(2)` load and are `#REF!`, calls of a reference. Excel for the
+web refuses a workbook holding `=(1+1)(2)` or `=(SUM(A1))(2)` (`FileCorruptTryRepair`, one scratch
+workbook each, not committed), so the engine's syntax error for a value callee is right. UNVERIFIED by
+inference: the callees the engine accepts are the intersection's reference operands
 (`is_reference_operand`), which include LAMBDA, calls of the reference-returning functions and names;
-other callees (`(1+1)(2)`, `(SUM(A1))(2)`) are syntax errors like `(1)(2)`. A second call,
+other value-returning callees are refused like `(1)(2)`. A second call,
 `(A1)(1)(2)`, is left-over input (not probed).
 Status: VERIFIED
 Implemented in: expressions/parser/lambda.rs (`Parser::parse_parenthesized_call`);
@@ -376,8 +381,12 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   `SUM((Sheet1:Sheet2!A1,B2))`, is `#NAME?`.
 - `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `SUM(Print_Area)` = 6, `AREAS(Print_Area)` = 2.
 - FORMULATEXT of a union written as a dynamic-array formula (the only kind the probe harness writes) has no `@`
-  (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The legacy
-  (non-array) formula half is unprobed (T-1077).
+  (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The same holds for a legacy
+  (non-array, no `cm`) formula: FORMULATEXT is `=(A1,B2)`, `=@(A1,B2)` and `=SUM((A1,B2))`, values `#VALUE!`,
+  `#VALUE!`, 6; Excel does not add an `@` to a union in a legacy formula (probes/multiarea-at-legacy, T-1077). Controls in the same case: legacy `=A1:A2` and `=ABS(A1:A2)` (rows 7, 9) print
+  `=@A1:A2` and `=ABS(@A1:A2)` and give `#VALUE!` (empty intersection), so the legacy path shows `@`s Excel adds;
+  a union never gets one. The eval adapter does not yet load legacy cells as legacy (T-1096).
+  So the engine must not wrap a union in `@` when printing a legacy formula.
 - `AREAS(Data1:Data3!A1)` is `#VALUE!`. A workbook holding `AREAS(1)` or `AREAS("A1")` is refused by Excel for the web
   (`createSession` 501 `unsupportedWorkbook`, two scratch runs, not kept as cases, like the T-0138 refusals).
 Status: VERIFIED (Excel for the web)
