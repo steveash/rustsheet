@@ -320,6 +320,8 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
+    /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
+    at_paren: bool,
     /// Primaries (operands) open on the current parse path. Checked before
     /// descending so the parser's own recursion stays bounded.
     nesting: usize,
@@ -365,6 +367,7 @@ impl Parser {
             language,
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
+            at_paren: false,
             nesting: 0,
             depth: 0,
             inner_depth: 0,

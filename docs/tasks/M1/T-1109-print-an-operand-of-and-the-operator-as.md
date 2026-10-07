@@ -3,7 +3,7 @@ id: T-1109
 title: "Print an @ operand of :, @ and the # operator as Excel does; support ANCHORARRAY"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Oracle evidence (T-1104, probes/at-operand-formulatext): Excel keeps the user's 
 
 ## Out of scope
 -
+
+## Outcome
+`OpIntersectKind` records a parenthesized `@` operand, so FORMULATEXT prints `@(A1 B1)` as written; typed `ANCHORARRAY(x)` parses as `x#` (and `INDEX(...)#` anchors); `:` returns an error operand. The seven failing cells of probes/at-operand-formulatext pass (probes baseline updated). `(@A1:B2)#` stays UNVERIFIED (see excel-semantics/references.md).

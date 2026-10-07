@@ -22,6 +22,7 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
+        let after_at = std::mem::take(&mut self.at_paren);
         let mut t = self.parse_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -65,8 +66,9 @@ impl Parser {
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
         }
+        // Only an `@` operand prints them back, so no other intersection records them.
         if let Node::OpIntersectKind { parenthesized, .. } = &mut t {
-            *parenthesized = true;
+            *parenthesized = after_at;
         }
         t
     }
@@ -177,6 +179,7 @@ impl Parser {
             if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
                 return self.too_deep();
             }
+            self.at_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
