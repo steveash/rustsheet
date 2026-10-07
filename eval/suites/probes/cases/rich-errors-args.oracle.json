@@ -162,6 +162,30 @@
     "t": "n",
     "v": 3.0
    },
+   "C40": {
+    "t": "b",
+    "v": true
+   },
+   "C41": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C50": {
+    "t": "b",
+    "v": true
+   },
+   "C51": {
+    "t": "n",
+    "v": 1.0
+   },
+   "C60": {
+    "t": "b",
+    "v": true
+   },
+   "C61": {
+    "t": "n",
+    "v": 1.0
+   },
    "D22": {
     "t": "b",
     "v": true
@@ -198,9 +222,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "6ae0f297886b54cac81d9a0aef8c987724c40492268c7d2d20a7ea637d9b3b53",
+  "input_sha256": "d1796dff130e7b02f137a73a91301c9fd479db48e6e0efc642a815db98f7ff76",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T01:14:24+00:00",
+  "produced_at": "2026-10-07T01:29:19+00:00",
   "version": null
  }
 }

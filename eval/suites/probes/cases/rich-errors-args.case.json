@@ -60,7 +60,13 @@
         "D23": "=ISERROR(A23)",
         "E23": "=VALUETOTEXT(A23)",
         "F23": "=ISERR(A23)",
-        "G23": "=TYPE(A23)"
+        "G23": "=TYPE(A23)",
+        "C40": "=ISERROR(A40)",
+        "C41": "=COUNTIF(A40:A40,\"<>#BLOCKED!\")",
+        "C50": "=ISERROR(A50)",
+        "C51": "=COUNTIF(A50:A50,\"<>#CONNECT!\")",
+        "C60": "=ISERROR(A60)",
+        "C61": "=COUNTIF(A60:A60,\"<>#FIELD!\")"
       }
     }
   ],
@@ -113,6 +119,12 @@
     "Sheet1!E23",
     "Sheet1!F23",
     "Sheet1!G23",
-    "Sheet1!B28"
+    "Sheet1!B28",
+    "Sheet1!C40",
+    "Sheet1!C41",
+    "Sheet1!C50",
+    "Sheet1!C51",
+    "Sheet1!C60",
+    "Sheet1!C61"
   ]
 }
