@@ -3,7 +3,7 @@ id: T-1054
 title: "DVAR, DVARP, DSTDEV and DSTDEVP use the VAR/STDEV one-pass/two-pass switch"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
