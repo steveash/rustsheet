@@ -3,7 +3,7 @@ id: T-1067
 title: "Nightly fuzz cannot build: cargo-fuzz defaults to the musl target"
 milestone: M1
 lane: harness
-status: todo
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -35,3 +35,11 @@ reviewer-architecture and reviewer-security. Until fixed, directive-5 fuzzing gi
 
 ## Out of scope
 - Fixing crashes the fuzzer finds once it runs (one P0 task each).
+
+## Outcome
+`fuzz.yml` passes the host triple (`rustc -vV`) to `cargo fuzz run --target`, so the prebuilt musl
+cargo-fuzz no longer picks `x86_64-unknown-linux-musl`. Decision 0035 gets a revision note and the
+same local command. Verified locally on a glibc host with cargo-fuzz 0.13.2 and nightly: all three
+targets build and fuzz (`--target` host, 45 s each, no crash). The `workflow_dispatch` run on main
+after merge is the remaining acceptance check (workflow_dispatch only runs from the default branch's
+file, which is still the broken one before merge).
