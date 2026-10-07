@@ -1,0 +1,36 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "More @ forms as intersection operands: @ binds looser than the space (T-0149).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=A1:A3 @A2:B2",
+        "H2": "=@A2:B2 A1:A3",
+        "H3": "=A1 @A1 @A1",
+        "H4": "=@A1:A3 A2:B2 + 1",
+        "H5": "=SUM(@A1:A3 A2:B2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5"
+  ]
+}

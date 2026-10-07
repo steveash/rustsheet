@@ -6,6 +6,7 @@
 //! Excel evidence: docs/excel-semantics/references.md "Intersection operator (space)" (gen-m1,
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
+use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::functions::Function;
@@ -160,11 +161,27 @@ impl Parser {
         t
     }
 
+    /// `'@' intersect | primary ['#']`. The space binds tighter than `@`: Excel evaluates
+    /// `=@A1:A3 A2:B2` in row 11 to 2, `@(A1:A3 A2:B2)`, where `=@A1:A3` alone is `#VALUE!`
+    /// (probes/intersection-operands H11, probes/intersection-at-operands; T-0149).
     fn parse_implicit(&mut self) -> Node {
         let next_token = self.lexer.peek_token();
         if next_token == TokenType::At {
             self.lexer.advance_token();
-            let t = self.parse_primary();
+            // `@` recurses into the intersection without an operand in between (`A1 @A1
+            // @A1 ...`), so it reserves nesting like an operand does to bound the recursion.
+            if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
+                return self.too_deep();
+            }
+            let t = if self.lexer.peek_token() == TokenType::At {
+                // `@@A1`: an operand cannot start with `@`.
+                self.parse_primary()
+            } else {
+                self.nesting += PRIMARY_DEPTH;
+                let t = self.parse_intersection();
+                self.nesting -= PRIMARY_DEPTH;
+                t
+            };
             if let Node::ParseErrorKind { .. } = t {
                 return t;
             }
@@ -260,7 +277,7 @@ fn has_negated_operand(node: &Node) -> bool {
 /// SUM, NA, ABS, ROW, ROWS, MATCH, VLOOKUP, HLOOKUP, LOOKUP, IFERROR, IFNA, CHOOSEROWS, CHOOSECOLS, FILTER,
 /// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
 /// probed are refused by inference.
-fn is_reference_operand(node: &Node) -> bool {
+pub(super) fn is_reference_operand(node: &Node) -> bool {
     match node {
         Node::NumberKind(_)
         | Node::StringKind(_)
@@ -293,11 +310,12 @@ fn is_reference_operand(node: &Node) -> bool {
 }
 
 /// Whether `token` can start the right operand of an intersection: a reference, a name or
-/// call, a parenthesis, or the `#REF!` Excel writes in place of a deleted reference.
+/// call, a parenthesis, `@` (`=A1 @A1` is 1, probes/intersection-operands H10), or the `#REF!` Excel writes in place of a deleted reference.
 fn starts_reference(token: &TokenType) -> bool {
     matches!(
         token,
         TokenType::Reference { .. }
+            | TokenType::At
             | TokenType::Range { .. }
             | TokenType::Ident(_)
             | TokenType::StructuredReference { .. }
@@ -309,7 +327,8 @@ fn starts_reference(token: &TokenType) -> bool {
 /// `text` (the printed `node`) as an operand of the intersection operator, parenthesized
 /// where printing it bare would parse back differently: an operator that binds looser
 /// (`A1 (B1+C1)`), a right operand that is itself an intersection (to keep the tree), and
-/// anything the parser does not take as a reference operand (`A1 (1)`, `A1 (@B1)`).
+/// anything the parser does not take as a reference operand (`A1 (1)`), and `@`, which binds
+/// looser than the space (`A1 (@B1)`: a bare `@B1 C1` would be `@(B1 C1)`, T-0149).
 pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     let bare = match node {
         Node::OpIntersectKind { .. } => is_left,
@@ -344,6 +363,17 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
         format!("({text})")
     } else {
         text
+    }
+}
+
+/// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare
+/// (`LAMBDA(x,x)(1)`) and a union with its own parentheses (`union_text`); any other callee was
+/// written in parentheses, and bare, `A1(A2)`, it would not parse back (T-0149).
+pub(crate) fn callee_operand(text: String, node: &Node) -> String {
+    if matches!(node, Node::LambdaDefKind { .. } | Node::OpUnionKind { .. }) {
+        text
+    } else {
+        format!("({text})")
     }
 }
 
