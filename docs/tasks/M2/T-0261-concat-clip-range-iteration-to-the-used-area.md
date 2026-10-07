@@ -3,7 +3,7 @@ id: T-0261
 title: "CONCAT: clip range iteration to the used area"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
