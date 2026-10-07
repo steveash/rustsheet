@@ -49,12 +49,92 @@ impl Model {
         if args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
+        // An array function_num, options or (in a four-argument call) fourth argument lifts:
+        // each element is its own AGGREGATE, broadcast like the *IF(S) criteria, so
+        // `AGGREGATE({9,4},0,E1:E6)` spills SUM and MAX and an array k spills one LARGE per k,
+        // even in the reference form, where every element is `#VALUE!` (probes/aggregate-args
+        // Misc!A36:B38, probes/aggregate-array-args). A range fourth argument is a reference,
+        // and a range function_num or options keeps its scalar reading: only arrays lift.
+        let function = self.evaluate_node_in_context(&args[0], cell);
+        let option = self.evaluate_node_in_context(&args[1], cell);
+        let fourth = (args.len() == 4).then(|| self.evaluate_node_with_reference(&args[3], cell));
+        let lifts = |value: &CalcResult| matches!(value, CalcResult::Array(_));
+        if !lifts(&function) && !lifts(&option) && !fourth.as_ref().is_some_and(lifts) {
+            // A scalar fourth argument is passed on evaluated, so it is not computed twice;
+            // a reference stays a node.
+            return match fourth.as_ref().and_then(value_node) {
+                Some(node) => {
+                    let rest = [args[2].clone(), node];
+                    self.aggregate_scalar(function, option, &rest, cell)
+                }
+                None => self.aggregate_scalar(function, option, &args[2..], cell),
+            };
+        }
+        let lifts_fourth = fourth.as_ref().is_some_and(lifts);
+        // The value arguments are evaluated once, not once per element: a computed array
+        // becomes a literal. Every element reads all of them, which the visit cap counts
+        // (directive 5; criteria.md "*IF(S) lift array criteria", DEVIATION).
+        let value_count = if lifts_fourth { 1 } else { args.len() - 2 };
+        let mut rest: Vec<Node> = Vec::with_capacity(args.len() - 2);
+        let mut cost: u64 = 0;
+        for node in &args[2..2 + value_count] {
+            match self.evaluate_node_with_reference(node, cell) {
+                CalcResult::Array(rows) => {
+                    let size = rows.len().saturating_mul(rows.first().map_or(0, Vec::len));
+                    cost = cost.saturating_add(u64::try_from(size).unwrap_or(u64::MAX));
+                    rest.push(Node::ArrayKind(rows));
+                }
+                _ => {
+                    cost = cost.saturating_add(self.walk_cost(node, cell));
+                    rest.push(node.clone());
+                }
+            }
+        }
+        let mut lifted = vec![function, option];
+        lifted.extend(fourth.filter(lifts));
+        // `lift_with_cost` would also read a range; keep those out so they stay scalar.
+        let ranges: Vec<Option<CalcResult>> = lifted
+            .iter_mut()
+            .map(|value| match value {
+                CalcResult::Range { .. } => Some(std::mem::replace(value, CalcResult::EmptyCell)),
+                _ => None,
+            })
+            .collect();
+        self.lift_with_cost(
+            lifted,
+            |_| cost.max(1),
+            cell,
+            |model, values| {
+                let scalar = |index: usize| {
+                    ranges[index]
+                        .clone()
+                        .unwrap_or_else(|| values[index].clone())
+                };
+                if lifts_fourth {
+                    let k = value_node(&values[2]).unwrap_or(Node::EmptyArgKind);
+                    let element_rest = [rest[0].clone(), k];
+                    model.aggregate_scalar(scalar(0), scalar(1), &element_rest, cell)
+                } else {
+                    model.aggregate_scalar(scalar(0), scalar(1), &rest, cell)
+                }
+            },
+        )
+    }
+
+    /// One AGGREGATE call with function_num and options already evaluated.
+    fn aggregate_scalar(
+        &mut self,
+        function: CalcResult,
+        option: CalcResult,
+        rest: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         // Both are truncated: AGGREGATE(9.9,7.9,..) is AGGREGATE(9,7,..) (probes/aggregate-args).
-        let function = match self.get_number(&args[0], cell) {
+        let function = match self.cast_to_number(function, cell) {
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
-        let option = match self.get_number(&args[1], cell) {
+        let option = match self.cast_to_number(option, cell) {
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
@@ -72,9 +152,9 @@ impl Model {
             errors: matches!(option, 2 | 3 | 6 | 7),
         };
         if function >= 14 {
-            self.aggregate_array_form(function, ignore, &args[2..], cell)
+            self.aggregate_array_form(function, ignore, rest, cell)
         } else {
-            self.aggregate_reference_form(function, ignore, &args[2..], cell)
+            self.aggregate_reference_form(function, ignore, rest, cell)
         }
     }
 
@@ -291,4 +371,18 @@ fn value_of(value: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
 /// `numbers` as a one-row array literal, the form the statistics functions read.
 fn numbers_array(numbers: Vec<f64>) -> Node {
     Node::ArrayKind(vec![numbers.into_iter().map(ArrayNode::Number).collect()])
+}
+
+/// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
+/// value; `None` for a reference or an array.
+fn value_node(value: &CalcResult) -> Option<Node> {
+    Some(match value {
+        CalcResult::Number(number) => Node::NumberKind(*number),
+        CalcResult::Boolean(boolean) => Node::BooleanKind(*boolean),
+        // `StringKind` holds the formula spelling, with `"` doubled.
+        CalcResult::String(text) => Node::StringKind(text.replace('"', "\"\"")),
+        CalcResult::Error { error, .. } => Node::ErrorKind(error.clone()),
+        CalcResult::EmptyCell | CalcResult::EmptyArg => Node::EmptyArgKind,
+        _ => return None,
+    })
 }

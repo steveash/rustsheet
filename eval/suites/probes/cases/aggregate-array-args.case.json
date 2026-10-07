@@ -1,0 +1,57 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "AGGREGATE with an array function_num, options or k: spill shapes, broadcasting and invalid elements (T-1038).",
+ "tags": [
+  "M1",
+  "probe",
+  "aggregate",
+  "T-1038"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=AGGREGATE({9,4},0,Data!E1:E6)",
+    "A6": "=AGGREGATE({9;4},0,Data!E1:E6)",
+    "A11": "=AGGREGATE({9,4},{0;6},Data!D1:D11)",
+    "A16": "=AGGREGATE({9,4,1},{0,6},Data!D1:D11)",
+    "A21": "=AGGREGATE(14,6,Data!D1:D11,{1,2,3})",
+    "A26": "=AGGREGATE(9,0,Data!E1:E6,{1,2})",
+    "A31": "=AGGREGATE({9,14},0,Data!E1:E6,2)",
+    "A36": "=AGGREGATE(14,{0,6},Data!D1:D11,{1;2})",
+    "A41": "=AGGREGATE({1,\"x\",TRUE},0,Data!E1:E6)",
+    "A46": "=AGGREGATE({9,99},0,Data!E1:E6)",
+    "A51": "=AGGREGATE({9,4},6,Data!E1:E6/(Data!E1:E6>2))",
+    "A56": "=AGGREGATE(15,6,Data!E1:E6,{1,2;3,4})",
+    "A61": "=AGGREGATE({14,15},6,Data!E1:E6,{1;2})",
+    "A66": "=AGGREGATE({9,4},0,Data!E1:E6,Data!E1:E2)",
+    "A71": "=AGGREGATE({2,3},0,Data!D1:D11)",
+    "A76": "=AGGREGATE(9,{0,4,9},Data!E1:E6)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "D1": 1,
+    "D2": 2,
+    "D3": "x",
+    "D4": true,
+    "D6": 4,
+    "D7": "=1/0",
+    "D8": "=SUBTOTAL(9,D1:D2)",
+    "D9": "=AGGREGATE(9,0,D1:D2)",
+    "D10": 10,
+    "D11": "5",
+    "E1": 3,
+    "E2": 1,
+    "E3": 4,
+    "E4": 1,
+    "E5": 5,
+    "E6": 9,
+    "F1": "=AGGREGATE(4,0,E1:E6)",
+    "F2": 7
+   }
+  }
+ ],
+ "expected": {}
+}

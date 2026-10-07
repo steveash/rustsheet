@@ -1,0 +1,73 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Subnormal flush edges: literal arguments, per-step versus final flush in PRODUCT/SUMPRODUCT, and AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101), AGGREGATE(1) over operands whose mean is subnormal (T-1007). C cells tell a true 0 from a kept subnormal.",
+  "tags": [
+    "M1",
+    "numbers",
+    "subnormal",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "=3E-308",
+        "A2": "=-2.9E-308"
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=PRODUCT(1E-308,1E+300)",
+        "B1": "=(PRODUCT(1E-308,1E+300))&\"\"",
+        "C1": "=(PRODUCT(1E-308,1E+300))=0",
+        "A2": "=AVERAGE(1E-308,1E-308)*1E+300",
+        "B2": "=(AVERAGE(1E-308,1E-308)*1E+300)&\"\"",
+        "C2": "=(AVERAGE(1E-308,1E-308)*1E+300)=0",
+        "A3": "=SUM(1E-308,1E-308)*1E+300",
+        "B3": "=(SUM(1E-308,1E-308)*1E+300)&\"\"",
+        "C3": "=(SUM(1E-308,1E-308)*1E+300)=0",
+        "A4": "=PRODUCT(1E-200,1E-110,1E+300)",
+        "B4": "=(PRODUCT(1E-200,1E-110,1E+300))&\"\"",
+        "C4": "=(PRODUCT(1E-200,1E-110,1E+300))=0",
+        "A5": "=PRODUCT(1E-200,1E-110)*1E+300",
+        "B5": "=(PRODUCT(1E-200,1E-110)*1E+300)&\"\"",
+        "C5": "=(PRODUCT(1E-200,1E-110)*1E+300)=0",
+        "A6": "=SUMPRODUCT({1E-200,1},{1E-110,1E-300})*1E+300",
+        "B6": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300})*1E+300)&\"\"",
+        "C6": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300})*1E+300)=0",
+        "A7": "=SUMPRODUCT({1E-200,1},{1E-110,1E-300})",
+        "B7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300}))&\"\"",
+        "C7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300}))=0",
+        "A8": "=AVERAGEA(3E-308,-2.9E-308)",
+        "B8": "=(AVERAGEA(3E-308,-2.9E-308))&\"\"",
+        "C8": "=(AVERAGEA(3E-308,-2.9E-308))=0",
+        "A9": "=AVERAGE(Data!A1:A2)",
+        "B9": "=(AVERAGE(Data!A1:A2))&\"\"",
+        "C9": "=(AVERAGE(Data!A1:A2))=0",
+        "A10": "=AVERAGEA(Data!A1:A2)",
+        "B10": "=(AVERAGEA(Data!A1:A2))&\"\"",
+        "C10": "=(AVERAGEA(Data!A1:A2))=0",
+        "A11": "=AVERAGEIF(Data!A1:A2,\">-1\")",
+        "B11": "=(AVERAGEIF(Data!A1:A2,\">-1\"))&\"\"",
+        "C11": "=(AVERAGEIF(Data!A1:A2,\">-1\"))=0",
+        "A12": "=AVERAGEIFS(Data!A1:A2,Data!A1:A2,\">-1\")",
+        "B12": "=(AVERAGEIFS(Data!A1:A2,Data!A1:A2,\">-1\"))&\"\"",
+        "C12": "=(AVERAGEIFS(Data!A1:A2,Data!A1:A2,\">-1\"))=0",
+        "A13": "=SUBTOTAL(1,Data!A1:A2)",
+        "B13": "=(SUBTOTAL(1,Data!A1:A2))&\"\"",
+        "C13": "=(SUBTOTAL(1,Data!A1:A2))=0",
+        "A14": "=SUBTOTAL(101,Data!A1:A2)",
+        "B14": "=(SUBTOTAL(101,Data!A1:A2))&\"\"",
+        "C14": "=(SUBTOTAL(101,Data!A1:A2))=0",
+        "A15": "=AGGREGATE(1,6,Data!A1:A2)",
+        "B15": "=(AGGREGATE(1,6,Data!A1:A2))&\"\"",
+        "C15": "=(AGGREGATE(1,6,Data!A1:A2))=0",
+        "A16": "=SUM(Data!A1:A2)",
+        "B16": "=(SUM(Data!A1:A2))&\"\"",
+        "C16": "=(SUM(Data!A1:A2))=0"
+      }
+    }
+  ],
+  "expected": {}
+}

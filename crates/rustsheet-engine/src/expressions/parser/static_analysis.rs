@@ -1,5 +1,6 @@
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
+mod aggregate;
 mod row_column;
 
 #[cfg(target_arch = "wasm32")]
@@ -470,11 +471,6 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
     // Both height and width are explicitly 1, so OFFSET will return a single cell
     StaticResult::Scalar
 }
-
-// fn static_analysis_choose(_args: &[Node]) -> StaticResult {
-//     // We will always insert the @ in CHOOSE, but technically it is only needed if one of the elements is a range
-//     StaticResult::Unknown
-// }
 
 fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
     // We will always insert the @, but we don't need to do that in every scenario`
@@ -1946,7 +1942,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Convert => not_implemented(args),
         Function::Delta => not_implemented(args),
         Function::Gestep => not_implemented(args),
-        Function::Subtotal | Function::Aggregate => not_implemented(args),
+        Function::Subtotal => not_implemented(args),
+        Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
         Function::Eomonth => scalar_arguments(args),
