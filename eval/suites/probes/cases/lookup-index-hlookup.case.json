@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "HLOOKUP with an INDEX(...) row index holding number/text/error, found and not found, and an INDEX index that itself fails (#REF! from INDEX(E1:E4,9)) (T-0264).",
+  "tags": [
+    "M2",
+    "lookup",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": "x",
+        "B2": "y",
+        "C2": "z",
+        "A3": 10,
+        "B3": 20,
+        "C3": 30,
+        "E1": 2,
+        "E2": "a",
+        "E3": "=1/0",
+        "E4": 3,
+        "H1": "=HLOOKUP(2,A1:C3,INDEX(E1:E4,1))",
+        "H2": "=HLOOKUP(2,A1:C3,INDEX(E1:E4,2))",
+        "H3": "=HLOOKUP(2,A1:C3,INDEX(E1:E4,3))",
+        "H4": "=HLOOKUP(9,A1:C3,INDEX(E1:E4,1),FALSE)",
+        "H5": "=HLOOKUP(9,A1:C3,INDEX(E1:E4,2),FALSE)",
+        "H6": "=HLOOKUP(9,A1:C3,INDEX(E1:E4,3),FALSE)",
+        "H7": "=HLOOKUP(2,A1:C3,INDEX(E1:E4,9))",
+        "H8": "=HLOOKUP(9,A1:C3,INDEX(E1:E4,9),FALSE)",
+        "H9": "=VLOOKUP(9,A1:C3,INDEX(E1:E4,9),FALSE)",
+        "H10": "=VLOOKUP(2,A1:C3,INDEX(E1:E4,9))"
+      }
+    }
+  ],
+  "expected": {}
+}
