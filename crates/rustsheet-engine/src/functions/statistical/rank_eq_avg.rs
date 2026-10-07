@@ -64,14 +64,6 @@ impl Model {
             Err(e) => return e,
         };
 
-        if values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for RANK.EQ".to_string(),
-            };
-        }
-
         // order: default 0 (descending)
         let order = if args.len() == 2 {
             0.0
@@ -82,6 +74,8 @@ impl Model {
             }
         };
 
+        // Excel: a reference with no numeric value (or an empty one) gives #N/A like any absent
+        // number, never #NUM! (docs/excel-semantics/statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
         values.retain(|v| !v.is_nan());
 
         // "better" = greater (descending) or smaller (ascending)
@@ -138,14 +132,6 @@ impl Model {
             Err(e) => return e,
         };
 
-        if values.is_empty() {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "No numeric values for RANK.AVG".to_string(),
-            };
-        }
-
         // order: default 0 (descending)
         let order = if args.len() == 2 {
             0.0
@@ -156,6 +142,7 @@ impl Model {
             }
         };
 
+        // Same #N/A rule for an empty value set (statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
         values.retain(|v| !v.is_nan());
 
         // > or < depending on order
