@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ROUND with a huge num_digits on computed values whose 15-digit cut carries into a new digit: is the exponent in the wrapped digit count taken before or after the cut? (T-0218; see docs/excel-semantics/numbers.md)",
+  "tags": [
+    "M2",
+    "probe",
+    "ROUND"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=ROUND(10-1E-15,2147483646)",
+        "A2": "=ROUND(10-1E-15,2147483645)",
+        "A3": "=ROUND(-(10-1E-15),2147483646)",
+        "A4": "=ROUND(1-1E-16,2147483647)",
+        "A5": "=ROUND(1-1E-16,2147483646)",
+        "A6": "=10-1E-15=10"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6"
+  ]
+}

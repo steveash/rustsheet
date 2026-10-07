@@ -36,19 +36,19 @@ Code: ROUND family in `crates/rustsheet-engine/src/functions/math_and_trigonomet
 - [x] A probe case pins the num_digits rule. docs/excel-semantics/numbers.md has the rule (VERIFIED).
 - [x] The 12 cells above disappear from eval/baseline/gen-m2.txt (the two shared ones once their other task lands), with
       no new F lines.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Last-digit differences of ROUND results (T-0106).
 
 ## Outcome
 Excel narrows a huge `num_digits` to an integer differently for ROUND and for ROUNDUP/ROUNDDOWN
-(numbers.md "ROUND family: huge num_digits wrap"; three new probe cases, 572 cells, excel-graph):
+(numbers.md "ROUND family: huge num_digits wrap"; four new probe cases, 578 cells, excel-graph):
 - ROUNDUP/ROUNDDOWN take the magnitude, capped at 2^32-1, modulo 65,536, and keep the sign.
 - ROUND saturates to i32, then wraps the 32-bit digit count k + e + 1. That is why
   `ROUND(1E+15,1E+15)` is 0 while `ROUNDDOWN(0.5,1E+15+5)` is 0.5.
 `effective_digits` in decimal_round.rs implements both.
 Of the 12 cells, 10 were already fixed on main by earlier rounding work. This task fixes the last two:
 caa981b0753f455c A270 and dd99be1f2454159f A159.
-Eval: gen-m2 49 → 47 known failures (fixed 2). probes: +572 checked cells; 3 new-coverage failures
+Eval: gen-m2 49 → 47 known failures (fixed 2). probes: +578 checked cells; 3 new-coverage failures
 (ROUNDUP's one-ulp result on a wrapped digit count), filed as T-0268. 0 regressions.

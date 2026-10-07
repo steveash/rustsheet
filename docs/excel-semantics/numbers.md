@@ -62,10 +62,10 @@ from ROUNDUP and ROUNDDOWN (after truncation toward zero; Excel is right, howeve
 - Where ROUNDUP uses a wrapped digit count, its result can be one ulp above the decimal-correct one:
   `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, while `ROUNDDOWN` there is 123.45.
   The engine gives 123.46 (3 cells, follow-up T-0268).
-- e is taken from the value after its 15-digit cut. That only matters for a value whose cut carries
-  into a new digit, which is not probed (engine choice).
+- e is taken from the value after its 15-digit cut: `ROUND(10-1E-15,2147483646)` = 0 and
+  `…,2147483645)` = 10 (the cut carries 9.99999999999999… to 10, e = 1), `ROUND(1-1E-16,2147483647)` = 0.
 Evidence: probes/round-huge-digits (216 cells), probes/round-huge-digits-wrap (A:C by d, E:O ROUND by
-the exponent), probes/round-huge-digits-negative (91 cells); oracle: excel-graph, 2026-10-07 (T-0218).
+the exponent), probes/round-huge-digits-negative (91 cells), probes/round-huge-digits-carry (6 cells); oracle: excel-graph, 2026-10-07 (T-0218).
 gen-m2/caa981b0753f455c Calc!A270 (`ROUND(1E+15,1E+15)` = 0, so the quotient is `#DIV/0!`) and
 gen-m2/dd99be1f2454159f Calc!A159.
 Status: VERIFIED
