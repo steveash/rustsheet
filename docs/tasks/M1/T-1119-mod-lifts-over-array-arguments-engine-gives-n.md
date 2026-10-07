@@ -30,4 +30,4 @@ ROUNDDOWN); MOD's own quirks (sign of the divisor, `#DIV/0!`) must hold per elem
 -
 
 ## Outcome
-New shared `Model::lift_number_pair` (cast.rs, broadcast as DATE does) used by `fn_mod`; ROUNDDOWN-style two-number functions can reuse it. probes/geomean-overflow-cut-3 E4 passes; probes known failures 254 -> 253; unit tests cover arrays, ranges, error and zero-divisor elements. Broadcast details for MOD are assumed from DATE/operators, not probed. Follow-up: T-1122 folds DATE's inline broadcast into the shared helper.
+New shared `Model::lift_number_pair` (cast.rs, broadcast as DATE does) used by `fn_mod`; ROUNDDOWN-style two-number functions can reuse it. probes/geomean-overflow-cut-3 E4 passes; probes known failures 254 -> 253; unit tests cover arrays, ranges, error and zero-divisor elements. Broadcast shapes, error and zero-divisor elements are probed in probes/mod-array-lift (25 cells, all pass). Follow-up: T-1122 folds DATE's inline broadcast into the shared helper.

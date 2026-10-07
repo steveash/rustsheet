@@ -148,6 +148,7 @@ C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
+C	probes/mod-array-lift.case.json	25
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
 C	probes/mod-quotient-threshold.case.json	22

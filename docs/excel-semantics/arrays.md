@@ -53,9 +53,11 @@ Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUE
 two arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions past a
 shorter array are `#N/A`); the zero divisor (`#DIV/0!`) and huge quotient (`#NUM!`) rules hold per
 element, and an error element stays in its position.
-Evidence: probes/geomean-overflow-cut-3 E4 (excel-graph, 2026-10-07). Broadcast shape and error
-elements follow the DATE lift and the arithmetic operators (ASSUMED, not probed for MOD itself).
-Status: VERIFIED for the array result; ASSUMED for the broadcast and error-element details.
+Evidence: probes/geomean-overflow-cut-3 E4 and probes/mod-array-lift (excel-graph, 2026-10-07):
+ranges, a per-element `#DIV/0!`, an `#N/A` element staying in place, a scalar divisor repeating, `#N/A`
+past the end of a shorter divisor, `MOD(NA(),{1,2})` giving `#N/A` in every element, row x column
+broadcast, text elements cast like a scalar (`"x"` gives `#VALUE!`) and booleans as 1/0.
+Status: VERIFIED
 Tasks: T-1119
 Implemented in: `Model::lift_number_pair` (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
 
