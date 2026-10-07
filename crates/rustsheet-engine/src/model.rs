@@ -367,18 +367,6 @@ impl Model {
         }
     }
 
-    /// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
-    /// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
-    fn evaluate_spill_anchor(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
-        match node {
-            Node::FunctionKind {
-                kind: crate::functions::Function::Index,
-                args,
-            } => self.index_impl(args, cell, true),
-            _ => self.evaluate_node_with_reference(node, cell),
-        }
-    }
-
     /// Collapses a reference-context result to a value: a Range is implicitly
     /// intersected at `cell` and the intersected cell evaluated; an array gives its
     /// top left element; anything else (scalar, error) passes through unchanged.

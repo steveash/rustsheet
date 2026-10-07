@@ -4,6 +4,7 @@
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
@@ -84,6 +85,22 @@ fn intersect_pair(
 
 fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NULL, cell, "Empty intersection".to_string())
+}
+
+/// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
+/// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
+pub(crate) fn evaluate_spill_anchor(
+    &mut self,
+    node: &Node,
+    cell: CellReferenceIndex,
+) -> CalcResult {
+    match node {
+        Node::FunctionKind {
+            kind: Function::Index,
+            args,
+        } => self.index_impl(args, cell, true),
+        _ => self.evaluate_node_with_reference(node, cell),
+    }
 }
 
 impl Model {
