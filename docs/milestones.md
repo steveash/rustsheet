@@ -16,6 +16,7 @@ whose exit criteria are not met.
 | 1. Parity | M0, M1, M2, M5, M6, M7, M8, M9, M10, M11 | active |
 | 2. Architecture and performance | M3, M4, M13 | deferred until Phase 1 exits |
 | 3. Release | M12 | after Phase 2 |
+| 4. Desktop oracle | M14 | after Phase 3; not started (decision 0039) |
 
 **Phase 1 exit:** every Excel function is in the catalog with its parity scope (T-0040). Every
 in-scope function has oracle-backed cases covering each parameter mode and edge pool, and
@@ -23,6 +24,10 @@ reaches ≥ 99.9% bit-exact and 100% within 4 ULP. Each remaining failure has a 
 `DEVIATION` entry. "Bit-exact" percentages here and in every milestone count only scored cells
 not listed as accepted deviations, which are scored in their own column (decision 0036). The
 exit criteria of M1, M2, M5–M10 and M11 are met.
+
+A failure whose only open question needs desktop Excel evidence has its filed task in M14
+(Phase 4). It never blocks the exit of Phase 1, any other phase or any milestone. excel-graph is
+the oracle of record for Phases 1–3 (decision 0039).
 
 Out of scope: functions whose result depends on systems outside the workbook (web and online
 services, external data servers, code and add-ins; list in decision 0027).
@@ -226,3 +231,26 @@ Split out of M11 by decision 0027.
 - Comparison against Excel desktop timings, LibreOffice and Formualizer.
 
 **Exit criteria:** full recalc faster than Excel desktop on the benchmark suite.
+
+## M14 — Desktop-oracle parity (Phase 4)
+
+Added by decision 0039. Planned after Release; not started. It starts when the owner sets up the
+`excel-desktop` backend: a Windows machine with Microsoft 365 Apps and a self-hosted runner, as in
+docs/architecture/oracle.md, "Owner setup — Windows desktop backend". Until
+`rustsheet-oracle status` shows `excel-desktop OK`, its tasks stay `blocked`. It does not gate
+Phases 1–3.
+
+**Scope:** what only desktop Excel can answer:
+- Desktop-only behavior: `CELL("width")`, and workbooks Excel for the web refuses or cannot open.
+- Conditional-format evaluation (T-1051).
+- Typed cell input (T-1016) and fill-handle behavior (T-0171).
+- Structural-edit semantics that a static workbook cannot probe (T-0198).
+- Web-vs-desktop conflicts and desktop confirmation of rules implemented on excel-graph evidence in
+  Phases 1–3 (T-1075).
+
+**Exit criteria:**
+- The excel-desktop backend is calibrated against excel-graph and the cached values of
+  ironcalc-calc (T-1074).
+- Every CONFLICTING entry in docs/excel-semantics/ is settled by desktop evidence. Each
+  web-evidenced rule listed in T-1075 is confirmed, or it has a follow-up task.
+- The M14 tasks are done, or dropped with a reason.

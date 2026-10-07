@@ -1,13 +1,13 @@
 ---
 id: T-1051
 title: "Probe conditional-format value operators on tiny values; move all CF ValueOperator arms to 15-digit compare"
-milestone: M1
+milestone: M14
 lane: harness
-status: todo
+status: blocked
 priority: P2
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-1074]
 ---
 
 ## Goal
@@ -23,3 +23,13 @@ Follow-up of T-1033, which moved only Equal/NotEqual to `cmp_excel_precision` (i
 
 ## Out of scope
 -
+
+## Blocked because
+Phase 4 (decision 0039): not a "Needs owner" item, and it blocks no milestone or phase exit. The acceptance criteria need Excel's conditional-format evaluation as evidence (found on the
+claim branch `agent/harness/T-1051-cf-value-operators`, 2026-10-07). `rustsheet-oracle status`
+shows `excel-graph` (it cannot evaluate conditional formats) and `libreoffice` (approximate only).
+`excel-desktop` is n/a (it needs Windows with Excel). Without an oracle there is no evidence, and
+CLAUDE.md directive 1 forbids implementing from inference. Unblock when
+`cd tools && uv run rustsheet-oracle status` shows `excel-desktop OK` and T-1074 is done (the probe
+reads the evaluated format over COM, e.g. `Range.DisplayFormat`), or when an Excel-authored xlsx
+with conditional-format results is supplied.

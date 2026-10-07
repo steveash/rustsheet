@@ -97,7 +97,8 @@ Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downlo
 
 Calibration against 206 desktop-Excel-saved ironcalc workbooks (71,765 cells, 99.96% bit-exact;
 docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs (which one
-decides goldens when they disagree: decision 0030, desktop Excel wins):
+decides goldens when they disagree: decision 0030, desktop Excel wins; in Phases 1–3 decision 0039
+matches the web unless desktop evidence already in the repo decides, and desktop probes are Phase 4):
 
 - **References to missing sheets.** `INDIRECT("NoSuchSheet!A1")` is a reference to an empty cell
   in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never
@@ -219,6 +220,8 @@ Variables read by the tool:
 - `_FOLDER` (default `/rustsheet-oracle`)
 
 ## Owner setup — Windows desktop backend (later, optional)
+Not planned soon. Setting it up starts Phase 4 (M14 in docs/milestones.md; decision 0039). Until
+then nothing waits for it: excel-graph is the oracle of record for Phases 1–3.
 - A Windows 11 machine or VM with Microsoft 365 Apps, signed in, with auto-logon to a dedicated
   user. Excel must run in an interactive session, not as a service.
 - Install Python 3.11+, `uv`, Rust and `pip install pywin32`. Register a GitHub self-hosted runner

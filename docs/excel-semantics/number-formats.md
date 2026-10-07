@@ -37,8 +37,9 @@ Status: VERIFIED
 Tasks: T-0934
 
 ## CONFLICTING: elapsed token after a plain `s`
-Excel for the web and desktop Excel disagree; neither is golden until an excel-desktop probe on
-current Microsoft 365 decides (decision 0019). `s:m" @ hour "[hh]` and `s" secs and "[m]" mins"`:
+Excel for the web and desktop Excel disagree. The cells stay pending (decision 0019); the
+excel-desktop probe is Phase 4 (T-1075), and until then a task that must choose matches the web
+(decision 0039). `s:m" @ hour "[hh]` and `s" secs and "[m]" mins"`:
 
 | cell | Excel for the web | desktop Excel (cached in the workbook) |
 |---|---|---|
@@ -54,7 +55,7 @@ elapsed totals; the web values fit hours = (sec + 0.5)·24, which looks like a w
 The cells stay pending (dropped from the sidecar by the fill's conflict check).
 Evidence: poi/ElapsedFormatTests.xlsx A8:A49 (oracle: excel-graph 2026-10-04; workbook cached values).
 Status: CONFLICTING (web vs desktop; excel-desktop probe pending)
-Tasks: T-0934
+Tasks: T-0934, T-1075
 
 ## CONFLICTING: lowercase `e` exponent in a format
 Excel for the web returns `#VALUE!` for `TEXT` with a lowercase-`e` scientific format; the Mac Excel
@@ -65,6 +66,7 @@ Excel for the web returns `#VALUE!` for `TEXT` with a lowercase-`e` scientific f
 Evidence: poi/NumberFormatApproxTests.xlsx Tests!A2:A39, A42 onward (oracle: excel-graph
 2026-10-04; workbook cached values).
 Status: CONFLICTING (web vs desktop; excel-desktop probe pending)
+Tasks: T-1075 (Phase 4; decision 0039)
 
 ## Conditional sections
 Rule: a format with a single `[cond]` section that does not match prints the number in General
