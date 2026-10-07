@@ -45,6 +45,20 @@ Status: VERIFIED
 Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments; a range cell error met once over the limit is `#CALC!` (T-0243, T-0262)
 Tasks: T-0243, T-0262
 
+## TEXTJOIN with ignore_empty FALSE joins every cell of a whole column or row
+Rule: with ignore_empty FALSE every cell of a whole-column or whole-row argument adds a delimiter, however
+small the used area: `TEXTJOIN(",",FALSE,D:D)` is `#CALC!` (1,048,576 values join to over 32,767
+characters) and `TEXTJOIN(",",FALSE,10:10)` with H10 = "x" and J10 = "y" is ",,,,,,,x,,y" followed by
+16,374 more commas. With ignore_empty TRUE only the non-empty cells count (`TEXTJOIN(",",TRUE,D:D)` =
+"a,c"). `TEXTJOIN(",",FALSE,D1:D16385)` over the same sheet has length 16,386.
+Unprobed: an error cell met after the skipped empties have taken the join over the limit (for example
+`TEXTJOIN(",",FALSE,1:3)` with an error in A3); the engine gives `#CALC!`, as for a walked range (C20).
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
+Status: VERIFIED
+Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area and adds the skipped
+empty cells per row and after the last row through `JoinSize::push_empties`, which stops at the limit.
+Tasks: T-1114
+
 ## JIS is `#NAME?` in en-US Excel for the web
 Rule: `JIS`, although Microsoft's en-US function list includes it, is not a known function in
 en-US Excel for the web: `JIS(1)` is `#NAME?`, stored bare or as `_xlfn.JIS`. `_xlfn.DBCS(1)` is
