@@ -77,7 +77,9 @@ impl Model {
 
         for i in 0..rows {
             for j in 0..cols {
-                let product = arrays.iter().map(|a| a[i][j]).product::<f64>();
+                let product = arrays
+                    .iter()
+                    .fold(1.0, |acc, a| flush_subnormal(acc * a[i][j]));
                 total += product;
             }
         }

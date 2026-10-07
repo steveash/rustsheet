@@ -1,4 +1,4 @@
-use crate::arithmetic::{bcast_idx, MISSING};
+use crate::arithmetic::{bcast_idx, flush_subnormal, MISSING};
 use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
@@ -652,7 +652,7 @@ impl Model {
                     message: "division by 0".to_string(),
                 };
             }
-            CalcResult::Number(total / count)
+            CalcResult::Number(flush_subnormal(total / count))
         })
     }
 
