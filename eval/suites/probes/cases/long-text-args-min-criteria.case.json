@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "MIN/AVERAGEA/MAXA/MINA direct text args and COUNTIF/SUMIF criteria at LEN 255/256 (T-1121).",
+ "description": "MIN/AVERAGEA/MAXA/MINA direct text args and COUNTIF/SUMIF/AVERAGEIF(S)/MINIFS/MAXIFS criteria (scalar and range) at LEN 255/256 (T-1121).",
  "tags": [
   "M1",
   "coercion",
@@ -65,6 +65,8 @@
   "Sheet1!A20",
   "Sheet1!A21",
   "Sheet1!A22",
-  "Sheet1!A24"
+  "Sheet1!A24",
+  "Sheet1!A25",
+  "Sheet1!A26"
  ]
 }

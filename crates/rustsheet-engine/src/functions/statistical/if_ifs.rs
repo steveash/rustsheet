@@ -50,6 +50,12 @@ enum CriteriaArg {
     Grid(Vec<Vec<ArrayNode>>),
 }
 
+const TOO_LONG: &str = "Criterion too long";
+
+fn criterion_too_long(criterion: &CalcResult) -> bool {
+    matches!(criterion, CalcResult::String(text) if number_text_too_long(text))
+}
+
 impl CriteriaArg {
     fn dims(&self) -> (usize, usize) {
         match self {
@@ -142,11 +148,8 @@ impl Model {
     ) -> CalcResult {
         // A criterion over 255 characters is #VALUE!, from a literal or a cell alike
         // (probes/long-text-args-min-criteria A10-A18, excel-graph 2026-10-07).
-        if criteria
-            .iter()
-            .any(|c| matches!(c, CalcResult::String(text) if number_text_too_long(text)))
-        {
-            return CalcResult::new_error(Error::VALUE, cell, "Criterion too long".to_string());
+        if criteria.iter().any(criterion_too_long) {
+            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
         }
         self.lift_with_cost(
             criteria,
@@ -234,7 +237,14 @@ impl Model {
                                 (_, None) => CalcResult::EmptyCell,
                             })
                             .collect();
-                        let value = calc_result_to_array_node(compute(self, &values));
+                        // An element over 255 characters is #VALUE! for that element only
+                        // (probes/long-text-args-min-criteria A24-A26).
+                        let result = if values.iter().any(criterion_too_long) {
+                            CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string())
+                        } else {
+                            compute(self, &values)
+                        };
+                        let value = calc_result_to_array_node(result);
                         previous = Some((key, value.clone()));
                         value
                     }
