@@ -194,3 +194,29 @@ fn whole_row_blank_tail_matches_excel() {
         );
     }
 }
+
+#[test]
+fn test_hlookup_index_function_index_is_a_reference() {
+    // The HLOOKUP twin of the VLOOKUP case (shared `lookup_index_arg`; probes/lookup-index-shapes
+    // H2, H3, H11, H12 probe VLOOKUP).
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("B1", "2"),
+        ("A2", "x"),
+        ("B2", "y"),
+        ("E1", "a"),
+        ("E2", "=1/0"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=HLOOKUP(2,A1:B2,INDEX(E1:E2,1))");
+    model._set("H2", "=HLOOKUP(2,A1:B2,INDEX(E1:E2,2))");
+    model._set("H3", "=HLOOKUP(9,A1:B2,INDEX(E1:E2,1),FALSE)");
+    model._set("H4", "=HLOOKUP(9,A1:B2,INDEX(E1:E2,2),FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "#REF!");
+    assert_eq!(model._get_text("H2"), "#REF!");
+    assert_eq!(model._get_text("H3"), "#N/A");
+    assert_eq!(model._get_text("H4"), "#N/A");
+}

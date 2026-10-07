@@ -214,10 +214,6 @@ F	probes/lifted-range-rows.case.json	Sheet1!C2
 F	probes/lifted-range-rows.case.json	Sheet1!C3
 F	probes/lifted-range-rows.case.json	Sheet1!E1
 F	probes/literal-digits.case.json	Sheet1!C4
-F	probes/lookup-index-shapes.case.json	Sheet1!H11
-F	probes/lookup-index-shapes.case.json	Sheet1!H12
-F	probes/lookup-index-shapes.case.json	Sheet1!H2
-F	probes/lookup-index-shapes.case.json	Sheet1!H3
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-negative-text.case.json	Sheet1!C1
 F	probes/paren-negative-text.case.json	Sheet1!E1

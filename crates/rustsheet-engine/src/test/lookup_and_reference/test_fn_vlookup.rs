@@ -206,3 +206,21 @@ fn test_vlookup_value_index_fails_before_search() {
     assert_eq!(model._get_text("H3"), "#VALUE!");
     assert_eq!(model._get_text("H4"), "#VALUE!");
 }
+
+#[test]
+fn test_vlookup_index_function_index_is_a_reference() {
+    // probes/lookup-index-shapes H2, H3, H11, H12 (excel-graph): an INDEX(...) index is a
+    // reference, so a text or error cell is #REF! once the value is found and not found is #N/A.
+    let mut model = index_order_model();
+    model._set("H1", "=VLOOKUP(2,A1:C3,INDEX(E1:E4,1))");
+    model._set("H2", "=VLOOKUP(2,A1:C3,INDEX(E1:E4,3))");
+    model._set("H3", "=VLOOKUP(9,A1:C3,INDEX(E1:E4,1),FALSE)");
+    model._set("H4", "=VLOOKUP(9,A1:C3,INDEX(E1:E4,3),FALSE)");
+    model._set("H5", "=VLOOKUP(2,A1:C3,INDEX(E1:E4,4))");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "#REF!");
+    assert_eq!(model._get_text("H2"), "#REF!");
+    assert_eq!(model._get_text("H3"), "#N/A");
+    assert_eq!(model._get_text("H4"), "#N/A");
+    assert_eq!(model._get_text("H5"), "2");
+}
