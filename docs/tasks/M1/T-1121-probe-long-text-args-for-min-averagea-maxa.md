@@ -3,7 +3,7 @@ id: T-1121
 title: "Probe long text args for MIN, AVERAGEA, MAXA and criteria paths"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
