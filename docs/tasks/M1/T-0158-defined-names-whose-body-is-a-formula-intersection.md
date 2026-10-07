@@ -3,7 +3,7 @@ id: T-0158
 title: "Defined names whose body is a formula (intersection, constant) evaluate as Excel"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
