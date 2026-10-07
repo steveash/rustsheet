@@ -3,7 +3,7 @@ id: T-0269
 title: "Probe LOOKUP edges: single-cell lookup_vector, scalar or function result_vector, reading past the sheet edge"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
