@@ -1,7 +1,11 @@
 """LET/LAMBDA bound names get `_xlpm.` and engine-known future functions `_xlfn.` (T-0166)."""
 
+import inspect
 import io
+import re
 import zipfile
+
+import xlsxwriter.worksheet
 
 from rustsheet_tools.spec2xlsx import (
     build_xlsx,
@@ -57,9 +61,41 @@ def test_engine_prefix_list_is_not_empty() -> None:
 
 
 def test_classic_names_xlsxwriter_misreads_keep_their_function() -> None:
-    # XlsxWriter's unescaped `.` turned NORMSDIST( into _xlfn.NORM.DIST( (T-0040).
-    assert prefix_future_functions("=NORMSDIST(1)+NORMSINV(0.5)") == "=_xlfn.NORMSDIST(1)+_xlfn.NORMSINV(0.5)"
+    # XlsxWriter's unescaped `.` turned NORMSDIST( into _xlfn.NORM.DIST( (T-0040); the builder's
+    # tokenizer stores the classic names bare, as Excel does.
+    assert prefix_future_functions("=NORMSDIST(1)+NORMSINV(0.5)") == "=NORMSDIST(1)+NORMSINV(0.5)"
     spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": "=NORMSDIST(0)", "A2": "=NORM.DIST(0,0,1,TRUE)"}}]}
     sheet = zipfile.ZipFile(io.BytesIO(build_xlsx(spec))).read("xl/worksheets/sheet1.xml").decode()
-    assert ">_xlfn.NORMSDIST(0)</f>" in sheet
+    assert ">NORMSDIST(0)</f>" in sheet
     assert ">_xlfn.NORM.DIST(0,0,1,TRUE)</f>" in sheet
+
+
+def test_every_call_is_prefixed_whatever_shares_the_formula() -> None:
+    # XlsxWriter skipped a whole formula once one call was prefixed, leaving DAYS bare (T-0052).
+    spec = {
+        "sheets": [
+            {
+                "name": "Sheet1",
+                "cells": {"A1": "=TRIMRANGE(A2)+DAYS(1,2)", "A2": "=NORMSDIST(0)+GAUSS(0)"},
+            }
+        ]
+    }
+    sheet = zipfile.ZipFile(io.BytesIO(build_xlsx(spec))).read("xl/worksheets/sheet1.xml").decode()
+    assert ">_xlfn.TRIMRANGE(A2)+_xlfn.DAYS(1,2)</f>" in sheet
+    assert ">NORMSDIST(0)+_xlfn.GAUSS(0)</f>" in sheet
+
+
+def test_builder_table_covers_xlsxwriters_list() -> None:
+    # With use_future_functions off the builder is the only source of prefixes, so it must know
+    # every name XlsxWriter would have prefixed, under the same stored form.
+    source = inspect.getsource(xlsxwriter.worksheet.Worksheet._prepare_formula)
+    theirs = {
+        name.replace("\\.", "."): stored
+        for name, stored in re.findall(
+            r're\.sub\(r"\\[bS]?([A-Z0-9._\\]+)\\\(", "([\w.]+)\(", formula\)', source
+        )
+    }
+    theirs["SINGLE"] = theirs.pop("INGLE")  # XlsxWriter's own regex is `\SINGLE\(`
+    assert len(theirs) > 100
+    for name, stored in theirs.items():
+        assert prefix_future_functions(f"={name}(1)") == f"={stored}(1)", name

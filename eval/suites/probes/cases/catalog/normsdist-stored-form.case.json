@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-0040: NORMSDIST/NORMSINV through the case builder. XlsxWriter's future-function rewrite turned NORMSDIST( into _xlfn.NORM.DIST( (a 1-argument call of a 4-argument function), which made Excel for the web reject the workbook; the builder now stores _xlfn.NORMSDIST / _xlfn.NORMSINV. A3 is the 2010 form for comparison: A1 and A3 should agree.",
+ "description": "T-0040: NORMSDIST/NORMSINV through the case builder. XlsxWriter's future-function rewrite turned NORMSDIST( into _xlfn.NORM.DIST( (a 1-argument call of a 4-argument function), which made Excel for the web reject the workbook; the builder stored _xlfn.NORMSDIST / _xlfn.NORMSINV until T-0052 and now stores them bare, as Excel does (same values). A3 is the 2010 form for comparison: A1 and A3 should agree.",
  "tags": [
   "M0",
   "probe",
