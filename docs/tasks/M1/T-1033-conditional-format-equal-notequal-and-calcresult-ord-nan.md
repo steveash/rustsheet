@@ -25,4 +25,4 @@ Follow-ups of T-1028 review. `conditional_formatting.rs` ~612/617 (ValueOperator
 -
 
 ## Outcome
-CF Equal/NotEqual use `cmp_excel_precision`; it is now a NaN-safe total order (NaN above numbers, -0 == 0), unit-tested. The Excel probe could not be run (Graph oracle cannot evaluate conditional formats), so the behavior is recorded as UNVERIFIED in `docs/excel-semantics/criteria.md`. Eval delta: none.
+CF Equal/NotEqual use `cmp_excel_precision`; it is now a NaN-safe total order (NaN above numbers, -0 == 0), unit-tested. The Excel probe could not be run (Graph oracle cannot evaluate conditional formats), so the first acceptance criterion is deferred to T-1051 (probe, plus the other CF operators) and the behavior is recorded as UNVERIFIED (probe pending) in `docs/excel-semantics/criteria.md`. Eval delta: none.
