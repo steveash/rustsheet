@@ -32,6 +32,7 @@ Tasks: T-0241
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
 Evidence: probes/text-result-limit C8-C9 (excel-graph, 2026-10-05; excel-desktop not used).
+Open: whether an error argument after the limit is passed wins over `#CALC!` is unprobed (we evaluate every argument, so the error wins); the limit counts UTF-16 code units as for CONCATENATE and REPT, unprobed for these two functions; the exact 32,767 boundary is only unit-tested.
 Status: VERIFIED (web only)
-Implemented in: not yet (T-0243)
+Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments (T-0243)
 Tasks: T-0243
