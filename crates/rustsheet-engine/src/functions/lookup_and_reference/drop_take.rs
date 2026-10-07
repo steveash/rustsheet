@@ -135,7 +135,7 @@ impl Model {
             return Err(CalcResult::new_error(
                 Error::CALC,
                 cell,
-                "DROP returned empty array".to_string(),
+                "TAKE or DROP result is empty".to_string(),
             ));
         }
         Ok((rows, columns))
