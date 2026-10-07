@@ -1,13 +1,13 @@
 ---
 id: T-0198
 title: "Probe and implement 3-D reference edit semantics (sheet insert/delete/move inside a span, row and column edits)"
-milestone: M1
+milestone: M14
 lane: engine
-status: todo
+status: blocked
 priority: P3
 size: M
 tier: opus
-depends_on: [T-0122]
+depends_on: [T-0122, T-1074]
 ---
 
 ## Goal
@@ -30,3 +30,9 @@ documentation plus a design note first.
 
 ## Out of scope
 - 3-D references inside INDIRECT text.
+
+## Blocked because
+Phase 4 (decision 0039): not a "Needs owner" item, and it blocks no milestone or phase exit. A static workbook cannot probe edits. The evidence needs desktop Excel performing each edit
+over COM (`Worksheets.Add`, `Worksheet.Delete`, `Worksheet.Move`, `Range.Insert`, `Range.Delete`)
+and saving the rewritten formulas. Unblock when `cd tools && uv run rustsheet-oracle status` shows
+`excel-desktop OK` and T-1074 is done.

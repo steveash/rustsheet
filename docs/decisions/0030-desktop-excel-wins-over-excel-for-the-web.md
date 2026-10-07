@@ -38,6 +38,8 @@
      engine, to the semantics entries, and to which golden a cell is scored against. Windows and
      Mac count alike: "desktop" is any Microsoft Excel application whose `docProps/app.xml`
      AppVersion is 16.x (the Microsoft 365 / 2016+ line).
+     *Amended by decision 0039: in Phases 1–3 a conflict that needs new desktop evidence matches
+     the web value; desktop evidence already in the repo that cells pass against stays.*
   2. **Desktop evidence counts only for what it is.** Cached values from a workbook saved under a
      non-en-US locale are not evidence for locale-dependent behavior: date or number text, list
      separators, month and day names. There the en-US web oracle wins. An older desktop build
@@ -50,6 +52,9 @@
      divergence (docs/architecture/oracle.md, "Known divergences"), web values are never
      evidence. That covers references to missing sheets, lowercase-`e` formats, elapsed tokens
      after `s`, and `CELL("width")`.
+     *Amended by decision 0039: in Phases 1–3 this exception applies only where desktop evidence
+     is already in the repo; otherwise the web value is the target and the desktop check is an
+     acceptance item on an M14 task (T-1075).*
   4. **Last-digit divergences.** For the functions in numbers.md "Excel for the web and desktop
      Excel differ in the last digits", an engine fit targets desktop cached values where they
      exist. A web golden for those functions that is already a known failure and that the
