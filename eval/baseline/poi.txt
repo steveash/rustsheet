@@ -163,8 +163,6 @@ F	poi/57535.xlsx	Sheet1!E5
 F	poi/57535.xlsx	Sheet1!E6
 F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
-F	poi/59106.xlsx	Test!A2
-F	poi/59106.xlsx	Test!B2
 F	poi/60825.xlsx	!EngineError
 F	poi/61063.xlsx	Tabelle1!A4
 F	poi/61652.xlsx	Model!B4
