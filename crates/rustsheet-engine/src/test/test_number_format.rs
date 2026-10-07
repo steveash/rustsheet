@@ -113,3 +113,55 @@ fn parse_excel_number_truncates_to_15_digits() {
     assert_eq!(parse_excel_number("abc"), None);
     assert_eq!(parse_excel_number(""), None);
 }
+
+#[test]
+fn parse_excel_number_tiny_magnitudes() {
+    // probes/text-number-tiny and text-number-tiny-zero (excel-graph): below 1E-309 is not a
+    // number, from 1E-309 to the smallest normal double reads as 0, normal values keep theirs.
+    for text in [
+        "5e-310",
+        "9.9999e-310",
+        "-1e-310",
+        "1e-400",
+        "0.001e-307",
+        "9.99999999999999e-310",
+    ] {
+        assert_eq!(parse_excel_number(text), None, "{text}");
+    }
+    for text in [
+        "1e-309",
+        "-1e-309",
+        "100e-311",
+        "1.000001e-309",
+        "2.2250738585072e-308",
+    ] {
+        assert_eq!(
+            parse_excel_number(text).map(f64::to_bits),
+            Some(0),
+            "{text}"
+        );
+    }
+    assert_eq!(
+        parse_excel_number("2.2250738585073e-308"),
+        Some(2.2250738585073e-308)
+    );
+    assert_eq!(parse_excel_number("1e-307"), Some(1e-307));
+    // A zero mantissa counts its fraction digits against the exponent: within ±308 it is 0.
+    for text in [
+        "0", "-0e308", "0e-308", "0.0e309", "0.00e310", "00.0e309", ".0e309",
+    ] {
+        assert_eq!(
+            parse_excel_number(text).map(f64::to_bits),
+            Some(0),
+            "{text}"
+        );
+    }
+    for text in [
+        "0e309", "0e+309", "0e-309", "0e-400", "0.0e310", "00e309", "0.e309", "0.0e-308",
+    ] {
+        assert_eq!(parse_excel_number(text), None, "{text}");
+    }
+    // A huge exponent clamps instead of overflowing.
+    assert_eq!(parse_excel_number("1e-99999999999999999999999"), None);
+    assert_eq!(parse_excel_number("0e99999999999999999999999"), None);
+}
