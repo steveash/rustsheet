@@ -3,7 +3,7 @@ id: T-1094
 title: "Probe callee forms and FORMULATEXT of @ intersection operands"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
