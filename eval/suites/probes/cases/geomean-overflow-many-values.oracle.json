@@ -7221,14 +7221,22 @@
    "F5": {
     "t": "n",
     "v": 1.940817314759203e+275
+   },
+   "F6": {
+    "t": "n",
+    "v": 9.988454217380303e+299
+   },
+   "F7": {
+    "t": "n",
+    "v": 9.988454217380302e-301
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "476983a772994364d712d633247109ccd3a054eea4f5a9c9edb2f6cf1623c4ac",
+  "input_sha256": "c35d352ccf961fbd24d93e53cd57e43b17badac0f8b3e4e1724e799dd3fa2b1c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T12:29:55+00:00",
+  "produced_at": "2026-10-07T12:40:53+00:00",
   "version": null
  }
 }
