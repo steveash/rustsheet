@@ -26,5 +26,8 @@ T-1061 could not probe it: `spec2xlsx.py` writes every formula as a dynamic-arra
 ## Outcome
 Added a per-sheet `legacy_formulas` list to the case format (spec2xlsx writes those cells as plain
 `<f>`; the engine adapter ignores it). Probe `probes/multiarea-at-legacy` (oracle: excel-graph) shows
-Excel prints no `@` for a union in a legacy formula, identical to the dynamic-array result, so no
-engine follow-up is needed. references.md and SPEC-0004 row 16 updated. Eval delta: none.
+Excel prints no `@` for a union in a legacy formula, identical to the dynamic-array result, with
+positive controls (legacy `=A1:A2`, `=ABS(A1:A2)` print `@`). So the engine needs no union `@` change.
+references.md and SPEC-0004 row 16 updated. Eval delta: 10 new scored cells, 5 new known failures
+(H5 is the known SUM-of-union gap; H7-H10 fail because the adapter ignores `legacy_formulas`,
+follow-up T-1096).
