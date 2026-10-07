@@ -273,29 +273,35 @@ fn negated_reference_is_a_union_operand() {
 }
 
 #[test]
-fn double_minus_is_a_union_operand_but_three_are_not() {
-    // Excel loads `(--A1,B1)` (probes/union-operand-double-minus); three minuses are unprobed.
+fn any_number_of_minuses_is_a_union_operand() {
+    // Excel loads two, three and four minuses (probes/union-operand-{double,triple,quad}-minus).
     let mut parser = parser();
-    assert!(is_union(&parser.parse("(--A1,B1)", &context())));
-    assert!(is_parse_error(&parser.parse("(---A1,B1)", &context())));
+    for formula in ["(--A1,B1)", "(---A1,B1)", "(----A1,B1)"] {
+        assert!(is_union(&parser.parse(formula, &context())), "{formula}");
+    }
 }
 
 #[test]
 fn union_with_a_negated_operand_cannot_be_cut_by_an_intersection() {
-    // Excel refuses both (`FileCorruptTryRepair`, no oracle value): references.md "Union:
-    // parsing and evaluation", operand forms.
+    // Excel refuses all of these (`FileCorruptTryRepair`, no oracle value): references.md "Union:
+    // parsing and evaluation", operand forms (T-0998, T-1031 probes).
     let mut parser = parser();
-    assert!(is_parse_error(&parser.parse("(-A1,B1) A1", &context())));
-    assert!(is_parse_error(&parser.parse("(-A1,B1) B1", &context())));
-    // Without the negation the cut is fine.
-    assert!(!is_parse_error(&parser.parse("(A1,B1) A1", &context())));
-    // Unprobed shapes stay accepted (T-1031).
-    for formula in ["A1 (-A1,B1)", "((-A1,B1),C1) A1"] {
+    for formula in [
+        "(-A1,B1) A1",
+        "(-A1,B1) B1",
+        "A1 (-A1,B1)",
+        "((-A1,B1),C1) A1",
+        "(-(A1,B2),C1) A1",
+        "(--A1,B1) A1",
+        "(A1,-B1) A1",
+    ] {
         assert!(
-            !is_parse_error(&parser.parse(formula, &context())),
+            is_parse_error(&parser.parse(formula, &context())),
             "{formula}"
         );
     }
+    // Without the negation the cut is fine.
+    assert!(!is_parse_error(&parser.parse("(A1,B1) A1", &context())));
 }
 
 #[test]

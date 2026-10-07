@@ -268,12 +268,13 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
-- Operand forms (T-0998, probes/union-operand-*, oracle: excel-graph, 2026-10-06): `=(--A1,B1)` loads, is
-  `#VALUE!` and FORMULATEXT prints `=(--A1,B1)` (the engine matches since T-1024; three or more
-  minuses are unprobed and stay refused); `=(A1%,B1)` is refused by Excel (`FileCorruptTryRepair`, as the engine does); `=(-(A1,B2),C1)` loads and is
-  `#VALUE!`; `=(-A1,B1) A1` and `=(-A1,B1) B1` (a negated operand cut by an intersection) are refused by Excel
-  (`FileCorruptTryRepair`; the engine refuses them since T-1024, as a parse error with no oracle value).
-  Not probed, so the engine keeps accepting them: a negation nested deeper or on the right of the cut (`A1 (-A1,B1)`, `((-A1,B1),C1) A1`), and refuses three minuses `(---A1,B1)`, `(--A1,B1) A1` and a right-side negated operand `(A1,-B1) A1`; `(-(A1,B2),C1) A1` is refused by the same rule as `(-A1,B1) A1` (a directly negated operand; UNVERIFIED, T-1031). Excel keeps every level of written parentheses: FORMULATEXT of
+- Operand forms (T-0998, T-1031, probes/union-operand-*, oracle: excel-graph, 2026-10-06 and 2026-10-07): `=(--A1,B1)` loads, is
+  `#VALUE!` and FORMULATEXT prints `=(--A1,B1)` (the engine matches since T-1024); three and four minuses
+  (`=(---A1,B1)`, `=(----A1,B1)`) also load and are `#VALUE!`, so the engine accepts any number of minuses (probed up to four; five or more is an engine extension, T-1031); `=(A1%,B1)` is refused by Excel (`FileCorruptTryRepair`, as the engine does); `=(-(A1,B2),C1)` loads and is
+  `#VALUE!`. A union holding a negated operand cannot be an operand of an intersection at all: Excel refuses
+  (`FileCorruptTryRepair`, no oracle value) `=(-A1,B1) A1`, `=(-A1,B1) B1`, `=A1 (-A1,B1)` (the cut's right side),
+  `=((-A1,B1),C1) A1` (negation in an inner union), `=(-(A1,B2),C1) A1`, `=(--A1,B1) A1` and
+  `=(A1,-B1) A1` (negation on the right of the union). The engine refuses all of them (T-1024, T-1031) and extends the rule to unprobed shapes (a union nested on the right, deeper nesting, extra parentheses, a nested negated union right of the cut). Excel keeps every level of written parentheses: FORMULATEXT of
   `=((A1,B2))` is `=((A1,B2))` and of `=(((A1,B2),C1))` is `=(((A1,B2),C1))` (the engine keeps them since T-1024: `written` on `OpUnionKind`).
 - Engine behavior, not probed: the union is the loosest operator inside its parenthesis and the
   intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
@@ -285,11 +286,11 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
-T-0998: probes/union-operand-{double-minus,nested-parens,neg-cut-group} (same oracle and date); its refusals (percent,
-negated operand cut by an intersection) came from scratch fills that failed with FileCorruptTryRepair and were not kept.
+T-0998: probes/union-operand-{double-minus,nested-parens,neg-cut-group} (same oracle and date); T-1031: probes/union-operand-{triple,quad}-minus (excel-graph, 2026-10-07); its refusals (percent,
+negated operand cut by an intersection, and the T-1031 forms) came from scratch fills that failed with FileCorruptTryRepair and were not kept.
 Status: VERIFIED (except the parts marked as engine choices; engine mismatches tracked in T-1024)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::parse_parenthesized`); reference_operators.rs
-Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024
+Tasks: T-0134, T-0187, T-0193, T-0194, T-0133, T-0998, T-1024, T-1031
 
 ## Union area cap
 (ISREF of a union over the cap is FALSE in the engine, where Excel presumably says TRUE; same DEVIATION.)
