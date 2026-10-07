@@ -1,5 +1,6 @@
 //! LOOKUP (both forms) and the vector reading MATCH shares with it.
 
+use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
@@ -71,7 +72,9 @@ impl Model {
         if target.is_error() {
             return target;
         }
-        let value = self.evaluate_node_in_context(&args[1], cell);
+        // Read as a reference so that a single cell is a one-element vector
+        // (`LOOKUP(2,C1,D1)`; probes/lookup-vector-edges A1-A4).
+        let value = self.evaluate_node_with_reference(&args[1], cell);
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,
@@ -132,7 +135,17 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         // A single cell is read as a reference, so that it can be read past (`LOOKUP(99,A1:B2,F1)`).
-        let value = self.evaluate_node_with_reference(node, cell);
+        let value = match self.evaluate_node_with_reference(node, cell) {
+            // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
+            // (probes/lookup-vector-edges A5-A8).
+            scalar @ (CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_)
+            | CalcResult::EmptyCell) => {
+                CalcResult::Array(vec![vec![calc_result_to_array_node(scalar)]])
+            }
+            other => other,
+        };
         let table = match Self::lookup_table(value, cell) {
             Ok(table) => table,
             Err(error) => return error,
@@ -161,14 +174,14 @@ impl Model {
                         .map(|column| (left.row, column))
                 };
                 match target {
-                    // Past the sheet's edge is `#N/A` (engine choice, not probed).
                     Some((row, column)) if row <= LAST_ROW && column <= LAST_COLUMN => self
                         .evaluate_cell(CellReferenceIndex {
                             sheet: left.sheet,
                             row,
                             column,
                         }),
-                    _ => not_found(cell),
+                    // Past the sheet's edge reads a blank, 0 (probes/lookup-vector-edges A15-A20).
+                    _ => CalcResult::EmptyCell,
                 }
             }
             LookupTable::Array(_) => {
