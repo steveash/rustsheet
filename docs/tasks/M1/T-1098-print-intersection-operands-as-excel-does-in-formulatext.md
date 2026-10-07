@@ -3,7 +3,7 @@ id: T-1098
 title: "Print @ intersection operands as Excel does in FORMULATEXT"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
