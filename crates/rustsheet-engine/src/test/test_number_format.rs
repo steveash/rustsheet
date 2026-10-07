@@ -183,6 +183,10 @@ fn number_text_longer_than_255_characters_is_value_error() {
     model.evaluate();
     for (row, expected) in [(1, "1E-253"), (2, "#VALUE!"), (3, "1"), (4, "#VALUE!")] {
         assert_eq!(model._get_text(&format!("B{row}")), expected, "0+A{row}");
-        assert_eq!(model._get_text(&format!("C{row}")), expected, "VALUE(A{row})");
+        assert_eq!(
+            model._get_text(&format!("C{row}")),
+            expected,
+            "VALUE(A{row})"
+        );
     }
 }
