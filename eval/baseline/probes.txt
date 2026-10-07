@@ -118,6 +118,7 @@ C	probes/geomean-root-models.case.json	112
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/ifs-array-criteria-edges.case.json	22
 C	probes/ifs-array-criteria.case.json	39
+C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/index-single-index.case.json	6
