@@ -374,10 +374,6 @@ F	probes/multiarea-subtotal.case.json	Sheet1!H1
 F	probes/multiarea-subtotal.case.json	Sheet1!H2
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
-F	probes/paren-negative-text.case.json	Sheet1!C1
-F	probes/paren-negative-text.case.json	Sheet1!E1
-F	probes/paren-negative-text.case.json	Sheet1!E2
-F	probes/paren-negative-text.case.json	Sheet1!E3
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
