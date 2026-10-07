@@ -91,3 +91,48 @@ not the exact value.
 Evidence: `ironcalc-calc/STATISTICAL/BETA_GAMMA.xlsx` BETA_DIST!G3, G4.
 Status: VERIFIED (observation); algorithm UNVERIFIED (T-0970)
 Tasks: T-0970
+
+## VAR/STDEV switch between a one-pass and a two-pass formula
+Rule: VAR.P/VARP/VARPA first compute the one-pass form V = `(n*Σx² - (Σx)²)/(n*n)`, and
+VAR.S/VAR/VARA compute V = `(Σx² - (Σx)²/n)/(n-1)` (plain left-to-right double sums). Excel keeps
+V unless either test below holds; then it recomputes with the two-pass form `Σ(x - m)²/(n-d)`,
+with m = Σx/n and d = 0 or 1. STDEV.* is the square root of the matching VAR.*. The two tests are:
+- cancellation: `V*(n-d) < 0.01*Σx²`, that is, the one-pass sum of squared deviations is below 1%
+  of Σx²;
+- small variance: `V < 0.001*|m|`.
+
+Both tests use the function's own one-pass V, so the same data can take different paths:
+`VAR.P({0.02,0.027})` is the two-pass 1.2249999999999998E-05, while `VAR.S({0.02,0.027})` is
+the one-pass 2.45E-05. The second test is not scale-invariant. {1,2,4}×10^k uses two-pass for
+k ≤ -3 and one-pass for k ≥ -2, even though nothing cancels.
+Consequences:
+- Small integer sets use the one-pass form and are not the correctly rounded variance.
+  `VAR.S({1,2,4})` is 2.333333333333334, while 7/3 correctly rounded is 2.3333333333333335.
+  `VAR.P({3,1,4,1,5,9})` is 7.472222222222222, the one-pass value; two-pass gives …221 (this is
+  probes/aggregate-grid B31). One-pass results up to 39 ulps from the exact variance are kept.
+- Offset data use the two-pass form. `VAR.P` of {1000000003,1000000001,…} is
+  7.472222222222224, exactly the two-pass value; one-pass gives -113.78. `VAR.S({11,12,14})`
+  (ratio 0.0101) is the one-pass 2.333333333333343, and `VAR.S({101,102,104})` is two-pass.
+- A negative mean uses |m|. A zero mean (`{-1,1}`) never meets the second test.
+- Every product and quotient flushes a subnormal result to 0, like `*` and `/` (numbers.md,
+  "Subnormal results become 0"). `STDEV.S({0,2.2E-154})` is 0: each squared deviation
+  (1.21E-308) is subnormal, although their sum 2.42E-308 is not. `STDEV.S({0,3E-154})`
+  (squares 2.25E-308, normal) is 2.121320343559643E-154 (probes/variance-underflow, 36 cells).
+- `VAR.P` of 1E+200 twice is `#NUM!` (numbers.md, "Overflow"): the one-pass Σx² overflows, V is
+  NaN, neither test holds, and the NaN is returned.
+Evidence (oracle: excel-graph, 2026-10-07, T-1037): probes/variance-digits (234 cells),
+variance-switch (82), variance-fit (380, random offset and small-magnitude sets),
+variance-scale (492, six shapes over scales 3E-5 to 0.3), variance-rule (312; column A is near
+both limits, and B:M hold negative and zero means for all twelve VAR/STDEV functions) and
+variance-rel (120), variance-underflow (36). Every cell matches the rule bit for bit. The limits are pinned: the
+small-variance ratio V/|m| is two-pass at 0.0009999999999999998 and one-pass at
+0.0010000000000000007. The cancellation ratio V*(n-d)/Σx² is two-pass at 0.0099992 and
+one-pass at 0.0100036. Rejected forms: `V < 0.01*Σx²/n` fails 64 cells (VAR.S with n = 2..3),
+and `V < 0.01*m²` fails 22. Comparing the two results instead of the inputs also fails, because
+{13,11,14,…} and {103,101,104,…} have the same one-pass and two-pass values but take different
+paths. Literals in these probes parse to the correctly rounded doubles (checked for all 242
+decimal literals of variance-fit).
+Status: VERIFIED. The float form of each comparison (for example `V < 0.001*|m|` against
+`V/|m| < 0.001`) is UNVERIFIED at the exact boundary.
+Implemented in: `excel_variance` in crates/rustsheet-engine/src/functions/statistical/variance.rs
+(T-1037). DVAR/DVARP/DSTDEV/DSTDEVP still use their own one-pass code and are unprobed (T-1054).
