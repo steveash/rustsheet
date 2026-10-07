@@ -3,7 +3,7 @@ id: T-1112
 title: "GEOMEAN over many overflowing values is #NUM!: find Excel's cut"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,10 +27,21 @@ Found in T-1108. docs/excel-semantics/numbers.md, "GEOMEAN over about 1100 overf
   Its remainder-over-1000 fallback (`product.powf(1/n) * 2^(r/n)`) is the branch these cells reach.
 
 ## Acceptance criteria
-- [ ] A probe that brackets the cut, filled from excel-graph; the rule goes in numbers.md.
-- [ ] The engine gives `#NUM!` for geomean-root-models Fallback!D1-D2 and geomean-overflow-count D1, with no regression.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe that brackets the cut, filled from excel-graph; the rule goes in numbers.md.
+- [x] The engine gives `#NUM!` for geomean-root-models Fallback!D1-D2 and geomean-overflow-count D1, with no regression.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The GEOMEAN root rounding (numbers.md, "GEOMEAN root rounding"; no reproducible model, T-1108).
 - The in-range path (T-1113).
+
+## Outcome
+Rule found and verified: GEOMEAN is `#NUM!` when the left-to-right product of the values' binary
+significands in [1, 2) overflows (sum of log2(M) >= 1024), even when the plain product is in range;
+the predicted cuts for four mantissas held on a later probe (numbers.md, "GEOMEAN is #NUM! when the
+product of significands overflows", which replaces "GEOMEAN over about 1100 overflowing values is
+#NUM!"). Probes: geomean-overflow-cut, -cut-2, -cut-3 (excel-graph). The engine checks the
+significand product in `fn_geomean`; unit test `test_fn_geomean_significand_product_overflow_is_num`.
+Eval delta: probes fixed 3 (geomean-root-models Fallback!D1-D2, geomean-overflow-count D1), 10
+new-coverage known failures (root ulps: T-1108/T-1113; 2400 x 1E-300: T-1120; MOD array lift:
+T-1119), 0 regressions.
