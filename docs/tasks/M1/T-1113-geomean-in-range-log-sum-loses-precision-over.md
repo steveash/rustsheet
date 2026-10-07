@@ -3,7 +3,7 @@ id: T-1113
 title: "GEOMEAN in-range log-sum loses precision over many values (1101 x 1.5)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
