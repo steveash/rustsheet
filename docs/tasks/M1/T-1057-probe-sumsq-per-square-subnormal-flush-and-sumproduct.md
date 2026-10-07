@@ -3,7 +3,7 @@ id: T-1057
 title: "Probe SUMSQ per-square subnormal flush and SUMPRODUCT with three arrays"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1007 verified per-step flushing for PRODUCT and for two-array SUMPRODUCT (prob
 
 ## Out of scope
 - Other subnormal edges already probed by T-1007.
+
+## Outcome
+Probe `probes/subnormal-sumsq-sumproduct-edges` (8 forms x value/text/`=0` cells, excel-graph): Excel flushes each SUMSQ square and each SUMPRODUCT factor left to right. The three-array SUMPRODUCT already matched; SUMSQ flushed only the total (15/21 cells before), so it now flushes per square. Unit test added. Eval: new case 24/24 (a reversed-order `SUMSQ(1E-150,1E-155)` cell rules out flushing the running sum).

@@ -92,6 +92,7 @@ C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-results.case.json	129
+C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-number-15-digits.case.json	16
