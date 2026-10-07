@@ -62,8 +62,7 @@ Cut-off (probes/lookup-index-shapes H19-H36, excel-graph, 2026-10-06, T-0250): a
 HLOOKUP alike; not found is `#N/A` for all of them. A fractional index next to the cut-off is unprobed.
 Index shapes (same probe): `OFFSET(E1,..)` and `INDIRECT("E1")` results are references (a cell holding
 text or an error is `#REF!` when found, `#N/A` when not found). So is `INDEX(E1:E4,2)`: text or an
-error in the INDEXed cell is `#REF!` found / `#N/A` not found, **not** implemented yet (the engine
-coerces the INDEX value: `#VALUE!` / the error), baselined in probes H2, H3, H11, H12 (T-0250 follow-up).
+error in the INDEXed cell is `#REF!` found / `#N/A` not found (probes H2, H3, H11, H12; T-0251).
 A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
 from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
 value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
