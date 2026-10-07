@@ -3,7 +3,7 @@ id: T-0223
 title: "Port IronCalc MAX/MIN fixes (named ranges, LAMBDA/LET args) with MAX_MIN.xlsx evidence"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
