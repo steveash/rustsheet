@@ -81,19 +81,25 @@ terms; `&` chains 4,093 to 4,094; a trailing `11` term pads a formula to its exa
 so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
 Excel for the web did not refuse the 8,193 character formula when loaded from a file, so the
 published limit was not enforced on file load (typing and desktop Excel were not probed).
-Probes `operator-chain-long-8194`, `-8195`, `-8196`, `-8200`, `-16384` and `-32767` (T-1091,
-excel-graph): each a lone `=1+1+...` formula of that many characters, and every one makes the
-workbook unloadable (createSession 501 `FileCorruptTryRepair`, so there is no Excel value). The
-on-load limit is therefore 8,193 characters (8,193 loads, 8,194 does not), one past the published
-8,192; at most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so no DEVIATION change
-is needed.
+Probes of lone `=1+1+...` formulas of 8,194, 8,195, 8,196, 8,200, 16,384 and 32,767 characters
+(T-1091, excel-graph; the cases were dropped after the run because Excel cannot load them, so no
+sidecar can ever exist): every one made the workbook unloadable (createSession 501
+`FileCorruptTryRepair`, so there is no Excel value). The spec-to-xlsx writer stores formulas without
+the leading `=`, so the file text was 8,192 characters for the longest formula that loaded (T-1060's
+8,193 including `=`) and 8,193 for the first refused: Excel enforces exactly the published 8,192
+characters on file load (the sentence above, "not enforced", is off by one for this reason). At
+most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
+chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
+chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
+cap, where Excel refuses the workbook (an engine extension; follow-up task to decide whether to
+refuse formulas over 8,192 stored characters on load).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains at and one character past the published limit); otherwise only the published limits; this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit) and the T-1091 refusals above; otherwise only the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
 

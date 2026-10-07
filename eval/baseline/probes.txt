@@ -160,10 +160,6 @@ C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
 C	probes/offset-negative-height-width.case.json	80
 C	probes/operator-chain-limit.case.json	6
-C	probes/operator-chain-long-16384.case.json	0
-C	probes/operator-chain-long-32767.case.json	0
-C	probes/operator-chain-long-8196.case.json	0
-C	probes/operator-chain-long-8200.case.json	0
 C	probes/paren-negative-text.case.json	5
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
@@ -350,10 +346,6 @@ F	probes/multiarea-subtotal.case.json	Sheet1!H1
 F	probes/multiarea-subtotal.case.json	Sheet1!H2
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
-F	probes/operator-chain-long-16384.case.json	!EngineError
-F	probes/operator-chain-long-32767.case.json	!EngineError
-F	probes/operator-chain-long-8196.case.json	!EngineError
-F	probes/operator-chain-long-8200.case.json	!EngineError
 F	probes/paren-negative-text.case.json	Sheet1!C1
 F	probes/paren-negative-text.case.json	Sheet1!E1
 F	probes/paren-negative-text.case.json	Sheet1!E2
