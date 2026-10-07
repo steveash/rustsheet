@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "SPEC-0004 probe row 16 (T-1061): @ on a union, and the FORMULATEXT of a union stored as a legacy (non-array) formula. Sheet1 A1=1,B2=5.",
+  "description": "SPEC-0004 probe row 16 (T-1061): @ on a union, and the FORMULATEXT of a union in a dynamic-array formula (legacy formulas unprobed, T-1074). Sheet1 A1=1,B2=5.",
   "tags": [
     "M1",
     "references",
