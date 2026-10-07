@@ -120,6 +120,10 @@ Consequences:
   (squares 2.25E-308, normal) is 2.121320343559643E-154 (probes/variance-underflow, 36 cells).
 - `VAR.P` of 1E+200 twice is `#NUM!` (numbers.md, "Overflow"): the one-pass Σx² overflows, V is
   NaN, neither test holds, and the NaN is returned.
+- The database functions DVAR, DVARP, DSTDEV and DSTDEVP follow the same switch with the same
+  divisors (DVAR/DSTDEV like VAR.S/STDEV.S, DVARP/DSTDEVP like VAR.P/STDEV.P), VERIFIED (T-1054,
+  probes/dvar-one-vs-two-pass, 28 cells over seven data sets that take each path, excel-graph
+  2026-10-07). They are computed by `excel_variance` over the matching numeric values.
 Evidence (oracle: excel-graph, 2026-10-07, T-1037): probes/variance-digits (234 cells),
 variance-switch (82), variance-fit (380, random offset and small-magnitude sets),
 variance-scale (492, six shapes over scales 3E-5 to 0.3), variance-rule (312; column A is near

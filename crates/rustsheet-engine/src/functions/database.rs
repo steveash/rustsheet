@@ -5,6 +5,7 @@ use crate::{
 };
 
 use super::criteria::{build_criteria_with, CriteriaFlavor};
+use super::statistical::variance::{variance_result, VarianceKind};
 
 impl Model {
     // =DAVERAGE(database, field, criteria)
@@ -353,14 +354,13 @@ impl Model {
         }
     }
 
-    // Small internal helper for DSTDEV / DVAR
-    // Collects sum, sum of squares, and count of numeric values in the field
-    // for rows that match the criteria.
-    fn db_numeric_stats(
+    // Small internal helper for DSTDEV / DSTDEVP / DVAR / DVARP
+    // Collects the numeric values of the field for rows that match the criteria.
+    fn db_numeric_values(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<(f64, f64, usize), CalcResult> {
+    ) -> Result<Vec<f64>, CalcResult> {
         if args.len() != 3 {
             return Err(CalcResult::new_args_number_error(cell));
         }
@@ -386,9 +386,7 @@ impl Model {
             });
         }
 
-        let mut sum = 0.0f64;
-        let mut sumsq = 0.0f64;
-        let mut count = 0usize;
+        let mut values = Vec::new();
 
         let mut row = db_left.row + 1; // skip header
         while row <= db_right.row {
@@ -400,108 +398,46 @@ impl Model {
                 });
                 if let CalcResult::Number(n) = v {
                     if n.is_finite() {
-                        sum += n;
-                        sumsq += n * n;
-                        count += 1;
+                        values.push(n);
                     }
                 }
             }
             row += 1;
         }
 
-        Ok((sum, sumsq, count))
+        Ok(values)
     }
 
-    // =DSTDEV(database, field, criteria)
-    // Sample standard deviation of matching numeric values
+    // =DSTDEV(database, field, criteria): sample standard deviation of matching numeric values
     pub(crate) fn fn_dstdev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
-            Ok(stats) => stats,
-            Err(e) => return e,
-        };
-
-        // Excel behaviour: #DIV/0! if 0 or 1 numeric values match
-        if count < 2 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Not enough numeric values matched criteria".to_string(),
-            };
+        match self.db_numeric_values(args, cell) {
+            Ok(values) => variance_result(&values, VarianceKind::Sample, true, "DSTDEV", cell),
+            Err(e) => e,
         }
-
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / (n - 1.0);
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var.sqrt())
     }
 
-    // =DVAR(database, field, criteria)
-    // Sample variance of matching numeric values
+    // =DVAR(database, field, criteria): sample variance of matching numeric values
     pub(crate) fn fn_dvar(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
-            Ok(stats) => stats,
-            Err(e) => return e,
-        };
-
-        // Excel behaviour: #DIV/0! if 0 or 1 numeric values match
-        if count < 2 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Not enough numeric values matched criteria".to_string(),
-            };
+        match self.db_numeric_values(args, cell) {
+            Ok(values) => variance_result(&values, VarianceKind::Sample, false, "DVAR", cell),
+            Err(e) => e,
         }
-
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / (n - 1.0);
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var)
     }
 
-    // =DSTDEVP(database, field, criteria)
-    // Population standard deviation of matching numeric values
+    // =DSTDEVP(database, field, criteria): population standard deviation of matching numeric values
     pub(crate) fn fn_dstdevp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
-            Ok(stats) => stats,
-            Err(e) => return e,
-        };
-
-        // Excel behaviour: #DIV/0! if no numeric values match
-        if count == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "No numeric values matched criteria".to_string(),
-            };
+        match self.db_numeric_values(args, cell) {
+            Ok(values) => variance_result(&values, VarianceKind::Population, true, "DSTDEVP", cell),
+            Err(e) => e,
         }
-
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / n;
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var.sqrt())
     }
 
-    // =DVARP(database, field, criteria)
-    // Population variance of matching numeric values
+    // =DVARP(database, field, criteria): population variance of matching numeric values
     pub(crate) fn fn_dvarp(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let (sum, sumsq, count) = match self.db_numeric_stats(args, cell) {
-            Ok(stats) => stats,
-            Err(e) => return e,
-        };
-
-        // Excel behaviour: #DIV/0! if no numeric values match
-        if count == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "No numeric values matched criteria".to_string(),
-            };
+        match self.db_numeric_values(args, cell) {
+            Ok(values) => variance_result(&values, VarianceKind::Population, false, "DVARP", cell),
+            Err(e) => e,
         }
-
-        let n = count as f64;
-        let var = (sumsq - (sum * sum) / n) / n;
-        let var = if var < 0.0 { 0.0 } else { var };
-        CalcResult::Number(var)
     }
 
     /// Resolve the "field" (2nd arg) to an absolute column index (i32) within the sheet.

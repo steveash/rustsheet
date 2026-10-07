@@ -148,7 +148,7 @@ impl Model {
 
 /// `#DIV/0!` for too few values, otherwise the variance (or its square root), with `#NUM!`
 /// for a non-finite result.
-fn variance_result(
+pub(crate) fn variance_result(
     values: &[f64],
     kind: VarianceKind,
     std_dev: bool,
