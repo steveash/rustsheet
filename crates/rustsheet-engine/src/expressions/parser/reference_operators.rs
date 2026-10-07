@@ -363,10 +363,24 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
 }
 
 /// `text` (the printed `node`) as the operand of a reference operator that binds tighter
-/// than the intersection (`:`, `@`, `#`): an intersection there needs parentheses,
-/// `(A1 B1):C3`.
+/// than the intersection (`:`, `#`): an intersection there needs parentheses, `(A1 B1):C3`,
+/// and so does an `@`, which would otherwise take the rest of the operator's text
+/// (`A1:(@B1)`, `(@(A1 B1)):C3`; T-1102).
 pub(crate) fn tight_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::OpIntersectKind { .. }) {
+    if matches!(
+        node,
+        Node::OpIntersectKind { .. } | Node::ImplicitIntersection { .. }
+    ) {
+        format!("({text})")
+    } else {
+        text
+    }
+}
+
+/// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
+/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102).
+pub(crate) fn at_operand(text: String, node: &Node) -> String {
+    if matches!(node, Node::ImplicitIntersection { .. }) {
         format!("({text})")
     } else {
         text
