@@ -397,13 +397,13 @@ fn numbers_array(numbers: Vec<f64>) -> Node {
     Node::ArrayKind(vec![numbers.into_iter().map(ArrayNode::Number).collect()])
 }
 
-/// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
-/// value; `None` for a reference or an array.
 /// Whether a range spans more than one cell.
 fn is_multi_cell(left: &CellReferenceIndex, right: &CellReferenceIndex) -> bool {
     left.row != right.row || left.column != right.column
 }
 
+/// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
+/// value; `None` for a reference or an array.
 fn value_node(value: &CalcResult) -> Option<Node> {
     Some(match value {
         CalcResult::Number(number) => Node::NumberKind(*number),
