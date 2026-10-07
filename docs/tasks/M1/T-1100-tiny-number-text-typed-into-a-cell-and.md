@@ -3,11 +3,11 @@ id: T-1100
 title: "Tiny number text typed into a cell and in conditional-format rule values"
 milestone: M1
 lane: engine
-status: todo
+status: blocked
 priority: P3
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-1107]
 ---
 
 ## Goal
@@ -46,3 +46,14 @@ to the oracle client (PATCH range values with the raw text, read back value/valu
 `1e-310`, `1e-309`, `2e-308`, `0e309` and a CF rule `Cell value > 1e-310`, record in numbers.md,
 then make `parse_formatted_number` / `parse_finite_number` / `value_needs_quoting` reuse
 `parse_excel_number`.
+
+## Blocked because
+Opus run, 2026-10-07. The handoff is right: both halves of the evidence are out of reach today.
+- Typed input: every oracle backend is xlsx in, xlsx out (`recalc`, tools/src/rustsheet_tools/oracle/backends.py),
+  and stored values are not typed values. Adding a typed-input path is new oracle architecture, so it is
+  filed as its own task, T-1107 (spec first), rather than done inside this S task.
+- Conditional-format rule `Cell value > 1e-310`: no backend evaluates conditional formats (excel-graph cannot,
+  excel-desktop is n/a), the same blocker as T-1051.
+Unblock when T-1107 lands (cell entry), and for the CF half when excel-desktop or an Excel-authored workbook
+with CF results is available. The `value_needs_quoting` criterion can be done earlier only if a reader that takes
+"1e-310" as a number is shown; today none does (TODO(T-1100) in test_nan_inf.rs), so it waits with the rest.
