@@ -171,7 +171,7 @@ C	probes/paren-call-lambda-cell.case.json	2
 C	probes/paren-call-operands.case.json	10
 C	probes/paren-negative-text.case.json	5
 C	probes/precision-and-rounding.case.json	18
-C	probes/rank-absent-number.case.json	12
+C	probes/rank-absent-number.case.json	15
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-args.case.json	54
 C	probes/rich-errors-calc.case.json	10

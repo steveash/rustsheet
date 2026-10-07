@@ -18,6 +18,18 @@
     "t": "n",
     "v": 2.0
    },
+   "C13": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "C14": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "C15": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
    "C2": {
     "t": "e",
     "v": "#N/A"
@@ -54,9 +66,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "328a5b83a14e29a41a37e364e305abde2696856d52fc6c2dc43d4792521b849d",
+  "input_sha256": "3b2256b0f4de047827c7e28db03578f4759d538221cc547516643aabe556ca31",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T11:53:05+00:00",
+  "produced_at": "2026-10-07T12:07:18+00:00",
   "version": null
  }
 }
