@@ -33,7 +33,7 @@ Not reproducible; ruled out as far as the code allows, with evidence (2026-10-07
   T-0279 and refused its regressions); 15 `run --timeout 0` runs, which leave every case's worker
   thread running while the process exits, exited 0.
 - Code audit: no `unsafe` in the workspace, no C dependency in rustsheet-eval's tree (zip 0.6
-  without bzip2/zstd, flate2 on miniz_oxide). Every engine evaluation and xlsx import runs on a
+  without bzip2/zstd, deflate through the pure-Rust `miniz_oxide`). Every engine evaluation and xlsx import runs on a
   `case:<id>` thread with a 256 MB stack under `catch_unwind`; the work on rayon threads
   (`prepare`: quick-xml snapshot, the lexer-only `shift_formula_text`, the iterative volatility
   scan) does not recurse. A stack overflow in safe Rust is caught by std's guard-page handler,
