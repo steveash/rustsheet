@@ -57,6 +57,7 @@ C	probes/intersection-whitespace.case.json	8
 C	probes/is-functions-array-lift.case.json	79
 C	probes/isref-function-results.case.json	6
 C	probes/isref-names-filter-if-empty.case.json	10
+C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/lifted-range-rows.case.json	4
@@ -124,8 +125,6 @@ C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
 F	probes/3d-ref-functions.case.json	Calc!C18
 F	probes/3d-ref-functions.case.json	Calc!C20
-F	probes/aggregate-args.case.json	Misc!A11
-F	probes/aggregate-args.case.json	Misc!A13
 F	probes/aggregate-args.case.json	Misc!A36
 F	probes/aggregate-args.case.json	Misc!A37
 F	probes/aggregate-args.case.json	Misc!A38

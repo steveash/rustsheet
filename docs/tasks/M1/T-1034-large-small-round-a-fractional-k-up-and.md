@@ -3,7 +3,7 @@ id: T-1034
 title: "LARGE/SMALL round a fractional k up and accept a boolean k"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-0993. Excel: `AGGREGATE(14,0,E1:E6,2.9)` is 4 with E1:E6 = 3,1,4,1,5,
 
 ## Out of scope
 -
+
+## Outcome
+LARGE/SMALL (and AGGREGATE 14/15) coerce booleans/text k; k < 1 is #NUM!, LARGE takes the ceil(k)-th largest, SMALL the floor(k)-th smallest (#NUM! if ceil(k) > n). New probe `large-small-k` (35 cells, oracle excel-graph). Eval: probes known failures 197 -> 195 (aggregate-args Misc!A11, A13 fixed), 35 new passing cells, 0 regressions.
