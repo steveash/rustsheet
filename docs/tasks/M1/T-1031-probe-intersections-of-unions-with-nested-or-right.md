@@ -3,7 +3,7 @@ id: T-1031
 title: "Probe intersections of unions with nested or right-side negated operands"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
