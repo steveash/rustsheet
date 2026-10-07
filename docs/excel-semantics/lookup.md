@@ -56,12 +56,13 @@ Rule: in `LOOKUP(value, lookup_vector, result_vector)`:
   F4, `LOOKUP(99,A1:B2,F1)` = G1 and `LOOKUP(3,A1:A2,F1)` = G1. A result *array* is not:
   `LOOKUP(99,A1:B2,{10})` = `#N/A` while `LOOKUP(2,A1:B2,{10})` = 10.
 - A value not found is `#N/A` before the result vector is looked at.
-Engine choices (not probed): reading past the sheet's last row or column is `#N/A`, and a single-cell
-lookup_vector (`LOOKUP(2,C1,…)`) is `#N/A` as before.
+Engine choices (not probed, T-0269): reading past the sheet's last row or column is `#N/A`, a single-cell
+lookup_vector (`LOOKUP(2,C1,…)`) and a non-reference scalar result_vector (`LOOKUP(2,A1:A2,5)`) are
+`#N/A`, and a function returning a reference as result_vector is read like that reference.
 Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224).
 Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
-Tasks: T-0224
+Tasks: T-0224, T-0269
 
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
