@@ -3,7 +3,7 @@ id: T-1051
 title: "Probe conditional-format value operators on tiny values; move all CF ValueOperator arms to 15-digit compare"
 milestone: M1
 lane: harness
-status: todo
+status: blocked
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Follow-up of T-1033, which moved only Equal/NotEqual to `cmp_excel_precision` (i
 
 ## Out of scope
 -
+
+## Blocked because
+The acceptance criteria need Excel's conditional-format evaluation as evidence. `rustsheet-oracle status` shows `excel-graph` (cannot evaluate conditional formats) and `libreoffice` (approximate only); `excel-desktop` is n/a (needs Windows with Excel). Without an oracle there is no evidence, and CLAUDE.md directive 1 forbids implementing from inference. Unblock when `excel-desktop` is available or an Excel-authored xlsx with conditional-format results is supplied.
