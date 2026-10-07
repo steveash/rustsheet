@@ -3,7 +3,7 @@ id: T-0165
 title: "XLOOKUP, TAKE, DROP and TRIMRANGE return references usable as intersection operands"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -21,9 +21,18 @@ T-0161 found that Excel accepts these calls as intersection operands and evaluat
 result should also make `ISREF(TAKE(A1:B3,1))` TRUE; probe that if no evidence exists.
 
 ## Acceptance criteria
-- [ ] probes/intersection-function-operands H8, H11, H12, H14 pass; baseline shrinks.
-- [ ] Other uses of these functions (spills, aggregates over them) unchanged in every suite.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/intersection-function-operands H8, H11, H12, H14 pass; baseline shrinks.
+- [x] Other uses of these functions (spills, aggregates over them) unchanged in every suite.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CHOOSEROWS/CHOOSECOLS (Excel refuses them as operands).
+
+## Outcome
+XLOOKUP, TAKE, DROP and TRIMRANGE have a reference form (`Model::evaluate_reference_form`, the
+`as_reference` pattern of INDEX) used by intersection operands and ISREF; everywhere else they keep
+their value path. TAKE and DROP now share one span helper (also fixing a debug overflow on a count of
+-1E300). New probes: isref-reference-lookups (ISREF of these calls) and
+intersection-lookup-operand-errors (ends, errors, range if_not_found), both excel-graph. Eval: probes
+fixed 4 (intersection-function-operands H8, H11, H12, H14), new coverage 21 cells with 1 known failure
+(isref-reference-lookups H10, XLOOKUP over an array lookup vector: follow-up T-1126), 0 regressions.

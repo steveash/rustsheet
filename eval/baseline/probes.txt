@@ -125,6 +125,7 @@ C	probes/indirect-text-broadcast.case.json	58
 C	probes/intersection-at-formulatext.case.json	4
 C	probes/intersection-at-operands.case.json	5
 C	probes/intersection-function-operands.case.json	14
+C	probes/intersection-lookup-operand-errors.case.json	10
 C	probes/intersection-operands.case.json	16
 C	probes/intersection-single-operands.case.json	4
 C	probes/intersection-whitespace.case.json	8

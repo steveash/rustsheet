@@ -147,7 +147,13 @@ impl Model {
         }
         // Get optional arguments
         let if_not_found = if args.len() >= 4 {
-            let v = self.evaluate_node_in_context(&args[3], cell);
+            // A range `if_not_found` stays a reference in the reference form:
+            // `ISREF(XLOOKUP(9,A1:A3,B1:B3,C1))` is TRUE (probes/intersection-lookup-operand-errors H10).
+            let v = if as_reference {
+                self.evaluate_node_with_reference(&args[3], cell)
+            } else {
+                self.evaluate_node_in_context(&args[3], cell)
+            };
             match v {
                 CalcResult::EmptyArg => CalcResult::Error {
                     error: Error::NA,
