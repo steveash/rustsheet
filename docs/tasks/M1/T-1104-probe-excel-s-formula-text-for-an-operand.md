@@ -3,7 +3,7 @@ id: T-1104
 title: "Probe Excel's formula text for an @ operand of :, # and @"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1102 parenthesizes these operands (`tight_operand`, `at_operand` in crates/rus
 
 ## Out of scope
 -
+
+## Outcome
+Probe case `probes/at-operand-formulatext` holds oracle values (excel-graph). Excel keeps the written parentheses for `@` operands of `:` and `@`; `ANCHORARRAY(x)` prints `x#`; `(@A1:B2)#` is refused at load. Recorded in docs/excel-semantics/references.md; engine work filed as T-1109. Eval delta: none (7 new failing probe cells, to be baselined as known failures by T-1109).
