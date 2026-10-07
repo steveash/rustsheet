@@ -24,7 +24,8 @@ probes/geomean-overflow-many-values F4. Rejected models (simulated in Python aga
 cells; see numbers.md, "GEOMEAN root rounding"): pairwise or multi-accumulator products,
 decimal scaling, frexp-[0.5,1) remainders, truncated division, log-sum or exp/log2 forms of the
 root, the correctly rounded root with exact or rounded 1/n, and x87-style 64-bit log/exp
-compositions. Next ideas: probe single-pow behavior directly (`=(X)^(1/n)` and `POWER` on the same
+compositions. Excel's `^` is also not correctly rounded for non-integer exponents
+(numbers.md, "`^` / POWER are not correctly rounded", T-0221), so one model may settle both. Next ideas: probe single-pow behavior directly (`=(X)^(1/n)` and `POWER` on the same
 X and n, to see whether Excel's `^` shares the rounding), Newton-iteration roots, and
 Excel's own `exp`/`log` on the root's arguments.
 

@@ -3,11 +3,11 @@ id: T-1099
 title: "GEOMEAN of 600 mixed-magnitude underflowing values is one ulp off"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: blocked
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-1108]
 ---
 
 ## Goal
@@ -33,3 +33,19 @@ exp(ln(product)/n)*2^q (=...775), plain log-sum (1.732050807566386e-275), log-su
 log2 forms (all far off). Not yet tried: other product associations or chunked rescaling (decimal
 or 2^k thresholds), a root taken in pieces (sqrt/cbrt composition), or probing more underflow cases
 with the oracle to constrain the algorithm. Keep F1-F3, F5-F7 and probes/geomean-mixed-magnitude green.
+
+## Blocked because
+F4 is one ulp off because of how Excel rounds the n-th root, not because of the product or the
+exponent split, and no reproducible model of that rounding was found (opus run, 2026-10-07).
+A new probe, probes/geomean-product-order (17 random over/underflowing sets), shows the same
+one-ulp misses on 7 more cells, all at near-halfway roots (numbers.md, "GEOMEAN root rounding").
+This PR lands the probe, the finding and a significand change that passes 2 more of those cells.
+It blocks on T-1108, which reconstructs Excel's root rounding.
+
+## Outcome (partial)
+- New probe probes/geomean-product-order (17 cells, excel-graph 2026-10-07): 10 pass, 7 are new
+  known failures, all near-halfway one-ulp roots.
+- `fn_geomean` now keeps the product as a [1, 2) significand and puts the whole remainder under the
+  root (fallback only past r = 1000); on the new probe it passes 2 cells (Z2, Z15) the previous
+  split missed. No existing cell changed.
+- Finding in `docs/excel-semantics/numbers.md`, "GEOMEAN root rounding"; follow-up T-1108.
