@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-0966]
+depends_on: [T-1040]
 ---
 
 ## Goal
@@ -45,7 +45,7 @@ Hypothesis (the oracle is the judge): Excel's erfc is a classic rational approxi
 / W. J. Cody's CALERF, or Hart et al.) rather than a correctly rounded evaluation, and
 NORM.S.DIST(z,TRUE) is `0.5*erfc(-z/sqrt2)` on it (or Cody's ANORM directly); GAUSS = Phi(z) - 0.5
 or 0.5*erf(z/sqrt2). The far-tail Close cells (C19, E17, E18, E32) show the tail formulation
-differs too. **Needs an oracle sweep (T-0018):** fit against the T-0966 normal-CDF sweep
+differs too. **Needs an oracle sweep (T-0018):** fit against the T-1040 normal-CDF sweep
 (family 1), never blind; T-0924's Outcome records that blind tweaks only trade cells.
 
 ## Acceptance criteria
@@ -58,4 +58,4 @@ differs too. **Needs an oracle sweep (T-0018):** fit against the T-0966 normal-C
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-Normal densities and PHI (T-0975); inverse normal (T-0925); legacy NORMDIST/NORMSDIST evidence (T-0966).
+Normal densities and PHI (T-0975); inverse normal (T-0925); legacy NORMDIST/NORMSDIST evidence (T-1048).

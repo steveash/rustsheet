@@ -40,6 +40,7 @@ C	probes/dates-early-1900.case.json	25
 C	probes/defined-name-intersection.case.json	10
 C	probes/error-literals-new.case.json	18
 C	probes/error-literals-new2.case.json	15
+C	probes/error-operand-broadcast-cmp.case.json	15
 C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-constants.case.json	24

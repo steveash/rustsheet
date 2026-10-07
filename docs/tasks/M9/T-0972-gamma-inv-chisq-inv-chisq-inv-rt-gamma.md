@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: S
 tier: opus
-depends_on: [T-0971, T-0966]
+depends_on: [T-0971, T-1045]
 ---
 
 ## Goal
@@ -33,7 +33,7 @@ Examples (expected vs actual):
 
 Hypothesis (the oracle is the judge): Excel solves P(a, x/b) = p iteratively on its own GAMMA.DIST
 kernel (T-0971); CHISQ.INV.RT solves on the upper tail. The round-trip residue (9.999999999999998)
-points at a tolerance-based stop. **Needs an oracle sweep (T-0018):** fit against the T-0966
+points at a tolerance-based stop. **Needs an oracle sweep (T-0018):** fit against the T-1045
 incomplete-gamma sweep (family 6), never blind.
 
 ## Acceptance criteria
@@ -44,4 +44,4 @@ incomplete-gamma sweep (family 6), never blind.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-The CDF kernel (T-0971); legacy GAMMAINV/CHIINV evidence (T-0966).
+The CDF kernel (T-0971); legacy GAMMAINV/CHIINV evidence (T-1047, T-1048).
