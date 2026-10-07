@@ -341,7 +341,21 @@ fn parenthesised_number_is_negative() {
     assert!(parse("()", &["$"]).is_err());
 }
 
+// Excel: probes/paren-negative-variants (excel-graph, T-0277).
 #[test]
-fn parenthesised_number_with_padding_is_unprobed_error() {
-    assert!(parse("( 1 )", &["$"]).is_err());
+fn parenthesised_number_with_padding_currency_percent() {
+    assert_eq!(parse("( 1 )", &["$"]), Ok((-1.0, None)));
+    assert_eq!(parse("(1.5)", &["$"]), Ok((-1.5, None)));
+    assert_eq!(
+        parse("($1)", &["$"]),
+        Ok((-1.0, Some("$#,##0".to_string())))
+    );
+    assert_eq!(
+        parse("(1%)", &["$"]),
+        Ok((-0.01, Some("#,##0%".to_string())))
+    );
+    assert!(parse("(-1)", &["$"]).is_err());
+    assert!(parse("(+1)", &["$"]).is_err());
+    assert!(parse("((1))", &["$"]).is_err());
+    assert!(parse("(1)x", &["$"]).is_err());
 }

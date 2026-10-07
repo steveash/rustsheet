@@ -652,59 +652,15 @@ pub(crate) fn parse_formatted_number(
     current_year: CurrentYear,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
-    let scientific_format = "0.00E+00";
 
     let symbols = &locale.numbers.symbols;
     let decimal_separator = symbols.decimal.chars().next().unwrap_or('.');
     let group_separator = symbols.group.chars().next().unwrap_or(',');
 
-    // Check if it is a percentage
-    if let Some(p) = value.strip_suffix('%') {
-        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-        if options.is_scientific {
-            return Ok((f / 100.0, Some(scientific_format.to_string())));
-        }
-        // We ignore the separator
-        if options.decimal_digits > 0 {
-            // Percentage format with decimals
-            return Ok((f / 100.0, Some("#,##0.00%".to_string())));
-        }
-        // Percentage format standard
-        return Ok((f / 100.0, Some("#,##0%".to_string())));
-    }
-
-    // check if it is a currency in currencies
-    for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                return Ok((-f, Some(format!("{currency}#,##0.00"))));
-            }
-            return Ok((-f, Some(format!("{currency}#,##0"))));
-        } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                return Ok((f, Some(format!("{currency}#,##0.00"))));
-            }
-            return Ok((f, Some(format!("{currency}#,##0"))));
-        } else if let Some(p) = value.strip_suffix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                let currency_format = &format!("#,##0.00{currency}");
-                return Ok((f, Some(currency_format.to_string())));
-            }
-            let currency_format = &format!("#,##0{currency}");
-            return Ok((f, Some(currency_format.to_string())));
-        }
+    if let Some(parsed) =
+        parse_percent_or_currency(value, currencies, decimal_separator, group_separator)?
+    {
+        return Ok(parsed);
     }
 
     // Date text, untrimmed: number coercion rejects date text with surrounding spaces (see
@@ -713,18 +669,97 @@ pub(crate) fn parse_formatted_number(
         return Ok((serial_number as f64, Some(format)));
     }
 
-    // Lastly we check if it is a number. Excel reads accounting text in parentheses as negative:
-    // `0+"(1)"` = -1, `0+"(1,000)"` = -1000, but `0+"-(1)"` is #VALUE!
-    // (docs/excel-semantics/coercion.md "Parenthesised number text is negative"). A sign inside
-    // the parentheses is not probed; it stays an error.
-    let (negate, value) = match value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
-        Some(inner) if !inner.starts_with(['-', '+']) => (true, inner),
-        _ => (false, value),
-    };
+    // Excel reads accounting text in parentheses as negative: `0+"(1)"` = -1, `0+"(1,000)"` =
+    // -1000, `0+"( 1 )"` = -1, `0+"($1)"` = -1, `0+"(1%)"` = -0.01, but `0+"-(1)"`, `0+"(-1)"` and
+    // `0+"((1))"` are #VALUE! (docs/excel-semantics/coercion.md "Parenthesised number text is
+    // negative", probes/paren-negative-variants).
+    if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
+        let inner = inner.trim();
+        if inner.starts_with(['-', '+', '(']) {
+            return Err("Cannot parse number".to_string());
+        }
+        let (f, format) =
+            match parse_percent_or_currency(inner, currencies, decimal_separator, group_separator)?
+            {
+                Some(parsed) => parsed,
+                None => parse_plain_number(inner, decimal_separator, group_separator)?,
+            };
+        return Ok((-f, format));
+    }
+    parse_plain_number(value, decimal_separator, group_separator)
+}
+
+/// Format given to scientific-notation text such as `1E3`.
+const SCIENTIFIC_FORMAT: &str = "0.00E+00";
+
+/// A number written with a percent sign or a currency symbol, with the format that implies.
+/// `Ok(None)` means the text has neither.
+fn parse_percent_or_currency(
+    value: &str,
+    currencies: &[&str],
+    decimal_separator: char,
+    group_separator: char,
+) -> Result<Option<(f64, Option<String>)>, String> {
+    // Check if it is a percentage
+    if let Some(p) = value.strip_suffix('%') {
+        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+        if options.is_scientific {
+            return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
+        }
+        // We ignore the separator
+        if options.decimal_digits > 0 {
+            // Percentage format with decimals
+            return Ok(Some((f / 100.0, Some("#,##0.00%".to_string()))));
+        }
+        // Percentage format standard
+        return Ok(Some((f / 100.0, Some("#,##0%".to_string()))));
+    }
+
+    // check if it is a currency in currencies
+    for currency in currencies {
+        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                return Ok(Some((-f, Some(format!("{currency}#,##0.00")))));
+            }
+            return Ok(Some((-f, Some(format!("{currency}#,##0")))));
+        } else if let Some(p) = value.strip_prefix(currency) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                return Ok(Some((f, Some(format!("{currency}#,##0.00")))));
+            }
+            return Ok(Some((f, Some(format!("{currency}#,##0")))));
+        } else if let Some(p) = value.strip_suffix(currency) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                let currency_format = &format!("#,##0.00{currency}");
+                return Ok(Some((f, Some(currency_format.to_string()))));
+            }
+            let currency_format = &format!("#,##0{currency}");
+            return Ok(Some((f, Some(currency_format.to_string()))));
+        }
+    }
+    Ok(None)
+}
+
+/// A plain number (optionally with group separators or an exponent) and its inferred format.
+fn parse_plain_number(
+    value: &str,
+    decimal_separator: char,
+    group_separator: char,
+) -> Result<(f64, Option<String>), String> {
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;
-    let f = if negate { -f } else { f };
     if options.is_scientific {
-        return Ok((f, Some(scientific_format.to_string())));
+        return Ok((f, Some(SCIENTIFIC_FORMAT.to_string())));
     }
     if options.has_commas {
         if options.decimal_digits > 0 {
