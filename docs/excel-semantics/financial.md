@@ -79,3 +79,13 @@ Engine today: 96 of 691 cells pass (IRR 19/216, RATE 36/368, XIRR 9/72, MIRR 32/
 its sixth argument (guess) with `#ERROR!` (T-1050).
 Status: VERIFIED (observations); the iteration (update rule, stopping test, cap) is UNVERIFIED (T-0916)
 Implemented in: n/a (T-0916)
+
+## XIRR skips empty cells; XNPV is #NUM! on them
+Rule: XIRR ignores empty cells in its value and date ranges: `XIRR(A1:A3,B1:B3)` with A3 and B3 empty
+is the same 0.09999999403953552 as `XIRR(A1:A2,B1:B2)`, and whole-column `XIRR(A:A,B:B)` and whole-row
+`XIRR(12:12,13:13)` give finite rates. XNPV is `#NUM!` when its ranges contain empty cells, whole
+columns and rows included (`XNPV(0.1,A1:A3,B1:B3)`, `XNPV(0.1,A:A,B:B)`, `XNPV(0.1,12:12,13:13)`).
+Unprobed: a pair where only the value or only the date is empty.
+Evidence: probes/whole-column-empty-walkers E1, E5, E7, F3, F4, F6, F7, F9 (excel-graph, 2026-10-07, T-1114).
+Status: VERIFIED (these cells). XNPV matches; XIRR reads empty as 0 and gives #NUM! (T-1124).
+Tasks: T-1114, T-1124

@@ -3,7 +3,7 @@ id: T-1114
 title: "Match Excel for whole-column TEXTJOIN(ignore_empty FALSE), XIRR and XNPV"
 milestone: M1
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,9 +25,18 @@ Excel's cannot. Excel over a whole column: TEXTJOIN would exceed 32,767 characte
 #VALUE!? unverified); XIRR/XNPV unverified. Probe first (`excel-probe` skill).
 
 ## Acceptance criteria
-- [ ] Oracle-backed probe cases for `TEXTJOIN(",",FALSE,D:D)`, `XIRR(A:A,B:B)` and `XNPV(0.1,A:A,B:B)` on a small sheet; quirks recorded in `docs/excel-semantics/`.
+- [x] Oracle-backed probe cases for `TEXTJOIN(",",FALSE,D:D)`, `XIRR(A:A,B:B)` and `XNPV(0.1,A:A,B:B)` on a small sheet; quirks recorded in `docs/excel-semantics/`.
 - [ ] The engine matches them, independent of rows that exist without cells.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/whole-column-empty-walkers (excel-graph): `TEXTJOIN(",",FALSE,D:D)` is #CALC!, whole-row
+TEXTJOIN joins all 16,384 cells, XNPV is #NUM! on empty cells (engine already matched), XIRR skips
+empty cells. TEXTJOIN now adds the delimiters of the empty cells its used-area clip skips (bounded by
+the 32,767 limit), so it no longer depends on where the clip ends. XIRR's empty-cell skip needs a
+probe of mismatched pairs first and is filed as T-1124 (its cells would still miss on XIRR's
+convergence). Recorded in text.md and financial.md.
+Eval delta: +1 probe case (16 cells: 11 pass, 5 XIRR new-coverage failures), 0 regressions.

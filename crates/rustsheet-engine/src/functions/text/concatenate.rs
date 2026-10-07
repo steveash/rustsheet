@@ -52,6 +52,22 @@ impl JoinSize {
         }
         self.units > MAX_TEXT_UNITS
     }
+
+    /// Adds `count` empty values, the empty cells a clipped range walk skipped, stopping once the
+    /// join is over the limit (so at most about 32,767 are added). Returns whether it is over.
+    /// With an empty delimiter they add nothing, so none are added.
+    fn push_empties(&mut self, values: &mut Vec<String>, count: i64) -> bool {
+        if self.delimiter_units == 0 {
+            return false;
+        }
+        for _ in 0..count {
+            values.push(String::new());
+            if self.exceeds(values) {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 /// CONCAT's result under construction with its running UTF-16 size, so each append is O(piece)
@@ -197,6 +213,7 @@ impl Model {
                     let mut row2 = right.row;
                     let column1 = left.column;
                     let mut column2 = right.column;
+                    let (full_row2, full_column2) = (row2, column2);
                     match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
                         Ok((r, c)) => {
                             row2 = r;
@@ -204,6 +221,15 @@ impl Model {
                         }
                         Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
                     }
+                    // Excel joins every cell of a whole column or row, so the empty cells the clip
+                    // skips still add a delimiter each with ignore_empty FALSE: `TEXTJOIN(",",
+                    // FALSE,D:D)` is #CALC! (over 32,767) and `TEXTJOIN(",",FALSE,10:10)` has 16,383
+                    // delimiters (probes/whole-column-empty-walkers F1, F8; text.md).
+                    let pad = !ignore_empty;
+                    let skipped_columns =
+                        i64::from(full_column2) - i64::from(column2.max(column1 - 1));
+                    let skipped_rows = i64::from(full_row2) - i64::from(row2.max(row1 - 1));
+                    let width = i64::from(full_column2) - i64::from(column1) + 1;
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
                             over_limit = over_limit || size.exceeds(&values);
@@ -248,6 +274,13 @@ impl Model {
                                 }
                             }
                         }
+                        if pad && !over_limit {
+                            over_limit = size.push_empties(&mut values, skipped_columns);
+                        }
+                    }
+                    if pad && !over_limit {
+                        over_limit =
+                            size.push_empties(&mut values, skipped_rows.saturating_mul(width));
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
