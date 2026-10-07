@@ -41,30 +41,30 @@ impl Model {
             let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
             return CalcResult::Number((log_sum / n).exp());
         }
-        // Split every factor into mantissa in [1, 2) and a power of two, so no step can overflow
-        // or underflow whatever the magnitudes mix.
+        // Keep the product as a significand in [1, 2) and a separate power of two: every factor and
+        // every partial product is split, so no step can overflow or underflow whatever the
+        // magnitudes mix, and the significand's bits are those of the plain left-to-right product.
         let mut product = 1.0_f64;
         let mut exp2: i64 = 0;
         for &v in &values {
             let (m, e) = split_pow2(v);
-            product *= m;
-            exp2 += i64::from(e);
-            if product >= 2f64.powi(500) {
-                product *= 2f64.powi(-500);
-                exp2 += 500;
-            }
+            let (p, pe) = split_pow2(product * m);
+            product = p;
+            exp2 += i64::from(e) + i64::from(pe);
         }
         // The root's power of two is `exp2 / n`: its whole part `q` scales the result exactly and
         // the remainder `r` (0 <= r < n) goes under the root, `(product * 2^r)^(1/n) * 2^q`. That
-        // matches every probed overflow case bit for bit, where taking `2^(exp2 / n)` as a float
-        // power is one ulp high on GEOMEAN(1E+100,9E+307) (probes/geomean-mixed-magnitude A1,
-        // T-1076). `product` is below 2^501, so the remainder fits under the root up to 500;
-        // past that (over 500 values) it gets its own root (rounding probed:
-        // probes/geomean-overflow-many-values F6, F7 match Excel with a remainder of 599).
+        // matches 21 of the 29 probed cells bit for bit (probes/geomean-mixed-magnitude,
+        // probes/geomean-overflow-many-values, probes/geomean-product-order); the 8 misses are
+        // one-ulp, near-halfway roundings of the root that no tried formula reproduces
+        // (numbers.md, "GEOMEAN root rounding", T-1099). Taking `2^(exp2 / n)` as a float power is
+        // one ulp high on GEOMEAN(1E+100,9E+307) (probes/geomean-mixed-magnitude A1, T-1076).
+        // `product * 2^r` stays finite up to r = 1000; past that (over 1000 values) the remainder
+        // gets its own root (unprobed).
         let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
         let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
         let root = match i32::try_from(r) {
-            Ok(r) if r <= 500 => (product * 2f64.powi(r)).powf(1.0 / n),
+            Ok(r) if r <= 1000 => (product * 2f64.powi(r)).powf(1.0 / n),
             _ => product.powf(1.0 / n) * 2f64.powf(r as f64 / n),
         };
         // `2^q` in two halves: `powi` of an exponent below -1023 is 0, not the subnormal. Inputs
