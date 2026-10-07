@@ -3,7 +3,7 @@ id: T-0052
 title: "Prefix every future function in the case builder itself"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
