@@ -3,7 +3,7 @@ id: T-1034
 title: "LARGE/SMALL round a fractional k up and accept a boolean k"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
