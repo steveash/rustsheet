@@ -41,5 +41,5 @@ workbook with `=1E-310` or `=0E309`, so such literals are parse errors here. A t
 formatted text follow the same rule, and that `[>1e-310]` invalidates a TEXT format, which the
 format-condition lexer now matches. Eval: probes known
 failures 236 -> 204 (35 fixed, 3 new-coverage cells baselined: text-number-tiny-zero B15:D15, the
-305-zero text, filed as T-1097). Follow-ups: T-1097 (long zero text), T-1098 (cell entry and
+305-zero text, filed as T-1097). Follow-ups: T-1097 (long zero text), T-1100 (cell entry and
 conditional formats).

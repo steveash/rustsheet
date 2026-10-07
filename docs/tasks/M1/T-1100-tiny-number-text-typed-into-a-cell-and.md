@@ -1,5 +1,5 @@
 ---
-id: T-1098
+id: T-1100
 title: "Tiny number text typed into a cell and in conditional-format rule values"
 milestone: M1
 lane: engine
@@ -25,7 +25,7 @@ literal-number-tiny). Two paths have no evidence: cell entry, `set_user_input` v
 xlsx probe cannot show what typing does, so this needs a typed-input oracle path (Graph range
 PATCH) or desktop Excel. And conditional formats (`parse_finite_number` in
 conditional_formatting.rs) still read `1e-400` as 0, as does `value_needs_quoting` (utils.rs),
-which now quotes the text "1e-310" though no reader takes it for a number (TODO(T-1098) in
+which now quotes the text "1e-310" though no reader takes it for a number (TODO(T-1100) in
 crates/rustsheet-engine/src/test/test_nan_inf.rs).
 
 ## Acceptance criteria

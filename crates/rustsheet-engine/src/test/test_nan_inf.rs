@@ -58,7 +58,7 @@ fn reading_numbers() {
         ("9.99999999999999e307", 9.99999999999999e307),
         ("0", 0.0),
         // Too small to hold is zero, which is a number.
-        // TODO(T-1098): `"1e-400"+0` is #VALUE! (probes/text-number-words A9); conditional formats unprobed
+        // TODO(T-1100): `"1e-400"+0` is #VALUE! (probes/text-number-words A9); conditional formats unprobed
         ("1e-400", 0.0),
     ] {
         assert_eq!(parse_finite_number(text), Some(number), "{text}");

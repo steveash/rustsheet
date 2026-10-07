@@ -358,7 +358,7 @@ in crates/rustsheet-engine/src/number_format.rs; the tiny side (T-0154) in `pars
 (`cast_number`, VALUE, the lexer, criteria operands, AVERAGE/AVERAGEA text arguments, formatted
 number text, NUMBERVALUE) and, for validity only, the TEXT format-condition lexer. Cell entry
 (`set_user_input`) shares `parse_excel_number` unprobed, and conditional formats still read tiny
-text unchanged (T-1098).
+text unchanged (T-1100).
 Tasks: T-0920, T-0140, T-0154, T-0174, T-1097
 
 ## MOD is an exact remainder
