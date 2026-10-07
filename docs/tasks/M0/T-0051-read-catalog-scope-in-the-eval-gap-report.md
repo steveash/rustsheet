@@ -3,7 +3,7 @@ id: T-0051
 title: "Read catalog scope in the eval gap report and evidence coverage"
 milestone: M0
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
