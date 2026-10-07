@@ -95,6 +95,9 @@ C	probes/rich-errors-field.case.json	5
 C	probes/rich-errors-image.case.json	15
 C	probes/rich-errors-stockhistory.case.json	5
 C	probes/round-family.case.json	53
+C	probes/round-huge-digits-negative.case.json	91
+C	probes/round-huge-digits-wrap.case.json	265
+C	probes/round-huge-digits.case.json	216
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-ref-error-forms.case.json	10
@@ -264,6 +267,9 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!A1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!B1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
+F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
+F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
+F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/subnormal-flush-edges.case.json	Calc!A16
 F	probes/subnormal-function-results.case.json	Calc!A4
 F	probes/subnormal-function-results.case.json	Calc!A6
