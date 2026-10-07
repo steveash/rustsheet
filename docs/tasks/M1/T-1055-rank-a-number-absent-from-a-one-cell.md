@@ -3,7 +3,7 @@ id: T-1055
 title: "RANK: a number absent from a one-cell reference gives #N/A, not #NUM!"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
