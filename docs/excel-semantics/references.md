@@ -513,5 +513,5 @@ as the spill operator and print `=D1#` and `=INDEX(D1:D2,1)#`. An error as the l
 is the result: `=(@(A1 B1)):C3` is `#NULL!`, not `#VALUE!`.
 Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30 (excel-graph).
 Status: VERIFIED for these cells; UNVERIFIED: an error in the right operand of `:` (the engine
-propagates it, as for unions and intersections), and `=(@A1:B2)#`.
-Tasks: T-1109
+keeps `#VALUE!`), `=(@A1:B2)#`, `=ANCHORARRAY(1)` and the parentheses of `@((A1 B1))`, `@(A1:B1)`.
+Tasks: T-1109, T-1111

@@ -89,7 +89,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
         Node::SpillRangeOperator { child } => {
-            add_implicit_intersection(child, add);
+            // The anchor is a reference, never intersected: `INDEX(D1:D2,1)#`, not
+            // `(@INDEX(D1:D2,1))#` (T-1109; probes/at-operand-formulatext K1).
+            add_implicit_intersection(child, false);
         }
         Node::RangeKind {
             row1,

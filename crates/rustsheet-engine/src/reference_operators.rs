@@ -127,8 +127,8 @@ impl Model {
             }
             // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
             // `#NULL!` (probes/at-operand-formulatext H12, T-1109). The right operand's error
-            // is UNVERIFIED (references.md), taken from the union and intersection rule.
-            (error @ CalcResult::Error { .. }, _) | (_, error @ CalcResult::Error { .. }) => error,
+            // stays `#VALUE!` until probed (references.md).
+            (error @ CalcResult::Error { .. }, _) => error,
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }
     }
