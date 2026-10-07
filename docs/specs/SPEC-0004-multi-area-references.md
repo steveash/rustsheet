@@ -82,6 +82,7 @@ agrees; a different oracle answer changes the implementation task, not this desi
 | 12 | `=SUM((Data!A1,Other!A1))`, `=AREAS((Data!A1,Other!A1))` | `#VALUE!` (cross-sheet) |
 | 13 | `=SUM(Sheet1:Sheet2!A1,(A1,B2))` and `=SUM((Sheet1:Sheet2!A1,B2))` (3-D operand in a union) | 3-D arg works, union with 3-D `#VALUE!` |
 | 14 | `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `=SUM(Print_Area)`, `=AREAS(Print_Area)` | 6, 2 |
+| 14b | a name `xs` = `Data!$A$1,Other!$A$1` (cross-sheet body): `=SUM(xs)`, `=xs`, `=ISREF(xs)` | the error row 12 records |
 | 15 | `=ISERROR((A1,B2))`, `=IFERROR((A1,B2),"x")`, `=ISNUMBER((A1,B2))` | TRUE, "x", FALSE |
 | 16 | `=@(A1,B2)` and the FORMULATEXT of a union in a pre-dynamic-array workbook | `#VALUE!`, no `@` |
 | 17 | `=SUBTOTAL(9,(A1,B2))`, `=SUBTOTAL(109,(A1,B2))` | 6, 6 |
@@ -199,13 +200,16 @@ column 65,536 times (directive 5). So:
   per-range walkers. It is the only way an `Areas` is walked. It looks up each sheet's used area once
   per walk, not once per area: `clip_to_used_area` calls `Worksheet::dimension()`, which scans the
   sheet (T-0049 tracks making that O(1)).
-- Before walking, it sums the clipped sizes of all areas, which is arithmetic only. More than
+- Before walking, it sums the clipped sizes of all areas, which is arithmetic only. The sum is
+  computed in `u64` with saturating arithmetic and stops as soon as it passes `MAX_AREA_CELLS`,
+  because one whole-sheet area alone is about 1.7e10 cells. The bound is per argument on purpose:
+  `SUM(u1,u2,…)` scales with its argument count exactly as plain range arguments already do. More than
   `MAX_AREA_CELLS` = 2^24 (16,777,216) cells in one `Areas` argument gives `#VALUE!`. That is 16
   full used columns of 1,048,576 rows, far above any real Print_Area. Excel's own limit, if any,
   is not known. This is recorded as a DEVIATION under references.md "Union area cap"
   (decision 0014) by T-1062.
-- `seen_ranges` (evaluation.rs) gets one entry per walked area, so it is bounded by the same
-  `MAX_AREAS`.
+- `seen_ranges` (evaluation.rs) gets at most two entries per walked area (`clip_to_used_area`),
+  so it is bounded by 2 × `MAX_AREAS` per argument.
 
 ### Function contract: opt-in
 A function accepts multi-area references in an argument only by calling `evaluate_reference_arg`
@@ -247,7 +251,7 @@ unchanged.
   general-formula body, evaluated per use, and reaches `Areas` through `evaluate_reference_arg`.
   Names are not resolved recursively here: a body naming another name is T-0158's bounded path.
 - A body that fails to parse, holds a cross-sheet or 3-D operand (`Areas::new` refuses it; probe
-  rows 12, 13), or has more than `MAX_AREAS` areas becomes `InvalidDefinedNameFormula`. That is the
+  rows 12, 13, 14b; T-1065 matches the error Excel gives there), or has more than `MAX_AREAS` areas becomes `InvalidDefinedNameFormula`. That is the
   name's error value, never a load failure, as for any bad body today. The total areas over all
   names of a workbook are capped at `MAX_AREAS`. Past it, further multi-area names are refused the
   same way, so memory stays bounded at 65,536 × 24 bytes per workbook. Both limits are added to the
