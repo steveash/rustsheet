@@ -3,7 +3,7 @@ id: T-1003
 title: "Probe IF/INDEX reference arguments in MAXA, MINA, AVERAGEA, PRODUCT, LARGE, RANK"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ Follow-up of T-0196, which routed those functions through `evaluate_aggregate_ar
 
 ## Out of scope
 - Engine changes (file them separately).
+
+## Outcome
+Probe `probes/if-index-ref-args-aggregates` (54 cells, excel-graph): IF and INDEX arguments behave exactly like the direct reference in all six functions, so T-0196's routing is right; references.md is VERIFIED. 48/54 cells pass; the 6 RANK mismatches (`#N/A` expected, `#NUM!` actual, direct references included) are baselined and filed as T-1055. No engine change.
