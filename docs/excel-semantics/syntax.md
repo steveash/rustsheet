@@ -61,7 +61,7 @@ may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too
 Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
 characters), so no formula within the published limit is refused for its chains. Whether Excel
 accepts longer chains on load (and so whether RustSheet refuses one Excel accepts) is not probed
-(follow-up T-1084). Probe `operator-chain-limit`
+(follow-up T-1091). Probe `operator-chain-limit`
 (T-1060, excel-graph): `=1+1+...` of 8,191, 8,192 and 8,193 formula characters (4,095 to 4,096
 terms; `&` chains 4,093 to 4,094; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
 so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
