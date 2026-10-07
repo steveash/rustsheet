@@ -11,8 +11,6 @@ use crate::{
 use super::r#let::assign_variable_ids;
 
 impl Model {
-    /// Evaluates the body of a named lambda with the given call-site argument nodes.
-    /// Optional parameters not covered by call_args receive EmptyArg.
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
     /// reference is `#REF!`, even when its cell holds a LAMBDA (`(A1)(A2)`, `(C1)(2)`;
     /// docs/excel-semantics/references.md "Calling a parenthesized operand", T-0149); anything
@@ -33,6 +31,8 @@ impl Model {
         self.call_lambda(callee, call_args, cell)
     }
 
+    /// Evaluates the body of a named lambda with the given call-site argument nodes.
+    /// Optional parameters not covered by call_args receive EmptyArg.
     pub(crate) fn call_lambda(
         &mut self,
         lambda_result: CalcResult,

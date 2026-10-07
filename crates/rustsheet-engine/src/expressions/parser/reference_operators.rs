@@ -310,7 +310,8 @@ pub(super) fn is_reference_operand(node: &Node) -> bool {
 }
 
 /// Whether `token` can start the right operand of an intersection: a reference, a name or
-/// call, a parenthesis, `@` (`=A1 @A1` is 1, probes/intersection-operands H10), or the `#REF!` Excel writes in place of a deleted reference.
+/// call, a parenthesis, `@` (`=A1 @A1` is 1, probes/intersection-operands H10), or the
+/// `#REF!` Excel writes in place of a deleted reference.
 fn starts_reference(token: &TokenType) -> bool {
     matches!(
         token,
