@@ -149,8 +149,8 @@ impl Model {
             }
         }
         // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit
-        // C8). Later arguments are still evaluated so an error in one wins; whether Excel does the
-        // same is unprobed (text.md).
+        // C8). Later arguments are still evaluated so an error argument wins (C18);
+        // an error in a later range cell past the limit is unprobed for CONCAT (T-0284).
         if result.units > MAX_TEXT_UNITS {
             return text_limit_error(cell);
         }
