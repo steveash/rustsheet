@@ -3,7 +3,7 @@ id: T-1061
 title: "Probe multi-area references reaching functions (SPEC-0004 probe list)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
