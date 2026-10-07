@@ -3,7 +3,7 @@ id: T-1032
 title: "Probe GEOMEAN of mixed-magnitude values (1E+100,9E+307; 1E-100,1E-300)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
