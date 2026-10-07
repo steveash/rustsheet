@@ -1,0 +1,46 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "TEXTJOIN(ignore_empty FALSE), XIRR and XNPV over whole columns/rows and over ranges with empty cells, on a small sheet (T-1114).",
+ "tags": [
+  "M1",
+  "probe",
+  "financial",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": -1000,
+    "A2": 1100,
+    "B1": 45000,
+    "B2": 45365,
+    "D1": "a",
+    "D3": "c",
+    "H10": "x",
+    "J10": "y",
+    "A12": -1000,
+    "B12": 1100,
+    "A13": 45000,
+    "B13": 45365,
+    "F1": "=TEXTJOIN(\",\",FALSE,D:D)",
+    "F2": "=TEXTJOIN(\",\",TRUE,D:D)",
+    "F3": "=XIRR(A:A,B:B)",
+    "F4": "=XNPV(0.1,A:A,B:B)",
+    "F5": "=TEXTJOIN(\",\",FALSE,D1:D5)",
+    "F6": "=XIRR(A1:A3,B1:B3)",
+    "F7": "=XNPV(0.1,A1:A3,B1:B3)",
+    "F8": "=TEXTJOIN(\",\",FALSE,10:10)",
+    "F9": "=XIRR(12:12,13:13)",
+    "E1": "=XNPV(0.1,12:12,13:13)",
+    "E2": "=TEXTJOIN(\",\",FALSE,D1:D16384)",
+    "E3": "=LEN(TEXTJOIN(\",\",FALSE,D1:D16385))",
+    "E4": "=XIRR(A1:A2,B1:B2)",
+    "E5": "=XNPV(0.1,A1:A2,B1:B2)",
+    "E6": "=TEXTJOIN(\",\",FALSE,H10:XFD10)",
+    "E7": "=XIRR(A1:A1048576,B1:B1048576)"
+   }
+  }
+ ],
+ "expected": {}
+}
