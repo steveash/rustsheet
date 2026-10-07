@@ -186,6 +186,7 @@ C	probes/paren-call-intersection.case.json	1
 C	probes/paren-call-lambda-cell.case.json	2
 C	probes/paren-call-operands.case.json	10
 C	probes/paren-negative-text.case.json	5
+C	probes/paren-negative-variants.case.json	32
 C	probes/precision-and-rounding.case.json	18
 C	probes/rank-absent-number.case.json	15
 C	probes/resource-limits.case.json	14
@@ -414,6 +415,15 @@ F	probes/multiarea-subtotal.case.json	Sheet1!H1
 F	probes/multiarea-subtotal.case.json	Sheet1!H2
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
+F	probes/paren-negative-variants.case.json	Sheet1!B3
+F	probes/paren-negative-variants.case.json	Sheet1!B5
+F	probes/paren-negative-variants.case.json	Sheet1!B6
+F	probes/paren-negative-variants.case.json	Sheet1!C3
+F	probes/paren-negative-variants.case.json	Sheet1!C5
+F	probes/paren-negative-variants.case.json	Sheet1!C6
+F	probes/paren-negative-variants.case.json	Sheet1!E2
+F	probes/paren-negative-variants.case.json	Sheet1!E3
+F	probes/paren-negative-variants.case.json	Sheet1!E4
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
