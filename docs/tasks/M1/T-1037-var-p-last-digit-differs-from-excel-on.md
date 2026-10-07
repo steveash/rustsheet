@@ -3,7 +3,7 @@ id: T-1037
 title: "VAR.P last digit differs from Excel on small integer data"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
