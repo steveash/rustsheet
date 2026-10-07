@@ -31,6 +31,7 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
+In the 1900 date system TEXT of a negative under any format containing an elapsed token is #VALUE! instead (dates.md, probes/text-negative-serial-elapsed-mixed, T-1079/T-1105); the minus above is the 1904-workbook behavior.
 Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
 workbook agree).
 Status: VERIFIED

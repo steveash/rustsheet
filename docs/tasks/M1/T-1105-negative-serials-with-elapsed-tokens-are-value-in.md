@@ -23,3 +23,5 @@ probes/text-negative-serial-elapsed-mixed A1, A3, A5, A6 expect #VALUE! (dates.m
 
 ## Out of scope
 -
+
+Note (T-1079 review): poi A40-A47 only evidence elapsed/time formats in 1904, never `d`/`mmm`/`yyyy` tokens; probe a 1904 mixed-token format before generalizing, and add `TEXT(-1E-10,"[h]:mm")` and `TEXT(-0,"[h]:mm")` to the 1900 probes.
