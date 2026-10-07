@@ -54,8 +54,8 @@ Behavior shared by all four:
   through `&`, comparisons, POWER and the element-wise functions". No new precedence rule is needed.
 - **None of them is `#N/A`.** For `#GETTING_DATA`: `ISNA` is FALSE, `ISERR` TRUE, `ISERROR` TRUE,
   `IFNA` passes it through, `IFERROR` catches it, and `TYPE` is 16 (error-literals-new A3, A4, A12,
-  A15, A5, A16). For the three rich kinds, ISERR, ISNA and TYPE are inferred from "not `#N/A`" and
-  **need evidence** (probe task R1 below).
+  A15, A5, A16). For the three rich kinds, ISERR is TRUE, ISNA FALSE and TYPE 16 too, and
+  `IFNA` passes them through (information.md, probes/rich-errors-args A40:B68, T-1012).
 - **VALUETOTEXT and ARRAYTOTEXT** give the literal text (`"#GETTING_DATA"`, `"#BLOCKED!"`, …;
   error-literals-new A6, rich-errors-* E1/D1).
 - **Stored constants (T-0999, syntax.md).** Excel for the web **rejects** a workbook that stores
@@ -66,8 +66,7 @@ Behavior shared by all four:
   `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!`) make Excel for the web reject the whole workbook. They are
   not formula grammar.
 - **Unknown, need evidence:**
-  - what typing `#BLOCKED!` as cell input gives;
-  - whether a COUNTIF criterion `"#BLOCKED!"` matches the error (R1).
+  - what typing `#BLOCKED!` as cell input gives (T-1016).
 
 The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 - **IMAGE** of an unreachable URL is `#BLOCKED!` (subType 12). It fetches the URL otherwise.
@@ -168,8 +167,8 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
   equality, and that a `=#GETTING_DATA` cell reads back as `XlError("#GETTING_DATA")`.
 
 ### Functions with no I/O (directive 5)
-All three keep their Excel arity, and the result is a scalar error, never a spill. Arguments are
-evaluated first. An argument error wins for IMAGE and STOCKHISTORY and for FIELDVALUE's `field_name`, but not for
+All three keep their Excel arity, and the result is a scalar error, never a spill, except FIELDVALUE with an
+array first argument (below). Arguments are evaluated first. An argument error wins for IMAGE and STOCKHISTORY and for FIELDVALUE's `field_name`, but not for
 FIELDVALUE's first argument (`FIELDVALUE(1/0,"Price")` is `#FIELD!`); an IMAGE source that is empty or a number is `#VALUE!`; an
 array first argument to FIELDVALUE gives an array result (information.md, T-1012). Their behavior:
 - **IMAGE(source, [alt_text], [sizing], [height], [width])** → `#BLOCKED!`.
@@ -185,7 +184,7 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
     **DEVIATION (decision 0014)**, recorded in the same way.
   - When Excel itself returns `#CONNECT!` rather than `#BLOCKED!` is not known beyond that one
     cell. `#CONNECT!` is chosen because it is the only evidenced result.
-- **FIELDVALUE(value, field_name)** → `#FIELD!`.
+- **FIELDVALUE(value, field_name)** → `#FIELD!`; an array `value` gives an array of `#FIELD!` (T-1012).
   - RustSheet has no linked data types (decision 0027), so every value is a plain value, and
     Excel gives `#FIELD!` for those (rich-errors-field A1). This is **not** a deviation.
 - **External references** with no cached data → `#BLOCKED!`. T-0124 implements this on top of
@@ -221,7 +220,8 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
 - Eval: `probes/error-literals-new` (18 cells) and `error-literals-new2` (15) pass, and the 13
   rich-errors-* known failures pass. Everything is recorded with `make eval-baseline`, with no
   regressions.
-- Probe R1 adds the evidence marked "needs evidence" above, before F1 implements the functions.
+- Probe R1 (T-1012, done) added the evidence once marked "needs evidence": see information.md and
+  probes/rich-errors-args. F1 implements the functions from it.
 
 ## Rollout
 | # | Task | Lane | Size | Tier | Depends on |

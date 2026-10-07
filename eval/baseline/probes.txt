@@ -79,7 +79,7 @@ C	probes/offset-negative-height-width.case.json	80
 C	probes/paren-negative-text.case.json	5
 C	probes/precision-and-rounding.case.json	18
 C	probes/resource-limits.case.json	14
-C	probes/rich-errors-args.case.json	47
+C	probes/rich-errors-args.case.json	48
 C	probes/rich-errors-calc.case.json	10
 C	probes/rich-errors-field.case.json	5
 C	probes/rich-errors-image.case.json	15
@@ -234,6 +234,7 @@ F	probes/rich-errors-args.case.json	Sheet1!A28
 F	probes/rich-errors-args.case.json	Sheet1!A40
 F	probes/rich-errors-args.case.json	Sheet1!A50
 F	probes/rich-errors-args.case.json	Sheet1!A60
+F	probes/rich-errors-args.case.json	Sheet1!B28
 F	probes/rich-errors-args.case.json	Sheet1!B43
 F	probes/rich-errors-args.case.json	Sheet1!B44
 F	probes/rich-errors-args.case.json	Sheet1!B45
