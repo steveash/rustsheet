@@ -128,6 +128,7 @@ mod test_fn_isref;
 mod test_fn_lambda;
 mod test_fn_let;
 mod test_fn_map_reduce;
+mod test_fn_max_min;
 mod test_fn_mmult;
 mod test_fn_oddfprice;
 mod test_fn_round;

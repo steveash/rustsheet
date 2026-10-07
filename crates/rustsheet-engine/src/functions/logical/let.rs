@@ -149,7 +149,8 @@ impl Model {
             // Eagerly evaluate the binding value and cache it.
             // CalcResult::Range stores only bounds (no cell data), so range bindings are
             // effectively lazy — values are only read when a consuming function iterates the range.
-            let val = self.evaluate_node_in_context(&cloned[2 * i + 1], cell);
+            // A reference stays a reference, a single cell too (upstream MIN_MAX_extras.xlsx A16).
+            let val = self.evaluate_node_with_reference(&cloned[2 * i + 1], cell);
             self.variable_stack.insert(raw_id, val);
         }
 

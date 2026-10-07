@@ -44,17 +44,6 @@ fn sort_key_cmp(
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
-    match result {
-        CalcResult::Number(n) => ArrayNode::Number(n),
-        CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-        CalcResult::String(s) => ArrayNode::String(s),
-        CalcResult::Error { error, .. } => ArrayNode::Error(error),
-        CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
-        _ => ArrayNode::Error(Error::VALUE),
-    }
-}
-
 fn array_node_is_truthy(node: &ArrayNode) -> bool {
     match node {
         ArrayNode::Boolean(b) => *b,
@@ -619,7 +608,10 @@ impl Model {
                     }
                     // An array if_empty spills as is (Excel: probes/filter-if-empty-array).
                     CalcResult::Array(a) => CalcResult::Array(a),
-                    v => CalcResult::Array(vec![vec![calc_result_to_array_node(v)]]),
+                    // A scalar stays a scalar, not a 1x1 array: `MAX(FILTER(.., .., ""))` with no
+                    // match is #VALUE! because MAX gets the text "" as a value (upstream
+                    // MAX_MIN.xlsx H39, H40, H43).
+                    v => v,
                 }
             } else {
                 CalcResult::new_error(Error::CALC, cell, "No data returned by FILTER".to_string())

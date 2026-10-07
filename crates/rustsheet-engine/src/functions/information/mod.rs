@@ -129,6 +129,12 @@ impl Model {
                     .get(&(*scope, name.to_lowercase())),
                 Some(ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_))
             )),
+            // A LET variable or LAMBDA parameter is a reference if it was bound to one
+            // (upstream MIN_MAX_extras.xlsx A14-A16).
+            Node::NamedVariableKind { .. } => CalcResult::Boolean(matches!(
+                self.evaluate_node_with_reference(&args[0], cell),
+                CalcResult::Range { .. }
+            )),
             _ => CalcResult::Boolean(false),
         }
     }
