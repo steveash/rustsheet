@@ -387,36 +387,22 @@ impl Model {
         self.round_family(args, cell, RoundMode::Down)
     }
 
-    // (number, divisor)
+    // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
     pub(crate) fn fn_mod(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let divisor = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if divisor == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
-            };
-        }
-        // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
-        // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
-        if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Quotient too large".to_string(),
-            };
-        }
-        CalcResult::Number(crate::functions::util::excel_mod(value, divisor))
+        self.lift_number_pair(args, cell, |value, divisor| {
+            if divisor == 0.0 {
+                return Err(Error::DIV);
+            }
+            // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
+            // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
+            if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
+                return Err(Error::NUM);
+            }
+            Ok(crate::functions::util::excel_mod(value, divisor))
+        })
     }
 
     pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

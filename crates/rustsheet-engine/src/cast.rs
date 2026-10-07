@@ -1,4 +1,4 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::{
@@ -16,6 +16,16 @@ use crate::{
 pub(crate) enum NumberOrArray {
     Number(f64),
     Array(Vec<Vec<ArrayNode>>),
+}
+
+impl NumberOrArray {
+    /// Rows and columns; a number is 1x1.
+    fn dims(&self) -> (usize, usize) {
+        match self {
+            NumberOrArray::Number(_) => (1, 1),
+            NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, Vec::len)),
+        }
+    }
 }
 
 /// A scalar CalcResult or a 2-D array, used for element-wise comparison.
@@ -213,6 +223,76 @@ impl Model {
     ) -> Result<NumberOrArray, CalcResult> {
         let value = self.evaluate_node_in_context(node, cell);
         self.number_or_array(value, cell)
+    }
+
+    /// Applies `op` to two number arguments, element-wise when either is an array or range.
+    /// Arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions
+    /// past a shorter array are `#N/A`) and an element that is an error stays one. An argument
+    /// that is an error is the result (the leftmost one), unless the other is an array: then it
+    /// is broadcast and every element is that error (as for DATE).
+    pub(crate) fn lift_number_pair(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        op: impl Fn(f64, f64) -> Result<f64, Error>,
+    ) -> CalcResult {
+        let first = self.get_number_or_array(&args[0], cell);
+        let second = self.get_number_or_array(&args[1], cell);
+        let any_array = [&first, &second]
+            .iter()
+            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
+        let broadcast_error = |na: Result<NumberOrArray, CalcResult>| match na {
+            Err(CalcResult::Error { error, .. }) if any_array => {
+                Ok(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+            }
+            other => other,
+        };
+        let (first, second) = match (broadcast_error(first), broadcast_error(second)) {
+            (Ok(first), Ok(second)) => (first, second),
+            (Err(e), _) | (_, Err(e)) => return e,
+        };
+        if let (NumberOrArray::Number(a), NumberOrArray::Number(b)) = (&first, &second) {
+            return match op(*a, *b) {
+                Ok(n) => CalcResult::Number(n),
+                Err(e) => CalcResult::new_error(e, cell, "Invalid arguments".to_string()),
+            };
+        }
+        let rows = first.dims().0.max(second.dims().0);
+        let cols = first.dims().1.max(second.dims().1);
+        let result = (0..rows)
+            .map(|i| {
+                (0..cols)
+                    .map(|j| {
+                        let value = self
+                            .number_at(&first, i, j)
+                            .and_then(|a| self.number_at(&second, i, j).and_then(|b| op(a, b)));
+                        match value {
+                            Ok(n) => ArrayNode::Number(n),
+                            Err(e) => ArrayNode::Error(e),
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(result)
+    }
+
+    /// The number at (`i`, `j`) of `na`, a size-1 dimension repeating; text is cast like a scalar
+    /// argument, a position past a shorter array is `#N/A`.
+    fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
+        match na {
+            NumberOrArray::Number(f) => Ok(*f),
+            NumberOrArray::Array(a) => {
+                let (rows, cols) = na.dims();
+                let node = bcast_idx(rows, i)
+                    .and_then(|ri| a.get(ri))
+                    .and_then(|r| bcast_idx(cols, j).and_then(|cj| r.get(cj)));
+                match node {
+                    None => Err(Error::NA),
+                    Some(node) => self.array_node_to_number(node),
+                }
+            }
+        }
     }
 
     /// [`Model::get_number_or_array`] of an already evaluated `value`.
