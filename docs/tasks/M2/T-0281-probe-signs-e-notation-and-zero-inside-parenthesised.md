@@ -3,7 +3,7 @@ id: T-0281
 title: "Probe signs, e-notation and zero inside parenthesised number text"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
