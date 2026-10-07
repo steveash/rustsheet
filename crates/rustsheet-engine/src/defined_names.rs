@@ -68,17 +68,21 @@ impl Model {
     /// referring to themselves stay bounded in depth, time and stack.
     pub(crate) fn within_defined_name<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
         let here = stack_address();
-        let owner = Some((
-            self.evaluation.evaluations,
-            self.evaluation.stack.last().copied(),
-        ));
+        // Inside a cell the budget belongs to that cell's formula in this `evaluate()`; outside
+        // one (conditional formats, `evaluate_formula`) every outermost use starts afresh.
+        let owner = (self.evaluation.depth > 0).then(|| {
+            (
+                self.evaluation.evaluations,
+                self.evaluation.stack.last().copied(),
+            )
+        });
         // Inside a cell, measure from where its recursion started, so that names and cells
         // share one stack budget (evaluation.rs).
         let cell_base = (self.evaluation.depth > 0).then_some(self.evaluation.stack_base);
         let run = &mut self.defined_names_running;
         if run.depth == 0 {
             // One budget per cell formula, however many names it uses (`=x+x+x`).
-            if run.owner != owner {
+            if owner.is_none() || run.owner != owner {
                 run.owner = owner;
                 run.evaluations = 0;
             }

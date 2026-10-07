@@ -127,3 +127,18 @@ fn nested_self_reference_stays_on_the_stack() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#NAME?");
 }
+
+// Outside a cell every use gets its own budget: 12,000 uses after `evaluate()` all succeed.
+#[test]
+fn uses_outside_a_cell_do_not_share_a_budget() {
+    let mut model = new_empty_model();
+    model.define_name("thr", None, "=0.5").unwrap();
+    model.evaluate();
+    for _ in 0..12_000 {
+        assert_eq!(
+            model.evaluate_formula("=thr", 0),
+            Some(0.5),
+            "a use outside a cell ran out of budget"
+        );
+    }
+}
