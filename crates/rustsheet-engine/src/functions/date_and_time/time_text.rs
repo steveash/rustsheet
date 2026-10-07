@@ -6,7 +6,7 @@ use chrono::{DateTime, NaiveDateTime, NaiveTime, Timelike};
 
 use super::SECONDS_PER_DAY_F64;
 use crate::{
-    cast::MAX_NUMBER_TEXT_LEN,
+    cast::number_text_too_long,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
 };
@@ -194,7 +194,7 @@ fn at_most_one_out_of_range(hour: u32, minute: u32, second: f64) -> bool {
 /// clock text of more than 255 characters counted with those spaces
 /// (probes/clock-text-length-limit).
 fn parse_limited_clock_text(raw: &str, trimmed: &str) -> Option<f64> {
-    if raw.len() > MAX_NUMBER_TEXT_LEN {
+    if number_text_too_long(raw) {
         return None;
     }
     parse_clock_text(trimmed)
