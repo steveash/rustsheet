@@ -36,5 +36,10 @@ Excel's own `exp`/`log` on the root's arguments.
   pass with no regression, or a recorded "no reproducible model" finding that closes T-1099.
 - [ ] `make check` green; reviewers approve.
 
+- [ ] The probe also pins (a) the "about 0.38 ulp" agreement bound with cells whose root is 0.30 to
+  0.40 ulp from a halfway (the T-1099 probe chose only near-halfway sets), and (b) the engine's
+  unprobed remainder-over-1000 fallback (over 1001 values, e.g. 1100 x 1E+300 and one half-size
+  value).
+
 ## Out of scope
 - The in-range log-sum path of GEOMEAN.
