@@ -3,7 +3,7 @@ id: T-0272
 title: "Audit remaining not_implemented static_analysis entries (D*, lookups, IFS/SWITCH, aggregates) for runtime lifting"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0271 fixed the *B text functions and audited ~60 other `not_implemented` funct
 
 ## Out of scope
 -
+
+## Outcome
+Audited every remaining `not_implemented` function with range arguments in each of 5 positions (throwaway test, not committed). Only IFS/SWITCH (range value argument) hit the scalar-context assert: both now `Unknown` in static analysis, with a unit test and probe `ifs-switch-array-values` (oracle-filled; 12 new known-failure probe cells are the array-condition lifting, T-0276). XNPV with two arguments panics (index out of bounds): P0 T-0275. Eval delta: probes known failures 205 -> 217 (new coverage, no regressions).

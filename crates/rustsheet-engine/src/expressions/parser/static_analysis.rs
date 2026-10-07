@@ -1641,9 +1641,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::If => scalar_arguments(args),
         Function::Iferror => scalar_arguments(args),
         Function::Ifna => scalar_arguments(args),
-        // The chosen value argument is returned as is (it spills when it is a range or array),
-        // and which one is chosen is only known at run time (probes/ifs-switch-array-values).
-        Function::Ifs => StaticResult::Unknown,
+        Function::Ifs => StaticResult::Unknown, // chosen value spills: logic.md
         Function::Lambda => StaticResult::Unknown,
         Function::Let => StaticResult::Unknown,
         Function::Not => scalar_arguments(args),
