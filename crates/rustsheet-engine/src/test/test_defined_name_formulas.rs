@@ -75,6 +75,8 @@ fn branching_names_are_bounded_in_time() {
     model._set("A2", "=d0x");
     model._set("A3", "=d55x");
     model._set("A4", "=ISREF(twice)");
+    // One budget per cell, however many times its formula uses the name.
+    model._set("A5", &format!("=SUM({})", vec!["twice"; 200].join(",")));
     let start = std::time::Instant::now();
     model.evaluate();
     assert!(start.elapsed() < std::time::Duration::from_secs(10));
@@ -83,6 +85,7 @@ fn branching_names_are_bounded_in_time() {
     // 2^5 = 32 within the budget.
     assert_eq!(model._get_text("A3"), *"32");
     assert_eq!(model._get_text("A4"), *"FALSE");
+    assert_eq!(model._get_text("A5"), *"#NAME?");
 }
 
 // Every name in a chain nests its body: the depth and stack budgets stop the chain before the
@@ -111,4 +114,16 @@ fn deeply_nested_name_chains_stay_on_the_stack() {
         short_chain == "1" || short_chain == "#NAME?",
         "{short_chain}"
     );
+}
+
+// A self-referencing name with a nested body stops on the stack budget, not on a stack overflow
+// (reproduced as an overflow on a 2 MB thread before the budget was shared with the cells).
+#[test]
+fn nested_self_reference_stays_on_the_stack() {
+    let mut model = new_empty_model();
+    let body = format!("={}selfref{}", "ABS(".repeat(20), ")".repeat(20));
+    model.define_name("selfref", None, &body).unwrap();
+    model._set("A1", "=selfref");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NAME?");
 }

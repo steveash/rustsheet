@@ -44,7 +44,7 @@ pub(crate) enum ParsedDefinedName {
 /// a formula").
 const MAX_DEFINED_NAME_DEPTH: usize = 64;
 
-/// How many name bodies one outermost use of a name may evaluate in all. The depth limit alone
+/// How many name bodies one cell's formula may evaluate in all. The depth limit alone
 /// does not bound the work: `x` = `=x+x` doubles it at every level. Past this the use is
 /// `#NAME?` (same DEVIATION).
 const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
@@ -54,8 +54,10 @@ const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
 pub(crate) struct DefinedNameRun {
     /// Bodies evaluated inside one another.
     depth: usize,
-    /// Bodies evaluated since the outermost one started.
+    /// Bodies evaluated for `owner` so far.
     evaluations: usize,
+    /// The evaluation pass and the cell the count belongs to.
+    owner: Option<(u64, Option<CellReferenceIndex>)>,
     /// Where the stack was when the outermost one started.
     stack_base: usize,
 }
@@ -66,13 +68,22 @@ impl Model {
     /// referring to themselves stay bounded in depth, time and stack.
     pub(crate) fn within_defined_name<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
         let here = stack_address();
+        let owner = Some((
+            self.evaluation.evaluations,
+            self.evaluation.stack.last().copied(),
+        ));
+        // Inside a cell, measure from where its recursion started, so that names and cells
+        // share one stack budget (evaluation.rs).
+        let cell_base = (self.evaluation.depth > 0).then_some(self.evaluation.stack_base);
         let run = &mut self.defined_names_running;
         if run.depth == 0 {
-            run.evaluations = 0;
-            run.stack_base = here;
+            // One budget per cell formula, however many names it uses (`=x+x+x`).
+            if run.owner != owner {
+                run.owner = owner;
+                run.evaluations = 0;
+            }
+            run.stack_base = cell_base.unwrap_or(here);
         }
-        // The stack check keeps deeply nested bodies inside the stack the cell recursion is
-        // allowed (evaluation.rs), whatever the parser let each body nest.
         if run.depth >= MAX_DEFINED_NAME_DEPTH
             || run.evaluations >= MAX_DEFINED_NAME_EVALUATIONS
             || run.stack_base.abs_diff(here) >= self.evaluation.max_stack
