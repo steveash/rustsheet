@@ -182,10 +182,9 @@ Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
 future function names, LAMBDA definitions and calls, and `@` operands are accepted); `Parser::parse_implicit`
-(`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection in
-parentheses, `=A1 (@A1)`, and `=@A1:A3 A2:B2` as `=@(A1:A3 A2:B2)`. Excel's FORMULATEXT prints both as written,
-`=A1 @A1` and `=@A1:A3 A2:B2` (probes/intersection-at-formulatext H2, H4, oracle: excel-graph, 2026-10-07,
-T-1094), so the engine's printing is a mismatch (T-1100). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
+(`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection as Excel's FORMULATEXT does, `=A1 @A1` and
+`=@A1:A3 A2:B2` (probes/intersection-at-formulatext, T-1098), except that a left operand ending in `@` keeps its
+parentheses, `(A1 @A1) B1`, since the bare text would re-parse as `A1 @(A1 B1)` (engine choice; Excel's text for it is not probed). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1100
 
