@@ -208,6 +208,22 @@ fn long_intersection_chains_hit_the_depth_cap() {
 }
 
 #[test]
+fn long_at_operand_chains_hit_the_depth_cap() {
+    // `@` recurses into the intersection with no operand in between (T-0149).
+    let mut parser = parser();
+    let chain = |terms: usize| format!("A1{}", " @A1".repeat(terms));
+    let node = parser.parse(&chain(MAX_FORMULA_DEPTH / 8), &context());
+    assert!(is_intersection(&node), "{node:?}");
+    let node = parser.parse(&chain(MAX_FORMULA_DEPTH * 4), &context());
+    let Node::ParseErrorKind { message, .. } = node else {
+        panic!("expected the depth error, got {node:?}");
+    };
+    assert_eq!(message, TOO_DEEP_MESSAGE);
+    let node = parser.parse(&"@".repeat(MAX_FORMULA_DEPTH * 4), &context());
+    assert!(matches!(node, Node::ParseErrorKind { .. }), "{node:?}");
+}
+
+#[test]
 fn only_spaces_and_line_feeds_separate_operands() {
     let mut parser = parser();
     for separator in [" ", "  ", "\n", " \n ", "\n\n"] {

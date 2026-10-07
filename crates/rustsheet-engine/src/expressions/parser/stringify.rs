@@ -1,5 +1,5 @@
 mod bound_variables;
-use super::reference_operators::{intersection_operand, tight_operand, union_text};
+use super::reference_operators::{callee_operand, intersection_operand, tight_operand, union_text};
 use super::{
     super::utils::{name_needs_quoting, quote_name},
     for_each_chain_operand_mut, left_chain, value_operands, Node, Reference,
@@ -823,26 +823,21 @@ fn stringify(
             format!("{}({})", lambda_name, parts.join(arg_sep))
         }
         LambdaCallKind { lambda, args } => {
-            let arg_sep = argument_separator(locale);
+            let sub =
+                |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
             // When the callee is a plain named variable (unknown identifier used as a function),
             // use lowercase to distinguish from real function calls in R1C1 format and
             // to match the display behaviour of InvalidFunctionKind.
             let lambda_str = match lambda.as_ref() {
                 Node::NamedVariableKind { name, id: _ } => name.to_lowercase(),
-                other => stringify(
-                    other,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language,
-                ),
+                other => callee_operand(sub(other), other),
             };
-            let call_args: Vec<String> = args
-                .iter()
-                .map(|a| stringify(a, context, displace_data, export_to_excel, locale, language))
-                .collect();
-            format!("{}({})", lambda_str, call_args.join(arg_sep))
+            let call_args: Vec<String> = args.iter().map(sub).collect();
+            format!(
+                "{}({})",
+                lambda_str,
+                call_args.join(argument_separator(locale))
+            )
         }
         ImplicitIntersection {
             automatic: _,

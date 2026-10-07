@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Parenthesized operands written back to back, (A1)(A2): is it a call of the left operand (like LAMBDA(x,x)(1)) or an intersection (T-0149).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=(A1)(A1)",
+        "H2": "=(A1:A3)(A2:B2)",
+        "H3": "=(A1)(A2)",
+        "H4": "=(LAMBDA(x,x+1))(2)",
+        "H5": "=ISREF((A1)(A2))",
+        "H6": "=IFERROR((A1)(A2),\"e\")",
+        "H7": "=(A1:A3)(2)",
+        "H8": "=(A1) (A2)",
+        "H9": "=(A1)(A2,A3)",
+        "H10": "=ERROR.TYPE((A1)(A1))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9",
+    "Sheet1!H10"
+  ]
+}
