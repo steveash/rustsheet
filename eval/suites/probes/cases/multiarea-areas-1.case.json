@@ -1,0 +1,55 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SPEC-0004 probe rows 6,20: AREAS((A1,B2)) (T-1061); one workbook per formula because Excel for the web refuses a workbook it cannot parse.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "H1": "=AREAS((A1,B2))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11,
+        "A2": 12
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 21,
+        "A2": 22
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 2
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 3
+      }
+    }
+  ],
+  "expected": {}
+}

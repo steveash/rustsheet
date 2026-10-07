@@ -3,7 +3,7 @@ id: T-1067
 title: "Nightly fuzz cannot build: cargo-fuzz defaults to the musl target"
 milestone: M1
 lane: harness
-status: todo
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -27,11 +27,23 @@ This is a CI change (protected path): it needs a decision-record note and explic
 reviewer-architecture and reviewer-security. Until fixed, directive-5 fuzzing gives no signal.
 
 ## Acceptance criteria
-- [ ] A `workflow_dispatch` run of the fuzz workflow on the PR head (or the first nightly after
+- [x] A `workflow_dispatch` run of the fuzz workflow on the PR head (or the first nightly after
       merge) gets past the build and fuzzes each target; any crash it finds is filed per
       docs/process/agent-workflow.md.
-- [ ] The local reproduction command in decision 0035 / fuzz docs works on a glibc host.
+- [x] The local reproduction command in decision 0035 / fuzz docs works on a glibc host.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing crashes the fuzzer finds once it runs (one P0 task each).
+
+## Outcome
+`fuzz.yml` passes the host triple (`rustc -vV`) to `cargo fuzz run --target`, so the prebuilt musl
+cargo-fuzz no longer picks `x86_64-unknown-linux-musl`. Decision 0035 gets a revision note and the
+same local command; the steward's reproduction command in docs/process/agent-workflow.md too.
+
+Verified: `workflow_dispatch` run 37586797587 on this branch built all three targets and fuzzed
+them. `formula_parse` and `xlsx_import` ran the full 20 minutes with no finding; `formula_eval`
+found a crash after ~12 minutes (`LENB(A21:A24)` returns an array into a scalar cell), filed as
+P0 T-0271 with the reproducer. Locally (glibc host, cargo-fuzz 0.13.2, nightly) all three targets
+build and fuzz with the same command. The nightly stays red until T-0271 lands: that is the job
+doing its work.
