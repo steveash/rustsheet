@@ -332,8 +332,12 @@ Zero mantissas are tested on where their last digit sits, the exponent less the 
 within ±308 the text is 0, beyond it #VALUE! (0: `0e308`, `-0e308`, `0e-307`, `0e-308`,
 `0.0e309`, `0.00e310`, `0.000e311`, `00.0e309`, `.0e309`; #VALUE!: `0e309`, `0e+309`, `-0e309`,
 `00e309`, `0.e309`, `0.0e310`, `0e-309`, `0e-310`, `0e-400`, `0.0e-308`, `0.0e-309`, `0.00e-307`).
-Unexplained: `"0."` followed by 305 or 320 zeros (no exponent; LEN 307 and 322) is #VALUE!,
-though the rule above would read it as 0; a length limit on number text is a guess (T-1097).
+Number text longer than 255 characters is #VALUE! whatever it holds (T-1097, probes/text-number-long-zero, excel-graph
+2026-10-07, 78 text cells, `0+A` and `VALUE` agree, LEN confirms the text arrived): at LEN 255 and below
+`0.`+zeros, `1.`+zeros, leading-zero integers, all-zero integers, `1` plus trailing spaces and a tiny nonzero
+fraction (`0.`, zeros, `1`, which keeps its value, 1E-253 at LEN 255) read as numbers (0, 1, 1, 0, 1, 1E-253), and at LEN 256, 257, 260,
+300, 306, 307, 308 and 320 all six forms are #VALUE!. This explains the 305- and 320-zero cells above (LEN 307 and 322).
+The engine reads long text as a number today (probes/text-number-long-zero fails 138 of 312 cells); TODO(T-1101).
 Formula literals follow the same rule: `=1E-309`, `=-1E-309`, `=2E-308`, `=0E308`, `=0.0E309`,
 `=0E-308` evaluate to 0 and `=2.2250738585073E-308` keeps its value (probes/literal-number-tiny),
 while Excel refuses to open a workbook holding `=1E-310`, `=-1E-310`, `=5E-324`, `=0E309` or

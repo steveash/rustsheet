@@ -3,7 +3,7 @@ id: T-1097
 title: "Probe why long zero number text (0. then 305 zeros) is #VALUE!"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ crates/rustsheet-engine/src/number_format.rs, which reads both strings as 0 toda
 
 ## Out of scope
 -
+
+## Outcome
+Probed (probes/text-number-long-zero, excel-graph, 78 text cells): number text longer than 255 characters is `#VALUE!`, 255 or fewer reads normally, for zero and nonzero forms alike. Recorded in numbers.md; engine follow-up T-1101. Eval: the new probe fails 138 of 312 cells today (engine reads long text as a number); the failures are not in the baseline yet.
