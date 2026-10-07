@@ -125,8 +125,8 @@ fn unary_minus_runs_nest_up_to_the_limit() {
 #[test]
 fn unary_minus_run_at_the_limit_evaluates() {
     on_small_stack(|| {
-        // Each minus is an evaluator frame too (`apply_number_unary`): the
-        // longest run that parses must also evaluate and print on a small stack.
+        // The longest run that parses must also evaluate (one iterative pass,
+        // `apply_unary_chain`) and print on a small stack.
         let mut model = crate::test::util::new_empty_model();
         let minuses = "-".repeat(MAX_FORMULA_DEPTH - 3);
         model._set("A1", &format!("={minuses}TRUE"));
