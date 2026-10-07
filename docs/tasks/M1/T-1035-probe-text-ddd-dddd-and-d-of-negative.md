@@ -3,7 +3,7 @@ id: T-1035
 title: "Probe TEXT ddd/dddd and d of negative fractional serials (-0.5, -0.0001)"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0996 made `TEXT(-0.5,"dddd")` give "Saturday" (value as i64 truncates to seria
 
 ## Out of scope
 -
+
+## Outcome
+Oracle (excel-graph) gives #VALUE! for every negative serial under a date/time format, including fractions that truncate to 0 (the T-0996 behavior "Saturday"/"0" was wrong). Fixed in `formatter/format.rs`; probe `probes/text-ddd-negative-fraction` added with oracle sidecar; dates.md updated.

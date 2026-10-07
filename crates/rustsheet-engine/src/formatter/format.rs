@@ -210,6 +210,11 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
         }
         ParsePart::Date(p) => {
+            // Excel: any negative serial is #VALUE! under a date/time format, even a fraction that
+            // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035).
+            if value < 0.0 {
+                return invalid_date(value);
+            }
             let tokens = &p.tokens;
             let mut text = "".to_string();
             let time_fract = value.fract();
