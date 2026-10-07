@@ -328,11 +328,17 @@ fn starts_reference(token: &TokenType) -> bool {
 /// `text` (the printed `node`) as an operand of the intersection operator, parenthesized
 /// where printing it bare would parse back differently: an operator that binds looser
 /// (`A1 (B1+C1)`), a right operand that is itself an intersection (to keep the tree), and
-/// anything the parser does not take as a reference operand (`A1 (1)`), and `@`, which binds
-/// looser than the space (`A1 (@B1)`: a bare `@B1 C1` would be `@(B1 C1)`, T-0149).
+/// anything the parser does not take as a reference operand (`A1 (1)`). An `@` operand binds
+/// looser than the space, so it prints bare, as Excel's FORMULATEXT does (`A1 @A1`,
+/// probes/intersection-at-formulatext, T-1098), only as a right operand that nothing follows:
+/// the left operand `A1 @A1` of `(A1 @A1) B1` keeps its parentheses, since bare `A1 @A1 B1`
+/// is `A1 @(A1 B1)` (T-0149).
 pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     let bare = match node {
-        Node::OpIntersectKind { .. } => is_left,
+        Node::OpIntersectKind { right, .. } => {
+            is_left && !matches!(**right, Node::ImplicitIntersection { .. })
+        }
+        Node::ImplicitIntersection { .. } => !is_left,
         Node::ErrorKind(error) => *error == Error::REF,
         Node::OpUnionKind { .. }
         | Node::ReferenceKind { .. }

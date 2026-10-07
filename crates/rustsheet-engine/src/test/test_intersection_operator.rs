@@ -226,9 +226,9 @@ fn at_operand_binds_looser_than_the_space() {
     assert_eq!(model._get_text("H11"), "2");
     assert_eq!(model._get_text("H12"), "3");
     assert_eq!(model._get_text("H1"), "#VALUE!");
-    // Printed with parentheses: a bare `@` operand could absorb a following intersection.
-    assert_eq!(model._get_formula("H10"), "=A1 (@A1)");
-    assert_eq!(model._get_formula("H11"), "=@(A1:A3 A2:B2)");
+    // Printed as Excel's FORMULATEXT does (probes/intersection-at-formulatext, T-1098).
+    assert_eq!(model._get_formula("H10"), "=A1 @A1");
+    assert_eq!(model._get_formula("H11"), "=@A1:A3 A2:B2");
 }
 
 #[test]

@@ -859,7 +859,9 @@ fn stringify(
                     )
                 );
             }
-            format!("@{}", tight_operand(sub(child), child))
+            // The space binds tighter than `@`, so `@A1:A3 A2:B2` is `@(A1:A3 A2:B2)`; Excel's
+            // FORMULATEXT prints it without parentheses (T-1098).
+            format!("@{}", sub(child))
         }
     }
 }
