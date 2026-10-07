@@ -37,11 +37,13 @@ Goals:
 - A probe list for every Excel behaviour this needs that has no evidence yet.
 
 Non-goals:
-- Changing how a union parses or prints. The lexing rule (below) and FORMULATEXT behaviour are
-  settled and VERIFIED by T-0134, T-0187, T-0193 and T-1024; this spec only restates them.
+- Changing how a union parses or prints in a cell. FORMULATEXT behaviour is VERIFIED (T-0187,
+  T-0193, T-1024). The comma rule is an engine choice from T-0134 (probe row 19). This spec only
+  restates both, and adds the name-body entry point.
 - Spilling or displaying a multi-area value. A union as a cell result stays `#VALUE!` (VERIFIED).
-- New area-count limits. `MAX_AREAS` and `MAX_AREA_PAIRS` (references.md "Union area cap",
-  DEVIATION) bound every list this spec creates too.
+- Raising the area-count limits. `MAX_AREAS` and `MAX_AREA_PAIRS` (references.md "Union area
+  cap", DEVIATION) bound every list this spec creates too. The spec adds a work bound for walking
+  areas and a per-workbook bound for name bodies (see "Errors and limits").
 - The dependency graph (SPEC-0002, T-0401). It must give each area of a union its own range
   vertex, and that requirement is recorded here, but nothing in this rollout needs the graph.
 
@@ -84,137 +86,210 @@ agrees; a different oracle answer changes the implementation task, not this desi
 | 16 | `=@(A1,B2)` and the FORMULATEXT of a union in a pre-dynamic-array workbook | `#VALUE!`, no `@` |
 | 17 | `=SUBTOTAL(9,(A1,B2))`, `=SUBTOTAL(109,(A1,B2))` | 6, 6 |
 | 18 | `=CELL("address",(A1,B2))`, `=OFFSET((A1,B2),1,1)`, `=ROW((A1,B2))` | `#VALUE!` where Excel refuses |
+| 19 | `=A1,B2` as a cell formula | refused (syntax error) |
+| 20 | `=AREAS(1)`, `=AREAS("A1")`, `=AREAS(Data1:Data3!A1)` | to record (the engine says 1, 1, `#VALUE!`) |
 
 ## Design
 
 ### Lexing and printing (unchanged)
-- The comma is the union operator only *directly* inside parentheses: `Parser::parse_parenthesized`
-  sets `union_allowed`, and `parse_primary` clears it for every other operand, so `SUM(A1,B2)` is two
-  arguments and `SUM((A1,B2))` one. `=A1,B2` stays a syntax error in a cell (T-0134).
-- New: a **defined-name body** is parsed as if it sat directly inside parentheses, so
-  `Sheet1!$A$1,Sheet1!$B$2` is one union (probes/union-defined-name). This is a parser entry
-  point (`parse_name_body`, next to `parse_internal_formula`), not a lexer change. A name body
-  `SUM(A1,B2)` is still a call with two arguments.
+- The union is built only in `Parser::parse_parenthesized` (expressions/parser/reference_operators.rs):
+  after the first expression inside a parenthesis it loops on the argument separator, checks each
+  operand with `is_union_operand`, and builds `OpUnionKind`. A comma anywhere else, such as in a
+  function's argument list, is an argument separator. So `SUM(A1,B2)` is two arguments and
+  `SUM((A1,B2))` one. `=A1,B2` is a syntax error in a cell. That last part is an engine choice,
+  not probed (references.md "Union: parsing and evaluation"); probe row 19 checks it.
+- New: a **defined-name body** is read with the comma as a union at its top level, so
+  `Sheet1!$A$1,Sheet1!$B$2` is one union (VERIFIED, probes/union-defined-name). This is a parser
+  entry point (`parse_name_body`, next to `parse_internal_formula`). It extracts the separator loop
+  of `parse_parenthesized` into one function that both callers use, with no second copy and no flag.
+  It keeps the parser's depth cap. A name body `SUM(A1,B2)` is still a call with two arguments.
 - Comma-decimal locales: the union operator is the locale's argument separator (`;` in de-DE),
   as the engine prints it today (`argument_separator` in stringify.rs). xlsx always stores `,`, so
   this cannot be probed through a file. It stays the engine choice recorded in references.md.
-- Printing keeps every written parenthesis (`written`/`grouped` on `OpUnionKind`, T-0193,
-  T-1024). A name body round-trips without added parentheses: `Sheet1!$A$1,Sheet1!$B$2` is
-  exported as stored.
+- Printing keeps every written parenthesis (`written`/`grouped` on `OpUnionKind`; VERIFIED for
+  FORMULATEXT by probes/union-accepted and probes/union-operand-nested-parens, T-0193, T-1024). A
+  name body round-trips without added parentheses: `Sheet1!$A$1,Sheet1!$B$2` is exported as stored.
 
 ### Representation: `Areas`, outside `CalcResult`
 ```rust
 // reference_operators.rs
 /// The areas of a reference that has more than one, in formula order, duplicates kept.
-/// 2..=MAX_AREAS entries, each a single-sheet range with its corners in order.
-pub(crate) struct Areas(Box<[Range]>);
+/// 2..=MAX_AREAS entries, each a range on ONE sheet with its corners in order.
+/// Shared, so a LET binding or a defined name is never copied on read.
+#[derive(Clone)]
+pub(crate) struct Areas(Rc<[Range]>);
+
+impl Areas {
+    /// The only constructor: refuses fewer than 2 or more than MAX_AREAS areas, and any area
+    /// whose corners sit on two sheets (a 3-D reference), with the `#VALUE!` to give instead.
+    pub(crate) fn new(areas: Vec<Range>, cell: CellReferenceIndex) -> Result<Areas, CalcResult>;
+}
 
 /// What a reference-accepting argument evaluates to.
 pub(crate) enum RefArg {
     /// A union (or a name, LET variable, IF/CHOOSE branch or intersection that stands for one).
     Areas(Areas),
     /// Anything else, exactly what `evaluate_aggregate_arg` returns today (a `Range` for a
-    /// single area, a value, an array or an error).
+    /// single area or a 3-D reference, a value, an array or an error).
     Value(CalcResult),
 }
 ```
 `Areas` is **not** a `CalcResult` variant. That is the main decision of this spec:
-- `CalcResult` is matched in hundreds of places in the evaluator and functions (39 of them name
-  `CalcResult::Lambda` explicitly, a proxy for the exhaustive ones). A new variant would reach every
-  one, and every `_ =>` arm would treat a union as some non-error value. `ISERROR((A1,B2))` would turn FALSE and `IFERROR` would stop catching it,
-  the opposite of the VERIFIED value-context rule. Keeping `Areas` in its own type means a union
-  can reach only the code that asks for one, and the compiler enforces that.
+- `CalcResult` is matched in hundreds of places in the evaluator and functions, about 40 of them
+  naming `CalcResult::Lambda` explicitly (a proxy for the exhaustive ones). A new variant would
+  reach every one, and every `_ =>` arm would treat a union as some non-error value. The planned
+  `ISERROR((A1,B2))` TRUE and `IFERROR((A1,B2),"x")` "x" (probe row 15, following the VERIFIED
+  value-context rule) would silently break. Keeping `Areas` in its own type means a union reaches
+  only code that asks for one, and the compiler enforces that. If row 15 comes back otherwise,
+  this argument is revisited before T-1062.
 - `evaluate_node_in_context` (value context) keeps returning `#VALUE!` for a union, through
   `get_union`, unchanged. It never returns `Areas`, so no existing caller changes.
-- A single area stays `RefArg::Value(CalcResult::Range { .. })`, so existing single-area code
-  (and 3-D references, which are still a `Range` whose corners sit on two sheets) is untouched.
-  `RefArg::areas()` gives every caller a uniform `&[Range]` view (one area for a `Range`).
+- A single area stays `RefArg::Value(CalcResult::Range { .. })`, so existing single-area code is
+  untouched and allocates nothing: `RefArg::Value` passes straight through.
+- **3-D references are not areas.** A `Range` whose corners sit on two sheets stays
+  `RefArg::Value` and is never put into `Areas`. `Areas::new` refuses it, and so does
+  `union_areas` today, through `evaluate_intersection_operand`. For one, the aggregates keep their
+  3-D walk, while AREAS, INDEX and ISREF keep their VERIFIED `#VALUE!`/FALSE through
+  `evaluate_single_sheet_arg` (references.md "3-D references outside the aggregates",
+  probes/3d-ref-functions). `RefArg::single_sheet_areas()` gives `&[Range]`, a borrowed
+  one-element view for a single-sheet `Range` with no allocation, and `None` for a 3-D one.
 - Overlapping areas are kept twice, as written. Whether `SUM((A1:B2,B2))` counts B2 twice is
   probe row 1.
 
 ### The reference-context evaluator
-`Model::evaluate_reference_arg(node, cell) -> RefArg` (util.rs, next to and replacing the body of
-`evaluate_aggregate_arg`, which becomes `self.evaluate_reference_arg(node, cell)` collapsed to a
-`CalcResult`, with `Areas` giving `#VALUE!`, for callers not yet migrated):
-- `OpUnionKind`: `reference_areas` (exists), giving `Areas` (a union has at least two operands, so
-  at least two areas; an operand error is returned as `Value(error)`, first error wins as today).
-- `OpIntersectKind` with `is_multi_area`: `intersect_areas`, giving `Areas` when more than one area
-  is left and `Value(Range)` for one (probe row 11; today `#VALUE!`).
-- `DefinedNameKind` whose body is multi-area: the name's areas (step 5).
-- `NamedVariableKind` bound to `Areas`: those areas (step 4).
+`Model::evaluate_reference_arg(node, cell) -> RefArg` lives in util.rs. In the end state,
+`evaluate_aggregate_arg` is deleted: T-1062 migrates every caller, and a temporary wrapper
+(`Areas` collapsed to `#VALUE!`) may exist only within that PR. `union_is_reference` is likewise
+replaced by a call to the evaluator (T-1062). The cases:
+- `OpUnionKind`: `reference_areas` (exists), giving `Areas`. A union has at least two operands, so
+  at least two areas. An operand error is returned as `Value(error)`; the first error wins, as today.
+- `OpIntersectKind`: see "Intersection operands" below. More than one area left gives `Areas`, one
+  gives `Value(Range)` (probe row 11; today `#VALUE!`).
+- `DefinedNameKind` whose body is multi-area: the name's `Areas`, a cheap `Rc` clone (step 5).
+- `NamedVariableKind` bound to `Areas`: those areas, an `Rc` clone (step 4).
 - `IF`, `CHOOSE` and `INDEX` in reference form: the chosen branch is evaluated with
-  `evaluate_reference_arg` again (the existing `as_reference` flag on `if_impl`/`index_impl`
-  is the hook; CHOOSE gets the same flag). Recursion depth is bounded by the parser's depth cap,
-  as for `is_multi_area`.
-- Everything else: `Value(evaluate_aggregate_arg's current result)`.
+  `evaluate_reference_arg` again. The existing `as_reference` flag on `if_impl`/`index_impl`
+  is the hook, and CHOOSE gets the same flag. Recursion follows the formula tree, so the parser's
+  depth cap (`MAX_FORMULA_DEPTH`) bounds it (`IF(c,IF(c,…))`).
+- Everything else: `Value` of what `evaluate_aggregate_arg` returns today.
 
-`reference_areas`, `count_union_areas` and the `MAX_AREA_PAIRS` budget stay the only code that
-builds area lists. The new evaluator calls them; it does not walk unions itself (directive 3).
+`reference_areas`/`union_areas`/`intersect_areas` and the `MAX_AREA_PAIRS` budget stay the only
+code that builds area lists. The new evaluator calls them and does not walk unions itself
+(directive 3).
+
+### Intersection operands
+`mu A1` (VERIFIED 1), `LET(x,(A1,B2),x A1)` (row 9) and `IF(TRUE,(A1,B2)) A1` (row 10) need an
+intersection whose operand is a name, a variable or a function result standing for several areas.
+Today `is_multi_area` decides by syntax alone, and `evaluate_intersection_operand` yields one
+range. The change is in T-1064, with LET and IF/CHOOSE; T-1065 adds names as operands:
+- Intersection operands are evaluated through `evaluate_reference_arg`, and the code branches on
+  the result rather than on syntax. If both come back as `Value(Range)` on one sheet, the
+  allocation-free pair path is used, as today, so `name A1` and `Name1 Name2` allocate nothing.
+  Only an `Areas` operand builds a list. `is_multi_area` is deleted.
+- `get_intersection`/`intersect_areas` keep taking `&Node` and evaluate their operands
+  themselves. The `MAX_AREA_PAIRS` budget is threaded through `evaluate_reference_arg`, so one
+  top-level expression shares one budget. Re-intersecting a LET variable (`x x x …`) spends it and
+  does not restart it.
+
+### Work bound for walking areas (DEVIATION)
+The area cap bounds list length, not work. Nested cuts of `U = (A:A,A:A,A:A,A:A)` reach
+`MAX_AREAS` copies of `A:A` in about 180 characters, and an aggregate over them would walk the
+column 65,536 times (directive 5). So:
+- One walker, `Model::for_each_cell_in_areas` (util.rs), walks an `Areas` through the existing
+  per-range walkers. It is the only way an `Areas` is walked. It looks up each sheet's used area once
+  per walk, not once per area: `clip_to_used_area` calls `Worksheet::dimension()`, which scans the
+  sheet (T-0049 tracks making that O(1)).
+- Before walking, it sums the clipped sizes of all areas, which is arithmetic only. More than
+  `MAX_AREA_CELLS` = 2^24 (16,777,216) cells in one `Areas` argument gives `#VALUE!`. That is 16
+  full used columns of 1,048,576 rows, far above any real Print_Area. Excel's own limit, if any,
+  is not known. This is recorded as a DEVIATION under references.md "Union area cap"
+  (decision 0014) by T-1062.
+- `seen_ranges` (evaluation.rs) gets one entry per walked area, so it is bounded by the same
+  `MAX_AREAS`.
 
 ### Function contract: opt-in
 A function accepts multi-area references in an argument only by calling `evaluate_reference_arg`
 for it and handling `RefArg::Areas`. Every other argument position evaluates through the existing
 value or single-sheet paths (`evaluate_node_in_context`, `evaluate_single_sheet_arg`) and keeps
 getting `#VALUE!` for a union, with no code change. Concretely:
-- Aggregates that already go through `evaluate_aggregate_arg` (SUM, COUNT, COUNTA, AVERAGE, MIN,
-  MAX, PRODUCT, the STDEV/VAR families, …) switch to `evaluate_reference_arg` and
-  walk `Areas` area by area with the existing `for_each_*_in_range` walkers. The walkers already
-  clip whole rows and columns to the used area, so a union of `A:A,B:B` costs what the two
-  columns cost.
+- The aggregates on `evaluate_aggregate_arg` (SUM, COUNT, COUNTA, AVERAGE, MIN, MAX, PRODUCT, the
+  STDEV/VAR families, …) switch to `evaluate_reference_arg` and walk `Areas` with
+  `for_each_cell_in_areas`.
 - AGGREGATE's syntax-tree special case (`Node::OpUnionKind => self.reference_areas(..)`) is
-  replaced by the evaluator, so it also accepts names and `LET` variables.
-- AREAS: `RefArg::areas().len()`; a non-reference is `#VALUE!` as today.
-- INDEX: `area_num` selects `areas()[area_num - 1]`; out of range `#REF!`, below 1 `#VALUE!`
-  (probe row 7).
-- ISREF: `Areas` is TRUE; the existing `union_is_reference` becomes a call to the evaluator.
-- Functions whose Excel behaviour is unknown (probe rows 3-5, 12, 13, 17, 18) are migrated only
-  after T-1061 records their evidence. T-1061 files one task per group that Excel accepts.
+  replaced by the evaluator, so it also accepts names and `LET` variables. Its array form now
+  evaluates through `evaluate_node_with_reference`, and its `Array`, `Range`, number and error
+  arms keep their current behaviour.
+- AREAS: the number of areas of `single_sheet_areas()`. A 3-D reference stays `#VALUE!`
+  (VERIFIED). `AREAS` of a non-reference (`AREAS(1)`) is 1 in the engine today, with no evidence:
+  probe row 20.
+- INDEX: `area_num` is read as a number, then truncated. It is checked before any integer
+  conversion: below 1 is `#VALUE!` (as today), NaN or past the number of areas is `#REF!`, and only
+  then is it converted to an index (probe row 7).
+- ISREF: `Areas` is TRUE, and a 3-D reference keeps FALSE (VERIFIED).
+- Functions whose Excel behaviour is unknown (probe rows 3-5, 12, 13, 16-18, 20) are migrated only
+  after T-1061 records their evidence. T-1061 files one task per group that needs an engine change.
 
 ### LET, IF, CHOOSE
-`LET` evaluates each binding with `evaluate_reference_arg`, and the variable stack stores a
-`RefArg`-like binding (`Value(CalcResult)` or `Areas`). A value read of an `Areas` binding
-(`NamedVariableKind` in `evaluate_node_in_context`) is `#VALUE!`, and a reference read gives the
-areas. So `LET(x,(A1,B2),SUM(x))` is 6 and `LET(x,(A1,B2),x)` is `#VALUE!` (probe row 9). This is
-the only place outside the evaluator that sees `Areas`. The `HashMap` stays keyed by the same ids.
+`variable_stack` (shared by LET and LAMBDA) changes from `CalcResult` to a `Binding` enum:
+`Value(CalcResult)` or `Areas(Areas)`. `fn_let` evaluates each binding with
+`evaluate_reference_arg`. Every reader of `variable_stack` except `evaluate_reference_arg` sees
+`#VALUE!` for an `Areas` binding: the value read of `NamedVariableKind` and LAMBDA parameters.
+LAMBDA arguments stay value-evaluated, so they never bind `Areas`. So
+`LET(x,(A1,B2),SUM(x))` is 6 and `LET(x,(A1,B2),x)` is `#VALUE!` (probe row 9). The ids are
+unchanged.
 
 ### Defined names
-`ParsedDefinedName` gets `Areas(Box<[Range]>)` for a body that is a union of absolute references
-only (the Print_Area shape), resolved once at load time like `RangeReference`. A body with
-relative references or other operators inside the union goes through T-0158's general-formula
-body (it adds one, evaluated per use) and reaches `Areas` through `evaluate_reference_arg`. Names
-are not evaluated recursively by this design: a body naming another name is T-0158's (bounded)
-path. Value read of a multi-area name: `#VALUE!` (VERIFIED `=mu`). `ISREF(name)` is TRUE.
-Name bodies over `MAX_AREAS` areas are refused at load ("invalid defined name") rather than
-truncated (DEVIATION, the same "Union area cap" entry).
+- `parse_name_body` returns a `Node`. A body that is a union of absolute single-sheet references
+  only (the Print_Area shape) becomes `ParsedDefinedName::Areas(Areas)`, resolved once at load by
+  evaluating the node through `reference_areas`, the same builder, not a second walker. Reads are
+  `Rc` clones.
+- Any other multi-area body (relative references, intersections, functions) goes through T-0158's
+  general-formula body, evaluated per use, and reaches `Areas` through `evaluate_reference_arg`.
+  Names are not resolved recursively here: a body naming another name is T-0158's bounded path.
+- A body that fails to parse, holds a cross-sheet or 3-D operand (`Areas::new` refuses it; probe
+  rows 12, 13), or has more than `MAX_AREAS` areas becomes `InvalidDefinedNameFormula`. That is the
+  name's error value, never a load failure, as for any bad body today. The total areas over all
+  names of a workbook are capped at `MAX_AREAS`. Past it, further multi-area names are refused the
+  same way, so memory stays bounded at 65,536 × 24 bytes per workbook. Both limits are added to the
+  "Union area cap" DEVIATION by T-1065.
+- Scope: Print_Area is sheet-local. Lookup follows the existing local-then-global name scoping,
+  unchanged (probe row 14).
+- A value read of a multi-area name is `#VALUE!` (VERIFIED `=mu`), and `ISREF(name)` is TRUE.
 
 ### `add_implicit_intersection` and `OpUnionKind`
 It stays unwrapped. The pass inserts `@` only where a scalar is expected, and there a union is
-already `#VALUE!` through the value path. Wrapping would add an `@` to the printed formula of
-legacy workbooks that Excel may not show (probe row 16), for no change in value. If T-1061 shows
-Excel prints `@(A1,B2)` for a legacy union, a follow-up adds the wrap.
+already `#VALUE!` through the value path (for arithmetic VERIFIED; for scalar function arguments
+planned, probe rows 15, 18). Wrapping would add an `@` to the printed formula of legacy workbooks
+that Excel may not show (probe row 16), for no change in value. If T-1061 shows Excel prints
+`@(A1,B2)` for a legacy union, T-1061 files the follow-up that adds the wrap.
 
 ### What changes for existing formulas
 Formulas that pass a union to an opted-in function stop being `#VALUE!`: `SUM((A1,B2))` becomes 6,
 and `IFERROR(SUM((A1,B2)),0)` stops taking its fallback. A union in a value context, and in any
-function that has not opted in, is still `#VALUE!`, so `IFERROR((A1,B2),"x")` is still "x".
+function that has not opted in, is still `#VALUE!`, so `IFERROR((A1,B2),"x")` is still "x" (planned,
+probe row 15).
 
 ### Errors and limits
 - An operand error inside the union wins, in operand order, as today (`union_areas`).
 - Every `Areas` is built by `union_areas`/`intersect_areas`, so the `MAX_AREAS` and
-  `MAX_AREA_PAIRS` caps (DEVIATION, decision 0014) apply unchanged. `Areas` is a boxed slice
-  (16 bytes on the stack), so `RefArg` adds no size to `CalcResult`.
-- No panics: `area_num` is range-checked before indexing, `Areas` is never empty.
+  `MAX_AREA_PAIRS` caps apply unchanged. Walking is bounded by `MAX_AREA_CELLS`, and name bodies by
+  the per-workbook cap. All three are DEVIATIONs (decision 0014). Building `Areas` from the `Vec`
+  that `union_areas` returns copies it once into the `Rc`. After that, reads never copy.
+- No panics: `area_num` is range-checked as a float before conversion, and `Areas` is never empty.
 
 ### Dependency graph (SPEC-0002 requirement)
-When the graph lands, a union (written, named or LET-bound) registers one range vertex per area,
-deduplicated. A union reached through IF/CHOOSE is a dynamic dependency like any other
-reference-returning function.
+When the graph lands, a union (written, named or LET-bound) registers its areas deduplicated,
+bounded by `MAX_AREAS`. It may fall back to one bounding range per sheet, since coarser
+dependencies only cause extra recalculations, never missed ones. A union reached through IF/CHOOSE
+is a dynamic dependency like any other reference-returning function. T-0401 carries a pointer to
+this paragraph.
 
 ## Alternatives considered
 1. **A `CalcResult::Areas` variant.** It is the most direct, and LET and names would need no
-   special storage. Rejected: about 40 exhaustive matches change, and every `_ =>` arm silently
-   misreads a union as a non-error value (`ISERROR`, `IFERROR`, `TYPE`, `N`, …). Keeping the value
-   rule would then depend on auditing every function, not on the type.
+   special storage. Rejected: every exhaustive match changes, and every `_ =>` arm silently
+   misreads a union as a non-error value (`ISERROR`, `IFERROR`, `TYPE`, `N`, …; planned values,
+   probe row 15). Keeping the value rule would then depend on auditing every function, not on the
+   type.
 2. **Syntax-tree only (AGGREGATE's current approach).** Each function matches
    `Node::OpUnionKind` and calls `reference_areas`. Rejected: it cannot see a union behind a name,
    a LET variable or an IF/CHOOSE branch, and it duplicates the match in every function.
@@ -230,20 +305,25 @@ reference-returning function.
   Excel for the web refuses a whole workbook it cannot parse), recorded in references.md.
 - Each implementation task turns its probe rows green and adds unit tests in
   `test/` for: errors inside unions, `MAX_AREAS` at the limit and one past it through each new
-  entry point (name body, LET, INDEX area_num), and whole-column unions (`SUM((A:A,C:C))` costs
-  what two column scans cost, not more).
-- Metamorphic: `SUM((r1,r2,…))` = `SUM(r1,r2,…)` for any references (gen-m1 generator family,
-  added with T-1062), and `AREAS(u)` equals the number of top-level operands of a union of plain
-  references.
+  entry point (name body, LET, INDEX area_num), whole-column unions (`SUM((A:A,C:C))`), and the
+  worst case: `MAX_AREAS` whole-column areas over a populated sheet gives `#VALUE!` from the
+  `MAX_AREA_CELLS` check without walking (T-1062).
+- 3-D cells of probes/3d-ref-functions stay green at every step (T-1062, T-1063).
+- Metamorphic, only if probe row 1 confirms it: `SUM((r1,r2,…))` = `SUM(r1,r2,…)` for same-sheet,
+  non-3-D references (gen-m1 generator family, T-1062), and `AREAS(u)` equals the number of
+  top-level operands of a union of plain same-sheet references (T-1063).
 - Existing VERIFIED cells (gen-m1/c940d3cfb0d3b083, probes/union-*) must stay green at every step.
 
 ## Rollout
 1. **T-1061** (research, S, sonnet): probe the table above, record findings in references.md,
    file a task for each further function group Excel accepts.
-2. **T-1062** (engine, M, opus; after T-1061): `Areas`, `RefArg`, `evaluate_reference_arg`;
-   migrate the aggregates on `evaluate_aggregate_arg`, AGGREGATE and ISREF.
+2. **T-1062** (engine, M, opus; after T-1061): `Areas`, `RefArg`, `evaluate_reference_arg`,
+   `for_each_cell_in_areas` with `MAX_AREA_CELLS`; migrate the aggregates on
+   `evaluate_aggregate_arg`, AGGREGATE and ISREF. If the aggregate migration grows past M, split
+   it into a second task.
 3. **T-1063** (engine, S, sonnet; after T-1062): AREAS and INDEX `area_num`.
-4. **T-1064** (engine, M, opus; after T-1062): LET bindings, IF and CHOOSE in reference context.
-5. **T-1065** (engine, S, opus; after T-1062 and T-0158): multi-area defined-name bodies,
-   `_xlnm.Print_Area`, the name-body parser entry point.
+4. **T-1064** (engine, M, opus; after T-1062): intersection operands through the evaluator, the
+   `Binding` for `variable_stack`, LET, IF and CHOOSE in reference context.
+5. **T-1065** (engine, S, opus; after T-1064 and T-0158): multi-area defined-name bodies,
+   `_xlnm.Print_Area`, the name-body parser entry point, the per-workbook name-area cap.
 Until each step lands, the old path stays: a union reaching an unmigrated function is `#VALUE!`.
