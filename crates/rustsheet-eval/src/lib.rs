@@ -14,6 +14,7 @@ pub mod calibrate;
 pub mod case;
 pub mod catalog;
 pub mod cellref;
+pub mod deviations;
 pub mod engine;
 pub mod fetch;
 pub mod overrides;

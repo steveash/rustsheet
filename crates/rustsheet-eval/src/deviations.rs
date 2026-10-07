@@ -1,0 +1,280 @@
+//! Cells that differ from Excel by design (decision 0036): a suite's `deviations` file names a
+//! scored cell, the decision and the `Status: DEVIATION` semantics entry that accept the
+//! difference (decision 0014), and RustSheet's pinned by-design value. Such a cell is scored apart
+//! from bit-exact: the pinned value is a *deviation*, Excel's value a pass (the line is stale), and
+//! anything else a failure.
+//!
+//! File format, one cell per line, tab-separated; `#` starts a comment line:
+//!
+//! ```text
+//! <case path relative to the suite root>  <Sheet!A1>  <decision NNNN>  <docs/excel-semantics/<file>.md#<anchor>>  <pinned value>
+//! ```
+//!
+//! The pinned value is an error literal (`#ERROR!`), `TRUE`/`FALSE`, a double-quoted text or a
+//! number.
+
+use std::path::{Component, Path};
+
+use crate::case::split_qualified;
+use crate::cellref::Addr;
+use crate::value::{compare, Value};
+
+/// Directory the semantics reference must point into.
+const SEMANTICS_DIR: &str = "docs/excel-semantics/";
+
+/// One `deviations` line.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Deviation {
+    /// Case path relative to the suite root (`cases/lifted-range-rows.case.json`).
+    pub case: String,
+    pub sheet: String,
+    pub addr: Addr,
+    /// The decision record that accepts the deviation (`0014`).
+    pub decision: String,
+    /// The semantics file relative to the repository root (`docs/excel-semantics/arrays.md`).
+    pub semantics_file: String,
+    /// The heading anchor of the entry within it.
+    pub anchor: String,
+    /// RustSheet's by-design value.
+    pub pinned: Value,
+}
+
+/// How a listed cell scored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    /// The engine gives the pinned by-design value.
+    Deviation,
+    /// The engine matches Excel: the line is stale and should go.
+    StalePass,
+    /// Neither: the by-design value changed.
+    Failure,
+}
+
+fn is_inner_relative(path: &str) -> bool {
+    !path.is_empty()
+        && Path::new(path)
+            .components()
+            .all(|c| matches!(c, Component::Normal(_)))
+}
+
+/// Parses a pinned value literal.
+fn parse_value(text: &str) -> Option<Value> {
+    if text.starts_with('#') && text.len() > 1 {
+        return Some(Value::Error(text.to_string()));
+    }
+    match text {
+        "TRUE" => return Some(Value::Bool(true)),
+        "FALSE" => return Some(Value::Bool(false)),
+        _ => {}
+    }
+    if let Some(inner) = text.strip_prefix('"').and_then(|t| t.strip_suffix('"')) {
+        return Some(Value::Text(inner.to_string()));
+    }
+    text.parse::<f64>()
+        .ok()
+        .filter(|n| n.is_finite())
+        .map(Value::Number)
+}
+
+/// Parses a `deviations` file.
+///
+/// # Errors
+/// Names the first malformed line.
+pub fn parse(text: &str) -> Result<Vec<Deviation>, String> {
+    let mut out = Vec::new();
+    for (n, line) in text.lines().enumerate() {
+        if line.trim().is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let bad = |why: &str| format!("deviations line {}: {why}", n + 1);
+        let fields: Vec<&str> = line.split('\t').collect();
+        let [case, cell, decision, semantics, pinned] = fields.as_slice() else {
+            return Err(bad("expected 5 tab-separated fields"));
+        };
+        let (sheet, a1) = split_qualified(cell).ok_or_else(|| bad("bad cell"))?;
+        let addr = Addr::parse(&a1).ok_or_else(|| bad("bad cell"))?;
+        if !is_inner_relative(case) {
+            return Err(bad("case path must be relative, without `..`"));
+        }
+        let decision = decision
+            .strip_prefix("decision ")
+            .filter(|d| d.len() == 4 && d.bytes().all(|b| b.is_ascii_digit()))
+            .ok_or_else(|| bad("decision must read `decision NNNN`"))?;
+        let (file, anchor) = semantics
+            .split_once('#')
+            .filter(|(file, anchor)| {
+                file.starts_with(SEMANTICS_DIR)
+                    && Path::new(file)
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+                    && is_inner_relative(file)
+                    && !anchor.is_empty()
+            })
+            .ok_or_else(|| bad("semantics must read `docs/excel-semantics/<file>.md#<anchor>`"))?;
+        let pinned = parse_value(pinned).ok_or_else(|| bad("bad pinned value"))?;
+        out.push(Deviation {
+            case: (*case).to_string(),
+            sheet,
+            addr,
+            decision: decision.to_string(),
+            semantics_file: file.to_string(),
+            anchor: anchor.to_string(),
+            pinned,
+        });
+    }
+    Ok(out)
+}
+
+/// The GitHub anchor of a Markdown heading: lower case, spaces to `-`, other punctuation dropped.
+fn anchor_of(heading: &str) -> String {
+    heading
+        .trim()
+        .chars()
+        .filter_map(|c| match c {
+            ' ' => Some('-'),
+            '-' | '_' => Some(c),
+            c if c.is_alphanumeric() => Some(c.to_ascii_lowercase()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Checks that the cited entry exists and is an accepted deviation: its section (from its
+/// heading to the next heading of any level) has a `Status: DEVIATION` line.
+///
+/// # Errors
+/// When the file is unreadable, the anchor names no heading, or the entry is not a DEVIATION.
+pub fn check_entry(d: &Deviation, repo_root: &Path) -> Result<(), String> {
+    let path = repo_root.join(&d.semantics_file);
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let mut lines = text.lines();
+    let found = lines
+        .by_ref()
+        .any(|line| line.starts_with('#') && anchor_of(line.trim_start_matches('#')) == d.anchor);
+    if !found {
+        return Err(format!(
+            "{}#{}: no such heading",
+            d.semantics_file, d.anchor
+        ));
+    }
+    if lines
+        .take_while(|line| !line.starts_with('#'))
+        .any(|line| line.starts_with("Status: DEVIATION"))
+    {
+        Ok(())
+    } else {
+        Err(format!(
+            "{}#{}: the entry has no `Status: DEVIATION` line",
+            d.semantics_file, d.anchor
+        ))
+    }
+}
+
+/// Scores a listed cell (decision 0036).
+#[must_use]
+pub fn classify(d: &Deviation, expected: &Value, actual: &Value) -> Outcome {
+    if compare(expected, actual).is_pass() {
+        Outcome::StalePass
+    } else if compare(&d.pinned, actual).is_pass() {
+        Outcome::Deviation
+    } else {
+        Outcome::Failure
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const LINE: &str = "cases/lifted-range-rows.case.json\tSheet1!C1\tdecision 0014\t\
+        docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error\t#ERROR!";
+
+    #[test]
+    fn parses_lines_and_skips_comments() {
+        let parsed = parse(&format!("# why\n\n{LINE}\n")).expect("parse");
+        assert_eq!(parsed.len(), 1);
+        let d = &parsed[0];
+        assert_eq!(d.case, "cases/lifted-range-rows.case.json");
+        assert_eq!(
+            (d.sheet.as_str(), d.addr.to_string()),
+            ("Sheet1", "C1".to_string())
+        );
+        assert_eq!(d.decision, "0014");
+        assert_eq!(d.semantics_file, "docs/excel-semantics/arrays.md");
+        assert_eq!(d.pinned, Value::Error("#ERROR!".into()));
+    }
+
+    #[test]
+    fn parses_every_kind_of_pinned_value() {
+        for (text, value) in [
+            ("#N/A", Value::Error("#N/A".into())),
+            ("TRUE", Value::Bool(true)),
+            ("\"a b\"", Value::Text("a b".into())),
+            ("-1.5", Value::Number(-1.5)),
+        ] {
+            assert_eq!(parse_value(text), Some(value), "{text}");
+        }
+        for text in ["", "#", "true", "abc", "inf", "NaN"] {
+            assert_eq!(parse_value(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_lines() {
+        let sem = "docs/excel-semantics/arrays.md#x";
+        for bad in [
+            format!("a.json\tSheet1!C1\tdecision 0014\t{sem}"),
+            format!("a.json\tC1\tdecision 0014\t{sem}\t#ERROR!"),
+            format!("../a.json\tS!C1\tdecision 0014\t{sem}\t#ERROR!"),
+            format!("a.json\tS!C1\t0014\t{sem}\t#ERROR!"),
+            format!("a.json\tS!C1\tdecision 14\t{sem}\t#ERROR!"),
+            "a.json\tS!C1\tdecision 0014\tdocs/other/arrays.md#x\t#ERROR!".to_string(),
+            "a.json\tS!C1\tdecision 0014\tdocs/excel-semantics/arrays.md\t#ERROR!".to_string(),
+            "a.json\tS!C1\tdecision 0014\tdocs/excel-semantics/../x.md#y\t#ERROR!".to_string(),
+            format!("a.json\tS!C1\tdecision 0014\t{sem}\tnot-a-value"),
+        ] {
+            assert!(parse(&bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_cited_entry_must_be_a_deviation() {
+        let root = std::env::temp_dir().join(format!("deviations-{}", std::process::id()));
+        let dir = root.join("docs/excel-semantics");
+        std::fs::create_dir_all(&dir).expect("dir");
+        std::fs::write(
+            dir.join("arrays.md"),
+            "# Arrays\n## Big arrays are #ERROR! (1,048,576)\nRule: x\nStatus: DEVIATION (decision 0014)\n\
+             ## Plain rule\nRule: y\nStatus: VERIFIED\n## Next\nStatus: DEVIATION (decision 0014)\n",
+        )
+        .expect("write");
+        let at = |anchor: &str| {
+            parse(&format!(
+                "a.json\tS!A1\tdecision 0014\tdocs/excel-semantics/arrays.md#{anchor}\t#ERROR!"
+            ))
+            .expect("parse")
+            .remove(0)
+        };
+        assert_eq!(
+            check_entry(&at("big-arrays-are-error-1048576"), &root),
+            Ok(())
+        );
+        // a VERIFIED entry, even when the next section is a DEVIATION
+        assert!(check_entry(&at("plain-rule"), &root).is_err());
+        assert!(check_entry(&at("no-such-heading"), &root).is_err());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn scores_the_three_outcomes() {
+        let d = parse(LINE).expect("parse").remove(0);
+        let excel = Value::Number(1000.0);
+        let pinned = Value::Error("#ERROR!".into());
+        assert_eq!(classify(&d, &excel, &pinned), Outcome::Deviation);
+        assert_eq!(classify(&d, &excel, &excel), Outcome::StalePass);
+        assert_eq!(
+            classify(&d, &excel, &Value::Number(999.0)),
+            Outcome::Failure
+        );
+    }
+}

@@ -25,3 +25,18 @@ Decision 0036 sets out the file format (`<case>\t<Sheet!A1>\t<decision NNNN>\t<s
 
 ## Out of scope
 - Changing any limit; adding deviation lines beyond C12/C14 (each needs its own evidence).
+
+## Progress (2026-10-07, in flight)
+- Done: `crates/rustsheet-eval/src/deviations.rs`. It parses the file (typed errors per line), runs
+  `check_entry` (the anchor's section must carry `Status: DEVIATION`) and `classify` (deviation /
+  stale pass / failure), with unit tests.
+- Next:
+  - Add a `deviations` manifest key next to `cached_overrides` (suite.rs).
+  - Apply it in runner.rs `score`, so listed cells get a new verdict that leaves the bit-exact
+    denominator.
+  - Add the report column and the stale-line warning (report.rs).
+  - Make `eval-check` fail when `check_entry` fails.
+  - Write `eval/suites/probes/deviations` for lifted-range-rows C1, C2, C3 and E1, which the
+    Context names; C12/C14 pass since T-0047.
+  - Run `make eval-baseline`, then update the quality-gates.md and steward skill docs (protected
+    paths, so a decision record is needed).
