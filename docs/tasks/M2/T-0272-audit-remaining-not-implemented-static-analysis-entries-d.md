@@ -3,7 +3,7 @@ id: T-0272
 title: "Audit remaining not_implemented static_analysis entries (D*, lookups, IFS/SWITCH, aggregates) for runtime lifting"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
