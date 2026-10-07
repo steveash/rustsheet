@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
-    functions::math_and_trigonometry::array_size::check_range_size,
+    functions::util::array_node_to_calc_result,
     get_all_timezones,
     model::Model,
 };
@@ -57,14 +57,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => {
-                // DEVIATION (decision 0014): the shared allocation bound on lifted ranges.
-                if let Some((error, message)) = check_range_size(&left, &right) {
-                    return CalcResult::new_error(error, cell, message);
-                }
-                let values = self.evaluate_range(left, right);
-                CalcResult::Array(map_array(values, &test))
-            }
+            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(values) => CalcResult::Array(map_array(values, &test)),
+                Err(error) => error,
+            },
             CalcResult::Array(values) => CalcResult::Array(map_array(values, &test)),
             other => CalcResult::Boolean(test(&calc_result_to_array_node(other))),
         }
@@ -106,11 +102,17 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match &args[0] {
-            Node::ReferenceKind { .. }
-            | Node::RangeKind { .. }
-            | Node::OpRangeKind { .. }
-            | Node::OpIntersectKind { .. }
-            | Node::OpUnionKind { .. } => CalcResult::Boolean(true),
+            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => {
+                CalcResult::Boolean(true)
+            }
+            // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
+            // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
+            Node::OpIntersectKind { .. } => {
+                CalcResult::Boolean(self.reference_areas(&args[0], cell).is_ok())
+            }
+            Node::OpUnionKind { left, right, .. } => {
+                CalcResult::Boolean(self.union_is_reference(left, right, cell))
+            }
             // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
             Node::FunctionKind {
                 kind: crate::functions::Function::Index,
@@ -131,26 +133,61 @@ impl Model {
         }
     }
 
-    pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+    /// Shared body of ISEVEN / ISODD.
+    ///
+    /// A multi-cell range argument is `#VALUE!`, with no implicit intersection and no spill,
+    /// wherever the formula sits; an array constant lifts element by element
+    /// (probes/is-functions-array-lift J2, K2, L3, M30, M32; excel-graph;
+    /// docs/excel-semantics/information.md).
+    fn parity_predicate(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        even: bool,
+    ) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.abs().trunc() as i64,
-            Err(s) => return s,
-        };
-        CalcResult::Boolean(value % 2 == 1)
+        match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } if left != right => {
+                CalcResult::new_error(Error::VALUE, cell, "Expecting a single value".to_string())
+            }
+            CalcResult::Array(values) => CalcResult::Array(
+                values
+                    .into_iter()
+                    .map(|row| {
+                        row.into_iter()
+                            .map(|v| {
+                                let element = array_node_to_calc_result(&v, cell);
+                                calc_result_to_array_node(self.parity_of(element, even, cell))
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            ),
+            other => self.parity_of(other, even, cell),
+        }
+    }
+
+    fn parity_of(&mut self, value: CalcResult, even: bool, cell: CellReferenceIndex) -> CalcResult {
+        // Parity is taken on the truncated absolute value (4.5 is even, -7 is odd:
+        // probes/is-functions-array-lift, Data!C3:C4); a boolean is #VALUE!, text is cast.
+        let value = self.dereference(value, cell);
+        if matches!(value, CalcResult::Boolean(_)) {
+            return CalcResult::new_error(Error::VALUE, cell, "Expecting number".to_string());
+        }
+        match self.cast_to_number(value, cell) {
+            Ok(f) => CalcResult::Boolean((f.abs().trunc() as i64 % 2 == 0) == even),
+            Err(error) => error,
+        }
+    }
+
+    pub(crate) fn fn_isodd(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.parity_predicate(args, cell, false)
     }
 
     pub(crate) fn fn_iseven(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number_no_bools(&args[0], cell) {
-            Ok(f) => f.abs().trunc() as i64,
-            Err(s) => return s,
-        };
-        CalcResult::Boolean(value % 2 == 0)
+        self.parity_predicate(args, cell, true)
     }
 
     // ISFORMULA arg needs to be a reference or something that evaluates to a reference

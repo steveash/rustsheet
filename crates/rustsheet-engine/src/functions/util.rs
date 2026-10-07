@@ -7,7 +7,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    number_format::to_excel_precision,
+    number_format::cmp_excel_precision,
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -43,29 +43,6 @@ fn error_sort_rank(e: &Error) -> u8 {
     }
 }
 
-/// This test for exact match (modulo case).
-///   * strings are not cast into bools or numbers
-///   * empty cell is not cast into empty string or zero
-pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
-    match (left, right) {
-        (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            if (value2 - value1).abs() < f64::EPSILON {
-                return true;
-            }
-            false
-        }
-        (CalcResult::String(value1), CalcResult::String(value2)) => {
-            let value1 = value1.to_uppercase();
-            let value2 = value2.to_uppercase();
-            value1 == value2
-        }
-        (CalcResult::Boolean(value1), CalcResult::Boolean(value2)) => value1 == value2,
-        (CalcResult::EmptyCell, CalcResult::EmptyCell) => true,
-        // NOTE: Errors and Ranges are not covered
-        (_, _) => false,
-    }
-}
-
 // In Excel there are two ways of comparing cell values.
 // The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
 // For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
@@ -74,15 +51,14 @@ pub(crate) fn values_are_equal(left: &CalcResult, right: &CalcResult) -> bool {
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            let value1 = to_excel_precision(*value1, 15);
-            let value2 = to_excel_precision(*value2, 15);
-            if (value2 - value1).abs() < f64::EPSILON {
-                return 0;
+            // Equality is decided on the 15-digit values alone: an absolute tolerance would equate
+            // every tiny value with 0, but Excel says `EXP(-708)=0` is FALSE (docs/excel-semantics/numbers.md,
+            // probes/subnormal-function-results C4-C6).
+            match cmp_excel_precision(*value1, *value2) {
+                std::cmp::Ordering::Less => -1,
+                std::cmp::Ordering::Equal => 0,
+                std::cmp::Ordering::Greater => 1,
             }
-            if value1 < value2 {
-                return -1;
-            }
-            1
         }
         (CalcResult::Number(_value1), CalcResult::String(_value2)) => -1,
         (CalcResult::Number(_value1), CalcResult::Boolean(_value2)) => -1,
@@ -143,6 +119,27 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
 }
 
 impl Model {
+    /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
+    /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
+    /// value (probes/3d-ref-functions; docs/excel-semantics/references.md).
+    pub(crate) fn evaluate_single_sheet_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } if first_index != last_index => {
+                self.get_sheet_span_reference(*first_index, *last_index, reference, cell)
+            }
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
     /// Evaluates one argument of an aggregate (SUM, COUNT, AVERAGE, MIN, ...).
     /// A cell reference, and an IF or INDEX that selects one, comes back as a
     /// `Range`, so the caller skips its text, booleans and blanks like any range
@@ -154,6 +151,12 @@ impl Model {
     ) -> CalcResult {
         match node {
             Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                reference,
+                ..
+            } => self.get_sheet_span_range(*first_index, *last_index, reference, cell),
             Node::FunctionKind {
                 kind: Function::If,
                 args,
@@ -169,9 +172,11 @@ impl Model {
     /// Calls `f` with the value of every cell of the range `left..=right`, in
     /// row-major order.
     ///
-    /// The one range walk behind every aggregate function. Ranges spanning two
-    /// sheets are `#VALUE!`; whole-row and whole-column ranges are clipped to
-    /// the used area so the walk stays proportional to the data. The first
+    /// The one range walk behind every aggregate function. A range whose corners
+    /// sit on two sheets is a 3-D reference (only [`Self::evaluate_aggregate_arg`]
+    /// builds one) and is walked sheet by sheet in tab order; whole-row and
+    /// whole-column ranges are clipped to each sheet's used area so the walk
+    /// stays proportional to the data. The first
     /// error cell aborts the walk and is returned as `Err`, as does an `Err`
     /// from `f`. `f` never sees `CalcResult::Error`.
     pub(crate) fn for_each_cell_in_range<F>(
@@ -184,25 +189,53 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
-        if left.sheet != right.sheet {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Ranges are in different sheets".to_string(),
-            ));
-        }
-        let (row2, column2) = self
-            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
-            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-        for row in left.row..=row2 {
-            for column in left.column..=column2 {
-                match self.evaluate_cell(CellReferenceIndex {
-                    sheet: left.sheet,
-                    row,
-                    column,
-                }) {
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    value => f(self, value)?,
+        self.for_each_cell_or_error_in_range(left, right, cell, |model, value| match value {
+            error @ CalcResult::Error { .. } => Err(error),
+            value => f(model, value),
+        })
+    }
+
+    /// [`Self::for_each_cell_in_range`] that also hands `f` the error cells
+    /// (COUNTA counts them, COUNT and COUNTBLANK skip them).
+    pub(crate) fn for_each_cell_or_error_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
+    {
+        self.for_each_position_in_range(left, right, cell, |model, position| {
+            let value = model.evaluate_cell(position);
+            f(model, value)
+        })
+    }
+
+    /// Calls `f` with the position of every cell of the range `left..=right`, in row-major
+    /// order, without evaluating it: for walks that skip cells by position (AGGREGATE's hidden
+    /// rows and nested SUBTOTAL/AGGREGATE cells). An `Err` from `f` stops the walk.
+    pub(crate) fn for_each_position_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
+        // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
+        // clipped to its own used area, so a span of whole columns walks only data.
+        debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
+        for sheet in left.sheet..=right.sheet {
+            let (row2, column2) = self
+                .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            for row in left.row..=row2 {
+                for column in left.column..=column2 {
+                    f(self, CellReferenceIndex { sheet, row, column })?;
                 }
             }
         }

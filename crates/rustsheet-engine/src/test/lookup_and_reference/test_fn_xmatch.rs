@@ -322,9 +322,11 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         model.evaluate();
         model._get_text("H3")
     };
-    assert_eq!(model_value("=XMATCH(0,A:A)"), "4");
-    assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "1048576");
-    assert_eq!(model_value("=XMATCH(0,1:1)"), "5");
+    // Excel: a blank never matches an exact XMATCH
+    // (probes/lookup-whole-column-blank-tail Col!M14, Row!A17; T-0126).
+    assert_eq!(model_value("=XMATCH(0,A:A)"), "#N/A");
+    assert_eq!(model_value("=XMATCH(0,A:A,0,-1)"), "#N/A");
+    assert_eq!(model_value("=XMATCH(0,1:1)"), "#N/A");
     // A blank lookup value equals the whole tail: the equal-run walk of the
     // binary searches must jump it, not step a million cells (directive 5).
     for formula in [
@@ -334,5 +336,58 @@ fn test_xmatch_whole_column_and_row_independent_of_used_area() {
         "=XMATCH(Z1,A:A,-1,-2)",
     ] {
         model_value(formula);
+    }
+}
+
+/// Excel's linear XMATCH/XLOOKUP over blanks (probes/xmatch-xlookup-blanks, Col sheet; T-1018).
+#[test]
+fn linear_modes_over_blanks_match_excel() {
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "5"),
+        ("A3", "10"),
+        ("A5", "20"),
+        ("B1", "a"),
+        ("B2", "b"),
+        ("B3", "c"),
+        ("B4", "d"),
+        ("B5", "e"),
+        ("B6", "f"),
+    ] {
+        model._set(cell, value);
+    }
+    let cases = [
+        ("=XMATCH(0,A1:A6)", "#N/A"),
+        ("=XMATCH(7,A1:A6,-1)", "1"),
+        ("=XMATCH(7,A1:A6,1)", "3"),
+        ("=XMATCH(0,A1:A6,-1)", "#N/A"),
+        ("=XMATCH(0,A1:A6,1)", "1"),
+        ("=XMATCH(99,A:A,-1)", "5"),
+        // A blank sorts as text, so it is the "next larger" of a number nothing else exceeds.
+        ("=XMATCH(99,A:A,1)", "2"),
+        ("=XMATCH(25,A1:A6,1)", "2"),
+        ("=XMATCH(0,A1:A6,2)", "#N/A"),
+        ("=XMATCH(0,A1:A6,0,-1)", "#N/A"),
+        ("=XMATCH(G1,A1:A6)", "2"),
+        ("=XMATCH(G1,A:A)", "2"),
+        ("=XMATCH(G1,A1:A6,-1)", "2"),
+        ("=XMATCH(G1,A1:A6,2)", "2"),
+        ("=XLOOKUP(0,A1:A6,B1:B6,\"nf\")", "nf"),
+        ("=XLOOKUP(0,A:A,B:B,\"nf\")", "nf"),
+        ("=XLOOKUP(0,A1:A6,B1:B6,\"nf\",-1)", "nf"),
+        ("=XLOOKUP(0,A1:A6,B1:B6,\"nf\",1)", "a"),
+        ("=XLOOKUP(G1,A1:A6,B1:B6,\"nf\")", "b"),
+        ("=XLOOKUP(0,A1:A6,B1:B6,\"nf\",0,-1)", "nf"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("M{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("M{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
     }
 }

@@ -1,4 +1,4 @@
-use super::common::{broadcast_text, TextArg};
+use super::text_arg::{broadcast_text, TextArg};
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -115,34 +115,23 @@ impl Model {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = ConcatText::default();
         for arg in args {
-            let value = self.evaluate_node_in_context(arg, cell);
+            let value = self.evaluate_aggregate_arg(arg, cell);
             match value {
                 CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            let cell_value = self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            });
+                    // 3-D references are walked sheet by sheet by the shared range walk.
+                    if let Err(error) =
+                        self.for_each_cell_in_range(left, right, cell, |_, cell_value| {
                             if matches!(cell_value, CalcResult::Array(_) | CalcResult::Lambda(_)) {
-                                return CalcResult::new_error(
+                                return Err(CalcResult::new_error(
                                     Error::NIMPL,
                                     cell,
                                     "Arrays not supported yet".to_string(),
-                                );
+                                ));
                             }
-                            if let Err(error) = result.push_value(cell_value) {
-                                return error;
-                            }
-                        }
+                            result.push_value(cell_value)
+                        })
+                    {
+                        return error;
                     }
                 }
                 CalcResult::Array(_) | CalcResult::Lambda(_) => {

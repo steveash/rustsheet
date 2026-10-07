@@ -1,0 +1,65 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "WEEKNUM across 1900 beyond serial 61 and other return types near the 1900 anchor (T-0995).",
+ "tags": [
+  "M1",
+  "dates",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=WEEKNUM(100,2)",
+    "A2": "=WEEKNUM(100)",
+    "A3": "=WEEKNUM(200,2)",
+    "A4": "=WEEKNUM(365,2)",
+    "A5": "=WEEKNUM(366,2)",
+    "A6": "=WEEKNUM(366)",
+    "A7": "=WEEKNUM(367,2)",
+    "A8": "=WEEKNUM(367)",
+    "A9": "=WEEKNUM(100,11)",
+    "A10": "=WEEKNUM(100,12)",
+    "A11": "=WEEKNUM(100,17)",
+    "A12": "=WEEKNUM(61,1)",
+    "A13": "=WEEKNUM(61)",
+    "A14": "=WEEKNUM(366,16)",
+    "A15": "=WEEKNUM(8,17)",
+    "A16": "=WEEKNUM(0,12)",
+    "A17": "=WEEKNUM(0,17)",
+    "A18": "=WEEKNUM(1,12)",
+    "A19": "=WEEKNUM(59,1)",
+    "A20": "=WEEKNUM(60,1)",
+    "A21": "=WEEKNUM(2,1)",
+    "A22": "=WEEKNUM(31,2)",
+    "A23": "=WEEKNUM(32,2)"
+   }
+  }
+ ],
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11",
+  "Sheet1!A12",
+  "Sheet1!A13",
+  "Sheet1!A14",
+  "Sheet1!A15",
+  "Sheet1!A16",
+  "Sheet1!A17",
+  "Sheet1!A18",
+  "Sheet1!A19",
+  "Sheet1!A20",
+  "Sheet1!A21",
+  "Sheet1!A22",
+  "Sheet1!A23"
+ ],
+ "expected": {}
+}

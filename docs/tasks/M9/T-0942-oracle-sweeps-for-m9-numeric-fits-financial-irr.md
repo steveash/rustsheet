@@ -3,7 +3,7 @@ id: T-0942
 title: "Oracle sweeps for M9 numeric fits (financial, IRR/RATE, trig reduction, Bessel, inverse hyperbolics, inverse normal)"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,16 +27,28 @@ T-0925 were blocked, and T-0916 was found not fittable without the oracle. The o
 - T-0925 NORM.S.INV at p = NORM.S.DIST(k), tails down to 1e-300.
 
 ## Acceptance criteria
-- [ ] Each listed family has an oracle-filled probe suite committed (no pending cells), and the dependent task file links it.
-- [ ] New quirks visible in the sweeps are recorded in docs/excel-semantics/ (numbers.md, financial.md, engineering.md).
-- [ ] Size: six families will not fit one M PR. Split per family at pickup with `make new-task`
+- [x] Each listed family has an oracle-filled probe suite committed (no pending cells), and the dependent task file links it.
+  (Split per the size criterion: financial lands here; the other five are T-1004..T-1006, T-1008, T-1009, see Outcome.)
+- [x] New quirks visible in the sweeps are recorded in docs/excel-semantics/ (numbers.md, financial.md, engineering.md).
+- [x] Size: six families will not fit one M PR. Split per family at pickup with `make new-task`
   and repoint each dependent task to its own sweep, so each M9 task becomes ready as soon as its
   sweep lands.
-- [ ] Fixtures hold only formulas and Excel values: no tenant ids, tokens or personal data, and
+- [x] Fixtures hold only formulas and Excel values: no tenant ids, tokens or personal data, and
   no RUSTSHEET_ORACLE_* values in logs or commits.
-- [ ] If the oracle is unavailable, set this task `status: blocked` with the reason. The
+- [x] If the oracle is unavailable, set this task `status: blocked` with the reason. The
   dependents then wait visibly instead of being fitted blind.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting or implementing any formulation (the dependent tasks do that).
+
+## Outcome
+Split per family at pickup: this PR lands the financial sweep for T-0901 and files one sweep task
+per remaining family (T-1008 trig → T-0915, T-1009 IRR/RATE → T-0916, T-1004 Bessel → T-0908,
+T-1005 hyperbolics → T-0917, T-1006 NORM.S.INV → T-0925); each dependent now depends on its own sweep.
+Financial sweep (excel-graph, 2026-10-06): `probes-numeric/m9-fin-power` (616 cells),
+`m9-fin-pv-fv` (616), `m9-fin-pmt` (924), `m9-fin-nper-npv` (220), all filled, none pending.
+Findings: integer `^`/POWER is right-to-left square-and-multiply (154/154 per form; numbers.md),
+and with it PV and FV fit 308/308 each (financial.md); PMT is still open.
+Eval delta: probes-numeric +2,376 scored cells (900 pass today, 1,476 fail; suite is not gated);
+no other suite changed.

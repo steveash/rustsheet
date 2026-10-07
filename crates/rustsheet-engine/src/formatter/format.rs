@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use crate::{
     locale::Locale,
     number_format::{parse_excel_number, to_precision},
@@ -7,7 +5,7 @@ use crate::{
 
 use super::{
     date_text::{parse_date, CurrentYear},
-    dates::{excel_serial_to_ymd, from_excel_date},
+    dates::excel_serial_to_ymd,
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -58,6 +56,13 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
         }
     }
     false
+}
+
+/// Index into the Sunday-first day-name tables for a serial. Excel numbers weekdays as if serial 1
+/// were a Sunday, so serial 0 is a Saturday and 60 (the fictitious 1900-02-29) a Wednesday
+/// (probes/dates-early-1900-edges A26-A34); the same formula is the real weekday from 61 on.
+fn excel_weekday_index(serial: i64) -> usize {
+    (serial - 1).rem_euclid(7) as usize
 }
 
 fn invalid_date(value: f64) -> Formatted {
@@ -170,10 +175,24 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         error: None,
                     };
                 }
-                let exponent = value_abs.log10().floor();
+                let mut exponent = value_abs.log10().floor();
                 value /= 10.0_f64.powf(exponent);
+                // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
+                // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
+                // "Exponent width").
+                let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
+                let mut decimals = decimals_for(exponent);
+                let mut s = format!("{value:.decimals$}");
+                // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa
+                // carries into the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
+                // (probes/text-general-exponent-boundary A5-A8, A10).
+                if s.trim_start_matches('-').starts_with("10.") {
+                    exponent += 1.0;
+                    value = value.signum();
+                    decimals = decimals_for(exponent);
+                    s = format!("{value:.decimals$}");
+                }
                 let sign = if exponent < 0.0 { '-' } else { '+' };
-                let s = format!("{value:.5}");
                 let mut text = format!(
                     "{}E{}{:02}",
                     s.trim_end_matches('0').trim_end_matches('.'),
@@ -197,11 +216,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
             // Day/month/year tokens show Excel's exact components (including the fictitious
-            // 1900-02-29) and "1900-01-00" (serial 0); weekday tokens keep the weekday-faithful
-            // stand-in `date`. The fallback is never read: `ymd` is `None` exactly when
-            // `date_valid` is false.
+            // 1900-02-29) and "1900-01-00" (serial 0). The fallback is never read: `ymd` is
+            // `None` exactly when `date_valid` is false.
             let ymd = excel_serial_to_ymd(value as i64);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
@@ -242,37 +259,17 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
-                        let date = match date {
-                            Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
-                        };
-                        let mut day = date.weekday().number_from_monday() as usize;
-                        if day == 7 {
-                            day = 0;
+                        if !date_valid {
+                            return invalid_date(value);
                         }
+                        let day = excel_weekday_index(value as i64);
                         text = format!("{}{}", text, locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
-                        let date = match date {
-                            Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
-                        };
-                        let mut day = date.weekday().number_from_monday() as usize;
-                        if day == 7 {
-                            day = 0;
+                        if !date_valid {
+                            return invalid_date(value);
                         }
+                        let day = excel_weekday_index(value as i64);
                         text = format!("{}{}", text, locale.dates.day_names[day]);
                     }
                     TextToken::Month => {

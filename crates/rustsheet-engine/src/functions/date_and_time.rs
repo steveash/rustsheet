@@ -3,6 +3,7 @@ use chrono::Datelike;
 use chrono::Months;
 
 pub(crate) mod time_text;
+mod weeknum;
 
 const SECONDS_PER_DAY: i32 = 86_400;
 const SECONDS_PER_DAY_F64: f64 = SECONDS_PER_DAY as f64;
@@ -165,7 +166,8 @@ macro_rules! time_part_fn {
     };
 }
 
-use crate::arithmetic::bcast_idx;
+use crate::arithmetic::{array_of_errors, bcast_idx, own_error};
+use crate::cast::NumberOrArray;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
@@ -325,9 +327,6 @@ impl Model {
             }
             Err(s) => return s,
         };
-        if let Err(e) = self.excel_date(serial_number, cell) {
-            return e;
-        }
         if serial_number > MAXIMUM_DATE_SERIAL_NUMBER as i64 {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -380,19 +379,27 @@ impl Model {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        use crate::cast::NumberOrArray;
-
-        let year_na = match self.get_number_or_array(&args[0], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
+        let year_na = self.get_number_or_array(&args[0], cell);
+        let month_na = self.get_number_or_array(&args[1], cell);
+        let day_na = self.get_number_or_array(&args[2], cell);
+        // An argument that is an error is the result (the leftmost one), unless another one is
+        // an array: then it is broadcast and every element is an error.
+        let any_array = [&year_na, &month_na, &day_na]
+            .iter()
+            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
+        let broadcast_error = |na: Result<NumberOrArray, CalcResult>| match na {
+            Err(CalcResult::Error { error, .. }) if any_array => {
+                Ok(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+            }
+            other => other,
         };
-        let month_na = match self.get_number_or_array(&args[1], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let day_na = match self.get_number_or_array(&args[2], cell) {
-            Ok(v) => v,
-            Err(e) => return e,
+        let (year_na, month_na, day_na) = match (
+            broadcast_error(year_na),
+            broadcast_error(month_na),
+            broadcast_error(day_na),
+        ) {
+            (Ok(year), Ok(month), Ok(day)) => (year, month, day),
+            (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => return e,
         };
 
         fn date_node(year_f: f64, month_f: f64, day_f: f64) -> ArrayNode {
@@ -400,8 +407,7 @@ impl Model {
             if year < 0 {
                 return ArrayNode::Error(Error::NUM);
             }
-            // Excel: a year between 0 and 1899 (inclusive) is treated as an
-            // offset from 1900, e.g. DATE(100, 1, 1) is 2000-01-01
+            // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
             if year < 1900 {
                 year += 1900;
             }
@@ -437,10 +443,8 @@ impl Model {
                 let max_rows = dims(&year_na).0.max(dims(&month_na).0).max(dims(&day_na).0);
                 let max_cols = dims(&year_na).1.max(dims(&month_na).1).max(dims(&day_na).1);
 
-                // Extract a scalar f64 from a NumberOrArray element at (row, col),
-                // applying Excel's size-1 broadcasting so a singleton row/column
-                // repeats across the other arguments instead of producing #N/A.
-                // Pass row/col as metavariables to avoid macro-hygiene scope issues.
+                // The f64 of a NumberOrArray at (row, col); a size-1 dimension repeats
+                // (row/col are metavariables because of macro hygiene).
                 macro_rules! elem {
                     ($na:expr, $row:expr, $col:expr) => {
                         match &$na {
@@ -498,9 +502,6 @@ impl Model {
             Ok(c) => c.floor() as i64,
             Err(s) => return s,
         };
-        if let Err(e) = self.excel_date(serial_number, cell) {
-            return e;
-        }
         let Some(date) = month_arithmetic_date(serial_number) else {
             return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
@@ -516,8 +517,11 @@ impl Model {
             return CalcResult::new_error(Error::NUM, cell, DATE_OUT_OF_RANGE_MESSAGE.to_string());
         };
 
+        // Serial 0 is day 0 of January 1900, so its result is day 0 of the shifted month: one
+        // serial before that month's first day (EDATE(0,1) = 31, EDATE(0,12) = 366).
+        let day_offset = i32::from(serial_number == 0);
         match real_date_to_serial(native_date) {
-            Some(serial) => CalcResult::Number(f64::from(serial)),
+            Some(serial) => CalcResult::Number(f64::from(serial - day_offset)),
             None => CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
@@ -545,39 +549,20 @@ impl Model {
                 handle(serial)?;
             }
             CalcResult::Range { left, right } => {
-                if left.sheet != right.sheet {
-                    return Err(CalcResult::new_error(
+                self.for_each_cell_in_range(left, right, cell, |model, value| match value {
+                    CalcResult::Number(v) => {
+                        let serial = v.floor() as i64;
+                        model.excel_date(serial, cell)?;
+                        handle(serial)
+                    }
+                    // ignore empty cells
+                    CalcResult::EmptyCell => Ok(()),
+                    _ => Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
-                        "Ranges are in different sheets".to_string(),
-                    ));
-                }
-                for row in left.row..=right.row {
-                    for column in left.column..=right.column {
-                        match self.evaluate_cell(CellReferenceIndex {
-                            sheet: left.sheet,
-                            row,
-                            column,
-                        }) {
-                            CalcResult::Number(v) => {
-                                let serial = v.floor() as i64;
-                                self.excel_date(serial, cell)?;
-                                handle(serial)?;
-                            }
-                            CalcResult::EmptyCell => {
-                                // ignore empty cells
-                            }
-                            e @ CalcResult::Error { .. } => return Err(e),
-                            _ => {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Invalid holiday date".to_string(),
-                                ))
-                            }
-                        }
-                    }
-                }
+                        "Invalid holiday date".to_string(),
+                    )),
+                })?;
             }
             CalcResult::Array(array) => {
                 for row in array {
@@ -1205,7 +1190,21 @@ impl Model {
         let return_type = if args.len() == 2 {
             match self.get_number(&args[1], cell) {
                 Ok(f) => f as i32,
-                Err(s) => return s,
+                Err(error) => {
+                    // Next to an array of dates it fills every element (error elements keep theirs).
+                    return match self.get_number_or_array(&args[0], cell) {
+                        Ok(NumberOrArray::Array(array)) => {
+                            array_of_errors(&array, error, |node| match node {
+                                ArrayNode::String(s) if self.cast_number(s).is_none() => {
+                                    Some(Error::VALUE)
+                                }
+                                node => own_error(node),
+                            })
+                        }
+                        Ok(NumberOrArray::Number(_)) => error,
+                        Err(first) => first,
+                    };
+                }
             }
         } else {
             1
@@ -1217,72 +1216,13 @@ impl Model {
         })
     }
 
-    pub(crate) fn fn_weeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let serial = match self.get_number(&args[0], cell) {
-            Ok(c) => c.floor() as i64,
-            Err(s) => return s,
-        };
-        let date = match self.excel_date(serial, cell) {
-            Ok(d) => d,
-            Err(e) => return e,
-        };
-        let return_type = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => f as i32,
-                Err(s) => return s,
-            }
-        } else {
-            1
-        };
-        if return_type == 21 {
-            let w = date.iso_week().week();
-            return CalcResult::Number(w as f64);
-        }
-        let start_offset = match return_type {
-            1 => chrono::Weekday::Sun,
-            2 | 11 => chrono::Weekday::Mon,
-            12 => chrono::Weekday::Tue,
-            13 => chrono::Weekday::Wed,
-            14 => chrono::Weekday::Thu,
-            15 => chrono::Weekday::Fri,
-            16 => chrono::Weekday::Sat,
-            17 => chrono::Weekday::Sun,
-            x if x <= 0 || x == 3 => {
-                return CalcResult::new_error(Error::VALUE, cell, "Invalid return_type".to_string())
-            }
-            _ => return CalcResult::new_error(Error::NUM, cell, "Invalid return_type".to_string()),
-        };
-        // Serials 1..=60 are 1900 in Excel but the weekday-faithful stand-in date is in 1899.
-        // Evidence: probes/dates-early-1900 A16 (`WEEKNUM(1)` = 1).
-        let year = if serial <= 60 { 1900 } else { date.year() };
-        let mut first = match chrono::NaiveDate::from_ymd_opt(year, 1, 1) {
-            Some(d) => d,
-            None => {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                );
-            }
-        };
-        while first.weekday() != start_offset {
-            first -= chrono::Duration::days(1);
-        }
-        let week = (date - first).num_days() / 7 + 1;
-        CalcResult::Number(week as f64)
-    }
-
     pub(crate) fn fn_isoweeknum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
         // Broadcasts element-wise over a range/array date argument.
         self.apply_number_unary(&args[0], cell, |serial| {
-            let date = from_excel_date(serial.floor() as i64).map_err(|_| Error::NUM)?;
-            Ok(date.iso_week().week() as f64)
+            weeknum::iso_week(serial.floor() as i64)
         })
     }
 

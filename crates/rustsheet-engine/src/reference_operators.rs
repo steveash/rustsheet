@@ -88,7 +88,9 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 
 impl Model {
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
-    /// token (the lexer builds those): only two single cells are joined.
+    /// token (the lexer builds those): only two single cells on one sheet are joined, so
+    /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
+    /// is only ever a 3-D reference.
     pub(crate) fn get_range(
         &mut self,
         left: &Node,
@@ -107,7 +109,7 @@ impl Model {
                     left: left2,
                     right: right2,
                 },
-            ) if left1 == right1 && left2 == right2 => {
+            ) if left1 == right1 && left2 == right2 && left1.sheet == left2.sheet => {
                 // Corners may be written in either order (`Data!B2:Data!A1` is `Data!A1:B2`).
                 // UNVERIFIED against the oracle (references.md).
                 CalcResult::Range {
@@ -124,6 +126,74 @@ impl Model {
                 }
             }
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
+        }
+    }
+
+    /// A 3-D reference (`First:Last!A1`) where a value is needed: Excel gives `#REF!` for the
+    /// bare reference, in an operator and in value functions such as ABS
+    /// (probes/3d-ref-values C1:C3). A span of one sheet is that sheet's reference
+    /// (`=Data1:Data1!A1`, C9).
+    pub(crate) fn get_sheet_span_value(
+        &mut self,
+        first_index: u32,
+        last_index: u32,
+        reference: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if first_index == last_index {
+            return self.evaluate_node_in_context(reference, cell);
+        }
+        CalcResult::new_error(
+            Error::REF,
+            cell,
+            "3-D reference where a value is needed".to_string(),
+        )
+    }
+
+    /// A 3-D reference where a single-sheet reference is needed: `#VALUE!` (INDEX, ROWS, ROW,
+    /// AREAS, VLOOKUP, MATCH, SUMIF, COUNTIF, probes/3d-ref-functions). A span of one sheet is
+    /// that sheet's reference.
+    pub(crate) fn get_sheet_span_reference(
+        &mut self,
+        first_index: u32,
+        last_index: u32,
+        reference: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if first_index == last_index {
+            return self.evaluate_node_with_reference(reference, cell);
+        }
+        CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "3-D reference where one sheet is needed".to_string(),
+        )
+    }
+
+    /// A 3-D reference as an aggregate argument: one `Range` whose corners sit on the first
+    /// and the last sheet of the span in tab order, whichever way it was written
+    /// (`Data3:Data1!A1` is `Data1:Data3!A1`, probes/3d-ref-aggregates C2). Only
+    /// [`Model::evaluate_aggregate_arg`] builds a `Range` across sheets, and
+    /// [`Model::for_each_cell_or_error_in_range`] walks it sheet by sheet.
+    pub(crate) fn get_sheet_span_range(
+        &mut self,
+        first_index: u32,
+        last_index: u32,
+        reference: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.evaluate_node_with_reference(reference, cell) {
+            CalcResult::Range { left, right } => CalcResult::Range {
+                left: CellReferenceIndex {
+                    sheet: first_index.min(last_index),
+                    ..left
+                },
+                right: CellReferenceIndex {
+                    sheet: first_index.max(last_index),
+                    ..right
+                },
+            },
+            other => other,
         }
     }
 
@@ -190,6 +260,31 @@ impl Model {
         }
     }
 
+    /// Whether `(left,right)` evaluates to a reference: a union with an error operand (`(A1,#REF!)`)
+    /// is that error, not a reference (probes/union-accepted H9, docs/excel-semantics/references.md).
+    pub(crate) fn union_is_reference(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> bool {
+        let mut budget = MAX_AREA_PAIRS;
+        self.count_union_areas(left, right, cell, &mut budget)
+            .is_ok()
+    }
+
+    /// The areas of a reference argument: several for a union, one for any other reference.
+    /// `Err` holds the error the argument evaluates to, or `#VALUE!` if it is not a reference
+    /// (AGGREGATE's reference form; probes/aggregate-args).
+    pub(crate) fn reference_areas(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Range>, CalcResult> {
+        let mut budget = MAX_AREA_PAIRS;
+        self.evaluate_areas(node, cell, &mut budget)
+    }
+
     /// The number of areas `(left,right)` stands for, or the result to give instead, exactly
     /// as [`Model::union_areas`] finds them but without building the union's area list.
     fn count_union_areas(
@@ -202,7 +297,7 @@ impl Model {
         let mut count = 0;
         for node in [left, right] {
             count += match node {
-                Node::OpUnionKind { left, right } => {
+                Node::OpUnionKind { left, right, .. } => {
                     self.count_union_areas(left, right, cell, budget)?
                 }
                 _ => self.evaluate_areas(node, cell, budget)?.len(),
@@ -224,7 +319,7 @@ impl Model {
         budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
         match node {
-            Node::OpUnionKind { left, right } => self.union_areas(left, right, cell, budget),
+            Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
             Node::OpIntersectKind { left, right } => {
                 self.intersect_areas(left, right, cell, budget)
             }

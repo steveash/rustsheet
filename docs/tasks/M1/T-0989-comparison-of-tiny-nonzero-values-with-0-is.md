@@ -1,0 +1,30 @@
+---
+id: T-0989
+title: "Comparison of tiny nonzero values with 0 is not tolerant (EXP(-708)=0 is FALSE)"
+milestone: M1
+lane: engine
+status: done
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Comparing a tiny nonzero value with 0 follows Excel: `=EXP(-708)=0` is FALSE.
+
+## Context
+Evidence probes/subnormal-function-results C4-C6, C60-C62, C65, C69, C73-C75 (T-0189): Excel says `(EXP(-745))=0`, `(EXP(-708))=0` and `(EXP(-720))=0` are FALSE while the engine says TRUE, so the engine's ULP comparison tolerance (numbers.md Comparison tolerance) must not equate a tiny value with exactly 0. EXP(-745) and EXP(-720) are subnormal but not flushed in Excel (numbers.md). Check B5 too: the engine prints EXP(-708) with 15 digits, Excel 14 (T-0199).
+
+## Acceptance criteria
+- [ ] probes/subnormal-function-results C4-C6, C60-C62, C65, C69, C73-C75 pass; baseline shrinks; no regression in compare-tolerance cases.
+- [ ] `make check` green; reviewers approve.
+
+## Scoring note
+Graph reports 0.0 for a kept subnormal, so A4, A6, A60-A62, A65 (and A69) stay known failures even once the engine keeps the subnormal correctly. Decide in this task (decision record if a protected path is needed) how to score them; do not hand-edit the baseline.
+
+## Out of scope
+-
+
+## Outcome
+Comparison now decides on the two 15-digit values with no absolute epsilon (`compare_values`), and a numeric literal below the smallest normal is flushed to 0 at lex time. probes: 7 cells fixed (C5, C6, C60-C62, C65 and C4), 0 regressions. Remaining C69, C73-C75 (and the unscoreable A cells) need `+`/`-` to keep subnormals plus a scoring decision: moved to T-1027 (tier opus).

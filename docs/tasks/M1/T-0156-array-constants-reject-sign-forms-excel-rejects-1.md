@@ -3,7 +3,7 @@ id: T-0156
 title: "Array constants: reject sign forms Excel rejects ({++1}, {-+1}, {+'a'}, {+#N/A})"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0147 found (docs/excel-semantics/syntax.md, "Array constants take a single opt
 
 ## Out of scope
 - Unary signs outside array constants (T-0132).
+
+## Outcome
+`parse_array_item` now reads one sign plus a directly attached number token itself; every rejected form is a parse error (unit test `array_constant_sign_forms`), accepted forms unchanged. Eval delta: none expected (see PR).

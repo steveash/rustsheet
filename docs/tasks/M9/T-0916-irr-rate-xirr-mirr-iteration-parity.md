@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: [T-0942]
+depends_on: [T-1009]
 ---
 
 ## Goal
@@ -19,7 +19,11 @@ Examples: IRR.xlsx General!L2 `IRR(A2:F2)` expected 0.07930826116039724 got 0.07
 Approach: for IRR/RATE/XIRR, fit a Newton (or secant) iteration with candidate starting guesses and stopping rules to the cached results, e.g. Excel is documented to iterate up to 20 times to a 1e-5-ish tolerance; confirm against the data, do not trust the documentation. For MIRR, try the formulation `(-NPV(rr, positives)*(1+rr)^n / (NPV(fr, negatives)*(1+fr)))^(1/(n-1)) - 1` and variants until the cached bits match. Reuse any shared NPV/XNPV helper (see T-0901, which owns PV/FV/PMT/NPER/IPMT/PPMT/NPV; do not touch those functions here, only call them if they exist).
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
-cached workbooks give. Fit against the T-0942 sweep, never blind.
+cached workbooks give. Fit against the T-1009 sweep (`probes-numeric/m9-fin-irr-rate`), never blind.
+The sweep has landed (691 cells, oracle-filled). Its observations are in
+`docs/excel-semantics/financial.md`, "IRR, RATE and XIRR stop early": the default guess is 0.1, IRR's
+last digits depend on the guess and on the flow scale and sign, XIRR stops at about 1e-8 to 1e-7 relative and is
+scale-invariant, and some guesses give `#NUM!`. RATE's guess argument is unreachable today (T-1050).
 
 ## Acceptance criteria
 - [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.

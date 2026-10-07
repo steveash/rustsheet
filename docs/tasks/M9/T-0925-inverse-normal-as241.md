@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: S
 tier: opus
-depends_on: [T-0942]
+depends_on: [T-1006]
 ---
 
 ## Goal
@@ -21,7 +21,7 @@ Oracle-free: Excel's cached values are the exact quantiles, ours (statrs `Normal
 Code: `functions/statistical/{normal,log_normal}.rs`. Implement AS241 (PPND16) once, in the same module as the T-0924 kernel if that has landed (else a new `normal_kernel` module that T-0924 extends), and route all four functions through it. Where AS241 alone leaves ulp-level diffs, test whether one Newton/Halley refinement step against the T-0924 CDF reproduces the cached cells and keep what matches.
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
-cached workbooks give. Fit against the T-0942 sweep, never blind.
+cached workbooks give. Fit against the T-1006 sweep (`probes-numeric/m9-norm-s-inv`), never blind.
 
 Triage T-0903 (2026-10-06 report): this task owns 106 baseline lines: NORM.S.INV 33, NORM.INV 19,
 LOGNORM.INV 31 (all NORM_DIST.xlsx / LOGNORM.xlsx `*.INV` cells) and CONFIDENCE.NORM 23. The normal

@@ -16,7 +16,9 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 ///
 /// JSON numbers are numbers, JSON booleans are booleans, strings starting with
 /// `=` are formulas, other strings are literal text. Use the tagged form
-/// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else.
+/// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
+/// carry `"stored":true`, which only changes how spec2xlsx writes it (a stored constant, T-0999);
+/// the engine adapter ignores it.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellInput {

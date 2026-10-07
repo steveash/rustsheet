@@ -7,7 +7,7 @@ status: todo
 priority: P2
 size: M
 tier: opus
-depends_on: [T-0969, T-0966]
+depends_on: [T-0969, T-1043]
 ---
 
 ## Goal
@@ -38,7 +38,7 @@ Examples (expected vs actual):
 Hypothesis (the oracle is the judge): Excel solves CDF(t) = p iteratively on its own T.DIST kernel
 (T-0969), so parity needs that kernel first; for the 2-tailed and near-0.5 cases solve on the tail
 directly (no `1 - p`). The last digits depend on the solver's start, step and stopping rule:
-**Needs an oracle sweep (T-0018):** fit against the T-0966 Student-t sweep (family 4), never blind.
+**Needs an oracle sweep (T-0018):** fit against the T-1043 Student-t sweep, never blind.
 Previous evidence from T-0925 (inverse normal): a closed-form inverse plus one Newton step regressed
 cells that the old code matched by luck; measure regressions on every attempt.
 
@@ -53,4 +53,4 @@ cells that the old code matched by luck; measure regressions on every attempt.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-The CDF kernel (T-0969); CONFIDENCE.NORM (T-0925); legacy TINV (evidence in T-0966).
+The CDF kernel (T-0969); CONFIDENCE.NORM (T-0925); legacy TINV (evidence in T-1048).

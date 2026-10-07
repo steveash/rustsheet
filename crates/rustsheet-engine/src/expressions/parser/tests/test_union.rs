@@ -38,7 +38,7 @@ fn is_parse_error(node: &Node) -> bool {
 fn comma_inside_parentheses_is_a_union() {
     let mut parser = parser();
     let node = parser.parse("(Data!B6,Data!E11)", &context());
-    let Node::OpUnionKind { left, right } = &node else {
+    let Node::OpUnionKind { left, right, .. } = &node else {
         panic!("expected a union, got {node:?}");
     };
     assert!(matches!(**left, Node::ReferenceKind { .. }));
@@ -95,14 +95,14 @@ fn comma_outside_parentheses_is_not_a_union() {
 #[test]
 fn unions_nest_and_chain() {
     let mut parser = parser();
-    // `((A2,E8),B6)` and `(A2,E8,B6)` are the same left-associative tree.
+    // `((A2,E8),B6)` keeps the group; `(A2,E8,B6)` is the same tree without it.
     let nested = parser.parse("((Data!A2,Data!E8),Data!B6)", &context());
-    let Node::OpUnionKind { left, right } = &nested else {
+    let Node::OpUnionKind { left, right, .. } = &nested else {
         panic!("expected a union, got {nested:?}");
     };
     assert!(is_union(left));
     assert!(matches!(**right, Node::ReferenceKind { .. }));
-    assert_eq!(
+    assert_ne!(
         parser.parse("(Data!A2,Data!E8,Data!B6)", &context()),
         nested
     );
@@ -129,12 +129,6 @@ fn union_binds_looser_than_intersection_and_tighter_than_the_rest() {
         panic!("expected an intersection, got {node:?}");
     };
     assert!(is_union(left));
-    // `(A1+B1,C1)` is `A1+(B1,C1)` (UNVERIFIED precedence, references.md).
-    let node = parser.parse("(A1+B1,C1)", &context());
-    let Node::OpSumKind { right, .. } = &node else {
-        panic!("expected a sum, got {node:?}");
-    };
-    assert!(is_union(right));
     for formula in ["(A1,B2)/1", "(A1,B2)&\"\"", "-(A1,B2)", "(A1,B2)%"] {
         let node = parser.parse(formula, &context());
         assert!(!is_parse_error(&node), "{formula}: {node:?}");
@@ -145,6 +139,8 @@ fn union_binds_looser_than_intersection_and_tighter_than_the_rest() {
 fn union_operands_must_be_references() {
     let mut parser = parser();
     for formula in [
+        "(A1+B1,C1)",
+        "(-1,A1)",
         "(1,A1)",
         "(A1,1)",
         "(A1,\"a\")",
@@ -178,7 +174,12 @@ fn unions_round_trip_through_stringify() {
         ("(Data!E4,Data!E4)", "(Data!E4,Data!E4)"),
         ("(Data!E12,Data!A9)/1", "(Data!E12,Data!A9)/1"),
         ("(Data!C12,Data!E9)&\"\"", "(Data!C12,Data!E9)&\"\""),
-        ("((Data!A2,Data!E8),Data!B6)", "(Data!A2,Data!E8,Data!B6)"),
+        ("((Data!A2,Data!E8),Data!B6)", "((Data!A2,Data!E8),Data!B6)"),
+        ("(Data!A2,Data!E8,Data!B6)", "(Data!A2,Data!E8,Data!B6)"),
+        ("(-A1,B1)", "(-A1,B1)"),
+        ("(A1,-B1)", "(A1,-B1)"),
+        ("((A1,B2),C3,D4)", "((A1,B2),C3,D4)"),
+        ("(A1,B2,(C3,D4))", "(A1,B2,(C3,D4))"),
         ("(A1,(B2,C3))", "(A1,(B2,C3))"),
         (
             "(Data!C1:C12,Data!E1:E12) Data!C9",
@@ -189,7 +190,6 @@ fn unions_round_trip_through_stringify() {
         ("SUM((A1,B2),C3)", "SUM((A1,B2),C3)"),
         ("-(A1,B2)", "-(A1,B2)"),
         ("(A1,B2)^2", "(A1,B2)^2"),
-        ("(A1+B1,C1)", "A1+(B1,C1)"),
         ("(A1:B2 B1,C1)", "(A1:B2 B1,C1)"),
         ("('Q''1'!A1,Data!B1:B2)", "('Q''1'!A1,Data!B1:B2)"),
     ];
@@ -258,4 +258,64 @@ fn long_unions_hit_the_depth_cap() {
     };
     assert_eq!(message, TOO_DEEP_MESSAGE);
     // Nested unions: test_nesting_depth.rs (they need a sized stack).
+}
+
+#[test]
+fn negated_reference_is_a_union_operand() {
+    // Excel loads and prints `(-A1,B1)` unchanged (probes/union-neg-operand H2); the engine
+    // reads it as a union of `-A1` and `B1`, not as `-(A1,B1)`.
+    let mut parser = parser();
+    let node = parser.parse("(-A1,B1)", &context());
+    let Node::OpUnionKind { left, .. } = &node else {
+        panic!("expected a union, got {node:?}");
+    };
+    assert!(matches!(**left, Node::UnaryKind { .. }));
+}
+
+#[test]
+fn any_number_of_minuses_is_a_union_operand() {
+    // Excel loads two, three and four minuses (probes/union-operand-{double,triple,quad}-minus).
+    let mut parser = parser();
+    for formula in ["(--A1,B1)", "(---A1,B1)", "(----A1,B1)"] {
+        assert!(is_union(&parser.parse(formula, &context())), "{formula}");
+    }
+}
+
+#[test]
+fn union_with_a_negated_operand_cannot_be_cut_by_an_intersection() {
+    // Excel refuses all of these (`FileCorruptTryRepair`, no oracle value): references.md "Union:
+    // parsing and evaluation", operand forms (T-0998, T-1031 probes).
+    let mut parser = parser();
+    for formula in [
+        "(-A1,B1) A1",
+        "(-A1,B1) B1",
+        "A1 (-A1,B1)",
+        "((-A1,B1),C1) A1",
+        "(-(A1,B2),C1) A1",
+        "(--A1,B1) A1",
+        "(A1,-B1) A1",
+    ] {
+        assert!(
+            is_parse_error(&parser.parse(formula, &context())),
+            "{formula}"
+        );
+    }
+    // Without the negation the cut is fine.
+    assert!(!is_parse_error(&parser.parse("(A1,B1) A1", &context())));
+}
+
+#[test]
+fn parentheses_around_a_union_keep_every_level() {
+    // probes/union-operand-nested-parens: FORMULATEXT keeps each level Excel was given.
+    let mut parser = parser();
+    for formula in [
+        "(A1,B2)",
+        "((A1,B2))",
+        "((A1,B2),C1)",
+        "(((A1,B2),C1))",
+        "((((A1,B2))))",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert_eq!(to_english_localized_string(&node, &context()), formula);
+    }
 }

@@ -1,0 +1,55 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "VAR/STDEV where x*x or (x-mean)^2 is subnormal: rows 1-5 every square, rows 6-9 squares that are subnormal but sum to a normal (T-1037 review follow-up).",
+ "tags": [
+  "M1",
+  "probe",
+  "statistics",
+  "T-1037",
+  "variance"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=VAR.P({1E-200,2E-200})",
+    "B1": "=VAR.S({1E-200,2E-200})",
+    "C1": "=STDEV.P({1E-200,2E-200})",
+    "D1": "=STDEV.S({1E-200,2E-200})",
+    "A2": "=VAR.P({1E-160,3E-160})",
+    "B2": "=VAR.S({1E-160,3E-160})",
+    "C2": "=STDEV.P({1E-160,3E-160})",
+    "D2": "=STDEV.S({1E-160,3E-160})",
+    "A3": "=VAR.P({1E-160,2E-160,4E-160})",
+    "B3": "=VAR.S({1E-160,2E-160,4E-160})",
+    "C3": "=STDEV.P({1E-160,2E-160,4E-160})",
+    "D3": "=STDEV.S({1E-160,2E-160,4E-160})",
+    "A4": "=VAR.P({1E-154,3E-154})",
+    "B4": "=VAR.S({1E-154,3E-154})",
+    "C4": "=STDEV.P({1E-154,3E-154})",
+    "D4": "=STDEV.S({1E-154,3E-154})",
+    "A5": "=VAR.P({3E-308,1E-308})",
+    "B5": "=VAR.S({3E-308,1E-308})",
+    "C5": "=STDEV.P({3E-308,1E-308})",
+    "D5": "=STDEV.S({3E-308,1E-308})",
+    "A6": "=VAR.P({0,2.2E-154})",
+    "B6": "=VAR.S({0,2.2E-154})",
+    "C6": "=STDEV.P({0,2.2E-154})",
+    "D6": "=STDEV.S({0,2.2E-154})",
+    "A7": "=VAR.P({0,3E-154})",
+    "B7": "=VAR.S({0,3E-154})",
+    "C7": "=STDEV.P({0,3E-154})",
+    "D7": "=STDEV.S({0,3E-154})",
+    "A8": "=VAR.P({0,2.2E-154,0,2.2E-154})",
+    "B8": "=VAR.S({0,2.2E-154,0,2.2E-154})",
+    "C8": "=STDEV.P({0,2.2E-154,0,2.2E-154})",
+    "D8": "=STDEV.S({0,2.2E-154,0,2.2E-154})",
+    "A9": "=VAR.P({1E-153,1.03E-153})",
+    "B9": "=VAR.S({1E-153,1.03E-153})",
+    "C9": "=STDEV.P({1E-153,1.03E-153})",
+    "D9": "=STDEV.S({1E-153,1.03E-153})"
+   }
+  }
+ ],
+ "expected": {}
+}

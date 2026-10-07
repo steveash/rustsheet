@@ -47,7 +47,7 @@ use std::mem;
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
-use crate::number_format::parse_excel_number;
+use crate::{arithmetic::flush_subnormal, number_format::parse_excel_number};
 
 use crate::language::Language;
 use crate::locale::Locale;
@@ -382,7 +382,12 @@ impl Lexer {
                                 // reference
                                 self.position += 1;
                                 return self.consume_range(Some(name));
-                            } else if peek_char == Some('$') {
+                            } else if next_char_is_colon {
+                                if let Some(span) = self.consume_sheet_span(&name) {
+                                    return self.consume_range(Some(span));
+                                }
+                            }
+                            if peek_char == Some('$') {
                                 self.position = position - 1;
                                 return self.consume_range(None);
                             }
@@ -654,7 +659,9 @@ impl Lexer {
         self.position = position;
         match parse_excel_number(&chars) {
             None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            Some(v) => Ok(v),
+            // A literal below the smallest normal reads as 0 (numbers.md "Subnormal results become 0":
+            // `=1E-308=0` is TRUE, probes/subnormal-function-results A70).
+            Some(v) => Ok(flush_subnormal(v)),
         }
     }
 
@@ -821,6 +828,26 @@ impl Lexer {
         }
         self.position -= 1;
         self.consume_range(None)
+    }
+
+    /// With the cursor on the `:` after `first`, reads the rest of an unquoted 3-D reference
+    /// prefix, `:Last!` (`Sheet1:Sheet3!A1`), and returns `First:Last`. Both names must be
+    /// ones that need no quotes, so a cell reference (`A1:B2`) or a range of defined names
+    /// (`Start:Finish`) is never taken for one; otherwise the cursor does not move.
+    fn consume_sheet_span(&mut self, first: &str) -> Option<String> {
+        let start = self.position;
+        self.position += 1;
+        let last = self.consume_identifier();
+        if self.peek_char() == Some('!')
+            && !last.is_empty()
+            && !utils::name_needs_quoting(first)
+            && !utils::name_needs_quoting(&last)
+        {
+            self.position += 1;
+            return Some(format!("{first}:{last}"));
+        }
+        self.position = start;
+        None
     }
 
     fn consume_quoted_sheet_reference(&mut self) -> TokenType {

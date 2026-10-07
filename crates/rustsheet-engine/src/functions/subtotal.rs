@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -78,8 +79,19 @@ impl Model {
         }
     }
 
-    // FIXME(TD): This is too much
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
+        self.cell_formula_is_one_of(sheet_index, row, column, &[Function::Subtotal])
+    }
+
+    /// Whether the cell holds a formula whose outermost call is one of `kinds` (SUBTOTAL and
+    /// AGGREGATE skip such cells).
+    pub(crate) fn cell_formula_is_one_of(
+        &self,
+        sheet_index: u32,
+        row: i32,
+        column: i32,
+        kinds: &[Function],
+    ) -> bool {
         let cell = match self.workbook.worksheets[sheet_index as usize].cell(row, column) {
             Some(c) => c,
             None => {
@@ -90,13 +102,7 @@ impl Model {
         match cell.get_formula() {
             Some(f) => {
                 let node: &Node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
-                matches!(
-                    node,
-                    Node::FunctionKind {
-                        kind: Function::Subtotal,
-                        args: _
-                    }
-                )
+                matches!(node, Node::FunctionKind { kind, .. } if kinds.contains(kind))
             }
             None => false,
         }
@@ -536,7 +542,7 @@ impl Model {
                 message: "Division by 0!".to_string(),
             };
         }
-        CalcResult::Number(result / (l as f64))
+        CalcResult::finite_number_or_num(flush_subnormal(result / (l as f64)), cell)
     }
 
     fn subtotal_sum(
@@ -553,7 +559,7 @@ impl Model {
         for value in values {
             result += value;
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 
     fn subtotal_product(
@@ -570,7 +576,7 @@ impl Model {
         for value in values {
             result *= value;
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(result, cell)
     }
 
     fn subtotal_max(

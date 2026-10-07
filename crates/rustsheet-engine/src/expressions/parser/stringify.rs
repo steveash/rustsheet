@@ -1,6 +1,9 @@
 mod bound_variables;
 use super::reference_operators::{intersection_operand, tight_operand, union_text};
-use super::{super::utils::quote_name, Node, Reference};
+use super::{
+    super::utils::{name_needs_quoting, quote_name},
+    for_each_chain_operand_mut, left_chain, value_operands, Node, Reference,
+};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
@@ -135,6 +138,17 @@ pub fn to_string_displaced(
     language: &Language,
 ) -> String {
     stringify(node, Some(context), displace_data, false, locale, language)
+}
+
+/// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
+/// needs quotes (Excel writes `'Data2:Q 4'!A1`).
+pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
+    let span = format!("{first}:{last}");
+    if !name_needs_quoting(first) && !name_needs_quoting(last) {
+        span
+    } else {
+        format!("'{}'", span.replace('\'', "''"))
+    }
 }
 
 /// Converts a local reference to a string applying some displacement if needed.
@@ -427,17 +441,6 @@ fn stringify(
 ) -> String {
     use self::Node::*;
     let sub = |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
-    let paren_if = |n: &Node, wrap: bool| {
-        if wrap {
-            format!("({})", sub(n))
-        } else {
-            sub(n)
-        }
-    };
-    // `&` and the comparisons bind looser than `+ - * /`, so as operands of those they need
-    // parentheses to re-parse to the same tree (T-0157).
-    let is_loose = |n: &Node| matches!(n, CompareKind { .. } | OpConcatenateKind { .. });
-    let compare_in_parens = |n: &Node| paren_if(n, matches!(n, CompareKind { .. }));
     match node {
         BooleanKind(value) => {
             if *value {
@@ -546,6 +549,25 @@ fn stringify(
             );
             format!("{s1}:{s2}")
         }
+        // Rows and columns inserted or moved on one sheet of the span do not shift the span's
+        // cells (edit semantics are not modelled yet), so no displacement reaches `reference`.
+        SheetSpanKind {
+            first_sheet,
+            last_sheet,
+            reference,
+            ..
+        } => format!(
+            "{}!{}",
+            sheet_span_text(first_sheet, last_sheet),
+            stringify(
+                reference,
+                context,
+                &DisplaceData::None,
+                export_to_excel,
+                locale,
+                language
+            )
+        ),
         WrongRangeKind {
             sheet_name,
             absolute_row1,
@@ -603,53 +625,19 @@ fn stringify(
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
             format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpUnionKind { left, right } => union_text(&sub(left), left, &sub(right), locale),
-        OpConcatenateKind { left, right } => {
-            // `&` binds tighter than the comparisons: `"a"&(2<3)` printed bare re-parses as
-            // `("a"&2)<3` (T-0151).
-            format!("{}&{}", compare_in_parens(left), compare_in_parens(right))
-        }
-        CompareKind { kind, left, right } => {
-            // Comparisons chain left to right, so only a comparison on the right needs parentheses.
-            format!("{}{kind}{}", sub(left), compare_in_parens(right))
-        }
-        OpSumKind { kind, left, right } => {
-            // CompareKind and `&` have lower precedence than +/-, so wrap them to preserve semantics;
-            // `a-(b+c)` additionally needs its parentheses.
-            let left_str = paren_if(left, is_loose(left));
-            let right_wrap = is_loose(right)
-                || (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }));
-            format!("{left_str}{kind}{}", paren_if(right, right_wrap))
-        }
-        OpProductKind { kind, left, right } => {
-            let x = paren_if(left, is_loose(left) || matches!(**left, OpSumKind { .. }));
-            let right_wrap =
-                is_loose(right) || matches!(**right, OpSumKind { .. } | OpProductKind { .. });
-            format!("{x}{kind}{}", paren_if(right, right_wrap))
-        }
-        OpPowerKind { left, right } => {
-            // Only these operands print bare; everything else gets parentheses. A unary operand
-            // is bare on the left and parenthesised on the right (unchanged by the T-0190 fold).
-            let is_atom = |n: &Node| {
-                matches!(
-                    n,
-                    BooleanKind(_)
-                        | NumberKind(_)
-                        | StringKind(_)
-                        | ReferenceKind { .. }
-                        | RangeKind { .. }
-                        | OpIntersectKind { .. }
-                        | OpUnionKind { .. }
-                        | WrongReferenceKind { .. }
-                        | DefinedNameKind(_)
-                        | TableNameKind(_)
-                        | NamedVariableKind { .. }
-                        | WrongRangeKind { .. }
-                )
-            };
-            let x = paren_if(left, !(is_atom(left) || matches!(**left, UnaryKind { .. })));
-            let y = paren_if(right, !is_atom(right));
-            format!("{x}^{y}")
+        OpUnionKind { left, right, .. } => union_text(node, &sub(left), &sub(right), locale),
+        OpConcatenateKind { .. }
+        | CompareKind { .. }
+        | OpSumKind { .. }
+        | OpProductKind { .. }
+        | OpPowerKind { .. } => {
+            // A loop down the chain's left operands, not recursion (T-0128).
+            let (links, first) = left_chain(node);
+            let mut text = sub(first);
+            for link in links {
+                text = operator_text(link, text, &sub);
+            }
+            text
         }
         NamedFunctionKind { name, args, id: _ } => format_function(
             &name.to_lowercase(),
@@ -717,6 +705,7 @@ fn stringify(
                     | StringKind(_)
                     | ReferenceKind { .. }
                     | RangeKind { .. }
+                    | SheetSpanKind { .. }
                     | WrongReferenceKind { .. }
                     | WrongRangeKind { .. }
                     | OpRangeKind { .. }
@@ -880,6 +869,84 @@ fn stringify(
     }
 }
 
+/// The text of value operator `node` (`+ - * / ^ &` or a comparison) whose left operand prints
+/// as `left_text`: the operator and its right operand appended, with the parentheses either
+/// operand needs to re-parse to the same tree. One link of the loop that prints a chain
+/// (T-0128).
+fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) -> String {
+    use self::Node::*;
+    let wrap = |text: String, wrap: bool| if wrap { format!("({text})") } else { text };
+    let paren_if = |n: &Node, parens: bool| wrap(sub(n), parens);
+    // `&` and the comparisons bind looser than `+ - * /`, so as operands of those they need
+    // parentheses to re-parse to the same tree (T-0157).
+    let is_loose = |n: &Node| matches!(n, CompareKind { .. } | OpConcatenateKind { .. });
+    let is_compare = |n: &Node| matches!(n, CompareKind { .. });
+    let compare_in_parens = |n: &Node| paren_if(n, is_compare(n));
+    let Some((left, _)) = value_operands(node) else {
+        return left_text;
+    };
+    match node {
+        OpConcatenateKind { right, .. } => {
+            // `&` binds tighter than the comparisons: `"a"&(2<3)` printed bare re-parses as
+            // `("a"&2)<3` (T-0151).
+            format!(
+                "{}&{}",
+                wrap(left_text, is_compare(left)),
+                compare_in_parens(right)
+            )
+        }
+        CompareKind { kind, right, .. } => {
+            // Comparisons chain left to right, so only a comparison on the right needs parentheses.
+            format!("{left_text}{kind}{}", compare_in_parens(right))
+        }
+        OpSumKind { kind, right, .. } => {
+            // CompareKind and `&` have lower precedence than +/-, so wrap them to preserve semantics;
+            // `a-(b+c)` additionally needs its parentheses.
+            let left_str = wrap(left_text, is_loose(left));
+            let right_wrap = is_loose(right)
+                || (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }));
+            format!("{left_str}{kind}{}", paren_if(right, right_wrap))
+        }
+        OpProductKind { kind, right, .. } => {
+            let x = wrap(
+                left_text,
+                is_loose(left) || matches!(left, OpSumKind { .. }),
+            );
+            let right_wrap =
+                is_loose(right) || matches!(**right, OpSumKind { .. } | OpProductKind { .. });
+            format!("{x}{kind}{}", paren_if(right, right_wrap))
+        }
+        OpPowerKind { right, .. } => {
+            // Only these operands print bare; everything else gets parentheses. A unary operand
+            // is bare on the left and parenthesised on the right (unchanged by the T-0190 fold).
+            let is_atom = |n: &Node| {
+                matches!(
+                    n,
+                    BooleanKind(_)
+                        | NumberKind(_)
+                        | StringKind(_)
+                        | ReferenceKind { .. }
+                        | RangeKind { .. }
+                        | OpIntersectKind { .. }
+                        | OpUnionKind { .. }
+                        | WrongReferenceKind { .. }
+                        | DefinedNameKind(_)
+                        | TableNameKind(_)
+                        | NamedVariableKind { .. }
+                        | WrongRangeKind { .. }
+                )
+            };
+            let x = wrap(
+                left_text,
+                !(is_atom(left) || matches!(left, UnaryKind { .. })),
+            );
+            let y = paren_if(right, !is_atom(right));
+            format!("{x}^{y}")
+        }
+        _ => left_text,
+    }
+}
+
 pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
     match node {
         // Rename
@@ -901,6 +968,20 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
                 *sheet_name = Some(new_name.to_owned());
             }
         }
+        Node::SheetSpanKind {
+            first_sheet,
+            last_sheet,
+            first_index,
+            last_index,
+            ..
+        } => {
+            if *first_index == sheet_index {
+                new_name.clone_into(first_sheet);
+            }
+            if *last_index == sheet_index {
+                new_name.clone_into(last_sheet);
+            }
+        }
         Node::WrongReferenceKind { sheet_name, .. } => {
             if let Some(name) = sheet_name {
                 if name.to_uppercase() == new_name.to_uppercase() {
@@ -917,30 +998,18 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         // Go next level
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right }
-        | Node::OpUnionKind { left, right }
-        | Node::OpConcatenateKind { left, right } => {
+        | Node::OpUnionKind { left, right, .. } => {
             rename_sheet_in_node(left, sheet_index, new_name);
             rename_sheet_in_node(right, sheet_index, new_name);
         }
-        Node::OpSumKind {
-            kind: _,
-            left,
-            right,
-        } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::OpProductKind {
-            kind: _,
-            left,
-            right,
-        } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
-        }
-        Node::OpPowerKind { left, right } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| {
+                rename_sheet_in_node(operand, sheet_index, new_name);
+            });
         }
         Node::FunctionKind { kind: _, args } => {
             for arg in args {
@@ -955,14 +1024,6 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
             for arg in args {
                 rename_sheet_in_node(arg, sheet_index, new_name);
             }
-        }
-        Node::CompareKind {
-            kind: _,
-            left,
-            right,
-        } => {
-            rename_sheet_in_node(left, sheet_index, new_name);
-            rename_sheet_in_node(right, sheet_index, new_name);
         }
         Node::UnaryKind { kind: _, right } => {
             rename_sheet_in_node(right, sheet_index, new_name);
@@ -1019,30 +1080,18 @@ pub(crate) fn rename_defined_name_in_node(
         // Go next level
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right }
-        | Node::OpUnionKind { left, right }
-        | Node::OpConcatenateKind { left, right } => {
+        | Node::OpUnionKind { left, right, .. } => {
             rename_defined_name_in_node(left, name, scope, new_name);
             rename_defined_name_in_node(right, name, scope, new_name);
         }
-        Node::OpSumKind {
-            kind: _,
-            left,
-            right,
-        } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::OpProductKind {
-            kind: _,
-            left,
-            right,
-        } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
-        }
-        Node::OpPowerKind { left, right } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| {
+                rename_defined_name_in_node(operand, name, scope, new_name);
+            });
         }
         Node::FunctionKind { kind: _, args } => {
             for arg in args {
@@ -1057,14 +1106,6 @@ pub(crate) fn rename_defined_name_in_node(
             for arg in args {
                 rename_defined_name_in_node(arg, name, scope, new_name);
             }
-        }
-        Node::CompareKind {
-            kind: _,
-            left,
-            right,
-        } => {
-            rename_defined_name_in_node(left, name, scope, new_name);
-            rename_defined_name_in_node(right, name, scope, new_name);
         }
         Node::UnaryKind { kind: _, right } => {
             rename_defined_name_in_node(right, name, scope, new_name);
@@ -1088,6 +1129,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::EmptyArgKind => {}
         Node::ReferenceKind { .. } => {}
         Node::RangeKind { .. } => {}
+        Node::SheetSpanKind { .. } => {}
         Node::WrongReferenceKind { .. } => {}
         Node::WrongRangeKind { .. } => {}
         Node::TableNameKind(_) => {}

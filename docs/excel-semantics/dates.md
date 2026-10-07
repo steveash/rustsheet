@@ -19,9 +19,50 @@ Oracle-confirmed (excel-graph, 2026-10-04, probes/dates-early-1900): `DATE(1900,
 All of these now match (T-0125).
 EDATE/EOMONTH do month arithmetic on real calendar dates: serial 60 counts as 28 February 1900 (`EDATE(60,0)` = `EOMONTH(60,0)` = 59), `EOMONTH(59,0)` = 59, and results below serial 1 are #NUM! (`EOMONTH(1,-1)`, `EDATE(1,-1)`). `TEXT(DATE(1900,1,0),"d")` = "0"; `DAY(0)` = 0, `MONTH(0)` = 1, `YEAR(0)` = 1900.
 Evidence: probes/dates-early-1900 A17-A25. Oracle: excel-graph, 2026-10-05.
+Early-1900 edges (T-0182, VERIFIED, probes/dates-early-1900-edges, excel-graph 2026-10-06): serial 0 works in
+EDATE/EOMONTH as day 0 of January 1900: `EDATE(0,1)` = `EOMONTH(0,0)` = 31, `EOMONTH(0,1)` = 59, `EDATE(0,12)` = 366,
+`EDATE(0,0)` = 0, `EOMONTH(0.5,1)` = 59, `EDATE(0.5,1)` = 31 (cells A36-A44); `EOMONTH(0,-1)` is #NUM! and
+`EDATE(40000,2000000000)` is #NUM!. `TEXT` with ddd/dddd reads the Sunday-based weekday: `TEXT(0,"dddd")` =
+"Saturday", `TEXT(0.5,"ddd h:mm")` = "Sat 12:00", `TEXT(1,"dddd")` = "Sunday", `TEXT(59,"dddd")` = "Tuesday",
+`TEXT(60,"dddd")` = "Wednesday", `TEXT(61,"dddd")` = "Thursday", `TEXT(0,"dddd d mmmm yyyy")` =
+"Saturday 0 January 1900" (A26-A35). WEEKNUM numbers weeks from a 1 January 1900 that is a Sunday (serial 1):
+`WEEKNUM(0)` = 0, `WEEKNUM(0,2)` = 1, `WEEKNUM(1,2)` = 1, `WEEKNUM(2,2)` = 2, `WEEKNUM(7,2)` = 2, `WEEKNUM(8,2)` = 2,
+`WEEKNUM(9,2)` = 3, `WEEKNUM(59,2)` = `WEEKNUM(60,2)` = `WEEKNUM(61,2)` = 10, `WEEKNUM(1,21)` = ISOWEEKNUM(1) = 52,
+`WEEKNUM(60)` = 9, `WEEKNUM(7)` = 1, `WEEKNUM(8)` = 2 (A1-A25). Past serial 60 the Sunday-based weekday equals the real one (`TEXT(61,"dddd")` = "Thursday"), so what differs is where
+WEEKNUM puts the week-1 anchor: serial 1 counts as a Sunday. For return type 2 that makes serial 61 week 10 where a real-calendar
+anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKNUM(61,21)` = 9, A23). The anchor holds through 1900: probes/weeknum-1900-later has `WEEKNUM(61)` = 9,
+`WEEKNUM(100,2)` = 16, `WEEKNUM(100)` = 15, `WEEKNUM(200,2)` = 30, `WEEKNUM(366,2)` = 54, `WEEKNUM(366)` = 53, `WEEKNUM(0,12)` = 1, `WEEKNUM(0,17)` = 0,
+and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
+start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
+type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
+Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
+`(serial - 1) mod 7` from Sunday, one formula for every serial). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED only for months 0, 1 and 12; UNVERIFIED for EDATE(0,2), where day 0 of March may be 59 or 60, and for negative months, which give #NUM!).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
+
+### WEEKNUM return_type edge cases and serial 0 (T-1023)
+Rule: return_type 1, 2, 11-17 and 21 are valid (a fraction truncates: 2.9 is 2, 21.5 is 21);
+0, 3-10 and 18-20 are always `#NUM!` (not `#VALUE!`). A return_type of 22 or more, or negative, is
+NOT simply an error: it reuses the start weekday of the last WEEKNUM with a valid type evaluated
+earlier in the same recalc (type 21 leaves "start Monday"; ISOWEEKNUM leaves nothing), and is
+`#NUM!` only when none has run. On a fresh load Excel evaluates bottom to top, so with
+`A1=WEEKNUM(100,99)` and `A2=WEEKNUM(100,2)` both are 16, while the swapped layout gives 16 and
+`#NUM!`; `WEEKNUM(0,99)` was 0 or 1 in the 94-cell workbook depending on its neighbours. A boolean
+return_type is `#VALUE!` (`WEEKNUM(100,TRUE)`, also from a reference), text that reads as a number is
+accepted (`WEEKNUM(100,"2")` = 16), other text is `#VALUE!`. An error in the serial wins
+(`WEEKNUM(-1,21)` is `#NUM!`, `WEEKNUM(0,NA())` is `#N/A`). Under ISO numbering serial 0 shares
+serial 1's week: `WEEKNUM(0,21)` = `ISOWEEKNUM(0)` = 52 = `WEEKNUM(1,21)`; `ISOWEEKNUM(-1)` is `#NUM!`.
+Evidence (oracle: excel-graph, 2026-10-06, T-1023): probes/weeknum-serial-0 (57 cells),
+probes/weeknum-invalid-type (8 cells, no valid WEEKNUM in the workbook: all `#NUM!`),
+probes/weeknum-stale-return-type (13 cells over five layouts: Up, Down, Mixed, Type21, Type1);
+the first 94-cell version of weeknum-serial-0 (commit 042ad31) reproduces deterministically.
+Status: VERIFIED, except the stale state: DEVIATION (decision 0038). RustSheet always gives
+`#NUM!` for 22+ and negatives, which is Excel's value only when no valid WEEKNUM ran earlier in
+the recalc. The stale value depends on Excel's calc order (and so on its calc chain and edit
+history), which RustSheet does not reproduce; probes/weeknum-stale-return-type Up!A1, Mixed!A3,
+Mixed!A4, Type21!A1 and Type1!A1 stay known failures.
+Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.
@@ -105,8 +146,19 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   `"0:11.9999:1"` (11 min + 10000 s) and `"10:9999.5:12"` parse, but `"24:60"`, `"24:0:60"`,
   `"0:60:60"`, `"9998:60:00"`, `"0:9990:599"`, `"60:60.5"` (M:S.f), `"0:9998.60:1"` and
   `"0:9999:9999.9999"` are #VALUE!. Evidence: probes/clock-text-oddities4 to -7 (excel-graph,
-  2026-10-06). Unprobed: an `H:M.f:S` fraction of more than 12 significant digits (the engine
-  gives #VALUE!, a bound that keeps the serial exact; `"10:11.12345:12"` parses).
+  2026-10-06). An `H:M.f:S` fraction may have any number of digits (T-0253): the digits are
+  the whole seconds, accumulated as `w * 10 + d` in a double, so 19 or more digits differ from the
+  correctly rounded value (`"0:1.1234567890123456789:0"` TIMEVALUE 0.234375, `"0:1.12345678901234567890:0"`
+  0.34375); `0+text` gives `1.4288980209762232e+19` for 25 digits and `1.4288980209762231e+34` for 40, and
+  TIMEVALUE of a serial that large is 0. Below 2^53 ms the serial is `total_ms / 1000 / 86400` as before;
+  above, `((clock_seconds + whole) + ms / 1000) / 86400`. Leading zeros do not count
+  (`"0:1.0000000000001:0"` is 61 s). With AM/PM, a whole-seconds value over 59 is #VALUE!
+  (`"10:11.1234567890123:12 PM"`), and the one-out-of-range rule still holds
+  (`"24:1.1234567890123:0"`, `"0:60.1234567890123:0"` are #VALUE!). Evidence: probes/clock-text-long-fraction, -2, -3.
+- **Clock text of more than 255 characters is #VALUE!**, counted on the raw text with its spaces
+  (255 parses, 256 does not, in H:M:S.f, H:M with trailing spaces and the long-fraction forms), so
+  a 250-digit fraction is the longest. Evidence: probes/clock-text-long-fraction4, clock-text-length-limit.
+  Unprobed: whether the limit is general to all text coercion (date text, number text) and the date-clock form (`1/2/2020 10:11...`), which the engine does not limit (T-0266).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
@@ -220,6 +272,8 @@ Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
 Evidence: poi/59106.xlsx (Excel-cached) Test!B2 = 42438 (start 42429, holidays 42422, 42423, 42437,
-42499; without D4 the result would be 42437) and A2 = "09 Mar 2016".
+42499; without D4 the result would be 42437) and A2 = "09 Mar 2016". WORKDAY.INTL's `holidays` (4th
+argument) is treated the same by analogy with NETWORKDAYS.INTL; no Excel evidence covers it yet (T-1053).
 Status: VERIFIED (Excel-cached)
+Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983

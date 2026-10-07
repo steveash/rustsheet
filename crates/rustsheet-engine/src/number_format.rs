@@ -188,6 +188,22 @@ pub fn to_excel_precision_str(value: f64) -> String {
     to_precision_str(value, 15)
 }
 
+/// Orders two numbers on their 15-digit values, Excel's comparison rule. There is no absolute
+/// tolerance: tiny values never equal 0 (docs/excel-semantics/numbers.md#criteria-equality). NaN
+/// is a total order (above every number, equal to itself) so sorts stay consistent.
+pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
+    // total_cmp orders -0.0 below 0.0 and negative-sign NaN below every number, so canonicalise
+    // both first (`+ 0.0` turns -0.0 into 0.0).
+    let canon = |x: f64| {
+        if x.is_nan() {
+            f64::NAN
+        } else {
+            to_excel_precision(x, 15) + 0.0
+        }
+    };
+    canon(a).total_cmp(&canon(b))
+}
+
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {
     if !value.is_finite() {
         return value;
@@ -255,7 +271,8 @@ fn scientific_digits(value: f64, count: usize) -> (Vec<u8>, i64) {
 /// written in plain notation when that string, without the sign, has at most 20 characters
 /// (`99999999999999900000`,
 /// `0.000000000000000001`), otherwise as `d.dddE±XX` with at least two exponent digits
-/// (`1E+20`, `1.23456789012345E-05`). Zero, negative zero and subnormals are `0`.
+/// (`1E+20`, `1.23456789012345E-05`), with 14 digits instead of 15 when the exponent magnitude is
+/// 99 or more (`1.2345678901235E+99`). Zero, negative zero and subnormals are `0`.
 ///
 /// Not [`to_excel_precision_str`]: that one renders formula literals (JS `toPrecision`-style,
 /// no 20-character rule) and must not be used for coercion.
@@ -272,7 +289,17 @@ pub(crate) fn number_to_text(value: f64) -> String {
     let sign = if value < 0.0 { "-" } else { "" };
     // An exact tie at the 16th digit goes toward zero, as in ROUND: `1E+15+15` → "1000000000000010",
     // `1E+14+1.5` → "100000000000001" (probes/number-to-text-notation A45–A52).
-    let (mantissa, exponent) = significant_15(value.abs(), false);
+    let (mut mantissa, mut exponent) = significant_15(value.abs(), false);
+    // From a decimal exponent magnitude of 99 on, Excel keeps 14 digits, rounding the 15-digit
+    // string half up (`1.23456789012345E+99` → "1.2345678901235E+99"; probes/number-text-exponent-digits,
+    // numbers.md "Exponent width").
+    if exponent.unsigned_abs() >= 99 {
+        mantissa = (mantissa + 5) / 10 * 10;
+        if mantissa == 1_000_000_000_000_000 {
+            mantissa /= 10;
+            exponent += 1;
+        }
+    }
     let exponent = i32::try_from(exponent).unwrap_or(0);
     let mantissa = mantissa.to_string();
     let digits = mantissa.trim_end_matches('0');
@@ -432,7 +459,7 @@ mod number_to_text_tests {
 
     #[test]
     fn matches_the_oracle_probes() {
-        let cases: [(f64, &str); 21] = [
+        let cases: [(f64, &str); 25] = [
             (0.1 + 0.2, "0.3"),
             (1.0 / 3.0, "0.333333333333333"),
             (-2.0 / 3.0, "-0.666666666666667"),
@@ -454,6 +481,11 @@ mod number_to_text_tests {
             (1e15 + 15.0, "1000000000000010"),
             (1e14 + 1.5, "100000000000001"),
             (12_345_678_901_234.75, "12345678901234.7"),
+            // T-0199 (evidence T-0186): 14 mantissa digits from a decimal exponent magnitude of 99.
+            (1.234_567_890_123_45e98, "1.23456789012345E+98"),
+            (1.234_567_890_123_45e99, "1.2345678901235E+99"),
+            (9.876_543_210_987_65e-99, "9.8765432109877E-99"),
+            (1.234_567_890_123_45e-98, "1.23456789012345E-98"),
         ];
         for (value, text) in cases {
             assert_eq!(number_to_text(value), text, "{value}");

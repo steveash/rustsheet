@@ -50,17 +50,26 @@ use super::token::TokenType;
 use super::types::*;
 use super::utils::number_to_column;
 
+use sheet_span::with_sheet_span;
 use token::OpCompare;
 
+mod chain;
 mod depth;
 mod lambda;
 mod lists;
 pub mod move_formula;
 mod reference_operators;
+mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
 
-pub use depth::{MAX_FORMULA_DEPTH, TOO_DEEP_MESSAGE};
+pub use chain::ChainLeft;
+use chain::ChainLevel;
+pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
+pub(crate) use depth::is_limit_error;
+pub use depth::{
+    MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+};
 
 #[cfg(test)]
 mod tests;
@@ -147,6 +156,7 @@ pub struct CompletionContext {
     pub replace_from: usize,
 }
 
+/// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     BooleanKind(bool),
@@ -171,6 +181,17 @@ pub enum Node {
         absolute_column2: bool,
         row2: i32,
         column2: i32,
+    },
+    /// `First:Last!A1` or `First:Last!A1:B2`, a 3-D reference: the same cells on every sheet
+    /// from `First` to `Last` in tab order (docs/excel-semantics/references.md, "3-D
+    /// sheet-range references"). `reference` is the `ReferenceKind` or `RangeKind` on the first
+    /// sheet, written without a sheet prefix.
+    SheetSpanKind {
+        first_sheet: String,
+        last_sheet: String,
+        first_index: u32,
+        last_index: u32,
+        reference: Box<Node>,
     },
     WrongReferenceKind {
         sheet_name: Option<String>,
@@ -203,23 +224,26 @@ pub enum Node {
     OpUnionKind {
         left: Box<Node>,
         right: Box<Node>,
+        /// Parentheses levels written around the union: 0 for the left link of a plain chain
+        /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
+        written: usize,
     },
     OpConcatenateKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpSumKind {
         kind: token::OpSum,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpProductKind {
         kind: token::OpProduct,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpPowerKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     FunctionKind {
@@ -257,7 +281,7 @@ pub enum Node {
     },
     CompareKind {
         kind: OpCompare,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     UnaryKind {
@@ -300,8 +324,8 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
-    /// Whether a comma is the union operator: directly inside a parenthesis (T-0134).
-    union_allowed: bool,
+    /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
+    value_operators: usize,
 }
 
 pub fn new_parser_english(
@@ -341,7 +365,7 @@ impl Parser {
             nesting: 0,
             depth: 0,
             inner_depth: 0,
-            union_allowed: false,
+            value_operators: 0,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -376,7 +400,7 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
-        self.union_allowed = false;
+        self.value_operators = 0;
         let node = self.parse_expr();
         self.expect_end(node)
     }
@@ -447,16 +471,6 @@ impl Parser {
         }
     }
 
-    fn get_sheet_index_by_name(&self, name: &str) -> Option<u32> {
-        let worksheets = &self.worksheets;
-        for (i, sheet) in worksheets.iter().enumerate() {
-            if sheet == name {
-                return Some(i as u32);
-            }
-        }
-        None
-    }
-
     // Returns:
     //  * None: If there is no defined name by that name
     //  * Some((Some(index), formula)): If there is a defined name local to that sheet
@@ -476,141 +490,14 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Node {
-        let mut t = self.parse_concat();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Compare(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_concat();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::CompareKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        self.inner_depth = self.inner_depth.max(depth);
-        t
-    }
-
-    fn parse_concat(&mut self) -> Node {
-        let mut t = self.parse_term();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while next_token == TokenType::And {
-            self.lexer.advance_token();
-            let p = self.parse_term();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpConcatenateKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
+        let t = self.parse_chain(ChainLevel::Compare);
+        if !matches!(t, Node::ParseErrorKind { .. }) {
+            self.inner_depth = self.inner_depth.max(self.depth);
         }
         t
     }
 
-    fn parse_term(&mut self) -> Node {
-        let mut t = self.parse_factor();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Addition(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_factor();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpSumKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_factor(&mut self) -> Node {
-        let mut t = self.parse_prod();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Product(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_prod();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpProductKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_prod(&mut self) -> Node {
-        let mut t = self.parse_power();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while next_token == TokenType::Power {
-            self.lexer.advance_token();
-            let p = self.parse_power();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpPowerKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_power(&mut self) -> Node {
+    pub(super) fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
         // Every minus is kept (`--x` coerces `x` to a number); a plus is a no-op.
         let mut minus_count = 0;
@@ -620,7 +507,7 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_union();
+        let mut t = self.parse_intersection();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -702,11 +589,8 @@ impl Parser {
                 absolute_column,
                 absolute_row,
             } => {
+                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
                 let context = &self.context;
-                let sheet_index = match &sheet {
-                    Some(name) => self.get_sheet_index_by_name(name),
-                    None => self.get_sheet_index_by_name(&context.sheet),
-                };
                 let a1_mode = self.lexer.is_a1_mode();
                 let row = if absolute_row || !a1_mode {
                     row
@@ -718,7 +602,7 @@ impl Parser {
                 } else {
                     column - context.column
                 };
-                match sheet_index {
+                let node = match sheet_index {
                     Some(index) => Node::ReferenceKind {
                         sheet_name: sheet,
                         sheet_index: index,
@@ -734,14 +618,12 @@ impl Parser {
                         absolute_row,
                         absolute_column,
                     },
-                }
+                };
+                with_sheet_span(span, node)
             }
             TokenType::Range { sheet, left, right } => {
+                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
                 let context = &self.context;
-                let sheet_index = match &sheet {
-                    Some(name) => self.get_sheet_index_by_name(name),
-                    None => self.get_sheet_index_by_name(&context.sheet),
-                };
                 let mut row1 = left.row;
                 let mut column1 = left.column;
                 let mut row2 = right.row;
@@ -778,7 +660,7 @@ impl Parser {
                     };
                 }
 
-                match sheet_index {
+                let node = match sheet_index {
                     Some(index) => Node::RangeKind {
                         sheet_name: sheet,
                         sheet_index: index,
@@ -802,7 +684,8 @@ impl Parser {
                         absolute_row1,
                         absolute_row2,
                     },
-                }
+                };
+                with_sheet_span(span, node)
             }
             TokenType::Ident(name) => {
                 let next_token = self.lexer.peek_token();

@@ -152,7 +152,7 @@ fn union_formula_text_round_trips() {
     model._set("A5", "=FORMULATEXT(A3)");
     model.evaluate();
     assert_eq!(model._get_formula("A1"), "=(Data!E4,Data!E4)");
-    assert_eq!(model._get_formula("A2"), "=(Data!A2,Data!E8,Data!B6)");
+    assert_eq!(model._get_formula("A2"), "=((Data!A2,Data!E8),Data!B6)");
     assert_eq!(
         model._get_formula("A3"),
         "=(Data!C1:C12,Data!E1:E12) Data!C9"

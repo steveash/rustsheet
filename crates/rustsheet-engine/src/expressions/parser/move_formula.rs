@@ -1,7 +1,8 @@
 use super::{
+    left_chain,
     reference_operators::{intersection_operand, tight_operand, union_text},
-    stringify::{stringify_reference, DisplaceData},
-    ArrayNode, Node, Reference,
+    stringify::{sheet_span_text, stringify_reference, to_localized_string, DisplaceData},
+    value_operands, ArrayNode, Node, Reference,
 };
 use crate::{
     constants::{LAST_COLUMN, LAST_ROW},
@@ -176,6 +177,25 @@ fn to_string_moved(
                 },
                 false,
                 false,
+            )
+        }
+        // A cut-and-paste moves cells on one sheet, so it never moves a whole 3-D span: the
+        // reference stays as written (edit semantics of 3-D references are not modelled yet).
+        SheetSpanKind {
+            first_sheet,
+            last_sheet,
+            reference,
+            ..
+        } => {
+            let context = CellReferenceRC {
+                sheet: move_context.source_sheet_name.to_string(),
+                column: move_context.column,
+                row: move_context.row,
+            };
+            format!(
+                "{}!{}",
+                sheet_span_text(first_sheet, last_sheet),
+                to_localized_string(reference, &context, locale, language)
             )
         }
         RangeKind {
@@ -382,61 +402,23 @@ fn to_string_moved(
             };
             format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpUnionKind { left, right } => {
+        OpUnionKind { left, right, .. } => {
             let text = |n| to_string_moved(n, move_context, locale, language);
-            union_text(&text(left), left, &text(right), locale)
+            union_text(node, &text(left), &text(right), locale)
         }
-        OpConcatenateKind { left, right } => format!(
-            "{}&{}",
-            to_string_moved(left, move_context, locale, language),
-            to_string_moved(right, move_context, locale, language),
-        ),
-        OpSumKind { kind, left, right } => format!(
-            "{}{}{}",
-            to_string_moved(left, move_context, locale, language),
-            kind,
-            to_string_moved(right, move_context, locale, language),
-        ),
-        OpProductKind { kind, left, right } => {
-            let x = match **left {
-                OpSumKind { .. } => format!(
-                    "({})",
-                    to_string_moved(left, move_context, locale, language)
-                ),
-                CompareKind { .. } => format!(
-                    "({})",
-                    to_string_moved(left, move_context, locale, language)
-                ),
-                _ => to_string_moved(left, move_context, locale, language),
-            };
-            let y = match **right {
-                OpSumKind { .. } => format!(
-                    "({})",
-                    to_string_moved(right, move_context, locale, language)
-                ),
-                CompareKind { .. } => format!(
-                    "({})",
-                    to_string_moved(right, move_context, locale, language)
-                ),
-                OpProductKind { .. } => format!(
-                    "({})",
-                    to_string_moved(right, move_context, locale, language)
-                ),
-                UnaryKind { .. } => {
-                    format!(
-                        "({})",
-                        to_string_moved(right, move_context, locale, language)
-                    )
-                }
-                _ => to_string_moved(right, move_context, locale, language),
-            };
-            format!("{x}{kind}{y}")
+        OpConcatenateKind { .. }
+        | OpSumKind { .. }
+        | OpProductKind { .. }
+        | OpPowerKind { .. }
+        | CompareKind { .. } => {
+            // A loop down the chain's left operands, not recursion (T-0128).
+            let (links, first) = left_chain(node);
+            let mut text = to_string_moved(first, move_context, locale, language);
+            for link in links {
+                text = moved_operator_text(link, text, move_context, locale, language);
+            }
+            text
         }
-        OpPowerKind { left, right } => format!(
-            "{}^{}",
-            to_string_moved(left, move_context, locale, language),
-            to_string_moved(right, move_context, locale, language),
-        ),
         NamedFunctionKind { name, args, id: _ } => {
             move_function(name, args, move_context, locale, language)
         }
@@ -488,12 +470,6 @@ fn to_string_moved(
         DefinedNameKind((name, ..)) => name.to_string(),
         TableNameKind(name) => name.to_string(),
         NamedVariableKind { name, id: _ } => name.to_string(),
-        CompareKind { kind, left, right } => format!(
-            "{}{}{}",
-            to_string_moved(left, move_context, locale, language),
-            kind,
-            to_string_moved(right, move_context, locale, language),
-        ),
         UnaryKind { kind, right } => match kind {
             OpUnary::Minus => {
                 let x = to_string_moved(right, move_context, locale, language);
@@ -548,5 +524,69 @@ fn to_string_moved(
                 .collect();
             format!("{}({})", lambda_str, call_args.join(","))
         }
+    }
+}
+
+/// The text of moved value operator `node` whose left operand prints as `left_text`: one link
+/// of the loop that prints a chain (T-0128).
+fn moved_operator_text(
+    node: &Node,
+    left_text: String,
+    move_context: &MoveContext,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    use self::Node::*;
+    let Some((left, _)) = value_operands(node) else {
+        return left_text;
+    };
+    match node {
+        OpConcatenateKind { right, .. } => format!(
+            "{left_text}&{}",
+            to_string_moved(right, move_context, locale, language),
+        ),
+        OpSumKind { kind, right, .. } => format!(
+            "{left_text}{}{}",
+            kind,
+            to_string_moved(right, move_context, locale, language),
+        ),
+        OpProductKind { kind, right, .. } => {
+            let x = match left {
+                OpSumKind { .. } | CompareKind { .. } => format!("({left_text})"),
+                _ => left_text,
+            };
+            let y = match **right {
+                OpSumKind { .. } => format!(
+                    "({})",
+                    to_string_moved(right, move_context, locale, language)
+                ),
+                CompareKind { .. } => format!(
+                    "({})",
+                    to_string_moved(right, move_context, locale, language)
+                ),
+                OpProductKind { .. } => format!(
+                    "({})",
+                    to_string_moved(right, move_context, locale, language)
+                ),
+                UnaryKind { .. } => {
+                    format!(
+                        "({})",
+                        to_string_moved(right, move_context, locale, language)
+                    )
+                }
+                _ => to_string_moved(right, move_context, locale, language),
+            };
+            format!("{x}{kind}{y}")
+        }
+        OpPowerKind { right, .. } => format!(
+            "{left_text}^{}",
+            to_string_moved(right, move_context, locale, language),
+        ),
+        CompareKind { kind, right, .. } => format!(
+            "{left_text}{}{}",
+            kind,
+            to_string_moved(right, move_context, locale, language),
+        ),
+        _ => left_text,
     }
 }

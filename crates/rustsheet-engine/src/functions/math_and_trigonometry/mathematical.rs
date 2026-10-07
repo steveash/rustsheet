@@ -1,4 +1,4 @@
-use crate::arithmetic::power;
+use crate::arithmetic::{flush_subnormal, power};
 use crate::cast::NumberOrArray;
 use crate::constants::EXCEL_PRECISION;
 use crate::expressions::parser::ArrayNode;
@@ -250,12 +250,12 @@ impl Model {
         }
 
         let mut result = 0.0;
-        if let Err(error) =
-            self.for_each_value_skip_empty(args, cell, |value| result += value * value)
-        {
+        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+            result += flush_subnormal(value * value);
+        }) {
             return error;
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
     /// PRODUCT(number1, [number2], ...)
@@ -302,13 +302,13 @@ impl Model {
                 },
                 _ => arg,
             };
-            let cell_value = self.evaluate_node_in_context(arg, cell);
+            let cell_value = self.evaluate_aggregate_arg(arg, cell);
 
             match cell_value {
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         seen_value = true;
-                        result *= value;
+                        result = flush_subnormal(result * value);
                     }) {
                         return error;
                     }
@@ -318,7 +318,7 @@ impl Model {
                     seen_value = true;
                     let cast_result = self.cast_to_number(calc_result, cell);
                     match cast_result {
-                        Ok(f) => result *= f,
+                        Ok(f) => result = flush_subnormal(result * f),
                         Err(s) => return s,
                     }
                 }
@@ -327,14 +327,14 @@ impl Model {
         if !seen_value {
             return CalcResult::Number(0.0);
         }
-        CalcResult::Number(result)
+        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
     /// SUMIF(criteria_range, criteria, [sum_range])
     /// if sum_range is missing then criteria_range will be used.
     ///
     /// The `criteria` argument may be a single value, a range or an array; in the
-    /// latter two cases SUMIF spills one sum per criterion (see [`Model::sumif`]).
+    /// latter two cases SUMIF spills one sum per criterion (see `Model::lift_criteria`).
     pub(crate) fn fn_sumif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // When sum_range is missing, criteria_range doubles as the sum_range.
         let (criteria_range, criteria, sum_range) = match args.len() {
@@ -347,12 +347,7 @@ impl Model {
 
     /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut total = 0.0;
-        let sum = |value| total += value;
-        if let Err(e) = self.apply_ifs(args, cell, true, sum) {
-            return e;
-        }
-        CalcResult::Number(total)
+        self.sum_ifs(args, cell, true)
     }
 
     /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
@@ -950,16 +945,10 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let x = match self.get_number_or_array(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let y = match self.get_number_or_array(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
+        let x = self.get_number_or_array(&args[0], cell);
+        let y = self.get_number_or_array(&args[1], cell);
         let (x, y) = match (x, y) {
-            (NumberOrArray::Number(x), NumberOrArray::Number(y)) => (x, y),
+            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => (x, y),
             (x, y) => return self.arithmetic_on_values(x, y, cell, &power),
         };
         match power(x, y) {

@@ -1,5 +1,6 @@
-use super::Node;
+use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
+mod aggregate;
 mod row_column;
 
 #[cfg(target_arch = "wasm32")]
@@ -72,6 +73,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -130,13 +132,12 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         // operations
         Node::UnaryKind { right, .. } => add_implicit_intersection(right, add),
-        Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. } => {
-            add_implicit_intersection(left, add);
-            add_implicit_intersection(right, add);
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| add_implicit_intersection(operand, add));
         }
 
         Node::DefinedNameKind(v) => {
@@ -228,6 +229,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::ParseErrorKind { .. }
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
+        | Node::SheetSpanKind { .. }
         | Node::NamedFunctionKind { .. }
         | Node::ArrayKind(_)
         | Node::ReferenceKind { .. }
@@ -263,13 +265,14 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             remove_redundant_implicit_intersection(child, add);
         }
         Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
-        Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. } => {
-            remove_redundant_implicit_intersection(left, add);
-            remove_redundant_implicit_intersection(right, add);
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| {
+                remove_redundant_implicit_intersection(operand, add)
+            });
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
@@ -297,9 +300,19 @@ pub enum StaticResult {
     // what if the dimensions are unknown but bounded?
 }
 
-fn static_analysis_op_nodes(left: &Node, right: &Node) -> StaticResult {
-    let lhs = run_static_analysis_on_node(left);
-    let rhs = run_static_analysis_on_node(right);
+/// The shape of a chain of value operators, broadcast link by link in a loop (T-0128).
+fn static_analysis_operator_chain(node: &Node) -> StaticResult {
+    let (links, first) = left_chain(node);
+    let mut result = run_static_analysis_on_node(first);
+    for link in links {
+        if let Some((_, right)) = value_operands(link) {
+            result = static_analysis_op_results(result, run_static_analysis_on_node(right));
+        }
+    }
+    result
+}
+
+fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticResult {
     match (lhs, rhs) {
         (StaticResult::Scalar, StaticResult::Scalar) => StaticResult::Scalar,
         (StaticResult::Scalar, StaticResult::Array(a, b) | StaticResult::Range(a, b)) => {
@@ -336,12 +349,8 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
             // StaticResult::Unknown is also valid
             StaticResult::Scalar
         }
-        Node::WrongReferenceKind { .. } => {
-            // StaticResult::Unknown is also valid
-            StaticResult::Scalar
-        }
-        Node::WrongRangeKind { .. } => {
-            // StaticResult::Unknown or Array is also valid
+        Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
+            // StaticResult::Unknown (or Array for a range) is also valid
             StaticResult::Scalar
         }
         Node::NamedFunctionKind { .. } => {
@@ -365,14 +374,15 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
             StaticResult::Unknown
         }
-        Node::ReferenceKind { .. } => StaticResult::Scalar,
+        // A 3-D reference is a value only as an error (`#REF!`), so it never spills.
+        Node::ReferenceKind { .. } | Node::SheetSpanKind { .. } => StaticResult::Scalar,
 
         // binary operations
-        Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => static_analysis_operator_chain(node),
 
         // Defined names and tables: their shape is not tracked.
         Node::DefinedNameKind(_) | Node::TableNameKind(_) => StaticResult::Unknown,
@@ -388,6 +398,11 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
 // If all the arguments are scalars the function will return a scalar
 // If any of the arguments is a range or an array it will return an array
 fn scalar_arguments(args: &[Node]) -> StaticResult {
+    broadcast_static_result(args)
+}
+
+/// The shape of broadcasting `args` element-wise: scalar if all are, else the largest extent.
+fn broadcast_static_result<'a>(args: impl IntoIterator<Item = &'a Node>) -> StaticResult {
     let mut n = 0;
     let mut m = 0;
     for arg in args {
@@ -413,19 +428,11 @@ fn not_implemented(_args: &[Node]) -> StaticResult {
     StaticResult::Scalar
 }
 
-/// SUMIF spills according to the shape of its criteria argument (`args[1]`); the
-/// criteria_range and sum_range arguments are consumed, not broadcast. A scalar
-/// criterion yields a scalar; a range/array criterion yields an array of the
-/// same dimensions.
-fn sumif_static_result(args: &[Node]) -> StaticResult {
-    match args.get(1) {
-        Some(criteria) => match run_static_analysis_on_node(criteria) {
-            StaticResult::Array(a, b) | StaticResult::Range(a, b) => StaticResult::Array(a, b),
-            StaticResult::Scalar => StaticResult::Scalar,
-            StaticResult::Unknown => StaticResult::Unknown,
-        },
-        None => StaticResult::Scalar,
-    }
+/// The *IF(S) functions spill according to the shapes of their criteria arguments
+/// (`args[first]`, `args[first + 2]`, ...), broadcast against each other; the criteria and
+/// value ranges are consumed, not broadcast (probes/ifs-array-criteria).
+fn criteria_static_result(args: &[Node], first: usize) -> StaticResult {
+    broadcast_static_result(args.iter().skip(first).step_by(2))
 }
 
 fn static_analysis_offset(args: &[Node]) -> StaticResult {
@@ -464,11 +471,6 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
     // Both height and width are explicitly 1, so OFFSET will return a single cell
     StaticResult::Scalar
 }
-
-// fn static_analysis_choose(_args: &[Node]) -> StaticResult {
-//     // We will always insert the @ in CHOOSE, but technically it is only needed if one of the elements is a range
-//     StaticResult::Unknown
-// }
 
 fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
     // We will always insert the @, but we don't need to do that in every scenario`
@@ -567,7 +569,9 @@ fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
 /// SUMIF signature with the criteria argument as a `Vector` instead of a
 /// `Scalar`. This stops a range/array criteria from being collapsed by implicit
 /// intersection, so SUMIF can spill one sum per criterion. (COUNTIF/AVERAGEIF
-/// keep the classic [`args_signature_sumif`], intersecting range criteria.)
+/// keep the classic [`args_signature_sumif`], intersecting range criteria: in a legacy
+/// formula Excel intersects them, poi/FormulaEvalTestData_Copy.xlsx EverythingTests!F296
+/// `COUNTIF(G7:K7,E8:G8)` is 2.)
 fn args_signature_sumif_spill(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
         vec![Signature::Vector, Signature::Vector]
@@ -881,34 +885,25 @@ fn args_signature_xnpv(arg_count: usize) -> Vec<Signature> {
     }
 }
 
-// NETWORKDAYS(start_date, end_date, [holidays])
-// Parameters: start_date (scalar), end_date (scalar), holidays (optional vector)
-fn args_signature_networkdays(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Scalar, Signature::Scalar, Signature::Vector]
-    } else {
+// NETWORKDAYS(start_date, end_date, [holidays]), NETWORKDAYS.INTL(start_date, end_date, [weekend],
+// [holidays]), WORKDAY(start_date, days, [holidays]), WORKDAY.INTL(start_date, days, [weekend],
+// [holidays]): `required` scalars, then `middle` optional scalars (the weekend), then an optional
+// `holidays` that takes the whole range, so a legacy formula does not implicitly intersect it
+// (docs/excel-semantics/dates.md "WORKDAY holidays take the whole range").
+fn args_signature_with_holidays(
+    arg_count: usize,
+    required: usize,
+    middle: usize,
+) -> Vec<Signature> {
+    let holidays_at = required + middle;
+    if arg_count < required || arg_count > holidays_at + 1 {
         vec![Signature::Error; arg_count]
-    }
-}
-
-// NETWORKDAYS.INTL(start_date, end_date, [weekend], [holidays])
-// Parameters: start_date (scalar), end_date (scalar), weekend (optional scalar), holidays (optional vector)
-fn args_signature_networkdays_intl(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Scalar, Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 4 {
-        vec![
-            Signature::Scalar,
-            Signature::Scalar,
-            Signature::Scalar,
-            Signature::Vector,
-        ]
+    } else if arg_count == holidays_at + 1 {
+        let mut signature = vec![Signature::Scalar; holidays_at];
+        signature.push(Signature::Vector);
+        signature
     } else {
-        vec![Signature::Error; arg_count]
+        vec![Signature::Scalar; arg_count]
     }
 }
 
@@ -1154,8 +1149,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Days360 => args_signature_scalars(arg_count, 2, 1),
         Function::Weekday => args_signature_scalars(arg_count, 1, 1),
         Function::Weeknum => args_signature_scalars(arg_count, 1, 1),
-        Function::Workday => args_signature_scalars(arg_count, 2, 1),
-        Function::WorkdayIntl => args_signature_scalars(arg_count, 2, 2),
+        Function::Workday => args_signature_with_holidays(arg_count, 2, 0),
+        Function::WorkdayIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Yearfrac => args_signature_scalars(arg_count, 2, 1),
         Function::Isoweeknum => args_signature_scalars(arg_count, 1, 0),
         Function::Accrint => args_signature_scalars(arg_count, 6, 2),
@@ -1267,7 +1262,7 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Convert => args_signature_scalars(arg_count, 3, 0),
         Function::Delta => args_signature_scalars(arg_count, 1, 1),
         Function::Gestep => args_signature_scalars(arg_count, 1, 1),
-        Function::Subtotal => args_signature_npv(arg_count),
+        Function::Subtotal | Function::Aggregate => args_signature_npv(arg_count),
         Function::Rand => args_signature_no_args(arg_count),
         Function::Randbetween => args_signature_scalars(arg_count, 2, 0),
         Function::Formulatext => args_signature_scalars(arg_count, 1, 0),
@@ -1292,8 +1287,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Rightb => args_signature_scalars(arg_count, 1, 1),
         Function::Searchb => args_signature_scalars(arg_count, 2, 1),
         Function::Geomean => vec![Signature::Vector; arg_count],
-        Function::Networkdays => args_signature_networkdays(arg_count),
-        Function::NetworkdaysIntl => args_signature_networkdays_intl(arg_count),
+        Function::Networkdays => args_signature_with_holidays(arg_count, 2, 0),
+        Function::NetworkdaysIntl => args_signature_with_holidays(arg_count, 2, 1),
         Function::Acot => args_signature_scalars(arg_count, 1, 0),
         Function::Acoth => args_signature_scalars(arg_count, 1, 0),
         Function::Cot => args_signature_scalars(arg_count, 1, 0),
@@ -1689,21 +1684,21 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sqrt => scalar_arguments(args),
         Function::Sqrtpi => StaticResult::Scalar,
         Function::Sum => StaticResult::Scalar,
-        Function::Sumif => sumif_static_result(args),
-        Function::Sumifs => not_implemented(args),
+        Function::Sumif => criteria_static_result(args, 1),
+        Function::Sumifs => criteria_static_result(args, 2),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
         Function::ErrorType => not_implemented(args),
         Function::Isblank => scalar_arguments(args),
         Function::Iserr => scalar_arguments(args),
         Function::Iserror => scalar_arguments(args),
-        Function::Iseven => not_implemented(args),
+        Function::Iseven => scalar_arguments(args),
         Function::Isformula => not_implemented(args),
         Function::Islogical => scalar_arguments(args),
         Function::Isna => scalar_arguments(args),
         Function::Isnontext => scalar_arguments(args),
         Function::Isnumber => scalar_arguments(args),
-        Function::Isodd => not_implemented(args),
+        Function::Isodd => scalar_arguments(args),
         Function::Isomitted => not_implemented(args),
         Function::Isref => not_implemented(args),
         Function::Istext => scalar_arguments(args),
@@ -1806,15 +1801,15 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
-        Function::Averageif => not_implemented(args),
-        Function::Averageifs => not_implemented(args),
+        Function::Averageif => criteria_static_result(args, 1),
+        Function::Averageifs => criteria_static_result(args, 2),
         Function::Count => not_implemented(args),
         Function::Counta => not_implemented(args),
         Function::Countblank => not_implemented(args),
-        Function::Countif => not_implemented(args),
-        Function::Countifs => not_implemented(args),
-        Function::Maxifs => not_implemented(args),
-        Function::Minifs => not_implemented(args),
+        Function::Countif => criteria_static_result(args, 1),
+        Function::Countifs => criteria_static_result(args, 1),
+        Function::Maxifs => criteria_static_result(args, 2),
+        Function::Minifs => criteria_static_result(args, 2),
         // DATE broadcasts element-wise: an array/range argument yields an array.
         Function::Date => scalar_arguments(args),
         Function::Datedif => not_implemented(args),
@@ -1948,6 +1943,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Delta => not_implemented(args),
         Function::Gestep => not_implemented(args),
         Function::Subtotal => not_implemented(args),
+        Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),
         Function::Eomonth => scalar_arguments(args),

@@ -6,6 +6,7 @@
 //! declares are attacker-controlled, so they only serve as a fast reject.
 
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::io::{self, BufReader, Read, Seek};
 
 use super::shared_strings::decode_xlsx_escapes;
@@ -66,9 +67,59 @@ impl ImportLimits {
     }
 }
 
+/// The zip entries of a package by part name, matched the way Excel opens a package: names
+/// compare ASCII case-insensitively (OPC part name equivalence, ECMA-376 Part 2) and a
+/// backslash in an entry name counts as `/`. Excel for the web opens poi/49609.xlsx, whose
+/// entries are named `xl\worksheets\sheet1.xml`, `xl\sharedstrings.xml` and
+/// `[content_types].xml` while its relationships point at `/xl/sharedStrings.xml` (oracle
+/// probe, T-0112; docs/excel-semantics/xlsx-storage.md).
+#[derive(Debug, Default)]
+pub struct PartNames {
+    /// Normalized part name -> the zip entry names that normalize to it, sorted.
+    entries: HashMap<String, Vec<String>>,
+}
+
+impl PartNames {
+    /// Indexes the entry names of a zip directory (`ZipArchive::file_names`).
+    pub fn new<'a>(names: impl IntoIterator<Item = &'a str>) -> Self {
+        let mut entries: HashMap<String, Vec<String>> = HashMap::new();
+        for name in names {
+            entries
+                .entry(part_key(name))
+                .or_default()
+                .push(name.to_string());
+        }
+        for names in entries.values_mut() {
+            names.sort_unstable();
+        }
+        PartNames { entries }
+    }
+
+    /// The zip entry that holds the part `name` (such as `xl/workbook.xml`), if any. An entry
+    /// named exactly `name` wins; among other equivalent entries (a package OPC calls invalid)
+    /// the first in byte order is taken, so the choice is deterministic.
+    pub fn entry<'a>(&'a self, name: &'a str) -> Option<&'a str> {
+        let names = self.entries.get(&part_key(name))?;
+        names
+            .iter()
+            .find(|entry| *entry == name)
+            .or_else(|| names.first())
+            .map(String::as_str)
+    }
+}
+
+/// The part name an entry or a part reference stands for: `/` separators, no leading `/`,
+/// ASCII lowercase.
+fn part_key(name: &str) -> String {
+    name.replace('\\', "/")
+        .trim_start_matches('/')
+        .to_ascii_lowercase()
+}
+
 /// A zip package with a byte budget shared by every part read from it.
 pub(crate) struct Package<R> {
     archive: zip::ZipArchive<R>,
+    names: PartNames,
     limits: ImportLimits,
     /// Bytes that may still be inflated.
     remaining: Cell<u64>,
@@ -88,8 +139,10 @@ impl<R: Read + Seek> Package<R> {
             });
         }
         let remaining = Cell::new(limits.max_uncompressed_bytes);
+        let names = PartNames::new(archive.file_names());
         Ok(Package {
             archive,
+            names,
             limits,
             remaining,
             exceeded: Cell::new(false),
@@ -107,7 +160,11 @@ impl<R: Read + Seek> Package<R> {
 
     /// Opens the part `name` for reading.
     pub(crate) fn open(&mut self, name: &str) -> Result<BufReader<Part<'_>>, XlsxError> {
-        let file = self.archive.by_name(name)?;
+        let entry = self
+            .names
+            .entry(name)
+            .ok_or(zip::result::ZipError::FileNotFound)?;
+        let file = self.archive.by_name(entry)?;
         if file.size() > self.remaining.get() {
             self.exceeded.set(true);
             return Err(self.limits.bytes_exceeded());
@@ -124,12 +181,10 @@ impl<R: Read + Seek> Package<R> {
         &mut self,
         name: &str,
     ) -> Result<Option<BufReader<Part<'_>>>, XlsxError> {
-        let found = self.archive.by_name(name).map(drop);
-        match found {
-            Err(zip::result::ZipError::FileNotFound) => Ok(None),
-            Err(error) => Err(error.into()),
-            Ok(()) => self.open(name).map(Some),
+        if self.names.entry(name).is_none() {
+            return Ok(None);
         }
+        self.open(name).map(Some)
     }
 }
 
@@ -262,6 +317,25 @@ mod tests {
         let mut pkg = package(zip_of(&[("a", b"x")]), ImportLimits::default()).unwrap();
         assert!(pkg.open_optional("missing").unwrap().is_none());
         assert!(pkg.open_optional("a").unwrap().is_some());
+    }
+
+    #[test]
+    fn parts_match_entries_case_insensitively_and_across_backslashes() {
+        let bytes = zip_of(&[
+            ("[content_types].xml", b"t"),
+            ("xl\\sharedstrings.xml", b"s"),
+            ("xl/workbook.xml", b"exact"),
+            ("XL/Workbook.xml", b"other"),
+        ]);
+        let mut pkg = package(bytes, ImportLimits::default()).unwrap();
+        assert_eq!(read_all(&mut pkg, "[Content_Types].xml").unwrap(), b"t");
+        assert_eq!(read_all(&mut pkg, "xl/sharedStrings.xml").unwrap(), b"s");
+        assert_eq!(read_all(&mut pkg, "/xl/sharedStrings.xml").unwrap(), b"s");
+        // An exact name wins over an equivalent one; otherwise byte order decides.
+        assert_eq!(read_all(&mut pkg, "xl/workbook.xml").unwrap(), b"exact");
+        assert_eq!(read_all(&mut pkg, "XL/Workbook.xml").unwrap(), b"other");
+        assert_eq!(read_all(&mut pkg, "xl/WORKBOOK.xml").unwrap(), b"other");
+        assert!(pkg.open_optional("xl/styles.xml").unwrap().is_none());
     }
 
     #[test]

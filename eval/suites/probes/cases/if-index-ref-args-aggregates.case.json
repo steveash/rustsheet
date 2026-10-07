@@ -1,0 +1,82 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "IF(...) and INDEX(...) reference arguments of MAXA, MINA, AVERAGEA, PRODUCT, LARGE and RANK over a text cell, a boolean cell and a mixed range, each beside the direct-reference control (T-1003).",
+  "tags": [
+    "M1",
+    "references",
+    "aggregates",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "5",
+        "A2": true,
+        "A3": 7,
+        "A4": "9",
+        "A5": 3
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=MAXA(IF(TRUE,Data!A1))",
+        "A2": "=MAXA(INDEX(Data!A1:A2,1))",
+        "A3": "=MAXA(Data!A1)",
+        "A4": "=MAXA(IF(TRUE,Data!A2))",
+        "A5": "=MAXA(INDEX(Data!A1:A2,2))",
+        "A6": "=MAXA(Data!A2)",
+        "A7": "=MAXA(IF(TRUE,Data!A1:A5))",
+        "A8": "=MAXA(INDEX(Data!A1:A5,0))",
+        "A9": "=MAXA(Data!A1:A5)",
+        "A10": "=MINA(IF(TRUE,Data!A1))",
+        "A11": "=MINA(INDEX(Data!A1:A2,1))",
+        "A12": "=MINA(Data!A1)",
+        "A13": "=MINA(IF(TRUE,Data!A2))",
+        "A14": "=MINA(INDEX(Data!A1:A2,2))",
+        "A15": "=MINA(Data!A2)",
+        "A16": "=MINA(IF(TRUE,Data!A1:A5))",
+        "A17": "=MINA(INDEX(Data!A1:A5,0))",
+        "A18": "=MINA(Data!A1:A5)",
+        "A19": "=AVERAGEA(IF(TRUE,Data!A1))",
+        "A20": "=AVERAGEA(INDEX(Data!A1:A2,1))",
+        "A21": "=AVERAGEA(Data!A1)",
+        "A22": "=AVERAGEA(IF(TRUE,Data!A2))",
+        "A23": "=AVERAGEA(INDEX(Data!A1:A2,2))",
+        "A24": "=AVERAGEA(Data!A2)",
+        "A25": "=AVERAGEA(IF(TRUE,Data!A1:A5))",
+        "A26": "=AVERAGEA(INDEX(Data!A1:A5,0))",
+        "A27": "=AVERAGEA(Data!A1:A5)",
+        "A28": "=PRODUCT(IF(TRUE,Data!A1))",
+        "A29": "=PRODUCT(INDEX(Data!A1:A2,1))",
+        "A30": "=PRODUCT(Data!A1)",
+        "A31": "=PRODUCT(IF(TRUE,Data!A2))",
+        "A32": "=PRODUCT(INDEX(Data!A1:A2,2))",
+        "A33": "=PRODUCT(Data!A2)",
+        "A34": "=PRODUCT(IF(TRUE,Data!A1:A5))",
+        "A35": "=PRODUCT(INDEX(Data!A1:A5,0))",
+        "A36": "=PRODUCT(Data!A1:A5)",
+        "A37": "=LARGE(IF(TRUE,Data!A1),1)",
+        "A38": "=LARGE(INDEX(Data!A1:A2,1),1)",
+        "A39": "=LARGE(Data!A1,1)",
+        "A40": "=LARGE(IF(TRUE,Data!A2),1)",
+        "A41": "=LARGE(INDEX(Data!A1:A2,2),1)",
+        "A42": "=LARGE(Data!A2,1)",
+        "A43": "=LARGE(IF(TRUE,Data!A1:A5),1)",
+        "A44": "=LARGE(INDEX(Data!A1:A5,0),1)",
+        "A45": "=LARGE(Data!A1:A5,1)",
+        "A46": "=RANK(3,IF(TRUE,Data!A1))",
+        "A47": "=RANK(3,INDEX(Data!A1:A2,1))",
+        "A48": "=RANK(3,Data!A1)",
+        "A49": "=RANK(3,IF(TRUE,Data!A2))",
+        "A50": "=RANK(3,INDEX(Data!A1:A2,2))",
+        "A51": "=RANK(3,Data!A2)",
+        "A52": "=RANK(3,IF(TRUE,Data!A1:A5))",
+        "A53": "=RANK(3,INDEX(Data!A1:A5,0))",
+        "A54": "=RANK(3,Data!A1:A5)"
+      }
+    }
+  ],
+  "expected": {}
+}

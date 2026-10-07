@@ -1,6 +1,7 @@
+use super::text_arg::{broadcast_text, TextArg};
 use crate::number_format::number_to_text;
 use crate::{
-    arithmetic::bcast_idx,
+    arithmetic::{array_of_errors, own_error},
     calc_result::CalcResult,
     cast::{array_node_to_string, calc_result_to_array_node, MAX_TEXT_UNITS},
     expressions::{
@@ -11,67 +12,17 @@ use crate::{
     formatter::format::format_text,
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
     },
     locale::Locale,
     model::Model,
     number_format::to_precision,
 };
 
-/// An argument of a text function that works element by element (LEFT, MID,
-/// EXACT, FIND, ...): a single scalar value or a 2-D array of values.
-/// When any argument is an array (e.g. a SEQUENCE or a multi-cell range) the
-/// scalar arguments are broadcast across it and the result is an array.
-pub(super) enum TextArg {
-    Scalar(ArrayNode),
-    Array(Vec<Vec<ArrayNode>>),
-}
-
-/// What an array has beyond its end, when it is used next to a longer one.
-static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
-
-impl TextArg {
-    /// The (rows, columns) shape of this argument.
-    pub(super) fn dims(&self) -> (usize, usize) {
-        match self {
-            TextArg::Scalar(_) => (1, 1),
-            TextArg::Array(a) => (a.len(), a.first().map(|r| r.len()).unwrap_or(0)),
-        }
-    }
-
-    /// Returns the element at (`i`, `j`), broadcasting scalars and length-1 dimensions.
-    ///
-    /// Where the array is too short for that position the element is `#N/A`,
-    /// as in Excel. It is an error like any other: if an earlier argument of
-    /// the function is an error too, that one comes first.
-    pub(super) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
-        match self {
-            TextArg::Scalar(n) => n,
-            TextArg::Array(a) => bcast_idx(a.len(), i)
-                .and_then(|ri| a.get(ri))
-                .and_then(|row| bcast_idx(row.len(), j).and_then(|cj| row.get(cj)))
-                .unwrap_or(&MISSING),
-        }
-    }
-}
-
-/// Coerces a single array element to a number for the start/length arguments of
-/// LEFT/RIGHT/MID. Booleans and strings are rejected with `#VALUE!`, matching the
-/// scalar behaviour of these functions; empties are treated as 0 and errors
-/// propagate.
-fn text_num_arg(node: &ArrayNode) -> Result<f64, Error> {
-    match node {
-        ArrayNode::Number(v) => Ok(*v),
-        ArrayNode::Empty => Ok(0.0),
-        ArrayNode::Error(e) => Err(e.clone()),
-        ArrayNode::Boolean(_) | ArrayNode::String(_) => Err(Error::VALUE),
-    }
-}
-
 /// Computes a single LEFT result from one element of each argument.
-fn left_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> {
+fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    let num = text_num_arg(num)?;
+    let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
     }
@@ -80,9 +31,9 @@ fn left_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> {
 }
 
 /// Computes a single RIGHT result from one element of each argument.
-fn right_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> {
+fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    let num = text_num_arg(num)?;
+    let num = num?;
     if num < 0.0 {
         return Err(Error::VALUE);
     }
@@ -94,12 +45,12 @@ fn right_element(text: &ArrayNode, num: &ArrayNode) -> Result<ArrayNode, Error> 
 /// Computes a single MID result from one element of each argument.
 fn mid_element(
     text: &ArrayNode,
-    start: &ArrayNode,
-    length: &ArrayNode,
+    start: Result<f64, Error>,
+    length: Result<f64, Error>,
 ) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    let start = text_num_arg(start)?;
-    let length = text_num_arg(length)?;
+    let start = start?;
+    let length = length?;
     if start < 1.0 {
         return Err(Error::VALUE);
     }
@@ -222,55 +173,6 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 
-/// Broadcasts `compute` over the (possibly array) `operands`. When every operand
-/// is a scalar the result is a single value; otherwise it is an array whose shape
-/// is the element-wise maximum of the operand shapes.
-pub(super) fn broadcast_text(
-    cell: CellReferenceIndex,
-    operands: &[&TextArg],
-    compute: impl Fn(usize, usize) -> Result<ArrayNode, Error>,
-) -> CalcResult {
-    let mut rows = 1;
-    let mut cols = 1;
-    for operand in operands {
-        let (r, c) = operand.dims();
-        rows = rows.max(r);
-        cols = cols.max(c);
-    }
-
-    // All scalars: return a single value.
-    if rows <= 1 && cols <= 1 {
-        return match compute(0, 0) {
-            Ok(ArrayNode::String(s)) => CalcResult::String(s),
-            Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
-            Ok(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
-            Ok(ArrayNode::Empty) => CalcResult::String(String::new()),
-            Ok(ArrayNode::Error(e)) | Err(e) => CalcResult::new_error(e, cell, String::new()),
-        };
-    }
-
-    let mut total_bytes: usize = 0;
-    let mut result = Vec::with_capacity(rows);
-    for i in 0..rows {
-        let mut data_row = Vec::with_capacity(cols);
-        for j in 0..cols {
-            let value = compute(i, j).unwrap_or_else(ArrayNode::Error);
-            if let ArrayNode::String(s) = &value {
-                if !util::within_text_budget(&mut total_bytes, s.len()) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Total text result is too large".to_string(),
-                    );
-                }
-            }
-            data_row.push(value);
-        }
-        result.push(data_row);
-    }
-    CalcResult::Array(result)
-}
-
 /// Finds the first instance of 'search_for' in text starting at char index start
 fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     let ch = text.chars();
@@ -324,16 +226,18 @@ impl Model {
         let value_result = self.evaluate_node_in_context(&args[0], cell);
         // Normalise a range to an array so both broadcast (spill) the same way.
         let value_result = match value_result {
-            CalcResult::Range { left, right } => {
-                CalcResult::Array(self.evaluate_range(left, right))
-            }
+            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
+                Ok(array) => CalcResult::Array(array),
+                Err(error) => return error,
+            },
             other => other,
         };
         match value_result {
             CalcResult::Array(arr) => {
                 let format_code = match self.get_string(&args[1], cell) {
                     Ok(s) => s,
-                    Err(e) => return e,
+                    // An error in every element; error elements keep theirs.
+                    Err(e) => return array_of_errors(&arr, e, own_error),
                 };
                 let locale = self.locale;
                 let mut output = Vec::with_capacity(arr.len());
@@ -353,13 +257,18 @@ impl Model {
                 }
                 CalcResult::Array(output)
             }
+            error @ CalcResult::Error { .. } => error,
             other => {
+                // An error in the format wins, also for text (error_broadcast.xlsx Sheet2!A1).
+                let format_code = match self.get_string(&args[1], cell) {
+                    Ok(s) => s,
+                    Err(s) => return s,
+                };
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
                     CalcResult::String(s) => return CalcResult::String(s),
                     CalcResult::Boolean(b) => return CalcResult::Boolean(b),
-                    error @ CalcResult::Error { .. } => return error,
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,
@@ -368,11 +277,8 @@ impl Model {
                         };
                     }
                     CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
+                    error @ CalcResult::Error { .. } => return error,
                     CalcResult::Array(_) | CalcResult::Lambda(_) => unreachable!(),
-                };
-                let format_code = match self.get_string(&args[1], cell) {
-                    Ok(s) => s,
-                    Err(s) => return s,
                 };
                 let d = format_text((!is_blank).then_some(value), &format_code, self.locale);
                 if let Some(_e) = d.error {
@@ -571,9 +477,11 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<TextArg, CalcResult> {
         match self.evaluate_node_in_context(node, cell) {
-            err @ CalcResult::Error { .. } => Err(err),
+            err @ CalcResult::Error { .. } => {
+                Ok(TextArg::Error(calc_result_to_array_node(err.clone()), err))
+            }
             CalcResult::Range { left, right } => {
-                Ok(TextArg::Array(self.evaluate_range(left, right)))
+                Ok(TextArg::Array(self.evaluate_range(left, right, cell)?))
             }
             CalcResult::Array(a) => Ok(TextArg::Array(a)),
             CalcResult::Lambda(_) => Err(CalcResult::new_error(
@@ -602,7 +510,7 @@ impl Model {
             TextArg::Scalar(ArrayNode::Number(1.0))
         };
         broadcast_text(cell, &[&text, &num], |i, j| {
-            left_element(text.elem(i, j), num.elem(i, j))
+            left_element(text.elem(i, j), self.array_node_to_number(num.elem(i, j)))
         })
     }
 
@@ -623,7 +531,7 @@ impl Model {
             TextArg::Scalar(ArrayNode::Number(1.0))
         };
         broadcast_text(cell, &[&text, &num], |i, j| {
-            right_element(text.elem(i, j), num.elem(i, j))
+            right_element(text.elem(i, j), self.array_node_to_number(num.elem(i, j)))
         })
     }
 
@@ -644,7 +552,11 @@ impl Model {
             Err(e) => return e,
         };
         broadcast_text(cell, &[&text, &start, &length], |i, j| {
-            mid_element(text.elem(i, j), start.elem(i, j), length.elem(i, j))
+            mid_element(
+                text.elem(i, j),
+                self.array_node_to_number(start.elem(i, j)),
+                self.array_node_to_number(length.elem(i, j)),
+            )
         })
     }
 

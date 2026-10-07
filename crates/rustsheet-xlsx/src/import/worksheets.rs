@@ -26,6 +26,7 @@ use crate::error::XlsxError;
 
 use super::{
     conditional_formatting::load_conditional_formatting,
+    iso_date::iso8601_to_serial,
     shared_strings::decode_xlsx_escapes,
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
@@ -461,14 +462,12 @@ pub(super) fn get_cell_from_excel(
                     Cell::SharedString { si, s: cell_style }
                 }
             }
-            "d" => {
-                // Not implemented
-                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
-                Cell::ErrorCell {
-                    ei: Error::NIMPL,
-                    s: cell_style,
-                }
-            }
+            "d" => match cell_value.and_then(iso8601_to_serial) {
+                Some(v) => Cell::NumberCell { v, s: cell_style },
+                // Excel refuses a workbook with unparsable `t="d"` text; an empty cell is the
+                // safe import (docs/excel-semantics/xlsx-storage.md).
+                None => Cell::EmptyCell { s: cell_style },
+            },
             "inlineStr" => {
                 let s = rich_text_inline.unwrap_or_default();
                 let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
@@ -538,15 +537,10 @@ pub(super) fn get_cell_from_excel(
                     cell_value.unwrap_or(""),
                 )))
             }
-            "d" => {
-                // Not implemented
-                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
-                make_cell(FormulaValue::Error {
-                    ei: Error::NIMPL,
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: Error::NIMPL.to_string(),
-                })
-            }
+            "d" => match cell_value.and_then(iso8601_to_serial) {
+                Some(v) => make_cell(FormulaValue::Number(v)),
+                None => make_cell(FormulaValue::Unevaluated),
+            },
             "inlineStr" => {
                 // NB: This is untested, I don't know of any engine that uses inline strings in formulas
                 make_cell(FormulaValue::Text(
@@ -635,10 +629,7 @@ fn load_hyperlinks(
         let (row_start, column_start, row_end, column_end) =
             parse_range(cell_ref).map_err(XlsxError::Xml)?;
         let tooltip = node.attribute("tooltip").map(str::to_string);
-        let rel_id = node.attribute_ns(
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-            "id",
-        );
+        let rel_id = node.relationship_id();
         let link = match rel_id {
             Some(rel_id) => {
                 let target = match hyperlink_rels.get(rel_id) {

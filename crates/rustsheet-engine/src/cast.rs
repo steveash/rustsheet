@@ -8,6 +8,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
+    functions::math_and_trigonometry::array_size::check_range_size,
     model::Model,
 };
 
@@ -138,12 +139,75 @@ impl Model {
         }
         crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
     }
+    /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
+    /// operator that works on it element by element (or a formula that spills it).
+    ///
+    /// The size is checked before any cell is read: an untrusted formula such as
+    /// `DATE(11:1899,12,1)` (31M cells) must not allocate, or record a read, per cell of an
+    /// arbitrarily large range (CLAUDE.md directive 5). Past the bound it is `#ERROR!`
+    /// (DEVIATION, docs/excel-semantics/arrays.md "Array results above 1,048,576 cells").
+    /// A whole-row or whole-column range is read only within the sheet's used area; the
+    /// rest is empty and goes on record as read empty in one rectangle (`clip_to_used_area`).
+    pub(crate) fn evaluate_range(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
+        if let Some((error, message)) = check_range_size(&left, &right) {
+            return Err(CalcResult::new_error(error, cell, message));
+        }
+        let (last_row, last_column) = self
+            .clip_to_used_area(left.sheet, left.row, left.column, right.row, right.column)
+            .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+        let width = usize::try_from(right.column - left.column + 1).unwrap_or(0);
+        let mut result = Vec::with_capacity(usize::try_from(right.row - left.row + 1).unwrap_or(0));
+        for row in left.row..=right.row {
+            let mut row_result = Vec::with_capacity(width);
+            for column in left.column..=right.column {
+                if row > last_row || column > last_column {
+                    row_result.push(ArrayNode::Empty);
+                    continue;
+                }
+                let value = match self.evaluate_cell(CellReferenceIndex {
+                    sheet: left.sheet,
+                    row,
+                    column,
+                }) {
+                    CalcResult::Number(n) => ArrayNode::Number(n),
+                    CalcResult::Boolean(b) => ArrayNode::Boolean(b),
+                    CalcResult::String(s) => ArrayNode::String(s),
+                    CalcResult::Error { error, .. } => ArrayNode::Error(error),
+                    CalcResult::EmptyCell | CalcResult::EmptyArg => ArrayNode::Empty,
+                    CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                        // A cell's value is never a range, array or lambda.
+                        debug_assert!(false, "Unexpected array result in non-array formula");
+                        ArrayNode::Error(Error::NIMPL)
+                    }
+                };
+                row_result.push(value);
+            }
+            result.push(row_result);
+        }
+        Ok(result)
+    }
+
     pub(crate) fn get_number_or_array(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<NumberOrArray, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.number_or_array(value, cell)
+    }
+
+    /// [`Model::get_number_or_array`] of an already evaluated `value`.
+    pub(crate) fn number_or_array(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<NumberOrArray, CalcResult> {
+        match value {
             CalcResult::Number(f) => Ok(NumberOrArray::Number(f)),
             CalcResult::String(s) => match self.cast_number(&s) {
                 Some(f) => Ok(NumberOrArray::Number(f)),
@@ -170,35 +234,9 @@ impl Model {
                         message: "3D ranges are not allowed".to_string(),
                     });
                 }
-                // we need to convert the range into an array
-                let mut array = Vec::new();
-                for row in left.row..=right.row {
-                    let mut row_data = Vec::new();
-                    for column in left.column..=right.column {
-                        let value =
-                            match self.evaluate_cell(CellReferenceIndex { sheet, column, row }) {
-                                CalcResult::String(s) => ArrayNode::String(s),
-                                CalcResult::Number(f) => ArrayNode::Number(f),
-                                CalcResult::Boolean(b) => ArrayNode::Boolean(b),
-                                CalcResult::Error { error, .. } => ArrayNode::Error(error),
-                                CalcResult::Range { .. } => {
-                                    // if we do things right this can never happen.
-                                    // the evaluation of a cell should never return a range
-                                    ArrayNode::Number(0.0)
-                                }
-                                CalcResult::EmptyCell => ArrayNode::Empty,
-                                CalcResult::EmptyArg => ArrayNode::Empty,
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    // if we do things right this can never happen.
-                                    // the evaluation of a cell should never return an array or lambda
-                                    ArrayNode::Number(0.0)
-                                }
-                            };
-                        row_data.push(value);
-                    }
-                    array.push(row_data);
-                }
-                Ok(NumberOrArray::Array(array))
+                Ok(NumberOrArray::Array(
+                    self.evaluate_range(left, right, cell)?,
+                ))
             }
             CalcResult::Array(s) => Ok(NumberOrArray::Array(s)),
             error @ CalcResult::Error { .. } => Err(error),
@@ -217,10 +255,20 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<ValueOrArray, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.value_or_array(value, cell)
+    }
+
+    /// [`Model::get_value_or_array`] of an already evaluated `value`.
+    pub(crate) fn value_or_array(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<ValueOrArray, CalcResult> {
+        match value {
             error @ CalcResult::Error { .. } => Err(error),
             CalcResult::Range { left, right } => {
-                Ok(ValueOrArray::Array(self.evaluate_range(left, right)))
+                Ok(ValueOrArray::Array(self.evaluate_range(left, right, cell)?))
             }
             CalcResult::Array(arr) => Ok(ValueOrArray::Array(arr)),
             other => Ok(ValueOrArray::Value(other)),
@@ -234,11 +282,21 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<StringOrArray, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
+        let value = self.evaluate_node_in_context(node, cell);
+        self.string_or_array(value, cell)
+    }
+
+    /// [`Model::get_string_or_array`] of an already evaluated `value`.
+    pub(crate) fn string_or_array(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<StringOrArray, CalcResult> {
+        match value {
             error @ CalcResult::Error { .. } => Err(error),
-            CalcResult::Range { left, right } => {
-                Ok(StringOrArray::Array(self.evaluate_range(left, right)))
-            }
+            CalcResult::Range { left, right } => Ok(StringOrArray::Array(
+                self.evaluate_range(left, right, cell)?,
+            )),
             CalcResult::Array(arr) => Ok(StringOrArray::Array(arr)),
             other => Ok(StringOrArray::String(self.cast_to_string(other, cell)?)),
         }
@@ -309,11 +367,15 @@ impl Model {
     /// OFFSET or INDEX inside a scalar argument) is dereferenced: a single cell
     /// gives its value, a larger range is intersected with the row or column of
     /// `cell`, as Excel does in a scalar context. Literal ranges never get here:
-    /// static analysis wraps them in `@` at parse time.
+    /// static analysis wraps them in `@` at parse time. ISEVEN/ISODD call it too.
     ///
     /// A 1x1 array (the result of arithmetic on such a reference, for instance
     /// `INDIRECT("C3")*1`) is a scalar wrapped in an array and unwraps likewise.
-    fn dereference(&mut self, result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+    pub(crate) fn dereference(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         match result {
             CalcResult::Range { .. } => self.implicit_intersection_to_value(result, cell),
             CalcResult::Array(ref array) if array.len() == 1 && array[0].len() == 1 => {

@@ -2,8 +2,8 @@ use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
-        parser::{ArrayNode, Node},
-        token::{Error, OpCompare},
+        parser::{left_chain, ArrayNode, Node},
+        token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
@@ -56,10 +56,19 @@ fn finite_or_num(value: f64) -> Result<f64, Error> {
     if !value.is_finite() {
         return Err(Error::NUM);
     }
+    Ok(flush_subnormal(value))
+}
+
+/// 0 for a value below the smallest normal double, `value` otherwise. The postfix `%` and the
+/// multiplying and dividing functions (PRODUCT, SUMPRODUCT, SUMSQ, AVERAGE) flush their result
+/// like `*` and `/`; addition keeps subnormals (docs/excel-semantics/numbers.md "Subnormal results become 0",
+/// probes/subnormal-function-results, T-0189).
+pub(crate) fn flush_subnormal(value: f64) -> f64 {
     if value.abs() < f64::MIN_POSITIVE {
-        return Ok(0.0);
+        0.0
+    } else {
+        value
     }
-    Ok(value)
 }
 
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
@@ -101,53 +110,126 @@ fn is_one_over_an_odd_integer(y: f64) -> bool {
     (inverse - integer).abs() <= integer.abs() * TOLERANCE && integer % 2.0 != 0.0
 }
 
-/// A 1x1 array holding the error of `result`, which broadcasts against any
-/// array operand.
-fn error_as_array(result: CalcResult) -> NumberOrArray {
-    let error = match result {
-        CalcResult::Error { error, .. } => error,
-        // `get_number_or_array` only fails with an error value; anything else
-        // is not a number, which is #VALUE! like any failed coercion.
-        _ => Error::VALUE,
+/// What an array has beyond its end, when it is combined with a larger one:
+/// `#N/A`, as in Excel. It is an error like any other, so if the element on
+/// the other side is an error too, the one on the left comes first.
+pub(crate) static MISSING: ArrayNode = ArrayNode::Error(Error::NA);
+
+/// The error an element holds, if it is one: the `element_error` of [`array_of_errors`] for an
+/// array whose elements are not coerced.
+pub(crate) fn own_error(node: &ArrayNode) -> Option<Error> {
+    match node {
+        ArrayNode::Error(error) => Some(error.clone()),
+        _ => None,
+    }
+}
+
+/// What an operator, or a function that works element by element, gives when
+/// one operand is an array and the other one an error: an array of the same
+/// size with an error in every element. The error of the left operand comes
+/// first, so if the array is on the left `element_error` says which of its
+/// elements are errors of their own.
+pub(crate) fn array_of_errors(
+    array: &[Vec<ArrayNode>],
+    error: CalcResult,
+    element_error: impl Fn(&ArrayNode) -> Option<Error>,
+) -> CalcResult {
+    let CalcResult::Error { error: kind, .. } = &error else {
+        return error;
     };
-    NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]])
+    CalcResult::Array(
+        array
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|node| ArrayNode::Error(element_error(node).unwrap_or(kind.clone())))
+                    .collect()
+            })
+            .collect(),
+    )
 }
 
 impl Model {
-    /// Applies `op` element‐wise for arrays/numbers.
+    /// Evaluates a chain of value operators (`=A1+A2*3&"x"`) in a loop down its
+    /// left operands (T-0128): the first operand, then each operator over the
+    /// result so far and its right operand, the same order and results as
+    /// recursing into each left operand, on one stack frame however long the
+    /// chain is.
+    pub(crate) fn evaluate_operator_chain(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (links, first) = left_chain(node);
+        let mut value = self.evaluate_node_in_context(first, cell);
+        for link in links {
+            value = match link {
+                Node::OpSumKind { kind, right, .. } => match kind {
+                    OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
+                    OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
+                },
+                Node::OpProductKind { kind, right, .. } => match kind {
+                    OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
+                    OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
+                },
+                Node::OpPowerKind { right, .. } => {
+                    self.handle_arithmetic(value, right, cell, &power)
+                }
+                Node::OpConcatenateKind { right, .. } => {
+                    self.handle_concatenate(value, right, cell)
+                }
+                Node::CompareKind { kind, right, .. } => {
+                    self.handle_comparison(value, right, cell, kind)
+                }
+                // `left_chain` links are value operators only.
+                _ => value,
+            };
+        }
+        value
+    }
+
+    /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left
+    /// operand, and `right`.
     pub(crate) fn handle_arithmetic(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        let l = self.get_number_or_array(left, cell);
+        let l = self.number_or_array(left, cell);
         let r = self.get_number_or_array(right, cell);
-        match (l, r) {
-            (Ok(l), Ok(r)) => self.arithmetic_on_values(l, r, cell, op),
-            // A scalar error against an array operand is lifted element-wise like
-            // any other scalar: `#VALUE!-{1;2}` is `{#VALUE!;#VALUE!}`, so the
-            // result keeps the array's size (gen-m2/dd99be1f2454159f Calc!A56 is
-            // #SPILL!, not #VALUE!; docs/excel-semantics/arrays.md).
-            (Err(e), Ok(NumberOrArray::Array(a))) => {
-                self.arithmetic_on_values(error_as_array(e), NumberOrArray::Array(a), cell, op)
-            }
-            (Ok(NumberOrArray::Array(a)), Err(e)) => {
-                self.arithmetic_on_values(NumberOrArray::Array(a), error_as_array(e), cell, op)
-            }
-            (Err(e), _) | (_, Err(e)) => e,
-        }
+        self.arithmetic_on_values(l, r, cell, op)
     }
 
-    /// Applies `op` element‐wise to operands that are already evaluated.
+    /// Applies `op` element‐wise to operands that are already evaluated. An
+    /// operand that is an error makes the result an error, or an array of
+    /// errors if the other operand is an array.
     pub(crate) fn arithmetic_on_values(
         &mut self,
-        l: NumberOrArray,
-        r: NumberOrArray,
+        l: Result<NumberOrArray, CalcResult>,
+        r: Result<NumberOrArray, CalcResult>,
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
+        let (l, r) = match (l, r) {
+            (Ok(l), Ok(r)) => (l, r),
+            // A scalar error against an array operand is lifted element-wise like
+            // any other scalar: `#VALUE!-{1;2}` is `{#VALUE!;#VALUE!}`, so the
+            // result keeps the array's size (gen-m2/dd99be1f2454159f Calc!A56 is
+            // #SPILL!, not #VALUE!; docs/excel-semantics/arrays.md). The left
+            // operand's error comes first, so an error element of a left array
+            // stays (error_broadcast.xlsx E22).
+            (Err(error), Ok(NumberOrArray::Array(array))) => {
+                return array_of_errors(&array, error, |_| None);
+            }
+            (Ok(NumberOrArray::Array(array)), Err(error)) => {
+                return array_of_errors(&array, error, |node| {
+                    self.array_node_to_number(node).err()
+                });
+            }
+            (Err(error), _) | (_, Err(error)) => return error,
+        };
         match (l, r) {
             // -----------------------------------------------------
             // Case 1: Both are numbers
@@ -235,28 +317,19 @@ impl Model {
 
                     let mut data_row = Vec::new();
                     for j in 0..m {
-                        let val1 = row1.and_then(|r| bcast_idx(m1, j).and_then(|cj| r.get(cj)));
-                        let val2 = row2.and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)));
+                        let v1 = row1
+                            .and_then(|r| bcast_idx(m1, j).and_then(|cj| r.get(cj)))
+                            .unwrap_or(&MISSING);
+                        let v2 = row2
+                            .and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)))
+                            .unwrap_or(&MISSING);
 
-                        match (val1, val2) {
-                            (Some(v1), Some(v2)) => {
-                                match (self.array_node_to_number(v1), self.array_node_to_number(v2))
-                                {
-                                    (Ok(f1), Ok(f2)) => match op(f1, f2) {
-                                        Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                        Err(Error::DIV) => {
-                                            data_row.push(ArrayNode::Error(Error::DIV))
-                                        }
-                                        Err(Error::VALUE) => {
-                                            data_row.push(ArrayNode::Error(Error::VALUE))
-                                        }
-                                        Err(e) => data_row.push(ArrayNode::Error(e)),
-                                    },
-                                    (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
-                                }
-                            }
-                            // Mismatched dimensions => #VALUE!
-                            _ => data_row.push(ArrayNode::Error(Error::VALUE)),
+                        match (self.array_node_to_number(v1), self.array_node_to_number(v2)) {
+                            (Ok(f1), Ok(f2)) => match op(f1, f2) {
+                                Ok(x) => data_row.push(ArrayNode::Number(x)),
+                                Err(e) => data_row.push(ArrayNode::Error(e)),
+                            },
+                            (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
                         }
                     }
                     array.push(data_row);
@@ -268,20 +341,24 @@ impl Model {
 
     /// Applies the concatenation operator (`&`) element-wise.
     /// When either operand is a range or array the result is an array of strings;
-    /// when both are scalars the result is a single String.
+    /// when both are scalars the result is a single String. `left` is the evaluated left operand.
     pub(crate) fn handle_concatenate(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let l = match self.get_string_or_array(left, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let r = match self.get_string_or_array(right, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
+        let l = self.string_or_array(left, cell);
+        let r = self.get_string_or_array(right, cell);
+        let (l, r) = match (l, r) {
+            (Ok(l), Ok(r)) => (l, r),
+            (Err(error), Ok(StringOrArray::Array(array))) => {
+                return array_of_errors(&array, error, |_| None);
+            }
+            (Ok(StringOrArray::Array(array)), Err(error)) => {
+                return array_of_errors(&array, error, |node| array_node_to_string(node).err());
+            }
+            (Err(error), _) | (_, Err(error)) => return error,
         };
 
         // Concatenates two array elements, propagating errors as error nodes.
@@ -327,13 +404,13 @@ impl Model {
                     let row2 = bcast_idx(n2, ri).and_then(|i| a2.get(i));
                     let mut data_row = Vec::with_capacity(cols);
                     for ci in 0..cols {
-                        let v1 = row1.and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)));
-                        let v2 = row2.and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)));
-                        let node = match (v1, v2) {
-                            (Some(v1), Some(v2)) => concat_nodes(v1, v2),
-                            _ => ArrayNode::Error(Error::VALUE),
-                        };
-                        data_row.push(node);
+                        let v1 = row1
+                            .and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
+                            .unwrap_or(&MISSING);
+                        let v2 = row2
+                            .and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
+                            .unwrap_or(&MISSING);
+                        data_row.push(concat_nodes(v1, v2));
                     }
                     array.push(data_row);
                 }
@@ -343,22 +420,27 @@ impl Model {
     }
 
     /// Applies a comparison operator element-wise.
-    /// When either operand is a range or array the result is an array of booleans;
-    /// when both are scalars the result is a single Boolean.
+    /// When either operand is a range or array the result is an array of booleans,
+    /// with an error where an element of the operands is an error;
+    /// when both are scalars the result is a single Boolean. `left` is the evaluated left operand.
     pub(crate) fn handle_comparison(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         kind: &OpCompare,
     ) -> CalcResult {
-        let l = match self.get_value_or_array(left, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
-        };
-        let r = match self.get_value_or_array(right, cell) {
-            Ok(v) => v,
-            Err(e) => return e,
+        let l = self.value_or_array(left, cell);
+        let r = self.get_value_or_array(right, cell);
+        let (l, r) = match (l, r) {
+            (Ok(l), Ok(r)) => (l, r),
+            (Err(error), Ok(ValueOrArray::Array(array))) => {
+                return array_of_errors(&array, error, |_| None);
+            }
+            (Ok(ValueOrArray::Array(array)), Err(error)) => {
+                return array_of_errors(&array, error, own_error);
+            }
+            (Err(error), _) | (_, Err(error)) => return error,
         };
 
         let apply = |lv: &CalcResult, rv: &CalcResult| -> bool {
@@ -370,6 +452,17 @@ impl Model {
                 OpCompare::LessOrEqualThan => cmp < 1,
                 OpCompare::GreaterOrEqualThan => cmp > -1,
                 OpCompare::NonEqual => cmp != 0,
+            }
+        };
+
+        // Compares two elements. One that is an error is the result, the left
+        // one first.
+        let apply_to_elements = |lv: &CalcResult, rv: &CalcResult| -> ArrayNode {
+            match (lv, rv) {
+                (CalcResult::Error { error, .. }, _) | (_, CalcResult::Error { error, .. }) => {
+                    ArrayNode::Error(error.clone())
+                }
+                _ => ArrayNode::Boolean(apply(lv, rv)),
             }
         };
 
@@ -395,7 +488,7 @@ impl Model {
                 la.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| ArrayNode::Boolean(apply(&node_to_calc(n), &rv)))
+                            .map(|n| apply_to_elements(&node_to_calc(n), &rv))
                             .collect()
                     })
                     .collect(),
@@ -404,7 +497,7 @@ impl Model {
                 ra.iter()
                     .map(|row| {
                         row.iter()
-                            .map(|n| ArrayNode::Boolean(apply(&lv, &node_to_calc(n))))
+                            .map(|n| apply_to_elements(&lv, &node_to_calc(n)))
                             .collect()
                     })
                     .collect(),
@@ -422,17 +515,15 @@ impl Model {
                     let rrow = bcast_idx(n2, ri).and_then(|i| ra.get(i));
                     let mut data_row = Vec::with_capacity(cols);
                     for ci in 0..cols {
-                        let lv = lrow
-                            .and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
-                            .map(node_to_calc);
-                        let rv = rrow
-                            .and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
-                            .map(node_to_calc);
-                        let node = match (lv, rv) {
-                            (Some(lv), Some(rv)) => ArrayNode::Boolean(apply(&lv, &rv)),
-                            _ => ArrayNode::Error(Error::VALUE),
-                        };
-                        data_row.push(node);
+                        let lv = node_to_calc(
+                            lrow.and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
+                                .unwrap_or(&MISSING),
+                        );
+                        let rv = node_to_calc(
+                            rrow.and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
+                                .unwrap_or(&MISSING),
+                        );
+                        data_row.push(apply_to_elements(&lv, &rv));
                     }
                     array.push(data_row);
                 }

@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0187 group 1: a negated operand in a union, =(-A1,B1).",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": 4,
+        "B2": 5,
+        "A3": 6,
+        "H1": "=(-A1,B1)",
+        "H2": "=FORMULATEXT(H1)"
+      }
+    }
+  ],
+  "expected": {}
+}

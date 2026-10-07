@@ -17,7 +17,9 @@ Remove ULP-level and close mismatches in the annuity family; they likely share a
 Gap report: PV 47, NPV 40, PPMT 34, PMT 26, NPER 26, IPMT 21, FV 20 failing cells.
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
-cached workbooks give. Fit against the T-0942 sweep, never blind.
+cached workbooks give. Fit against the T-0942 sweep, never blind: `eval/suites/probes-numeric/cases/`
+`m9-fin-power`, `m9-fin-pv-fv`, `m9-fin-pmt`, `m9-fin-nper-npv` (oracle-filled 2026-10-06). The PV and FV
+formulations already fit 308/308 each (docs/excel-semantics/financial.md); PMT does not yet.
 
 ## Acceptance criteria
 - [ ] Known failures for these functions drop by ≥ 90% with no new failures; root cause documented in docs/excel-semantics/financial.md.

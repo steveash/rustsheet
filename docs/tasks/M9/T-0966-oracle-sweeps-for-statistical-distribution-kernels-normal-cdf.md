@@ -3,7 +3,7 @@ id: T-0966
 title: "Oracle sweeps for statistical-distribution kernels (normal CDF/PDF, gamma, incomplete beta/gamma, t, Weibull) and compat-alias evidence"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -23,7 +23,7 @@ Excel's values are demonstrably not the correctly rounded ones (see
 `docs/excel-semantics/statistics.md`: normal CDF 1 ulp high at z = 1, GAMMA(-0.5) 1 ulp off,
 T.DIST.RT not 1 - T.DIST, inverses that do not round-trip). Earlier blind attempts at this kind of
 fit (T-0925, draft PR #38) fixed some cells and regressed others. Decision 0026 / T-0018: such
-groups wait for an oracle sweep. T-0942 covers the inverse normal (T-0925); this task covers the rest.
+groups wait for an oracle sweep. T-1006 (split from T-0942) covers the inverse normal (T-0925); this task covers the rest.
 
 One spec suite per family under `eval/suites/probes-numeric` (or `probes`), built with
 `rustsheet-gen --policy numeric-rules` or hand-written specs, filled with `rustsheet-oracle fill`
@@ -52,19 +52,39 @@ One spec suite per family under `eval/suites/probes-numeric` (or `probes`), buil
    >= 25 cells incl. argument coercion and error edges.
 
 ## Acceptance criteria
-- [ ] Each family above has an oracle-filled probe suite committed (no pending cells), and the
+- [x] Each family above has an oracle-filled probe suite committed (no pending cells), and the
       dependent task (T-0967, T-0968, T-0969, T-0970, T-0971, T-0972, T-0973, T-0974, T-0975,
-      T-0978) links it in its Context.
-- [ ] Size: eight families do not fit one M PR. Split per family at pickup with `make new-task`
+      T-0978) links it in its Context. *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] Size: eight families do not fit one M PR. Split per family at pickup with `make new-task`
       (research lane), repoint each dependent task's `depends_on` to its own sweep, and close this
       task when the splits exist, so each fitting task becomes ready as soon as its sweep lands.
-- [ ] New quirks visible in the sweeps are recorded in `docs/excel-semantics/statistics.md`.
-- [ ] Fixtures hold only formulas and Excel values: no tenant ids, tokens or personal data, and no
-      RUSTSHEET_ORACLE_* values in logs or commits.
-- [ ] If the oracle is unavailable, set `status: blocked` with the reason (the dependents then
-      wait visibly instead of being fitted blind).
-- [ ] `make check` green; reviewers approve.
+- [x] New quirks visible in the sweeps are recorded in `docs/excel-semantics/statistics.md`. *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] Fixtures hold only formulas and Excel values: no tenant ids, tokens or personal data, and no
+      RUSTSHEET_ORACLE_* values in logs or commits. *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] If the oracle is unavailable, set `status: blocked` with the reason (the dependents then
+      wait visibly instead of being fitted blind). *(moved to T-1040..T-1049 by the split; see Outcome)*
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fitting or implementing any formulation (the dependent tasks do that).
-- Inverse normal (T-0942 / T-0925) and the discrete distributions (T-0927).
+- Inverse normal (T-1006 / T-0925) and the discrete distributions (T-0927).
+
+## Outcome
+Split per family as the size criterion asks (this task produced no sweep itself). Sweep tasks, all
+`research`, size S, tier `sonnet` (mechanical probe-and-fill with an available oracle, no fitting):
+
+| Family | Sweep | Dependent fitting tasks (`depends_on` repointed) |
+|---|---|---|
+| 1 normal CDF / erfc | T-1040 | T-0968 |
+| 2 normal PDF | T-1041 | T-0975 (links it; does not wait: accuracy upgrade first) |
+| 3 GAMMA / GAMMALN | T-1042 | T-0973 (links it; does not wait) |
+| 4 Student t | T-1043 | T-0967 (waits); T-0969 (links it; does not wait) |
+| 5 incomplete beta | T-1044 | T-0974 (waits); T-0970 (links it; does not wait) |
+| 6 incomplete gamma | T-1045 | T-0972 (waits); T-0971 (links it; does not wait) |
+| 7 Weibull | T-1046 | T-0978 |
+| 8 evidence gaps | T-1047 (legacy BETADIST..FTEST), T-1048 (legacy GAMMADIST..ZTEST), T-1049 (thin modern names, incl. a HYPGEOM.DIST grid) | T-0977 (waits on T-1048, T-1049) |
+
+T-0969, T-0970, T-0971, T-0973 and T-0975 never depended on this task (their accuracy upgrades come
+first and leftover last-digit cells wait for the sweep), so their `depends_on` stays empty; their
+text now names the specific sweep. Each sweep task carries the T-0040 lesson: no arity-invalid call
+in a probe workbook. Eval delta: none (task files only).

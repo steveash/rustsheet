@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Whole-row range 11:1899 (31M cells) lifted element-wise by DATE (T-0047, fuzz reproducer DATE(11:1899,12,1))",
+  "tags": [
+    "M0",
+    "arrays",
+    "limits",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "C1": "=ROWS(DATE(11:1899,12,1))",
+        "C2": "=COLUMNS(DATE(11:1899,12,1))",
+        "C3": "=DATE(11:1899,12,1)",
+        "E1": "=INDEX(DATE(11:1899,12,1),5,7)",
+        "A1": -2,
+        "A2": 3
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!C2",
+    "Sheet1!C3",
+    "Sheet1!E1"
+  ]
+}

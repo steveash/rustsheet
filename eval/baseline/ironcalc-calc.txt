@@ -64,6 +64,7 @@ C	ironcalc-calc/INFORMATION/IS_INFORMATION.xlsx	106
 C	ironcalc-calc/INFORMATION/N.xlsx	21
 C	ironcalc-calc/INFORMATION/SHEET_SHEETS.xlsx	5
 C	ironcalc-calc/INFORMATION/TYPE.xlsx	7
+C	ironcalc-calc/INFORMATION/error_broadcast.xlsx	230
 C	ironcalc-calc/LOGICAL/AND_OR_XOR.xlsx	317
 C	ironcalc-calc/LOGICAL/BYCOL_BYROW.xlsx	5
 C	ironcalc-calc/LOGICAL/IFERROR.xlsx	48
@@ -1625,7 +1626,6 @@ F	ironcalc-calc/STATISTICAL/POISSON.xlsx	POISSON.DIST!D60
 F	ironcalc-calc/STATISTICAL/POISSON.xlsx	POISSON.DIST!D61
 F	ironcalc-calc/STATISTICAL/POISSON.xlsx	POISSON.DIST!D8
 F	ironcalc-calc/STATISTICAL/POISSON.xlsx	POISSON.DIST!D9
-F	ironcalc-calc/STATISTICAL/STDEV.xlsx	Sheet1!C6
 F	ironcalc-calc/STATISTICAL/TREND_GROWTH.xlsx	Sheet1!D2
 F	ironcalc-calc/STATISTICAL/TREND_GROWTH.xlsx	Sheet1!D3
 F	ironcalc-calc/STATISTICAL/TREND_GROWTH.xlsx	Sheet1!D4
@@ -1777,7 +1777,6 @@ F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F5
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F6
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F7
 F	ironcalc-calc/STATISTICAL/T_TEST.xlsx	Sheet1!F8
-F	ironcalc-calc/STATISTICAL/VARIANCE.xlsx	Sheet1!F2
 F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E2
 F	ironcalc-calc/STATISTICAL/WEIBULL_DIST.xlsx	Sheet1!E3
 F	ironcalc-calc/STATISTICAL/Z_TEST.xlsx	Sheet1!E2

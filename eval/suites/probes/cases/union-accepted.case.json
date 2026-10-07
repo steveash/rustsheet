@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Union operator forms T-0134 chose without evidence that should load (T-0187 groups 3-6): error operands, cross-sheet unions, ISREF, FORMULATEXT of a nested union.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": 4,
+        "B2": 5,
+        "A3": 6,
+        "H1": "=(A1,#REF!)",
+        "H2": "=(#REF!,A1) A1",
+        "H3": "=(Data!A1:A3,Other!A1:A3) Data!A2",
+        "H4": "=(Data!A1,Other!A1)",
+        "H5": "=ISREF((A1,B2))",
+        "H6": "=((Data!A2,Data!E8),Data!B6)",
+        "H7": "=FORMULATEXT(H6)",
+        "H8": "=(A1,B2) A1",
+        "H9": "=ISREF((A1,#REF!))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11,
+        "A2": 12,
+        "A3": 13,
+        "B6": 16,
+        "E8": 18
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 21,
+        "A2": 22,
+        "A3": 23
+      }
+    }
+  ],
+  "expected": {}
+}

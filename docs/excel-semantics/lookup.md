@@ -62,8 +62,7 @@ Cut-off (probes/lookup-index-shapes H19-H36, excel-graph, 2026-10-06, T-0250): a
 HLOOKUP alike; not found is `#N/A` for all of them. A fractional index next to the cut-off is unprobed.
 Index shapes (same probe): `OFFSET(E1,..)` and `INDIRECT("E1")` results are references (a cell holding
 text or an error is `#REF!` when found, `#N/A` when not found). So is `INDEX(E1:E4,2)`: text or an
-error in the INDEXed cell is `#REF!` found / `#N/A` not found, **not** implemented yet (the engine
-coerces the INDEX value: `#VALUE!` / the error), baselined in probes H2, H3, H11, H12 (T-0250 follow-up).
+error in the INDEXed cell is `#REF!` found / `#N/A` not found (probes H2, H3, H11, H12; T-0251).
 A multi-cell range index is implicitly intersected: `VLOOKUP(2,A1:C3,@E1:E2)` from row 1 reads E1,
 from row 2 reads E2 (text, so `#REF!`), from row 5 is `#VALUE!` (found), and also `#VALUE!` when the
 value is not found (value index fails before the search); `VLOOKUP(2,A1:C3,E1:E2)` unspilled in J10 is
@@ -74,15 +73,43 @@ Implemented in: `Model::lookup_index_arg` / `Model::resolve_lookup_index`
 Tasks: T-0211
 
 ## Approximate-match lookups: type-skipping binary search
-Rule (fits all 124 simple top-level approximate lookups in gen-m2): binary search over the range;
-when the middle cell is blank or of another type than the lookup value, step to the next cell of the
-same type upward; if none exists up to the upper bound, set the upper bound to mid-1. A greater cell
-sets the upper bound to mid-1; an equal cell is returned at once. Blanks never match and there is no
-cross-type match. Full algorithm and cells in T-0212.
-Evidence: gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
-a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-Status: VERIFIED (behavior); the step rule is a fitted model, re-check it against T-0212's cells.
-Tasks: T-0212
+Rule: VLOOKUP/HLOOKUP with range_lookup TRUE (or omitted), LOOKUP, and MATCH with a non-zero
+match_type run one binary search over the vector that only compares cells of the lookup value's
+own type (number, text or boolean; a blank lookup value is the number 0):
+```
+lo = 0; hi = n-1; best = none
+while lo <= hi:
+    mid = floor((lo+hi)/2)
+    m = first index >= mid with the lookup value's type   # skips blanks, errors, other types
+    if m > hi: hi = mid-1; continue
+    c = compare(v[m], key)                                  # text case-insensitive
+    if c == 0: return the last index of the run of adjacent equal cells starting at m
+               (the first index of the run, walking down, for a descending search)
+    if (c < 0 ascending) or (c > 0 descending): best = m; lo = m+1
+    else: hi = m-1
+return best (none -> #N/A)
+```
+Blanks never match and there is no cross-type match (`VLOOKUP(TRUE,{blank;-1},1,TRUE)` is `#N/A`).
+The run of equal cells stops at the first cell that is not equal, whatever its type
+(`MATCH(2,{0,0,0,2,"x",2,9})` = 4). Any negative match_type searches descending and any positive one
+ascending (`MATCH(5,{9,5,5,5,1},-2)` = 2, `MATCH(2,…,2)` = `MATCH(2,…,1)`). A blank MATCH key is 0
+in an approximate search (`MATCH(blank,{1,blank,0,blank,2})` = 3).
+Exact match (range_lookup FALSE, MATCH 0) only matches cells of the key's type: a blank cell never
+matches 0 or "" (`MATCH(0,{blank;blank;blank},0)` and `VLOOKUP("",{blank;blank;blank},1,FALSE)` are
+`#N/A`), while a blank lookup value is 0 here too (`MATCH(blank,{1,blank,0,blank,2},0)` = 3,
+`MATCH(blank,{"";0},0)` = 2). Numbers must be exactly equal, without the 15-digit rounding of the
+comparison operators: `MATCH(0.1+0.2,{0.3},0)` and `VLOOKUP(0.1+0.2,{0.3},1,FALSE)` are `#N/A`.
+A match_type that is not a number is `#VALUE!` even with a blank key (`MATCH(blank,…,"x")`).
+Text comparison uses Excel's collation, not code-point order (T-0220).
+Evidence: eval/suites/probes/cases/lookup-approximate-search.case.json N1–N44 (oracle: excel-graph,
+2026-10-06, T-0212); gen-m2/fa437879253827be A146 (`=HLOOKUP(-2.5,Data!B3:E7,4)` → 2), cbdabe32a32a4012 A87,
+a6d4377c7b1b92cd A33 (`MATCH(…,-1)` → 1), 04cfd82f54dbc2b2 A1 and d0c29dd5c530e28c A67 (`#N/A`)
+(excel-graph, 2026-10-04, T-0203); 419 gen-m2 cells fixed by T-0212;
+crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/MATCH.xlsx C7 (duplicate run, Excel-cached).
+Status: VERIFIED
+Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
+`crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
+Tasks: T-0212, T-0220
 
 ## INDEX with one index into a 2-D range is #REF!
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:
@@ -100,14 +127,37 @@ Tasks: T-0213
 ## Whole-column / whole-row search vectors: blank tail
 Rule: as above, blanks never match and the type-skipping search steps over them, so a whole
 column with data in A1:A3 behaves like A1:A3 for an approximate lookup (`MATCH(99,A:A,1)` is
-expected to be 3, not 1048576).
-Evidence: inferred from the VERIFIED type-skipping entry (bounded gen-m2 ranges); whole-column
-probes with a blank tail are T-0126.
-Status: UNVERIFIED (probe pending, T-0126)
-Engine today (until T-0212): each probed blank compares as 0 / "" / FALSE, so `MATCH(99,A:A,1)`
-= 1048576 and `VLOOKUP(99,A:B,2)` = 0, and exact `VLOOKUP(0,A:B,2,FALSE)` matches the first blank.
-Likewise for XMATCH (T-0127, UNVERIFIED): with data in A1:A3 and B1:D1, `XMATCH(0,A:A)` = 4,
-`XMATCH(0,A:A,0,-1)` = 1048576 and `XMATCH(0,1:1)` = 5.
+3, not 1048576).
+Evidence: probes/lookup-whole-column-blank-tail (Excel oracle, Col/ColFar/Row/RowFar; identical with
+and without a far used cell Z100). `MATCH(99,A:A,1)` = 3, `MATCH(9.99E+307,A:A)` = 3,
+`VLOOKUP(99,A:B,2)` = "c", `HLOOKUP(99,1:2,2)` = "c", `LOOKUP(99,A:A,B:B)` = "c",
+`LOOKUP(20,A:A,B:B)` = "b", `LOOKUP(30,A1:A3,E:E)` = 0 (blank result), same as the bounded
+`A1:A10` forms. `MATCH(99,A:A,-1)` and `MATCH(5,A:A,1)` are #N/A. Exact lookups never match a
+blank: `VLOOKUP(0,A:B,2,FALSE)`, `VLOOKUP("",A:B,2,FALSE)`, `HLOOKUP(FALSE,1:2,2,FALSE)`,
+`MATCH(0,A:A,0)`, `XMATCH(0,A:A)` (and `XMATCH(0,1:1)`) are #N/A, and so are a blank-cell lookup
+value in `MATCH(G1,A:A,0)`, `MATCH(G1,A:A,1)`, `VLOOKUP(G1,A:B,2[,FALSE])`.
+Status: VERIFIED
+Implemented in: `SearchVector::approximate_search`/`exact_position`; XMATCH exact mode skips
+blanks (T-0126); linear XMATCH/XLOOKUP in `linear_scan` (T-1018).
+Tasks: T-0126, T-1018
+
+## XMATCH / XLOOKUP linear search over blanks
+Rule: in an exact or wildcard search (search_mode 1/-1) a blank candidate never matches a non-blank
+lookup value; a blank lookup value (`G1`, an empty cell) matches the first blank candidate. For
+match_mode -1/1 and a numeric lookup value a blank candidate is larger than every number and never
+smaller than one (the engine models it as empty text; unprobed for text and boolean lookup values). So with 5,_,10,_,20,_ in A1:A6: `XMATCH(0,A1:A6,-1)` is #N/A, `XMATCH(0,A1:A6,1)` is 1,
+`XMATCH(7,A1:A6,1)` is 3 (10 is the smaller of the larger candidates) but `XMATCH(25,A1:A6,1)` and
+`XMATCH(99,A:A,1)` are 2 (the first blank, the only candidate "larger" than 25). `XMATCH(0,A1:A6,2)`
+is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"nf")` is "nf",
+`XLOOKUP(0,A1:A6,B1:B6,"nf",1)` is "a", `XLOOKUP(G1,A1:A6,B1:B6,"nf")` is "b"). Error cells are skipped.
+Evidence: probes/xmatch-xlookup-blanks (Excel oracle; Col, Err, Row sheets, bounded and whole column/row).
+Status: VERIFIED
+Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared by XLOOKUP.
+Open (T-1019): binary search_mode 2/-2 over blanks: exact lookups of present values skip the blanks,
+e.g. `XMATCH(10,A1:A6,0,2)` is 3 and `XLOOKUP(10,A1:A6,B1:B6,"nf",0,2)` is "c" (engine #N/A / "nf");
+`XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is 2 (engine 5 / 6), unexplained by simple skipping.
+Also unprobed: text and boolean lookup values with match_mode -1/1 over blanks, and a blank lookup
+value against 0/""/FALSE candidates (`XMATCH(G1,A:A)` is 2 here, where `MATCH(G1,A:A,0)` is #N/A).
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest

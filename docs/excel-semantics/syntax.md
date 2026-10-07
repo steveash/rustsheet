@@ -40,32 +40,35 @@ Evidence: eval/suites/probes/cases/array-constant-signs.case.json (oracle: excel
 T-0147) for the accepted forms; each rejected form was sent as a single-cell workbook
 (e.g. `{"sheets":[{"name":"Sheet1","cells":{"A1":"=SUM({--1})"}}]}`) and got createSession 501
 `FileCorruptTryRepair` (rejected inputs cannot be committed; re-run such specs to reproduce).
-RustSheet today: `{--1}`, `{---1}`, `{1,--2}`, `{-TRUE}` and `{-#N/A}` are rejected (T-0132 keeps each
-minus as a node). Wrongly accepted: `{++1}`, `{-+1}`, `{+-1}`, `{+"a"}`, `{+#N/A}` (the parser
-drops plus signs in `parse_power`) and `{- 1}`, `{+ 1}` (whitespace after the sign is lost before
-parsing). Measured with the release build, T-0147.
+RustSheet today: all of these forms are rejected (`parse_array_item` takes one sign directly attached to a number token; T-0156).
 Status: VERIFIED
 
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
-(number, reference, parenthesis, function call, array) costs two levels and each operator one, so up
-to 127 nested parentheses or function calls and up to 255 terms in one operator chain (`=A1+A2+...`)
-are accepted; union operand lists too (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
+(number, reference, parenthesis, function call, array) costs two levels and each reference operator
+one, so up to 127 nested parentheses or function calls are accepted; union operand lists too
+(T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
-text at 8,192 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer
-operator chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its
-paren-nesting cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel
-refuses per its published limit (UNVERIFIED: no oracle probe yet).
-This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
-on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
+text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
+cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
+its published limit (UNVERIFIED: no oracle probe yet).
+Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
+depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
+may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
+Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
+characters; arithmetic from the published limit, not yet oracle-probed), so no formula Excel accepts
+is refused for its chains. Before T-0128 chains were capped at 255 terms.
+These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
+stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
-re-measured against this limit (the at-limit tests run on a 1 MiB stack in release builds).
+re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
+must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: none for Excel's behavior beyond the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,
@@ -84,3 +87,42 @@ RustSheet's hand expectations.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`Parser::expect_end`, `Parser::parse_intersection`)
 Tasks: T-0105, T-0138, T-0149
+
+## Newer error literals: only `#GETTING_DATA` loads as a formula literal (stored: also `#BUSY!`)
+Rule: of the error names beyond the classic eight plus `#SPILL!`/`#CALC!`, Excel for the web accepts
+only `=#GETTING_DATA` (also lower case `=#getting_data`) as a formula literal. A workbook with the
+formula `=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!`, `=#BUSY!`, `=#UNKNOWN!`, `=#PYTHON!`, `=#EXTERNAL!` or
+`=#blocked!` is rejected on load (createSession 501 `unsupportedWorkbook`, "The workbook contains
+unsupported features", the same refusal as 1E+308 literals in numbers.md), so those names are not
+formula grammar there (they only arise as results, arrays.md).
+`#GETTING_DATA` behaves as an error that is not `#N/A`: the Graph API reports the cell value as
+`#N/A`, `ERROR.TYPE` is 8, `ISERR` TRUE, `ISNA` FALSE, `ISERROR` TRUE, `IFERROR(...)` takes the
+fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
+"#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
+Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and `#N/A` is 7, and
+**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` (the general rule is in arrays.md), whichever error it is:
+`#N/A=#GETTING_DATA` is 7 but `#GETTING_DATA=#N/A` is 8; `#GETTING_DATA+#DIV/0!` is 8 but
+`#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
+`#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
+`#GETTING_DATA` special precedence: it is an ordinary error kind.
+Stored constants (`<c t="e"><v>#BUSY!</v></c>`, spec2xlsx `{"t":"e","v":"#BUSY!","stored":true}`, T-0999)
+are different from formula literals: of the newer names only `#BUSY!` (and `#GETTING_DATA`, `#N/A`) load.
+A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` is rejected on load
+(createSession 501 `unsupportedWorkbook`), like the formula literals (`=#CALC!` itself loads). A
+stored `#BUSY!` is an error that is not `#N/A`: `ISERROR` and `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA`
+passes it through, `A1&""` is `#BUSY!`, and `ERROR.TYPE` is 0 (not 7; confirmed by `ERROR.TYPE(A1)+100` =
+100, since XlsxWriter caches 0 for every formula and a stale cell would be indistinguishable from the bare
+0). `#GETTING_DATA` stored: `ERROR.TYPE` 8, `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA` passes through
+(reported `#N/A`), `&""` is reported `#N/A`; stored `#N/A`: 7, `ISNA` TRUE, `IFNA` gives the fallback.
+Unprobed: `#PYTHON!`, `#EXTERNAL!` stored. The rejected names were re-run as throw-away one-cell cases
+(`A1` = `{"t":"e","v":"<name>","stored":true}`, nothing else), so to reproduce one, write that case.
+Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives, and whether a
+COUNTIF criterion `"#BLOCKED!"` matches the error (SPEC-0003 keeps today's input table plus
+`#GETTING_DATA`, and keeps COUNTIF-family criteria on today's twelve names; T-1012 probes the
+criterion, T-1016 typed input on desktop; UNVERIFIED).
+Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
+rejections were run as throw-away one-cell cases (not committed; no value to record);
+probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
+stored rejections as throw-away one-cell cases (same).
+Status: VERIFIED
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020

@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0998: union operand form nested-parens.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "A2": 4,
+        "B2": 5,
+        "H1": "=((A1,B2))",
+        "H2": "=FORMULATEXT(H1)",
+        "H3": "=((A1,B2),C1)",
+        "H4": "=FORMULATEXT(H3)",
+        "H5": "=(((A1,B2),C1))",
+        "H6": "=FORMULATEXT(H5)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0195: #GETTING_DATA comparison/precedence wrapped in ERROR.TYPE (Graph reports #GETTING_DATA as #N/A, so the bare cells in error-literals-new cannot distinguish them). #GETTING_DATA is 8 via ERROR.TYPE(#GETTING_DATA) if distinct from #N/A (7).",
+  "tags": [
+    "M1",
+    "errors",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=ERROR.TYPE(#N/A=#GETTING_DATA)",
+        "A2": "=ERROR.TYPE(#GETTING_DATA=#N/A)",
+        "A3": "=ERROR.TYPE(#GETTING_DATA+#DIV/0!)",
+        "A4": "=ERROR.TYPE(#DIV/0!+#GETTING_DATA)",
+        "A5": "=ERROR.TYPE(#GETTING_DATA&\"a\")",
+        "A6": "=ERROR.TYPE(#GETTING_DATA*#DIV/0!)",
+        "A7": "=ERROR.TYPE(#DIV/0!*#GETTING_DATA)",
+        "A8": "=ERROR.TYPE(#GETTING_DATA-#DIV/0!)",
+        "A9": "=ERROR.TYPE(#DIV/0!-#GETTING_DATA)",
+        "A10": "=ERROR.TYPE(SUM(#GETTING_DATA,#DIV/0!))",
+        "A11": "=ERROR.TYPE(SUM(#DIV/0!,#GETTING_DATA))",
+        "A12": "=ERROR.TYPE(#GETTING_DATA)",
+        "A13": "=ERROR.TYPE(#N/A+#GETTING_DATA)",
+        "A14": "=ERROR.TYPE(#GETTING_DATA+#N/A)",
+        "A15": "=ERROR.TYPE(#GETTING_DATA=#GETTING_DATA)"
+      }
+    }
+  ],
+  "expected": {}
+}
