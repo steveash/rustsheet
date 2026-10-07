@@ -32,15 +32,7 @@ impl Model {
                     f(if value { 1.0 } else { 0.0 });
                 }
                 CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        f(parsed);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
+                    f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
                 }
                 CalcResult::Array(array) => {
                     for row in array {

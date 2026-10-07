@@ -206,6 +206,7 @@ C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-results.case.json	129
 C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
+C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
@@ -470,8 +471,6 @@ F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
 F	probes/subnormal-function-results.case.json	Calc!C75
-F	probes/text-number-long-paths.case.json	Sheet1!A2
-F	probes/text-number-long-paths.case.json	Sheet1!A4
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4

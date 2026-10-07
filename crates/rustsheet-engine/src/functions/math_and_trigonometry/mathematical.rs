@@ -50,7 +50,7 @@ impl Model {
                         }
                     }
                 }
-                value => match self.cast_to_number(value, cell) {
+                value => match self.cast_aggregate_arg_to_number(value, cell) {
                     Ok(value) => result = pick(value, result),
                     Err(error) => return error,
                 },
@@ -233,7 +233,7 @@ impl Model {
                 }
                 error @ CalcResult::Error { .. } => return error,
                 calc_result => {
-                    let cast_result = self.cast_to_number(calc_result, cell);
+                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {
                         Ok(f) => result += f,
                         Err(s) => return s,
@@ -316,7 +316,7 @@ impl Model {
                 error @ CalcResult::Error { .. } => return error,
                 calc_result => {
                     seen_value = true;
-                    let cast_result = self.cast_to_number(calc_result, cell);
+                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {
                         Ok(f) => result = flush_subnormal(result * f),
                         Err(s) => return s,
