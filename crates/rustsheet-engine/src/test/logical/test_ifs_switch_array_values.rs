@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 //! IFS and SWITCH return the chosen value argument as is, so a range value spills
 //! (T-0272; probes/ifs-switch-array-values).
 

@@ -20,7 +20,6 @@ T-0272 probe `eval/suites/probes/cases/ifs-switch-array-values` (oracle-filled):
 - [ ] The probe cases for array conditions / expression pass (check `make eval-show CASE=ifs-switch-array-values`).
 - [ ] Unit tests for IFS and SWITCH broadcasting, including value-argument ranges.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
