@@ -505,7 +505,8 @@ fn to_string_moved(
             child,
         } => {
             let text = to_string_moved(child, move_context, locale, language);
-            format!("@{}", tight_operand(text, child))
+            // Same text as `stringify`: the space binds tighter than `@` (T-1098).
+            format!("@{text}")
         }
         SpillRangeOperator { child } => {
             let text = to_string_moved(child, move_context, locale, language);

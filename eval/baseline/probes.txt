@@ -319,8 +319,6 @@ F	probes/error-stored-constants.case.json	S!H2
 F	probes/error-stored-constants.case.json	S!I1
 F	probes/error-stored-constants.case.json	S!I2
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
-F	probes/intersection-at-formulatext.case.json	Sheet1!H2
-F	probes/intersection-at-formulatext.case.json	Sheet1!H4
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
 F	probes/intersection-function-operands.case.json	Sheet1!H14

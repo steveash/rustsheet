@@ -146,7 +146,13 @@ fn intersections_round_trip_through_stringify() {
         ("$A$10:$D$12 A12", "$A$10:$D$12 A12"),
         ("A1 (B1:C3 C1)", "A1 (B1:C3 C1)"),
         ("(A1 B1):C3", "(A1 B1):C3"),
-        ("@(A1:B2 B1)", "@(A1:B2 B1)"),
+        // `@` applies to the whole intersection after it; Excel prints it bare (T-1098).
+        ("@(A1:B2 B1)", "@A1:B2 B1"),
+        ("A1 @A1", "A1 @A1"),
+        ("A1 @A1 @A1", "A1 @A1 @A1"),
+        ("(A1 @A1) B1", "(A1 @A1) B1"),
+        ("A1 (@A1 B1)", "A1 @A1 B1"),
+        ("(@A1) B1", "(@A1) B1"),
         ("-A1:A3 A2", "-A1:A3 A2"),
         ("SUM(A1:B2 B1:B3,C1)", "SUM(A1:B2 B1:B3,C1)"),
     ];
