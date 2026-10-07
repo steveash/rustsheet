@@ -3,7 +3,7 @@ id: T-0253
 title: "Probe H:M.f:S clock text with more than 12 fraction digits"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
