@@ -15,10 +15,17 @@ result is within a few ULP of zero relative to the operands, Excel returns exact
 **not** happen when the whole formula is parenthesized (`=(X-b)`) or another operation follows
 (`=X-b+0`, `=(X-b)*1`). For X = b·(1±k·2^-52): k ≤ 3 always snaps, k = 4–7 snaps for some bases only
 (15, 9, 9, 9 of 24), k = 8 never; identical for `X-b`, `X+(-b)` and `SUM(X,-b)`. The exact
-threshold is left to T-0110. The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
+threshold (T-0110, fitted on all 1,296 cells): snap iff the two addends of the final addition
+have opposite signs and |result| < 8 ULP of the **smaller** addend in magnitude (= 2^(e-49), e
+its binary exponent). The opposite-sign condition is implied, not observed: every probe cell
+subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
+addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
+up to k = 7 but the `-` side, whose smaller addend 1-k·2^-52 has half the ULP, only up to k = 3.
+The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
+Tasks: T-0110 (implementation, waits on T-1017: the AST must keep the outer parentheses)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
@@ -185,7 +192,7 @@ F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-c
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
 VAR.P, STDEV.P, VARA and STDEVA have matched since T-1037, when all twelve VAR/STDEV functions moved onto `excel_variance` with the same check (this closed T-1029).
 Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60). Excel tries the one-pass sum of squares first and only then switches to two passes (statistics.md, "VAR/STDEV switch"), so do not "fix" this to 0.
-MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. AGGREGATE A27-A29 pass since T-0993
+MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN is probed (probes/geomean-mixed-magnitude, excel-graph, 2026-10-07, T-1032): `GEOMEAN(1E+100,9E+307)` is 9.486832980505138e203 (the engine is one ulp high, T-1076), `GEOMEAN(1E-100,1E-300)` is 1.0000000000000001E-200 (one ulp above 1E-200; the engine matches bit for bit) and `GEOMEAN(1E+154,1E+300)` is 1E+227, and three equal 1E+200 or 1E-200 values give that value; the engine matches all but the first. AGGREGATE A27-A29 pass since T-0993
 ("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.

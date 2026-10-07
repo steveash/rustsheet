@@ -18,7 +18,8 @@
     cached by a Microsoft Excel application (numbers beyond 1e-9 relative; other types exactly)
     and prints it as `CONFLICT`. Those cells stay pending; the semantics entry gets
     `Status: CONFLICTING` with both values; nothing is implemented until an excel-desktop probe on
-    current Microsoft 365 decides.
+    current Microsoft 365 decides. *Amended by decision 0039: the cells stay pending, but in
+    Phases 1–3 a task that must choose implements the web value; the desktop probe is Phase 4.*
   - Formulas the web does not implement are refused for the whole workbook, like SHEETS/INFO.
 - **Consequences:** fewer scored cells, but no parity claim rests on web-only behavior that desktop
   Excel contradicts. A general policy for web-vs-desktop disagreements without desktop cached values

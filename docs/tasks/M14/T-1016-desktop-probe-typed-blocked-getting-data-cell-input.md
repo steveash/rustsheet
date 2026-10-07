@@ -1,13 +1,13 @@
 ---
 id: T-1016
 title: "Desktop probe: typed #BLOCKED!/#GETTING_DATA cell input (SPEC-0003)"
-milestone: M1
+milestone: M14
 lane: research
 status: blocked
 priority: P3
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-1074]
 spec: docs/specs/SPEC-0003-newer-error-kinds.md
 ---
 
@@ -25,4 +25,6 @@ SPEC-0003 "Two name tables" chose, without evidence, that typed `#GETTING_DATA` 
 - Formula literals (T-0175, done) and stored constants (T-0999).
 
 ## Blocked because
-It needs the `excel-desktop` oracle backend, which is `n/a` in cloud sessions (`cd tools && uv run rustsheet-oracle status` shows `excel-desktop  n/a`). Unblock when that line reads OK.
+Phase 4 (decision 0039): not a "Needs owner" item, and it blocks no milestone or phase exit. It needs the `excel-desktop` oracle backend, plus a COM step that types into a cell
+(`Range.Value`). The backend is `n/a` in cloud sessions (`cd tools && uv run rustsheet-oracle status`
+shows `excel-desktop  n/a`). Unblock when that line reads OK and T-1074 is done.

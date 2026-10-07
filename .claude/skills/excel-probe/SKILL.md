@@ -21,6 +21,9 @@ right: if the answer looks wrong, arbitrary or inconsistent, record it and match
    - Otherwise leave the case pending (it shows as "pending" in reports), mark the task
      `blocked` on oracle with a link to the case, and pick other work. The scheduled oracle
      workflow (`.github/workflows/oracle.yml`) fills pending cases.
+   - If only desktop Excel can answer (excel-graph cannot evaluate it, or contradicts a desktop
+     cached value), do not wait for it: implement on excel-graph evidence where it exists, and
+     put the desktop question in M14, Phase 4 (decision 0039).
 4. **Record the finding** in `docs/excel-semantics/<area>.md` (the canonical quirk list): the
    rule in one sentence, the probe case id as evidence, and any surprising consequences. Record
    every finding, including ones that look like Excel bugs and ones no task implements yet.
