@@ -274,7 +274,12 @@ Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is rea
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
 Evidence: poi/59106.xlsx (Excel-cached) Test!B2 = 42438 (start 42429, holidays 42422, 42423, 42437,
 42499; without D4 the result would be 42437) and A2 = "09 Mar 2016". WORKDAY.INTL's `holidays` (4th
-argument) is treated the same by analogy with NETWORKDAYS.INTL; no Excel evidence covers it yet (T-1053).
-Status: VERIFIED (Excel-cached)
+argument) and NETWORKDAYS.INTL's are read whole too, even when the formula's row is outside the
+range: fixtures/workday-intl-legacy-holidays.xlsx (legacy `<f>` formulas, same inputs in C2 and
+D2:D5) gives `=WORKDAY.INTL(C2,6,1,D2:D5)` = 42438 in B2 and B7, with weekend `"0000011"` = 42438
+in B3, `=WORKDAY(C2,6,D2:D5)` = 42438 in B5, and `=NETWORKDAYS.INTL(C2,C2+14,1,D2:D5)` = 10 in B6. A
+control in the same file, legacy `=D2:D5*1` in E3, gives 42423 (implicit intersection, no spill),
+so the oracle kept the formulas legacy (T-1053, Excel for the web, 2026-10-07).
+Status: VERIFIED (Excel-cached; Excel oracle for WORKDAY.INTL and NETWORKDAYS.INTL)
 Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
-Tasks: T-0983
+Tasks: T-0983, T-1053

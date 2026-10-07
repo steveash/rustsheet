@@ -89,6 +89,7 @@ C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
 C	probes/defined-name-intersection.case.json	10
+C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
 C	probes/error-arg-vs-range-check.case.json	10
 C	probes/error-literals-new.case.json	18
@@ -159,6 +160,7 @@ C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
 C	probes/offset-negative-height-width.case.json	80
+C	probes/operator-chain-limit.case.json	6
 C	probes/paren-call-empty-args.case.json	1
 C	probes/paren-call-function-ref.case.json	1
 C	probes/paren-call-if-lambda.case.json	1

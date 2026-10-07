@@ -3,7 +3,7 @@ id: T-1060
 title: "Probe Excel acceptance of 8,192-character operator chains (+ and &)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,10 @@ Use the `excel-probe` skill; code: crates/rustsheet-engine/src/expressions/parse
 
 ## Out of scope
 - Changing `MAX_VALUE_OPERATORS` unless the evidence requires it.
+
+## Outcome
+Added probe `eval/suites/probes/cases/operator-chain-limit` (+ excel-graph oracle sidecar): `=1+1+...`
+and `=LEN(1&1&...)` at 8,191, 8,192 and 8,193 formula characters. Excel for the web accepted and
+evaluated all six (including the one past the limit, which came through a file load); RustSheet
+matches all six, so `MAX_VALUE_OPERATORS` stays 4,096. syntax.md now cites the probe. Eval delta:
+probes +1 case, +6 cells, all passing; no regressions.
