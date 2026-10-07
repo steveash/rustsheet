@@ -261,7 +261,7 @@ fn test_equal_and_not_equal_use_15_digit_comparison() {
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "1E-17".to_string()).unwrap();
     model
-        .set_user_input(0, 2, 1, "1.0000000000000001".to_string())
+        .set_user_input(0, 2, 1, "1.0000000000000004".to_string())
         .unwrap();
     model.evaluate();
     model
@@ -277,7 +277,7 @@ fn test_equal_and_not_equal_use_15_digit_comparison() {
     let mut model = new_empty_model();
     model.set_user_input(0, 1, 1, "1E-17".to_string()).unwrap();
     model
-        .set_user_input(0, 2, 1, "1.0000000000000001".to_string())
+        .set_user_input(0, 2, 1, "1.0000000000000004".to_string())
         .unwrap();
     model.evaluate();
     model
