@@ -34,9 +34,10 @@ Root causes:
    `[s]" [yes, "ss"] seconds"` expected "271433 [yes, 271433] seconds" (actual "[yes, 53]").
 4. **Elapsed token after a plain `s`** (A8, A9, A18, A19, A28, A29, A38, A39, A48, A49) is
    **CONFLICTING**: Excel for the web gives "53:23 @ hour 1293", desktop Excel cached
-   "53:23 @ hour 75" (see number-formats.md, decision 0019). These cells are not scored and are
-   out of scope until an excel-desktop probe on current Microsoft 365 decides; do not implement
-   either variant here.
+   "53:23 @ hour 75" (see number-formats.md, decision 0019). These cells are pending (not scored) and
+   out of scope here; do not implement either variant in this task. The desktop answer is Phase 4
+   (item 4 of T-1075, M14). If a later task must choose before then, it matches the web value
+   (decision 0039).
 
 ## Acceptance criteria
 - [ ] The 37 lines for root causes 1-3 (A2:A7, A10:A17, A21:A27, A32:A37, A40:A47, A50, A51)
