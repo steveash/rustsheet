@@ -25,4 +25,4 @@ Oracle evidence (T-1104, probes/at-operand-formulatext): Excel keeps the user's 
 -
 
 ## Outcome
-`OpIntersectKind` records a parenthesized `@` operand, so FORMULATEXT prints `@(A1 B1)` as written; typed `ANCHORARRAY(x)` parses as `x#` (and `INDEX(...)#` anchors); `:` returns an error operand. The seven failing cells of probes/at-operand-formulatext pass (probes baseline updated). Follow-up probe task: T-1111.. `(@A1:B2)#` stays UNVERIFIED (see excel-semantics/references.md).
+`OpIntersectKind` records a parenthesized `@` operand, so FORMULATEXT prints `@(A1 B1)` as written; typed `ANCHORARRAY(x)` parses as `x#` (and `INDEX(...)#` anchors); `:` returns an error operand. The seven failing cells of probes/at-operand-formulatext pass (probes baseline updated). Follow-up probe task: T-1111. `(@A1:B2)#` stays UNVERIFIED (see excel-semantics/references.md).
