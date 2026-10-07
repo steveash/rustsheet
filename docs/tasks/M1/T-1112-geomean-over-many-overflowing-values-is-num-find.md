@@ -3,7 +3,7 @@ id: T-1112
 title: "GEOMEAN over many overflowing values is #NUM!: find Excel's cut"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
