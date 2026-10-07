@@ -6,6 +6,10 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "H10": {
+    "t": "s",
+    "v": "=ABS(@A1:A2)"
+   },
    "H2": {
     "t": "s",
     "v": "=(A1,B2)"
@@ -25,14 +29,26 @@
    "H6": {
     "t": "s",
     "v": "=SUM((A1,B2))"
+   },
+   "H7": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "H8": {
+    "t": "s",
+    "v": "=@A1:A2"
+   },
+   "H9": {
+    "t": "e",
+    "v": "#VALUE!"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "9baf9d49c80bbd3949dda90e5d84bdbeb365bf5bc151066e94277e700f1b7d10",
+  "input_sha256": "1276a64130ce01ff11be190c7b51e55260a27c2c95e4afb9dad6711020f222cc",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T10:24:52+00:00",
+  "produced_at": "2026-10-07T11:03:11+00:00",
   "version": null
  }
 }

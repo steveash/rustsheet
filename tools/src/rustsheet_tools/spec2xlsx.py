@@ -7,7 +7,8 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     formula typed into current Microsoft 365 Excel (no implicit intersection).
     A sheet may list cells in `"legacy_formulas": ["H1", ...]`; those are written as plain `<f>`
     formulas (no `cm` dynamic-array metadata), as a pre-dynamic-array file holds them (T-1077).
-    The engine adapter ignores the list.
+    The engine adapter ignores the list. `@` in such a cell is still written as raw `@`, not the
+    stored `_xlfn.SINGLE`, so it shows Excel's parse of the text, not of a genuine legacy file.
   * Error literals are written as the formula `=#N/A` etc. (xlsx writers cannot emit
     error constants); they behave identically for dependants. A typed error with `"stored": true`
     (`{"t":"e","v":"#BLOCKED!","stored":true}`) is instead patched into the file as a stored
