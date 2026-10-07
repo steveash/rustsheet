@@ -261,7 +261,8 @@ Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
 Evidence: poi/59106.xlsx (Excel-cached) Test!B2 = 42438 (start 42429, holidays 42422, 42423, 42437,
-42499; without D4 the result would be 42437) and A2 = "09 Mar 2016".
+42499; without D4 the result would be 42437) and A2 = "09 Mar 2016". WORKDAY.INTL's `holidays` (4th
+argument) is treated the same by analogy with NETWORKDAYS.INTL; no Excel evidence covers it yet (T-1053).
 Status: VERIFIED (Excel-cached)
 Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983
