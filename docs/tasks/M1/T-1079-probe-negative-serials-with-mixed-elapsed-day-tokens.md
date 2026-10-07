@@ -3,7 +3,7 @@ id: T-1079
 title: "Probe negative serials with mixed elapsed+day tokens and cell display (#####)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
