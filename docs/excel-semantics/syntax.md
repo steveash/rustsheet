@@ -111,8 +111,9 @@ is `#ERROR!`. Before T-0105 the parser stopped after the first expression and si
 dropped the rest (`=A1:B2 B1:B3` was stored as `=A1:B2`). Spaces and line feeds between two
 reference operands are not left-over input but the intersection operator. Which operands and separators
 Excel accepts is in references.md ("Intersection operator: separators", "Intersection operands must
-be references"). One exception: `=(A1)(A2)` with no space loads and is `#REF!`, so
-smoke/trailing-input B6 (`#ERROR!`) is wrong (T-0149).
+be references"). One exception: `=(A1)(A2)` with no space is not left-over input but a call
+of the parenthesized operand, and is `#REF!` (references.md "Calling a parenthesized operand",
+T-0149; smoke/trailing-input B6).
 Evidence: scratch runs of `rustsheet-oracle recalc -b excel-graph` on one formula per workbook
 (2026-10-05, T-0138); a refused workbook has no values to commit. `=(A1)(A2)`:
 probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05). smoke/trailing-input.case.json holds
