@@ -57,7 +57,7 @@ Rule: NORM.S.DIST(z, TRUE) can differ from the correctly rounded Phi(z) in the l
 not a correctly rounded one (this refines the T-0924 note in `functions/statistical/special.rs`).
 Evidence: `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`!C8, C29;
 `NORM.DIST NORM.INV`!E8.
-Status: VERIFIED (observation); the formulation is UNVERIFIED (T-0968, oracle sweep T-0966)
+Status: VERIFIED (observation); the formulation is UNVERIFIED (T-0968, oracle sweep T-1040)
 Tasks: T-0968
 
 ## Standard normal density uses sqrt(2*pi) computed in doubles
@@ -80,7 +80,7 @@ is what C(8,1)*C(10,3)/C(18,4) gives in doubles); `HYPGEOM.DIST(1,4,8,22,TRUE)` 
 while 559/1045 = 0.5349282296650718. Neither a log-gamma nor a log-factorial `exp(ln C + ln C - ln C)`
 form reproduces both cells (checked during T-0903), so the formulation is open.
 Evidence: `ironcalc-calc/STATISTICAL/HYPERGEOM_DIST.xlsx` Sheet1!F2, F3.
-Status: VERIFIED (observation); formulation UNVERIFIED (T-0977, sweep T-0966)
+Status: VERIFIED (observation); formulation UNVERIFIED (T-0977, sweeps T-1048 and T-1049)
 Tasks: T-0977
 
 ## BETA.DIST is not exact where the exact value is a double
