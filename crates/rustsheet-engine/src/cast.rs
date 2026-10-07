@@ -516,22 +516,28 @@ impl Model {
         }
     }
 
-    /// [`Model::cast_to_number`] for a direct argument of the aggregates (SUM, PRODUCT, MIN, MAX,
-    /// AVERAGE, SUMSQ, ...): text of more than 255 characters, numeric or not, is `#N/A` there
-    /// where every other path gives `#VALUE!` (probes/sum-long-text-args, excel-graph;
+    /// The `#N/A` an aggregate gives for a direct text argument of more than 255 characters,
+    /// numeric or not (`None` for shorter text), where every other path gives `#VALUE!`
+    /// (probes/sum-long-text-args, probes/long-text-args-min-criteria, excel-graph;
     /// docs/excel-semantics/numbers.md).
+    pub(crate) fn aggregate_text_too_long(
+        text: &str,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        number_text_too_long(text)
+            .then(|| CalcResult::new_error(Error::NA, cell, "Text too long".to_string()))
+    }
+
+    /// [`Model::cast_to_number`] for a direct argument of the aggregates (SUM, PRODUCT, MIN, MAX,
+    /// AVERAGE, SUMSQ, ...; AVERAGEA, MAXA and MINA via [`Model::aggregate_text_too_long`]).
     pub(crate) fn cast_aggregate_arg_to_number(
         &mut self,
         result: CalcResult,
         cell: CellReferenceIndex,
     ) -> Result<f64, CalcResult> {
         if let CalcResult::String(text) = &result {
-            if number_text_too_long(text) {
-                return Err(CalcResult::new_error(
-                    Error::NA,
-                    cell,
-                    "Text too long".to_string(),
-                ));
+            if let Some(error) = Self::aggregate_text_too_long(text, cell) {
+                return Err(error);
             }
         }
         self.cast_to_number(result, cell)
