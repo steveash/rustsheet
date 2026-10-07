@@ -47,7 +47,7 @@ use std::mem;
 use serde::{Deserialize, Serialize};
 
 use crate::expressions::token::{OpCompare, OpProduct, OpSum};
-use crate::{arithmetic::flush_subnormal, number_format::parse_excel_number};
+use crate::number_format::parse_excel_number;
 
 use crate::language::Language;
 use crate::locale::Locale;
@@ -658,10 +658,12 @@ impl Lexer {
         }
         self.position = position;
         match parse_excel_number(&chars) {
+            // Excel refuses a workbook whose formula holds a literal number text would not read
+            // (`=1E-310`, `=0E309`: numbers.md "Number text of 1E+308 or more is not a number").
             None => Err(self.set_error(&format!("Failed to parse to double: {chars}"), position)),
-            // A literal below the smallest normal reads as 0 (numbers.md "Subnormal results become 0":
-            // `=1E-308=0` is TRUE, probes/subnormal-function-results A70).
-            Some(v) => Ok(flush_subnormal(v)),
+            // A literal below the smallest normal reads as 0 (`=1E-308=0` is TRUE,
+            // probes/subnormal-function-results A70): `parse_excel_number` flushes it.
+            Some(v) => Ok(v),
         }
     }
 
