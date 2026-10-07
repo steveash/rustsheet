@@ -3,7 +3,7 @@ id: T-0133
 title: "Spec: multi-area references (union) in the engine"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
