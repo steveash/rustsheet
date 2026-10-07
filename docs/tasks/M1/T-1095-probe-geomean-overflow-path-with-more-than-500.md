@@ -3,7 +3,7 @@ id: T-1095
 title: "Probe GEOMEAN overflow path with more than 500 values"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,11 @@ cells alternating 1E+300 and 3E+250 (generate them with a formula column so the 
 
 ## Out of scope
 -
+
+## Outcome
+Probed with excel-graph (2026-10-07): probes/geomean-overflow-many-values, seven GEOMEANs over 501 to 600
+cells. F1 to F3 and F5 take the ordinary root (remainder 0 or 82) and F6, F7 (599 equal values and one half-size
+value, overflow and underflow) take the engine's remainder-over-500 branch with remainder 599; the engine
+matches Excel bit for bit on all of them but F4 (600 cells alternating 1E-300 and 3E-250), which is one ulp high
+(engine 1.7320508075688775E-275, Excel 1.7320508075688772E-275) on the ordinary path. numbers.md records it;
+filed T-1099.
