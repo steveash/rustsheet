@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: sonnet
-depends_on: []
+depends_on: [T-0270]
 ---
 
 ## Goal
@@ -23,6 +23,14 @@ gen-m2 (T-0203) evidence (excel-graph):
 - `gen-m2/d0c29dd5c530e28c` Calc!A246 `=CONCAT(MID(INDEX(Data!B3:E8,0.1,0),7,0))`: expected "", actual `#N/IMPL!`.
 Find where `#N/IMPL!` comes from (`rg "N/IMPL|Error::NIMPL"`) and reuse the existing array-lifting helper
 used by other scalar functions. Do not write a new one.
+
+Redo on current `main` (2026-10-07): the first attempt (#129, branch
+`agent/functions-math/T-0222-rounddown-mid-array-lift`, closed) added a second lifting primitive
+(`array_lift.rs`). Main now has `functions/text/text_arg.rs` (T-0257, T-1022), so reuse or generalize
+that for ROUND/ROUNDUP/ROUNDDOWN, and keep that branch's oracle-filled probe
+`probes/round-concat-array-lift`. Its CONCAT half overlaps T-0243 (#203, merged), so check what is
+still failing there. Lifting ROUND regresses `gen-m2/caa981b0753f455c` Calc!A26 until HLOOKUP lifts
+over an array lookup_value, which is why this depends on T-0270.
 
 ## Acceptance criteria
 - [ ] The 2 cells above disappear from eval/baseline/gen-m2.txt with no new F lines. Unit tests for an array first argument.
