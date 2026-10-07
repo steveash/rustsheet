@@ -22,4 +22,4 @@ T-1003's probe `probes/if-index-ref-args-aggregates` A46-A51 (`RANK(3,Data!A1)` 
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- IF/INDEX reference routing (verified correct by T-1003).

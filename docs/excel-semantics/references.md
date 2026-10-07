@@ -99,8 +99,9 @@ ISREF of INDEX and of defined names in `fn_isref` (functions/information/mod.rs)
 FILTER if_empty range in `fn_filter` (functions/spill_functions.rs)
 Probe T-1003 (probes/if-index-ref-args-aggregates, excel-graph, 2026-10-07): MAXA, MINA, AVERAGEA, PRODUCT, LARGE and RANK give
 the same result for `IF(TRUE,ref)` and `INDEX(ref,n)` as for the direct reference, over a text cell, a boolean cell and a mixed
-range. A single text cell is 0 to MAXA, MINA, AVERAGEA and PRODUCT (`MAXA(IF(TRUE,A1))` with A1 = "5" is 0); a single TRUE is 1 to
-MAXA, MINA and AVERAGEA but PRODUCT of it is 0; LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
+range. A single text cell counts as 0 to MAXA, MINA and AVERAGEA (`MAXA(IF(TRUE,A1))` with A1 = "5" is 0) and a single TRUE as 1;
+PRODUCT skips a text or boolean cell from a reference, so with no number left it gives 0 (numbers.md, "over no numbers");
+LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
 from a one-cell reference is `#N/A` (the engine gives `#NUM!`, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
 AVERAGEA 2.2, PRODUCT 21, LARGE(,1) 7, RANK(3,) 2.
 Tasks: T-0216, T-0235, T-0940, T-1003
