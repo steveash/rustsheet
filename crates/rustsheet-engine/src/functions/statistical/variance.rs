@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -23,26 +24,32 @@ pub(crate) enum VarianceKind {
 /// two-pass formula" (probes/variance-*, 1500+ cells).
 ///
 /// `values` must hold at least one value (two for `Sample`); an overflowing `Σx²` gives NaN,
-/// which callers turn into `#NUM!` like Excel (numbers.md "Overflow").
+/// which callers turn into `#NUM!` like Excel (numbers.md "Overflow"). The two-pass form needs
+/// the values twice, so callers collect them into a buffer (linear in the numeric values found).
 pub(crate) fn excel_variance(values: &[f64], kind: VarianceKind) -> f64 {
+    // Every product and quotient flushes a subnormal result to 0 like Excel's `*` and `/`:
+    // `STDEV.S({0,2.2E-154})` is 0 because each squared deviation (1.21E-308) is subnormal,
+    // although their sum is not (probes/variance-underflow; numbers.md "Subnormal results become 0").
+    let mul = |a: f64, b: f64| flush_subnormal(a * b);
+    let div = |a: f64, b: f64| flush_subnormal(a / b);
     let n = values.len() as f64;
     let mut sum = 0.0;
     let mut sumsq = 0.0;
     for &x in values {
         sum += x;
-        sumsq += x * x;
+        sumsq += mul(x, x);
     }
     let (one_pass, divisor) = match kind {
-        VarianceKind::Population => ((n * sumsq - sum * sum) / (n * n), n),
-        VarianceKind::Sample => ((sumsq - sum * sum / n) / (n - 1.0), n - 1.0),
+        VarianceKind::Population => (div(mul(n, sumsq) - mul(sum, sum), mul(n, n)), n),
+        VarianceKind::Sample => (div(sumsq - div(mul(sum, sum), n), n - 1.0), n - 1.0),
     };
-    let mean = sum / n;
-    if one_pass * divisor < 0.01 * sumsq || one_pass < 0.001 * mean.abs() {
+    let mean = div(sum, n);
+    if mul(one_pass, divisor) < mul(0.01, sumsq) || one_pass < mul(0.001, mean.abs()) {
         let mut squares = 0.0;
         for &x in values {
-            squares += (x - mean) * (x - mean);
+            squares += mul(x - mean, x - mean);
         }
-        return squares / divisor;
+        return div(squares, divisor);
     }
     one_pass
 }
@@ -232,6 +239,16 @@ mod tests {
             1.2249999999999998e-05
         );
         assert_eq!(excel_variance(&pair, VarianceKind::Sample), 2.45e-05);
+    }
+
+    #[test]
+    fn subnormal_squares_flush_to_zero() {
+        // probes/variance-underflow A6:D7: each squared deviation of {0,2.2E-154} is subnormal.
+        assert_eq!(excel_variance(&[0.0, 2.2e-154], VarianceKind::Sample), 0.0);
+        assert_eq!(
+            excel_variance(&[0.0, 3e-154], VarianceKind::Sample),
+            4.500000000000001e-308
+        );
     }
 
     #[test]

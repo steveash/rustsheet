@@ -114,13 +114,17 @@ Consequences:
   7.472222222222224, exactly the two-pass value; one-pass gives -113.78. `VAR.S({11,12,14})`
   (ratio 0.0101) is the one-pass 2.333333333333343, and `VAR.S({101,102,104})` is two-pass.
 - A negative mean uses |m|. A zero mean (`{-1,1}`) never meets the second test.
+- Every product and quotient flushes a subnormal result to 0, like `*` and `/` (numbers.md,
+  "Subnormal results become 0"). `STDEV.S({0,2.2E-154})` is 0: each squared deviation
+  (1.21E-308) is subnormal, although their sum 2.42E-308 is not. `STDEV.S({0,3E-154})`
+  (squares 2.25E-308, normal) is 2.121320343559643E-154 (probes/variance-underflow, 36 cells).
 - `VAR.P` of 1E+200 twice is `#NUM!` (numbers.md, "Overflow"): the one-pass Σx² overflows, V is
   NaN, neither test holds, and the NaN is returned.
 Evidence (oracle: excel-graph, 2026-10-07, T-1037): probes/variance-digits (234 cells),
 variance-switch (82), variance-fit (380, random offset and small-magnitude sets),
 variance-scale (492, six shapes over scales 3E-5 to 0.3), variance-rule (312; column A is near
 both limits, and B:M hold negative and zero means for all twelve VAR/STDEV functions) and
-variance-rel (120). Every cell matches the rule bit for bit. The limits are pinned: the
+variance-rel (120), variance-underflow (36). Every cell matches the rule bit for bit. The limits are pinned: the
 small-variance ratio V/|m| is two-pass at 0.0009999999999999998 and one-pass at
 0.0010000000000000007. The cancellation ratio V*(n-d)/Σx² is two-pass at 0.0099992 and
 one-pass at 0.0100036. Rejected forms: `V < 0.01*Σx²/n` fails 64 cells (VAR.S with n = 2..3),

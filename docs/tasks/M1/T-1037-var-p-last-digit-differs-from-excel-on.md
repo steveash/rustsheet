@@ -24,6 +24,8 @@ Found by T-0993: `AGGREGATE(11,0,E1:E6)` over 3,1,4,1,5,9 is 7.472222222222222 i
 -
 
 ## Handoff (resumed)
+Historical: these notes describe the state before the rule was found; the Outcome below supersedes them.
+
 Opus run 2026-10-07. I stopped at the session budget, before implementing. The evidence is
 committed on this branch: probes/variance-digits (234 cells) and probes/variance-switch (82 cells),
 oracle-filled, with the new known failures baselined by `make eval-baseline`. The analysis is in
@@ -42,7 +44,7 @@ Next:
 Found Excel's rule, verified bit for bit on 1,620 oracle cells (statistics.md, "VAR/STDEV switch
 between a one-pass and a two-pass formula"). Excel keeps the one-pass sum-of-squares result
 unless `V*(n-d) < 0.01*Σx²` or `V < 0.001*|mean|`; then it uses two passes. New probes:
-variance-fit, variance-scale, variance-rule and variance-rel. All twelve VAR/STDEV functions
+variance-fit, variance-scale, variance-rule, variance-rel and variance-underflow (a review follow-up: each subnormal square flushes to 0). All twelve VAR/STDEV functions
 (and AGGREGATE 7/8/10/11) share `excel_variance` in statistical/variance.rs, which replaces eight
 copies of the accumulate code. Eval: probes known failures 314 -> 168 (146 fixed: all
 variance-* cells, aggregate-grid B31/C31, and aggregate-overflow B/C 51-60, which also closes
