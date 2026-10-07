@@ -3,7 +3,7 @@ id: T-1108
 title: "Reconstruct the pow Excel uses for GEOMEAN's root at near-halfway roundings"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
