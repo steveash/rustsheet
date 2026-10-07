@@ -3,7 +3,7 @@ id: T-0983
 title: "WORKDAY/WORKDAY.INTL holidays is a range argument: no implicit intersection in legacy formulas (2 poi known failures)"
 milestone: M9
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
