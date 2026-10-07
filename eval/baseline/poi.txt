@@ -153,8 +153,6 @@ F	poi/54764-2.xlsx	!EngineError
 F	poi/54764.xlsx	!EngineError
 F	poi/56278.xlsx	!EngineError
 F	poi/56502.xlsx	Tabelle1!A4
-F	poi/56688_1.xlsx	Sheet1!B2
-F	poi/56688_3.xlsx	Sheet1!B2
 F	poi/56737.xlsx	Uses!C5
 F	poi/56737.xlsx	Uses!D2
 F	poi/56737.xlsx	Uses!D3
@@ -165,7 +163,6 @@ F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
 F	poi/61063.xlsx	Tabelle1!A4
-F	poi/61652.xlsx	Model!B4
 F	poi/63934.xlsx	Sheet1!B2
 F	poi/DateFormatNumberTests.xlsx	Tests!A10
 F	poi/DateFormatNumberTests.xlsx	Tests!A11
