@@ -148,6 +148,7 @@ C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
+C	probes/mod-array-lift.case.json	25
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19
 C	probes/mod-quotient-threshold.case.json	22
@@ -331,7 +332,6 @@ F	probes/geomean-overflow-cut-3.case.json	Sheet1!C13
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!C5
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!C7
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!E1
-F	probes/geomean-overflow-cut-3.case.json	Sheet1!E4
 F	probes/geomean-overflow-cut.case.json	Sheet1!C1
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
 F	probes/geomean-product-order.case.json	Sheet1!Z10

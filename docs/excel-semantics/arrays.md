@@ -48,6 +48,19 @@ Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/ric
 the importer (cached `#CALC!`/`#SPILL!`; errors the engine has no kind for stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
 
+## MOD lifts over array arguments
+Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
+two arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions past a
+shorter array are `#N/A`); the zero divisor (`#DIV/0!`) and huge quotient (`#NUM!`) rules hold per
+element, and an error element stays in its position.
+Evidence: probes/geomean-overflow-cut-3 E4 and probes/mod-array-lift (excel-graph, 2026-10-07):
+ranges, a per-element `#DIV/0!`, an `#N/A` element staying in place, a scalar divisor repeating, `#N/A`
+past the end of a shorter divisor, `MOD(NA(),{1,2})` giving `#N/A` in every element, row x column
+broadcast, text elements cast like a scalar (`"x"` gives `#VALUE!`) and booleans as 1/0.
+Status: VERIFIED
+Tasks: T-1119
+Implemented in: `Model::lift_number_pair` (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
+
 ## NOT and CONCATENATE lift over array arguments
 Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the
 `&` operator and TRIM. They do not return a scalar `#VALUE!`. When the result cannot spill (the
