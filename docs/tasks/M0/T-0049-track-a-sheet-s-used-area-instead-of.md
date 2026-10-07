@@ -3,7 +3,7 @@ id: T-0049
 title: "Track a sheet's used area instead of scanning it on every whole-row/column lift"
 milestone: M0
 lane: perf
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
