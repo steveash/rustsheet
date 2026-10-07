@@ -47,22 +47,28 @@ Status: VERIFIED
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
-(number, reference, parenthesis, function call, array) costs two levels and each operator one, so up
-to 127 nested parentheses or function calls and up to 255 terms in one operator chain (`=A1+A2+...`)
-are accepted; union operand lists too (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
+(number, reference, parenthesis, function call, array) costs two levels and each reference operator
+one, so up to 127 nested parentheses or function calls are accepted; union operand lists too
+(T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
-text at 8,192 characters, so every formula within Excel's nesting cap fits; but Excel accepts longer
-operator chains (about 4,000 terms fit in 8,192 characters; lifting that is T-0128) and its
-paren-nesting cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel
-refuses per its published limit (UNVERIFIED: no oracle probe yet).
-This bound keeps the recursive parser, evaluator, printer and tree drop from overflowing the stack
-on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
+text at 8,192 characters, so every formula within Excel's nesting cap fits; Excel's paren-nesting
+cap is not measured. Conversely RustSheet accepts 65 to 127 nested calls, which Excel refuses per
+its published limit (UNVERIFIED: no oracle probe yet).
+Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
+depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
+may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
+Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
+characters; arithmetic from the published limit, not yet oracle-probed), so no formula Excel accepts
+is refused for its chains. Before T-0128 chains were capped at 255 terms.
+These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
+stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
-re-measured against this limit (the at-limit tests run on a 1 MiB stack in release builds).
+re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
+must walk operator chains with `expressions/parser/chain.rs`.
 Evidence: none for Excel's behavior beyond the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
-Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `Parser::parse_primary`, `Parser::grow`); model.rs (`Model::parse_cell_formula`)
+Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
 
 ## Input left over after a complete formula is a syntax error
 Rule: text after a complete expression (`=1 2`, `=1+2 3`, `=SUM(A1:A2))`, `="a" "b"`, `=SIN(1)(3)`,

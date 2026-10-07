@@ -2,8 +2,8 @@ use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
-        parser::{ArrayNode, Node},
-        token::{Error, OpCompare},
+        parser::{left_chain, ArrayNode, Node},
+        token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
     functions::util::compare_values,
@@ -150,15 +150,54 @@ pub(crate) fn array_of_errors(
 }
 
 impl Model {
-    /// Applies `op` element‐wise for arrays/numbers.
+    /// Evaluates a chain of value operators (`=A1+A2*3&"x"`) in a loop down its
+    /// left operands (T-0128): the first operand, then each operator over the
+    /// result so far and its right operand, the same order and results as
+    /// recursing into each left operand, on one stack frame however long the
+    /// chain is.
+    pub(crate) fn evaluate_operator_chain(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (links, first) = left_chain(node);
+        let mut value = self.evaluate_node_in_context(first, cell);
+        for link in links {
+            value = match link {
+                Node::OpSumKind { kind, right, .. } => match kind {
+                    OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
+                    OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
+                },
+                Node::OpProductKind { kind, right, .. } => match kind {
+                    OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
+                    OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
+                },
+                Node::OpPowerKind { right, .. } => {
+                    self.handle_arithmetic(value, right, cell, &power)
+                }
+                Node::OpConcatenateKind { right, .. } => {
+                    self.handle_concatenate(value, right, cell)
+                }
+                Node::CompareKind { kind, right, .. } => {
+                    self.handle_comparison(value, right, cell, kind)
+                }
+                // `left_chain` links are value operators only.
+                _ => value,
+            };
+        }
+        value
+    }
+
+    /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left
+    /// operand, and `right`.
     pub(crate) fn handle_arithmetic(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        let l = self.get_number_or_array(left, cell);
+        let l = self.number_or_array(left, cell);
         let r = self.get_number_or_array(right, cell);
         self.arithmetic_on_values(l, r, cell, op)
     }
@@ -302,14 +341,14 @@ impl Model {
 
     /// Applies the concatenation operator (`&`) element-wise.
     /// When either operand is a range or array the result is an array of strings;
-    /// when both are scalars the result is a single String.
+    /// when both are scalars the result is a single String. `left` is the evaluated left operand.
     pub(crate) fn handle_concatenate(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let l = self.get_string_or_array(left, cell);
+        let l = self.string_or_array(left, cell);
         let r = self.get_string_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
@@ -383,15 +422,15 @@ impl Model {
     /// Applies a comparison operator element-wise.
     /// When either operand is a range or array the result is an array of booleans,
     /// with an error where an element of the operands is an error;
-    /// when both are scalars the result is a single Boolean.
+    /// when both are scalars the result is a single Boolean. `left` is the evaluated left operand.
     pub(crate) fn handle_comparison(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         kind: &OpCompare,
     ) -> CalcResult {
-        let l = self.get_value_or_array(left, cell);
+        let l = self.value_or_array(left, cell);
         let r = self.get_value_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),

@@ -3,17 +3,19 @@
 //! it, so the parser refuses trees deeper than [`MAX_FORMULA_DEPTH`]: it
 //! checks on the way down, before each operand, so its own recursion stays
 //! bounded, and on the way up, as each node is built over its children.
+//! Operator chains (`=A1+A2+...`) are walked in a loop, not recursively
+//! (T-0128, `chain.rs`), so their links add no depth; their length is bounded
+//! by [`MAX_VALUE_OPERATORS`] instead.
 
-use crate::expressions::parser::{ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{value_operands, ExpectedTokens, Node, Parser};
 
 /// Deepest formula tree the parser builds; deeper formulas are a parse error
 /// ([`TOO_DEEP_MESSAGE`]), which keeps untrusted formulas from overflowing
 /// the stack (CLAUDE.md directive 5).
 ///
 /// An operand costs [`PRIMARY_DEPTH`] levels and an operator one, so up to 127
-/// nested parentheses or calls fit (Excel allows 64 nested functions) and up
-/// to 255 terms in one operator chain. Excel accepts longer chains
-/// (`=A1+A2+...` up to its 8,192 character limit): a DEVIATION, see
+/// nested parentheses or calls fit (Excel allows 64 nested functions); a link
+/// of an operator chain adds no level (see [`Parser::grow_chain`]). See
 /// docs/excel-semantics/syntax.md. Sized for optimized builds on a 1 MiB
 /// stack (about 2 KB of parser stack per nesting level).
 pub const MAX_FORMULA_DEPTH: usize = 256;
@@ -25,13 +27,36 @@ const PRIMARY_DEPTH: usize = 2;
 /// Message of the parse error for a formula deeper than [`MAX_FORMULA_DEPTH`].
 pub const TOO_DEEP_MESSAGE: &str = "Formula is nested too deeply";
 
+/// Most value operators (`+ - * / ^ &` and comparisons) one formula may hold.
+/// Chains are walked and copied in loops, but dropping the tree still recurses
+/// down each chain (measured on a 1 MiB stack, optimized: about 13,000 links
+/// fit), and so do the derived `PartialEq` and `Debug` that tests use, so the
+/// length needs a bound. Excel's 8,192 character limit fits at most 4,096
+/// operators (`=1+1+...`), so no formula Excel accepts reaches this one.
+pub const MAX_VALUE_OPERATORS: usize = 4096;
+
+/// Message of the parse error for a formula with more than
+/// [`MAX_VALUE_OPERATORS`] value operators.
+pub const TOO_MANY_OPERATORS_MESSAGE: &str = "Formula has too many operators";
+
+/// Whether a parse error `message` is a resource limit ([`TOO_DEEP_MESSAGE`] or
+/// [`TOO_MANY_OPERATORS_MESSAGE`]) rather than a syntax error: no edit of the
+/// formula's ending makes it parse.
+pub(crate) fn is_limit_error(message: &str) -> bool {
+    message == TOO_DEEP_MESSAGE || message == TOO_MANY_OPERATORS_MESSAGE
+}
+
 impl Parser {
     /// The parse error for a formula deeper than [`MAX_FORMULA_DEPTH`].
     pub(super) fn too_deep(&self) -> Node {
+        self.limit_error(TOO_DEEP_MESSAGE)
+    }
+
+    fn limit_error(&self, message: &str) -> Node {
         Node::ParseErrorKind {
             formula: self.lexer.get_formula(),
             expecting: vec![ExpectedTokens::Other],
-            message: TOO_DEEP_MESSAGE.to_string(),
+            message: message.to_string(),
             position: self.lexer.get_position() as usize,
         }
     }
@@ -44,6 +69,32 @@ impl Parser {
             return Err(self.too_deep());
         }
         Ok(())
+    }
+
+    /// Records that a value operator node was built over `left`, of depth
+    /// `left_depth`, and a right operand of depth `right_depth`. A `left` that
+    /// is itself a value operator continues a chain, which consumers walk in a
+    /// loop (`chain.rs`): the node is then as deep as its deepest right operand
+    /// plus one, not one more than `left`.
+    pub(super) fn grow_chain(
+        &mut self,
+        left: &Node,
+        left_depth: usize,
+        right_depth: usize,
+    ) -> Result<(), Node> {
+        self.value_operators += 1;
+        if self.value_operators > MAX_VALUE_OPERATORS {
+            return Err(self.limit_error(TOO_MANY_OPERATORS_MESSAGE));
+        }
+        if value_operands(left).is_some() {
+            self.depth = left_depth.max(right_depth + 1);
+            if self.depth > MAX_FORMULA_DEPTH {
+                return Err(self.too_deep());
+            }
+            Ok(())
+        } else {
+            self.grow(left_depth, right_depth)
+        }
     }
 
     /// Parses an operand. Its subexpressions (parenthesised, function
