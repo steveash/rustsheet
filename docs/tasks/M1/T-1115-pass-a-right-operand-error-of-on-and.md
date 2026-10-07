@@ -3,7 +3,7 @@ id: T-1115
 title: "Pass a right-operand error of : on, and give #VALUE! for ANCHORARRAY of an @ error"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
