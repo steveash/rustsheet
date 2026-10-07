@@ -27,5 +27,6 @@ Found by T-0141. probes/literal-digits C1-C6 are known failures: `=1.00000000000
 No code change was needed. The 15-digit literal cut ("15-digit literal parsing", numbers.md) had
 already landed on main, and C1-C3, C5 and C6 pass. The one remaining known failure, C4
 `=0.1+0.2-0.3` (Excel 0, engine 5.55E-17), is near-zero snapping of the final subtraction, not
-literal parsing. It is handed to T-0110 (its Context now lists C4); T-0110 is blocked on T-1017.
+literal parsing. It is handed to T-0110, confirmed as the owner of that snap (its Context and acceptance criteria
+now list C4). T-0110's draft PR #227 waits on the unmerged task PR #228 (outer parentheses).
 Eval: no change.

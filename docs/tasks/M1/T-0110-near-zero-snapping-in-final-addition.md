@@ -17,7 +17,7 @@ Implement Excel's rule once VERIFIED in docs/excel-semantics/numbers.md.
 Probe cells A2–A4, A15. Also probes/literal-digits C4 (`=0.1+0.2-0.3` = 0, engine 5.55E-17), handed over by T-0144.
 
 ## Acceptance criteria
-- [ ] Probe cells pass; rule documented with evidence; implemented in one place.
+- [ ] Probe cells pass (including probes/literal-digits C4); rule documented with evidence; implemented in one place.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
