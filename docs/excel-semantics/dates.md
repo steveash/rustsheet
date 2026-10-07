@@ -183,8 +183,8 @@ Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: h
 coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
 43832.416666666664, value-clock-text row 27; the engine already matched).
 `H:M.f:S`, the one-out-of-range limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
-Out of the oracle's reach: `+10:00` typed into a cell (the oracle uploads xlsx files, so it
-cannot type; the engine stores it as text).
+Unprobed: `+10:00` typed into a cell (the engine stores it as text). The oracle can now type
+cell input through `{"entered": ...}` spec cells (T-0280).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
