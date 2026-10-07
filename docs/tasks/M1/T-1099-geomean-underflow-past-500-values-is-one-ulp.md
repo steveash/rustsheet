@@ -3,10 +3,10 @@ id: T-1099
 title: "GEOMEAN of 600 mixed-magnitude underflowing values is one ulp off"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -22,3 +22,14 @@ probes/geomean-overflow-many-values F4 (`GEOMEAN(D1:D600)`, 600 cells alternatin
 
 ## Out of scope
 -
+
+## Handoff
+Sonnet run, no fix. Findings (Python simulation of F4, 300 x 1E-300 and 300 x 3E-250): the engine's
+path gives q=-913, r=0, mantissa product 2.333464213269655e+47 and powf(product, 1/600)*2^q =
+1.732050875688775E-275 -- wait, exactly 1.7320508075688775e-275. The correctly rounded geometric mean
+of the two input doubles (60-digit Decimal) is 1.73205080756887736e-275, which also rounds to ...775,
+so Excel's ...772 is an artifact of its own algorithm, not a precision issue. Tried and rejected:
+exp(ln(product)/n)*2^q (=...775), plain log-sum (1.732050807566386e-275), log-sum with fsum, log10 and
+log2 forms (all far off). Not yet tried: other product associations or chunked rescaling (decimal
+or 2^k thresholds), a root taken in pieces (sqrt/cbrt composition), or probing more underflow cases
+with the oracle to constrain the algorithm. Keep F1-F3, F5-F7 and probes/geomean-mixed-magnitude green.
