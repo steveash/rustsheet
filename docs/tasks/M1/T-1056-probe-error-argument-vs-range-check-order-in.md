@@ -3,7 +3,7 @@ id: T-1056
 title: "Probe error-argument vs range-check order in REPLACE, MID and FIND"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
