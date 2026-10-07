@@ -3,7 +3,7 @@ id: T-1022
 title: "MID: coerce arguments left to right so a bad start/length beats a later error argument"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
