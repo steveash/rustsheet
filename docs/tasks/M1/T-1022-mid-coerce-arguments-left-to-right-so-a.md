@@ -3,7 +3,7 @@ id: T-1022
 title: "MID: coerce arguments left to right so a bad start/length beats a later error argument"
 milestone: M1
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-0994. Failing cells: probes/error-precedence-text.case.json Calc!C11,
 
 ## Out of scope
 - Other text functions (already match Excel in the probe).
+
+## Outcome
+`broadcast_text` (scalar case) now computes left to right and returns an error argument only when it is the first failure. probes Calc!C11, C12 pass; probes known failures 210 -> 208, no regressions.
