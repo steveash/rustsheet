@@ -3,7 +3,7 @@ id: T-0149
 title: "Intersection with @, union and (A1)(A2) operands"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
