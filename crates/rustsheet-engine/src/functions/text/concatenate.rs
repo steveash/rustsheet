@@ -175,7 +175,8 @@ impl Model {
         let mut values: Vec<String> = Vec::new();
         let mut size = JoinSize::new(&delimiter);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
-        // in a later one wins (unprobed against Excel, text.md).
+        // argument after the limit wins; a range-cell error past it is #CALC!
+        // (probes/text-result-limit C18-C20).
         let mut over_limit = false;
         for arg in &args[2..] {
             over_limit = over_limit || size.exceeds(&values);
