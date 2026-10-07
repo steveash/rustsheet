@@ -21,6 +21,7 @@ dev = ["ruff>=0.6", "mypy>=1.11", "pytest>=8", "types-requests", "types-PyYAML",
 rustsheet-oracle = "rustsheet_tools.oracle.cli:main"
 rustsheet-spec2xlsx = "rustsheet_tools.spec2xlsx:main"
 rustsheet-gen = "rustsheet_tools.gen.cli:main"
+rustsheet-catalog-view = "rustsheet_tools.catalog_view:main"
 
 [build-system]
 requires = ["hatchling"]

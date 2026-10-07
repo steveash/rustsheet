@@ -92,7 +92,12 @@ Only `pass` counts as passing. Case statuses:
 
 ## Outputs
 - `eval/runs/latest/report.md` (git-ignored): suite table; cases that did not run; functions
-  ranked by failing cells; failing examples per function. This is the hill-climbing to-do list.
+  ranked by failing cells; failing examples per function; Excel evidence per function; out-of-scope
+  functions. This is the hill-climbing to-do list. Function counts follow the catalog's `scope`
+  (decision 0027), read from the generated `eval/catalog/scope.json` (decision 0040): `scope: out`
+  functions leave the function tables and get their own section with their reason; the evidence
+  section lists in-scope catalog functions with no Excel evidence and the `oracle: none` ones that
+  need another evidence source. Suite cell counts and baselines still cover every checked cell.
 - `report.json`: the same data, machine-readable.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 

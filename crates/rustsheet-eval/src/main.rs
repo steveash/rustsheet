@@ -21,6 +21,7 @@ use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
+use rustsheet_eval::catalog::Catalog;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
@@ -247,6 +248,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
+        &Catalog::load(root)?,
     );
     print_summary(&report);
     let mut failed = false;
@@ -398,6 +400,7 @@ fn run() -> Result<ExitCode> {
                 RustSheetEngine.name(),
                 &results,
                 &RustSheetEngine.implemented_functions(),
+                &Catalog::load(&root)?,
             );
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
