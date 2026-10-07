@@ -37,7 +37,7 @@ crates/rustsheet-engine/src/test/test_nan_inf.rs).
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Sonnet run, no code written. Beyond sonnet: the first acceptance criterion needs a typed-input
 oracle path, and none exists. `rustsheet-oracle status` shows excel-graph OK (app-only) and
 excel-desktop n/a; `rg` over tools/ and docs/architecture/oracle.md finds no Graph range-PATCH
