@@ -3,7 +3,7 @@ id: T-1060
 title: "Probe Excel acceptance of 8,192-character operator chains (+ and &)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
