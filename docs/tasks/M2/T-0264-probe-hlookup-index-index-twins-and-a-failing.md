@@ -3,7 +3,7 @@ id: T-0264
 title: "Probe HLOOKUP INDEX(...) index twins and a failing INDEX index (INDEX(E1:E4,9))"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
