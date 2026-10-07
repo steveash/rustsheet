@@ -492,7 +492,7 @@ fn fn_npv_whole_column_sees_a_spill_beyond_the_used_area() {
 
 // Excel rejects a workbook whose XNPV call has fewer than three arguments
 // (docs/excel-semantics/syntax.md, "Minimum argument counts"); we give #ERROR! and must not panic
-// (T-0275). The three-argument values come from probes/xnpv-argument-count D1-D2.
+// (T-0275). The three-argument value is probes/xnpv-argument-count D1.
 #[test]
 fn fn_xnpv_argument_count() {
     let mut model = new_empty_model();
