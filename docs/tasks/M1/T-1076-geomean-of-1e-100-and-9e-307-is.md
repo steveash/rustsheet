@@ -3,7 +3,7 @@ id: T-1076
 title: "GEOMEAN of 1E+100 and 9E+307 is 1 ulp high in the overflow path"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
