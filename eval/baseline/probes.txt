@@ -59,7 +59,7 @@ C	probes/catalog/availability-41.case.json	12
 C	probes/catalog/availability-42.case.json	11
 C	probes/catalog/function-name-forms-2.case.json	3
 C	probes/catalog/function-name-forms.case.json	5
-C	probes/catalog/normsdist-stored-form.case.json	3
+C	probes/catalog/normsdist-stored-form.case.json	4
 C	probes/ceiling-xlfn-prefix.case.json	4
 C	probes/clock-text-length-limit.case.json	16
 C	probes/clock-text-long-fraction.case.json	33
@@ -241,6 +241,7 @@ C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
+C	probes/xnpv-argument-count.case.json	3
 F	probes/at-operand-formulatext.case.json	Sheet1!H12
 F	probes/at-operand-formulatext.case.json	Sheet1!H13
 F	probes/at-operand-formulatext.case.json	Sheet1!H17

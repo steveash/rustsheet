@@ -3,7 +3,7 @@ id: T-0052
 title: "Prefix every future function in the case builder itself"
 milestone: M0
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -29,10 +29,20 @@ missing names, ideally from eval/catalog), applied with the builder's own tokeni
 sidecars would go stale (probably none if no spec mixes the two lists).
 
 ## Acceptance criteria
-- [ ] A unit test: `=TRIMRANGE(A2)+DAYS(1,2)` and `=NORMSDIST(0)+GAUSS(0)` store every call
+- [x] A unit test: `=TRIMRANGE(A2)+DAYS(1,2)` and `=NORMSDIST(0)+GAUSS(0)` store every call
   with its prefix (and NORMSDIST as itself).
-- [ ] No committed spec case changes its built bytes, or its sidecar is refilled.
-- [ ] `make check` green; reviewers approve.
+- [x] No committed spec case changes its built bytes, or its sidecar is refilled.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine export (`Function::to_xlsx_string`).
+
+## Outcome
+The case builder owns every future-function prefix: one table (the engine exporter's list plus
+`_BUILDER_ONLY_PREFIXES`, the names only XlsxWriter knew), applied with the builder's tokenizer, and
+XlsxWriter's `use_future_functions` is off. `=TRIMRANGE(A2)+DAYS(1,2)` now stores `_xlfn.DAYS`;
+NORMSDIST/NORMSINV are stored bare, as Excel stores them (the `_XLSXWRITER_MISREAD` workaround is
+gone). A test checks the table still covers XlsxWriter's own list. Of 298 committed specs, only
+probes/catalog/normsdist-stored-form and availability-27 changed bytes; both were refilled (normsdist-stored-form also gained A4 `_xlfn.NORMSDIST(0)`, keeping the prefixed-classic evidence reproducible)
+(excel-graph 2026-10-07) with identical values. Eval delta: none (0 regressions). Filed T-0411
+(the engine exporter writes five newer names bare).
