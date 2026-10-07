@@ -24,4 +24,4 @@ Found by T-1097: docs/excel-semantics/numbers.md "Number text of 1E+308 or more 
 -
 
 ## Outcome
-Number text over 255 characters (spaces counted) is `#VALUE!` in number coercion and VALUE; one shared `MAX_NUMBER_TEXT_LEN` (cast.rs) now also serves clock text. probes/text-number-long-zero passes in full (138 cells fixed). Not changed: criteria, AVERAGE/SUM text arguments and NUMBERVALUE are unprobed for length (still no limit).
+Number text over 255 characters (spaces counted) is `#VALUE!` in number coercion (every `cast_number` caller), VALUE and NUMBERVALUE; one shared `MAX_NUMBER_TEXT_LEN` / `number_text_too_long` (cast.rs) now also serves clock text. probes/text-number-long-zero and date-clock-text-length-limit pass in full; the new probes/text-number-long-paths confirms the other paths (14 of 16 cells; SUM and AVERAGE give `#N/A` in Excel, T-1107). Unprobed: criteria, DATEVALUE padding, cell input of `-`+long text.

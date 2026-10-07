@@ -190,3 +190,14 @@ fn number_text_longer_than_255_characters_is_value_error() {
         );
     }
 }
+
+// T-1101: NUMBERVALUE has the same 255-character limit (probes/text-number-long-paths A13, A14).
+#[test]
+fn numbervalue_text_longer_than_255_characters_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", &format!("=NUMBERVALUE(\"0.{}1\")", "0".repeat(252)));
+    model._set("A2", &format!("=NUMBERVALUE(\"0.{}1\")", "0".repeat(253)));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1E-253");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+}

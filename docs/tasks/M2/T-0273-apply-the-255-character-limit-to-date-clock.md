@@ -3,7 +3,7 @@ id: T-0273
 title: "Apply the 255-character limit to date-clock text (VALUE and coercion)"
 milestone: M2
 lane: functions-date
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ docs/excel-semantics/dates.md ("Clock text of more than 255 characters").
 
 ## Out of scope
 - Number text and date-only text limits (unprobed).
+
+## Outcome
+Done by T-1101: the shared `MAX_NUMBER_TEXT_LEN` check in number coercion and VALUE passes probes/date-clock-text-length-limit in full.
