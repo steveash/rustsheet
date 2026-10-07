@@ -17,7 +17,7 @@ Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json A30:C124 (o
 Status: VERIFIED (Excel for the web only; the engine matches all 43 text-broadcast cells)
 
 ## The *B text functions equal their non-B twins and spill (T-0271)
-Rule: in en-US (non-DBCS) FINDB, LEFTB, LENB, MIDB, REPLACEB, RIGHTB and SEARCHB return what FIND, LEFT, LEN, MID,
+Rule: for ASCII (single-byte) text in en-US (non-DBCS) FINDB, LEFTB, LENB, MIDB, REPLACEB, RIGHTB and SEARCHB return what FIND, LEFT, LEN, MID,
 REPLACE, RIGHT and SEARCH return, and lift element-wise over range and array arguments and spill like them
 (`LENB(A1:C1)` = 11, 4, 5; `FINDB("o",A1:C1)` = 5, `#VALUE!`, `#VALUE!`; `LENB(A21:A24)` over blanks spills four 0s).
 Evidence: eval/suites/probes/cases/text-b-functions-broadcast.case.json A3:A13 (oracle: excel-graph, 2026-10-07; engine matches all 29 cells).
