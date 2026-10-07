@@ -536,8 +536,10 @@ A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift
 the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
 computed array, which is evaluated once per call), times the lifted argument count, above 2^27 is `#ERROR!`
 (`AGGREGATE(14,6,SEQUENCE(1048576),SEQUENCE(1048576))`, unit test `lifted_calls_over_large_arrays_hit_the_visit_cap`).
-A multi-cell range function_num or options is not lifted: the engine reads it as a scalar and gives `#N/IMPL!`
-(unprobed, T-1058).
+A multi-cell range function_num or options lifts like an array (probes/aggregate-range-args, excel-graph, 2026-10-07, T-1058):
+`AGGREGATE(G1:G2,0,E1:E6)` with G1:G2 = 9, 4 spills 23, 9 down, a row range spills across, `AGGREGATE(9,G1:G2,E1:E6)` spills
+`#VALUE!` (option 9), 23, and a column against a row of options makes a 2x2 grid. A single-cell range is a scalar
+(`AGGREGATE(G1,0,E1:E6)` is 23). A range fourth argument is not lifted; a multi-cell range k reads its top-left cell: `AGGREGATE(14,0,E1:E6,G1:G2)` is one `#NUM!` (k = 9), and k = J1:J2 (1, 99) gives 9 while K1:K2 (99, 1) gives `#NUM!`, L1:M1 (2, 99) gives 5. In the reference form the range is just another reference (`AGGREGATE(9,0,E1:E6,J1:J2)` is 123). Unprobed (range k): an empty, text or error top-left cell, a range k in the array form, and a k that is a name or `OFFSET` result.
 Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
 Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.

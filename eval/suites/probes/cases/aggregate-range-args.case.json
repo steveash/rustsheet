@@ -1,0 +1,68 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "AGGREGATE with a multi-cell range function_num, options or k (T-1058).",
+ "tags": [
+  "M1",
+  "probe",
+  "aggregate",
+  "T-1058"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=AGGREGATE(Data!G1:G2,0,Data!E1:E6)",
+    "A6": "=AGGREGATE(9,Data!G1:G2,Data!E1:E6)",
+    "A11": "=AGGREGATE(Data!H1:I1,0,Data!E1:E6)",
+    "A16": "=AGGREGATE(9,Data!H1:I1,Data!E1:E6)",
+    "A21": "=AGGREGATE(Data!G1,0,Data!E1:E6)",
+    "A26": "=AGGREGATE(9,Data!G1,Data!E1:E6)",
+    "A31": "=AGGREGATE(14,0,Data!E1:E6,Data!G1:G2)",
+    "A36": "=AGGREGATE(Data!G1:G2,0,Data!E1:E6,{1,2,3})",
+    "A41": "=AGGREGATE(Data!G1:G3,0,Data!E1:E6)",
+    "A46": "=AGGREGATE(Data!G1:G2,Data!H1:I1,Data!E1:E6)",
+    "A51": "=AGGREGATE(Data!G1:G2,6,Data!E1:E6/(Data!E1:E6>2))",
+    "A56": "=AGGREGATE(Data!G1:G2,{0,6},Data!E1:E6)",
+    "A61": "=AGGREGATE(14,0,Data!E1:E6,Data!J1:J2)",
+    "A66": "=AGGREGATE(14,0,Data!E1:E6,Data!K1:K2)",
+    "A71": "=AGGREGATE(14,0,Data!E1:E6,Data!L1:M1)",
+    "A76": "=AGGREGATE(9,0,Data!E1:E6,Data!J1:J2)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "D1": 1,
+    "D2": 2,
+    "D3": "x",
+    "D4": true,
+    "D6": 4,
+    "D7": "=1/0",
+    "D8": "=SUBTOTAL(9,D1:D2)",
+    "D9": "=AGGREGATE(9,0,D1:D2)",
+    "D10": 10,
+    "D11": "5",
+    "E1": 3,
+    "E2": 1,
+    "E3": 4,
+    "E4": 1,
+    "E5": 5,
+    "E6": 9,
+    "F1": "=AGGREGATE(4,0,E1:E6)",
+    "F2": 7,
+    "G1": 9,
+    "G2": 4,
+    "G3": 99,
+    "H1": 9,
+    "I1": 4,
+    "J1": 1,
+    "J2": 99,
+    "K1": 99,
+    "K2": 1,
+    "L1": 2,
+    "M1": 99
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -53,13 +53,18 @@ impl Model {
         // each element is its own AGGREGATE, broadcast like the *IF(S) criteria, so
         // `AGGREGATE({9,4},0,E1:E6)` spills SUM and MAX and an array k spills one LARGE per k,
         // even in the reference form, where every element is `#VALUE!` (probes/aggregate-args
-        // Misc!A36:B38, probes/aggregate-array-args). A range fourth argument is a reference,
-        // and a range function_num or options keeps its scalar reading: only arrays lift.
+        // Misc!A36:B38, probes/aggregate-array-args). A range fourth argument is a reference
+        // and is not lifted. A multi-cell range function_num or options
+        // lifts like an array, a single cell is a scalar (probes/aggregate-range-args).
         let function = self.evaluate_node_in_context(&args[0], cell);
         let option = self.evaluate_node_in_context(&args[1], cell);
         let fourth = (args.len() == 4).then(|| self.evaluate_node_with_reference(&args[3], cell));
         let lifts = |value: &CalcResult| matches!(value, CalcResult::Array(_));
-        if !lifts(&function) && !lifts(&option) && !fourth.as_ref().is_some_and(lifts) {
+        let lifts_head = |value: &CalcResult| match value {
+            CalcResult::Range { left, right } => is_multi_cell(left, right),
+            other => lifts(other),
+        };
+        if !lifts_head(&function) && !lifts_head(&option) && !fourth.as_ref().is_some_and(lifts) {
             // A scalar fourth argument is passed on evaluated, so it is not computed twice;
             // a reference stays a node.
             return match fourth.as_ref().and_then(value_node) {
@@ -92,11 +97,13 @@ impl Model {
         }
         let mut lifted = vec![function, option];
         lifted.extend(fourth.filter(lifts));
-        // `lift_with_cost` would also read a range; keep those out so they stay scalar.
+        // A single-cell range stays a scalar reference; `lift_with_cost` reads multi-cell ones.
         let ranges: Vec<Option<CalcResult>> = lifted
             .iter_mut()
             .map(|value| match value {
-                CalcResult::Range { .. } => Some(std::mem::replace(value, CalcResult::EmptyCell)),
+                CalcResult::Range { left, right } if !is_multi_cell(left, right) => {
+                    Some(std::mem::replace(value, CalcResult::EmptyCell))
+                }
                 _ => None,
             })
             .collect();
@@ -155,6 +162,22 @@ impl Model {
             self.aggregate_array_form(function, ignore, rest, cell)
         } else {
             self.aggregate_reference_form(function, ignore, rest, cell)
+        }
+    }
+
+    /// A multi-cell range k reads its top-left cell (probes/aggregate-range-args A31, A61-A71).
+    /// Any other k, or a top-left cell that is not a plain value, is passed on unchanged.
+    fn top_left_k(&mut self, k: &Node, cell: CellReferenceIndex) -> Node {
+        if !matches!(k, Node::RangeKind { .. }) {
+            return k.clone();
+        }
+        match self.evaluate_node_with_reference(k, cell) {
+            CalcResult::Range { left, right }
+                if left.sheet == right.sheet && is_multi_cell(&left, &right) =>
+            {
+                value_node(&self.evaluate_cell(left)).unwrap_or_else(|| k.clone())
+            }
+            _ => k.clone(),
         }
     }
 
@@ -272,7 +295,8 @@ impl Model {
             // probes/aggregate-grid I41:I46 (an empty range).
             return CalcResult::new_error(Error::NUM, cell, "No numbers".to_string());
         }
-        let values = [numbers_array(collected.numbers), k.clone()];
+        let k = self.top_left_k(k, cell);
+        let values = [numbers_array(collected.numbers), k];
         match function {
             14 => self.fn_large(&values, cell),
             15 => self.fn_small(&values, cell),
@@ -371,6 +395,11 @@ fn value_of(value: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
 /// `numbers` as a one-row array literal, the form the statistics functions read.
 fn numbers_array(numbers: Vec<f64>) -> Node {
     Node::ArrayKind(vec![numbers.into_iter().map(ArrayNode::Number).collect()])
+}
+
+/// Whether a range spans more than one cell.
+fn is_multi_cell(left: &CellReferenceIndex, right: &CellReferenceIndex) -> bool {
+    left.row != right.row || left.column != right.column
 }
 
 /// An evaluated scalar as a literal argument node, so the scalar path reads it like a typed
