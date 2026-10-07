@@ -545,7 +545,7 @@ web refuses a workbook holding `=A1:(1/0)`, `=(1/0):(A1 B1)`, `=(1/0):(A1 A2)` o
 (`FileCorruptTryRepair`, one scratch workbook per formula, T-1111), so no value exists for them.
 `(@(A1 B1))`, `INDEX(…)` and `(A1 B2)` count as references even when they evaluate to an error.
 Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/at-paren-operands
-D30:E32; probes/range-right-operand-errors D11:E14; probes/anchorarray-at-operand (excel-graph).
+D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
 question). Engine gaps: right-operand errors and `ANCHORARRAY((@A1:B2))` (T-1115), the `@`
 parentheses of rows 30–32 (T-1116), the refused forms, which the engine evaluates (T-1117).
