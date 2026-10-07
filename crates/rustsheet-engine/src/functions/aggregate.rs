@@ -49,12 +49,58 @@ impl Model {
         if args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
+        // An array function_num, options or (in a four-argument call) fourth argument lifts:
+        // each element is its own AGGREGATE, broadcast like the *IF(S) criteria, so
+        // `AGGREGATE({9,4},0,E1:E6)` spills SUM and MAX and an array k spills one LARGE per k,
+        // even in the reference form, where every element is `#VALUE!` (probes/aggregate-args
+        // Misc!A36:B38, probes/aggregate-array-args). A range fourth argument is a reference.
+        let mut lifted = vec![
+            self.evaluate_node_in_context(&args[0], cell),
+            self.evaluate_node_in_context(&args[1], cell),
+        ];
+        let lifts_fourth = args.len() == 4
+            && match self.evaluate_node_in_context(&args[3], cell) {
+                array @ CalcResult::Array(_) => {
+                    lifted.push(array);
+                    true
+                }
+                _ => false,
+            };
+        // Only arrays lift here; a range function_num or options keeps its scalar reading.
+        let ranges: Vec<Option<CalcResult>> = lifted
+            .iter_mut()
+            .map(|value| match value {
+                CalcResult::Range { .. } => Some(std::mem::replace(value, CalcResult::EmptyCell)),
+                _ => None,
+            })
+            .collect();
+        self.lift_criteria(lifted, &args[2], cell, |model, values| {
+            let scalar = |index: usize| match &ranges[index] {
+                Some(range) => range.clone(),
+                None => values[index].clone(),
+            };
+            let mut rest = args[2..].to_vec();
+            if lifts_fourth {
+                rest[1] = value_node(&values[2]);
+            }
+            model.aggregate_scalar(scalar(0), scalar(1), &rest, cell)
+        })
+    }
+
+    /// One AGGREGATE call with function_num and options already evaluated.
+    fn aggregate_scalar(
+        &mut self,
+        function: CalcResult,
+        option: CalcResult,
+        rest: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
         // Both are truncated: AGGREGATE(9.9,7.9,..) is AGGREGATE(9,7,..) (probes/aggregate-args).
-        let function = match self.get_number(&args[0], cell) {
+        let function = match self.cast_to_number(function, cell) {
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
-        let option = match self.get_number(&args[1], cell) {
+        let option = match self.cast_to_number(option, cell) {
             Ok(f) => f.trunc(),
             Err(error) => return error,
         };
@@ -72,9 +118,9 @@ impl Model {
             errors: matches!(option, 2 | 3 | 6 | 7),
         };
         if function >= 14 {
-            self.aggregate_array_form(function, ignore, &args[2..], cell)
+            self.aggregate_array_form(function, ignore, rest, cell)
         } else {
-            self.aggregate_reference_form(function, ignore, &args[2..], cell)
+            self.aggregate_reference_form(function, ignore, rest, cell)
         }
     }
 
@@ -291,4 +337,16 @@ fn value_of(value: &ArrayNode, cell: CellReferenceIndex) -> CalcResult {
 /// `numbers` as a one-row array literal, the form the statistics functions read.
 fn numbers_array(numbers: Vec<f64>) -> Node {
     Node::ArrayKind(vec![numbers.into_iter().map(ArrayNode::Number).collect()])
+}
+
+/// A lifted element as a literal argument node, so the scalar path reads it like a typed value.
+fn value_node(value: &CalcResult) -> Node {
+    match value {
+        CalcResult::Number(number) => Node::NumberKind(*number),
+        CalcResult::Boolean(boolean) => Node::BooleanKind(*boolean),
+        // `StringKind` holds the formula spelling, with `"` doubled.
+        CalcResult::String(text) => Node::StringKind(text.replace('"', "\"\"")),
+        CalcResult::Error { error, .. } => Node::ErrorKind(error.clone()),
+        _ => Node::EmptyArgKind,
+    }
 }

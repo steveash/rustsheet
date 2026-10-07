@@ -132,7 +132,10 @@ impl Model {
     /// `walked` is the range every element walks (the value range, or COUNTIFS's first criteria
     /// range): the call is `#ERROR!` when its used cells times the criteria count times the
     /// elements to compute exceed [`MAX_LIFTED_CELL_VISITS`].
-    fn lift_criteria(
+    ///
+    /// AGGREGATE lifts its function_num, options and k through it too (`walked` is its first
+    /// reference or array).
+    pub(crate) fn lift_criteria(
         &mut self,
         criteria: Vec<CalcResult>,
         walked: &Node,
