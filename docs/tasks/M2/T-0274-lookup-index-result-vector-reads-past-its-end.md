@@ -3,7 +3,7 @@ id: T-0274
 title: "LOOKUP: INDEX result_vector reads past its end like a reference"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
