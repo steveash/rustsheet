@@ -3,7 +3,7 @@ id: T-1115
 title: "Pass a right-operand error of : on, and give #VALUE! for ANCHORARRAY of an @ error"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ where the engine gives `#VALUE!` (`Model::get_range`, crates/rustsheet-engine/sr
 
 ## Out of scope
 -
+
+## Outcome
+`Model::get_range` passes a right-operand error on and ANCHORARRAY passes an `@` error through; probes/range-right-operand-errors and probes/anchorarray-at-operand now pass fully. Unit tests added.
