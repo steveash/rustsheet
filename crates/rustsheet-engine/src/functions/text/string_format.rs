@@ -12,7 +12,7 @@ use crate::{
     number_format::parse_excel_number,
 };
 
-use super::common::broadcast_text;
+use super::text_arg::broadcast_text;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
