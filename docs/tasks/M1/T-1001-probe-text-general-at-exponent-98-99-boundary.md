@@ -3,7 +3,7 @@ id: T-1001
 title: "Probe TEXT General at exponent 98/99 boundary and mantissa carry (E+98, E+99, 9.9999996E+98)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
