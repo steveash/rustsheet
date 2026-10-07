@@ -452,12 +452,13 @@ Tasks: T-1099, T-1108, T-0221
 
 ## GEOMEAN is #NUM! when the product of significands overflows
 Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
-the significands left to right into one double without rescaling, and is `#NUM!` when that product
+the significands into one double without rescaling (the order is unprobed: the probes use equal or
+alternating values), and is `#NUM!` when that product
 overflows, i.e. when the sum of log2(M) reaches 1024. Magnitude does not matter, only M:
 1028 copies of 5E+204 (M = 1.9934) are finite and 1029 are `#NUM!`; so are 1100 copies of 1.25E+204
 (the same M) and 3E+200 (M = 1.96), while 1100 copies of 1E+300 (M = 1.49), 5E+300, 9E+204 or
 7E+150 are finite; for M = 1.5 (1.5, 3, 0.75) the cut is 1750 finite / 1751 `#NUM!`; 1E+300
-1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!`; powers of two (M = 1) never trip it
+1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); powers of two (M = 1) never trip it
 (2000 copies of 2). It applies even when the plain product is in range: 1752 values alternating 1.5
 and 0.75 (plain product 1.125^876) are `#NUM!`, 1750 are 1.0606601717798212.
 Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204,
