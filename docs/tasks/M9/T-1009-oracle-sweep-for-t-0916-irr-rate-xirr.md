@@ -3,7 +3,7 @@ id: T-1009
 title: "Oracle sweep for T-0916: IRR/RATE/XIRR/MIRR cash-flow families and guesses"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,3 +28,15 @@ Grid: Cash-flow families around the cached points in ironcalc-calc/FINANCIAL (IR
 
 ## Out of scope
 - Fitting or implementing the formulation (T-0916 does that).
+
+## Outcome
+`eval/suites/probes-numeric/cases/m9-fin-irr-rate.case.json` holds 691 cells:
+- IRR: 20 cash-flow families × 4 scalings, × 5 guesses, plus a dense 18-guess sweep on the two cached flows.
+- RATE: a round-trip on the full m9-fin-pmt grid (308 cells), the 8 cached RATE.xlsx rows × 6 guesses, and 12 edge cells.
+- XIRR: 8 families × 4 scalings and 5 guesses.
+- MIRR: 35 cells.
+
+All 691 are oracle-filled (excel-graph), with no pending cells. The observations are in
+`docs/excel-semantics/financial.md`, "IRR, RATE and XIRR stop early". T-0916 links the case; its
+`depends_on` is [T-1009] only. Engine today: 96 of 691 pass. Follow-up: T-1050 (RATE rejects its
+guess argument). Eval delta: new non-gating probe cells only (`probes-numeric` has `gate = false`).
