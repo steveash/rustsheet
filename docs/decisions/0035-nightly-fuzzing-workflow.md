@@ -24,3 +24,11 @@
   breaks a target turns the nightly fuzz job red and is fixed like any other crash task. Each
   fix of a fuzz finding adds the reproducer as a unit test. Running locally:
   `fuzz/seed_corpus.py`, then `cd fuzz && cargo fuzz run <target> corpus/<target> -- -dict=dict/formula.dict`.
+- **Amendment (2026-10-07, T-1067):** the first nightly failed on every target before fuzzing:
+  the cargo-fuzz binary from `taiki-e/install-action` is a musl build and cargo-fuzz defaults
+  `--target` to its own build triple, which the nightly toolchain does not have (`E0463 can't
+  find crate for core`; ASan also rejects static musl). The workflow now passes the host triple
+  from `rustc -vV` explicitly. A cargo-fuzz built from source on a glibc host (`cargo install
+  cargo-fuzz`) already defaults to `x86_64-unknown-linux-gnu`, so the local command above works
+  as written; with a prebuilt musl cargo-fuzz add
+  `--target "$(rustc -vV | sed -n 's/^host: //p')"`.

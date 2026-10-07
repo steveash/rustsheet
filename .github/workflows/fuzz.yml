@@ -50,8 +50,12 @@ jobs:
       - run: python3 fuzz/seed_corpus.py
       - name: fuzz for 20 minutes
         working-directory: fuzz
+        # cargo-fuzz defaults --target to the triple it was built for; the prebuilt binary is musl,
+        # which the nightly toolchain lacks (E0463) and ASan does not support, so pass the host
+        # (glibc) triple explicitly (T-1067).
         run: >-
-          cargo fuzz run ${{ matrix.target }} corpus/${{ matrix.target }} --
+          cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')"
+          ${{ matrix.target }} corpus/${{ matrix.target }} --
           ${{ matrix.args }} -max_total_time=1200 -timeout=30 -rss_limit_mb=2048
           -print_final_stats=1
       # Only runs on main grow the shared corpus (decision 0035).
