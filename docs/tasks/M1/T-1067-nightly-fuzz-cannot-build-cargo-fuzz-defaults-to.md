@@ -3,7 +3,7 @@ id: T-1067
 title: "Nightly fuzz cannot build: cargo-fuzz defaults to the musl target"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -27,11 +27,19 @@ This is a CI change (protected path): it needs a decision-record note and explic
 reviewer-architecture and reviewer-security. Until fixed, directive-5 fuzzing gives no signal.
 
 ## Acceptance criteria
-- [ ] A `workflow_dispatch` run of the fuzz workflow on the PR head (or the first nightly after
+- [x] A `workflow_dispatch` run of the fuzz workflow on the PR head (or the first nightly after
       merge) gets past the build and fuzzes each target; any crash it finds is filed per
       docs/process/agent-workflow.md.
-- [ ] The local reproduction command in decision 0035 / fuzz docs works on a glibc host.
-- [ ] `make check` green; reviewers approve.
+- [x] The local reproduction command in decision 0035 / fuzz docs works on a glibc host.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing crashes the fuzzer finds once it runs (one P0 task each).
+
+## Outcome
+`fuzz.yml` passes `--target "$(rustc -vV | sed -n 's/^host: //p')"`. The cause was reproduced locally:
+`--target x86_64-unknown-linux-musl` gives E0463. With the host triple, all three targets build and fuzz.
+The `workflow_dispatch` run on the PR head (Actions run 37589979810) got past the build and fuzzed every
+target. formula_eval found a real timeout after about 17 minutes (`LOOKUP(20,A:A,B:B%%…%)`), filed as
+P0 T-1078. Decision 0035 is amended, and the steward reproduction command in agent-workflow.md points
+at the note. Eval delta: none (CI-only).
