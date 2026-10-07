@@ -689,6 +689,9 @@ pub(crate) fn parse_formatted_number(
     parse_plain_number(value, decimal_separator, group_separator)
 }
 
+/// Format given to scientific-notation text such as `1E3`.
+const SCIENTIFIC_FORMAT: &str = "0.00E+00";
+
 /// A number written with a percent sign or a currency symbol, with the format that implies.
 /// `Ok(None)` means the text has neither.
 fn parse_percent_or_currency(
@@ -697,12 +700,11 @@ fn parse_percent_or_currency(
     decimal_separator: char,
     group_separator: char,
 ) -> Result<Option<(f64, Option<String>)>, String> {
-    let scientific_format = "0.00E+00";
     // Check if it is a percentage
     if let Some(p) = value.strip_suffix('%') {
         let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
-            return Ok(Some((f / 100.0, Some(scientific_format.to_string()))));
+            return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
         }
         // We ignore the separator
         if options.decimal_digits > 0 {
@@ -718,7 +720,7 @@ fn parse_percent_or_currency(
         if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok(Some((f, Some(scientific_format.to_string()))));
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
             }
             if options.decimal_digits > 0 {
                 return Ok(Some((-f, Some(format!("{currency}#,##0.00")))));
@@ -727,7 +729,7 @@ fn parse_percent_or_currency(
         } else if let Some(p) = value.strip_prefix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok(Some((f, Some(scientific_format.to_string()))));
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
             }
             if options.decimal_digits > 0 {
                 return Ok(Some((f, Some(format!("{currency}#,##0.00")))));
@@ -736,7 +738,7 @@ fn parse_percent_or_currency(
         } else if let Some(p) = value.strip_suffix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
-                return Ok(Some((f, Some(scientific_format.to_string()))));
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
             }
             if options.decimal_digits > 0 {
                 let currency_format = &format!("#,##0.00{currency}");
@@ -755,10 +757,9 @@ fn parse_plain_number(
     decimal_separator: char,
     group_separator: char,
 ) -> Result<(f64, Option<String>), String> {
-    let scientific_format = "0.00E+00";
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
-        return Ok((f, Some(scientific_format.to_string())));
+        return Ok((f, Some(SCIENTIFIC_FORMAT.to_string())));
     }
     if options.has_commas {
         if options.decimal_digits > 0 {

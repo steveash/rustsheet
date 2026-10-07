@@ -354,6 +354,8 @@ fn parenthesised_number_with_padding_currency_percent() {
         parse("(1%)", &["$"]),
         Ok((-0.01, Some("#,##0%".to_string())))
     );
+    assert!(parse("(-1)", &["$"]).is_err());
+    assert!(parse("(+1)", &["$"]).is_err());
     assert!(parse("((1))", &["$"]).is_err());
     assert!(parse("(1)x", &["$"]).is_err());
 }
