@@ -1,0 +1,72 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MIN/AVERAGEA/MAXA/MINA direct text args and COUNTIF/SUMIF/AVERAGEIF(S)/MINIFS/MAXIFS criteria (scalar and range) at LEN 255/256 (T-1121).",
+ "tags": [
+  "M1",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=MIN(REPT(\"a\",256),1)",
+    "A2": "=MIN(REPT(\"a\",255),1)",
+    "A3": "=MIN(REPT(\"1\",256),1)",
+    "A4": "=AVERAGEA(REPT(\"a\",256),2)",
+    "A5": "=AVERAGEA(REPT(\"a\",255),2)",
+    "A6": "=MAXA(REPT(\"a\",256),1)",
+    "A7": "=MAXA(REPT(\"a\",255),1)",
+    "A8": "=MINA(REPT(\"a\",256),1)",
+    "A9": "=MINA(REPT(\"1\",256),1)",
+    "A10": "=COUNTIF(B1:B2,REPT(\"a\",256))",
+    "A11": "=COUNTIF(B1:B2,REPT(\"a\",255))",
+    "A12": "=SUMIF(B1:B2,REPT(\"a\",256),C1:C2)",
+    "A13": "=SUMIF(B1:B2,REPT(\"a\",255),C1:C2)",
+    "A14": "=COUNTIF(B1:B2,\"=\"&REPT(\"1\",256))",
+    "B1": "x",
+    "B2": "=REPT(\"a\",255)",
+    "C1": 1,
+    "C2": 2,
+    "B3": "=REPT(\"a\",256)",
+    "A15": "=COUNTIF(B1:B3,B3)",
+    "A16": "=SUMIFS(C1:C2,B1:B2,REPT(\"a\",256))",
+    "A17": "=AVERAGEIF(B1:B2,REPT(\"a\",256),C1:C2)",
+    "A18": "=COUNTIFS(B1:B2,REPT(\"a\",256))",
+    "A19": "=AVERAGEIFS(C1:C2,B1:B2,REPT(\"a\",256))",
+    "A20": "=MINIFS(C1:C2,B1:B2,REPT(\"a\",256))",
+    "A21": "=MAXIFS(C1:C2,B1:B2,REPT(\"a\",256))",
+    "A22": "=AVERAGEIF(B1:B2,REPT(\"a\",255),C1:C2)",
+    "A24": "=COUNTIF(B1:B3,B1:B3)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11",
+  "Sheet1!A12",
+  "Sheet1!A13",
+  "Sheet1!A14",
+  "Sheet1!A15",
+  "Sheet1!A16",
+  "Sheet1!A17",
+  "Sheet1!A18",
+  "Sheet1!A19",
+  "Sheet1!A20",
+  "Sheet1!A21",
+  "Sheet1!A22",
+  "Sheet1!A24",
+  "Sheet1!A25",
+  "Sheet1!A26"
+ ]
+}
