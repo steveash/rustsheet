@@ -202,6 +202,7 @@ C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-number-15-digits.case.json	16
+C	probes/text-number-long-paths.case.json	16
 C	probes/text-number-long-zero.case.json	312
 C	probes/text-number-tiny-paths.case.json	46
 C	probes/text-number-tiny-zero.case.json	88
@@ -424,6 +425,8 @@ F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
 F	probes/subnormal-function-results.case.json	Calc!C75
+F	probes/text-number-long-paths.case.json	Sheet1!A2
+F	probes/text-number-long-paths.case.json	Sheet1!A4
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
