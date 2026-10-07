@@ -66,5 +66,5 @@ spilling into B28), not a scalar.
 Evidence: probes/rich-errors-args A20:A28, B28 and C22:G23; excel-graph, 2026-10-07 (T-1012).
 The raw `IMAGE(A1)`/`IMAGE(A10)` cells could not be decoded by the oracle (rich-value error type
 unknown), so they are probed through ERROR.TYPE/ISERROR/VALUETOTEXT/TYPE wrappers.
-Status: VERIFIED (excel-graph)
+Status: VERIFIED (excel-graph) for values; stored form of IMAGE(empty/number) UNVERIFIED
 Tasks: T-1012

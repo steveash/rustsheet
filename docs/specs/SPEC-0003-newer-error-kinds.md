@@ -54,7 +54,7 @@ Behavior shared by all four:
   through `&`, comparisons, POWER and the element-wise functions". No new precedence rule is needed.
 - **None of them is `#N/A`.** For `#GETTING_DATA`: `ISNA` is FALSE, `ISERR` TRUE, `ISERROR` TRUE,
   `IFNA` passes it through, `IFERROR` catches it, and `TYPE` is 16 (error-literals-new A3, A4, A12,
-  A15, A5, A16). For the three rich kinds, ISERR is TRUE, ISNA FALSE and TYPE 16 too, and
+  A15, A5, A16). For the three rich kinds, ISERROR and ISERR are TRUE, ISNA FALSE and TYPE 16 too, and
   `IFNA` passes them through (information.md, probes/rich-errors-args A40:B68, T-1012).
 - **VALUETOTEXT and ARRAYTOTEXT** give the literal text (`"#GETTING_DATA"`, `"#BLOCKED!"`, …;
   error-literals-new A6, rich-errors-* E1/D1).
@@ -228,7 +228,7 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
 |---|---|---|---|---|---|
 | E1 | T-1010: Engine and facade `Error`/`ErrorKind` variants for `#GETTING_DATA`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!` (codes, the two name tables, lexing `#GETTING_DATA`, `stored_literal`, Python tests) | engine | M | opus | — |
 | X1 | T-1011: xlsx export and eval harness use `Error::stored_literal`; import keeps rich-value kinds (doc updates in arrays.md and rich_errors.rs) | harness | S | sonnet | E1 |
-| R1 | T-1012: Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
+| R1 | T-1012 (done): Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
 | F1 | T-1013: IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (DEVIATION entries for IMAGE and STOCKHISTORY) | functions-logic | S | sonnet | E1, R1 |
 | X2 | T-1014: Export rich-value errors (`#SPILL!`, `#CALC!`, and the three new kinds) as `#VALUE!` plus `vm` metadata; T-0999 showed that stored literals make Excel reject the workbook | harness | M | opus | X1 |
 | R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |

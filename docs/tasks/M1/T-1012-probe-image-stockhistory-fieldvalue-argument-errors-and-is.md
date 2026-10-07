@@ -33,4 +33,4 @@ Questions:
 - Implementing the functions (T-1013).
 
 ## Outcome
-Added probes/rich-errors-args (47 cells, excel-graph, no pending cells); findings in information.md and arrays.md, SPEC-0003 updated. Notable: FIELDVALUE(1/0,"Price") is #FIELD! (error does not win), IMAGE of empty/number is #VALUE!, COUNTIF criteria naming the rich errors count 0. Eval: the new case adds known failures in probes for the functions T-1013 implements (baseline from `make eval-baseline`); no regressions. The "oracle unavailable" criterion did not apply.
+Added probes/rich-errors-args (54 cells, excel-graph, no pending cells); findings in information.md and arrays.md, SPEC-0003 updated. Notable: FIELDVALUE(1/0,"Price") is #FIELD! (error does not win), IMAGE of empty/number is #VALUE!, COUNTIF criteria naming the rich errors count 0. Eval: the new case adds known failures in probes for the functions T-1013 implements (baseline from `make eval-baseline`); no regressions. The "oracle unavailable" criterion did not apply.
