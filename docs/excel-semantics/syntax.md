@@ -73,21 +73,33 @@ Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) ar
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
 Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
-characters), so no formula within the published limit is refused for its chains. Whether Excel
-accepts longer chains on load (and so whether RustSheet refuses one Excel accepts) is not probed
-(follow-up T-1091). Probe `operator-chain-limit`
+characters), so no formula within the published limit is refused for its chains. Excel for the web
+refuses a longer formula on load (T-1091, below), so RustSheet's cap never refuses a chain Excel
+accepts. Probe `operator-chain-limit`
 (T-1060, excel-graph): `=1+1+...` of 8,191, 8,192 and 8,193 formula characters (4,095 to 4,096
 terms; `&` chains 4,093 to 4,094; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
 so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
-Excel for the web did not refuse the 8,193 character formula when loaded from a file, so the
-published limit was not enforced on file load (typing and desktop Excel were not probed).
+Excel for the web loaded the 8,193 character formula from a file; that is 8,192 stored characters
+without the leading `=`, exactly the published limit (typing and desktop Excel were not probed).
+Probes of lone `=1+1+...` formulas of 8,194, 8,195, 8,196, 8,200, 16,384 and 32,767 characters
+(T-1091, excel-graph; the cases were dropped after the run because Excel cannot load them, so no
+sidecar can ever exist): every one made the workbook unloadable (createSession 501
+`FileCorruptTryRepair`, so there is no Excel value). The spec-to-xlsx writer stores formulas without
+the leading `=`, so the file text was 8,192 characters for the longest formula that loaded (T-1060's
+8,193 including `=`) and 8,193 for the first refused: Excel enforces exactly the published 8,192
+characters on file load. At
+most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
+chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
+chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
+cap, where Excel refuses the workbook (an engine extension; follow-up task to decide whether to
+refuse formulas over 8,192 stored characters on load).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
 the process. A new recursive consumer of the tree (or a heavier evaluator frame) must be
 re-measured against these limits (the at-limit tests run on a 1 MiB stack in release builds), and
 must walk operator chains with `expressions/parser/chain.rs`.
-Evidence: probes/operator-chain-limit (chains at and one character past the published limit); otherwise only the published limits; this is a resource limit.
+Evidence: probes/operator-chain-limit (chains at and one character past the published limit) and the T-1091 refusals above; otherwise only the published limits; this is a resource limit.
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/depth.rs (`MAX_FORMULA_DEPTH`, `MAX_VALUE_OPERATORS`, `Parser::parse_primary`, `Parser::grow`, `Parser::grow_chain`); expressions/parser/chain.rs; model.rs (`Model::parse_cell_formula`, `Model::evaluate_operator_chain`)
 
@@ -99,8 +111,9 @@ is `#ERROR!`. Before T-0105 the parser stopped after the first expression and si
 dropped the rest (`=A1:B2 B1:B3` was stored as `=A1:B2`). Spaces and line feeds between two
 reference operands are not left-over input but the intersection operator. Which operands and separators
 Excel accepts is in references.md ("Intersection operator: separators", "Intersection operands must
-be references"). One exception: `=(A1)(A2)` with no space loads and is `#REF!`, so
-smoke/trailing-input B6 (`#ERROR!`) is wrong (T-0149).
+be references"). One exception: `=(A1)(A2)` with no space is not left-over input but a call
+of the parenthesized operand, and is `#REF!` (references.md "Calling a parenthesized operand",
+T-0149; smoke/trailing-input B6).
 Evidence: scratch runs of `rustsheet-oracle recalc -b excel-graph` on one formula per workbook
 (2026-10-05, T-0138); a refused workbook has no values to commit. `=(A1)(A2)`:
 probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05). smoke/trailing-input.case.json holds

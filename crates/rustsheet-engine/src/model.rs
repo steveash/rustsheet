@@ -669,7 +669,7 @@ impl Model {
                         }
                     }
                 };
-                self.call_lambda(lambda_result, args, cell)
+                self.call_callee(lambda_result, args, cell)
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
@@ -805,8 +805,10 @@ impl Model {
                 CalcResult::Lambda(id)
             }
             LambdaCallKind { lambda, args } => {
-                let lambda_result = self.evaluate_node_in_context(lambda, cell);
-                self.call_lambda(lambda_result, args, cell)
+                // With a reference kept as one, a cell and an INDEX or IF that selects one
+                // included: a called reference is `#REF!` (`call_callee`).
+                let lambda_result = self.evaluate_aggregate_arg(lambda, cell);
+                self.call_callee(lambda_result, args, cell)
             }
         }
     }

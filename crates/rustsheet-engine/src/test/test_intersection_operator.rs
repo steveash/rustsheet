@@ -209,3 +209,45 @@ fn ideographic_space_intersection_is_name_error_and_keeps_its_text() {
     assert_eq!(model._get_text("A1"), "#NAME?");
     assert_eq!(model._get_text("B9"), "=A1:A3\u{3000}A2:B2");
 }
+
+#[test]
+fn at_operand_binds_looser_than_the_space() {
+    // probes/intersection-operands H10:H11 and probes/intersection-at-operands (T-0149).
+    let mut model = model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "3"), ("B2", "20")] {
+        model._set(cell, value);
+    }
+    model._set("H10", "=A1 @A1");
+    model._set("H11", "=@A1:A3 A2:B2");
+    model._set("H12", "=@A1:A3 A2:B2 + 1");
+    model._set("H1", "=A1:A3 @A2:B2");
+    model.evaluate();
+    assert_eq!(model._get_text("H10"), "1");
+    assert_eq!(model._get_text("H11"), "2");
+    assert_eq!(model._get_text("H12"), "3");
+    assert_eq!(model._get_text("H1"), "#VALUE!");
+    // Printed with parentheses: a bare `@` operand could absorb a following intersection.
+    assert_eq!(model._get_formula("H10"), "=A1 (@A1)");
+    assert_eq!(model._get_formula("H11"), "=@(A1:A3 A2:B2)");
+}
+
+#[test]
+fn called_parenthesized_reference_is_ref_error() {
+    // probes/paren-call-operands, probes/paren-call-value (Excel refuses `(1)(2)`), T-0149.
+    let mut model = model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("H1", "=(A1)(A2)");
+    model._set("H2", "=(A1) (A2)");
+    model._set("H3", "=(LAMBDA(x,x+1))(2)");
+    model._set("H4", "=(1)(2)");
+    model._set("H5", "=(IF(TRUE,LAMBDA(x,x*2)))(3)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "#REF!");
+    assert_eq!(model._get_text("H2"), "#NULL!");
+    assert_eq!(model._get_text("H3"), "3");
+    assert_eq!(model._get_text("H4"), "#ERROR!");
+    assert_eq!(model._get_text("H5"), "6");
+    assert_eq!(model._get_formula("H1"), "=(A1)(A2)");
+    assert_eq!(model._get_formula("H5"), "=(IF(TRUE,LAMBDA(x,x*2)))(3)");
+}

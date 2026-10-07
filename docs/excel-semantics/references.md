@@ -155,14 +155,19 @@ operands. Accepted forms:
 - `=A1 #REF!` and `=#REF! A1` are `#REF!`; `=C1:C2 C2` with C2 = `#N/A` is `#N/A` (the cell's value);
   `=C1 C2` is `#NULL!` even when both cells hold errors.
 - `=A1 @A1` = 1. `=@A1:A3 A2:B2` = 2 in row 11, where `=@A1:A3` alone is `#VALUE!` (I11): the space
-  binds tighter than `@`.
+  binds tighter than `@`, which applies to the whole intersection after it. More forms
+  (probes/intersection-at-operands, rows 1 to 5 of column H, oracle: excel-graph, 2026-10-07, T-0149):
+  `=A1:A3 @A2:B2` in H1 is `#VALUE!` (`@A2:B2` has no cell in row 1), `=@A2:B2 A1:A3` in H2 is 2
+  (`@(A2:B2 A1:A3)`, where `@A2:B2` alone would be `#VALUE!` in H2), `=A1 @A1 @A1` is 1,
+  `=@A1:A3 A2:B2 + 1` is 3 and `=SUM(@A1:A3 A2:B2)` is 2.
 - `=A1:A3 INDEX(A1:B3,2,0)`, `OFFSET(A2,0,0,1,2)` and `IF(TRUE,A2:B2)` give 2, on either side;
   `INDIRECT("A2:B2")`, `CHOOSE(1,A2:B2)`, `XLOOKUP(2,A1:A3,A1:B3)`, `SWITCH(1,1,A2:B2)`,
   `IFS(TRUE,A2:B2)`, `TAKE(A2:B3,1)`, `DROP(A1:B2,1)`, `TRIMRANGE(A2:B2)` and `LET(x,A2:B2,x)` give 2 as right operands.
 - A spill reference intersects: `=J1# J2:K2` = 2 with `J1 = SEQUENCE(3)`, stored as
   `_xlfn.ANCHORARRAY(J1)` (a literal `J1#` in the file is refused).
 - `=A1:A3 (A2:B2,A2)` is `#VALUE!` (a two-area union is left over).
-- `=(A1)(A2)`, with no space, is `#REF!`, not a syntax error. The reason is not known (syntax.md, trailing input).
+- `=(A1)(A2)`, with no space, is `#REF!`, not a syntax error: it is a call of `(A1)`, see "Calling a
+  parenthesized operand". With a space, `=(A1) (A2)` is the intersection, `#NULL!`.
 - `=Data!A1 Other!Z99` (different sheets, no shared coordinates) is `#VALUE!`, like overlapping cross-sheet
   operands: the sheet check comes before the disjoint check.
 Evidence: probes/intersection-operands H1:H15, I11 and probes/intersection-function-operands H1:H5
@@ -176,10 +181,41 @@ still written with `_xlpm.`; how Excel stores that is not probed.
 Status: VERIFIED (load-time refusal observed in Excel for the web only)
 Implemented in: expressions/parser/reference_operators.rs (`is_reference_operand`: only the accepted
 functions above. UNVERIFIED by inference: built-in functions not probed are refused, while unknown or
-future function names, LAMBDA definitions and calls, and `@` operands are accepted; `@` and union
-operands are T-0149). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
+future function names, LAMBDA definitions and calls, and `@` operands are accepted); `Parser::parse_implicit`
+(`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection in
+parentheses, `=A1 (@A1)`, since a bare one could take in a following intersection (engine choice; FORMULATEXT
+of `=A1 @A1` is not probed). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165
+
+## Calling a parenthesized operand
+Rule: a parenthesized operand written directly before `(`, with no space, is called like a LAMBDA
+(`LAMBDA(x,x+1)(2)`), and a called reference is `#REF!`, whatever its cell holds. With A1:B3 = 1, 2, 3 /
+10, 20, 30: `=(A1)(A2)`, `=(A1)(A1)`, `=(A1:A3)(A2:B2)`, `=(A1:A3)(2)`, `=(A1)(A2,A3)`, `=(A1)()`,
+`=(A1:A3 A2:B2)(1)` and `=(INDEX(A1:B3,1,1))(2)` are `#REF!`; so is `=(C1)(2)` where C1 holds
+`=LAMBDA(x,x+1)` (C1 itself is `#CALC!`). The `#REF!` is an ordinary error: `=ISREF((A1)(A2))` is
+FALSE, `=IFERROR((A1)(A2),"e")` is "e" and `=ERROR.TYPE((A1)(A1))` is 4. A parenthesized LAMBDA is
+called: `=(LAMBDA(x,x+1))(2)` is 3 and `=(IF(TRUE,LAMBDA(x,x*2)))(3)` is 6. A parenthesized value is
+refused: Excel for the web refuses a workbook holding `=(1)(2)` (`FileCorruptTryRepair`, one scratch
+workbook, T-0149), so the engine reads it as a syntax error. A space makes it the intersection:
+`=(A1) (A2)` is `#NULL!`.
+A LET name called like a function: `=LET(f,A1,f(2))` is `#REF!` too, and with a value bound the results
+are odd: `=LET(f,1,f(2))`, `=LET(f,A1+0,f(2))` and `=LET(f,{1,2},f(2))` are `#NAME?`,
+`=LET(f,"a",f(2))` is 0 and `=LET(f,1/0,f(2))` is `#DIV/0!` (scratch probe, oracle: excel-graph,
+2026-10-07, T-0149; not committed, UNVERIFIED whether the case builder's `_xlpm.` naming of a called
+LET name plays a part). The engine gives `#VALUE!` for those calls (T-1092).
+Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probes/paren-call-lambda-cell,
+probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
+probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149).
+UNVERIFIED by inference: the callees the engine accepts are the intersection's reference operands
+(`is_reference_operand`), which include LAMBDA, calls of the reference-returning functions and names;
+other callees (`(1+1)(2)`, `(SUM(A1))(2)`) are syntax errors like `(1)(2)`. A second call,
+`(A1)(1)(2)`, is left-over input (not probed).
+Status: VERIFIED
+Implemented in: expressions/parser/lambda.rs (`Parser::parse_parenthesized_call`);
+functions/logical/lambda.rs (`Model::call_callee`); model.rs (the callee is evaluated with
+`evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
+Tasks: T-0149, T-1092
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
