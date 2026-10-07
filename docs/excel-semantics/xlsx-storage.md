@@ -122,7 +122,9 @@ Status: VERIFIED for `r:id`. VERIFIED for `t="d"` (T-0406): Excel reads the text
 `ISNUMBER` of the cell is TRUE (fixtures/t-d-iso-date-cells, Excel for the web). Excel for the web
 refuses the whole workbook (`unsupportedWorkbook`) when a `t="d"` cell holds unparsable text
 (`abc`), so there is no value to match: the importer leaves such a cell empty. UNVERIFIED (probe
-pending, T-0407) for `dateCompatibility="0"`.
+pending, T-0407) for `dateCompatibility="0"`. UNVERIFIED (no probe): a trailing `Z`, fractional
+seconds, `1900-02-29` (serial 60), dates before 1900-01-01 and time-only text; the importer reads the
+first two as `serial + fraction` and leaves the rest empty. Probe run 2026-10-07, Excel for the web.
 Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
 `iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407
