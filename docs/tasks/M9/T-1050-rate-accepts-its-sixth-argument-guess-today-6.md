@@ -18,7 +18,7 @@ reaches the solver as it does in Excel.
 `fn_rate` (`crates/rustsheet-engine/src/functions/financial/mod.rs`) checks `!(3..=5).contains(&arg_count)`,
 so the guess branch below it (`arg_count > 5`) can never run and every 6-argument call is an
 argument-count error. Excel accepts 3 to 6 arguments (T-1009 sweep, `probes-numeric/m9-fin-irr-rate`:
-the 40 `rate/.../guess=...` cells all evaluate in Excel; 32 are numbers and 8 are `#NUM!`).
+the 42 `rate/.../guess=...` cells all evaluate in Excel; 30 are numbers and 12 are `#NUM!`).
 See `docs/excel-semantics/financial.md`, "IRR, RATE and XIRR stop early".
 Matching Excel's exact digits is T-0916's job (iteration fit), not this task's.
 
