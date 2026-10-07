@@ -168,6 +168,11 @@ rules. This is the most important subtlety to encode:
 
 ### 3.2 Catalog schema (YAML)
 
+> Current state (T-0040): one file, `eval/catalog/functions.yaml`, lists every Excel function;
+> its header is the authoritative field list (`category`, `milestone`, `scope`/`reason`, `oracle`,
+> and `params` only for functions the generator calls). The per-category files and
+> `catalog/schema.json` below are the original design, not yet built.
+
 One file per category: `catalog/math.yaml`, `catalog/lookup.yaml`, and so on. Validated by
 a JSON Schema (`catalog/schema.json`). Fields:
 
