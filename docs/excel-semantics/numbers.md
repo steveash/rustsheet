@@ -421,9 +421,10 @@ Tasks: T-0939
 
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
-engine forms, but its root is not glibc's `pow(X, 1/n)`: it agrees whenever that root lies at
-most about 0.38 ulp from the exact `X^fl(1/n)`, and nearer a rounding halfway (0.39 to 0.50 ulp
-off) Excel can land on the other neighbour. Every miss is faithful (within 1 ulp of the exact root).
+engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
+is not glibc's `pow(X, 1/n)` (10 of 17 probed sets) nor Excel's own `^` on X (14 of 17), and which
+sets miss is not set by the distance from the exact root (misses at 0.357 and 0.397 ulp, matches at
+up to 0.498; see the separating probe below). T-1099's "agrees within about 0.38 ulp" bound is refuted.
 Evidence: probes/geomean-product-order (17 random sets of 5 to 301 values, magnitudes 1E+-150
 to 1E+-307, picked so a sequential and a pairwise product round differently; excel-graph,
 2026-10-07, T-1099): the engine matches 10, and Z6, Z7, Z8, Z10, Z11, Z13, Z14 are one ulp off;
@@ -435,8 +436,32 @@ mantissas or scaling, [0.5, 1) mantissas with rescaling thresholds, truncated in
 remainder, `exp(ln(X)/n)`, `2^(log2(X)/n)`, `pow(m,1/n) * 2^(E/n)`, the correctly rounded root with
 exact 1/n, and x87-style compositions with 53- or 64-bit log, 1/n and product. Probably the same
 non-correctly-rounded power as `^` (next section, T-0221).
-Status: VERIFIED (the misses); the rounding model is open (T-1108).
+Separating probe (probes/geomean-root-models, excel-graph, 2026-10-07, T-1108): for each of the 17
+geomean-product-order sets, Root!E holds the engine's root argument X = M*2^(r-52) (Excel reproduces it
+bit for bit) and F-I take Excel's own n-th root of it. Excel's `^` and POWER agree with each other on
+all 17 and give GEOMEAN's root (GEOMEAN / 2^q) on 14, five of the seven engine misses among them
+(Z6, Z7, Z8, Z10, Z14); they differ by one ulp on Z5 and Z11 (lower) and Z13 (higher), where glibc's
+`pow` matches Z5. So GEOMEAN's root is closer to Excel's `^` (14 of 17) than to glibc's (10 of 17),
+but it is not that `^` applied to X either. `EXP(LN(X)/n)` also gives 14 (a different set: it misses
+Z1, Z5, Z11) and `10^(LOG10(X)/n)` 11. No tried model reproduces all 17.
+The "about 0.38 ulp" agreement bound does not hold: of 8 new sets whose glibc root lies 0.32 to 0.40
+ulp from the exact root, Pin!C60 (0.357 ulp) and Pin!F60 (0.397) miss by one ulp and the other six
+match.
+Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108).
 Tasks: T-1099, T-1108, T-0221
+
+## GEOMEAN over about 1100 overflowing values is #NUM!
+Rule: GEOMEAN over 1100 copies of 5E+204, or 1100 copies of 5E+204 or 3E+200 followed by one half-size
+value, is `#NUM!`, while 1001, 1024 and 1025 copies of 5E+204, 1000 copies of 1E+300, 1001 copies of
+1E-300 and 1101 copies of 2 are finite. The rule behind the cut is not established: it is not the count
+alone (1101 copies of 2 work), and it is not the size of the product's exponent (1000 x 1E+300 works).
+Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204 and
+1024 copies 4.9999999999999995E+204, but 1025 copies give 5E+204.
+In range, 1101 copies of 1.5 give exactly 1.5; the engine's log-sum gives 1.499999999999995.
+Evidence: probes/geomean-root-models Fallback!D1-D2 and probes/geomean-overflow-count A1-K1 (excel-graph,
+2026-10-07, T-1108). RustSheet today: the cut is not implemented (finite results), A1-C1 are one ulp
+off, and H1 is 5E-15 low.
+Status: VERIFIED (the values); the rule is open (T-1112), and so is the in-range precision (T-1113).
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
