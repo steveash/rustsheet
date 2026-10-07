@@ -201,15 +201,16 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
         legacy = set(sheet.get("legacy_formulas", ()))
+        if unknown := legacy - sheet["cells"].keys():
+            msg = f"legacy_formulas names cells not in the sheet: {sorted(unknown)}"
+            raise ValueError(msg)
         for a1, raw in sheet["cells"].items():
             row, col = parse_a1(a1)
             if a1 in legacy:
                 if not (isinstance(raw, str) and raw.startswith("=")):
                     msg = f"legacy_formulas cell {a1} is not a formula"
                     raise ValueError(msg)
-                ws.write_formula(
-                    row, col, prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
-                )
+                ws.write_formula(row, col, _formula_text(raw))
                 continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
@@ -245,6 +246,11 @@ def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
     return out.getvalue()
 
 
+def _formula_text(raw: str) -> str:
+    """The formula as written to the file: spill refs anchored, bound names and future functions prefixed."""
+    return prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
+
+
 def _write(ws: Any, row: int, col: int, raw: Any) -> None:
     if isinstance(raw, bool):
         ws.write_boolean(row, col, raw)
@@ -252,9 +258,7 @@ def _write(ws: Any, row: int, col: int, raw: Any) -> None:
         ws.write_number(row, col, float(raw))
     elif isinstance(raw, str):
         if raw.startswith("="):
-            ws.write_dynamic_array_formula(
-                row, col, row, col, prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
-            )
+            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw))
         elif raw == "":
             ws.write_formula(row, col, '=""')
         else:

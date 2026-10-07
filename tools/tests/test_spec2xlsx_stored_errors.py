@@ -43,3 +43,15 @@ def test_legacy_formula_has_no_array_metadata() -> None:
     assert 'cm="1"' not in sheet.split('r="A2"')[0]
     assert 'r="A2"' in sheet
     assert 'cm="1"' in sheet.split('r="A2"')[1]
+
+
+def test_legacy_formula_address_must_exist() -> None:
+    spec = {"sheets": [{"name": "S", "cells": {"A1": "=1"}, "legacy_formulas": ["B1"]}]}
+    with pytest.raises(ValueError, match="not in the sheet"):
+        build_xlsx(spec)
+
+
+def test_legacy_cell_must_be_a_formula() -> None:
+    spec = {"sheets": [{"name": "S", "cells": {"A1": 5}, "legacy_formulas": ["A1"]}]}
+    with pytest.raises(ValueError, match="not a formula"):
+        build_xlsx(spec)
