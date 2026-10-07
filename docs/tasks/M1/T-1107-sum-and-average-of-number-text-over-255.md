@@ -24,4 +24,4 @@ probes/text-number-long-paths A2 and A4 (oracle: excel-graph, 2026-10-07): at LE
 -
 
 ## Outcome
-Oracle probe (probes/sum-long-text-args) showed the rule is any direct text over 255 characters, not only number text: `cast_aggregate_arg_to_number` gives `#N/A` in SUM, PRODUCT, MIN/MAX and `for_each_value` (AVERAGE, SUMSQ, ...). Eval: probes known failures 240 -> 238 (A2, A4 of text-number-long-paths fixed); one new passing probe. AVERAGEA/MAXA and the criteria paths are unprobed.
+Oracle probe (probes/sum-long-text-args) showed the rule is any direct text over 255 characters, not only number text: `cast_aggregate_arg_to_number` gives `#N/A` in SUM, PRODUCT, MIN/MAX (MIN inferred, not probed) and `for_each_value` (AVERAGE, SUMSQ, ...). Eval: probes known failures 240 -> 238 (A2, A4 of text-number-long-paths fixed); one new passing probe. AVERAGEA/MAXA and the criteria paths are unprobed (T-1121).
