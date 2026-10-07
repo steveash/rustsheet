@@ -259,9 +259,13 @@ directly (`selfref` = `selfref+1`) and through another name (`loopa` = `loopb`, 
 `ISERROR(loopa)` is TRUE, and `ERROR.TYPE` of either is 5. Beware that names such as `cyc1` are
 cell addresses (column CYC), not names.
 Evidence: probes/defined-name-formula-bodies Sheet1!H1:H17 (oracle: excel-graph, 2026-10-07, T-0158).
-Status: VERIFIED (Excel for the web), plus one DEVIATION (decision 0014). The engine evaluates at most 64
-name bodies inside one another, so a name cycle is `#NAME?` once that depth runs out. A chain of
-more than 64 distinct names is also `#NAME?` in the engine, where Excel would evaluate it.
+Status: VERIFIED (Excel for the web), plus one DEVIATION (decision 0014). One outermost use of a name
+may evaluate at most 64 bodies nested inside one another and 10,000 bodies in all, within the
+cell recursion's stack budget (evaluation.rs). Past any of these limits the use is `#NAME?`.
+Excel gives `#NAME?` for a name cycle anyway, and the engine reaches it by running out of a
+limit. Where Excel would evaluate, the engine still gives `#NAME?`: a chain of more than 64
+distinct names, a body that uses names often enough to pass 10,000 evaluations (`d0` = `d1+d1`,
+`d1` = `d2+d2`, …), and deeply nested bodies that pass the stack budget.
 Tasks: T-0158
 
 ## A sheet-qualified #REF! is #REF!

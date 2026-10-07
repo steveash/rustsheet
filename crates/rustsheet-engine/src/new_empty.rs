@@ -173,7 +173,7 @@ impl Model {
                     Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
                     Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
                     // Intersections, constants, function calls: evaluated where used (T-0158).
-                    body => ParsedDefinedName::Formula(body),
+                    body => ParsedDefinedName::Formula(std::sync::Arc::new(body)),
                 }
             };
 
@@ -694,7 +694,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
-            defined_name_depth: 0,
+            defined_names_running: Default::default(),
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

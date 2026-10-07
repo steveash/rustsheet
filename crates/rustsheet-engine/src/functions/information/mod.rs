@@ -132,7 +132,7 @@ impl Model {
                         ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_),
                     ) => true,
                     Some(ParsedDefinedName::Formula(body)) => {
-                        let body = body.clone();
+                        let body = std::sync::Arc::clone(body);
                         self.within_defined_name(|model| model.is_reference(&body, cell))
                             .unwrap_or(false)
                     }

@@ -54,3 +54,61 @@ fn long_name_chains_are_bounded() {
     assert_eq!(model._get_text("A1"), *"11");
     assert_eq!(model._get_text("A2"), *"#NAME?");
 }
+
+// Bodies that use a name twice would double the work at every level; the evaluation budget
+// keeps them fast (DEVIATION: references.md "A defined name may be a formula").
+#[test]
+fn branching_names_are_bounded_in_time() {
+    let mut model = new_empty_model();
+    model.define_name("twice", None, "=twice+twice").unwrap();
+    for i in 0..60 {
+        model
+            .define_name(
+                &format!("d{i}x"),
+                None,
+                &format!("=d{}x+d{}x", i + 1, i + 1),
+            )
+            .unwrap();
+    }
+    model.define_name("d60x", None, "=1").unwrap();
+    model._set("A1", "=twice");
+    model._set("A2", "=d0x");
+    model._set("A3", "=d55x");
+    model._set("A4", "=ISREF(twice)");
+    let start = std::time::Instant::now();
+    model.evaluate();
+    assert!(start.elapsed() < std::time::Duration::from_secs(10));
+    assert_eq!(model._get_text("A1"), *"#NAME?");
+    assert_eq!(model._get_text("A2"), *"#NAME?");
+    // 2^5 = 32 within the budget.
+    assert_eq!(model._get_text("A3"), *"32");
+    assert_eq!(model._get_text("A4"), *"FALSE");
+}
+
+// Every name in a chain nests its body: the depth and stack budgets stop the chain before the
+// native stack runs out (directive 5). The nesting stays shallow because a single cell nested
+// about 120 deep already overflows a debug test thread with no names involved (T-1110).
+#[test]
+fn deeply_nested_name_chains_stay_on_the_stack() {
+    let mut model = new_empty_model();
+    let depth = 20;
+    const CHAIN: usize = 64;
+    for i in 0..CHAIN {
+        let body = format!("={}n{}x{}", "ABS(".repeat(depth), i + 1, ")".repeat(depth));
+        model.define_name(&format!("n{i}x"), None, &body).unwrap();
+    }
+    model
+        .define_name(&format!("n{CHAIN}x"), None, "=1")
+        .unwrap();
+    model._set("A1", "=n0x");
+    model._set("A2", &format!("=n{}x", CHAIN - 2));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NAME?");
+    // Two short links fit a release build's stack budget, not always a debug build's, whose
+    // frames are many times larger: either way the cell gets a value, never a crash.
+    let short_chain = model._get_text("A2");
+    assert!(
+        short_chain == "1" || short_chain == "#NAME?",
+        "{short_chain}"
+    );
+}

@@ -2,6 +2,7 @@
 
 use crate::{
     calc_result::{CalcResult, Range},
+    evaluation::stack_address,
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -30,7 +31,7 @@ pub(crate) enum ParsedDefinedName {
     ErrorLiteral(Error),
     /// Any other formula (`=SUM(Sheet1!$A$1:$A$3)`, `=Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2`,
     /// `=0.5`): evaluated where the name is used, in that cell's context
-    Formula(Node),
+    Formula(std::sync::Arc<Node>),
     /// A body that does not parse
     InvalidDefinedNameFormula,
 }
@@ -38,20 +39,50 @@ pub(crate) enum ParsedDefinedName {
 /// How many defined-name bodies may be evaluated inside one another. A name whose body
 /// reaches itself, directly (`=selfref+1`) or through others (`a` is `=b`, `b` is `=a`), is
 /// `#NAME?` in Excel (probes/defined-name-formula-bodies H11, H13); the engine gives that by
-/// running out of depth. A chain of distinct names deeper than this is `#NAME?` too, where Excel
-/// would evaluate it (DEVIATION, decision 0014: references.md "A defined name may be a formula").
+/// running out of depth or budget. A chain of distinct names deeper than this is `#NAME?` too,
+/// where Excel would evaluate it (DEVIATION, decision 0014: references.md "A defined name may be
+/// a formula").
 const MAX_DEFINED_NAME_DEPTH: usize = 64;
 
+/// How many name bodies one outermost use of a name may evaluate in all. The depth limit alone
+/// does not bound the work: `x` = `=x+x` doubles it at every level. Past this the use is
+/// `#NAME?` (same DEVIATION).
+const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
+
+/// The state of the defined-name bodies being evaluated right now (`Model::within_defined_name`).
+#[derive(Default)]
+pub(crate) struct DefinedNameRun {
+    /// Bodies evaluated inside one another.
+    depth: usize,
+    /// Bodies evaluated since the outermost one started.
+    evaluations: usize,
+    /// Where the stack was when the outermost one started.
+    stack_base: usize,
+}
+
 impl Model {
-    /// Runs `f` one defined-name body deeper, or gives `None` past
-    /// [`MAX_DEFINED_NAME_DEPTH`], so that names referring to themselves stay bounded.
+    /// Runs `f` one defined-name body deeper, or gives `None` past [`MAX_DEFINED_NAME_DEPTH`],
+    /// [`MAX_DEFINED_NAME_EVALUATIONS`] or the evaluation's stack budget, so that names
+    /// referring to themselves stay bounded in depth, time and stack.
     pub(crate) fn within_defined_name<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
-        if self.defined_name_depth >= MAX_DEFINED_NAME_DEPTH {
+        let here = stack_address();
+        let run = &mut self.defined_names_running;
+        if run.depth == 0 {
+            run.evaluations = 0;
+            run.stack_base = here;
+        }
+        // The stack check keeps deeply nested bodies inside the stack the cell recursion is
+        // allowed (evaluation.rs), whatever the parser let each body nest.
+        if run.depth >= MAX_DEFINED_NAME_DEPTH
+            || run.evaluations >= MAX_DEFINED_NAME_EVALUATIONS
+            || run.stack_base.abs_diff(here) >= self.evaluation.max_stack
+        {
             return None;
         }
-        self.defined_name_depth += 1;
+        run.depth += 1;
+        run.evaluations += 1;
         let result = f(self);
-        self.defined_name_depth -= 1;
+        self.defined_names_running.depth -= 1;
         Some(result)
     }
 

@@ -36,7 +36,9 @@ second path. Recursion through names (`a` = `=b`, `b` = `=a`) must stay bounded 
 ## Outcome
 - Name bodies that are neither a reference, a LAMBDA nor an error literal are kept as
   `ParsedDefinedName::Formula` and evaluated where the name is used. ISREF looks through them.
-  Nested name bodies are capped at 64 deep, so name cycles are `#NAME?` as in Excel
+  Name bodies are bounded (64 deep, 10,000 per use, stack budget), so name cycles are `#NAME?`
+  as in Excel
   (DEVIATION for longer chains of distinct names: references.md "A defined name may be a formula").
 - New probe probes/defined-name-formula-bodies (17 cells, excel-graph): all pass.
+- Follow-up T-1110 (pre-existing debug-build stack overflow on deep cell formulas).
 - Eval: probes 9 fixed (all 9 failing cells of defined-name-intersection), 0 regressions.
