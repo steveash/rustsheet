@@ -184,3 +184,36 @@ fn test_lookup_result_vector_holding_the_formula_is_circular() {
         assert_eq!(model._get_text("E5"), "#CIRC!", "{formula}");
     }
 }
+
+#[test]
+fn test_lookup_2d_lookup_vector_and_short_result() {
+    // probes/lookup-2d-vector and -wide (excel-graph): a 2-D lookup_vector is searched along its
+    // first column (or first row when wide), a 2-D result_vector is #N/A, and a result range
+    // shorter than the match position reads on past its end.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("B1", "2"), ("A2", "3"), ("B2", "4")] {
+        model._set(cell, value);
+    }
+    for (cell, value) in [("F1", "10"), ("F2", "20"), ("F3", "30"), ("G1", "100")] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=LOOKUP(2,A1:B2,F1:F2)");
+    model._set("H2", "=LOOKUP(2,A1:B1,F1:G2)");
+    model._set("H3", "=LOOKUP(2,A1:B1,F1)");
+    model._set("H4", "=LOOKUP(99,A1:A2,F1:F1)");
+    model._set("H5", "=LOOKUP(99,A1:B2,{10})");
+    model._set("H6", "=LOOKUP(2,{1,2,5;3,4,6},{7,8,9})");
+    model._set("A3", "5");
+    model._set("H7", "=LOOKUP(99,A1:A3,F1048575:F1048576)");
+    model._set("H8", "=LOOKUP(99,A1:B1,XFD1)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "10");
+    assert_eq!(model._get_text("H2"), "#N/A");
+    assert_eq!(model._get_text("H3"), "100");
+    assert_eq!(model._get_text("H4"), "100");
+    assert_eq!(model._get_text("H5"), "#N/A");
+    assert_eq!(model._get_text("H6"), "8");
+    // Past the sheet's edge (engine choice, not probed).
+    assert_eq!(model._get_text("H7"), "#N/A");
+    assert_eq!(model._get_text("H8"), "#N/A");
+}
