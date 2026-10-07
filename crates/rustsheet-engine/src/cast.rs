@@ -225,48 +225,67 @@ impl Model {
         self.number_or_array(value, cell)
     }
 
-    /// Applies `op` to two number arguments, element-wise when either is an array or range.
+    /// Applies `op` to `N` number arguments, element-wise when any is an array or range.
     /// Arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions
     /// past a shorter array are `#N/A`) and an element that is an error stays one. An argument
-    /// that is an error is the result (the leftmost one), unless the other is an array: then it
-    /// is broadcast and every element is that error (as for DATE).
-    pub(crate) fn lift_number_pair(
+    /// that is an error is the result (the leftmost one), unless another is an array: then it
+    /// is broadcast and every element is that error (as for DATE). `message` goes with a
+    /// scalar error of `op`.
+    pub(crate) fn lift_numbers<const N: usize>(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        op: impl Fn(f64, f64) -> Result<f64, Error>,
+        message: &str,
+        op: impl Fn([f64; N]) -> Result<f64, Error>,
     ) -> CalcResult {
-        let first = self.get_number_or_array(&args[0], cell);
-        let second = self.get_number_or_array(&args[1], cell);
-        let any_array = [&first, &second]
+        let operands: Vec<_> = args
+            .iter()
+            .take(N)
+            .map(|arg| self.get_number_or_array(arg, cell))
+            .collect();
+        let any_array = operands
             .iter()
             .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
-        let broadcast_error = |na: Result<NumberOrArray, CalcResult>| match na {
-            Err(CalcResult::Error { error, .. }) if any_array => {
-                Ok(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+        let mut lifted = Vec::with_capacity(N);
+        for na in operands {
+            match na {
+                Err(CalcResult::Error { error, .. }) if any_array => {
+                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+                }
+                Ok(na) => lifted.push(na),
+                Err(e) => return e,
             }
-            other => other,
-        };
-        let (first, second) = match (broadcast_error(first), broadcast_error(second)) {
-            (Ok(first), Ok(second)) => (first, second),
-            (Err(e), _) | (_, Err(e)) => return e,
-        };
-        if let (NumberOrArray::Number(a), NumberOrArray::Number(b)) = (&first, &second) {
-            return match op(*a, *b) {
+        }
+        if !any_array {
+            let mut numbers = [0.0; N];
+            for (slot, na) in numbers.iter_mut().zip(&lifted) {
+                if let NumberOrArray::Number(n) = na {
+                    *slot = *n;
+                }
+            }
+            return match op(numbers) {
                 Ok(n) => CalcResult::Number(n),
-                Err(e) => CalcResult::new_error(e, cell, "Invalid arguments".to_string()),
+                Err(e) => CalcResult::new_error(e, cell, message.to_string()),
             };
         }
-        let rows = first.dims().0.max(second.dims().0);
-        let cols = first.dims().1.max(second.dims().1);
+        let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
+        let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
         let result = (0..rows)
             .map(|i| {
                 (0..cols)
                     .map(|j| {
-                        let value = self
-                            .number_at(&first, i, j)
-                            .and_then(|a| self.number_at(&second, i, j).and_then(|b| op(a, b)));
-                        match value {
+                        let mut numbers = [0.0; N];
+                        let mut value = Ok(());
+                        for (slot, na) in numbers.iter_mut().zip(&lifted) {
+                            match self.number_at(na, i, j) {
+                                Ok(n) => *slot = n,
+                                Err(e) => {
+                                    value = Err(e);
+                                    break;
+                                }
+                            }
+                        }
+                        match value.and_then(|()| op(numbers)) {
                             Ok(n) => ArrayNode::Number(n),
                             Err(e) => ArrayNode::Error(e),
                         }

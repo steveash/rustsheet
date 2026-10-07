@@ -3,7 +3,7 @@ id: T-1122
 title: "Fold DATE's inline broadcast into shared NumberOrArray helpers"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1119 reviewer: `lift_number_pair` repeats DATE's `any_array`/`broadcast_error`
 
 ## Out of scope
 -
+
+## Outcome
+Added `Model::lift_numbers<N>` (replaces `lift_number_pair`); DATE and MOD use it and DATE's inline broadcast code is gone. No behavior change: eval unchanged (probes 251 -> 251, 0 regressions); duplication ratchet updated with `--update`.

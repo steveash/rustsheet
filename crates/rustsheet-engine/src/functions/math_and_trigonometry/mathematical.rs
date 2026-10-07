@@ -392,7 +392,7 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        self.lift_number_pair(args, cell, |value, divisor| {
+        self.lift_numbers(args, cell, "Invalid arguments", |[value, divisor]| {
             if divisor == 0.0 {
                 return Err(Error::DIV);
             }
