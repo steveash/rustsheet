@@ -30,6 +30,10 @@
     "t": "n",
     "v": 1.0
    },
+   "A8": {
+    "t": "n",
+    "v": 1e-300
+   },
    "B1": {
     "t": "s",
     "v": "1E-300"
@@ -58,6 +62,10 @@
     "t": "s",
     "v": "1"
    },
+   "B8": {
+    "t": "s",
+    "v": "1E-300"
+   },
    "C1": {
     "t": "b",
     "v": false
@@ -85,14 +93,18 @@
    "C7": {
     "t": "b",
     "v": false
+   },
+   "C8": {
+    "t": "b",
+    "v": false
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "eba3f831a86e32cb08053623df9f0a1209f2ecc8631ce85924b3e1ee6017f609",
+  "input_sha256": "127958526dcd08b27155ce4e7a60339aa20a48fcc0b9b77326f1e49665065314",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T03:23:40+00:00",
+  "produced_at": "2026-10-07T03:33:54+00:00",
   "version": null
  }
 }

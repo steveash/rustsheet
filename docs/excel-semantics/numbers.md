@@ -251,6 +251,7 @@ AGGREGATE(1,..) flush a subnormal mean to a true 0 like AVERAGE (`C` companions 
 SUMSQ flushes each square too (T-1057, VERIFIED, probes/subnormal-sumsq-sumproduct-edges, excel-graph 2026-10-07):
 `SUMSQ(1E-155,1E-150)` is exactly 1E-300 (the 1E-310 square is dropped; keeping it prints 1.0000000001E-300), and
 `SUMSQ(1E-155*ROW(1:200))*1E+300` is 0.0002685685, the sum of k^2 for k = 15..200 only (squares below 2.2E-308, k <= 14, are dropped).
+The order does not matter: `SUMSQ(1E-150,1E-155)` is also exactly 1E-300, so it is each square that is flushed, not the running sum.
 SUMPRODUCT with three arrays flushes after each factor, left to right: `SUMPRODUCT({1E-200},{1E-110},{1E+300})` is 0 while
 `SUMPRODUCT({1E-200},{1E+300},{1E-110})` is 1E-10.
 Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so

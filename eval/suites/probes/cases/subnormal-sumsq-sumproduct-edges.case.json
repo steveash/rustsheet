@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "SUMSQ per-square subnormal flush versus flushing only the total, and SUMPRODUCT with three arrays (T-1057). C cells tell a true 0 from a kept subnormal.",
+  "description": "SUMSQ per-square subnormal flush versus flushing only the total, and SUMPRODUCT with three arrays (T-1057). C cells tell a true 0 from a kept subnormal. The reversed-order SUMSQ(1E-150,1E-155) tells per-square flushing from flushing the running sum.",
   "tags": [
     "M1",
     "numbers",
@@ -31,7 +31,10 @@
         "C6": "=(SUMPRODUCT({1E-200},{1E+300},{1E-110}))=0",
         "A7": "=SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300",
         "B7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300)&\"\"",
-        "C7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300)=0"
+        "C7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300)=0",
+        "A8": "=SUMSQ(1E-150,1E-155)",
+        "B8": "=(SUMSQ(1E-150,1E-155))&\"\"",
+        "C8": "=(SUMSQ(1E-150,1E-155))=0"
       }
     }
   ],
