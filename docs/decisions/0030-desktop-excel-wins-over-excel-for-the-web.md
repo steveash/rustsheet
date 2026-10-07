@@ -52,6 +52,9 @@
      divergence (docs/architecture/oracle.md, "Known divergences"), web values are never
      evidence. That covers references to missing sheets, lowercase-`e` formats, elapsed tokens
      after `s`, and `CELL("width")`.
+     *Amended by decision 0039: in Phases 1–3 this exception applies only where desktop evidence
+     is already in the repo; otherwise the web value is the target and the desktop check is an
+     acceptance item on an M14 task (T-1075).*
   4. **Last-digit divergences.** For the functions in numbers.md "Excel for the web and desktop
      Excel differ in the last digits", an engine fit targets desktop cached values where they
      exist. A web golden for those functions that is already a known failure and that the
