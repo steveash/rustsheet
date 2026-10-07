@@ -3,7 +3,7 @@ id: T-1095
 title: "Probe GEOMEAN overflow path with more than 500 values"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
