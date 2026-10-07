@@ -3,7 +3,7 @@ id: T-0154
 title: "Text-to-number of tiny magnitudes: #VALUE! below ~1E-309, 0 up to the normal range, 0e309"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -23,9 +23,23 @@ crates/rustsheet-engine/src/number_format.rs (one place; it feeds `cast_number`,
 Numeric fitting of a boundary, hence tier opus.
 
 ## Acceptance criteria
-- [ ] The engine follows the boundaries T-0174 recorded in numbers.md; the T-0174 probe cells pass too.
-- [ ] The listed probes/text-number-words cells pass; baseline shrinks.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine follows the boundaries T-0174 recorded in numbers.md; the T-0174 probe cells pass too.
+- [x] The listed probes/text-number-words cells pass; baseline shrinks.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`parse_excel_number` (number_format.rs) now applies Excel's small-magnitude rule, so `cast_number`,
+VALUE and the lexer share it: nonzero text below 1E-309 is not a number, 1E-309 up to DBL_MIN
+reads as 0, and a zero mantissa is a number only when its exponent less its fraction digits lies
+within ±308. The zero rule and literal behavior were pinned by two new probes
+(text-number-tiny-zero, literal-number-tiny; excel-graph 2026-10-07): Excel refuses to open a
+workbook with `=1E-310` or `=0E309`, so such literals are parse errors here. A third probe
+(text-number-tiny-paths, after review) confirmed criteria, AVERAGE text, NUMBERVALUE and
+formatted text follow the same rule, and that `[>1e-310]` invalidates a TEXT format, which the
+format-condition lexer now matches. Eval: probes known
+failures 236 -> 204 (35 fixed, 3 new-coverage cells baselined: text-number-tiny-zero B15:D15, the
+305-zero text, filed as T-1097). Follow-ups: T-1097 (long zero text), T-1100 (cell entry and
+conditional formats).
