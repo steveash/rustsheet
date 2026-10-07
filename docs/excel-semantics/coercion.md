@@ -204,7 +204,7 @@ Tasks: T-0252
 
 ## Parenthesised number text is negative
 Rule: `"(1)"` is read as -1 wherever text is coerced to a number: `0+"(1)"` = -1, `SUM("(1)")` = -1,
-`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine reads it in `parse_formatted_number` (formatter/format.rs), after the currency and date forms, so VALUE and typed cell input inherit it (unprobed; the number format Excel gives typed `(1)` is unprobed too). A sign inside the parentheses, `(-1)`, is unprobed and stays an error. Percent and currency inside parentheses (`($1)`, `(1%)`) are unprobed and stay errors.
+`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine reads it in `parse_formatted_number` (formatter/format.rs), after the currency and date forms, so VALUE and typed cell input inherit it (unprobed; the number format Excel gives typed `(1)` is unprobed too, and the engine's `#,##0` for `(1,000)` is UNVERIFIED; padding inside the parentheses, `( 1 )`, is unprobed and stays an error). A sign inside the parentheses, `(-1)`, is unprobed and stays an error. Percent and currency inside parentheses (`($1)`, `(1%)`) are unprobed and stay errors.
 Evidence: probes/paren-negative-text (excel-graph, 2026-10-06).
 Status: VERIFIED
 Tasks: T-0259

@@ -718,7 +718,7 @@ pub(crate) fn parse_formatted_number(
     // (docs/excel-semantics/coercion.md "Parenthesised number text is negative"). A sign inside
     // the parentheses is not probed; it stays an error.
     let (negate, value) = match value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
-        Some(inner) if !inner.starts_with(['-', '+']) => (true, inner.trim()),
+        Some(inner) if !inner.starts_with(['-', '+']) => (true, inner),
         _ => (false, value),
     };
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;

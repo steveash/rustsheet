@@ -340,3 +340,8 @@ fn parenthesised_number_is_negative() {
     assert!(parse("(-1)", &["$"]).is_err());
     assert!(parse("()", &["$"]).is_err());
 }
+
+#[test]
+fn parenthesised_number_with_padding_is_unprobed_error() {
+    assert!(parse("( 1 )", &["$"]).is_err());
+}
