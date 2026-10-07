@@ -25,6 +25,11 @@ three `$Z$1` arguments (oracle: excel-graph, 2026-10-07). With two, single-call 
 `rustsheet-oracle recalc -b excel-graph` got createSession 501 `FileCorruptTryRepair` /
 `unsupportedWorkbook` (2026-10-07, T-0040; rejected inputs cannot be committed). Every other
 in-scope catalog function loaded at the count in excel-functions.tsv (probes/catalog/availability-*).
+`XNPV(rate, values, dates)` needs all three: `=XNPV(1,A1:B2)` got the same 501
+`FileCorruptTryRepair` (`rustsheet-oracle recalc -b excel-graph`, 2026-10-07, T-0275), while
+`=XNPV(1,A1:B2,A1:B2)` loads and gives 9.962109338017495 (probes/xnpv-argument-count D1; D3 shows
+values and dates of different lengths are `#NUM!`). RustSheet gives `#ERROR!` for a call below the
+minimum, as for every other function (`fn_xnpv`).
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`
