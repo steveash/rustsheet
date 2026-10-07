@@ -378,28 +378,6 @@ impl Model {
         }
     }
 
-    /// What a LET variable or a LAMBDA parameter is bound to; a reference stays a reference.
-    fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
-        match node {
-            Node::NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(&(*id as usize)) {
-                    Some(v) => v.clone(),
-                    None => CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        format!("Variable \"{name}\" not found in scope."),
-                    ),
-                }
-            }
-            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
-            _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
-        }
-    }
-
     /// Collapses a reference-context result to a value: a Range is implicitly
     /// intersected at `cell` and the intersected cell evaluated; an array gives its
     /// top left element; anything else (scalar, error) passes through unchanged.

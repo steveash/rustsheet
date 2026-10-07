@@ -124,7 +124,7 @@ Evidence: probes/min-max-reference-forms C1-E3 (excel-graph, 2026-10-07, T-0223)
 MAX_MIN.xlsx (ironcalc d7b09c33) Sheet1!H39, H40, H43, H54 and MIN_MAX_extras.xlsx (ironcalc 16987342)
 Sheet1!A1-A18, Sheet2!A1-A3 (Microsoft Macintosh Excel cached values) in ironcalc-calc/MATH_AND_TRIGONOMETRY.
 Status: VERIFIED
-Implemented in: `evaluate_node_with_reference` and `variable_value` (model.rs), `evaluate_aggregate_arg`
+Implemented in: `evaluate_node_with_reference` (model.rs), `variable_value` (functions/logical/let.rs), `evaluate_aggregate_arg`
 (functions/util.rs), LET/LAMBDA bindings (functions/logical/let.rs, lambda.rs), `fn_isref`
 (functions/information/mod.rs), `fn_filter` (functions/spill_functions.rs)
 Tasks: T-0223
