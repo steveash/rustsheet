@@ -308,7 +308,7 @@ impl Model {
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         seen_value = true;
-                        result *= value;
+                        result = flush_subnormal(result * value);
                     }) {
                         return error;
                     }
@@ -318,7 +318,7 @@ impl Model {
                     seen_value = true;
                     let cast_result = self.cast_to_number(calc_result, cell);
                     match cast_result {
-                        Ok(f) => result *= f,
+                        Ok(f) => result = flush_subnormal(result * f),
                         Err(s) => return s,
                     }
                 }

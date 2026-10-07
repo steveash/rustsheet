@@ -90,6 +90,7 @@ C	probes/round-family.case.json	53
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-ref-error-forms.case.json	10
+C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-results.case.json	129
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-general-exponent-boundary.case.json	10
@@ -257,6 +258,7 @@ F	probes/rich-errors-stockhistory.case.json	Sheet1!A1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!B1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!D1
 F	probes/rich-errors-stockhistory.case.json	Sheet1!E1
+F	probes/subnormal-flush-edges.case.json	Calc!A16
 F	probes/subnormal-function-results.case.json	Calc!A4
 F	probes/subnormal-function-results.case.json	Calc!A6
 F	probes/subnormal-function-results.case.json	Calc!A60
