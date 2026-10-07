@@ -18,11 +18,9 @@ pub(super) fn parse_time_string(
     locale: &Locale,
     current_year: CurrentYear,
 ) -> Option<f64> {
-    // Excel rejects clock text of more than 255 characters, spaces included
-    // (probes/clock-text-length-limit).
-    let clock_len_ok = text.len() <= MAX_CLOCK_TEXT_LEN;
+    let raw = text;
     let text = trim_spaces(text);
-    if let Some(serial) = parse_clock_text(text).filter(|_| clock_len_ok) {
+    if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial - serial.floor());
     }
 
@@ -84,9 +82,9 @@ pub(crate) fn parse_time_serial(
     if text.starts_with(' ') {
         return None;
     }
-    let clock_len_ok = text.len() <= MAX_CLOCK_TEXT_LEN;
+    let raw = text;
     let text = text.trim_end_matches(' ');
-    if let Some(serial) = parse_clock_text(text).filter(|_| clock_len_ok) {
+    if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial);
     }
     parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text, locale, current_year))
@@ -138,8 +136,8 @@ fn trim_spaces(text: &str) -> &str {
 /// (`TIMEVALUE("9999:59:59")` parses, `"10000:00:00"` is #VALUE!).
 const MAX_CLOCK_COMPONENT: u32 = 9_999;
 
-/// Longest clock text Excel parses, in characters (`TIMEVALUE` of 255 characters parses, 256 is
-/// #VALUE!).
+/// Longest clock text Excel parses, in bytes of the raw text (clock text is ASCII; `TIMEVALUE` of
+/// 255 characters parses, 256 is #VALUE!).
 const MAX_CLOCK_TEXT_LEN: usize = 255;
 
 /// 2^53: below it every millisecond total is an exact `f64`.
@@ -193,6 +191,16 @@ fn at_most_one_out_of_range(hour: u32, minute: u32, second: f64) -> bool {
         .filter(|out| **out)
         .count()
         <= 1
+}
+
+/// [`parse_clock_text`] of `trimmed`, which is `raw` without its surrounding spaces: Excel rejects
+/// clock text of more than 255 characters counted with those spaces
+/// (probes/clock-text-length-limit).
+fn parse_limited_clock_text(raw: &str, trimmed: &str) -> Option<f64> {
+    if raw.len() > MAX_CLOCK_TEXT_LEN {
+        return None;
+    }
+    parse_clock_text(trimmed)
 }
 
 /// Serial value of clock text in Excel's en-US grammar, before any wrap to one day:

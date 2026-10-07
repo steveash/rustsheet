@@ -158,7 +158,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
 - **Clock text of more than 255 characters is #VALUE!**, counted on the raw text with its spaces
   (255 parses, 256 does not, in H:M:S.f, H:M with trailing spaces and the long-fraction forms), so
   a 250-digit fraction is the longest. Evidence: probes/clock-text-long-fraction4, clock-text-length-limit.
-  Unprobed: whether the limit is general to all text coercion (date text, number text).
+  Unprobed: whether the limit is general to all text coercion (date text, number text) and the date-clock form (`1/2/2020 10:11...`), which the engine does not limit (T-0266).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
