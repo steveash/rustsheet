@@ -101,6 +101,7 @@ impl Parser {
             if !separator_ok
                 || !(name_error || (is_reference_operand(&t) && !has_negated_operand(&t)))
                 || !is_reference_operand(&p)
+                || has_negated_operand(&p)
             {
                 return self.intersection_error();
             }
@@ -221,33 +222,34 @@ fn is_constant(node: &Node) -> bool {
 /// (Excel loads `(-A1,B1)` and prints it unchanged, probes/union-neg-operand H1:H2, T-0187; the
 /// tree shape, a union of `-A1` and `B1`, is an engine choice).
 fn is_union_operand(node: &Node) -> bool {
-    match node {
-        Node::UnaryKind {
-            kind: OpUnary::Minus,
-            right,
-        } => match &**right {
-            // `(--A1,B1)` loads in Excel and is `#VALUE!`; three minuses are unprobed and stay
-            // refused (probes/union-operand-double-minus, T-1024).
-            Node::UnaryKind {
-                kind: OpUnary::Minus,
-                right: inner,
-            } => is_reference_operand(inner),
-            _ => is_reference_operand(right),
-        },
-        _ => is_reference_operand(node),
+    // `(-A1,B1)`, `(--A1,B1)`, `(---A1,B1)` and `(----A1,B1)` all load in Excel and are `#VALUE!`
+    // (probes/union-operand-{double-minus,triple-minus,quad-minus}, T-1031), so any number of
+    // minuses is accepted.
+    let mut operand = node;
+    while let Node::UnaryKind {
+        kind: OpUnary::Minus,
+        right,
+    } = operand
+    {
+        operand = right;
     }
+    is_reference_operand(operand)
 }
 
-/// Whether `node` is a union with a directly negated operand, the left operand shape Excel
-/// refuses (`FileCorruptTryRepair`) for `(-A1,B1) A1` and `(-A1,B1) B1` (docs/excel-semantics/
-/// references.md "Union: parsing and evaluation", T-1024). A negation nested deeper, or on the
-/// right of an intersection, is unprobed and stays accepted (T-1031).
+/// Whether `node` is, or holds at any depth of union, a union with a negated operand, the shape
+/// Excel refuses (`FileCorruptTryRepair`) when it is an operand of an intersection: `(-A1,B1) A1`,
+/// `(--A1,B1) A1`, `(A1,-B1) A1`, `(-(A1,B2),C1) A1`, `((-A1,B1),C1) A1` and `A1 (-A1,B1)`
+/// (docs/excel-semantics/references.md "Union: parsing and evaluation", T-1024, T-1031).
 fn has_negated_operand(node: &Node) -> bool {
-    matches!(
-        node,
-        Node::OpUnionKind { left, right, .. }
-            if matches!(**left, Node::UnaryKind { .. }) || matches!(**right, Node::UnaryKind { .. })
-    )
+    match node {
+        Node::OpUnionKind { left, right, .. } => {
+            matches!(**left, Node::UnaryKind { .. })
+                || matches!(**right, Node::UnaryKind { .. })
+                || has_negated_operand(left)
+                || has_negated_operand(right)
+        }
+        _ => false,
+    }
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
