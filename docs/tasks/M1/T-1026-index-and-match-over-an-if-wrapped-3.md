@@ -3,7 +3,7 @@ id: T-1026
 title: "INDEX and MATCH over an IF-wrapped 3-D span give #VALUE!, not #REF!"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ Found by T-1015. Failing: probes/3d-ref-functions Calc!C18 and C20 (engine `#REF
 
 ## Out of scope
 -
+
+## Outcome
+`evaluate_single_sheet_arg` now routes an IF argument through `if_impl` with `IfBranchMode::SingleSheet`, so a 3-D span
+chosen by IF is `#VALUE!` in INDEX/MATCH like CHOOSE. Eval delta: probes/3d-ref-functions C18, C20 fixed (probes known
+failures 193 -> 191), 0 regressions.
