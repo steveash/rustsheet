@@ -112,6 +112,9 @@ impl Model {
                     f(0.0);
                 }
                 CalcResult::String(value) => {
+                    if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
+                        return Err(error);
+                    }
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
@@ -252,6 +255,8 @@ impl Model {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
+                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
+                        return error;
                     } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;

@@ -1,5 +1,5 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal, MISSING};
-use crate::cast::calc_result_to_array_node;
+use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
@@ -48,6 +48,12 @@ enum CriteriaArg {
     Scalar(CalcResult),
     /// An array, or a multi-cell range read element by element.
     Grid(Vec<Vec<ArrayNode>>),
+}
+
+const TOO_LONG: &str = "Criterion too long";
+
+fn criterion_too_long(criterion: &CalcResult) -> bool {
+    matches!(criterion, CalcResult::String(text) if number_text_too_long(text))
 }
 
 impl CriteriaArg {
@@ -140,6 +146,11 @@ impl Model {
         cell: CellReferenceIndex,
         compute: impl FnMut(&mut Self, &[CalcResult]) -> CalcResult,
     ) -> CalcResult {
+        // A criterion over 255 characters is #VALUE!, from a literal or a cell alike
+        // (probes/long-text-args-min-criteria A10-A18, excel-graph 2026-10-07).
+        if criteria.iter().any(criterion_too_long) {
+            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
+        }
         self.lift_with_cost(
             criteria,
             |model| model.walk_cost(walked, cell),
@@ -226,7 +237,14 @@ impl Model {
                                 (_, None) => CalcResult::EmptyCell,
                             })
                             .collect();
-                        let value = calc_result_to_array_node(compute(self, &values));
+                        // An element over 255 characters is #VALUE! for that element only
+                        // (probes/long-text-args-min-criteria A24-A26).
+                        let result = if values.iter().any(criterion_too_long) {
+                            CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string())
+                        } else {
+                            compute(self, &values)
+                        };
+                        let value = calc_result_to_array_node(result);
                         previous = Some((key, value.clone()));
                         value
                     }
