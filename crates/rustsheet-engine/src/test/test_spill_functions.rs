@@ -463,3 +463,23 @@ fn anchorarray_spells_the_spill_operator() {
     assert_eq!(model._get_text("J32"), "3");
     assert_eq!(model._get_text("K32"), "3");
 }
+
+#[test]
+fn anchorarray_of_an_at_with_no_cell_is_value() {
+    // probes/anchorarray-at-operand D20 (T-1115): D20 is outside rows 1-2, so `@` finds no cell.
+    let mut model = new_empty_model();
+    model._set("D20", "=ANCHORARRAY((@A1:B2))");
+    model.evaluate();
+    assert_eq!(model._get_text("D20"), "#VALUE!");
+}
+
+#[test]
+fn range_operator_passes_a_right_operand_error_on() {
+    // probes/range-right-operand-errors D11, D14 (T-1115).
+    let mut model = new_empty_model();
+    model._set("D11", "=A1:INDEX(A1:A3,5)");
+    model._set("D14", "=A1:(A1 B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D11"), "#REF!");
+    assert_eq!(model._get_text("D14"), "#NULL!");
+}

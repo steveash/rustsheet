@@ -192,7 +192,7 @@ F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-c
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
 VAR.P, STDEV.P, VARA and STDEVA have matched since T-1037, when all twelve VAR/STDEV functions moved onto `excel_variance` with the same check (this closed T-1029).
 Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60). Excel tries the one-pass sum of squares first and only then switches to two passes (statistics.md, "VAR/STDEV switch"), so do not "fix" this to 0.
-MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range, with the whole part of the root's power of two applied exactly and its remainder under the root, `(m * 2^r)^(1/n) * 2^q` (T-0992, T-1076; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN is probed (probes/geomean-mixed-magnitude, excel-graph, 2026-10-07, T-1032): `GEOMEAN(1E+100,9E+307)` is 9.486832980505138e203 (the engine was one ulp high with `2^(e/n)` as a float power; it matches since T-1076), `GEOMEAN(1E-100,1E-300)` is 1.0000000000000001E-200 (one ulp above 1E-200; the engine matches bit for bit) and `GEOMEAN(1E+154,1E+300)` is 1E+227, and three equal 1E+200 or 1E-200 values give that value; the engine matches all five. Past 500 values (probes/geomean-overflow-many-values, excel-graph, 2026-10-07, T-1095): GEOMEAN over 600 cells alternating 1E+300 and 3E+250 is 1.7320508075688774E+275, over the first 501 of them 1.940817314759203E+275, over 600 x 1E+300 exactly 1E+300 and over 501 cells holding 7E+280 in every third row and 2E+200 otherwise 1.4094597464129783E+227; the engine matches all four. With 599 equal values and one half-size one, which reached the engine's then remainder-over-500 branch, 599 x 1E+300 and 5E+299 is 9.988454217380303E+299 and 599 x 1E-300 and 5E-301 is 9.988454217380302E-301, and the engine matches both. The underflowing counterpart, 600 cells alternating 1E-300 and 3E-250, is 1.7320508075688772E-275 and the engine is one ulp high (T-1099; its remainder is 0, so the miss is on the ordinary root path). Since T-1099 the engine keeps the product as a significand in [1, 2) (the bits of the plain left-to-right product) and puts the whole remainder r < n under the root; the remainder-over-500 branch above is gone (F6 and F7 still match), and the one-ulp miss is explained under "GEOMEAN root rounding". AGGREGATE A27-A29 pass since T-0993
+MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range, with the whole part of the root's power of two applied exactly and its remainder under the root, `(m * 2^r)^(1/n) * 2^q` (T-0992, T-1076; in range see "GEOMEAN in-range root", T-1113). Mixed-magnitude GEOMEAN is probed (probes/geomean-mixed-magnitude, excel-graph, 2026-10-07, T-1032): `GEOMEAN(1E+100,9E+307)` is 9.486832980505138e203 (the engine was one ulp high with `2^(e/n)` as a float power; it matches since T-1076), `GEOMEAN(1E-100,1E-300)` is 1.0000000000000001E-200 (one ulp above 1E-200; the engine matches bit for bit) and `GEOMEAN(1E+154,1E+300)` is 1E+227, and three equal 1E+200 or 1E-200 values give that value; the engine matches all five. Past 500 values (probes/geomean-overflow-many-values, excel-graph, 2026-10-07, T-1095): GEOMEAN over 600 cells alternating 1E+300 and 3E+250 is 1.7320508075688774E+275, over the first 501 of them 1.940817314759203E+275, over 600 x 1E+300 exactly 1E+300 and over 501 cells holding 7E+280 in every third row and 2E+200 otherwise 1.4094597464129783E+227; the engine matches all four. With 599 equal values and one half-size one, which reached the engine's then remainder-over-500 branch, 599 x 1E+300 and 5E+299 is 9.988454217380303E+299 and 599 x 1E-300 and 5E-301 is 9.988454217380302E-301, and the engine matches both. The underflowing counterpart, 600 cells alternating 1E-300 and 3E-250, is 1.7320508075688772E-275 and the engine is one ulp high (T-1099; its remainder is 0, so the miss is on the ordinary root path). Since T-1099 the engine keeps the product as a significand in [1, 2) (the bits of the plain left-to-right product) and puts the whole remainder r < n under the root; the remainder-over-500 branch above is gone (F6 and F7 still match), and the one-ulp miss is explained under "GEOMEAN root rounding". AGGREGATE A27-A29 pass since T-0993
 ("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
@@ -464,7 +464,7 @@ and 0.75 (plain product 1.125^876) are `#NUM!`, 1750 are 1.0606601717798212.
 Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204,
 1024 copies 4.9999999999999995E+204, 1025 and 1027 copies 5E+204, 1028 copies
 5.0000000000000006E+204, 1100 copies of 5E+300 5.000000000000001E+300. In range, 1101 copies of 1.5
-give exactly 1.5; the engine's log-sum gives 1.499999999999995. 2400 copies of 1E-300 give
+give exactly 1.5 (the engine matches since T-1113). 2400 copies of 1E-300 give
 1.8066704015823645E-300 = 1E-300 * 2^(2048/2400): the power-of-two sum is 2048 too high there (1100
 copies give 1E-300 exactly; T-1120).
 Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
@@ -472,7 +472,7 @@ probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),
 range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
 for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, and all held.
 Status: VERIFIED. RustSheet implements the cut (T-1112). Still open: the root's last-ulp rounding
-(numbers.md, "GEOMEAN root rounding"; T-1108), the in-range precision (T-1113) and the 1E-300 x 2400
+(numbers.md, "GEOMEAN root rounding"; T-1108) and the 1E-300 x 2400
 exponent (T-1120).
 Tasks: T-1108, T-1112, T-1113, T-1120
 
@@ -537,11 +537,30 @@ cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); n
 ## GEOMEAN last digits differ from a log-sum evaluation
 
 `=GEOMEAN("47")` is exactly 47 in Excel, and `=GEOMEAN(1,2,"5",TRUE)` is 1.778279410038923;
-a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
-formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
+a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. The
+engine matches both since T-1113 (next section). Evidence: Excel for the web (excel-graph) sidecar
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
 Values are from Excel for the web, which can differ from desktop in the last digit (decision 0030).
-Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
+Status: VERIFIED (these two values, web).
+
+## GEOMEAN in-range root
+Rule: when the plain product P of the values is a normal double, GEOMEAN is closest to
+`exp(ln(P) / n)` in doubles, with a single value returned as is: that matches 67 of 72 many-value
+sets, all 33 ironcalc-calc GEOMEAN cells and 1101 x 1.5 = 1.5. It is not exact: the 20-value
+mixed set A2 is one ulp low, and n copies of 3 or 7 (50 and 200 of each) are exactly 3 and 7 where
+the model is one ulp off (3.0000000000000004, 6.999999999999999). Other models do worse over all
+the evidence: glibc `pow(P, 1/n)` matches 71 of the 72 but rounds `GEOMEAN(1,3)` to
+1.7320508075688772 where Excel gives …774, and G27 too; `exp2(log2(P)/n)` 69; a log-sum 36; the
+power-of-two-split root of the overflow path 64 (`powf`) or 53 (`exp/ln`); an extended-precision
+(56- to 80-bit) ln/exp or log2/exp2 misses 3 or 4, always including C23 and G27, which Excel
+rounds away from the exact root. The over/underflow path keeps its own root (previous sections):
+`exp(ln/n)` there fixes 10 probed cells but breaks 4.
+Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
+copies of one value, 50-1100; excel-graph, 2026-10-07, T-1113), ironcalc-calc GEOMEAN C23, B27, G27,
+probes/geomean-overflow-count H1, probes/geomean-overflow-cut-3 C1, C5, C11, E1.
+Status: VERIFIED for the probed cells; the formulation is a best fit (5 of 72 one-ulp misses).
+Implemented in: functions/statistical/geomean.rs
+Tasks: T-1113, T-1108, T-1123
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:

@@ -47,13 +47,19 @@ impl Model {
         // Excel gives exactly 9E+307 for two 9E+307 values (numbers.md, "Aggregate overflow"), which
         // a log-sum evaluation misses by ulps. When the plain product leaves the double range, take
         // the n-th root of a product kept in range by moving powers of two into a separate
-        // exponent. In range the log-sum is kept: it matches the oracle on the existing cases
-        // (ironcalc-calc GEOMEAN C23) where the n-th root of the product does not.
+        // exponent. In range the root is `exp(ln(product) / n)`, and one value is returned as is:
+        // that matches 67 of 72 many-value sets (probes/geomean-in-range-many) and all of
+        // ironcalc-calc GEOMEAN, where a log-sum `exp(mean(ln v))` misses `GEOMEAN("47")` and 1101
+        // x 1.5 (probes/geomean-overflow-count H1) and `powf` rounds sqrt(3) down (C23). The five
+        // misses are one-ulp roundings no tried model reproduces (numbers.md, "GEOMEAN in-range
+        // root", T-1113).
         let n = values.len() as f64;
         let plain: f64 = values.iter().product();
         if plain.is_normal() {
-            let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
-            return CalcResult::Number((log_sum / n).exp());
+            if values.len() == 1 {
+                return CalcResult::Number(plain);
+            }
+            return CalcResult::Number((plain.ln() / n).exp());
         }
         // Keep the product as a significand in [1, 2) and a separate power of two: every factor and
         // every partial product is split, so no step can overflow or underflow whatever the
