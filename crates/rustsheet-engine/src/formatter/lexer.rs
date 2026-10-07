@@ -1,4 +1,4 @@
-use crate::number_format::parse_finite_number;
+use crate::number_format::{parse_excel_number, parse_finite_number};
 
 pub struct Lexer {
     position: usize,
@@ -194,7 +194,10 @@ impl Lexer {
             }
         }
         self.position = position;
-        parse_finite_number(&chars)
+        // A condition number has to be one Excel reads from text at all: `[>1e-310]` and
+        // `[>0e309]` make the format invalid like `[>1e400]` (probes/text-number-tiny-paths
+        // C18, C19), but the value keeps every digit.
+        parse_finite_number(&chars).filter(|_| parse_excel_number(&chars).is_some())
     }
 
     fn consume_condition(&mut self) -> Option<(Compare, f64)> {

@@ -185,9 +185,9 @@ future function names, LAMBDA definitions and calls, and `@` operands are accept
 (`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection in
 parentheses, `=A1 (@A1)`, and `=@A1:A3 A2:B2` as `=@(A1:A3 A2:B2)`. Excel's FORMULATEXT prints both as written,
 `=A1 @A1` and `=@A1:A3 A2:B2` (probes/intersection-at-formulatext H2, H4, oracle: excel-graph, 2026-10-07,
-T-1094), so the engine's printing is a mismatch (T-1098). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
+T-1094), so the engine's printing is a mismatch (T-1100). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
-Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1100
 
 ## Calling a parenthesized operand
 Rule: a parenthesized operand written directly before `(`, with no space, is called like a LAMBDA
