@@ -16,6 +16,14 @@ Array constants may not contain expressions (see syntax.md, "Array constants tak
 Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json A30:C124 (oracle: excel-graph, 2026-10-05, T-0957).
 Status: VERIFIED (Excel for the web only; the engine matches all 43 text-broadcast cells)
 
+## The *B text functions equal their non-B twins and spill (T-0271)
+Rule: for ASCII (single-byte) text in en-US (non-DBCS) FINDB, LEFTB, LENB, MIDB, REPLACEB, RIGHTB and SEARCHB return what FIND, LEFT, LEN, MID,
+REPLACE, RIGHT and SEARCH return, and lift element-wise over range and array arguments and spill like them
+(`LENB(A1:C1)` = 11, 4, 5; `FINDB("o",A1:C1)` = 5, `#VALUE!`, `#VALUE!`; `LENB(A21:A24)` over blanks spills four 0s).
+Evidence: eval/suites/probes/cases/text-b-functions-broadcast.case.json A3:A13 (oracle: excel-graph, 2026-10-07; engine matches all 29 cells).
+Status: VERIFIED (Excel for the web only)
+Implemented in: `byte_functions.rs` delegates to the twins; `static_analysis.rs` gives them `scalar_arguments` (before T-0271 they were `not_implemented`, so no spill was planned and a fuzz input hit the scalar-context debug_assert).
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the

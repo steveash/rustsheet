@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "en-US: the *B text functions (LENB, LEFTB, RIGHTB, MIDB, FINDB, SEARCHB, REPLACEB) equal their non-B twins and spill over ranges and arrays (T-0271)",
+  "tags": ["M2", "text", "dynamic-arrays", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "Hello World",
+        "B1": "ab c",
+        "C1": "x-y-z",
+        "A3": "=LENB(A1:C1)",
+        "A4": "=LEFTB(A1:C1,2)",
+        "A5": "=RIGHTB(A1:C1,2)",
+        "A6": "=MIDB(A1:C1,2,2)",
+        "A7": "=FINDB(\"o\",A1:C1)",
+        "A8": "=SEARCHB(\"O\",A1:C1)",
+        "A9": "=REPLACEB(A1:C1,1,1,\"Z\")",
+        "A10": "=LENB({\"a\",\"bb\";\"ccc\",\"\"})",
+        "A13": "=LENB(A21:A24)"
+      }
+    }
+  ],
+  "expected": {}
+}

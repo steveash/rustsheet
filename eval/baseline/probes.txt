@@ -89,6 +89,7 @@ C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
 C	probes/defined-name-intersection.case.json	10
+C	probes/edate-serial-0-months.case.json	12
 C	probes/error-arg-vs-range-check.case.json	10
 C	probes/error-literals-new.case.json	18
 C	probes/error-literals-new2.case.json	15
@@ -177,6 +178,7 @@ C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-results.case.json	129
 C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
 C	probes/sumif-edge-single-cell.case.json	15
+C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-number-15-digits.case.json	16
