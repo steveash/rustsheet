@@ -3,7 +3,7 @@ id: T-0280
 title: "Probe typed cell input of (1) and (1,000) needs a typed-entry oracle path"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
