@@ -65,3 +65,43 @@ fn sumif_criteria_range_is_bounded() {
     // DEVIATION (decision 0014): a 2-column criteria grid is above the shared bound.
     assert_eq!(model._get_text("D1"), *"#ERROR!");
 }
+
+#[test]
+fn long_percent_chain_on_a_whole_column_lifts_once() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "30");
+    model._set("B1", "5");
+    // The formula_eval fuzz reproducer (T-1078): 95 postfix `%` on a whole column timed out
+    // (> 30 s) because every operator lifted all 1,048,576 rows again.
+    let percents = "%".repeat(95);
+    model._set("C1", &format!("=LOOKUP(20,A:A,B:B{percents})=5/10^190"));
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), *"TRUE");
+}
+
+#[test]
+fn chained_unary_operators_keep_their_values() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "5");
+    model._set("B2", "-7");
+    model._set("B3", "TRUE");
+    model._set("C2", "=SUM(B1:B3%%)");
+    model._set("C3", "=SUM(-----B1:B3)");
+    model._set("C4", "=INDEX(-B1:B3%,2)");
+    model._set("C5", "=ROWS(--A:A%)");
+    model._set("C6", "=-B2%%");
+    model._set("C8", "=--\"x\"%");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("C2"), *"-0.0001");
+    assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"0.07");
+    assert_eq!(model._get_text("C5"), *"1048576");
+    assert_eq!(model._get_text("C6"), *"0.0007");
+    assert_eq!(model._get_text("C8"), *"#VALUE!");
+}
