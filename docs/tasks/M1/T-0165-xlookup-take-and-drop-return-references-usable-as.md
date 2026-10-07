@@ -3,7 +3,7 @@ id: T-0165
 title: "XLOOKUP, TAKE, DROP and TRIMRANGE return references usable as intersection operands"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
