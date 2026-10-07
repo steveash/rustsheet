@@ -534,7 +534,8 @@ cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array fo
 Tasks: T-0985
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
-Rule: Excel keeps the parentheses the user wrote around the operand of `@`, whatever it is:
+Rule: Excel keeps the parentheses the user wrote around the operand of `@`, for every operand form
+probed (intersection, range, single cell, nested `@`; `@(INDEX(…))`, `@(D1#)` and `@(name)` are not probed):
 `=(@(A1 B1)):C3` prints `=(@(A1 B1)):C3`, `=@(@(A1 B1))` prints `=@(@(A1 B1))`, and `=@((A1 B1))`,
 `=@(A1:B1)` and `=@(A1)` print as written (values `#NULL!`, `#VALUE!` from row 31, and 1), while a
 bare `@A1:A3 A2:B2` stays bare. Typed `ANCHORARRAY(D1)` and `ANCHORARRAY(INDEX(D1:D2,1))` evaluate
