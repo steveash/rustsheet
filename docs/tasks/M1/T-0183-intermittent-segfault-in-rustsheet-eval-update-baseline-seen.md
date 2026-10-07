@@ -36,8 +36,8 @@ Not reproducible; ruled out as far as the code allows, with evidence (2026-10-07
   without bzip2/zstd, flate2 on miniz_oxide). Every engine evaluation and xlsx import runs on a
   `case:<id>` thread with a 256 MB stack under `catch_unwind`; the work on rayon threads
   (`prepare`: quick-xml snapshot, the lexer-only `shift_formula_text`, the iterative volatility
-  scan) does not recurse. A stack overflow in safe Rust is caught by std's guard-page handler and
-  aborts with "thread 'case:<id>' has overflowed its stack" (SIGABRT), which is not what the
-  steward saw (SIGSEGV, no such line).
+  scan) does not recurse. A stack overflow in safe Rust is caught by std's guard-page handler,
+  which prints "thread 'case:<id>' has overflowed its stack" before the process dies; the
+  steward's log had no such line.
 - No reproducer or backtrace exists, so the first acceptance criterion's reproducer part is unmet;
   T-1118 makes the next occurrence leave one. Eval delta: none.
