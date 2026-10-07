@@ -332,8 +332,12 @@ Zero mantissas are tested on where their last digit sits, the exponent less the 
 within ±308 the text is 0, beyond it #VALUE! (0: `0e308`, `-0e308`, `0e-307`, `0e-308`,
 `0.0e309`, `0.00e310`, `0.000e311`, `00.0e309`, `.0e309`; #VALUE!: `0e309`, `0e+309`, `-0e309`,
 `00e309`, `0.e309`, `0.0e310`, `0e-309`, `0e-310`, `0e-400`, `0.0e-308`, `0.0e-309`, `0.00e-307`).
-Unexplained: `"0."` followed by 305 or 320 zeros (no exponent; LEN 307 and 322) is #VALUE!,
-though the rule above would read it as 0; a length limit on number text is a guess (T-1097).
+Number text longer than 255 characters is #VALUE! for every form probed (the same limit as date-clock text, dates.md; T-1097, probes/text-number-long-zero, excel-graph
+2026-10-07, 78 text cells, `0+A` and `VALUE` agree, LEN confirms the text arrived): at LEN 255 and below
+`0.`+zeros, `1.`+zeros, leading-zero integers, all-zero integers, `1` plus trailing spaces and a tiny nonzero
+fraction (`0.`, zeros, `1`, which keeps its value, 1E-253 at LEN 255) read as numbers (0, 1, 1, 0, 1, 1E-253), and at LEN 256, 257, 260,
+300, 306, 307, 308 and 320 all six forms are #VALUE!. This explains the 305- and 320-zero cells above (LEN 307 and 322).
+The engine reads long text as a number today (probes/text-number-long-zero fails 138 of 312 cells); TODO(T-1101); other text-to-number paths (percent, currency, exponent text, criteria and aggregate coercion) are unprobed.
 Formula literals follow the same rule: `=1E-309`, `=-1E-309`, `=2E-308`, `=0E308`, `=0.0E309`,
 `=0E-308` evaluate to 0 and `=2.2250738585073E-308` keeps its value (probes/literal-number-tiny),
 while Excel refuses to open a workbook holding `=1E-310`, `=-1E-310`, `=5E-324`, `=0E309` or
@@ -536,8 +540,10 @@ A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift
 the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
 computed array, which is evaluated once per call), times the lifted argument count, above 2^27 is `#ERROR!`
 (`AGGREGATE(14,6,SEQUENCE(1048576),SEQUENCE(1048576))`, unit test `lifted_calls_over_large_arrays_hit_the_visit_cap`).
-A multi-cell range function_num or options is not lifted: the engine reads it as a scalar and gives `#N/IMPL!`
-(unprobed, T-1058).
+A multi-cell range function_num or options lifts like an array (probes/aggregate-range-args, excel-graph, 2026-10-07, T-1058):
+`AGGREGATE(G1:G2,0,E1:E6)` with G1:G2 = 9, 4 spills 23, 9 down, a row range spills across, `AGGREGATE(9,G1:G2,E1:E6)` spills
+`#VALUE!` (option 9), 23, and a column against a row of options makes a 2x2 grid. A single-cell range is a scalar
+(`AGGREGATE(G1,0,E1:E6)` is 23). A range fourth argument is not lifted; a multi-cell range k reads its top-left cell: `AGGREGATE(14,0,E1:E6,G1:G2)` is one `#NUM!` (k = 9), and k = J1:J2 (1, 99) gives 9 while K1:K2 (99, 1) gives `#NUM!`, L1:M1 (2, 99) gives 5. In the reference form the range is just another reference (`AGGREGATE(9,0,E1:E6,J1:J2)` is 123). Unprobed (range k): an empty, text or error top-left cell, a range k in the array form, and a k that is a name or `OFFSET` result.
 Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
 Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
