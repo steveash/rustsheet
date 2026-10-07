@@ -70,8 +70,8 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
     let tie_away = mode != RoundMode::HalfAwayFromZero;
     let (mantissa, exponent) = significant_15(value.abs(), tie_away);
     // The clamp keeps the exponent arithmetic below small without changing any result.
-    let num_digits = effective_digits(num_digits, exponent, mode)
-        .clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS);
+    let num_digits =
+        effective_digits(num_digits, exponent, mode).clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS);
     // `mantissa` has 15 digits; its last digit has place value 10^(exponent - 14).
     let last_place = exponent - (SIGNIFICANT_DIGITS - 1);
     let dropped = -num_digits - last_place;
@@ -234,7 +234,13 @@ mod tests {
         assert_eq!(up(4_294_967_298.0), Some(123.456));
         assert_eq!(down(1e300), Some(123.456));
         assert_eq!(up(-1e300), None);
-        assert_eq!(round_decimal(0.5, 2_147_483_648.0, RoundMode::Down), Some(0.0));
-        assert_eq!(round_decimal(0.5, 2_147_483_648.0, RoundMode::Up), Some(1.0));
+        assert_eq!(
+            round_decimal(0.5, 2_147_483_648.0, RoundMode::Down),
+            Some(0.0)
+        );
+        assert_eq!(
+            round_decimal(0.5, 2_147_483_648.0, RoundMode::Up),
+            Some(1.0)
+        );
     }
 }
