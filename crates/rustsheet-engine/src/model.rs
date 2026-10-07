@@ -807,6 +807,13 @@ impl Model {
                         ),
                     }
                 }
+                // An `@` that finds no cell is `#VALUE!`, and ANCHORARRAY passes it on
+                // (`=ANCHORARRAY((@A1:B2))` in D20, probes/anchorarray-at-operand, T-1115).
+                error @ CalcResult::Error { .. }
+                    if matches!(**child, ImplicitIntersection { .. }) =>
+                {
+                    error
+                }
                 _ => CalcResult::new_error(
                     Error::ERROR,
                     cell,
