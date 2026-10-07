@@ -7,7 +7,8 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-0030]
+depends_on: [T-0030, T-1010]
+spec: docs/specs/SPEC-0003-newer-error-kinds.md
 ---
 
 ## Goal
