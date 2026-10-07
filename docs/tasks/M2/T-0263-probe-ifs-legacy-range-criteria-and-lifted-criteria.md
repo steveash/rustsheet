@@ -3,7 +3,7 @@ id: T-0263
 title: "Probe *IFS legacy range criteria and lifted-criteria edge cases"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
