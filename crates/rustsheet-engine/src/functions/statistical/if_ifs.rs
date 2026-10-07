@@ -349,8 +349,8 @@ impl Model {
         let right_row = first_range.right.row;
         let right_column = first_range.right.column;
 
-        let dimension = match self.workbook.worksheet(first_range.left.sheet) {
-            Ok(s) => s.dimension(),
+        let (max_row, max_column) = match self.workbook.worksheet(first_range.left.sheet) {
+            Ok(s) => s.used_area_end(),
             Err(_) => {
                 return CalcResult::new_error(
                     Error::ERROR,
@@ -359,8 +359,6 @@ impl Model {
                 )
             }
         };
-        let max_row = dimension.max_row;
-        let max_column = dimension.max_column;
 
         let open_row = left_row == 1 && right_row == LAST_ROW;
         let open_column = left_column == 1 && right_column == LAST_COLUMN;

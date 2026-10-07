@@ -686,6 +686,19 @@ impl Worksheet {
         self.sheet_data.last_column()
     }
 
+    /// The bottom-right corner of the used area, `(last row, last column)`,
+    /// for clipping whole-row and whole-column walks. It may over-approximate
+    /// `dimension` (a row that exists without cells counts), which leaves the
+    /// result unchanged for walkers that ignore empty cells: the cells past the
+    /// true used area are empty. Walkers that act on empty cells (TEXTJOIN with
+    /// ignore_empty FALSE, XIRR, XNPV) already depend on where the clip ends;
+    /// TODO(T-1114) tracks matching Excel there. An empty sheet
+    /// gives `(1, 1)`, as `dimension` does. Unlike `dimension` it does not
+    /// visit every cell, so it is cheap enough to call on every lift.
+    pub(crate) fn used_area_end(&self) -> (i32, i32) {
+        (self.last_used_row().max(1), self.last_used_column().max(1))
+    }
+
     /// Calculates dimension of the sheet. This function isn't cheap to calculate.
     pub fn dimension(&self) -> WorksheetDimension {
         // FIXME: It's probably better to just track the size as operations happen.
