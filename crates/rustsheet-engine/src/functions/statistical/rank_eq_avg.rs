@@ -75,7 +75,7 @@ impl Model {
         };
 
         // Excel: a reference with no numeric value (or an empty one) gives #N/A like any absent
-        // number, never #NUM! (docs/excel-semantics/statistics.md#rankeqavg-a-number-absent-from-the-reference-is-na).
+        // number, never #NUM! (docs/excel-semantics/statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
         values.retain(|v| !v.is_nan());
 
         // "better" = greater (descending) or smaller (ascending)
@@ -142,8 +142,7 @@ impl Model {
             }
         };
 
-        // Excel: a reference with no numeric value (or an empty one) gives #N/A like any absent
-        // number, never #NUM! (docs/excel-semantics/statistics.md#rankeqavg-a-number-absent-from-the-reference-is-na).
+        // Same #N/A rule for an empty value set (statistics.md, "RANK/RANK.EQ/RANK.AVG: a number absent").
         values.retain(|v| !v.is_nan());
 
         // > or < depending on order
