@@ -17,6 +17,11 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     empty string into a blank cell, which has different semantics).
   * Spill references (`A1#`) are written in their file form `_xlfn.ANCHORARRAY(A1)`; Excel for the
     web rejects a literal `A1#` in `<f>` (T-0042). The engine reads the spec text, so cases keep `A1#`.
+  * Typed entry `{"entered":"(1)"}` (T-0280): the cell is left blank and the docProps custom
+    properties `rustsheet.entered.<n>` (one per cell, n from 1 in spec order; Excel caps a property
+    value at 255 characters) hold it as JSON `[sheet, a1, text]`; oracle backends write
+    the text into the cell as a user types it (Graph `values`), so Excel picks value and number
+    format. The engine adapter enters the same text through its user-input parser.
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
@@ -34,13 +39,16 @@ from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape, unescape
 
 import xlsxwriter
 
 # XlsxWriter stamps docProps/core.xml with the wall clock; a fixed instant keeps identical specs
 # byte-identical so `input_sha256` (sidecars, eval/.cache/oracle) is stable across runs (T-0015).
 _FIXED_CREATED = datetime(2000, 1, 1)
+
+ENTERED_PROPERTY = "rustsheet.entered"
+_ENTERED_XML = re.compile(rf'name="{re.escape(ENTERED_PROPERTY)}\.(\d+)"><vt:lpwstr>(.*?)</vt:lpwstr>', re.S)
 
 _A1 = re.compile(r"^\$?([A-Za-z]{1,3})\$?(\d+)$")
 
@@ -216,6 +224,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     )
     wb.set_properties({"created": _FIXED_CREATED})
     stored: list[tuple[int, str, str]] = []  # (sheet number, cell ref, error name)
+    entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
         legacy = set(sheet.get("legacy_formulas", ()))
@@ -235,11 +244,39 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                 ws.write_formula(row, col, "=0", None, "#N/A")
                 stored.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["v"])))
                 continue
+            if isinstance(raw, dict) and "entered" in raw:
+                entered.append(
+                    (sheet["name"], xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["entered"]))
+                )
+                continue
             _write(ws, row, col, raw)
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, formula)
+    for n, entry in enumerate(entered, start=1):
+        wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", json.dumps(entry, ensure_ascii=False))
     wb.close()
     return _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
+
+
+def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
+    """The `(sheet, a1, text)` typed entries `build_xlsx` recorded in `xlsx`, in spec order.
+
+    Raises ValueError when the package or the property is malformed (xlsx inputs are untrusted).
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(xlsx)) as z:
+            if "docProps/custom.xml" not in z.namelist():
+                return []
+            custom = z.read("docProps/custom.xml").decode("utf-8")
+        # A regex, not an XML parser: the part is untrusted, and only XlsxWriter's own layout matters.
+        found = sorted(
+            (int(n), json.loads(unescape(v, {"&quot;": '"', "&apos;": "'"})))
+            for n, v in _ENTERED_XML.findall(custom)
+        )
+        return [(str(s), str(a1), str(t)) for _, (s, a1, t) in found]
+    except (zipfile.BadZipFile, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as e:
+        msg = f"malformed {ENTERED_PROPERTY} property: {e}"
+        raise ValueError(msg) from e
 
 
 def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:

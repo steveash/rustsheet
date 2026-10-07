@@ -45,6 +45,12 @@ Input conventions:
 - A string starting with `=` is a formula, written with **dynamic-array (M365) semantics**.
 - Any other string is text. Use the tagged form for text that starts with `=` or for errors.
 - The empty string `""` is materialized as `=""`.
+- `{"entered":"(1,000)"}` is text entered *as a user types it* (T-0280): Excel's input parser picks
+  the value and number format. spec2xlsx leaves the cell blank and lists it in docProps custom
+  properties `rustsheet.entered.<n>`; the excel-graph backend writes it with a range `values`
+  PATCH before calculating (and logs the `numberFormat` Excel chose as `ENTERED ...` on stderr),
+  excel-desktop sets `Range.Value`, libreoffice refuses. The engine adapter enters it as
+  `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
   (T-1077). The engine adapter ignores it.
