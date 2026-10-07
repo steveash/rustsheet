@@ -3,7 +3,7 @@ id: T-0133
 title: "Spec: multi-area references (union) in the engine"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -38,9 +38,21 @@ Today a union passed to a function is `#VALUE!`, so IFERROR silently takes its f
 are probed in T-0187.
 
 ## Acceptance criteria
-- [ ] `docs/specs/SPEC-XXXX-multi-area-references.md` is merged, with the representation, function
+- [x] `docs/specs/SPEC-XXXX-multi-area-references.md` is merged, with the representation, function
   contract, lexing rule, probes needed and follow-up implementation tasks filed.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing it (the follow-up tasks do that).
+
+## Outcome
+docs/specs/SPEC-0004-multi-area-references.md. A multi-area reference is `Areas` (a boxed slice of
+ranges, 2..=`MAX_AREAS`), kept out of `CalcResult` on purpose: a new variant would reach every
+`_ =>` arm and make `ISERROR((A1,B2))` FALSE. Functions opt in through one reference-context
+evaluator, `evaluate_reference_arg -> RefArg`, built on the existing `reference_areas`. The value
+path still gives `#VALUE!`. LET bindings can hold `Areas`, IF/CHOOSE/INDEX pass them through, and
+multi-area name bodies (Print_Area) parse with the comma as the union at the top level. The lexing
+rule and printing are unchanged, and `add_implicit_intersection` keeps unions unwrapped. The spec
+has an 18-row probe table. Rollout: T-1061 (probes), T-1062 (type, evaluator, aggregates), T-1063
+(AREAS, INDEX area_num), T-1064 (LET, IF, CHOOSE), T-1065 (names). references.md now points to
+the spec. Eval: no change (docs only).

@@ -263,8 +263,8 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   plain chain `(A1,B2,C3)` still prints as written (T-0193).
 - Multi-area defined names: with `mu` = `Sheet1!$A$1,Sheet1!$B$2` (A1 = 1, B2 = 5), `=SUM(mu)` is 6,
   `=COUNT(mu)` is 2, `=ISREF(mu)` is TRUE, `=mu A1` is 1 and `=mu` is `#VALUE!`. The engine refuses
-  the name body ("invalid defined name"), so the whole case is an engine error. Multi-area values are
-  spec T-0133.
+  the name body ("invalid defined name"), so the whole case is an engine error. Multi-area name
+  bodies are SPEC-0004 step 5 (T-1065).
 - Comma-decimal locales: xlsx stores formulas in en-US syntax with `,`, so the `;` spelling of the
   union operator exists only in the UI of such locales and cannot be probed through a file. The
   engine prints the argument separator `;` there (engine choice).
@@ -281,8 +281,9 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
   function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently
-  takes its fallback for one, and so does a union returned by IF, CHOOSE or LET (T-0133). `add_implicit_intersection` (static_analysis.rs) leaves
-  `OpUnionKind` unwrapped; T-0133 should revisit it.
+  takes its fallback for one, and so does a union returned by IF, CHOOSE or LET. docs/specs/SPEC-0004-multi-area-references.md
+  (T-0133) designs multi-area arguments, with rollout T-1061 to T-1065. `add_implicit_intersection` (static_analysis.rs) leaves
+  `OpUnionKind` unwrapped, and SPEC-0004 keeps it so: a union is already `#VALUE!` where a scalar is expected.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
