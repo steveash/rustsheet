@@ -3,7 +3,7 @@ id: T-0406
 title: "Import t=d (ISO 8601) date cells as serials"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ Probe first (excel-probe skill): a fixture with `t="d"` cells for a date, a date
 
 ## Out of scope
 - Exporting Strict OOXML.
+
+## Outcome
+`t="d"` cells import as serials via the shared `iso8601_to_serial` (xlsx crate, reused by the eval
+snapshot reader). Excel for the web evidence in `fixtures/t-d-iso-date-cells`: 1990-01-01 = 32874,
+T12:00:00 = 32874.5, 1900-02-28 = 59, 1900-03-01 = 61. Unparsable text makes Excel refuse the
+workbook, so the importer leaves the cell empty. Semantics entry VERIFIED. Eval: fixtures suite
+gains 8 passing oracle cells, no failures changed.

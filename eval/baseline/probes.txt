@@ -73,6 +73,7 @@ C	probes/mod-quotient-threshold2.case.json	36
 C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
+C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
 C	probes/offset-negative-height-width.case.json	80
@@ -90,6 +91,7 @@ C	probes/sheet-qualified-both-corners.case.json	9
 C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/subnormal-function-results.case.json	129
 C	probes/sumif-edge-single-cell.case.json	15
+C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-tiny.case.json	60
 C	probes/text-number-words.case.json	62
