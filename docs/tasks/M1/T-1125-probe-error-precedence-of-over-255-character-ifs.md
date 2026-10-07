@@ -3,7 +3,7 @@ id: T-1125
 title: "Probe error precedence of over-255-character IFS criteria"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
