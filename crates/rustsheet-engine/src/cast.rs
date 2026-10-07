@@ -238,6 +238,7 @@ impl Model {
         message: &str,
         op: impl Fn([f64; N]) -> Result<f64, Error>,
     ) -> CalcResult {
+        debug_assert!(args.len() >= N, "callers check the argument count");
         let operands: Vec<_> = args
             .iter()
             .take(N)
@@ -257,6 +258,7 @@ impl Model {
             }
         }
         if !any_array {
+            // Without an array every operand is a `Number` (an error returned above).
             let mut numbers = [0.0; N];
             for (slot, na) in numbers.iter_mut().zip(&lifted) {
                 if let NumberOrArray::Number(n) = na {
