@@ -219,8 +219,8 @@ future function names, LAMBDA definitions and calls, and `@` operands are accept
 parentheses, `(A1 @A1) B1`, since the bare text would re-parse as `A1 @(A1 B1)` (engine choice; Excel's text for it is not probed). The same text is printed when a formula is moved or pasted (`to_string_moved`). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
 - FORMULATEXT of an `@` operand of `:` or `@` keeps the written parentheses: `=A1:(@B1)` stays `=A1:(@B1)` (spills `1, 2` across H10:I10), `=(@(A1 B1)):C3` stays `=(@(A1 B1)):C3` and `=@(@(A1 B1))` stays `=@(@(A1 B1))` (both `#NULL!`). The engine drops the inner parentheses on the last two and evaluates `=(@(A1 B1)):C3` to `#VALUE!` instead of `#NULL!` (probes/at-operand-formulatext, T-1104; fix in T-1109).
-- `=ANCHORARRAY(D1)` prints `=D1#` and `=ANCHORARRAY(INDEX(D1:D2,1))` prints `=INDEX(D1:D2,1)#`, `ANCHORARRAY(D1)` and `D1#` are the same stored file text (`_xlfn.ANCHORARRAY(D1)`), so this is how Excel prints that stored form; how a typed `ANCHORARRAY(D1)` prints is not probed. Engine requirement for T-1109: xlsx import must not print the automatic `@` it adds inside `#`. UNVERIFIED: `=(@A1:B2)#` made a workbook fail Graph `createSession` (501), but the case builder writes a literal `#` in `<f>`, which Excel for the web refuses anyway (T-0042), so this says nothing about `@`; re-probe as `_xlfn.ANCHORARRAY((@A1:B2))` (T-1109). `=@D1#` prints as `=@D1#` and evaluates to `#VALUE!` (probes/at-operand-formulatext, T-1104).
-Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098, T-1103, T-1104, T-1109
+- `=ANCHORARRAY(D1)` prints `=D1#` and `=ANCHORARRAY(INDEX(D1:D2,1))` prints `=INDEX(D1:D2,1)#`, `ANCHORARRAY(D1)` and `D1#` are the same stored file text (`_xlfn.ANCHORARRAY(D1)`), so this is how Excel prints that stored form; how a typed `ANCHORARRAY(D1)` prints is not probed. Engine requirement for T-1109: xlsx import must not print the automatic `@` it adds inside `#`. Stored as `_xlfn.ANCHORARRAY((@A1:B2))`, `=(@A1:B2)#` loads, prints as `=(@A1:B2)#` and is `#VALUE!` from D20 (no intersecting cell); the engine gives `#ERROR!` (probes/anchorarray-at-operand, T-1111; fix in T-1115). `=ANCHORARRAY(1)` is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1111; engine in T-1117). `=@D1#` prints as `=@D1#` and evaluates to `#VALUE!` (probes/at-operand-formulatext, T-1104).
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098, T-1103, T-1104, T-1109, T-1111, T-1115, T-1117
 
 ## Calling a parenthesized operand
 Rule: a parenthesized operand written directly before `(`, with no space, is called like a LAMBDA
@@ -534,12 +534,20 @@ cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array fo
 Tasks: T-0985
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
-Rule: Excel keeps the parentheses the user wrote around an intersection that is the operand of
-`@`: `=(@(A1 B1)):C3` prints `=(@(A1 B1)):C3` and `=@(@(A1 B1))` prints `=@(@(A1 B1))`, while a
+Rule: Excel keeps the parentheses the user wrote around the operand of `@`, for every operand form
+probed (intersection, range, single cell, nested `@`; `@(INDEX(…))`, `@(D1#)` and `@(name)` are not probed):
+`=(@(A1 B1)):C3` prints `=(@(A1 B1)):C3`, `=@(@(A1 B1))` prints `=@(@(A1 B1))`, and `=@((A1 B1))`,
+`=@(A1:B1)` and `=@(A1)` print as written (values `#NULL!`, `#VALUE!` from row 31, and 1), while a
 bare `@A1:A3 A2:B2` stays bare. Typed `ANCHORARRAY(D1)` and `ANCHORARRAY(INDEX(D1:D2,1))` evaluate
-as the spill operator and print `=D1#` and `=INDEX(D1:D2,1)#`. An error as the left operand of `:`
-is the result: `=(@(A1 B1)):C3` is `#NULL!`, not `#VALUE!`.
-Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30 (excel-graph).
-Status: VERIFIED for these cells; UNVERIFIED: an error in the right operand of `:` (the engine
-keeps `#VALUE!`), `=(@A1:B2)#`, `=ANCHORARRAY(1)` and the parentheses of `@((A1 B1))`, `@(A1:B1)`.
-Tasks: T-1109, T-1111
+as the spill operator and print `=D1#` and `=INDEX(D1:D2,1)#`. An error in either operand of `:`
+is the result: `=(@(A1 B1)):C3` is `#NULL!`, `=A1:INDEX(A1:A3,5)` is `#REF!` and `=A1:(A1 B2)` is
+`#NULL!`, not `#VALUE!`. The operands of `:` must be references, as for the union: Excel for the
+web refuses a workbook holding `=A1:(1/0)`, `=(1/0):(A1 B1)`, `=(1/0):(A1 A2)` or `=ANCHORARRAY(1)`
+(`FileCorruptTryRepair`, one scratch workbook per formula, T-1111), so no value exists for them.
+`(@(A1 B1))`, `INDEX(…)` and `(A1 B2)` count as references even when they evaluate to an error.
+Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/at-paren-operands
+D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
+Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
+question). Engine gaps: right-operand errors and `ANCHORARRAY((@A1:B2))` (T-1115), the `@`
+parentheses of rows 30–32 (T-1116), the refused forms, which the engine evaluates (T-1117).
+Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
