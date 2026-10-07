@@ -260,6 +260,13 @@ impl Model {
                         .used_area_end()
                         .1;
                 }
+                // The clip skips empty cells Excel still walks: an empty-cell error applies to them
+                // too, so `XNPV(0.1,A:A,B:B)` is #NUM! however small the used area is
+                // (probes/xirr-xnpv-whole-column-nogaps A1, financial.md). A handler that accepts
+                // empty cells (XIRR's) adds nothing for them.
+                if row2 < right.row || column2 < right.column {
+                    handle_empty_cell()?;
+                }
                 for row in row1..=row2 {
                     for column in column1..=column2 {
                         let cell_ref = CellReferenceIndex { sheet, row, column };
