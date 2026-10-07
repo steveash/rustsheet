@@ -3,7 +3,7 @@ id: T-1000
 title: "Probe number-to-text carry at exponent magnitude 99 (9.99999999999995E+99, E-100)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0199 rounds the 15-digit mantissa half up to 14 digits at |exp| >= 99; a carry
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/number-text-exponent-carry` (9 cells, excel-graph oracle) confirms the carry at exponent magnitude 99 exactly as `number_to_text` already does; no engine change. numbers.md now VERIFIED. Eval: probes suite +9 passing cells, 0 regressions.
