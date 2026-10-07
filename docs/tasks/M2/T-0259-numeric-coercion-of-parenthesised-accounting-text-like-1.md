@@ -3,7 +3,7 @@ id: T-0259
 title: "Numeric coercion of parenthesised accounting text like (1) = -1"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found in T-0252. Evidence: probes/paren-negative-text (excel-graph): `=0+"(1)"` 
 
 ## Out of scope
 -
+
+## Outcome
+`parse_formatted_number` reads `(n)` as -n (after the currency and date forms), so `0+"(1)"`, `SUM("(1)")`, `0+"(1,000)"` and `COUNT("(1)","x")` match Excel and `0+"-(1)"` stays `#VALUE!`. Eval delta: fixed 4 cells of probes/paren-negative-text (the 4 known failures left the probes baseline), 0 regressions.

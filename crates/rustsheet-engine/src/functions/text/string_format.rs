@@ -3,6 +3,7 @@
 use crate::{
     calc_result::CalcResult,
     cast::array_node_to_string,
+    cast::number_text_too_long,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -156,6 +157,11 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
         }
 
+        // Excel counts the text with its spaces: 255 characters parse, 256 are #VALUE!
+        // (probes/text-number-long-paths A13, A14).
+        if number_text_too_long(&text) {
+            return CalcResult::new_error(Error::VALUE, cell, "Text too long".to_string());
+        }
         let trimmed = text.trim();
 
         // Handle percentage suffix
