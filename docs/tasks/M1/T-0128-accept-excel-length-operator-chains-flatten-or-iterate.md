@@ -3,7 +3,7 @@ id: T-0128
 title: "Accept Excel-length operator chains: flatten or iterate left-assoc chains past the depth cap"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
