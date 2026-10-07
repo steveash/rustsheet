@@ -184,7 +184,7 @@ functions above. UNVERIFIED by inference: built-in functions not probed are refu
 future function names, LAMBDA definitions and calls, and `@` operands are accepted); `Parser::parse_implicit`
 (`@` takes the intersection after it, T-0149). The engine prints an `@` operand of an intersection as Excel's FORMULATEXT does, `=A1 @A1` and
 `=@A1:A3 A2:B2` (probes/intersection-at-formulatext, T-1098), except that a left operand ending in `@` keeps its
-parentheses, `(A1 @A1) B1`, since the bare text would re-parse as `A1 @(A1 B1)` (engine choice; Excel's text for it is not probed). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
+parentheses, `(A1 @A1) B1`, since the bare text would re-parse as `A1 @(A1 B1)` (engine choice; Excel's text for it is not probed). The same text is printed when a formula is moved or pasted (`to_string_moved`). The engine still evaluates XLOOKUP, TAKE, DROP and TRIMRANGE to arrays, so those four
 intersections are `#VALUE!` (T-0165).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098
 

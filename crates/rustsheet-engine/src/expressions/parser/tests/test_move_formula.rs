@@ -670,3 +670,38 @@ fn move_formula_implicit_intersection_with_ranges() {
     );
     assert_eq!(t, "SUM(@F2:H4)+SUM(@M12:P16)+SUM(@A1,@X9,@$N$15)");
 }
+
+#[test]
+fn test_move_formula_at_intersection_prints_as_excel() {
+    // Same printing as `stringify`: probes/intersection-at-formulatext (T-1098). A move that
+    // changes nothing leaves the text as written.
+    let context = &CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let area = &Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 1,
+        height: 1,
+    };
+    for formula in ["A1 @A1", "@A1:A3 A2:B2", "(A1 @A1) B1"] {
+        let node = parser.parse(formula, context);
+        let t = move_formula(
+            &node,
+            &MoveContext {
+                source_sheet_name: "Sheet1",
+                row: 1,
+                column: 1,
+                area,
+                target_sheet_name: "Sheet1",
+                row_delta: 0,
+                column_delta: 0,
+            },
+        );
+        assert_eq!(t, formula);
+    }
+}

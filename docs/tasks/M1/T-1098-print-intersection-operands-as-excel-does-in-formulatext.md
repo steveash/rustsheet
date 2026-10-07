@@ -29,3 +29,4 @@ Excel prints both as written (probes/intersection-at-formulatext H2, H4; referen
 parentheses, so `=A1 @A1` and `=@A1:A3 A2:B2` print as written. A left operand that ends in `@`
 (`(A1 @A1) B1`) keeps its parentheses so the text re-parses to the same tree; round-trip cases added in
 test_intersection.rs. probes/intersection-at-formulatext H2, H4 now pass (eval baseline shrinks by 2).
+Follow-ups: T-1102 (printing `@` under `:` and `#`), T-1103 (probe SINGLE as an operand). `to_string_moved` now prints the same text.
