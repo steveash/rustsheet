@@ -33,4 +33,4 @@ an array criterion.
 - Implementing fixes.
 
 ## Outcome
-Fixture `fixtures/ifs-legacy-range-criteria.xlsx` (legacy formulas, XlsxWriter, app name replaced; oracle-filled) and probe `probes/ifs-array-criteria-edges` (19 cells, oracle-filled). Findings in criteria.md "*IF(S) lift array criteria". Engine mismatch (legacy range criterion is intersected by every *IF(S), we do it only for COUNTIF): T-0278. The probe case already passes. Unprobed: `NA()`/scalar first argument with an array criterion (excel-graph rejects the workbook). Eval delta: fixtures +14 known failures (new coverage), probes unchanged.
+Fixture `fixtures/ifs-legacy-range-criteria.xlsx` (legacy formulas, XlsxWriter, app name replaced; oracle-filled) and probe `probes/ifs-array-criteria-edges` (19 cells, oracle-filled). Findings in criteria.md "*IF(S) lift array criteria". Engine mismatch (legacy range criterion is intersected by every *IF(S); we do it only for COUNTIF and AVERAGEIF): T-0278. The probe case already passes. Unprobed: `NA()`/scalar first argument with an array criterion (excel-graph rejects the workbook). Eval delta: fixtures +14 known failures (new coverage), probes unchanged.

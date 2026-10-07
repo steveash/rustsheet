@@ -17,7 +17,7 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   (implicit intersection proves the formulas stayed legacy). The names are written without the
   `_xlfn.` prefix Excel itself would store for these Excel 2010 functions; Excel resolved them anyway.
 - `ifs-legacy-range-criteria.xlsx` (T-0263): legacy formulas (XlsxWriter `write_formula`, app name replaced).
-  A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1 = "a", D2 = "c"; F:N in rows 1 and 2 hold COUNTIF,
-  COUNTIFS, SUMIF (two forms), SUMIFS, AVERAGEIF, AVERAGEIFS, `_xlfn.MAXIFS` and `_xlfn.MINIFS` with the
-  range criterion `D1:D2`, and control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
+  A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1 = "a", D2 = "c"; rows 1 and 2 hold, with the range criterion
+  `D1:D2`: F COUNTIF, G COUNTIFS, H SUMIF, I SUMIF (one-cell sum range B1), J SUMIFS, K AVERAGEIF,
+  L AVERAGEIFS, M `_xlfn.MAXIFS`, N `_xlfn.MINIFS`; control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
   legacy). The `_xlfn.` prefix is required for MAXIFS/MINIFS (`#NAME?` without it).

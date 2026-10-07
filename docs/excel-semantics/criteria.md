@@ -130,7 +130,7 @@ formula intersects a multi-cell range criterion for every *IF(S) function, not o
 D2 = "c" over A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, a formula in row 1 uses D1 and in row 2 uses D2:
 COUNTIF/COUNTIFS 3 and 1, SUMIF/SUMIFS 7 and 1 (SUMIF with a one-cell sum range B1 too), AVERAGEIF(S) 2.333.. and 1,
 MAXIFS 3 and 1, MINIFS 1 and 1. MAXIFS/MINIFS need the `_xlfn.` prefix in file XML (`#NAME?` without it, unlike
-WORKDAY.INTL). Not implemented for all but COUNTIF: T-0278.
+WORKDAY.INTL). COUNTIF and AVERAGEIF already intersect; the rest return `#VALUE!` (T-0278).
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion counts like an empty-string criterion that matches nothing: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
