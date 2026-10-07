@@ -166,6 +166,7 @@ impl Model {
     }
 
     /// What a LET variable or a LAMBDA parameter is bound to; a reference stays a reference.
+    /// Shared by LET, LAMBDA and the evaluator (model.rs).
     pub(crate) fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node {
             Node::NamedVariableKind { name, id: Some(id) } => {

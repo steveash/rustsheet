@@ -113,6 +113,7 @@ C	probes/intersection-at-formulatext.case.json	4
 C	probes/intersection-at-operands.case.json	5
 C	probes/intersection-function-operands.case.json	14
 C	probes/intersection-operands.case.json	16
+C	probes/intersection-single-operands.case.json	4
 C	probes/intersection-whitespace.case.json	8
 C	probes/is-functions-array-lift.case.json	79
 C	probes/isref-function-results.case.json	6
@@ -133,7 +134,7 @@ C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
-C	probes/min-max-reference-forms.case.json	16
+C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-huge-quotient.case.json	83
 C	probes/mod-quotient-boundary.case.json	19

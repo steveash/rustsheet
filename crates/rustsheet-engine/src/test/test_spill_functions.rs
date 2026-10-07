@@ -289,7 +289,7 @@ fn filter_no_match_with_if_empty() {
     assert_eq!(model._get_text("C1"), "No results");
 }
 
-// Excel: probes/filter-if-empty-array (docs/excel-semantics/arrays.md).
+// Excel: upstream MAX_MIN.xlsx H39/H40/H43; probes/min-max-reference-forms E1-E3.
 #[test]
 fn filter_if_empty_is_the_value_itself() {
     // It is not an array holding the value: a text reaches the outer function
@@ -310,6 +310,7 @@ fn filter_if_empty_is_the_value_itself() {
     assert_eq!(model._get_text("C4"), "#DIV/0!");
 }
 
+// Excel: probes/filter-if-empty-array (docs/excel-semantics/arrays.md).
 #[test]
 fn filter_no_match_with_array_if_empty_spills_it() {
     let mut model = new_empty_model();

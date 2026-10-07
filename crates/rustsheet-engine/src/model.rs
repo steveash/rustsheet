@@ -371,6 +371,11 @@ impl Model {
                         left: reference,
                         right: reference,
                     },
+                    // Answered here so the name is not looked up a second time.
+                    Ok(Some(ParsedDefinedName::RangeReference(range))) => CalcResult::Range {
+                        left: range.left,
+                        right: range.right,
+                    },
                     _ => self.evaluate_node_in_context(node, cell),
                 }
             }

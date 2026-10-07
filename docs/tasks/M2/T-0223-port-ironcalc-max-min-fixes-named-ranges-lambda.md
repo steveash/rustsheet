@@ -46,8 +46,9 @@ FILTER hunk of `d7b09c33`, port `29ee0601` (and its `test_spill_functions.rs` ca
 - Added MAX_MIN.xlsx (55 cells) and MIN_MAX_extras.xlsx (21 cells) to calc_tests; all pass.
   Upstream's unit tests are ported (test_fn_max_min.rs, plus additions to test_fn_lambda.rs and
   test_spill_functions.rs).
-- New probe probes/min-max-reference-forms (16 cells, excel-graph) confirms `@`, LET/LAMBDA and
-  FILTER's scalar if_empty. 15 cells pass; D8 (`SUM(LET(x,K1,x))`) is new coverage, baselined and
+- New probe probes/min-max-reference-forms (25 cells, excel-graph) confirms `@`, LET/LAMBDA (also in
+  SUBTOTAL, SUMIF, COUNTA, ROWS and `x:A3`) and FILTER's scalar or one-cell if_empty. 24 cells pass; D8 (`SUM(LET(x,K1,x))`) is new coverage, baselined and
   filed as T-1106. The finding is recorded in docs/excel-semantics/references.md.
-- Eval delta: ironcalc-calc +76 cells passing (2 new cases), probes +15 passing / +1 new-coverage
+- Eval delta: ironcalc-calc +76 cells passing (2 new cases), probes +24 passing / +1 new-coverage
   failure, 0 regressions. T-0963's code landed here; it now waits on T-0965 for its workbook.
+  Follow-ups: T-1106 (LET result stays a reference), T-0410 (defined-name lookup by key, perf).

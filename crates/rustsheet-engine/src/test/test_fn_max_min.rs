@@ -154,6 +154,7 @@ fn implicit_intersection_is_a_reference() {
     model._set("A1", "5");
     model._set("A2", "text");
     model._set("A3", "7");
+    // `@` intersects by row: C1 sees A1 (5), C2 sees A2, whose text is ignored.
     model._set("C1", "=MAX(@A1:A3)");
     model._set("C2", "=MAX(@A1:A3)");
     model.evaluate();

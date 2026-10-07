@@ -65,14 +65,50 @@
    "E3": {
     "t": "n",
     "v": 1.0
+   },
+   "F1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "F2": {
+    "t": "n",
+    "v": 0.0
+   },
+   "F3": {
+    "t": "n",
+    "v": 0.0
+   },
+   "F4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "G1": {
+    "t": "n",
+    "v": 7.0
+   },
+   "G2": {
+    "t": "n",
+    "v": 12.0
+   },
+   "G3": {
+    "t": "n",
+    "v": 1.0
+   },
+   "G4": {
+    "t": "n",
+    "v": 7.0
+   },
+   "G5": {
+    "t": "n",
+    "v": 1.0
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "00c112428de50dfe596ee4677af85dcc9d727cae4c4c130e2d71d07f00df1278",
+  "input_sha256": "a0a0c1a54b6f11115d26fdf1bd09fc8801192995358b5a2b9c0e5a9a2c8beae8",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T14:17:59+00:00",
+  "produced_at": "2026-10-07T14:48:11+00:00",
   "version": null
  }
 }
