@@ -18,7 +18,7 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
   * Spill references (`A1#`) are written in their file form `_xlfn.ANCHORARRAY(A1)`; Excel for the
     web rejects a literal `A1#` in `<f>` (T-0042). The engine reads the spec text, so cases keep `A1#`.
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
-    list plus `_NOT_IN_ENGINE_LIST`), never from XlsxWriter's `use_future_functions`, which skips a
+    list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
 """
 
@@ -147,7 +147,7 @@ def prefix_bound_names(formula: str) -> str:
 # docs/excel-semantics/xlsx-storage.md, "Newer functions need `_xlfn.`"). Its regexes also leave `.`
 # unescaped (`NORM.DIST` matched `NORMSDIST`, T-0040), which the builder's tokenizer cannot do.
 # tools/tests/test_spec2xlsx_prefixes.py checks this table still covers XlsxWriter's list.
-_NOT_IN_ENGINE_LIST = {
+_BUILDER_ONLY_PREFIXES = {
     name: f"_xlfn.{name}"
     for name in (
         "ANCHORARRAY",
@@ -167,7 +167,7 @@ _NOT_IN_ENGINE_LIST = {
 
 def prefix_future_functions(formula: str) -> str:
     """Writes every call of a newer function with its stored prefix (`TRIMRANGE(` → `_xlfn.TRIMRANGE(`)."""
-    prefixes = {**future_function_prefixes(), **_NOT_IN_ENGINE_LIST}
+    prefixes = {**future_function_prefixes(), **_BUILDER_ONLY_PREFIXES}
     out: list[str] = []
     for is_name, word, i in _words(formula):
         if is_name and formula[i + len(word) : i + len(word) + 1] == "(" and word.upper() in prefixes:

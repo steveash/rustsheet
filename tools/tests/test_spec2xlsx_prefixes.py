@@ -87,7 +87,9 @@ def test_every_call_is_prefixed_whatever_shares_the_formula() -> None:
 
 def test_builder_table_covers_xlsxwriters_list() -> None:
     # With use_future_functions off the builder is the only source of prefixes, so it must know
-    # every name XlsxWriter would have prefixed, under the same stored form.
+    # every name XlsxWriter would have prefixed, under the same stored form. This scrapes XlsxWriter's
+    # private source (3.2.9, locked in tools/uv.lock): a failure after a version bump may only mean
+    # the scrape needs updating, or that XlsxWriter learned a name the table should add.
     source = inspect.getsource(xlsxwriter.worksheet.Worksheet._prepare_formula)
     theirs = {
         name.replace("\\.", "."): stored
