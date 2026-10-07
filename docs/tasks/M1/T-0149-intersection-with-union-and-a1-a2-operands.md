@@ -47,4 +47,5 @@ Why `(A1)(A2)` is `#REF!` is not known; find a rule that fits, and probe more fo
   passed on main.
 - Eval: probes known failures 240 -> 237 (H10, H11, H13 of intersection-operands), 0 regressions;
   the 21 new probe cells all pass.
-- Follow-up: T-1092 (a called LET name: `#REF!` for a reference, odd values otherwise).
+- Follow-ups: T-1092 (a called LET name: `#REF!` for a reference, odd values otherwise), T-1094
+  (probe unprobed callee forms and FORMULATEXT of `@` operands).
