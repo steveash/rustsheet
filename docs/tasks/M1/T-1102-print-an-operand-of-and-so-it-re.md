@@ -3,7 +3,7 @@ id: T-1102
 title: "Print an @ operand of : and # so it re-parses to the same tree"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
