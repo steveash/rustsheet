@@ -3,7 +3,7 @@ id: T-0154
 title: "Text-to-number of tiny magnitudes: #VALUE! below ~1E-309, 0 up to the normal range, 0e309"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
