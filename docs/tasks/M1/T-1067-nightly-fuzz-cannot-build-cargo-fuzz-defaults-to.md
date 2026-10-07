@@ -3,7 +3,7 @@ id: T-1067
 title: "Nightly fuzz cannot build: cargo-fuzz defaults to the musl target"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
