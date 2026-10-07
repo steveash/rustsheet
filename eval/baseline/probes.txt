@@ -192,6 +192,7 @@ C	probes/paren-call-lambda-cell.case.json	2
 C	probes/paren-call-operands.case.json	10
 C	probes/paren-negative-text.case.json	5
 C	probes/paren-negative-variants.case.json	32
+C	probes/paren-number-text-forms.case.json	14
 C	probes/precision-and-rounding.case.json	18
 C	probes/range-right-operand-errors.case.json	4
 C	probes/rank-absent-number.case.json	15
@@ -433,6 +434,9 @@ F	probes/multiarea-subtotal.case.json	Sheet1!H1
 F	probes/multiarea-subtotal.case.json	Sheet1!H2
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
+F	probes/paren-number-text-forms.case.json	Sheet1!A1
+F	probes/paren-number-text-forms.case.json	Sheet1!A2
+F	probes/paren-number-text-forms.case.json	Sheet1!A6
 F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
