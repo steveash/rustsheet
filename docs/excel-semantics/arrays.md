@@ -136,7 +136,7 @@ Probe cells: probes/error-precedence-text Calc!C1-C30 (oracle: excel-graph, 2026
 An error argument also beats a later range failure (start < 1, negative length, text not found): `REPLACE("abc",0,NA(),"x")`,
 `REPLACE("abc",1,-1,NA())`, `REPLACE("abc",0,1,NA())`, `MID("abc",0,NA())`, `MID("abc",NA(),-1)` and
 `FIND("z","abc",NA())` are all `#N/A`, while the same calls with a number in place of the error are `#VALUE!`
-(`MID("abc",1,-1)`, `FIND("z","abc")`). So every argument is coerced before any range check
+(`MID("abc",1,-1)`, `FIND("z","abc")`). So REPLACE, MID and FIND coerce every argument before any range check (not probed for other text functions)
 (probes/error-arg-vs-range-check A1-A10, oracle: excel-graph, T-1056); `replace_element` matches since T-1056.
 Implemented in: `array_of_errors` and `MISSING` (crates/rustsheet-engine/src/arithmetic.rs),
 `TextArg::Error` (crates/rustsheet-engine/src/functions/text/text_arg.rs), `fn_date`, `fn_weekday`.
