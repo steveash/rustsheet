@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SPEC-0004 probe row 16 (T-1061): @ on a union, and the FORMULATEXT of a union stored as a legacy (non-array) formula. Sheet1 A1=1,B2=5.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "H1": "=(A1,B2)",
+        "H2": "=FORMULATEXT(H1)",
+        "H3": "=@(A1,B2)",
+        "H4": "=FORMULATEXT(H3)",
+        "H5": "=SUM((A1,B2))",
+        "H6": "=FORMULATEXT(H5)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11,
+        "A2": 12
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 21,
+        "A2": 22
+      }
+    }
+  ],
+  "expected": {}
+}

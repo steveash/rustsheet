@@ -70,9 +70,9 @@ agrees; a different oracle answer changes the implementation task, not this desi
 |---|---|---|
 | 1 | `=SUM((A1,B2))`, `=SUM((A1,B2),C3)`, `=SUM((A1:B2,B2))` (overlap counted twice?) | 6, 13, 11 |
 | 2 | `=COUNT((A1,B2))`, `COUNTA`, `AVERAGE`, `MIN`, `MAX`, `PRODUCT` of `(A1,B2)` | 2, 2, 3, 1, 5, 5 |
-| 3 | `=LARGE((A1,B2,C3),2)`, `SMALL`, `RANK(5,(A1,B2,C3))`, `MEDIAN`, `STDEV.S` | per function |
-| 4 | `=FREQUENCY((A1,B2),3)`, `=SUMPRODUCT((A1,B2))`, `=SUMIF((A1,B2),">0")`, `=COUNTIF((A1,B2),">0")` | `#VALUE!` where Excel refuses |
-| 5 | `=COUNTBLANK((A1,B2))`, `=ROWS((A1,B2))`, `=COLUMNS((A1,B2))` | per function |
+| 3 | `=LARGE((A1,B2,C3),2)`, `SMALL`, `RANK(5,(A1,B2,C3))`, `MEDIAN`, `STDEV.S` | 5, 5, 2, 5, 3.055 (all accepted; T-1061) |
+| 4 | `=FREQUENCY((A1,B2),3)`, `=SUMPRODUCT((A1,B2))`, `=SUMIF((A1,B2),">0")`, `=COUNTIF((A1,B2),">0")` | FREQUENCY sum 2; the other three `#VALUE!` (T-1061) |
+| 5 | `=COUNTBLANK((A1,B2))`, `=ROWS((A1,B2))`, `=COLUMNS((A1,B2))` | `#VALUE!`, `#REF!`, `#REF!` (T-1061) |
 | 6 | `=AREAS((A1,B2))`, `=AREAS(((A1,B2),C3))`, `=AREAS((A1:B2,A1:B2))` | 2, 3, 2 |
 | 7 | `=INDEX((A1:B2,C3:D4),1,1,2)`, `INDEX(…,1,1,3)`, `INDEX(…,1,1,0)`, `INDEX(…,1,1)` (area_num omitted) | C3's 7, `#REF!`, `#VALUE!`, A1's 1 |
 | 8 | `=SUM(INDEX((A1:B2,C3:D4),0,0,2))` | 16 |
@@ -80,15 +80,15 @@ agrees; a different oracle answer changes the implementation task, not this desi
 | 10 | `=IF(TRUE,(A1,B2)) A1`, `=SUM(IF(TRUE,(A1,B2)))`, `=SUM(CHOOSE(2,A1,(A1,B2)))` | 1, 6, 6 |
 | 11 | `=SUM((A1:A3,B1:B3) A1:B2)` (an intersection leaving two areas, as an argument) | sum of A1:B2 |
 | 12 | `=SUM((Data!A1,Other!A1))`, `=AREAS((Data!A1,Other!A1))` | `#VALUE!` (cross-sheet) |
-| 13 | `=SUM(Sheet1:Sheet2!A1,(A1,B2))` and `=SUM((Sheet1:Sheet2!A1,B2))` (3-D operand in a union) | 3-D arg works, union with 3-D `#VALUE!` |
+| 13 | `=SUM(Sheet1:Sheet2!A1,(A1,B2))` and `=SUM((Sheet1:Sheet2!A1,B2))` (3-D operand in a union) | 107; `#NAME?` (not `#VALUE!`; T-1061) |
 | 14 | `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `=SUM(Print_Area)`, `=AREAS(Print_Area)` | 6, 2 |
 | 14b | a name `xs` = `Data!$A$1,Other!$A$1` (cross-sheet body): `=SUM(xs)`, `=xs`, `=ISREF(xs)` | the error row 12 records |
 | 15 | `=ISERROR((A1,B2))`, `=IFERROR((A1,B2),"x")`, `=ISNUMBER((A1,B2))` | TRUE, "x", FALSE |
 | 16 | `=@(A1,B2)` and the FORMULATEXT of a union in a pre-dynamic-array workbook | `#VALUE!`, no `@` |
 | 17 | `=SUBTOTAL(9,(A1,B2))`, `=SUBTOTAL(109,(A1,B2))` | 6, 6 |
-| 18 | `=CELL("address",(A1,B2))`, `=OFFSET((A1,B2),1,1)`, `=ROW((A1,B2))` | `#VALUE!` where Excel refuses |
-| 19 | `=A1,B2` as a cell formula | refused (syntax error) |
-| 20 | `=AREAS(1)`, `=AREAS("A1")`, `=AREAS(Data1:Data3!A1)` | to record (the engine says 1, 1, `#VALUE!`) |
+| 18 | `=CELL("address",(A1,B2))`, `=OFFSET((A1,B2),1,1)`, `=ROW((A1,B2))` | "$A$1, $B$2", `#VALUE!`, `#REF!` (T-1061) |
+| 19 | `=A1,B2` as a cell formula | the file loads and gives `#VALUE!`; typed entry unprobed (T-1061) |
+| 20 | `=AREAS(1)`, `=AREAS("A1")`, `=AREAS(Data1:Data3!A1)` | `#VALUE!` for the 3-D span; `AREAS(1)`, `AREAS("A1")` make Excel for the web refuse the workbook (T-1061) |
 
 ## Design
 

@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SPEC-0004 probe row 13: 3-D operand in union (T-1061). Sheet1 A1=1,B2=5,C3=7,D4=9.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "H1": "=SUM(Sheet1:Sheet2!A1,(A1,B2))",
+        "H2": "=SUM((Sheet1:Sheet2!A1,B2))"
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A1": 100,
+        "B2": 200
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11,
+        "A2": 12
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 21,
+        "A2": 22
+      }
+    }
+  ],
+  "expected": {}
+}
