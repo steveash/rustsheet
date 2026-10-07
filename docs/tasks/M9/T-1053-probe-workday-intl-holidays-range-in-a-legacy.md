@@ -3,7 +3,7 @@ id: T-1053
 title: "Probe WORKDAY.INTL holidays range in a legacy formula (xlsx-authored, expect whole range)"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -24,7 +24,7 @@ Follow-up of T-0983 (review). WORKDAY.INTL's `holidays` is a whole-range argumen
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Escalated by a sonnet run without implementing (design question). `tools/src/rustsheet_tools/spec2xlsx.py` writes every
 formula with `write_dynamic_array_formula`, and decision 0007 says legacy behavior is tested only through Excel-authored
 workbooks, so a typed probe cannot produce a legacy `=WORKDAY.INTL(C2,6,1,D2:D5)`. Options to weigh: (a) a spec marker
