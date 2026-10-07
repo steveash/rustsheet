@@ -10,10 +10,12 @@ C	probes/aggregate-array-args.case.json	48
 C	probes/aggregate-grid.case.json	217
 C	probes/aggregate-overflow.case.json	178
 C	probes/aggregate-range-args.case.json	38
+C	probes/anchorarray-at-operand.case.json	2
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/at-operand-formulatext.case.json	14
+C	probes/at-paren-operands.case.json	6
 C	probes/average-value-args.case.json	32
 C	probes/catalog/availability-01.case.json	12
 C	probes/catalog/availability-02.case.json	12
@@ -188,6 +190,7 @@ C	probes/paren-call-operands.case.json	10
 C	probes/paren-negative-text.case.json	5
 C	probes/paren-negative-variants.case.json	32
 C	probes/precision-and-rounding.case.json	18
+C	probes/range-right-operand-errors.case.json	4
 C	probes/rank-absent-number.case.json	15
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-args.case.json	54
@@ -245,6 +248,10 @@ C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
+F	probes/anchorarray-at-operand.case.json	Sheet1!D20
+F	probes/at-paren-operands.case.json	Sheet1!E30
+F	probes/at-paren-operands.case.json	Sheet1!E31
+F	probes/at-paren-operands.case.json	Sheet1!E32
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
@@ -419,6 +426,8 @@ F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
+F	probes/range-right-operand-errors.case.json	Sheet1!D11
+F	probes/range-right-operand-errors.case.json	Sheet1!D14
 F	probes/rich-errors-args.case.json	Sheet1!A20
 F	probes/rich-errors-args.case.json	Sheet1!A21
 F	probes/rich-errors-args.case.json	Sheet1!A24
