@@ -3,7 +3,7 @@ id: T-0251
 title: "VLOOKUP/HLOOKUP: an INDEX(...) index is a reference (text or error cell is #REF!, not found is #N/A)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
