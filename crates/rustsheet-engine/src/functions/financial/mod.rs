@@ -874,19 +874,19 @@ impl Model {
 
     // XNPV(rate, values, dates)
     pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
+        // All three are required (docs/excel-semantics/syntax.md, "Minimum argument counts").
+        let [rate, values, dates] = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let rate = match self.get_number(&args[0], cell) {
+        };
+        let rate = match self.get_number(rate, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let values = match self.get_array_of_numbers_xpnv(&args[1], &cell, Error::NUM) {
+        let values = match self.get_array_of_numbers_xpnv(values, &cell, Error::NUM) {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let dates = match self.get_array_of_numbers_xpnv(&args[2], &cell, Error::VALUE) {
+        let dates = match self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE) {
             Ok(s) => s,
             Err(error) => return error,
         };
