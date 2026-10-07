@@ -3,7 +3,7 @@ id: T-1125
 title: "Probe error precedence of over-255-character IFS criteria"
 milestone: M1
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1121 returns #VALUE! for the long criterion before any other check (`lift_crit
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/ifs-long-criterion-precedence` (7 cells, excel-graph). Only `#REF!` in a criteria range outranks the long criterion; the engine's early check in `lift_criteria` was wrong there, so it moved after range resolution (`build_criteria` sites in if_ifs.rs). All 7 cells and the 25 of T-1121 pass.
