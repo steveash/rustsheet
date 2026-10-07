@@ -335,3 +335,16 @@ fn text_blank_value_with_empty_format_is_empty() {
     assert_eq!(model._get_text("A2"), "");
     assert_eq!(model._get_text("A3"), "TRUE");
 }
+
+/// An error argument beats a start or length range failure (probes/error-arg-vs-range-check, T-1056).
+#[test]
+fn replace_error_argument_beats_range_check() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPLACE(\"abc\",0,NA(),\"x\")");
+    model._set("A2", "=REPLACE(\"abc\",1,-1,NA())");
+    model._set("A3", "=REPLACE(\"abc\",0,1,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
