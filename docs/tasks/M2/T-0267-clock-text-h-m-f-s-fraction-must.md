@@ -3,7 +3,7 @@ id: T-0267
 title: "Clock-text H:M.f:S fraction must trim only ASCII spaces"
 milestone: M2
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
