@@ -1,5 +1,5 @@
 use crate::expressions::parser::tests::utils::new_parser;
-use crate::expressions::parser::{NamedVariable, Node};
+use crate::expressions::parser::{ChainLeft, NamedVariable, Node};
 use crate::expressions::token;
 use crate::expressions::types::CellReferenceRC;
 use crate::functions::Function;
@@ -23,9 +23,9 @@ fn sqrt_aa_bb() -> Node {
         kind: Function::Sqrt,
         args: vec![Node::OpSumKind {
             kind: token::OpSum::Add,
-            left: Box::new(Node::OpProductKind {
+            left: ChainLeft::new(Node::OpProductKind {
                 kind: token::OpProduct::Times,
-                left: Box::new(Node::NamedVariableKind {
+                left: ChainLeft::new(Node::NamedVariableKind {
                     name: "a".to_string(),
                     id: None,
                 }),
@@ -36,7 +36,7 @@ fn sqrt_aa_bb() -> Node {
             }),
             right: Box::new(Node::OpProductKind {
                 kind: token::OpProduct::Times,
-                left: Box::new(Node::NamedVariableKind {
+                left: ChainLeft::new(Node::NamedVariableKind {
                     name: "b".to_string(),
                     id: None,
                 }),
@@ -173,7 +173,7 @@ fn lambda_in_let() {
                 }],
                 body: Box::new(Node::OpProductKind {
                     kind: token::OpProduct::Times,
-                    left: Box::new(Node::NamedVariableKind {
+                    left: ChainLeft::new(Node::NamedVariableKind {
                         name: "a".to_string(),
                         id: None,
                     }),
@@ -247,7 +247,7 @@ fn lambda_optional_called_with_one_arg() {
             ],
             body: Box::new(Node::OpSumKind {
                 kind: token::OpSum::Add,
-                left: Box::new(Node::NamedVariableKind {
+                left: ChainLeft::new(Node::NamedVariableKind {
                     name: "a".to_string(),
                     id: None,
                 }),
@@ -280,7 +280,7 @@ fn lambda_r_and_c_parameters() {
         ],
         body: Box::new(Node::OpSumKind {
             kind: token::OpSum::Add,
-            left: Box::new(Node::NamedVariableKind {
+            left: ChainLeft::new(Node::NamedVariableKind {
                 name: "r".to_string(),
                 id: None,
             }),

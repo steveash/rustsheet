@@ -58,7 +58,8 @@ its published limit (UNVERIFIED: no oracle probe yet).
 Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) are not bounded by
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
-Excel's 8,192 character limit fits at most 4,096 of them (`=1+1+...`), so no formula Excel accepts
+Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
+characters; arithmetic from the published limit, not yet oracle-probed), so no formula Excel accepts
 is refused for its chains. Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed

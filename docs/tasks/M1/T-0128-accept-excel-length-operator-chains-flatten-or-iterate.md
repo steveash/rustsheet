@@ -29,8 +29,11 @@ T-0931 caps formula tree depth at `MAX_FORMULA_DEPTH` (256; `expressions/parser/
 Operator chains keep their binary tree shape, and every consumer walks a chain in a loop down its
 left operands (`expressions/parser/chain.rs`: `left_chain`, `for_each_chain_operand_mut`): the
 evaluator (`Model::evaluate_operator_chain`), both printers, static analysis, units, sheet and
-name renames, LET/LAMBDA id assignment and `_xlpm.` export. `Node::clone` copies chains in a loop
-too (the derived one overflowed a 1 MiB optimized stack at ~4,600 links). The parser builds all
+name renames, LET/LAMBDA id assignment and `_xlpm.` export. A value operator's left operand is a
+`ChainLeft` whose `Clone` copies the chain below it in a loop, so `Node` keeps its derived `Clone`
+(the plain derived one overflowed a 1 MiB optimized stack at ~4,600 links). Chains of up to 16
+links are walked without allocating (`ChainLinks::Short`), so the evaluator's hot path for short
+formulas allocates nothing new. The parser builds all
 five precedence levels with one loop (`Parser::parse_chain`, replacing five copies), and a chain
 link adds no depth; instead a formula holds at most `MAX_VALUE_OPERATORS` (4,096) value operators,
 which no 8,192-character Excel formula exceeds (tree drop still recurses: ~13,000 links fit on

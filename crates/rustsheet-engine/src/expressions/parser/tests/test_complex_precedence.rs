@@ -31,7 +31,7 @@ fn precedence_ast() {
             );
             assert!(
                 matches!(
-                    left.as_ref(),
+                    &**left,
                     Node::CompareKind {
                         kind: OpCompare::Equal,
                         ..

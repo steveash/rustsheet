@@ -63,6 +63,7 @@ mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
 
+pub use chain::ChainLeft;
 use chain::ChainLevel;
 pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
 pub(crate) use depth::is_limit_error;
@@ -155,9 +156,8 @@ pub struct CompletionContext {
     pub replace_from: usize,
 }
 
-/// A parsed formula. `Clone` copies operator chains in a loop (see `chain.rs`); the derived
-/// `PartialEq` and `Debug`, used by tests only, recurse down them.
-#[derive(PartialEq, Debug)]
+/// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
+#[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     BooleanKind(bool),
     NumberKind(f64),
@@ -229,21 +229,21 @@ pub enum Node {
         written: usize,
     },
     OpConcatenateKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpSumKind {
         kind: token::OpSum,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpProductKind {
         kind: token::OpProduct,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpPowerKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     FunctionKind {
@@ -281,7 +281,7 @@ pub enum Node {
     },
     CompareKind {
         kind: OpCompare,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     UnaryKind {

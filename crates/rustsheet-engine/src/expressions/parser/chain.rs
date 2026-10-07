@@ -14,18 +14,50 @@
 //! their trees stay bounded by the depth limit.
 
 use super::super::token::{OpCompare, OpProduct, OpSum, TokenType};
+use std::ops::{Deref, DerefMut};
+
 use super::{Node, Parser};
 
-impl Clone for Node {
-    /// Copies a chain of value operators in a loop down its left operands, so a long chain
-    /// costs no stack (a derived `Clone` overflowed a 1 MiB stack at about 4,600 links).
+/// Chains up to this many links are walked without allocating (the common case:
+/// `=A1*2+B1`); longer ones collect their links once.
+const SHORT_CHAIN: usize = 16;
+
+/// The left operand of a value operator node. It derefs to the boxed node; its
+/// `Clone` copies the chain below it in a loop (a derived `Clone` overflowed a
+/// 1 MiB optimized stack at about 4,600 links), so `Node` keeps a derived
+/// `Clone`.
+#[derive(PartialEq, Debug)]
+pub struct ChainLeft(Box<Node>);
+
+impl ChainLeft {
+    /// `node` as the left operand of a value operator.
+    pub fn new(node: Node) -> ChainLeft {
+        ChainLeft(Box::new(node))
+    }
+}
+
+impl Deref for ChainLeft {
+    type Target = Node;
+    fn deref(&self) -> &Node {
+        &self.0
+    }
+}
+
+impl DerefMut for ChainLeft {
+    fn deref_mut(&mut self) -> &mut Node {
+        &mut self.0
+    }
+}
+
+impl Clone for ChainLeft {
     fn clone(&self) -> Self {
         let (links, first) = left_chain(self);
-        let mut node = first.clone_operand();
+        // `first` is not a value operator, so its derived `Clone` does not walk this chain.
+        let mut node = first.clone();
         for link in links {
             node = relink(link, node);
         }
-        node
+        ChainLeft::new(node)
     }
 }
 
@@ -60,15 +92,55 @@ fn value_operands_mut(node: &mut Node) -> Result<(&mut Node, &mut Node), &mut No
 ///
 /// Folding the links in order over the first operand's result gives the same
 /// result, in the same evaluation order, as recursing into each left operand.
-pub(crate) fn left_chain(node: &Node) -> (Vec<&Node>, &Node) {
-    let mut links = Vec::new();
+pub(crate) fn left_chain(node: &Node) -> (ChainLinks<'_>, &Node) {
+    let mut length = 0;
     let mut first = node;
     while let Some((left, _)) = value_operands(first) {
-        links.push(first);
+        length += 1;
         first = left;
     }
-    links.reverse();
+    let links = if length <= SHORT_CHAIN {
+        ChainLinks::Short {
+            top: node,
+            remaining: length,
+        }
+    } else {
+        let mut links = Vec::with_capacity(length);
+        let mut link = node;
+        while let Some((left, _)) = value_operands(link) {
+            links.push(link);
+            link = left;
+        }
+        ChainLinks::Long(links)
+    };
     (links, first)
+}
+
+/// The links of a chain, innermost first (see [`left_chain`]).
+pub(crate) enum ChainLinks<'a> {
+    /// A short chain: each link is found by walking down from `top` again,
+    /// which costs at most [`SHORT_CHAIN`] steps and no allocation.
+    Short { top: &'a Node, remaining: usize },
+    /// A long chain's links, outermost first (popped from the end).
+    Long(Vec<&'a Node>),
+}
+
+impl<'a> Iterator for ChainLinks<'a> {
+    type Item = &'a Node;
+
+    fn next(&mut self) -> Option<&'a Node> {
+        match self {
+            ChainLinks::Short { top, remaining } => {
+                *remaining = remaining.checked_sub(1)?;
+                let mut link = *top;
+                for _ in 0..*remaining {
+                    link = value_operands(link)?.0;
+                }
+                Some(link)
+            }
+            ChainLinks::Long(links) => links.pop(),
+        }
+    }
 }
 
 /// Calls `f` on every operand of the chain rooted at `node` (see
@@ -92,7 +164,7 @@ pub(crate) fn for_each_chain_operand_mut(node: &mut Node, mut f: impl FnMut(&mut
 
 /// A copy of value operator `link` over `left` in place of its left operand.
 fn relink(link: &Node, left: Node) -> Node {
-    let left = Box::new(left);
+    let left = ChainLeft::new(left);
     match link {
         Node::OpSumKind { kind, right, .. } => Node::OpSumKind {
             kind: kind.clone(),
@@ -118,175 +190,7 @@ fn relink(link: &Node, left: Node) -> Node {
             right: right.clone(),
         },
         // `left_chain` links are value operators only.
-        other => other.clone_operand(),
-    }
-}
-
-impl Node {
-    /// A copy of `self`, which is not a value operator (those are copied by `relink`). Its
-    /// subexpressions are copied with `Node::clone`.
-    fn clone_operand(&self) -> Node {
-        match self {
-            Node::BooleanKind(value) => Node::BooleanKind(*value),
-            Node::NumberKind(value) => Node::NumberKind(*value),
-            Node::StringKind(value) => Node::StringKind(value.clone()),
-            Node::ReferenceKind {
-                sheet_name,
-                sheet_index,
-                absolute_row,
-                absolute_column,
-                row,
-                column,
-            } => Node::ReferenceKind {
-                sheet_name: sheet_name.clone(),
-                sheet_index: *sheet_index,
-                absolute_row: *absolute_row,
-                absolute_column: *absolute_column,
-                row: *row,
-                column: *column,
-            },
-            Node::RangeKind {
-                sheet_name,
-                sheet_index,
-                absolute_row1,
-                absolute_column1,
-                row1,
-                column1,
-                absolute_row2,
-                absolute_column2,
-                row2,
-                column2,
-            } => Node::RangeKind {
-                sheet_name: sheet_name.clone(),
-                sheet_index: *sheet_index,
-                absolute_row1: *absolute_row1,
-                absolute_column1: *absolute_column1,
-                row1: *row1,
-                column1: *column1,
-                absolute_row2: *absolute_row2,
-                absolute_column2: *absolute_column2,
-                row2: *row2,
-                column2: *column2,
-            },
-            Node::SheetSpanKind {
-                first_sheet,
-                last_sheet,
-                first_index,
-                last_index,
-                reference,
-            } => Node::SheetSpanKind {
-                first_sheet: first_sheet.clone(),
-                last_sheet: last_sheet.clone(),
-                first_index: *first_index,
-                last_index: *last_index,
-                reference: reference.clone(),
-            },
-            Node::WrongReferenceKind {
-                sheet_name,
-                absolute_row,
-                absolute_column,
-                row,
-                column,
-            } => Node::WrongReferenceKind {
-                sheet_name: sheet_name.clone(),
-                absolute_row: *absolute_row,
-                absolute_column: *absolute_column,
-                row: *row,
-                column: *column,
-            },
-            Node::WrongRangeKind {
-                sheet_name,
-                absolute_row1,
-                absolute_column1,
-                row1,
-                column1,
-                absolute_row2,
-                absolute_column2,
-                row2,
-                column2,
-            } => Node::WrongRangeKind {
-                sheet_name: sheet_name.clone(),
-                absolute_row1: *absolute_row1,
-                absolute_column1: *absolute_column1,
-                row1: *row1,
-                column1: *column1,
-                absolute_row2: *absolute_row2,
-                absolute_column2: *absolute_column2,
-                row2: *row2,
-                column2: *column2,
-            },
-            Node::OpRangeKind { left, right } => Node::OpRangeKind {
-                left: left.clone(),
-                right: right.clone(),
-            },
-            Node::OpIntersectKind { left, right } => Node::OpIntersectKind {
-                left: left.clone(),
-                right: right.clone(),
-            },
-            Node::OpUnionKind {
-                left,
-                right,
-                written,
-            } => Node::OpUnionKind {
-                left: left.clone(),
-                right: right.clone(),
-                written: *written,
-            },
-            Node::FunctionKind { kind, args } => Node::FunctionKind {
-                kind: kind.clone(),
-                args: args.clone(),
-            },
-            Node::LambdaDefKind { parameters, body } => Node::LambdaDefKind {
-                parameters: parameters.clone(),
-                body: body.clone(),
-            },
-            Node::LambdaCallKind { lambda, args } => Node::LambdaCallKind {
-                lambda: lambda.clone(),
-                args: args.clone(),
-            },
-            Node::NamedFunctionKind { id, name, args } => Node::NamedFunctionKind {
-                id: *id,
-                name: name.clone(),
-                args: args.clone(),
-            },
-            Node::ArrayKind(rows) => Node::ArrayKind(rows.clone()),
-            Node::DefinedNameKind(name) => Node::DefinedNameKind(name.clone()),
-            Node::TableNameKind(name) => Node::TableNameKind(name.clone()),
-            Node::NamedVariableKind { name, id } => Node::NamedVariableKind {
-                name: name.clone(),
-                id: *id,
-            },
-            Node::ImplicitIntersection { automatic, child } => Node::ImplicitIntersection {
-                automatic: *automatic,
-                child: child.clone(),
-            },
-            Node::SpillRangeOperator { child } => Node::SpillRangeOperator {
-                child: child.clone(),
-            },
-            Node::UnaryKind { kind, right } => Node::UnaryKind {
-                kind: kind.clone(),
-                right: right.clone(),
-            },
-            Node::ErrorKind(error) => Node::ErrorKind(error.clone()),
-            Node::ParseErrorKind {
-                formula,
-                message,
-                position,
-                expecting,
-            } => Node::ParseErrorKind {
-                formula: formula.clone(),
-                message: message.clone(),
-                position: *position,
-                expecting: expecting.clone(),
-            },
-            Node::EmptyArgKind => Node::EmptyArgKind,
-            // A value operator: `left_chain` never hands one over; copy it whole.
-            Node::OpSumKind { .. }
-            | Node::OpProductKind { .. }
-            | Node::OpPowerKind { .. }
-            | Node::OpConcatenateKind { .. }
-            | Node::CompareKind { .. } => self.clone(),
-        }
+        other => other.clone(),
     }
 }
 
@@ -329,7 +233,7 @@ impl ChainOperator {
 
     /// The node `left <operator> right`.
     fn node(self, left: Node, right: Node) -> Node {
-        let (left, right) = (Box::new(left), Box::new(right));
+        let (left, right) = (ChainLeft::new(left), Box::new(right));
         match self {
             ChainOperator::Compare(kind) => Node::CompareKind { kind, left, right },
             ChainOperator::Concat => Node::OpConcatenateKind { left, right },
