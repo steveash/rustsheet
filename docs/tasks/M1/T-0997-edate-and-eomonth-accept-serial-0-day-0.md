@@ -3,7 +3,7 @@ id: T-0997
 title: "EDATE and EOMONTH accept serial 0 (day 0 of January 1900)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
