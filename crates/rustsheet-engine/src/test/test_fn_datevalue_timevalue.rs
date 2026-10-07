@@ -123,7 +123,7 @@ fn coercion_of_minutes_fraction_clock_text() {
 #[test]
 fn value_and_coercion_of_clock_text() {
     // (text, VALUE(text), 0+text)
-    let cases: [(&str, Option<f64>, Option<f64>); 15] = [
+    let cases: [(&str, Option<f64>, Option<f64>); 18] = [
         ("10:00", Some(10.0 / 24.0), Some(10.0 / 24.0)),
         (
             "25:00",
@@ -139,6 +139,9 @@ fn value_and_coercion_of_clock_text() {
         ("10:00 ", Some(10.0 / 24.0), Some(10.0 / 24.0)),
         ("10:00\u{a0}", None, None),
         ("10:00\u{a0}AM", None, None),
+        ("10:11.\u{a0}5", None, None),
+        ("10:11.\u{3000}5", None, None),
+        ("10:11.5\u{a0}", None, None),
         ("10:00\t", None, None),
         ("1/2/2020\u{a0}", None, None),
         ("6 P.", Some(0.75), Some(0.75)),
