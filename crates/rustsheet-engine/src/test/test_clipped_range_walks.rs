@@ -132,3 +132,16 @@ fn used_area_end_over_approximates_and_follows_writes() {
         .unwrap();
     assert_eq!(end(&model), (2, 5));
 }
+
+// CONCAT walks a range through the shared clipped walk, so a whole column or the whole sheet
+// costs the used cells and joins the same text as the used-area range (T-0261).
+#[test]
+fn concat_over_whole_sheet_ranges() {
+    same_as_used_area("CONCAT", "A:A", "A1:A3");
+    same_as_used_area("CONCAT", "1:1", "A1:C1");
+    same_as_used_area("CONCAT", "A:XFD", "A1:C3");
+    let mut model = sample();
+    model._set("Sheet2!E1", "=CONCAT(Sheet1!A:XFD)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), "21345x");
+}

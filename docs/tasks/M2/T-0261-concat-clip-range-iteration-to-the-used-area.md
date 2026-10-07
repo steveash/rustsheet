@@ -3,7 +3,7 @@ id: T-0261
 title: "CONCAT: clip range iteration to the used area"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Performance review of T-0243: CONCAT iterates every cell of a range (`right.row 
 
 ## Out of scope
 -
+
+## Outcome
+`fn_concat` already walked ranges through `for_each_cell_in_range`, which clips whole-row and whole-column arguments to the used area, so no code change was needed. Added `concat_over_whole_sheet_ranges` to pin it: whole column, whole row and whole sheet join the same text as the used-area range, within the time bound. No eval delta.
