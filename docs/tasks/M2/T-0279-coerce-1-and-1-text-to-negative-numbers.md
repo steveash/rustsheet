@@ -3,7 +3,7 @@ id: T-0279
 title: "Coerce ( 1 ), ($1) and (1%) text to negative numbers"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
