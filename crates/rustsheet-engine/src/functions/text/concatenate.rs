@@ -226,6 +226,7 @@ impl Model {
                     // FALSE,D:D)` is #CALC! (over 32,767) and `TEXTJOIN(",",FALSE,10:10)` has 16,383
                     // delimiters (probes/whole-column-empty-walkers F1, F8; text.md).
                     let pad = !ignore_empty;
+                    // `max` covers a clip that ends before the range starts (nothing walked).
                     let skipped_columns =
                         i64::from(full_column2) - i64::from(column2.max(column1 - 1));
                     let skipped_rows = i64::from(full_row2) - i64::from(row2.max(row1 - 1));

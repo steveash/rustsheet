@@ -11,8 +11,9 @@ depends_on: []
 ---
 
 ## Goal
-TEXTJOIN with ignore_empty FALSE, XIRR and XNPV give Excel's result for a whole-column or
-whole-row argument, whatever the sheet's used area is.
+TEXTJOIN with ignore_empty FALSE and XNPV give Excel's result for a whole-column or whole-row
+argument, whatever the sheet's used area is; XIRR's behavior is probed and recorded (its fix is
+T-1124).
 
 ## Context
 Found by the Excel-fidelity reviewer on T-0049. These walkers clip a whole-row/column range to the
@@ -26,11 +27,11 @@ Excel's cannot. Excel over a whole column: TEXTJOIN would exceed 32,767 characte
 
 ## Acceptance criteria
 - [x] Oracle-backed probe cases for `TEXTJOIN(",",FALSE,D:D)`, `XIRR(A:A,B:B)` and `XNPV(0.1,A:A,B:B)` on a small sheet; quirks recorded in `docs/excel-semantics/`.
-- [ ] The engine matches them, independent of rows that exist without cells.
-- [ ] `make check` green; reviewers approve.
+- [x] The engine matches TEXTJOIN and XNPV, independent of rows that exist without cells (XIRR: T-1124).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
--
+The XIRR engine fix (T-1124: needs a probe of mismatched empty pairs first).
 
 ## Outcome
 Probe probes/whole-column-empty-walkers (excel-graph): `TEXTJOIN(",",FALSE,D:D)` is #CALC!, whole-row
