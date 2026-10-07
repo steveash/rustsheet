@@ -33,4 +33,4 @@ references.md "Multi-area references in functions". Differences from SPEC-0004's
 (FREQUENCY accepted), 5 (`#VALUE!`/`#REF!`/`#REF!`), 13 (`#NAME?`), 18 (CELL accepts, ROW `#REF!`), 19 (file loads),
 20. No change for row 12. Row 16: `@(A1,B2)` is `#VALUE!`, no `@` in a dynamic-array formula; the legacy half cannot be probed with spec2xlsx (T-1074). AREAS(1)/AREAS("A1") refusals came from scratch one-formula workbooks. Follow-ups, all
 depending on T-1062: T-1068 (rows 3-4), T-1069 (5), T-1070 (13), T-1071 (17), T-1072 (18), T-1073 (19-20), T-1074 (16, harness).
-Eval: probes known failures 195 -> 235 (the harness counts 40 new-coverage failures, engine rollout pending; no regressions).
+Eval: probes: +40 new-coverage failures (191 -> 231 after merging main, engine rollout pending; no regressions).
