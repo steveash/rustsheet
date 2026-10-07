@@ -73,14 +73,20 @@ Operator chains (`=A1+A2+...`, `&`, `* /`, `^` and comparisons, mixed or not) ar
 depth (T-0128): every consumer walks a chain in a loop, so its links add no level. Instead a formula
 may hold at most `MAX_VALUE_OPERATORS` (4,096) value operators ("Formula has too many operators");
 Excel's published 8,192 character limit fits at most 4,096 of them (`n` terms take `2n-1`
-characters), so no formula within the published limit is refused for its chains. Whether Excel
-accepts longer chains on load (and so whether RustSheet refuses one Excel accepts) is not probed
-(follow-up T-1091). Probe `operator-chain-limit`
+characters), so no formula within the published limit is refused for its chains. Excel for the web
+refuses a longer formula on load (T-1091, below), so RustSheet's cap never refuses a chain Excel
+accepts. Probe `operator-chain-limit`
 (T-1060, excel-graph): `=1+1+...` of 8,191, 8,192 and 8,193 formula characters (4,095 to 4,096
 terms; `&` chains 4,093 to 4,094; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
 so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
 Excel for the web did not refuse the 8,193 character formula when loaded from a file, so the
 published limit was not enforced on file load (typing and desktop Excel were not probed).
+Probes `operator-chain-long-8194`, `-8195`, `-8196`, `-8200`, `-16384` and `-32767` (T-1091,
+excel-graph): each a lone `=1+1+...` formula of that many characters, and every one makes the
+workbook unloadable (createSession 501 `FileCorruptTryRepair`, so there is no Excel value). The
+on-load limit is therefore 8,193 characters (8,193 loads, 8,194 does not), one past the published
+8,192; at most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so no DEVIATION change
+is needed.
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed

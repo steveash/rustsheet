@@ -3,7 +3,7 @@ id: T-1091
 title: "Probe Excel on-load acceptance of formulas over 8,192 characters (chains past 4,096 operators)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,9 @@ published 8,192 limit is not enforced on load. RustSheet refuses chains past `MA
 
 ## Out of scope
 - Changing `MAX_VALUE_OPERATORS` in this task.
+
+## Outcome
+Probed 8,194, 8,195, 8,196, 8,200, 16,384 and 32,767 character `=1+1+...` formulas, one workbook
+each: Excel for the web refuses all of them on load (`FileCorruptTryRepair`), so the on-load limit
+is 8,193 characters (T-1060 showed 8,193 loads). That fits within `MAX_VALUE_OPERATORS` (4,096), so
+no change or follow-up is needed. Recorded in docs/excel-semantics/syntax.md. Eval delta: none.
