@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SUMSQ per-square subnormal flush versus flushing only the total, and SUMPRODUCT with three arrays (T-1057). C cells tell a true 0 from a kept subnormal.",
+  "tags": [
+    "M1",
+    "numbers",
+    "subnormal",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUMSQ(1E-155,1E-150)",
+        "B1": "=(SUMSQ(1E-155,1E-150))&\"\"",
+        "C1": "=(SUMSQ(1E-155,1E-150))=0",
+        "A2": "=SUMSQ(1E-155,1E-150)*1E+300",
+        "B2": "=(SUMSQ(1E-155,1E-150)*1E+300)&\"\"",
+        "C2": "=(SUMSQ(1E-155,1E-150)*1E+300)=0",
+        "A3": "=SUMSQ(1E-155*ROW(1:200))*1E+300",
+        "B3": "=(SUMSQ(1E-155*ROW(1:200))*1E+300)&\"\"",
+        "C3": "=(SUMSQ(1E-155*ROW(1:200))*1E+300)=0",
+        "A4": "=SUMPRODUCT({1E-200,1},{1E-110,1},{1E+300,1})",
+        "B4": "=(SUMPRODUCT({1E-200,1},{1E-110,1},{1E+300,1}))&\"\"",
+        "C4": "=(SUMPRODUCT({1E-200,1},{1E-110,1},{1E+300,1}))=0",
+        "A5": "=SUMPRODUCT({1E-200},{1E-110},{1E+300})",
+        "B5": "=(SUMPRODUCT({1E-200},{1E-110},{1E+300}))&\"\"",
+        "C5": "=(SUMPRODUCT({1E-200},{1E-110},{1E+300}))=0",
+        "A6": "=SUMPRODUCT({1E-200},{1E+300},{1E-110})",
+        "B6": "=(SUMPRODUCT({1E-200},{1E+300},{1E-110}))&\"\"",
+        "C6": "=(SUMPRODUCT({1E-200},{1E+300},{1E-110}))=0",
+        "A7": "=SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300",
+        "B7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300)&\"\"",
+        "C7": "=(SUMPRODUCT({1E-200,1},{1E-110,1E-300},{1,1})*1E+300)=0"
+      }
+    }
+  ],
+  "expected": {}
+}

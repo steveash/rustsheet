@@ -250,9 +250,9 @@ impl Model {
         }
 
         let mut result = 0.0;
-        if let Err(error) =
-            self.for_each_value_skip_empty(args, cell, |value| result += value * value)
-        {
+        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+            result += flush_subnormal(value * value);
+        }) {
             return error;
         }
         CalcResult::finite_number_or_num(flush_subnormal(result), cell)

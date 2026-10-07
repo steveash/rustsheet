@@ -240,7 +240,7 @@ The probe leaves out
 literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
 file (`unsupportedWorkbook`) when they appeared.
 Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
-flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ, AVERAGE, AVERAGEA, AVERAGEIF(S) and
+flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and
 SUBTOTAL 1/101 (final result; T-0987, T-1007), and of the postfix `%` (T-0988).
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
 reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
@@ -248,6 +248,11 @@ product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flu
 flushing only the total would give 1E-10), and `SUMPRODUCT({1E-200,1},{1E-110,1E-300})` is exactly 1E-300 (the 1E-310 term is
 dropped; keeping it prints 1.0000000001E-300). AVERAGEA, AVERAGEIF, AVERAGEIFS, SUBTOTAL(1,..), SUBTOTAL(101,..) and
 AGGREGATE(1,..) flush a subnormal mean to a true 0 like AVERAGE (`C` companions TRUE) while SUM of the same operands keeps it.
+SUMSQ flushes each square too (T-1057, VERIFIED, probes/subnormal-sumsq-sumproduct-edges, excel-graph 2026-10-07):
+`SUMSQ(1E-155,1E-150)` is exactly 1E-300 (the 1E-310 square is dropped; keeping it prints 1.0000000001E-300), and
+`SUMSQ(1E-155*ROW(1:200))*1E+300` is 0.0002685685, the sum of k^2 for k = 15..200 only (squares below 2.2E-308, k <= 14, are dropped).
+SUMPRODUCT with three arrays flushes after each factor, left to right: `SUMPRODUCT({1E-200},{1E-110},{1E+300})` is 0 while
+`SUMPRODUCT({1E-200},{1E+300},{1E-110})` is 1E-10.
 Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so
 `EXP(-708)=0` is FALSE (C4-C6, C60-C62, C65 pass), while a literal below the smallest normal is flushed to 0 when it is
 read (`=1E-308=0` is TRUE). Still failing: the engine flushes the result of `+` and `-` (`3E-308-2.5E-308`, C69, C73-C75;

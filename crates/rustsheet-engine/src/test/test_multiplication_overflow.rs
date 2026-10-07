@@ -142,6 +142,26 @@ fn subnormal_flush_per_step_and_in_every_average() {
     }
 }
 
+/// SUMSQ flushes each square, not only the total, and SUMPRODUCT flushes left to right across three
+/// arrays (probes/subnormal-sumsq-sumproduct-edges, T-1057).
+#[test]
+fn sumsq_flushes_each_square_and_sumproduct_each_factor() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=SUMSQ(1E-155,1E-150)*1E+300", "1"),
+        ("A2", "=SUMSQ(1E-155*ROW(1:200))*1E+300*1E+6", "268.5685"),
+        ("A3", "=SUMPRODUCT({1E-200},{1E-110},{1E+300})", "0"),
+        ("A4", "=SUMPRODUCT({1E-200},{1E+300},{1E-110})*1E+10", "1"),
+    ];
+    for (cell, formula, _) in cases {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    for (cell, _, expected) in cases {
+        assert_eq!(model._get_text(cell), *expected, "{cell}");
+    }
+}
+
 /// SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9 overflow to `#NUM!` (ERROR.TYPE 6),
 /// also with a later 0 or 1E-200 factor (probes/aggregate-overflow B11:B26, T-0990).
 #[test]
