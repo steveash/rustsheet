@@ -14,4 +14,5 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   and the app name replaced. C2 = 42429, D2:D5 = 42422, 42423, 42437, 42499; B2 and B7 =
   `=WORKDAY.INTL(C2,6,1,D2:D5)`, B3 = `=WORKDAY.INTL(C2,6,"0000011",D2:D5)`, B5 =
   `=WORKDAY(C2,6,D2:D5)`, B6 = `=NETWORKDAYS.INTL(C2,C2+14,1,D2:D5)`, and control E3 = `=D2:D5*1`
-  (implicit intersection proves the formulas stayed legacy).
+  (implicit intersection proves the formulas stayed legacy). The names are written without the
+  `_xlfn.` prefix Excel itself would store for these Excel 2010 functions; Excel resolved them anyway.
