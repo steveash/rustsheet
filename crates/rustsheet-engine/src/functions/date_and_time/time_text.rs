@@ -229,7 +229,7 @@ fn parse_clock_text(text: &str) -> Option<f64> {
                 Some((fraction, tail)) => (fraction, Some(tail)),
                 None => (rest, None),
             };
-            let fraction = fraction.trim();
+            let fraction = trim_spaces(fraction);
             if !fraction.bytes().all(|b| b.is_ascii_digit()) {
                 return None;
             }
