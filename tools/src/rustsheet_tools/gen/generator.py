@@ -68,6 +68,23 @@ def col_letter(index: int) -> str:
     return chr(ord("A") + index)
 
 
+def load_excel_functions(path: Path) -> dict[str, dict[str, str]]:
+    """Rows of eval/catalog/excel-functions.tsv (Microsoft's en-US function list, T-0040) by name.
+
+    `#` lines are provenance comments; the first other line is the header. Duplicate names raise,
+    so the source list itself cannot list a function twice."""
+    lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln and not ln.startswith("#")]
+    header = lines[0].split("\t")
+    rows: dict[str, dict[str, str]] = {}
+    for ln in lines[1:]:
+        row = dict(zip(header, ln.split("\t"), strict=True))
+        if row["name"] in rows:
+            msg = f"{row['name']} is listed twice in {path.name}"
+            raise ValueError(msg)
+        rows[row["name"]] = row
+    return rows
+
+
 @dataclass
 class Catalog:
     operators: list[dict[str, Any]]
@@ -79,12 +96,17 @@ class Catalog:
         return Catalog(operators=data.get("operators", []), functions=data.get("functions", []))
 
     def scoped(self, milestone: str) -> Catalog:
+        """Operators and generator-ready functions in scope at `milestone`.
+
+        Catalog entries without `params` only name a function (T-0040: every Excel function is
+        listed, most without a signature yet), so the generator cannot call them."""
         limit = MILESTONES.index(milestone)
 
         def ok(entry: dict[str, Any]) -> bool:
             return MILESTONES.index(entry.get("milestone", "M10")) <= limit
 
-        return Catalog([o for o in self.operators if ok(o)], [f for f in self.functions if ok(f)])
+        functions = [f for f in self.functions if "params" in f and ok(f)]
+        return Catalog([o for o in self.operators if ok(o)], functions)
 
 
 @dataclass
