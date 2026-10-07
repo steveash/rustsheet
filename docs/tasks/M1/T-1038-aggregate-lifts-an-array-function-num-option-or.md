@@ -32,4 +32,4 @@ pins the shapes, broadcasting, k in the reference form, per-element form and inv
 Eval: probes known failures 210 -> 207 (aggregate-args Misc!A36:A38 fixed), new case 48/48,
 no regressions. Review follow-up: the shared value arguments are evaluated once per call, and
 the visit cap counts every reference and computed array (unit test
-`lifted_calls_over_large_arrays_hit_the_visit_cap`). Follow-up: T-1055 (range function_num/options).
+`lifted_calls_over_large_arrays_hit_the_visit_cap`). Follow-up: T-1058 (range function_num/options).

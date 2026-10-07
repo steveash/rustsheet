@@ -1,5 +1,5 @@
 ---
-id: T-1055
+id: T-1058
 title: "AGGREGATE with a multi-cell range function_num or options"
 milestone: M1
 lane: functions-math
