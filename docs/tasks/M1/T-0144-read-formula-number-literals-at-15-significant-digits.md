@@ -3,7 +3,7 @@ id: T-0144
 title: "Read formula number literals at 15 significant digits (probes/literal-digits)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
