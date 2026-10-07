@@ -3,7 +3,7 @@ id: T-0191
 title: "Score accepted-deviation cells apart from bit-exact (decision 0036)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
