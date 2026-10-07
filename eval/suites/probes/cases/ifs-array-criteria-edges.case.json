@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0263: *IF(S) array-criteria edges: SUMIFS shape mismatch with an array criterion, a range criterion with a blank cell (D3), error or non-range first argument. Sheet1 A1:B6 data, D1:D2 criteria, D3 blank, E1:E3 = #N/A,5,7.",
+  "tags": [
+    "M2",
+    "criteria",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "a",
+        "B1": 1,
+        "A2": "b",
+        "B2": 2,
+        "A3": "a",
+        "B3": 3,
+        "A4": "c",
+        "B4": 1,
+        "A5": "b",
+        "B5": 2,
+        "A6": "a",
+        "B6": 3,
+        "D1": "a",
+        "D2": "c",
+        "E1": "=NA()",
+        "E2": 5,
+        "E3": 7,
+        "H1": "=SUMIFS(B1:B5,A1:A6,{\"a\",\"b\"})",
+        "H2": "=ROWS(SUMIFS(B1:B5,A1:A6,{\"a\",\"b\"}))",
+        "H3": "=COLUMNS(SUMIFS(B1:B5,A1:A6,{\"a\",\"b\"}))",
+        "H4": "=COUNTIFS(B1:B5,{\"a\",\"b\"},A1:A6,{\"a\",\"b\"})",
+        "H5": "=ROWS(COUNTIFS(B1:B5,1,A1:A6,{\"a\",\"b\"}))",
+        "H6": "=INDEX(COUNTIF(A1:A6,D1:D3),3,1)",
+        "H7": "=ROWS(COUNTIF(A1:A6,D1:D3))",
+        "H8": "=INDEX(COUNTIFS(A1:A6,D1:D3),3,1)",
+        "H9": "=INDEX(SUMIFS(B1:B6,A1:A6,D1:D3),3,1)",
+        "H10": "=INDEX(SUMIF(A1:A6,D1:D3,B1:B6),3,1)",
+        "H11": "=INDEX(AVERAGEIFS(B1:B6,A1:A6,D1:D3),3,1)",
+        "H12": "=INDEX(MAXIFS(B1:B6,A1:A6,D1:D3),3,1)",
+        "H13": "=INDEX(SUMIFS(E1:E3,A1:A3,{\"a\",\"b\"}),1,1)",
+        "H14": "=INDEX(SUMIFS(E1:E3,A1:A3,{\"a\",\"b\"}),1,2)",
+        "H15": "=INDEX(SUMIF(A1:A3,{\"a\",\"b\"},E1:E3),1,1)",
+        "H16": "=INDEX(SUMIF(A1:A3,{\"a\",\"b\"},E1:E3),1,2)",
+        "H17": "=INDEX(AVERAGEIFS(E1:E3,A1:A3,{\"a\",\"b\"}),1,1)",
+        "H18": "=INDEX(MAXIFS(E1:E3,A1:A3,{\"a\",\"b\"}),1,1)",
+        "H19": "=INDEX(COUNTIFS(E1:E3,{\"a\",\"b\"}),1,1)"
+      }
+    }
+  ],
+  "expected": {}
+}

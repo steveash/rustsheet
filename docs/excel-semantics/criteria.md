@@ -125,6 +125,20 @@ EverythingTests!F296 `COUNTIF(G7:K7,E8:G8)` is 2 (Excel-cached).
 Evidence: probes/ifs-array-criteria H1-H39 (oracle: excel-graph, 2026-10-06, T-0207);
 poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
 Status: VERIFIED
+Legacy formulas (fixtures/ifs-legacy-range-criteria.xlsx, oracle excel-graph 2026-10-07, T-0263): a legacy
+formula intersects a multi-cell range criterion for every *IF(S) function, not only COUNTIF: with D1 = "a",
+D2 = "c" over A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, a formula in row 1 uses D1 and in row 2 uses D2:
+COUNTIF/COUNTIFS 3 and 1, SUMIF/SUMIFS 7 and 1 (SUMIF with a one-cell sum range B1 too), AVERAGEIF(S) 2.333.. and 1,
+MAXIFS 3 and 1, MINIFS 1 and 1. MAXIFS/MINIFS need the `_xlfn.` prefix in file XML (`#NAME?` without it, unlike
+WORKDAY.INTL). Not implemented for all but COUNTIF: T-0278.
+Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
+differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
+a blank cell in a range criterion counts like an empty-string criterion that matches nothing: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
+give 0 and AVERAGEIFS `#DIV/0!` at that position (the range keeps its 3x1 shape); an error in the sum/average/max range
+is `#N/A` only at the criteria positions whose rows select it (`SUMIFS(E1:E3,A1:A3,{"a","b"})` with E1 = #N/A is #N/A, 5);
+`COUNTIFS(E1:E3,{"a","b"})` ignores it (0). A `NA()`/non-range first argument with an array criterion
+(`COUNTIF(NA(),{"a","b"})`, `COUNTIFS(NA(),{"a"})`, `SUMIFS(NA(),...)`) made excel-graph reject the whole workbook as unsupported,
+so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
 (used cells of the walked range x criteria count x distinct consecutive criteria elements) is
 `#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`

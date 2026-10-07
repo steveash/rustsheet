@@ -16,3 +16,8 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   `=WORKDAY(C2,6,D2:D5)`, B6 = `=NETWORKDAYS.INTL(C2,C2+14,1,D2:D5)`, and control E3 = `=D2:D5*1`
   (implicit intersection proves the formulas stayed legacy). The names are written without the
   `_xlfn.` prefix Excel itself would store for these Excel 2010 functions; Excel resolved them anyway.
+- `ifs-legacy-range-criteria.xlsx` (T-0263): legacy formulas (XlsxWriter `write_formula`, app name replaced).
+  A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1 = "a", D2 = "c"; F:N in rows 1 and 2 hold COUNTIF,
+  COUNTIFS, SUMIF (two forms), SUMIFS, AVERAGEIF, AVERAGEIFS, `_xlfn.MAXIFS` and `_xlfn.MINIFS` with the
+  range criterion `D1:D2`, and control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
+  legacy). The `_xlfn.` prefix is required for MAXIFS/MINIFS (`#NAME?` without it).
