@@ -242,13 +242,6 @@ C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
-F	probes/at-operand-formulatext.case.json	Sheet1!H12
-F	probes/at-operand-formulatext.case.json	Sheet1!H13
-F	probes/at-operand-formulatext.case.json	Sheet1!H17
-F	probes/at-operand-formulatext.case.json	Sheet1!J1
-F	probes/at-operand-formulatext.case.json	Sheet1!J30
-F	probes/at-operand-formulatext.case.json	Sheet1!K1
-F	probes/at-operand-formulatext.case.json	Sheet1!K30
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
