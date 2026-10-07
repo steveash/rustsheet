@@ -3,7 +3,7 @@ id: T-1119
 title: "MOD lifts over array arguments (engine gives #N/IMPL!)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
