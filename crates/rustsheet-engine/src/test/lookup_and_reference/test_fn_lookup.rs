@@ -224,3 +224,25 @@ fn test_lookup_2d_lookup_vector_and_short_result() {
     assert_eq!(model._get_text("H9"), "#N/A");
     assert_eq!(model._get_text("H10"), "30");
 }
+
+#[test]
+fn test_lookup_single_cell_vector_and_scalar_result() {
+    // probes/lookup-vector-edges A1-A8 (excel-graph): a single cell is a one-element lookup_vector
+    // and a scalar result_vector is a one-element array, which is not read past.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "3");
+    model._set("C1", "2");
+    model._set("D1", "10");
+    model._set("B1", "=LOOKUP(2,C1,D1)");
+    model._set("B2", "=LOOKUP(3,C1,D1)");
+    model._set("B3", "=LOOKUP(0,C1,D1)");
+    model._set("B4", "=LOOKUP(2,A1:A2,5)");
+    model._set("B5", "=LOOKUP(99,A1:A2,5)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "10");
+    assert_eq!(model._get_text("B2"), "10");
+    assert_eq!(model._get_text("B3"), "#N/A");
+    assert_eq!(model._get_text("B4"), "5");
+    assert_eq!(model._get_text("B5"), "#N/A");
+}

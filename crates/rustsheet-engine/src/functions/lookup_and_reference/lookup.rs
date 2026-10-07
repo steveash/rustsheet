@@ -1,13 +1,11 @@
 //! LOOKUP (both forms) and the vector reading MATCH shares with it.
 
+use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::{
-    calc_result::CalcResult,
-    expressions::parser::{ArrayNode, Node},
-    expressions::token::Error,
-    model::Model,
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 use super::lookup_index;
@@ -140,10 +138,12 @@ impl Model {
         let value = match self.evaluate_node_with_reference(node, cell) {
             // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
             // (probes/lookup-vector-edges A5-A8).
-            CalcResult::Number(number) => CalcResult::Array(vec![vec![ArrayNode::Number(number)]]),
-            CalcResult::String(text) => CalcResult::Array(vec![vec![ArrayNode::String(text)]]),
-            CalcResult::Boolean(flag) => CalcResult::Array(vec![vec![ArrayNode::Boolean(flag)]]),
-            CalcResult::EmptyCell => CalcResult::Array(vec![vec![ArrayNode::Empty]]),
+            scalar @ (CalcResult::Number(_)
+            | CalcResult::String(_)
+            | CalcResult::Boolean(_)
+            | CalcResult::EmptyCell) => {
+                CalcResult::Array(vec![vec![calc_result_to_array_node(scalar)]])
+            }
             other => other,
         };
         let table = match Self::lookup_table(value, cell) {
