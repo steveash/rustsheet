@@ -345,7 +345,10 @@ Status: VERIFIED
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
 lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
 in crates/rustsheet-engine/src/number_format.rs; the tiny side (T-0154) in `parse_excel_number`
-only, so criteria, AVERAGE text, NUMBERVALUE and format conditions still read tiny text unchanged.
+only. That covers the evidenced paths (`cast_number`, VALUE, the lexer) and, without probes of
+their own yet, criteria operands, AVERAGEA text arguments, formatted-number text and NUMBERVALUE;
+`parse_finite_number` callers (TEXT format conditions, conditional formats) still read tiny text
+unchanged (T-1098 probes both groups).
 Tasks: T-0920, T-0140, T-0154, T-0174, T-1097
 
 ## MOD is an exact remainder

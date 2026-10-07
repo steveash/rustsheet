@@ -11,20 +11,24 @@ depends_on: []
 ---
 
 ## Goal
-Tiny number text (`"1e-310"`, `"1e-309"`, `"0e309"`) reads the way Excel reads it in the paths that use `parse_finite_number`: COUNTIF/SUMIF criteria operands, AVERAGE/COUNT text arguments, NUMBERVALUE, and TEXT format conditions.
+Tiny number text (`"1e-310"`, `"1e-309"`, `"0e309"`) reads the way Excel reads it in every
+text-to-number path, not only the three T-0154 had evidence for.
 
 ## Context
-T-0154 applied the small-magnitude rule (numbers.md "Number text of 1E+308 or more is not a
+T-0154 put the small-magnitude rule (numbers.md "Number text of 1E+308 or more is not a
 number": nonzero below 1E-309 is not a number, 1E-309 up to DBL_MIN reads as 0, zero mantissas
-need exponent less fraction digits within ±308) to `parse_excel_number` only (`cast_number`,
-VALUE, the lexer), where probes/text-number-tiny, text-number-tiny-zero, text-number-words and
-literal-number-tiny give evidence. `parse_finite_number` (crates/rustsheet-engine/src/number_format.rs)
-still reads `"1e-400"` as 0 and keeps subnormals; no probe covers its callers yet
-(TODO(T-1098) in crates/rustsheet-engine/src/test/test_nan_inf.rs).
+need exponent less fraction digits within ±308) in `parse_excel_number`
+(crates/rustsheet-engine/src/number_format.rs). Evidence covers `cast_number`, VALUE and the lexer
+(probes/text-number-tiny, text-number-tiny-zero, text-number-words, literal-number-tiny). Other
+callers now get the rule unprobed: criteria operands (`parse_criterion_number`, criteria.rs),
+AVERAGEA text arguments (count_and_average.rs), NUMBERVALUE (string_format.rs) and formatted
+number text (formatter/format.rs). `parse_finite_number` callers keep the old reading (`"1e-400"`
+is 0, subnormals kept): TEXT format conditions (formatter/lexer.rs) and conditional formats
+(conditional_formatting.rs); see TODO(T-1098) in crates/rustsheet-engine/src/test/test_nan_inf.rs.
 
 ## Acceptance criteria
-- [ ] A probe case (excel-graph) covers `COUNTIF(r,"1e-310")`, `COUNTIF(r,">1e-310")`, `COUNT("1e-310",1)`, `AVERAGE("1e-309",2)`-style text arguments, `NUMBERVALUE("1e-310")`, `NUMBERVALUE("0e309")` and a `TEXT` format condition `[>1e-310]`.
-- [ ] `parse_finite_number` follows the evidence (reusing the T-0154 helpers in number_format.rs, no copy); numbers.md records the result.
+- [ ] A probe case (excel-graph) covers `COUNTIF(r,"1e-310")`, `COUNTIF(r,">1e-310")`, `COUNTIF(r,"<1e-309")`, `AVERAGEA` with `"1e-310"` and `"1e-309"` text arguments, `NUMBERVALUE("1e-310")`, `NUMBERVALUE("0e309")`, `="1,000e-312"+0` and a `TEXT` format condition `[>1e-310]`.
+- [ ] Each path follows the evidence, reusing the T-0154 rule in number_format.rs (no copy); numbers.md records the result.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
