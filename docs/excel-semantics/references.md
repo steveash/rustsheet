@@ -102,7 +102,7 @@ the same result for `IF(TRUE,ref)` and `INDEX(ref,n)` as for the direct referenc
 range. A single text cell counts as 0 to MAXA, MINA and AVERAGEA (`MAXA(IF(TRUE,A1))` with A1 = "5" is 0) and a single TRUE as 1;
 PRODUCT skips a text or boolean cell from a reference, so with no number left it gives 0 (numbers.md, "over no numbers");
 LARGE of a one-cell reference with no number is `#NUM!`; RANK of a number absent
-from a one-cell reference is `#N/A` (the engine gives `#NUM!`, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
+from a one-cell reference is `#N/A` (statistics.md, T-1055). Over `A1:A5` = {"5", TRUE, 7, "9", 3}: MAXA 7, MINA 0,
 AVERAGEA 2.2, PRODUCT 21, LARGE(,1) 7, RANK(3,) 2.
 Tasks: T-0216, T-0235, T-0940, T-1003
 
