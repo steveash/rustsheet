@@ -12,6 +12,7 @@
 pub mod baseline;
 pub mod calibrate;
 pub mod case;
+pub mod catalog;
 pub mod cellref;
 pub mod engine;
 pub mod fetch;

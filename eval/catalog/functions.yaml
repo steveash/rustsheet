@@ -17,6 +17,8 @@
 # The catalog lists every Microsoft 365 Excel (en-US) function (T-0040). Names and minimum
 # argument counts come from eval/catalog/excel-functions.tsv, the vetted copy of Microsoft's
 # function list with its provenance; tools/tests/test_catalog.py keeps the two in step.
+# The eval harness reads names, milestones, scope and oracle from the generated eval/catalog/scope.json
+# (decision 0040): after editing, run `cd tools && uv run rustsheet-catalog-view`.
 # Entries with `params` are generator-ready signatures. The rest (after the M2 block, one line
 # each) carry only these fields until a milestone needs their signature:
 #   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
