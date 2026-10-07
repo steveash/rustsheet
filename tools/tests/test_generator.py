@@ -73,8 +73,8 @@ VALID_MODES = {"value", "aggregate", "aggregate_a", "range", "criteria", "any"}
 
 def test_catalog_schema() -> None:
     names = [f["name"] for f in catalog().functions]
-    assert len(names) == len(set(names))
-    for f in catalog().functions:
+    # Only entries with `params` are signatures; the rest just name a function (test_catalog.py).
+    for f in (f for f in catalog().functions if "params" in f):
         assert f["returns"] in {"number", "text", "bool", "any"}, f["name"]
         assert isinstance(f["prior"], int | float) and f["milestone"].startswith("M"), f["name"]
         for p in f["params"]:
@@ -92,6 +92,13 @@ def test_generator_emits_every_m2_function() -> None:
     for seed in range(60):
         seen.update(generate_case(cat, seed, milestone="M2", formulas=80)["tags"])
     assert not [n for n in M2_ADDED if n not in seen]
+
+
+def test_generator_calls_only_entries_with_signatures() -> None:
+    # T-0040 catalogs every Excel function, most without params: those must never be generated.
+    cat = catalog().scoped("M10")
+    assert cat.functions and all("params" in f for f in cat.functions)
+    assert generate_case(catalog(), 3, milestone="M10", formulas=40)["sheets"][1]["cells"]
 
 
 def test_paired_repeat_groups_stay_paired() -> None:
