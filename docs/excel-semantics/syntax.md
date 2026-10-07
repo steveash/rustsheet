@@ -79,15 +79,15 @@ accepts. Probe `operator-chain-limit`
 (T-1060, excel-graph): `=1+1+...` of 8,191, 8,192 and 8,193 formula characters (4,095 to 4,096
 terms; `&` chains 4,093 to 4,094; a trailing `11` term pads a formula to its exact length) all evaluate (4105, 4096, 4106), and
 so do `=LEN(1&1&...)` chains of the same lengths (4093, 4094, 4094); RustSheet matches all six.
-Excel for the web did not refuse the 8,193 character formula when loaded from a file, so the
-published limit was not enforced on file load (typing and desktop Excel were not probed).
+Excel for the web loaded the 8,193 character formula from a file; that is 8,192 stored characters
+without the leading `=`, exactly the published limit (typing and desktop Excel were not probed).
 Probes of lone `=1+1+...` formulas of 8,194, 8,195, 8,196, 8,200, 16,384 and 32,767 characters
 (T-1091, excel-graph; the cases were dropped after the run because Excel cannot load them, so no
 sidecar can ever exist): every one made the workbook unloadable (createSession 501
 `FileCorruptTryRepair`, so there is no Excel value). The spec-to-xlsx writer stores formulas without
 the leading `=`, so the file text was 8,192 characters for the longest formula that loaded (T-1060's
 8,193 including `=`) and 8,193 for the first refused: Excel enforces exactly the published 8,192
-characters on file load (the sentence above, "not enforced", is off by one for this reason). At
+characters on file load. At
 most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
 chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
 chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
