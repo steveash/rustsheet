@@ -50,11 +50,11 @@ tail. Put the kernel in `functions/statistical/special.rs` (one definition; T-09
       NumericMismatch verdict (`rustsheet-eval show` on both cases), at least 30 of the 55 lines
       leave `eval/baseline/ironcalc-calc.txt`, and no new lines appear in any baseline.
 - [ ] Every remaining line is <= 4 ulp and listed in the PR with expected/actual; they stay for the
-      oracle-sweep follow-up (T-0966, family 4).
+      oracle-sweep follow-up (T-1043).
 - [ ] `T.DIST.RT(1E6,10)` returns 1.230468749943611e-56 (unit test), no `1 - cdf` in the tail paths.
 - [ ] Findings (which formulation matched) added to the `docs/excel-semantics/statistics.md` entry.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 T.INV/T.INV.2T/CONFIDENCE.T (T-0967); the incomplete-beta kernel for BETA.DIST/F.DIST (T-0970);
-legacy TDIST/TTEST evidence (T-0966).
+legacy TDIST/TTEST evidence (T-1048).

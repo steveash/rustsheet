@@ -51,7 +51,7 @@ definition afterwards.
 - [ ] No BETA.DIST/F.DIST/F.DIST.RT/F.TEST line listed above remains NumericClose (`rustsheet-eval show`),
       at least 25 of the 45 lines leave `eval/baseline/ironcalc-calc.txt`, no new lines in any
       baseline (BINOM/NEGBINOM must not regress if they switch kernel).
-- [ ] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-0966
+- [ ] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1044
       incomplete-beta sweep (family 5).
 - [ ] F.DIST.RT and F.TEST use the directly computed upper tail (no `1.0 - cdf`).
 - [ ] Unit tests: I_x(a,1) = x^a, I_x(1,b) = 1-(1-x)^b, symmetry I_x(a,b) = 1 - I_{1-x}(b,a) at a few
@@ -60,4 +60,4 @@ definition afterwards.
 
 ## Out of scope
 BETA.INV/F.INV/F.INV.RT (T-0974); Student t (T-0969); discrete distributions (T-0927); legacy
-BETADIST/FDIST/FTEST evidence (T-0966).
+BETADIST/FDIST/FTEST evidence (T-1047).
