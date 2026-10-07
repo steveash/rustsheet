@@ -102,6 +102,7 @@ C	probes/error-stored-constants.case.json	24
 C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-mixed-magnitude.case.json	5
+C	probes/geomean-overflow-many-values.case.json	5
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-shape-mismatch.case.json	11
@@ -311,6 +312,7 @@ F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!H2
 F	probes/error-stored-constants.case.json	S!I1
 F	probes/error-stored-constants.case.json	S!I2
+F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
 F	probes/intersection-at-formulatext.case.json	Sheet1!H2
 F	probes/intersection-at-formulatext.case.json	Sheet1!H4
 F	probes/intersection-function-operands.case.json	Sheet1!H11
