@@ -3,7 +3,7 @@ id: T-1094
 title: "Probe callee forms and FORMULATEXT of @ intersection operands"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,9 @@ values); FORMULATEXT of the two `@` formulas in one case.
 
 ## Out of scope
 -
+
+## Outcome
+Probed with excel-graph (2026-10-07). `(OFFSET(A1,0,0))(2)` and `(INDIRECT("A1"))(2)` are `#REF!`;
+`(1+1)(2)` and `(SUM(A1))(2)` are refused at load (engine syntax error confirmed). FORMULATEXT prints
+`=A1 @A1` and `=@A1:A3 A2:B2` as written, so the engine's printing mismatches: filed T-1098. Cases:
+paren-call-callee-offset, -indirect, intersection-at-formulatext. references.md updated.
