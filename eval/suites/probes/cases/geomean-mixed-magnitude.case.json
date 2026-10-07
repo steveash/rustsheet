@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "GEOMEAN of mixed-magnitude finite positives: the log-sum stays finite where a naive product would overflow or underflow (T-1032).",
+  "description": "GEOMEAN of mixed-magnitude finite positives: inputs whose plain product leaves the normal range (T-1032).",
   "tags": [
     "M1",
     "statistical",
