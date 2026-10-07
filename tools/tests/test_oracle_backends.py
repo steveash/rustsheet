@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 import requests
 
-from rustsheet_tools.oracle.backends import GRAPH, GraphBackend, OracleError
+from rustsheet_tools.oracle.backends import GRAPH, GraphBackend, LibreOfficeBackend, OracleError
 from rustsheet_tools.spec2xlsx import build_xlsx
 
 VARS = ("TENANT_ID", "CLIENT_ID", "CLIENT_SECRET", "DRIVE_ID", "USER", "SITE", "MSAL_CACHE_B64")
@@ -95,9 +95,11 @@ class FakeGraph:
         self.closed = False
         self.saves = saves
 
-    def __call__(self, method: str, url: str, **_: Any) -> Any:
+    def __call__(self, method: str, url: str, **kw: Any) -> Any:
         tail = url.rsplit("/items/1", 1)[-1] or "<item>"
         self.calls.append(f"{method} {tail}")
+        if kw.get("json") and "values" in kw["json"]:
+            self.calls.append(f"  values={kw['json']['values']}")
         if tail == "/workbook/closeSession":
             self.closed = True
         etag = "v2" if self.closed and self.saves else "v1"
@@ -170,3 +172,24 @@ def test_dropped_connections_raise_oracle_error_when_exhausted(
         backend._call("GET", backend._drive())
     assert "me@example.com" not in str(e.value)
     assert "me%40example.com" not in str(e.value)
+
+
+def test_recalc_enters_typed_cells_before_calculating(
+    graph: GraphBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeGraph()
+    monkeypatch.setattr(graph, "_call", fake)
+    spec = {"sheets": [{"name": "It's", "cells": {"A1": {"entered": "(1,000)"}, "B1": "=A1"}}]}
+    graph.recalc(build_xlsx(spec))
+    i = fake.calls.index("POST /workbook/createSession")
+    assert fake.calls[i + 1 : i + 4] == [
+        "PATCH /workbook/worksheets('It%27%27s')/range(address='A1')",
+        "  values=[['(1,000)']]",
+        "POST /workbook/application/calculate",
+    ]
+
+
+def test_libreoffice_refuses_typed_cells() -> None:
+    xlsx = build_xlsx({"sheets": [{"name": "S", "cells": {"A1": {"entered": "(1)"}}}]})
+    with pytest.raises(OracleError, match="typed cell input"):
+        LibreOfficeBackend().recalc(xlsx)
