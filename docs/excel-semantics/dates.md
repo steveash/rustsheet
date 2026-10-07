@@ -161,12 +161,14 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   a 250-digit fraction is the longest. Evidence: probes/clock-text-long-fraction4, clock-text-length-limit.
   Date-clock text (`1/2/2020 10:11:12.5...`) has the same limit on the whole text (T-0266,
   probes/date-clock-text-length-limit, excel-graph): 255 characters parse (`0+text` and VALUE), 256,
-  318 and 418 are #VALUE! whether the extra length is fraction digits, spaces between date and clock
-  or leading spaces, and a 300-digit `H:M.f:S` fraction (316 characters) is #VALUE! while 250 digits
-  (253 characters) gives 1.1574074074074075e+232. Quirk: with 255 characters of leading spaces
-  `0+text` is #VALUE! but VALUE parses it. Whole seconds around the 2^53 ms formula switch
-  (`1/2/2020 0:0.9007199254730:0` to `...50:0`) match the engine. The engine has no limit on date-clock text, so
-  it diverges on 256 or more characters (follow-up T-0273). Number text is still unprobed.
+  318 and 418 are #VALUE! whether the extra length is fraction digits or spaces between date and
+  clock, and for VALUE also when it is leading spaces (VALUE trims them but counts them: 255
+  characters parse, 256 and 318 are #VALUE!; `0+text` rejects a leading space at any length). A
+  301-digit `H:M.f:S` fraction (316 characters) is #VALUE! while a 238-digit one (253 characters)
+  gives 1.1574074074074075e+232. Whole seconds around the 2^53 ms formula switch
+  (`1/2/2020 0:0.9007199254730:0` to `...50:0`) match the engine. The engine has no limit on
+  date-clock text, so it diverges on 256 or more characters (follow-up T-0273). Number text is
+  still unprobed.
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.

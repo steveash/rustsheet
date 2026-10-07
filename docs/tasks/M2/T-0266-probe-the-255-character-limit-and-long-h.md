@@ -26,6 +26,6 @@ From T-0253 review. `parse_date_clock_serial` calls `parse_clock_text` without t
 
 ## Outcome
 Probe `date-clock-text-length-limit` (oracle-filled): date-clock text over 255 characters is
-#VALUE! for VALUE and `0+text` (fraction digits, padding or a 300-digit `H:M.f:S` fraction); the
+#VALUE! for VALUE and `0+text` (fraction digits, padding or a 301-digit `H:M.f:S` fraction); the
 2^53 ms formula switch matches the engine. Recorded in dates.md. The engine has no limit, so 14
 cells fail (baselined); follow-up T-0273. Eval delta: 22 of 36 new cells pass, 14 new known failures.

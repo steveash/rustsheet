@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Date-clock text longer than 255 characters (whole text, clock part alone, padding), a 400-digit H:M:S.f fraction, 250/300-digit H:M.f:S fractions and whole seconds around the 2^53 ms formula switch (T-0266).",
+  "description": "Date-clock text longer than 255 characters (whole text, clock part alone, padding), a 400-digit H:M:S.f fraction, 238/301-digit H:M.f:S fractions and whole seconds around the 2^53 ms formula switch (T-0266).",
   "tags": [
     "M2",
     "dates",
