@@ -117,8 +117,14 @@ Evidence: poi/SimpleStrict.xlsx, poi/SampleSS.strict.xlsx, poi/sample.strict.xls
 poi/57914.xlsx (Excel-authored): all use the purl namespace for every `<sheet r:id>` and declare
 `dateCompatibility="0"`; SimpleStrict "Sheet Number 2"!A4 is the `t="d"` cell above. Their cached
 formula values pass once `r:id` is read (T-0112).
-Status: VERIFIED for `r:id`; UNVERIFIED (probe pending) for the value a `t="d"` cell imports as
-(presumably serial 32874 for 1990-01-01); the importer drops `t="d"` cells today (T-0406);
-UNVERIFIED (probe pending, T-0407) for `dateCompatibility="0"`.
-Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs
+Status: VERIFIED for `r:id`. VERIFIED for `t="d"` (T-0406): Excel reads the text as a serial,
+`1990-01-01` = 32874, `1990-01-01T12:00:00` = 32874.5, `1900-02-28` = 59, `1900-03-01` = 61, and
+`ISNUMBER` of the cell is TRUE (fixtures/t-d-iso-date-cells, Excel for the web). Excel for the web
+refuses the whole workbook (`unsupportedWorkbook`) when a `t="d"` cell holds unparsable text
+(`abc`), so there is no value to match: the importer leaves such a cell empty. UNVERIFIED (probe
+pending, T-0407) for `dateCompatibility="0"`. UNVERIFIED (no probe): a trailing `Z`, fractional
+seconds, `1900-02-29` (serial 60), dates before 1900-01-01 and time-only text; the importer reads the
+first two as `serial + fraction` and leaves the rest empty. Probe run 2026-10-07, Excel for the web.
+Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
+`iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
 Tasks: T-0112, T-0406, T-0407
