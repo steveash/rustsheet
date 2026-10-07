@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-0970, T-0966]
+depends_on: [T-0970, T-1044]
 ---
 
 ## Goal
@@ -36,7 +36,7 @@ Examples (expected vs actual):
 Hypothesis (the oracle is the judge): Excel solves I_t(a,b) = p iteratively on its own BETA.DIST
 kernel (T-0970) and maps back with `A + (B-A) t`; F.INV.RT solves on the upper tail directly.
 **Needs an oracle sweep (T-0018):** the last digits depend on the solver, so fit against the
-T-0966 incomplete-beta sweep (family 5), never blind.
+T-1044 incomplete-beta sweep, never blind.
 
 ## Acceptance criteria
 - [ ] Both NumericMismatch lines (H11, H16) and all NumericClose lines above leave those classes, at
@@ -46,4 +46,4 @@ T-0966 incomplete-beta sweep (family 5), never blind.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-The CDF kernel (T-0970); T.INV (T-0967); legacy BETAINV/FINV evidence (T-0966).
+The CDF kernel (T-0970); T.INV (T-0967); legacy BETAINV/FINV evidence (T-1047).

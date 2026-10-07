@@ -7,7 +7,7 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-0966]
+depends_on: [T-1048, T-1049]
 ---
 
 ## Goal
@@ -26,12 +26,12 @@ Excel is *not* the exact rational here (16/51 = 0.3137254901960784, which statrs
 both cells (`docs/excel-semantics/statistics.md`, "HYPGEOM.DIST is not exact for small integer
 arguments").
 **Needs an oracle sweep (T-0018):** two cells cannot pin a formulation; fit against the
-HYPGEOM.DIST / HYPGEOMDIST evidence in T-0966 (family 8), never blind. Candidates to try: pmf
+HYPGEOM.DIST evidence in T-1049 and HYPGEOMDIST evidence in T-1048, never blind. Candidates to try: pmf
 via the binomial recurrence starting from the mode, pmf via `exp` of a Stirling-series / lgamma
 difference, CDF as ascending vs descending sums, CDF via the complement when k is above the mean.
 
 ## Acceptance criteria
-- [ ] Both lines leave `eval/baseline/ironcalc-calc.txt`, the T-0966 HYPGEOM.DIST probe cells pass, no
+- [ ] Both lines leave `eval/baseline/ironcalc-calc.txt`, the T-1049 HYPGEOM.DIST probe cells pass, no
       new lines in any baseline.
 - [ ] Bounded loops for huge populations (no unbounded allocation or iteration on untrusted input).
 - [ ] The statistics.md entry is updated with the matched formulation.
