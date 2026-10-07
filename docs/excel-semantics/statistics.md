@@ -120,10 +120,7 @@ Consequences:
   (squares 2.25E-308, normal) is 2.121320343559643E-154 (probes/variance-underflow, 36 cells).
 - `VAR.P` of 1E+200 twice is `#NUM!` (numbers.md, "Overflow"): the one-pass Σx² overflows, V is
   NaN, neither test holds, and the NaN is returned.
-- The database functions DVAR, DVARP, DSTDEV and DSTDEVP follow the same switch with the same
-  divisors (DVAR/DSTDEV like VAR.S/STDEV.S, DVARP/DSTDEVP like VAR.P/STDEV.P), VERIFIED (T-1054,
-  probes/dvar-one-vs-two-pass, 28 cells over seven data sets that take each path, excel-graph
-  2026-10-07). They are computed by `excel_variance` over the matching numeric values.
+
 Evidence (oracle: excel-graph, 2026-10-07, T-1037): probes/variance-digits (234 cells),
 variance-switch (82), variance-fit (380, random offset and small-magnitude sets),
 variance-scale (492, six shapes over scales 3E-5 to 0.3), variance-rule (312; column A is near
@@ -140,6 +137,12 @@ Status: VERIFIED. The float form of each comparison (for example `V < 0.001*|m|`
 `V/|m| < 0.001`) is UNVERIFIED at the exact boundary.
 Implemented in: `excel_variance` in crates/rustsheet-engine/src/functions/statistical/variance.rs
 (T-1037). DVAR/DVARP/DSTDEV/DSTDEVP still use their own one-pass code and are unprobed (T-1054).
+
+Database variants (T-1054, VERIFIED): DVAR, DVARP, DSTDEV and DSTDEVP follow the same switch with the same
+divisors (DVAR/DSTDEV like VAR.S/STDEV.S, DVARP/DSTDEVP like VAR.P/STDEV.P), and an overflowing Σx² is
+`#NUM!` as for VAR.P (`DVAR` of three 1E+200 values, cells K10:K13). Evidence: probes/dvar-one-vs-two-pass
+(32 cells over eight data sets, excel-graph 2026-10-07). Implemented by `excel_variance` over the matching
+numeric values (`db_numeric_values` in functions/database.rs).
 
 ## LARGE/SMALL: a fractional k rounds up for LARGE and down for SMALL
 Rule: `k` is coerced like any number argument (TRUE is 1, FALSE is 0, `"2"` is 2, `"x"` is `#VALUE!`,

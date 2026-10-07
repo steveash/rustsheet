@@ -33,5 +33,6 @@ and 0.001,0.002,0.004 (two-pass). If they match, collect the matching values and
 -
 
 ## Outcome
-Probe `probes/dvar-one-vs-two-pass` (28 cells, excel-graph) showed Excel's D-functions follow the VAR/STDEV switch; the engine's own one-pass sums differed from the oracle by up to 6E-13 relative on offset data (`DVAR` of 101,102,104). `fn_dvar`, `fn_dvarp`, `fn_dstdev` and `fn_dstdevp` now collect the matching numbers and call `variance_result`/`excel_variance`; the probe passes 28/28 and statistics.md records it. Behavior change beyond the digits: an overflowing Σx² now gives `#NUM!` like VAR.P (previously a non-finite number).
+Probe `probes/dvar-one-vs-two-pass` (32 cells, excel-graph) showed Excel's D-functions follow the VAR/STDEV switch; the engine's own one-pass sums differed from the oracle by up to 6E-13 relative on offset data (`DVAR` of 101,102,104). `fn_dvar`, `fn_dvarp`, `fn_dstdev` and `fn_dstdevp` now collect the matching numbers and call `variance_result`/`excel_variance`; the probe passes 32/32 and statistics.md records it. Behavior change beyond the digits: an overflowing Σx² now gives `#NUM!` like VAR.P (previously a non-finite number).
 Eval delta: ironcalc-calc known failures 1569 -> 1560 (9 fixed), probes gains the new case, 0 regressions.
+The overflow behavior is oracle-backed too: DVAR/DVARP/DSTDEV/DSTDEVP of three 1E+200 values are #NUM! (K10:K13).

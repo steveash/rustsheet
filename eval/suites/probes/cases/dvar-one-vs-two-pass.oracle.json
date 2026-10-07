@@ -113,14 +113,30 @@
    "H13": {
     "t": "n",
     "v": 0.2680951323690903
+   },
+   "K10": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "K11": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "K12": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "K13": {
+    "t": "e",
+    "v": "#NUM!"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "d34195fe282685af0f0ddce44597bfadd623b35589b3404c530a3ee2fcd73f4f",
+  "input_sha256": "96550a42961d10ea726762e6e7cf3027d8c275fb26937cd80dbff08b40210c4c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-07T09:09:47+00:00",
+  "produced_at": "2026-10-07T09:22:08+00:00",
   "version": null
  }
 }
