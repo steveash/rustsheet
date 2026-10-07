@@ -157,6 +157,7 @@ fn intersections_round_trip_through_stringify() {
         ("A1:(@B1)", "A1:(@B1)"),
         ("(@(A1 B1)):C3", "(@A1 B1):C3"),
         ("@(@(A1 B1))", "@(@A1 B1)"),
+        ("(@A1:B2)#", "(@A1:B2)#"),
         ("-A1:A3 A2", "-A1:A3 A2"),
         ("SUM(A1:B2 B1:B3,C1)", "SUM(A1:B2 B1:B3,C1)"),
     ];
