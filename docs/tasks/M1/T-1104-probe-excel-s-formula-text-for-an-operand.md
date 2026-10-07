@@ -3,7 +3,7 @@ id: T-1104
 title: "Probe Excel's formula text for an @ operand of :, # and @"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
