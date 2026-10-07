@@ -3,7 +3,7 @@ id: T-0177
 title: "Spec: Excel's newer error kinds (#BLOCKED!, #CONNECT!, #FIELD!, ...) in engine, importer, facade ErrorKind and Python"
 milestone: M1
 lane: api
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -39,13 +39,28 @@ error precedence where they meet other errors; the facade `ErrorKind`/`code()` m
 `literals_match_engine` sync test; Python exposure; what the out-of-scope functions return.
 
 ## Acceptance criteria
-- [ ] `docs/specs/SPEC-NNNN-*.md` from docs/specs/TEMPLATE.md, covering every point above, each
+- [x] `docs/specs/SPEC-NNNN-*.md` from docs/specs/TEMPLATE.md, covering every point above, each
       behavior citing its docs/excel-semantics entry or marked as needing evidence (with the task
       that gets it).
-- [ ] A rollout table of S/M implementation tasks (lane, size, dependencies); the tasks are filed
+- [x] A rollout table of S/M implementation tasks (lane, size, dependencies); the tasks are filed
       with `make new-task` and link the spec in `spec:`.
-- [ ] Architecture and Excel-fidelity reviewers approve; `make check` green.
+- [x] Architecture and Excel-fidelity reviewers approve; `make check` green.
 
 ## Out of scope
 - Any code change (the implementation tasks do it).
 - Values of IMAGE, STOCKHISTORY, FIELDVALUE beyond their error (decision 0027).
+
+## Outcome
+SPEC-0003 (docs/specs/SPEC-0003-newer-error-kinds.md) adds four kinds with evidence: `#GETTING_DATA` (8),
+`#CONNECT!` (10), `#BLOCKED!` (11) and `#FIELD!` (13). `#BUSY!`, `#UNKNOWN!`, `#PYTHON!` and `#EXTERNAL!`
+are left out because nothing produces them.
+- Two name tables: stored names (import, facade, Python) and formula literals, where only
+  `#GETTING_DATA` parses (T-0175).
+- `Error::stored_literal` follows Excel in saving `#GETTING_DATA` as `#N/A`; the exporter and the
+  harness share it.
+- IMAGE is `#BLOCKED!` and STOCKHISTORY `#CONNECT!`, both DEVIATION (decision 0014) for
+  reachable sources. FIELDVALUE is `#FIELD!`.
+Rollout tasks: T-1010 (engine/facade), T-1011 (xlsx/harness), T-1012 (probe), T-1013
+(functions), T-1014 (vm export, required by T-0999: Excel rejects stored rich literals), T-1016 (desktop probe of typed input; blocked on the desktop oracle), and T-1020 (stored `#BUSY!`).
+COUNTIF-family criteria keep today's names until T-1012 has evidence. T-0124 now depends on T-1010.
+No code change, so the eval delta is 0.
