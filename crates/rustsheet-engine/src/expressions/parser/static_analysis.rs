@@ -1,4 +1,4 @@
-use super::Node;
+use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 mod aggregate;
 mod row_column;
@@ -132,13 +132,12 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
 
         // operations
         Node::UnaryKind { right, .. } => add_implicit_intersection(right, add),
-        Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. } => {
-            add_implicit_intersection(left, add);
-            add_implicit_intersection(right, add);
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| add_implicit_intersection(operand, add));
         }
 
         Node::DefinedNameKind(v) => {
@@ -266,13 +265,14 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             remove_redundant_implicit_intersection(child, add);
         }
         Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
-        Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. } => {
-            remove_redundant_implicit_intersection(left, add);
-            remove_redundant_implicit_intersection(right, add);
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| {
+                remove_redundant_implicit_intersection(operand, add)
+            });
         }
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
@@ -300,9 +300,19 @@ pub enum StaticResult {
     // what if the dimensions are unknown but bounded?
 }
 
-fn static_analysis_op_nodes(left: &Node, right: &Node) -> StaticResult {
-    let lhs = run_static_analysis_on_node(left);
-    let rhs = run_static_analysis_on_node(right);
+/// The shape of a chain of value operators, broadcast link by link in a loop (T-0128).
+fn static_analysis_operator_chain(node: &Node) -> StaticResult {
+    let (links, first) = left_chain(node);
+    let mut result = run_static_analysis_on_node(first);
+    for link in links {
+        if let Some((_, right)) = value_operands(link) {
+            result = static_analysis_op_results(result, run_static_analysis_on_node(right));
+        }
+    }
+    result
+}
+
+fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticResult {
     match (lhs, rhs) {
         (StaticResult::Scalar, StaticResult::Scalar) => StaticResult::Scalar,
         (StaticResult::Scalar, StaticResult::Array(a, b) | StaticResult::Range(a, b)) => {
@@ -368,11 +378,11 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::ReferenceKind { .. } | Node::SheetSpanKind { .. } => StaticResult::Scalar,
 
         // binary operations
-        Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. } => static_analysis_op_nodes(left, right),
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => static_analysis_operator_chain(node),
 
         // Defined names and tables: their shape is not tracked.
         Node::DefinedNameKind(_) | Node::TableNameKind(_) => StaticResult::Unknown,

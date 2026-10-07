@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::arithmetic::{divide, flush_subnormal, minus, plus, power, times};
+use crate::arithmetic::flush_subnormal;
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -12,13 +12,14 @@ use crate::{
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
+            is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
-            ArrayNode, CompletionContext, NamedVariable, Node, Parser, TOO_DEEP_MESSAGE,
+            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
         },
-        token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
+        token::{get_error_by_name, Error, OpUnary},
         types::*,
         utils::{self, is_valid_column_number, is_valid_row},
     },
@@ -555,10 +556,11 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         match node {
-            OpSumKind { kind, left, right } => match kind {
-                OpSum::Add => self.handle_arithmetic(left, right, cell, &plus),
-                OpSum::Minus => self.handle_arithmetic(left, right, cell, &minus),
-            },
+            OpSumKind { .. }
+            | OpProductKind { .. }
+            | OpPowerKind { .. }
+            | OpConcatenateKind { .. }
+            | CompareKind { .. } => self.evaluate_operator_chain(node, cell),
             NumberKind(value) => CalcResult::Number(*value),
             StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#)),
             BooleanKind(value) => CalcResult::Boolean(*value),
@@ -629,12 +631,6 @@ impl Model {
                     },
                 }
             }
-            OpConcatenateKind { left, right } => self.handle_concatenate(left, right, cell),
-            OpProductKind { kind, left, right } => match kind {
-                OpProduct::Times => self.handle_arithmetic(left, right, cell, &times),
-                OpProduct::Divide => self.handle_arithmetic(left, right, cell, &divide),
-            },
-            OpPowerKind { left, right } => self.handle_arithmetic(left, right, cell, &power),
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
@@ -731,7 +727,6 @@ impl Model {
                 cell,
                 format!("Variable name \"{name}\" not found."),
             ),
-            CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
             // What they are applied to is turned into a number, and they work
             // element by element on a range or an array
             UnaryKind { kind, right } => match kind {
@@ -2498,8 +2493,8 @@ impl Model {
 
     /// Parses a formula typed into a cell. A formula that fails to parse is
     /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
-    /// otherwise kept as a parse error, except one nested too deep (no `)` helps), which
-    /// is rejected: the cell could never hold it.
+    /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
+    /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
     fn parse_cell_formula(
         &mut self,
         sheet: u32,
@@ -2510,15 +2505,15 @@ impl Model {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
         let mut node = self.parser.parse(formula, cell_reference);
-        if matches!(&node, Node::ParseErrorKind { message, .. } if message != TOO_DEEP_MESSAGE) {
+        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
             let retry = self.parser.parse(&format!("{formula})"), cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;
             }
         }
         match node {
-            Node::ParseErrorKind { message, .. } if message == TOO_DEEP_MESSAGE => {
-                Err(format!("Formula: {TOO_DEEP_MESSAGE}"))
+            Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
+                Err(format!("Formula: {message}"))
             }
             node => Ok(node),
         }
