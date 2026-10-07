@@ -331,7 +331,6 @@ F	probes/geomean-overflow-cut-3.case.json	Sheet1!C13
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!C5
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!C7
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!E1
-F	probes/geomean-overflow-cut-3.case.json	Sheet1!E4
 F	probes/geomean-overflow-cut.case.json	Sheet1!C1
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
 F	probes/geomean-product-order.case.json	Sheet1!Z10
