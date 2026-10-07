@@ -1,0 +1,34 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Stored form of @ as an intersection operand: _xlfn.SINGLE(range) as right and left operand (T-1103).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=A1 _xlfn.SINGLE(A1:A3)",
+        "H2": "=_xlfn.SINGLE(A1:A3) A2:B2",
+        "H3": "=A1:A3 _xlfn.SINGLE(A2:B2)",
+        "H4": "=A1 _xlfn.SINGLE(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4"
+  ]
+}
