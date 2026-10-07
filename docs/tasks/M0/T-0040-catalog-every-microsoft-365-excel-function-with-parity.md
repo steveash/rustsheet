@@ -61,9 +61,11 @@ Part (a) done; part (b), the eval reading `scope`, is T-0051.
   hand-typed dict of 20.
 - **Oracle availability:** probes/catalog/availability-01..42 call each of the 503 in-scope
   names once with exactly its minimum argument count, 12 per workbook. INFO and SHEETS are not
-  probed: the canary refuses SHEETS()/INFO() workbooks. All 503 are recognised except JIS
-  (`#NAME?`). FILTERXML returns `#VALUE!` for valid input (function-name-forms A7). Both are
-  `oracle: none`, with desktop evidence filed as T-1081 (M14, decision 0039).
+  probed: the canary refuses SHEETS()/INFO() workbooks, so they are the only `oracle: none`
+  entries. All 503 are recognised except JIS (`#NAME?`, also as `_xlfn.JIS`:
+  function-name-forms-2). FILTERXML returns `#VALUE!` for valid input (function-name-forms A7).
+  Under decision 0039 those web values are goldens (excel-semantics text.md, web.md); desktop
+  confirmation is T-1081 (M14).
 - **Found on the way:**
   - Four workbooks were rejected at first. Bisecting gave REDUCE/SCAN/PROB minimum 3
     (excel-semantics/syntax.md).
@@ -72,8 +74,9 @@ Part (a) done; part (b), the eval reading `scope`, is T-0051.
   - Stored-name quirks: a bare new function is `#NAME?`; eta arguments need `_xleta.`
     (excel-semantics/xlsx-storage.md).
   - The builder's wider reliance on XlsxWriter is T-0052.
-- **Follow-ups:** T-0051 (scope in the gap report and evidence coverage), T-1082/T-1087/T-1088 (M5 by category), T-1078, T-1083, T-1080/T-1084/T-1085/T-1086 (M9 by category)
-  (generator signatures for M5/M6/M7/M9), T-0052 (builder prefixes), T-1081 (JIS/FILTERXML desktop).
-- **Eval delta:** probes +44 cases / +506 cells, all oracle-filled. 8 new-coverage known
+- **Follow-ups:** T-0051 (scope in the gap report and evidence coverage), T-1082/T-1087/T-1088 (M5 by category), T-1090, T-1083, T-1080/T-1084/T-1085/T-1086 (M9 by category)
+  (generator signatures for M5/M6/M7/M9), T-0052 (builder prefixes), T-1081 (JIS/FILTERXML desktop), T-1089 (xlsx import/export of
+  prefixed names).
+- **Eval delta:** probes +45 cases / +509 cells, all oracle-filled. 8 new-coverage known
   failures, 0 regressions: BAHTTEXT, DBCS, FILTERXML (2 cells), GETPIVOTDATA, GROUPBY, PHONETIC
   and PIVOTBY return `#NAME?` in the engine (not implemented).

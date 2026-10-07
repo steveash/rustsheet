@@ -55,6 +55,7 @@ C	probes/catalog/availability-39.case.json	11
 C	probes/catalog/availability-40.case.json	12
 C	probes/catalog/availability-41.case.json	12
 C	probes/catalog/availability-42.case.json	11
+C	probes/catalog/function-name-forms-2.case.json	3
 C	probes/catalog/function-name-forms.case.json	5
 C	probes/catalog/normsdist-stored-form.case.json	3
 C	probes/ceiling-xlfn-prefix.case.json	4

@@ -27,10 +27,17 @@
 #              SEQUENCE, RANDARRAY, LET, LAMBDA, MAP, REDUCE, SCAN, MAKEARRAY, BYROW, BYCOL, ISOMITTED,
 #              TEXTSPLIT, TEXTBEFORE, TEXTAFTER, VSTACK, HSTACK, TAKE, DROP, WRAPROWS, WRAPCOLS, TOCOL, TOROW,
 #              EXPAND, GROUPBY, PIVOTBY, REGEX*).
-#   scope      in | out. `out` (with `reason`) = the result depends on systems outside the workbook
-#              (decision 0027). Entries without `scope` (the M2 signatures) are in.
-#   oracle     none = Excel for the web cannot give evidence for the function (probe cases
-#              probes/catalog/*: #NAME? there, or a documented web-only failure); absent = it can.
+#   scope      in | out. `out` (with `reason`) = the result depends on systems outside the workbook.
+#              That is decision 0027's principle, applied beyond its named list where the same
+#              reason holds (IMPORTCSV/IMPORTTEXT read external files, which CLAUDE.md directive 5
+#              also forbids during evaluation). Entries without `scope` (the M2 signatures) are in.
+#              SQL.REQUEST (in decision 0027's list) is absent: Microsoft no longer lists it and
+#              its page is gone, so it is not a current Excel function.
+#   oracle     none = the excel-graph oracle cannot return any value for the function (today
+#              INFO and SHEETS: the canary refuses workbooks that call them). A web value, error
+#              values included, is a golden (decision 0039), so a function that is #NAME? or
+#              fails on the web is not `none`. Absent = the oracle evaluates it
+#              (probes/catalog/availability-*).
 
 operators:
   - { op: "+", args: [number, number], returns: number, milestone: M1, prior: 62 }
@@ -376,7 +383,7 @@ functions:
   - { name: CONFIDENCE.NORM, category: statistical, milestone: M9, scope: in }
   - { name: CONFIDENCE.T, category: statistical, milestone: M9, scope: in }
   - { name: CONVERT, category: engineering, milestone: M9, scope: in }
-  - { name: COPILOT, category: text, milestone: M5, scope: out, reason: "AI service; Microsoft retired the function on 2026-09-14 (decision 0027)" }
+  - { name: COPILOT, category: text, milestone: M5, scope: out, reason: "AI service (decision 0027); no longer available from 2026-09-14 per https://support.microsoft.com/en-us/excel/functions/copilot-function (fetched 2026-10-07)" }
   - { name: CORREL, category: statistical, milestone: M9, scope: in }
   - { name: COS, category: math, milestone: M5, scope: in }
   - { name: COSH, category: math, milestone: M5, scope: in }
@@ -465,7 +472,7 @@ functions:
   - { name: FDIST, category: statistical, milestone: M9, scope: in }
   - { name: FIELDVALUE, category: lookup, milestone: M6, scope: out, reason: "reads linked data types (decision 0027)" }
   - { name: FILTER, category: lookup, milestone: M7, scope: in }
-  - { name: FILTERXML, category: web, milestone: M5, scope: in, oracle: none }  # #VALUE! on the web for valid input: probes/catalog/function-name-forms A7
+  - { name: FILTERXML, category: web, milestone: M5, scope: in }  # #VALUE! on the web for valid input (function-name-forms A7); desktop confirmation T-1081
   - { name: FIND, category: text, milestone: M5, scope: in }
   - { name: FINDB, category: text, milestone: M5, scope: in }
   - { name: FINV, category: statistical, milestone: M9, scope: in }
@@ -526,8 +533,8 @@ functions:
   - { name: IMLN, category: engineering, milestone: M9, scope: in }
   - { name: IMLOG10, category: engineering, milestone: M9, scope: in }
   - { name: IMLOG2, category: engineering, milestone: M9, scope: in }
-  - { name: IMPORTCSV, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data, decision 0027)" }
-  - { name: IMPORTTEXT, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data, decision 0027)" }
+  - { name: IMPORTCSV, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
+  - { name: IMPORTTEXT, category: lookup, milestone: M6, scope: out, reason: "imports an external file (external data: decision 0027 principle, directive 5)" }
   - { name: IMPOWER, category: engineering, milestone: M9, scope: in }
   - { name: IMPRODUCT, category: engineering, milestone: M9, scope: in }
   - { name: IMREAL, category: engineering, milestone: M9, scope: in }
@@ -540,7 +547,7 @@ functions:
   - { name: IMSUM, category: engineering, milestone: M9, scope: in }
   - { name: IMTAN, category: engineering, milestone: M9, scope: in }
   - { name: INDIRECT, category: lookup, milestone: M6, scope: in }
-  - { name: INFO, category: information, milestone: M5, scope: in }  # not availability-probed: the oracle canary refuses SHEETS()/INFO() workbooks
+  - { name: INFO, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
   - { name: INT, category: math, milestone: M5, scope: in }
   - { name: INTERCEPT, category: statistical, milestone: M9, scope: in }
   - { name: INTRATE, category: financial, milestone: M9, scope: in }
@@ -562,7 +569,7 @@ functions:
   - { name: ISPMT, category: financial, milestone: M9, scope: in }
   - { name: ISREF, category: information, milestone: M5, scope: in }
   - { name: ISTEXT, category: information, milestone: M5, scope: in }
-  - { name: JIS, category: text, milestone: M5, scope: in, oracle: none }  # #NAME? on the web: probes/catalog/availability-22 A8; _xlfn.JIS too (scratch probe, T-0040)
+  - { name: JIS, category: text, milestone: M5, scope: in }  # #NAME? on the web (availability-22 A8, function-name-forms-2 A1/A2); desktop confirmation T-1081
   - { name: KURT, category: statistical, milestone: M9, scope: in }
   - { name: LAMBDA, category: logical, milestone: M7, scope: in }
   - { name: LARGE, category: statistical, milestone: M9, scope: in }
@@ -694,7 +701,7 @@ functions:
   - { name: SEQUENCE, category: math, milestone: M7, scope: in }
   - { name: SERIESSUM, category: math, milestone: M5, scope: in }
   - { name: SHEET, category: information, milestone: M5, scope: in }
-  - { name: SHEETS, category: information, milestone: M5, scope: in }  # not availability-probed: the oracle canary refuses SHEETS()/INFO() workbooks
+  - { name: SHEETS, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
   - { name: SIGN, category: math, milestone: M5, scope: in }
   - { name: SIN, category: math, milestone: M5, scope: in }
   - { name: SINH, category: math, milestone: M5, scope: in }

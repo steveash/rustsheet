@@ -1,5 +1,5 @@
 ---
-id: T-1078
+id: T-1090
 title: "Add generator signatures for the M6 catalog functions"
 milestone: M6
 lane: harness

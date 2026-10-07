@@ -13,7 +13,9 @@ SOURCE = CATALOG.with_name("excel-functions.tsv")
 
 # Excel's minimum argument counts. A formula with fewer is a syntax error, and Excel for the web
 # then rejects the whole workbook (T-0203: one `=IF(x)` cell failed every gen-m2 case). The counts
-# come from Microsoft's syntax lines, vetted in eval/catalog/excel-functions.tsv (T-0040).
+# come from Microsoft's syntax lines, vetted in eval/catalog/excel-functions.tsv (T-0040). The
+# probes/catalog/availability-* cases only show that Excel accepts each `min_args`; that one fewer
+# is rejected was shown only for REDUCE, SCAN and PROB (docs/excel-semantics/syntax.md).
 EXCEL_MIN_ARGS = {name: int(row["min_args"]) for name, row in load_excel_functions(SOURCE).items()}
 
 

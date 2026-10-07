@@ -41,7 +41,8 @@ def test_every_entry_has_category_milestone_and_scope() -> None:
         assert f.get("scope", "in") in {"in", "out"}, f["name"]
         # decision 0027: an out-of-scope function says why; an in-scope one has no reason
         assert bool(f.get("reason")) == (f.get("scope") == "out"), f["name"]
-        # absent = the oracle evaluates it; `none` = Excel for the web cannot
+        # absent = the oracle evaluates it; `none` = it cannot return any value (decision 0039:
+        # web values, errors included, are goldens)
         assert f.get("oracle") in {None, "none"}, f["name"]
 
 
@@ -53,5 +54,6 @@ def test_source_list_rows_are_well_formed() -> None:
 
 
 def test_only_functions_the_web_oracle_cannot_evaluate_are_oracle_none() -> None:
-    # probes/catalog: JIS is #NAME? and FILTERXML #VALUE! in Excel for the web (T-0040)
-    assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == {"JIS", "FILTERXML"}
+    # The oracle canary refuses SHEETS()/INFO() workbooks (oracle/canary.py). JIS (#NAME?) and
+    # FILTERXML (#VALUE!) do get web values, which are goldens (decision 0039, T-0040).
+    assert {f["name"] for f in _functions() if f.get("oracle") == "none"} == {"INFO", "SHEETS"}

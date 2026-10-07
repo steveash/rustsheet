@@ -114,12 +114,13 @@ matches the web unless desktop evidence already in the repo decides, and desktop
   `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)
   and refuses `CELL("width")` workbooks; docs/excel-semantics/number-formats.md lists them as
   CONFLICTING (decision 0019).
-- **Functions Excel for the web lacks (T-0040).** `JIS` is `#NAME?` on the web, bare
-  (probes/catalog/availability-22 A8) and as `_xlfn.JIS` (a scratch recalc, 2026-10-07); `FILTERXML("<a>1</a>","//a")` is `#VALUE!`
-  (probes/catalog/function-name-forms A7): valid XML and XPath, which the function's page says need
-  Windows (it "will not return results on Mac"); its desktop value is unknown. The catalog
-  marks both `oracle: none`; their evidence must come from desktop Excel (T-1081, M14). Every
-  other in-scope catalog function is recognised (probes/catalog/availability-*).
+- **JIS unknown, FILTERXML failing on en-US Excel for the web (T-0040).** `JIS` is `#NAME?`,
+  bare and as `_xlfn.JIS` (probes/catalog/availability-22 A8, function-name-forms-2 A1/A2);
+  `FILTERXML("<a>1</a>","//a")` is `#VALUE!` (probes/catalog/function-name-forms A7), for valid
+  XML and XPath (its page says it relies on Windows). Whether desktop Excel differs is unknown.
+  The web values are goldens (decision 0039); desktop confirmation is T-1081 (M14). Every other
+  in-scope catalog function is recognised (probes/catalog/availability-*). INFO and SHEETS have no
+  web values at all: the canary refuses their workbooks (catalog `oracle: none`).
 - **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
   settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")` = 36893, `VALUE("1.5")` = 1.5);
   if the site is changed, every fill fails rather than returning another locale's answers.

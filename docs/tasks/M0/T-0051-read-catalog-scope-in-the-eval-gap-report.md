@@ -17,7 +17,7 @@ functions, so Phase 1 parity (decision 0027) is measured against the catalog's d
 ## Context
 Part (b) of T-0040. T-0040 made `eval/catalog/functions.yaml` list every Microsoft 365 Excel
 function (526) with `scope: in | out` (an entry without `scope` is in), `reason` for `out`, and
-`oracle: none` where Excel for the web cannot give evidence. The eval crate
+`oracle: none` where the excel-graph oracle cannot return any value (INFO and SHEETS today, decision 0039). The eval crate
 (crates/rustsheet-eval) has no YAML reader today, so the harness cannot see `scope`.
 - Design choice left to this task: add a YAML dependency (serde_yaml or a maintained
   successor; check `cargo deny` and decision records on dependencies) to read the catalog
