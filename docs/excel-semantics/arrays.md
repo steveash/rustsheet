@@ -103,7 +103,7 @@ Evidence (oracle: excel-graph, 2026-10-07): probes/error-operand-broadcast-cmp C
 Status: VERIFIED
 Implemented in: `handle_arithmetic`, `handle_comparison`, `handle_concatenate` in `crates/rustsheet-engine/src/arithmetic.rs`
 Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
-Tasks: T-0209, T-0228
+Tasks: T-0209, T-0228, T-0231
 
 ## Errors broadcast through `&`, comparisons, POWER and the element-wise functions
 Rule: the scalar-error broadcast above holds for every element-wise operation, not only arithmetic:
