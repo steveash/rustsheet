@@ -210,9 +210,22 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
         }
         ParsePart::Date(p) => {
-            // Excel: any negative serial is #VALUE! under a date/time format, even a fraction that
-            // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035).
-            if value < 0.0 {
+            // Excel: a negative serial is #VALUE! under a date/time format, even a fraction that
+            // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035). Elapsed
+            // sections ([h], [mm], ...) keep their own sign handling (poi ElapsedFormatTests
+            // A40-A47, docs/excel-semantics/number-formats.md "Elapsed-time tokens").
+            let has_elapsed = p.tokens.iter().any(|t| {
+                matches!(
+                    t,
+                    TextToken::ElapsedHour
+                        | TextToken::ElapsedHourPadded
+                        | TextToken::ElapsedMinute
+                        | TextToken::ElapsedMinutePadded
+                        | TextToken::ElapsedSecond
+                        | TextToken::ElapsedSecondPadded
+                )
+            });
+            if value < 0.0 && !has_elapsed {
                 return invalid_date(value);
             }
             let tokens = &p.tokens;

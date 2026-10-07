@@ -304,7 +304,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!I392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J1328
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J392
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!K1456
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!L160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!M1352
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!N1352
