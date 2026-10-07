@@ -3,7 +3,7 @@ id: T-1057
 title: "Probe SUMSQ per-square subnormal flush and SUMPRODUCT with three arrays"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
