@@ -327,3 +327,21 @@ fn long_dates_with_dots() {
     // (probes/date-text-grammar A39/A40: "1.7.2026" and "7.1.2026" are #VALUE!).
     assert!(parse("03.02.2024", &["$"]).is_err());
 }
+
+// Excel: probes/paren-negative-text, docs/excel-semantics/coercion.md.
+#[test]
+fn parenthesised_number_is_negative() {
+    assert_eq!(parse("(1)", &["$"]), Ok((-1.0, None)));
+    assert_eq!(
+        parse("(1,000)", &["$"]),
+        Ok((-1000.0, Some("#,##0".to_string())))
+    );
+    assert!(parse("-(1)", &["$"]).is_err());
+    assert!(parse("(-1)", &["$"]).is_err());
+    assert!(parse("()", &["$"]).is_err());
+}
+
+#[test]
+fn parenthesised_number_with_padding_is_unprobed_error() {
+    assert!(parse("( 1 )", &["$"]).is_err());
+}
