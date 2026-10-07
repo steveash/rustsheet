@@ -30,4 +30,6 @@ past a shorter array. The lift reuses `Model::lift_criteria` (its cell-visit cap
 `aggregate_static_result` gives the spill shape. probes/aggregate-array-args (48 cells, new)
 pins the shapes, broadcasting, k in the reference form, per-element form and invalid elements.
 Eval: probes known failures 210 -> 207 (aggregate-args Misc!A36:A38 fixed), new case 48/48,
-no regressions.
+no regressions. Review follow-up: the shared value arguments are evaluated once per call, and
+the visit cap counts every reference and computed array (unit test
+`lifted_calls_over_large_arrays_hit_the_visit_cap`). Follow-up: T-1055 (range function_num/options).

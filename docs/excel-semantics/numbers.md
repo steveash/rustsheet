@@ -459,10 +459,13 @@ position past a shorter array is `#N/A`). Examples:
 - A range fourth argument is a reference, not lifted: `AGGREGATE({9,4},0,E1:E6,E1:E2)` spills 27, 9.
 
 A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
-elements times the used cells of its first reference or array, times the lifted argument count, above 2^27 is `#ERROR!`.
-A range function_num or options is not lifted and keeps its scalar reading (unprobed).
-Evidence: probes/aggregate-array-args (48 cells), probes/aggregate-args Misc!A36:B38 (oracle: excel-graph,
-2026-10-07, T-1038).
+the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
+computed array, which is evaluated once per call), times the lifted argument count, above 2^27 is `#ERROR!`
+(`AGGREGATE(14,6,SEQUENCE(1048576),SEQUENCE(1048576))`, unit test `lifted_calls_over_large_arrays_hit_the_visit_cap`).
+A multi-cell range function_num or options is not lifted: the engine reads it as a scalar and gives `#N/IMPL!`
+(unprobed, T-1055).
+Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
+Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
 Oracle: excel-graph, 2026-10-06 (T-0993).
 Status: VERIFIED, except hidden and filtered rows (UNVERIFIED: the case format cannot hide rows; the engine skips
