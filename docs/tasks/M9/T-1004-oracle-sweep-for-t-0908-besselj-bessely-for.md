@@ -3,7 +3,7 @@ id: T-1004
 title: "Oracle sweep for T-0908: BESSELJ/BESSELY for x in [8,100], orders 0-10"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
