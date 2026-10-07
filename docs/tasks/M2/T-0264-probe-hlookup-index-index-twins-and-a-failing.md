@@ -3,7 +3,7 @@ id: T-0264
 title: "Probe HLOOKUP INDEX(...) index twins and a failing INDEX index (INDEX(E1:E4,9))"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,7 @@ Follow-up of T-0251 (review). probes/lookup-index-shapes probes only VLOOKUP H2,
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/lookup-index-hlookup (11 cells, oracle-filled via excel-graph); lookup.md updated. The engine already
+matches every cell, so no engine change and no baseline change (eval delta: +11 passing cells in probes).
