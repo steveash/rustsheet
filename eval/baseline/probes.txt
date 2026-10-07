@@ -200,6 +200,7 @@ C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
 C	probes/text-general-exponent-boundary.case.json	10
+C	probes/text-negative-serial-elapsed-mixed.case.json	9
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-long-zero.case.json	312
 C	probes/text-number-tiny-paths.case.json	46
@@ -437,6 +438,10 @@ F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
 F	probes/subnormal-function-results.case.json	Calc!C75
+F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A1
+F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A3
+F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A5
+F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A6
 F	probes/text-number-long-zero.case.json	Data!B10
 F	probes/text-number-long-zero.case.json	Data!B11
 F	probes/text-number-long-zero.case.json	Data!B12
