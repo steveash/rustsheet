@@ -3,7 +3,7 @@ id: T-0271
 title: "Fuzz crash: LENB(A21:A24) returns an array into a scalar cell (static analysis says not_implemented)"
 milestone: M2
 lane: functions-text
-status: todo
+status: done
 priority: P0
 size: S
 tier: sonnet
@@ -31,11 +31,25 @@ planned, while `fn_lenb` lifts over the range at runtime. Any other function who
 is `not_implemented` but whose implementation lifts over arrays has the same bug.
 
 ## Acceptance criteria
-- [ ] `Function::Lenb` gets the same static analysis as `Len`; `=LENB(A21:A24)` matches Excel
+- [x] `Function::Lenb` gets the same static analysis as `Len`; `=LENB(A21:A24)` matches Excel
       (cite or probe: LENB is LEN for en-US single-byte text, docs/excel-semantics/text.md).
-- [ ] Audit every `not_implemented(args)` entry in `static_analysis.rs` against functions that lift
+- [x] Audit every `not_implemented(args)` entry in `static_analysis.rs` against functions that lift
       at runtime; fix each one found (or file one P0 per distinct function if out of this lane).
-- [ ] The reproducer is a unit test (decision 0035); `make check` green; reviewers approve.
+- [x] The reproducer is a unit test (decision 0035); `make check` green; reviewers approve.
 
 ## Out of scope
 - The `debug_assert!` itself stays: it caught a real static-analysis gap.
+
+## Outcome
+FINDB, LEFTB, LENB, MIDB, REPLACEB, RIGHTB and SEARCHB delegate to their non-B twins at runtime, so
+`static_analysis.rs` now gives them `scalar_arguments` like those twins (they were `not_implemented`,
+so no spill was planned and the scalar-context `debug_assert!` fired). Unit test
+`byte_functions_spill_like_the_non_byte_functions` includes the reproducer `=LENB(A21:A24)`.
+Audit: a throwaway debug-build test ran 60 other functions that are `not_implemented` in
+`static_analysis.rs` (T, TEXTAFTER/BEFORE, UNICODE, CHAR, CODE, VALUE, DATEVALUE, HOUR, DAYS, the
+financial and conversion functions, ...) with range arguments in 1-4 argument positions; none hit the
+assert, while the same test caught `LENB` with the fix reverted. Functions not in that list (the D*
+database functions, lookups, IFS/SWITCH, aggregates) were not probed; no further instance found.
+Excel evidence: probes/text-b-functions-broadcast (oracle excel-graph, 29/29 match); recorded in
+docs/excel-semantics/text.md "The *B text functions equal their non-B twins and spill". The unaudited
+remainder is T-0272.
