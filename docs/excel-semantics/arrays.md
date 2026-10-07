@@ -59,7 +59,7 @@ past the end of a shorter divisor, `MOD(NA(),{1,2})` giving `#N/A` in every elem
 broadcast, text elements cast like a scalar (`"x"` gives `#VALUE!`) and booleans as 1/0.
 Status: VERIFIED
 Tasks: T-1119
-Implemented in: `Model::lift_number_pair` (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
+Implemented in: `Model::lift_numbers` (DATE uses it too) (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
 
 ## NOT and CONCATENATE lift over array arguments
 Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the
