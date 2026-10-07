@@ -1,5 +1,5 @@
 ---
-id: T-1074
+id: T-1077
 title: "Probe FORMULATEXT of a union in a legacy (non-array) formula (SPEC-0004 row 16)"
 milestone: M1
 lane: harness

@@ -84,7 +84,7 @@ agrees; a different oracle answer changes the implementation task, not this desi
 | 14 | `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `=SUM(Print_Area)`, `=AREAS(Print_Area)` | 6, 2 |
 | 14b | a name `xs` = `Data!$A$1,Other!$A$1` (cross-sheet body): `=SUM(xs)`, `=xs`, `=ISREF(xs)` | the error row 12 records |
 | 15 | `=ISERROR((A1,B2))`, `=IFERROR((A1,B2),"x")`, `=ISNUMBER((A1,B2))` | TRUE, "x", FALSE |
-| 16 | `=@(A1,B2)` and the FORMULATEXT of a union in a pre-dynamic-array workbook | `#VALUE!`; no `@` in a dynamic-array formula; the legacy half is unprobed (T-1074) |
+| 16 | `=@(A1,B2)` and the FORMULATEXT of a union in a pre-dynamic-array workbook | `#VALUE!`; no `@` in a dynamic-array formula; the legacy half is unprobed (T-1077) |
 | 17 | `=SUBTOTAL(9,(A1,B2))`, `=SUBTOTAL(109,(A1,B2))` | 6, 6 |
 | 18 | `=CELL("address",(A1,B2))`, `=OFFSET((A1,B2),1,1)`, `=ROW((A1,B2))` | "$A$1, $B$2", `#VALUE!`, `#REF!` (T-1061) |
 | 19 | `=A1,B2` as a cell formula | the file loads and gives `#VALUE!`; typed entry unprobed (T-1061) |
