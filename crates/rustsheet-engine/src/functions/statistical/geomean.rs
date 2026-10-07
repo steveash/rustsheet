@@ -59,8 +59,8 @@ impl Model {
         // matches every probed overflow case bit for bit, where taking `2^(exp2 / n)` as a float
         // power is one ulp high on GEOMEAN(1E+100,9E+307) (probes/geomean-mixed-magnitude A1,
         // T-1076). `product` is below 2^501, so the remainder fits under the root up to 500;
-        // past that (over 500 values) it gets its own root (rounding probed: probes/geomean-overflow-many-values
-        // F6, F7 match Excel with a remainder of 599).
+        // past that (over 500 values) it gets its own root (rounding probed:
+        // probes/geomean-overflow-many-values F6, F7 match Excel with a remainder of 599).
         let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
         let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
         let root = match i32::try_from(r) {
