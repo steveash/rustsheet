@@ -79,3 +79,19 @@ Engine today: 96 of 691 cells pass (IRR 19/216, RATE 36/368, XIRR 9/72, MIRR 32/
 its sixth argument (guess) with `#ERROR!` (T-1050).
 Status: VERIFIED (observations); the iteration (update rule, stopping test, cap) is UNVERIFIED (T-0916)
 Implemented in: n/a (T-0916)
+
+## XIRR skips empty cells and accepts dates before the first; XNPV is #NUM! on empty cells
+Rule: XIRR ignores empty cells in its value and date ranges: `XIRR(A1:A3,B1:B3)` with A3 and B3 empty
+is the same 0.09999999403953552 as `XIRR(A1:A2,B1:B2)`, and so are whole-column `XIRR(Data!A:A,Data!B:B)`
+on a sheet holding only A1:B2 and whole-row `XIRR(12:12,13:13)`. XIRR also accepts a date before the
+first date: `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same
+flows is #NUM!). XNPV is `#NUM!` when its ranges contain empty cells, and a whole column counts every
+cell, not the used area: `XNPV(0.1,Data!A:A,Data!B:B)` is #NUM! although Data holds only A1:B2,
+where `XNPV(0.1,Data!A1:A2,Data!B1:B2)` is finite.
+Unprobed: a pair where only the value or only the date is empty, and which error XNPV gives for a whole column whose used area holds a cell error or a text date (the engine returns that error, then #NUM! for the skipped cells).
+Evidence: probes/xirr-xnpv-whole-column-nogaps A1-A8, probes/whole-column-empty-walkers E1, E5, E7,
+F3, F4, F6, F7, F9 (excel-graph, 2026-10-07, T-1114).
+Status: VERIFIED (these cells). XNPV matches since T-1114 (the used-area clip applies the empty-cell
+error to the cells it skips, `get_array_of_numbers_generic`); XIRR reads empty as 0 and rejects early
+dates, giving #NUM! (T-1124).
+Tasks: T-1114, T-1124
