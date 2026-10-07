@@ -3,7 +3,7 @@ id: T-0251
 title: "VLOOKUP/HLOOKUP: an INDEX(...) index is a reference (text or error cell is #REF!, not found is #N/A)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ already want INDEX as a reference before adding a special case).
 
 ## Out of scope
 - Other functions that take INDEX results.
+
+## Outcome
+`lookup_index_arg` reads an `INDEX(...)` index with `index_impl(.., as_reference = true)` (the form aggregates and ISREF already use), so the indexed cell is read only after a match. probes/lookup-index-shapes H2, H3, H11, H12 now pass (4 baseline lines removed); unit tests for VLOOKUP and HLOOKUP. Eval delta: fixed 4, regressions 0.
