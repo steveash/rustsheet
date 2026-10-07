@@ -13,6 +13,7 @@ C	probes/aggregate-range-args.case.json	38
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
+C	probes/at-operand-formulatext.case.json	14
 C	probes/average-value-args.case.json	32
 C	probes/catalog/availability-01.case.json	12
 C	probes/catalog/availability-02.case.json	12
@@ -105,6 +106,7 @@ C	probes/filter-if-empty-array.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-mixed-magnitude.case.json	5
 C	probes/geomean-overflow-many-values.case.json	7
+C	probes/geomean-product-order.case.json	17
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-shape-mismatch.case.json	11
@@ -236,6 +238,13 @@ C	probes/weeknum-invalid-type.case.json	8
 C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/xmatch-xlookup-blanks.case.json	69
+F	probes/at-operand-formulatext.case.json	Sheet1!H12
+F	probes/at-operand-formulatext.case.json	Sheet1!H13
+F	probes/at-operand-formulatext.case.json	Sheet1!H17
+F	probes/at-operand-formulatext.case.json	Sheet1!J1
+F	probes/at-operand-formulatext.case.json	Sheet1!J30
+F	probes/at-operand-formulatext.case.json	Sheet1!K1
+F	probes/at-operand-formulatext.case.json	Sheet1!K30
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
@@ -299,6 +308,13 @@ F	probes/error-stored-constants.case.json	S!H2
 F	probes/error-stored-constants.case.json	S!I1
 F	probes/error-stored-constants.case.json	S!I2
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
+F	probes/geomean-product-order.case.json	Sheet1!Z10
+F	probes/geomean-product-order.case.json	Sheet1!Z11
+F	probes/geomean-product-order.case.json	Sheet1!Z13
+F	probes/geomean-product-order.case.json	Sheet1!Z14
+F	probes/geomean-product-order.case.json	Sheet1!Z6
+F	probes/geomean-product-order.case.json	Sheet1!Z7
+F	probes/geomean-product-order.case.json	Sheet1!Z8
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
 F	probes/intersection-function-operands.case.json	Sheet1!H14
