@@ -23,4 +23,10 @@
 - **Consequences:** `make check` is unchanged and does not build `fuzz/`; an API change that
   breaks a target turns the nightly fuzz job red and is fixed like any other crash task. Each
   fix of a fuzz finding adds the reproducer as a unit test. Running locally:
-  `fuzz/seed_corpus.py`, then `cd fuzz && cargo fuzz run <target> corpus/<target> -- -dict=dict/formula.dict`.
+  `fuzz/seed_corpus.py`, then
+  `cd fuzz && cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')" <target> corpus/<target> -- -dict=dict/formula.dict`.
+- **Revision (2026-10-07, T-1067):** the first nightly run failed before fuzzing: the prebuilt
+  cargo-fuzz from `taiki-e/install-action` is a musl binary and defaults `--target` to
+  `x86_64-unknown-linux-musl`, which the nightly toolchain does not have (E0463; ASan does not
+  support musl either). The workflow and the local command now pass the host triple from
+  `rustc -vV` explicitly. Permissions, triggers and secrets are unchanged.
