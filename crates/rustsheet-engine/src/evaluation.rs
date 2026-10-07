@@ -432,7 +432,7 @@ const DEFAULT_MAX_STACK: usize = 256 * 1024;
 
 /// Roughly where the stack is: the address of a local.
 #[inline(never)]
-fn stack_address() -> usize {
+pub(crate) fn stack_address() -> usize {
     let marker = 0u8;
     std::hint::black_box(&marker) as *const u8 as usize
 }
@@ -919,7 +919,7 @@ impl Model {
         // Shares the formula, it does not copy it.
         let node =
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
-        match self.evaluate_node_in_context(&node, cell_reference) {
+        match self.run_cell_formula(&node, cell_reference) {
             CalcResult::Range { left, right } => {
                 if left == right {
                     self.evaluate_cell(left)
