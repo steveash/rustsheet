@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A scalar error operand of a comparison or & operator against an array: is the result array-sized, and which error wins per element",
+  "tags": [
+    "M2",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "C1": "=ROWS(NA()={1;2;3})",
+        "C2": "=INDEX(NA()={1;2;3},2)",
+        "C3": "=ROWS({1;2;3}<NA())",
+        "C4": "=INDEX({1;#DIV/0!;3}=NA(),2)",
+        "C5": "=INDEX(NA()<>{1;#DIV/0!;3},2)",
+        "C6": "=ROWS(NA()>A1:A3)",
+        "C7": "=ROWS(NA()&{\"a\";\"b\"})",
+        "C8": "=INDEX(NA()&{\"a\";\"b\"},2)",
+        "C9": "=INDEX({\"a\";#DIV/0!}&NA(),2)",
+        "C10": "=INDEX(NA()&{\"a\";#DIV/0!},2)",
+        "C11": "=SUM(IFERROR(NA()={1;2;3},1))",
+        "C12": "=SUM(IFERROR({1;2;3}<=NA(),1))",
+        "C13": "=COLUMNS(1/0>={1,2,3,4})",
+        "C14": "=ROWS(A1:A3&NA())",
+        "C15": "=SUM(IFERROR(NA()&A1:A3,1))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!C2",
+    "Sheet1!C3",
+    "Sheet1!C4",
+    "Sheet1!C5",
+    "Sheet1!C6",
+    "Sheet1!C7",
+    "Sheet1!C8",
+    "Sheet1!C9",
+    "Sheet1!C10",
+    "Sheet1!C11",
+    "Sheet1!C12",
+    "Sheet1!C13",
+    "Sheet1!C14",
+    "Sheet1!C15"
+  ]
+}

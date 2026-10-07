@@ -3,7 +3,7 @@ id: T-0231
 title: "Probe and match scalar-error broadcast for comparison and & operators"
 milestone: M2
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ broadcasts against an array operand"; probes/error-operand-broadcast). The compa
 
 ## Out of scope
 - Arithmetic operators (done in T-0209).
+
+## Outcome
+Probe `probes/error-operand-broadcast-cmp` (oracle: excel-graph) shows comparison and `&` broadcast a scalar error like arithmetic, leftmost error winning per element. The engine already did this (T-0129 ported it for all three paths), so no code change: 15/15 probe cells pass, recorded in `docs/excel-semantics/arrays.md`. Eval delta: probes +15 cells passing, 0 regressions.

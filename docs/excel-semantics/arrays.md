@@ -95,8 +95,13 @@ Evidence (oracle: excel-graph, 2026-10-05): probes/error-operand-broadcast C2, C
 The same probe shows ROWS/COLUMNS accept an array expression (`ROWS(NA()-{1;2;3})` = 3, C1/C3/C6–C8/C10);
 ROWS/COLUMNS count an array without reading its elements, so an all-error array still has its size.
 A scalar non-reference argument counts as 1x1 (`ROWS(5)`, `COLUMNS(TRUE)`, `ROWS("a")`, `ROWS(1+1)` = 1) while an error argument passes through (`ROWS(NA())` = `#N/A`); array constants and `SEQUENCE` results count their dimensions (`ROWS({1;2;3})` = 3, `COLUMNS({1,2;3,4})` = 2, `ROWS(SEQUENCE(5))` = 5). Evidence: probes/rows-columns-args C1-C14 (T-0237).
+The comparison operators (`= <> < > <= >=`) and `&` follow the same rule: `NA()={1;2;3}` is a 3-row array of `#N/A`
+(`SUM(IFERROR(NA()={1;2;3},1))` = 3, also `{1;2;3}<=NA()`, `NA()>A1:A3`, `NA()&{"a";"b"}`, `1/0>={1,2,3,4}` is 4 columns), and per element the
+leftmost error wins: `INDEX({1;#DIV/0!;3}=NA(),2)` is `#DIV/0!`, `INDEX(NA()<>{1;#DIV/0!;3},2)` is `#N/A`,
+`INDEX({"a";#DIV/0!}&NA(),2)` is `#DIV/0!`, `INDEX(NA()&{"a";#DIV/0!},2)` is `#N/A`.
+Evidence (oracle: excel-graph, 2026-10-07): probes/error-operand-broadcast-cmp C1-C15 (T-0231).
 Status: VERIFIED
-Implemented in: `handle_arithmetic` in `crates/rustsheet-engine/src/arithmetic.rs`
+Implemented in: `handle_arithmetic`, `handle_comparison`, `handle_concatenate` in `crates/rustsheet-engine/src/arithmetic.rs`
 Implemented in: `rows_columns_extent` in `crates/rustsheet-engine/src/cast.rs`
 Tasks: T-0209, T-0228
 
