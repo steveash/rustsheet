@@ -24,4 +24,4 @@ Extend probes/sum-long-text-args with these functions, fill the oracle, and fix 
 -
 
 ## Outcome
-Probe `probes/long-text-args-min-criteria` (18 cells, excel-graph): MIN already matched; AVERAGEA, MAXA and MINA direct text over 255 characters are now `#N/A` (`for_each_value_a`, AVERAGEA), and an *IF(S) criterion over 255 characters is `#VALUE!` (`lift_criteria`). All 18 cells pass; semantics in numbers.md.
+Probe `probes/long-text-args-min-criteria` (25 cells, excel-graph): MIN already matched; AVERAGEA, MAXA and MINA direct text over 255 characters are now `#N/A` (`for_each_value_a`, AVERAGEA), and an *IF(S) criterion over 255 characters is `#VALUE!` (`lift_criteria`). A range criterion errors per element. All 25 cells pass; semantics in numbers.md. Follow-up: error precedence of a long criterion against other errors is unprobed.
