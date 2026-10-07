@@ -1,7 +1,7 @@
 //! Workbook defined names: creating, validating, renaming and deleting them.
 
 use crate::{
-    calc_result::Range,
+    calc_result::{CalcResult, Range},
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -28,11 +28,50 @@ pub(crate) enum ParsedDefinedName {
     LambdaDefinition(Vec<NamedVariable>, Node),
     /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
     ErrorLiteral(Error),
-    /// `=SomethingElse`
+    /// Any other formula (`=SUM(Sheet1!$A$1:$A$3)`, `=Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2`,
+    /// `=0.5`): evaluated where the name is used, in that cell's context
+    Formula(Node),
+    /// A body that does not parse
     InvalidDefinedNameFormula,
 }
 
+/// How many defined-name bodies may be evaluated inside one another. A name whose body
+/// reaches itself, directly (`=selfref+1`) or through others (`a` is `=b`, `b` is `=a`), is
+/// `#NAME?` in Excel (probes/defined-name-formula-bodies H11, H13); the engine gives that by
+/// running out of depth. A chain of distinct names deeper than this is `#NAME?` too, where Excel
+/// would evaluate it (DEVIATION, decision 0014: references.md "A defined name may be a formula").
+const MAX_DEFINED_NAME_DEPTH: usize = 64;
+
 impl Model {
+    /// Runs `f` one defined-name body deeper, or gives `None` past
+    /// [`MAX_DEFINED_NAME_DEPTH`], so that names referring to themselves stay bounded.
+    pub(crate) fn within_defined_name<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
+        if self.defined_name_depth >= MAX_DEFINED_NAME_DEPTH {
+            return None;
+        }
+        self.defined_name_depth += 1;
+        let result = f(self);
+        self.defined_name_depth -= 1;
+        Some(result)
+    }
+
+    /// The value of the defined name `name` whose body is the formula `body`, used in `cell`.
+    pub(crate) fn evaluate_defined_name_formula(
+        &mut self,
+        name: &str,
+        body: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.within_defined_name(|model| model.evaluate_node_in_context(body, cell))
+            .unwrap_or_else(|| {
+                CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    format!("Defined name \"{name}\" refers to itself."),
+                )
+            })
+    }
+
     /// Adds a new defined name.
     /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
     pub fn new_defined_name(

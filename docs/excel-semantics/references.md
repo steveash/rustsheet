@@ -232,14 +232,37 @@ Rule: a defined name whose formula is an intersection is a reference. With `isec
 `=INDEX(wide,2,2)` = 30. A disjoint one, `disj` = `Sheet1!$A$1 Sheet1!$B$2`, is `#NULL!` and `ISREF(disj)` = FALSE.
 Evidence: probes/defined-name-intersection Sheet1!H1:H9 (Sheet1 A1:A3 = 1, 2, 3, B1:B3 = 10, 20,
 30; oracle: excel-graph, 2026-10-05, T-0043), first seen with a scratch xlsx in T-0138.
-Status: VERIFIED (Excel for the web; the engine answers `#NAME?` for these bodies, T-0158)
+Status: VERIFIED (Excel for the web; implemented since T-0158)
 Tasks: T-0138, T-0043, T-0158
 
 ## A defined name may be a constant
 Rule: a defined name whose body is a constant evaluates to that value: `rate` = `0.5`, `=rate*4` = 2.
 Evidence: probes/defined-name-intersection Sheet1!H10 (oracle: excel-graph, 2026-10-05, T-0043).
-Status: VERIFIED (Excel for the web; the engine answers `#NAME?`, T-0158)
+Status: VERIFIED (Excel for the web; implemented since T-0158)
 Tasks: T-0043, T-0158
+
+## A defined name may be a formula
+Rule: any formula can be a defined name's body, and it is evaluated where the name is used. With
+Sheet1 A1:A3 = 1, 2, 3 and B1:B3 = 10, 20, 30, and these names:
+
+- `total` = `SUM(Sheet1!$A$1:$A$3)`: `=total` = 6.
+- `plus1` = `Sheet1!$A$1+1`: `=plus1` = 2.
+- `txt` = `"ab"`: `=txt` = "ab".
+- `arr` = `{1,2,3}`: `=SUM(arr)` = 6 and `=COLUMNS(arr)` = 3.
+- `chain` = `total*2`: `=chain` = 12.
+- `pick` = `INDEX(Sheet1!$A$1:$B$3,2,2)`: `=pick` = 20.
+- `off` = `OFFSET(Sheet1!$A$1,1,1)`: `=ROWS(off)` = 1.
+
+A name whose body is a reference formula is a reference: `ISREF(pick)` and `ISREF(off)` are TRUE,
+while `ISREF(total)` and `ISREF(chain)` are FALSE. A name that reaches itself is `#NAME?`, both
+directly (`selfref` = `selfref+1`) and through another name (`loopa` = `loopb`, `loopb` = `loopa`).
+`ISERROR(loopa)` is TRUE, and `ERROR.TYPE` of either is 5. Beware that names such as `cyc1` are
+cell addresses (column CYC), not names.
+Evidence: probes/defined-name-formula-bodies Sheet1!H1:H17 (oracle: excel-graph, 2026-10-07, T-0158).
+Status: VERIFIED (Excel for the web), plus one DEVIATION (decision 0014). The engine evaluates at most 64
+name bodies inside one another, so a name cycle is `#NAME?` once that depth runs out. A chain of
+more than 64 distinct names is also `#NAME?` in the engine, where Excel would evaluate it.
+Tasks: T-0158
 
 ## A sheet-qualified #REF! is #REF!
 Rule: a reference that Excel has already replaced by `#REF!` but that keeps its sheet prefix

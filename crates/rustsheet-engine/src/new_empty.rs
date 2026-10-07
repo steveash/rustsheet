@@ -171,7 +171,9 @@ impl Model {
                     }
                     // Excel leaves `Sheet1!#REF!` as the body of a name whose range was deleted.
                     Node::ErrorKind(error) => ParsedDefinedName::ErrorLiteral(error),
-                    _ => ParsedDefinedName::InvalidDefinedNameFormula,
+                    Node::ParseErrorKind { .. } => ParsedDefinedName::InvalidDefinedNameFormula,
+                    // Intersections, constants, function calls: evaluated where used (T-0158).
+                    body => ParsedDefinedName::Formula(body),
                 }
             };
 
@@ -692,6 +694,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
+            defined_name_depth: 0,
             evaluation: crate::evaluation::Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),

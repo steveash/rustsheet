@@ -191,6 +191,8 @@ pub struct Model {
     pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
+    /// How many defined-name bodies are being evaluated inside one another (`within_defined_name`).
+    pub(crate) defined_name_depth: usize,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
@@ -692,10 +694,13 @@ impl Model {
                             cell,
                             format!("Defined name \"{name}\" is an error."),
                         ),
+                        ParsedDefinedName::Formula(body) => {
+                            self.evaluate_defined_name_formula(name, &body, cell)
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
-                            format!("Defined name \"{name}\" is not a reference."),
+                            format!("Defined name \"{name}\" does not parse."),
                         ),
                     }
                 } else {
@@ -1550,6 +1555,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
+            defined_name_depth: 0,
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
