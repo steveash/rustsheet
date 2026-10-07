@@ -3,7 +3,7 @@ id: T-1079
 title: "Probe negative serials with mixed elapsed+day tokens and cell display (#####)"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1035 made negative serials #VALUE! in `ParsePart::Date` (formatter/format.rs) 
 
 ## Out of scope
 -
+
+## Outcome
+Probed TEXT negatives with mixed elapsed tokens (probes/text-negative-serial-elapsed-mixed, excel-graph): all #VALUE! in the 1900 system, so the engine's elapsed exemption is wrong there (6 new probe cells fail, known failures). Recorded in dates.md. Cell display was not probed (cases cannot set a number format); engine fix and that probe are T-1105.
