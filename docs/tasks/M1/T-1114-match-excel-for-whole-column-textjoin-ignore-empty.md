@@ -3,7 +3,7 @@ id: T-1114
 title: "Match Excel for whole-column TEXTJOIN(ignore_empty FALSE), XIRR and XNPV"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
