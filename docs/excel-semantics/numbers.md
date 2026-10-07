@@ -421,9 +421,10 @@ Tasks: T-0939
 
 ## GEOMEAN root rounding
 Rule: in GEOMEAN's over/underflow path Excel's result is the n-th root of the same product the
-engine forms, but its root is not glibc's `pow(X, 1/n)`: it agrees whenever that root lies at
-most about 0.38 ulp from the exact `X^fl(1/n)`, and nearer a rounding halfway (0.39 to 0.50 ulp
-off) Excel can land on the other neighbour. Every miss is faithful (within 1 ulp of the exact root).
+engine forms, rounded faithfully (within 1 ulp of the exact `X^fl(1/n)`) but by no known model: it
+is not glibc's `pow(X, 1/n)` (10 of 17 probed sets) nor Excel's own `^` on X (14 of 17), and which
+sets miss is not set by the distance from the exact root (misses at 0.357 and 0.397 ulp, matches at
+up to 0.499; see the separating probe below). T-1099's "agrees within about 0.38 ulp" bound is refuted.
 Evidence: probes/geomean-product-order (17 random sets of 5 to 301 values, magnitudes 1E+-150
 to 1E+-307, picked so a sequential and a pairwise product round differently; excel-graph,
 2026-10-07, T-1099): the engine matches 10, and Z6, Z7, Z8, Z10, Z11, Z13, Z14 are one ulp off;

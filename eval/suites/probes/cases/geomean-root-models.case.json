@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1108: separate GEOMEAN root models. Root!A-D hold, per probes/geomean-product-order Z1-Z17 (row i = Zi), the engine's root inputs: the product significand M (integer, M*2^-52 in [1,2)), the remainder r, n and the scale q, so Excel's GEOMEAN is root*2^q with root = (M*2^(r-52))^(1/n). F-I are Excel's own ^, POWER, EXP(LN) and 10^LOG10 forms of that root; J checks M loaded exactly. Pin!*60 are GEOMEAN sets whose root lies 0.30-0.40 ulp from the exact one (the agreement bound); Fallback!D1-D2 are 1100 equal values and one half-size value (5E+204, 3E+200), where the engine's remainder exceeds 1000 (1094, 1067).",
+ "description": "T-1108: separate GEOMEAN root models. Root!A-D hold, per probes/geomean-product-order Z1-Z17 (row i = Zi), the engine's root inputs: the product significand M (integer, M*2^-52 in [1,2)), the remainder r, n and the scale q, so Excel's GEOMEAN is root*2^q with root = (M*2^(r-52))^(1/n). F-I are Excel's own ^, POWER, EXP(LN) and 10^LOG10 forms of that root; J (MOD(M,1000)) is #NUM! by MOD's quotient limit, so it checks nothing; E matching X bit for bit shows M loaded exactly. Pin!*60 are GEOMEAN sets whose root lies 0.30-0.40 ulp from the exact one (the agreement bound); Fallback!D1-D2 are 1100 equal values and one half-size value (5E+204, 3E+200), where the engine's remainder exceeds 1000 (1094, 1067).",
  "tags": [
   "M1",
   "numbers",
