@@ -207,7 +207,9 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                 if not (isinstance(raw, str) and raw.startswith("=")):
                     msg = f"legacy_formulas cell {a1} is not a formula"
                     raise ValueError(msg)
-                ws.write_formula(row, col, prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw))))
+                ws.write_formula(
+                    row, col, prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
+                )
                 continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
