@@ -1,10 +1,13 @@
 //! T-0931: formulas nested deeper than `MAX_FORMULA_DEPTH` are a parse error,
-//! never a stack overflow; formulas up to the limit parse.
+//! never a stack overflow; formulas up to the limit parse. T-0128: operator
+//! chains as long as Excel's formula length allows parse, evaluate and print.
 
 use std::collections::HashMap;
 
 use crate::expressions::parser::tests::utils::new_parser;
-use crate::expressions::parser::{Node, MAX_FORMULA_DEPTH, TOO_DEEP_MESSAGE};
+use crate::expressions::parser::{
+    Node, MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+};
 use crate::expressions::types::CellReferenceRC;
 
 fn parse(formula: &str) -> Node {
@@ -35,6 +38,10 @@ fn is_too_deep(node: &Node) -> bool {
     matches!(node, Node::ParseErrorKind { message, .. } if message == TOO_DEEP_MESSAGE)
 }
 
+fn has_too_many_operators(node: &Node) -> bool {
+    matches!(node, Node::ParseErrorKind { message, .. } if message == TOO_MANY_OPERATORS_MESSAGE)
+}
+
 fn nested(open: &str, inner: &str, close: &str, levels: usize) -> String {
     format!("{}{inner}{}", open.repeat(levels), close.repeat(levels))
 }
@@ -62,9 +69,6 @@ fn nesting_at_the_limit_parses() {
             let node = parse(&formula);
             assert!(!matches!(node, Node::ParseErrorKind { .. }), "{formula}");
         }
-        // An operator chain: the first operand is two levels, each operator one.
-        let chain = vec!["1"; MAX_FORMULA_DEPTH - 1].join("+");
-        assert!(matches!(parse(&chain), Node::OpSumKind { .. }));
     });
 }
 
@@ -74,7 +78,6 @@ fn one_level_past_the_limit_is_too_deep() {
         for formula in [
             nested("(", "1", ")", MAX_NESTING + 1),
             nested("ABS(", "1", ")", MAX_NESTING + 1),
-            vec!["1"; MAX_FORMULA_DEPTH].join("+"),
         ] {
             assert!(is_too_deep(&parse(&formula)), "{formula}");
         }
@@ -95,10 +98,6 @@ fn deep_formulas_of_every_shape_are_too_deep() {
             nested("(", "A1", ",A1)", levels),
             nested("(A1,", "A1", ")", levels),
             format!("({})", vec!["A1"; levels].join(",")),
-            format!("1{}", "&1".repeat(levels)),
-            format!("1{}", "^1".repeat(levels)),
-            format!("1{}", "*1".repeat(levels)),
-            format!("1{}", "=1".repeat(levels)),
             // Unclosed: the error must come from the depth, not the missing `)`.
             "(".repeat(levels),
         ] {
@@ -179,5 +178,129 @@ fn nested_unions_at_the_limit_parse_evaluate_and_print() {
         assert_eq!(model._get_text("B1"), "#VALUE!");
         assert_eq!(model._get_text("B2"), "#VALUE!");
         assert_eq!(model._get_formula("B2"), format!("={right} A1"));
+    });
+}
+
+/// `=1<op>1<op>...` with `terms` operands.
+fn chain(op: &str, terms: usize) -> String {
+    vec!["1"; terms].join(op)
+}
+
+/// Excel's 8,192 character formula limit fits 4,096 terms of `1+1+...`.
+const EXCEL_LONGEST_CHAIN: usize = 4096;
+
+#[test]
+fn operator_chains_as_long_as_excel_allows_evaluate_and_print() {
+    on_small_stack(|| {
+        let mut model = crate::test::util::new_empty_model();
+        let cases = [
+            ("A1", chain("+", EXCEL_LONGEST_CHAIN), "4096"),
+            ("A2", chain("*", EXCEL_LONGEST_CHAIN), "1"),
+            ("A4", chain("-", EXCEL_LONGEST_CHAIN), "-4094"),
+            // `1=1` is TRUE, and TRUE is not the number 1, so every later link is FALSE.
+            ("A5", chain("=", EXCEL_LONGEST_CHAIN), "FALSE"),
+            (
+                "A6",
+                format!("LEN({})", chain("&", EXCEL_LONGEST_CHAIN)),
+                "4096",
+            ),
+            // Mixed precedence: each `2*3` is a product under the sum chain.
+            ("A7", vec!["2*3"; 1365].join("+"), "8190"),
+            // A chain inside the deepest nesting, and nesting inside a chain.
+            (
+                "A8",
+                nested("ABS(", &chain("+", EXCEL_LONGEST_CHAIN - 64), ")", 60),
+                "4032",
+            ),
+            (
+                "A9",
+                format!(
+                    "{}+{}",
+                    chain("+", 2048),
+                    nested("ABS(", "1", ")", MAX_NESTING - 1)
+                ),
+                "2049",
+            ),
+        ];
+        for (cell, formula, _) in &cases {
+            model._set(cell, &format!("={formula}"));
+        }
+        model.evaluate();
+        for (cell, formula, expected) in &cases {
+            assert_eq!(model._get_text(cell), *expected, "{cell}");
+            assert_eq!(model._get_formula(cell), format!("={formula}"), "{cell}");
+        }
+        // A power chain prints each left operand in parentheses, `=(1^1)^1`.
+        model._set("A3", &format!("={}", chain("^", EXCEL_LONGEST_CHAIN)));
+        model.evaluate();
+        assert_eq!(model._get_text("A3"), "1");
+        assert!(model._get_formula("A3").ends_with("1)^1)^1"));
+        // A chain of references evaluates, and moves with its cell.
+        let references = vec!["A1"; EXCEL_LONGEST_CHAIN].join("+");
+        model._set("B1", &format!("={references}"));
+        model.evaluate();
+        assert_eq!(model._get_text("B1"), "16777216");
+        let cell = |row| crate::expressions::types::CellReferenceIndex {
+            sheet: 0,
+            row,
+            column: 2,
+        };
+        let area = crate::expressions::types::Area {
+            sheet: 0,
+            row: 1,
+            column: 1,
+            width: 2,
+            height: 1,
+        };
+        let moved =
+            model.move_cell_value_to_area(&format!("={references}"), &cell(1), &cell(2), &area);
+        assert_eq!(
+            moved,
+            Ok(format!("={}", vec!["A2"; EXCEL_LONGEST_CHAIN].join("+")))
+        );
+        let tree = parse(&chain("&", EXCEL_LONGEST_CHAIN));
+        assert!(tree.clone() == tree);
+    });
+}
+
+#[test]
+fn operators_up_to_the_cap_parse() {
+    on_small_stack(|| {
+        // The cap counts every value operator in the formula, not one chain.
+        let at_cap = chain("+", MAX_VALUE_OPERATORS + 1);
+        assert!(matches!(parse(&at_cap), Node::OpSumKind { .. }));
+        let split = format!(
+            "SUM({},{})",
+            chain("*", MAX_VALUE_OPERATORS / 2 + 1),
+            chain("&", MAX_VALUE_OPERATORS / 2 + 1)
+        );
+        assert!(matches!(parse(&split), Node::FunctionKind { .. }));
+        for op in ["+", "-", "*", "/", "^", "&", "=", "<>"] {
+            let formula = chain(op, MAX_VALUE_OPERATORS + 2);
+            assert!(has_too_many_operators(&parse(&formula)), "{op}");
+        }
+        let split = format!(
+            "SUM({},{})",
+            chain("*", MAX_VALUE_OPERATORS / 2 + 1),
+            chain("&", MAX_VALUE_OPERATORS / 2 + 2)
+        );
+        assert!(has_too_many_operators(&parse(&split)));
+        // Very long chains are refused, never a stack overflow.
+        assert!(has_too_many_operators(&parse(&chain("+", 100_000))));
+    });
+}
+
+#[test]
+fn chain_links_add_no_depth() {
+    on_small_stack(|| {
+        // The deepest nesting still fits with a long chain at every level: a chain is one
+        // level whatever its length.
+        let inner = format!("{}+1", nested("(", &chain("+", 30), ")", MAX_NESTING - 2));
+        assert!(
+            !matches!(parse(&inner), Node::ParseErrorKind { .. }),
+            "{inner}"
+        );
+        let too_deep = format!("{}+1", nested("(", &chain("+", 30), ")", MAX_NESTING));
+        assert!(is_too_deep(&parse(&too_deep)));
     });
 }

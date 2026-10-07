@@ -1,5 +1,5 @@
 use crate::expressions::parser::tests::utils::new_parser;
-use crate::expressions::parser::Node;
+use crate::expressions::parser::{ChainLeft, Node};
 use crate::expressions::token;
 use crate::expressions::types::CellReferenceRC;
 use std::collections::HashMap;
@@ -31,7 +31,7 @@ fn names_are_parsed_correctly() {
             Node::NumberKind(2.0),
             Node::OpSumKind {
                 kind: token::OpSum::Add,
-                left: Box::new(Node::NamedVariableKind {
+                left: ChainLeft::new(Node::NamedVariableKind {
                     name: "x".to_string(),
                     id: None,
                 }),

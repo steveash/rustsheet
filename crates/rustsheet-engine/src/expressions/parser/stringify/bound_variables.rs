@@ -1,6 +1,6 @@
 //! Export-time renaming of LAMBDA/LET bound names to Excel's `_xlpm.` form.
 
-use super::super::Node;
+use super::super::{for_each_chain_operand_mut, Node};
 use crate::functions::Function;
 
 /// Excel stores LAMBDA parameters and LET variables with an `_xlpm.` prefix,
@@ -66,14 +66,16 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         }
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right }
-        | Node::OpUnionKind { left, right, .. }
-        | Node::OpConcatenateKind { left, right }
-        | Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right }
-        | Node::CompareKind { left, right, .. } => {
+        | Node::OpUnionKind { left, right, .. } => {
             prefix_bound_variables(left, bound);
             prefix_bound_variables(right, bound);
+        }
+        Node::OpConcatenateKind { .. }
+        | Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| prefix_bound_variables(operand, bound));
         }
         Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
         Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
