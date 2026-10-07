@@ -21,7 +21,7 @@ Once settled, drop the fdlibm fallback for |x| >= 8 in `bessel_excel.rs` if Exce
 Also probe Excel's real cap on the order `n` (currently UNVERIFIED: > 100_000 returns #NUM!).
 
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
-cached workbooks give. Fit against the T-1004 sweep (`probes-numeric/m9-bessel`), never blind.
+cached workbooks give. Fit against the T-1004 sweep (`eval/suites/probes-numeric/cases/m9-bessel.case.json`, filled), never blind.
 
 ## Acceptance criteria
 - [ ] Identify Excel's large-argument algorithm from the cached values (fit candidate asymptotic
