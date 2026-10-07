@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1039: ISREF of unions with a negated, empty-intersection or 3D operand.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "C1": 3,
+        "B2": 5,
+        "H1": "=ISREF((-A1,B1))",
+        "H2": "=ISREF((A1 B2,C1))",
+        "H3": "=ISREF(A1 B2)",
+        "H4": "=ISREF((Sheet1:Sheet2!A1,B1))",
+        "H5": "=ISREF((A1,B1))",
+        "H6": "=ISREF((A1 A1,C1))"
+      }
+    },
+    {
+      "name": "Sheet2",
+      "cells": {
+        "A1": 7
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6"
+  ]
+}

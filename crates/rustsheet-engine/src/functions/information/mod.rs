@@ -104,8 +104,12 @@ impl Model {
         match &args[0] {
             Node::ReferenceKind { .. }
             | Node::RangeKind { .. }
-            | Node::OpRangeKind { .. }
-            | Node::OpIntersectKind { .. } => CalcResult::Boolean(true),
+            | Node::OpRangeKind { .. } => CalcResult::Boolean(true),
+            // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
+            // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H6; excel-graph).
+            Node::OpIntersectKind { .. } => {
+                CalcResult::Boolean(self.reference_areas(&args[0], cell).is_ok())
+            }
             Node::OpUnionKind { left, right, .. } => {
                 CalcResult::Boolean(self.union_is_reference(left, right, cell))
             }
