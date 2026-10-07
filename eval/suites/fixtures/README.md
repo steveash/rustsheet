@@ -20,4 +20,4 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1 = "a", D2 = "c"; rows 1 and 2 hold, with the range criterion
   `D1:D2`: F COUNTIF, G COUNTIFS, H SUMIF, I SUMIF (one-cell sum range B1), J SUMIFS, K AVERAGEIF,
   L AVERAGEIFS, M `_xlfn.MAXIFS`, N `_xlfn.MINIFS`; control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
-  legacy). The `_xlfn.` prefix is required for MAXIFS/MINIFS (`#NAME?` without it).
+  legacy). MAXIFS/MINIFS carry the `_xlfn.` prefix Excel itself writes.
