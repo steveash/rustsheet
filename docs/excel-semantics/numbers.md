@@ -100,8 +100,11 @@ cut one digit lower: 6 digits for `|exp| <= 98` ("1.23457E-05", "1.23457E-50") a
 `|exp| >= 99` ("1.2346E+100", "1.2346E-99", though "1.23457E-99" would fit its 11-character
 limit; probe D8-D10). `(1/(2^-1022))&""` is "4.4942328371558E+307". Evidence:
 probes/number-text-exponent-digits (excel-graph, 2026-10-06).
-The General cut (5 digits at `|exp| >= 99`) is probed only at +-99 and beyond; its 98/99 boundary is carried over from
-the `&""` path until T-1001 probes it. It is implemented in the formatter's General branch (T-0986). D8
+The General cut (5 digits at `|exp| >= 99`) is VERIFIED at the 98/99 boundary (T-1001): `TEXT(1.23456789012345E+98,"General")`
+is "1.23457E+98", `E+99` "1.2346E+99", `E-98` "1.23457E-98", `9.87654321098765E-99` "9.8765E-99". A mantissa that rounds
+up to 10 carries into the exponent: `9.9999996E+98` → "1E+99", `E+99` → "1E+100", `E-98` → "1E-97", `E-99` → "1E-98",
+`E-10` → "1E-09" (never "10E+98"); `9.9999996E+10` stays fixed "99999996000". Evidence:
+probes/text-general-exponent-boundary (excel-graph, 2026-10-07). It is implemented in the formatter's General branch (T-0986, carry T-1001). D8
 (`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) needs the 11-character
 fixed-versus-E rule, T-0938, and still fails.
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
@@ -150,8 +153,8 @@ since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the co
 SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR (T-0991, the same check). Probed (T-1021, probes/aggregate-overflow Calc!A49:C62): Excel gives `#NUM!` (ERROR.TYPE 6) for VAR.S, STDEV.S, VAR.P, STDEV.P, VARA and STDEVA over
 F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-criteria SUMIF per criterion:
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
-VAR.P, STDEV.P, VARA and STDEVA still yield NaN internally (the A cells pass because a top-level NaN shows as `#NUM!`; the `&""` and ERROR.TYPE forms are wrong; baselined, T-1029).
-Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60), so Excel does not use a stable deviation; do not "fix" this to 0.
+VAR.P, STDEV.P, VARA and STDEVA have matched since T-1037, when all twelve VAR/STDEV functions moved onto `excel_variance` with the same check (this closed T-1029).
+Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60). Excel tries the one-pass sum of squares first and only then switches to two passes (statistics.md, "VAR/STDEV switch"), so do not "fix" this to 0.
 MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. AGGREGATE A27-A29 pass since T-0993
 ("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
@@ -180,7 +183,7 @@ Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
 The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
 "Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
 Status: VERIFIED. Implemented in `number_to_text` (T-0199); the rounding is half up on the 15-digit string,
-and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unprobed, T-1000).
+and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (VERIFIED, T-1000: `9.99999999999995E+99&""` → "1E+100", `E-100` → "1E-99", `E-99` → "1E-98", `E+100` → "1E+101", `E+307` → "1E+308", `-9.99999999999995E+99` → "-1E+100"; `9.99999999999994E+99` → "9.9999999999999E+99" with no carry; at `|exp| <= 98` there is no cut, `E-98` and `E+98` keep all 15 digits. Evidence: probes/number-text-exponent-carry, excel-graph, 2026-10-07).
 
 ## Criteria equality
 Rule: COUNTIF/SUMIF-style numeric criteria compare the 15-digit rounded values (no absolute epsilon): over {1E-300, 0, 1E-17, 2E-16, 1+2^-52},
@@ -473,7 +476,7 @@ hidden and filter-hidden rows under odd options and keeps them otherwise) and ne
 larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
 Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
 option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
-Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), the
-VAR.P last digit (probes/aggregate-grid B31, C31; T-1037).
+Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
+The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
-`Model::lift_criteria`, and the spill shape is `aggregate_static_result` in static_analysis.rs (T-1038).
+`Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
