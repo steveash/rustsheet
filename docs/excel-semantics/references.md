@@ -340,8 +340,10 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   `SUM((Sheet1:Sheet2!A1,B2))`, is `#NAME?`.
 - `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `SUM(Print_Area)` = 6, `AREAS(Print_Area)` = 2.
 - FORMULATEXT of a union written as a dynamic-array formula (the only kind the probe harness writes) has no `@`
-  (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The legacy
-  (non-array) formula half is unprobed (T-1077).
+  (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The same holds for a legacy
+  (non-array, no `cm`) formula: FORMULATEXT is `=(A1,B2)`, `=@(A1,B2)` and `=SUM((A1,B2))`, values `#VALUE!`,
+  `#VALUE!`, 6; Excel does not add an `@` to a union in a legacy formula (probes/multiarea-at-legacy, T-1077).
+  So the engine must not wrap a union in `@` when printing a legacy formula.
 - `AREAS(Data1:Data3!A1)` is `#VALUE!`. A workbook holding `AREAS(1)` or `AREAS("A1")` is refused by Excel for the web
   (`createSession` 501 `unsupportedWorkbook`, two scratch runs, not kept as cases, like the T-0138 refusals).
 Status: VERIFIED (Excel for the web)
