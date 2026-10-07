@@ -3,7 +3,7 @@ id: T-1032
 title: "Probe GEOMEAN of mixed-magnitude values (1E+100,9E+307; 1E-100,1E-300)"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0992 made the engine return the bounded value for these (unit tests in test_ge
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/geomean-mixed-magnitude (5 cells, excel-graph). Engine matches 4; GEOMEAN(1E+100,9E+307) is one ulp high, baselined and filed as T-1074 (opus, numeric fitting). numbers.md updated. Eval delta: +4 passing, 1 new known failure (new coverage, 0 regressions).

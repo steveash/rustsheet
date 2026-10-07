@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "GEOMEAN of mixed-magnitude finite positives: the log-sum stays finite where a naive product would overflow or underflow (T-1032).",
+  "tags": [
+    "M1",
+    "statistical",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=GEOMEAN(1E+100,9E+307)",
+        "A2": "=GEOMEAN(1E-100,1E-300)",
+        "A3": "=GEOMEAN(1E+154,1E+300)",
+        "A4": "=GEOMEAN(1E+200,1E+200,1E+200)",
+        "A5": "=GEOMEAN(1E-200,1E-200,1E-200)"
+      }
+    }
+  ],
+  "expected": {}
+}
