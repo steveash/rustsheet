@@ -1,0 +1,43 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Workbook-scoped defined names whose body is a formula that is neither a reference nor a LAMBDA: function calls, arithmetic, a name chain and a name cycle (T-0158).",
+ "tags": ["M1", "references", "probe"],
+ "names": {
+  "total": "=SUM(Sheet1!$A$1:$A$3)",
+  "plus1": "=Sheet1!$A$1+1",
+  "txt": "=\"ab\"",
+  "arr": "={1,2,3}",
+  "chain": "=total*2",
+  "pick": "=INDEX(Sheet1!$A$1:$B$3,2,2)",
+  "off": "=OFFSET(Sheet1!$A$1,1,1)",
+  "loopa": "=loopb",
+  "loopb": "=loopa",
+  "selfref": "=selfref+1"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1, "A2": 2, "A3": 3, "B1": 10, "B2": 20, "B3": 30,
+    "H1": "=total",
+    "H2": "=plus1",
+    "H3": "=txt",
+    "H4": "=SUM(arr)",
+    "H5": "=chain",
+    "H6": "=pick",
+    "H7": "=ISREF(pick)",
+    "H8": "=ISREF(total)",
+    "H9": "=ROWS(off)",
+    "H10": "=ISREF(off)",
+    "H11": "=loopa",
+    "H12": "=ISERROR(loopa)",
+    "H13": "=selfref",
+    "H14": "=ERROR.TYPE(loopa)",
+    "H15": "=ERROR.TYPE(selfref)",
+    "H16": "=ISREF(chain)",
+    "H17": "=COLUMNS(arr)"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -103,9 +103,12 @@ fn delete_sheet() {
 
     model.delete_sheet(0).unwrap();
 
+    // The name now points into a deleted sheet. Excel turns that reference into `#REF!`, and a
+    // name whose body is a `#REF!` reference evaluates to `#REF!`
+    // (docs/excel-semantics/references.md "A sheet-qualified #REF! is #REF!"; T-0158).
     assert_eq!(
         model.get_formatted_cell_value(0, 2, 1),
-        Ok("#NAME?".to_string())
+        Ok("#REF!".to_string())
     );
 
     assert_eq!(

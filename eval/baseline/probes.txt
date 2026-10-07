@@ -91,6 +91,7 @@ C	probes/date-text-yearless.case.json	48
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
+C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-intersection.case.json	10
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
@@ -261,15 +262,6 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
 F	probes/concatenate-limit-spill.case.json	Sheet1!G97
 F	probes/criteria-padded-text.case.json	Sheet1!C13
-F	probes/defined-name-intersection.case.json	Sheet1!H1
-F	probes/defined-name-intersection.case.json	Sheet1!H10
-F	probes/defined-name-intersection.case.json	Sheet1!H2
-F	probes/defined-name-intersection.case.json	Sheet1!H3
-F	probes/defined-name-intersection.case.json	Sheet1!H4
-F	probes/defined-name-intersection.case.json	Sheet1!H5
-F	probes/defined-name-intersection.case.json	Sheet1!H6
-F	probes/defined-name-intersection.case.json	Sheet1!H7
-F	probes/defined-name-intersection.case.json	Sheet1!H8
 F	probes/error-literals-new.case.json	S!A1
 F	probes/error-literals-new.case.json	S!A10
 F	probes/error-literals-new.case.json	S!A11

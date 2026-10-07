@@ -191,6 +191,8 @@ pub struct Model {
     pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
+    /// The defined-name bodies being evaluated right now (`within_defined_name`).
+    pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
@@ -673,7 +675,8 @@ impl Model {
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
-                if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
+                let key = (*scope, name.to_lowercase());
+                if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             self.evaluate_cell(reference)
@@ -692,10 +695,13 @@ impl Model {
                             cell,
                             format!("Defined name \"{name}\" is an error."),
                         ),
+                        ParsedDefinedName::Formula(body) => {
+                            self.evaluate_defined_name_formula(name, &body, cell)
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
-                            format!("Defined name \"{name}\" is not a reference."),
+                            format!("Defined name \"{name}\" does not parse."),
                         ),
                     }
                 } else {
@@ -1550,6 +1556,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
+            defined_names_running: Default::default(),
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
@@ -2615,21 +2622,6 @@ impl Model {
     }
 
     // Helper function that returns a defined name given the name and scope
-    fn get_parsed_defined_name(
-        &self,
-        name: &str,
-        scope: Option<u32>,
-    ) -> Result<Option<ParsedDefinedName>, String> {
-        let name_upper = name.to_uppercase();
-
-        for (key, df) in &self.parsed_defined_names {
-            if key.1.to_uppercase() == name_upper && key.0 == scope {
-                return Ok(Some(df.clone()));
-            }
-        }
-        Ok(None)
-    }
-
     // Returns the formula for a defined name
     pub(crate) fn get_defined_name_formula(
         &self,
