@@ -3,7 +3,7 @@ id: T-1099
 title: "GEOMEAN of 600 mixed-magnitude underflowing values is one ulp off"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
