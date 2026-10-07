@@ -146,8 +146,19 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   `"0:11.9999:1"` (11 min + 10000 s) and `"10:9999.5:12"` parse, but `"24:60"`, `"24:0:60"`,
   `"0:60:60"`, `"9998:60:00"`, `"0:9990:599"`, `"60:60.5"` (M:S.f), `"0:9998.60:1"` and
   `"0:9999:9999.9999"` are #VALUE!. Evidence: probes/clock-text-oddities4 to -7 (excel-graph,
-  2026-10-06). Unprobed: an `H:M.f:S` fraction of more than 12 significant digits (the engine
-  gives #VALUE!, a bound that keeps the serial exact; `"10:11.12345:12"` parses).
+  2026-10-06). An `H:M.f:S` fraction may have any number of digits (T-0253): the digits are
+  the whole seconds, accumulated as `w * 10 + d` in a double, so 19 or more digits differ from the
+  correctly rounded value (`"0:1.1234567890123456789:0"` TIMEVALUE 0.234375, `"0:1.12345678901234567890:0"`
+  0.34375); `0+text` gives `1.4288980209762232e+19` for 25 digits and `1.4288980209762231e+34` for 40, and
+  TIMEVALUE of a serial that large is 0. Below 2^53 ms the serial is `total_ms / 1000 / 86400` as before;
+  above, `((clock_seconds + whole) + ms / 1000) / 86400`. Leading zeros do not count
+  (`"0:1.0000000000001:0"` is 61 s). With AM/PM, a whole-seconds value over 59 is #VALUE!
+  (`"10:11.1234567890123:12 PM"`), and the one-out-of-range rule still holds
+  (`"24:1.1234567890123:0"`, `"0:60.1234567890123:0"` are #VALUE!). Evidence: probes/clock-text-long-fraction, -2, -3.
+- **Clock text of more than 255 characters is #VALUE!**, counted on the raw text with its spaces
+  (255 parses, 256 does not, in H:M:S.f, H:M with trailing spaces and the long-fraction forms), so
+  a 250-digit fraction is the longest. Evidence: probes/clock-text-long-fraction4, clock-text-length-limit.
+  Unprobed: whether the limit is general to all text coercion (date text, number text) and the date-clock form (`1/2/2020 10:11...`), which the engine does not limit (T-0266).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
