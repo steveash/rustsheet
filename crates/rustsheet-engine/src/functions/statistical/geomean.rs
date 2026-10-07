@@ -30,6 +30,20 @@ impl Model {
             );
         }
 
+        // Excel multiplies the values' binary significands in [1, 2) into one double, keeping their
+        // powers of two apart, and is #NUM! when that product overflows: n * log2(significand)
+        // reaching 1024. 1028 copies of 5E+204 are finite and 1029 are #NUM!, and so are 1752
+        // alternating 1.5 and 0.75 although their plain product is in range (numbers.md, "GEOMEAN
+        // is #NUM! when the product of significands overflows"; probes/geomean-overflow-cut*).
+        let significands: f64 = values.iter().map(|&v| split_pow2(v).0).product();
+        if significands.is_infinite() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "GEOMEAN product of significands overflows".to_string(),
+            );
+        }
+
         // Excel gives exactly 9E+307 for two 9E+307 values (numbers.md, "Aggregate overflow"), which
         // a log-sum evaluation misses by ulps. When the plain product leaves the double range, take
         // the n-th root of a product kept in range by moving powers of two into a separate
