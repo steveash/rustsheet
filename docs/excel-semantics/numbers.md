@@ -150,8 +150,8 @@ since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the co
 SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR (T-0991, the same check). Probed (T-1021, probes/aggregate-overflow Calc!A49:C62): Excel gives `#NUM!` (ERROR.TYPE 6) for VAR.S, STDEV.S, VAR.P, STDEV.P, VARA and STDEVA over
 F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-criteria SUMIF per criterion:
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
-VAR.P, STDEV.P, VARA and STDEVA still yield NaN internally (the A cells pass because a top-level NaN shows as `#NUM!`; the `&""` and ERROR.TYPE forms are wrong; baselined, T-1029).
-Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60), so Excel does not use a stable deviation; do not "fix" this to 0.
+VAR.P, STDEV.P, VARA and STDEVA have matched since T-1037, when all twelve VAR/STDEV functions moved onto `excel_variance` with the same check (this closed T-1029).
+Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60). Excel tries the one-pass sum of squares first and only then switches to two passes (statistics.md, "VAR/STDEV switch"), so do not "fix" this to 0.
 MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. AGGREGATE A27-A29 pass since T-0993
 ("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
@@ -455,6 +455,6 @@ hidden and filter-hidden rows under odd options and keeps them otherwise) and ne
 larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
 Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
 option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
-Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), array function_num/option/k lifting (T-1038), the
-VAR.P last digit (probes/aggregate-grid B31, C31; T-1037).
+Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034) and array function_num/option/k lifting (T-1038).
+The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs).
