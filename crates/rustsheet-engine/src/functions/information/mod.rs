@@ -139,6 +139,12 @@ impl Model {
                     _ => false,
                 }
             }
+            // A LET variable or LAMBDA parameter is a reference if it was bound to one
+            // (upstream MIN_MAX_extras.xlsx A14-A16).
+            Node::NamedVariableKind { .. } => matches!(
+                self.evaluate_node_with_reference(node, cell),
+                CalcResult::Range { .. }
+            ),
             _ => false,
         }
     }

@@ -156,7 +156,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match node {
-            Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            // `@A1:A3` is the intersected cell's reference, so text there is ignored
+            // (probes/min-max-reference-forms C1-C4).
+            Node::ReferenceKind { .. }
+            | Node::ImplicitIntersection { .. }
+            | Node::DefinedNameKind(_)
+            | Node::NamedVariableKind { .. } => self.evaluate_node_with_reference(node, cell),
             Node::SheetSpanKind {
                 first_index,
                 last_index,
