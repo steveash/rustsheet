@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Number-to-text rounding carry at exponent magnitude 99: the 15-digit mantissa rounds half up to 14 digits and a carry to 10^14 raises the exponent (T-1000).",
+  "tags": ["M1", "number-format", "number-to-text", "probe"],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=9.99999999999995E+99&\"\"",
+        "A2": "=9.99999999999995E-100&\"\"",
+        "A3": "=9.99999999999995E-99&\"\"",
+        "A4": "=9.99999999999994E+99&\"\"",
+        "A5": "=9.99999999999995E-98&\"\"",
+        "A6": "=9.99999999999995E+98&\"\"",
+        "A7": "=9.99999999999995E+100&\"\"",
+        "A8": "=-9.99999999999995E+99&\"\"",
+        "A9": "=9.99999999999995E+307&\"\""
+      }
+    }
+  ],
+  "expected": {}
+}
