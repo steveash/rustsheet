@@ -1,0 +1,47 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Signs, e-notation, currency order and zero inside parenthesised number text, as text coercion via +0 (T-0281).",
+ "tags": [
+  "M2",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=\"($-1)\"+0",
+    "A2": "=\"($ -1)\"+0",
+    "A3": "=\"(-$1)\"+0",
+    "A4": "=\"(1e3)\"+0",
+    "A5": "=\"(1E-3)\"+0",
+    "A6": "=\"(1$)\"+0",
+    "A7": "=\"(0)\"+0",
+    "A8": "=\"(+1)\"+0",
+    "A9": "=\"(-1)\"+0",
+    "A10": "=\"(1)\"+0",
+    "A11": "=\"(-0)\"+0",
+    "A12": "=\"($0)\"+0",
+    "A13": "=\"(1.5e2)\"+0",
+    "A14": "=\"(-1e3)\"+0"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11",
+  "Sheet1!A12",
+  "Sheet1!A13",
+  "Sheet1!A14"
+ ]
+}
