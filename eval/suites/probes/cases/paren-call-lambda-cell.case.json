@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A cell holding a LAMBDA called through a parenthesized reference, (C1)(2) (T-0149).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "C1": "=LAMBDA(x,x+1)",
+        "H1": "=(C1)(2)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!C1",
+    "Sheet1!H1"
+  ]
+}

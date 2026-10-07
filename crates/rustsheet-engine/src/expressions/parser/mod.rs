@@ -538,7 +538,7 @@ impl Parser {
     fn parse_operand(&mut self) -> Node {
         let next_token = self.lexer.next_token();
         match next_token {
-            TokenType::LeftParenthesis => self.parse_parenthesized(),
+            TokenType::LeftParenthesis => self.parse_parenthesized_call(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => {

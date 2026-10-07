@@ -22,7 +22,7 @@ pub const MAX_FORMULA_DEPTH: usize = 256;
 
 /// Levels an operand adds over its subexpressions, at most: a call wrapped in
 /// `@` or `#` on import (`_xlfn.SINGLE`), or `LAMBDA(...)(...)`.
-const PRIMARY_DEPTH: usize = 2;
+pub(super) const PRIMARY_DEPTH: usize = 2;
 
 /// Message of the parse error for a formula deeper than [`MAX_FORMULA_DEPTH`].
 pub const TOO_DEEP_MESSAGE: &str = "Formula is nested too deeply";

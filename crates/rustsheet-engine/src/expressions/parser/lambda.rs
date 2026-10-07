@@ -1,6 +1,8 @@
 use crate::expressions::parser::{ExpectedTokens, NamedVariable, Node, Parser};
 use crate::expressions::token::TokenType;
 
+use super::reference_operators::is_reference_operand;
+
 impl Parser {
     // Called after `LAMBDA` and the opening `(` have been consumed.
     // Parses:  (param | '[' param ']')*, body ')' ['(' call_args ')']
@@ -101,25 +103,57 @@ impl Parser {
 
         // Immediate invocation: LAMBDA(params, body)(call_args)
         if self.lexer.peek_token() == TokenType::LeftParenthesis {
-            self.lexer.advance_token(); // consume '('
-            let call_args = match self.parse_function_args("LAMBDA") {
-                Ok(args) => args,
-                Err(e) => return e,
-            };
-            if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
-                return Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: err.position,
-                    message: err.message,
-                };
-            }
-            return Node::LambdaCallKind {
-                lambda: Box::new(def),
-                args: call_args,
-            };
+            return self.parse_call(def);
         }
 
         def
+    }
+
+    /// `(callee)(args)`, after the first `(`: a parenthesized operand written directly before
+    /// a `(`, with no space, is called like `LAMBDA(x,x+1)(2)`. Excel evaluates
+    /// `(LAMBDA(x,x+1))(2)` to 3 and `(IF(TRUE,LAMBDA(x,x*2)))(3)` to 6, and gives `#REF!` for a
+    /// called reference (`(A1)(A2)`), but refuses a called value (`(1)(2)`); with a space,
+    /// `(A1) (A2)` is an intersection (docs/excel-semantics/references.md "Calling a
+    /// parenthesized operand", probes/paren-call-*, T-0149). So the callee must be a reference
+    /// operand, the same set the intersection accepts, which also covers LAMBDA and names.
+    pub(super) fn parse_parenthesized_call(&mut self) -> Node {
+        let callee = self.parse_parenthesized();
+        if matches!(callee, Node::ParseErrorKind { .. })
+            || self.lexer.whitespace_follows()
+            || self.lexer.peek_token() != TokenType::LeftParenthesis
+        {
+            return callee;
+        }
+        if !is_reference_operand(&callee) {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: self.lexer.get_position() as usize,
+                message: "Only a reference or a LAMBDA can be called".to_string(),
+            };
+        }
+        self.parse_call(callee)
+    }
+
+    /// `callee(args)`, at the `(` that opens the arguments: a call of whatever `callee`
+    /// evaluates to. Its depth is covered by the operand's own ([`Parser::parse_primary`]).
+    fn parse_call(&mut self, callee: Node) -> Node {
+        self.lexer.advance_token(); // consume '('
+        let call_args = match self.parse_function_args("LAMBDA") {
+            Ok(args) => args,
+            Err(e) => return e,
+        };
+        if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: err.position,
+                message: err.message,
+            };
+        }
+        Node::LambdaCallKind {
+            lambda: Box::new(callee),
+            args: call_args,
+        }
     }
 }
