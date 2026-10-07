@@ -63,7 +63,8 @@ pub(super) fn broadcast_text(
     // All scalars: return a single value.
     if rows <= 1 && cols <= 1 {
         // Arguments are coerced left to right; the first failure decides (probe
-        // error-precedence-text). An error argument that is it is returned as it came.
+        // error-precedence-text). An error argument is returned as it came only when it is that
+        // first failure; "first" is judged by comparing error kinds, which fits the probed cases.
         let computed = compute(0, 0);
         let failure = match &computed {
             Ok(ArrayNode::Error(e)) | Err(e) => Some(e),
