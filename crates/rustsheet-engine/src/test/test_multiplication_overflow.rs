@@ -131,6 +131,7 @@ fn subnormal_flush_per_step_and_in_every_average() {
         ("A6", "=SUBTOTAL(1,F1:F2)*1E+300*1E+300", "0"),
         ("A7", "=SUBTOTAL(101,F1:F2)*1E+300*1E+300", "0"),
         ("A8", "=PRODUCT(1E-308,1E+300)", "0"),
+        ("A9", "=AGGREGATE(1,6,F1:F2)*1E+300*1E+300", "0"),
     ];
     for (cell, formula, _) in cases {
         model._set(cell, formula);
