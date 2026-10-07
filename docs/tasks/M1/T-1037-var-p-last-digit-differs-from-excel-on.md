@@ -23,7 +23,7 @@ Found by T-0993: `AGGREGATE(11,0,E1:E6)` over 3,1,4,1,5,9 is 7.472222222222222 i
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Opus run 2026-10-07. I stopped at the session budget, before implementing. The evidence is
 committed on this branch: probes/variance-digits (234 cells) and probes/variance-switch (82 cells),
 oracle-filled, with the new known failures baselined by `make eval-baseline`. The analysis is in
