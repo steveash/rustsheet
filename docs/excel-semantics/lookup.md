@@ -38,9 +38,31 @@ is in it (`=MATCH(Data!C$5,Data!A5:C9,1)` with C5 = 2 inside A5:C9 → `#N/A`; n
 call in gen-m2 returns a number), but an error in lookup_value is returned first
 (`=MATCH(MAX(MONTH(-0.5)),Data!A7:C9)` → `#NUM!`).
 Evidence: gen-m2/cbdabe32a32a4012 Calc!A227, ce315bb699e1be6f Calc!A135, 629e6e8b76fab8b9 Calc!A313. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-Status: VERIFIED for range references. UNVERIFIED sub-rule: a 2-D *array* (literal `{1,2;3,4}` or computed)
-is assumed `#N/A` by analogy; no oracle case covers it (probe pending, T-0224).
+A 2-D *array* is `#N/A` too: `MATCH(2,{1,2;3,4},0)`, `MATCH(2,{1,2;3,4})`, `MATCH(2,{1,2;3,4},-1)` and
+`MATCH(2,A1:B2*1,0)` (probes/lookup-2d-vector H14:H17, excel-graph, 2026-10-07, T-0224).
+Status: VERIFIED
 Tasks: T-0210, T-0224
+
+## LOOKUP vector form with 2-D or short vectors
+Rule: in `LOOKUP(value, lookup_vector, result_vector)`:
+- A 2-D lookup_vector is searched like the array form searches its array: along its first column, or
+  along its first row when it has more columns than rows. With A1:B2 = 1,2;3,4 and C1:C2 = 10,20,
+  `LOOKUP(2,A1:B2,C1:C2)` = 10 (A1:A2 searched), `LOOKUP(99,A1:B2,C1:C2)` = 20, and
+  `LOOKUP(0,A1:B2,C1:C2)` = `#N/A`. With A1:D2 = 1,2,5,7;3,4,6,8, `LOOKUP(5,A1:D2,F1:F4)` = F3
+  (A1:D1 searched). Arrays and computed arrays behave the same (`LOOKUP(2,{1,2;3,4},{5,6})` = 5).
+- A 2-D result_vector is `#N/A`: `LOOKUP(2,A1:A2,C1:D2)`, `LOOKUP(2,{1,2},{5,6;7,8})`.
+- A result *range* shorter than the match position is read on past its end: down for a column,
+  and to the right for a row or a single cell. `LOOKUP(5,A1:C2,F1:F2)` = F3, `LOOKUP(7,A1:D1,F1:F2)` =
+  F4, `LOOKUP(99,A1:B2,F1)` = G1 and `LOOKUP(3,A1:A2,F1)` = G1. A result *array* is not:
+  `LOOKUP(99,A1:B2,{10})` = `#N/A` while `LOOKUP(2,A1:B2,{10})` = 10.
+- A value not found is `#N/A` before the result vector is looked at.
+Engine choices (not probed, T-0269): reading past the sheet's last row or column is `#N/A`, a single-cell
+lookup_vector (`LOOKUP(2,C1,…)`) and a non-reference scalar result_vector (`LOOKUP(2,A1:A2,5)`) are
+`#N/A`. A function returning a reference as result_vector (`INDEX`, `OFFSET`) is not probed either.
+Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224).
+Status: VERIFIED
+Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
+Tasks: T-0224, T-0269
 
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
