@@ -3,7 +3,7 @@ id: T-1007
 title: "Probe subnormal flush edges: literal arguments, per-step flush, AVERAGEA/AVERAGEIF/SUBTOTAL(1)/AGGREGATE(1)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
