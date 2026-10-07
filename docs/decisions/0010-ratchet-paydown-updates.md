@@ -25,5 +25,9 @@
   T-0995: date_and_time.rs 1593 → ~1540 lines (WEEKNUM moved to `date_and_time/weeknum.rs`), and
   lookup_and_reference/mod.rs and other files already shrunk on main; duplicated lines 7825 → 7725 (T-1018's
   XLOOKUP/XMATCH dedup, left unrecorded there) (`check_file_size.py --update`, `check_duplication.py --update`).
+  T-1037: duplicated lines 7725 → 7323 (eight copies of the VAR/STDEV accumulate code became `excel_variance`)
+  (`check_duplication.py --update`).
+  T-1038: AGGREGATE's spill shape moved to `static_analysis/aggregate.rs` (static_analysis.rs shrank by 2 lines);
+  duplicated lines re-measured after merging T-1037 (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.

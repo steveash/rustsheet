@@ -54,8 +54,8 @@ Behavior shared by all four:
   through `&`, comparisons, POWER and the element-wise functions". No new precedence rule is needed.
 - **None of them is `#N/A`.** For `#GETTING_DATA`: `ISNA` is FALSE, `ISERR` TRUE, `ISERROR` TRUE,
   `IFNA` passes it through, `IFERROR` catches it, and `TYPE` is 16 (error-literals-new A3, A4, A12,
-  A15, A5, A16). For the three rich kinds, ISERR, ISNA and TYPE are inferred from "not `#N/A`" and
-  **need evidence** (probe task R1 below).
+  A15, A5, A16). For the three rich kinds, ISERROR and ISERR are TRUE, ISNA FALSE and TYPE 16 too, and
+  `IFNA` passes them through (information.md, probes/rich-errors-args A40:B68, T-1012).
 - **VALUETOTEXT and ARRAYTOTEXT** give the literal text (`"#GETTING_DATA"`, `"#BLOCKED!"`, …;
   error-literals-new A6, rich-errors-* E1/D1).
 - **Stored constants (T-0999, syntax.md).** Excel for the web **rejects** a workbook that stores
@@ -66,8 +66,7 @@ Behavior shared by all four:
   `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!`) make Excel for the web reject the whole workbook. They are
   not formula grammar.
 - **Unknown, need evidence:**
-  - what typing `#BLOCKED!` as cell input gives;
-  - whether a COUNTIF criterion `"#BLOCKED!"` matches the error (R1).
+  - what typing `#BLOCKED!` as cell input gives (T-1016).
 
 The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 - **IMAGE** of an unreachable URL is `#BLOCKED!` (subType 12). It fetches the URL otherwise.
@@ -109,8 +108,8 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
    - **Criteria** (`is_english_error_string`, used by the COUNTIF/SUMIF family in
      `functions/criteria.rs`) keep **today's twelve names, unchanged**. Adding a name there would
      turn a criterion such as `"#BLOCKED!"` or `"<>#CONNECT!"` from text into an error match, and
-     there is no evidence for either result. T-1012 probes it, and T-1013 changes the criteria
-     table only if the probe shows Excel matching the error.
+     T-1012 probed it: COUNTIF with `"#BLOCKED!"`, `"#CONNECT!"` and `"#FIELD!"` counts 0 even
+     over a cell holding that error, and the negated `"<>..."` forms count that cell (information.md), so the criteria table stays unchanged.
 3. **Stored form: `Error::stored_literal(&self) -> &'static str`**, the single place that knows
    Excel saves `#GETTING_DATA` as `#N/A`. It returns `"#N/A"` for `GETTINGDATA` and the `Display`
    text otherwise. The xlsx exporter and the eval harness both call it (see below). It is a
@@ -168,8 +167,10 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
   equality, and that a `=#GETTING_DATA` cell reads back as `XlError("#GETTING_DATA")`.
 
 ### Functions with no I/O (directive 5)
-All three keep their Excel arity, and the result is a scalar error, never a spill. Arguments are
-evaluated first, and an argument error wins (this needs evidence: R1). Their behavior:
+All three keep their Excel arity, and the result is a scalar error, never a spill, except FIELDVALUE with an
+array first argument (below). Arguments are evaluated first. An argument error wins for IMAGE and STOCKHISTORY and for FIELDVALUE's `field_name`, but not for
+FIELDVALUE's first argument (`FIELDVALUE(1/0,"Price")` is `#FIELD!`); an IMAGE source that is empty or a number evaluates as `#VALUE!` (stored form unverified); an
+array first argument to FIELDVALUE gives an array result (information.md, T-1012). Their behavior:
 - **IMAGE(source, [alt_text], [sizing], [height], [width])** → `#BLOCKED!`.
   - Excel fetches `source` and returns an image value. We never fetch, so every IMAGE is
     `#BLOCKED!`.
@@ -183,7 +184,7 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
     **DEVIATION (decision 0014)**, recorded in the same way.
   - When Excel itself returns `#CONNECT!` rather than `#BLOCKED!` is not known beyond that one
     cell. `#CONNECT!` is chosen because it is the only evidenced result.
-- **FIELDVALUE(value, field_name)** → `#FIELD!`.
+- **FIELDVALUE(value, field_name)** → `#FIELD!`; an array `value` gives an array of `#FIELD!` (T-1012).
   - RustSheet has no linked data types (decision 0027), so every value is a plain value, and
     Excel gives `#FIELD!` for those (rich-errors-field A1). This is **not** a deviation.
 - **External references** with no cached data → `#BLOCKED!`. T-0124 implements this on top of
@@ -219,14 +220,15 @@ evaluated first, and an argument error wins (this needs evidence: R1). Their beh
 - Eval: `probes/error-literals-new` (18 cells) and `error-literals-new2` (15) pass, and the 13
   rich-errors-* known failures pass. Everything is recorded with `make eval-baseline`, with no
   regressions.
-- Probe R1 adds the evidence marked "needs evidence" above, before F1 implements the functions.
+- Probe R1 (T-1012, done) added the evidence once marked "needs evidence": see information.md and
+  probes/rich-errors-args. F1 implements the functions from it.
 
 ## Rollout
 | # | Task | Lane | Size | Tier | Depends on |
 |---|---|---|---|---|---|
 | E1 | T-1010: Engine and facade `Error`/`ErrorKind` variants for `#GETTING_DATA`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!` (codes, the two name tables, lexing `#GETTING_DATA`, `stored_literal`, Python tests) | engine | M | opus | — |
 | X1 | T-1011: xlsx export and eval harness use `Error::stored_literal`; import keeps rich-value kinds (doc updates in arrays.md and rich_errors.rs) | harness | S | sonnet | E1 |
-| R1 | T-1012: Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
+| R1 | T-1012 (done): Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
 | F1 | T-1013: IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (DEVIATION entries for IMAGE and STOCKHISTORY) | functions-logic | S | sonnet | E1, R1 |
 | X2 | T-1014: Export rich-value errors (`#SPILL!`, `#CALC!`, and the three new kinds) as `#VALUE!` plus `vm` metadata; T-0999 showed that stored literals make Excel reject the workbook | harness | M | opus | X1 |
 | R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |

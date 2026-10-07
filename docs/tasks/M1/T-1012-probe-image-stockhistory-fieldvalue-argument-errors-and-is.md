@@ -3,7 +3,7 @@ id: T-1012
 title: "Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors and IS* of rich errors (SPEC-0003 R1)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,10 +24,13 @@ Questions:
 - the same IS* questions for STOCKHISTORY and FIELDVALUE error cells.
 
 ## Acceptance criteria
-- [ ] The case and its `.oracle.json` sidecar are committed, with no pending cells.
-- [ ] Each finding is recorded in docs/excel-semantics (information.md and arrays.md) with cell evidence, and SPEC-0003's "needs evidence" points are updated to cite it.
-- [ ] If the oracle is unavailable, the task is `status: blocked` with the reason.
-- [ ] `make check` green; reviewers approve.
+- [x] The case and its `.oracle.json` sidecar are committed, with no pending cells.
+- [x] Each finding is recorded in docs/excel-semantics (information.md and arrays.md) with cell evidence, and SPEC-0003's "needs evidence" points are updated to cite it.
+- [x] If the oracle is unavailable, the task is `status: blocked` with the reason.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing the functions (T-1013).
+
+## Outcome
+Added probes/rich-errors-args (54 cells, excel-graph, no pending cells); findings in information.md and arrays.md, SPEC-0003 updated. Notable: FIELDVALUE(1/0,"Price") is #FIELD! (error does not win), IMAGE of empty/number is #VALUE!, COUNTIF criteria naming the rich errors count 0. Eval: the new case adds known failures in probes for the functions T-1013 implements (baseline from `make eval-baseline`); no regressions. The "oracle unavailable" criterion did not apply.

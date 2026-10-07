@@ -3,7 +3,7 @@ id: T-1002
 title: "CONCAT: 32767-character result cap and linear concatenation"
 milestone: M1
 lane: functions-text
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ Review finding on T-0196. `fn_concat` (crates/rustsheet-engine/src/functions/tex
 
 ## Out of scope
 - Other text functions.
+
+## Outcome
+Superseded by T-0243 (PR #203): the oracle (probes/text-result-limit C8, excel-graph) shows CONCAT past 32,767 characters is `#CALC!`, not `#VALUE!` as the Goal above assumed, and `fn_concat` now builds the text linearly (`ConcatText`). No DEVIATION needed. Boundary and UTF-16 evidence: T-0262.

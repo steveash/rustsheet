@@ -17,6 +17,17 @@ use crate::{
     model::Model,
 };
 
+/// How IF hands back the branch a scalar condition chose.
+#[derive(Clone, Copy)]
+pub(crate) enum IfBranchMode {
+    /// As a value (an ordinary IF).
+    Value,
+    /// As an aggregate argument sees it: a reference stays a range.
+    Aggregate,
+    /// As an argument that needs one sheet's reference (INDEX, MATCH): a 3-D span is `#VALUE!`.
+    SingleSheet,
+}
+
 // ── IF array helpers ──────────────────────────────────────────────────────────
 
 /// A branch argument to IF/IFERROR/IFNA: either a scalar (broadcast to all
@@ -109,17 +120,16 @@ impl Model {
     }
 
     pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.if_impl(args, cell, false)
+        self.if_impl(args, cell, IfBranchMode::Value)
     }
 
-    /// IF; with `as_reference` a scalar condition hands back the chosen branch as
-    /// an aggregate argument sees it, so a reference stays a range (T-0216;
-    /// docs/excel-semantics/references.md).
+    /// IF; with a scalar condition the chosen branch comes back as `mode` says
+    /// (T-0216, T-1026; docs/excel-semantics/references.md).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        as_reference: bool,
+        mode: IfBranchMode,
     ) -> CalcResult {
         if args.len() != 2 && args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
@@ -144,8 +154,11 @@ impl Model {
                 };
                 let branch = if b { args.get(1) } else { args.get(2) };
                 return match branch {
-                    Some(node) if as_reference => self.evaluate_aggregate_arg(node, cell),
-                    Some(node) => self.evaluate_node_in_context(node, cell),
+                    Some(node) => match mode {
+                        IfBranchMode::Aggregate => self.evaluate_aggregate_arg(node, cell),
+                        IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell),
+                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell),
+                    },
                     None => CalcResult::Boolean(false),
                 };
             }

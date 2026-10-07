@@ -2,7 +2,11 @@ use std::collections::HashSet;
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{for_each_chain_operand_mut, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     functions::Function,
     model::Model,
 };
@@ -57,13 +61,14 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
                 }
             }
         }
-        Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. }
-        | Node::OpConcatenateKind { left, right } => {
-            assign_variable_ids(left, target, id);
-            assign_variable_ids(right, target, id);
+        Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. }
+        | Node::OpConcatenateKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| {
+                assign_variable_ids(operand, target, id);
+            });
         }
         Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id),
         Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {

@@ -29,21 +29,49 @@ pub(crate) enum RoundMode {
 const SIGNIFICANT_DIGITS: i64 = 15;
 /// `num_digits` beyond this magnitude rounds every finite double the same way, so clamping it
 /// keeps the exponent arithmetic small without changing any result.
-const MAX_NUM_DIGITS: f64 = 10_000.0;
+const MAX_NUM_DIGITS: i64 = 10_000;
+
+/// The integer `num_digits` Excel actually rounds at, for a value whose 15-digit decimal form
+/// has decimal exponent `exponent` (docs/excel-semantics/numbers.md, "ROUND family: huge
+/// num_digits wrap"; probes/round-huge-digits, -wrap and -negative, oracle excel-graph):
+/// - ROUNDUP and ROUNDDOWN keep the sign of the truncated `num_digits` and take its magnitude,
+///   capped at 2^32 - 1, modulo 65,536: `ROUNDDOWN(123.456,65537)` = 123.4,
+///   `ROUNDUP(123.456,-65537)` = 130, `ROUNDDOWN(0.5,2^31)` = 0, but 2^32 and beyond act as 65,535.
+/// - ROUND saturates `num_digits` to a 32-bit integer `k`, then counts the digits to keep,
+///   `k + exponent + 1`, in 32 bits with wraparound: past the top it wraps to a huge negative
+///   count (`ROUND(42,2^31-1)` = 0, `ROUND(1E+15,1E+15)` = 0, while `ROUND(0.5,2^31-1)` = 0.5),
+///   and past the bottom to a huge positive one (`ROUND(5E-10,-2147483640)` = 5E-10).
+fn effective_digits(num_digits: f64, exponent: i64, mode: RoundMode) -> i64 {
+    // NaN cannot come from a cell; the saturating casts would read it as 0.
+    let truncated = num_digits.trunc();
+    if mode == RoundMode::HalfAwayFromZero {
+        let k = i64::from(truncated as i32);
+        let kept = k + exponent + 1;
+        i64::from(kept as i32) - exponent - 1
+    } else {
+        let magnitude = (truncated.abs().min(f64::from(u32::MAX)) as i64) % 65_536;
+        if truncated < 0.0 {
+            -magnitude
+        } else {
+            magnitude
+        }
+    }
+}
 
 /// Rounds `value` at `num_digits` decimal places the way Excel's ROUND family does.
 ///
-/// `num_digits` is truncated toward zero. Returns `None` when the result is beyond the double
-/// range (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel).
+/// `num_digits` is truncated toward zero and then narrowed to an integer the way Excel does
+/// (see [`effective_digits`]). Returns `None` when the result is beyond the double range
+/// (`ROUNDUP(1.5,-400)` is `#NUM!` in Excel).
 pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Option<f64> {
     if value == 0.0 || !value.is_finite() {
         return Some(value);
     }
-    // Truncation toward zero, as Excel does for a fractional num_digits; the clamp keeps the
-    // cast exact (NaN cannot reach here from a cell, but would become 0).
-    let num_digits = num_digits.clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS).trunc() as i64;
     let tie_away = mode != RoundMode::HalfAwayFromZero;
     let (mantissa, exponent) = significant_15(value.abs(), tie_away);
+    // The clamp keeps the exponent arithmetic below small without changing any result.
+    let num_digits =
+        effective_digits(num_digits, exponent, mode).clamp(-MAX_NUM_DIGITS, MAX_NUM_DIGITS);
     // `mantissa` has 15 digits; its last digit has place value 10^(exponent - 14).
     let last_place = exponent - (SIGNIFICANT_DIGITS - 1);
     let dropped = -num_digits - last_place;
@@ -146,7 +174,9 @@ mod tests {
         assert_eq!(round(1.5, -400.0), Some(0.0));
         assert_eq!(round(1.5, 400.0), Some(1.5));
         assert_eq!(round_decimal(1.5, -400.0, RoundMode::Up), None);
-        assert_eq!(round(1.5, f64::MAX), Some(1.5));
+        // A saturated num_digits makes the 32-bit digit count wrap (probes/round-huge-digits).
+        assert_eq!(round(1.5, f64::MAX), Some(0.0));
+        assert_eq!(round(0.5, f64::MAX), Some(0.5));
         assert_eq!(round(1.5, f64::MIN), Some(0.0));
         assert_eq!(round(1.234_567_890_123_45e300, -299.0), Some(1.2e300));
         assert_eq!(round(1e-300, 310.0), Some(1e-300));
@@ -163,6 +193,54 @@ mod tests {
         assert_eq!(
             round_decimal((15.505 + 1.005) / 2.0, 9.0, RoundMode::Up),
             Some(8.255)
+        );
+    }
+
+    #[test]
+    fn round_digit_count_wraps_in_32_bits() {
+        // probes/round-huge-digits-wrap E:O and probes/round-huge-digits-negative.
+        let max = f64::from(i32::MAX);
+        assert_eq!(round(5.0, max), Some(0.0));
+        assert_eq!(round(5.0, max - 1.0), Some(5.0));
+        assert_eq!(round(50.0, max - 1.0), Some(0.0));
+        assert_eq!(round(5e14, 2_147_483_633.0), Some(0.0));
+        assert_eq!(round(5e14, 2_147_483_632.0), Some(5e14));
+        assert_eq!(round(1e15, 1e15), Some(0.0));
+        assert_eq!(round(-1e15 - 1.0, 1e15), Some(0.0));
+        assert_eq!(round(0.05, max), Some(0.05));
+        assert_eq!(round(5e-10, -2_147_483_640.0), Some(5e-10));
+        assert_eq!(round(5e-10, -2_147_483_639.0), Some(0.0));
+        assert_eq!(round(5e-300, -2_147_483_350.0), Some(5e-300));
+        assert_eq!(round(5e-300, -2_147_483_349.0), Some(0.0));
+        assert_eq!(round(0.5, f64::from(i32::MIN)), Some(0.0));
+        assert_eq!(round(123.456, 65_536.0), Some(123.456));
+    }
+
+    #[test]
+    fn roundup_rounddown_digits_wrap_modulo_65536() {
+        // probes/round-huge-digits-wrap A:B.
+        let up = |digits| round_decimal(123.456, digits, RoundMode::Up);
+        let down = |digits| round_decimal(123.456, digits, RoundMode::Down);
+        assert_eq!(up(65_536.0), Some(124.0));
+        assert_eq!(down(65_537.0), Some(123.4));
+        assert_eq!(up(-65_537.0), Some(130.0));
+        assert_eq!(down(-65_536.0), Some(123.0));
+        assert_eq!(down(-65_535.0), Some(0.0));
+        assert_eq!(up(-65_535.0), None);
+        assert_eq!(down(2_147_483_649.0), Some(123.4));
+        assert_eq!(up(-2_147_483_650.0), Some(200.0));
+        assert_eq!(down(4_294_901_762.0), Some(123.45));
+        assert_eq!(up(4_294_967_295.9), Some(123.456));
+        assert_eq!(up(4_294_967_298.0), Some(123.456));
+        assert_eq!(down(1e300), Some(123.456));
+        assert_eq!(up(-1e300), None);
+        assert_eq!(
+            round_decimal(0.5, 2_147_483_648.0, RoundMode::Down),
+            Some(0.0)
+        );
+        assert_eq!(
+            round_decimal(0.5, 2_147_483_648.0, RoundMode::Up),
+            Some(1.0)
         );
     }
 }

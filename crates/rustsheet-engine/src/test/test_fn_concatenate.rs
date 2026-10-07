@@ -97,3 +97,60 @@ fn fn_concatenate_limit_counts_utf16_units() {
     // "é" is one UTF-16 unit (two UTF-8 bytes).
     assert_eq!(model._get_text("A3").chars().count(), 32767);
 }
+
+// Oracle: probes/text-result-limit C8, C9 (excel-graph): CONCAT and TEXTJOIN text over 32767
+// chars is #CALC!. The exactly-32767 cases are hand-written, pending an oracle probe (T-0262).
+#[test]
+fn concat_and_textjoin_over_32767_chars_are_calc_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LEN(CONCAT(REPT(\"a\",32767),\"b\"))");
+    model._set("A2", "=LEN(CONCAT(REPT(\"a\",32766),\"b\"))");
+    model._set("A3", "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\"))");
+    model._set("A4", "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32765),\"b\"))");
+    model._set("A5", "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32766),\"b\"))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#CALC!");
+    assert_eq!(model._get_text("A2"), *"32767");
+    assert_eq!(model._get_text("A3"), *"#CALC!");
+    assert_eq!(model._get_text("A4"), *"32767");
+    assert_eq!(model._get_text("A5"), *"#CALC!");
+}
+
+// The limit counts UTF-16 units, not bytes: 16383 + 16384 two-byte chars are 65534 bytes but
+// exactly 32767 units, so they fit; one more char does not.
+#[test]
+fn concat_and_textjoin_limit_with_multibyte_and_range_arguments() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPT(\"é\",16383)");
+    model._set("A2", "=REPT(\"é\",16384)");
+    model._set("B1", "=LEN(CONCAT(A1,\"é\"))");
+    model._set("B2", "=LEN(CONCAT(A1:A2))");
+    model._set("B3", "=LEN(TEXTJOIN(\"\",TRUE,A1,A1))");
+    model._set("B4", "=LEN(TEXTJOIN(\"\",TRUE,A1:A2))");
+    model._set("B5", "=LEN(CONCAT(A1:A2,\"é\"))");
+    model._set("B6", "=LEN(TEXTJOIN(\"\",TRUE,A1:A2,\"é\"))");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("B1"), *"16384");
+    assert_eq!(model._get_text("B2"), *"32767");
+    assert_eq!(model._get_text("B3"), *"32766");
+    assert_eq!(model._get_text("B4"), *"32767");
+    assert_eq!(model._get_text("B5"), *"#CALC!");
+    assert_eq!(model._get_text("B6"), *"#CALC!");
+}
+
+// Unprobed (text.md): an error in a later argument wins over the length error.
+#[test]
+fn concat_and_textjoin_error_after_the_limit_wins() {
+    let mut model = new_empty_model();
+    model._set("A1", "=CONCAT(REPT(\"a\",32767),\"b\",NA())");
+    model._set("A2", "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\",NA())");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#N/A");
+}

@@ -53,6 +53,7 @@ use super::utils::number_to_column;
 use sheet_span::with_sheet_span;
 use token::OpCompare;
 
+mod chain;
 mod depth;
 mod lambda;
 mod lists;
@@ -62,7 +63,13 @@ mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
 
-pub use depth::{MAX_FORMULA_DEPTH, TOO_DEEP_MESSAGE};
+pub use chain::ChainLeft;
+use chain::ChainLevel;
+pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
+pub(crate) use depth::is_limit_error;
+pub use depth::{
+    MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+};
 
 #[cfg(test)]
 mod tests;
@@ -149,6 +156,7 @@ pub struct CompletionContext {
     pub replace_from: usize,
 }
 
+/// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     BooleanKind(bool),
@@ -221,21 +229,21 @@ pub enum Node {
         written: usize,
     },
     OpConcatenateKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpSumKind {
         kind: token::OpSum,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpProductKind {
         kind: token::OpProduct,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpPowerKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     FunctionKind {
@@ -273,7 +281,7 @@ pub enum Node {
     },
     CompareKind {
         kind: OpCompare,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     UnaryKind {
@@ -316,6 +324,8 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
+    /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
+    value_operators: usize,
 }
 
 pub fn new_parser_english(
@@ -355,6 +365,7 @@ impl Parser {
             nesting: 0,
             depth: 0,
             inner_depth: 0,
+            value_operators: 0,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -389,6 +400,7 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
+        self.value_operators = 0;
         let node = self.parse_expr();
         self.expect_end(node)
     }
@@ -478,141 +490,14 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Node {
-        let mut t = self.parse_concat();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Compare(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_concat();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::CompareKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        self.inner_depth = self.inner_depth.max(depth);
-        t
-    }
-
-    fn parse_concat(&mut self) -> Node {
-        let mut t = self.parse_term();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while next_token == TokenType::And {
-            self.lexer.advance_token();
-            let p = self.parse_term();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpConcatenateKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
+        let t = self.parse_chain(ChainLevel::Compare);
+        if !matches!(t, Node::ParseErrorKind { .. }) {
+            self.inner_depth = self.inner_depth.max(self.depth);
         }
         t
     }
 
-    fn parse_term(&mut self) -> Node {
-        let mut t = self.parse_factor();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Addition(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_factor();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpSumKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_factor(&mut self) -> Node {
-        let mut t = self.parse_prod();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Product(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_prod();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpProductKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_prod(&mut self) -> Node {
-        let mut t = self.parse_power();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while next_token == TokenType::Power {
-            self.lexer.advance_token();
-            let p = self.parse_power();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpPowerKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_power(&mut self) -> Node {
+    pub(super) fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
         // Every minus is kept (`--x` coerces `x` to a number); a plus is a no-op.
         let mut minus_count = 0;

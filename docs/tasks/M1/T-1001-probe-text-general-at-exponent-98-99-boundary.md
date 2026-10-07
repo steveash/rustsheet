@@ -3,7 +3,7 @@ id: T-1001
 title: "Probe TEXT General at exponent 98/99 boundary and mantissa carry (E+98, E+99, 9.9999996E+98)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0986 cuts TEXT General to 5 digits at |exp| >= 99. The oracle has General cell
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/text-general-exponent-boundary` (10 cells, excel-graph) confirmed the 98/99 boundary already implemented and showed the General branch printed "10E-10"-style text when the mantissa rounds up to 10 (5 cells failed). The branch now carries into the exponent. Eval: new case, 10/10 pass (5/10 without the carry fix), 0 regressions.

@@ -28,6 +28,23 @@ fn general_drops_a_digit_at_exponent_magnitude_99() {
     }
 }
 
+// T-1001: a mantissa that rounds up to 10 carries into the exponent
+// (probes/text-general-exponent-boundary A5-A8, A10).
+#[test]
+fn general_carries_a_rounded_up_mantissa_into_the_exponent() {
+    let cases = [
+        (9.999_999_6e98, "1E+99"),
+        (9.999_999_6e99, "1E+100"),
+        (9.999_999_6e-98, "1E-97"),
+        (9.999_999_6e-99, "1E-98"),
+        (9.999_999_6e-10, "1E-09"),
+        (-9.999_999_6e98, "-1E+99"),
+    ];
+    for (value, text) in cases {
+        assert_eq!(format_number(value, "General", "en").text, text, "{value}");
+    }
+}
+
 #[test]
 fn test_maximum_zeros() {
     let formatted = format_number(1.0 / 3.0, "#,##0.0000000000000000000", "en");

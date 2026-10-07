@@ -3,7 +3,7 @@ id: T-0253
 title: "Probe H:M.f:S clock text with more than 12 fraction digits"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ From T-0153 (PR #175, fidelity review MINOR). `time_text::fraction_as_seconds` (
 
 ## Out of scope
 -
+
+## Outcome
+Five probes (`clock-text-long-fraction` to `-4`, `clock-text-length-limit`) filled by excel-graph. Excel accepts any number of fraction digits in `H:M.f:S` (digits accumulated as `w*10+d` in a double) up to a general 255-character clock-text limit. The engine now matches every cell; the old 12-digit bound is gone and no DEVIATION is needed. Recorded in dates.md.

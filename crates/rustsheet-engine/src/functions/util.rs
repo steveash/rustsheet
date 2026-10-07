@@ -5,7 +5,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
 };
@@ -136,6 +136,12 @@ impl Model {
             } if first_index != last_index => {
                 self.get_sheet_span_reference(*first_index, *last_index, reference, cell)
             }
+            // IF hands its chosen branch on as a reference: a 3-D span inside it is
+            // `#VALUE!` here, as it is inside CHOOSE (T-1026).
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } => self.if_impl(args, cell, IfBranchMode::SingleSheet),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -160,7 +166,7 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::If,
                 args,
-            } => self.if_impl(args, cell, true),
+            } => self.if_impl(args, cell, IfBranchMode::Aggregate),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,

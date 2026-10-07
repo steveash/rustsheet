@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 use rustsheet_engine::expressions::utils::shift::shift_formula_text;
-use rustsheet_xlsx::import::{decode_xlsx_escapes, rich_errors, ImportLimits, PartNames};
+use rustsheet_xlsx::import::{
+    decode_xlsx_escapes, iso8601_to_serial, rich_errors, ImportLimits, PartNames,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SnapshotError {
@@ -678,6 +680,7 @@ fn decode_value(
         ("str", v) => Value::Text(decode_xlsx_escapes(v.unwrap_or_default())),
         ("b", Some(v)) => Value::Bool(v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")),
         ("e", Some(v)) => Value::Error(v.trim().to_string()),
+        ("d", Some(v)) => iso8601_to_serial(v).map_or(Value::Empty, Value::Number),
         (_, Some(v)) if !v.trim().is_empty() => v
             .trim()
             .parse::<f64>()

@@ -1,6 +1,6 @@
 #![allow(clippy::panic)]
 
-use crate::expressions::parser::Node;
+use crate::expressions::parser::{ChainLeft, Node};
 use crate::expressions::types::CellReferenceRC;
 use std::collections::HashMap;
 
@@ -67,7 +67,7 @@ fn simple_add() {
         t,
         Node::OpSumKind {
             kind: crate::expressions::token::OpSum::Add,
-            left: Box::new(Node::ImplicitIntersection {
+            left: ChainLeft::new(Node::ImplicitIntersection {
                 automatic: false,
                 child: Box::new(child)
             }),

@@ -49,6 +49,36 @@ Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-roundi
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
 
+## ROUND family: huge num_digits wrap
+Rule: a `num_digits` of huge magnitude is narrowed to an integer, and ROUND narrows it differently
+from ROUNDUP and ROUNDDOWN (after truncation toward zero; Excel is right, however odd):
+- ROUNDUP and ROUNDDOWN keep the sign and take the magnitude, capped at 2^32-1, modulo 65,536.
+  `ROUNDUP(123.456,65536)` = 124 (digits 0), `ROUNDDOWN(123.456,65537)` = 123.4 (digits 1),
+  `ROUNDUP(123.456,-65537)` = 130, `ROUNDDOWN(123.456,-65535)` = 0 and `ROUNDUP(123.456,-65535)` =
+  `#NUM!`, `ROUNDDOWN(0.5,2^31)` = 0 and `ROUNDUP(0.5,2^31)` = 1, `ROUNDUP(42,-2147483649)` = 50.
+  2^32 and anything larger act as 65,535 (`ROUNDUP(123.456,2^32+2)` = 123.456), and -2^32 and below
+  as -65,535 (`ROUNDDOWN(123.456,-1E+300)` = 0, `ROUNDUP(…)` = `#NUM!`).
+- ROUND saturates `num_digits` to a 32-bit integer k (1E+15 acts as 2147483647), then counts the
+  digits it keeps, k + e + 1 (e the decimal exponent of the value), in 32 bits with wraparound.
+  Past the top the count wraps negative and the result is 0. Past the bottom it wraps positive and
+  the value is returned unrounded. So `ROUND(5,2147483647)` = 0 but `ROUND(5,2147483646)` = 5,
+  `ROUND(50,2147483646)` = 0, `ROUND(5E+14,2147483633)` = 0 but `…,2147483632)` = 5E+14,
+  `ROUND(1E+15,1E+15)` = 0, `ROUND(0.5,1E+15)` = 0.5, `ROUND(42,123456789.123)` = 42,
+  `ROUND(123.456,65536)` = 123.456; `ROUND(5E-10,-2147483640)` = 5E-10 but `…,-2147483639)` = 0,
+  `ROUND(5E-300,-2147483350)` = 5E-300 but `…,-2147483349)` = 0.
+- Where ROUNDUP uses a wrapped digit count, its result can be one ulp above the decimal-correct one:
+  `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, while `ROUNDDOWN` there is 123.45.
+  The engine gives 123.46 (3 cells, follow-up T-0268).
+- e is taken from the value after its 15-digit cut: `ROUND(10-1E-15,2147483646)` = 0 and
+  `…,2147483645)` = 10 (the cut carries 9.99999999999999… to 10, e = 1), `ROUND(1-1E-16,2147483647)` = 0.
+Evidence: probes/round-huge-digits (216 cells), probes/round-huge-digits-wrap (A:C by d, E:O ROUND by
+the exponent), probes/round-huge-digits-negative (91 cells), probes/round-huge-digits-carry (6 cells); oracle: excel-graph, 2026-10-07 (T-0218).
+gen-m2/caa981b0753f455c Calc!A270 (`ROUND(1E+15,1E+15)` = 0, so the quotient is `#DIV/0!`) and
+gen-m2/dd99be1f2454159f Calc!A159.
+Status: VERIFIED
+Implemented in: `effective_digits` in crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs (T-0218).
+Tasks: T-0218, T-0268
+
 ## MOD is #NUM! for a huge quotient
 Rule: `MOD(n,d)` is `#NUM!` when `|n/d| >= 1.1259E+12` (exactly that decimal, not a power of two):
 `MOD(1125899999999,1)` = 0, `MOD(1125900000000,1)` = `#NUM!`. It depends only on the quotient, not on
@@ -107,8 +137,11 @@ cut one digit lower: 6 digits for `|exp| <= 98` ("1.23457E-05", "1.23457E-50") a
 `|exp| >= 99` ("1.2346E+100", "1.2346E-99", though "1.23457E-99" would fit its 11-character
 limit; probe D8-D10). `(1/(2^-1022))&""` is "4.4942328371558E+307". Evidence:
 probes/number-text-exponent-digits (excel-graph, 2026-10-06).
-The General cut (5 digits at `|exp| >= 99`) is probed only at +-99 and beyond; its 98/99 boundary is carried over from
-the `&""` path until T-1001 probes it. It is implemented in the formatter's General branch (T-0986). D8
+The General cut (5 digits at `|exp| >= 99`) is VERIFIED at the 98/99 boundary (T-1001): `TEXT(1.23456789012345E+98,"General")`
+is "1.23457E+98", `E+99` "1.2346E+99", `E-98` "1.23457E-98", `9.87654321098765E-99` "9.8765E-99". A mantissa that rounds
+up to 10 carries into the exponent: `9.9999996E+98` → "1E+99", `E+99` → "1E+100", `E-98` → "1E-97", `E-99` → "1E-98",
+`E-10` → "1E-09" (never "10E+98"); `9.9999996E+10` stays fixed "99999996000". Evidence:
+probes/text-general-exponent-boundary (excel-graph, 2026-10-07). It is implemented in the formatter's General branch (T-0986, carry T-1001). D8
 (`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) needs the 11-character
 fixed-versus-E rule, T-0938, and still fails.
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
@@ -157,8 +190,8 @@ since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the co
 SUMIF, SUMIFS, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR (T-0991, the same check). Probed (T-1021, probes/aggregate-overflow Calc!A49:C62): Excel gives `#NUM!` (ERROR.TYPE 6) for VAR.S, STDEV.S, VAR.P, STDEV.P, VARA and STDEVA over
 F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-criteria SUMIF per criterion:
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
-VAR.P, STDEV.P, VARA and STDEVA still yield NaN internally (the A cells pass because a top-level NaN shows as `#NUM!`; the `&""` and ERROR.TYPE forms are wrong; baselined, T-1029).
-Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60), so Excel does not use a stable deviation; do not "fix" this to 0.
+VAR.P, STDEV.P, VARA and STDEVA have matched since T-1037, when all twelve VAR/STDEV functions moved onto `excel_variance` with the same check (this closed T-1029).
+Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60). Excel tries the one-pass sum of squares first and only then switches to two passes (statistics.md, "VAR/STDEV switch"), so do not "fix" this to 0.
 MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range (T-0992; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN such as `GEOMEAN(1E+100,9E+307)` is unprobed: UNVERIFIED, the engine returns the mathematically bounded value. AGGREGATE A27-A29 pass since T-0993
 ("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
@@ -187,7 +220,7 @@ Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
 The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
 "Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
 Status: VERIFIED. Implemented in `number_to_text` (T-0199); the rounding is half up on the 15-digit string,
-and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unprobed, T-1000).
+and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (VERIFIED, T-1000: `9.99999999999995E+99&""` → "1E+100", `E-100` → "1E-99", `E-99` → "1E-98", `E+100` → "1E+101", `E+307` → "1E+308", `-9.99999999999995E+99` → "-1E+100"; `9.99999999999994E+99` → "9.9999999999999E+99" with no carry; at `|exp| <= 98` there is no cut, `E-98` and `E+98` keep all 15 digits. Evidence: probes/number-text-exponent-carry, excel-graph, 2026-10-07).
 
 ## Criteria equality
 Rule: COUNTIF/SUMIF-style numeric criteria compare the 15-digit rounded values (no absolute epsilon): over {1E-300, 0, 1E-17, 2E-16, 1+2^-52},
@@ -244,10 +277,20 @@ The probe leaves out
 literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
 file (`unsupportedWorkbook`) when they appeared.
 Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
-flushes the results of PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE (T-0987), once on the final result, and of the
-postfix `%` (T-0988).
-Unverified (T-1007): subnormal literals passed as function arguments, flushing per product or square instead of on the total, and
-AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101) and AGGREGATE(1), which divide the same way.
+flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and
+SUBTOTAL 1/101 (final result; T-0987, T-1007), and of the postfix `%` (T-0988).
+Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
+reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
+product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flushed before the 1E+300 factor scales it back up;
+flushing only the total would give 1E-10), and `SUMPRODUCT({1E-200,1},{1E-110,1E-300})` is exactly 1E-300 (the 1E-310 term is
+dropped; keeping it prints 1.0000000001E-300). AVERAGEA, AVERAGEIF, AVERAGEIFS, SUBTOTAL(1,..), SUBTOTAL(101,..) and
+AGGREGATE(1,..) flush a subnormal mean to a true 0 like AVERAGE (`C` companions TRUE) while SUM of the same operands keeps it.
+SUMSQ flushes each square too (T-1057, VERIFIED, probes/subnormal-sumsq-sumproduct-edges, excel-graph 2026-10-07):
+`SUMSQ(1E-155,1E-150)` is exactly 1E-300 (the 1E-310 square is dropped; keeping it prints 1.0000000001E-300), and
+`SUMSQ(1E-155*ROW(1:200))*1E+300` is 0.0002685685, the sum of k^2 for k = 15..200 only (squares below 2.2E-308, k <= 14, are dropped).
+The order does not matter: `SUMSQ(1E-150,1E-155)` is also exactly 1E-300, so it is each square that is flushed, not the running sum.
+SUMPRODUCT with three arrays flushes after each factor, left to right: `SUMPRODUCT({1E-200},{1E-110},{1E+300})` is 0 while
+`SUMPRODUCT({1E-200},{1E+300},{1E-110})` is 1E-10.
 Comparison and literals (T-0989): a comparison decides on the two 15-digit values alone, with no absolute tolerance, so
 `EXP(-708)=0` is FALSE (C4-C6, C60-C62, C65 pass), while a literal below the smallest normal is flushed to 0 when it is
 read (`=1E-308=0` is TRUE). Still failing: the engine flushes the result of `+` and `-` (`3E-308-2.5E-308`, C69, C73-C75;
@@ -453,8 +496,26 @@ idiom) and k: three arguments is `#VALUE!`, an error in k is returned even under
 and k follows the named function (`AGGREGATE(14,0,E1:E6,2.9)` = `LARGE(E1:E6,2.9)` = the 3rd largest).
 Excel for the web refuses to open a workbook holding `AGGREGATE(14,0,E1:E3,E4:E6,2)`, `AGGREGATE(14,6,E1:E6,2,3)`,
 `AGGREGATE(9,0,1,2,3)` or `AGGREGATE(2,0,E1:E6,"3",TRUE)` (`createSession` 501 unsupportedWorkbook), so those
-forms have no evidence. An array function_num or option (`AGGREGATE({9,4},0,..)`) gives a single value in the
-checked cell (23, the SUM).
+forms have no evidence.
+An array function_num, options or fourth argument lifts: each element is its own AGGREGATE call, and the results
+spill, broadcast like element-wise operators (a dimension of 1 stretches, a row and a column make a grid, and a
+position past a shorter array is `#N/A`). Examples:
+- `AGGREGATE({9,4},0,E1:E6)` spills 23, 9 (SUM, MAX), and `{9;4}` spills down.
+- `AGGREGATE({9,4,1},{0,6},D1:D11)` spills `#DIV/0!`, 10, `#N/A`.
+- `AGGREGATE(14,6,D1:D11,{1,2,3})` spills 10, 4, 3, and `AGGREGATE(15,6,E1:E6,{1,2;3,4})` spills a 2x2.
+- An array k lifts even in the reference form: `AGGREGATE(9,0,E1:E6,{1,2})` spills `#VALUE!` twice.
+- Each element keeps its own form: `AGGREGATE({9,14},0,E1:E6,2)` is `#VALUE!` (2 is not a reference), then 5.
+- Invalid elements fail alone: `{1,"x",TRUE}` gives 3.83, `#VALUE!`, 3.83, and `{9,99}` gives 23, `#VALUE!`.
+- A range fourth argument is a reference, not lifted: `AGGREGATE({9,4},0,E1:E6,E1:E2)` spills 27, 9.
+
+A lifted call is subject to the *IF(S) cell-visit cap (criteria.md, "*IF(S) lift array criteria", DEVIATION):
+the elements to compute times the cells every element reads (the used cells of each reference plus the size of each
+computed array, which is evaluated once per call), times the lifted argument count, above 2^27 is `#ERROR!`
+(`AGGREGATE(14,6,SEQUENCE(1048576),SEQUENCE(1048576))`, unit test `lifted_calls_over_large_arrays_hit_the_visit_cap`).
+A multi-cell range function_num or options is not lifted: the engine reads it as a scalar and gives `#N/IMPL!`
+(unprobed, T-1058).
+Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
+Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
 Oracle: excel-graph, 2026-10-06 (T-0993).
 Status: VERIFIED, except hidden and filtered rows (UNVERIFIED: the case format cannot hide rows; the engine skips
@@ -462,6 +523,7 @@ hidden and filter-hidden rows under odd options and keeps them otherwise) and ne
 larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
 Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
 option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
-Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034), array function_num/option/k lifting (T-1038), the
-VAR.P last digit (probes/aggregate-grid B31, C31; T-1037).
-Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs).
+Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
+The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
+Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
+`Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).

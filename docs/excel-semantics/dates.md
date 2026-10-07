@@ -36,7 +36,7 @@ and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
 type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
-`(serial - 1) mod 7` from Sunday, one formula for every serial). Not yet: EDATE/EOMONTH of serial 0 is #NUM! (T-0997).
+`(serial - 1) mod 7` from Sunday, one formula for every serial). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED only for months 0, 1 and 12; UNVERIFIED for EDATE(0,2), where day 0 of March may be 59 or 60, and for negative months, which give #NUM!).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
 `DAY(0.15)` = 0, `DAY(FALSE)` = 0 (gen-m2/ef5c55a81783b7d5 A15, 1b6ceed7489e0800 A44,
 04cfd82f54dbc2b2 A21, fa437879253827be A41; Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).)
@@ -146,8 +146,19 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   `"0:11.9999:1"` (11 min + 10000 s) and `"10:9999.5:12"` parse, but `"24:60"`, `"24:0:60"`,
   `"0:60:60"`, `"9998:60:00"`, `"0:9990:599"`, `"60:60.5"` (M:S.f), `"0:9998.60:1"` and
   `"0:9999:9999.9999"` are #VALUE!. Evidence: probes/clock-text-oddities4 to -7 (excel-graph,
-  2026-10-06). Unprobed: an `H:M.f:S` fraction of more than 12 significant digits (the engine
-  gives #VALUE!, a bound that keeps the serial exact; `"10:11.12345:12"` parses).
+  2026-10-06). An `H:M.f:S` fraction may have any number of digits (T-0253): the digits are
+  the whole seconds, accumulated as `w * 10 + d` in a double, so 19 or more digits differ from the
+  correctly rounded value (`"0:1.1234567890123456789:0"` TIMEVALUE 0.234375, `"0:1.12345678901234567890:0"`
+  0.34375); `0+text` gives `1.4288980209762232e+19` for 25 digits and `1.4288980209762231e+34` for 40, and
+  TIMEVALUE of a serial that large is 0. Below 2^53 ms the serial is `total_ms / 1000 / 86400` as before;
+  above, `((clock_seconds + whole) + ms / 1000) / 86400`. Leading zeros do not count
+  (`"0:1.0000000000001:0"` is 61 s). With AM/PM, a whole-seconds value over 59 is #VALUE!
+  (`"10:11.1234567890123:12 PM"`), and the one-out-of-range rule still holds
+  (`"24:1.1234567890123:0"`, `"0:60.1234567890123:0"` are #VALUE!). Evidence: probes/clock-text-long-fraction, -2, -3.
+- **Clock text of more than 255 characters is #VALUE!**, counted on the raw text with its spaces
+  (255 parses, 256 does not, in H:M:S.f, H:M with trailing spaces and the long-fraction forms), so
+  a 250-digit fraction is the longest. Evidence: probes/clock-text-long-fraction4, clock-text-length-limit.
+  Unprobed: whether the limit is general to all text coercion (date text, number text) and the date-clock form (`1/2/2020 10:11...`), which the engine does not limit (T-0266).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
@@ -261,6 +272,8 @@ Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
 implicit intersection: `=WORKDAY(C2,6,D2:D5)` in row 2 skips the holiday in D4.
 Evidence: poi/59106.xlsx (Excel-cached) Test!B2 = 42438 (start 42429, holidays 42422, 42423, 42437,
-42499; without D4 the result would be 42437) and A2 = "09 Mar 2016".
+42499; without D4 the result would be 42437) and A2 = "09 Mar 2016". WORKDAY.INTL's `holidays` (4th
+argument) is treated the same by analogy with NETWORKDAYS.INTL; no Excel evidence covers it yet (T-1053).
 Status: VERIFIED (Excel-cached)
+Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983
