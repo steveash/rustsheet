@@ -3,7 +3,7 @@ id: T-1099
 title: "GEOMEAN of 600 mixed-magnitude underflowing values is one ulp off"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -23,7 +23,7 @@ probes/geomean-overflow-many-values F4 (`GEOMEAN(D1:D600)`, 600 cells alternatin
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Sonnet run, no fix. Findings (Python simulation of F4, 300 x 1E-300 and 300 x 3E-250): the engine's
 path gives q=-913, r=0, mantissa product 2.333464213269655e+47 and powf(product, 1/600)*2^q =
 1.7320508075688775e-275. The correctly rounded geometric mean
