@@ -165,3 +165,24 @@ fn parse_excel_number_tiny_magnitudes() {
     assert_eq!(parse_excel_number("1e-99999999999999999999999"), None);
     assert_eq!(parse_excel_number("0e99999999999999999999999"), None);
 }
+
+// T-1101: number text of more than 255 characters is #VALUE! for `0+A` and VALUE, spaces counted
+// (probes/text-number-long-zero).
+#[test]
+fn number_text_longer_than_255_characters_is_value_error() {
+    let mut model = new_empty_model();
+    let text = |len: usize| format!("0.{}1", "0".repeat(len - 3));
+    model._set("A1", &format!("'{}", text(255)));
+    model._set("A2", &format!("'{}", text(256)));
+    model._set("A3", &format!("'1{}", " ".repeat(254)));
+    model._set("A4", &format!("'1{}", " ".repeat(255)));
+    for row in 1..=4 {
+        model._set(&format!("B{row}"), &format!("=0+A{row}"));
+        model._set(&format!("C{row}"), &format!("=VALUE(A{row})"));
+    }
+    model.evaluate();
+    for (row, expected) in [(1, "1E-253"), (2, "#VALUE!"), (3, "1"), (4, "#VALUE!")] {
+        assert_eq!(model._get_text(&format!("B{row}")), expected, "0+A{row}");
+        assert_eq!(model._get_text(&format!("C{row}")), expected, "VALUE(A{row})");
+    }
+}

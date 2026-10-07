@@ -1,4 +1,5 @@
 use super::text_arg::{broadcast_text, TextArg};
+use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
@@ -858,6 +859,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::String(text) if number_text_too_long(&text) => {
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
+            }
             CalcResult::String(text) => {
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!
