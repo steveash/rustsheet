@@ -620,6 +620,23 @@ impl Model {
         CalcResult::Number(kurt)
     }
 
+    /// The `k` of LARGE/SMALL: booleans and numeric text coerce (TRUE is 1) and anything below 1
+    /// is `#NUM!` before rounding. A fractional k then picks the `ceil(k)`-th largest but the
+    /// `floor(k)`-th smallest, and `#NUM!` when `ceil(k)` exceeds the count, so the callers
+    /// round it themselves. Evidence: probes/large-small-k (excel-graph),
+    /// docs/excel-semantics/statistics.md.
+    fn large_small_k(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let k = self.get_number(node, cell)?;
+        if k < 1.0 {
+            return Err(CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "K must be >= 1".to_string(),
+            });
+        }
+        Ok(k)
+    }
+
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -688,17 +705,10 @@ impl Model {
                 }
             }
         };
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
+        let k = match self.large_small_k(&args[1], cell) {
+            Ok(k) => k,
+            Err(e) => return e,
         };
-        if k < 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            };
-        }
         let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
         if numeric_values.is_empty() {
             return CalcResult::Error {
@@ -708,7 +718,7 @@ impl Model {
             };
         }
         numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        let k_usize = k as usize;
+        let k_usize = k.ceil() as usize;
         if k_usize > numeric_values.len() {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -789,18 +799,10 @@ impl Model {
             }
         };
 
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
+        let k = match self.large_small_k(&args[1], cell) {
+            Ok(k) => k,
+            Err(e) => return e,
         };
-
-        if k < 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            };
-        }
 
         let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
         if numeric_values.is_empty() {
@@ -814,8 +816,9 @@ impl Model {
         // For SMALL, sort ascending
         numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
-        let k_usize = k as usize;
-        if k_usize > numeric_values.len() {
+        // Excel takes the floor for SMALL but still refuses a k whose ceiling is out of range.
+        let k_usize = k.floor() as usize;
+        if k.ceil() as usize > numeric_values.len() {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,
