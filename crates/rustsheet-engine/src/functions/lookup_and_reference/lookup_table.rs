@@ -118,20 +118,14 @@ impl SearchVector {
         SearchVector { values, len }
     }
 
+    /// The full length, including the empty tail.
+    pub(super) fn len(&self) -> usize {
+        self.len
+    }
+
     /// The value at `index`, which must be below `len`.
     pub(super) fn get(&self, index: usize) -> &CalcResult {
         self.values.get(index).unwrap_or(&EMPTY_CELL)
-    }
-
-    /// The value at `index`, or `None` past the end.
-    pub(super) fn into_value(mut self, index: usize) -> Option<CalcResult> {
-        if index >= self.len {
-            return None;
-        }
-        if index < self.values.len() {
-            return Some(self.values.swap_remove(index));
-        }
-        Some(CalcResult::EmptyCell)
     }
 
     /// The index of the first value that `matches`. The tail is all one
