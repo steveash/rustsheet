@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 
 use crate::arithmetic::flush_subnormal;
-use crate::cast::number_text_too_long;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::number_format::parse_excel_number;
@@ -113,13 +112,8 @@ impl Model {
                     f(0.0);
                 }
                 CalcResult::String(value) => {
-                    // Over 255 characters is #N/A, as in SUM (numbers.md, T-1121).
-                    if number_text_too_long(&value) {
-                        return Err(CalcResult::new_error(
-                            Error::NA,
-                            cell,
-                            "Text too long".to_string(),
-                        ));
+                    if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
+                        return Err(error);
                     }
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
@@ -261,9 +255,8 @@ impl Model {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
-                    } else if number_text_too_long(&s) {
-                        // Over 255 characters is #N/A, as in SUM (T-1121).
-                        return CalcResult::new_error(Error::NA, cell, "Text too long".to_string());
+                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
+                        return error;
                     } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;
