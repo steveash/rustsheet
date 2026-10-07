@@ -3,7 +3,7 @@ id: T-0411
 title: "xlsx export writes DAYS, GAUSS, IMSECH, GAMMA.DIST and FORECAST.LINEAR without _xlfn."
 milestone: M11
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
