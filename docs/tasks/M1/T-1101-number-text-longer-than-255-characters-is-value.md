@@ -3,7 +3,7 @@ id: T-1101
 title: "Number text longer than 255 characters is #VALUE!"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
