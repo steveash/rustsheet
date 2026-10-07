@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "An error in the right operand of : is the result: INDEX out of range and an empty intersection (T-1111).",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "A3": 5,
+        "D11": "=A1:INDEX(A1:A3,5)",
+        "E11": "=FORMULATEXT(D11)",
+        "D14": "=A1:(A1 B2)",
+        "E14": "=FORMULATEXT(D14)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!D11",
+    "Sheet1!E11",
+    "Sheet1!D14",
+    "Sheet1!E14"
+  ]
+}

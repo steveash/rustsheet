@@ -243,8 +243,8 @@ impl Model {
                                 format!("Invalid worksheet index: '{sheet}'"),
                             )
                         })?
-                        .dimension()
-                        .max_row;
+                        .used_area_end()
+                        .0;
                 }
                 if column1 == 1 && column2 == LAST_COLUMN {
                     column2 = self
@@ -257,8 +257,8 @@ impl Model {
                                 format!("Invalid worksheet index: '{sheet}'"),
                             )
                         })?
-                        .dimension()
-                        .max_column;
+                        .used_area_end()
+                        .1;
                 }
                 for row in row1..=row2 {
                     for column in column1..=column2 {

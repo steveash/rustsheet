@@ -143,8 +143,8 @@ impl Model {
                 }
             }
             // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
-            // `#NULL!` (probes/at-operand-formulatext H12, T-1109). The right operand's error
-            // stays `#VALUE!` until probed (references.md).
+            // `#NULL!` (probes/at-operand-formulatext H12, T-1109). Excel passes the right
+            // operand's error on too (probes/range-right-operand-errors); TODO(T-1115).
             (error @ CalcResult::Error { .. }, _) => error,
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }

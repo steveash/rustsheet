@@ -1034,17 +1034,13 @@ impl Model {
         if !whole_rows && !whole_columns {
             return Ok((row2, column2));
         }
-        let dimension = self
+        let (max_row, max_column) = self
             .workbook
             .worksheet(sheet)
             .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .dimension();
-        let last_row = if whole_rows { dimension.max_row } else { row2 };
-        let last_column = if whole_columns {
-            dimension.max_column
-        } else {
-            column2
-        };
+            .used_area_end();
+        let last_row = if whole_rows { max_row } else { row2 };
+        let last_column = if whole_columns { max_column } else { column2 };
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);
