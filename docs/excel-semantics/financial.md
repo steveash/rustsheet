@@ -88,7 +88,7 @@ first date: `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212
 flows is #NUM!). XNPV is `#NUM!` when its ranges contain empty cells, and a whole column counts every
 cell, not the used area: `XNPV(0.1,Data!A:A,Data!B:B)` is #NUM! although Data holds only A1:B2,
 where `XNPV(0.1,Data!A1:A2,Data!B1:B2)` is finite.
-Unprobed: a pair where only the value or only the date is empty.
+Unprobed: a pair where only the value or only the date is empty, and which error XNPV gives for a whole column whose used area holds a cell error or a text date (the engine returns that error, then #NUM! for the skipped cells).
 Evidence: probes/xirr-xnpv-whole-column-nogaps A1-A8, probes/whole-column-empty-walkers E1, E5, E7,
 F3, F4, F6, F7, F9 (excel-graph, 2026-10-07, T-1114).
 Status: VERIFIED (these cells). XNPV matches since T-1114 (the used-area clip applies the empty-cell

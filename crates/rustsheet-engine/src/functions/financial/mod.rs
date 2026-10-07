@@ -232,40 +232,22 @@ impl Model {
                 let mut row2 = right.row;
                 let column1 = left.column;
                 let mut column2 = right.column;
+                let (used_row, used_column) = self
+                    .workbook
+                    .worksheet(sheet)
+                    .map_err(|_| {
+                        CalcResult::new_error(
+                            Error::ERROR,
+                            *cell,
+                            format!("Invalid worksheet index: '{sheet}'"),
+                        )
+                    })?
+                    .used_area_end();
                 if row1 == 1 && row2 == LAST_ROW {
-                    row2 = self
-                        .workbook
-                        .worksheet(sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                *cell,
-                                format!("Invalid worksheet index: '{sheet}'"),
-                            )
-                        })?
-                        .used_area_end()
-                        .0;
+                    row2 = used_row;
                 }
                 if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = self
-                        .workbook
-                        .worksheet(sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                *cell,
-                                format!("Invalid worksheet index: '{sheet}'"),
-                            )
-                        })?
-                        .used_area_end()
-                        .1;
-                }
-                // The clip skips empty cells Excel still walks: an empty-cell error applies to them
-                // too, so `XNPV(0.1,A:A,B:B)` is #NUM! however small the used area is
-                // (probes/xirr-xnpv-whole-column-nogaps A1, financial.md). A handler that accepts
-                // empty cells (XIRR's) adds nothing for them.
-                if row2 < right.row || column2 < right.column {
-                    handle_empty_cell()?;
+                    column2 = used_column;
                 }
                 for row in row1..=row2 {
                     for column in column1..=column2 {
@@ -285,6 +267,11 @@ impl Model {
                             }
                         }
                     }
+                }
+                // The clip skips empty cells Excel still walks, so an empty-cell error applies after
+                // the used area: `XNPV(0.1,A:A,B:B)` is #NUM! (probes/xirr-xnpv-whole-column-nogaps A1).
+                if row2 < right.row || column2 < right.column {
+                    handle_empty_cell()?;
                 }
             }
             CalcResult::Array(arr) => {
