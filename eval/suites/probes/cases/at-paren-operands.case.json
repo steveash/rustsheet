@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT keeps or drops the parentheses of an @ operand (T-1111).",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "A3": 5,
+        "D30": "=@((A1 B1))",
+        "E30": "=FORMULATEXT(D30)",
+        "D31": "=@(A1:B1)",
+        "E31": "=FORMULATEXT(D31)",
+        "D32": "=@(A1)",
+        "E32": "=FORMULATEXT(D32)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!D30",
+    "Sheet1!E30",
+    "Sheet1!D31",
+    "Sheet1!E31",
+    "Sheet1!D32",
+    "Sheet1!E32"
+  ]
+}
