@@ -3,7 +3,7 @@ id: T-1122
 title: "Fold DATE's inline broadcast into shared NumberOrArray helpers"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
