@@ -1,5 +1,7 @@
 mod bound_variables;
-use super::reference_operators::{callee_operand, intersection_operand, tight_operand, union_text};
+use super::reference_operators::{
+    at_operand, callee_operand, intersection_operand, tight_operand, union_text,
+};
 use super::{
     super::utils::{name_needs_quoting, quote_name},
     for_each_chain_operand_mut, left_chain, value_operands, Node, Reference,
@@ -861,7 +863,7 @@ fn stringify(
             }
             // The space binds tighter than `@`, so `@A1:A3 A2:B2` is `@(A1:A3 A2:B2)`; Excel's
             // FORMULATEXT prints it without parentheses (T-1098).
-            format!("@{}", sub(child))
+            format!("@{}", at_operand(sub(child), child))
         }
     }
 }

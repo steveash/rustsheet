@@ -1,6 +1,6 @@
 use super::{
     left_chain,
-    reference_operators::{intersection_operand, tight_operand, union_text},
+    reference_operators::{at_operand, intersection_operand, tight_operand, union_text},
     stringify::{sheet_span_text, stringify_reference, to_localized_string, DisplaceData},
     value_operands, ArrayNode, Node, Reference,
 };
@@ -506,7 +506,7 @@ fn to_string_moved(
         } => {
             let text = to_string_moved(child, move_context, locale, language);
             // Same text as `stringify`: the space binds tighter than `@` (T-1098).
-            format!("@{text}")
+            format!("@{}", at_operand(text, child))
         }
         SpillRangeOperator { child } => {
             let text = to_string_moved(child, move_context, locale, language);

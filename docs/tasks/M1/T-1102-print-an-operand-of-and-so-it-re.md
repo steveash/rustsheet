@@ -3,7 +3,7 @@ id: T-1102
 title: "Print an @ operand of : and # so it re-parses to the same tree"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ From the T-1098 reviews: `tight_operand` (parser/reference_operators.rs) wraps a
 
 ## Out of scope
 -
+
+## Outcome
+`tight_operand` now also parenthesizes an `ImplicitIntersection` operand of `:` and `#`, and the new `at_operand` parenthesizes an `@` operand of `@` (both printers: stringify.rs, move_formula.rs). Round-trip cases `A1:(@B1)`, `(@(A1 B1)):C3` and `@(@(A1 B1))` added to test_intersection.rs. Excel's own text for these is unprobed; parenthesizing is the minimal engine choice. No eval change.
