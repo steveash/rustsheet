@@ -110,9 +110,13 @@ passes it through, `A1&""` is `#BUSY!`, and `ERROR.TYPE` is 0 (not 7; confirmed 
 (reported `#N/A`), `&""` is reported `#N/A`; stored `#N/A`: 7, `ISNA` TRUE, `IFNA` gives the fallback.
 Unprobed: `#PYTHON!`, `#EXTERNAL!` stored. The rejected names were re-run as throw-away one-cell cases
 (`A1` = `{"t":"e","v":"<name>","stored":true}`, nothing else), so to reproduce one, write that case.
+Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives, and whether a
+COUNTIF criterion `"#BLOCKED!"` matches the error (SPEC-0003 keeps today's input table plus
+`#GETTING_DATA`, and keeps COUNTIF-family criteria on today's twelve names; T-1012 probes the
+criterion, T-1016 typed input on desktop; UNVERIFIED).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020
