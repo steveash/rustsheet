@@ -24,4 +24,4 @@ Follow-up of T-0194 review. `Model::union_is_reference` returns FALSE for any ar
 -
 
 ## Outcome
-Probed with excel-graph (probes/isref-union-operands): ISREF is FALSE for `(-A1,B1)`, `(A1 B2,C1)`, `(Sheet1:Sheet2!A1,B1)` and, unlike the engine before, for the empty intersection `A1 B2`; `(A1,B1)` and `(A1 A1,C1)` are TRUE. `fn_isref` now evaluates an intersection's areas, so an empty or failing one is FALSE. Recorded in references.md. Eval delta: one new passing probe case (6 cells).
+Probed with excel-graph (probes/isref-union-operands): ISREF is FALSE for `(-A1,B1)`, `(A1 B2,C1)`, `(Sheet1:Sheet2!A1,B1)` and, unlike the engine before, for the empty intersection `A1 B2`; `(A1,B1)` and `(A1 A1,C1)` are TRUE. `fn_isref` now evaluates an intersection's areas, so an empty or failing one is FALSE. Recorded in references.md. Eval delta: one new passing probe case (9 cells).
