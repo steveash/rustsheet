@@ -59,7 +59,7 @@ C	probes/intersection-whitespace.case.json	8
 C	probes/is-functions-array-lift.case.json	79
 C	probes/isref-function-results.case.json	6
 C	probes/isref-names-filter-if-empty.case.json	10
-C	probes/isref-union-operands.case.json	6
+C	probes/isref-union-operands.case.json	9
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
