@@ -171,7 +171,7 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 All three keep their Excel arity, and the result is a scalar error, never a spill. Arguments are
 evaluated first. An argument error wins for IMAGE and STOCKHISTORY and for FIELDVALUE's `field_name`, but not for
 FIELDVALUE's first argument (`FIELDVALUE(1/0,"Price")` is `#FIELD!`); an IMAGE source that is empty or a number is `#VALUE!`; an
-an array first argument to FIELDVALUE gives an array result (information.md, T-1012). Their behavior:
+array first argument to FIELDVALUE gives an array result (information.md, T-1012). Their behavior:
 - **IMAGE(source, [alt_text], [sizing], [height], [width])** → `#BLOCKED!`.
   - Excel fetches `source` and returns an image value. We never fetch, so every IMAGE is
     `#BLOCKED!`.
