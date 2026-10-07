@@ -227,7 +227,7 @@ C	probes/text-number-tiny-paths.case.json	46
 C	probes/text-number-tiny-zero.case.json	88
 C	probes/text-number-tiny.case.json	60
 C	probes/text-number-words.case.json	62
-C	probes/text-result-limit.case.json	14
+C	probes/text-result-limit.case.json	24
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
@@ -496,6 +496,7 @@ F	probes/subnormal-function-results.case.json	Calc!C69
 F	probes/subnormal-function-results.case.json	Calc!C73
 F	probes/subnormal-function-results.case.json	Calc!C74
 F	probes/subnormal-function-results.case.json	Calc!C75
+F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4

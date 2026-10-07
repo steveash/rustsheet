@@ -149,8 +149,8 @@ impl Model {
             }
         }
         // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit
-        // C8). Later arguments are still evaluated so an error in one wins; whether Excel does the
-        // same is unprobed (text.md).
+        // C8). Later arguments are still evaluated so an error argument wins (C18);
+        // an error in a later range cell past the limit is unprobed for CONCAT (T-0284).
         if result.units > MAX_TEXT_UNITS {
             return text_limit_error(cell);
         }
@@ -175,7 +175,8 @@ impl Model {
         let mut values: Vec<String> = Vec::new();
         let mut size = JoinSize::new(&delimiter);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
-        // in a later one wins (unprobed against Excel, text.md).
+        // argument after the limit wins; a range-cell error past it is #CALC!
+        // (probes/text-result-limit C18-C20).
         let mut over_limit = false;
         for arg in &args[2..] {
             over_limit = over_limit || size.exceeds(&values);
@@ -229,6 +230,12 @@ impl Model {
                                     if !ignore_empty {
                                         values.push("".to_string())
                                     }
+                                }
+                                // Excel: a cell error met after the walk is past the limit is
+                                // #CALC!, while an error argument still wins
+                                // (probes/text-result-limit C18-C20).
+                                CalcResult::Error { .. } if over_limit => {
+                                    return text_limit_error(cell)
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 CalcResult::EmptyArg | CalcResult::Range { .. } => {}
