@@ -61,14 +61,31 @@ impl Model {
         column_lookup: bool,
         row_offset: i32,
         column_offset: i32,
+        as_reference: bool,
     ) -> CalcResult {
         let row = result_left.row + row_offset;
         if !column_lookup || result_right.column == result_left.column {
-            return self.evaluate_cell(CellReferenceIndex {
+            let picked = CellReferenceIndex {
                 sheet: result_left.sheet,
                 row,
                 column: result_left.column + column_offset,
-            });
+            };
+            if as_reference {
+                return CalcResult::Range {
+                    left: picked,
+                    right: picked,
+                };
+            }
+            return self.evaluate_cell(picked);
+        }
+        if as_reference {
+            return CalcResult::Range {
+                left: CellReferenceIndex { row, ..result_left },
+                right: CellReferenceIndex {
+                    row,
+                    ..result_right
+                },
+            };
         }
         let values = (result_left.column..=result_right.column)
             .map(|column| {
@@ -109,6 +126,18 @@ impl Model {
     ///   * -2 - Perform a binary search that relies on lookup_array being sorted
     ///     in descending order. If not sorted, invalid results will be returned.
     pub(crate) fn fn_xlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.xlookup_impl(args, cell, false)
+    }
+
+    /// XLOOKUP; `as_reference` gives the picked cells of a return range as a reference, as an
+    /// intersection operand sees them: `=A1:A3 XLOOKUP(2,A1:A3,A1:B3)` is 2
+    /// (probes/intersection-function-operands H8; T-0165).
+    pub(crate) fn xlookup_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() < 3 || args.len() > 6 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -251,6 +280,7 @@ impl Model {
                                             is_row_vector,
                                             row_index,
                                             column_index,
+                                            as_reference,
                                         )
                                     }
                                     None => if_not_found,
@@ -302,6 +332,7 @@ impl Model {
                                                     is_row_vector,
                                                     row - result_left.row,
                                                     column - result_left.column,
+                                                    as_reference,
                                                 )
                                             } else {
                                                 if_not_found
@@ -315,6 +346,7 @@ impl Model {
                                                 is_row_vector,
                                                 row - result_left.row,
                                                 column - result_left.column,
+                                                as_reference,
                                             )
                                         } else {
                                             CalcResult::Error {

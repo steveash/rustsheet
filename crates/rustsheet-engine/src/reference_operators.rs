@@ -409,7 +409,15 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        match self.evaluate_node_with_reference(node, cell) {
+        let operand = match node {
+            Node::FunctionKind { kind, args } => self.evaluate_reference_form(kind, args, cell),
+            _ => None,
+        };
+        let operand = match operand {
+            Some(reference) => reference,
+            None => self.evaluate_node_with_reference(node, cell),
+        };
+        match operand {
             CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
                 left: CellReferenceIndex {
                     sheet: left.sheet,
