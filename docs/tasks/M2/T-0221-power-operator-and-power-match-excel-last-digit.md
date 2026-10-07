@@ -37,8 +37,10 @@ T-0942 sweep: integer exponents are right-to-left square-and-multiply, 154/154 c
 (numbers.md "Integer exponents", probes-numeric/m9-fin-power); non-integer exponents remain open.
 docs/excel-semantics/numbers.md has "POWER and `^`" (special cases). Excel's
 results look like `exp(y*ln(x))` in double, or a similar decomposition. Fit a formulation against these cells
-plus a probe sweep (excel-probe skill), as T-0914 did for the hyperbolics. Check docs/excel-semantics/numbers.md
-"Excel for the web and desktop Excel differ" first: these are excel-graph values.
+plus a probe sweep (excel-probe skill), as T-0914 did for the hyperbolics. These are excel-graph values. They are the
+fitting target: POWER and `^` are not in numbers.md's list "Excel for the web and desktop Excel
+differ in the last digits" (decision 0030 rule 4), and excel-graph is the oracle of record for
+Phases 1–3 (decision 0039). The desktop confirmation of the fit is item 2 of T-1075 (M14), not a gate.
 
 Code: `arithmetic::power` (POWER and `^`).
 

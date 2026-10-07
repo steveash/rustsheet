@@ -1,13 +1,13 @@
 ---
 id: T-0171
 title: "Autofill over E-notation numbers (1E-10, 1E+20) copies instead of extending: needs Excel evidence"
-milestone: M1
+milestone: M14
 lane: engine
-status: todo
+status: blocked
 priority: P2
 size: S
 tier: opus
-depends_on: []
+depends_on: [T-1074]
 ---
 
 ## Goal
@@ -22,3 +22,9 @@ Found by T-0168: `UserModel::auto_fill_rows` over cells holding 1E-10 and 2E-10 
 
 ## Out of scope
 -
+
+## Blocked because
+Phase 4 (decision 0039): not a "Needs owner" item, and it blocks no milestone or phase exit. The excel-graph oracle has no fill-handle operation, so the evidence needs desktop Excel: a
+COM `Range.AutoFill` over the source cells, or an Excel-authored workbook filled by hand. Unblock
+when `cd tools && uv run rustsheet-oracle status` shows `excel-desktop OK` and T-1074 is done, or
+when such a workbook is committed.

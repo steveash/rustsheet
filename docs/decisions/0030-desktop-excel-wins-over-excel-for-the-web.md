@@ -38,6 +38,8 @@
      engine, to the semantics entries, and to which golden a cell is scored against. Windows and
      Mac count alike: "desktop" is any Microsoft Excel application whose `docProps/app.xml`
      AppVersion is 16.x (the Microsoft 365 / 2016+ line).
+     *Amended by decision 0039: in Phases 1–3 a conflict that needs new desktop evidence matches
+     the web value; desktop evidence already in the repo that cells pass against stays.*
   2. **Desktop evidence counts only for what it is.** Cached values from a workbook saved under a
      non-en-US locale are not evidence for locale-dependent behavior: date or number text, list
      separators, month and day names. There the en-US web oracle wins. An older desktop build
