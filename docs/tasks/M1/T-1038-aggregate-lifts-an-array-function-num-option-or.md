@@ -3,7 +3,7 @@ id: T-1038
 title: "AGGREGATE lifts an array function_num, option or k"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
