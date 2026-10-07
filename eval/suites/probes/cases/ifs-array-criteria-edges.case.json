@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-0263: *IF(S) array-criteria edges: SUMIFS shape mismatch with an array criterion, a range criterion with a blank cell (D3), error or non-range first argument. Sheet1 A1:B6 data, D1:D2 criteria, D3 blank, E1:E3 = #N/A,5,7.",
+  "description": "T-0263: *IF(S) array-criteria edges: SUMIFS shape mismatch with an array criterion, a range criterion with a blank cell (D3), an error in the sum range E1:E3. Sheet1 A1:B6 data, D1:D2 criteria, D3 blank, E1:E3 = #N/A,5,7.",
   "tags": [
     "M2",
     "criteria",

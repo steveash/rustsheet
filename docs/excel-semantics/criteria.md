@@ -134,7 +134,7 @@ stores. COUNTIF and AVERAGEIF already intersect; the rest return `#VALUE!` (T-02
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
-give 0 and AVERAGEIFS `#DIV/0!` at that position, and the result keeps its 3x1 shape (unprobed: blank, `""` or 0 cells in the searched range);
+give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps its 3x1 shape (ROWS = 3; the others were probed only at INDEX(...,3,1); unprobed: blank, `""` or 0 cells in the searched range);
 for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria positions whose rows select it
 (`SUMIFS(E1:E3,A1:A3,{"a","b"})` with E1 = #N/A is #N/A, 5; AVERAGEIFS and MAXIFS probed only at position 1: `#N/A`);
 `COUNTIFS(E1:E3,{"a","b"})` ignores it (0 at position 1). A `NA()`/non-range first argument with an array criterion
