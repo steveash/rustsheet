@@ -180,7 +180,7 @@ Evidence: probes/arith-overflow Calc!A16:B16. Oracle: excel-graph, 2026-10-06.
 The 20-character-cap hypothesis was wrong: the cut is `|exp| >= 99` (see "Exponent width" under
 "Number → text conversion uses 15 significant digits"; probes/number-text-exponent-digits, T-0186).
 Status: VERIFIED. Implemented in `number_to_text` (T-0199); the rounding is half up on the 15-digit string,
-and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (unprobed, T-1000).
+and a carry that takes the 14-digit mantissa to 10^14 raises the exponent (VERIFIED, T-1000: `9.99999999999995E+99&""` → "1E+100", `E-100` → "1E-99", `E-99` → "1E-98", `E+100` → "1E+101", `E+307` → "1E+308", `-9.99999999999995E+99` → "-1E+100"; `9.99999999999994E+99` → "9.9999999999999E+99" with no carry; at `|exp| <= 98` there is no cut, `E-98` and `E+98` keep all 15 digits. Evidence: probes/number-text-exponent-carry, excel-graph, 2026-10-07).
 
 ## Criteria equality
 Rule: COUNTIF/SUMIF-style numeric criteria compare the 15-digit rounded values (no absolute epsilon): over {1E-300, 0, 1E-17, 2E-16, 1+2^-52},
