@@ -138,7 +138,7 @@ C	probes/lifted-range-rows.case.json	4
 C	probes/lifted-range-size.case.json	6
 C	probes/literal-digits.case.json	6
 C	probes/literal-number-tiny.case.json	24
-C	probes/long-text-args-min-criteria.case.json	18
+C	probes/long-text-args-min-criteria.case.json	23
 C	probes/lookup-2d-vector-wide.case.json	13
 C	probes/lookup-2d-vector.case.json	19
 C	probes/lookup-approximate-search.case.json	44
