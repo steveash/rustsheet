@@ -33,7 +33,7 @@ fn is_intersection(node: &Node) -> bool {
 fn space_between_references_is_an_intersection() {
     let mut parser = parser();
     let node = parser.parse("A1:B2 B1:B3", &context());
-    let Node::OpIntersectKind { left, right } = &node else {
+    let Node::OpIntersectKind { left, right, .. } = &node else {
         panic!("expected an intersection, got {node:?}");
     };
     assert!(matches!(**left, Node::RangeKind { .. }));
@@ -44,7 +44,7 @@ fn space_between_references_is_an_intersection() {
 fn intersection_chains_left_to_right() {
     let mut parser = parser();
     let node = parser.parse("Data!C1:D7 Data!C1:C12 Data!A6:E6", &context());
-    let Node::OpIntersectKind { left, right } = &node else {
+    let Node::OpIntersectKind { left, right, .. } = &node else {
         panic!("expected an intersection, got {node:?}");
     };
     assert!(is_intersection(left), "left operand: {left:?}");
@@ -146,8 +146,10 @@ fn intersections_round_trip_through_stringify() {
         ("$A$10:$D$12 A12", "$A$10:$D$12 A12"),
         ("A1 (B1:C3 C1)", "A1 (B1:C3 C1)"),
         ("(A1 B1):C3", "(A1 B1):C3"),
-        // `@` applies to the whole intersection after it; Excel prints it bare (T-1098).
-        ("@(A1:B2 B1)", "@A1:B2 B1"),
+        // `@` applies to the whole intersection after it; Excel prints it bare, and keeps written
+        // parentheses (T-1098, T-1109).
+        ("@(A1:B2 B1)", "@(A1:B2 B1)"),
+        ("@A1:B2 B1", "@A1:B2 B1"),
         ("A1 @A1", "A1 @A1"),
         ("A1 @A1 @A1", "A1 @A1 @A1"),
         ("(A1 @A1) B1", "(A1 @A1) B1"),
@@ -155,8 +157,8 @@ fn intersections_round_trip_through_stringify() {
         ("(@A1) B1", "(@A1) B1"),
         // An `@` operand of `:` or `@` is parenthesized so the text re-parses (T-1102).
         ("A1:(@B1)", "A1:(@B1)"),
-        ("(@(A1 B1)):C3", "(@A1 B1):C3"),
-        ("@(@(A1 B1))", "@(@A1 B1)"),
+        ("(@(A1 B1)):C3", "(@(A1 B1)):C3"),
+        ("@(@(A1 B1))", "@(@(A1 B1))"),
         ("(@A1:B2)#", "(@A1:B2)#"),
         ("-A1:A3 A2", "-A1:A3 A2"),
         ("SUM(A1:B2 B1:B3,C1)", "SUM(A1:B2 B1:B3,C1)"),

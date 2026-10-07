@@ -532,3 +532,14 @@ O1352 (all top-left cells are non-text: 545, 1.001, blank).
 Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
 cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array formulas.
 Tasks: T-0985
+
+## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
+Rule: Excel keeps the parentheses the user wrote around an intersection that is the operand of
+`@`: `=(@(A1 B1)):C3` prints `=(@(A1 B1)):C3` and `=@(@(A1 B1))` prints `=@(@(A1 B1))`, while a
+bare `@A1:A3 A2:B2` stays bare. Typed `ANCHORARRAY(D1)` and `ANCHORARRAY(INDEX(D1:D2,1))` evaluate
+as the spill operator and print `=D1#` and `=INDEX(D1:D2,1)#`. An error as the left operand of `:`
+is the result: `=(@(A1 B1)):C3` is `#NULL!`, not `#VALUE!`.
+Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30 (excel-graph).
+Status: VERIFIED for these cells; UNVERIFIED: an error in the right operand of `:` (the engine
+keeps `#VALUE!`), `=(@A1:B2)#`, `=ANCHORARRAY(1)` and the parentheses of `@((A1 B1))`, `@(A1:B1)`.
+Tasks: T-1109, T-1111

@@ -623,7 +623,7 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind { left, right } => {
+        OpIntersectKind { left, right, .. } => {
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
             format!("{} {}", operand(left, true), operand(right, false))
         }
@@ -996,7 +996,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
 
         // Go next level
         Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right }
+        | Node::OpIntersectKind { left, right, .. }
         | Node::OpUnionKind { left, right, .. } => {
             rename_sheet_in_node(left, sheet_index, new_name);
             rename_sheet_in_node(right, sheet_index, new_name);
@@ -1078,7 +1078,7 @@ pub(crate) fn rename_defined_name_in_node(
         }
         // Go next level
         Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right }
+        | Node::OpIntersectKind { left, right, .. }
         | Node::OpUnionKind { left, right, .. } => {
             rename_defined_name_in_node(left, name, scope, new_name);
             rename_defined_name_in_node(right, name, scope, new_name);

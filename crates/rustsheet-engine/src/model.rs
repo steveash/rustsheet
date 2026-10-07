@@ -612,7 +612,7 @@ impl Model {
                 CalcResult::new_error(Error::REF, cell, "Wrong reference".to_string())
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
-            OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
+            OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
                 first_index,
                 last_index,
@@ -756,7 +756,7 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
-            SpillRangeOperator { child } => match self.evaluate_node_with_reference(child, cell) {
+            SpillRangeOperator { child } => match self.evaluate_spill_anchor(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
                         return CalcResult::new_error(

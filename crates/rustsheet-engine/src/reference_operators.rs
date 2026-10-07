@@ -4,6 +4,7 @@
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
@@ -42,7 +43,7 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
 fn is_multi_area(node: &Node) -> bool {
     match node {
         Node::OpUnionKind { .. } => true,
-        Node::OpIntersectKind { left, right } => is_multi_area(left) || is_multi_area(right),
+        Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
         _ => false,
     }
 }
@@ -87,6 +88,22 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
+    /// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
+    pub(crate) fn evaluate_spill_anchor(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_impl(args, cell, true),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
     /// token (the lexer builds those): only two single cells on one sheet are joined, so
     /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
@@ -125,6 +142,10 @@ impl Model {
                     },
                 }
             }
+            // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
+            // `#NULL!` (probes/at-operand-formulatext H12, T-1109). The right operand's error
+            // stays `#VALUE!` until probed (references.md).
+            (error @ CalcResult::Error { .. }, _) => error,
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }
     }
@@ -320,7 +341,7 @@ impl Model {
     ) -> Result<Vec<Range>, CalcResult> {
         match node {
             Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
-            Node::OpIntersectKind { left, right } => {
+            Node::OpIntersectKind { left, right, .. } => {
                 self.intersect_areas(left, right, cell, budget)
             }
             _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),
