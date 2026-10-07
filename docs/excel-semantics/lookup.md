@@ -56,10 +56,16 @@ Rule: in `LOOKUP(value, lookup_vector, result_vector)`:
   F4, `LOOKUP(99,A1:B2,F1)` = G1 and `LOOKUP(3,A1:A2,F1)` = G1. A result *array* is not:
   `LOOKUP(99,A1:B2,{10})` = `#N/A` while `LOOKUP(2,A1:B2,{10})` = 10.
 - A value not found is `#N/A` before the result vector is looked at.
-Engine choices (not probed, T-0269): reading past the sheet's last row or column is `#N/A`, a single-cell
-lookup_vector (`LOOKUP(2,C1,…)`) and a non-reference scalar result_vector (`LOOKUP(2,A1:A2,5)`) are
-`#N/A`. A function returning a reference as result_vector (`INDEX`, `OFFSET`) is not probed either.
-Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224).
+Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
+- A single-cell lookup_vector is a one-element vector: `LOOKUP(2,C1,D1)` and `LOOKUP(3,C1,D1)` with C1 = 2 are D1, `LOOKUP(0,C1,D1)` is `#N/A`.
+- A scalar result_vector is a one-element array: `LOOKUP(2,A1:A2,5)` is 5 (match at position 1) and `LOOKUP(99,A1:A2,5)` (position 2) is `#N/A`,
+  as is `"x"`; unlike a one-cell range it is not read past.
+- Reading past the sheet's last row or column gives a blank, 0, not `#N/A`: `LOOKUP(99,A1:A3,F1048575:F1048576)` and
+  `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
+  `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).
+- `OFFSET(F1,0,0)` as result_vector reads past its end like a plain `F1`, and so does a reference-returning `INDEX(F1:F1,1)`
+  or `INDEX(F1:G1,1,1)` (G1 / 7); the engine returns `#N/A` for the INDEX forms (T-0274).
+Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224), probes/lookup-vector-edges A1:A21 (T-0269).
 Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
 Tasks: T-0224, T-0269

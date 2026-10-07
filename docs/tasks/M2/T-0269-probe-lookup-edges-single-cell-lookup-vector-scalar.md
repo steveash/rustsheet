@@ -3,7 +3,7 @@ id: T-0269
 title: "Probe LOOKUP edges: single-cell lookup_vector, scalar or function result_vector, reading past the sheet edge"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,6 @@ Code: `fn_lookup`, `lookup_result` in crates/rustsheet-engine/src/functions/look
 
 ## Out of scope
 - LOOKUP's array form.
+
+## Outcome
+Probed (probes/lookup-vector-edges, excel-graph, 21 cells). A single-cell lookup_vector works (`LOOKUP(2,C1,D1)` is D1), a scalar result_vector is a one-element array (5 at position 1, `#N/A` past it), reading past the sheet's last row or column gives a blank 0 (not `#N/A`), and `OFFSET` as result_vector reads past its end like a reference. Fixed in `fn_lookup`/`lookup_result` (19 of 21 cells now pass). `INDEX` as result_vector (A9, A12) still differs: filed T-0274. Recorded in lookup.md.
