@@ -83,3 +83,52 @@ fn countblank_counts_the_clipped_cells() {
     assert_eq!(model._get_text("Sheet2!E2"), "16382");
     assert_eq!(model._get_text("Sheet2!E3"), "3");
 }
+
+// Clipping costs O(1) per walk, not a visit of every cell of the sheet
+// (T-0049): 10,000 walks of a whole column over a wide sheet of 160,000
+// cells would visit 1.6 billion cells if each one scanned the sheet (about
+// 30 s unoptimised; a fraction of a second without the scan).
+#[test]
+fn whole_column_walks_do_not_scan_the_sheet() {
+    let mut model = new_empty_model();
+    for row in 1..=10 {
+        for column in 1..=16_000 {
+            model
+                .set_user_input(0, row, column, "1".to_string())
+                .unwrap();
+        }
+    }
+    model.new_sheet();
+    for row in 1..=10_000 {
+        model
+            .set_user_input(1, row, 1, "=COUNT(Sheet1!A:A)".to_string())
+            .unwrap();
+    }
+    let start = Instant::now();
+    model.evaluate();
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "a whole-column walk scanned the sheet"
+    );
+    assert_eq!(model._get_text("Sheet2!A10000"), "10");
+}
+
+#[test]
+fn used_area_end_over_approximates_and_follows_writes() {
+    let mut model = new_empty_model();
+    let end = |model: &crate::Model| model.workbook.worksheet(0).unwrap().used_area_end();
+    // An empty sheet ends at A1, as `dimension` says.
+    assert_eq!(end(&model), (1, 1));
+    model._set("C7", "1");
+    model._set("E2", "1");
+    assert_eq!(end(&model), (7, 5));
+    let dimension = model.workbook.worksheet(0).unwrap().dimension();
+    assert_eq!(end(&model), (dimension.max_row, dimension.max_column));
+    model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .remove_cell(7, 3)
+        .unwrap();
+    assert_eq!(end(&model), (2, 5));
+}
