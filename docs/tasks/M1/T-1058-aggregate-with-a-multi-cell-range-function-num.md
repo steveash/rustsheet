@@ -3,7 +3,7 @@ id: T-1058
 title: "AGGREGATE with a multi-cell range function_num or options"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,8 @@ single cell, and a range next to an array k. Then extend `fn_aggregate`
 
 ## Out of scope
 -
+
+## Outcome
+Probed (probes/aggregate-range-args, excel-graph): a multi-cell range function_num or options lifts element-wise,
+a single cell is scalar, a range k is not lifted (it reads its top-left cell). `fn_aggregate` and `aggregate_static_result` now match;
+recorded in docs/excel-semantics/numbers.md. Eval: the new probe's 38 cells pass.
