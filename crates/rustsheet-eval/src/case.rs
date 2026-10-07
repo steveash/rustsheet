@@ -34,6 +34,10 @@ pub struct SheetSpec {
     pub name: String,
     /// A1 address → input.
     pub cells: BTreeMap<String, CellInput>,
+    /// Formula cells (A1 addresses in `cells`) that spec2xlsx writes as legacy, non-array formulas
+    /// (no dynamic-array metadata; T-1077). The engine adapter ignores them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub legacy_formulas: Vec<String>,
 }
 
 /// A self-contained workbook test case.

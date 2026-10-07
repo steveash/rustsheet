@@ -142,6 +142,7 @@ C	probes/multiarea-areas-1.case.json	1
 C	probes/multiarea-areas-2.case.json	1
 C	probes/multiarea-areas-3.case.json	1
 C	probes/multiarea-areas-3d.case.json	1
+C	probes/multiarea-at-legacy.case.json	10
 C	probes/multiarea-at.case.json	6
 C	probes/multiarea-bare.case.json	1
 C	probes/multiarea-cellfn.case.json	3
@@ -337,6 +338,11 @@ F	probes/multiarea-agg.case.json	Sheet1!H9
 F	probes/multiarea-areas-1.case.json	Sheet1!H1
 F	probes/multiarea-areas-2.case.json	Sheet1!H1
 F	probes/multiarea-areas-3.case.json	Sheet1!H1
+F	probes/multiarea-at-legacy.case.json	Sheet1!H10
+F	probes/multiarea-at-legacy.case.json	Sheet1!H5
+F	probes/multiarea-at-legacy.case.json	Sheet1!H7
+F	probes/multiarea-at-legacy.case.json	Sheet1!H8
+F	probes/multiarea-at-legacy.case.json	Sheet1!H9
 F	probes/multiarea-at.case.json	Sheet1!H5
 F	probes/multiarea-bare.case.json	Sheet1!H1
 F	probes/multiarea-cellfn.case.json	Sheet1!H1
