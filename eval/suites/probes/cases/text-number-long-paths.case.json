@@ -1,0 +1,51 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Length limit of number text on other coercion paths: direct text args of SUM, AVERAGE, COUNT, ROUND, ABS, unary minus, NUMBERVALUE and percent text at LEN 255 and 256 (T-1101 follow-up).",
+ "tags": [
+  "M1",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=SUM(\"0.\"&REPT(\"0\",252)&\"1\",1)",
+    "A2": "=SUM(\"0.\"&REPT(\"0\",253)&\"1\",1)",
+    "A3": "=AVERAGE(\"0.\"&REPT(\"0\",252)&\"1\",2)",
+    "A4": "=AVERAGE(\"0.\"&REPT(\"0\",253)&\"1\",2)",
+    "A5": "=COUNT(\"0.\"&REPT(\"0\",252)&\"1\",1)",
+    "A6": "=COUNT(\"0.\"&REPT(\"0\",253)&\"1\",1)",
+    "A7": "=ROUND(\"0.\"&REPT(\"0\",252)&\"1\",0)",
+    "A8": "=ROUND(\"0.\"&REPT(\"0\",253)&\"1\",0)",
+    "A9": "=ABS(\"0.\"&REPT(\"0\",252)&\"1\")",
+    "A10": "=ABS(\"0.\"&REPT(\"0\",253)&\"1\")",
+    "A11": "=-(\"0.\"&REPT(\"0\",252)&\"1\")",
+    "A12": "=-(\"0.\"&REPT(\"0\",253)&\"1\")",
+    "A13": "=NUMBERVALUE(\"0.\"&REPT(\"0\",252)&\"1\")",
+    "A14": "=NUMBERVALUE(\"0.\"&REPT(\"0\",253)&\"1\")",
+    "A15": "=(\"0.\"&REPT(\"0\",252)&\"1\")%",
+    "A16": "=(\"0.\"&REPT(\"0\",253)&\"1\")%"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11",
+  "Sheet1!A12",
+  "Sheet1!A13",
+  "Sheet1!A14",
+  "Sheet1!A15",
+  "Sheet1!A16"
+ ]
+}
