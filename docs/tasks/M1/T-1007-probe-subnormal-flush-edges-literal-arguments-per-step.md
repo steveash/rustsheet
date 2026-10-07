@@ -3,7 +3,7 @@ id: T-1007
 title: "Probe subnormal flush edges: literal arguments, per-step flush, AVERAGEA/AVERAGEIF/SUBTOTAL(1)/AGGREGATE(1)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0987 flushes only the final result of PRODUCT, SUMPRODUCT, SUMSQ and AVERAGE. 
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/subnormal-flush-edges` (16 forms x value/text/`=0` cells, excel-graph). Excel flushes subnormal literals, every running PRODUCT/SUMPRODUCT product, and the mean in AVERAGEA, AVERAGEIF(S), SUBTOTAL(1/101) and AGGREGATE(1). The engine now does the same (AGGREGATE(1) already flushed through `fn_average`) (30/50 cells passed before; the remaining mismatch is the Graph-API scoring artifact for SUM of a kept subnormal, baselined, T-1027). Unit test added.

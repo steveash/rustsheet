@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -541,7 +542,7 @@ impl Model {
                 message: "Division by 0!".to_string(),
             };
         }
-        CalcResult::finite_number_or_num(result / (l as f64), cell)
+        CalcResult::finite_number_or_num(flush_subnormal(result / (l as f64)), cell)
     }
 
     fn subtotal_sum(
