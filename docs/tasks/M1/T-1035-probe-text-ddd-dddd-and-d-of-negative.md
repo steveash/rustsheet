@@ -3,7 +3,7 @@ id: T-1035
 title: "Probe TEXT ddd/dddd and d of negative fractional serials (-0.5, -0.0001)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
