@@ -180,14 +180,16 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                 // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
                 // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
                 // "Exponent width").
-                let mut decimals = if exponent.abs() >= 99.0 { 4 } else { 5 };
+                let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
+                let mut decimals = decimals_for(exponent);
                 let mut s = format!("{value:.decimals$}");
-                // A mantissa that rounds up to 10 carries into the exponent: 9.9999996E+98 prints
-                // "1E+99", not "10E+98" (probes/text-general-exponent-boundary A5-A8, A10).
+                // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa
+                // carries into the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
+                // (probes/text-general-exponent-boundary A5-A8, A10).
                 if s.trim_start_matches('-').starts_with("10.") {
                     exponent += 1.0;
-                    value /= 10.0;
-                    decimals = if exponent.abs() >= 99.0 { 4 } else { 5 };
+                    value = value.signum();
+                    decimals = decimals_for(exponent);
                     s = format!("{value:.decimals$}");
                 }
                 let sign = if exponent < 0.0 { '-' } else { '+' };

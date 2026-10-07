@@ -24,4 +24,4 @@ T-0986 cuts TEXT General to 5 digits at |exp| >= 99. The oracle has General cell
 -
 
 ## Outcome
-Probe `probes/text-general-exponent-boundary` (10 cells, excel-graph) confirmed the 98/99 boundary already implemented and showed the General branch printed "10E-10"-style text when the mantissa rounds up to 10 (5 cells failed). The branch now carries into the exponent. Eval: probes +10 passing cells (was 5/10 before the fix), 0 regressions.
+Probe `probes/text-general-exponent-boundary` (10 cells, excel-graph) confirmed the 98/99 boundary already implemented and showed the General branch printed "10E-10"-style text when the mantissa rounds up to 10 (5 cells failed). The branch now carries into the exponent. Eval: new case, 10/10 pass (5/10 without the carry fix), 0 regressions.
