@@ -219,6 +219,9 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
+        /// The intersection was written in parentheses, `(A1 B1)`; only an `@` operand prints
+        /// them back, as Excel's FORMULATEXT does (`@(A1 B1)`, T-1109).
+        parenthesized: bool,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
@@ -755,8 +758,9 @@ impl Parser {
                             child: Box::new(args[0].clone()),
                         };
                     }
-                    // We should do this *only* importing functions from xlsx: Spill Range Operator
-                    if &name == "_xlfn.ANCHORARRAY" {
+                    // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
+                    // (probes/at-operand-formulatext J1, T-1109).
+                    if display_name.eq_ignore_ascii_case("ANCHORARRAY") {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
                                 formula: self.lexer.get_formula(),

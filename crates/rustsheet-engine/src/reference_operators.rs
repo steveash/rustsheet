@@ -42,7 +42,7 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
 fn is_multi_area(node: &Node) -> bool {
     match node {
         Node::OpUnionKind { .. } => true,
-        Node::OpIntersectKind { left, right } => is_multi_area(left) || is_multi_area(right),
+        Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
         _ => false,
     }
 }
@@ -125,6 +125,10 @@ impl Model {
                     },
                 }
             }
+            // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
+            // `#NULL!` (probes/at-operand-formulatext H12, T-1109). The right operand's error
+            // is UNVERIFIED (references.md), taken from the union and intersection rule.
+            (error @ CalcResult::Error { .. }, _) | (_, error @ CalcResult::Error { .. }) => error,
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }
     }
@@ -320,7 +324,7 @@ impl Model {
     ) -> Result<Vec<Range>, CalcResult> {
         match node {
             Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
-            Node::OpIntersectKind { left, right } => {
+            Node::OpIntersectKind { left, right, .. } => {
                 self.intersect_areas(left, right, cell, budget)
             }
             _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),

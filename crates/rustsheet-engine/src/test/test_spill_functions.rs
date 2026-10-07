@@ -425,3 +425,20 @@ fn sort_after_filter() {
     assert_eq!(model._get_text("D1"), "Alice");
     assert_eq!(model._get_text("D2"), "Charlie");
 }
+
+#[test]
+fn anchorarray_spells_the_spill_operator() {
+    // probes/at-operand-formulatext J1, K1, K30 (T-1109): `ANCHORARRAY(x)` is `x#`, and a
+    // reference-returning call is a valid anchor.
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("J30", "=ANCHORARRAY(D1)");
+    model._set("J1", "=FORMULATEXT(J30)");
+    model._set("K30", "=ANCHORARRAY(INDEX(D1:D2,1))");
+    model._set("K1", "=FORMULATEXT(K30)");
+    model.evaluate();
+    assert_eq!(model._get_text("J1"), "=D1#");
+    assert_eq!(model._get_text("K1"), "=INDEX(D1:D2,1)#");
+    assert_eq!(model._get_text("J32"), "3");
+    assert_eq!(model._get_text("K32"), "3");
+}

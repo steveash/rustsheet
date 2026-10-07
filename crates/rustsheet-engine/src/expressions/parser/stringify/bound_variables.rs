@@ -65,7 +65,7 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
             }
         }
         Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right }
+        | Node::OpIntersectKind { left, right, .. }
         | Node::OpUnionKind { left, right, .. } => {
             prefix_bound_variables(left, bound);
             prefix_bound_variables(right, bound);

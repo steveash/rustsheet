@@ -65,6 +65,9 @@ impl Parser {
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
         }
+        if let Node::OpIntersectKind { parenthesized, .. } = &mut t {
+            *parenthesized = true;
+        }
         t
     }
 
@@ -114,6 +117,7 @@ impl Parser {
             t = Node::OpIntersectKind {
                 left: Box::new(t),
                 right: Box::new(p),
+                parenthesized: false,
             };
         }
         if as_name {
@@ -378,9 +382,17 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
-/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102).
+/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and an intersection keeps the
+/// ones it was written in, `@(A1 B1)` (T-1109).
 pub(crate) fn at_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::ImplicitIntersection { .. }) {
+    if matches!(
+        node,
+        Node::ImplicitIntersection { .. }
+            | Node::OpIntersectKind {
+                parenthesized: true,
+                ..
+            }
+    ) {
         format!("({text})")
     } else {
         text
