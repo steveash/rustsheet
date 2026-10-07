@@ -1,0 +1,26 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-0272: IFS/SWITCH with range or array value arguments (spill shape) and array conditions. Sheet1 A1:B2 = 1,2;3,4.",
+  "tags": ["M2", "logical", "arrays", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1, "B1": 2, "A2": 3, "B2": 4,
+        "D1": "=IFS(TRUE,A1:B2)",
+        "D4": "=IFS(FALSE,1,TRUE,A1:B2)",
+        "G1": "=SWITCH(1,1,A1:B2)",
+        "G4": "=SWITCH(2,1,5,A1:B2)",
+        "J1": "=SWITCH(9,1,5,A1:B2)",
+        "J4": "=SWITCH(9,1,5,2,6,A1:B2)",
+        "M1": "=IFS({TRUE,FALSE},1,TRUE,2)",
+        "M3": "=IFS(A1:B2>1,5)",
+        "M6": "=SWITCH({1,2},1,\"a\",2,\"b\")",
+        "M8": "=SWITCH(A1:B2,1,\"a\",\"z\")",
+        "M11": "=IFS(TRUE,{1,2;3,4})",
+        "P1": "=SUM(IFS(TRUE,A1:B2))"
+      }
+    }
+  ],
+  "expected": {}
+}

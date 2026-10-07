@@ -109,6 +109,7 @@ C	probes/geomean-product-order.case.json	17
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/ifs-array-criteria.case.json	39
 C	probes/ifs-shape-mismatch.case.json	11
+C	probes/ifs-switch-array-values.case.json	41
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/intersection-at-formulatext.case.json	4
@@ -323,6 +324,18 @@ F	probes/geomean-product-order.case.json	Sheet1!Z14
 F	probes/geomean-product-order.case.json	Sheet1!Z6
 F	probes/geomean-product-order.case.json	Sheet1!Z7
 F	probes/geomean-product-order.case.json	Sheet1!Z8
+F	probes/ifs-switch-array-values.case.json	Sheet1!M1
+F	probes/ifs-switch-array-values.case.json	Sheet1!M3
+F	probes/ifs-switch-array-values.case.json	Sheet1!M4
+F	probes/ifs-switch-array-values.case.json	Sheet1!M6
+F	probes/ifs-switch-array-values.case.json	Sheet1!M8
+F	probes/ifs-switch-array-values.case.json	Sheet1!M9
+F	probes/ifs-switch-array-values.case.json	Sheet1!N1
+F	probes/ifs-switch-array-values.case.json	Sheet1!N3
+F	probes/ifs-switch-array-values.case.json	Sheet1!N4
+F	probes/ifs-switch-array-values.case.json	Sheet1!N6
+F	probes/ifs-switch-array-values.case.json	Sheet1!N8
+F	probes/ifs-switch-array-values.case.json	Sheet1!N9
 F	probes/intersection-function-operands.case.json	Sheet1!H11
 F	probes/intersection-function-operands.case.json	Sheet1!H12
 F	probes/intersection-function-operands.case.json	Sheet1!H14
