@@ -3,7 +3,7 @@ id: T-1078
 title: "Fuzz timeout: chained postfix % on a whole-column range re-lifts 1M cells per operator"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -30,10 +30,20 @@ Excel semantics (cells beyond the used area are blank → 0%) must be kept; see
 docs/excel-semantics/ for whole-column lifts.
 
 ## Acceptance criteria
-- [ ] The reproducer (and a unary-minus chain variant) is a unit test that runs in well under a second in
+- [x] The reproducer (and a unary-minus chain variant) is a unit test that runs in well under a second in
       a debug test build and returns the same value as before the fix.
-- [ ] Operator chains over whole-column/row ranges cost O(used area), or lift once, not once per operator.
-- [ ] `make check` green; reviewers approve.
+- [x] Operator chains over whole-column/row ranges cost O(used area), or lift once, not once per operator.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - General used-area tracking (T-0049).
+
+## Outcome
+A unary `-`/`%` chain is now evaluated by `Model::apply_unary_chain` (cast.rs). It does one lift and
+one element-wise pass, using the minus parity and the `%` count (the operators commute), with no
+allocation and an early stop at 0. `apply_number_unary` now rewrites the lifted array in place instead
+of reallocating a million one-element rows per operator. Results are unchanged (the excel-fidelity
+reviewer checked the old values on main). The fuzz reproducer takes 0.21 s in a debug test, down from
+4 s in release before. In the ASan fuzz build it went from a > 30 s timeout to 3.6 s. `model.rs` shrank
+by 9 lines. Eval delta: none (0 fixed, 0 regressions). Binary-operator chains over whole columns
+(`B:B*1*1…`) still lift once per operator; T-0049/T-0405 cover bounding those walks by the used area.

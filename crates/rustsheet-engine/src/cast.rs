@@ -304,26 +304,36 @@ impl Model {
     }
 
     /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
-    /// in one element-wise pass, innermost operator first, so a whole column is lifted once
-    /// rather than once per operator (the formula_eval fuzz timeout, T-1078).
+    /// in one element-wise pass, so a whole column is lifted once rather than once per
+    /// operator (the formula_eval fuzz timeout, T-1078). The operators commute (negation is
+    /// exact and the subnormal flush is sign-symmetric), so only the minus parity and the
+    /// `%` count matter, and the walk allocates nothing.
     pub(crate) fn apply_unary_chain(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let mut kinds = Vec::new();
+        let mut negate = false;
+        let mut percents = 0_usize;
         let mut operand = node;
         while let Node::UnaryKind { kind, right } = operand {
-            kinds.push(kind);
+            match kind {
+                OpUnary::Minus => negate = !negate,
+                OpUnary::Percentage => percents += 1,
+            }
             operand = right;
         }
-        self.apply_number_unary(operand, cell, |f| {
-            Ok(kinds.iter().rev().fold(f, |f, kind| match kind {
-                OpUnary::Minus => -f,
-                // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
-                // become 0", probes/subnormal-function-results A1, A21).
-                OpUnary::Percentage => flush_subnormal(f / 100.0),
-            }))
+        self.apply_number_unary(operand, cell, |mut f| {
+            // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
+            // become 0", probes/subnormal-function-results A1, A21); 0 stays 0, so blank
+            // cells stop early.
+            for _ in 0..percents {
+                if f == 0.0 {
+                    break;
+                }
+                f = flush_subnormal(f / 100.0);
+            }
+            Ok(if negate { -f } else { f })
         })
     }
 
