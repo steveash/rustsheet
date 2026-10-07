@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SPEC-0004 probe row 1,2: SUM/COUNT/COUNTA/AVERAGE/MIN/MAX/PRODUCT of unions, overlap (T-1061). Sheet1 A1=1,B2=5,C3=7,D4=9.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "H1": "=SUM((A1,B2))",
+        "H2": "=SUM((A1,B2),C3)",
+        "H3": "=SUM((A1:B2,B2))",
+        "H4": "=COUNT((A1,B2))",
+        "H5": "=COUNTA((A1,B2))",
+        "H6": "=AVERAGE((A1,B2))",
+        "H7": "=MIN((A1,B2))",
+        "H8": "=MAX((A1,B2))",
+        "H9": "=PRODUCT((A1,B2))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11,
+        "A2": 12
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 21,
+        "A2": 22
+      }
+    }
+  ],
+  "expected": {}
+}
