@@ -352,7 +352,8 @@ Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, 
 Oracle: excel-graph, 2026-10-05, 2026-10-06 and 2026-10-07.
 Status: VERIFIED
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
-lexer) and `parse_finite_number` (criteria, AVERAGE text, NUMBERVALUE, format conditions),
+lexer, criteria operands, AVERAGE text, NUMBERVALUE) and `parse_finite_number` (format
+conditions, conditional formats, the criteria date guard, `value_needs_quoting`),
 in crates/rustsheet-engine/src/number_format.rs; the tiny side (T-0154) in `parse_excel_number`
 (`cast_number`, VALUE, the lexer, criteria operands, AVERAGE/AVERAGEA text arguments, formatted
 number text, NUMBERVALUE) and, for validity only, the TEXT format-condition lexer. Cell entry
