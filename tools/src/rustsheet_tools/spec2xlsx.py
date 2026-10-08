@@ -36,7 +36,7 @@ import json
 import math
 import re
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -226,9 +226,8 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     wb.set_properties({"created": _FIXED_CREATED})
     stored: list[tuple[int, str, str]] = []  # (sheet number, cell ref, error name)
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
-    lossy: list[
-        tuple[int, str, float]
-    ] = []  # numbers XlsxWriter would round: (sheet number, cell ref, value)
+    # numbers XlsxWriter would round: (sheet number, cell ref, value)
+    lossy: list[tuple[int, str, float]] = []
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
         legacy = set(sheet.get("legacy_formulas", ()))
@@ -253,8 +252,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                     (sheet["name"], xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["entered"]))
                 )
                 continue
-            _write(ws, row, col, raw)
-            if (cell_number := _number_value(raw)) is not None and _is_lossy(cell_number):
+            if (cell_number := _write(ws, row, col, raw)) is not None and _is_lossy(cell_number):
                 lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, formula)
@@ -290,37 +288,39 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
         raise ValueError(msg) from e
 
 
-def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
-    """Replaces the placeholder cells by stored error constants (XlsxWriter has no API for them)."""
-    by_sheet: dict[str, list[tuple[str, str]]] = {}
-    for number, ref, name in stored:
-        by_sheet.setdefault(f"xl/worksheets/sheet{number}.xml", []).append((ref, name))
+def _patch_sheets(xlsx: bytes, patches: list[tuple[int, Callable[[str], str]]]) -> bytes:
+    """Rewrites worksheet XML parts: each `(sheet number, patch)` maps the sheet's text to its new text and
+    raises ValueError when its cell is not there (XlsxWriter has no API for what the patches write)."""
+    by_sheet: dict[str, list[Callable[[str], str]]] = {}
+    for number, patch in patches:
+        by_sheet.setdefault(f"xl/worksheets/sheet{number}.xml", []).append(patch)
     out = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
         for info in src.infolist():
             data = src.read(info.filename)
             if info.filename in by_sheet:
                 text = data.decode()
-                for ref, name in by_sheet[info.filename]:
-                    placeholder = f'<c r="{ref}" t="e"><f>0</f><v>#N/A</v></c>'
-                    if text.count(placeholder) != 1:
-                        msg = f"cannot store error {name} in {ref}: placeholder not found"
-                        raise ValueError(msg)
-                    text = text.replace(placeholder, f'<c r="{ref}" t="e"><v>{escape(name)}</v></c>')
+                for patch in by_sheet[info.filename]:
+                    text = patch(text)
                 data = text.encode()
             dst.writestr(info, data)
     return out.getvalue()
 
 
-def _number_value(raw: Any) -> float | None:
-    """The number a spec cell writes through `write_number`, or None for any other cell."""
-    if isinstance(raw, bool):
-        return None
-    if isinstance(raw, int | float):
-        return float(raw)
-    if isinstance(raw, dict) and raw.get("t") == "n":
-        return float(raw["v"])
-    return None
+def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
+    """Replaces the placeholder cells by stored error constants."""
+
+    def patch(ref: str, name: str) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            placeholder = f'<c r="{ref}" t="e"><f>0</f><v>#N/A</v></c>'
+            if text.count(placeholder) != 1:
+                msg = f"cannot store error {name} in {ref}: placeholder not found"
+                raise ValueError(msg)
+            return text.replace(placeholder, f'<c r="{ref}" t="e"><v>{escape(name)}</v></c>')
+
+        return apply
+
+    return _patch_sheets(xlsx, [(number, patch(ref, name)) for number, ref, name in stored])
 
 
 def _is_lossy(value: float) -> bool:
@@ -331,25 +331,19 @@ def _is_lossy(value: float) -> bool:
 def _store_numbers(xlsx: bytes, lossy: list[tuple[int, str, float]]) -> bytes:
     """Rewrites the `<v>` of numbers that need 17 digits to the shortest text that parses back to the same
     double, as Excel's own files hold them (T-0289)."""
-    by_sheet: dict[str, list[tuple[str, float]]] = {}
-    for number, ref, value in lossy:
-        by_sheet.setdefault(f"xl/worksheets/sheet{number}.xml", []).append((ref, value))
-    out = io.BytesIO()
-    with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
-        for info in src.infolist():
-            data = src.read(info.filename)
-            if info.filename in by_sheet:
-                text = data.decode()
-                for ref, value in by_sheet[info.filename]:
-                    pattern = re.compile(rf'(<c r="{ref}"(?: s="\d+")?><v>)[^<]*(</v></c>)')
-                    replacement = rf"\g<1>{value!r}\g<2>"
-                    text, count = pattern.subn(replacement, text)
-                    if count != 1:
-                        msg = f"cannot store number {value!r} in {ref}: cell not found"
-                        raise ValueError(msg)
-                data = text.encode()
-            dst.writestr(info, data)
-    return out.getvalue()
+
+    def patch(ref: str, value: float) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            pattern = re.compile(rf'(<c r="{ref}"(?: s="\d+")?><v>)[^<]*(</v></c>)')
+            text, count = pattern.subn(rf"\g<1>{value!r}\g<2>", text)
+            if count != 1:
+                msg = f"cannot store number {value!r} in {ref}: cell not found"
+                raise ValueError(msg)
+            return text
+
+        return apply
+
+    return _patch_sheets(xlsx, [(number, patch(ref, value)) for number, ref, value in lossy])
 
 
 def _formula_text(raw: str) -> str:
@@ -357,11 +351,13 @@ def _formula_text(raw: str) -> str:
     return prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
 
 
-def _write(ws: Any, row: int, col: int, raw: Any) -> None:
+def _write(ws: Any, row: int, col: int, raw: Any) -> float | None:
+    """Writes one spec cell; returns the number when it went through `write_number`, else None."""
     if isinstance(raw, bool):
         ws.write_boolean(row, col, raw)
     elif isinstance(raw, int | float):
         ws.write_number(row, col, float(raw))
+        return float(raw)
     elif isinstance(raw, str):
         if raw.startswith("="):
             ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw))
@@ -377,18 +373,20 @@ def _write(ws: Any, row: int, col: int, raw: Any) -> None:
             ws.write_string(row, col, str(value))
         elif tag == "n":
             ws.write_number(row, col, float(value))  # type: ignore[arg-type]
+            return float(value)  # type: ignore[arg-type]
         elif tag == "b":
             ws.write_boolean(row, col, bool(value))
         elif tag == "e":
             ws.write_formula(row, col, f"={value}")
         elif tag == "empty":
-            return
+            pass
         else:
             msg = f"unknown typed cell {raw!r}"
             raise ValueError(msg)
     else:
         msg = f"unsupported cell input {raw!r}"
         raise TypeError(msg)
+    return None
 
 
 def main() -> None:
