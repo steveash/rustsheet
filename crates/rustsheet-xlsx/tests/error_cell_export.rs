@@ -7,13 +7,7 @@ use std::io::Read;
 
 /// The `<v>` of every `t="e"` cell in sheet 1, in file order.
 fn stored_errors(path: &str) -> Vec<String> {
-    let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
-    let mut xml = String::new();
-    archive
-        .by_name("xl/worksheets/sheet1.xml")
-        .unwrap()
-        .read_to_string(&mut xml)
-        .unwrap();
+    let xml = part(path, "xl/worksheets/sheet1.xml").unwrap();
     xml.split("<c ")
         .filter(|cell| cell.contains("t=\"e\""))
         .map(|cell| {
