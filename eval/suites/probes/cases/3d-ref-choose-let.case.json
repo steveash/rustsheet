@@ -1,0 +1,64 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A 3-D reference returned by CHOOSE or bound by LET, passed to an aggregate (T-1064 review).",
+  "tags": [
+    "M1",
+    "references",
+    "3d-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "C1": "=SUM(CHOOSE(1,Data1:Data3!A1:A2))",
+        "C2": "=COUNT(CHOOSE(1,Data1:Data3!A1))",
+        "C3": "=LET(x,Data1:Data3!A1,SUM(x))",
+        "C4": "=SUM(LET(x,Data1:Data3!A1,x))",
+        "C5": "=SUM(IF(TRUE,CHOOSE(1,Data1:Data3!A1)))",
+        "C6": "=CHOOSE(1,Data1:Data3!A1)"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": "5",
+        "A3": true,
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10,
+        "B1": "=1/0",
+        "C1": "x"
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 100,
+        "A2": 2,
+        "A3": -4,
+        "B1": 7
+      }
+    },
+    {
+      "name": "Q 4",
+      "cells": {
+        "A1": 1000
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!C3",
+    "Calc!C4",
+    "Calc!C5",
+    "Calc!C6"
+  ]
+}

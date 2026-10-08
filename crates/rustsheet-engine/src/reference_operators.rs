@@ -1,7 +1,7 @@
 //! Evaluation of the reference operators: the range (`:`), the intersection (a space) and
 //! the union (a comma inside parentheses).
 
-use std::{ops::Deref, rc::Rc};
+use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
@@ -41,9 +41,10 @@ pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a r
 
 /// The areas of a reference that has more than one, in formula order, duplicates kept
 /// (`SUM((A1:B2,B2))` counts B2 twice, probes/multiarea-agg H3): 2..=[`MAX_AREAS`] ranges, all
-/// on one sheet, each with its corners in order. Shared, so a copy is never made on read.
+/// on one sheet, each with its corners in order. Shared (`Arc`, so a `Model` holding one in a LET
+/// binding stays `Send`), so a copy is never made on read.
 #[derive(Clone)]
-pub(crate) struct Areas(Rc<[Range]>);
+pub(crate) struct Areas(Arc<[Range]>);
 
 /// The ranges a reference argument stands for: one range (a 3-D reference included, whose
 /// corners sit on two sheets), or the areas of a multi-area reference. Derefs to the ranges in
@@ -81,7 +82,7 @@ impl Ranges {
                 return Ok(Ranges::One(area));
             }
         }
-        Ok(Ranges::Areas(Areas(Rc::from(areas))))
+        Ok(Ranges::Areas(Areas(Arc::from(areas))))
     }
 }
 
@@ -143,6 +144,80 @@ impl RefArg {
     }
 }
 
+/// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
+/// included), or the areas of a union, which only reference context reads as such
+/// ([`Model::variable_reference`]); everywhere else it is `#VALUE!`, as `LET(x,(A1,B2),x)` is
+/// (probes/multiarea-let H3).
+#[derive(Clone)]
+pub(crate) enum Binding {
+    Value(CalcResult),
+    Areas(Areas),
+}
+
+impl Binding {
+    /// The binding where a value or a single reference is needed.
+    pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            Binding::Value(value) => value.clone(),
+            Binding::Areas(_) => several_areas(cell),
+        }
+    }
+
+    /// How many areas the binding holds: those of a union, none for a value.
+    pub(crate) fn held_areas(&self) -> usize {
+        match self {
+            Binding::Value(_) => 0,
+            Binding::Areas(Areas(areas)) => areas.len(),
+        }
+    }
+}
+
+/// Most areas the LET variables and LAMBDA parameters in scope may hold together. One union is
+/// at most [`MAX_AREAS`] areas, but each binding may hold a fresh one
+/// (`LET(x1,(A1,A2),x2,(x1,x1),x3,(x2,A1),...)`), so memory would grow with formula length;
+/// past this total a binding is `#VALUE!` (DEVIATION, decision 0014: references.md "Union area
+/// cap").
+const MAX_HELD_AREAS: usize = 4 * MAX_AREAS;
+
+/// The LET variables and LAMBDA parameters in scope, by variable id, with the areas their
+/// union bindings hold, which may not pass [`MAX_HELD_AREAS`].
+#[derive(Clone, Default)]
+pub(crate) struct VariableStack {
+    bindings: HashMap<usize, Binding>,
+    held_areas: usize,
+}
+
+impl VariableStack {
+    pub(crate) fn get(&self, id: usize) -> Option<&Binding> {
+        self.bindings.get(&id)
+    }
+
+    /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.
+    pub(crate) fn insert(&mut self, id: usize, binding: Binding, cell: CellReferenceIndex) {
+        let held = self.held_areas + binding.held_areas();
+        let binding = if held > MAX_HELD_AREAS {
+            Binding::Value(too_many_areas(cell))
+        } else {
+            self.held_areas = held;
+            binding
+        };
+        if let Some(old) = self.bindings.insert(id, binding) {
+            self.held_areas -= old.held_areas();
+        }
+    }
+
+    pub(crate) fn remove(&mut self, id: usize) {
+        if let Some(old) = self.bindings.remove(&id) {
+            self.held_areas -= old.held_areas();
+        }
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.bindings.clear();
+        self.held_areas = 0;
+    }
+}
+
 /// `#VALUE!` for a 3-D reference where a single-sheet reference is needed (INDEX, AREAS,
 /// VLOOKUP, MATCH, ..., probes/3d-ref-functions).
 pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
@@ -162,13 +237,21 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 
-/// Whether `node` may stand for several areas, so evaluating it needs an area list.
+/// Whether `node` may stand for several areas, so evaluating it as an intersection operand
+/// needs an area list.
 /// An intersection is multi-area only if a union sits somewhere under it: a chain of
 /// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
 /// Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_multi_area(node: &Node) -> bool {
     match node {
-        Node::OpUnionKind { .. } => true,
+        // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let H2,
+        // multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
+        Node::OpUnionKind { .. }
+        | Node::NamedVariableKind { .. }
+        | Node::FunctionKind {
+            kind: Function::If | Function::Choose | Function::Let,
+            ..
+        } => true,
         Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
         _ => false,
     }
@@ -480,6 +563,14 @@ impl Model {
             Node::OpIntersectKind { left, right, .. } => {
                 self.intersect_areas(left, right, cell, budget)
             }
+            Node::NamedVariableKind { .. }
+            | Node::FunctionKind {
+                kind: Function::If | Function::Choose | Function::Let,
+                ..
+            } => match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(Ranges::Areas(areas)) => Ok(areas.0.to_vec()),
+                other => Ok(vec![single_sheet_area(other.into_single_area(cell), cell)?]),
+            },
             _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),
         }
     }
@@ -576,25 +667,32 @@ impl Model {
         };
         let operand =
             reference_form.unwrap_or_else(|| self.evaluate_node_with_reference(node, cell));
-        match operand {
-            CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
-                left: CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row.min(right.row),
-                    column: left.column.min(right.column),
-                },
-                right: CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row.max(right.row),
-                    column: left.column.max(right.column),
-                },
-            }),
-            error @ CalcResult::Error { .. } => Err(error),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Intersection of a value that is not a reference".to_string(),
-            )),
-        }
+        single_sheet_area(operand, cell)
+    }
+}
+
+/// An intersection operand as a single-sheet area with its corners in order, or the result to
+/// give instead: the operand's own error, or `#VALUE!` for anything that is not a reference
+/// (`(1+0) A1`) or spans sheets.
+fn single_sheet_area(operand: CalcResult, cell: CellReferenceIndex) -> Result<Range, CalcResult> {
+    match operand {
+        CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
+            left: CellReferenceIndex {
+                sheet: left.sheet,
+                row: left.row.min(right.row),
+                column: left.column.min(right.column),
+            },
+            right: CellReferenceIndex {
+                sheet: left.sheet,
+                row: left.row.max(right.row),
+                column: left.column.max(right.column),
+            },
+        }),
+        error @ CalcResult::Error { .. } => Err(error),
+        _ => Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Intersection of a value that is not a reference".to_string(),
+        )),
     }
 }

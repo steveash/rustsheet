@@ -1,0 +1,75 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A 3-D span from IF or CHOOSE bound by LET or LAMBDA, read as a value and by reference functions (T-1064 review round 2). Calc!K1 is text.",
+  "tags": [
+    "M1",
+    "references",
+    "3d-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "C1": "=LET(x,CHOOSE(1,Data1:Data3!A1),x)",
+        "C2": "=LET(x,IF(TRUE,Data1:Data3!A1),x)",
+        "C3": "=LAMBDA(x,x)(CHOOSE(1,Data1:Data3!A1))",
+        "C4": "=LET(x,CHOOSE(1,Data1:Data3!A1),x+1)",
+        "C5": "=ROWS(LET(x,CHOOSE(1,Data1:Data3!A1:A2),x))",
+        "C6": "=INDEX(LET(x,IF(TRUE,Data1:Data3!A1:A2),x),2)",
+        "C7": "=LET(x,CHOOSE(1,Data1:Data3!A1),SUM(x))",
+        "C8": "=LET(x,IF(TRUE,K1),MAX(x))",
+        "C9": "=LAMBDA(x,MAX(x))(IF(TRUE,K1))",
+        "C10": "=IF(TRUE,Data1:Data3!A1) A1",
+        "C11": "=LET(x,Data1:Data3!A1,x)",
+        "K1": "abc"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": "5",
+        "A3": true,
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10,
+        "B1": "=1/0",
+        "C1": "x"
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 100,
+        "A2": 2,
+        "A3": -4,
+        "B1": 7
+      }
+    },
+    {
+      "name": "Q 4",
+      "cells": {
+        "A1": 1000
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!C3",
+    "Calc!C4",
+    "Calc!C5",
+    "Calc!C6",
+    "Calc!C7",
+    "Calc!C8",
+    "Calc!C9",
+    "Calc!C10",
+    "Calc!C11"
+  ]
+}

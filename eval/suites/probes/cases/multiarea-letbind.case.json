@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "SPEC-0004 rows 9/10 follow-ups (T-1064 review): unions bound by LET through a variable, IF or CHOOSE; IF/CHOOSE unions as operands; LET shadowing; LAMBDA. Sheet1 A1=1,B2=5,C3=7,D4=9.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "H1": "=LET(x,(A1,B2),y,x,SUM(y))",
+        "H2": "=LET(x,IF(TRUE,(A1,B2)),SUM(x))",
+        "H3": "=LET(x,CHOOSE(1,(A1,B2)),SUM(x))",
+        "H4": "=LET(x,(A1,B2),y,x,y A1)",
+        "H5": "=LET(x,(A1,B2),LET(x,C3,SUM(x)))",
+        "H6": "=LET(x,(A1,B2),SUM(x,LET(x,C3,x)))",
+        "H7": "=LAMBDA(x,SUM(x))((A1,B2))",
+        "H8": "=SUM(LET(x,(A1,B2),x))",
+        "H9": "=SUM((IF(TRUE,(A1,B2)),C3))",
+        "H10": "=SUM(IF(FALSE,1,(A1,B2)))",
+        "H11": "=SUM(CHOOSE(1.9,(A1,B2),C3))",
+        "H12": "=SUM(IF(TRUE,CHOOSE(1,(A1,B2))))",
+        "H13": "=IF(TRUE,IF(TRUE,(A1,B2))) A1",
+        "H14": "=CHOOSE(2,C3,(A1,B2)) B2",
+        "H15": "=LET(x,(A1,B2),y,x,y)",
+        "H16": "=LET(x,(A1,B2),x) A1"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11,
+        "A2": 12
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 21,
+        "A2": 22
+      }
+    }
+  ],
+  "expected": {}
+}

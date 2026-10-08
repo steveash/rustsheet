@@ -9,6 +9,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
+    reference_operators::{is_multi_area, Binding, Ranges, RefArg},
 };
 
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
@@ -101,9 +102,20 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
 
 impl Model {
     pub(crate) fn fn_let(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.let_impl(args, cell, false).into_single_area(cell)
+    }
+
+    /// LET; with `as_reference` the body is evaluated in reference context, so a union there
+    /// stays its areas: `SUM(LET(x,(A1,B2),x))` is 6 (probes/multiarea-letbind H8).
+    pub(crate) fn let_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> RefArg {
         // LET requires an odd number of args >= 3: name1, value1, [name2, value2, ...], body
         if args.len() < 3 || args.len().is_multiple_of(2) {
-            return CalcResult::new_args_number_error(cell);
+            return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
 
         let pair_count = (args.len() - 1) / 2;
@@ -116,34 +128,36 @@ impl Model {
         for i in 0..pair_count {
             // Extract the variable name from the declaration node.
             let name = match &cloned[2 * i] {
-                Node::NamedVariableKind { name, .. } => name.clone(),
-                _ => {
-                    // Remove only the ids introduced by this LET frame.
-                    for id in bound_ids {
-                        self.variable_stack.remove(&id);
-                    }
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        format!("LET: argument {} must be a variable name", 2 * i + 1),
-                    );
+                Node::NamedVariableKind { name, .. } if seen_names.insert(name.clone()) => {
+                    Ok(name.clone())
                 }
-            };
-
-            if !seen_names.insert(name.clone()) {
-                return CalcResult::new_error(
+                Node::NamedVariableKind { name, .. } => Err(CalcResult::new_error(
                     Error::ERROR,
                     cell,
-                    format!("LET: variable name '{}' is already bound", name),
-                );
-            }
+                    format!("LET: variable name '{name}' is already bound"),
+                )),
+                _ => Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    format!("LET: argument {} must be a variable name", 2 * i + 1),
+                )),
+            };
+            let name = match name {
+                Ok(name) => name,
+                Err(error) => {
+                    // Remove only the ids introduced by this LET frame.
+                    for id in bound_ids {
+                        self.variable_stack.remove(id);
+                    }
+                    return RefArg::Value(error);
+                }
+            };
 
             let raw_id = self.get_next_variable_id();
             let id = raw_id as u32;
             bound_ids.push(raw_id);
 
             // Patch the variable's id into all subsequent nodes (value expr + body and later pairs).
-            // for j in (2 * i + 1)..cloned.len() {
             for item in cloned.iter_mut().skip(2 * i + 1) {
                 assign_variable_ids(item, &name, id);
             }
@@ -151,20 +165,50 @@ impl Model {
             // Eagerly evaluate the binding value and cache it.
             // CalcResult::Range stores only bounds (no cell data), so range bindings are
             // effectively lazy — values are only read when a consuming function iterates the range.
-            // A reference stays a reference, a single cell too (upstream MIN_MAX_extras.xlsx A16).
-            let val = self.evaluate_node_with_reference(&cloned[2 * i + 1], cell);
-            self.variable_stack.insert(raw_id, val);
+            let binding = self.bind_argument(&cloned[2 * i + 1], cell);
+            self.variable_stack.insert(raw_id, binding, cell);
         }
 
         // Evaluate the body with all bindings in scope.
-        let result = self.evaluate_node_in_context(&cloned[args.len() - 1], cell);
+        let body = &cloned[args.len() - 1];
+        let result = if as_reference {
+            self.evaluate_reference_arg(body, cell)
+        } else {
+            RefArg::Value(self.evaluate_node_in_context(body, cell))
+        };
 
         // Remove only the ids introduced by this LET frame.
         for id in bound_ids {
-            self.variable_stack.remove(&id);
+            self.variable_stack.remove(id);
         }
 
         result
+    }
+
+    /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single
+    /// cell too (upstream MIN_MAX_extras.xlsx A16, MAX_MIN.xlsx H54), and an argument that may
+    /// stand for several areas is read in reference context, so a union stays its areas
+    /// wherever it comes from: written out, another variable, IF, CHOOSE or LET
+    /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
+    pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
+        if !is_multi_area(node) {
+            return Binding::Value(self.evaluate_node_with_reference(node, cell));
+        }
+        match self.evaluate_reference_arg(node, cell) {
+            RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
+            // A 3-D span from IF or CHOOSE: every value read of the binding is `#VALUE!`
+            // (probes/3d-ref-let-values C1:C6). Only `evaluate_reference_arg` may hold a range
+            // across sheets, so the binding does not keep it; an aggregate reading the span
+            // through the variable (C7, 111) is T-1158.
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
+                Binding::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "3-D reference bound to a variable".to_string(),
+                ))
+            }
+            other => Binding::Value(other.into_single_area(cell)),
+        }
     }
 
     /// What a LET variable or a LAMBDA parameter is bound to; a reference stays a reference.
@@ -172,8 +216,8 @@ impl Model {
     pub(crate) fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node {
             Node::NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(&(*id as usize)) {
-                    Some(v) => v.clone(),
+                match self.variable_stack.get(*id as usize) {
+                    Some(binding) => binding.value(cell),
                     None => CalcResult::new_error(
                         Error::NAME,
                         cell,
@@ -188,5 +232,16 @@ impl Model {
             ),
             _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
+    }
+
+    /// A LET variable or LAMBDA parameter in reference context: a union binding is its areas,
+    /// anything else what [`Model::variable_value`] gives.
+    pub(crate) fn variable_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
+        if let Node::NamedVariableKind { id: Some(id), .. } = node {
+            if let Some(Binding::Areas(areas)) = self.variable_stack.get(*id as usize) {
+                return RefArg::Ranges(Ranges::Areas(areas.clone()));
+            }
+        }
+        RefArg::from(self.variable_value(node, cell))
     }
 }

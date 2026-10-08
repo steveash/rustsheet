@@ -143,7 +143,9 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::If,
                 args,
-            } => self.if_impl(args, cell, IfBranchMode::SingleSheet),
+            } => self
+                .if_impl(args, cell, IfBranchMode::SingleSheet)
+                .into_single_area(cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -173,18 +175,29 @@ impl Model {
             Node::ReferenceKind { .. }
             | Node::ImplicitIntersection { .. }
             | Node::OpRangeKind { .. }
-            | Node::DefinedNameKind(_)
-            | Node::NamedVariableKind { .. } => self.evaluate_node_with_reference(node, cell),
+            | Node::DefinedNameKind(_) => self.evaluate_node_with_reference(node, cell),
             Node::SheetSpanKind {
                 first_index,
                 last_index,
                 reference,
                 ..
             } => self.get_sheet_span_range(*first_index, *last_index, reference, cell),
+            // IF and CHOOSE hand back the chosen branch, LET its body, in reference context,
+            // a union included (probes/multiarea-ifchoose H2:H3, multiarea-letbind H8).
             Node::FunctionKind {
                 kind: Function::If,
                 args,
-            } => self.if_impl(args, cell, IfBranchMode::Aggregate),
+            } => return self.if_impl(args, cell, IfBranchMode::Aggregate),
+            Node::FunctionKind {
+                kind: Function::Choose,
+                args,
+            } => return self.choose_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } => return self.let_impl(args, cell, true),
+            // A LET variable bound to a union is its areas (probes/multiarea-let H1).
+            Node::NamedVariableKind { .. } => return self.variable_reference(node, cell),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
