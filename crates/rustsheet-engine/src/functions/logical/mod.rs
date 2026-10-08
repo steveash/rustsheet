@@ -346,7 +346,7 @@ impl Model {
         CalcResult::Array(output)
     }
 
-    /// =IFS(condition1, value, [condition, value]*). An array or multi-cell range condition lifts
+    /// =IFS(condition1, value, [condition, value]*). An array or range condition lifts
     /// IFS element by element over it and the arguments after it, broadcast as the element-wise
     /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
     /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:

@@ -23,7 +23,7 @@ fn ifs_lifts_over_array_and_range_conditions() {
     model._set("D6", "=IFS(FALSE,9,{FALSE;TRUE},7,TRUE,8)");
     // an error element is that element's result
     model._set("F1", "=IFS({TRUE,#DIV/0!},1)");
-    // a value argument broadcasts against the condition (engine behavior, unprobed in Excel)
+    // a value argument broadcasts against the condition (probes/ifs-switch-lift-edges)
     model._set("H1", "=IFS({TRUE,FALSE},{10,20},TRUE,{30,40})");
     model.evaluate();
     assert_eq!(model._get_text("D1"), "1");
@@ -61,7 +61,7 @@ fn switch_lifts_over_an_array_or_range_expression() {
     model._set("D6", "=SWITCH({1,5},1,\"a\")");
     // an error element is that element's result
     model._set("D8", "=SWITCH({1,#N/A},1,\"a\",\"z\")");
-    // a value argument broadcasts against the expression (engine behavior, unprobed in Excel)
+    // a value argument broadcasts against the expression (probes/ifs-switch-lift-edges)
     model._set("D10", "=SWITCH({1,2},1,{10,20},{30,40})");
     model.evaluate();
     assert_eq!(model._get_text("D1"), "a");

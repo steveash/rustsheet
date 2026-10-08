@@ -7,8 +7,8 @@ use crate::{
 };
 
 impl Model {
-    /// =SWITCH(expression, case1, value1, [case, value]*, [default]). An array or multi-cell
-    /// range expression lifts SWITCH element by element over it and the other arguments,
+    /// =SWITCH(expression, case1, value1, [case, value]*, [default]). An array or range
+    /// expression lifts SWITCH element by element over it and the other arguments,
     /// broadcast as the element-wise operators do: `SWITCH(A1:B2,1,"a","z")` is
     /// `{"a","z";"z","z"}` (probes/ifs-switch-array-values M6, M8; docs/excel-semantics/logic.md).
     pub(crate) fn fn_switch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

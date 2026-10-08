@@ -30,6 +30,7 @@ T-0272 probe `eval/suites/probes/cases/ifs-switch-array-values` (oracle-filled):
   with per-element helpers (`ifs_element`, `switch_element`). Scalar conditions and expressions keep
   their path, so a range value stays a reference (`SUM(IFS(TRUE,A1:B2))` is 10).
 - probes/ifs-switch-array-values passes 41/41. New unit tests are in test/test_ifs_switch_lift.rs.
-  logic.md records the implementation and the unprobed edges: array value arguments beside a lifted
-  condition, and ragged shapes.
+  A new probe, probes/ifs-switch-lift-edges (excel-graph, 26 cells), confirms the edges the engine
+  chose: value broadcasting, scalar short-circuit, single-cell ranges, ragged shapes and an array
+  case list. The engine matches all of them, and logic.md records them.
 - Eval delta: probes known failures 363 -> 351 (fixed 12; new coverage 0; regressions 0).
