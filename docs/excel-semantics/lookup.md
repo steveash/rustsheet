@@ -204,7 +204,7 @@ Evidence: probes/xmatch-xlookup-blanks Col!M16-M26, M44-M46, Err!M6-M7, Row!A18-
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs), shared by XMATCH and XLOOKUP.
 XLOOKUP over a range searches the full vector, so cells past the used area are probed as blanks.
-Unprobed (T-1134): runs of equal values. The engine returns the run's first cell for match_mode 0/-1
+Unprobed (T-1135): runs of equal values. The engine returns the run's first cell for match_mode 0/-1
 and never one below the second cell for match_mode 1 (both as before T-1019), and the run's last
 cell when descending. Also unprobed: text and boolean lookup values over blanks and errors.
 

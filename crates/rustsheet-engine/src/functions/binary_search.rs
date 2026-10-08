@@ -108,7 +108,7 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
         let ordering = array.at(mid).cmp(target);
         match ordering {
             Ordering::Equal if descending => return Some(walk_forward(target, array, mid)),
-            // Unprobed for runs (T-1134); kept from the earlier searches: match modes 0/-1
+            // Unprobed for runs (T-1135); kept from the earlier searches: match modes 0/-1
             // returned the run's first element, match mode 1 never one below the second.
             Ordering::Equal => {
                 let floor = usize::from(mode == Ordering::Greater);

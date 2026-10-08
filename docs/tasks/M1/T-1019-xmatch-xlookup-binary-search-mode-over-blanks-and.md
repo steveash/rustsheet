@@ -32,9 +32,9 @@ Remaining failures of probes/xmatch-xlookup-blanks after T-1018: Col!M16, M17, M
   shared by XMATCH and XLOOKUP (range and array paths). Unit tests pin every binary-mode oracle
   cell (test_binary_search.rs). XLOOKUP over a range now searches the full `SearchVector`
   (virtual empty tail) rather than the vector clipped to the used area, so its answer no longer
-  depends on the used area. Runs of equal values return what main returned (unprobed, T-1134);
+  depends on the used area. Runs of equal values return what main returned (unprobed, T-1135);
   their start is found by galloping. docs/excel-semantics/lookup.md has the new VERIFIED entry.
 - Eval delta: probes fixed 7 (Col!M16, M17, M20, M23, M44, Err!M6, Row!A18), regressions 0;
   xmatch-xlookup-blanks now passes 69/69.
-- Not done: the text/boolean and blank-lookup probes and the module move, filed as T-1134. The
+- Not done: the text/boolean and blank-lookup probes and the module move, filed as T-1135. The
   move is out of scope there too, since nothing needs it yet.

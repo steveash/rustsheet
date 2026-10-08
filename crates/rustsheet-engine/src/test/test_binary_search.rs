@@ -82,7 +82,7 @@ fn test_binary_search_over_blanks_and_errors() {
     assert_eq!(find(&n(15.0), &errs, false, Some(-1)), Some(2)); // M7: 3
 }
 
-/// Runs of equal values (unprobed, T-1134): match modes 0/-1 return the run's first element,
+/// Runs of equal values (unprobed, T-1135): match modes 0/-1 return the run's first element,
 /// match mode 1 never one below the second, as the searches before T-1019 did. Long runs are
 /// galloped, not walked.
 #[test]
