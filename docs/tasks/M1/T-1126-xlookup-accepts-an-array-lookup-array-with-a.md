@@ -3,7 +3,7 @@ id: T-1126
 title: "XLOOKUP accepts an array lookup_array with a range return_array"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
