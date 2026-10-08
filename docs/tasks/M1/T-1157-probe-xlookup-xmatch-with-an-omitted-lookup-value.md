@@ -3,7 +3,7 @@ id: T-1157
 title: "Probe XLOOKUP/XMATCH with an omitted lookup_value: blank or empty text, linear and binary"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ docs/excel-semantics/lookup.md ("omitted lookup_value", T-1153) rests on one Exc
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/xlookup-omitted-lookup-value (40 cells, excel-graph). An omitted lookup_value equals a blank-cell reference in all
+exact, -1/1, wildcard, reverse and binary modes; empty text differs. The engine matches in binary mode but not in linear modes
+(9 cells), filed as T-1188. Recorded in docs/excel-semantics/lookup.md. Eval delta: +9 known failures (new case, all tracked by T-1188), 0 regressions.
