@@ -402,11 +402,13 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
 - Near 1, ACOTH(1 + 1E-12) = 14.162039699929037 and ATANH(1 - 1E-12) = 14.162095209226402 differ only because the stored
   inputs sit at different distances from 1 (x-1 = 1.0000889E-12, 1-y = 0.99997788E-12); both are correctly rounded and the
   engine matches both cells. Not a quirk.
-- COTH(1E-8) = 1E8 and COTH(1E-6) = 1000000.0000003333 equal libm `1/tanh(x)`; CSCH(1E-8) = 99999999.99999999 differs from libm
-  `1/sinh(x)`. The engine differs from Excel on these cells.
+- COTH and CSCH (A117-A156) are close to, but not exactly, libm `1/tanh(x)` and `1/sinh(x)`. COTH differs by 1 ulp at
+  1E-4, 0.01, 0.1, 2 and 5 (A123, A127, A129, A135, A137) and by 2 ulp at 1E-3 (A125); CSCH differs by 1 ulp at 1E-8 and
+  0.01 (A120, A128). Notably CSCH(1E-8) = 1E8 exactly, where libm `1/sinh(x)` (and the engine) gives 99999999.99999999.
+  The other COTH/CSCH cells equal the libm expressions bit-for-bit, except CSCH(710) (below); the formula is left open for T-0917.
 - Overflow: SINH(710) and SINH(-710) are `#NUM!` (engine: +-1.117E308), but CSCH(710) = 0 (not an error; engine 8.95E-309),
-  CSCH(709) = 2.433561501246846E-308, COTH(709) = COTH(710) = 1, TANH(x) = 1 for x >= 20 (probed 20, 20.01, 21, 22, 25, 30,
-  350, 700, 709, 710). SINH(709.78) = 8.964113971972578E307 is finite.
+  CSCH(709) = 2.433561501246846E-308, COTH(709) = COTH(710) = 1, TANH(x) = 1 for every probed x >= 19 (19, 19.5, 19.99, 20, 20.01,
+  21, 22, 25, 30, 350, 700, 709, 710). SINH(709.78) = 8.964113971972578E307 is finite.
 - SINH/TANH values on 0.40..1.0 (step 0.01 / 0.02 / 0.025, plus 0.9950546550253772 and 0.9999999999) are in the case; the
   engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH in (709.78, 710).
 Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
