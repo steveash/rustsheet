@@ -113,6 +113,25 @@ fn index_from_array(
 }
 
 impl Model {
+    /// A call to a function whose result is a reference when its source argument is one,
+    /// evaluated as that reference: XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
+    /// evaluated to their values (probes/intersection-function-operands H8, H11, H12, H14;
+    /// T-0165). `None` for any other function.
+    pub(crate) fn evaluate_reference_form(
+        &mut self,
+        kind: &Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        Some(match kind {
+            Function::Xlookup => self.xlookup_impl(args, cell, true),
+            Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
+            Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),
+            Function::Trimrange => self.trimrange_impl(args, cell, true),
+            _ => return None,
+        })
+    }
+
     // INDEX(array, row_num, [column_num])
     // INDEX(range, row_num, [column_num], [area_num])
     // At the moment IronCalc does not support references with multiple areas,

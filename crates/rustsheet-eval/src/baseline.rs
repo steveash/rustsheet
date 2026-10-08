@@ -8,6 +8,8 @@
 //! * failing items in new or changed cases are **new coverage** → allowed, but must be
 //!   recorded with `rustsheet-eval update-baseline`;
 //! * listed items that now pass are **fixes** → ratchet them with `update-baseline`.
+//! * a case missing from the baseline, even one that passes, is a **new case** → its
+//!   checked-cell count must be recorded with `update-baseline`.
 //!
 //! The known-failure list doubles as the compatibility to-do list.
 
@@ -124,6 +126,9 @@ pub struct Delta {
     pub fixed: Vec<String>,
     /// Cases present in the baseline but absent now.
     pub removed_cases: Vec<String>,
+    /// Cases absent from the baseline but run now, passing or not: their `C` line must be
+    /// recorded (docs/process/quality-gates.md, T-1059).
+    pub new_cases: Vec<String>,
 }
 
 impl Delta {
@@ -133,7 +138,8 @@ impl Delta {
         !(self.regressions.is_empty()
             && self.new_failures.is_empty()
             && self.fixed.is_empty()
-            && self.removed_cases.is_empty())
+            && self.removed_cases.is_empty()
+            && self.new_cases.is_empty())
     }
 }
 
@@ -157,6 +163,11 @@ pub fn diff(old: &Baseline, new: &Baseline) -> Delta {
     for case in old.checked.keys() {
         if !new.checked.contains_key(case) {
             d.removed_cases.push(case.clone());
+        }
+    }
+    for case in new.checked.keys() {
+        if !old.checked.contains_key(case) {
+            d.new_cases.push(case.clone());
         }
     }
     d.new_failures.extend(
@@ -198,6 +209,19 @@ mod tests {
         assert!(d.new_failures.contains(&"c\tS!C1".to_string()));
         assert_eq!(d.fixed, vec!["a\tS!A1"]);
         assert!(d.removed_cases.is_empty());
+        assert_eq!(d.new_cases, vec!["c"]);
+    }
+
+    #[test]
+    fn new_passing_case_makes_the_baseline_dirty() {
+        // A case with no failures adds only its `C` line, which must still be recorded (T-1059).
+        let old = b(&[("a", 3)], &[]);
+        let new = b(&[("a", 3), ("b", 2)], &[]);
+        let d = diff(&old, &new);
+        assert_eq!(d.new_cases, vec!["b"]);
+        assert!(d.new_failures.is_empty());
+        assert!(d.is_dirty());
+        assert!(!diff(&new, &new).is_dirty());
     }
 
     #[test]
