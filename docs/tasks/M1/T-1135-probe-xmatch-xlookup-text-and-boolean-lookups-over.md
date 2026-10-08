@@ -27,4 +27,4 @@ T-1019 matched the binary search to Excel over blanks and errors. That work is t
 - Engine changes; moving `linear_scan`/`MatchMode` to a neutral lookup module (a quality task if wanted).
 
 ## Outcome
-Probe `probes/xmatch-text-bool-equal-runs` (134 cells) filled from excel-graph. Equal-run binary search and all Run cells match the engine. 24 cells differ (blank vs text/boolean candidates, blank lookup value in XLOOKUP, descending boolean binary search); recorded in lookup.md, fix filed as T-1153. Eval: probes gains 134 cells, 24 new known failures baselined (probes 188 -> 212).
+Probe `probes/xmatch-text-bool-equal-runs` (134 cells) filled from excel-graph. Equal-run binary search matches the engine except match_mode 1 / search_mode 2 over runs starting at the first cell (Run!M5, M11, M17, M35, M51). 24 cells differ (blank vs text/boolean candidates, blank lookup value in XLOOKUP, descending boolean binary search); recorded in lookup.md, fix filed as T-1153. Eval: probes gains 134 cells, 24 new known failures baselined (probes 188 -> 212).
