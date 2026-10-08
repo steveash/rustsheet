@@ -3,7 +3,7 @@ id: T-1006
 title: "Oracle sweep for T-0925: NORM.S.INV at NORM.S.DIST(k), tails to 1e-300"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
