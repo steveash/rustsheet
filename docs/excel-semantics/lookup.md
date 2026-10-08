@@ -262,12 +262,17 @@ Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
 
-## XLOOKUP / XMATCH with an omitted lookup_value orders like a blank (partial evidence)
-Rule: an omitted lookup_value (`XLOOKUP(,L:L,M:M,,1,2)`) is ordered like a blank cell in a binary search: after every number,
-text and boolean, equal to a blank. With L1:L5 = a..e and blanks below, that formula is 6, the first blank's row, which an
-"omitted = 0" reading (1) rules out. The single cell cannot separate "blank" from "empty text", and the linear and exact
-modes, where `linear_scan` only treats an `EmptyCell` lookup value as blank, are unprobed (T-1157).
-Evidence: crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/XLOOKUP.xlsx Errors!N1 (Excel-authored cached value).
-Status: UNVERIFIED (probe pending, T-1157)
+## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
+Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every
+match mode and search mode: exact, -1, 1, wildcard (2), reverse linear (-1) and binary (2, -2). With H1:H4 = 1, blank, "a", empty
+text, `XMATCH(,H1:H4)`, with match_mode -1, 1 and 2, and with search_mode -1 are all 2, the blank cell's position (and the
+`XLOOKUP` forms return the 2nd return value). Empty text is not equal to the omitted value: `XMATCH("",H1:H4)` is 4. In binary
+search over J1:J5 = 1, "a", TRUE, blank, blank, `XMATCH(,J1:J5,0,2)` is 4 and the -1 and 1 match modes give 4 too; the descending search
+gives #N/A (exact and 1) and 1 (match_mode -1); `XMATCH("",J1:J5,0,2)` is #N/A. Inline arrays holding no blank, such as
+`XLOOKUP(,{"";1},{1;2})`, `XMATCH(,{"";1})` and `XMATCH(,{1;"a";TRUE},0,2)`, are #N/A, so an omitted value is not 0 or empty text.
+Evidence: probes/xlookup-omitted-lookup-value (excel-graph, 2026-10-08, 40 cells, omitted and G9-blank twins identical), plus
+XLOOKUP.xlsx Errors!N1 (Excel-authored) for binary.
+Status: VERIFIED (web). The engine matches in binary mode; linear modes differ for the omitted form (9 cells, `linear_scan`
+treats only `EmptyCell` as blank): fix in T-1188.
 Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`.
-Tasks: T-1153, T-1157
+Tasks: T-1153, T-1157, T-1188
