@@ -279,9 +279,6 @@ pub enum Node {
         /// FORMULATEXT prints them back (`@(A1)`, `@(A1:B1)`, `@((A1 B1))`; probes/at-paren-operands,
         /// T-1116); the automatic `@` of an xlsx import has none.
         written: u8,
-        /// Levels of parentheses written around only the leftmost operand of an intersection
-        /// operand, `@(A1) B1` is 1; FORMULATEXT prints them back (probes/at-paren-operands-levels
-        /// E34:E35, T-1134). Always 0 when `written` is not.
         lead: u8,
     },
     SpillRangeOperator {
@@ -314,11 +311,13 @@ pub enum Node {
 }
 
 impl Node {
-    /// The `@` an xlsx import adds around a range-valued operand: nothing was written, so it
-    /// prints no parentheses.
+    /// The `@` an xlsx import adds around a range-valued operand.
     pub(crate) fn automatic_at(child: Node) -> Node {
+        Node::at(child, true)
+    }
+    fn at(child: Node, automatic: bool) -> Node {
         Node::ImplicitIntersection {
-            automatic: true,
+            automatic,
             child: Box::new(child),
             written: 0,
             lead: 0,
@@ -816,12 +815,7 @@ impl Parser {
                                     .to_string(),
                             };
                         }
-                        return Node::ImplicitIntersection {
-                            automatic: false,
-                            child: Box::new(args[0].clone()),
-                            written: 0,
-                            lead: 0,
-                        };
+                        return Node::at(args[0].clone(), false);
                     }
                     // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
                     // (probes/at-operand-formulatext J1, T-1109).

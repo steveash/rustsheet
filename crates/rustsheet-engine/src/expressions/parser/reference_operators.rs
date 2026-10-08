@@ -450,6 +450,19 @@ pub(crate) fn lead_group_text(
     Some(text)
 }
 
+/// The printed `@` operand `child` with the parentheses it was written in: `written` around the
+/// whole operand, `lead` around its leftmost operand only. `sub` prints a node.
+pub(crate) fn at_text(
+    child: &Node,
+    written: u8,
+    lead: u8,
+    sub: &dyn Fn(&Node) -> String,
+) -> String {
+    let operand =
+        lead_group_text(child, lead, sub).unwrap_or_else(|| at_operand(sub(child), child, written));
+    format!("@{operand}")
+}
+
 /// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare
 /// (`LAMBDA(x,x)(1)`) and a union with its own parentheses (`union_text`); any other callee was
 /// written in parentheses, and bare, `A1(A2)`, it would not parse back (T-0149).
