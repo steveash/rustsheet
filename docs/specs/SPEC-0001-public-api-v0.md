@@ -157,6 +157,7 @@ impl Txn<'_> {
     pub fn delete_sheet(&mut self, id: SheetId) -> Result<(), EditError>;
     pub fn first_sheet(&self) -> Result<SheetId, EditError>;
     pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError>; // workbook scope; T-0043
+    pub fn set_row_hidden(&mut self, sheet: SheetId, row: u32, hidden: bool) -> Result<(), EditError>; // 0-based row, manual hide; T-1168
 }
 pub struct ChangeSet { pub inputs: Vec<InputChange>, pub values: Vec<ValueChange>, pub sheets: Vec<SheetChange> }
 pub struct InputChange { pub cell: CellRef, pub before: Option<String>, pub after: Option<String> } // formula or literal text as the user sees it
