@@ -3,7 +3,7 @@ id: T-1136
 title: "Port IronCalc DATEVALUE fixes: spaces around date separators and T24:00 rollover"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
