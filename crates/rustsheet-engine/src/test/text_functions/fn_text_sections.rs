@@ -31,3 +31,18 @@ fn test_text_applies_text_section_to_text_and_booleans() {
     assert_eq!(model._get_text("D1"), "<a>");
     assert_eq!(model._get_text("D2"), "<TRUE>");
 }
+
+#[test]
+fn test_text_section_doubled_quotes_and_single_at_section() {
+    // A doubled quote ends one literal and starts the next; a lone section with `@` is the text
+    // section (probes/format-doubled-quotes C8, C11; poi TextFormatTests A4).
+    let mut model = new_empty_model();
+    model._set("A1", r#"=TEXT("jello",";;;""h""""I""")"#);
+    model._set("A2", r#"=TEXT("x","@"" """"q""""""")"#);
+    model._set("A3", r#"=TEXT("x","0.0")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "hI");
+    assert_eq!(model._get_text("A2"), "x q");
+    assert_eq!(model._get_text("A3"), "x");
+}
+

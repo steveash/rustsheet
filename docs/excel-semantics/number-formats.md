@@ -22,11 +22,21 @@ value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@
 `TEXT(TRUE,"General")` = "TRUE".
 Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73.
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
-it is not an escape there. Open: the engine's lexer (`consume_string`) still treats `""` as an escaped
-quote and unit test `test_string_double_quota` (`0 """Millions"""` -> `42 "Millions"`, no Excel
-evidence) assumes it; needs a probe of `"""x"""` before changing the lexer.
+it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
 Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; A text value with a format of fewer than four sections is unprobed and returns the text unchanged.
+Tasks: T-0935
+
+## A doubled quote in a format literal is not an escape
+Rule: inside a number-format string, `""` within a quoted literal ends that literal and starts the
+next, so it shows nothing (it is not an escaped quote). In every section probed:
+`TEXT(42, B1)` with B1 = `0 """Millions"""` is "42 Millions" (C1; the value is 42 in C1-C7, "x" in C8-C11), `0 "a""b"` = "42 ab" (C2),
+`"h""I"` = "hI" (C3), `0 ""` and `0 """"` = "42 " (C4, C5), `0 "a"""` = "42 a" (C6),
+`0" ""x"" "0` = "4 x 2" (C7); on text, `;;;"h""I"` = "hI" (C8), `;;;"""x"""` = "x" (C9),
+`;;;"a"""@` = "ax" (C10), `@" ""q"""` = "x q" (C11).
+Evidence: probes/format-doubled-quotes C1-C11 (excel-graph, 2026-10-08, T-0935); poi/TextFormatTests.xlsx A4, A14, A23.
+Status: VERIFIED
+Implemented in: `consume_string` (formatter/lexer.rs) ends the literal at every `"`.
 Tasks: T-0935
 
 ## Elapsed-time tokens
