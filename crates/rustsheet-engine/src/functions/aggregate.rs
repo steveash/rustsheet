@@ -337,7 +337,7 @@ impl Model {
                 );
             }
         }
-        self.for_each_position_in_range(area.left, area.right, cell, |model, position| {
+        self.for_each_position_in_areas(std::slice::from_ref(area), cell, |model, position| {
             if collected
                 .hidden_rows
                 .contains(&(position.sheet, position.row))

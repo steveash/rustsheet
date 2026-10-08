@@ -1,3 +1,4 @@
+use crate::reference_operators::RefArg;
 use std::cmp::Ordering;
 
 use crate::arithmetic::flush_subnormal;
@@ -21,20 +22,24 @@ impl Model {
         for arg in args {
             // References (also via IF/INDEX) arrive as a Range; the scalar
             // arms below only see values.
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Number(value) => {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
                 // An empty argument (`AVERAGE(5,)`) counts as 0
                 // (probes/average-value-args F2, F6, F9, F15, F17).
-                CalcResult::EmptyArg => f(0.0),
-                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                RefArg::Value(CalcResult::EmptyArg) => f(0.0),
+                RefArg::Value(CalcResult::Boolean(value))
+                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                RefArg::Value(CalcResult::String(value))
+                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                {
                     f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
                 }
-                CalcResult::Array(array) => {
+                RefArg::Value(CalcResult::Array(array)) => {
                     for row in array {
                         for value in row {
                             match value {
@@ -57,12 +62,12 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Range { left, right } => {
-                    self.for_each_number_in_range(left, right, cell, &mut f)?;
+                RefArg::Ranges(areas) => {
+                    self.for_each_number_in_areas(&areas, cell, &mut f)?;
                 }
-                error @ CalcResult::Error { .. } => return Err(error),
+                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 // Everything else is ignored
-                _ => {}
+                RefArg::Value(_) => {}
             }
         }
 
@@ -99,19 +104,21 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Number(value) => {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
                 // A single-cell reference reads like a one-cell range: text counts as 0 and
                 // a boolean as 1/0 (coercion.md "MAXA / MINA", poi EverythingTests J888, F912).
-                CalcResult::Boolean(value) => {
+                RefArg::Value(CalcResult::Boolean(value)) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(_) if matches!(arg, Node::ReferenceKind { .. }) => {
+                RefArg::Value(CalcResult::String(_))
+                    if matches!(arg, Node::ReferenceKind { .. }) =>
+                {
                     f(0.0);
                 }
-                CalcResult::String(value) => {
+                RefArg::Value(CalcResult::String(value)) => {
                     if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
                         return Err(error);
                     }
@@ -125,7 +132,7 @@ impl Model {
                         ));
                     }
                 }
-                CalcResult::Array(array) => {
+                RefArg::Value(CalcResult::Array(array)) => {
                     for row in array {
                         for value in row {
                             match value {
@@ -150,8 +157,8 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Range { left, right } => {
-                    self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                RefArg::Ranges(areas) => {
+                    self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
                         CalcResult::Number(value) => {
                             f(value);
                             Ok(())
@@ -172,9 +179,9 @@ impl Model {
                         _ => Ok(()),
                     })?;
                 }
-                error @ CalcResult::Error { .. } => return Err(error),
+                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 // Everything else is ignored
-                _ => {}
+                RefArg::Value(_) => {}
             }
         }
 
@@ -211,10 +218,10 @@ impl Model {
         let mut count = 0.0;
         let mut sum = 0.0;
         for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Range { left, right } => {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
                     if let Err(error) =
-                        self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                        self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
                             CalcResult::String(_) => {
                                 count += 1.0;
                                 Ok(())
@@ -247,11 +254,11 @@ impl Model {
                         return error;
                     }
                 }
-                CalcResult::Number(value) => {
+                RefArg::Value(CalcResult::Number(value)) => {
                     count += 1.0;
                     sum += value;
                 }
-                CalcResult::String(s) => {
+                RefArg::Value(CalcResult::String(s)) => {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
@@ -268,15 +275,18 @@ impl Model {
                         };
                     }
                 }
-                CalcResult::Boolean(b) => {
+                RefArg::Value(CalcResult::Boolean(b)) => {
                     count += 1.0;
                     if b {
                         sum += 1.0;
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                RefArg::Value(CalcResult::EmptyCell | CalcResult::EmptyArg) => {}
+                // A reference is never a `RefArg::Value` (`RefArg::from`).
+                RefArg::Value(
+                    CalcResult::Array(_) | CalcResult::Lambda(_) | CalcResult::Range { .. },
+                ) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
@@ -638,7 +648,11 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match self.evaluate_aggregate_arg(&args[0], cell) {
+        // TODO(T-1068): LARGE takes a union (probes/multiarea-rank).
+        let values = match self
+            .evaluate_reference_arg(&args[0], cell)
+            .into_single_area(cell)
+        {
             CalcResult::Array(array) => match self.values_from_array(array) {
                 Ok(v) => v,
                 Err(e) => {

@@ -1,3 +1,4 @@
+use crate::calc_result::Range;
 use statrs::distribution::{ChiSquared, Continuous, ContinuousCDF};
 
 use crate::expressions::parser::ArrayNode;
@@ -278,7 +279,9 @@ impl Model {
             // 3-D reference (T-0196): the shared walk goes sheet by sheet. It clips to each
             // sheet's used area, so it is only used here, where no two-input caller pairs
             // the list by position.
-            self.for_each_cell_or_error_in_range(left, right, left, |_, value| push(value))?;
+            self.for_each_cell_or_error_in_areas(&[Range { left, right }], left, |_, value| {
+                push(value)
+            })?;
             return Ok(values);
         }
         // Single sheet: one entry per cell of the range, unclipped, because CHISQ.TEST, SUMXMY2,

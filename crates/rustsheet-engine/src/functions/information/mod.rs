@@ -14,6 +14,7 @@ use crate::{
     functions::util::array_node_to_calc_result,
     get_all_timezones,
     model::Model,
+    reference_operators::RefArg,
 };
 
 /// Applies a boolean test to every element of a 2-D array.
@@ -111,8 +112,11 @@ impl Model {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => true,
             // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
             // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
-            Node::OpIntersectKind { .. } => self.reference_areas(node, cell).is_ok(),
-            Node::OpUnionKind { left, right, .. } => self.union_is_reference(left, right, cell),
+            // A union with an error operand is that error, not a reference: `ISREF((A1,#REF!))`
+            // is FALSE (probes/union-accepted H9).
+            Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
+                matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_))
+            }
             // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
             Node::FunctionKind {
                 kind: crate::functions::Function::Index,
