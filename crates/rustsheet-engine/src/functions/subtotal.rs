@@ -186,7 +186,7 @@ impl Model {
                     self.check_area_cells(&ranges, cell)?;
                     for Range { left, right } in ranges.iter() {
                         let (row2, column2) = self
-                            .used_area_corner(
+                            .clip_to_used_area(
                                 left.sheet,
                                 left.row,
                                 left.column,

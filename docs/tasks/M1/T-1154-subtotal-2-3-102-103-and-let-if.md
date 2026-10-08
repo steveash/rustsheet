@@ -21,5 +21,7 @@ T-1071 made SUBTOTAL's shared value walk (`subtotal_get_values`) take a union vi
 - [ ] SUBTOTAL 2/3/102/103 of a union match the oracle, reusing `subtotal_walk_range`; eval baseline shrinks accordingly.
 - [ ] `make check` green; reviewers approve.
 
+- [ ] `subtotal_walk_range` converges with `for_each_position_in_areas` (functions/util.rs, the shared position walk AGGREGATE uses for hidden rows and nested SUBTOTAL cells) so there is one range walk.
+
 ## Out of scope
 - Other functions' union support (their own SPEC-0004 tasks).
