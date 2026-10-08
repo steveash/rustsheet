@@ -3,7 +3,7 @@ id: T-1126
 title: "XLOOKUP accepts an array lookup_array with a range return_array"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -27,3 +27,6 @@ case covers them yet.
 
 ## Out of scope
 - Array lookup_array for binary search modes beyond what the probe covers.
+
+## Outcome
+`xlookup_impl` accepts an array `lookup_array` (linear search modes) with a range `return_array` via `xlookup_array_lookup`, picking the cell (a reference in the reference form). probes/isref-reference-lookups H10 passes (probes known failures 291 -> 290, no regressions). Binary search modes with an array lookup_array are still unsupported (out of scope).
