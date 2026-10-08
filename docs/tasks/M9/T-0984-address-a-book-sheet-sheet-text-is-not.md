@@ -3,7 +3,7 @@ id: T-0984
 title: "ADDRESS: a [Book]Sheet sheet_text is not quoted (1 poi known failure)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -43,3 +43,9 @@ other `sheet_text` on the existing path.
 - A `[Book]` prefix with a remainder that needs quoting (`"[Book1]My Sheet"`) or a bracket elsewhere
   in the name: unprobed, keep today's output and note it as open in the references.md entry.
 - Changing `quote_name` or formula stringification.
+
+## Outcome
+`address_sheet_text` in `address_areas.rs` leaves a `[book]` + plain-sheet `sheet_text` unquoted; all
+other names use `quote_name` as before. poi baseline: EverythingTests!F128 fixed (no new failures).
+The baseline refresh also dropped 6 unrelated poi lines (simple-monthly-budget, simple-table-named-range)
+that already pass on main.
