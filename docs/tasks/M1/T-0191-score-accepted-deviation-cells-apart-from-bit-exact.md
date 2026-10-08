@@ -3,7 +3,7 @@ id: T-0191
 title: "Score accepted-deviation cells apart from bit-exact (decision 0036)"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -26,17 +26,20 @@ Decision 0036 sets out the file format (`<case>\t<Sheet!A1>\t<decision NNNN>\t<s
 ## Out of scope
 - Changing any limit; adding deviation lines beyond C12/C14 (each needs its own evidence).
 
-## Progress (2026-10-07, in flight)
-- Done: `crates/rustsheet-eval/src/deviations.rs`. It parses the file (typed errors per line), runs
-  `check_entry` (the anchor's section must carry `Status: DEVIATION`) and `classify` (deviation /
-  stale pass / failure), with unit tests.
-- Next:
-  - Add a `deviations` manifest key next to `cached_overrides` (suite.rs).
-  - Apply it in runner.rs `score`, so listed cells get a new verdict that leaves the bit-exact
-    denominator.
-  - Add the report column and the stale-line warning (report.rs).
-  - Make `eval-check` fail when `check_entry` fails.
-  - Write `eval/suites/probes/deviations` for lifted-range-rows C1, C2, C3 and E1, which the
-    Context names; C12/C14 pass since T-0047.
-  - Run `make eval-baseline`, then update the quality-gates.md and steward skill docs (protected
-    paths, so a decision record is needed).
+## Outcome
+- `rustsheet-eval` reads the suite manifest key `deviations = "<file>"` (crates/rustsheet-eval/src/deviations.rs).
+  Malformed lines, missing cases and cited entries without `Status: DEVIATION` are a typed
+  `DeviationError`, checked by `eval` and `eval-check` before any case runs. A line naming an
+  unscored cell makes the case invalid.
+- Scoring follows decision 0036. The pinned value gives the new `deviation` verdict, which leaves
+  the bit-exact rate and is never an F line. Excel's value passes with a stale-line warning in
+  the CLI and the report. Anything else keeps its mismatch verdict, so it fails the gate. The
+  report and the CLI summary have a per-suite `deviations` column.
+- The listed cells are probes/lifted-range-rows C1, C2, C3 and E1, not resource-limits C12/C14,
+  which have passed since T-0047, as the Context notes. Decision 0036 records this and retires its
+  interim rule.
+- Eval delta: probes known failures 255 → 251 (4 cells now deviations, via `make eval-baseline`);
+  no other suite changed and there are 0 regressions.
+- Unit tests cover the parse errors, the entry check, the missing case, the three outcomes
+  end-to-end, and the report rate and column. docs/process/quality-gates.md and the steward skill
+  describe the file.
