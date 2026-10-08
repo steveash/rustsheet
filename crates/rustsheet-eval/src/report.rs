@@ -76,10 +76,10 @@ fn slowest(results: &[CaseResult], n: usize) -> Vec<SlowCase> {
 }
 
 impl SuiteSummary {
-    #[must_use]
     /// Bit-exact rate over the scored cells that are not accepted deviations (decision 0036).
+    #[must_use]
     pub fn cell_pass_rate(&self) -> f64 {
-        let scored = self.cells - self.deviations;
+        let scored = self.cells.saturating_sub(self.deviations);
         if scored == 0 {
             return 0.0;
         }
@@ -491,7 +491,7 @@ impl RunReport {
             let dominant = f
                 .verdicts
                 .iter()
-                .filter(|(k, _)| !k.is_pass())
+                .filter(|(k, _)| k.is_failure())
                 .max_by_key(|(_, n)| **n)
                 .map(|(k, _)| format!("{k:?}"))
                 .unwrap_or_default();

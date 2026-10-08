@@ -19,7 +19,7 @@ Decision 0036 sets out the file format (`<case>\t<Sheet!A1>\t<decision NNNN>\t<s
 ## Acceptance criteria
 - [ ] `rustsheet-eval` reads an optional `deviations` file per suite. The case/cell must exist, the cited semantics entry must have a `Status: DEVIATION` line, and the pinned value must parse; otherwise it is a typed error, never a panic.
 - [ ] Scoring follows decision 0036. Deviation cells are not in the bit-exact denominator or in baseline F lines, and the report has a per-suite `deviations` column.
-- [ ] `eval/suites/probes/deviations` lists C12 and C14. `make eval-baseline` removes their F lines (no hand edit), and probes reaches 100% of non-deviation cells if no other failures remain.
+- [ ] `eval/suites/probes/deviations` lists C12 and C14 (delivered: lifted-range-rows C1–C3 and E1, since C12/C14 pass after T-0047; see Outcome). `make eval-baseline` removes their F lines (no hand edit), and probes reaches 100% of non-deviation cells if no other failures remain.
 - [ ] Unit tests cover parse errors and the three scoring outcomes. docs/process/quality-gates.md and the steward skill mention the file.
 - [ ] `make check` green; reviewers approve.
 

@@ -13,10 +13,10 @@
 //! The pinned value is an error literal (`#ERROR!`), `TRUE`/`FALSE`, a double-quoted text or a
 //! number.
 
-use std::path::{Component, Path};
+use std::path::Path;
 
-use crate::case::split_qualified;
 use crate::cellref::Addr;
+use crate::overrides::{is_inner_relative, parse_cell};
 use crate::suite::Suite;
 use crate::value::{compare, Value};
 
@@ -72,13 +72,6 @@ pub enum Outcome {
     Failure,
 }
 
-fn is_inner_relative(path: &str) -> bool {
-    !path.is_empty()
-        && Path::new(path)
-            .components()
-            .all(|c| matches!(c, Component::Normal(_)))
-}
-
 /// Parses a pinned value literal.
 fn parse_value(text: &str) -> Option<Value> {
     if text.starts_with('#') && text.len() > 1 {
@@ -113,8 +106,7 @@ pub fn parse(text: &str) -> Result<Vec<Deviation>, DeviationError> {
         let [case, cell, decision, semantics, pinned] = fields.as_slice() else {
             return Err(bad("expected 5 tab-separated fields"));
         };
-        let (sheet, a1) = split_qualified(cell).ok_or_else(|| bad("bad cell"))?;
-        let addr = Addr::parse(&a1).ok_or_else(|| bad("bad cell"))?;
+        let (sheet, addr) = parse_cell(cell).ok_or_else(|| bad("bad cell"))?;
         if !is_inner_relative(case) {
             return Err(bad("case path must be relative, without `..`"));
         }
