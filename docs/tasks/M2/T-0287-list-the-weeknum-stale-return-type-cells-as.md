@@ -3,10 +3,10 @@ id: T-0287
 title: "List the WEEKNUM stale return_type cells as accepted deviations (decision 0038)"
 milestone: M2
 lane: harness
-status: done
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -34,10 +34,18 @@ see `crates/rustsheet-eval/src/deviations.rs` for the format and the existing en
 ## Out of scope
 - Modelling the stale state.
 
-## Outcome
-Listed `Up!A1`, `Mixed!A3`, `Mixed!A4`, `Type21!A1` and `Type1!A1` of probes/weeknum-stale-return-type in
-`eval/suites/probes/deviations` (decision 0038, dates.md "WEEKNUM return_type edge cases and serial 0 (T-1023)", pinned
-`#NUM!`). Each was checked: the oracle gives a number only because a valid WEEKNUM (type 2, 3, 21 or the default) sits
-below it and ran first (Excel evaluates bottom to top on load). The entry's status line now starts `Status: DEVIATION`
-(the eval parser requires it). Eval delta: the five F lines left eval/baseline/probes.txt and score as deviations;
-0 regressions.
+## Handoff
+- Tried (sonnet run, PR #394, draft): listed the five cells in `eval/suites/probes/deviations` (decision 0038, dates.md
+  anchor `weeknum-return_type-edge-cases-and-serial-0-t-1023`, pinned `#NUM!`), made the dates.md entry's status line start
+  `Status: DEVIATION` (the parser requires it), ran `make eval-baseline` (removes the five F lines). All five cells were
+  checked as the stale-state case; `make check` was green; security, quality and architecture-style mechanics were fine.
+- Blocked: the architecture reviewer found the change contradicts accepted decisions. Decision 0038 (Consequences) says
+  the cells stay F lines and "do not go into a `deviations` file: decision 0036 limits that file to directive 5
+  deviations, and moving them would need a decision that amends 0036". 0036 also has the excel-fidelity reviewer check
+  that a listed limit is a directive-5 limit. A task file cannot override those, and the change moves the cells out of the
+  M2 exit denominator (decision 0043).
+- Next: an opus run writes a decision (`make new-decision`, protected path) that amends 0036 to let `deviations` hold
+  calc-order-dependent cells (Excel's value is not a function of the workbook, 0038/0033), states how the M2 exit rate
+  counts them, and updates 0038's Consequences; or drops this task. Then reuse the branch
+  `agent/harness/T-0287-weeknum-deviations` (the mechanical change is done), and split the dates.md status line as the
+  reviewer suggested ("Status: DEVIATION (decision 0038) for the stale state." then a separate sentence that the rest is VERIFIED).
