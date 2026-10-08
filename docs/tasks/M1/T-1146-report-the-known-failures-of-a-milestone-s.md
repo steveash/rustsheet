@@ -3,7 +3,7 @@ id: T-1146
 title: "Report the known failures of a milestone's frozen probe list (eval/milestones/m1-probes.txt)"
 milestone: M1
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -31,25 +31,39 @@ missing case fails the gate.
   `scripts/check_governance.py` does not enforce that yet.
 
 ## Acceptance criteria
-- [ ] A new module (for example `crates/rustsheet-eval/src/milestone_lists.rs`) parses
+- [x] A new module (for example `crates/rustsheet-eval/src/milestone_lists.rs`) parses
       `eval/milestones/*.txt`: skip `#` and blank lines, reject duplicates, and use a `thiserror`
       error type. Unit tests cover comments, duplicates and an unknown case id.
-- [ ] `make eval` writes a "Milestone probe lists" section to eval/runs/latest/report.md, and the
+- [x] `make eval` writes a "Milestone probe lists" section to eval/runs/latest/report.md, and the
       same data to report.json. It has one row per list, with these columns: cases, scored cells,
       bit-exact, deviations, known failures (cells), and the failing case ids. Run on main at the
       freeze commit, the m1-probes row shows 89 cases and 61 known-failure cells, the same as the
-      decision's `awk` count.
-- [ ] `make eval-check` fails, naming the line, when a list names a case that the suite does not
+      decision's `awk` count. (Met at e5c7ae9; main has since fixed cells, so it reads 21 there,
+      again equal to the `awk` count; see Outcome.)
+- [x] `make eval-check` fails, naming the line, when a list names a case that the suite does not
       discover.
-- [ ] `scripts/check_governance.py` treats `eval/milestones/` as a protected path, with a test in
+- [x] `scripts/check_governance.py` treats `eval/milestones/` as a protected path, with a test in
       `scripts/test_*.py`.
-- [ ] docs/architecture/eval-harness.md describes the lists and the report section, and the
+- [x] docs/architecture/eval-harness.md describes the lists and the report section, and the
       `awk` interim note in the steward skill (`.claude/skills/steward/SKILL.md`, "Frozen probe
       lists") points to the report instead.
-- [ ] `make check` green; reviewers approve (architecture and security for the protected paths).
+- [x] `make check` green; reviewers approve (architecture and security for the protected paths).
 
 ## Out of scope
 - Changing the list's contents, any case file or tag, or eval/baseline/ (decision 0043).
 - Gating on the list's pass rate. The list is an exit measure, not a CI gate; regressions are
   already caught by `eval-check`.
 - Lists for other milestones (filed when a decision creates one).
+
+## Outcome
+- New `crates/rustsheet-eval/src/milestone_lists.rs` parses `eval/milestones/*.txt` (comments,
+  duplicates, unknown cases; `ListError`); `run` and `check` fail naming the file and line when a
+  list names a case no suite discovers, and score each list (counting known failures with
+  `Baseline::from_results`, so they equal the list's F lines). report.md gets a "Milestone probe
+  lists" section, report.json `milestone_lists`, and the console summary one line per list.
+- m1-probes on main today: 89 cases, 1848 cells, 1830 bit-exact, 0 deviations, 21 known
+  failures in 9 cases (the awk count over eval/baseline/probes.txt is also 21). Built on the
+  freeze commit e5c7ae9: 89 cases, 61 known failures in 25 cases, as decision 0043 counted.
+- `eval/milestones/` is protected in `scripts/check_governance.py` (`is_protected`, tested in
+  `scripts/test_governance.py`); decision 0044 records it. The steward skill reads the report
+  instead of the awk count. Eval delta: none (harness only).

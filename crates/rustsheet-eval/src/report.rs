@@ -8,6 +8,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
+use crate::milestone_lists::{self, ListSummary};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::value::Verdict;
 
@@ -214,6 +215,10 @@ pub struct RunReport {
     /// Out-of-scope catalog functions, kept out of every parity count above.
     #[serde(default)]
     pub out_of_scope: Vec<OutOfScope>,
+    /// How each frozen milestone probe list scored (decisions 0043, 0044); filled by the caller,
+    /// which loads the lists.
+    #[serde(default)]
+    pub milestone_lists: Vec<ListSummary>,
 }
 
 impl RunReport {
@@ -312,6 +317,7 @@ impl RunReport {
             catalog_unevidenced: lists.catalog_unevidenced,
             needs_other_evidence: lists.needs_other_evidence,
             out_of_scope: lists.out_of_scope,
+            milestone_lists: Vec::new(),
         }
     }
 
@@ -469,6 +475,7 @@ impl RunReport {
             self.engine
         );
         self.write_suites_table(&mut md);
+        milestone_lists::write_markdown(&self.milestone_lists, &mut md);
         self.write_timing(&mut md);
         let broken: Vec<&CaseResult> = self
             .cases

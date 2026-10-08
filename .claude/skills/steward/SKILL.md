@@ -57,11 +57,12 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   gate like any regression.
 - **Frozen probe lists** (decision 0043): M1's probe criterion is `eval/milestones/m1-probes.txt`,
   never the whole `probes` suite; every other probe case, including any added later, is M2 exit
-  scope. Report the list's known failures (`make eval`, or the decision's `awk` count until
-  T-1146 lands). While the list has failures, put the fixing lanes (engine, then harness) first on
-  the `**Critical lane:**` line, ahead of research. Never add a line to a frozen list.
+  scope. Read the list's known failures from the "Milestone probe lists" section of
+  `eval/runs/latest/report.md` after `make eval` (also printed by `make eval-check`; decision
+  0044). While the list has failures, put the fixing lanes (engine, then harness) first on the
+  `**Critical lane:**` line, ahead of research. Never add a line to a frozen list.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
-  quality/, docs/process/) changed — add a decision record in docs/decisions/ explaining why, and
-  make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+  quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
+  explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.
