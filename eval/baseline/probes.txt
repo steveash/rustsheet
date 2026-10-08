@@ -184,6 +184,7 @@ C	probes/multiarea-areas-3.case.json	1
 C	probes/multiarea-areas-3d.case.json	1
 C	probes/multiarea-at-legacy.case.json	10
 C	probes/multiarea-at.case.json	6
+C	probes/multiarea-bare-precedence.case.json	20
 C	probes/multiarea-bare.case.json	1
 C	probes/multiarea-cellfn-types.case.json	11
 C	probes/multiarea-cellfn.case.json	3
@@ -204,7 +205,7 @@ C	probes/multiarea-subtotal-counts-c.case.json	5
 C	probes/multiarea-subtotal-counts-d.case.json	5
 C	probes/multiarea-subtotal-counts-e.case.json	5
 C	probes/multiarea-subtotal.case.json	2
-C	probes/multiarea-xname.case.json	0
+C	probes/multiarea-xname.case.json	3
 C	probes/multiarea-xsheet.case.json	2
 C	probes/near-zero-snap-groups.case.json	14
 C	probes/number-text-exponent-carry.case.json	9
@@ -268,7 +269,7 @@ C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/typed-paren-number-input.case.json	24
 C	probes/union-accepted.case.json	9
-C	probes/union-defined-name.case.json	0
+C	probes/union-defined-name.case.json	5
 C	probes/union-neg-operand.case.json	2
 C	probes/union-operand-double-minus.case.json	2
 C	probes/union-operand-neg-cut-group.case.json	2
@@ -599,9 +600,7 @@ F	probes/multiarea-at-legacy.case.json	Sheet1!H10
 F	probes/multiarea-at-legacy.case.json	Sheet1!H7
 F	probes/multiarea-at-legacy.case.json	Sheet1!H8
 F	probes/multiarea-at-legacy.case.json	Sheet1!H9
-F	probes/multiarea-bare.case.json	Sheet1!H1
 F	probes/multiarea-printarea.case.json	!EngineError
-F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
 F	probes/paren-number-text-forms.case.json	Sheet1!A2
@@ -620,7 +619,9 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/sheet-qualified-corner-order.case.json	Calc!A7
 F	probes/text-result-limit.case.json	Sheet1!C24
-F	probes/union-defined-name.case.json	!EngineError
+F	probes/union-defined-name.case.json	Sheet1!H1
+F	probes/union-defined-name.case.json	Sheet1!H4
+F	probes/union-defined-name.case.json	Sheet1!H5
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1

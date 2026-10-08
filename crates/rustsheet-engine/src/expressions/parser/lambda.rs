@@ -39,7 +39,7 @@ impl Parser {
                 self.lexer.advance_token();
             }
 
-            let expr = self.parse_expr();
+            let expr = self.parse_enclosed_expr();
             if let Node::ParseErrorKind { .. } = expr {
                 return expr;
             }

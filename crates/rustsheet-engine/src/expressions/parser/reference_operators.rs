@@ -54,7 +54,7 @@ impl Parser {
         self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
         // The first group parsed is the one the formula's first `(` opens.
         let leading = std::mem::take(&mut self.leading_paren);
-        let mut t = self.parse_expr();
+        let mut t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -62,7 +62,7 @@ impl Parser {
         let mut union_depth = self.depth;
         while self.lexer.peek_token() == separator {
             self.lexer.advance_token();
-            let p = self.parse_expr();
+            let p = self.parse_enclosed_expr();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
             }
@@ -82,6 +82,7 @@ impl Parser {
                 left: Box::new(t),
                 right: Box::new(p),
                 written: 0,
+                bare: false,
             };
         }
         self.inner_depth = self.inner_depth.max(union_depth);
@@ -113,6 +114,49 @@ impl Parser {
             let levels = inner.map_or(0, |(levels, _)| levels).saturating_add(1);
             self.at_group = Some((levels, self.lexer.get_position_index()));
         }
+        t
+    }
+
+    /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
+    /// argument list only. There the comma is a reference operator that binds tighter than
+    /// arithmetic and looser than the space: Excel loads `=A1,B2` (`#VALUE!`, FORMULATEXT
+    /// `=A1,B2`), `=1+A1,B2` (`#VALUE!`), `=NA()+A1,B2` (`#N/A`) and `=A1,B2 C3` (`#NULL!`, the
+    /// empty `B2 C3`), and refuses `=A1,1` and `=SUM(A1),B2` (docs/excel-semantics/references.md
+    /// "Bare union", T-1073). Inside parentheses the union is the loosest operator instead
+    /// ([`Parser::parse_parenthesized`]).
+    pub(super) fn parse_bare_union(&mut self) -> Node {
+        let mut t = self.parse_intersection();
+        if !self.top_level || matches!(t, Node::ParseErrorKind { .. }) {
+            return t;
+        }
+        let separator = self.get_argument_separator_token();
+        let mut depth = self.depth;
+        while self.lexer.peek_token() == separator {
+            self.lexer.advance_token();
+            let p = self.parse_intersection();
+            if let Node::ParseErrorKind { .. } = p {
+                return p;
+            }
+            if !is_reference_operand(&t) || !is_reference_operand(&p) {
+                return Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Range],
+                    position: self.lexer.get_position() as usize,
+                    message: "Union needs references".to_string(),
+                };
+            }
+            if let Err(error) = self.grow(depth, self.depth) {
+                return error;
+            }
+            depth = self.depth;
+            t = Node::OpUnionKind {
+                left: Box::new(t),
+                right: Box::new(p),
+                written: 0,
+                bare: true,
+            };
+        }
+        self.depth = depth;
         t
     }
 
@@ -530,18 +574,28 @@ pub(crate) fn union_text(
     locale: &Locale,
 ) -> String {
     // Callers pass only unions; any other node prints as a plain one-level union of its texts.
-    let (left, written) = match node {
-        Node::OpUnionKind { left, written, .. } => (&**left, *written),
-        other => (other, 1),
+    let (left, written, bare) = match node {
+        Node::OpUnionKind {
+            left,
+            written,
+            bare,
+            ..
+        } => (&**left, *written, *bare),
+        other => (other, 1, false),
     };
     let left_text = match left {
-        Node::OpUnionKind { written: 0, .. } => left_text
+        Node::OpUnionKind {
+            written: 0,
+            bare: false,
+            ..
+        } => left_text
             .strip_prefix('(')
             .and_then(|text| text.strip_suffix(')'))
             .unwrap_or(left_text),
         _ => left_text,
     };
-    let levels = written.max(1);
+    // A bare union (`=A1,B2`) has no parentheses of its own.
+    let levels = if bare { written } else { written.max(1) };
     format!(
         "{}{left_text}{}{right_text}{}",
         "(".repeat(levels),
