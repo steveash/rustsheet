@@ -1684,7 +1684,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sumifs => criteria_static_result(args, 2),
         Function::Tan => scalar_arguments(args),
         Function::Tanh => scalar_arguments(args),
-        Function::ErrorType => not_implemented(args),
+        Function::ErrorType => scalar_arguments(args),
         Function::Isblank => scalar_arguments(args),
         Function::Iserr => scalar_arguments(args),
         Function::Iserror => scalar_arguments(args),
@@ -1780,8 +1780,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
         Function::Encodeurl => not_implemented(args),
-        Function::Image | Function::Stockhistory => StaticResult::Scalar,
-        Function::Fieldvalue => StaticResult::Unknown,
+        // All three lift over an array or range `source`/`stock`/`value` (T-1179).
+        Function::Image | Function::Stockhistory | Function::Fieldvalue => StaticResult::Unknown,
         // The *B functions delegate to their non-B counterparts (byte_functions.rs), so they lift
         // over ranges exactly as FIND/LEFT/LEN/... do (T-0271).
         Function::Findb => scalar_arguments(args),
