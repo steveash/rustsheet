@@ -3,7 +3,7 @@ id: T-1142
 title: "Check that graph-blind subnormal cells keep a (x)=0 companion (decision 0042)"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ A cell that decision 0042 scores as a pass (an excel-graph 0 against a kept subn
 
 ## Out of scope
 - Changing the scoring rule.
+
+## Outcome
+- Decision 0042's scoring already required a FALSE `(<formula>)=0` excel-graph companion (`from_graph` in `prepare`), so a cell without one is never passed by the rule; it scores as a mismatch.
+- Added visibility: `CellResult.graph_subnormal` marks each cell the rule passed. `SuiteSummary.graph_subnormal_passes` lists them; the markdown report and the CLI summary show them. Unit test in `report.rs`.
+- Eval delta: none (scoring unchanged).
