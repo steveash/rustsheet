@@ -27,5 +27,5 @@ Oracle (probes/multiarea-subtotal): both give 6 for (A1,B2) with A1=1, B2=5. Eng
 `subtotal_get_values` walks each area of a union (`reference_ranges`) through the new `subtotal_walk_range`, the range
 walk it used before (filtered/hidden rows and nested SUBTOTAL cells are skipped per area). Covers every function number
 that reads `subtotal_get_values` (sum, average, max, min, product, variance and deviation families). SUBTOTAL 2/3/102/103
-(COUNT/COUNTA) have their own walk and stay `#VALUE!` for a union (unprobed). Unit test `subtotal_of_a_union`. Eval delta:
+(COUNT/COUNTA) have their own walk and stay `#VALUE!` for a union (unprobed; follow-up T-1154). The union walk is bounded by `check_area_cells` and each area is clipped to the used area, like every union aggregate (test `subtotal_of_a_union_obeys_the_area_cell_bound`). Unit test `subtotal_of_a_union`. Eval delta:
 probes known failures 188 -> 186 (fixed 2: multiarea-subtotal H1, H2), 0 regressions.
