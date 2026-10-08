@@ -693,7 +693,10 @@ mod tests {
         assert!(graph_hides_subnormal(&e(0.0, true), &subnormal));
         assert!(!graph_hides_subnormal(&e(0.0, false), &subnormal));
         assert!(!graph_hides_subnormal(&e(1.0, true), &subnormal));
-        assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(1e-300)));
+        assert!(!graph_hides_subnormal(
+            &e(0.0, true),
+            &Value::Number(1e-300)
+        ));
         assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(0.0)));
     }
 
