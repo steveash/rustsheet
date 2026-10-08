@@ -1,5 +1,6 @@
 use crate::{
     calc_result::{CalcResult, Range},
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -191,6 +192,32 @@ impl Model {
             _ => self.evaluate_node_in_context(node, cell),
         };
         RefArg::from(result)
+    }
+
+    /// The bottom-right corner of the range `row1:column1..=row2:column2` once a whole-column
+    /// or whole-row range is clipped to the sheet's used area; any other range is unchanged.
+    /// Reads nothing and records nothing (see [`Self::clip_to_used_area`]).
+    pub(crate) fn used_area_corner(
+        &self,
+        sheet: u32,
+        row1: i32,
+        column1: i32,
+        row2: i32,
+        column2: i32,
+    ) -> Result<(i32, i32), String> {
+        let whole_rows = row1 == 1 && row2 == LAST_ROW;
+        let whole_columns = column1 == 1 && column2 == LAST_COLUMN;
+        if !whole_rows && !whole_columns {
+            return Ok((row2, column2));
+        }
+        let (max_row, max_column) = self
+            .workbook
+            .worksheet(sheet)
+            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
+            .used_area_end();
+        let last_row = if whole_rows { max_row } else { row2 };
+        let last_column = if whole_columns { max_column } else { column2 };
+        Ok((last_row, last_column))
     }
 
     /// Checks that walking `areas` stays within [`MAX_AREA_CELLS`] cells once each area is

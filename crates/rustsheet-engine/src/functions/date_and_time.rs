@@ -1,4 +1,3 @@
-use crate::calc_result::Range;
 use crate::tz::Tz;
 use chrono::Datelike;
 use chrono::Months;
@@ -176,7 +175,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     constants::EXCEL_DATE_BASE,
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
@@ -457,21 +456,19 @@ impl Model {
                 handle(serial)?;
             }
             CalcResult::Range { left, right } => {
-                self.for_each_cell_in_areas(&[Range { left, right }], cell, |model, value| {
-                    match value {
-                        CalcResult::Number(v) => {
-                            let serial = v.floor() as i64;
-                            model.excel_date(serial, cell)?;
-                            handle(serial)
-                        }
-                        // ignore empty cells
-                        CalcResult::EmptyCell => Ok(()),
-                        _ => Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Invalid holiday date".to_string(),
-                        )),
+                let areas = [Range { left, right }];
+                self.for_each_cell_in_areas(&areas, cell, |model, value| match value {
+                    CalcResult::Number(v) => {
+                        let serial = v.floor() as i64;
+                        model.excel_date(serial, cell)?;
+                        handle(serial)
                     }
+                    CalcResult::EmptyCell => Ok(()),
+                    _ => Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Invalid holiday date".to_string(),
+                    )),
                 })?;
             }
             CalcResult::Array(array) => {
