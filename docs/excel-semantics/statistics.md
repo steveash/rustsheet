@@ -72,6 +72,19 @@ C24, C25, C26, C32 (checked during T-0903).
 Status: UNVERIFIED (fits the NORM.S.DIST cells; NORM.DIST/LOGNORM.DIST open, T-0975)
 Tasks: T-0975
 
+## Normal density oracle sweep (T-1041)
+Rule: on the 369-point grid z = -38..8 step 0.125, `PHI(z)` equals `NORM.S.DIST(z,FALSE)` bit for
+bit (one kernel). The `exp(-z*z/2) / 2.5066282746310007` form above matches only 64 of the 369
+values (305 differ, by last digits), so the hypothesis is refuted as a general rule: T-0975 must
+fit against the sweep, not the 9 cached cells. Results below the normal double range flush to 0:
+z = -38 .. -37.625 give exactly 0 (the quotient would be subnormal, e.g. 1.25e-312), while
+z = -37.5 gives the normal 1.7282337322841054e-306. All 369 cells are numbers (no errors).
+Evidence: probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`; companion grids
+`m9-normpdf-norm-dist-s0p5`, `-s1p2`, `-s3`, `-s10` (NORM.DIST density, m in {0, 2.5}) and
+`m9-normpdf-lognorm-dist` (three (m,s) pairs).
+Status: VERIFIED (observation)
+Tasks: T-0975, T-1041
+
 ## HYPGEOM.DIST is not exact for small integer arguments
 Rule: HYPGEOM.DIST misses the exact rational result by a few ulp even for tiny populations, so it is
 not a direct ratio of exact binomial coefficients: `HYPGEOM.DIST(1,4,8,18,FALSE)` (arguments
