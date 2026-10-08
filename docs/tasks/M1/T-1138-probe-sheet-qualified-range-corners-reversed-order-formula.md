@@ -3,7 +3,7 @@ id: T-1138
 title: "Probe sheet-qualified range corners: reversed order, formula text and corners on two sheets"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Follow the `excel-probe` skill. Use the Data/Calc layout of probes/sheet-qualifi
 ## Out of scope
 - Changing `get_range`, the lexer or the printer (file the follow-up instead).
 - Column/row corner forms (already settled by T-0139) and 3-D spans (T-1139).
+
+## Outcome
+Added probes/sheet-qualified-corner-order with an excel-graph sidecar (13 cells); every form loaded, none was refused. Reversed corners are ordered, FORMULATEXT keeps the written order and both prefixes, cross-sheet corners give `#VALUE!` and ISREF FALSE. references.md updated to VERIFIED (web). Eval delta: probes known failures 166 -> 167 (new coverage: Calc!A7 ISREF, engine returns TRUE); follow-up T-1166 owns it.
