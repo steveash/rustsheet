@@ -26,7 +26,7 @@ SPEC-0004 step 4 ("Intersection operands", "LET, IF, CHOOSE"). Intersection oper
 ## Out of scope
 - Defined names (T-1065).
 
-## Progress (not merged; review round 1 open)
+## Progress (not merged; review round 1 open; resumed by opus 2026-10-08 13:35)
 - `Binding` (`Value` | `Areas`) replaces `CalcResult` in `variable_stack`; every reader but `Model::variable_reference` (reference context) sees `#VALUE!` for an `Areas` binding. LET binds areas when its value is a union or a multi-area intersection.
 - `if_impl` and the new `choose_impl` return `RefArg`; in reference context (`evaluate_reference_arg`) the branch a scalar condition or index picks is itself evaluated in reference context, so a union survives. `fn_if`, `fn_choose` and the single-sheet path collapse it with `into_single_area`.
 - Intersection operands: `is_multi_area` now also treats a LET variable, IF and CHOOSE as possibly several areas, and `evaluate_areas` reads them through the evaluator; plain references and defined names keep the allocation-free pair path. Deviation from the plan: `is_multi_area` stays (extended) instead of branching on evaluated results, which would allocate for every name operand; the pair budget is unchanged (a function operand starts its own, as before).
