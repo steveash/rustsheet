@@ -463,6 +463,11 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   union name, which is TRUE).
 - 3-D: `SUM(Sheet1:Sheet2!A1,(A1,B2))` = 107 (3-D argument plus the union), but a 3-D operand inside the union,
   `SUM((Sheet1:Sheet2!A1,B2))`, is `#NAME?`.
+  Implemented in `evaluate_union_operand` (reference_operators.rs, T-1070): a multi-sheet span as a direct
+  operand of a union gives `#NAME?`. Only the left operand under SUM is VERIFIED; the right operand, the bare
+  `=(Sheet1:Sheet2!A1,B2)` value context (same check in `count_union_areas`) and the precedence against another
+  operand's error (`SUM((1/0,Sheet1:Sheet2!A1))` is `#DIV/0!` in the engine) are UNVERIFIED (no probe); a 3-D
+  operand of an intersection is unprobed.
 - `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `SUM(Print_Area)` = 6, `AREAS(Print_Area)` = 2.
 - FORMULATEXT of a union written as a dynamic-array formula (the only kind the probe harness writes) has no `@`
   (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The same holds for a legacy
