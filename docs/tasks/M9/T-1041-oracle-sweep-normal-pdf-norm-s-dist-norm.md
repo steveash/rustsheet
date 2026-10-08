@@ -3,7 +3,7 @@ id: T-1041
 title: "Oracle sweep: normal PDF (NORM.S.DIST/NORM.DIST/LOGNORM.DIST density, PHI)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
