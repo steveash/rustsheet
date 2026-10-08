@@ -309,6 +309,18 @@ pub enum Node {
     EmptyArgKind,
 }
 
+impl Node {
+    /// The `@` an xlsx import adds around a range-valued operand: nothing was written, so it
+    /// prints no parentheses.
+    pub(crate) fn automatic_at(child: Node) -> Node {
+        Node::ImplicitIntersection {
+            automatic: true,
+            child: Box::new(child),
+            written: 0,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Parser {
     lexer: lexer::Lexer,

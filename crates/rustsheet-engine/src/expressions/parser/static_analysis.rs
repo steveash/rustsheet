@@ -106,31 +106,23 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             absolute_column2,
         } => {
             if add {
-                *node = Node::ImplicitIntersection {
-                    automatic: true,
-                    written: 0,
-                    child: Box::new(Node::RangeKind {
-                        sheet_name: sheet_name.clone(),
-                        sheet_index: *sheet_index,
-                        absolute_row1: *absolute_row1,
-                        absolute_column1: *absolute_column1,
-                        row1: *row1,
-                        column1: *column1,
-                        absolute_row2: *absolute_row2,
-                        absolute_column2: *absolute_column2,
-                        row2: *row2,
-                        column2: *column2,
-                    }),
-                };
+                *node = Node::automatic_at(Node::RangeKind {
+                    sheet_name: sheet_name.clone(),
+                    sheet_index: *sheet_index,
+                    absolute_row1: *absolute_row1,
+                    absolute_column1: *absolute_column1,
+                    row1: *row1,
+                    column1: *column1,
+                    absolute_row2: *absolute_row2,
+                    absolute_column2: *absolute_column2,
+                    row2: *row2,
+                    column2: *column2,
+                });
             }
         }
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
-                *node = Node::ImplicitIntersection {
-                    automatic: true,
-                    written: 0,
-                    child: Box::new(node.clone()),
-                }
+                *node = Node::automatic_at(node.clone())
             }
         }
 
@@ -149,24 +141,16 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 // Not all defined names deserve the II operator
                 // For instance =Sheet1!A1 doesn't need to be intersected
                 if is_range_reference(&v.2) {
-                    *node = Node::ImplicitIntersection {
-                        automatic: true,
-                        written: 0,
-                        child: Box::new(Node::DefinedNameKind(v.to_owned())),
-                    }
+                    *node = Node::automatic_at(Node::DefinedNameKind(v.to_owned()))
                 }
             }
         }
         Node::NamedVariableKind { name, id } => {
             if add {
-                *node = Node::ImplicitIntersection {
-                    automatic: true,
-                    written: 0,
-                    child: Box::new(Node::NamedVariableKind {
-                        name: name.clone(),
-                        id: *id,
-                    }),
-                }
+                *node = Node::automatic_at(Node::NamedVariableKind {
+                    name: name.clone(),
+                    id: *id,
+                })
             }
         }
         Node::TableNameKind(_) => {
@@ -197,11 +181,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                     StaticResult::Range(_, _) | StaticResult::Unknown
                 )
             {
-                *node = Node::ImplicitIntersection {
-                    automatic: true,
-                    written: 0,
-                    child: Box::new(node.clone()),
-                }
+                *node = Node::automatic_at(node.clone())
             }
         }
     };

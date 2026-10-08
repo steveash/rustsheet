@@ -339,24 +339,22 @@ impl Model {
                     },
                 }
             }
-            Node::ImplicitIntersection {
-                automatic: _,
-                child,
-                written: _,
-            } => match self.evaluate_node_with_reference(child, cell) {
-                CalcResult::Range { left, right } => {
-                    match implicit_intersection(&cell, &Range { left, right }) {
-                        Some(r) => CalcResult::Range { left: r, right: r },
-                        None => CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            format!("Error with Implicit Intersection in cell {cell:?}"),
-                        ),
+            Node::ImplicitIntersection { child, .. } => {
+                match self.evaluate_node_with_reference(child, cell) {
+                    CalcResult::Range { left, right } => {
+                        match implicit_intersection(&cell, &Range { left, right }) {
+                            Some(r) => CalcResult::Range { left: r, right: r },
+                            None => CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                format!("Error with Implicit Intersection in cell {cell:?}"),
+                            ),
+                        }
                     }
+                    // The implicit intersection of a scalar is the scalar itself.
+                    other => other,
                 }
-                // The implicit intersection of a scalar is the scalar itself.
-                other => other,
-            },
+            }
             Node::SheetSpanKind {
                 first_index,
                 last_index,
