@@ -48,4 +48,4 @@ all 41 probed cells with P above 1. Powers of two (P = 1) never gain. `fn_geomea
 power-of-two sum on the out-of-range path; the rule is in numbers.md. Eval: probes known failures
 188 -> 163 (25 fixed, including geomean-overflow-cut-3 C7, no regressions). Still failing: 4 one-ulp root
 roundings (geomean-exponent-sum C2, C7; -sum-2 C24, C28; T-1108), 2^1000 x 1000 two doubles low (C11,
-T-1108), and the 2^1000 x 1500+ `#NUM!` (C12-C18), which is not the wrap: follow-up T-1153.
+T-1108), and the 2^1000 x 1500+ `#NUM!` (C12-C18), which is not the wrap: follow-up T-1156.

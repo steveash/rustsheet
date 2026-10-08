@@ -1,5 +1,5 @@
 ---
-id: T-1153
+id: T-1156
 title: "GEOMEAN of 1500+ copies of 2^1000 is #NUM!: find the rule"
 milestone: M1
 lane: functions-stat
