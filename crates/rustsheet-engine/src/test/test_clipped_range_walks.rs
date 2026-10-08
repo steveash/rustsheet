@@ -145,3 +145,28 @@ fn concat_over_whole_sheet_ranges() {
     model.evaluate();
     assert_eq!(model._get_text("Sheet2!E1"), "21345x");
 }
+
+// AND, OR and XOR ignore empty cells (T-0230). Sheet1 holds no logical values but
+// numbers: 2, 1, 3, 4, 5 are all TRUE.
+#[test]
+fn and_or_xor_over_whole_sheet_and_columns() {
+    for function in ["AND", "OR", "XOR"] {
+        same_as_used_area(function, "A:XFD", "A1:C3");
+        same_as_used_area(function, "1:1048576", "A1:C3");
+        same_as_used_area(function, "B:B", "B1:B3");
+        same_as_used_area(function, "2:3", "A2:C3");
+    }
+}
+
+// A value set later beyond the used area is seen by the clipped walk: the
+// skipped cells were recorded as read empty.
+#[test]
+fn and_over_whole_column_sees_later_cell() {
+    let mut model = sample();
+    model._set("Sheet2!E1", "=AND(Sheet1!B:B)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), *"TRUE");
+    model._set("Sheet1!B1000", "FALSE");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), *"FALSE");
+}

@@ -317,3 +317,18 @@ fn test_not_lifts_over_arrays_and_ranges() {
     assert_eq!(model._get_text("E1"), *"FALSE");
     assert_eq!(model._get_text("G1"), *"#ERROR!");
 }
+
+/// Nightly fuzz OOM (T-0230): `IFERROR` hands `OR` the reference `F:LSE` (8,606 whole
+/// columns). The walk is clipped to the used area, so this is quick and bounded, and the
+/// result is that of an empty range: no logical values, `#VALUE!`.
+#[test]
+fn fuzz_oom_or_over_whole_columns() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OR(IFERROR(ERROR.TYPE(TRUNC($Z$1))=5,F:LSE))");
+    model._set("A2", "=OR(F:LSE)");
+    let start = std::time::Instant::now();
+    model.evaluate();
+    assert!(start.elapsed() < std::time::Duration::from_secs(10));
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+}
