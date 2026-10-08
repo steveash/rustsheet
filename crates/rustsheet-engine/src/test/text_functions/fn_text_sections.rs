@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 //! TEXT applies the format's text section to text and booleans.
 
@@ -39,9 +39,26 @@ fn test_text_section_doubled_quotes_and_single_at_section() {
     let mut model = new_empty_model();
     model._set("A1", r#"=TEXT("jello",";;;""h""""I""")"#);
     model._set("A2", r#"=TEXT("x","@"" """"q""""""")"#);
-    model._set("A3", r#"=TEXT("x","0.0")"#);
     model.evaluate();
     assert_eq!(model._get_text("A1"), "hI");
     assert_eq!(model._get_text("A2"), "x q");
-    assert_eq!(model._get_text("A3"), "x");
+}
+
+#[test]
+fn test_text_on_text_over_255_characters_is_value_error() {
+    // probes/text-format-text-limit A10, A11, A20, A24, A25.
+    let mut model = new_empty_model();
+    model._set("A1", r#"=LEN(TEXT(REPT("a",255),";;;@"))"#);
+    model._set("A2", r#"=TEXT(REPT("a",256),";;;@")"#);
+    model._set("A3", r#"=TEXT(REPT("a",256),"General")"#);
+    model._set("A4", r#"=TEXT(REPT("a",128),";;;@@")"#);
+    model._set("A5", r#"=LEN(TEXT(REPT("a",127),";;;@@""x"""))"#);
+    model._set("A6", r#"=TEXT(REPT("a",32767),REPT("@",1000))"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "255");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+    assert_eq!(model._get_text("A4"), "#VALUE!");
+    assert_eq!(model._get_text("A5"), "255");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
 }

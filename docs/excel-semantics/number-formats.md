@@ -24,7 +24,24 @@ Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx 
 A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
 it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
-Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; A text value with a format of fewer than four sections is unprobed and returns the text unchanged.
+Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of fewer than four sections is unprobed and returns the text unchanged.
+Tasks: T-0935
+
+## TEXT of a text value is `#VALUE!` over 255 characters
+Rule: `TEXT` of a text value (a boolean's "TRUE"/"FALSE" included) is `#VALUE!` once its result is over
+255 characters, whatever the format: `LEN(TEXT(REPT("a",255),";;;@"))` = 255 (A10) but 256 characters
+is `#VALUE!` with `;;;@`, `@`, `General` and `0` alike (A11, A19-A21); `;;;@@` on 128 characters
+(256) is `#VALUE!` (A24) while `;;;@@"x"` on 127 (255) is fine (A25); longer texts up to 32,767 are
+`#VALUE!` (A1-A8, A12-A15). Whether the cap is on the result or also on the input cannot be told
+apart from these cells (every input over 255 also gives a result over 255). Characters vs UTF-16
+units is unprobed. Compare the other 255-character rules in numbers.md and dates.md.
+Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935).
+Status: VERIFIED
+Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
+result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
+Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no lone `@` section (the
+engine returns the text unchanged), `0;@`-style formats, `_x`/`*x` in the text section (one space
+here), digit or date tokens in the text section (dropped here), and a General 4th section.
 Tasks: T-0935
 
 ## A doubled quote in a format literal is not an escape

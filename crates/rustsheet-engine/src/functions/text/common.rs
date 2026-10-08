@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_text, format_text_value},
+    formatter::format::{format_text, format_text_value, Formatted},
     functions::{
         criteria::from_wildcard_to_regex,
         text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
@@ -211,38 +211,36 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-/// The TEXT array element for a number (`None`: a blank): its text, or `#VALUE!` for a bad format.
-fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
-    let d = format_text(value, format, locale);
+/// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
+fn formatted_node(d: Formatted) -> ArrayNode {
     d.error.map_or(ArrayNode::String(d.text), |_| {
         ArrayNode::Error(Error::VALUE)
     })
 }
 
-fn text_result(value: &str, format: &str, cell: CellReferenceIndex) -> CalcResult {
-    match text_str_node(value, format) {
+/// The TEXT array element for a number (`None`: a blank).
+fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
+    formatted_node(format_text(value, format, locale))
+}
+
+/// The TEXT array element for a text or boolean value: the format's text section applied to its
+/// text ("TRUE"/"FALSE" for a boolean).
+fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
+    match array_node_to_string(value) {
+        Ok(text) => formatted_node(format_text_value(&text, format)),
+        Err(error) => ArrayNode::Error(error),
+    }
+}
+
+/// TEXT of a scalar text or boolean value.
+fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) -> CalcResult {
+    match text_value_node(value, format) {
         ArrayNode::String(s) => CalcResult::String(s),
         _ => CalcResult::Error {
             error: Error::VALUE,
             origin: cell,
             message: "Invalid format code".to_string(),
         },
-    }
-}
-
-/// `TEXT` of a text value; a boolean passes its "TRUE"/"FALSE" spelling.
-fn text_str_node(value: &str, format: &str) -> ArrayNode {
-    let d = format_text_value(value, format);
-    d.error.map_or(ArrayNode::String(d.text), |_| {
-        ArrayNode::Error(Error::VALUE)
-    })
-}
-
-fn bool_text(b: bool) -> &'static str {
-    if b {
-        "TRUE"
-    } else {
-        "FALSE"
     }
 }
 
@@ -275,8 +273,9 @@ impl Model {
                         let out = match node {
                             ArrayNode::Number(f) => text_node(Some(f), &format_code, locale),
                             ArrayNode::Empty => text_node(None, &format_code, locale),
-                            ArrayNode::Boolean(b) => text_str_node(bool_text(b), &format_code),
-                            ArrayNode::String(s) => text_str_node(&s, &format_code),
+                            text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
+                                text_value_node(&text, &format_code)
+                            }
                             e @ ArrayNode::Error(_) => e,
                         };
                         data_row.push(out);
@@ -295,8 +294,12 @@ impl Model {
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
-                    CalcResult::String(s) => return text_result(&s, &format_code, cell),
-                    CalcResult::Boolean(b) => return text_result(bool_text(b), &format_code, cell),
+                    CalcResult::String(s) => {
+                        return text_value_result(&ArrayNode::String(s), &format_code, cell)
+                    }
+                    CalcResult::Boolean(b) => {
+                        return text_value_result(&ArrayNode::Boolean(b), &format_code, cell)
+                    }
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,

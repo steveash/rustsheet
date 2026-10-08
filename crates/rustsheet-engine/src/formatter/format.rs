@@ -92,32 +92,22 @@ pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatt
 /// (poi TextFormatTests A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
 /// booleans use the format's text section"). A single section with `@` is a text section too
 /// (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11). Any other format with fewer
-/// than four sections returns the text unchanged; that case is unprobed.
+/// than four sections returns the text unchanged; that case is unprobed. A result over 255
+/// characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
 pub fn format_text_value(text: &str, format: &str) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
-    let unchanged = || Formatted {
-        color: None,
-        text: text.to_string(),
-        error: None,
-    };
-    fn has_raw(part: &ParsePart) -> bool {
-        let tokens = match part {
-            ParsePart::Number(p) => &p.tokens,
-            ParsePart::Date(p) => &p.tokens,
-            _ => return false,
-        };
-        tokens.iter().any(|t| matches!(t, TextToken::Raw))
-    }
     let section = match parser.parts.as_slice() {
-        [only] if has_raw(only) => 0,
-        parts if parts.len() < 4 => return unchanged(),
+        [only]
+            if section_tokens(only)
+                .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
+        {
+            0
+        }
+        parts if parts.len() < 4 => return capped_text(text.to_string()),
         _ => 3,
     };
     let tokens = match parser.parts.get(section) {
-        Some(ParsePart::Number(p)) => &p.tokens,
-        Some(ParsePart::Date(p)) => &p.tokens,
-        Some(ParsePart::General(_)) | None => return unchanged(),
         Some(ParsePart::Error(_)) => {
             return Formatted {
                 text: "#VALUE!".to_owned(),
@@ -125,9 +115,16 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
                 error: Some("Problem parsing format string".to_owned()),
             }
         }
+        Some(part) => match section_tokens(part) {
+            Some(tokens) => tokens,
+            None => return capped_text(text.to_string()),
+        },
+        None => return capped_text(text.to_string()),
     };
     let mut out = String::new();
+    let mut chars = 0;
     for token in tokens {
+        let start = out.len();
         match token {
             TextToken::Literal(c) => out.push(*c),
             TextToken::Text(t) => out.push_str(t),
@@ -135,11 +132,45 @@ pub fn format_text_value(text: &str, format: &str) -> Formatted {
             TextToken::Raw => out.push_str(text),
             _ => {}
         }
+        // Checked as it grows, so a format of many `@` cannot build a huge string.
+        chars += out[start..].chars().count();
+        if chars > MAX_TEXT_FORMAT_CHARS {
+            return text_too_long();
+        }
+    }
+    capped_text(out)
+}
+
+/// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
+/// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
+const MAX_TEXT_FORMAT_CHARS: usize = 255;
+
+fn text_too_long() -> Formatted {
+    Formatted {
+        text: "#VALUE!".to_owned(),
+        color: None,
+        error: Some("TEXT result over 255 characters".to_owned()),
+    }
+}
+
+/// `text` as a TEXT result, or `#VALUE!` when it is over [`MAX_TEXT_FORMAT_CHARS`].
+fn capped_text(text: String) -> Formatted {
+    if text.chars().count() > MAX_TEXT_FORMAT_CHARS {
+        return text_too_long();
     }
     Formatted {
         color: None,
-        text: out,
+        text,
         error: None,
+    }
+}
+
+/// The tokens of a number or date section; `None` for General or an unparsable section.
+fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
+    match part {
+        ParsePart::Number(p) => Some(&p.tokens),
+        ParsePart::Date(p) => Some(&p.tokens),
+        ParsePart::General(_) | ParsePart::Error(_) => None,
     }
 }
 
