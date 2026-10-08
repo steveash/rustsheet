@@ -524,8 +524,13 @@ SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
 COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
 (statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
 a union holding an error in COUNTBLANK counts nothing (no probes).
-SUBTOTAL 1, 4-11 and 101, 104-111 walk the areas of a union as SUM does (`subtotal_walk_range`, T-1071; probes/multiarea-subtotal
-probes 9 and 109). UNVERIFIED engine behavior: SUBTOTAL 2, 3, 102 and 103 of a union stay `#VALUE!` (no probe).
+SUBTOTAL 1-11 and 101-111 walk the areas of a union (`subtotal_walk_areas`, T-1071, T-1154; probes/multiarea-subtotal, probes/multiarea-subtotal-counts-a/b/e,
+excel-graph). COUNT/COUNTA (2, 3, 102, 103) of a union count each area as written: `SUBTOTAL(3,(A1:A3,A1:A3))` = 6; an overlap counts its cells twice
+(`SUBTOTAL(9,(A1:B2,B2))` = 11, COUNT 3); a SUBTOTAL cell inside an area is skipped (`(A1:B3,B3)` with B3 `=SUBTOTAL(9,A1:A2)` sums 6); an error cell
+makes 1/9 an error but COUNTA counts it (`SUBTOTAL(3,(A1,C4))` = 2, `SUBTOTAL(2,(A1,C4))` = 1). A union across sheets is `#VALUE!` for 2, 3 and 9
+(`(A1,Data!A1)`). The same unions through `LET(x,(A1,B2),SUBTOTAL(9,x))` (6), `IF(TRUE,(...))` and `CHOOSE(1,(...))` also work in Excel (counts 2); the engine
+matches (T-1064; probes/multiarea-subtotal-counts-c/d). Hidden/filtered rows in a union remain
+unprobed (the case format cannot hide rows; T-1036 owns the probe): the engine keeps or skips a row whole by the status at the area's first column.
 Tasks: T-1061, T-1062, T-1064, T-1068, T-1069
 
 ## Range corners may both carry the sheet prefix
