@@ -3,7 +3,7 @@ id: T-1159
 title: "Probe 3-D operands in unions: right operand, bare union, error precedence, intersection (follow-up of T-1070)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
