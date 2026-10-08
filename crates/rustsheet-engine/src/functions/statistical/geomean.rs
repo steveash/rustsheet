@@ -82,6 +82,19 @@ impl Model {
         // `product * 2^r` stays finite up to r = 1000; past that (over 1000 values) the remainder
         // gets its own root (unprobed).
         let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
+        // Excel's power-of-two sum is 2048 * k too high when the significand product moved down by
+        // one power of two per value, `significands * 2^-n`, leaves the double exponent range: k
+        // counts its wraps of the 11-bit exponent field, as if Excel formed that [0.5, 1)
+        // significand product by exponent-field arithmetic modulo 2048. It matches all 41 probed
+        // cells whose significand product is above 1: 2400 copies of 1E-300 give
+        // 1E-300 * 2^(2048/2400), 1700 copies give 1E-300, and 1E-307 steps to k = 2 between 3500
+        // and 3900 copies. Powers of two (product exactly 1) never gain: 2^-1000 x 8200 and 2 x 2000
+        // are exact (numbers.md, "GEOMEAN is #NUM! when the product of significands overflows";
+        // probes/geomean-exponent-sum, -sum-2, geomean-overflow-cut-3 C7; T-1120).
+        let below = count - i64::from(split_pow2(significands).1) - 1022;
+        if below > 0 && significands > 1.0 {
+            exp2 += 2048 * ((below + 2047) / 2048);
+        }
         let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
         let root = match i32::try_from(r) {
             Ok(r) if r <= 1000 => (product * 2f64.powi(r)).powf(1.0 / n),
