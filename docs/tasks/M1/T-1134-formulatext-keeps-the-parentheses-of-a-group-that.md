@@ -3,7 +3,7 @@ id: T-1134
 title: "FORMULATEXT keeps the parentheses of a group that is only part of an @ operand"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
