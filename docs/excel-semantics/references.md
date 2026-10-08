@@ -467,14 +467,20 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   So the engine must not wrap a union in `@` when printing a legacy formula.
 - `AREAS(Data1:Data3!A1)` is `#VALUE!`. A workbook holding `AREAS(1)` or `AREAS("A1")` is refused by Excel for the web
   (`createSession` 501 `unsupportedWorkbook`, two scratch runs, not kept as cases, like the T-0138 refusals).
-- Engine choice, not probed: ISREF of a cross-sheet union written in place (`ISREF((Data!A1,A1))`) is
-  FALSE, as for the cross-sheet name above, since the engine reads both through the same evaluator.
-Status: VERIFIED (Excel for the web), except the engine choice marked above
+- ISREF of a cross-sheet union written in place is FALSE (`ISREF((Data!A1,A1))`), of a same-sheet one TRUE
+  (`ISREF((Data!A1,Data!B2))`). An error cell inside an area is the aggregate's error as in a plain range, the
+  first in formula order winning (`SUM((A1,E1))` = `#DIV/0!` with E1 = 1/0, `SUM((E2,E1))` = `#N/A` with E2 = NA()),
+  COUNT skips it (1) and COUNTA counts it (2). SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S and DEVSQ take a union too
+  (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF is `#NAME?` in Excel for the web, so it is not probed
+  (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
 MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`) walks the areas one after the
 other (`Model::for_each_cell_in_areas`). SPEC-0004 and T-1063 to T-1065, T-1068 to T-1073 implement the rest;
-until then LARGE, RANK, CONCAT, TEXTJOIN and a union inside IF keep `#VALUE!` (`RefArg::into_single_area`).
+until then LARGE, RANK, CONCAT, TEXTJOIN and a union inside IF read a union as `#VALUE!` (`RefArg::into_single_area`;
+LARGE, SMALL and RANK then answer `#N/IMPL!`, as before). The other users of `for_each_value` (HARMEAN, AVEDEV,
+SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
 Tasks: T-1061, T-1062
 
 ## Range corners may both carry the sheet prefix

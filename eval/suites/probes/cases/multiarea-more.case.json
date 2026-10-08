@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1062 follow-up probes: ISREF of a cross-sheet union, error cells inside union areas, and more aggregates taking a union (PERCENTOF((A1,B2),(A1,B2)) is #NAME? in Excel for the web, so it is not kept). Sheet1 A1=1,B2=5,C3=7,D4=9,E1=#DIV/0!,E2=#N/A; Data A1=11.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "E1": "=1/0",
+        "E2": "=NA()",
+        "H1": "=ISREF((Data!A1,A1))",
+        "H2": "=ISREF((Data!A1,Data!B2))",
+        "H3": "=SUM((A1,E1))",
+        "H4": "=COUNT((A1,E1))",
+        "H5": "=COUNTA((A1,E1))",
+        "H6": "=SUM((E2,E1))",
+        "H7": "=SUMSQ((A1,B2))",
+        "H8": "=AVERAGEA((A1,B2))",
+        "H9": "=MAXA((A1,B2))",
+        "H10": "=GEOMEAN((A1,B2))",
+        "H11": "=VAR.S((A1,B2))",
+        "H12": "=DEVSQ((A1,B2))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11
+      }
+    }
+  ],
+  "expected": {}
+}

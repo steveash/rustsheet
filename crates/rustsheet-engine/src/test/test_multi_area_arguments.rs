@@ -99,14 +99,13 @@ fn union_argument_errors() {
             // An operand's own error comes first (probes/union-accepted H9 for the reference).
             ("H1", "=SUM((A1,#REF!))", "#REF!"),
             // An error cell in an area is the aggregate's error, as in a plain range; COUNT
-            // skips it and COUNTA counts it (UNVERIFIED for a union: the range rule).
+            // skips it and COUNTA counts it (probes/multiarea-more H3:H5).
             ("H2", "=SUM((A1,E1))", "#DIV/0!"),
             ("H3", "=COUNT((A1,E1))", "1"),
             ("H4", "=COUNTA((A1,E1))", "2"),
             // Areas on two sheets: probes/multiarea-xsheet H1.
             ("H5", "=SUM((Data!A1,A1))", "#VALUE!"),
-            // ISREF agrees (UNVERIFIED written in place; a name with this body is FALSE in
-            // probes/multiarea-xname).
+            // ISREF agrees (probes/multiarea-more H1).
             ("H6", "=ISREF((Data!A1,A1))", "FALSE"),
         ],
     );
