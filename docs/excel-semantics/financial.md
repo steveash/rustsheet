@@ -93,18 +93,36 @@ Evidence: probes/rate-empty-arguments A1-A10 (excel-graph, T-1128)
 Status: VERIFIED
 Implemented in: n/a (empty argument already reads as 0; convergence is T-0916)
 
-## XIRR skips empty cells and accepts dates before the first; XNPV is #NUM! on empty cells
-Rule: XIRR ignores empty cells in its value and date ranges: `XIRR(A1:A3,B1:B3)` with A3 and B3 empty
-is the same 0.09999999403953552 as `XIRR(A1:A2,B1:B2)`, and so are whole-column `XIRR(Data!A:A,Data!B:B)`
-on a sheet holding only A1:B2 and whole-row `XIRR(12:12,13:13)`. XIRR also accepts a date before the
-first date: `XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same
-flows is #NUM!). XNPV is `#NUM!` when its ranges contain empty cells, and a whole column counts every
-cell, not the used area: `XNPV(0.1,Data!A:A,Data!B:B)` is #NUM! although Data holds only A1:B2,
-where `XNPV(0.1,Data!A1:A2,Data!B1:B2)` is finite.
-Unprobed: a pair where only the value or only the date is empty, and which error XNPV gives for a whole column whose used area holds a cell error or a text date (the engine returns that error, then #NUM! for the skipped cells).
+## XIRR reads empty cells as 0 and accepts earlier dates; XNPV is #NUM! on empty cells
+Rule: XIRR reads an empty value or date cell as 0. It does not skip it. A zero value adds nothing, so
+`XIRR(A1:A3,B1:B3)` with A3 and B3 empty is the same 0.09999999403953552 as `XIRR(A1:A2,B1:B2)`. So
+are whole-column `XIRR(Data!A:A,Data!B:B)` on a sheet holding only A1:B2, whole-row
+`XIRR(12:12,13:13)`, an empty value with a date (xirr-mismatched-empties X1) and a zero value with an
+empty date (X11). Date 0 is a valid date: -1000 with an empty date, then 1100 on 45365, gives
+1.1^(365/45365) - 1 = 0.000767144560813904 (X5, xirr-early-dates A8). A value with an empty date late
+in the range puts that flow on date 0. 50 on date 0 after -1000 on 45000 and 1100 on 45365 has no root
+and is `#NUM!` (X2). Text in either range is `#VALUE!` (X6, X7). Dates before the first are accepted:
+`XIRR({-1000,1100,-1000},{45000,45365,1100})` = -0.01750176399946212 (XNPV of the same flows is
+#NUM!), and -1000, 1100, -1000 on 45000, 45365, 44000 = -0.24668241366744048 (X8). But XIRR is `#NUM!`
+when no date is later than the first, even where a root exists: -1000 on 45365 then 1100 on 45000 (X9,
+xirr-early-dates is the same as an array: X12), and 1100, -1000, -1000 on 45365, 45000, 44000 (X13).
+All dates equal is `#NUM!` (A3), while a repeat of the first date next to a later one is fine (A4,
+A5). Positive flows on earlier dates with no root are `#NUM!` (A1, A2, A14, A15). A negative date or
+one past 2958465 is `#NUM!` (A6, A7, A16). A zero first value gives 2.9802322387695314E-09 =
+0.1 / 2^25 instead of the root, whatever its date (X3, X4, A10, A11); a zero value later is harmless
+(A12).
+XNPV is `#NUM!` when its ranges contain empty cells, and a whole column counts every cell, not the
+used area: `XNPV(0.1,Data!A:A,Data!B:B)` is #NUM! although Data holds only A1:B2, where
+`XNPV(0.1,Data!A1:A2,Data!B1:B2)` is finite.
+Unprobed: which error XNPV gives for a whole column whose used area holds a cell error or a text date
+(the engine returns that error, then #NUM! for the skipped cells); XIRR dates strictly between -1 and 0
+(the engine truncates first, so -0.5 becomes -1 and is #NUM!).
 Evidence: probes/xirr-xnpv-whole-column-nogaps A1-A8, probes/whole-column-empty-walkers E1, E5, E7,
-F3, F4, F6, F7, F9 (excel-graph, 2026-10-07, T-1114).
+F3, F4, F6, F7, F9 (excel-graph, 2026-10-07, T-1114); probes/xirr-mismatched-empties X1-X14,
+probes/xirr-early-dates A1-A16 (excel-graph, 2026-10-08, T-1124).
 Status: VERIFIED (these cells). XNPV matches since T-1114 (the used-area clip applies the empty-cell
-error to the cells it skips, `get_array_of_numbers_generic`); XIRR reads empty as 0 and rejects early
-dates, giving #NUM! (T-1124).
+error to the cells it skips, `get_array_of_numbers_generic`). XIRR follows the empty-as-0, date-range
+and later-date rules since T-1124. Its values still miss in the last digits (the early stop above).
+The zero-first-value result and the date-0-first root (the engine does not converge there, `#NUM!`)
+are open (T-1155).
 Tasks: T-1114, T-1124
