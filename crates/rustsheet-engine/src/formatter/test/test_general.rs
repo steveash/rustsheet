@@ -110,11 +110,14 @@ fn test_failed_to_parse_conditional() {
 
 #[test]
 fn test_string_double_quota() {
+    // Excel: a doubled quote ends one literal and starts the next; it is not an escaped quote
+    // (probes/format-doubled-quotes C1, C2).
     let locale = get_default_locale();
     assert_eq!(
         format_number(42.00, "0 \"\"\"Millions\"\"\"", locale).text,
-        "42 \"Millions\""
+        "42 Millions"
     );
+    assert_eq!(format_number(42.00, "0 \"a\"\"b\"", locale).text, "42 ab");
 }
 
 #[test]
