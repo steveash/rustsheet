@@ -71,7 +71,11 @@ Tasks: T-1012
 
 ## IMAGE and STOCKHISTORY never fetch
 Rule: `IMAGE(source, ...)` evaluates to `#BLOCKED!` and `STOCKHISTORY(stock, start_date, ...)` to
-`#CONNECT!` whatever the arguments (after argument errors and IMAGE's empty/number `#VALUE!`, see above).
+`#CONNECT!` for the probed arguments: a text source or ticker, after a single argument error and
+IMAGE's empty/number `#VALUE!` (see above). The engine's handling of unprobed inputs is UNVERIFIED (T-1141):
+a range argument is read as its top-left cell (an array argument is not reduced), the leftmost of
+several error arguments wins, `IMAGE("")` and `IMAGE(TRUE)` are `#BLOCKED!`, and a number, boolean or
+empty `stock` is `#CONNECT!`. FIELDVALUE's `field_name` is read the same way. None of these lift or spill.
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
 `#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
@@ -80,6 +84,8 @@ Evidence: probes/rich-errors-image A1, probes/rich-errors-stockhistory A1, probe
 (excel-graph); the engine's results are unit-tested in `test/test_fn_offline_errors.rs`.
 Status: DEVIATION (decision 0014)
 Implemented in: functions/information/offline_errors.rs
+Unverified: the localized (de/es/fr/it) names of IMAGE, STOCKHISTORY and FIELDVALUE; the language
+tables use the English names.
 Tasks: T-1013
 
 ## FIELDVALUE of a plain value is `#FIELD!`

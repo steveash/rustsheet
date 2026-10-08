@@ -580,8 +580,8 @@ macro_rules! impl_function_lookup {
         }
 
         impl Function {
-            /// Every function, in the order of the lookup table (`function_iterator` checks
-            /// that it covers the whole enum).
+            /// Every function, in the order of the lookup table, which must therefore list
+            /// every variant of the enum (`function_iterator` checks it).
             pub fn into_iter() -> impl Iterator<Item = Function> {
                 [$(Function::$variant),+].into_iter()
             }
@@ -2347,15 +2347,9 @@ mod tests {
 
     #[test]
     fn function_iterator() {
-        // This checks that the number of functions in the enum is the same
-        // as the number of functions in the Iterator.
-
-        // This is tricky. In Rust we cannot loop over all the members of an enum.
-        // There are alternatives like using an external crate like strum.
-        // But I am not in the mood for that.
-
-        // What we do here is read this file , extract the functions in the enum
-        // and check they are the same as in the iterator
+        // Checks that `impl_function_lookup!`, which generates `Function::into_iter`, lists
+        // every variant of the enum: Rust cannot iterate an enum's variants, so this reads the
+        // enum's variants from this file and compares the counts.
         let file = File::open("src/functions/mod.rs").unwrap();
         let reader = BufReader::new(file);
         let mut start = false;

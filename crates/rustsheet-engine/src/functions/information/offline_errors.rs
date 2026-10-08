@@ -14,21 +14,11 @@ use crate::{
 };
 
 impl Model {
-    /// The scalar an argument evaluates to; a multi-cell range or array is its top-left element.
+    /// The value an argument evaluates to; a range is its top-left cell, read without
+    /// evaluating the rest of the range.
     fn offline_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(values) => match values.into_iter().next().and_then(|r| r.into_iter().next()) {
-                    Some(ArrayNode::Number(n)) => CalcResult::Number(n),
-                    Some(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
-                    Some(ArrayNode::String(s)) => CalcResult::String(s),
-                    Some(ArrayNode::Error(error)) => {
-                        CalcResult::new_error(error, cell, String::new())
-                    }
-                    _ => CalcResult::EmptyCell,
-                },
-                Err(error) => error,
-            },
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
             other => other,
         }
     }
@@ -112,6 +102,7 @@ impl Model {
             CalcResult::Array(values) => Some(values),
             _ => None,
         };
+        // A 1x1 range or array stays a scalar `#FIELD!`; only the shape of a larger one is used.
         match shape {
             Some(values) if values.len() > 1 || values.first().is_some_and(|row| row.len() > 1) => {
                 CalcResult::Array(
