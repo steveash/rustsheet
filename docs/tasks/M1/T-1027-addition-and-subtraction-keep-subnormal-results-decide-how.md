@@ -23,3 +23,9 @@ Left over from T-0989. probes/subnormal-function-results C69, C73-C75 (and A4, A
 
 ## Out of scope
 -
+
+## Progress (2026-10-08, in flight)
+- Done: `plus`/`minus` keep subnormals; `parse_number_text` flushes subnormal number text; decision 0042 and
+  `graph_hides_subnormal` (runner.rs) score an excel-graph 0 against a kept subnormal as a pass. make eval-baseline:
+  probes fixed 11, 0 regressions (subnormal-function-results 129/129).
+- Next: unit test for `graph_hides_subnormal`, `make check`, review, PR.

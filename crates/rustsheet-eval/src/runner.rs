@@ -113,6 +113,22 @@ struct Expectation {
     from_excel: bool,
     /// The pinned by-design value when the suite's `deviations` file lists the cell.
     pinned: Option<Value>,
+    /// Whether the expectation came from the excel-graph oracle, which reports a kept
+    /// subnormal as 0 (`graph_hides_subnormal`).
+    from_graph: bool,
+}
+
+/// The oracle kind of the Microsoft Graph backend.
+const GRAPH_ORACLE: &str = "excel-graph";
+
+/// Whether an excel-graph expectation of 0 hides `actual`. The Graph API reports a subnormal
+/// cell value as 0.0, so its 0 cannot tell a true 0 from a kept subnormal: Excel keeps
+/// `3E-308-2.5E-308` yet Graph reports 0 (probes/subnormal-function-results A69; the `C`
+/// companions `(x)=0` carry the evidence). Decision 0042.
+fn graph_hides_subnormal(e: &Expectation, actual: &Value) -> bool {
+    e.from_graph
+        && e.expected == Value::Number(0.0)
+        && matches!(actual, Value::Number(a) if *a != 0.0 && a.abs() < f64::MIN_POSITIVE)
 }
 
 enum Prepared {
@@ -272,6 +288,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
         .iter()
         .map(|e| {
             let (actual, mut verdict) = match evaluated.value(&e.sheet, e.addr) {
+                Some(actual) if graph_hides_subnormal(e, &actual) => (actual, Verdict::Pass),
                 Some(actual) => {
                     let verdict = compare(&e.expected, &actual);
                     (actual, verdict)
@@ -396,6 +413,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
                 from_excel,
                 pinned: None,
+                from_graph: source == GRAPH_ORACLE,
             })
         })
         .collect();
@@ -517,6 +535,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             expected: value,
             from_excel: oracle_is_excel && oracle_cells.contains(&key),
             pinned: None,
+            from_graph: source == GRAPH_ORACLE && oracle_cells.contains(&key),
         });
     }
     Ok(PreparedCase {
@@ -641,6 +660,7 @@ mod tests {
             expected: Value::Error("#VALUE!".into()),
             from_excel: true,
             pinned: None,
+            from_graph: false,
         };
         let write_overrides = |cell: &str| {
             let line = format!("D/x.xlsx\tS!{cell}\tprobes/p.oracle.json\tSheet1!B1\n");

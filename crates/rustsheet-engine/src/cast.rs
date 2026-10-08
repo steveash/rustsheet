@@ -150,7 +150,8 @@ impl Model {
 
     /// Text as number coercion and VALUE read it, after their own trimming: a formatted number
     /// (dates, currencies in `currencies`, percentages), else time and date-time text
-    /// (`0+"10:11:12.5"`; probes/timevalue-*).
+    /// (`0+"10:11:12.5"`; probes/timevalue-*). Number text below the smallest normal double
+    /// reads as 0 like a literal: `"1e-308"+0` is 0 (probes/text-number-words H6, H7, K1, K4, K5).
     pub(crate) fn parse_number_text(
         &self,
         text: &str,
@@ -159,7 +160,7 @@ impl Model {
     ) -> Option<f64> {
         if let Ok((v, _number_format)) = parse_formatted_number(text, currencies, self.locale, year)
         {
-            return Some(v);
+            return Some(crate::arithmetic::flush_subnormal(v));
         }
         crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
     }
