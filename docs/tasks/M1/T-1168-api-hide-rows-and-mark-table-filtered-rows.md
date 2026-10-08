@@ -3,7 +3,7 @@ id: T-1168
 title: "API: hide rows and mark table-filtered rows in an edit transaction"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -32,3 +32,8 @@ error types); this is an additive method.
 
 ## Out of scope
 - The case format and the AGGREGATE/SUBTOTAL probe (T-1036).
+
+## Outcome
+Added `Txn::set_row_hidden(sheet, row, hidden)` to the edit API (0-based row; unknown sheet or out-of-range row is `EditError::Ref`), with an undo entry so a failed edit restores the flag. Tests: SUBTOTAL 109 versus 9 follow the flag, rollback, bad sheet and bad row. No eval delta (no case uses it yet).
+
+Filter-hidden rows: not distinguished in the model. The engine has one `Row.hidden` flag, and the SUBTOTAL 1-11 versus 101-111 difference needs Excel evidence of how a filtered row behaves, which is T-1036's probe. Until then T-1036 can set the flag with this method; a separate "filtered" bit should be added only if that probe shows the two kinds of hidden row differ.
