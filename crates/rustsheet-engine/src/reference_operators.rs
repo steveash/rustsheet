@@ -116,6 +116,22 @@ impl From<CalcResult> for RefArg {
 }
 
 impl RefArg {
+    /// The areas of a reference that sits on one sheet: borrowed, never copied. `None` for a
+    /// 3-D reference (corners on two sheets) and for anything that is not a reference, where
+    /// AREAS, INDEX and ISREF keep their `#VALUE!` (probes/3d-ref-functions).
+    pub(crate) fn single_sheet_areas(&self) -> Option<&[Range]> {
+        match self {
+            RefArg::Ranges(ranges)
+                if ranges
+                    .iter()
+                    .all(|area| area.left.sheet == area.right.sheet) =>
+            {
+                Some(ranges)
+            }
+            _ => None,
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {

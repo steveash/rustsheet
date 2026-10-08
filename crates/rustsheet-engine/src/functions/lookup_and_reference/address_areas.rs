@@ -2,6 +2,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
+    reference_operators::RefArg,
 };
 
 use crate::expressions::utils::number_to_column;
@@ -135,16 +136,25 @@ impl Model {
 
     /// `=AREAS(reference)`
     ///
-    /// Returns the number of areas in a reference. IronCalc does not support
-    /// multi-area references, so this always returns 1.
+    /// Returns the number of areas in a reference (SPEC-0004, probes/multiarea-areas-*). A 3-D
+    /// reference is `#VALUE!` (probes/3d-ref-functions); an argument that is not a reference
+    /// is 1 unless it is an error.
     pub(crate) fn fn_areas(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let result = self.evaluate_single_sheet_arg(&args[0], cell);
-        if result.is_error() {
-            return result;
+        let arg = self.evaluate_reference_arg(&args[0], cell);
+        if let Some(areas) = arg.single_sheet_areas() {
+            return CalcResult::Number(areas.len() as f64);
         }
-        CalcResult::Number(1.0)
+        match arg {
+            RefArg::Value(value) if !value.is_error() => CalcResult::Number(1.0),
+            RefArg::Value(error) => error,
+            RefArg::Ranges(_) => CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "3-D reference where one sheet is needed".to_string(),
+            ),
+        }
     }
 }

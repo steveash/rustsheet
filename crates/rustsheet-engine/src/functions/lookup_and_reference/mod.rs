@@ -4,8 +4,12 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
+use crate::reference_operators::RefArg;
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    calc_result::{CalcResult, Range},
+    expressions::parser::Node,
+    expressions::token::Error,
+    model::Model,
     utils::ParsedReference,
 };
 
@@ -151,20 +155,20 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        // area_num (4th argument). We only support references with a single area,
-        // so anything other than 1 is out of range.
-        if args.len() == 4 {
-            let area_num = match self.get_number(&args[3], cell) {
-                Ok(f) => f.floor() as i64,
+        // area_num (4th argument), read as a float and range-checked before any integer
+        // conversion: below 1 is #VALUE!, past the last area (or NaN) is #REF! (SPEC-0004).
+        let area_num = if args.len() == 4 {
+            let n = match self.get_number(&args[3], cell) {
+                Ok(f) => f.floor(),
                 Err(s) => return s,
             };
-            if area_num < 1 {
+            if n < 1.0 {
                 return CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 1".into());
             }
-            if area_num != 1 {
-                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
-            }
-        }
+            n
+        } else {
+            1.0
+        };
         let negative_index =
             || CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 0".to_string());
         // A missing or empty argument evaluates to 0, which means "the whole
@@ -191,7 +195,30 @@ impl Model {
         let row_num = row_num.floor() as usize;
         let col_num = col_num.floor() as usize;
 
-        match self.evaluate_single_sheet_arg(&args[0], cell) {
+        let arg = self.evaluate_reference_arg(&args[0], cell);
+        let reference = if let Some(areas) = arg.single_sheet_areas() {
+            // `!(a <= n)` also catches NaN; in range the conversion below is exact.
+            if !(area_num <= areas.len() as f64) {
+                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
+            }
+            let Range { left, right } = areas[area_num as usize - 1];
+            CalcResult::Range { left, right }
+        } else {
+            match arg {
+                RefArg::Ranges(_) => {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "3-D reference where one sheet is needed".to_string(),
+                    )
+                }
+                RefArg::Value(_) if area_num != 1.0 => {
+                    return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
+                }
+                RefArg::Value(value) => value,
+            }
+        };
+        match reference {
             CalcResult::Range { left, right } => {
                 let num_rows = (right.row - left.row + 1) as usize;
                 let (row_eff, col_eff) =

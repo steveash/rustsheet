@@ -3,7 +3,7 @@ id: T-1063
 title: "AREAS and INDEX area_num on multi-area references (SPEC-0004 step 3)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,9 @@ SPEC-0004 step 3. `fn_areas` (lookup_and_reference/address_areas.rs) always answ
 
 ## Out of scope
 - Other functions.
+
+## Outcome
+`AREAS` counts the single-sheet areas of `evaluate_reference_arg` (3-D stays `#VALUE!`; a non-reference
+argument stays 1); `INDEX` selects `area_num` from the areas, range-checked as a float (below 1
+`#VALUE!`, NaN or past the last area `#REF!`). Added `RefArg::single_sheet_areas`. Unit tests in
+`test_multi_area_arguments.rs` cover probe rows 6, 7, 8, 20 and a huge `area_num`.
