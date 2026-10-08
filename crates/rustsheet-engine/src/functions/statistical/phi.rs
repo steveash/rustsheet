@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
@@ -17,6 +18,6 @@ impl Model {
         // Excel's cached last digits in PHI.xlsx; `normal_pdf`'s statrs-style order does not.
         let result = (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt();
 
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 }

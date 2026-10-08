@@ -99,7 +99,7 @@ pub(crate) fn normal_cdf(x: f64, mean: f64, std_dev: f64) -> f64 {
 /// Normal probability density function with the given mean and standard deviation.
 pub(crate) fn normal_pdf(x: f64, mean: f64, std_dev: f64) -> f64 {
     let d = (x - mean) / std_dev;
-    (-0.5 * d * d).exp() / (SQRT_2PI * std_dev)
+    (-0.5 * d * d).exp() / ((2.0 * std::f64::consts::PI).sqrt() * std_dev)
 }
 
 /// ln|Gamma(x)| from the fdlibm/musl `lgamma` (< 1 ulp, exactly 0 at x = 1 and x = 2).

@@ -1,5 +1,6 @@
 use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::statistical::special::{normal_cdf, normal_pdf};
 use crate::{
@@ -53,7 +54,7 @@ impl Model {
             };
         }
 
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 
     // NORM.INV(probability, mean, standard_dev)
@@ -136,7 +137,7 @@ impl Model {
             };
         }
 
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 
     // NORM.S.INV(probability)
