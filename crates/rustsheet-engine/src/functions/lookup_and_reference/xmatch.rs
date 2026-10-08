@@ -42,11 +42,15 @@ impl MatchMode {
     }
 }
 
+fn is_blank(v: &CalcResult) -> bool {
+    matches!(v, CalcResult::EmptyCell)
+}
+
 /// Orders a candidate against the lookup value in an ordered match mode. A blank is larger than
 /// every number, text and boolean, and equal only to another blank (probes/xmatch-xlookup-blanks
 /// Col!M5-M12, T-1018; probes/xmatch-text-bool-equal-runs Txt!M7, M16, Blk!M6-M9, T-1153).
+/// Unlike `compare_values`, which reads a blank as 0, `""` or FALSE.
 fn compare_blank_last(candidate: &CalcResult, lookup_value: &CalcResult) -> i32 {
-    let is_blank = |v: &CalcResult| matches!(v, CalcResult::EmptyCell);
     match (is_blank(candidate), is_blank(lookup_value)) {
         (true, true) => 0,
         (true, false) => 1,
@@ -67,7 +71,6 @@ pub(crate) fn linear_scan<'a>(
     match_mode: MatchMode,
 ) -> Option<usize> {
     let blank_lookup = matches!(lookup_value, CalcResult::EmptyCell);
-    let is_blank = |v: &CalcResult| matches!(v, CalcResult::EmptyCell);
     match match_mode {
         MatchMode::Exact => indices.into_iter().find(|&idx| {
             let v = get(idx);

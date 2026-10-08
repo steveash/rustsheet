@@ -31,11 +31,10 @@ impl<T: Ord> Sequence<T> for Vec<T> {
 /// The first index of the run of elements equal to `target` that holds `m`. Gallops back, so the
 /// cost is logarithmic in the run's length (a whole-column run of blanks included).
 fn run_start<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, m: usize) -> usize {
-    let floor = 0;
     let mut good = m;
     let mut step = 1;
-    while good > floor {
-        let probe = good.saturating_sub(step).max(floor);
+    while good > 0 {
+        let probe = good.saturating_sub(step);
         if array.at(probe) != target {
             // The run starts in probe+1..=good.
             let (mut lo, mut hi) = (probe + 1, good);
@@ -61,8 +60,9 @@ fn run_start<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, m: usize) -
 ///
 /// It is the classic search on inclusive bounds probing the lower middle `(lo + hi) / 2`, and it
 /// compares every element with the `Ord` of its values, so a blank or an error is larger than
-/// any number and is never skipped. It ends at the first equal element, moved to its run's start
-/// (its end when `descending`); otherwise the answer is the last probe on the wanted side. On
+/// any number and is never skipped. Ascending it ends at the first equal element, moved to its run's
+/// start; descending it remembers the last equal element probed and keeps bisecting to its right,
+/// so a blank inside a run ends it; otherwise the answer is the last probe on the wanted side. On
 /// unsorted data that is whatever those probes give, as in Excel: with 5,_,10,_,20,_ in A1:A6,
 /// `XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(99,A:A,-1,2)` is 1 (probes/xmatch-xlookup-blanks
 /// Col!M16-M26, Err!M6-M7, Row!A18; T-1019). O(log n) probes, so a virtual tail is never walked.

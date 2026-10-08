@@ -98,6 +98,9 @@ fn test_binary_search_runs() {
     let mut long = vec![1];
     long.resize(1_048_576, 7);
     assert_eq!(find(&7, &long, false, None), Some(1));
+    let mut long_desc = vec![9];
+    long_desc.resize(1_048_576, 7);
+    assert_eq!(find(&7, &long_desc, true, None), Some(1_048_575));
 }
 
 /// XLOOKUP's binary search walks the whole column, blanks past the used area included, as
