@@ -1,4 +1,4 @@
---Probing other arguments than those four.
+---
 id: T-1189
 title: "Probe FIELDVALUE/IMAGE/STOCKHISTORY mixed-shape, error-element and URL-shape arguments"
 milestone: M1
@@ -8,7 +8,8 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
---Probing other arguments than those four.
+---
+
 
 ## Goal
 Excel's results for the unprobed argument shapes of IMAGE, STOCKHISTORY and FIELDVALUE are established by an oracle probe and the engine matches them.
