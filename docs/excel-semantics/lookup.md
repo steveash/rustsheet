@@ -189,16 +189,18 @@ Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared
 Text and boolean lookup values (probes/xmatch-text-bool-equal-runs, Excel oracle): with b,_,d,_,f,_ in
 A1:A6, a blank is *larger* than every text, as it is larger than every number: `XMATCH("z",A1:A6,1)` is 2 (the first
 blank), `XMATCH("z",A1:A6,-1)` is 5, `XMATCH("a",A1:A6,-1)` is #N/A (a blank is never the smaller candidate),
-`XMATCH("a",A1:A6,1)` is 1. Binary search agrees (`XMATCH("z",A1:A6,1,2)` is 6, `XMATCH("z",A1:A6,-1,2)` is 5). With b,#N/A,d,#DIV/0!,f in C1:C5 an error cell is
-likewise larger than any text: `XMATCH("z",C1:C5,1)` is 4 (the #DIV/0!), `XMATCH("z",C1:C5,-1)` is 5.
+`XMATCH("a",A1:A6,1)` is 1. Binary search agrees (`XMATCH("z",A1:A6,1,2)` is 6, `XMATCH("z",A1:A6,-1,2)` is 5). With b,#N/A,d,#DIV/0!,f in C1:C5 (Txt!M43-M48) `XMATCH("z",C1:C5,1)` is 4, the #DIV/0! cell (the #N/A at C2 is not chosen over it),
+`XMATCH("z",C1:C5,-1)` is 5 and `XMATCH("z",C1:C5,-1,2)` is 4, the error cell again; whether the linear modes skip #N/A and
+how errors order among themselves is not settled by this probe. Booleans over B1:B6 = FALSE,_,TRUE,_,TRUE,_ (Txt!M19-M30):
+`XMATCH(FALSE,B1:B6,1,-2)` is 6 (a blank), `XMATCH(FALSE,B1:B6,-1,-2)` is #N/A, `XMATCH(TRUE,B1:B6,1,-2)` is 5.
 `XLOOKUP("z",A1:A6,A1:A6,"nf",1)` returns the blank return cell as 0.
 A blank lookup value (`G1`) never matches a 0, `""` or FALSE candidate in an exact search (`XMATCH(G1,D1:D1)`,
 D1=0, is #N/A, likewise D2 = `=""`, D3 = FALSE, and with search_mode 2/-2). With match_mode -1 the `""` and FALSE
 candidates are the next smaller item (`XMATCH(G1,D3:D3,-1)` is 1), with match_mode 1 they are #N/A. `XMATCH(G1,D:D)` is 4, the first blank. `XLOOKUP(G1,D1:D1,E1:E1,"nf")` is "nf" for all three candidates.
 Status: VERIFIED
 DIVERGES (engine; fix is T-1153, 24 baselined cells in probes/xmatch-text-bool-equal-runs): a blank is modelled as empty
-text, so `XMATCH("a",A1:A6,-1)` gives 2 (#N/A in Excel), and `XMATCH("z",A1:A6,1)`, `XMATCH("z",A:A,1)` and `XLOOKUP("z",...,1)`
-give #N/A (2, 2 and 0 in Excel). `XMATCH(TRUE,B1:B6,-1,-2)` and `(TRUE,B1:B6,1,-2)` give 3 (5 in Excel). A blank
+text, so `XMATCH("a",A1:A6,-1)` gives 2 (#N/A in Excel), and `XMATCH("z",A1:A6,1)`, and `XMATCH("z",A:A,1)`
+give #N/A (2 in Excel), and `XLOOKUP("z",A1:A6,A1:A6,"nf",1)` gives "nf" (0, the blank return cell, in Excel). `XMATCH(TRUE,B1:B6,-1,-2)` and `(TRUE,B1:B6,1,-2)` give 3 (5 in Excel). A blank
 lookup value matches a 0, `""` or FALSE candidate in an exact search (Blk!M1-M5, M16, M17, M19-M22: `XMATCH(G1,D1:D1)` gives 1, `XMATCH(G1,D:D)` gives 1
 where Excel gives 4), and with match_mode 1 against `""`/FALSE (Blk!M7, M9) the engine gives 1 where Excel gives #N/A.
 

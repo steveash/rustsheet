@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-XMATCH and XLOOKUP agree with Excel for text and boolean lookup values over blank cells, for a blank lookup value, for match_mode 1 binary search over equal runs, and for descending binary search over booleans.
+XMATCH and XLOOKUP agree with Excel for text and boolean lookup values over blank cells, for a blank lookup value, for match_mode 1 binary search over equal runs, and for descending binary search over booleans (Txt!M21, M24).
 
 ## Context
 Oracle evidence is in probes/xmatch-text-bool-equal-runs and docs/excel-semantics/lookup.md (T-1135). Failing cells:
