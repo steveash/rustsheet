@@ -587,8 +587,8 @@ fn hidden_rows_feed_subtotal_and_roll_back() {
     let mut wb = book();
     let sheet = wb.sheets()[0].id;
     wb.edit(|tx| {
-        for (i, n) in [1.0, 2.0, 4.0].into_iter().enumerate() {
-            tx.set(CellRef::new(sheet, i as u32, 0)?, n)?;
+        for (row, n) in (0..3).zip([1.0, 2.0, 4.0]) {
+            tx.set(CellRef::new(sheet, row, 0)?, n)?;
         }
         tx.set("B1", Input::Formula("=SUBTOTAL(109,A1:A3)".into()))?;
         tx.set("B2", Input::Formula("=SUBTOTAL(9,A1:A3)".into()))
