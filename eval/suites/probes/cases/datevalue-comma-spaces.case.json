@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1144: DATEVALUE/VALUE with spaces around the comma of month-day-year text. B DATEVALUE, C VALUE of A.",
+ "tags": [
+  "M1",
+  "dates",
+  "probe",
+  "T-1144"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "July 1 ,2026",
+    "B1": "=DATEVALUE(A1)",
+    "C1": "=VALUE(A1)",
+    "A2": "July 1  ,  2026",
+    "B2": "=DATEVALUE(A2)",
+    "C2": "=VALUE(A2)",
+    "A3": "July 1 , 2026",
+    "B3": "=DATEVALUE(A3)",
+    "C3": "=VALUE(A3)",
+    "A4": "July 1, 2026",
+    "B4": "=DATEVALUE(A4)",
+    "C4": "=VALUE(A4)",
+    "A5": "July 1 ,  2026",
+    "B5": "=DATEVALUE(A5)",
+    "C5": "=VALUE(A5)",
+    "A6": "1 July , 2026",
+    "B6": "=DATEVALUE(A6)",
+    "C6": "=VALUE(A6)",
+    "A7": "1 July, 2026",
+    "B7": "=DATEVALUE(A7)",
+    "C7": "=VALUE(A7)",
+    "A8": "July , 1, 2026",
+    "B8": "=DATEVALUE(A8)",
+    "C8": "=VALUE(A8)",
+    "A9": "July 1 , 26",
+    "B9": "=DATEVALUE(A9)",
+    "C9": "=VALUE(A9)",
+    "A10": "Jul 1 ,2026",
+    "B10": "=DATEVALUE(A10)",
+    "C10": "=VALUE(A10)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "S!B1",
+  "S!C1",
+  "S!B2",
+  "S!C2",
+  "S!B3",
+  "S!C3",
+  "S!B4",
+  "S!C4",
+  "S!B5",
+  "S!C5",
+  "S!B6",
+  "S!C6",
+  "S!B7",
+  "S!C7",
+  "S!B8",
+  "S!C8",
+  "S!B9",
+  "S!C9",
+  "S!B10",
+  "S!C10"
+ ]
+}
