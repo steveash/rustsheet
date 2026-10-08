@@ -3,7 +3,7 @@ id: T-1150
 title: "Probe the remaining for_each_value aggregates with a union argument (HARMEAN, AVEDEV, SKEW, KURT, ...)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,6 @@ Use the `excel-probe` skill; Sheet1 A1=1, B2=5, C3=7 as in the T-1061 cases.
 
 ## Out of scope
 - Changing engine behavior (file a task instead).
+
+## Outcome
+probes/multiarea-foreach (18 cells, excel-graph) added; results in references.md. Excel accepts the union in every listed aggregate except MODE/MODE.SNGL (`#VALUE!`). Engine gaps (VARA, VARPA, STDEVA, STDEVPA, MODE, MODE.SNGL) filed as T-1184. Eval delta: +18 probe cells, 12 pass, 6 known failures (T-1184).
