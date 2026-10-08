@@ -38,7 +38,8 @@ missing case fails the gate.
       same data to report.json. It has one row per list, with these columns: cases, scored cells,
       bit-exact, deviations, known failures (cells), and the failing case ids. Run on main at the
       freeze commit, the m1-probes row shows 89 cases and 61 known-failure cells, the same as the
-      decision's `awk` count.
+      decision's `awk` count. (Met at e5c7ae9; main has since fixed cells, so it reads 21 there,
+      again equal to the `awk` count; see Outcome.)
 - [x] `make eval-check` fails, naming the line, when a list names a case that the suite does not
       discover.
 - [x] `scripts/check_governance.py` treats `eval/milestones/` as a protected path, with a test in

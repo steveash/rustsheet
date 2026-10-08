@@ -62,7 +62,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   0044). While the list has failures, put the fixing lanes (engine, then harness) first on the
   `**Critical lane:**` line, ahead of research. Never add a line to a frozen list.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
-  quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/ explaining why, and
-  make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
+  quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
+  explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
 - **Stuck**: after 3 failed fix attempts on the same failure, mark the task blocked with details,
   leave the PR as draft, and move on. Do not leave `main` red: if a merge broke `main`, revert first.
