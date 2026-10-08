@@ -663,6 +663,9 @@ F	poi/NumberFormatTests.xlsx	Tests!A80
 F	poi/NumberFormatTests.xlsx	Tests!A81
 F	poi/NumberFormatTests.xlsx	Tests!A82
 F	poi/NumberFormatTests.xlsx	Tests!A95
+F	poi/TextFormatTests.xlsx	Tests!A14
+F	poi/TextFormatTests.xlsx	Tests!A23
+F	poi/TextFormatTests.xlsx	Tests!A4
 F	poi/clone_sheet.xlsx	Arkusz1!H10
 F	poi/clone_sheet.xlsx	Arkusz1!H11
 F	poi/clone_sheet.xlsx	Arkusz1!H13
