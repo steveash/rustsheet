@@ -3,7 +3,7 @@ id: T-1164
 title: "Probe near-zero snapping of grouped and SUM defined-name bodies (follow-up of T-1160)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
