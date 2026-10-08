@@ -61,128 +61,64 @@ impl<T: Ord> Sequence<T> for Vec<T> {
     }
 }
 
-// NOTE: We don't know how Excel exactly implements binary search internally.
-// This means that if the values on the lookup range are not in order our results and Excel's will differ
+/// What a binary search (XMATCH/XLOOKUP search_mode 2/-2) found: an equal element, else the
+/// last probed element smaller and larger than the target.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct BinaryProbe {
+    pub exact: Option<usize>,
+    pub smaller: Option<usize>,
+    pub larger: Option<usize>,
+}
 
-// Assumes values are in ascending order, returns matching index or the largest value smaller than target.
-// Returns None if target is smaller than the smaller value.
-pub(crate) fn binary_search_or_smaller<T: Ord, S: Sequence<T> + ?Sized>(
+impl BinaryProbe {
+    /// The match for an exact (0), exact-or-smaller (-1) or exact-or-larger (1) match mode.
+    pub(crate) fn pick(&self, smaller: bool, larger: bool) -> Option<usize> {
+        self.exact
+            .or(if smaller { self.smaller } else { None })
+            .or(if larger { self.larger } else { None })
+    }
+}
+
+/// Excel's binary search over `array`, sorted ascending (or `descending`): the classic search on
+/// inclusive bounds probing the lower middle `(lo + hi) / 2`, comparing every element with the
+/// `Ord` of its values, so a blank or an error is larger than any number and is never skipped.
+/// It ends at the first equal element, moved to the start of its run of equal elements (the
+/// end when `descending`); otherwise it reports the last probes on either side. On unsorted data
+/// the answer is whatever those probes give, as in Excel: with 5,_,10,_,20,_ in A1:A6,
+/// `XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(99,A:A,-1,2)` is 1 (probes/xmatch-xlookup-blanks
+/// Col!M16-M26, Err!M6-M7, Row!A18; T-1019). O(log n) probes, so a virtual tail is never walked.
+pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
     target: &T,
     array: &S,
-) -> Option<i32> {
-    // We apply binary search leftmost for value in the range
-    let n = array.seq_len();
-    let mut l = 0;
-    let mut r = n;
-    while l < r {
-        let m = (l + r) / 2;
-        if array.at(m) < target {
-            l = m + 1;
+    descending: bool,
+) -> BinaryProbe {
+    let mut probe = BinaryProbe::default();
+    // The live range is lo..hi (hi exclusive), so the lower middle of the inclusive bounds is
+    // lo + (hi - 1 - lo) / 2.
+    let mut lo = 0;
+    let mut hi = array.seq_len();
+    while lo < hi {
+        let mid = lo + (hi - 1 - lo) / 2;
+        let ordering = array.at(mid).cmp(target);
+        match ordering {
+            Ordering::Equal => {
+                probe.exact = Some(if descending {
+                    walk_forward(target, array, mid)
+                } else {
+                    walk_back(target, array, mid)
+                });
+                return probe;
+            }
+            Ordering::Less => probe.smaller = Some(mid),
+            Ordering::Greater => probe.larger = Some(mid),
+        }
+        if (ordering == Ordering::Less) != descending {
+            lo = mid + 1;
         } else {
-            r = m;
+            hi = mid;
         }
     }
-    if l == n {
-        return Some((l - 1) as i32);
-    }
-    // Now l points to the leftmost element
-    if array.at(l) == target {
-        return Some(l as i32);
-    }
-    // If target is less than the minimum return None
-    if l == 0 {
-        return None;
-    }
-    Some((l - 1) as i32)
-}
-
-// Assumes values are in ascending order, returns matching index or the smaller value larger than target.
-// Returns None if target is smaller than the smaller value.
-pub(crate) fn binary_search_or_greater<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-) -> Option<i32> {
-    let mut l = 0;
-    let mut r = array.seq_len();
-    while l < r {
-        let m = (l + r) / 2;
-        match array.at(m).cmp(target) {
-            Ordering::Less => {
-                l = m + 1;
-            }
-            Ordering::Greater => {
-                r = m;
-            }
-            Ordering::Equal => {
-                return Some(walk_back(target, array, m) as i32);
-            }
-        }
-    }
-    // If target is larger than the maximum return None
-    if r == array.seq_len() {
-        return None;
-    }
-    // Now r points to the rightmost element
-    Some(r as i32)
-}
-
-// Assumes values are in descending order
-pub(crate) fn binary_search_descending_or_smaller<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-) -> Option<i32> {
-    let n = array.seq_len();
-    let mut l = 0;
-    let mut r = n;
-    while l < r {
-        let m = (l + r) / 2;
-        let index = n - m - 1;
-        match array.at(index).cmp(target) {
-            Ordering::Less => {
-                l = m + 1;
-            }
-            Ordering::Greater => {
-                r = m;
-            }
-            Ordering::Equal => {
-                return Some(walk_forward(target, array, index) as i32);
-            }
-        }
-    }
-    if l == 0 {
-        return None;
-    }
-    Some((n - l) as i32)
-}
-
-// Assumes values are in descending order, returns matching index or the smaller value larger than target.
-// Returns None if target is smaller than the smaller value.
-pub(crate) fn binary_search_descending_or_greater<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-) -> Option<i32> {
-    let n = array.seq_len();
-    let mut l = 0;
-    let mut r = n;
-    while l < r {
-        let m = (l + r) / 2;
-        let index = n - m - 1;
-        match array.at(index).cmp(target) {
-            Ordering::Less => {
-                l = m + 1;
-            }
-            Ordering::Greater => {
-                r = m;
-            }
-            Ordering::Equal => {
-                return Some(walk_forward(target, array, index) as i32);
-            }
-        }
-    }
-    if r == n {
-        return None;
-    }
-    Some((n - r - 1) as i32)
+    probe
 }
 
 impl Model {

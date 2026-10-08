@@ -5,12 +5,9 @@ use crate::{
 };
 
 use super::{
-    binary_search::{
-        binary_search_descending_or_greater, binary_search_descending_or_smaller,
-        binary_search_or_greater, binary_search_or_smaller,
-    },
+    binary_search::binary_search,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
-    util::{array_node_to_calc_result, compare_values},
+    util::array_node_to_calc_result,
 };
 
 #[derive(PartialEq)]
@@ -68,29 +65,20 @@ fn binary_hit(
     search_mode: &SearchMode,
     match_mode: &MatchMode,
 ) -> BinaryHit {
-    let ascending = *search_mode == SearchMode::BinarySearchAscending;
-    let index = match (*match_mode == MatchMode::ExactMatchLarger, ascending) {
-        (true, true) => binary_search_or_greater(lookup_value, values),
-        (true, false) => binary_search_descending_or_greater(lookup_value, values),
-        (false, true) => binary_search_or_smaller(lookup_value, values),
-        (false, false) => binary_search_descending_or_smaller(lookup_value, values),
-    };
-    let Some(index) = index.and_then(|i| usize::try_from(i).ok()) else {
-        return BinaryHit::NotFound;
-    };
-    match match_mode {
-        MatchMode::ExactMatch => {
-            if values
-                .get(index)
-                .is_some_and(|value| compare_values(value, lookup_value) == 0)
-            {
-                BinaryHit::Found(index)
-            } else {
-                BinaryHit::NotFound
-            }
-        }
-        MatchMode::ExactMatchSmaller | MatchMode::ExactMatchLarger => BinaryHit::Found(index),
-        MatchMode::WildcardMatch => BinaryHit::Wildcard,
+    if *match_mode == MatchMode::WildcardMatch {
+        return BinaryHit::Wildcard;
+    }
+    let probe = binary_search(
+        lookup_value,
+        values,
+        *search_mode == SearchMode::BinarySearchDescending,
+    );
+    match probe.pick(
+        *match_mode == MatchMode::ExactMatchSmaller,
+        *match_mode == MatchMode::ExactMatchLarger,
+    ) {
+        Some(index) => BinaryHit::Found(index),
+        None => BinaryHit::NotFound,
     }
 }
 

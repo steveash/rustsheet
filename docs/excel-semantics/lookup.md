@@ -186,11 +186,25 @@ is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"n
 Evidence: probes/xmatch-xlookup-blanks (Excel oracle; Col, Err, Row sheets, bounded and whole column/row).
 Status: VERIFIED
 Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared by XLOOKUP.
-Open (T-1019): binary search_mode 2/-2 over blanks: exact lookups of present values skip the blanks,
-e.g. `XMATCH(10,A1:A6,0,2)` is 3 and `XLOOKUP(10,A1:A6,B1:B6,"nf",0,2)` is "c" (engine #N/A / "nf");
-`XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is 2 (engine 5 / 6), unexplained by simple skipping.
 Also unprobed: text and boolean lookup values with match_mode -1/1 over blanks, and a blank lookup
 value against 0/""/FALSE candidates (`XMATCH(G1,A:A)` is 2 here, where `MATCH(G1,A:A,0)` is #N/A).
+
+## XMATCH / XLOOKUP binary search (search_mode 2/-2) probes blanks and errors
+Rule: search_mode 2/-2 is the classic binary search on inclusive bounds, probing the lower middle
+`(lo+hi)/2`. Unlike MATCH's approximate search ("skip upwards past other types", T-0212), it never
+skips a blank or an error cell. It compares the cell like any other, and a blank or an error is
+larger than every number. The search stops at an equal value. Otherwise match_mode -1/1 return the
+last probed smaller/larger cell, which may be a blank. With 5,_,10,_,20,_ in A1:A6:
+`XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(20,A1:A6,0,2)` is 5 (mid 2 is 10). `XMATCH(7,A1:A6,1,2)`
+is 2, the blank A2. Over the whole column, `XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is
+2: the probes 524287, 262143, ..., 3, 1, 0 are all blank until A1. `XMATCH(99,A:A,-1,-2)` is #N/A.
+Along a row, `XMATCH(99,1:1,-1,2)` is 1. With 5,#N/A,10,#DIV/0!,20, `XMATCH(15,A1:A5,-1,2)` is 3
+(the #DIV/0! probe counts as larger). XLOOKUP agrees (`XLOOKUP(10,A1:A6,B1:B6,"nf",0,2)` is "c").
+Evidence: probes/xmatch-xlookup-blanks Col!M16-M26, M44-M46, Err!M6-M7, Row!A18-A19 (Excel oracle).
+Status: VERIFIED
+Implemented in: `binary_search` (functions/binary_search.rs), shared by XMATCH and XLOOKUP.
+Unprobed: runs of equal values. The engine moves to the first of the run (the last when
+descending), and never below the second cell when moving back.
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
