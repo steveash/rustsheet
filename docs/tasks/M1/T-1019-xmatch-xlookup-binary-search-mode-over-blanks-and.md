@@ -3,7 +3,7 @@ id: T-1019
 title: "XMATCH/XLOOKUP binary search_mode over blanks and error cells"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
