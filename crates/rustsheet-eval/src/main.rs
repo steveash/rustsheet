@@ -263,12 +263,13 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let old = Baseline::read(&path)?;
         let delta = baseline::diff(&old, &current);
         println!(
-            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, removed cases {})",
+            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
             old.failing.len(),
             current.failing.len(),
             delta.fixed.len(),
             delta.new_failures.len(),
             delta.regressions.len(),
+            delta.new_cases.len(),
             delta.removed_cases.len()
         );
         for r in delta.regressions.iter().take(25) {
