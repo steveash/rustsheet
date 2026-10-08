@@ -66,6 +66,43 @@ impl JoinSize {
         over || self.units.saturating_add(separator) > MAX_TEXT_UNITS
     }
 
+    /// Appends one range cell's text to a TEXTJOIN. Once the join is over the limit the values
+    /// are dropped, and a cell error met there is dropped too (the result is #CALC! unless a later
+    /// error argument wins); otherwise the error is returned (probes/text-result-limit C18-C20,
+    /// -errors C2, C4, -errors-refs D10-D11).
+    fn push_cell(
+        &mut self,
+        value: CalcResult,
+        ignore_empty: bool,
+        values: &mut Vec<String>,
+        over_limit: &mut bool,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        *over_limit = *over_limit || self.exceeds(values);
+        if *over_limit {
+            values.clear();
+        }
+        match value {
+            CalcResult::Number(n) => values.push(number_to_text(n)),
+            CalcResult::String(text) => values.push(text),
+            CalcResult::Boolean(b) => values.push(if b { "TRUE" } else { "FALSE" }.to_string()),
+            CalcResult::EmptyCell if !ignore_empty => values.push(String::new()),
+            CalcResult::Error { .. } if *over_limit || self.exceeds_with_separator(values) => {
+                *over_limit = true;
+            }
+            error @ CalcResult::Error { .. } => return Err(error),
+            CalcResult::EmptyCell | CalcResult::EmptyArg | CalcResult::Range { .. } => {}
+            CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                return Err(CalcResult::new_error(
+                    Error::NIMPL,
+                    cell,
+                    "Arrays not supported yet".to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
     /// Adds `count` empty values, the empty cells a clipped range walk skipped, stopping once the
     /// join is over the limit (so at most about 32,767 are added). Returns whether it is over.
     /// With an empty delimiter they add nothing, so none are added.
@@ -220,15 +257,27 @@ impl Model {
             if over_limit {
                 values.clear();
             }
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => values.push(number_to_text(value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
+                        // A 3-D reference is walked sheet by sheet; an error cell past the limit
+                        // is dropped like a range cell's (probes/text-result-limit-errors-refs
+                        // D10-D11).
+                        if let Err(error) =
+                            self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                                size.push_cell(
+                                    value,
+                                    ignore_empty,
+                                    &mut values,
+                                    &mut over_limit,
+                                    cell,
+                                )
+                            })
+                        {
+                            return error;
+                        }
+                        continue;
                     }
                     let row1 = left.row;
                     let mut row2 = right.row;
@@ -254,48 +303,19 @@ impl Model {
                     let width = i64::from(full_column2) - i64::from(column1) + 1;
                     for row in row1..row2 + 1 {
                         for column in column1..(column2 + 1) {
-                            over_limit = over_limit || size.exceeds(&values);
-                            if over_limit {
-                                values.clear();
-                            }
-                            match self.evaluate_cell(CellReferenceIndex {
+                            let value = self.evaluate_cell(CellReferenceIndex {
                                 sheet: left.sheet,
                                 row,
                                 column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    values.push(number_to_text(value));
-                                }
-                                CalcResult::String(value) => values.push(value),
-                                CalcResult::Boolean(value) => {
-                                    if value {
-                                        values.push("TRUE".to_string())
-                                    } else {
-                                        values.push("FALSE".to_string())
-                                    }
-                                }
-                                CalcResult::EmptyCell => {
-                                    if !ignore_empty {
-                                        values.push("".to_string())
-                                    }
-                                }
-                                // Excel: a cell error met after the walk is past the limit is
-                                // dropped and the result is #CALC!, while an error argument still
-                                // wins (probes/text-result-limit C18-C20, -errors C2, C4).
-                                CalcResult::Error { .. }
-                                    if over_limit || size.exceeds_with_separator(&values) =>
-                                {
-                                    over_limit = true;
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::EmptyArg | CalcResult::Range { .. } => {}
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    }
-                                }
+                            });
+                            if let Err(error) = size.push_cell(
+                                value,
+                                ignore_empty,
+                                &mut values,
+                                &mut over_limit,
+                                cell,
+                            ) {
+                                return error;
                             }
                         }
                         if pad && !over_limit {
@@ -308,7 +328,7 @@ impl Model {
                     }
                 }
                 // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
-                // C3); other reference kinds are unprobed (text.md).
+                // C3).
                 CalcResult::Error { .. }
                     if matches!(arg, Node::ReferenceKind { .. })
                         && (over_limit || size.exceeds_with_separator(&values)) =>
