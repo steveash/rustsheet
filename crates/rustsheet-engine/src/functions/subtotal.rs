@@ -180,8 +180,28 @@ impl Model {
                 // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
                 _ if is_multi_area(arg) => {
                     let ranges = self.reference_ranges(arg, cell)?;
+                    // Bounded like every union aggregate (decision 0014, references.md "Union
+                    // area cap"), and each area is clipped to the used area: the cells past it
+                    // are empty, which the walk ignores anyway.
+                    self.check_area_cells(&ranges, cell)?;
                     for Range { left, right } in ranges.iter() {
-                        self.subtotal_walk_range(*left, *right, cell, &mode, &mut result)?;
+                        let (row2, column2) = self
+                            .used_area_corner(
+                                left.sheet,
+                                left.row,
+                                left.column,
+                                right.row,
+                                right.column,
+                            )
+                            .map_err(|message| {
+                                CalcResult::new_error(Error::ERROR, cell, message)
+                            })?;
+                        let clipped = CellReferenceIndex {
+                            row: row2,
+                            column: column2,
+                            ..*right
+                        };
+                        self.subtotal_walk_range(*left, clipped, cell, &mode, &mut result)?;
                     }
                 }
                 _ => {

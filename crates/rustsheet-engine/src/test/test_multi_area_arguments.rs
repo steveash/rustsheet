@@ -205,3 +205,21 @@ fn subtotal_of_a_union() {
         ],
     );
 }
+
+#[test]
+fn subtotal_of_a_union_obeys_the_area_cell_bound() {
+    // Same bound as SUM (`whole_columns_over_the_cell_bound_are_not_walked`): MAX_AREAS copies
+    // of A:A over 1,000 used rows are past MAX_AREA_CELLS, so SUBTOTAL answers `#VALUE!` at
+    // once instead of walking them; a handful of whole columns is walked.
+    let mut model = model();
+    model._set("A1000", "1");
+    model._set(
+        "Z1",
+        &format!("=SUBTOTAL(9,{})", balanced_union("A:A", MAX_AREAS)),
+    );
+    model._set("Z2", &format!("=SUBTOTAL(9,{})", balanced_union("A:A", 16)));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "#VALUE!");
+    assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
+    assert_eq!(model._get_text("Z2"), "32");
+}
