@@ -81,6 +81,32 @@ Status: VERIFIED (observations); the iteration (update rule, stopping test, cap)
 Implemented in: n/a (T-0916)
 
 
+## XIRR is a doubling search and a bisection, not Newton
+Rule (structure, partly fitted): every probed XIRR result lies on the lattice g * j / 2^k of its guess g
+(1E-5 * j / 2^k for guess 0), with j of 24 to 31 bits. Excel brackets the root by doubling the guess
+(roots above it) or halving it (roots below), then bisects the bracket and returns a point of it.
+It never returns the guess itself, even when the guess is the exact root: `XIRR({-1000,1100},
+{45000,45365})` (root exactly 0.1, guess 0.1) is 0.1*(1-2^-24) = 0.09999999403953552, bracket
+[0.05, 0.1]. Guess 0 brackets with 1E-5 * 2^m: the same flows give 0.1 - 1E-5/2^11 =
+1E-5*(8192 + 3702783/2048), bracket [0.08192, 0.16384]. A zero first value halves the guess 25
+times, 0.1/2^25 = 2.9802322387695314E-09, whatever the dates (xirr-early-dates A10, A11), as if
+the sign test failed on every step (consistent with XNPV divided by the first value, NaN when it
+is 0). A simulation (expand by doubling or halving from g, bisect, stop when the width is below
+2^-26 * |1 + mid|, return the midpoint) reproduces 28 of the 34 positive-guess, positive-root cells
+of probes-numeric/m9-fin-irr-rate and probes/xirr-early-dates bit for bit. It misses guess 1 (A619,
+A628, A655: Excel bisects one step further), the date-0 first flow (A8, root 0.000767, 1.3E-6 relative
+from the exact root, not yet bracketed by the model) and the zero-first-value cells. Not yet fitted:
+negative roots, which Excel reaches from a positive guess (-0.9271996639668942 =
+0.1 * -1244466323/2^27), and the guess-0 bracket for negative roots (no 1E-5 lattice).
+Unprobed: other guesses with a zero first value (the task asked for XIRR(...,0.2) and 1).
+Evidence: probes-numeric/m9-fin-irr-rate A585-A656 (excel-graph, 2026-10-06, T-1009),
+probes/xirr-early-dates A4, A8, A10-A13, probes/xirr-mismatched-empties X3-X5 (excel-graph,
+2026-10-08, T-1124). Analysis: T-1155.
+Status: VERIFIED (the lattice and the three closed forms above); the stopping rule and the
+negative-root search are UNVERIFIED (T-0916).
+Implemented in: n/a (the engine uses Newton then bisection on [-0.9999, 100], T-0916).
+Tasks: T-1155, T-0916
+
 ## RATE: an empty guess is guess 0, not the default 0.1
 Rule: an empty guess argument (`RATE(48,-200,8000,0,1,)`) or a reference to an empty cell behaves as
 guess 0, not the default 0.1: the result has the same bits as an explicit `0` (0.008052981923885287)
