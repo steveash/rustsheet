@@ -3,7 +3,7 @@ id: T-0935
 title: "TEXT on text and booleans: apply the format's text section (28 known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -51,3 +51,7 @@ broke `formatter::test::test_general::test_string_double_quota` (`0 """Millions"
 `42 "Millions"`, an IronCalc-era test without Excel evidence). Resolving that needs an excel-probe of
 `"""x"""` and similar shapes, then updating that test with the evidence. Acceptance criteria 1 (all 28
 lines) is open until then.
+
+## Outcome
+`fn_text` formats text and booleans with the format's text section (`format_text_value`, formatter/format.rs), for scalars and array elements; a lone section containing `@` is a text section too. Probe `probes/format-doubled-quotes` (11 cells, excel-graph) showed a doubled quote in a format literal is not an escaped quote, so `consume_string` (formatter/lexer.rs) now ends the literal at every `"`, and `test_string_double_quota` asserts the Excel value (`42 Millions`). Eval: poi known failures 600 -> 572 (all 28 cells), probes +11 passing cells (new case), 0 regressions. number-formats.md records both rules.
+

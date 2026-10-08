@@ -105,6 +105,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-constants.case.json	24
 C	probes/filter-if-empty-array.case.json	12
+C	probes/format-doubled-quotes.case.json	11
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-exponent-sum-2.case.json	34
 C	probes/geomean-exponent-sum.case.json	28
