@@ -121,9 +121,15 @@ impl Model {
             // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
             // A union with an error operand is that error, not a reference: `ISREF((A1,#REF!))`
             // is FALSE (probes/union-accepted H9).
-            Node::OpIntersectKind { .. } | Node::OpUnionKind { .. } => {
-                matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_))
-            }
+            // IF and CHOOSE are references when the argument they pick is one: `ISREF(IF(TRUE,
+            // A1))` and `ISREF(CHOOSE(1,A1))` are TRUE, with a value FALSE (probes/isref-function-
+            // results C3:C6, excel-graph; T-0235).
+            Node::OpIntersectKind { .. }
+            | Node::OpUnionKind { .. }
+            | Node::FunctionKind {
+                kind: crate::functions::Function::If | crate::functions::Function::Choose,
+                ..
+            } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
             // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
             Node::FunctionKind {
                 kind: crate::functions::Function::Index,
