@@ -268,6 +268,6 @@ text and boolean, equal to a blank. With L1:L5 = a..e and blanks below, that for
 "omitted = 0" reading (1) rules out. The single cell cannot separate "blank" from "empty text", and the linear and exact
 modes, where `linear_scan` only treats an `EmptyCell` lookup value as blank, are unprobed (T-1157).
 Evidence: crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/XLOOKUP.xlsx Errors!N1 (Excel-authored cached value).
-Status: PARTIAL
+Status: UNVERIFIED (probe pending, T-1157)
 Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`.
 Tasks: T-1153, T-1157
