@@ -313,3 +313,32 @@ fn parentheses_around_a_union_keep_every_level() {
         assert_eq!(to_english_localized_string(&node, &context()), formula);
     }
 }
+
+/// A cut of a parenthesized union keeps the parentheses written around it (T-1176,
+/// probes/union-cut-precedence F6); other cuts print as before (the whole-formula levels are the grouped root's).
+#[test]
+fn parenthesized_cut_of_a_union_keeps_its_parentheses() {
+    let mut parser = parser();
+    for (formula, expected) in [
+        ("((A1,B1) B1)", "((A1,B1) B1)"),
+        ("(((A1,B1) B1))", "(((A1,B1) B1))"),
+        ("(A1 B1)", "(A1 B1)"),
+        ("(A1:B1 B1)", "(A1:B1 B1)"),
+        // The wrapper levels the formula, `@` and `:` track themselves are not counted twice.
+        ("@((A1,B1) B1)", "@((A1,B1) B1)"),
+        ("SUM(((A1,B1) B1):C1)", "SUM(((A1,B1) B1):C1)"),
+        ("SUM(((A1,B1) B1))", "SUM(((A1,B1) B1))"),
+        // As either operand of another cut it prints its own levels only.
+        ("C1 ((A1,B1) B1)", "C1 ((A1,B1) B1)"),
+        ("A1:B1 ((A1,B1) B1)", "A1:B1 ((A1,B1) B1)"),
+        ("((A1,B1) B1) ((A1,B1) B1)", "((A1,B1) B1) ((A1,B1) B1)"),
+        ("((A1,B1) @B1) C1", "((A1,B1) @B1) C1"),
+    ] {
+        let node = parser.parse_cell_formula(formula, &context());
+        let text = to_english_localized_string(&node, &context());
+        assert_eq!(text, expected);
+        // Printing is a fixed point: a re-parse gains no level.
+        let reparsed = parser.parse_cell_formula(&text, &context());
+        assert_eq!(to_english_localized_string(&reparsed, &context()), expected);
+    }
+}
