@@ -164,3 +164,21 @@ With A1:A2 = {5, 7}, A3:A4 = {"x", TRUE}: `RANK(3,A1:A2)`, `RANK(3,A3:A4)`, `RAN
 An error-valued `order` wins over the absent-number result: `RANK(3,A6:A7,1/0)`, `RANK(3,A3:A4,1/0)` and `RANK(5,A1:A2,1/0)` are all `#DIV/0!`.
 Status: VERIFIED (probes `rank-absent-number`, T-1055, and `if-index-ref-args-aggregates` A46-A51, T-1003; oracle excel-graph, 2026-10-07).
 Implemented in: `fn_rank_eq` and `fn_rank_avg` (crates/rustsheet-engine/src/functions/statistical/rank_eq_avg.rs).
+
+## Normal CDF and ERFC sweep (T-1040)
+Rule: on a dense grid, `ERFC(x)` and `ERFC.PRECISE(x)` are bit-identical (265 points, x in -6..27
+step 0.125) and match the correctly rounded `erfc` to within 1e-14 relative wherever the result is
+a normal double; they return 0 from x = 26.625 on, where the true value is subnormal (< 2.2E-308),
+so Excel flushes subnormal results to 0 here too (last non-zero: `ERFC(26.5)` = 2.2109076642637346E-307).
+`NORM.S.DIST(z,TRUE)` follows `0.5*erfc(-z/sqrt(2))` closely for |z| <= 8 (max relative error 1.1E-14
+against the correctly rounded value for z > -8) but its relative error grows in the lower tail,
+reaching about 2E-13 at z = -37; it returns 0 from z = -37.625 down (last non-zero:
+`NORM.S.DIST(-37.5,TRUE)` = 4.605353009581954E-308). `NORM.S.DIST(0,TRUE)` = 0.5,
+`NORM.S.DIST(8,TRUE)` = 0.9999999999999993, `NORM.S.DIST(-8,TRUE)` = 6.220960574271738E-16.
+`GAUSS(z)` (z in -38..8 step 0.5) and the 20 `NORM.DIST`/`LOGNORM.DIST` cumulative probes with
+sigma != 1 are all within 1e-14 relative of the correctly rounded values (no pattern beyond the
+last-digit noise already recorded above); no error edges appeared in these grids.
+Evidence: probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf-b`, `t1040-erfc`,
+`t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf` (oracle
+excel-graph, 2026-10-08).
+Status: VERIFIED (values); the formulation that reproduces the tail error is open in T-0968.
