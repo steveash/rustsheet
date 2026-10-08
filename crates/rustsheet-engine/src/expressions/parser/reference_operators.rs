@@ -29,6 +29,7 @@ impl Parser {
                 node,
                 Node::ParseErrorKind { .. }
                     | Node::OpUnionKind { .. }
+                    | Node::OpIntersectKind { written: 1.., .. }
                     | Node::GroupedRootKind { .. }
             )
         {
@@ -517,9 +518,10 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
 /// and so does an `@`, which would otherwise take the rest of the operator's text
 /// (`A1:(@B1)`, `(@(A1 B1)):C3`; T-1102).
 pub(crate) fn tight_operand(text: String, node: &Node) -> String {
+    // A cut with its own written parentheses (T-1176) prints them itself.
     if matches!(
         node,
-        Node::OpIntersectKind { .. } | Node::ImplicitIntersection { .. }
+        Node::OpIntersectKind { written: 0, .. } | Node::ImplicitIntersection { .. }
     ) {
         format!("({text})")
     } else {
@@ -534,8 +536,12 @@ pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
     // A nested `@` needs one level even when none was written (programmatic trees).
     let levels = if matches!(node, Node::ImplicitIntersection { .. }) {
         written.max(1)
-    } else if matches!(node, Node::OpUnionKind { .. }) {
-        // A union prints the levels it was written in itself, `@(A1,B2)`.
+    } else if matches!(
+        node,
+        Node::OpUnionKind { .. } | Node::OpIntersectKind { written: 1.., .. }
+    ) {
+        // A union, or a cut of one (T-1176), prints the levels it was written in itself,
+        // `@(A1,B2)`.
         0
     } else {
         written

@@ -24,4 +24,4 @@ probes/union-cut-precedence F6 (oracle excel-graph, T-1140): Excel prints `=SUM(
 -
 
 ## Outcome
-`OpIntersectKind` gained `written` (parentheses levels around a cut whose leftmost operand is a parenthesized union); the parser sets it and `stringify` prints it. Other parenthesized cuts are unchanged (Excel behavior unverified, T-1178). Eval: probes known failures 394 -> 393 (F6 fixed), no regressions.
+`OpIntersectKind` gained `written` (parentheses levels around a cut whose leftmost operand is a parenthesized union); the parser sets it and `stringify` prints it. The cut now also prints its written parentheses inside larger expressions (`-((A1,B1) B1)`, `SUM(((A1,B1) B1),1)`), matching the typed text but without an oracle cell of its own (T-1178); other parenthesized cuts are unchanged. The whole-formula, `@` and `:` wrappers do not count those levels twice (unit tests in test_union.rs). Eval: probes known failures 394 -> 393 (F6 fixed), no regressions.
