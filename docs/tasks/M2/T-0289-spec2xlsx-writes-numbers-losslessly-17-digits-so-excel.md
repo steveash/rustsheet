@@ -3,7 +3,7 @@ id: T-0289
 title: "spec2xlsx writes numbers losslessly (17 digits) so Excel and the engine read the same double"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
