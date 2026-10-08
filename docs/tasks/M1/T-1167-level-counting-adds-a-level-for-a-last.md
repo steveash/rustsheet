@@ -3,7 +3,7 @@ id: T-1167
 title: "@(...) level counting adds a level for a last inner group (same end-only check as T-1161 had)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
