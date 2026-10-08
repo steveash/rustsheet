@@ -160,6 +160,7 @@ impl Model {
             // (probes/min-max-reference-forms C1-C4).
             Node::ReferenceKind { .. }
             | Node::ImplicitIntersection { .. }
+            | Node::OpRangeKind { .. }
             | Node::DefinedNameKind(_)
             | Node::NamedVariableKind { .. } => self.evaluate_node_with_reference(node, cell),
             Node::SheetSpanKind {
