@@ -219,9 +219,6 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// The intersection was written in parentheses, `(A1 B1)`; only an `@` operand prints
-        /// them back, as Excel's FORMULATEXT does (`@(A1 B1)`, T-1109).
-        parenthesized: bool,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
@@ -278,6 +275,10 @@ pub enum Node {
     ImplicitIntersection {
         automatic: bool,
         child: Box<Node>,
+        /// Levels of parentheses written around the whole operand, `@((A1 B1))` is 2. Excel's
+        /// FORMULATEXT prints them back (`@(A1)`, `@(A1:B1)`, `@((A1 B1))`; probes/at-paren-operands,
+        /// T-1116); the automatic `@` of an xlsx import has none.
+        written: u8,
     },
     SpillRangeOperator {
         child: Box<Node>,
@@ -308,6 +309,18 @@ pub enum Node {
     EmptyArgKind,
 }
 
+impl Node {
+    /// The `@` an xlsx import adds around a range-valued operand: nothing was written, so it
+    /// prints no parentheses.
+    pub(crate) fn automatic_at(child: Node) -> Node {
+        Node::ImplicitIntersection {
+            automatic: true,
+            child: Box::new(child),
+            written: 0,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Parser {
     lexer: lexer::Lexer,
@@ -328,6 +341,10 @@ pub struct Parser {
     trailing_name: Option<(String, usize)>,
     /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
     at_paren: bool,
+    /// The parenthesized group an `@` operand was just parsed from: its levels and the lexer
+    /// position after its last `)`, so `@(A1) B1` (whose group is only part of the operand) is not
+    /// counted.
+    at_group: Option<(u8, usize)>,
     /// The formula starts with `(` and that group has not been parsed yet.
     leading_paren: bool,
     /// The group opened by the formula's first `(` closes at the end of the formula: the whole
@@ -379,6 +396,7 @@ impl Parser {
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
             at_paren: false,
+            at_group: None,
             leading_paren: false,
             grouped_root: false,
             nesting: 0,
@@ -796,6 +814,7 @@ impl Parser {
                         return Node::ImplicitIntersection {
                             automatic: false,
                             child: Box::new(args[0].clone()),
+                            written: 0,
                         };
                     }
                     // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too

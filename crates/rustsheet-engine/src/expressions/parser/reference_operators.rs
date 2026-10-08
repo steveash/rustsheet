@@ -23,6 +23,8 @@ impl Parser {
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
         let after_at = std::mem::take(&mut self.at_paren);
+        // `@((A1 B1))`: the inner group is a level of the same operand.
+        self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
         // The first group parsed is the one the formula's first `(` opens.
         let leading = std::mem::take(&mut self.leading_paren);
         let mut t = self.parse_expr();
@@ -56,6 +58,7 @@ impl Parser {
             };
         }
         self.inner_depth = self.inner_depth.max(union_depth);
+        let close = self.lexer.get_position_index();
         if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -71,9 +74,11 @@ impl Parser {
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
         }
-        // Only an `@` operand prints them back, so no other intersection records them.
-        if let Node::OpIntersectKind { parenthesized, .. } = &mut t {
-            *parenthesized = after_at;
+        // An `@` operand prints its written levels back (`ImplicitIntersection::written`).
+        if after_at {
+            let inner = self.at_group.take().filter(|&(_, end)| end == close);
+            let levels = inner.map_or(0, |(levels, _)| levels).saturating_add(1);
+            self.at_group = Some((levels, self.lexer.get_position_index()));
         }
         t
     }
@@ -124,7 +129,6 @@ impl Parser {
             t = Node::OpIntersectKind {
                 left: Box::new(t),
                 right: Box::new(p),
-                parenthesized: false,
             };
         }
         if as_name {
@@ -185,6 +189,7 @@ impl Parser {
                 return self.too_deep();
             }
             self.at_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
+            self.at_group = None;
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
@@ -200,9 +205,17 @@ impl Parser {
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
+            // Parentheses count only where the group is the whole operand (`@(A1)`, not `@(A1) B1`).
+            let written = self
+                .at_group
+                .take()
+                .filter(|&(_, end)| end == self.lexer.get_position_index())
+                .map_or(0, |(levels, _)| levels);
+            self.at_paren = false;
             return Node::ImplicitIntersection {
                 automatic: false,
                 child: Box::new(t),
+                written,
             };
         }
         let primary = self.parse_primary();
@@ -390,21 +403,19 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
-/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and an intersection keeps the
-/// ones it was written in, `@(A1 B1)` (T-1109).
-pub(crate) fn at_operand(text: String, node: &Node) -> String {
-    if matches!(
-        node,
-        Node::ImplicitIntersection { .. }
-            | Node::OpIntersectKind {
-                parenthesized: true,
-                ..
-            }
-    ) {
-        format!("({text})")
+/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and any operand
+/// keeps the `written` levels it had, `@(A1 B1)`, `@(A1)`, `@((A1 B1))` (T-1109, T-1116).
+pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
+    // A nested `@` needs one level even when none was written (programmatic trees).
+    let levels = if matches!(node, Node::ImplicitIntersection { .. }) {
+        written.max(1)
+    } else if matches!(node, Node::OpUnionKind { .. }) {
+        // A union prints the levels it was written in itself, `@(A1,B2)`.
+        0
     } else {
-        text
-    }
+        written
+    };
+    (0..levels).fold(text, |text, _| format!("({text})"))
 }
 
 /// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare

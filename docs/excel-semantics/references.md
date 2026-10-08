@@ -560,6 +560,21 @@ web refuses a workbook holding `=A1:(1/0)`, `=(1/0):(A1 B1)`, `=(1/0):(A1 A2)` o
 Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/at-paren-operands
 D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
-question). Engine gaps: the `@`
-parentheses of rows 30–32 (T-1116), the refused forms, which the engine evaluates (T-1117).
+question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), printed by `at_operand`
+(parser/reference_operators.rs; T-1116).
+Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand parentheses: every level is kept" below (T-1132).
+Engine gap: the refused forms, which the engine evaluates (T-1117).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
+
+## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
+Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
+`=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value
+`#VALUE!`), `=@(((A1 B1)))` and `=@(A1:A2 B1:B2)` print as written (value `#NULL!`). When the group is
+only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
+(`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it drops the group), a mismatch in
+`E34:E35` filed as T-1134. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+(FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
+desktop question (decision 0039).
+Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132).
+Status: VERIFIED (excel-graph); stored form UNVERIFIED
+Tasks: T-1132, T-1134
