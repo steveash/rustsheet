@@ -3,7 +3,7 @@ id: T-1149
 title: "Metamorphic generator family: SUM((r1,r2)) equals SUM(r1,r2) for same-sheet references"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
