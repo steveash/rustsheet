@@ -27,7 +27,7 @@ use crate::{
     utils::ParsedReference,
 };
 
-use crate::functions::VariableStack;
+use crate::reference_operators::VariableStack;
 use crate::tz::Tz;
 
 pub const APPLICATION: &str = "IronCalc Sheets";

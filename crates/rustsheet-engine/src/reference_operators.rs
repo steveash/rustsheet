@@ -1,7 +1,7 @@
 //! Evaluation of the reference operators: the range (`:`), the intersection (a space) and
 //! the union (a comma inside parentheses).
 
-use std::{ops::Deref, sync::Arc};
+use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
@@ -156,12 +156,58 @@ impl Binding {
     }
 }
 
+/// Most areas the LET variables and LAMBDA parameters in scope may hold together. One union is
+/// at most [`MAX_AREAS`] areas, but each binding may hold a fresh one
+/// (`LET(x1,(A1,A2),x2,(x1,x1),x3,(x2,A1),...)`), so memory would grow with formula length;
+/// past this total a binding is `#VALUE!` (DEVIATION, decision 0014: references.md "Union area
+/// cap").
+const MAX_HELD_AREAS: usize = 4 * MAX_AREAS;
+
+/// The LET variables and LAMBDA parameters in scope, by variable id, with the areas their
+/// union bindings hold, which may not pass [`MAX_HELD_AREAS`].
+#[derive(Clone, Default)]
+pub(crate) struct VariableStack {
+    bindings: HashMap<usize, Binding>,
+    held_areas: usize,
+}
+
+impl VariableStack {
+    pub(crate) fn get(&self, id: usize) -> Option<&Binding> {
+        self.bindings.get(&id)
+    }
+
+    /// Binds `id`; a union that would pass [`MAX_HELD_AREAS`] is bound to `#VALUE!` instead.
+    pub(crate) fn insert(&mut self, id: usize, binding: Binding, cell: CellReferenceIndex) {
+        let held = self.held_areas + binding.held_areas();
+        let binding = if held > MAX_HELD_AREAS {
+            Binding::Value(too_many_areas(cell))
+        } else {
+            self.held_areas = held;
+            binding
+        };
+        if let Some(old) = self.bindings.insert(id, binding) {
+            self.held_areas -= old.held_areas();
+        }
+    }
+
+    pub(crate) fn remove(&mut self, id: usize) {
+        if let Some(old) = self.bindings.remove(&id) {
+            self.held_areas -= old.held_areas();
+        }
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.bindings.clear();
+        self.held_areas = 0;
+    }
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
 fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
 }
 
-pub(crate) fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
+fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 

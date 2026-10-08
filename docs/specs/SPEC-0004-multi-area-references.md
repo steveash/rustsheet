@@ -253,7 +253,7 @@ anything else as before. Every reader of `variable_stack` except `evaluate_refer
 `#VALUE!` (probe row 9), and `LET(x,(A1,B2),y,x,SUM(y))`, `LET(x,IF(TRUE,(A1,B2)),SUM(x))` and
 `LAMBDA(x,SUM(x))((A1,B2))` are 6 (probes/multiarea-letbind, which overturned the first plan's
 value-evaluated LAMBDA arguments). LET in reference context evaluates its body there too
-(`SUM(LET(x,(A1,B2),x))` = 6). `variable_stack` is a `VariableStack` that caps the areas all
+(`SUM(LET(x,(A1,B2),x))` = 6). `variable_stack` is a `VariableStack` (next to `Binding`) that caps the areas all
 bindings in scope hold at `4 * MAX_AREAS` (DEVIATION, references.md "Union area cap"). The ids are
 unchanged.
 

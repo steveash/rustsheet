@@ -444,7 +444,7 @@ otherwise grow with formula length. A binding that would pass the total is `#VAL
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `MAX_AREA_CELLS`,
 `Model::union_areas`, `Model::count_union_areas`, `Model::intersect_areas`); functions/util.rs
-(`Model::check_area_cells`); functions/logical/let.rs (`MAX_HELD_AREAS`, `VariableStack`)
+(`Model::check_area_cells`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
 Tasks: T-0134, T-1062, T-1064
 
 ## Multi-area references in functions
