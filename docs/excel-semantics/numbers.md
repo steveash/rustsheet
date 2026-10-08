@@ -562,8 +562,9 @@ exact up to 8200 and 4000 copies. The `#NUM!` of many copies of 2^1000 (probes/g
 C12-C18: 1500-3000 copies `#NUM!`, 1000 copies 1.0715086071862671E+301) is not a GEOMEAN rule but
 the input: those cells hold 2^1000 as a stored number, and the workbook stores numbers with 16
 significant digits (spec2xlsx uses XlsxWriter, `{x:.16G}`), so Excel reads 1.071508607186267E+301,
-three ulps below 2^1000. Its significand is 1.99999999999999933, so the significand cut above makes
-1025+ copies `#NUM!`. Computed in the formula, 2^1000 is exact at every probed count, as are 2^10,
+three ulps below 2^1000: a stored 2^1000 minus `2^1000` is -3 * 2^947 (probes/geomean-pow2-count Q4).
+Its significand is 1.99999999999999933, so the significand cut above applies: 1024 copies of the
+stored value are finite and 1025 `#NUM!` (R3, R4). Computed in the formula, 2^1000 is exact at every probed count, as are 2^10,
 2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156). The
 harness now feeds the engine the same 16 digits (eval-harness.md).
 Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number

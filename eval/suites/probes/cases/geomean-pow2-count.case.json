@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1156: bracket GEOMEAN's #NUM! for many copies of a large power of two: 2^e (e = 10-1023) at 500-3000 copies (A-F), 2^1000 between 1010 and 1080 copies (J), 2^1000*1.0001, 1.0001 and 2^-1000*1.0001 at 1100-3000 copies (G-I, T-1120's unprobed wraps), and 2^1000 alternating with 1 (K). L-P bracket the wrap: 2^-1000 and 2^1000 times 1.001, 1.01 and 1.1 at 1100-3000 copies.",
+ "description": "T-1156: bracket GEOMEAN's #NUM! for many copies of a large power of two: 2^e (e = 10-1023) at 500-3000 copies (A-F), 2^1000 between 1010 and 1080 copies (J), 2^1000*1.0001, 1.0001 and 2^-1000*1.0001 at 1100-3000 copies (G-I, T-1120's unprobed wraps), and 2^1000 alternating with 1 (K). L-P bracket the wrap: 2^-1000 and 2^1000 times 1.001, 1.01 and 1.1 at 1100-3000 copies. Q1 stores 2^1000 as a number (written with 16 digits); Q2-Q4 read it back and R brackets GEOMEAN of 1000-1500 copies of it.",
  "tags": [
   "M2",
   "geomean",
@@ -116,7 +116,18 @@
     "P1": "=GEOMEAN(IF(SEQUENCE(1100),2^1000*1.1))",
     "P2": "=GEOMEAN(IF(SEQUENCE(1500),2^1000*1.1))",
     "P3": "=GEOMEAN(IF(SEQUENCE(2000),2^1000*1.1))",
-    "P4": "=GEOMEAN(IF(SEQUENCE(3000),2^1000*1.1))"
+    "P4": "=GEOMEAN(IF(SEQUENCE(3000),2^1000*1.1))",
+    "Q1": 1.0715086071862673e+301,
+    "Q2": "=Q1=2^1000",
+    "Q3": "=(Q1-2^1000)",
+    "Q4": "=(Q1-2^1000)/(2^947)",
+    "R1": "=GEOMEAN(IF(SEQUENCE(1000),$Q$1))",
+    "R2": "=GEOMEAN(IF(SEQUENCE(1020),$Q$1))",
+    "R3": "=GEOMEAN(IF(SEQUENCE(1024),$Q$1))",
+    "R4": "=GEOMEAN(IF(SEQUENCE(1025),$Q$1))",
+    "R5": "=GEOMEAN(IF(SEQUENCE(1026),$Q$1))",
+    "R6": "=GEOMEAN(IF(SEQUENCE(1100),$Q$1))",
+    "R7": "=GEOMEAN(IF(SEQUENCE(1500),$Q$1))"
    }
   }
  ],
