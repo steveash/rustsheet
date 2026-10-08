@@ -45,7 +45,7 @@ DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was
 wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was already right.)
 Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/rich_errors.rs`, shared by
-the importer (cached `#CALC!`/`#SPILL!`; errors the engine has no kind for stay `#VALUE!`) and the eval
+the importer (cached `#CALC!`/`#SPILL!`/`#CONNECT!`/`#BLOCKED!`/`#FIELD!`; unmapped errorTypes stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
 
 ## MOD lifts over array arguments

@@ -12,6 +12,7 @@ mod theme;
 mod workbook;
 mod workbook_xml_rels;
 mod worksheets;
+pub(crate) use worksheets::exported_error_literal;
 mod xml_constants;
 
 use std::io::BufWriter;
