@@ -232,6 +232,19 @@ fn at_operand_binds_looser_than_the_space() {
 }
 
 #[test]
+fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
+    // probes/at-paren-operands-levels E34:E35 (T-1134).
+    let mut model = model();
+    model._set("E34", "=@(A1) B1");
+    model._set("E35", "=@((A1)) B1");
+    model._set("E36", "=@(A1) B1 C1");
+    model.evaluate();
+    assert_eq!(model._get_formula("E34"), "=@(A1) B1");
+    assert_eq!(model._get_formula("E35"), "=@((A1)) B1");
+    assert_eq!(model._get_formula("E36"), "=@(A1) B1 C1");
+}
+
+#[test]
 fn called_parenthesized_reference_is_ref_error() {
     // probes/paren-call-operands, probes/paren-call-value (Excel refuses `(1)(2)`), T-0149.
     let mut model = model();

@@ -571,8 +571,7 @@ Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` op
 `=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value
 `#VALUE!`), `=@(((A1 B1)))` and `=@(A1:A2 B1:B2)` print as written (value `#NULL!`). When the group is
 only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
-(`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it drops the group), a mismatch in
-`E34:E35` filed as T-1134. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+(`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) before T-1134, which now prints them (`ImplicitIntersection::lead`). The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132).
