@@ -3,7 +3,7 @@ id: T-1132
 title: "Probe multi-level @ operand parentheses and the SINGLE export form"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
