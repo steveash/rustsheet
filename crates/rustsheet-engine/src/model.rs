@@ -34,8 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::functions::Binding;
-use crate::{cf_types::CfCellResult, tz::Tz};
+use crate::{cf_types::CfCellResult, functions::Binding, tz::Tz};
 
 #[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
