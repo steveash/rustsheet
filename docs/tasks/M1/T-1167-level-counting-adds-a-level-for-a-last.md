@@ -3,7 +3,7 @@ id: T-1167
 title: "@(...) level counting adds a level for a last inner group (same end-only check as T-1161 had)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ A reviewer of T-1161 saw that the `at_group` level counting in `parse_parenthesi
 
 ## Out of scope
 -
+
+## Outcome
+No extra level: an `@` group is only counted when it is the first thing inside the outer `(` (`at_paren`), so `@(A1+(B1))`, `@((A1)+(B1))`-style shapes add none. Test `at_operand_prints_exactly_the_levels_written` pins it; inner groups being dropped is unprobed and noted UNVERIFIED in references.md. No code change, no eval delta.

@@ -250,6 +250,26 @@ fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
 }
 
 #[test]
+fn at_operand_prints_exactly_the_levels_written() {
+    // T-1167: an inner group that only ends right before the outer `)` adds no level to the `@`
+    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41 and E43 are
+    // hand-written current engine output: inner groups inside the operand are dropped, as they are
+    // outside `@`, and no probe covers them (UNVERIFIED, docs/excel-semantics/references.md).
+    let mut model = model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("E40", "=@(A1+(B1))");
+    model._set("E41", "=@((A1) (B1))");
+    model._set("E42", "=@((A1))");
+    model._set("E43", "=@(((A1)) B1)");
+    model.evaluate();
+    assert_eq!(model._get_formula("E40"), "=@(A1+B1)");
+    assert_eq!(model._get_formula("E41"), "=@(A1 B1)");
+    assert_eq!(model._get_formula("E42"), "=@((A1))");
+    assert_eq!(model._get_formula("E43"), "=@(A1 B1)");
+}
+
+#[test]
 fn called_parenthesized_reference_is_ref_error() {
     // probes/paren-call-operands, probes/paren-call-value (Excel refuses `(1)(2)`), T-0149.
     let mut model = model();
