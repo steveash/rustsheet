@@ -1,6 +1,7 @@
 mod conditional_formatting;
 mod test_actions;
 mod test_arabic_roman;
+mod test_bare_union;
 mod test_binary_search;
 mod test_ceiling_floor;
 mod test_cell;
@@ -88,6 +89,7 @@ mod test_sheet_span_references;
 mod test_sheets;
 mod test_statistical_functions;
 mod test_styles;
+mod test_subtotal_reference_args;
 mod test_sumsq;
 mod test_sumx_pairing;
 mod test_trigonometric;

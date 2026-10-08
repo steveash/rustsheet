@@ -77,16 +77,10 @@ fn comma_in_a_call_still_separates_arguments() {
 }
 
 #[test]
-fn comma_outside_parentheses_is_not_a_union() {
+fn malformed_unions_are_parse_errors() {
+    // A bare comma is a union (`=A1,B2`, T-1073, test/test_bare_union.rs); these are not.
     let mut parser = parser();
-    for formula in [
-        "A1,B2",
-        "A1 B1,C1",
-        "(A1,B2),C3",
-        "(A1,)",
-        "(,A1)",
-        "(A1,B2",
-    ] {
+    for formula in ["A1,", "(A1,)", "(,A1)", "(A1,B2"] {
         let node = parser.parse(formula, &context());
         assert!(is_parse_error(&node), "{formula}: {node:?}");
     }

@@ -227,6 +227,9 @@ pub enum Node {
         /// Parentheses levels written around the union: 0 for the left link of a plain chain
         /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
         written: usize,
+        /// Written outside any parentheses or argument list, where the comma is a reference
+        /// operator binding tighter than arithmetic: `=A1,B2`, `=1+A1,B2` (T-1073).
+        bare: bool,
     },
     OpConcatenateKind {
         left: ChainLeft,
@@ -366,6 +369,9 @@ pub struct Parser {
     inner_depth: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
+    /// The parser is outside every parenthesis and argument list, where a comma is the bare
+    /// union operator (`=A1,B2`, T-1073).
+    top_level: bool,
 }
 
 pub fn new_parser_english(
@@ -408,6 +414,7 @@ impl Parser {
             grouped_root: 0,
             root_group: None,
             nesting: 0,
+            top_level: false,
             depth: 0,
             inner_depth: 0,
             value_operators: 0,
@@ -454,7 +461,9 @@ impl Parser {
         self.leading_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
         self.grouped_root = 0;
         self.root_group = None;
+        self.top_level = true;
         let node = self.parse_expr();
+        self.top_level = false;
         self.expect_end(node)
     }
 
@@ -542,7 +551,9 @@ impl Parser {
         None
     }
 
-    fn parse_expr(&mut self) -> Node {
+    /// An expression at the current level; parentheses and argument lists call
+    /// [`Parser::parse_enclosed_expr`] instead, so their commas are not bare unions.
+    pub(super) fn parse_expr(&mut self) -> Node {
         let t = self.parse_chain(ChainLevel::Compare);
         if !matches!(t, Node::ParseErrorKind { .. }) {
             self.inner_depth = self.inner_depth.max(self.depth);
@@ -560,7 +571,7 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_intersection();
+        let mut t = self.parse_bare_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -826,10 +837,7 @@ impl Parser {
                         .functions
                         .lookup(name.trim_start_matches("_xlfn._xlws."))
                     {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
+                        return self.function_call(function_kind, args);
                     }
 
                     if let Some(function_kind) = self
@@ -837,10 +845,7 @@ impl Parser {
                         .functions
                         .lookup(name.trim_start_matches("_xlfn."))
                     {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
+                        return self.function_call(function_kind, args);
                     }
                     return Node::NamedFunctionKind {
                         name: name.trim_start_matches("_xlpm.").to_string(),

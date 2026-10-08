@@ -54,36 +54,15 @@ impl Parser {
         self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
         // The first group parsed is the one the formula's first `(` opens.
         let leading = std::mem::take(&mut self.leading_paren);
-        let mut t = self.parse_expr();
+        let t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        let separator = self.get_argument_separator_token();
-        let mut union_depth = self.depth;
-        while self.lexer.peek_token() == separator {
-            self.lexer.advance_token();
-            let p = self.parse_expr();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if !is_union_operand(&t) || !is_union_operand(&p) {
-                return Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Range],
-                    position: self.lexer.get_position() as usize,
-                    message: "Union needs references".to_string(),
-                };
-            }
-            if let Err(error) = self.grow(union_depth, self.depth) {
-                return error;
-            }
-            union_depth = self.depth;
-            t = Node::OpUnionKind {
-                left: Box::new(t),
-                right: Box::new(p),
-                written: 0,
-            };
-        }
+        let (mut t, union_depth) = match self.parse_union_chain(t, Self::parse_enclosed_expr, false)
+        {
+            Ok(chain) => chain,
+            Err(error) => return error,
+        };
         self.inner_depth = self.inner_depth.max(union_depth);
         let close = self.lexer.get_position_index();
         if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
@@ -114,6 +93,65 @@ impl Parser {
             self.at_group = Some((levels, self.lexer.get_position_index()));
         }
         t
+    }
+
+    /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
+    /// argument list only. There the comma is a reference operator that binds tighter than
+    /// arithmetic and looser than the space: Excel loads `=A1,B2` (`#VALUE!`, FORMULATEXT
+    /// `=A1,B2`), `=1+A1,B2` (`#VALUE!`), `=NA()+A1,B2` (`#N/A`) and `=A1,B2 C3` (`#NULL!`, the
+    /// empty `B2 C3`), and refuses `=A1,1` and `=SUM(A1),B2` (docs/excel-semantics/references.md
+    /// "Bare union", T-1073). Inside parentheses the union is the loosest operator instead
+    /// ([`Parser::parse_parenthesized`]).
+    pub(super) fn parse_bare_union(&mut self) -> Node {
+        let t = self.parse_intersection();
+        if !self.top_level || matches!(t, Node::ParseErrorKind { .. }) {
+            return t;
+        }
+        match self.parse_union_chain(t, Self::parse_intersection, true) {
+            Ok((t, depth)) => {
+                self.depth = depth;
+                t
+            }
+            Err(error) => error,
+        }
+    }
+
+    /// `first (',' operand)*`, left associative, each further operand parsed by `operand`: the
+    /// union chain and its depth. Every operand must be a reference, or a negated one
+    /// ([`is_union_operand`]); `bare` marks a chain written outside parentheses.
+    fn parse_union_chain(
+        &mut self,
+        first: Node,
+        operand: fn(&mut Self) -> Node,
+        bare: bool,
+    ) -> Result<(Node, usize), Node> {
+        let separator = self.get_argument_separator_token();
+        let mut t = first;
+        let mut depth = self.depth;
+        while self.lexer.peek_token() == separator {
+            self.lexer.advance_token();
+            let p = operand(self);
+            if let Node::ParseErrorKind { .. } = p {
+                return Err(p);
+            }
+            if !is_union_operand(&t) || !is_union_operand(&p) {
+                return Err(Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Range],
+                    position: self.lexer.get_position() as usize,
+                    message: "Union needs references".to_string(),
+                });
+            }
+            self.grow(depth, self.depth)?;
+            depth = self.depth;
+            t = Node::OpUnionKind {
+                left: Box::new(t),
+                right: Box::new(p),
+                written: 0,
+                bare,
+            };
+        }
+        Ok((t, depth))
     }
 
     /// `intersect => range (' ' range)*`, left associative.
@@ -300,6 +338,34 @@ impl Parser {
             message: "Unexpected input after the end of the formula".to_string(),
         }
     }
+
+    /// The call `kind(args)`, or a parse error when an argument that must be a reference is not
+    /// one. Excel for the web refuses a workbook (`FileCorruptTryRepair`) holding SUBTOTAL with
+    /// a non-reference argument after the function number (`{1,2}`, `A1:A2*1`, `1`, `"A1"`,
+    /// `-A1`, `#N/A`, `SUM(A1:A2)`, `FILTER(..)`, `VSTACK(..)`), an empty one (`SUBTOTAL(9,A1,)`)
+    /// or a nested SUBTOTAL, and AREAS of `1` or `"A1"`; the operands the intersection accepts all
+    /// load (docs/excel-semantics/references.md "SUBTOTAL and AREAS take references only",
+    /// T-1063, T-1163).
+    pub(super) fn function_call(&self, kind: Function, args: Vec<Node>) -> Node {
+        let first_reference = match kind {
+            Function::Subtotal => 1,
+            Function::Areas => 0,
+            _ => return Node::FunctionKind { kind, args },
+        };
+        let refused = args
+            .iter()
+            .skip(first_reference)
+            .any(|arg| matches!(arg, Node::EmptyArgKind) || !is_reference_operand(arg));
+        if refused {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: self.lexer.get_position() as usize,
+                message: "This argument must be a reference".to_string(),
+            };
+        }
+        Node::FunctionKind { kind, args }
+    }
 }
 
 /// A literal can never be a reference, so a space after one is not an intersection (`1 A1`
@@ -346,7 +412,8 @@ fn has_negated_operand(node: &Node) -> bool {
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// intersection and for SUBTOTAL and AREAS arguments ([`Parser::function_call`])
+/// (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as
@@ -530,18 +597,28 @@ pub(crate) fn union_text(
     locale: &Locale,
 ) -> String {
     // Callers pass only unions; any other node prints as a plain one-level union of its texts.
-    let (left, written) = match node {
-        Node::OpUnionKind { left, written, .. } => (&**left, *written),
-        other => (other, 1),
+    let (left, written, bare) = match node {
+        Node::OpUnionKind {
+            left,
+            written,
+            bare,
+            ..
+        } => (&**left, *written, *bare),
+        other => (other, 1, false),
     };
     let left_text = match left {
-        Node::OpUnionKind { written: 0, .. } => left_text
+        Node::OpUnionKind {
+            written: 0,
+            bare: false,
+            ..
+        } => left_text
             .strip_prefix('(')
             .and_then(|text| text.strip_suffix(')'))
             .unwrap_or(left_text),
         _ => left_text,
     };
-    let levels = written.max(1);
+    // A bare union (`=A1,B2`) has no parentheses of its own.
+    let levels = if bare { written } else { written.max(1) };
     format!(
         "{}{left_text}{}{right_text}{}",
         "(".repeat(levels),
