@@ -46,8 +46,8 @@ Cell errors past the limit (probes/text-result-limit-errors, excel-graph, 2026-1
 - TEXTJOIN: with a 32,767 prefix the delimiter takes it over before the cell, so `TEXTJOIN(",",TRUE,REPT("a",32767),A2:A2)` and `...,A2)` are `#CALC!` (C2-C3) while an empty delimiter leaves `#N/A` (C7); with a 32,766 prefix `","` is `#N/A` (C9) and `",,"` is `#CALC!` (C8); with ignore_empty FALSE an empty cell before the error adds a delimiter, so `TEXTJOIN(",",FALSE,REPT("a",32767),A3,A2)` is `#CALC!` (C11).
 Unprobed: reference kinds other than a direct A1 cell or range (defined names, INDEX/IF/OFFSET/INDIRECT results, `@A1:A3`, 3-D references) past the limit. The engine treats them differently: CONCAT reads them as references (the error is dropped, `#CALC!`) through `evaluate_aggregate_arg`, TEXTJOIN returns the error unless the argument is a direct cell reference.
 Status: VERIFIED
-Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments; a range cell error met once over the limit is `#CALC!` (T-0243, T-0262)
-Tasks: T-0243, T-0262
+Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments. `fn_concat` drops a range or reference cell error met once over the limit and continues; `fn_textjoin` does the same for range cells and, in its `Node::ReferenceKind` arm, for a direct single-cell reference, counting the preceding delimiter through `JoinSize::exceeds_with_separator` (T-0243, T-0262, T-0284)
+Tasks: T-0243, T-0262, T-0284
 
 ## TEXTJOIN with ignore_empty FALSE joins every cell of a whole column or row
 Rule: with ignore_empty FALSE every cell of a whole-column or whole-row argument adds a delimiter, however

@@ -24,7 +24,7 @@ T-0262 found that `TEXTJOIN(",",TRUE,REPT("a",32767),A1:A2)` with an error in `A
 -
 
 ## Outcome
-Probed with `probes/text-result-limit-errors` (11 cells, excel-graph). The engine differed on four: a range-cell error past the limit is dropped (`#CALC!`) for CONCAT as well as TEXTJOIN, TEXTJOIN counts the delimiter before reading a reference so an error in a first range cell or a single-cell reference is `#CALC!`, and a later error argument still wins. `concatenate.rs` now matches (11/11 pass). text.md Unprobed line resolved.
+Probed with `probes/text-result-limit-errors` (11 cells, excel-graph). The engine differed on four: a range-cell error past the limit is dropped (`#CALC!`) for CONCAT as well as TEXTJOIN, TEXTJOIN counts the delimiter before reading a reference so an error in a first range cell or a single-cell reference is `#CALC!`, and a later error argument still wins. `concatenate.rs` now matches (11/11 pass). The old text.md Unprobed items (CONCAT range error, first-cell range error, single-cell reference, trailing error argument) are resolved. Still unprobed: reference kinds other than a direct A1 cell or range (defined names, INDEX/IF/OFFSET/INDIRECT, `@`, 3-D), filed as T-0285. Eval: probes +11 passing cells (new case), no regressions.
 
 ## Handoff (resumed)
 Tried: probed `probes/text-result-limit-errors` (11 cells, excel-graph), fixed `concatenate.rs` (range-cell and reference errors past the limit are dropped; TEXTJOIN counts the delimiter before the cell); the engine passes 11/11, `make check` green, security, architecture and quality approved. The fidelity reviewer requested changes twice; round 1 (probe delimiters/ignore_empty, narrow reference kinds) is done. Open from round 2 (docs and comments only, no behavior change):

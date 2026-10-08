@@ -158,9 +158,11 @@ impl Model {
                                 ));
                             }
                             match result.push_value(cell_value) {
-                                // Excel: a range cell error met once the text is over the limit is
+                                // Excel: a cell error met once the text is over the limit is
                                 // dropped and the result is #CALC! (probes/text-result-limit-errors
-                                // C1, C10); at exactly the limit it is returned (C5-C6).
+                                // C1 for a range cell; C10 for a single-cell reference, which
+                                // `evaluate_aggregate_arg` hands over as a range); at exactly the
+                                // limit it is returned (C5-C6).
                                 Err(_) if result.units > MAX_TEXT_UNITS => Ok(()),
                                 other => other,
                             }
@@ -209,8 +211,9 @@ impl Model {
         let mut values: Vec<String> = Vec::new();
         let mut size = JoinSize::new(&delimiter);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
-        // argument after the limit wins; a range-cell error past it is #CALC!
-        // (probes/text-result-limit C18-C20).
+        // argument after the limit wins; a cell error read past it is dropped and evaluation goes on,
+        // so the result is #CALC! unless a later error argument wins
+        // (probes/text-result-limit C18-C20, -errors C2-C4).
         let mut over_limit = false;
         for arg in &args[2..] {
             over_limit = over_limit || size.exceeds(&values);
