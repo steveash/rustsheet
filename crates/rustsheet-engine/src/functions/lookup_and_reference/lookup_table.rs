@@ -263,9 +263,6 @@ impl Sequence<CalcResult> for SearchVector {
     fn at(&self, index: usize) -> &CalcResult {
         self.get(index)
     }
-    fn uniform_tail_start(&self) -> usize {
-        self.values.len()
-    }
 }
 
 impl Model {

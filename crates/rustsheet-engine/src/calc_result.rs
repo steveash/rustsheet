@@ -88,6 +88,16 @@ impl Ord for CalcResult {
             (CalcResult::EmptyCell, CalcResult::Number(_value2)) => Ordering::Greater,
             (CalcResult::EmptyArg, CalcResult::Number(_value2)) => Ordering::Greater,
             (CalcResult::Number(_value1), CalcResult::EmptyCell) => Ordering::Less,
+            // A blank is larger than a boolean too (probes/xmatch-text-bool-equal-runs Txt!M21, M24).
+            (CalcResult::Boolean(_value1), CalcResult::EmptyCell) => Ordering::Less,
+            (CalcResult::EmptyCell, CalcResult::Boolean(_value2)) => Ordering::Greater,
+            // An omitted argument orders like a blank cell, `XLOOKUP(,L:L,M:M,,1,2)` of the Excel-authored
+            // calc_tests/LOOKUP_AND_REFERENCE/XLOOKUP.xlsx (Errors!N1) finds the first blank.
+            (CalcResult::EmptyArg, CalcResult::Boolean(_value2)) => Ordering::Greater,
+            (
+                CalcResult::String(_) | CalcResult::Number(_) | CalcResult::Boolean(_),
+                CalcResult::EmptyArg,
+            ) => Ordering::Less,
             (CalcResult::EmptyCell, CalcResult::EmptyCell) => Ordering::Equal,
             (CalcResult::EmptyCell, CalcResult::EmptyArg) => Ordering::Equal,
             (CalcResult::EmptyArg, CalcResult::EmptyCell) => Ordering::Equal,
