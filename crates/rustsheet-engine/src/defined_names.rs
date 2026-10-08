@@ -98,7 +98,7 @@ impl Model {
     /// cell's name body, or the same cell run again after a restart, does not inherit it.
     pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         let outer = std::mem::take(&mut self.defined_names_running);
-        let result = self.evaluate_node_in_context(node, cell);
+        let result = self.evaluate_formula_root(node, cell);
         self.defined_names_running = outer;
         result
     }
