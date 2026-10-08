@@ -47,6 +47,6 @@ several e (10, 100, 500, 900, 1000, 1023) across counts, and non-powers with a s
   and the significand product is at least 2. Positive sums (2^1000 times 1.0001, 1.001 and 1.1) and
   2^-1000 * 1.0001 never wrap; 2^-1000 times 1.001, 1.01 and 1.1 do. An in-range product (1.0001) never
   wraps. `exponent_wrap_excess` takes both conditions; numbers.md records them.
-- Eval delta: probes known failures 363 -> 359 (fixed C12-C18 and the 10 G/I cells; new coverage 4:
-  three one-ulp root misses, L4, M1, M4, the known "GEOMEAN root rounding", and the case's C line);
+- Eval delta: probes known failures 363 -> 359 (fixed C12-C18; new coverage 3:
+  one-ulp root misses L4, M1, M4, the known "GEOMEAN root rounding");
   regressions 0.
