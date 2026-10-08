@@ -3,7 +3,7 @@ id: T-1137
 title: "Probe near-zero snapping of doubly parenthesised roots and defined-name bodies"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Follow the `excel-probe` skill. Add one new case, probes/near-zero-snap-groups (
 - Changing `snap_near_zero`, `evaluate_formula_root` or the parser (file the follow-up instead).
 - SUM forms (T-1131) and array operands.
 - Typed (unclosed-parenthesis) formula entry.
+
+## Outcome
+Added probes/near-zero-snap-groups with an excel-graph sidecar (renamed the task's `nz2` to `nzb`: `nz2` is a valid cell address and Excel would read it as NZ2). Result: deeper groups and groups inside an outer `+` are not snapped; name bodies are snapped at their own root. numbers.md updated. Engine gets 6 cells wrong (C1-C5 name bodies, B6 FORMULATEXT paren levels, a known gap): probes baseline 169 -> 175 known failures as new coverage, no regressions. Follow-up: T-1160.
