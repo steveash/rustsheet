@@ -81,7 +81,7 @@ element `#CONNECT!`; `FIELDVALUE(5,{"a","b"})` is 1x2 and `FIELDVALUE(Q1:R2,"Pri
 boolean or empty `stock` is `#CONNECT!` (ERROR.TYPE 10); text, boolean and empty-cell `value` of FIELDVALUE are `#FIELD!`.
 `IMAGE("")`, `IMAGE(TRUE)` and `IMAGE` of non-URL text (`"a"`, `"b"`) are `#VALUE!` (ERROR.TYPE 3), not `#BLOCKED!`; only a
 URL-shaped source reaches the fetch (which exact strings count as a URL is not probed). `IMAGE(1/0,NA())` is `#DIV/0!` (leftmost
-error wins). The raw `ROWS`/`COLUMNS` cells of `IMAGE(TRUE)` came back with an undecodable rich error type and stay pending.
+error wins). The raw IMAGE cells (A10, A13, A16, A19) and the `ROWS`/`COLUMNS` of `IMAGE("")` and `IMAGE(TRUE)` came back with an undecodable rich error type and stay pending; the wrapped `ERROR.TYPE` cells carry the evidence. The VERIFIED rules above cover argument kinds; the DEVIATION status below covers only the missing fetch.
 The engine differs on the lifting and on non-URL IMAGE sources (it returns the scalar error and `#BLOCKED!`): T-1179.
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is

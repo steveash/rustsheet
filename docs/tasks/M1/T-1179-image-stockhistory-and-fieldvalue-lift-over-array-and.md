@@ -24,4 +24,4 @@ probes/rich-errors-arg-kinds (T-1141, excel-graph) fails for these cells; see in
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+A reachable URL staying `#BLOCKED!` (decision 0014: no fetch) and the pending undecodable cells.
