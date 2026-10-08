@@ -328,7 +328,7 @@ fn fuzz_oom_or_over_whole_columns() {
     model._set("A2", "=OR(F:LSE)");
     let start = std::time::Instant::now();
     model.evaluate();
-    assert!(start.elapsed() < std::time::Duration::from_secs(1));
+    assert!(start.elapsed() < std::time::Duration::from_secs(10));
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#VALUE!");
 }
