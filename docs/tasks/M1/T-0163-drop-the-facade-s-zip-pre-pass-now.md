@@ -3,7 +3,7 @@ id: T-0163
 title: "Drop the facade's zip pre-pass now that the importer enforces the byte budget"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -27,3 +27,9 @@ reads (the `zip_bomb_is_rejected_by_actual_inflated_size` test zips an unreferen
 
 ## Out of scope
 - Changing the limit values.
+
+## Outcome
+Removed `check_zip_limits`; `Workbook::from_xlsx_bytes` now relies on the importer's typed
+`XlsxError::Limit` (entry count, inflated bytes), so a workbook is inflated once. Zip-bomb tests now
+bloat `xl/sharedStrings.xml` of a real workbook (a part the importer reads), including the
+understated-declared-size variant. No eval delta.
