@@ -197,8 +197,8 @@ impl Model {
 
         let arg = self.evaluate_reference_arg(&args[0], cell);
         let reference = if let Some(areas) = arg.single_sheet_areas() {
-            // `!(a <= n)` also catches NaN; in range the conversion below is exact.
-            if !(area_num <= areas.len() as f64) {
+            // NaN is out of range too; in range the conversion below is exact.
+            if area_num.is_nan() || area_num > areas.len() as f64 {
                 return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
             }
             let Range { left, right } = areas[area_num as usize - 1];
