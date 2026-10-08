@@ -388,20 +388,25 @@ it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x
 confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
 
 ### Inverse hyperbolics, COTH/CSCH and the SINH/TANH thresholds: oracle sweep (T-1005)
-Probe `probes-numeric/m9-hyperbolic` (268 cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0917.
-- ASINH loses precision for small |x|, so it is not `asinh` from libm: ASINH(1E-10) = 1.000000082690371E-10 (relative error
-  8e-8), ASINH(3E-10) = 3.000000247771113E-10, ASINH(1E-9) = 1.000000082240371E-9, ASINH(1E-5) = 9.999999999902983E-6. This
-  matches (hypothesis, not measured) the cancellation signature of `ln(x + sqrt(x^2 + 1))`; the engine returns the exact value (known mismatch, 11 cells).
-- ACOTH(x) for large x is ~1E-7 relative off at x = 1.5E7 and worse beyond (ACOTH(1.5E10): Excel 6.666666666666667E-11, engine
-  6.666667217824696E-11): Excel is accurate there, the engine's `atanh(1/x)` path is not.
-- ACOTH(1 + 1E-12) = 14.162039699929037 while ATANH(1 - 1E-12) = 14.162095209226402: the near-1 side is evaluated in a
-  formulation whose error grows as the argument approaches 1 (ACOSH(1.000000000001) = 1.414276423083533E-6 vs sqrt(2E-12)
-  = 1.41421356E-6).
-- COTH and CSCH at 1E-8 and 1E-6 (COTH(1E-8) = 1E8 exactly, CSCH(1E-8) = 1E8 exactly) differ from libm by an ulp.
-- Overflow: SINH(710) and SINH(-710) are `#NUM!`, but CSCH(710) = 0 (not an error), CSCH(709) = 2.433561501246846E-308,
-  COTH(709) = COTH(710) = 1, TANH(x) = 1 for x >= 20 (probed 20, 20.01, 21, 22, 25, 30, 350, 700, 709, 710).
+Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: excel-graph, 2026-10-08) is the fitting set for T-0917.
+- ASINH and ACOSH are the plain log formulas, not libm: all 65 ASINH/ACOSH cells equal `ln(x + sqrt(x*x + 1))` (negative x:
+  `-ln(-x + sqrt(x*x + 1))`) and `ln(x + sqrt(x*x - 1))` bit-for-bit in IEEE doubles. So small arguments lose precision:
+  ASINH(1E-10) = 1.000000082690371E-10 (relative error 8e-8), ASINH(3E-10) = 3.000000247771113E-10,
+  ASINH(1E-9) = 1.000000082240371E-9, and ACOSH(1.000000000001) = 1.414276423083533E-6 (about 7e-11 relative below the
+  true value 1.4142764231805424E-6). The engine returns the correctly rounded value (ASINH: 22 failing cells, 6 of them clear mismatches).
+- ACOTH for large x (A101-A110, x = 15 .. 1.5E10) equals libm `atanh(1/x)` bit-for-bit. The engine uses `0.5*ln((x+1)/(x-1))`
+  there and loses digits: ACOTH(1.5E7) engine 6.666666662802374E-8 vs Excel 6.666666666666676E-8 (6e-10 relative),
+  ACOTH(1.5E10) engine 6.666667217824696E-11 vs Excel 6.666666666666667E-11 (8e-8 relative).
+- Near 1, ACOTH(1 + 1E-12) = 14.162039699929037 and ATANH(1 - 1E-12) = 14.162095209226402 differ only because the stored
+  inputs sit at different distances from 1 (x-1 = 1.0000889E-12, 1-y = 0.99997788E-12); both are correctly rounded and the
+  engine matches both cells. Not a quirk.
+- COTH(1E-8) = 1E8 and COTH(1E-6) = 1000000.0000003333 equal libm `1/tanh(x)`; CSCH(1E-8) = 99999999.99999999 differs from libm
+  `1/sinh(x)`. The engine differs from Excel on these cells.
+- Overflow: SINH(710) and SINH(-710) are `#NUM!` (engine: +-1.117E308), but CSCH(710) = 0 (not an error; engine 8.95E-309),
+  CSCH(709) = 2.433561501246846E-308, COTH(709) = COTH(710) = 1, TANH(x) = 1 for x >= 20 (probed 20, 20.01, 21, 22, 25, 30,
+  350, 700, 709, 710). SINH(709.78) = 8.964113971972578E307 is finite.
 - SINH/TANH values on 0.40..1.0 (step 0.01 / 0.02 / 0.025, plus 0.9950546550253772 and 0.9999999999) are in the case; the
-  engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH between 709 and 710.
+  engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH in (709.78, 710).
 Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0917.
 
