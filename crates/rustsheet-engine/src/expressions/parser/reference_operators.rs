@@ -23,6 +23,8 @@ impl Parser {
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
         let after_at = std::mem::take(&mut self.at_paren);
+        // The first group parsed is the one the formula's first `(` opens.
+        let leading = std::mem::take(&mut self.leading_paren);
         let mut t = self.parse_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
@@ -61,6 +63,9 @@ impl Parser {
                 position: err.position,
                 message: err.message,
             };
+        }
+        if leading && self.lexer.peek_token() == TokenType::EOF {
+            self.grouped_root = true;
         }
         // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
         if let Node::OpUnionKind { written, .. } = &mut t {

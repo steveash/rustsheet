@@ -463,7 +463,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
             // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            // `<=`: a value exactly one unit at the last shown place (-1 for `0`, -1 after a `#,,`
+            // scaling) keeps its sign (poi/NumberFormatTests.xlsx Tests!A95).
+            let is_negative = value <= -(10.0_f64.powf(-(p.precision as f64)));
             let mut needs_period = false;
 
             for token in tokens {
@@ -515,12 +517,20 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     } else {
                                         int_part[number_index as usize]
                                     };
+                                    // The group positions count from the format's last digit
+                                    // placeholder, so padding is grouped too (a padded `?`
+                                    // separator is a space; docs/excel-semantics/number-formats.md,
+                                    // "A comma between digit placeholders turns on thousands grouping").
                                     let sep = if use_group_separator(
                                         p.use_thousands,
-                                        ln - digit_index,
+                                        digit_count - digit_index,
                                         &group_sizes,
                                     ) {
-                                        &group_separator
+                                        if number_index < 0 && digit.kind == '?' {
+                                            " "
+                                        } else {
+                                            &group_separator
+                                        }
                                     } else {
                                         ""
                                     };

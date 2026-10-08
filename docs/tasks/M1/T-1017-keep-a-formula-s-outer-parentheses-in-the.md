@@ -3,7 +3,7 @@ id: T-1017
 title: "Keep a formula's outer parentheses in the AST and stored text (grouped root) for near-zero snapping"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,3 +27,6 @@ Branch `agent/engine/T-0110-near-zero-snapping` has the snapping itself (`snap_n
 
 ## Out of scope
 - The snapping itself (T-0110).
+
+## Outcome
+The parser marks a cell formula written wholly in parentheses with a root-only `Node::GroupedRootKind` wrapper (`Parser::parse_cell_formula`; defined names and CF formulas keep `Parser::parse`). A wrapper was chosen over a flag outside the AST because every printer (stored R1C1 text, FORMULATEXT/display, xlsx export, moves, renames) then keeps the parentheses with no extra plumbing, and re-parsing the stored text restores it; every exhaustive walker delegates to the child, and SUBTOTAL's nested-SUBTOTAL check unwraps it. Unions are not wrapped (they keep `written`). `=((A1-1))` keeps one level (engine-wide gap, noted in numbers.md). Tests: parser/tests/test_grouped_root.rs and an xlsx round trip (rustsheet-xlsx/tests/test_grouped_root_formula.rs). Eval: 0 regressions, no change in any suite. T-0110 can now skip snapping for a grouped root.
