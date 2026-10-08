@@ -3,7 +3,7 @@ id: T-1188
 title: "XMATCH/XLOOKUP with an omitted lookup_value matches a blank cell in linear modes"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/xlookup-omitted-lookup-value (excel-graph, T-1157): the omitted forms N1-
 
 ## Out of scope
 - Binary-mode behavior (already matches).
+
+## Outcome
+`is_blank` in xmatch.rs now reads `EmptyArg` like `EmptyCell`, so `linear_scan` treats an omitted lookup_value as a blank in all linear modes. Eval delta: probes known failures 390 -> 381 against the pre-fix baseline (all 9 xlookup-omitted-lookup-value cells fixed), 0 regressions.
