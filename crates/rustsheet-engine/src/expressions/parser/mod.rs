@@ -355,8 +355,8 @@ pub struct Parser {
     /// formula is parenthesized (`=(A1-1)`, `=((A1-1))`). The levels written, 0 if it is not.
     grouped_root: u8,
     /// The last parenthesized group parsed: its levels (a group holding only such a group has
-    /// one more) and the lexer position after its `)`.
-    root_group: Option<(u8, usize)>,
+    /// one more), and the lexer positions after its `(` and after its `)`.
+    root_group: Option<(u8, usize, usize)>,
     /// Primaries (operands) open on the current parse path. Checked before
     /// descending so the parser's own recursion stays bounded.
     nesting: usize,

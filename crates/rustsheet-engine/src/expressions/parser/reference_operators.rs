@@ -48,6 +48,7 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
+        let open = self.lexer.get_position_index();
         let after_at = std::mem::take(&mut self.at_paren);
         // `@((A1 B1))`: the inner group is a level of the same operand.
         self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
@@ -93,9 +94,12 @@ impl Parser {
                 message: err.message,
             };
         }
-        let inner = self.root_group.take().filter(|&(_, end)| end == close);
-        let levels = inner.map_or(0, |(levels, _)| levels).saturating_add(1);
-        self.root_group = Some((levels, self.lexer.get_position_index()));
+        // A level nests only if the inner group opens right after this `(` and closes right
+        // before this `)`: `((A1))` is two levels, `((A1)+(B1))` one.
+        let inner =
+            (self.root_group.take()).filter(|&(_, start, end)| start == open + 1 && end == close);
+        let levels = inner.map_or(0, |(levels, ..)| levels).saturating_add(1);
+        self.root_group = Some((levels, open, self.lexer.get_position_index()));
         if leading && self.lexer.peek_token() == TokenType::EOF {
             self.grouped_root = levels;
         }

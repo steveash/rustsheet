@@ -69,5 +69,6 @@ fn whole_formula_keeps_every_parenthesis_level() {
     model.evaluate();
     assert_eq!(model._get_formula("A1"), "=((0.1+0.2-0.3))");
     assert_eq!(model._get_formula("A2"), "=(((0.1+0.2-0.3)))");
-    assert!(model._get_text("A1") != "0");
+    assert_eq!(model._get_text("A1"), "5.55112E-17");
+    assert_eq!(model._get_text("A2"), "5.55112E-17");
 }

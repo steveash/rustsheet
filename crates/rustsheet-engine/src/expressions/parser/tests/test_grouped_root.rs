@@ -76,6 +76,18 @@ fn nested_outer_parentheses_keep_every_level() {
 }
 
 #[test]
+fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
+    let mut parser = parser();
+    for formula in ["((A1)+(B1))", "(1+(B1))", "((A1)+B1)", "((A1-1)*2)"] {
+        let node = parser.parse_cell_formula(formula, &context());
+        let Node::GroupedRootKind { child } = &node else {
+            panic!("{formula} is not grouped");
+        };
+        assert!(!is_grouped(child), "{formula} counted a second level");
+    }
+}
+
+#[test]
 fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
     let mut parser = parser();
     for (formula, printed) in [
