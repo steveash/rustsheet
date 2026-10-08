@@ -95,6 +95,13 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        // An `@` group is the leftmost operand of an intersection only if it closes exactly there
+        // and holds a single operand: `@(A1):B1 C1` and `@(A1 B1) C1` would print parentheses
+        // the user did not write around that node (T-1134).
+        let mut stray_group = matches!(t, Node::OpIntersectKind { .. } | Node::OpUnionKind { .. })
+            || self
+                .at_group
+                .is_some_and(|(_, end)| end != self.lexer.get_position_index());
         let mut depth = self.depth;
         let mut as_name = false;
         while !is_constant(&t)
@@ -122,6 +129,9 @@ impl Parser {
                 return self.intersection_error();
             }
             as_name |= name_error;
+            if std::mem::take(&mut stray_group) {
+                self.at_group = None;
+            }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
             }

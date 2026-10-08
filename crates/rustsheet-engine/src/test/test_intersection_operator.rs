@@ -238,7 +238,12 @@ fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
     model._set("E34", "=@(A1) B1");
     model._set("E35", "=@((A1)) B1");
     model._set("E36", "=@(A1) B1 C1");
+    // Groups that are not just the leftmost operand print without the lead group (hand-written).
+    model._set("E37", "=@(A1 B1) C1");
+    model._set("E38", "=@(A1):B1 C1");
     model.evaluate();
+    assert_eq!(model._get_formula("E37"), "=@A1 B1 C1");
+    assert_eq!(model._get_formula("E38"), "=@A1:B1 C1");
     assert_eq!(model._get_formula("E34"), "=@(A1) B1");
     assert_eq!(model._get_formula("E35"), "=@((A1)) B1");
     assert_eq!(model._get_formula("E36"), "=@(A1) B1 C1");
