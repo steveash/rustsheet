@@ -3,7 +3,7 @@ id: T-1008
 title: "Oracle sweep for T-0915: SIN/COS/TAN/SEC/CSC/COT near k*pi"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
