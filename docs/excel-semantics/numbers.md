@@ -558,15 +558,15 @@ copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-
 perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
 2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
 1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
-exact up to 8200 and 4000 copies. The `#NUM!` of many copies of 2^1000 (probes/geomean-exponent-sum-2
-C12-C18: 1500-3000 copies `#NUM!`, 1000 copies 1.0715086071862671E+301) is not a GEOMEAN rule but
-the input: those cells hold 2^1000 as a stored number, and the workbook stores numbers with 16
-significant digits (spec2xlsx uses XlsxWriter, `{x:.16G}`), so Excel reads 1.071508607186267E+301,
-three ulps below 2^1000: a stored 2^1000 minus `2^1000` is -3 * 2^947 (probes/geomean-pow2-count Q4).
-Its significand is 1.99999999999999933, so the significand cut above applies: 1024 copies of the
-stored value are finite and 1025 `#NUM!` (R3, R4). Computed in the formula, 2^1000 is exact at every probed count, as are 2^10,
-2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156). The
-harness now feeds the engine the same 16 digits (eval-harness.md).
+exact up to 8200 and 4000 copies. The `#NUM!` and the low results that many copies of a stored 2^1000 once gave were an input artifact, not a
+GEOMEAN rule: spec2xlsx used to write numbers through XlsxWriter's `{x:.16G}`, so Excel read
+1.071508607186267E+301, three ulps below 2^1000 (a stored 2^1000 minus `2^1000` was -3 * 2^947), with
+significand 1.99999999999999933 and so the significand cut above applied (1024 copies finite, 1025 `#NUM!`).
+spec2xlsx now writes the shortest text that parses back to the same double (T-0289) and Excel reloads: with
+2^1000 stored exactly, 1000-3000 copies of it all give 1.0715086071862673E+301 = 2^1000 (probes/geomean-exponent-sum-2
+C11-C18, refilled 2026-10-08), the stored minus the computed 2^1000 is 0 (probes/geomean-pow2-count Q3, Q4), and
+R1-R7 are all 1.0715086071862673E+301. Computed in the formula, 2^1000 was exact at every probed count, as
+are 2^10, 2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156).
 Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number
 of times `exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below
 the double range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive,
@@ -593,9 +593,8 @@ for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, an
 Status: the significand cut is VERIFIED within the probed ranges; the 2048 * k wrap is VERIFIED on the
 probed cells as a fitted rule (no mechanism for the power-of-two exemption). RustSheet implements both
 (T-1112, T-1120). Still open: the root's last-ulp rounding (numbers.md, "GEOMEAN root rounding";
-T-1108), including 1000 copies of 2^1000 being two doubles below 2^1000, and the 2^1000 x 1500
-`#NUM!` (T-1120 follow-up).
-Tasks: T-1108, T-1112, T-1113, T-1120
+T-1108).
+Tasks: T-1108, T-1112, T-1113, T-1120, T-0289
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
