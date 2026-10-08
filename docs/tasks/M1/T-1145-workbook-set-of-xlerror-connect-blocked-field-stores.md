@@ -3,7 +3,7 @@ id: T-1145
 title: "Workbook.set of XlError #CONNECT!/#BLOCKED!/#FIELD! stores text, not an error cell"
 milestone: M1
 lane: api
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -30,3 +30,8 @@ what Excel accepts in the formula bar.
 
 ## Out of scope
 -
+
+## Outcome
+- Added `Model::update_cell_with_error` (engine) and used it for `Input::Value(Value::Error(..))`, so the typed setter stores an error cell of the given kind instead of parsing its literal as text.
+- Facade test `typed_error_values_store_every_kind` (each Excel-coded kind, read back and ERROR.TYPE) and Python `test_set_stores_typed_error_cells` for `#GETTING_DATA`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!`.
+- Eval delta: none.

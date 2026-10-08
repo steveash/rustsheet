@@ -91,6 +91,18 @@ def test_newer_error_kinds(literal, code):
     assert err == rs.XlError(literal.lower())
 
 
+@pytest.mark.parametrize(
+    ("literal", "code"),
+    [("#GETTING_DATA", 8), ("#CONNECT!", 10), ("#BLOCKED!", 11), ("#FIELD!", 13)],
+)
+def test_set_stores_typed_error_cells(wb, literal, code):
+    # These are not typeable literals, so Workbook.set must not parse them as text (T-1145).
+    wb.set("Sheet1!A1", rs.XlError(literal))
+    wb.set("Sheet1!B1", "=ERROR.TYPE(A1)")
+    assert wb["Sheet1!A1"] == rs.XlError(literal)
+    assert wb["Sheet1!B1"] == code
+
+
 def test_getting_data_formula_reads_back(wb):
     wb.set("Sheet1!A1", "=#GETTING_DATA")
     assert wb["Sheet1!A1"] == rs.XlError("#GETTING_DATA")
