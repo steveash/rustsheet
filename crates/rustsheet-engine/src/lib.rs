@@ -60,6 +60,7 @@ mod evaluation;
 mod function_names;
 mod functions;
 mod implicit_intersection;
+mod legacy_formula;
 pub mod links;
 mod merged_cells;
 mod model;

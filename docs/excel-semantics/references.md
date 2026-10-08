@@ -486,6 +486,13 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   probes/multiarea-index; unit tests in test/test_multi_area_arguments.rs. The 1E+300, "one area, area_num 2", `INDEX` of an
   array with `area_num` other than 1 (`#REF!`)
   rows are engine choices, UNVERIFIED (no probe). `AREAS` of a non-reference: see "SUBTOTAL and AREAS take references only".
+- SUM, COUNT and COUNTA of a union equal the same call with the areas as separate arguments, whatever the cells hold
+  (probes/multiarea-sum-types, excel-graph, 2026-10-08, T-1151). With A1:A3 = 1, "x", TRUE and B1:B3 = 2, FALSE, "5":
+  `SUM((A1:A3,B1:B3))` = 3 (text and booleans in references are skipped), `COUNT` 2, `COUNTA` 6; whole columns inside a union
+  behave the same (`SUM((A1:A3,B:B))`, `SUM((A:A,B:B))` = 3, `COUNT((A:A,B:B))` = 2, `COUNTA` 6). Errors: the first error in
+  area order wins, `SUM((C1,D1))` = `#DIV/0!` and `SUM((D1,C1))` = `#N/A`, as for separate arguments; an error in a later
+  area beats numbers in an earlier one (`SUM((A1,C1))`, `SUM((A1:A3,C1:D1))` = `#DIV/0!`). Single text or boolean cells
+  in a union give 0 (`SUM((A2,B3))`, `SUM((A3,B2))`). The engine already agrees on all 24 cells.
 - Refuse with `#VALUE!`: SUMPRODUCT, SUMIF, COUNTIF, COUNTBLANK, OFFSET, `@(A1,B2)`, the bare `=A1,B2` (stored in a
   file; it loads), `=(A1,B2)` itself. `ROWS` and `COLUMNS` give `#REF!`, and so does `ROW`.
 - ISERROR and ISNUMBER of a union are TRUE and FALSE, IFERROR gives its fallback (the union is `#VALUE!` as a value).
@@ -514,7 +521,8 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   (non-array, no `cm`) formula: FORMULATEXT is `=(A1,B2)`, `=@(A1,B2)` and `=SUM((A1,B2))`, values `#VALUE!`,
   `#VALUE!`, 6; Excel does not add an `@` to a union in a legacy formula (probes/multiarea-at-legacy, T-1077). Controls in the same case: legacy `=A1:A2` and `=ABS(A1:A2)` (rows 7, 9) print
   `=@A1:A2` and `=ABS(@A1:A2)` and give `#VALUE!` (empty intersection), so the legacy path shows `@`s Excel adds;
-  a union never gets one. The eval adapter does not yet load legacy cells as legacy (T-1096).
+  a union never gets one. The eval adapter loads `legacy_formulas` cells through `Input::LegacyFormula` (T-1096), and the whole case
+  passes on that path.
   So the engine must not wrap a union in `@` when printing a legacy formula.
 - `AREAS(Data1:Data3!A1)` is `#VALUE!`. A workbook holding `AREAS(1)` or `AREAS("A1")` is refused by Excel for the web
   (`createSession` 501 `unsupportedWorkbook`, two scratch runs, not kept as cases, like the T-0138 refusals).
