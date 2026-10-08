@@ -361,12 +361,6 @@ impl Model {
                 reference,
                 ..
             } => self.get_sheet_span_reference(*first_index, *last_index, reference, cell),
-            // An INDEX operand of `:` is the cell it selects, not its value
-            // (probes/text-result-limit-errors-refs C2, D2).
-            Node::FunctionKind {
-                kind: crate::functions::Function::Index,
-                args,
-            } => self.index_impl(args, cell, true),
             // A variable holds what it was bound to, a reference included.
             Node::NamedVariableKind { .. } => self.variable_value(node, cell),
             // A defined name that stands for a reference is that reference, to a single cell as

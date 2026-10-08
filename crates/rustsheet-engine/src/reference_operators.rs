@@ -105,6 +105,18 @@ impl Model {
         }
     }
 
+    /// An operand of `:`. An INDEX operand is the cell it selects, not its value
+    /// (probes/text-result-limit-errors-refs C2, D2).
+    fn range_operand(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_impl(args, cell, true),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
     /// token (the lexer builds those): only two single cells on one sheet are joined, so
     /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
@@ -115,8 +127,8 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let left_result = self.evaluate_node_with_reference(left, cell);
-        let right_result = self.evaluate_node_with_reference(right, cell);
+        let left_result = self.range_operand(left, cell);
+        let right_result = self.range_operand(right, cell);
         match (left_result, right_result) {
             (
                 CalcResult::Range {
