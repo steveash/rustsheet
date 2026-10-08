@@ -392,13 +392,19 @@ Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 function
 set for T-0915. Arguments are `k*PI()+d` (k = 1, 2, 3, 10, 100, 1000, 1E4, 1E5, 1E6; d = 0, +-1E-12, +-1E-9, +-1E-6, +-0.25) and
 `k*PI()/2+d` (k = 1, 3, 5, 11, 101, 1001; d = 0, +-1E-12, +-1E-9). No cell is an error.
 Observed (no formulation is claimed; T-0915 fits it):
-- Excel does not return the correctly rounded result of the double argument: `SIN(PI())` = 1.22514845490862E-16 (libm and the
-  engine: 1.2246467991473532E-16), `SIN(3*PI())` = 3.67544536472586E-16, `SIN(10*PI())` = -1.22514845490862E-15,
+- Excel differs from the correctly rounded result of the double argument by an amount that grows with k, the number of periods
+  reduced, and is not tied to how close the argument is to the multiple: `SIN(PI())` = 1.22514845490862E-16 (correctly rounded,
+  = engine: 1.2246467991473532E-16), `SIN(3*PI())` = 3.67544536472586E-16, `SIN(10*PI())` = -1.22514845490862E-15,
   `SIN(10000*PI())` = -4.861840097181158E-13 (engine -4.85682353956849E-13), `SIN(100000*PI())` = -3.396567055391486E-11,
   `SIN(1000000*PI())` = -2.232413837122138E-10. `CSC(PI())` = 8162276138809536 (engine 8165619676597685).
-- Away from the multiples the same functions are close to libm: `SIN(PI()+1E-12)` = -9.999663857368501E-13 (engine -9.999664359024263E-13),
+- Away from the multiples the offset persists: `SIN(PI()+1E-12)` = -9.999663857368501E-13 (engine -9.999664359024263E-13),
   `SIN(PI()+1E-9)` = -9.999999602255255E-10, `SIN(PI()-1E-9)` = 1.0000002052552165E-9, `SIN(PI()+1E-6)` = -1.0000000000170965E-6.
-- `SEC(PI()/2)` = 1.6324552277619072E16, `COS(2*PI()+1E-9)` = 1, `SIN(PI()/2)` = 1, `SIN(3*PI()/2-1E-9)` = -1.
+  For SIN(k*PI()+d) with |d| <= 1E-6, Excel minus engine is about (-1)^(k+1) * k * 5.0166E-20 on 57 of the 63 such rows (the rest
+  differ by rounding), for every d in the grid. The offset only vanishes in the result when it is under half an ulp of the value
+  (for example d = +-0.25 with small k).
+- `SEC(PI()/2)` = 1.6324552277619072E16 (engine 1.633123935319537E16), `COS(2*PI()+1E-9)` = 1, `SIN(PI()/2)` = 1, `SIN(3*PI()/2-1E-9)` = -1.
+- Hypothesis, not a rule: Excel's `SIN(PI())` is exactly the 15-digit literal 1.22514845490862E-16 and `SIN(2*PI())` is exactly twice that
+  with the opposite sign, which would fit a reduction by a two-part pi whose low part is that literal (true pi - fl(pi) is 1.2246467991473532E-16).
 Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeric/m9-trig-reduction.case.json`). As of 2026-10-08,
 247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
