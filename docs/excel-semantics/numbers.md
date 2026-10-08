@@ -26,7 +26,7 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum_outermost` (an outermost SUM, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017) and is not snapped. Array operands are not snapped (unprobed).
-Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). UNVERIFIED engine behavior: a name body written `=(X-b)` or `=SUM(...)` is also snapped, because a name body is parsed without a grouped root (a cell `=(X-b)` is not snapped); no probe yet (T-1164). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`; the engine returns one level (known gap). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). Also a known gap (T-1161, B6 above): `=((A1-1))` is stored as `=(A1-1)`, one level, while Excel keeps every written level.
+Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). UNVERIFIED engine behavior: a name body written `=(X-b)` or `=SUM(...)` is also snapped, because a name body is parsed without a grouped root (a cell `=(X-b)` is not snapped); no probe yet (T-1164). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one `GroupedRootKind` per level, T-1161). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). 
 Tasks: T-0110 (implementation), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
 
 ## ROUND family rounds in two decimal stages
@@ -558,23 +558,31 @@ copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-
 perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
 2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
 1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
-exact up to 8200 and 4000 copies. Large positive exponents have a `#NUM!` the significand cut does not
-explain: 1000 copies of 2^1000 (M = 1) give 1.0715086071862671E+301 (two doubles below 2^1000), while
-1500, 1800, 2000, 2047, 2048, 2049 and 3000 copies are `#NUM!` (probes/geomean-exponent-sum-2 C11-C18),
-although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13).
-Fitted rule (T-1120): with P the [1, 2) significand product and n the count, k is the number of times
-`exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below the double
-range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive, else 0. As if
-Excel formed `P * 2^-n` by 11-bit exponent-field arithmetic. It predicts k for all 41 probed cells whose
-P is not 1 (1E-300: n - floor(log2 P) is 984 at 1700 copies, k = 0, and 1042 at 1800, k = 1; 1E-307:
-2912 at 3500 copies, k = 1, and 3245 at 3900, k = 2). Powers of two (P = 1) never gain, although the same count
-would wrap: 2^-1000 up to 8200, 2^-100 up to 4000, and 2 at 1101 and 2000 copies are exact
-(probes/geomean-overflow-count F1, geomean-overflow-cut C4, -cut-2 C18). So the `#NUM!` of 2^1000 from
-1500 copies is not the wrap either, and stays unexplained. A positive exponent sum with P above 1 and a
-wrap (say 1100 copies of 2^1000 * 1.0001) is unprobed; RustSheet adds the 2048 * k there too. So is
-an in-range plain product whose significand product wraps (say 1100 copies of 1.0001); RustSheet
-applies the rule only when the plain product leaves the double range (T-1156 probes both). The rule
-was fitted after the probes were filled; no prediction made from it has been probed yet. Ruled out
+exact up to 8200 and 4000 copies. The `#NUM!` of many copies of 2^1000 (probes/geomean-exponent-sum-2
+C12-C18: 1500-3000 copies `#NUM!`, 1000 copies 1.0715086071862671E+301) is not a GEOMEAN rule but
+the input: those cells hold 2^1000 as a stored number, and the workbook stores numbers with 16
+significant digits (spec2xlsx uses XlsxWriter, `{x:.16G}`), so Excel reads 1.071508607186267E+301,
+three ulps below 2^1000: a stored 2^1000 minus `2^1000` is -3 * 2^947 (probes/geomean-pow2-count Q4).
+Its significand is 1.99999999999999933, so the significand cut above applies: 1024 copies of the
+stored value are finite and 1025 `#NUM!` (R3, R4). Computed in the formula, 2^1000 is exact at every probed count, as are 2^10,
+2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156). The
+harness now feeds the engine the same 16 digits (eval-harness.md).
+Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number
+of times `exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below
+the double range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive,
+else 0. As if Excel formed `P * 2^-n` by 11-bit exponent-field arithmetic. It applies only when the
+values' power-of-two sum is negative (the product is below the double range) and P is at least 2. It
+predicts k for all 41 cells of T-1120 (1E-300: n - floor(log2 P) is 984 at 1700 copies, k = 0, and
+1042 at 1800, k = 1; 1E-307: 2912 at 3500 copies, k = 1, and 3245 at 3900, k = 2) and the 30 bracketing
+cells of T-1156 (probes/geomean-pow2-count G-I, L-P, excel-graph, 2026-10-08): 2^-1000 times 1.001,
+1.01 and 1.1 gain k = 1 wherever the formula is positive (1.001 at 1100 copies, floor(log2 P) = 1),
+while 2^-1000 * 1.0001 (P below 2 up to 3000 copies), powers of two (P = 1: 2^-1000 up to 8200, 2^-100
+up to 4000, 2 at 1101 and 2000 copies; probes/geomean-overflow-count F1, geomean-overflow-cut C4,
+-cut-2 C18) and every positive sum (2^1000 times 1.0001, 1.001 and 1.1 at 1100-3000 copies) are
+exact or plain roots. An in-range plain product never wraps: 1100-3000 copies of 1.0001 are 1.0001
+(H). Three of the bracketing cells (L4, M1, M4) miss by one ulp of the root ("GEOMEAN root
+rounding"). The rule was fitted on T-1120's probes; T-1156's probes tested its predictions and
+added the two conditions. Ruled out
 earlier: the excess does not depend only on the exponent sum (powers of two with a larger sum gain
 nothing), is not a fixed count threshold (1E-300 and 1E-307 step at different counts) and is not the
 significand product alone (1E-307 steps at a smaller product).

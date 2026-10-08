@@ -1,0 +1,77 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "3-D span edges: span ending on a missing sheet, explicit @ of a span, IF-wrapped spans in AREAS/VLOOKUP/HLOOKUP/COUNTBLANK (T-1139)",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Data1:Nope!A1)",
+        "A2": "=SUM(Nope:Data3!A1)",
+        "A3": "=ISREF(Data1:Nope!A1)",
+        "B1": "=@Data1:Data3!A1",
+        "B2": "=@Data1:Data1!A1",
+        "B3": "=SUM(@Data1:Data3!A1:A2)",
+        "B4": "=FORMULATEXT(B1)",
+        "C1": "=AREAS(IF(TRUE,Data1:Data3!A1:A2))",
+        "C2": "=AREAS(IF(TRUE,Data1:Data1!A1:A2))",
+        "C3": "=VLOOKUP(1,IF(TRUE,Data1:Data3!A1:B2),2,FALSE)",
+        "C4": "=HLOOKUP(1,IF(TRUE,Data1:Data3!A1:B2),2,FALSE)",
+        "C5": "=COUNTBLANK(IF(TRUE,Data1:Data3!A1:B3))",
+        "C6": "=COUNTBLANK(IF(TRUE,Data1:Data1!A1:B3))"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": "5",
+        "A3": true,
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10,
+        "B1": "=1/0",
+        "C1": "x"
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 100,
+        "A2": 2,
+        "A3": -4,
+        "B1": 7
+      }
+    },
+    {
+      "name": "Q 4",
+      "cells": {
+        "A1": 1000
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!A3",
+    "Calc!B1",
+    "Calc!B2",
+    "Calc!B3",
+    "Calc!B4",
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!C3",
+    "Calc!C4",
+    "Calc!C5",
+    "Calc!C6"
+  ]
+}

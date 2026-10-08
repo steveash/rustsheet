@@ -3,7 +3,7 @@ id: T-1139
 title: "Probe 3-D spans ending on a missing sheet, @ of a 3-D span, and IF-wrapped spans in AREAS, VLOOKUP, HLOOKUP, COUNTBLANK"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Follow the `excel-probe` skill, on the Data1/Data2/Data3 layout of probes/3d-ref
 ## Out of scope
 - Engine changes (file the follow-up instead).
 - Sheet insert/delete/move edits of spans (references.md "3-D references when sheets or cells change", T-0198).
+
+## Outcome
+Added probes/3d-ref-span-edges with an excel-graph sidecar (13 cells); every form loaded. Excel: a span ending on a missing sheet is `#NAME?`, `@` of a multi-sheet span is `#REF!`, IF-wrapped spans in AREAS/VLOOKUP/HLOOKUP/COUNTBLANK are `#VALUE!`. references.md updated (VERIFIED (web)). Eval delta: probes known failures 364 -> 370 (6 new-coverage, 0 regressions); follow-up T-1170 owns them.
