@@ -1,19 +1,34 @@
+use super::{is_lifted, no_match};
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{parser::Node, types::CellReferenceIndex},
     functions::util::compare_values,
     model::Model,
 };
 
 impl Model {
-    /// =SWITCH(expression, case1, value1, [case, value]*, [default])
+    /// =SWITCH(expression, case1, value1, [case, value]*, [default]). An array or multi-cell
+    /// range expression lifts SWITCH element by element over it and the other arguments,
+    /// broadcast as the element-wise operators do: `SWITCH(A1:B2,1,"a","z")` is
+    /// `{"a","z";"z","z"}` (probes/ifs-switch-array-values M6, M8; docs/excel-semantics/logic.md).
     pub(crate) fn fn_switch(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count < 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        // TODO add implicit intersection
         let expr = self.evaluate_node_in_context(&args[0], cell);
+        if is_lifted(&expr) {
+            let mut lifted = vec![expr];
+            for node in &args[1..] {
+                lifted.push(self.evaluate_node_in_context(node, cell));
+            }
+            return self.lift_with_cost(
+                lifted,
+                |_| 1,
+                cell,
+                |_, element| switch_element(element, cell),
+            );
+        }
         if expr.is_error() {
             return expr;
         }
@@ -35,10 +50,30 @@ impl Model {
         if args_count.is_multiple_of(2) {
             return self.evaluate_node_in_context(&args[args_count - 1], cell);
         }
-        CalcResult::Error {
-            error: Error::NA,
-            origin: cell,
-            message: "Did not find a match".to_string(),
+        no_match(cell)
+    }
+}
+
+/// SWITCH on one element of lifted `[expression, case1, value1, ..., default?]`: the scalar path's
+/// rules on the element values.
+fn switch_element(element: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+    let Some((expr, rest)) = element.split_first() else {
+        return no_match(cell);
+    };
+    if expr.is_error() {
+        return expr.clone();
+    }
+    let mut pairs = rest.chunks_exact(2);
+    for pair in pairs.by_ref() {
+        if pair[0].is_error() {
+            return pair[0].clone();
         }
+        if compare_values(expr, &pair[0]) == 0 {
+            return pair[1].clone();
+        }
+    }
+    match pairs.remainder() {
+        [default] => default.clone(),
+        _ => no_match(cell),
     }
 }
