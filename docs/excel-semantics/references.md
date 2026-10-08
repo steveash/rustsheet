@@ -514,7 +514,8 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   (non-array, no `cm`) formula: FORMULATEXT is `=(A1,B2)`, `=@(A1,B2)` and `=SUM((A1,B2))`, values `#VALUE!`,
   `#VALUE!`, 6; Excel does not add an `@` to a union in a legacy formula (probes/multiarea-at-legacy, T-1077). Controls in the same case: legacy `=A1:A2` and `=ABS(A1:A2)` (rows 7, 9) print
   `=@A1:A2` and `=ABS(@A1:A2)` and give `#VALUE!` (empty intersection), so the legacy path shows `@`s Excel adds;
-  a union never gets one. The eval adapter does not yet load legacy cells as legacy (T-1096).
+  a union never gets one. The eval adapter loads `legacy_formulas` cells through `Input::LegacyFormula` (T-1096), and the whole case
+  passes on that path.
   So the engine must not wrap a union in `@` when printing a legacy formula.
 - `AREAS(Data1:Data3!A1)` is `#VALUE!`. A workbook holding `AREAS(1)` or `AREAS("A1")` is refused by Excel for the web
   (`createSession` 501 `unsupportedWorkbook`, two scratch runs, not kept as cases, like the T-0138 refusals).
