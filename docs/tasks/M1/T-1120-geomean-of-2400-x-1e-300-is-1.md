@@ -3,7 +3,7 @@ id: T-1120
 title: "GEOMEAN of 2400 x 1E-300 is 1.8066704015823645E-300: model Excel's exponent sum"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
