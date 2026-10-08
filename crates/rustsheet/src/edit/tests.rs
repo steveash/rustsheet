@@ -688,6 +688,23 @@ fn add_table_rejects_bad_names_ranges_and_headers() {
     wb.edit(|tx| tx.define_name("Taken", "=1")).unwrap();
     let err = wb.edit(|tx| tx.add_table(all, "taken", false)).unwrap_err();
     assert!(matches!(err, EditError::Table(_)));
+    // A repeated header (case-insensitive), a range past the last column, an overlap.
+    wb.edit(|tx| tx.set("B1", "key")).unwrap();
+    let err = wb.edit(|tx| tx.add_table(all, "Data", false)).unwrap_err();
+    assert!(matches!(err, EditError::Table(_)), "{err:?}");
+    wb.edit(|tx| tx.set("B1", "Val")).unwrap();
+    let mut wide = all;
+    wide.right = 20_000;
+    let err = wb.edit(|tx| tx.add_table(wide, "Data", false)).unwrap_err();
+    assert!(matches!(err, EditError::Table(_)), "{err:?}");
+    let overlap = wb.range_ref("B2:B4").unwrap();
+    let err = wb
+        .edit(|tx| {
+            tx.add_table(all, "Data", false)?;
+            tx.add_table(overlap, "Inner", false)
+        })
+        .unwrap_err();
+    assert!(matches!(err, EditError::Table(_)), "{err:?}");
     let mut bad = all;
     bad.sheet = SheetId::new(999);
     let err = wb.edit(|tx| tx.add_table(bad, "Data", false)).unwrap_err();
