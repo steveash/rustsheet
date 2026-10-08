@@ -421,7 +421,6 @@ F	probes/ifs-switch-array-values.case.json	Sheet1!N8
 F	probes/ifs-switch-array-values.case.json	Sheet1!N9
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
-F	probes/isref-reference-lookups.case.json	Sheet1!H10
 F	probes/lifted-range-rows.case.json	Sheet1!C1
 F	probes/lifted-range-rows.case.json	Sheet1!C2
 F	probes/lifted-range-rows.case.json	Sheet1!C3

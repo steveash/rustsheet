@@ -1,3 +1,4 @@
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -9,7 +10,7 @@ use super::{
         binary_search_or_greater, binary_search_or_smaller,
     },
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
-    util::compare_values,
+    util::{array_node_to_calc_result, compare_values},
 };
 
 #[derive(PartialEq)]
@@ -98,6 +99,72 @@ impl Model {
             })
             .collect();
         CalcResult::Array(vec![values])
+    }
+
+    /// XLOOKUP over an array `lookup_array` (`XLOOKUP(2,{1;2;3},B1:B3)`, probes/isref-reference-lookups
+    /// H10) with a range `return_array`, linear search modes only: the match position picks the
+    /// return range's cell, as a reference when `as_reference`. A return range of a different size is `#VALUE!`, as in the range path. A non-range return_array is unsupported here (Excel gives its element, e.g. 5 for `XLOOKUP(2,{1;2;3},{4;5;6})`; unprobed, T-1126 follow-up); it answers `#VALUE!` like the range path.
+    fn xlookup_array_lookup(
+        &mut self,
+        lookup_value: &CalcResult,
+        array: &[Vec<ArrayNode>],
+        return_node: &Node,
+        (search_mode, match_mode, if_not_found): (SearchMode, MatchMode, CalcResult),
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        let rows = array.len();
+        let columns = array.first().map_or(0, Vec::len);
+        let vertical = columns == 1;
+        if rows != 1 && !vertical {
+            return CalcResult::new_error(
+                Error::ERROR,
+                cell,
+                "Second argument must be a vector".to_string(),
+            );
+        }
+        let values: Vec<CalcResult> = array
+            .iter()
+            .flatten()
+            .map(|node| array_node_to_calc_result(node, cell))
+            .collect();
+        let CalcResult::Range {
+            left: result_left,
+            right: result_right,
+        } = self.evaluate_node_in_context(return_node, cell)
+        else {
+            return CalcResult::new_error(Error::VALUE, cell, "Range expected".to_string());
+        };
+        // The same shape rule as the range path: a wide return range only for a column vector.
+        let return_rows = result_right.row - result_left.row + 1;
+        let return_columns = result_right.column - result_left.column + 1;
+        if usize::try_from(return_rows) != Ok(rows)
+            || (!vertical && usize::try_from(return_columns) != Ok(columns))
+        {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Arrays must be of the same size".to_string(),
+            );
+        }
+        match linear_search(lookup_value, &values, search_mode, match_mode) {
+            Some(index) => {
+                let (row_offset, column_offset) = if vertical {
+                    (index as i32, 0)
+                } else {
+                    (0, index as i32)
+                };
+                self.xlookup_pick(
+                    result_left,
+                    result_right,
+                    vertical,
+                    row_offset,
+                    column_offset,
+                    as_reference,
+                )
+            }
+            None => if_not_found,
+        }
     }
 
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
@@ -374,6 +441,21 @@ impl Model {
                         message: "Range expected".to_string(),
                     },
                 }
+            }
+            CalcResult::Array(array)
+                if matches!(
+                    search_mode,
+                    SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem
+                ) =>
+            {
+                self.xlookup_array_lookup(
+                    &lookup_value,
+                    &array,
+                    &args[2],
+                    (search_mode, match_mode, if_not_found),
+                    cell,
+                    as_reference,
+                )
             }
             error @ CalcResult::Error { .. } => error,
             _ => CalcResult::Error {
