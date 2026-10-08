@@ -16,6 +16,7 @@ use crate::case::{
 };
 use crate::case_log;
 use crate::cellref::Addr;
+use crate::deviations::{self, Outcome};
 use crate::engine::{Engine, Evaluated};
 use crate::overrides;
 use crate::suite::{CaseFile, Suite, SuiteKind};
@@ -51,6 +52,10 @@ pub struct CellResult {
     /// as opposed to a hand-written one. The evidence report counts only these cells (T-0044).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub from_excel: bool,
+    /// Whether the suite's `deviations` file lists the cell (decision 0036). A listed cell that
+    /// passes is a stale line.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub listed_deviation: bool,
 }
 
 impl CellResult {
@@ -71,6 +76,9 @@ pub struct CaseResult {
     pub expected_source: String,
     pub checked: usize,
     pub passed: usize,
+    /// Checked cells that gave their pinned by-design value (decision 0036).
+    #[serde(default)]
+    pub deviations: usize,
     pub skipped_volatile: usize,
     pub millis: u64,
     /// Every scored cell (reports may drop passing cells when serializing).
@@ -103,6 +111,8 @@ struct Expectation {
     formula: Option<String>,
     expected: Value,
     from_excel: bool,
+    /// The pinned by-design value when the suite's `deviations` file lists the cell.
+    pinned: Option<Value>,
 }
 
 enum Prepared {
@@ -155,6 +165,7 @@ fn invalid(suite: &Suite, case: &CaseFile, message: String) -> CaseResult {
         expected_source: String::new(),
         checked: 0,
         passed: 0,
+        deviations: 0,
         skipped_volatile: 0,
         millis: 0,
         cells: Vec::new(),
@@ -181,6 +192,7 @@ pub fn run_case(
         expected_source: prepared.expected_source.clone(),
         checked: 0,
         passed: 0,
+        deviations: 0,
         skipped_volatile: prepared.skipped_volatile,
         millis: 0,
         cells: Vec::new(),
@@ -231,9 +243,13 @@ pub fn run_case(
         Ok(Ok(Ok(cells))) => {
             result.checked = cells.len();
             result.passed = cells.iter().filter(|c| c.verdict.is_pass()).count();
+            result.deviations = cells
+                .iter()
+                .filter(|c| c.verdict == Verdict::Deviation)
+                .count();
             result.status = if result.checked == 0 {
                 CaseStatus::Pending
-            } else if result.passed == result.checked {
+            } else if result.passed + result.deviations == result.checked {
                 CaseStatus::Pass
             } else {
                 CaseStatus::Fail
@@ -255,7 +271,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
     expectations
         .iter()
         .map(|e| {
-            let (actual, verdict) = match evaluated.value(&e.sheet, e.addr) {
+            let (actual, mut verdict) = match evaluated.value(&e.sheet, e.addr) {
                 Some(actual) => {
                     let verdict = compare(&e.expected, &actual);
                     (actual, verdict)
@@ -265,6 +281,11 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                     Verdict::TypeMismatch,
                 ),
             };
+            if let Some(pinned) = &e.pinned {
+                if deviations::classify(pinned, &e.expected, &actual) == Outcome::Deviation {
+                    verdict = Verdict::Deviation;
+                }
+            }
             CellResult {
                 sheet: e.sheet.clone(),
                 cell: e.addr.to_string(),
@@ -273,6 +294,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 actual,
                 verdict,
                 from_excel: e.from_excel,
+                listed_deviation: e.pinned.is_some(),
             }
         })
         .collect()
@@ -290,10 +312,40 @@ fn load_oracle(case: &CaseFile) -> Result<Option<OracleFile>, String> {
 }
 
 fn prepare(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
-    match suite.manifest.kind {
+    let mut prepared = match suite.manifest.kind {
         SuiteKind::Xlsx => prepare_xlsx(suite, case),
         SuiteKind::Spec => prepare_spec(case),
+    }?;
+    pin_deviations(suite, case, &mut prepared.expectations)?;
+    Ok(prepared)
+}
+
+/// The case's id relative to its suite root, as `cached_overrides` and `deviations` lines name it.
+fn relative_case_id<'a>(suite: &Suite, case: &'a CaseFile) -> &'a str {
+    let prefix = format!("{}/", suite.manifest.name);
+    case.id.strip_prefix(&prefix).unwrap_or(&case.id)
+}
+
+/// Pins the by-design value of every cell the suite's `deviations` file lists for this case
+/// (decision 0036). A line naming a cell that is not scored is an error, as for overrides.
+fn pin_deviations(
+    suite: &Suite,
+    case: &CaseFile,
+    expectations: &mut [Expectation],
+) -> Result<(), String> {
+    let rel = relative_case_id(suite, case);
+    for d in deviations::load(suite)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter(|d| d.case == rel)
+    {
+        let target = expectations
+            .iter_mut()
+            .find(|e| e.sheet == d.sheet && e.addr == d.addr)
+            .ok_or_else(|| format!("deviation for unscored cell {}!{}", d.sheet, d.addr))?;
+        target.pinned = Some(d.pinned);
     }
+    Ok(())
 }
 
 fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> {
@@ -343,6 +395,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 formula: cell.formula.clone(),
                 expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
                 from_excel,
+                pinned: None,
             })
         })
         .collect();
@@ -369,8 +422,7 @@ fn apply_cached_overrides(
     let path = suite.dir.join(file);
     let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let suites_dir = suite.dir.parent().unwrap_or(&suite.dir);
-    let prefix = format!("{}/", suite.manifest.name);
-    let rel = case.id.strip_prefix(&prefix).unwrap_or(&case.id);
+    let rel = relative_case_id(suite, case);
     for o in overrides::parse(&text)?.iter().filter(|o| o.case == rel) {
         let expected = overrides::evidence_value(o, suites_dir)?;
         let target = expectations
@@ -464,6 +516,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             formula,
             expected: value,
             from_excel: oracle_is_excel && oracle_cells.contains(&key),
+            pinned: None,
         });
     }
     Ok(PreparedCase {
@@ -587,6 +640,7 @@ mod tests {
             formula: None,
             expected: Value::Error("#VALUE!".into()),
             from_excel: true,
+            pinned: None,
         };
         let write_overrides = |cell: &str| {
             let line = format!("D/x.xlsx\tS!{cell}\tprobes/p.oracle.json\tSheet1!B1\n");
@@ -601,6 +655,82 @@ mod tests {
         let unscored = apply_cached_overrides(&suite, &case, vec![cached("C70")]);
         let _ = std::fs::remove_dir_all(&dir);
         assert!(unscored.is_err_and(|e| e.contains("unscored cell S!Z9")));
+    }
+
+    /// A listed cell is a deviation when it gives its pinned value, a pass when it matches Excel
+    /// and a failure otherwise; a deviation leaves the case passing, and a line naming an
+    /// unscored cell is an error (decision 0036).
+    #[test]
+    fn listed_deviations_score_apart_from_bit_exact() {
+        let dir = std::env::temp_dir().join(format!("rs-runner-{}-deviations", std::process::id()));
+        std::fs::create_dir_all(dir.join("cases")).expect("mkdir");
+        let path = dir.join("cases/a.case.json");
+        std::fs::write(
+            &path,
+            format!(
+                r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=1","A2":"=2","A3":"=3"}}}}],
+                   "expected":{{"S!A1":{{"t":"n","v":9}},"S!A2":{{"t":"n","v":2}},"S!A3":{{"t":"n","v":9}}}}}}"#
+            ),
+        )
+        .expect("write case");
+        let manifest: SuiteManifest = toml::from_str(
+            "name = \"t\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
+             deviations = \"deviations\"\n",
+        )
+        .expect("manifest");
+        let suite = Suite {
+            manifest,
+            dir: dir.clone(),
+            cache_dir: PathBuf::new(),
+        };
+        let case = CaseFile {
+            id: "t/a.case.json".into(),
+            sidecar: oracle_sidecar(&path),
+            path,
+        };
+        let write = |cells: &[(&str, &str)]| {
+            let lines: Vec<String> = cells
+                .iter()
+                .map(|(cell, pinned)| {
+                    format!(
+                        "a.case.json\tS!{cell}\tdecision 0014\t\
+                         docs/excel-semantics/arrays.md#x\t{pinned}"
+                    )
+                })
+                .collect();
+            std::fs::write(dir.join("deviations"), lines.join("\n")).expect("write deviations");
+        };
+        let engine: Arc<dyn Engine + Send> = Arc::new(crate::engine::RustSheetEngine);
+        let run = || run_case(&engine, &suite, &case, Duration::from_secs(60));
+        write(&[("A1", "1"), ("A2", "5")]);
+        let r = run();
+        let verdicts: Vec<(Verdict, bool)> = r
+            .cells
+            .iter()
+            .map(|c| (c.verdict, c.listed_deviation))
+            .collect();
+        assert_eq!(
+            verdicts,
+            [
+                (Verdict::Deviation, true),
+                (Verdict::Pass, true), // stale: A2 matches Excel
+                (Verdict::NumericMismatch, false),
+            ]
+        );
+        assert_eq!((r.checked, r.passed, r.deviations), (3, 1, 1));
+        assert_eq!(r.status, CaseStatus::Fail);
+        write(&[("A1", "1"), ("A3", "5")]);
+        let r = run();
+        assert_eq!(r.cells[2].verdict, Verdict::NumericMismatch); // 3 is neither 9 nor 5
+        write(&[("A1", "1"), ("A3", "3")]);
+        assert_eq!(run().status, CaseStatus::Pass);
+        write(&[("Z9", "1")]);
+        let unscored = run();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(unscored.status, CaseStatus::InvalidCase);
+        assert!(unscored
+            .message
+            .is_some_and(|m| m.contains("unscored cell S!Z9")));
     }
 
     /// An oracle sidecar replaces the hand expectation for the same cell, however the hand key

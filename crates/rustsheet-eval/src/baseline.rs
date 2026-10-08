@@ -51,7 +51,7 @@ impl Baseline {
             match r.status {
                 CaseStatus::Pass | CaseStatus::Pending => {}
                 CaseStatus::Fail if mode == BaselineMode::Cells => {
-                    for c in r.cells.iter().filter(|c| !c.verdict.is_pass()) {
+                    for c in r.cells.iter().filter(|c| c.verdict.is_failure()) {
                         b.failing.insert((r.id.clone(), c.key()));
                     }
                 }

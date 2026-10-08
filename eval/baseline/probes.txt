@@ -387,10 +387,6 @@ F	probes/ifs-switch-array-values.case.json	Sheet1!N8
 F	probes/ifs-switch-array-values.case.json	Sheet1!N9
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
-F	probes/lifted-range-rows.case.json	Sheet1!C1
-F	probes/lifted-range-rows.case.json	Sheet1!C2
-F	probes/lifted-range-rows.case.json	Sheet1!C3
-F	probes/lifted-range-rows.case.json	Sheet1!E1
 F	probes/min-max-reference-forms.case.json	Sheet1!D8
 F	probes/multiarea-3d-ref.case.json	Sheet1!H1
 F	probes/multiarea-3d-ref.case.json	Sheet1!H2
