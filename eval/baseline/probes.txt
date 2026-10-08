@@ -94,6 +94,7 @@ C	probes/date-text-yearless.case.json	48
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
+C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/defined-name-formula-bodies.case.json	17
@@ -290,8 +291,6 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
 F	probes/concatenate-limit-spill.case.json	Sheet1!G97
 F	probes/criteria-padded-text.case.json	Sheet1!C13
-F	probes/datevalue-separator-spaces.case.json	S!B15
-F	probes/datevalue-separator-spaces.case.json	S!C15
 F	probes/error-stored-constants.case.json	S!B1
 F	probes/error-stored-constants.case.json	S!C1
 F	probes/error-stored-constants.case.json	S!D1
