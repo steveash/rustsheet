@@ -457,7 +457,7 @@ impl Model {
                 Node::OpUnionKind { left, right, .. } => {
                     self.count_union_areas(left, right, cell, budget)?
                 }
-                _ => self.evaluate_areas(node, cell, budget)?.len(),
+                _ => self.evaluate_union_operand(node, cell, budget)?.len(),
             };
             if count > MAX_AREAS {
                 return Err(too_many_areas(cell));
