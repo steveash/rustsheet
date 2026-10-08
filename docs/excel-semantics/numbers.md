@@ -787,7 +787,8 @@ Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.
 ## SUBTOTAL and AGGREGATE over hidden and filtered rows
 Rule: a row hidden by hand is read by SUBTOTAL 1-11 and skipped by 101-111; a row hidden by a filter is skipped by
 both. AGGREGATE's odd options (1, 3, 5, 7) skip both kinds and its even options read both. Which kind a hidden row is
-follows its sheet, not its position: on a sheet with a filtered table every hidden row counts as filtered, including
+follows its sheet, not its position: in a workbook as read from a file, on a sheet with a filtered table every
+hidden row counts as filtered, including
 rows above or below the table and cells in columns outside it, and on a sheet without one every hidden row is a
 manual hide (a table without a filter does not change that). SUBTOTAL, and AGGREGATE under options 0-3, skip a cell
 whose formula contains a SUBTOTAL or AGGREGATE call anywhere: `=1+SUBTOTAL(9,A1:A2)`, `=SUBTOTAL(..)+1`,
