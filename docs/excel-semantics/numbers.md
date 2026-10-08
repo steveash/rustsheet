@@ -658,20 +658,42 @@ Status: VERIFIED (these two values, web).
 
 ## GEOMEAN in-range root
 Rule: when the plain product P of the values is a normal double, GEOMEAN is closest to
-`exp(ln(P) / n)` in doubles, with a single value returned as is: that matches 67 of 72 many-value
-sets, all 33 ironcalc-calc GEOMEAN cells and 1101 x 1.5 = 1.5. It is not exact: the 20-value
-mixed set A2 is one ulp low, and n copies of 3 or 7 (50 and 200 of each) are exactly 3 and 7 where
-the model is one ulp off (3.0000000000000004, 6.999999999999999). Other models do worse over all
-the evidence: glibc `pow(P, 1/n)` matches 71 of the 72 but rounds `GEOMEAN(1,3)` to
-1.7320508075688772 where Excel gives …774, and G27 too; `exp2(log2(P)/n)` 69; a log-sum 36; the
-power-of-two-split root of the overflow path 64 (`powf`) or 53 (`exp/ln`); an extended-precision
-(56- to 80-bit) ln/exp or log2/exp2 misses 3 or 4, always including C23 and G27, which Excel
-rounds away from the exact root. The over/underflow path keeps its own root (previous sections):
-`exp(ln/n)` there fixes 10 probed cells but breaks 4.
+`r = exp(ln(P) / n)` in doubles, with two exceptions: a single value is returned as is, and when
+r's 15-digit value c differs from r and c multiplied by itself n times (left to right, as P is
+formed) gives P back, the result is c. So an exact root is exact: GEOMEAN(3,3), GEOMEAN(1,9),
+GEOMEAN(1,1,27), GEOMEAN(2,4.5), GEOMEAN(3,27) are 3, 3, 3, 3, 9, and n copies of 3, 7 or 0.1
+(n = 2 to 200) are 3, 7 and 0.1, where r is one ulp off. It is not an all-equal shortcut
+(GEOMEAN(1,9) is exactly 3 too). The snap is a best fit: it changes none of the ~100 probed cells
+that r already matches and fixes 37. Excel's GEOMEAN is faithful (within 1 ulp of the exact root
+of P) and usually, but not always, correctly rounded: GEOMEAN(1,3) is 1.7320508075688774 (0.55 ulp
+from sqrt(3); the correctly rounded root is …772) and GEOMEAN(1,2,"5",TRUE) is 0.81 ulp off, both
+exactly r. Excel's own LN and EXP equal glibc's `log` and `exp` bit for bit on every probed P, and
+`EXP(LN(P)/n)` in a cell is r, so the remaining misses are not a libm difference.
+Remaining misses (r and c both wrong, one ulp): the 20-value mixed set (geomean-in-range-many A2,
+0.61 ulp from the exact root) and 25 of the 48 sets of probes/geomean-root-refinement. Rows 19-48
+of that case were picked because r and a Newton-corrected root differ there.
+Rejected models, scored on all 159 in-range cells (geomean-in-range-many, geomean-single-and-copies,
+geomean-root-refinement, geomean-overflow-count H1, ironcalc-calc GEOMEAN C23, G27, B27):
+- r with all equal values returned as is: 72 of 73 in-range-many, but GEOMEAN(1,9) refutes it.
+- The correctly rounded root of P (147 of 159) or of the exact product (144): both break C23 and G27.
+- One Newton step from r or from `pow(P, 1/n)`, in the forms `r - (r^n - P)/(n r^(n-1))`,
+  `((n-1) r + P/r^(n-1))/n`, `r + (P/r^(n-1) - r)/n`, `r (1 + (P/r^n - 1)/n)`,
+  `r (P/r^n)^(1/n)`, `r exp((ln P - n ln r)/n)`, with r^n by `pow` or repeated products: at best
+  147 of 159, and each breaks cells that r matches.
+- Scaling by the first, last, smallest, largest or mean value, `s (Π(v/s))^(1/n)`: 39 to 63 of 73.
+- From T-1113: glibc `pow(P, 1/n)` (71/72, but it breaks C23 and G27), `exp2(log2(P)/n)` (69), a
+  log-sum (36), the overflow path's power-of-two-split root (64 or 53), and an extended-precision
+  ln/exp (always misses C23 and G27).
+Single values (probes/geomean-single-and-copies Single!A1-A15): GEOMEAN of 3, 0.1, 1E-300, 1E+300,
+7, 0.3, 1.1, PI(), 2^-1022 and 1E+307, of a cell, a one-cell range and a range with text beside one
+number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for 3,
+1.0000000000000237E-300 for 1E-300).
 Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
-copies of one value, 50-1100; excel-graph, 2026-10-07, T-1113), ironcalc-calc GEOMEAN C23, B27, G27,
-probes/geomean-overflow-count H1, probes/geomean-overflow-cut-3 C1, C5, C11, E1.
-Status: VERIFIED for the probed cells; the formulation is a best fit (5 of 72 one-ulp misses).
+copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single: one value; Copies:
+n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
+(T-1123), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
+probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
+Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in 159).
 Implemented in: functions/statistical/geomean.rs
 Tasks: T-1113, T-1108, T-1123
 

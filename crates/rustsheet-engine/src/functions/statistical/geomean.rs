@@ -1,4 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
+use crate::number_format::to_excel_precision;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -50,16 +51,22 @@ impl Model {
         // exponent. In range the root is `exp(ln(product) / n)`, and one value is returned as is:
         // that matches 67 of 72 many-value sets (probes/geomean-in-range-many) and all of
         // ironcalc-calc GEOMEAN, where a log-sum `exp(mean(ln v))` misses `GEOMEAN("47")` and 1101
-        // x 1.5 (probes/geomean-overflow-count H1) and `powf` rounds sqrt(3) down (C23). The five
-        // misses are one-ulp roundings no tried model reproduces (numbers.md, "GEOMEAN in-range
-        // root", T-1113).
+        // x 1.5 (probes/geomean-overflow-count H1) and `powf` rounds sqrt(3) down (C23). An
+        // exact root is returned exactly: GEOMEAN(3,3), GEOMEAN(1,9) and 50 copies of 7 are 3, 3 and
+        // 7, where `exp(ln/n)` is one ulp off, so a root whose 15-digit value, raised to the n-th
+        // power by the same left-to-right product, gives the product back is that value
+        // (numbers.md, "GEOMEAN in-range root"; probes/geomean-single-and-copies,
+        // probes/geomean-root-refinement; T-1123).
         let n = values.len() as f64;
         let plain: f64 = values.iter().product();
         if plain.is_normal() {
             if values.len() == 1 {
                 return CalcResult::Number(plain);
             }
-            return CalcResult::Number((plain.ln() / n).exp());
+            let root = (plain.ln() / n).exp();
+            let short = to_excel_precision(root, 15);
+            let exact = short != root && values.iter().fold(1.0, |p, _| p * short) == plain;
+            return CalcResult::Number(if exact { short } else { root });
         }
         // Keep the product as a significand in [1, 2) and a separate power of two: every factor and
         // every partial product is split, so no step can overflow or underflow whatever the
