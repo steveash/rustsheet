@@ -203,6 +203,15 @@ It returns 0 from z = -37.625 down (last non-zero: `NORM.S.DIST(-37.5,TRUE)` = 4
 (3.7E-14); its other cells are within 2E-15. `NORM.DIST(x,m,s,TRUE)` with s != 1 is within 2.1E-15
 on all 20 probes (none is deeper than z = -5), and `GAUSS(z)` (z in -38..8 step 0.5) is within 3.3E-16.
 No error edges appeared in these grids.
+ERFC's tail scales by `exp(-x*x)` of the *rounded* square, with no correction for the rounding of
+x*x (T-1186): `ERFC(26.4)` = 4.4017768588035533E-305 is 2.397E-15 above the true erfc, and
+2.274E-15 of that is `exp(-(fl(x*x) - x^2)) - 1`. On the 1/8 grid x*x is exact, which is why
+the grid stays within 1E-15. The engine now does the same, and lands 1 ulp from Excel at 26.4.
+Excel's core factor (erfc * exp(x^2)) is not identified. It sits up to 5 ulp from the correctly
+rounded value on the grid (+5 at 9.5, -5 at 5), and none of these reproduces more than 22% of the
+206 grid points with x >= 1: the engine's bottom-up continued fraction, Cody's CALERF (with or
+without its x*16 split; its XBIG 26.543 agrees with the zeros, but that is the subnormal flush),
+or the asymptotic series in five product orders.
 Evidence: probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf-b`, `t1040-erfc`,
 `t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf` (oracle
 excel-graph, 2026-10-08; errors measured against 60-digit mpmath).
