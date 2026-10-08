@@ -14,11 +14,10 @@ impl Model {
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
         for arg in args {
-            // A union is `#VALUE!` here (probes/multiarea-foreach H17, H18).
-            match self
-                .evaluate_reference_arg(arg, cell)
-                .into_single_area(cell)
-            {
+            // A union evaluates to `#VALUE!` here, returned below (probes/multiarea-foreach
+            // H17, H18); evaluating through `evaluate_reference_arg` would turn a single-cell
+            // reference into a range and lose the blank-cell `#VALUE!` (T-0947).
+            match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Range { left, right } => {
                     let v = self.values_from_range(left, right)?;
                     values.extend(v.into_iter().flatten())
