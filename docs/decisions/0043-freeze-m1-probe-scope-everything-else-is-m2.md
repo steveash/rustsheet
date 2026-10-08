@@ -57,7 +57,8 @@
          `variance-rule`, `variance-scale`, `variance-switch`, `variance-underflow`,
          `large-small-k`, `rank-absent-number`, `dvar-one-vs-two-pass`.
        - MOD: `mod-array-lift`, `mod-huge-quotient`, `mod-quotient-boundary`,
-         `mod-quotient-threshold`, `mod-quotient-threshold2` to `mod-quotient-threshold5`.
+         `mod-quotient-threshold`, `mod-quotient-threshold2`, `mod-quotient-threshold3`,
+         `mod-quotient-threshold4`, `mod-quotient-threshold5`.
        - AGGREGATE, SUBTOTAL and aggregate arguments: `aggregate-args`, `aggregate-array-args`,
          `aggregate-grid`, `aggregate-range-args`, `aggregate-overflow`,
          `if-index-ref-args-aggregates`, `sum-long-text-args`.
@@ -73,8 +74,16 @@
        - 3-D references and defined-name bodies (M8): `3d-ref-aggregates`, `3d-ref-functions`,
          `3d-ref-values`, `defined-name-formula-bodies`.
        - Function names and rich-value errors: `ceiling-xlfn-prefix`, `rich-errors-args`.
+       Boundary notes: a 3-D operand inside a union (`multiarea-3d-ref`, `multiarea-areas-3d`) is M1,
+       because the multi-area argument rules are the subject; the value and function semantics of
+       3-D references are M8. VALUE/DATEVALUE date-text cases are in because they exercise the
+       text-to-number coercion grammar shared with operators (`"1/2/2020"+0`), not a date function.
+       `defined-name-intersection` is in (the intersection operator inside a pure reference body);
+       name bodies built from functions (`defined-name-formula-bodies`) are M8 names work.
        Every other probe case not on the list, whatever its tag (catalog availability, `M2`, `M9`,
-       `M10`, the M0 limits cases), is M2 exit scope too.
+       `M10`, the M0 limits cases), is M2 exit scope too; for example `ifs-switch-array-values`,
+       `round-huge-digits-wrap`, `criteria-gaps`, `criteria-operands`, `filter-if-empty-array` and
+       `isref-names-filter-if-empty`, which are tagged M0, M2 or M9.
      - Unchanged: smoke and gen-m1 at 100%, the known parity bugs, and API v0.
      - New probe cases added after the freeze never count toward M1, whatever their tag. The
        list never grows. A line leaves it only by a decision record, for example a case that is
