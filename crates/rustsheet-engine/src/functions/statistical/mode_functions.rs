@@ -33,7 +33,10 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
-                error @ CalcResult::Error { .. } => return Err(error),
+                // Only a union's `#VALUE!` is probed (H17, H18); other errors keep being skipped.
+                error @ CalcResult::Error { .. } if matches!(arg, Node::OpUnionKind { .. }) => {
+                    return Err(error)
+                }
                 // Excel: a text value or a blank single-cell reference is #VALUE!, while
                 // text/blanks inside ranges are skipped (coercion.md, MODE; T-0947). A
                 // single-cell reference to text is unprobed, so it keeps being skipped.

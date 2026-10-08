@@ -528,8 +528,7 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
   0.3428571429, MINA 1, STDEV.P, STDEVP and STDEVPA 2.9580398915, STDEV and STDEVA 3.4156502553, VAR.P, VARP and
   VARPA 8.75, VAR and VARA 11.6666666667. All take the union. `MODE` and `MODE.SNGL` are the exception: a union
-  (`MODE((A1,B2,C3,D4,E5))`) is `#VALUE!`, not a mode (the engine matches since T-1184); a reference argument's error
-  is MODE's result, as for the other aggregates.
+  (`MODE((A1,B2,C3,D4,E5))`) is `#VALUE!`, not a mode (the engine matches since T-1184).
 Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,

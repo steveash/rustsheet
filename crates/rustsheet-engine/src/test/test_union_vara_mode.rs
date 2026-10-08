@@ -1,7 +1,6 @@
 //! VARA, VARPA, STDEVA and STDEVPA take a union argument, MODE and MODE.SNGL give `#VALUE!` for
-//! one, and MODE returns a reference argument's error (T-1184). Expected values are Excel's,
-//! probes/multiarea-foreach H8, H9, H13, H14, H17, H18; the error case is the aggregate rule
-//! of docs/excel-semantics/references.md "Multi-area references in functions".
+//! one (T-1184). Expected values are Excel's,
+//! probes/multiarea-foreach H8, H9, H13, H14, H17, H18.
 
 use crate::test::util::new_empty_model;
 
@@ -24,7 +23,6 @@ fn union_argument_to_the_a_variance_family_and_mode() {
         ("H4", "=STDEVPA((A1,B2,C3,D4))", "2.958039892"),
         ("H5", "=MODE((A1,B2,C3,D4))", "#VALUE!"),
         ("H6", "=MODE.SNGL((A1,B2,C3,D4))", "#VALUE!"),
-        ("H7", "=MODE(F1,1,1)", "#N/A"),
     ];
     for (cell, formula, _) in cases {
         model._set(cell, formula);

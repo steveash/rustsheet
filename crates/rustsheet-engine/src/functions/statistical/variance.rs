@@ -93,7 +93,12 @@ impl Model {
         for arg in args {
             // A union is its areas, each coerced like a range (probes/multiarea-foreach H8, H9,
             // H13, H14).
-            let result = match self.evaluate_reference_arg(arg, cell) {
+            let reference = match arg {
+                Node::OpUnionKind { .. } => self.evaluate_reference_arg(arg, cell),
+                // Single references and ranges keep their old path (unprobed otherwise).
+                _ => RefArg::from(self.evaluate_node_in_context(arg, cell)),
+            };
+            let result = match reference {
                 RefArg::Ranges(areas) => {
                     if let Err(error) =
                         self.for_each_coerced_number_in_areas(&areas, cell, |value| {
