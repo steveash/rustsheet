@@ -22,6 +22,12 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     value at 255 characters) hold it as JSON `[sheet, a1, text]`; oracle backends write
     the text into the cell as a user types it (Graph `values`), so Excel picks value and number
     format. The engine adapter enters the same text through its user-input parser.
+  * A sheet may list `"hidden_rows": [3, 5]` (1-based rows written with `hidden="1"`) and
+    `"tables": [{"name": "T1", "ref": "A1:B6", "filter": true}]` (T-1036). A table's header row is the
+    first row of `ref` and its cells must be literal text. With `"filter": true` the table's autoFilter
+    gets a values filter on its first column that keeps exactly the visible data rows, so the hidden rows
+    inside the table are the rows the filter hides; that column's data cells must be literal numbers or
+    text, and no value may be both kept and hidden. The engine adapter loads both.
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
@@ -228,8 +234,14 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
     # numbers XlsxWriter would round: (sheet number, cell ref, value)
     lossy: list[tuple[int, str, float]] = []
+    filters: list[tuple[str, str]] = []  # (table name, `<autoFilter>` element or "") in add order
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
+        hidden = _hidden_rows(sheet)
+        for row in sorted(hidden):
+            ws.set_row(row - 1, None, None, {"hidden": True})
+        for table in sheet.get("tables", ()):
+            filters.append(_add_table(ws, sheet, table, hidden))
         legacy = set(sheet.get("legacy_formulas", ()))
         if unknown := legacy - sheet["cells"].keys():
             msg = f"legacy_formulas names cells not in the sheet: {sorted(unknown)}"
@@ -264,7 +276,87 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
         wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", value)
     wb.close()
     xlsx = _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
+    xlsx = _filter_tables(xlsx, filters) if any(el for _, el in filters) else xlsx
     return _store_numbers(xlsx, lossy) if lossy else xlsx
+
+
+def _hidden_rows(sheet: dict[str, Any]) -> set[int]:
+    """The sheet's 1-based `hidden_rows`, checked against Excel's row limit."""
+    rows = sheet.get("hidden_rows", [])
+    if not all(isinstance(r, int) and not isinstance(r, bool) and 1 <= r <= 1_048_576 for r in rows):
+        msg = f"hidden_rows must be row numbers 1..1048576: {rows!r}"
+        raise ValueError(msg)
+    return set(rows)
+
+
+def _range(ref: str) -> tuple[int, int, int, int]:
+    """'A1:B6' → zero-based (first row, first col, last row, last col)."""
+    first, _, last = ref.partition(":")
+    (r1, c1), (r2, c2) = parse_a1(first), parse_a1(last or first)
+    if r1 >= r2 or c1 > c2:
+        msg = f"table ref {ref!r} needs a header row and at least one data row"
+        raise ValueError(msg)
+    return r1, c1, r2, c2
+
+
+def _filter_value(raw: Any, a1: str) -> str:
+    """The text a values filter lists for a first-column cell (General format: 3 → "3")."""
+    if isinstance(raw, str) and raw and not raw.startswith("="):
+        return raw
+    if isinstance(raw, int | float) and not isinstance(raw, bool) and float(raw).is_integer():
+        return str(int(raw))
+    msg = f"filtered table column cell {a1} must be literal text or a whole number, not {raw!r}"
+    raise ValueError(msg)
+
+
+def _add_table(ws: Any, sheet: dict[str, Any], table: dict[str, Any], hidden: set[int]) -> tuple[str, str]:
+    """Adds a spec table; returns its name and, when it is filtered, the `<autoFilter>` element to patch in."""
+    name, ref = str(table["name"]), str(table["ref"])
+    r1, c1, r2, c2 = _range(ref)
+    cells = sheet["cells"]
+    cell = xlsxwriter.utility.xl_rowcol_to_cell
+    headers = [cells.get(cell(r1, c)) for c in range(c1, c2 + 1)]
+    if not all(isinstance(h, str) and h and not h.startswith("=") for h in headers):
+        msg = f"table {name} header row {ref} must be literal text: {headers!r}"
+        raise ValueError(msg)
+    # XlsxWriter warns and returns a negative code (-1, -2, ...) instead of raising.
+    if ws.add_table(r1, c1, r2, c2, {"name": name, "columns": [{"header": h} for h in headers]}):
+        msg = f"XlsxWriter rejected table {name} at {ref} (see its warning)"
+        raise ValueError(msg)
+    if not table.get("filter"):
+        return name, ""
+    kept: set[str] = set()
+    dropped: set[str] = set()
+    for row in range(r1 + 1, r2 + 1):
+        a1 = cell(row, c1)
+        (dropped if row + 1 in hidden else kept).add(_filter_value(cells.get(a1), a1))
+    if kept & dropped:
+        msg = f"table {name}: values {sorted(kept & dropped)} are both kept and hidden by the filter"
+        raise ValueError(msg)
+    values = "".join(f'<filter val="{escape(v, {chr(34): "&quot;"})}"/>' for v in sorted(kept))
+    ref_abs = f"{cell(r1, c1)}:{cell(r2, c2)}"
+    column = f'<filterColumn colId="0"><filters>{values}</filters></filterColumn>'
+    return name, f'<autoFilter ref="{ref_abs}">{column}</autoFilter>'
+
+
+def _filter_tables(xlsx: bytes, filters: list[tuple[str, str]]) -> bytes:
+    """Swaps each filtered table's empty `<autoFilter/>` for its values filter (XlsxWriter writes no table
+    filters). `filters` holds `(name, element)` per table in `add_table` order, which is XlsxWriter's
+    `tableN.xml` numbering; tables without a filter have an empty element."""
+
+    def patch(name: str, element: str) -> Callable[[str], str]:
+        def apply(text: str) -> str:
+            text, count = re.subn(r'<autoFilter ref="[^"]*"/>', lambda _: element, text)
+            if f' name="{name}"' not in text or count != 1:
+                msg = f"cannot filter table {name}: table part or autoFilter not found"
+                raise ValueError(msg)
+            return text
+
+        return apply
+
+    return _patch_parts(
+        xlsx, [(f"xl/tables/table{n}.xml", patch(name, el)) for n, (name, el) in enumerate(filters, 1) if el]
+    )
 
 
 def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
@@ -291,19 +383,27 @@ def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
 def _patch_sheets(xlsx: bytes, patches: list[tuple[int, Callable[[str], str]]]) -> bytes:
     """Rewrites worksheet XML parts: each `(sheet number, patch)` maps the sheet's text to its new text and
     raises ValueError when its cell is not there (XlsxWriter has no API for what the patches write)."""
-    by_sheet: dict[str, list[Callable[[str], str]]] = {}
-    for number, patch in patches:
-        by_sheet.setdefault(f"xl/worksheets/sheet{number}.xml", []).append(patch)
+    return _patch_parts(xlsx, [(f"xl/worksheets/sheet{number}.xml", patch) for number, patch in patches])
+
+
+def _patch_parts(xlsx: bytes, patches: list[tuple[str, Callable[[str], str]]]) -> bytes:
+    """Rewrites package parts: each `(part name, patch)` maps the part's text to its new text."""
+    by_part: dict[str, list[Callable[[str], str]]] = {}
+    for part, patch in patches:
+        by_part.setdefault(part, []).append(patch)
     out = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
         for info in src.infolist():
             data = src.read(info.filename)
-            if info.filename in by_sheet:
+            if info.filename in by_part:
                 text = data.decode()
-                for patch in by_sheet[info.filename]:
+                for patch in by_part[info.filename]:
                     text = patch(text)
                 data = text.encode()
             dst.writestr(info, data)
+        if missing := by_part.keys() - set(src.namelist()):
+            msg = f"parts not in the package: {sorted(missing)}"
+            raise ValueError(msg)
     return out.getvalue()
 
 
