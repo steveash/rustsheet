@@ -3,7 +3,7 @@ id: T-1184
 title: "Union argument to VARA, VARPA, STDEVA, STDEVPA (accept) and MODE, MODE.SNGL (#VALUE!)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/multiarea-foreach (excel-graph, T-1150), cells H13, H14, H8, H9 (engine g
 
 ## Out of scope
 - Aggregates that already pass over a union (HARMEAN, AVEDEV, SKEW, KURT, MINA, STDEV, STDEV.P, VAR, VAR.P and the rest of probes/multiarea-foreach).
+
+## Outcome
+VARA, VARPA, STDEVA and STDEVPA walk the areas of a union argument (`evaluate_reference_arg`, each area coerced like a range); MODE and MODE.SNGL give `#VALUE!` for a union. Only union arguments take the new paths: single references, other errors and ranges behave as before (unprobed). Eval: probes known failures 431 -> 425 (H8, H9, H13, H14, H17, H18), no regressions.
