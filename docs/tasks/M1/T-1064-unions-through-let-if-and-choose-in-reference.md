@@ -33,7 +33,8 @@ SPEC-0004 step 4 ("Intersection operands", "LET, IF, CHOOSE"). Intersection oper
 - `if_impl`, `choose_impl` and `let_impl` return `RefArg`; `fn_if`, `fn_choose`, `fn_let` and the single-sheet path collapse it with `into_single_area`.
 - Intersection operands: `is_multi_area` stays as a syntactic gate, widened to a LET variable, IF, CHOOSE and LET; SPEC-0004 "Intersection operands" and "LET, IF, CHOOSE" amended with the reason. Unit test observes the gate for `name A1` and `A1:B2 B1:B3`.
 - New probes (excel-graph, 2026-10-08): probes/multiarea-letbind (16 cells, all pass) and probes/3d-ref-choose-let (CHOOSE hands a 3-D span to the aggregates, 113 and 3, as the branch now does; LET-bound spans C3:C4 fail, filed as T-1158). Recorded in references.md.
+- A 3-D span from IF or CHOOSE bound by LET or LAMBDA is `#VALUE!` (probes/3d-ref-let-values C1:C6, all `#VALUE!` in Excel), so no value reader sees a range across sheets; the aggregate read (C7 = 111) joins T-1158.
 - AGGREGATE's array form moved into T-1065's acceptance criteria.
 - Fixed the LET duplicate-name early return, which left the frame's earlier bindings in scope.
 - Not done: one cell budget per formula for `SUM(x,x,...)` (performance minor, approved): each argument is already bounded by `MAX_AREA_CELLS`, the same as a plain range argument repeated.
-- Eval: probes fixed 1 (min-max-reference-forms D8) on top of round 1's +5; new coverage 22 cells, 2 known failures (3d-ref-choose-let C3:C4); no regressions.
+- Eval: probes fixed 1 (min-max-reference-forms D8) on top of round 1's +5; new coverage 33 cells, 3 known failures (3d-ref-choose-let C3:C4, 3d-ref-let-values C7; T-1158); no regressions.

@@ -196,6 +196,17 @@ impl Model {
         }
         match self.evaluate_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
+            // A 3-D span from IF or CHOOSE: every value read of the binding is `#VALUE!`
+            // (probes/3d-ref-let-values C1:C6). Only `evaluate_reference_arg` may hold a range
+            // across sheets, so the binding does not keep it; an aggregate reading the span
+            // through the variable (C7, 111) is T-1158.
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
+                Binding::Value(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "3-D reference bound to a variable".to_string(),
+                ))
+            }
             other => Binding::Value(other.into_single_area(cell)),
         }
     }

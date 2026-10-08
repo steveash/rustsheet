@@ -5,6 +5,7 @@
 C	probes/3d-ref-aggregates.case.json	20
 C	probes/3d-ref-choose-let.case.json	6
 C	probes/3d-ref-functions.case.json	22
+C	probes/3d-ref-let-values.case.json	11
 C	probes/3d-ref-values.case.json	10
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
@@ -280,6 +281,7 @@ C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
 F	probes/3d-ref-choose-let.case.json	Calc!C3
 F	probes/3d-ref-choose-let.case.json	Calc!C4
+F	probes/3d-ref-let-values.case.json	Calc!C7
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7

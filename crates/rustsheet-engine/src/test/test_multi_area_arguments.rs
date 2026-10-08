@@ -219,6 +219,7 @@ fn choose_hands_a_3d_reference_to_the_aggregates() {
         ("Data2!A1", "10"),
         ("Data3!A1", "100"),
         ("Data3!A2", "2"),
+        ("K1", "abc"),
     ] {
         model._set(cell, value);
     }
@@ -229,6 +230,25 @@ fn choose_hands_a_3d_reference_to_the_aggregates() {
             ("C2", "=COUNT(CHOOSE(1,Data1:Data3!A1))", "3"),
             ("C5", "=SUM(IF(TRUE,CHOOSE(1,Data1:Data3!A1)))", "111"),
             ("C6", "=CHOOSE(1,Data1:Data3!A1)", "#VALUE!"),
+            // probes/3d-ref-let-values C1:C6, C8:C10: a span from IF or CHOOSE bound by LET or
+            // LAMBDA is `#VALUE!` to every value reader; text behind IF is skipped by MAX.
+            ("D1", "=LET(x,CHOOSE(1,Data1:Data3!A1),x)", "#VALUE!"),
+            ("D2", "=LET(x,IF(TRUE,Data1:Data3!A1),x)", "#VALUE!"),
+            ("D3", "=LAMBDA(x,x)(CHOOSE(1,Data1:Data3!A1))", "#VALUE!"),
+            ("D4", "=LET(x,CHOOSE(1,Data1:Data3!A1),x+1)", "#VALUE!"),
+            (
+                "D5",
+                "=ROWS(LET(x,CHOOSE(1,Data1:Data3!A1:A2),x))",
+                "#VALUE!",
+            ),
+            (
+                "D6",
+                "=INDEX(LET(x,IF(TRUE,Data1:Data3!A1:A2),x),2)",
+                "#VALUE!",
+            ),
+            ("D8", "=LET(x,IF(TRUE,K1),MAX(x))", "0"),
+            ("D9", "=LAMBDA(x,MAX(x))(IF(TRUE,K1))", "0"),
+            ("D10", "=IF(TRUE,Data1:Data3!A1) A1", "#VALUE!"),
         ],
     );
 }
