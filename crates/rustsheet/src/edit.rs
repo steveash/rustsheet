@@ -28,6 +28,10 @@ pub enum Input {
     Value(Value),
     /// A formula; must start with `=`.
     Formula(String),
+    /// A formula as a pre-dynamic-array workbook stores it; must start with `=`. Functions
+    /// that expect a scalar implicitly intersect a range, so `=A1:A2` is stored as `=@A1:A2`,
+    /// exactly as xlsx import reads a plain `<f>`.
+    LegacyFormula(String),
     /// Text as a user would type it: `=` starts a formula, numbers, booleans, errors and
     /// percentages/currencies are recognised, a leading `'` forces text.
     Parse(String),
@@ -281,16 +285,18 @@ impl Txn<'_> {
             Input::Clear | Input::Value(Value::Empty) => {
                 model.set_user_input(sheet, row, col, String::new())
             }
-            Input::Parse(text) => model.set_user_input(sheet, row, col, text),
-            Input::Formula(text) => {
-                if !text.starts_with('=') {
-                    return Err(EditError::InvalidInput {
-                        cell,
-                        message: format!("\"{text}\" is not a valid formula"),
-                    });
-                }
+            Input::Formula(text) | Input::LegacyFormula(text) if !text.starts_with('=') => {
+                return Err(EditError::InvalidInput {
+                    cell,
+                    message: format!("\"{text}\" is not a valid formula"),
+                });
+            }
+            Input::Parse(text) | Input::Formula(text) => {
                 model.set_user_input(sheet, row, col, text)
             }
+            Input::LegacyFormula(text) => model
+                .legacy_formula_text(sheet, row, col, &text)
+                .and_then(|text| model.set_user_input(sheet, row, col, text)),
             Input::Value(value) => {
                 // Typed setters skip the spill/array/merge checks that `set_user_input` does.
                 model
