@@ -486,6 +486,8 @@ SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
 COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
 (statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
 a union holding an error in COUNTBLANK counts nothing (no probes).
+SUBTOTAL 1, 4-11 and 101, 104-111 walk the areas of a union as SUM does (`subtotal_walk_range`, T-1071; probes/multiarea-subtotal
+probes 9 and 109). UNVERIFIED engine behavior: SUBTOTAL 2, 3, 102 and 103 of a union stay `#VALUE!` (no probe).
 Tasks: T-1061, T-1062, T-1068, T-1069
 
 ## Range corners may both carry the sheet prefix
