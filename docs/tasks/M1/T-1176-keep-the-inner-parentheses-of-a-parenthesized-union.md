@@ -3,7 +3,7 @@ id: T-1176
 title: "Keep the inner parentheses of a parenthesized union cut in FORMULATEXT"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
