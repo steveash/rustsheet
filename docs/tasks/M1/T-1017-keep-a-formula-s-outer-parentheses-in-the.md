@@ -3,7 +3,7 @@ id: T-1017
 title: "Keep a formula's outer parentheses in the AST and stored text (grouped root) for near-zero snapping"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
