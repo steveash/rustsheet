@@ -3,7 +3,7 @@ id: T-0229
 title: "Probe AND/OR/XOR with several errors and errors inside the deciding range (which error wins)"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
