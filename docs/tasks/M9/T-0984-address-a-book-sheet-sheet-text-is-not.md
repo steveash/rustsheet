@@ -3,7 +3,7 @@ id: T-0984
 title: "ADDRESS: a [Book]Sheet sheet_text is not quoted (1 poi known failure)"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
