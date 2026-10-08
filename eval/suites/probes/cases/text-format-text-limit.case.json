@@ -1,0 +1,42 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXT on text: a text-section result over 32,767 characters (T-0935)",
+  "tags": [
+    "M10",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LEN(TEXT(REPT(\"a\",16383),\";;;@@\"))",
+        "A2": "=TEXT(REPT(\"a\",16384),\";;;@@\")",
+        "A3": "=LEN(TEXT(REPT(\"a\",16384),\";;;@@\"))",
+        "A4": "=TEXT(REPT(\"a\",32767),\";;;@\"\"x\"\"\")",
+        "A5": "=LEN(TEXT(REPT(\"a\",32767),\";;;@\"))",
+        "A6": "=TEXT(REPT(\"a\",32767),\"@@\")",
+        "A7": "=ISERROR(TEXT(REPT(\"a\",32767),\"@@\"))",
+        "A8": "=LEN(TEXT(REPT(\"a\",32766),\";;;@\"\"x\"\"\"))",
+        "A9": "=LEN(TEXT(REPT(\"a\",254),\";;;@\"))",
+        "A10": "=LEN(TEXT(REPT(\"a\",255),\";;;@\"))",
+        "A11": "=LEN(TEXT(REPT(\"a\",256),\";;;@\"))",
+        "A12": "=LEN(TEXT(REPT(\"a\",257),\";;;@\"))",
+        "A13": "=LEN(TEXT(REPT(\"a\",1000),\";;;@\"))",
+        "A14": "=LEN(TEXT(REPT(\"a\",8192),\";;;@\"))",
+        "A15": "=LEN(TEXT(REPT(\"a\",16383),\";;;@\"))",
+        "A16": "=LEN(TEXT(REPT(\"a\",255),\"@\"))",
+        "A17": "=LEN(TEXT(REPT(\"a\",255),\"General\"))",
+        "A18": "=LEN(TEXT(REPT(\"a\",255),\"0\"))",
+        "A19": "=LEN(TEXT(REPT(\"a\",256),\"@\"))",
+        "A20": "=LEN(TEXT(REPT(\"a\",256),\"General\"))",
+        "A21": "=LEN(TEXT(REPT(\"a\",256),\"0\"))",
+        "A22": "=LEN(TEXT(REPT(\"a\",200),\";;;@@\"))",
+        "A23": "=LEN(TEXT(REPT(\"a\",100),\";;;@@@\"))",
+        "A24": "=LEN(TEXT(REPT(\"a\",128),\";;;@@\"))",
+        "A25": "=LEN(TEXT(REPT(\"a\",127),\";;;@@\"\"x\"\"\"))"
+      }
+    }
+  ],
+  "expected": {}
+}
