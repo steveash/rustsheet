@@ -128,6 +128,7 @@ C	probes/geomean-product-order.case.json	17
 C	probes/geomean-root-models.case.json	112
 C	probes/geomean-root-refinement.case.json	48
 C	probes/geomean-single-and-copies.case.json	260
+C	probes/geomean-stored-3ulps-low.case.json	9
 C	probes/if-index-ref-args-aggregates.case.json	54
 C	probes/ifs-array-criteria-edges.case.json	22
 C	probes/ifs-array-criteria.case.json	39
@@ -573,6 +574,7 @@ F	probes/geomean-single-and-copies.case.json	Copies!G6
 F	probes/geomean-single-and-copies.case.json	Copies!G7
 F	probes/geomean-single-and-copies.case.json	Copies!G8
 F	probes/geomean-single-and-copies.case.json	Copies!G9
+F	probes/geomean-stored-3ulps-low.case.json	Sheet1!R1
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!F11
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!F12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!G11
