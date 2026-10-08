@@ -376,8 +376,8 @@ Tasks: T-0134
 ## Union: parsing and evaluation
 Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - The comma is the union operator only directly inside parentheses: `(A1,B2)` is one union,
-  `SUM(A1,B2)` is two arguments, `SUM((A1,B2))` is one union argument, and `=A1,B2` is a syntax
-  error. (Engine choice, not probed.)
+  `SUM(A1,B2)` is two arguments, `SUM((A1,B2))` is one union argument; outside every parenthesis
+  and argument list the comma is the bare union, see "Bare union" below.
 - Operands must be references. Excel for the web refuses a workbook (`FileCorruptTryRepair`) that
   holds `=(A1+B1,C1)`, `=(1,A1)`, `=(A1,"a")`, `=(A1,#N/A)`, `=(A1,SUM(B1))` or `=(A1,(B1+1))`
   (one scratch workbook per formula, T-0187). The engine reads the five non-reference operands as
@@ -551,6 +551,23 @@ makes 1/9 an error but COUNTA counts it (`SUBTOTAL(3,(A1,C4))` = 2, `SUBTOTAL(2,
 matches (T-1064; probes/multiarea-subtotal-counts-c/d). Hidden/filtered rows in a union remain
 unprobed (the case format cannot hide rows; T-1036 owns the probe): the engine keeps or skips a row whole by the status at the area's first column.
 Tasks: T-1061, T-1062, T-1064, T-1068, T-1069
+
+## Bare union
+Rule: outside every parenthesis and argument list, a comma is the union operator, and it binds
+tighter than arithmetic and looser than the space: `=A1,B2` loads, is `#VALUE!` (a union as a
+value) and prints `=A1,B2`; `=1+A1,B2` is `1+(A1,B2)` = `#VALUE!`, `=NA()+A1,B2` is `#N/A` (the
+left error first), `=A1,B2+NA()` is `(A1,B2)+NA()` = `#VALUE!`, `=A1,B2 C3` and `=A1 B1,B2` are
+`#NULL!` (the empty intersection is the union's error); `=A1:A2,B2,C3`, `=-A1,B2`, `=A1,B2+1` and
+`=(A1,B2),C3` load and are `#VALUE!`. FORMULATEXT prints every one as written. The operands must be
+references: Excel for the web refuses a workbook holding `=1,A1`, `=A1,1`, `=SUM(A1),B2` or
+`=A1,B2,` (one scratch workbook per formula, excel-graph 2026-10-08, T-1073). Inside parentheses
+the union is the loosest operator instead (`(A1+B1,C1)` is refused, "Union: parsing and
+evaluation"). Desktop typed entry is unprobed (M14).
+Evidence: probes/multiarea-bare H1, probes/multiarea-bare-precedence H1:J10 (excel-graph).
+Status: VERIFIED. Implemented in: `Parser::parse_bare_union` (parser/reference_operators.rs), printed
+by `union_text` (`OpUnionKind::bare`). A defined-name body parses the same way, so
+`Sheet1!$A$1,Sheet1!$B$2` is now a union name body; evaluating such names is T-1065.
+Tasks: T-1061, T-1073, T-1065
 
 ## SUBTOTAL and AREAS take references only
 Rule: every SUBTOTAL argument after the function number, and the AREAS argument, must be written as
