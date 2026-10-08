@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 use rustsheet_engine::Model;
 use rustsheet_xlsx::export::save_to_xlsx;

@@ -381,7 +381,7 @@ pub fn test_load_and_saving(
     #[cfg(feature = "mock_time")]
     set_mock_time_from_metadata(&model1);
 
-    let model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
+    let mut model1 = load_from_xlsx(file_path, &locale, "UTC", "en").unwrap();
 
     let base_name = Path::new(file_path).file_name().unwrap().to_str().unwrap();
 
@@ -392,7 +392,6 @@ pub fn test_load_and_saving(
     // test can open
     let mut model2 = load_from_xlsx(temp_file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
-    let mut model1 = model1;
     save_error_constants_as_exported(&mut model1);
     compare_models(&model1, &model2, skip)
 }
