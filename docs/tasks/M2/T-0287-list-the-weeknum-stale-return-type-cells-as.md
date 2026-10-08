@@ -3,7 +3,7 @@ id: T-0287
 title: "List the WEEKNUM stale return_type cells as accepted deviations (decision 0038)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
