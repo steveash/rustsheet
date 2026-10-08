@@ -40,12 +40,12 @@ use rustsheet_engine::{
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
 
-use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
+use super::{escape::escape_xml, rich_errors::vm_attribute, xml_constants::XML_DECLARATION};
 
 /// The literal an error cell is written with. Excel's stored form ([`Error::stored_literal`]),
 /// except the kinds Excel rejects as stored literals, which are saved as `#VALUE!`:
-/// - `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` (T-0999). Excel keeps them only in
-///   `vm` rich-value metadata, which is not written yet (until T-1014, SPEC-0003).
+/// - `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` (T-0999). Excel keeps the kind in
+///   `vm` rich-value metadata, which the cell also gets ([`vm_attribute`], T-1014).
 /// - The engine-only `#CIRC!`, `#ERROR!` and `#N/IMPL` (T-1133, docs/excel-semantics/syntax.md).
 ///
 /// The eval harness must not use this fallback: it scores through `Error::stored_literal`.
@@ -284,8 +284,9 @@ pub(crate) fn get_worksheet_xml(
                 } => {
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}><v>{ei}</v></c>",
-                        ei = exported_error_literal(ei)
+                        "<c r=\"{cell_name}\" t=\"e\"{style}{vm}><v>{ei}</v></c>",
+                        ei = exported_error_literal(ei),
+                        vm = vm_attribute(ei)
                     ));
                 }
                 Cell::SharedString { si, s } => {
@@ -375,8 +376,9 @@ pub(crate) fn get_worksheet_xml(
                         formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}><f>{formula}</f><v>{ei}</v></c>",
-                        ei = exported_error_literal(ei)
+                        "<c r=\"{cell_name}\" t=\"e\"{style}{vm}><f>{formula}</f><v>{ei}</v></c>",
+                        ei = exported_error_literal(ei),
+                        vm = vm_attribute(ei)
                     ));
                 }
                 Cell::SpillCell {
@@ -530,8 +532,9 @@ pub(crate) fn get_worksheet_xml(
                         ""
                     };
                     row_data_str.push(format!(
-                        r#"<c r="{cell_name}"{style} t="e"{cm}><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#,
-                        ei = exported_error_literal(ei)
+                        r#"<c r="{cell_name}"{style} t="e"{cm}{vm}><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#,
+                        ei = exported_error_literal(ei),
+                        vm = vm_attribute(ei)
                     ));
                 }
             }

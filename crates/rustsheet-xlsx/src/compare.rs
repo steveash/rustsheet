@@ -7,7 +7,7 @@ use rustsheet_engine::expressions::token::Error;
 use rustsheet_engine::types::*;
 use rustsheet_engine::{expressions::utils::number_to_column, Model};
 
-use crate::export::{exported_error_literal, save_to_xlsx};
+use crate::export::{exported_error_literal, rich_error_vm, save_to_xlsx};
 use crate::import::load_from_xlsx;
 
 use super::util::get_workbook_metadata;
@@ -343,17 +343,20 @@ pub fn test_file(file_path: &str, skip: &[&str]) -> Result<(), String> {
 }
 
 /// Gives the error constants of `model` the kind the exporter saves them as, then recalculates,
-/// so a saved-and-reloaded copy compares equal: the kinds `exported_error_literal` rewrites
-/// (`#CALC!`, `#SPILL!`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!` until T-1014, and the engine-only
-/// `#CIRC!`, `#ERROR!`, `#N/IMPL`) are written as `#VALUE!`, and cells that read them
-/// (ERROR.TYPE) follow.
+/// so a saved-and-reloaded copy compares equal: the engine-only `#CIRC!`, `#ERROR!` and
+/// `#N/IMPL` are written as `#VALUE!` (`exported_error_literal`), and cells that read them
+/// (ERROR.TYPE) follow. The rich kinds (`#CALC!`, `#SPILL!`, ...) keep theirs through `vm`
+/// (T-1014).
 fn save_error_constants_as_exported(model: &mut Model) {
     for sheet in &mut model.workbook.worksheets {
         let lossy: Vec<(i32, i32)> = sheet
             .sheet_data
             .cells()
             .filter_map(|(row, column, cell)| match cell {
-                Cell::ErrorCell { ei, .. } if exported_error_literal(ei) != ei.stored_literal() => {
+                Cell::ErrorCell { ei, .. }
+                    if exported_error_literal(ei) != ei.stored_literal()
+                        && rich_error_vm(ei).is_none() =>
+                {
                     Some((row, column))
                 }
                 _ => None,
