@@ -3,7 +3,7 @@ id: T-0278
 title: "Legacy *IF(S) formulas intersect a range criterion (all but COUNTIF and AVERAGEIF return #VALUE!)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
