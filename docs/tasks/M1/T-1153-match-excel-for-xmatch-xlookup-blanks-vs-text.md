@@ -3,7 +3,7 @@ id: T-1153
 title: "Match Excel for XMATCH/XLOOKUP blanks vs text and boolean candidates, and a blank lookup value (probes/xmatch-text-bool-equal-runs)"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -24,8 +24,12 @@ cell, the engine the second). In Excel a blank candidate is larger than any text
 (functions/lookup_and_reference/xmatch.rs) models it as empty text.
 
 ## Acceptance criteria
-- [ ] Every probes/xmatch-text-bool-equal-runs cell passes (24 baselined failures, listed in `make eval` output) and is removed from the baseline; the rest of the probe case keeps passing.
-- [ ] `make check` green; reviewers approve.
+- [x] Every probes/xmatch-text-bool-equal-runs cell passes (24 baselined failures, listed in `make eval` output) and is removed from the baseline; the rest of the probe case keeps passing.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing XMATCH/XLOOKUP behavior beyond the cells of probes/xmatch-text-bool-equal-runs.
+
+
+## Outcome
+All 24 baselined cells of probes/xmatch-text-bool-equal-runs now match Excel (probes known failures 212 -> 188 with main's own changes). `linear_scan` orders a blank after every value (`compare_blank_last`) and a blank lookup value matches only a blank; `CalcResult::cmp` puts a blank after a boolean; `binary_search` returns the run's first element for every match mode and, descending, keeps searching right of an equal element. Dead `walk_forward`/`uniform_tail_start` removed.
