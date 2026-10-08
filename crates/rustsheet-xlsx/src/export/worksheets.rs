@@ -43,11 +43,12 @@ use crate::export::conditional_formatting::get_conditional_formatting_xml;
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
 /// The literal an error cell is written with. Excel's stored form ([`Error::stored_literal`]),
-/// except `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!` and the engine-only `#CIRC!`,
-/// `#ERROR!` and `#N/IMPL`: Excel rejects those as stored literals (T-0999; T-1133 for the engine-only
-/// three, docs/excel-semantics/syntax.md) and keeps the first five only in `vm` rich-value metadata,
-/// which is not written yet, so they are saved as `#VALUE!` until T-1014 (SPEC-0003). The eval harness must not use this
-/// fallback: it scores through `Error::stored_literal`.
+/// except the kinds Excel rejects as stored literals, which are saved as `#VALUE!`:
+/// - `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` (T-0999). Excel keeps them only in
+///   `vm` rich-value metadata, which is not written yet (until T-1014, SPEC-0003).
+/// - The engine-only `#CIRC!`, `#ERROR!` and `#N/IMPL` (T-1133, docs/excel-semantics/syntax.md).
+///
+/// The eval harness must not use this fallback: it scores through `Error::stored_literal`.
 pub(crate) fn exported_error_literal(error: &Error) -> &'static str {
     match error {
         Error::SPILL
