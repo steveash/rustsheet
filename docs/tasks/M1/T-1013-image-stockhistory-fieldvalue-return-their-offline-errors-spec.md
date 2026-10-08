@@ -27,7 +27,7 @@ SPEC-0003 "Functions with no I/O" (rollout F1). Known failures: probes/rich-erro
 ## Out of scope
 - Linked data types, image values, and stock data (decision 0027).
 
-## Handoff
+## Handoff (resumed)
 Implemented and working on the branch: functions registered (`functions/information/offline_errors.rs`,
 enum/lookup/`to_xlsx_string`/dispatch in `functions/mod.rs`, signatures in `static_analysis.rs`), names added to
 `tools/upstream/generate_language/src/languages.json` + `main.rs` + `language/mod.rs` and `language.bin`
