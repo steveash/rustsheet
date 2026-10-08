@@ -29,6 +29,7 @@ impl Parser {
                 node,
                 Node::ParseErrorKind { .. }
                     | Node::OpUnionKind { .. }
+                    | Node::OpIntersectKind { written: 1.., .. }
                     | Node::GroupedRootKind { .. }
             )
         {
@@ -85,6 +86,12 @@ impl Parser {
         // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
+        }
+        // Excel also keeps them around a cut of a parenthesized union (`((A1,B1) B1)`, T-1176).
+        if cuts_written_union(&t) {
+            if let Node::OpIntersectKind { written, .. } = &mut t {
+                *written = written.saturating_add(1);
+            }
         }
         // An `@` operand prints its written levels back (`ImplicitIntersection::written`).
         if after_at {
@@ -210,6 +217,7 @@ impl Parser {
             t = Node::OpIntersectKind {
                 left: Box::new(t),
                 right: Box::new(p),
+                written: 0,
             };
         }
         if as_name {
@@ -478,6 +486,8 @@ fn starts_reference(token: &TokenType) -> bool {
 /// is `A1 @(A1 B1)` (T-0149).
 pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     let bare = match node {
+        // A cut with its own written parentheses (T-1176) prints them itself.
+        Node::OpIntersectKind { written: 1.., .. } => true,
         Node::OpIntersectKind { right, .. } => {
             is_left && !matches!(**right, Node::ImplicitIntersection { .. })
         }
@@ -510,9 +520,10 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
 /// and so does an `@`, which would otherwise take the rest of the operator's text
 /// (`A1:(@B1)`, `(@(A1 B1)):C3`; T-1102).
 pub(crate) fn tight_operand(text: String, node: &Node) -> String {
+    // A cut with its own written parentheses (T-1176) prints them itself.
     if matches!(
         node,
-        Node::OpIntersectKind { .. } | Node::ImplicitIntersection { .. }
+        Node::OpIntersectKind { written: 0, .. } | Node::ImplicitIntersection { .. }
     ) {
         format!("({text})")
     } else {
@@ -527,8 +538,12 @@ pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
     // A nested `@` needs one level even when none was written (programmatic trees).
     let levels = if matches!(node, Node::ImplicitIntersection { .. }) {
         written.max(1)
-    } else if matches!(node, Node::OpUnionKind { .. }) {
-        // A union prints the levels it was written in itself, `@(A1,B2)`.
+    } else if matches!(
+        node,
+        Node::OpUnionKind { .. } | Node::OpIntersectKind { written: 1.., .. }
+    ) {
+        // A union, or a cut of one (T-1176), prints the levels it was written in itself,
+        // `@(A1,B2)`.
         0
     } else {
         written
@@ -546,7 +561,7 @@ pub(crate) fn lead_group_text(
 ) -> Option<String> {
     let mut rights = Vec::new();
     let mut leftmost = child;
-    while let Node::OpIntersectKind { left, right } = leftmost {
+    while let Node::OpIntersectKind { left, right, .. } = leftmost {
         rights.push(&**right);
         leftmost = left;
     }
@@ -625,4 +640,15 @@ pub(crate) fn union_text(
         argument_separator(locale),
         ")".repeat(levels)
     )
+}
+
+/// Whether `node` is a chain of cuts whose leftmost operand is a union with its own parentheses.
+fn cuts_written_union(node: &Node) -> bool {
+    let mut leftmost = node;
+    let mut cut = false;
+    while let Node::OpIntersectKind { left, .. } = leftmost {
+        cut = true;
+        leftmost = left;
+    }
+    cut && matches!(leftmost, Node::OpUnionKind { written, .. } if *written > 0)
 }
