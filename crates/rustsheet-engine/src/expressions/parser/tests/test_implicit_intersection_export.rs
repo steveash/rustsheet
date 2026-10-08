@@ -127,9 +127,12 @@ fn same_range_depends_on_context() {
     ]);
 }
 
+// SUMIF's criterion is a scalar argument: a legacy formula intersects a multi-cell
+// criterion (T-0278, fixtures/ifs-legacy-range-criteria), so the import adds the automatic
+// `@`. It is redundant there, so the export drops it again.
 #[test]
 fn sumif_unique() {
-    let test_str = r#"LARGE(SUMIF(E2:E7,UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
+    let test_str = r#"LARGE(SUMIF(E2:E7,@UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
     let test_excel = r#"LARGE(SUMIF(E2:E7,_xlfn.UNIQUE(_xlfn._xlws.FILTER(E2:E7,E2:E7<>""))),B27)"#;
     check(&[(test_excel, test_str, test_excel)]);
 }

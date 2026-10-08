@@ -3,7 +3,7 @@ id: T-0278
 title: "Legacy *IF(S) formulas intersect a range criterion (all but COUNTIF and AVERAGEIF return #VALUE!)"
 milestone: M2
 lane: functions-criteria
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -32,10 +32,20 @@ criterion described above yields a 1x2 array in a scalar cell. Reproduced on `ma
 root cause as this task, so the steward raised it to P0 instead of filing a duplicate (decision 0035).
 
 ## Acceptance criteria
-- [ ] A unit test loads `fixtures/ifs-legacy-range-criteria.xlsx` through the facade with `recalc: true` in a debug build without panicking (the reproducer, decision 0035).
-- [ ] All cells of `fixtures/ifs-legacy-range-criteria` pass; baseline shrinks.
-- [ ] Dynamic-array behavior (lifting, probes/ifs-array-criteria) is unchanged.
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test loads `fixtures/ifs-legacy-range-criteria.xlsx` through the facade with `recalc: true` in a debug build without panicking (the reproducer, decision 0035).
+- [x] All cells of `fixtures/ifs-legacy-range-criteria` pass; baseline shrinks.
+- [x] Dynamic-array behavior (lifting, probes/ifs-array-criteria) is unchanged.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing dynamic-array lifting of criteria.
+
+## Outcome
+The criterion arguments of COUNTIFS, SUMIF, SUMIFS, AVERAGEIFS, MAXIFS and MINIFS now have `Scalar`
+signatures (`args_signature_ifs`, `args_signature_sumif` in `static_analysis.rs`), like COUNTIF and
+AVERAGEIF, so a legacy formula gets the automatic `@` on import and intersects a multi-cell range
+criterion; dynamic formulas still lift (probes/ifs-array-criteria unchanged). SUMIF's private
+`args_signature_sumif_spill` is gone. The fuzz reproducer is `crates/rustsheet/tests/legacy_ifs_range_criteria.rs`
+(loads the fixture through the facade with `recalc: true`; it panicked in debug before).
+The `sumif_unique` round-trip test now expects the automatic `@` on the criterion internally; the export is unchanged.
+Eval: fixtures known failures 14 -> 0, 0 regressions.
