@@ -96,6 +96,7 @@ mod test_trigonometric;
 mod test_true_false;
 mod test_union_operator;
 mod test_union_sum_metamorphic;
+mod test_union_vara_mode;
 mod test_weekday_return_types;
 mod test_weekday_weeknum_isoweeknum;
 mod test_weeknum_return_types;

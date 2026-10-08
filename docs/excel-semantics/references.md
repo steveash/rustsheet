@@ -528,13 +528,12 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
   0.3428571429, MINA 1, STDEV.P, STDEVP and STDEVPA 2.9580398915, STDEV and STDEVA 3.4156502553, VAR.P, VARP and
   VARPA 8.75, VAR and VARA 11.6666666667. All take the union. `MODE` and `MODE.SNGL` are the exception: a union
-  (`MODE((A1,B2,C3,D4,E5))`) is `#VALUE!`, not a mode (engine gives `#N/A`; T-1184). The engine also refuses
-  VARA, VARPA, STDEVA and STDEVPA over a union (T-1184).
+  (`MODE((A1,B2,C3,D4,E5))`) is `#VALUE!`, not a mode (the engine matches since T-1184).
 Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
-MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`, except VARA, VARPA, STDEVA and
-STDEVPA, T-1184) walks the areas one after the
+MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`, and VARA, VARPA, STDEVA and
+STDEVPA since T-1184) walks the areas one after the
 other (`Model::for_each_cell_in_areas`). Since T-1068 LARGE, SMALL, RANK.EQ/RANK.AVG and the data_array of FREQUENCY
 take a union the same way (`Model::values_from_areas`; FREQUENCY's bins_array is unprobed and stays a single reference).
 Since T-1064 a LET variable or LAMBDA parameter bound to a union
