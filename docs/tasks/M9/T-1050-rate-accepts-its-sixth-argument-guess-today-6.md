@@ -3,7 +3,7 @@ id: T-1050
 title: "RATE accepts its sixth argument (guess); today 6 arguments give #ERROR!"
 milestone: M9
 lane: functions-financial
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -32,3 +32,6 @@ Matching Excel's exact digits is T-0916's job (iteration fit), not this task's.
 
 ## Out of scope
 - Matching Excel's iteration, tolerance or guess-dependent digits (T-0916).
+
+## Outcome
+`fn_rate` accepts 3 to 6 arguments (was 3 to 5, so the guess branch was unreachable). No `guess=` cell in probes-numeric/m9-fin-irr-rate is `#ERROR!` any more; remaining value differences stay with T-0916. Unit test covers 6 arguments (value equals the default-guess result) and 7 stays an argument-count error. Eval baseline unchanged, 0 regressions.
