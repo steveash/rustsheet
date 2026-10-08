@@ -268,6 +268,7 @@ C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/typed-paren-number-input.case.json	24
 C	probes/union-accepted.case.json	9
+C	probes/union-cut-precedence.case.json	15
 C	probes/union-defined-name.case.json	0
 C	probes/union-neg-operand.case.json	2
 C	probes/union-operand-double-minus.case.json	2
@@ -617,6 +618,7 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/sheet-qualified-corner-order.case.json	Calc!A7
 F	probes/text-result-limit.case.json	Sheet1!C24
+F	probes/union-cut-precedence.case.json	Sheet1!F6
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4

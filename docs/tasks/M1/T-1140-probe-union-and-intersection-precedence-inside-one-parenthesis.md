@@ -3,7 +3,7 @@ id: T-1140
 title: "Probe union and intersection precedence inside one parenthesis and chained cuts of a union"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ Follow the `excel-probe` skill. New case probes/union-cut-precedence (numbers in
 ## Out of scope
 - Union reaching functions (SPEC-0004 tasks T-1062 to T-1073) and negated union operands (settled by T-0998, T-1031).
 - Parser or evaluator changes (file the follow-up instead).
+
+## Outcome
+Added probes/union-cut-precedence (15 cells, excel-graph oracle 2026-10-08) and replaced the "not probed" bullet in references.md with evidenced grouping, empty-cut and chained-cut rules. Engine matches 14 of 15 cells; the miss (F6, FORMULATEXT drops inner parentheses) is owned by T-1173. Eval delta: +15 checked cells, 1 new known failure.
