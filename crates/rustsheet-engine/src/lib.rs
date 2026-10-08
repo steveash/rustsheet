@@ -65,6 +65,7 @@ mod merged_cells;
 mod model;
 mod reference_operators;
 mod styles;
+mod tables;
 mod tz;
 mod units;
 mod user_model;

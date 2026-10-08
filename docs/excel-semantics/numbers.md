@@ -775,12 +775,38 @@ Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07
 Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
 Oracle: excel-graph, 2026-10-06 (T-0993).
-Status: VERIFIED, except hidden and filtered rows (UNVERIFIED: the case format cannot hide rows; the engine skips
-hidden and filter-hidden rows under odd options and keeps them otherwise) and nested SUBTOTAL/AGGREGATE inside a
-larger formula (UNVERIFIED: only a formula whose outermost call is SUBTOTAL or AGGREGATE is skipped); both: T-1036.
+Status: VERIFIED. Hidden and filtered rows and nested SUBTOTAL/AGGREGATE calls: see "SUBTOTAL and AGGREGATE over
+hidden and filtered rows" below (T-1036).
 Also unprobed: a scalar in the array form (the engine takes a number as one value, returns a scalar error under every
 option, and gives `#VALUE!` for text or a boolean), and which error wins between a range and a later error argument.
 Known gaps: k rounding and boolean k in LARGE/SMALL (T-1034).
 The VAR.P last digit (probes/aggregate-grid B31, C31) has passed since T-1037.
 Implemented in: `fn_aggregate` (crates/rustsheet-engine/src/functions/aggregate.rs); the lift reuses
 `Model::lift_with_cost`, and the spill shape is `aggregate_static_result` in static_analysis/aggregate.rs (T-1038).
+
+## SUBTOTAL and AGGREGATE over hidden and filtered rows
+Rule: a row hidden by hand is read by SUBTOTAL 1-11 and skipped by 101-111; a row hidden by a filter is skipped by
+both. AGGREGATE's odd options (1, 3, 5, 7) skip both kinds and its even options read both. Which kind a hidden row is
+follows its sheet, not its position: on a sheet with a filtered table every hidden row counts as filtered, including
+rows above or below the table and cells in columns outside it, and on a sheet without one every hidden row is a
+manual hide (a table without a filter does not change that). SUBTOTAL, and AGGREGATE under options 0-3, skip a cell
+whose formula contains a SUBTOTAL or AGGREGATE call anywhere: `=1+SUBTOTAL(9,A1:A2)`, `=SUBTOTAL(..)+1`,
+`=-SUBTOTAL(..)`, `=SUBTOTAL(..)*1`, `=IF(TRUE,SUBTOTAL(..))`, `=SUM(SUBTOTAL(..))`, `=LET(x,SUBTOTAL(..),x)`,
+`=AGGREGATE(9,0,A1:A2)` and `=1+AGGREGATE(..)` all count as 0, while `AGGREGATE(9,4,..)` reads them and a plain
+`=SUM(A1:A2)` is read by all.
+Examples (A1:A8 = 1, 2, 4, ..., 128, rows 2 and 5 hidden by hand): `SUBTOTAL(9,A1:A8)` = 255, `SUBTOTAL(109,A1:A8)`
+= 237, `SUBTOTAL(110,A1:A8)` = 2444.7, `AGGREGATE(9,0,A1:A8)` = 255, `AGGREGATE(9,1,A1:A8)` = 237,
+`AGGREGATE(15,1,A1:A8,2)` = 4. The same values filtered out of a table give `SUBTOTAL(9,..)` = 237 and
+`SUBTOTAL(10,..)` = 2444.7.
+How the probe makes a filtered row: the table's autoFilter holds a values filter on its first column that keeps
+exactly the visible rows, and the hidden rows are written `hidden="1"`; Excel reads such a file as filtered without
+re-applying the filter. A worksheet-level autoFilter (no table), a manual hide inside a filtered table made in the
+application, and hidden columns are unprobed.
+Evidence: probes/subtotal-hidden-filtered (150 cells; oracle: excel-graph, 2026-10-08, T-1036).
+Status: VERIFIED
+Engine gaps: SUBTOTAL 110 and 111 read hidden rows (T-1181); a hidden row outside the filtered table's cells is read
+by SUBTOTAL 1-11 (T-1182); only a formula whose outermost call is SUBTOTAL (for SUBTOTAL) or SUBTOTAL/AGGREGATE (for
+AGGREGATE) is skipped (T-1183).
+Implemented in: `fn_subtotal` and `cell_hidden_status` (crates/rustsheet-engine/src/functions/subtotal.rs),
+`fn_aggregate` (functions/aggregate.rs). The case format's `hidden_rows` and `tables` (docs/architecture/eval-harness.md)
+load through `Txn::set_row_hidden` and `Txn::add_table`.

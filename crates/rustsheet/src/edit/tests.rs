@@ -623,3 +623,73 @@ fn set_row_hidden_rejects_an_unknown_sheet() {
         .unwrap_err();
     assert!(matches!(err, EditError::Ref(RefError::UnknownSheet(_))));
 }
+
+/// `Key`/`Val` headers in A1:B1 and three data rows (`a`..`c`, 1, 2, 4) on the first sheet.
+fn keyed_book() -> Workbook {
+    let mut wb = book();
+    let sheet = wb.sheets()[0].id;
+    wb.edit(|tx| {
+        tx.set("A1", "Key")?;
+        tx.set("B1", "Val")?;
+        for (row, (key, n)) in (1..).zip([("a", 1.0), ("b", 2.0), ("c", 4.0)]) {
+            tx.set(CellRef::new(sheet, row, 0)?, key)?;
+            tx.set(CellRef::new(sheet, row, 1)?, n)?;
+        }
+        Ok(())
+    })
+    .unwrap();
+    wb
+}
+
+#[test]
+fn filtered_table_rows_are_skipped_by_subtotal_9() {
+    let mut wb = keyed_book();
+    let sheet = wb.sheets()[0].id;
+    let range = wb.range_ref("A1:B4").unwrap();
+    wb.edit(|tx| {
+        tx.add_table(range, "Data", true)?;
+        tx.set_row_hidden(sheet, 2, true)?;
+        tx.set("D1", Input::Formula("=SUM(Data[Val])".into()))?;
+        tx.set("D2", Input::Formula("=SUBTOTAL(9,B2:B4)".into()))
+    })
+    .unwrap();
+    assert_eq!(wb.value(cell(&wb, "D1")).unwrap(), Value::Number(7.0));
+    assert_eq!(wb.value(cell(&wb, "D2")).unwrap(), Value::Number(5.0));
+}
+
+#[test]
+fn a_failed_edit_removes_the_table() {
+    let mut wb = keyed_book();
+    let range = wb.range_ref("A1:B4").unwrap();
+    let failed: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.add_table(range, "Data", false)?;
+        tx.add_table(range, "Other", false)
+    });
+    assert!(matches!(failed.unwrap_err(), EditError::Table(_)));
+    // The name is free again, so the same table can be added.
+    wb.edit(|tx| tx.add_table(range, "Data", false)).unwrap();
+}
+
+#[test]
+fn add_table_rejects_bad_names_ranges_and_headers() {
+    let mut wb = keyed_book();
+    let all = wb.range_ref("A1:B4").unwrap();
+    let header_only = wb.range_ref("A1:B1").unwrap();
+    let blank_header = wb.range_ref("A1:C4").unwrap();
+    for (range, name) in [
+        (all, "A1"),
+        (all, "has space"),
+        (header_only, "Data"),
+        (blank_header, "Data"),
+    ] {
+        let err = wb.edit(|tx| tx.add_table(range, name, false)).unwrap_err();
+        assert!(matches!(err, EditError::Table(_)), "{name}: {err:?}");
+    }
+    wb.edit(|tx| tx.define_name("Taken", "=1")).unwrap();
+    let err = wb.edit(|tx| tx.add_table(all, "taken", false)).unwrap_err();
+    assert!(matches!(err, EditError::Table(_)));
+    let mut bad = all;
+    bad.sheet = SheetId::new(999);
+    let err = wb.edit(|tx| tx.add_table(bad, "Data", false)).unwrap_err();
+    assert!(matches!(err, EditError::Ref(RefError::UnknownSheet(_))));
+}
