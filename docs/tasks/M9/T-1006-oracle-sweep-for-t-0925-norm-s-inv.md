@@ -30,4 +30,4 @@ Grid: p = NORM.S.DIST(k,TRUE) for k in -38..8 step 0.25, plus literal tails p = 
 - Fitting or implementing the formulation (T-0925 does that).
 
 ## Outcome
-Added `probes-numeric/m9-norm-s-inv` (639 cells) with its excel-graph oracle sidecar (no pending cells). 447 of 639 cells differ from the engine (438 ulp, 3 close, 6 subnormal-p `#NUM!`); quirks in numbers.md. T-0925 already depends on T-1006 (not T-0942). Eval gates unchanged (probes-numeric is ungated).
+Added `probes-numeric/m9-norm-s-inv` (648 cells) with its excel-graph oracle sidecar (no pending cells). 447 of 639 cells differ from the engine (438 ulp, 3 close, 6 flushed-tail `#NUM!`); quirks in numbers.md. T-0925 already depends on T-1006 (not T-0942). Eval gates unchanged (probes-numeric is ungated).

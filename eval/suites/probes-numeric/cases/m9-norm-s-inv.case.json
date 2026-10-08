@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1006 sweep for T-0925: NORM.S.INV, NORMSINV and NORM.INV(p,0,1) at p = NORM.S.DIST(k), deep tails and algorithm region edges.",
+ "description": "T-1006 sweep for T-0925: NORM.S.INV, NORMSINV and NORM.INV(p,0,1) at p = NORM.S.DIST(k), deep tails and algorithm region edges. Cells A640+ separate NORM.S.DIST flushing from NORM.S.INV rejecting subnormal p.",
  "tags": [
   "M9",
   "probe",
@@ -651,7 +651,16 @@
     "A636": "=NORM.INV(1-1E-14,0,1)",
     "A637": "=NORM.S.INV(1-1E-15)",
     "A638": "=NORMSINV(1-1E-15)",
-    "A639": "=NORM.INV(1-1E-15,0,1)"
+    "A639": "=NORM.INV(1-1E-15,0,1)",
+    "A640": "=NORM.S.DIST(-37.75,TRUE)=0",
+    "A641": "=NORM.S.DIST(-38,TRUE)=0",
+    "A642": "=NORM.S.DIST(-37.6,TRUE)=0",
+    "A643": "=NORM.S.DIST(-37.5,TRUE)=0",
+    "A644": "=NORM.S.DIST(-37.75,TRUE)",
+    "A645": "=NORM.S.DIST(-37.6,TRUE)",
+    "A646": "=NORM.S.DIST(-37.5,TRUE)",
+    "A647": "=NORM.S.INV(3E-308-2.5E-308)",
+    "A648": "=NORM.S.INV(2.3E-308-1E-309)"
    }
   }
  ],
@@ -1294,7 +1303,16 @@
   "Calc!A636": "norminv/p=1-1e-14",
   "Calc!A637": "nsinv/p=1-1e-15",
   "Calc!A638": "normsinv/p=1-1e-15",
-  "Calc!A639": "norminv/p=1-1e-15"
+  "Calc!A639": "norminv/p=1-1e-15",
+  "Calc!A640": "dist-flush/k=-37.75",
+  "Calc!A641": "dist-flush/k=-38",
+  "Calc!A642": "dist-flush/k=-37.6",
+  "Calc!A643": "dist-flush/k=-37.5",
+  "Calc!A644": "dist/k=-37.75",
+  "Calc!A645": "dist/k=-37.6",
+  "Calc!A646": "dist/k=-37.5",
+  "Calc!A647": "inv/subnormal-by-subtraction",
+  "Calc!A648": "inv/just-below-min-normal-by-subtraction"
  },
  "expected": {}
 }

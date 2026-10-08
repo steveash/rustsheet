@@ -388,19 +388,23 @@ it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x
 confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
 
 ### NORM.S.INV / NORMSINV / NORM.INV(p,0,1): oracle sweep (T-1006)
-Probe `probes-numeric/m9-norm-s-inv` (639 cells = 213 arguments x 3 functions, oracle: excel-graph, 2026-10-08) is the fitting set for T-0925.
+Probe `probes-numeric/m9-norm-s-inv` (639 sweep cells = 213 arguments x 3 functions, plus 9 flush/subnormal cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0925.
 - The three functions agree on all 213 arguments (same value or same error).
-- A subnormal p is `#NUM!`: `NORM.S.INV(NORM.S.DIST(-38,TRUE))` and `...(-37.75,...)` are `#NUM!` (the engine returns -38.0000000000826),
-  while p = NORM.S.DIST(-37.5,TRUE) (about 4.6E-308) and 1E-300 are finite (1E-300 gives -37.0470962993612). The exact cutoff
-  between -37.75 and -37.5 (probably `p < 2.2250738585072014E-308`) is unprobed.
-- Excel does not round-trip: `NORM.S.INV(NORM.S.DIST(k,TRUE))` is often 1-2 ulp off k (k = -37.5 gives -37.50000000000001,
+- NORM.S.DIST flushes its far tail to 0: `NORM.S.DIST(k,TRUE)` is exactly 0 for k = -37.6, -37.75 and -38 and 4.605353009581954E-308 at k = -37.5.
+  Hence `NORM.S.INV(NORM.S.DIST(k,TRUE))` is `#NUM!` at k = -38 and -37.75 (the engine returns -38.000000000082615 and -37.74999999999998) and
+  finite at k = -37.5; this is the ordinary p = 0 `#NUM!`, not a subnormal-p rejection. NORM.S.INV accepts a subnormal p:
+  `NORM.S.INV(3E-308-2.5E-308)` = -37.55912122001426 and `NORM.S.INV(2.3E-308-1E-309)` = -37.5184972450123. 1E-300 gives -37.0470962993612.
+  The k at which NORM.S.DIST starts returning 0 lies in (-37.6, -37.5) and is unprobed.
+- Excel does not round-trip: `NORM.S.INV(NORM.S.DIST(k,TRUE))` is mostly 0-2 ulp off k for k <= 2 (3 ulp at k = -31.75, -30.5,
+  -29.25 and -25.5); above 2 the error grows with the resolution of p near 1 (k = 2.5 is -4 ulp, k = 3.5 is -38, k = 8 gives
+  7.991573950493902), which comes from rounding p, not from the inverse (k = -37.5 gives -37.50000000000001,
   k = 0.5 gives 0.5000000000000001, k = -0.5 gives -0.5000000000000001). NORM.S.INV(0.5) is exactly 0.
 - Values at the AS241 region edges and around 0.5 (no pattern is claimed, T-0925 fits them): p = 0.02425 - 1E-6 gives
   -1.972978604638878, 0.02425 + 1E-6 gives -1.9729434985927772, 0.97575 - 1E-6 gives 1.972943498592777, 0.97575 + 1E-6 gives
   1.9729786046388784, 0.5 - 1E-9 gives -2.5066283428845328E-9, 0.5 + 1E-9 gives 2.5066282037387115E-9.
 - 1 - 1E-k for k = 1..15 is in the case (for example k = 10: 6.361340889697421, k = 15: 7.941444487415977).
-Evidence: `probes-numeric/m9-norm-s-inv` (`rustsheet-eval show probes-numeric/m9-norm-s-inv.case.json`). 192 of 639 cells
-pass today: 438 ulp-level and 3 close mismatches, plus the six subnormal `#NUM!` cells.
+Evidence: `probes-numeric/m9-norm-s-inv` (`rustsheet-eval show probes-numeric/m9-norm-s-inv.case.json`). As of 2026-10-08, 192 of 639
+sweep cells pass: 438 ulp-level and 3 close mismatches, plus the six `#NUM!` cells (A1-A6).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0925.
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
