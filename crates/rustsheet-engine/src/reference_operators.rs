@@ -494,13 +494,39 @@ impl Model {
         cell: CellReferenceIndex,
         budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
-        let mut areas = self.evaluate_areas(left, cell, budget)?;
-        let right = self.evaluate_areas(right, cell, budget)?;
+        let mut areas = self.evaluate_union_operand(left, cell, budget)?;
+        let right = self.evaluate_union_operand(right, cell, budget)?;
         if areas.len() + right.len() > MAX_AREAS {
             return Err(too_many_areas(cell));
         }
         areas.extend(right);
         Ok(areas)
+    }
+
+    /// An operand of a union. A 3-D reference cannot be one: Excel answers `#NAME?`, not the
+    /// `#VALUE!` of other non-reference operands (`SUM((Sheet1:Sheet2!A1,B2))`,
+    /// probes/multiarea-3d-ref).
+    fn evaluate_union_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        budget: &mut usize,
+    ) -> Result<Vec<Range>, CalcResult> {
+        if let Node::SheetSpanKind {
+            first_index,
+            last_index,
+            ..
+        } = node
+        {
+            if first_index != last_index {
+                return Err(CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    "3-D reference inside a union".to_string(),
+                ));
+            }
+        }
+        self.evaluate_areas(node, cell, budget)
     }
 
     /// The pairwise intersections of the areas of `left` and `right` that hold a cell. A pair
