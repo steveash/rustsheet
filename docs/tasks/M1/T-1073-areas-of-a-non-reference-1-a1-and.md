@@ -26,7 +26,7 @@ Oracle (T-1061): a workbook holding AREAS(1) or AREAS("A1") is refused by Excel 
 ## Handoff
 No code written. The acceptance criteria hinge on a design call, not on oracle values: Excel refuses to load a
 workbook holding `AREAS(1)` / `AREAS("A1")` (createSession 501 unsupportedWorkbook), so there is no cell value to
-match, and whether it refuses the bare `=A1,B2` when typed is unprobable on Excel for the web. The same question
+match, and whether it refuses the bare `=A1,B2` when typed cannot be probed on Excel for the web. The same question
 came up in T-1163 (SUBTOTAL with a direct or computed array argument is refused the same way, see
 docs/excel-semantics/references.md; PR #413 is the draft handoff). Both want a shared parse-time "reference-only
 argument" check, modelled on the intersection-operand refusal list in references.md ("Union: parsing and
