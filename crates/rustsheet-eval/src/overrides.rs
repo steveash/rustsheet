@@ -21,7 +21,7 @@ use crate::value::Value;
 
 /// Oracle sources that may replace a cached value: a live Excel, never cached values or an
 /// approximate backend.
-const GOLDEN_KINDS: [&str; 2] = ["excel-graph", "excel-desktop"];
+const GOLDEN_KINDS: [&str; 2] = [crate::case::GRAPH_ORACLE, "excel-desktop"];
 
 /// One `cached_overrides` line: a cached cell and the golden cell that replaces it.
 #[derive(Debug, Clone, PartialEq, Eq)]

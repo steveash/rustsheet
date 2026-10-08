@@ -87,6 +87,9 @@ pub struct OracleSource {
     pub input_sha256: Option<String>,
 }
 
+/// The oracle kind of the Microsoft Graph backend.
+pub(crate) const GRAPH_ORACLE: &str = "excel-graph";
+
 /// Whether an oracle `source.kind` string (see [`OracleSource::kind`]) is Excel evidence rather
 /// than hand-written or engine-derived values.
 ///

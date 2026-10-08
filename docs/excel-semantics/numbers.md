@@ -278,7 +278,11 @@ cells A4, A6, A60-A62, A65 and A69 cannot score the engine; only their `C` compa
 The probe leaves out
 literals with exponent below -308 (`1E-310`, `1E-320`, `1E-620`): the Graph workbook builder rejected the
 file (`unsupportedWorkbook`) when they appeared.
-Implemented in: `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
+Scoring (decision 0042): an excel-graph 0 against a kept subnormal scores as a pass when the case has a
+FALSE excel-graph companion `(x)=0` for the same formula, since Graph reports both as 0.
+Implemented in: `arithmetic::plus`/`minus` keep subnormals (T-1027); number text below the smallest
+normal reads as 0 (`Model::parse_number_text`; UNVERIFIED, since the Graph 0s of text-number-words H6 etc.
+cannot tell a flush from a kept subnormal and no companion exists yet, T-1143); `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
 flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and
 SUBTOTAL 1/101 (final result; T-0987, T-1007), and of the postfix `%` (T-0988).
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument

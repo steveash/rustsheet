@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::case::{
     canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
-    CASE_FORMAT,
+    CASE_FORMAT, GRAPH_ORACLE,
 };
 use crate::case_log;
 use crate::cellref::Addr;
@@ -113,6 +113,21 @@ struct Expectation {
     from_excel: bool,
     /// The pinned by-design value when the suite's `deviations` file lists the cell.
     pinned: Option<Value>,
+    /// Whether the expectation is an excel-graph value with an excel-graph companion
+    /// `=(<formula>)=0` that is FALSE: Excel kept a non-zero result that Graph may report as 0
+    /// (`graph_hides_subnormal`).
+    from_graph: bool,
+}
+
+/// Whether an excel-graph expectation of 0 hides `actual`. The Graph API reports a subnormal
+/// cell value as 0.0, so its 0 cannot tell a true 0 from a kept subnormal: Excel keeps
+/// `3E-308-2.5E-308` yet Graph reports 0 (probes/subnormal-function-results A69). Only cells
+/// whose companion `(x)=0` is FALSE qualify (`from_graph`), so the evidence is Excel's.
+/// Decision 0042.
+fn graph_hides_subnormal(e: &Expectation, actual: &Value) -> bool {
+    e.from_graph
+        && e.expected == Value::Number(0.0)
+        && matches!(actual, Value::Number(a) if *a != 0.0 && a.abs() < f64::MIN_POSITIVE)
 }
 
 enum Prepared {
@@ -272,6 +287,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
         .iter()
         .map(|e| {
             let (actual, mut verdict) = match evaluated.value(&e.sheet, e.addr) {
+                Some(actual) if graph_hides_subnormal(e, &actual) => (actual, Verdict::Pass),
                 Some(actual) => {
                     let verdict = compare(&e.expected, &actual);
                     (actual, verdict)
@@ -396,6 +412,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
                 from_excel,
                 pinned: None,
+                from_graph: false,
             })
         })
         .collect();
@@ -496,6 +513,16 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     } else {
         spec.check.clone()
     };
+    // Formulas `(x)=0` whose excel-graph value is FALSE: Excel kept `x` non-zero (decision 0042).
+    let from_graph_oracle = source == GRAPH_ORACLE;
+    let kept_nonzero: BTreeSet<String> = formulas
+        .iter()
+        .filter(|(sheet, addr, _)| {
+            let key = cell_key(sheet, *addr);
+            oracle_cells.contains(&key) && expected.get(&key) == Some(&Value::Bool(false))
+        })
+        .map(|(_, _, formula)| formula.clone())
+        .collect();
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
     for q in wanted {
@@ -506,6 +533,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             continue; // pending oracle for this cell (or an undecoded rich error)
         };
         let formula = formula_of(&sheet, &a1);
+        let from_graph = from_graph_oracle
+            && formula
+                .as_deref()
+                .is_some_and(|f| kept_nonzero.contains(&format!("({f})=0")));
         if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;
             continue;
@@ -517,6 +548,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             expected: value,
             from_excel: oracle_is_excel && oracle_cells.contains(&key),
             pinned: None,
+            from_graph,
         });
     }
     Ok(PreparedCase {
@@ -641,6 +673,7 @@ mod tests {
             expected: Value::Error("#VALUE!".into()),
             from_excel: true,
             pinned: None,
+            from_graph: false,
         };
         let write_overrides = |cell: &str| {
             let line = format!("D/x.xlsx\tS!{cell}\tprobes/p.oracle.json\tSheet1!B1\n");
@@ -655,6 +688,29 @@ mod tests {
         let unscored = apply_cached_overrides(&suite, &case, vec![cached("C70")]);
         let _ = std::fs::remove_dir_all(&dir);
         assert!(unscored.is_err_and(|e| e.contains("unscored cell S!Z9")));
+    }
+
+    /// An excel-graph 0 hides a kept subnormal (decision 0042); other sources and values do not.
+    #[test]
+    fn graph_zero_hides_only_a_subnormal() {
+        let e = |expected: f64, from_graph| Expectation {
+            sheet: "S".into(),
+            addr: Addr::parse("A1").expect("addr"),
+            formula: None,
+            expected: Value::Number(expected),
+            from_excel: true,
+            pinned: None,
+            from_graph,
+        };
+        let subnormal = Value::Number(5e-309);
+        assert!(graph_hides_subnormal(&e(0.0, true), &subnormal));
+        assert!(!graph_hides_subnormal(&e(0.0, false), &subnormal));
+        assert!(!graph_hides_subnormal(&e(1.0, true), &subnormal));
+        assert!(!graph_hides_subnormal(
+            &e(0.0, true),
+            &Value::Number(1e-300)
+        ));
+        assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(0.0)));
     }
 
     /// A listed cell is a deviation when it gives its pinned value, a pass when it matches Excel

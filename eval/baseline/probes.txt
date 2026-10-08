@@ -94,6 +94,8 @@ C	probes/date-text-yearless.case.json	48
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
+C	probes/datevalue-separator-spaces-paths.case.json	15
+C	probes/datevalue-separator-spaces.case.json	32
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-intersection.case.json	10
 C	probes/dvar-one-vs-two-pass.case.json	32
@@ -290,6 +292,8 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
 F	probes/concatenate-limit-spill.case.json	Sheet1!G97
 F	probes/criteria-padded-text.case.json	Sheet1!C13
+F	probes/datevalue-separator-spaces.case.json	S!B15
+F	probes/datevalue-separator-spaces.case.json	S!C15
 F	probes/error-stored-constants.case.json	S!B1
 F	probes/error-stored-constants.case.json	S!C1
 F	probes/error-stored-constants.case.json	S!D1
@@ -468,17 +472,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A9
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
-F	probes/subnormal-flush-edges.case.json	Calc!A16
-F	probes/subnormal-function-results.case.json	Calc!A4
-F	probes/subnormal-function-results.case.json	Calc!A6
-F	probes/subnormal-function-results.case.json	Calc!A60
-F	probes/subnormal-function-results.case.json	Calc!A61
-F	probes/subnormal-function-results.case.json	Calc!A62
-F	probes/subnormal-function-results.case.json	Calc!A65
-F	probes/subnormal-function-results.case.json	Calc!C69
-F	probes/subnormal-function-results.case.json	Calc!C73
-F	probes/subnormal-function-results.case.json	Calc!C74
-F	probes/subnormal-function-results.case.json	Calc!C75
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
