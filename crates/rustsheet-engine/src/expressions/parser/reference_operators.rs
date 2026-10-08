@@ -86,6 +86,12 @@ impl Parser {
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
         }
+        // Excel also keeps them around a cut of a parenthesized union (`((A1,B1) B1)`, T-1176).
+        if cuts_written_union(&t) {
+            if let Node::OpIntersectKind { written, .. } = &mut t {
+                *written = written.saturating_add(1);
+            }
+        }
         // An `@` operand prints its written levels back (`ImplicitIntersection::written`).
         if after_at {
             let inner = self.at_group.take().filter(|&(_, end)| end == close);
@@ -93,6 +99,17 @@ impl Parser {
             self.at_group = Some((levels, self.lexer.get_position_index()));
         }
         t
+    }
+
+    /// Whether `node` is a chain of cuts whose leftmost operand is a union with its own parentheses.
+    fn cuts_written_union(node: &Node) -> bool {
+        let mut leftmost = node;
+        let mut cut = false;
+        while let Node::OpIntersectKind { left, .. } = leftmost {
+            cut = true;
+            leftmost = left;
+        }
+        cut && matches!(leftmost, Node::OpUnionKind { written, .. } if *written > 0)
     }
 
     /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
@@ -210,6 +227,7 @@ impl Parser {
             t = Node::OpIntersectKind {
                 left: Box::new(t),
                 right: Box::new(p),
+                written: 0,
             };
         }
         if as_name {
@@ -546,7 +564,7 @@ pub(crate) fn lead_group_text(
 ) -> Option<String> {
     let mut rights = Vec::new();
     let mut leftmost = child;
-    while let Node::OpIntersectKind { left, right } = leftmost {
+    while let Node::OpIntersectKind { left, right, .. } = leftmost {
         rights.push(&**right);
         leftmost = left;
     }
@@ -625,4 +643,15 @@ pub(crate) fn union_text(
         argument_separator(locale),
         ")".repeat(levels)
     )
+}
+
+/// Whether `node` is a chain of cuts whose leftmost operand is a union with its own parentheses.
+fn cuts_written_union(node: &Node) -> bool {
+    let mut leftmost = node;
+    let mut cut = false;
+    while let Node::OpIntersectKind { left, .. } = leftmost {
+        cut = true;
+        leftmost = left;
+    }
+    cut && matches!(leftmost, Node::OpUnionKind { written, .. } if *written > 0)
 }

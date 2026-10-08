@@ -219,6 +219,9 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
+        /// Parentheses levels written around a cut whose leftmost operand is a parenthesized
+        /// union, `((A1,B1) B1)`; FORMULATEXT keeps them (T-1176). Plain cuts drop theirs.
+        written: usize,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
