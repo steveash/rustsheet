@@ -103,11 +103,11 @@ impl Model {
         match cell.get_formula() {
             Some(f) => {
                 let node: &Node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
-                // `=(SUBTOTAL(...))` is a SUBTOTAL formula too, as it was before grouped roots.
-                let node = match node {
-                    Node::GroupedRootKind { child } => child,
-                    other => other,
-                };
+                // `=(SUBTOTAL(...))` (at any depth) is a SUBTOTAL formula too, as it was before grouped roots.
+                let mut node = node;
+                while let Node::GroupedRootKind { child } = node {
+                    node = child;
+                }
                 matches!(node, Node::FunctionKind { kind, .. } if kinds.contains(kind))
             }
             None => false,

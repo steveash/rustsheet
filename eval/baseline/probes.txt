@@ -608,7 +608,6 @@ F	probes/multiarea-cellfn.case.json	Sheet1!H1
 F	probes/multiarea-cellfn.case.json	Sheet1!H3
 F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/multiarea-xname.case.json	!EngineError
-F	probes/near-zero-snap-groups.case.json	Sheet1!B6
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
 F	probes/paren-number-text-forms.case.json	Sheet1!A2
