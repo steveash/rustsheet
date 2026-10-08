@@ -204,6 +204,7 @@ C	probes/paren-number-text-forms.case.json	14
 C	probes/precision-and-rounding.case.json	18
 C	probes/range-right-operand-errors.case.json	4
 C	probes/rank-absent-number.case.json	15
+C	probes/rate-empty-arguments.case.json	10
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-args.case.json	54
 C	probes/rich-errors-calc.case.json	10
@@ -481,6 +482,15 @@ F	probes/precision-and-rounding.case.json	Sheet1!A15
 F	probes/precision-and-rounding.case.json	Sheet1!A2
 F	probes/precision-and-rounding.case.json	Sheet1!A3
 F	probes/precision-and-rounding.case.json	Sheet1!A4
+F	probes/rate-empty-arguments.case.json	Sheet1!A1
+F	probes/rate-empty-arguments.case.json	Sheet1!A10
+F	probes/rate-empty-arguments.case.json	Sheet1!A2
+F	probes/rate-empty-arguments.case.json	Sheet1!A3
+F	probes/rate-empty-arguments.case.json	Sheet1!A4
+F	probes/rate-empty-arguments.case.json	Sheet1!A5
+F	probes/rate-empty-arguments.case.json	Sheet1!A6
+F	probes/rate-empty-arguments.case.json	Sheet1!A8
+F	probes/rate-empty-arguments.case.json	Sheet1!A9
 F	probes/rich-errors-args.case.json	Sheet1!A20
 F	probes/rich-errors-args.case.json	Sheet1!A21
 F	probes/rich-errors-args.case.json	Sheet1!A24

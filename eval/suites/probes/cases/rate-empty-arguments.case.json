@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "RATE with an empty guess/fv/type argument versus explicit values (T-1128).",
+  "tags": [
+    "M9",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=RATE(48,-200,8000,0,1,)",
+        "A2": "=RATE(48,-200,8000,0,1,0.1)",
+        "A3": "=RATE(48,-200,8000,0,1,0)",
+        "A4": "=RATE(48,-200,8000,,1)",
+        "A5": "=RATE(48,-200,8000,0,)",
+        "A6": "=RATE(48,-200,8000,0,0)",
+        "A7": "=RATE(48,-200,8000,0,1,\"\")",
+        "A8": "=RATE(48,-200,8000,0,1,B1)",
+        "A9": "=RATE(48,-200,8000,0,1,TRUE)",
+        "A10": "=RATE(48,-200,8000,0,1,1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10"
+  ]
+}

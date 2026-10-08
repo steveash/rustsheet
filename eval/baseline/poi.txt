@@ -292,7 +292,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E260
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E584
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F128
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F584
@@ -747,10 +746,4 @@ F	poi/ref2-56737.xlsx	Refs!G3
 F	poi/ref2-56737.xlsx	Refs!G5
 F	poi/ref2-56737.xlsx	Refs!I3
 F	poi/ref2-56737.xlsx	Refs!I5
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!E4
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!E9
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!F9
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!G9
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!H4
-F	poi/simple-table-named-range.xlsx	Sheet1!B7
 F	poi/style-alternate-content.xlsx	!EngineError
