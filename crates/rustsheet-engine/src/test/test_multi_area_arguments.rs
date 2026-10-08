@@ -108,6 +108,10 @@ fn order_statistics_take_a_union() {
             ("H7", "=LARGE((A1,B2),3)", "#NUM!"),
             // An error cell in an area is the function's error, as in a plain range.
             ("H8", "=LARGE((A1,E1),1)", "#DIV/0!"),
+            // SMALL resolves its argument like LARGE: a cell, a typed scalar and an error cell.
+            ("H9", "=SMALL(B2,1)", "5"),
+            ("H10", "=SMALL(5,1)", "5"),
+            ("H11", "=SMALL((A1,E1),1)", "#DIV/0!"),
         ],
     );
 }
