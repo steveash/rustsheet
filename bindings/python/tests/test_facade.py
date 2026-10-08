@@ -79,6 +79,23 @@ def test_excel_errors_are_values_not_exceptions(wb):
     assert len({err, rs.XlError("#DIV/0!")}) == 1
 
 
+@pytest.mark.parametrize(
+    ("literal", "code"),
+    [("#GETTING_DATA", 8), ("#CONNECT!", 10), ("#BLOCKED!", 11), ("#FIELD!", 13)],
+)
+def test_newer_error_kinds(literal, code):
+    # SPEC-0003: XlError accepts the stored names, including ones that are not formula literals.
+    err = rs.XlError(literal)
+    assert err.code == code
+    assert str(err) == literal
+    assert err == rs.XlError(literal.lower())
+
+
+def test_getting_data_formula_reads_back(wb):
+    wb.set("Sheet1!A1", "=#GETTING_DATA")
+    assert wb["Sheet1!A1"] == rs.XlError("#GETTING_DATA")
+
+
 def test_unknown_error_literal_rejected():
     with pytest.raises(TypeError):
         rs.XlError("#BOGUS")
