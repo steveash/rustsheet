@@ -410,10 +410,16 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   `=((-A1,B1),C1) A1` (negation in an inner union), `=(-(A1,B2),C1) A1`, `=(--A1,B1) A1` and
   `=(A1,-B1) A1` (negation on the right of the union). The engine refuses all of them (T-1024, T-1031) and extends the rule to unprobed shapes (a union nested on the right, deeper nesting, extra parentheses, a nested negated union right of the cut). Excel keeps every level of written parentheses: FORMULATEXT of
   `=((A1,B2))` is `=((A1,B2))` and of `=(((A1,B2),C1))` is `=(((A1,B2),C1))` (the engine keeps them since T-1024: `written` on `OpUnionKind`).
-- Engine behavior, not probed: the union is the loosest operator inside its parenthesis and the
-  intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
-  drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
-  several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
+- Grouping and cuts (T-1140, probes/union-cut-precedence, oracle: excel-graph, 2026-10-08; VERIFIED (web)): the union is the
+  loosest operator inside its parenthesis and the intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`: `=SUM((A1,B1 C1))`
+  is `#NULL!` (F1; either grouping gives it, so F1 does not settle the grouping), while `=SUM((A1:B1,B1:C1 B1))` is 35 (F2, which does settle it: `A1:B1` plus `B1`, 11+12+12; the other grouping gives 24) and
+  `=SUM(((A1,B1) B1))` is 12 (F3). FORMULATEXT of the three prints the typed text unchanged (F4:F6; the engine drops the inner parentheses of F6, T-1176). A union cut by an intersection runs
+  the cut on each pair of areas and drops pairs with no shared cell: `=SUM((A1:A12,D1:D12) A4:D4)` is 85 (F8, A4 plus D4). Further cuts
+  bring several areas down to one: `=(A1:A12,D1:D12) A4:D4 D4` is D4 = 44 (F7) and `ROWS` of it is 1 (F9). A cut leaving one of two
+  areas gives that area: `=SUM((A1:A3,C1:C3) A2:B2)` is 21 (F14) and `=(A1:A3,C1:C3) A2:B2` is 21 as a cell value (F15). Empty cuts:
+  `=SUM((A1,B2) C3)` is `#NULL!` (F10), `ISREF` of it is FALSE (F11), `IFERROR(SUM(...),"e")` gives `"e"` (F12) and `ERROR.TYPE` is 1 (F13).
+  Not probed (engine behavior): a union on the right of a cut, cuts by three or more areas of one union, and unions of more than two areas.
+- The known gaps: a union reaching a
   function gets `#VALUE!` (`SUM((A1,B2))` before T-1062), so IFERROR silently
   takes its fallback for one, and so does a union returned by IF, CHOOSE or LET. docs/specs/SPEC-0004-multi-area-references.md
   (T-0133) designs multi-area arguments, with rollout T-1061 to T-1065. `add_implicit_intersection` (static_analysis.rs) leaves
@@ -479,8 +485,8 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
   3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
   probes/multiarea-index; unit tests in test/test_multi_area_arguments.rs. The 1E+300, "one area, area_num 2", `INDEX` of an
-  array with `area_num` other than 1 (`#REF!`) and `AREAS` of a non-reference (1; Excel refuses the formula)
-  rows are engine choices, UNVERIFIED (no probe).
+  array with `area_num` other than 1 (`#REF!`)
+  rows are engine choices, UNVERIFIED (no probe). `AREAS` of a non-reference: see "SUBTOTAL and AREAS take references only".
 - Refuse with `#VALUE!`: SUMPRODUCT, SUMIF, COUNTIF, COUNTBLANK, OFFSET, `@(A1,B2)`, the bare `=A1,B2` (stored in a
   file; it loads), `=(A1,B2)` itself. `ROWS` and `COLUMNS` give `#REF!`, and so does `ROW`.
 - ISERROR and ISNUMBER of a union are TRUE and FALSE, IFERROR gives its fallback (the union is `#VALUE!` as a value).
@@ -563,6 +569,38 @@ by `union_text` (`OpUnionKind::bare`). A defined-name body parses the same way, 
 `Sheet1!$A$1,Sheet1!$B$2` is now a union name body; evaluating such names is T-1065.
 Tasks: T-1061, T-1073, T-1065
 
+## SUBTOTAL and AREAS take references only
+Rule: every SUBTOTAL argument after the function number, and the AREAS argument, must be written as
+a reference operand, the same set the intersection accepts ("Intersection operands must be
+references"): references, unions, intersections, `@`, `(A1)`, `#REF!`, names, LAMBDA, and the
+reference-returning calls INDEX, OFFSET, IF, CHOOSE, LET, XLOOKUP, IFS, SWITCH, TAKE, DROP,
+TRIMRANGE, INDIRECT. Anything else makes Excel for the web refuse the workbook (createSession 501
+`unsupportedWorkbook`, `FileCorruptTryRepair`): `SUBTOTAL(9,{1,2})`, `SUBTOTAL(2,{1,2})`,
+`SUBTOTAL(109,{1,2})`, `SUBTOTAL(9,A1:A2*1)`, `SUBTOTAL(9,SUM(A1:A2))`, `SUBTOTAL(9,ABS(A1:A2))`,
+`SUBTOTAL(9,1)`, `SUBTOTAL(9,"A1")`, `SUBTOTAL(9,TRUE)`, `SUBTOTAL(9,A1:A2,{1,2})`,
+`SUBTOTAL(9,FILTER(..))`, `SUBTOTAL(9,VSTACK(A1:A2))`, `SUBTOTAL(9,-A1)`, `SUBTOTAL(9,#N/A)`, an
+empty argument (`SUBTOTAL(9,A1,)`, `SUBTOTAL(2,A1,)`) and a nested SUBTOTAL (`SUBTOTAL(9,SUBTOTAL(9,A1:A2))`,
+also after a range), plus `AREAS(1)` and `AREAS("A1")` (T-1063). One scratch workbook per formula,
+excel-graph 2026-10-08 (T-1163); a refused workbook cannot be a case. An argument written as a
+reference operand that evaluates to something else loads and gives:
+- a value is `#VALUE!`: `SUBTOTAL(9,IF(TRUE,5))`, `SUBTOTAL(2,IF(TRUE,"a"))`, `SUBTOTAL(3,IF(TRUE,"a"))`,
+  `SUBTOTAL(9,LAMBDA(x,x))` (also 2, 3, 109 and through LET), `AREAS(IF(TRUE,5))`, `AREAS(LAMBDA(x,x))`;
+- an error is itself: `SUBTOTAL(2,IF(TRUE,1/0))` = `#DIV/0!`;
+- the non-reference result wins over an error cell in a range, whatever the order:
+  `SUBTOTAL(9,C1,IF(TRUE,5))` and `SUBTOTAL(9,IF(TRUE,5),C1)` are `#VALUE!` with C1 = `#DIV/0!`;
+- an array spills, `#VALUE!` per element and an error element kept: `SUBTOTAL(9,IF(TRUE,{1,#N/A}))`
+  spills `#VALUE!`, `#N/A`; `SUBTOTAL(9,A1:A2,IF(TRUE,{1,2}))` spills two `#VALUE!`.
+Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) for the loading forms.
+Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
+`Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, spill shape in
+`subtotal_static_result`. UNVERIFIED: which of two non-reference arguments wins (the engine takes the
+first), AREAS of an array (the engine gives `#VALUE!`), a function number that is itself invalid
+next to a non-reference argument (the engine gives `#VALUE!` for the function number first), and
+the SUBTOTAL operands taken over from the intersection rule without a SUBTOTAL probe: OFFSET,
+XLOOKUP, IFS, SWITCH, TAKE, DROP, TRIMRANGE, INDIRECT and defined names (T-1175). Typed entry is a desktop
+question (M14).
+Tasks: T-1063, T-1163, T-1174, T-1175 (decision 0045)
+
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
 (Data!B12) and `Data!C2:Data!E4 Data!C4` = 100. A single-cell range can also start a range-of-ranges:
@@ -585,9 +623,11 @@ None of these forms made the workbook unloadable.
 Evidence: probes/sheet-qualified-corner-order Calc!A1-A4, B1, B2, B4 (order, text), A6-A9 (two sheets),
 A11/B11 (control) (oracle: excel-graph, 2026-10-08, T-1138).
 Status: VERIFIED (web)
-Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs). Known mismatch: the engine
-returns TRUE for the ISREF form (Calc!A7, baselined; T-1166).
-Tasks: T-1138, T-1166
+Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs) and `is_reference`
+(crates/rustsheet-engine/src/functions/information/mod.rs), which is TRUE for `a:b` only when `get_range` gives
+a range (T-1166). UNVERIFIED: the same rule makes ISREF FALSE when an operand errors (`A1:INDEX(A1:A3,5)`) or is
+not a reference (`A1:IF(TRUE,1)`); only the two-sheet form has oracle evidence (T-1177 probes the rest).
+Tasks: T-1138, T-1166, T-1177
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
@@ -680,6 +720,10 @@ only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with t
 exactly the leftmost operand (`@(A1 B1) C1`, `@(A1):B1 C1`) are unprobed and print without it. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
+Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
+level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; whether Excel keeps those inner
+parentheses is UNVERIFIED (T-1167, T-1178); the likely answer is yes, as Excel keeps written parentheses elsewhere
+(probes/union-cut-precedence F6 prints `=SUM(((A1,B1) B1))`, engine gap T-1176).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134

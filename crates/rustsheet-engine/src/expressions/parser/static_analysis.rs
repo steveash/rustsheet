@@ -1942,7 +1942,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Convert => not_implemented(args),
         Function::Delta => not_implemented(args),
         Function::Gestep => not_implemented(args),
-        Function::Subtotal => not_implemented(args),
+        Function::Subtotal => aggregate::subtotal_static_result(args),
         Function::Aggregate => aggregate::aggregate_static_result(args),
         Function::Rand => not_implemented(args),
         Function::Randbetween => scalar_arguments(args),

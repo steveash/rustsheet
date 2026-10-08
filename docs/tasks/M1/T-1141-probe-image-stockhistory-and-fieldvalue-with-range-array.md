@@ -3,7 +3,7 @@ id: T-1141
 title: "Probe IMAGE, STOCKHISTORY and FIELDVALUE with range, array, boolean and multiple-error arguments"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1013 implemented the three functions from probes/rich-errors-* (functions/info
 
 ## Out of scope
 - Engine changes (file them as tasks).
+
+## Outcome
+Added probes/rich-errors-arg-kinds (16 forms x ERROR.TYPE/ROWS/COLUMNS, excel-graph 2026-10-08). Excel lifts all three functions over array and range arguments, and `IMAGE("")`, `IMAGE(TRUE)` and `IMAGE` of non-URL text are `#VALUE!`; information.md records the rules as VERIFIED. The engine differs on both: 28 new known failures in the probes baseline (351 -> 379, 0 regressions), owned by T-1179 (includes the static_analysis signatures). The raw IMAGE cells and the `ROWS`/`COLUMNS` of `IMAGE("")` and `IMAGE(TRUE)` have an undecodable rich error type and stay pending.

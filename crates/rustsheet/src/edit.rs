@@ -147,6 +147,12 @@ enum Undo {
     },
     /// A workbook-scoped defined name added by `define_name`.
     DefinedName(String),
+    /// A row's hidden flag as it was before `set_row_hidden`.
+    RowHidden {
+        sheet_id: u32,
+        row: i32,
+        hidden: bool,
+    },
 }
 
 /// The write-only handle passed to [`Workbook::edit`].
@@ -409,6 +415,35 @@ impl Txn<'_> {
         self.undo.push(Undo::DefinedName(name.to_string()));
         Ok(())
     }
+
+    /// Hides or shows a row (0-based), as a manual hide: SUBTOTAL 101-111 and AGGREGATE skip it.
+    /// Rows hidden by a table filter are not distinguished from manually hidden ones yet, see
+    /// T-1036. The usual recalculation after the closure picks up functions that read the flag.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet or a row outside the Excel limits.
+    pub fn set_row_hidden(
+        &mut self,
+        sheet: SheetId,
+        row: u32,
+        hidden: bool,
+    ) -> Result<(), EditError> {
+        let index = sheet_index(self.model, sheet)?;
+        let (row, _) = engine_rc(row, 0).ok_or(RefError::OutOfBounds)?;
+        let was_hidden = self
+            .model
+            .is_row_hidden(index, row)
+            .map_err(|_| RefError::OutOfBounds)?;
+        self.model
+            .set_row_hidden(index, row, hidden)
+            .map_err(|_| RefError::OutOfBounds)?;
+        self.undo.push(Undo::RowHidden {
+            sheet_id: sheet.get(),
+            row,
+            hidden: was_hidden,
+        });
+        Ok(())
+    }
 }
 
 fn sheet_name(model: &Model, index: u32) -> String {
@@ -487,6 +522,16 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
             Undo::DefinedName(name) => {
                 let undone = model.delete_defined_name(&name, None);
                 debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
+            }
+            Undo::RowHidden {
+                sheet_id,
+                row,
+                hidden,
+            } => {
+                if let Ok(index) = sheet_index(model, SheetId::new(sheet_id)) {
+                    let undone = model.set_row_hidden(index, row, hidden);
+                    debug_assert!(undone.is_ok(), "undo of set_row_hidden failed: {undone:?}");
+                }
             }
         }
     }

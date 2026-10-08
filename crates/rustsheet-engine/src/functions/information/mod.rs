@@ -109,7 +109,14 @@ impl Model {
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         match node {
-            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => true,
+            Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
+            // A range whose corners are on two sheets is `#VALUE!`, so not a reference:
+            // `ISREF(Data!A1:Other!B2)` is FALSE (probes/sheet-qualified-corner-order Calc!A7).
+            Node::OpRangeKind { left, right } => {
+                matches!(self.get_range(left, right, cell), CalcResult::Range { .. })
+            }
+            // Parentheses around a whole defined-name body (kept for near-zero snapping, T-1164).
+            Node::GroupedRootKind { child } => self.is_reference(child, cell),
             // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
             // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
             // A union with an error operand is that error, not a reference: `ISREF((A1,#REF!))`

@@ -581,3 +581,45 @@ fn formulas_at_the_depth_limit_evaluate() {
         assert_eq!(wb.value("A2").unwrap(), Value::Number(255.0));
     });
 }
+
+#[test]
+fn hidden_rows_feed_subtotal_and_roll_back() {
+    let mut wb = book();
+    let sheet = wb.sheets()[0].id;
+    wb.edit(|tx| {
+        for (row, n) in (0..3).zip([1.0, 2.0, 4.0]) {
+            tx.set(CellRef::new(sheet, row, 0)?, n)?;
+        }
+        tx.set("B1", Input::Formula("=SUBTOTAL(109,A1:A3)".into()))?;
+        tx.set("B2", Input::Formula("=SUBTOTAL(9,A1:A3)".into()))
+    })
+    .unwrap();
+    assert_eq!(wb.value(cell(&wb, "B1")).unwrap(), Value::Number(7.0));
+
+    wb.edit(|tx| tx.set_row_hidden(sheet, 1, true)).unwrap();
+    assert_eq!(wb.value(cell(&wb, "B1")).unwrap(), Value::Number(5.0));
+    assert_eq!(wb.value(cell(&wb, "B2")).unwrap(), Value::Number(7.0));
+
+    let failed: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set_row_hidden(sheet, 1, false)?;
+        tx.set_row_hidden(sheet, 0, true)?;
+        tx.set_row_hidden(sheet, 1_048_576, true)
+    });
+    assert!(matches!(
+        failed.unwrap_err(),
+        EditError::Ref(RefError::OutOfBounds)
+    ));
+    assert_eq!(wb.value(cell(&wb, "B1")).unwrap(), Value::Number(5.0));
+
+    wb.edit(|tx| tx.set_row_hidden(sheet, 1, false)).unwrap();
+    assert_eq!(wb.value(cell(&wb, "B1")).unwrap(), Value::Number(7.0));
+}
+
+#[test]
+fn set_row_hidden_rejects_an_unknown_sheet() {
+    let mut wb = book();
+    let err = wb
+        .edit(|tx| tx.set_row_hidden(SheetId::new(999), 0, true))
+        .unwrap_err();
+    assert!(matches!(err, EditError::Ref(RefError::UnknownSheet(_))));
+}

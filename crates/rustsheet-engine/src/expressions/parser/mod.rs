@@ -832,10 +832,7 @@ impl Parser {
                         .functions
                         .lookup(name.trim_start_matches("_xlfn._xlws."))
                     {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
+                        return self.function_call(function_kind, args);
                     }
 
                     if let Some(function_kind) = self
@@ -843,10 +840,7 @@ impl Parser {
                         .functions
                         .lookup(name.trim_start_matches("_xlfn."))
                     {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
+                        return self.function_call(function_kind, args);
                     }
                     return Node::NamedFunctionKind {
                         name: name.trim_start_matches("_xlpm.").to_string(),

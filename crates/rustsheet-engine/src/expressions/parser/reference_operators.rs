@@ -338,6 +338,34 @@ impl Parser {
             message: "Unexpected input after the end of the formula".to_string(),
         }
     }
+
+    /// The call `kind(args)`, or a parse error when an argument that must be a reference is not
+    /// one. Excel for the web refuses a workbook (`FileCorruptTryRepair`) holding SUBTOTAL with
+    /// a non-reference argument after the function number (`{1,2}`, `A1:A2*1`, `1`, `"A1"`,
+    /// `-A1`, `#N/A`, `SUM(A1:A2)`, `FILTER(..)`, `VSTACK(..)`), an empty one (`SUBTOTAL(9,A1,)`)
+    /// or a nested SUBTOTAL, and AREAS of `1` or `"A1"`; the operands the intersection accepts all
+    /// load (docs/excel-semantics/references.md "SUBTOTAL and AREAS take references only",
+    /// T-1063, T-1163).
+    pub(super) fn function_call(&self, kind: Function, args: Vec<Node>) -> Node {
+        let first_reference = match kind {
+            Function::Subtotal => 1,
+            Function::Areas => 0,
+            _ => return Node::FunctionKind { kind, args },
+        };
+        let refused = args
+            .iter()
+            .skip(first_reference)
+            .any(|arg| matches!(arg, Node::EmptyArgKind) || !is_reference_operand(arg));
+        if refused {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: self.lexer.get_position() as usize,
+                message: "This argument must be a reference".to_string(),
+            };
+        }
+        Node::FunctionKind { kind, args }
+    }
 }
 
 /// A literal can never be a reference, so a space after one is not an intersection (`1 A1`
@@ -384,7 +412,8 @@ fn has_negated_operand(node: &Node) -> bool {
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// intersection and for SUBTOTAL and AREAS arguments ([`Parser::function_call`])
+/// (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as

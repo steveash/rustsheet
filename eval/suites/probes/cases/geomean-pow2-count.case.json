@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1156: bracket GEOMEAN's #NUM! for many copies of a large power of two: 2^e (e = 10-1023) at 500-3000 copies (A-F), 2^1000 between 1010 and 1080 copies (J), 2^1000*1.0001, 1.0001 and 2^-1000*1.0001 at 1100-3000 copies (G-I, T-1120's unprobed wraps), and 2^1000 alternating with 1 (K). L-P bracket the wrap: 2^-1000 and 2^1000 times 1.001, 1.01 and 1.1 at 1100-3000 copies. Q1 stores 2^1000 as a number (written with 16 digits); Q2-Q4 read it back and R brackets GEOMEAN of 1000-1500 copies of it.",
+ "description": "T-1156: bracket GEOMEAN's #NUM! for many copies of a large power of two: 2^e (e = 10-1023) at 500-3000 copies (A-F), 2^1000 between 1010 and 1080 copies (J), 2^1000*1.0001, 1.0001 and 2^-1000*1.0001 at 1100-3000 copies (G-I, T-1120's unprobed wraps), and 2^1000 alternating with 1 (K). L-P bracket the wrap: 2^-1000 and 2^1000 times 1.001, 1.01 and 1.1 at 1100-3000 copies. Q1 stores the exact 2^1000 as a number (T-0289 writes it with 17 digits); Q2-Q4 read it back and R brackets GEOMEAN of 1000-1500 copies of it.",
  "tags": [
   "M2",
   "geomean",

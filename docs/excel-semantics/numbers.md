@@ -26,7 +26,7 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum_outermost` (an outermost SUM, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017) and is not snapped. Array operands are not snapped (unprobed).
-Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). UNVERIFIED engine behavior: a name body written `=(X-b)` or `=SUM(...)` is also snapped, because a name body is parsed without a grouped root (a cell `=(X-b)` is not snapped); no probe yet (T-1164). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one `GroupedRootKind` per level, T-1161). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). 
+Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_cell_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through `GroupedRootKind`. The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED (no probe yet, T-1171). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one `GroupedRootKind` per level, T-1161). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). 
 Tasks: T-0110 (implementation), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
 
 ## ROUND family rounds in two decimal stages
@@ -558,15 +558,20 @@ copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-
 perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
 2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
 1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
-exact up to 8200 and 4000 copies. The `#NUM!` of many copies of 2^1000 (probes/geomean-exponent-sum-2
-C12-C18: 1500-3000 copies `#NUM!`, 1000 copies 1.0715086071862671E+301) is not a GEOMEAN rule but
-the input: those cells hold 2^1000 as a stored number, and the workbook stores numbers with 16
-significant digits (spec2xlsx uses XlsxWriter, `{x:.16G}`), so Excel reads 1.071508607186267E+301,
-three ulps below 2^1000: a stored 2^1000 minus `2^1000` is -3 * 2^947 (probes/geomean-pow2-count Q4).
-Its significand is 1.99999999999999933, so the significand cut above applies: 1024 copies of the
-stored value are finite and 1025 `#NUM!` (R3, R4). Computed in the formula, 2^1000 is exact at every probed count, as are 2^10,
-2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156). The
-harness now feeds the engine the same 16 digits (eval-harness.md).
+exact up to 8200 and 4000 copies. The `#NUM!` and the low results that many copies of a stored 2^1000 once gave were an input artifact, not a
+GEOMEAN rule: spec2xlsx used to write numbers through XlsxWriter's `{x:.16G}`, so Excel read
+1.071508607186267E+301, three ulps below 2^1000 (a stored 2^1000 minus `2^1000` was -3 * 2^947), with
+significand 1.99999999999999933 and so the significand cut above applied (1024 copies finite, 1025 `#NUM!`).
+spec2xlsx now writes the shortest text that parses back to the same double (T-0289) and Excel reloads: with
+2^1000 stored exactly, 1000-3000 copies of it all give 1.0715086071862673E+301 = 2^1000 (probes/geomean-exponent-sum-2
+C11-C18, refilled 2026-10-08), the stored minus the computed 2^1000 is 0 (probes/geomean-pow2-count Q3, Q4), and
+R1-R7 are all 1.0715086071862673E+301.
+The earlier behaviour is reproduced by storing the 16-digit value itself (probes/geomean-stored-3ulps-low, excel-graph,
+2026-10-08, T-1172): `Q1 = 1.071508607186267E+301` satisfies `Q1=2^1000` (TRUE: comparisons round both operands to 15 digits, "Comparison tolerance") yet `(Q1-2^1000)/2^947` is -3; GEOMEAN of 1000 copies is 1.0715086071862671E+301 and of 1024 copies
+1.0715086071862668E+301, and 1025, 1026, 1100, 1500 and 3000 copies are `#NUM!` (the significand cut). The engine
+matches all but the 1000-copy last ulp (the open root-rounding item above, T-0290).
+Computed in the formula, 2^1000 was exact at every probed count, as
+are 2^10, 2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156).
 Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number
 of times `exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below
 the double range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive,
@@ -593,9 +598,8 @@ for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, an
 Status: the significand cut is VERIFIED within the probed ranges; the 2048 * k wrap is VERIFIED on the
 probed cells as a fitted rule (no mechanism for the power-of-two exemption). RustSheet implements both
 (T-1112, T-1120). Still open: the root's last-ulp rounding (numbers.md, "GEOMEAN root rounding";
-T-1108), including 1000 copies of 2^1000 being two doubles below 2^1000, and the 2^1000 x 1500
-`#NUM!` (T-1120 follow-up).
-Tasks: T-1108, T-1112, T-1113, T-1120
+T-1108).
+Tasks: T-1108, T-1112, T-1113, T-1120, T-0289, T-1172
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
