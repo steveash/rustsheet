@@ -99,7 +99,14 @@ pub(crate) fn normal_cdf(x: f64, mean: f64, std_dev: f64) -> f64 {
 /// Normal probability density function with the given mean and standard deviation.
 pub(crate) fn normal_pdf(x: f64, mean: f64, std_dev: f64) -> f64 {
     let d = (x - mean) / std_dev;
-    (-0.5 * d * d).exp() / ((2.0 * std::f64::consts::PI).sqrt() * std_dev)
+    (-0.5 * d * d).exp() / (SQRT_2PI * std_dev)
+}
+
+/// Standard normal density, shared by PHI and NORM.S.DIST. This operation order reproduces Excel's
+/// cached last digits in PHI.xlsx and `NORM.S.DIST(-37.6,FALSE)` (4.0441448093482273E-308,
+/// probes/subnormal-text-and-tail-companions); `normal_pdf`'s statrs-style order does not.
+pub(crate) fn standard_normal_pdf(x: f64) -> f64 {
+    (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt()
 }
 
 /// ln|Gamma(x)| from the fdlibm/musl `lgamma` (< 1 ulp, exactly 0 at x = 1 and x = 2).

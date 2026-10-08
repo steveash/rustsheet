@@ -1,5 +1,6 @@
 use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
+use crate::functions::statistical::special::standard_normal_pdf;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
@@ -14,9 +15,7 @@ impl Model {
             Err(e) => return e,
         };
 
-        // Standard normal PDF: (1 / sqrt(2π)) * exp(-x^2 / 2). This operation order reproduces
-        // Excel's cached last digits in PHI.xlsx; `normal_pdf`'s statrs-style order does not.
-        let result = (-(x * x) / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt();
+        let result = standard_normal_pdf(x);
 
         CalcResult::Number(flush_subnormal(result))
     }
