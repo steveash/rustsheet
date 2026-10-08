@@ -19,8 +19,8 @@ Sweep (T-1004, `probes-numeric/m9-bessel`, excel-graph; 364 cells = 308 grid cel
 orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
 - For x in [8,100] Excel is NOT uniformly off by one amount; its relative error against the true value
   (measured with the engine's fdlibm value as the reference) has this profile, so fit against the cells, not a band:
-  BESSELJ is worst near x = 8..10 where order < x (up to 7e-5, e.g. `BESSELJ(8,1)` = 0.2346283865070744
-  vs true 0.2346363468539146), falls to ~2e-7 at x = 30 and 1e-9 to 3e-9 at x >= 50; BESSELJ with order >= x is
+  BESSELJ is worst near x = 8..10 where 1 <= order < x (up to 7e-5, e.g. `BESSELJ(8,1)` = 0.2346283865070744
+  vs true 0.2346363468539146), falls to ~2e-7 at x = 30 and up to about 3e-9 at x >= 50; BESSELJ with order >= x is
   nearly exact (5e-15 for `BESSELJ(8,10)`, up to 5e-10 elsewhere), which fits Miller downward recurrence for
   n >= x and upward recurrence from an inaccurate J1 below. BESSELY stays at about 2e-7 or below (worst at
   x = 10; 6e-9 at x = 8, 3e-9 at x = 100). Values are at the oracle sidecar's cells, e.g. `BESSELJ(30,1)` =
