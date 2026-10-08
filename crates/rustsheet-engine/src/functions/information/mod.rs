@@ -17,19 +17,32 @@ use crate::{
     reference_operators::RefArg,
 };
 
-/// Applies a boolean test to every element of a 2-D array.
-fn map_array(
-    values: Vec<Vec<ArrayNode>>,
-    test: &impl Fn(&ArrayNode) -> bool,
+/// Applies `f` to every element of a 2-D array, keeping its shape.
+fn map_elements(
+    values: &[Vec<ArrayNode>],
+    f: impl Fn(&ArrayNode) -> ArrayNode,
 ) -> Vec<Vec<ArrayNode>> {
     values
-        .into_iter()
-        .map(|row| {
-            row.into_iter()
-                .map(|v| ArrayNode::Boolean(test(&v)))
-                .collect()
-        })
+        .iter()
+        .map(|row| row.iter().map(&f).collect())
         .collect()
+}
+
+/// An argument that lifts: a multi-cell range or an array gives its values, anything else
+/// (a one-cell range included) a single value.
+enum Lifted {
+    Scalar(CalcResult),
+    Array(Vec<Vec<ArrayNode>>),
+}
+
+impl Lifted {
+    /// Rows and columns; a single value is 1x1.
+    fn dims(&self) -> (usize, usize) {
+        match self {
+            Lifted::Array(values) => (values.len(), values.iter().map(Vec::len).max().unwrap_or(0)),
+            Lifted::Scalar(_) => (1, 1),
+        }
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -58,13 +71,28 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
-                Ok(values) => CalcResult::Array(map_array(values, &test)),
-                Err(error) => error,
-            },
-            CalcResult::Array(values) => CalcResult::Array(map_array(values, &test)),
-            other => CalcResult::Boolean(test(&calc_result_to_array_node(other))),
+        match self.lifted_arg(&args[0], cell) {
+            Ok(Lifted::Array(values)) => {
+                CalcResult::Array(map_elements(&values, |v| ArrayNode::Boolean(test(v))))
+            }
+            Ok(Lifted::Scalar(other)) => {
+                CalcResult::Boolean(test(&calc_result_to_array_node(other)))
+            }
+            Err(error) => error,
+        }
+    }
+
+    /// Evaluates an argument that lifts over a multi-cell range or array.
+    fn lifted_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<Lifted, CalcResult> {
+        match self.evaluate_node_in_context(node, cell) {
+            CalcResult::Range { left, right } if left == right => {
+                Ok(Lifted::Scalar(self.evaluate_cell(left)))
+            }
+            CalcResult::Range { left, right } => {
+                Ok(Lifted::Array(self.evaluate_range(left, right, cell)?))
+            }
+            CalcResult::Array(values) => Ok(Lifted::Array(values)),
+            other => Ok(Lifted::Scalar(other)),
         }
     }
 
@@ -263,15 +291,23 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Error { error, .. } => {
+        // Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
+        // F10:G10, F40:G41: `ERROR.TYPE(FIELDVALUE(Q1:R2,"Price"))` spills 13s).
+        let error_type = |v: &ArrayNode| match v {
+            ArrayNode::Error(error) => ArrayNode::Number(f64::from(error.error_type_code())),
+            _ => ArrayNode::Error(Error::NA),
+        };
+        match self.lifted_arg(&args[0], cell) {
+            Ok(Lifted::Array(values)) => CalcResult::Array(map_elements(&values, error_type)),
+            Ok(Lifted::Scalar(CalcResult::Error { error, .. })) => {
                 CalcResult::Number(f64::from(error.error_type_code()))
             }
-            _ => CalcResult::Error {
+            Ok(Lifted::Scalar(_)) => CalcResult::Error {
                 error: Error::NA,
                 origin: cell,
                 message: "Not an error".to_string(),
             },
+            Err(error) => error,
         }
     }
 
