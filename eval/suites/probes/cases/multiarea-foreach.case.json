@@ -1,0 +1,41 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1150 probes: the remaining aggregates on the union-taking path (for_each_value users) over a union. Sheet1 A1=1,B2=5,C3=7,D4=9,E5=5; MODE adds E5 so 5 repeats.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "D4": 9,
+        "E5": 5,
+        "H1": "=HARMEAN((A1,B2,C3,D4))",
+        "H2": "=AVEDEV((A1,B2,C3,D4))",
+        "H3": "=SKEW((A1,B2,C3,D4))",
+        "H4": "=SKEW.P((A1,B2,C3,D4))",
+        "H5": "=KURT((A1,B2,C3,D4))",
+        "H6": "=MINA((A1,B2,C3,D4))",
+        "H7": "=STDEV.P((A1,B2,C3,D4))",
+        "H8": "=STDEVA((A1,B2,C3,D4))",
+        "H9": "=STDEVPA((A1,B2,C3,D4))",
+        "H10": "=STDEV((A1,B2,C3,D4))",
+        "H11": "=STDEVP((A1,B2,C3,D4))",
+        "H12": "=VAR.P((A1,B2,C3,D4))",
+        "H13": "=VARA((A1,B2,C3,D4))",
+        "H14": "=VARPA((A1,B2,C3,D4))",
+        "H15": "=VAR((A1,B2,C3,D4))",
+        "H16": "=VARP((A1,B2,C3,D4))",
+        "H17": "=MODE.SNGL((A1,B2,C3,D4,E5))",
+        "H18": "=MODE((A1,B2,C3,D4,E5))"
+      }
+    }
+  ],
+  "expected": {}
+}

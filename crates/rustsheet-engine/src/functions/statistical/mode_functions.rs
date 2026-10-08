@@ -14,6 +14,9 @@ impl Model {
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
         for arg in args {
+            // A union evaluates to `#VALUE!` here, returned below (probes/multiarea-foreach
+            // H17, H18); evaluating through `evaluate_reference_arg` would turn a single-cell
+            // reference into a range and lose the blank-cell `#VALUE!` (T-0947).
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Range { left, right } => {
                     let v = self.values_from_range(left, right)?;
@@ -30,6 +33,10 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
+                // Only a union's `#VALUE!` is probed (H17, H18); other errors keep being skipped.
+                error @ CalcResult::Error { .. } if matches!(arg, Node::OpUnionKind { .. }) => {
+                    return Err(error)
+                }
                 // Excel: a text value or a blank single-cell reference is #VALUE!, while
                 // text/blanks inside ranges are skipped (coercion.md, MODE; T-0947). A
                 // single-cell reference to text is unprobed, so it keeps being skipped.

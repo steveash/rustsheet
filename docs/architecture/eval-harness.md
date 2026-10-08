@@ -56,6 +56,13 @@ Input conventions:
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
   (T-1077). The engine adapter ignores it.
+- Optional per-sheet `"hidden_rows": [2, 5]` (1-based rows written `hidden="1"`) and
+  `"tables": [{"name": "Data", "ref": "A1:B9", "filter": true}]` (T-1036). A table's header row is
+  the first row of `ref` and must hold literal text. With `"filter": true` spec2xlsx gives the table's
+  autoFilter a values filter on its first column that keeps exactly the visible data rows (those
+  cells must be literal text or whole numbers, and no value may be both kept and hidden), so Excel
+  reads the hidden rows as filtered. The engine adapter loads both through `Txn::add_table` and
+  `Txn::set_row_hidden`.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 

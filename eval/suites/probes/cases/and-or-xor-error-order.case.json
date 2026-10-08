@@ -1,0 +1,61 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Which error AND/OR/XOR return with several error arguments, and with errors inside a range next to the deciding value (T-0229). D1:F2 = TRUE, #DIV/0!, FALSE / #N/A, TRUE, #NUM! (first error row-major #DIV/0!, column-major #N/A).",
+ "tags": [
+  "M2",
+  "logic",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Logic",
+   "cells": {
+    "B1": "=NA()",
+    "B2": "=1/0",
+    "B3": true,
+    "B4": false,
+    "D1": true,
+    "E1": "=1/0",
+    "F1": false,
+    "D2": "=NA()",
+    "E2": true,
+    "F2": "=SQRT(-1)",
+    "H1": "x",
+    "H2": "=NA()",
+    "J1": "=NA()",
+    "J2": true,
+    "A1": "=OR(TRUE,NA(),1/0)",
+    "A2": "=OR(TRUE,1/0,NA())",
+    "A3": "=AND(FALSE,NA(),1/0)",
+    "A4": "=AND(FALSE,1/0,NA())",
+    "A5": "=XOR(TRUE,NA(),1/0)",
+    "A6": "=XOR(1/0,NA())",
+    "A7": "=OR(D1:F2)",
+    "A8": "=AND(D1:F2)",
+    "A9": "=XOR(D1:F2)",
+    "A10": "=OR(B1:B2)",
+    "A11": "=OR(B2:B3)",
+    "A12": "=OR(TRUE,B1:B2)",
+    "A13": "=OR(B3:B4,B1)",
+    "A14": "=AND(B4,B2)",
+    "A15": "=OR({TRUE,#N/A})",
+    "A16": "=OR({TRUE,#DIV/0!,#N/A})",
+    "A17": "=OR(B1,B2)",
+    "A18": "=OR(B2,B1)",
+    "A19": "=AND(D1:F2,B1)",
+    "A20": "=OR(B2,D1:F2)",
+    "A21": "=OR(H1:H2)",
+    "A22": "=OR(J1:J2)",
+    "A23": "=OR(TRUE,J1:J2)",
+    "A24": "=AND(J2:J1)",
+    "A25": "=XOR(B1:B2,TRUE)",
+    "A26": "=OR(D1:F2 E1:F2)",
+    "A27": "=OR(1/0,TRUE)",
+    "A28": "=AND(NA(),FALSE)",
+    "A29": "=OR(F2:F2,E1)",
+    "A30": "=OR(TRANSPOSE(D1:F2))"
+   }
+  }
+ ],
+ "expected": {}
+}

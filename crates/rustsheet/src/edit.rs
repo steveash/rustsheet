@@ -16,7 +16,7 @@ use rustsheet_engine::Model;
 
 use self::diff::{capture_derived, input_changes, value_changes, Before, Key, KeySet};
 use crate::error::{EditError, RefError};
-use crate::refs::{CellRef, SheetId, Target};
+use crate::refs::{CellRef, RangeRef, SheetId, Target};
 use crate::value::Value;
 use crate::workbook::{engine_rc, resolve_range, sheet_index, sheet_metas, Workbook};
 
@@ -147,6 +147,8 @@ enum Undo {
     },
     /// A workbook-scoped defined name added by `define_name`.
     DefinedName(String),
+    /// A table added by `add_table`.
+    Table(String),
     /// A row's hidden flag as it was before `set_row_hidden`.
     RowHidden {
         sheet_id: u32,
@@ -416,9 +418,9 @@ impl Txn<'_> {
         Ok(())
     }
 
-    /// Hides or shows a row (0-based), as a manual hide: SUBTOTAL 101-111 and AGGREGATE skip it.
-    /// Rows hidden by a table filter are not distinguished from manually hidden ones yet, see
-    /// T-1036. The usual recalculation after the closure picks up functions that read the flag.
+    /// Hides or shows a row (0-based): SUBTOTAL 101-111 and AGGREGATE's odd options skip it, and
+    /// on a sheet with a filtered table (see [`Txn::add_table`]) SUBTOTAL 1-11 skip it too. The
+    /// usual recalculation after the closure picks up functions that read the flag.
     ///
     /// # Errors
     /// [`EditError::Ref`] for an unknown sheet or a row outside the Excel limits.
@@ -442,6 +444,35 @@ impl Txn<'_> {
             row,
             hidden: was_hidden,
         });
+        Ok(())
+    }
+
+    /// Adds a table (an Excel `ListObject`) over `range`. Its first row is the header row, whose
+    /// cells (set them first) name the columns. With `filtered` the table carries an active
+    /// filter, as an imported table whose autoFilter has a criterion does: on such a sheet every
+    /// hidden row counts as filtered, which SUBTOTAL 1-11 skips (docs/excel-semantics/numbers.md,
+    /// "SUBTOTAL and AGGREGATE over hidden and filtered rows"). Hide the filtered rows with
+    /// [`Txn::set_row_hidden`]; filters are not re-applied. Like a sheet-level op it reparses
+    /// and re-evaluates the workbook.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet, [`EditError::Table`] for an invalid or taken
+    /// name, a range outside the sheet, without a data row or overlapping another table, or an
+    /// empty or repeated header.
+    pub fn add_table(
+        &mut self,
+        range: RangeRef,
+        name: &str,
+        filtered: bool,
+    ) -> Result<(), EditError> {
+        let index = sheet_index(self.model, range.sheet)?;
+        let (top, left) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let (bottom, right) = engine_rc(range.bottom, range.right).ok_or(RefError::OutOfBounds)?;
+        self.model
+            .add_table(index, name, (top, left, bottom, right), filtered)
+            .map_err(EditError::Table)?;
+        self.sheet_op = true;
+        self.undo.push(Undo::Table(name.to_string()));
         Ok(())
     }
 }
@@ -522,6 +553,10 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
             Undo::DefinedName(name) => {
                 let undone = model.delete_defined_name(&name, None);
                 debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
+            }
+            Undo::Table(name) => {
+                let undone = model.remove_table(&name);
+                debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
             }
             Undo::RowHidden {
                 sheet_id,
