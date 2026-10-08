@@ -3,7 +3,7 @@ id: T-1179
 title: "IMAGE, STOCKHISTORY and FIELDVALUE lift over array and range arguments; IMAGE of non-URL text is VALUE"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
