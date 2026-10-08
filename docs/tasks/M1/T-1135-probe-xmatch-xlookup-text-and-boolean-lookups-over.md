@@ -3,7 +3,7 @@ id: T-1135
 title: "Probe XMATCH/XLOOKUP text and boolean lookups over blanks, and binary-search runs of equal values"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
