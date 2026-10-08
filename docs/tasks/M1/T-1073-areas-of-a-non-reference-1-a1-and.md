@@ -3,7 +3,7 @@ id: T-1073
 title: "AREAS of a non-reference (1, 'A1') and bare =A1,B2 (SPEC-0004 rows 19-20)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -23,7 +23,7 @@ Oracle (T-1061): a workbook holding AREAS(1) or AREAS("A1") is refused by Excel 
 ## Out of scope
 - Other functions' union support (their own tasks under SPEC-0004).
 
-## Handoff
+## Handoff (resumed)
 No code written. The acceptance criteria hinge on a design call, not on oracle values: Excel refuses to load a
 workbook holding `AREAS(1)` / `AREAS("A1")` (createSession 501 unsupportedWorkbook), so there is no cell value to
 match, and whether it refuses the bare `=A1,B2` when typed cannot be probed on Excel for the web. The same question
