@@ -756,7 +756,7 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
-            SpillRangeOperator { child } => match self.evaluate_spill_anchor(child, cell) {
+            SpillRangeOperator { child } => match self.eval_ref_or_index(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
                         return CalcResult::new_error(

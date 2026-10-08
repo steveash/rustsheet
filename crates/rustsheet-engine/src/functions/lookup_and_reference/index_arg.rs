@@ -3,7 +3,6 @@
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
-    functions::Function,
     model::Model,
 };
 
@@ -27,13 +26,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<LookupIndexArg, CalcResult> {
-        let index = match node {
-            Node::FunctionKind {
-                kind: Function::Index,
-                args,
-            } => self.index_impl(args, cell, true),
-            _ => self.evaluate_node_with_reference(node, cell),
-        };
+        let index = self.eval_ref_or_index(node, cell);
         match index {
             range @ CalcResult::Range { .. } => Ok(LookupIndexArg::Reference(range)),
             value => self.cast_to_number(value, cell).map(LookupIndexArg::Number),

@@ -135,7 +135,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         // A single cell is read as a reference, so that it can be read past (`LOOKUP(99,A1:B2,F1)`).
-        let value = match self.evaluate_node_with_reference(node, cell) {
+        let value = match self.eval_ref_or_index(node, cell) {
             // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
             // (probes/lookup-vector-edges A5-A8).
             scalar @ (CalcResult::Number(_)
