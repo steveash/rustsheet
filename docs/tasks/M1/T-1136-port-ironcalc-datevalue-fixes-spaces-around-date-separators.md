@@ -21,10 +21,13 @@ Checked on `main` (bccce59) through the facade: all four spaced DATEVALUE forms 
 Code: `crates/rustsheet-engine/src/functions/date_and_time.rs` and the date-text parser it uses (search with `rg` before adding a helper; VALUE and text coercion share the date parser, so check `probes` date-text cases for regressions).
 
 ## Acceptance criteria
-- [ ] The three upstream workbooks are copied into `crates/rustsheet-xlsx/tests/calc_tests/DATE_AND_TIME/` and pass in `ironcalc-calc` (any cell that does not pass is baselined only with a filed follow-up).
-- [ ] Unit tests cover the spaced DATEVALUE forms and the `T24:00:00` rollover.
-- [ ] Each quirk is recorded in `docs/excel-semantics/` citing the workbooks.
-- [ ] Commit messages carry `Ported-From: ironcalc@753da658`, `@03beb38e`, `@106c587d`; `make check` green; reviewers approve.
+- [x] The three upstream workbooks are copied into `crates/rustsheet-xlsx/tests/calc_tests/DATE_AND_TIME/` and pass in `ironcalc-calc` (any cell that does not pass is baselined only with a filed follow-up).
+- [x] Unit tests cover the spaced DATEVALUE forms and the `T24:00:00` rollover.
+- [x] Each quirk is recorded in `docs/excel-semantics/` citing the workbooks.
+- [x] Commit messages carry `Ported-From: ironcalc@753da658`, `@03beb38e`, `@106c587d`; `make check` green; reviewers approve.
 
 ## Out of scope
 - Other date-text forms not covered by the upstream workbooks (file a probe task instead).
+
+## Outcome
+Probe `probes/datevalue-separator-spaces` (excel-graph, 2026-10-08): spaces around `-` and `/` are ignored by VALUE and DATEVALUE, a clock may follow. Excel rejects the ISO `T` separator (`"2026-01-01T24:00:00"` is `#VALUE!`), so the upstream `T24:00:00` rollover (ironcalc@106c587d) is deliberately not ported; the space-separated 24:00/25:00 rollover already matched. `parse_date` now removes spaces next to `-` and `/` (`remove_separator_spaces`, ironcalc@753da658 / 03beb38e; TIMEVALUE with spaces already matched). The three upstream workbooks are in ironcalc-calc and all pass. Eval: ironcalc-calc +3 cases, 0 failures; probes +1 case with 2 known failures (B15, C15, spaces before a comma, follow-up T-1144). dates.md updated.

@@ -235,8 +235,8 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   (`MROUND(" 2024-01-10 ",7)` is #VALUE!; ironcalc-calc MROUND_TRUNC_INT.xlsx MROUND!C32).
   Spaces around a `-` or `/` separator are ignored by VALUE and DATEVALUE (`"2026 - 01 - 01"` =
   46023, `"1 / 2 / 2026"` = 46024, `"4 - Feb - 2026"` = 46057, `"2026- 01-01"`, `"2026 -01-01"`,
-  `"Jul - 2026"`, `"1 - Jul"`, `"7 - 1"`, `"1 / Jul / 2026"`, a clock may follow:
-  `"2026 - 01 - 01 12:00"`; probes/datevalue-separator-spaces rows 1-4, 7-14, 16-18, excel-graph,
+  `"Jul - 2026"`, `"1 / Jul / 2026"`, year-less `"1 - Jul"` and `"7 - 1"` (unscored, clock-dependent), a clock may follow:
+  `"2026 - 01 - 01 12:00"`; probes/datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18, excel-graph,
   2026-10-08, and ironcalc-calc DATEVALUE_issue_1380.xlsx, Excel 16.03). The ISO `T` separator is
   not accepted: `"2026-01-01T24:00:00"` and `"2026-01-01T12:00:00"` are #VALUE! in DATEVALUE and
   VALUE (rows 5-6), so IronCalc's `T24:00:00` rollover test (upstream issue 1379, whose
