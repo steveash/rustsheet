@@ -558,23 +558,31 @@ copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-
 perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
 2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
 1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
-exact up to 8200 and 4000 copies. Large positive exponents have a `#NUM!` the significand cut does not
-explain: 1000 copies of 2^1000 (M = 1) give 1.0715086071862671E+301 (two doubles below 2^1000), while
-1500, 1800, 2000, 2047, 2048, 2049 and 3000 copies are `#NUM!` (probes/geomean-exponent-sum-2 C11-C18),
-although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13).
-Fitted rule (T-1120): with P the [1, 2) significand product and n the count, k is the number of times
-`exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below the double
-range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive, else 0. As if
-Excel formed `P * 2^-n` by 11-bit exponent-field arithmetic. It predicts k for all 41 probed cells whose
-P is not 1 (1E-300: n - floor(log2 P) is 984 at 1700 copies, k = 0, and 1042 at 1800, k = 1; 1E-307:
-2912 at 3500 copies, k = 1, and 3245 at 3900, k = 2). Powers of two (P = 1) never gain, although the same count
-would wrap: 2^-1000 up to 8200, 2^-100 up to 4000, and 2 at 1101 and 2000 copies are exact
-(probes/geomean-overflow-count F1, geomean-overflow-cut C4, -cut-2 C18). So the `#NUM!` of 2^1000 from
-1500 copies is not the wrap either, and stays unexplained. A positive exponent sum with P above 1 and a
-wrap (say 1100 copies of 2^1000 * 1.0001) is unprobed; RustSheet adds the 2048 * k there too. So is
-an in-range plain product whose significand product wraps (say 1100 copies of 1.0001); RustSheet
-applies the rule only when the plain product leaves the double range (T-1156 probes both). The rule
-was fitted after the probes were filled; no prediction made from it has been probed yet. Ruled out
+exact up to 8200 and 4000 copies. The `#NUM!` of many copies of 2^1000 (probes/geomean-exponent-sum-2
+C12-C18: 1500-3000 copies `#NUM!`, 1000 copies 1.0715086071862671E+301) is not a GEOMEAN rule but
+the input: those cells hold 2^1000 as a stored number, and the workbook stores numbers with 16
+significant digits (spec2xlsx uses XlsxWriter, `{x:.16G}`), so Excel reads 1.071508607186267E+301,
+three ulps below 2^1000. Its significand is 1.99999999999999933, so the significand cut above makes
+1025+ copies `#NUM!`. Computed in the formula, 2^1000 is exact at every probed count, as are 2^10,
+2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156). The
+harness now feeds the engine the same 16 digits (eval-harness.md).
+Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number
+of times `exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below
+the double range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive,
+else 0. As if Excel formed `P * 2^-n` by 11-bit exponent-field arithmetic. It applies only when the
+values' power-of-two sum is negative (the product is below the double range) and P is at least 2. It
+predicts k for all 41 cells of T-1120 (1E-300: n - floor(log2 P) is 984 at 1700 copies, k = 0, and
+1042 at 1800, k = 1; 1E-307: 2912 at 3500 copies, k = 1, and 3245 at 3900, k = 2) and the 30 bracketing
+cells of T-1156 (probes/geomean-pow2-count G-I, L-P, excel-graph, 2026-10-08): 2^-1000 times 1.001,
+1.01 and 1.1 gain k = 1 wherever the formula is positive (1.001 at 1100 copies, floor(log2 P) = 1),
+while 2^-1000 * 1.0001 (P below 2 up to 3000 copies), powers of two (P = 1: 2^-1000 up to 8200, 2^-100
+up to 4000, 2 at 1101 and 2000 copies; probes/geomean-overflow-count F1, geomean-overflow-cut C4,
+-cut-2 C18) and every positive sum (2^1000 times 1.0001, 1.001 and 1.1 at 1100-3000 copies) are
+exact or plain roots. An in-range plain product never wraps: 1100-3000 copies of 1.0001 are 1.0001
+(H). Three of the bracketing cells (L4, M1, M4) miss by one ulp of the root ("GEOMEAN root
+rounding").
+The rule
+was fitted on T-1120's probes; T-1156's probes tested its predictions and added the two conditions. Ruled out
 earlier: the excess does not depend only on the exponent sum (powers of two with a larger sum gain
 nothing), is not a fixed count threshold (1E-300 and 1E-307 step at different counts) and is not the
 significand product alone (1E-307 steps at a smaller product).
