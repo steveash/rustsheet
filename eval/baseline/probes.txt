@@ -185,6 +185,7 @@ C	probes/multiarea-index.case.json	5
 C	probes/multiarea-intersect.case.json	1
 C	probes/multiarea-iserror.case.json	3
 C	probes/multiarea-let.case.json	3
+C	probes/multiarea-more.case.json	14
 C	probes/multiarea-printarea.case.json	0
 C	probes/multiarea-rank.case.json	5
 C	probes/multiarea-subtotal.case.json	2
