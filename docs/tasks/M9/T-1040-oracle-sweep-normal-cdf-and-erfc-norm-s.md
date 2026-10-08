@@ -29,4 +29,4 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 - Fitting or changing any implementation (the dependent fitting tasks do that).
 
 ## Outcome
-Seven probes-numeric case files (about 700 cells) with oracle sidecars from excel-graph, no pending cells; findings (subnormal flush at ERFC x>=26.625 and NORM.S.DIST z<=-37.625, lower-tail error up to ~2E-13) recorded in docs/excel-semantics/statistics.md; T-0968 links the case ids. No eval gate change (probes-numeric is ungated).
+Seven probes-numeric case files (about 700 cells) with oracle sidecars from excel-graph, no pending cells; findings (subnormal flush at ERFC x>=26.625 and NORM.S.DIST z<=-37.625, lower-tail error up to ~1.15E-13, also in LOGNORM.DIST) recorded in docs/excel-semantics/statistics.md; T-0968 links the case ids. No eval gate change (probes-numeric is ungated).
