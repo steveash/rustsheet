@@ -1,4 +1,5 @@
 mod isomitted;
+mod offline_errors;
 
 use crate::{
     calc_result::CalcResult,
