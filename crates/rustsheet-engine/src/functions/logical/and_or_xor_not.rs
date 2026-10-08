@@ -104,31 +104,34 @@ impl Model {
                             "Ranges are in different sheets".to_string(),
                         );
                     }
-                    for row in left.row..(right.row + 1) {
-                        for column in left.column..(right.column + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
+                    // The walk is clipped to the used area: a whole-column argument such as
+                    // `OR(F:LSE)` must not visit (and record a read of) billions of empty
+                    // cells (CLAUDE.md directive 5, T-0230). Empty cells are ignored anyway.
+                    let walk =
+                        self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                            match value {
                                 CalcResult::Boolean(value) => result = Some(fold_fn(result, value)),
                                 CalcResult::Number(value) => {
-                                    result = Some(fold_fn(result, value != 0.0))
+                                    result = Some(fold_fn(result, value != 0.0));
                                 }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::EmptyArg => {} // unreachable
-                                CalcResult::Range { .. }
+                                error @ CalcResult::Error { .. } => return Err(error),
+                                // A cell's value is never an empty argument or a range.
+                                CalcResult::EmptyArg
+                                | CalcResult::Range { .. }
                                 | CalcResult::String { .. }
                                 | CalcResult::EmptyCell => {}
                                 CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return CalcResult::Error {
+                                    return Err(CalcResult::Error {
                                         error: Error::NIMPL,
                                         origin: cell,
                                         message: "Arrays not supported yet".to_string(),
-                                    }
+                                    });
                                 }
                             }
-                        }
+                            Ok(())
+                        });
+                    if let Err(error) = walk {
+                        return error;
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
