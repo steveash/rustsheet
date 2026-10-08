@@ -673,7 +673,7 @@ exactly the leftmost operand (`@(A1 B1) C1`, `@(A1):B1 C1`) are unprobed and pri
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
 level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; whether Excel keeps those inner
-parentheses is UNVERIFIED (T-1167).
+parentheses is UNVERIFIED (T-1167, T-1178).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134
