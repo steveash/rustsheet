@@ -407,12 +407,6 @@ F	probes/multiarea-bare.case.json	Sheet1!H1
 F	probes/multiarea-cellfn.case.json	Sheet1!H1
 F	probes/multiarea-cellfn.case.json	Sheet1!H3
 F	probes/multiarea-printarea.case.json	!EngineError
-F	probes/multiarea-subtotal-counts-c.case.json	Sheet1!H19
-F	probes/multiarea-subtotal-counts-c.case.json	Sheet1!H20
-F	probes/multiarea-subtotal-counts-c.case.json	Sheet1!H21
-F	probes/multiarea-subtotal-counts-d.case.json	Sheet1!H22
-F	probes/multiarea-subtotal-counts-d.case.json	Sheet1!H23
-F	probes/multiarea-subtotal-counts-d.case.json	Sheet1!H24
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/near-zero-snap-groups.case.json	Sheet1!B6
 F	probes/near-zero-snap-groups.case.json	Sheet1!C1
