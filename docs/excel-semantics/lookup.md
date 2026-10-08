@@ -64,7 +64,7 @@ Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
   `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
   `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).
 - `OFFSET(F1,0,0)` as result_vector reads past its end like a plain `F1`, and so does a reference-returning `INDEX(F1:F1,1)`
-  or `INDEX(F1:G1,1,1)` (G1 / 7); the engine returns `#N/A` for the INDEX forms (T-0274).
+  or `INDEX(F1:G1,1,1)` (G1 / 8); `lookup_result` keeps INDEX as a reference (T-0274).
 Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224), probes/lookup-vector-edges A1:A21 (T-0269).
 Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
@@ -211,4 +211,7 @@ Open (unprobed, T-0962): reference-vs-array result (ISREF, implicit intersection
 spilling as 0), `@`/nesting such as `UPPER(XLOOKUP(2,A1:A3,B1:C3))`, a one-cell lookup vector with a wide
 return range, and a wide return range with a different row count (`#VALUE!` is a guess).
 Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
+Array lookup_array (T-1126): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
+reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). Implemented for the linear search modes only
+(`xlookup_array_lookup`); binary search modes over an array, an array return_array (Excel should give its element; the engine answers `#VALUE!`), a 2-D lookup array, a row array with a row return range and mismatched sizes are unprobed.
 Tasks: T-0948
