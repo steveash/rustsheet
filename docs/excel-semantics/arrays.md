@@ -36,7 +36,7 @@ The same workbook with A1 stored as the plain literal `<c t="e"><v>#SPILL!</v></
 
 Behavior of these errors under ISERR/ISNA/TYPE/IFNA/COUNTIF, and of IMAGE, STOCKHISTORY and FIELDVALUE with error
 arguments (including `FIELDVALUE({1,2},"Price")` spilling two `#FIELD!` cells), is in information.md
-(probes/rich-errors-args, T-1012). An IMAGE source that is empty or a number evaluates as `#VALUE!`; its stored rich-value form is undecoded (UNVERIFIED).
+(probes/rich-errors-args, T-1012). An IMAGE source that is empty, a number, a boolean or non-URL text evaluates as `#VALUE!` (probes/rich-errors-arg-kinds, information.md); its stored rich-value form is undecoded (UNVERIFIED).
 
 A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType in a different
 `_error` structure, `errorType, propagated` (`propagated` = 1, a boolean; no subType). The
