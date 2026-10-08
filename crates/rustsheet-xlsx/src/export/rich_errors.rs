@@ -101,7 +101,7 @@ pub(crate) fn get_metadata_xml(rich: bool) -> String {
 pub(crate) fn rich_value_parts() -> [(&'static str, &'static str, &'static str, String); 3] {
     let values: String = RICH_ERROR_CODES
         .iter()
-        .map(|code| format!(r#"<rv s="0"><v>{code}</v><v>0</v></rv>"#))
+        .flat_map(|code| [r#"<rv s="0"><v>"#, code, "</v><v>0</v></rv>"])
         .collect();
     let richdata = "http://schemas.microsoft.com/office/spreadsheetml/2017/richdata";
     [
