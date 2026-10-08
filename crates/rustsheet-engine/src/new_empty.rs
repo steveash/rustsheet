@@ -113,7 +113,7 @@ impl Model {
             };
             let mut parse_formula = Vec::new();
             for formula in shared_formulas {
-                let t = self.parser.parse(formula, &cell_reference);
+                let t = self.parser.parse_cell_formula(formula, &cell_reference);
                 let static_result = run_static_analysis_on_node(&t);
                 parse_formula.push((std::sync::Arc::new(t), static_result));
             }
@@ -379,7 +379,7 @@ impl Model {
         };
         let mut shared_formulas = Vec::with_capacity(new_worksheet.shared_formulas.len());
         for formula in &new_worksheet.shared_formulas {
-            let mut t = self.parser.parse(formula, &cell_reference);
+            let mut t = self.parser.parse_cell_formula(formula, &cell_reference);
             rename_sheet_in_node(&mut t, source_index, &new_name);
             shared_formulas.push(to_rc_format(&t));
         }
@@ -502,7 +502,7 @@ impl Model {
             };
             let mut formulas = Vec::new();
             for formula in &worksheet.shared_formulas {
-                let mut t = self.parser.parse(formula, cell_reference);
+                let mut t = self.parser.parse_cell_formula(formula, cell_reference);
                 rename_sheet_in_node(&mut t, sheet_index, new_name);
                 formulas.push(to_rc_format(&t));
             }
