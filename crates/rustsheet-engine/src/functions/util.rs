@@ -120,6 +120,23 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     }
 }
 
+/// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
+/// as a reference). Recursion is bounded by the parser's depth cap.
+pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
+    match node {
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            ..
+        } => first_index != last_index,
+        Node::FunctionKind {
+            kind: Function::If,
+            args,
+        } => args.iter().skip(1).any(is_span_or_if_of_span),
+        _ => false,
+    }
+}
+
 impl Model {
     /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
     /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
