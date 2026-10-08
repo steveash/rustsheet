@@ -3,7 +3,7 @@ id: T-1014
 title: "Export rich-value errors as #VALUE! plus vm metadata (SPEC-0003 X2)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
