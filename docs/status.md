@@ -49,7 +49,7 @@ T-0163's claim branch has had no commit since 2026-10-07 08:27, so workers will 
 Queues at the start of the run:
 - functions: 36 ready. The sonnet buffer is 19. research 13, quality 6, perf 5 (Phase 2).
 - engine and harness: 0 ready only because both lanes are busy. They have 15 and 5 unclaimed M1 todo tasks.
-- research has 1 M1 todo task and api has only the claimed T-0163, so the planner ran for M1 research (see this run's PR).
+- research has 1 M1 todo task and api has only the claimed T-0163, so the planner ran for M1 research and filed T-1137–T-1140 (sonnet probes). It filed no api tasks: no M1 api scope is left.
 - The gap-triager did not run: functions has 36 ready, and the sonnet buffer is at least 10.
 
 Upstream IronCalc: 3 new commits past 09e81f53, now triaged through 106c587d.
