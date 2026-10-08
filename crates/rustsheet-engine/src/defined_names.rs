@@ -103,14 +103,16 @@ impl Model {
         result
     }
 
-    /// The value of the defined name `name` whose body is the formula `body`, used in `cell`.
+    /// The value of the defined name `name` whose body is the formula `body`, used in `cell`. The
+    /// body is snapped at its own root like a cell formula (docs/excel-semantics/numbers.md
+    /// "Near-zero snapping", probes/near-zero-snap-groups C1-C5).
     pub(crate) fn evaluate_defined_name_formula(
         &mut self,
         name: &str,
         body: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        self.within_defined_name(|model| model.evaluate_node_in_context(body, cell))
+        self.within_defined_name(|model| model.evaluate_formula_root(body, cell))
             .unwrap_or_else(|| {
                 CalcResult::new_error(
                     Error::NAME,
