@@ -229,3 +229,23 @@ gen-m2/893302d6c5b99e2e Calc!A108 (oracle: excel-graph).
 Status: UNVERIFIED (probe pending, T-0258): whether literal vs computed text, empty vs non-empty, or
 Excel version decides is not isolated.
 Tasks: T-0258
+
+## GCD / LCM / MULTINOMIAL range cells
+Rule: GCD, LCM and MULTINOMIAL take ranges, but unlike SUM they do not skip what is not a number: a
+text or boolean cell in a range is `#VALUE!` (`GCD(G1:G3)` with 4, "x", 6; `GCD(H1:H3)` with 4, TRUE,
+6), a numeric-text cell counts as its number (`GCD(I1:I3)` with 4, "2", 6 is 2, LCM 12) and a blank
+cell reads as 0 (`LCM(F1:F3)` with 4, blank, 6 is 0). Typed, numeric text is a number
+(`GCD("8",4)` = 4) but a boolean is `#VALUE!` (`GCD(TRUE,4)`, `MULTINOMIAL(TRUE,3)`), whereas
+`FACT(TRUE)` = 1 and `COMBIN("5",2)` = 10. SERIESSUM's coefficient range is stricter still: text,
+boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a typed numeric-text
+`x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). SUMPRODUCT is the opposite: anything that is not a
+number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
+`SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
+PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).
+MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
+These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082).
+Evidence: probes/math-argument-modes Sheet1!C1:C56 (excel-graph, 2026-10-08).
+Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190)
+and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
+Status: VERIFIED
+Tasks: T-1082, T-1190, T-1191
