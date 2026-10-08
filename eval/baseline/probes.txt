@@ -123,6 +123,7 @@ C	probes/geomean-overflow-cut-2.case.json	22
 C	probes/geomean-overflow-cut-3.case.json	18
 C	probes/geomean-overflow-cut.case.json	27
 C	probes/geomean-overflow-many-values.case.json	7
+C	probes/geomean-pow2-count.case.json	117
 C	probes/geomean-product-order.case.json	17
 C	probes/geomean-root-models.case.json	112
 C	probes/geomean-root-refinement.case.json	48
@@ -326,13 +327,6 @@ F	probes/error-stored-constants.case.json	S!G1
 F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!I1
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C11
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C12
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C13
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C14
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C15
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C16
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C17
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C18
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C24
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C28
 F	probes/geomean-exponent-sum.case.json	Sheet1!C2
@@ -346,6 +340,11 @@ F	probes/geomean-overflow-cut-2.case.json	Sheet1!C9
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!C13
 F	probes/geomean-overflow-cut.case.json	Sheet1!C1
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
+F	probes/geomean-pow2-count.case.json	Sheet1!L4
+F	probes/geomean-pow2-count.case.json	Sheet1!M1
+F	probes/geomean-pow2-count.case.json	Sheet1!M4
+F	probes/geomean-pow2-count.case.json	Sheet1!R1
+F	probes/geomean-pow2-count.case.json	Sheet1!R2
 F	probes/geomean-product-order.case.json	Sheet1!Z10
 F	probes/geomean-product-order.case.json	Sheet1!Z11
 F	probes/geomean-product-order.case.json	Sheet1!Z13
