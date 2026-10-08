@@ -117,7 +117,14 @@ impl Model {
                 kind: crate::functions::Function::Index,
                 args,
             } => matches!(self.index_impl(args, cell, true), CalcResult::Range { .. }),
-            Node::FunctionKind { kind, args: _ } => kind.returns_reference(),
+            // XLOOKUP, TAKE, DROP and TRIMRANGE are references when they pick cells of a range,
+            // and not when they fail or work on an array (probes/isref-reference-lookups).
+            Node::FunctionKind { kind, args } => {
+                match self.evaluate_reference_form(kind, args, cell) {
+                    Some(result) => matches!(result, CalcResult::Range { .. }),
+                    None => kind.returns_reference(),
+                }
+            }
             // A defined name is a reference if what it stands for is one, a single cell included
             // (Excel-cached: upstream ISREF.xlsx Sheet1!A14-A18; probes/isref-names-filter-if-empty),
             // and so is a name whose body is a reference formula (`=INDEX(...)`, an intersection)

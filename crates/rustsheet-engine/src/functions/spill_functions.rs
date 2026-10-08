@@ -127,6 +127,15 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         let result = self.evaluate_node_in_context(node, cell);
+        self.result_to_array(result, cell)
+    }
+
+    /// [`Model::eval_to_array`] for an already evaluated `result`.
+    pub(crate) fn result_to_array(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Vec<ArrayNode>>, CalcResult> {
         match result {
             CalcResult::Range { left, right } => self.evaluate_range(left, right, cell),
             CalcResult::Array(arr) => Ok(arr),

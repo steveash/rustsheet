@@ -1,0 +1,47 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "XLOOKUP, TAKE, DROP and TRIMRANGE as intersection operands: counts from the end, failing calls, and a range if_not_found (T-0165).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "C1": 7,
+        "H1": "=A1:A3 TAKE(A1:B3,-1)",
+        "H2": "=B1:B3 XLOOKUP(3,A1:A3,A1:B3)",
+        "H3": "=A1:A3 DROP(A1:B3,-2,1)",
+        "H4": "=A3:A9 TRIMRANGE(A1:B9)",
+        "H5": "=A1:A3 DROP(A1:B3,5)",
+        "H6": "=A1:A3 XLOOKUP(9,A1:A3,A1:B3)",
+        "H7": "=A1:A3 TAKE(A1:B3,0)",
+        "H8": "=A1 TAKE(A1:B3,-1E300)",
+        "H9": "=C1:C3 XLOOKUP(9,A1:A3,B1:B3,C1)",
+        "H10": "=ISREF(XLOOKUP(9,A1:A3,B1:B3,C1))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9",
+    "Sheet1!H10"
+  ]
+}
