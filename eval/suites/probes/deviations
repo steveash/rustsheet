@@ -4,8 +4,3 @@ lifted-range-rows.case.json	Sheet1!C1	decision 0014	docs/excel-semantics/arrays.
 lifted-range-rows.case.json	Sheet1!C2	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!C3	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
 lifted-range-rows.case.json	Sheet1!E1	decision 0014	docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error	#ERROR!
-weeknum-stale-return-type.case.json	Up!A1	decision 0038	docs/excel-semantics/dates.md#weeknum-return_type-edge-cases-and-serial-0-t-1023	#NUM!
-weeknum-stale-return-type.case.json	Mixed!A3	decision 0038	docs/excel-semantics/dates.md#weeknum-return_type-edge-cases-and-serial-0-t-1023	#NUM!
-weeknum-stale-return-type.case.json	Mixed!A4	decision 0038	docs/excel-semantics/dates.md#weeknum-return_type-edge-cases-and-serial-0-t-1023	#NUM!
-weeknum-stale-return-type.case.json	Type21!A1	decision 0038	docs/excel-semantics/dates.md#weeknum-return_type-edge-cases-and-serial-0-t-1023	#NUM!
-weeknum-stale-return-type.case.json	Type1!A1	decision 0038	docs/excel-semantics/dates.md#weeknum-return_type-edge-cases-and-serial-0-t-1023	#NUM!

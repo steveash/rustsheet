@@ -49,3 +49,15 @@ see `crates/rustsheet-eval/src/deviations.rs` for the format and the existing en
   counts them, and updates 0038's Consequences; or drops this task. Then reuse the branch
   `agent/harness/T-0287-weeknum-deviations` (the mechanical change is done), and split the dates.md status line as the
   reviewer suggested ("Status: DEVIATION (decision 0038) for the stale state." then a separate sentence that the rest is VERIFIED).
+
+## Outcome (dropped, 2026-10-08, opus)
+Dropped rather than amending decision 0036. The five cells differ from Excel because RustSheet does
+not model WEEKNUM's calc-order-dependent stale state (decision 0038). They do not differ because of
+a directive-5 limit. CLAUDE.md directive 1 allows deviations only for directive 5, and decision 0036
+restricts the `deviations` file to exactly those (its excel-fidelity check is "a directive-5 limit,
+never a convenience"). Listing these cells would take them out of the M2 exit denominator
+(decision 0043) without a directive-5 reason, which weakens an exit gate. Decision 0038's
+Consequences already settle this: they stay F lines in eval/baseline/probes.txt, as decision 0033's
+cells do, and decision 0043 already names them in M2 scope. The sonnet run's mechanical change
+(draft PR #394) is not merged. Revisit only together with 0038's revisit trigger (RustSheet
+reproducing Excel's calc order).
