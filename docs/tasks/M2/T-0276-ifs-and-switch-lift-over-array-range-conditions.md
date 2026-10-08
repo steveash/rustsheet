@@ -3,7 +3,7 @@ id: T-0276
 title: "IFS and SWITCH lift over array/range conditions elementwise (probe ifs-switch-array-values)"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
