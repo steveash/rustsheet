@@ -477,11 +477,15 @@ Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
 MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`) walks the areas one after the
-other (`Model::for_each_cell_in_areas`). SPEC-0004 and T-1063 to T-1065, T-1068 to T-1073 implement the rest;
-until then LARGE, RANK, CONCAT, TEXTJOIN and a union inside IF read a union as `#VALUE!` (`RefArg::into_single_area`;
+other (`Model::for_each_cell_in_areas`). Since T-1064 a LET variable bound to a union (`Binding::Areas`, functions/logical/let.rs) and the branch IF
+or CHOOSE picks with a scalar condition or index (`Model::if_impl`, `Model::choose_impl`) stay areas in
+reference context and as intersection operands. Engine choice, not probed: only a union or multi-area
+intersection written as the LET value binds areas (`LET(x,IF(TRUE,(A1,B2)),SUM(x))` is `#VALUE!`), and an IF or
+CHOOSE over an array condition keeps its value form. SPEC-0004 and T-1063, T-1065, T-1068 to T-1073 implement the rest;
+until then LARGE, RANK, CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`;
 LARGE, SMALL and RANK then answer `#N/IMPL!`, as before). The other users of `for_each_value` (HARMEAN, AVEDEV,
 SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
-Tasks: T-1061, T-1062
+Tasks: T-1061, T-1062, T-1064
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15

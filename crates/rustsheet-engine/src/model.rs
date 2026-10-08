@@ -34,6 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
+use crate::functions::Binding;
 use crate::{cf_types::CfCellResult, tz::Tz};
 
 #[cfg(any(test, feature = "mock_time"))]
@@ -183,7 +184,7 @@ pub struct Model {
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
     /// A stack of variables used for LET function evaluation. The key is the variable id, and the value is the variable value.
-    pub(crate) variable_stack: HashMap<usize, CalcResult>,
+    pub(crate) variable_stack: HashMap<usize, Binding>,
     /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
     pub(crate) last_variable_id: usize,
     /// Lambdas
@@ -656,7 +657,7 @@ impl Model {
                 let lambda_result = if let Some(var_id) = id {
                     // Bound by LET — look up the variable, which should be a Lambda.
                     match self.variable_stack.get(&(*var_id as usize)) {
-                        Some(v) => v.clone(),
+                        Some(binding) => binding.value(cell),
                         None => {
                             return CalcResult::new_error(
                                 Error::NAME,

@@ -17,6 +17,9 @@ A defined name whose body is a union, such as `_xlnm.Print_Area` = `Sheet1!$A$1,
 ## Context
 SPEC-0004 step 5. probes/union-defined-name H1:H5 (T-0187) fails today: `parse_defined_names` (new_empty.rs) refuses the body. Add a name-body parser entry point that reads a top-level comma as the union (only a name body; a cell's `=A1,B2` is `#VALUE!` in Excel when stored in a file, probes/multiarea-bare, T-1073 decides its load behaviour; do not make it a load error here), `ParsedDefinedName::Areas` for unions of absolute references, and the general-formula path of T-0158 for anything else. A body that fails to parse, has a cross-sheet or 3-D operand, or more than `MAX_AREAS` areas becomes `InvalidDefinedNameFormula` (never a load failure), and the areas of all names of a workbook together are capped at `MAX_AREAS` (DEVIATION, references.md "Union area cap"). Evidence: references.md "Union: parsing and evaluation" (multi-area defined names) and SPEC-0004 probe rows 14 and 14b: probes/multiarea-printarea and multiarea-xname (a cross-sheet name body loads; `SUM(xs)` and `=xs` are `#VALUE!`, `ISREF(xs)` FALSE; both cases must pass).
 
+## Note from T-1064
+Also move AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) off its `Node::OpUnionKind` syntax match onto `evaluate_reference_arg` (keep its `Array`, number and error arms and `#VALUE!` for a 3-D reference), so it sees unions behind names, LET variables and IF/CHOOSE.
+
 ## Acceptance criteria
 - [ ] probes/union-defined-name H1:H5 (including `mu A1`) and probe row 14 pass; baseline updated.
 - [ ] references.md "Union area cap" DEVIATION covers the name-body and per-workbook caps; unit tests for both.

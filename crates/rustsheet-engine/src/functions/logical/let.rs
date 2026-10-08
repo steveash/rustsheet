@@ -9,7 +9,28 @@ use crate::{
     },
     functions::Function,
     model::Model,
+    reference_operators::{is_multi_area, several_areas, Areas, Ranges, RefArg},
 };
+
+/// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
+/// included), or the areas of a union, which only reference context reads as such
+/// ([`Model::variable_reference`]); everywhere else it is `#VALUE!`, as `LET(x,(A1,B2),x)` is
+/// (probes/multiarea-let H3).
+#[derive(Clone)]
+pub(crate) enum Binding {
+    Value(CalcResult),
+    Areas(Areas),
+}
+
+impl Binding {
+    /// The binding where a value or a single reference is needed.
+    pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            Binding::Value(value) => value.clone(),
+            Binding::Areas(_) => several_areas(cell),
+        }
+    }
+}
 
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
 /// name matches `target` with `id: Some(id)`.
@@ -152,8 +173,22 @@ impl Model {
             // CalcResult::Range stores only bounds (no cell data), so range bindings are
             // effectively lazy — values are only read when a consuming function iterates the range.
             // A reference stays a reference, a single cell too (upstream MIN_MAX_extras.xlsx A16).
-            let val = self.evaluate_node_with_reference(&cloned[2 * i + 1], cell);
-            self.variable_stack.insert(raw_id, val);
+            // A union stays its areas: `LET(x,(A1,B2),SUM(x))` is 6 (probes/multiarea-let H1).
+            let value = &cloned[2 * i + 1];
+            let binding = match value {
+                Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if is_multi_area(value) => {
+                    match self.reference_ranges(value, cell) {
+                        Ok(Ranges::Areas(areas)) => Binding::Areas(areas),
+                        Ok(Ranges::One(range)) => Binding::Value(CalcResult::Range {
+                            left: range.left,
+                            right: range.right,
+                        }),
+                        Err(error) => Binding::Value(error),
+                    }
+                }
+                _ => Binding::Value(self.evaluate_node_with_reference(value, cell)),
+            };
+            self.variable_stack.insert(raw_id, binding);
         }
 
         // Evaluate the body with all bindings in scope.
@@ -173,7 +208,7 @@ impl Model {
         match node {
             Node::NamedVariableKind { name, id: Some(id) } => {
                 match self.variable_stack.get(&(*id as usize)) {
-                    Some(v) => v.clone(),
+                    Some(binding) => binding.value(cell),
                     None => CalcResult::new_error(
                         Error::NAME,
                         cell,
@@ -188,5 +223,16 @@ impl Model {
             ),
             _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
         }
+    }
+
+    /// A LET variable or LAMBDA parameter in reference context: a union binding is its areas,
+    /// anything else what [`Model::variable_value`] gives.
+    pub(crate) fn variable_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
+        if let Node::NamedVariableKind { id: Some(id), .. } = node {
+            if let Some(Binding::Areas(areas)) = self.variable_stack.get(&(*id as usize)) {
+                return RefArg::Ranges(Ranges::Areas(areas.clone()));
+            }
+        }
+        RefArg::from(self.variable_value(node, cell))
     }
 }

@@ -3,7 +3,7 @@ id: T-1064
 title: "Unions through LET, IF and CHOOSE in reference context (SPEC-0004 step 4)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -25,3 +25,10 @@ SPEC-0004 step 4 ("Intersection operands", "LET, IF, CHOOSE"). Intersection oper
 
 ## Out of scope
 - Defined names (T-1065).
+
+## Outcome
+- `Binding` (`Value` | `Areas`) replaces `CalcResult` in `variable_stack`; every reader but `Model::variable_reference` (reference context) sees `#VALUE!` for an `Areas` binding. LET binds areas when its value is a union or a multi-area intersection.
+- `if_impl` and the new `choose_impl` return `RefArg`; in reference context (`evaluate_reference_arg`) the branch a scalar condition or index picks is itself evaluated in reference context, so a union survives. `fn_if`, `fn_choose` and the single-sheet path collapse it with `into_single_area`.
+- Intersection operands: `is_multi_area` now also treats a LET variable, IF and CHOOSE as possibly several areas, and `evaluate_areas` reads them through the evaluator; plain references and defined names keep the allocation-free pair path. Deviation from the plan: `is_multi_area` stays (extended) instead of branching on evaluated results, which would allocate for every name operand; the pair budget is unchanged (a function operand starts its own, as before).
+- Not done here: AGGREGATE's array form still matches `Node::OpUnionKind` (it now only misses a union behind a LET variable or IF/CHOOSE). Moved to T-1065, where names add the remaining hidden case.
+- Eval: probes +5 (multiarea-let H1:H2, multiarea-ifchoose H1:H3), no regressions.

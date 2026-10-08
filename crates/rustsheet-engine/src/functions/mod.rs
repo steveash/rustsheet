@@ -14,6 +14,7 @@ mod engineering;
 mod financial;
 mod information;
 mod logical;
+pub(crate) use logical::Binding;
 mod lookup_and_reference;
 mod macros;
 pub(crate) mod math_and_trigonometry;

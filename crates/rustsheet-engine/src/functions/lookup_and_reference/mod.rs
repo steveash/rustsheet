@@ -4,6 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
+use crate::reference_operators::RefArg;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -575,8 +576,20 @@ impl Model {
     /// CHOOSE(index_num, value1, [value2], ...)
     /// Uses index_num to return a value from the list of value arguments.
     pub(crate) fn fn_choose(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.choose_impl(args, cell, false).into_single_area(cell)
+    }
+
+    /// CHOOSE; with `as_reference` a scalar index hands back the chosen argument in
+    /// reference context, so a union there stays its areas: `SUM(CHOOSE(2,A1,(A1,B2)))` is 6
+    /// (probes/multiarea-ifchoose H3).
+    pub(crate) fn choose_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> RefArg {
         if args.len() < 2 {
-            return CalcResult::new_args_number_error(cell);
+            return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
 
         // The index argument may be a single number or an array/range. In the array
@@ -586,9 +599,14 @@ impl Model {
             Ok(NumberOrArray::Number(index_num)) => {
                 let index_num = index_num as usize;
                 if index_num < 1 || index_num > (args.len() - 1) {
-                    return CalcResult::new_error(Error::VALUE, cell, "Invalid index".to_string());
+                    let error = CalcResult::new_error(Error::VALUE, cell, "Invalid index".into());
+                    return RefArg::Value(error);
+                }
+                if as_reference {
+                    return self.evaluate_reference_arg(&args[index_num], cell);
                 }
                 self.evaluate_node_with_reference(&args[index_num], cell)
+                    .into()
             }
             Ok(NumberOrArray::Array(index_array)) => {
                 let result = index_array
@@ -599,9 +617,9 @@ impl Model {
                             .collect()
                     })
                     .collect();
-                CalcResult::Array(result)
+                RefArg::Value(CalcResult::Array(result))
             }
-            Err(calc_err) => calc_err,
+            Err(calc_err) => RefArg::Value(calc_err),
         }
     }
 

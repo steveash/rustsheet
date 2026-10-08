@@ -149,3 +149,56 @@ fn whole_columns_over_the_cell_bound_are_not_walked() {
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
     assert_eq!(model._get_text("Z2"), "32");
 }
+
+#[test]
+fn unions_through_let_if_and_choose() {
+    let mut model = model();
+    results(
+        &mut model,
+        &[
+            // probes/multiarea-let H1:H3 and multiarea-ifchoose H1:H3.
+            ("H1", "=LET(x,(A1,B2),SUM(x))", "6"),
+            ("H2", "=LET(x,(A1,B2),x A1)", "1"),
+            ("H3", "=LET(x,(A1,B2),x)", "#VALUE!"),
+            ("H4", "=IF(TRUE,(A1,B2)) A1", "1"),
+            ("H5", "=SUM(IF(TRUE,(A1,B2)))", "6"),
+            ("H6", "=SUM(CHOOSE(2,A1,(A1,B2)))", "6"),
+            // A nested LET that shadows the union binding sees its own value (UNVERIFIED:
+            // ordinary LET scoping).
+            ("H7", "=LET(x,(A1,B2),LET(x,C3,SUM(x)))", "7"),
+            ("H8", "=LET(x,(A1,B2),SUM(x,LET(x,C3,x)))", "13"),
+            // A single-range binding and plain intersections are unchanged.
+            ("H9", "=LET(x,A1:B2,x B2)", "5"),
+            ("H10", "=SUM(A1:B2 B1:B3)", "5"),
+            // A value of the union outside reference context stays `#VALUE!`.
+            ("H11", "=IF(TRUE,(A1,B2))", "#VALUE!"),
+            ("H12", "=CHOOSE(1,(A1,B2))", "#VALUE!"),
+        ],
+    );
+}
+
+#[test]
+fn deep_if_chain_over_a_union() {
+    // Each IF recurses through `evaluate_reference_arg`, so the chain is bounded by the
+    // parser's depth cap. Excel's own nesting limit (64 levels) runs on the stack sizes of
+    // parser/tests/test_nesting_depth.rs: 1 MiB optimized, 16 MiB unoptimized.
+    let stack = if cfg!(debug_assertions) {
+        16 << 20
+    } else {
+        1 << 20
+    };
+    let handle = std::thread::Builder::new()
+        .stack_size(stack)
+        .spawn(|| {
+            let mut model = model();
+            let depth = 64;
+            let formula = format!(
+                "=SUM({}(A1,B2){})",
+                "IF(TRUE,".repeat(depth),
+                ")".repeat(depth)
+            );
+            results(&mut model, &[("H1", &formula, "6")]);
+        })
+        .unwrap();
+    handle.join().unwrap();
+}

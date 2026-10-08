@@ -128,7 +128,7 @@ impl RefArg {
 }
 
 /// `#VALUE!` for a reference of several areas where one area is needed.
-fn several_areas(cell: CellReferenceIndex) -> CalcResult {
+pub(crate) fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
 }
 
@@ -136,13 +136,21 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 
-/// Whether `node` may stand for several areas, so evaluating it needs an area list.
+/// Whether `node` may stand for several areas, so evaluating it as an intersection operand
+/// needs an area list.
 /// An intersection is multi-area only if a union sits somewhere under it: a chain of
 /// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
 /// Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_multi_area(node: &Node) -> bool {
     match node {
-        Node::OpUnionKind { .. } => true,
+        // A LET variable, IF and CHOOSE may stand for a union (probes/multiarea-let H2,
+        // multiarea-ifchoose H1).
+        Node::OpUnionKind { .. }
+        | Node::NamedVariableKind { .. }
+        | Node::FunctionKind {
+            kind: Function::If | Function::Choose,
+            ..
+        } => true,
         Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
         _ => false,
     }
@@ -458,6 +466,14 @@ impl Model {
             Node::OpIntersectKind { left, right, .. } => {
                 self.intersect_areas(left, right, cell, budget)
             }
+            Node::NamedVariableKind { .. }
+            | Node::FunctionKind {
+                kind: Function::If | Function::Choose,
+                ..
+            } => match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(Ranges::Areas(areas)) => Ok(areas.0.to_vec()),
+                other => Ok(vec![single_sheet_area(other.into_single_area(cell), cell)?]),
+            },
             _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),
         }
     }
@@ -528,25 +544,32 @@ impl Model {
         };
         let operand =
             reference_form.unwrap_or_else(|| self.evaluate_node_with_reference(node, cell));
-        match operand {
-            CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
-                left: CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row.min(right.row),
-                    column: left.column.min(right.column),
-                },
-                right: CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row.max(right.row),
-                    column: left.column.max(right.column),
-                },
-            }),
-            error @ CalcResult::Error { .. } => Err(error),
-            _ => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Intersection of a value that is not a reference".to_string(),
-            )),
-        }
+        single_sheet_area(operand, cell)
+    }
+}
+
+/// An intersection operand as a single-sheet area with its corners in order, or the result to
+/// give instead: the operand's own error, or `#VALUE!` for anything that is not a reference
+/// (`(1+0) A1`) or spans sheets.
+fn single_sheet_area(operand: CalcResult, cell: CellReferenceIndex) -> Result<Range, CalcResult> {
+    match operand {
+        CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
+            left: CellReferenceIndex {
+                sheet: left.sheet,
+                row: left.row.min(right.row),
+                column: left.column.min(right.column),
+            },
+            right: CellReferenceIndex {
+                sheet: left.sheet,
+                row: left.row.max(right.row),
+                column: left.column.max(right.column),
+            },
+        }),
+        error @ CalcResult::Error { .. } => Err(error),
+        _ => Err(CalcResult::new_error(
+            Error::VALUE,
+            cell,
+            "Intersection of a value that is not a reference".to_string(),
+        )),
     }
 }

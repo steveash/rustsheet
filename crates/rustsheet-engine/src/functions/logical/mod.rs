@@ -2,6 +2,7 @@ mod and_or_xor_not;
 mod bycol_byrow;
 mod lambda;
 mod r#let;
+pub(crate) use r#let::Binding;
 mod map_reduce;
 mod scan;
 mod switch;
@@ -15,6 +16,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    reference_operators::RefArg,
 };
 
 /// How IF hands back the branch a scalar condition chose.
@@ -121,28 +123,30 @@ impl Model {
 
     pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.if_impl(args, cell, IfBranchMode::Value)
+            .into_single_area(cell)
     }
 
     /// IF; with a scalar condition the chosen branch comes back as `mode` says
-    /// (T-0216, T-1026; docs/excel-semantics/references.md).
+    /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
+    /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
+    /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         mode: IfBranchMode,
-    ) -> CalcResult {
+    ) -> RefArg {
         if args.len() != 2 && args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
+            return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
-        let has_else = args.len() == 3;
         let cond_result = self.evaluate_node_in_context(&args[0], cell);
 
         // Normalize cond to a 2-D array, or take the scalar early-return path.
         let cond_array: Vec<Vec<ArrayNode>> = match cond_result {
-            error @ CalcResult::Error { .. } => return error,
+            error @ CalcResult::Error { .. } => return RefArg::Value(error),
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
                 Ok(array) => array,
-                Err(error) => return error,
+                Err(error) => return RefArg::Value(error),
             },
             CalcResult::Array(a) => a,
             other => {
@@ -150,23 +154,32 @@ impl Model {
                 // The branch result may itself be an array (it will spill).
                 let b = match self.cast_to_bool(other, cell) {
                     Ok(b) => b,
-                    Err(e) => return e,
+                    Err(e) => return RefArg::Value(e),
                 };
                 let branch = if b { args.get(1) } else { args.get(2) };
                 return match branch {
                     Some(node) => match mode {
-                        // TODO(T-1064): a union in the branch is its areas.
-                        IfBranchMode::Aggregate => self
-                            .evaluate_reference_arg(node, cell)
-                            .into_single_area(cell),
-                        IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell),
-                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell),
+                        IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
+                        IfBranchMode::SingleSheet => {
+                            self.evaluate_single_sheet_arg(node, cell).into()
+                        }
+                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell).into(),
                     },
-                    None => CalcResult::Boolean(false),
+                    None => RefArg::Value(CalcResult::Boolean(false)),
                 };
             }
         };
+        RefArg::Value(self.if_array(args, cond_array, cell))
+    }
 
+    /// IF over an array condition: one result per position, the branches broadcast.
+    fn if_array(
+        &mut self,
+        args: &[Node],
+        cond_array: Vec<Vec<ArrayNode>>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let has_else = args.len() == 3;
         // Evaluate branches once and normalise each to a scalar or 2-D array.
         let true_result = self.evaluate_node_in_context(&args[1], cell);
         let true_arg = match true_result {

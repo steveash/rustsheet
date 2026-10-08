@@ -8,7 +8,7 @@ use crate::{
     model::Model,
 };
 
-use super::r#let::assign_variable_ids;
+use super::r#let::{assign_variable_ids, Binding};
 
 impl Model {
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
@@ -75,7 +75,7 @@ impl Model {
             } else {
                 CalcResult::EmptyArg
             };
-            self.variable_stack.insert(*raw_id, val);
+            self.variable_stack.insert(*raw_id, Binding::Value(val));
         }
 
         let result = self.evaluate_node_in_context(&patched_body, cell);
@@ -129,7 +129,7 @@ impl Model {
             } else {
                 CalcResult::EmptyArg
             };
-            self.variable_stack.insert(*raw_id, val);
+            self.variable_stack.insert(*raw_id, Binding::Value(val));
         }
 
         let result = self.evaluate_node_in_context(&patched_body, cell);
