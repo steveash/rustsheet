@@ -163,6 +163,6 @@ is settled by T-1012 (information.md): `"#BLOCKED!"` does not match the error.
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
-stored rejections as throw-away one-cell cases (same).
+stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133
