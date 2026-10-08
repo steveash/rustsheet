@@ -3,7 +3,7 @@ id: T-1182
 title: "On a sheet with a filtered table every hidden row counts as filtered for SUBTOTAL"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
