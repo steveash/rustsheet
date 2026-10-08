@@ -1,10 +1,19 @@
 # Coercion and argument handling
 
-## AND / OR evaluate every argument; an error anywhere wins
+## AND / OR / XOR evaluate every argument; the first error wins
 Rule: AND/OR do not short-circuit: `=OR(TRUE,(2<COUNTIFS(…shape mismatch…)))` → `#VALUE!`.
-Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6c5b99e2e A170, dd99be1f2454159f A3; AND: 75840b9c71a50596 A56, 96a0952412cefa6c A126. Unprobed: which error wins with several errors, and an error inside the same range as the deciding value (T-0229). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6c5b99e2e A170, dd99be1f2454159f A3; AND: 75840b9c71a50596 A56, 96a0952412cefa6c A126. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Which error: the first one, taking arguments left to right and each range or array row by row, for AND, OR and XOR
+alike, whatever value decides the result: `OR(TRUE,NA(),1/0)` → `#N/A`, `OR(TRUE,1/0,NA())` → `#DIV/0!`,
+`AND(FALSE,1/0,NA())` → `#DIV/0!`; with D1:F2 = TRUE, `#DIV/0!`, FALSE / `#N/A`, TRUE, `#NUM!`, `OR(D1:F2)`,
+`AND(D1:F2)` and `XOR(D1:F2)` are `#DIV/0!` (row-major first) and `OR(TRANSPOSE(D1:F2))` is `#N/A`;
+`OR({TRUE,#DIV/0!,#N/A})` → `#DIV/0!`; `OR(TRUE,B1:B2)` with an error in B1:B2 is that error; text before an error
+in a range neither wins nor makes `#VALUE!` (`OR(H1:H2)` with H1 = "x", H2 = `#N/A` → `#N/A`; a text-only range and
+direct text arguments are not covered here); an intersection `OR(D1:F2 E1:F2)` reads its own cells.
+Evidence: probes/and-or-xor-error-order (30 cells; oracle: excel-graph, 2026-10-08, T-0229).
 Status: VERIFIED
-Tasks: T-0215
+Implemented in: `logical_nary` (functions/logical/and_or_xor_not.rs; unit test `first_error_wins_row_by_row` in test/test_fn_or_xor.rs).
+Tasks: T-0215, T-0229
 
 ## MIN / MAX coerce value arguments like SUM; ranges and arrays give only their numbers
 Rule: a value argument (literal or function result, e.g. IFERROR or CONCATENATE) is coerced like
