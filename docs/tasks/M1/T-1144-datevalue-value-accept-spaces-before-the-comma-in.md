@@ -3,7 +3,7 @@ id: T-1144
 title: "DATEVALUE/VALUE accept spaces before the comma in month-day-year text (July 1 , 2026)"
 milestone: M1
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,8 @@ Found in T-1136: probes/datevalue-separator-spaces B15 and C15 (excel-graph, 202
 
 ## Out of scope
 -
+
+## Outcome
+`parse_date` accepts a comma standing as its own word after the day or month ("July 1 , 2026",
+"July , 1, 2026"). Oracle probe probes/datevalue-comma-spaces (excel-graph) recorded the
+neighbours; rules in docs/excel-semantics/dates.md. Eval: B15/C15 of datevalue-separator-spaces now pass.

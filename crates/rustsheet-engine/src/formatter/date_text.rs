@@ -288,7 +288,11 @@ fn remove_separator_spaces(value: &str) -> String {
 /// - "Month year": "Jul 2026", "July 2026" (the first of the month);
 /// - "Month day, year": "July 1, 2026", "Jul 01, 26" (the comma ends the day; "July 1 2026" and
 ///   "July 1,2026" are #VALUE!);
-/// - "day Month year": "1 July 2026" (no comma).
+/// - "day Month year": "1 July 2026" (no comma);
+/// - the comma of "Month day, year" may also stand as a word of its own after the day
+///   ("July 1 , 2026"), after the month ("July , 1, 2026") or both ("July , 1 , 2026"); it still
+///   needs a space after it ("July 1 ,2026" is #VALUE!). Day-first text never takes a comma
+///   ("1 July , 2026" is #VALUE!).
 ///
 /// Month names follow [`parse_month_name`]; a month name never comes first in a separated word
 /// ("Jul-1-2026" is #VALUE!). Text with a clock time is `time_text`'s ("date clock" text).
@@ -310,8 +314,9 @@ pub(crate) fn parse_date(
             return parse_date(&compact, locale, current_year);
         }
     }
-    // At most 4 words: enough to reject longer text without splitting all of it.
-    let words: Vec<&str> = value.split_whitespace().take(4).collect();
+    // At most 5 words: one more than the longest form (4), enough to reject longer text without
+    // splitting all of it.
+    let words: Vec<&str> = value.split_whitespace().take(5).collect();
     let (day, name, year) = match words.as_slice() {
         [word] => return parse_separated(word, locale, current_year),
         [first, second] => {
@@ -322,6 +327,10 @@ pub(crate) fn parse_date(
         }
         [name, day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
         [day, name, year] => (*day, *name, *year),
+        // A comma word of its own: "July 1 , 2026", "July , 1, 2026" (probes/datevalue-comma-spaces).
+        [name, day, ",", year] => (*day, *name, *year),
+        [name, ",", day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
+        [name, ",", day, ",", year] => (*day, *name, *year),
         _ => return Err("Not a valid date".to_string()),
     };
     let (day, _) = parse_day(day)?;
@@ -385,6 +394,29 @@ mod tests {
         assert_eq!(en(&padded), Some(46023));
         // Spaces away from a separator still make a different word count.
         assert_eq!(en("2026 01 01"), None);
+    }
+
+    #[test]
+    fn comma_may_stand_as_its_own_word() {
+        // probes/datevalue-comma-spaces
+        for text in [
+            "July 1 , 2026",
+            "July 1  ,  2026",
+            "July 1 ,  2026",
+            "July , 1, 2026",
+            "July , 1 , 2026",
+        ] {
+            assert_eq!(en(text), Some(46204), "{text}");
+        }
+        assert_eq!(en("July 1 , 26"), Some(46204));
+        for text in [
+            "July 1 ,2026",
+            "Jul 1 ,2026",
+            "1 July , 2026",
+            "1 July, 2026",
+        ] {
+            assert_eq!(en(text), None, "{text}");
+        }
     }
 
     #[test]
