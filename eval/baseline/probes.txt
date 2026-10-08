@@ -209,6 +209,7 @@ C	probes/multiarea-subtotal-counts-c.case.json	5
 C	probes/multiarea-subtotal-counts-d.case.json	5
 C	probes/multiarea-subtotal-counts-e.case.json	5
 C	probes/multiarea-subtotal.case.json	2
+C	probes/multiarea-sum-types.case.json	24
 C	probes/multiarea-xname.case.json	3
 C	probes/multiarea-xsheet.case.json	2
 C	probes/near-zero-snap-groups.case.json	14
