@@ -27,7 +27,7 @@ Hygiene: lint-debt 99 allow entries · duplicated lines 7,158 (ratchet file stil
 Since the 2026-10-07 snapshot (108315e), 50 PRs merged to `main` through bccce59, all tasks, and none was reverted:
 T-0049/0052, T-0110, T-0165/0180/0183, T-0223, T-0261/0262/0263/0267, T-0274/0275/0277/0279/0280/0281/0284,
 T-0935/0952/0984, T-1004/1005/1006/1008/1010/1011/1017, T-1040/1041/1050/1059,
-T-1107–T-1109, T-1111–T-1116, T-1118–T-1122, T-1125–T-1128. T-1132 (#372) and T-0191 (#371, deviation scoring) merged during this run, after the eval above.
+T-1107–T-1109, T-1111–T-1116, T-1118–T-1122, T-1125–T-1128. T-1132 (#372), T-0191 (#371, deviation scoring) and T-1019 (#373) merged during this run, after the eval above.
 Blocked (12): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp);
 the M14 desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081 (decision 0039).
 T-1100 is blocked on its branch (#314, draft).
@@ -48,7 +48,7 @@ T-0163's claim branch has had no commit since 2026-10-07 08:27, so workers will 
 
 Queues at the start of the run:
 - functions: 36 ready. The sonnet buffer is 19. research 13, quality 6, perf 5 (Phase 2).
-- engine and harness: 0 ready only because both lanes are busy. They have 15 and 5 unclaimed M1 todo tasks (harness 4 after T-0191 merged).
+- engine and harness: 0 ready only because both lanes are busy. They have 15 and 5 unclaimed M1 todo tasks (engine 14 and harness 4 after T-1019 and T-0191 merged).
 - research has 1 M1 todo task and api has only the claimed T-0163, so the planner ran for M1 research and filed T-1137–T-1140 (sonnet probes). It filed no api tasks: no M1 api scope is left.
 - The gap-triager did not run: functions has 36 ready, and the sonnet buffer is at least 10.
 
