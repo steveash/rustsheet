@@ -3,7 +3,7 @@ id: T-0289
 title: "spec2xlsx writes numbers losslessly (17 digits) so Excel and the engine read the same double"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,10 +28,18 @@ writing, as spec2xlsx already does for error cells, or write numbers with `repr`
   geomean-pow2-count E). `rg` the cases for numbers with 17 significant digits to list the rest.
 
 ## Acceptance criteria
-- [ ] spec2xlsx writes every number so that it parses back to the same double, with a test in tools/tests.
-- [ ] `as_written` is removed, and eval-harness.md "Input conventions" is updated.
-- [ ] Affected oracle sidecars are refilled from excel-graph, numbers.md cites the new values, and there is no regression.
-- [ ] `make check` green; reviewers approve.
+- [x] spec2xlsx writes every number so that it parses back to the same double, with a test in tools/tests.
+- [x] `as_written` is removed, and eval-harness.md "Input conventions" is updated.
+- [x] Affected oracle sidecars are refilled from excel-graph, numbers.md cites the new values, and there is no regression.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Typed entry (`Entered`) cells, which go through Excel's own parser.
+
+## Outcome
+spec2xlsx now rewrites the `<v>` of any number whose 16-digit text is not the same double to Python's shortest
+round-trip text (`_store_numbers`), tested in tools/tests/test_spec2xlsx_numbers.py. `as_written` and its test are gone
+from crates/rustsheet-eval/src/engine.rs; eval-harness.md "Input conventions" and numbers.md (GEOMEAN) are updated.
+Refilled from excel-graph: probes/geomean-pow2-count and geomean-exponent-sum-2 (the only cases holding 17-digit
+numbers); a stored 2^1000 now equals `2^1000` (Q3, Q4 are 0) and the `#NUM!` cells are exact roots. Eval: probes known
+failures 353 -> 350 (fixed 3), regressions 0.

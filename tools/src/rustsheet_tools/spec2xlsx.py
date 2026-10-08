@@ -33,6 +33,7 @@ import argparse
 import functools
 import io
 import json
+import math
 import re
 import zipfile
 from collections.abc import Iterator
@@ -225,6 +226,9 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     wb.set_properties({"created": _FIXED_CREATED})
     stored: list[tuple[int, str, str]] = []  # (sheet number, cell ref, error name)
     entered: list[tuple[str, str, str]] = []  # (sheet name, cell ref, text as typed)
+    lossy: list[
+        tuple[int, str, float]
+    ] = []  # numbers XlsxWriter would round: (sheet number, cell ref, value)
     for number, sheet in enumerate(spec["sheets"], start=1):
         ws = wb.add_worksheet(sheet["name"])
         legacy = set(sheet.get("legacy_formulas", ()))
@@ -250,6 +254,8 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                 )
                 continue
             _write(ws, row, col, raw)
+            if (cell_number := _number_value(raw)) is not None and _is_lossy(cell_number):
+                lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, formula)
     for n, entry in enumerate(entered, start=1):
@@ -259,7 +265,8 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             raise ValueError(msg)
         wb.set_custom_property(f"{ENTERED_PROPERTY}.{n}", value)
     wb.close()
-    return _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
+    xlsx = _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
+    return _store_numbers(xlsx, lossy) if lossy else xlsx
 
 
 def entered_cells(xlsx: bytes) -> list[tuple[str, str, str]]:
@@ -300,6 +307,46 @@ def _store_errors(xlsx: bytes, stored: list[tuple[int, str, str]]) -> bytes:
                         msg = f"cannot store error {name} in {ref}: placeholder not found"
                         raise ValueError(msg)
                     text = text.replace(placeholder, f'<c r="{ref}" t="e"><v>{escape(name)}</v></c>')
+                data = text.encode()
+            dst.writestr(info, data)
+    return out.getvalue()
+
+
+def _number_value(raw: Any) -> float | None:
+    """The number a spec cell writes through `write_number`, or None for any other cell."""
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int | float):
+        return float(raw)
+    if isinstance(raw, dict) and raw.get("t") == "n":
+        return float(raw["v"])
+    return None
+
+
+def _is_lossy(value: float) -> bool:
+    """True when XlsxWriter's 16-significant-digit text (`{number:.16G}`) is not the same double."""
+    return math.isfinite(value) and float(f"{value:.16G}") != value
+
+
+def _store_numbers(xlsx: bytes, lossy: list[tuple[int, str, float]]) -> bytes:
+    """Rewrites the `<v>` of numbers that need 17 digits to the shortest text that parses back to the same
+    double, as Excel's own files hold them (T-0289)."""
+    by_sheet: dict[str, list[tuple[str, float]]] = {}
+    for number, ref, value in lossy:
+        by_sheet.setdefault(f"xl/worksheets/sheet{number}.xml", []).append((ref, value))
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(xlsx)) as src, zipfile.ZipFile(out, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info.filename)
+            if info.filename in by_sheet:
+                text = data.decode()
+                for ref, value in by_sheet[info.filename]:
+                    pattern = re.compile(rf'(<c r="{ref}"(?: s="\d+")?><v>)[^<]*(</v></c>)')
+                    replacement = rf"\g<1>{value!r}\g<2>"
+                    text, count = pattern.subn(replacement, text)
+                    if count != 1:
+                        msg = f"cannot store number {value!r} in {ref}: cell not found"
+                        raise ValueError(msg)
                 data = text.encode()
             dst.writestr(info, data)
     return out.getvalue()
