@@ -115,7 +115,8 @@ XNPV is `#NUM!` when its ranges contain empty cells, and a whole column counts e
 used area: `XNPV(0.1,Data!A:A,Data!B:B)` is #NUM! although Data holds only A1:B2, where
 `XNPV(0.1,Data!A1:A2,Data!B1:B2)` is finite.
 Unprobed: which error XNPV gives for a whole column whose used area holds a cell error or a text date
-(the engine returns that error, then #NUM! for the skipped cells).
+(the engine returns that error, then #NUM! for the skipped cells); XIRR dates strictly between -1 and 0
+(the engine truncates first, so -0.5 becomes -1 and is #NUM!).
 Evidence: probes/xirr-xnpv-whole-column-nogaps A1-A8, probes/whole-column-empty-walkers E1, E5, E7,
 F3, F4, F6, F7, F9 (excel-graph, 2026-10-07, T-1114); probes/xirr-mismatched-empties X1-X14,
 probes/xirr-early-dates A1-A16 (excel-graph, 2026-10-08, T-1124).
