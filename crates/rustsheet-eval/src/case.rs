@@ -44,6 +44,25 @@ pub struct SheetSpec {
     /// (no dynamic-array metadata; T-1077). The engine adapter ignores them.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub legacy_formulas: Vec<String>,
+    /// 1-based rows written hidden (T-1036). On a sheet with a filtered table every hidden row
+    /// counts as filtered, as Excel reads such a file.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hidden_rows: Vec<u32>,
+    /// Tables (`ListObject`s) on the sheet, header row first (T-1036).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tables: Vec<TableSpec>,
+}
+
+/// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
+/// its visible data rows, so the sheet's `hidden_rows` inside it are the rows the filter hides.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TableSpec {
+    pub name: String,
+    /// A1 range, header row included (`A1:B9`).
+    #[serde(rename = "ref")]
+    pub range: String,
+    #[serde(default)]
+    pub filter: bool,
 }
 
 /// A self-contained workbook test case.

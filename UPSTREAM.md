@@ -37,6 +37,8 @@ move_formula, static_analysis and units; a port touching `Node` matches must kee
 `consume_error` and `get_error_by_name` also accept `#GETTING_DATA` (any case) as an en-US constant
 outside `Language`; `get_error_by_english_name` knows all sixteen names. A port touching an `Error`
 match must keep those arms.
+`Model::add_table` / `Model::remove_table` (`tables.rs`, tables added through the API, T-1036) and
+`Parser::set_tables` (the parser's table list is refreshed when a table is added).
 
 ## Tracking upstream
 
