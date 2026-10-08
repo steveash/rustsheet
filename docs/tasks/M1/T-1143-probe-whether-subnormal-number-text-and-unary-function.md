@@ -3,7 +3,7 @@ id: T-1143
 title: "Probe whether subnormal number text and unary-function tails flush (companion cells)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
