@@ -30,6 +30,17 @@ decision record in `docs/decisions/` (enforced by `scripts/check_governance.py`)
   - `make eval-baseline` rewrites it and refuses regressions unless `--allow-regressions` is
     passed. That flag is only legitimate with a decision record, for example when an oracle
     re-run shows the old expectation was wrong.
+- **Accepted deviations** (`eval/suites/<suite>/deviations`, decision 0036): cells that differ
+  from Excel by design (a `Status: DEVIATION` entry, decision 0014), each with RustSheet's pinned
+  by-design value.
+  - A listed cell giving the pinned value scores as a *deviation*: the report's `deviations`
+    column, outside the bit-exact denominator, never an F line. Any other wrong value is a
+    failure. A listed cell matching Excel passes with a stale-line warning; remove that line.
+  - `make eval-check` and `make eval` fail when a line is malformed, names a missing case or an
+    unscored cell, or cites an entry without a `Status: DEVIATION` line.
+  - Changing the file is a protected change (`scripts/check_governance.py` asks for a decision
+    record): the DEVIATION entry lands in the same PR, and the
+    Excel-fidelity reviewer confirms the limit is a directive-5 limit.
 - **Lint debt / duplication / oversized files:** the scripts fail on increases. When you reduce
   them, run the script with `--update` and commit the JSON in the same PR.
 
