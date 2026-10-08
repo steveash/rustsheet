@@ -565,7 +565,12 @@ significand 1.99999999999999933 and so the significand cut above applied (1024 c
 spec2xlsx now writes the shortest text that parses back to the same double (T-0289) and Excel reloads: with
 2^1000 stored exactly, 1000-3000 copies of it all give 1.0715086071862673E+301 = 2^1000 (probes/geomean-exponent-sum-2
 C11-C18, refilled 2026-10-08), the stored minus the computed 2^1000 is 0 (probes/geomean-pow2-count Q3, Q4), and
-R1-R7 are all 1.0715086071862673E+301. Computed in the formula, 2^1000 was exact at every probed count, as
+R1-R7 are all 1.0715086071862673E+301.
+The earlier behaviour is reproduced by storing the 16-digit value itself (probes/geomean-stored-3ulps-low, excel-graph,
+2026-10-08, T-1172): `Q1 = 1.071508607186267E+301` satisfies `Q1=2^1000` (TRUE: comparisons round both operands to 15 digits, "Comparison tolerance") yet `(Q1-2^1000)/2^947` is -3; GEOMEAN of 1000 copies is 1.0715086071862671E+301 and of 1024 copies
+1.0715086071862668E+301, and 1025, 1026, 1100, 1500 and 3000 copies are `#NUM!` (the significand cut). The engine
+matches all but the 1000-copy last ulp (the open root-rounding item above, T-0290).
+Computed in the formula, 2^1000 was exact at every probed count, as
 are 2^10, 2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156).
 Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number
 of times `exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below
@@ -594,7 +599,7 @@ Status: the significand cut is VERIFIED within the probed ranges; the 2048 * k w
 probed cells as a fitted rule (no mechanism for the power-of-two exemption). RustSheet implements both
 (T-1112, T-1120). Still open: the root's last-ulp rounding (numbers.md, "GEOMEAN root rounding";
 T-1108).
-Tasks: T-1108, T-1112, T-1113, T-1120, T-0289
+Tasks: T-1108, T-1112, T-1113, T-1120, T-0289, T-1172
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
