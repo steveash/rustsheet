@@ -826,7 +826,7 @@ load through `Txn::set_row_hidden` and `Txn::add_table`.
 ## MULTINOMIAL is inexact
 Rule: Excel's MULTINOMIAL is not the exact factorial ratio, even when every factorial is exact in a
 double: `MULTINOMIAL(2,3)` = 9.999999999999998 (exact 10), `MULTINOMIAL(4,6)` = 209.99999999999977
-(exact 210), `MULTINOMIAL(4,2,6)` = 13859.99999999998 (exact 13860). Non-integers truncate first
+(exact 210), and over a range holding 4, "2" (numeric text), 6 it is 13859.99999999998 (exact 13860). Non-integers truncate first
 (`MULTINOMIAL(2.5,3)` = `MULTINOMIAL(2,3)`). Excel's algorithm is not identified (T-1190).
 Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 2026-10-08).
 Ours: the exact ratio (10, 210, 13860).
