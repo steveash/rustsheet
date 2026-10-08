@@ -99,3 +99,31 @@ fn image_stockhistory_and_fieldvalue_lift_over_arrays() {
     assert_eq!(model._get_text("D1"), *"#BLOCKED!");
     assert_eq!(model._get_text("D2"), *"3");
 }
+
+#[test]
+fn error_type_lifts_over_arrays_and_elements_keep_their_errors() {
+    let mut model = new_empty_model();
+    model._set("A1", "=ERROR.TYPE({#DIV/0!,5})");
+    model._set("A3", r#"=IMAGE({#DIV/0!,"x"})"#);
+    model._set("A5", r#"=_xlfn.FIELDVALUE({1;2},"p")"#);
+    model._set("C5", r#"=_xlfn.FIELDVALUE(1,1/0)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"2");
+    assert_eq!(model._get_text("B1"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("B3"), *"#VALUE!");
+    assert_eq!(model._get_text("A5"), *"#FIELD!");
+    assert_eq!(model._get_text("A6"), *"#FIELD!");
+    assert_eq!(model._get_text("C5"), *"#DIV/0!");
+}
+
+#[test]
+fn fieldvalue_broadcast_over_huge_ranges_is_bounded() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=_xlfn.FIELDVALUE(SEQUENCE(1048576),SEQUENCE(1,16384))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+}

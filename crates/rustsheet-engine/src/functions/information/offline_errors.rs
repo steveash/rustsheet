@@ -14,17 +14,18 @@ use crate::{
     model::Model,
 };
 
-/// A first argument that is either one value or a multi-cell range or array to lift over.
-enum Lifted {
-    Scalar(CalcResult),
-    Array(Vec<Vec<ArrayNode>>),
-}
+use super::{map_elements, Lifted};
+use crate::functions::math_and_trigonometry::array_size::check_array_size;
 
-/// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch. Which
+/// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch (narrower
+/// than `links.rs`, which also accepts ftp and mailto). Which
 /// strings Excel counts as a URL is not probed beyond `https://example.invalid/none.png`.
 fn is_url(text: &str) -> bool {
-    let lower = text.to_ascii_lowercase();
-    lower.starts_with("http://") || lower.starts_with("https://")
+    let has_prefix = |prefix: &str| {
+        text.get(..prefix.len())
+            .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+    };
+    has_prefix("http://") || has_prefix("https://")
 }
 
 /// The error IMAGE gives for one `source` value: an error stays, a URL is `#BLOCKED!` (no fetch)
@@ -39,20 +40,11 @@ fn image_error(source: &ArrayNode) -> Error {
 }
 
 /// An array of `error` with the shape of `values` (an element that is already an error stays).
-fn error_array(values: &[Vec<ArrayNode>], error: Error) -> CalcResult {
-    CalcResult::Array(
-        values
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|v| match v {
-                        ArrayNode::Error(e) => ArrayNode::Error(e.clone()),
-                        _ => ArrayNode::Error(error.clone()),
-                    })
-                    .collect()
-            })
-            .collect(),
-    )
+fn error_array(values: &[Vec<ArrayNode>], error: &Error) -> CalcResult {
+    CalcResult::Array(map_elements(values, |v| match v {
+        ArrayNode::Error(_) => v.clone(),
+        _ => ArrayNode::Error(error.clone()),
+    }))
 }
 
 impl Model {
@@ -62,21 +54,6 @@ impl Model {
         match self.evaluate_node_in_context(node, cell) {
             CalcResult::Range { left, .. } => self.evaluate_cell(left),
             other => other,
-        }
-    }
-
-    /// An argument that lifts: a multi-cell range or an array gives its values, anything else
-    /// (a one-cell range included) a single value.
-    fn lifted_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<Lifted, CalcResult> {
-        match self.evaluate_node_in_context(node, cell) {
-            CalcResult::Range { left, right } if left == right => {
-                Ok(Lifted::Scalar(self.evaluate_cell(left)))
-            }
-            CalcResult::Range { left, right } => {
-                Ok(Lifted::Array(self.evaluate_range(left, right, cell)?))
-            }
-            CalcResult::Array(values) => Ok(Lifted::Array(values)),
-            other => Ok(Lifted::Scalar(other)),
         }
     }
 
@@ -116,16 +93,9 @@ impl Model {
         }
         match self.offline_args(args, cell) {
             Err(error) => error,
-            Ok(Lifted::Array(values)) => CalcResult::Array(
-                values
-                    .iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|v| ArrayNode::Error(image_error(v)))
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            Ok(Lifted::Array(values)) => {
+                CalcResult::Array(map_elements(&values, |v| ArrayNode::Error(image_error(v))))
+            }
             Ok(Lifted::Scalar(source)) => {
                 let error = image_error(&calc_result_to_array_node(source));
                 let message = if error == Error::BLOCKED {
@@ -151,7 +121,7 @@ impl Model {
         }
         match self.offline_args(args, cell) {
             Err(error) => error,
-            Ok(Lifted::Array(values)) => error_array(&values, Error::CONNECT),
+            Ok(Lifted::Array(values)) => error_array(&values, &Error::CONNECT),
             Ok(Lifted::Scalar(_)) => CalcResult::new_error(
                 Error::CONNECT,
                 cell,
@@ -177,21 +147,18 @@ impl Model {
             Ok(field_name) => field_name,
             Err(error) => return error,
         };
-        let dims = |lifted: &Lifted| match lifted {
-            Lifted::Array(values) => (values.len(), values.iter().map(Vec::len).max().unwrap_or(0)),
-            Lifted::Scalar(_) => (1, 1),
-        };
-        let (value_dims, field_dims) = (dims(&value), dims(&field_name));
-        let (rows, cols) = (
-            value_dims.0.max(field_dims.0),
-            value_dims.1.max(field_dims.1),
-        );
         // A single value (or a 1x1 range) is a scalar `#FIELD!`.
         if matches!(
             (&value, &field_name),
             (Lifted::Scalar(_), Lifted::Scalar(_))
         ) {
             return CalcResult::new_error(Error::FIELD, cell, String::new());
+        }
+        let ((value_rows, value_cols), (field_rows, field_cols)) =
+            (value.dims(), field_name.dims());
+        let (rows, cols) = (value_rows.max(field_rows), value_cols.max(field_cols));
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
         }
         CalcResult::Array(vec![vec![ArrayNode::Error(Error::FIELD); cols]; rows])
     }
