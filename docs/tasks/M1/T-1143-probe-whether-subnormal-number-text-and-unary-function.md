@@ -3,7 +3,7 @@ id: T-1143
 title: "Probe whether subnormal number text and unary-function tails flush (companion cells)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ T-1027 made `parse_number_text` flush subnormal number text (marked UNVERIFIED i
 
 ## Out of scope
 - Engine changes.
+
+## Outcome
+Added probes/subnormal-text-and-tail-companions (15 formulas with `(x)=0` companions, excel-graph 2026-10-08). Subnormal number text flushes to a true 0 (VERIFIED, numbers.md). CSCH(710), NORM.S.DIST (TRUE tail and FALSE at -37.75/-38), PHI(-37.7), NORM.DIST(19,0,0.5,FALSE) and ERFC/ERFC.PRECISE(26.7) are a true 0; `NORM.S.DIST(-37.6,FALSE)` is a kept normal. The engine keeps the subnormal in the function cases: fix owned by T-1180.
