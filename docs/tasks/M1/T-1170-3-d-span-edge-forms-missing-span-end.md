@@ -3,7 +3,7 @@ id: T-1170
 title: "3-D span edge forms: missing span end is NAME, explicit @ of a span is REF, HLOOKUP and COUNTBLANK over IF-wrapped spans"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Found by T-1139: probes/3d-ref-span-edges (excel-graph, 2026-10-08) cells Calc!A
 
 ## Out of scope
 - LET-bound spans (T-1158).
+
+## Outcome
+Six cells fixed: `Model::wrong_sheet_error` (`#NAME?` for a span with a missing end), `evaluate_at_operand_reference` (`#REF!` for `@` of a multi-sheet span), HLOOKUP reads its table through `evaluate_single_sheet_arg`, COUNTBLANK treats an IF-wrapped span as a span (`is_span_or_if_of_span`). probes known failures down by 6.

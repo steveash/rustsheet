@@ -361,7 +361,7 @@ impl Model {
         } else {
             true
         };
-        let range = self.evaluate_node_in_context(&args[1], cell);
+        let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
             CalcResult::Range { left, right } => LookupTable::Range { left, right },
             CalcResult::Array(array) => LookupTable::Array(array),
@@ -558,6 +558,28 @@ impl Model {
         }
     }
 
+    /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not
+    /// the `#VALUE!` of a 3-D reference used as a single-sheet one: `=@Data1:Data3!A1` and
+    /// `=SUM(@Data1:Data3!A1:A2)` (probes/3d-ref-span-edges B1, B3; T-1170).
+    pub(crate) fn evaluate_at_operand_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                ..
+            } if first_index != last_index => CalcResult::new_error(
+                Error::REF,
+                cell,
+                "Implicit intersection of a 3-D reference".to_string(),
+            ),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
     /// Evaluates the operand of `@`. `@ROW(A:A)` and `@COLUMN(A1:Z1)` take a fast path that skips
     /// materialising the whole vector; everything else is evaluated normally.
     pub(crate) fn evaluate_implicit_intersection_operand(
@@ -574,7 +596,7 @@ impl Model {
                 kind: Function::Column,
                 args,
             } => self.row_or_column(args, cell, false, true),
-            _ => self.evaluate_node_with_reference(node, cell),
+            _ => self.evaluate_at_operand_reference(node, cell),
         }
     }
 
