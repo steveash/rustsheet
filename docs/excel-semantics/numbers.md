@@ -25,7 +25,8 @@ The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Tasks: T-0110 (implementation, waits on T-1017: the AST must keep the outer parentheses)
+Implemented in: the parser records a wholly parenthesized cell formula as a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017), which keeps the parentheses in the stored and exported formula text; the snapping itself is T-0110.
+Tasks: T-0110 (implementation), T-1017 (grouped root)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
