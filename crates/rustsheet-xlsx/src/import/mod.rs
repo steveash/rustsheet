@@ -85,7 +85,7 @@ fn reparse_formula_hack(formula: &str, worksheets: &[String]) -> Result<String, 
         column: 1,
         row: 1,
     };
-    let t = parser.parse(formula, &cell_reference);
+    let t = parser.parse_cell_formula(formula, &cell_reference);
 
     Ok(to_english_string(&t, &cell_reference))
 }

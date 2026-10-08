@@ -110,6 +110,8 @@ impl Model {
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => true,
+            // Parentheses around a whole defined-name body (kept for near-zero snapping, T-1164).
+            Node::GroupedRootKind { child } => self.is_reference(child, cell),
             // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
             // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
             // A union with an error operand is that error, not a reference: `ISREF((A1,#REF!))`
