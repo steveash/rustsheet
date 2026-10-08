@@ -562,5 +562,5 @@ D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarra
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
 question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), printed by `at_operand`
 (parser/reference_operators.rs; T-1116). Unprobed: how many levels print for `@((A1))` (the engine
-keeps every level, as for the union). Engine gap: the refused forms, which the engine evaluates (T-1117).
+keeps every level; also unprobed: `@((A1,B2))`, `@(A1) B1` and the stored `_xlfn.SINGLE` form, T-1132). Engine gap: the refused forms, which the engine evaluates (T-1117).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
