@@ -3,7 +3,7 @@ id: T-1138
 title: "Probe sheet-qualified range corners: reversed order, formula text and corners on two sheets"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
