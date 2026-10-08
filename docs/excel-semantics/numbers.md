@@ -403,8 +403,9 @@ Probe `probes-numeric/m9-norm-s-inv` (639 sweep cells = 213 arguments x 3 functi
   so it is NORM.S.INV(2.3E-308). 1E-300 gives -37.0470962993612.
 - Excel does not round-trip: `NORM.S.INV(NORM.S.DIST(k,TRUE))` is mostly 0-2 ulp off k for k <= 2, counting ulp as the spacing of
   doubles at |k| (k = +-1 give a result below |k|, 2 ulp(1) = 4 doubles away); 3 ulp at k = -31.75, -30.5, -29.25 and -25.5.
-  Above 2 the error grows with the resolution of p near 1 (k = 2.5 is -4 ulp, k = 3.5 is -38, k = 8 gives
-  7.991573950493902), which comes from rounding p, not from the inverse (k = -37.5 gives -37.50000000000001,
+  Above 2 the error grows overall, not monotonically, with the resolution of p near 1 (k = 2.5 is -4 ulp, 3.0 is -7, 3.25 is
+  exact, 3.5 is -38, 3.75 is -71, 4.25 is +706, k = 8 gives 7.991573950493902). Inferred, not measured: it comes from rounding p,
+  not from the inverse, since the inverse is within 1 ulp where p is well resolved (k = -37.5 gives -37.50000000000001,
   k = 0.5 gives 0.5000000000000001, k = -0.5 gives -0.5000000000000001). NORM.S.INV(0.5) is exactly 0.
 - Values at the AS241 region edges and around 0.5 (no pattern is claimed, T-0925 fits them): p = 0.02425 - 1E-6 gives
   -1.972978604638878, 0.02425 + 1E-6 gives -1.9729434985927772, 0.97575 - 1E-6 gives 1.972943498592777, 0.97575 + 1E-6 gives
