@@ -89,9 +89,12 @@ tables use the English names.
 Tasks: T-1013
 
 ## FIELDVALUE of a plain value is `#FIELD!`
-Rule: `FIELDVALUE(value, field_name)` is `#FIELD!` for every plain (non linked data type) value, which is
-every value here (decision 0027); an array `value` gives an array of `#FIELD!` (argument-error precedence
-is in "IMAGE/STOCKHISTORY/FIELDVALUE argument errors" above).
+Rule: `FIELDVALUE(value, field_name)` is `#FIELD!` for a number `value` and for an error `value` (the
+error does not win), and `FIELDVALUE({1,2},"Price")` spills a 1x2 array of `#FIELD!` (argument-error
+precedence is in "IMAGE/STOCKHISTORY/FIELDVALUE argument errors" above). No value here is a linked data type
+(decision 0027).
+Unverified (T-1141): the engine gives `#FIELD!` for text, boolean and empty values. A multi-cell range
+gives an array of the range's shape, and a 1x1 range or array gives a scalar `#FIELD!`.
 Evidence: probes/rich-errors-field A1, probes/rich-errors-args A60:A61, A20:A28 (excel-graph).
 Status: VERIFIED (excel-graph)
 Implemented in: functions/information/offline_errors.rs
