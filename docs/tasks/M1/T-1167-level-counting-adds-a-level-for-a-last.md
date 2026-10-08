@@ -3,7 +3,7 @@ id: T-1167
 title: "@(...) level counting adds a level for a last inner group (same end-only check as T-1161 had)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ A reviewer of T-1161 saw that the `at_group` level counting in `parse_parenthesi
 
 ## Out of scope
 -
+
+## Outcome
+No extra level: an `@` group is only counted when it is the first thing inside the outer `(` (`at_paren`), so `@(A1+(B1))` and `@((A1) (B1))` add none; T-1178 probes whether Excel keeps the inner parentheses. Test `at_operand_adds_no_level_for_a_nested_inner_group` pins it; inner groups being dropped is unprobed and noted UNVERIFIED in references.md. No code change, no eval delta.
