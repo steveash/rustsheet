@@ -648,73 +648,9 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // TODO(T-1068): LARGE takes a union (probes/multiarea-rank).
-        let values = match self
-            .evaluate_reference_arg(&args[0], cell)
-            .into_single_area(cell)
-        {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
+        let values = match self.numbers_from_reference_arg(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         let k = match self.large_small_k(&args[1], cell) {
             Ok(k) => k,
@@ -745,71 +681,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
+        let values = match self.numbers_from_reference_arg(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
-
         let k = match self.large_small_k(&args[1], cell) {
             Ok(k) => k,
             Err(e) => return e,

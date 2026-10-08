@@ -89,6 +89,33 @@ fn aggregates_walk_each_area_as_written() {
     );
 }
 
+/// LARGE, SMALL, RANK and FREQUENCY walk the areas as written (T-1068; probes/multiarea-rank
+/// H1:H3, probes/multiarea-cond H1).
+#[test]
+fn order_statistics_take_a_union() {
+    let mut model = model();
+    model._set("E1", "=1/0");
+    results(
+        &mut model,
+        &[
+            ("H1", "=LARGE((A1,B2,C3),2)", "5"),
+            ("H2", "=SMALL((A1,B2,C3),2)", "5"),
+            ("H3", "=RANK(5,(A1,B2,C3))", "2"),
+            ("H4", "=RANK.AVG(5,(A1,B2,C3),1)", "2"),
+            ("H5", "=SUM(FREQUENCY((A1,B2),3))", "2"),
+            // The overlap counts twice, as for SUM; k past the count is #NUM!.
+            ("H6", "=LARGE((A1:B2,B2),2)", "5"),
+            ("H7", "=LARGE((A1,B2),3)", "#NUM!"),
+            // An error cell in an area is the function's error, as in a plain range.
+            ("H8", "=LARGE((A1,E1),1)", "#DIV/0!"),
+            // SMALL resolves its argument like LARGE: a cell, a typed scalar and an error cell.
+            ("H9", "=SMALL(B2,1)", "5"),
+            ("H10", "=SMALL(5,1)", "5"),
+            ("H11", "=SMALL((A1,E1),1)", "#DIV/0!"),
+        ],
+    );
+}
+
 #[test]
 fn union_argument_errors() {
     let mut model = model();
