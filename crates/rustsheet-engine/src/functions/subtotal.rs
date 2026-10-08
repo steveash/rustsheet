@@ -2,7 +2,7 @@ use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
-        parser::{parse_range, ArrayNode, Node},
+        parser::{ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
@@ -35,49 +35,38 @@ pub enum CellTableStatus {
 }
 
 impl Model {
-    fn get_table_for_cell(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        let worksheet = match self.workbook.worksheet(sheet_index) {
-            Ok(ws) => ws,
-            Err(_) => return false,
+    /// Whether the sheet has a table with filters. Excel (probes/subtotal-hidden-filtered, T-1182)
+    /// calls every hidden row of such a sheet filtered, also above or below the table and in
+    /// columns outside it; see docs/excel-semantics/numbers.md "SUBTOTAL and AGGREGATE over hidden
+    /// and filtered rows".
+    fn sheet_has_filtered_table(&self, sheet_index: u32) -> bool {
+        let Ok(worksheet) = self.workbook.worksheet(sheet_index) else {
+            return false;
         };
-        for table in self.workbook.tables.values() {
-            if worksheet.name != table.sheet_name {
-                continue;
-            }
-            // (column, row, column, row)
-            if let Ok((column1, row1, column2, row2)) = parse_range(&table.reference) {
-                if ((column >= column1) && (column <= column2)) && ((row >= row1) && (row <= row2))
-                {
-                    return table.has_filters;
-                }
-            }
-        }
-        false
+        self.workbook
+            .tables
+            .values()
+            .any(|table| table.has_filters && table.sheet_name == worksheet.name)
     }
 
-    fn cell_hidden_status(
+    /// `sheet_filtered` is [`Self::sheet_has_filtered_table`] of the sheet, decided once per walk.
+    fn row_hidden_status(
         &self,
         sheet_index: u32,
         row: i32,
-        column: i32,
+        sheet_filtered: bool,
     ) -> Result<CellTableStatus, String> {
         let worksheet = self.workbook.worksheet(sheet_index)?;
-        let mut hidden = false;
-        for row_style in &worksheet.rows {
-            if row_style.r == row {
-                hidden = row_style.hidden;
-                break;
-            }
-        }
-        if !hidden {
-            return Ok(CellTableStatus::Normal);
-        }
-        // The row is hidden we need to know if the table has filters
-        if self.get_table_for_cell(sheet_index, row, column) {
-            Ok(CellTableStatus::Filtered)
-        } else {
-            Ok(CellTableStatus::Hidden)
-        }
+        let hidden = worksheet
+            .rows
+            .iter()
+            .find(|row_style| row_style.r == row)
+            .is_some_and(|row_style| row_style.hidden);
+        Ok(match (hidden, sheet_filtered) {
+            (false, _) => CellTableStatus::Normal,
+            (true, true) => CellTableStatus::Filtered,
+            (true, false) => CellTableStatus::Hidden,
+        })
     }
 
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
@@ -143,6 +132,7 @@ impl Model {
             // filter is looked up there); unevidenced per column, see T-1036. The row last seen
             // is cached: its cells are consecutive and the lookup scans the sheet's row styles.
             let mut last_row: Option<(u32, i32, bool)> = None;
+            let mut sheet_filtered: Option<(u32, bool)> = None;
             // A single area is clipped to the used area like a union's: the cells past it are
             // empty, which no function number reads.
             self.for_each_position_in_areas(
@@ -156,8 +146,16 @@ impl Model {
                             skip
                         }
                         _ => {
+                            let filtered = match sheet_filtered {
+                                Some((sheet, filtered)) if sheet == position.sheet => filtered,
+                                _ => {
+                                    let filtered = model.sheet_has_filtered_table(position.sheet);
+                                    sheet_filtered = Some((position.sheet, filtered));
+                                    filtered
+                                }
+                            };
                             let status = model
-                                .cell_hidden_status(position.sheet, position.row, area.left.column)
+                                .row_hidden_status(position.sheet, position.row, filtered)
                                 .map_err(|message| {
                                     CalcResult::new_error(Error::ERROR, cell, message)
                                 })?;
