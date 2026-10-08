@@ -3,7 +3,7 @@ id: T-1154
 title: "SUBTOTAL 2/3/102/103 and LET/IF-routed unions: probe and accept a union (follow-up of T-1071)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
