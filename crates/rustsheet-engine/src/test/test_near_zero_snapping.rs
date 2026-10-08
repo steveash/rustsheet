@@ -58,3 +58,16 @@ fn outermost_sum_snaps_but_grouped_and_inner_do_not() {
     assert_eq!(model._get_text("B4"), "FALSE");
     assert_eq!(model._get_text("B5"), "FALSE");
 }
+
+/// Every written level of parentheses around a whole formula is kept, and the group still
+/// skips snapping (probes/near-zero-snap-groups B3, B6).
+#[test]
+fn whole_formula_keeps_every_parenthesis_level() {
+    let mut model = new_empty_model();
+    model._set("A1", "=((0.1+0.2-0.3))");
+    model._set("A2", "=(((0.1+0.2-0.3)))");
+    model.evaluate();
+    assert_eq!(model._get_formula("A1"), "=((0.1+0.2-0.3))");
+    assert_eq!(model._get_formula("A2"), "=(((0.1+0.2-0.3)))");
+    assert!(model._get_text("A1") != "0");
+}
