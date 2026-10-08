@@ -3,7 +3,7 @@ id: T-1070
 title: "3-D operand beside and inside a union: SUM(3-D,(A1,B2)) works, union containing 3-D is #NAME? (SPEC-0004 row 13)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
