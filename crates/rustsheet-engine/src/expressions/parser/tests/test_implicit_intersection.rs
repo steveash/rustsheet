@@ -35,7 +35,8 @@ fn simple() {
         Node::ImplicitIntersection {
             automatic: false,
             child: Box::new(child),
-            written: 0
+            written: 0,
+            lead: 0
         }
     )
 }
@@ -71,7 +72,8 @@ fn simple_add() {
             left: ChainLeft::new(Node::ImplicitIntersection {
                 automatic: false,
                 child: Box::new(child),
-                written: 0
+                written: 0,
+                lead: 0
             }),
             right: Box::new(Node::NumberKind(12.0))
         }

@@ -95,6 +95,13 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        // An `@` group is the leftmost operand of an intersection only if it closes exactly there
+        // and holds a single operand: `@(A1):B1 C1` and `@(A1 B1) C1` would print parentheses
+        // the user did not write around that node (T-1134).
+        let mut stray_group = matches!(t, Node::OpIntersectKind { .. } | Node::OpUnionKind { .. })
+            || self
+                .at_group
+                .is_some_and(|(_, end)| end != self.lexer.get_position_index());
         let mut depth = self.depth;
         let mut as_name = false;
         while !is_constant(&t)
@@ -122,6 +129,9 @@ impl Parser {
                 return self.intersection_error();
             }
             as_name |= name_error;
+            if std::mem::take(&mut stray_group) {
+                self.at_group = None;
+            }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
             }
@@ -205,17 +215,25 @@ impl Parser {
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
-            // Parentheses count only where the group is the whole operand (`@(A1)`, not `@(A1) B1`).
-            let written = self
-                .at_group
-                .take()
-                .filter(|&(_, end)| end == self.lexer.get_position_index())
-                .map_or(0, |(levels, _)| levels);
+            // Whole-operand parentheses (`@(A1)`) are `written`; a group that is only the leftmost
+            // operand of an intersection (`@(A1) B1`) is `lead`.
+            let group = self.at_group.take();
+            let whole = group.filter(|&(_, end)| end == self.lexer.get_position_index());
+            let written = whole.map_or(0, |(levels, _)| levels);
+            let lead = match group {
+                Some((levels, _))
+                    if whole.is_none() && matches!(t, Node::OpIntersectKind { .. }) =>
+                {
+                    levels
+                }
+                _ => 0,
+            };
             self.at_paren = false;
             return Node::ImplicitIntersection {
                 automatic: false,
                 child: Box::new(t),
                 written,
+                lead,
             };
         }
         let primary = self.parse_primary();
@@ -416,6 +434,43 @@ pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
         written
     };
     (0..levels).fold(text, |text, _| format!("({text})"))
+}
+
+/// The text of the intersection chain `child` whose leftmost operand was written in `lead` levels
+/// of parentheses, `(A1) B1` (`@(A1) B1`, T-1134); `None` when there are none to print. `sub`
+/// prints an operand.
+pub(crate) fn lead_group_text(
+    child: &Node,
+    lead: u8,
+    sub: &dyn Fn(&Node) -> String,
+) -> Option<String> {
+    let mut rights = Vec::new();
+    let mut leftmost = child;
+    while let Node::OpIntersectKind { left, right } = leftmost {
+        rights.push(&**right);
+        leftmost = left;
+    }
+    if lead == 0 || rights.is_empty() {
+        return None;
+    }
+    let mut text = (0..lead).fold(sub(leftmost), |text, _| format!("({text})"));
+    for right in rights.into_iter().rev() {
+        text = format!("{text} {}", intersection_operand(sub(right), right, false));
+    }
+    Some(text)
+}
+
+/// The printed `@` operand `child` with the parentheses it was written in: `written` around the
+/// whole operand, `lead` around its leftmost operand only. `sub` prints a node.
+pub(crate) fn at_text(
+    child: &Node,
+    written: u8,
+    lead: u8,
+    sub: &dyn Fn(&Node) -> String,
+) -> String {
+    let operand =
+        lead_group_text(child, lead, sub).unwrap_or_else(|| at_operand(sub(child), child, written));
+    format!("@{operand}")
 }
 
 /// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare
