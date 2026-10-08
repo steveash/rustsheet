@@ -3,7 +3,7 @@ id: T-0235
 title: "Aggregates: IFERROR blank is an empty value; HLOOKUP/VLOOKUP pass references; INDEX in intersection"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
