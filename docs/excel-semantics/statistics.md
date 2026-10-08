@@ -70,14 +70,19 @@ formulation is open.
 Evidence: `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`!C3, C5, C7, C16, C17,
 C24, C25, C26, C32 (checked during T-0903).
 Update: refuted as a general rule by the T-1041 sweep, see "Normal density oracle sweep (T-1041)" below.
-Status: UNVERIFIED (fits the NORM.S.DIST cells; NORM.DIST/LOGNORM.DIST open, T-0975)
+Status: REFUTED as a general rule (fits the 9 cached cells only; 272/369 on the T-1041 sweep)
 Tasks: T-0975
 
 ## Normal density oracle sweep (T-1041)
 Rule: on the 369-point grid z = -38..8 step 0.125, `PHI(z)` equals `NORM.S.DIST(z,FALSE)` bit for
-bit (one kernel). The `exp(-z*z/2) / 2.5066282746310007` form above matches only 64 of the 369
-values (305 differ, by last digits), so the hypothesis is refuted as a general rule: T-0975 must
-fit against the sweep, not the 9 cached cells. Results below the normal double range flush to 0:
+bit (one kernel). The hypothesis above (`exp(-z*z/2) / sqrt(2*pi)`, divisor 2.5066282746310002) matches 272 of the
+369 values (97 differ in the last digit), so it is refuted as a general rule; the correctly rounded
+divisor 2.5066282746310007 (the engine's current constant) matches only 64. The best lead is
+`exp(-z*z/2) * 0.3989422804014327`, which matches 350 of 369 (15 misses are 1 ulp, 4 are the flushed
+zeros below). T-0975 must fit against the sweep, not the 9 cached cells. For the NORM.DIST grids,
+`exp(-((x-m)/s)^2/2) / sqrt(2*pi) / s` matches 106/122 (s=0.5), 88/122 (1.2), 73/122 (3) and
+75/122 (10): the NORM.DIST kernel is not that form; these grids and LOGNORM.DIST are otherwise left
+to T-0975's fit (all cells are numbers, no errors). Results below the normal double range flush to 0:
 z = -38 .. -37.625 give exactly 0 (the quotient would be subnormal, e.g. 1.25e-312), while
 z = -37.5 gives the normal 1.7282337322841054e-306. All 369 cells are numbers (no errors).
 Evidence: probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`; companion grids
