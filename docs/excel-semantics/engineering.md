@@ -20,12 +20,12 @@ orders 0-10, both functions) + 24 fractional-order + 32 large-order cells):
 - For x in [8,100] Excel is NOT uniformly off by one amount; its relative error against the true value
   (measured with the engine's fdlibm value as the reference) has this profile, so fit against the cells, not a band:
   BESSELJ is worst near x = 8..10 where order < x (up to 7e-5, e.g. `BESSELJ(8,1)` = 0.2346283865070744
-  vs true 0.2346363468539146), falls to ~2e-7 at x = 30 and ~1e-9 at x >= 50; BESSELJ with order >= x is
+  vs true 0.2346363468539146), falls to ~2e-7 at x = 30 and 1e-9 to 3e-9 at x >= 50; BESSELJ with order >= x is
   nearly exact (5e-15 for `BESSELJ(8,10)`, up to 5e-10 elsewhere), which fits Miller downward recurrence for
-  n >= x and upward recurrence from an inaccurate J1 below. BESSELY stays at or below 2e-7 (worst at
+  n >= x and upward recurrence from an inaccurate J1 below. BESSELY stays at about 2e-7 or below (worst at
   x = 10; 6e-9 at x = 8, 3e-9 at x = 100). Values are at the oracle sidecar's cells, e.g. `BESSELJ(30,1)` =
   -0.11875106091123117, `BESSELY(8,0)` = 0.22352148924968093.
-- At x = 10 the sweep equals the Excel-desktop cached values of `ironcalc-calc/ENGINEERING/BESSEL.xlsx`.
+- At x = 10 the sweep equals the Excel-desktop cached values of `ironcalc-calc/ENGINEERING/BESSEL.xlsx`, at the orders the workbook covers (0, 1, 7, 10).
 - The engine's fdlibm fallback is bit-exact on only 14 of the 364 cells; `rustsheet-eval show` lists the other
   350 as non-exact (164 within tolerance, 184 beyond it, 2 type mismatches).
 - A fractional order truncates: `BESSELJ(8,9.99)` equals `BESSELJ(8,9)`, `BESSELY(30,1.99)` equals `BESSELY(30,1)`.
