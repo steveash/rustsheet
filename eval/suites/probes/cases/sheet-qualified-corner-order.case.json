@@ -1,0 +1,63 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Sheet-qualified cell corners: reversed order, formula text, corners on two sheets (T-1138)",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 8,
+        "B2": 16
+      }
+    },
+    {
+      "name": "Other",
+      "cells": {
+        "A1": 100,
+        "B1": 200,
+        "A2": 300,
+        "B2": 400
+      }
+    },
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Data!B2:Data!A1)",
+        "A2": "=SUM(Data!A2:Data!B1)",
+        "A3": "=ROWS(Data!B2:Data!A1)",
+        "A4": "=SUM('Data'!$B$2:Data!A1)",
+        "B1": "=FORMULATEXT(A1)",
+        "B2": "=FORMULATEXT(A2)",
+        "B4": "=FORMULATEXT(A4)",
+        "A6": "=SUM(Data!A1:Other!B2)",
+        "A7": "=ISREF(Data!A1:Other!B2)",
+        "A8": "=Data!A1:Other!A1",
+        "A9": "=IFERROR(SUM(Data!A1:Other!B2),\"e\")",
+        "A11": "=SUM(Data!A1:Data!B2)",
+        "B11": "=FORMULATEXT(A11)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!A1",
+    "Calc!A2",
+    "Calc!A3",
+    "Calc!A4",
+    "Calc!B1",
+    "Calc!B2",
+    "Calc!B4",
+    "Calc!A6",
+    "Calc!A7",
+    "Calc!A8",
+    "Calc!A9",
+    "Calc!A11",
+    "Calc!B11"
+  ]
+}

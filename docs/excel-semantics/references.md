@@ -544,13 +544,20 @@ Implemented in: `sheet_prefix_after_colon` (crates/rustsheet-engine/src/expressi
 Tasks: T-0130, T-0105
 
 ## Sheet-qualified range corners: order and unprobed forms
-Rule: corners are ordered whichever way
-they are written (`Data!B2:Data!A1` is `Data!A1:B2`; implemented in `get_range`); the formula text
-round-trips as written; `Data!A1:Other!B2` (corners on different sheets) gives `#VALUE!` in the engine;
-the forms with column or row corners are not ranges in Excel (T-0139, see the next entry).
-Status: UNVERIFIED (reversed corners, round-tripping and the cross-sheet `#VALUE!` are engine behavior without
-a probe; T-0139 verified only the second-prefix column/row forms)
-Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs)
+Rule: with two cell corners that both carry the sheet prefix, the corners are ordered whichever way they are
+written (`Data!B2:Data!A1`, `Data!A2:Data!B1` and `'Data'!$B$2:Data!A1` sum the same 2x2 block as
+`Data!A1:Data!B2`; `ROWS(Data!B2:Data!A1)` is 2), and FORMULATEXT keeps the written order and both
+prefixes (`=SUM(Data!B2:Data!A1)`, `=SUM(Data!$B$2:Data!A1)`; the quotes around `Data` are dropped).
+Corners on two different sheets are not a range: `Data!A1:Other!B2` and `Data!A1:Other!A1` are `#VALUE!`,
+`ISREF(Data!A1:Other!B2)` is FALSE and `IFERROR(SUM(...),"e")` yields `"e"`.
+The forms with column or row corners are not ranges in Excel (T-0139, see the next entry).
+None of these forms made the workbook unloadable.
+Evidence: probes/sheet-qualified-corner-order Calc!A1-A4, B1, B2, B4 (order, text), A6-A9 (two sheets),
+A11/B11 (control) (oracle: excel-graph, 2026-10-08, T-1138).
+Status: VERIFIED (web)
+Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs). Known mismatch: the engine
+returns TRUE for the ISREF form (Calc!A7, baselined; T-1166).
+Tasks: T-1138, T-1166
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
