@@ -413,7 +413,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
 - Grouping and cuts (T-1140, probes/union-cut-precedence, oracle: excel-graph, 2026-10-08; VERIFIED (web)): the union is the
   loosest operator inside its parenthesis and the intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`: `=SUM((A1,B1 C1))`
   is `#NULL!` (F1; either grouping gives it, so F1 does not settle the grouping), while `=SUM((A1:B1,B1:C1 B1))` is 35 (F2, which does settle it: `A1:B1` plus `B1`, 11+12+12; the other grouping gives 24) and
-  `=SUM(((A1,B1) B1))` is 12 (F3). FORMULATEXT of the three prints the typed text unchanged (F4:F6; the engine drops the inner parentheses of F6, T-1173). A union cut by an intersection runs
+  `=SUM(((A1,B1) B1))` is 12 (F3). FORMULATEXT of the three prints the typed text unchanged (F4:F6; the engine drops the inner parentheses of F6, T-1176). A union cut by an intersection runs
   the cut on each pair of areas and drops pairs with no shared cell: `=SUM((A1:A12,D1:D12) A4:D4)` is 85 (F8, A4 plus D4). Further cuts
   bring several areas down to one: `=(A1:A12,D1:D12) A4:D4 D4` is D4 = 44 (F7) and `ROWS` of it is 1 (F9). A cut leaving one of two
   areas gives that area: `=SUM((A1:A3,C1:C3) A2:B2)` is 21 (F14) and `=(A1:A3,C1:C3) A2:B2` is 21 as a cell value (F15). Empty cuts:

@@ -1,5 +1,5 @@
 ---
-id: T-1173
+id: T-1176
 title: "Keep the inner parentheses of a parenthesized union cut in FORMULATEXT"
 milestone: M1
 lane: engine
