@@ -70,7 +70,7 @@ formulation is open.
 Evidence: `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`!C3, C5, C7, C16, C17,
 C24, C25, C26, C32 (checked during T-0903).
 Update: refuted as a general rule by the T-1041 sweep, see "Normal density oracle sweep (T-1041)" below.
-Status: REFUTED as a general rule (fits the 9 cached cells only; 272/369 on the T-1041 sweep)
+Status: UNVERIFIED (refuted as a general rule; fits the 9 cached cells only; 272/369 on the T-1041 sweep)
 Tasks: T-0975
 
 ## Normal density oracle sweep (T-1041)
