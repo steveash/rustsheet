@@ -272,7 +272,6 @@ gives #N/A (exact and 1) and 1 (match_mode -1); `XMATCH("",J1:J5,0,2)` is #N/A. 
 `XLOOKUP(,{"";1},{1;2})`, `XMATCH(,{"";1})` and `XMATCH(,{1;"a";TRUE},0,2)`, are #N/A, so an omitted value is not empty text; it is not 0 either, since `XMATCH(0,J1:J5,0,2)` is #N/A where the omitted form is 4.
 Evidence: probes/xlookup-omitted-lookup-value (excel-graph, 2026-10-08, 40 cells, omitted and G9-blank twins identical), plus
 XLOOKUP.xlsx Errors!N1 (Excel-authored) for binary.
-Status: VERIFIED (web). The engine matches in binary mode; linear modes differ for the omitted form (9 cells, `linear_scan`
-treats only `EmptyCell` as blank): fix in T-1188.
-Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`.
+Status: VERIFIED (web)
+Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`; `is_blank` / `linear_scan` (xmatch.rs) read `EmptyArg` as a blank in the linear modes (T-1188).
 Tasks: T-1153, T-1157, T-1188
