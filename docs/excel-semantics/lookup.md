@@ -178,7 +178,7 @@ Tasks: T-0126, T-1018
 Rule: in an exact or wildcard search (search_mode 1/-1) a blank candidate never matches a non-blank
 lookup value; a blank lookup value (`G1`, an empty cell) matches the first blank candidate. For
 match_mode -1/1 and a numeric lookup value a blank candidate is larger than every number and never
-smaller than one (the engine models it as empty text; unprobed for text and boolean lookup values). So with 5,_,10,_,20,_ in A1:A6: `XMATCH(0,A1:A6,-1)` is #N/A, `XMATCH(0,A1:A6,1)` is 1,
+smaller than one (the engine models it as empty text, which is wrong for text and boolean lookup values: see below). So with 5,_,10,_,20,_ in A1:A6: `XMATCH(0,A1:A6,-1)` is #N/A, `XMATCH(0,A1:A6,1)` is 1,
 `XMATCH(7,A1:A6,1)` is 3 (10 is the smaller of the larger candidates) but `XMATCH(25,A1:A6,1)` and
 `XMATCH(99,A:A,1)` are 2 (the first blank, the only candidate "larger" than 25). `XMATCH(0,A1:A6,2)`
 is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"nf")` is "nf",
@@ -186,8 +186,23 @@ is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"n
 Evidence: probes/xmatch-xlookup-blanks (Excel oracle; Col, Err, Row sheets, bounded and whole column/row).
 Status: VERIFIED
 Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared by XLOOKUP.
-Also unprobed: text and boolean lookup values with match_mode -1/1 over blanks, and a blank lookup
-value against 0/""/FALSE candidates (`XMATCH(G1,A:A)` is 2 here, where `MATCH(G1,A:A,0)` is #N/A).
+Text and boolean lookup values (probes/xmatch-text-bool-equal-runs, Excel oracle): with b,_,d,_,f,_ in
+A1:A6, a blank is *larger* than every text, as it is larger than every number: `XMATCH("z",A1:A6,1)` is 2 (the first
+blank), `XMATCH("z",A1:A6,-1)` is 5, `XMATCH("a",A1:A6,-1)` is #N/A (a blank is never the smaller candidate),
+`XMATCH("a",A1:A6,1)` is 1. Binary search also treats a blank as larger (`XMATCH("z",A1:A6,1,2)` is 6, `XMATCH("z",A1:A6,-1,2)` is 5). With b,#N/A,d,#DIV/0!,f in C1:C5 (Txt!M31-M48) `XMATCH("z",C1:C5,1)` is 4, the #DIV/0! cell (the #N/A at C2 is not chosen over it),
+`XMATCH("z",C1:C5,-1)` is 5, `XMATCH("z",C1:C5,1,2)` is 4, the error cell again, and `XMATCH("z",C1:C5,-1,2)` is 3; whether the linear modes skip #N/A and
+how errors order among themselves is not settled by this probe. Booleans over B1:B6 = FALSE,_,TRUE,_,TRUE,_ (Txt!M19-M30):
+`XMATCH(FALSE,B1:B6,1,-2)` is 6 (a blank), `XMATCH(FALSE,B1:B6,-1,-2)` is #N/A, `XMATCH(TRUE,B1:B6,1,-2)` is 5.
+`XLOOKUP("z",A1:A6,A1:A6,"nf",1)` returns the blank return cell as 0.
+A blank lookup value (`G1`) never matches a 0, `""` or FALSE candidate in an exact search (`XMATCH(G1,D1:D1)`,
+D1=0, is #N/A, likewise D2 = `=""`, D3 = FALSE, and with search_mode 2/-2). With match_mode -1 the `""` and FALSE
+candidates are the next smaller item (`XMATCH(G1,D3:D3,-1)` is 1), with match_mode 1 they are #N/A. `XMATCH(G1,D:D)` is 4, the first blank. `XLOOKUP(G1,D1:D1,E1:E1,"nf")` is "nf" for all three candidates.
+Status: VERIFIED
+DIVERGES (engine; fix is T-1153, 24 baselined cells in probes/xmatch-text-bool-equal-runs): a blank is modelled as empty
+text, so `XMATCH("a",A1:A6,-1)` gives 2 (#N/A in Excel), and `XMATCH("z",A1:A6,1)`, and `XMATCH("z",A:A,1)`
+give #N/A (2 in Excel), and `XLOOKUP("z",A1:A6,A1:A6,"nf",1)` gives "nf" (0, the blank return cell, in Excel). `XMATCH(TRUE,B1:B6,-1,-2)` and `(TRUE,B1:B6,1,-2)` give 3 (5 in Excel). A blank
+lookup value matches a 0, `""` or FALSE candidate in an exact search (Blk!M1-M5, M16, M17, M19-M22: `XMATCH(G1,D1:D1)` gives 1, `XMATCH(G1,D:D)` gives 1
+where Excel gives 4), and with match_mode 1 against `""`/FALSE (Blk!M7, M9) the engine gives 1 where Excel gives #N/A.
 
 ## XMATCH / XLOOKUP binary search (search_mode 2/-2) probes blanks and errors
 Rule: search_mode 2/-2 is the classic binary search on inclusive bounds, probing the lower middle
@@ -204,9 +219,7 @@ Evidence: probes/xmatch-xlookup-blanks Col!M16-M26, M44-M46, Err!M6-M7, Row!A18-
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs), shared by XMATCH and XLOOKUP.
 XLOOKUP over a range searches the full vector, so cells past the used area are probed as blanks.
-Unprobed (T-1135): runs of equal values. The engine returns the run's first cell for match_mode 0/-1
-and never one below the second cell for match_mode 1 (both as before T-1019), and the run's last
-cell when descending. Also unprobed: text and boolean lookup values over blanks and errors.
+Runs of equal values: see "binary search over runs of equal values" below (T-1135).
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
@@ -236,3 +249,18 @@ array return_array, including match modes -1/1 (E9-E15); search modes 1 and -1 e
 with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider return_array and gives the
 matched row (E7, E19, E20). Still unprobed: an error or scalar return_array, wildcard match mode with a binary search mode, and a 2-D *range* lookup_array (the engine answers `#ERROR!` there, `#VALUE!` for an array).
 Tasks: T-0948
+
+## XMATCH / XLOOKUP binary search over runs of equal values
+Rule: search_mode 2 returns the *first* cell of a run of equal values and search_mode -2 the *last*, for match_mode 0,
+-1 and 1 alike, including runs that start at the first cell or fill the range: `XMATCH(40,A1:A3,m,2)` is 1 and
+`XMATCH(40,A1:A3,m,-2)` is 3 with {40,40,40}; {40,40,40,40,40} gives 1 and 5; {30,40,40,40,50} gives 2 and 4;
+descending {60,50,40,40,40} gives 3 and 5; seven 40s give 1 and 7. Linear search_mode 1 gives the first cell
+(1) for every match_mode. XLOOKUP agrees (`XLOOKUP(40,B1:B5,D1:D5,"nf",0,2)` is 30, with `-2` it is 50).
+Evidence: probes/xmatch-text-bool-equal-runs Run!M1-M52 (Excel oracle). The engine differs on the match_mode 1 / search_mode 2 cells whose run starts at the first cell (see below).
+DIVERGES (engine; fix is T-1153): match_mode 1 with search_mode 2 returns the run's first cell in Excel, including a run
+that starts at the first cell (`XMATCH(40,A1:A3,1,2)` is 1, `XMATCH(40,F1:F7,1,2)` is 1), but the engine never returns
+below the second cell (2) for runs of three or more (a two-cell run, G1:G2, agrees): Run!M5, M11, M17, M35, M51 (`XLOOKUP(40,B1:B5,D1:D5,"nf",1,2)` is 30, engine 40). A run that
+does not start at the first cell (D1:D5) already agrees.
+Status: VERIFIED
+Implemented in: `binary_search` (functions/binary_search.rs).
+Tasks: T-1135, T-1153
