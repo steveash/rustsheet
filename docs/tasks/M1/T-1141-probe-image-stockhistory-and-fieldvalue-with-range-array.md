@@ -3,7 +3,7 @@ id: T-1141
 title: "Probe IMAGE, STOCKHISTORY and FIELDVALUE with range, array, boolean and multiple-error arguments"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
