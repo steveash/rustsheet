@@ -440,18 +440,20 @@ impl Model {
         if arg_count == 0 || arg_count > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let reference = if arg_count == 2 {
-            match self.get_reference(&args[1], cell) {
-                // we just take the top-left cell of the reference
-                Ok(range) => range.left,
+        // A union is read through its first area for every info type but "address", which lists
+        // them all (probes/multiarea-cellfn-types H1:H7).
+        let ranges = if arg_count == 2 {
+            match self.reference_ranges(&args[1], cell) {
+                Ok(ranges) => Some(ranges),
                 Err(error) => return error,
             }
         } else {
-            CellReferenceIndex {
-                sheet: cell.sheet,
-                row: cell.row,
-                column: cell.column,
-            }
+            None
+        };
+        let reference = match ranges.as_deref().and_then(<[_]>::first) {
+            // we just take the top-left cell of the reference
+            Some(range) => range.left,
+            None => cell,
         };
         let info_type = match self.get_string(&args[0], cell) {
             Ok(s) => s.to_uppercase(),
@@ -466,18 +468,22 @@ impl Model {
                         message: "References to other sheets not implemented".to_string(),
                     };
                 }
-                let column = match number_to_column(reference.column) {
-                    Some(c) => c,
-                    None => {
+                let lefts: Vec<CellReferenceIndex> = match ranges.as_deref() {
+                    Some(areas) => areas.iter().map(|range| range.left).collect(),
+                    None => vec![reference],
+                };
+                let mut addresses = Vec::with_capacity(lefts.len());
+                for area in &lefts {
+                    let Some(column) = number_to_column(area.column) else {
                         return CalcResult::Error {
                             error: Error::VALUE,
                             origin: cell,
                             message: "Invalid column".to_string(),
-                        }
-                    }
-                };
-                let address = format!("${}${}", column, reference.row);
-                CalcResult::String(address)
+                        };
+                    };
+                    addresses.push(format!("${}${}", column, area.row));
+                }
+                CalcResult::String(addresses.join(", "))
             }
             "COL" => CalcResult::Number(reference.column as f64),
             "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {

@@ -468,6 +468,13 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   SUBTOTAL 9 and 109 (6), INDEX with `area_num` (`INDEX((A1:B2,C3:D4),1,1,2)` = 7, area 3 `#REF!`, area 0
   `#VALUE!`, `area_num` omitted = 1; `SUM(INDEX(..,0,0,2))` = 16), AREAS (2, 3 for `((A1,B2),C3)`, 2 for
   `(A1:B2,A1:B2)`), CELL("address", `(A1,B2)`) = "$A$1, $B$2".
+- CELL of a union (probes/multiarea-cellfn, multiarea-cellfn-types, excel-graph 2026-10-08, T-1072):
+  "address" lists the top-left cell of every area in formula order, duplicates kept, joined by `", "`
+  (`(A1:A2,B2)` = "$A$1, $B$2", `(B2,A1)` = "$B$2, $A$1", `(A1,A1)` = "$A$1, $A$1", `(A1:B2,C3)` =
+  "$A$1, $C$3"). "row", "col", "contents" and "type" read the first area's top-left cell (1, 1, 1, "v"). A
+  union across sheets is `#VALUE!`. `COLUMN` of a union is `#REF!` like `ROW`. UNVERIFIED: `CELL("filename",
+  union)` (excel-graph answers `#VALUE!` even where the plain-reference form is the comparison, so the web
+  value says nothing about desktop); the engine reads the first area.
 - `INDEX` `area_num` is read as a number and floored: below 1 is `#VALUE!`, past the last area (or NaN, or a
   huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
   3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
