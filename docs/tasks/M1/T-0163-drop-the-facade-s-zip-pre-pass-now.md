@@ -3,7 +3,7 @@ id: T-0163
 title: "Drop the facade's zip pre-pass now that the importer enforces the byte budget"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
