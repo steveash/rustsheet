@@ -1,4 +1,4 @@
---- Changing the subnormal flush (T-1180).
+---
 id: T-1186
 title: "ERFC(26.4) is a few ulp off Excel in the erfc continued-fraction tail"
 milestone: M1
@@ -8,7 +8,7 @@ priority: P2
 size: S
 tier: opus
 depends_on: []
---- Changing the subnormal flush (T-1180).
+---
 
 ## Goal
 ERFC and ERFC.PRECISE match Excel bit-exactly in the far tail (x of about 26).
