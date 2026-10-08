@@ -3,7 +3,7 @@ id: T-1123
 title: "GEOMEAN in-range root: the five one-ulp misses and single-value probes"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
