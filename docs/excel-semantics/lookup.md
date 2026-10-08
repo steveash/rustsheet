@@ -211,7 +211,12 @@ Open (unprobed, T-0962): reference-vs-array result (ISREF, implicit intersection
 spilling as 0), `@`/nesting such as `UPPER(XLOOKUP(2,A1:A3,B1:C3))`, a one-cell lookup vector with a wide
 return range, and a wide return range with a different row count (`#VALUE!` is a guess).
 Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
-Array lookup_array (T-1126): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
-reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). Implemented for the linear search modes only
-(`xlookup_array_lookup`); binary search modes over an array, an array return_array (Excel should give its element; the engine answers `#VALUE!`), a 2-D lookup array, a row array with a row return range and mismatched sizes are unprobed.
+Array lookup_array (T-1126, T-1127): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
+reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). All of the following are from
+probes/xlookup-array-return (excel-graph): an array return_array gives its element (`XLOOKUP(2,{1;2;3},{4;5;6})` is 5, E1; row arrays E4),
+`if_not_found` and `#N/A` work as for ranges (E2, E3); the binary search modes 2 and -2 work over an array lookup_array with a range or
+array return_array, including match modes -1/1 (E9-E15); search modes 1 and -1 explicit (E22-E24). Shape rules: a 2-D lookup array is
+`#VALUE!` (E8); the return_array needs the lookup array's row count, so a column lookup array with a row return (E16), a row lookup array
+with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider return_array and gives the
+matched row (E7, E19, E20).
 Tasks: T-0948
