@@ -3,7 +3,7 @@ id: T-1142
 title: "Check that graph-blind subnormal cells keep a (x)=0 companion (decision 0042)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
