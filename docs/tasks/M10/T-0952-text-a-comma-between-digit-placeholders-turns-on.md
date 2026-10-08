@@ -3,7 +3,7 @@ id: T-0952
 title: "TEXT: a comma between digit placeholders turns on thousands grouping; #,, keeps the sign (13 poi known failures)"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -41,14 +41,17 @@ flag. It also drops the sign when `#,,` scales the value. Code: `crates/rustshee
 the padded part becomes a space (A46).
 
 ## Acceptance criteria
-- [ ] The 13 lines `F	poi/NumberFormatTests.xlsx	Tests!A44`, A45, A46, A67, A68, A69, A80, A81,
+- [x] The 13 lines `F	poi/NumberFormatTests.xlsx	Tests!A44`, A45, A46, A67, A68, A69, A80, A81,
       A82, A95, A112, A118 and A335 disappear from eval/baseline/poi.txt, with no new F lines in
       any suite.
-- [ ] Formatter unit tests cover a `0`-padded, a `?`-padded and a negative case from the table,
+- [x] Formatter unit tests cover a `0`-padded, a `?`-padded and a negative case from the table,
       and `#,,` on a negative number.
-- [ ] The number-formats.md entry gets an `Implemented in:` line.
-- [ ] `make check` green; reviewers approve.
+- [x] The number-formats.md entry gets an `Implemented in:` line.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fraction formats (`#/#`, `?/?`) in the same workbook: most of its other known failures.
 - Literal characters such as `£`, `¥`, `|` (T-0953).
+
+## Outcome
+Grouping positions in `format_number` now count from the format's last digit placeholder (not the number's digits), so padded `0`/`?` positions group too, with a space for a padded `?` separator. The sign test used `<`, which dropped the sign for a value of exactly one unit at the last shown place (`-1` under `0`, `-1234567` under `#,,`); it is `<=` now. poi known failures 613 -> 600 (13 fixed, 0 regressions). Unit tests: `comma_between_placeholders_groups_the_padded_digits`, `trailing_commas_keep_the_sign`.
