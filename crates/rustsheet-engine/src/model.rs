@@ -434,6 +434,9 @@ impl Model {
     /// [Model::user_formula_to_internal]. They must therefore be parsed with
     /// the English language and locale regardless of the user's active
     /// language. This temporarily switches the parser, parses, and restores it.
+    ///
+    /// Use [`Model::parse_internal_cell_formula`] when the node is printed back and a formula written
+    /// wholly in parentheses must keep them (defined names).
     pub(crate) fn parse_internal_formula(&mut self, body: &str, context: &CellReferenceRC) -> Node {
         self.parse_internal_with(|parser| parser.parse(body, context))
     }
@@ -548,7 +551,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
-        let node = parser.parse(body, context);
+        let node = parser.parse_cell_formula(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
         }
