@@ -6,7 +6,7 @@ lane: functions-lookup
 status: todo
 priority: P3
 size: S
-tier: sonnet
+tier: opus
 depends_on: [T-1062]
 ---
 
@@ -22,3 +22,16 @@ Oracle (T-1061): a workbook holding AREAS(1) or AREAS("A1") is refused by Excel 
 
 ## Out of scope
 - Other functions' union support (their own tasks under SPEC-0004).
+
+## Handoff
+No code written. The acceptance criteria hinge on a design call, not on oracle values: Excel refuses to load a
+workbook holding `AREAS(1)` / `AREAS("A1")` (createSession 501 unsupportedWorkbook), so there is no cell value to
+match, and whether it refuses the bare `=A1,B2` when typed is unprobable on Excel for the web. The same question
+came up in T-1163 (SUBTOTAL with a direct or computed array argument is refused the same way, see
+docs/excel-semantics/references.md; PR #413 is the draft handoff). Both want a shared parse-time "reference-only
+argument" check, modelled on the intersection-operand refusal list in references.md ("Union: parsing and
+evaluation", T-0138/T-0149; the engine reads a refused form as a syntax error). Suggested next step for opus: write
+one decision/spec for that check (which functions' arguments must be references: AREAS, SUBTOTAL, ... and what the
+engine returns), then implement it once and close T-1163 and T-1073 with it. The bare `=A1,B2` case needs its own
+call: probes/multiarea-bare shows the stored form evaluates to #VALUE!, so keep that unless a desktop oracle says
+otherwise (M14, Phase 4).
