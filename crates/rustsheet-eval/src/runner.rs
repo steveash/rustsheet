@@ -56,6 +56,11 @@ pub struct CellResult {
     /// passes is a stale line.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub listed_deviation: bool,
+    /// Whether decision 0042 scored the cell a pass (an excel-graph 0 against a kept subnormal).
+    /// Such a cell always has a FALSE `(<formula>)=0` companion in its case (`from_graph`);
+    /// the report lists these cells so the evidence stays visible (T-1142).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub graph_subnormal: bool,
 }
 
 impl CellResult {
@@ -286,8 +291,12 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
     expectations
         .iter()
         .map(|e| {
+            let mut graph_subnormal = false;
             let (actual, mut verdict) = match evaluated.value(&e.sheet, e.addr) {
-                Some(actual) if graph_hides_subnormal(e, &actual) => (actual, Verdict::Pass),
+                Some(actual) if graph_hides_subnormal(e, &actual) => {
+                    graph_subnormal = true;
+                    (actual, Verdict::Pass)
+                }
                 Some(actual) => {
                     let verdict = compare(&e.expected, &actual);
                     (actual, verdict)
@@ -311,6 +320,7 @@ fn score(evaluated: &dyn Evaluated, expectations: &[Expectation]) -> Vec<CellRes
                 verdict,
                 from_excel: e.from_excel,
                 listed_deviation: e.pinned.is_some(),
+                graph_subnormal,
             }
         })
         .collect()
