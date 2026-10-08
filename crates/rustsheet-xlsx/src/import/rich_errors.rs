@@ -21,7 +21,7 @@ use quick_xml::{Reader, XmlVersion};
 
 use std::io::{Read, Seek};
 
-use rustsheet_engine::expressions::token::{get_error_by_english_name, Error};
+use rustsheet_engine::expressions::token::get_error_by_english_name;
 
 use crate::error::XlsxError;
 
@@ -292,11 +292,7 @@ fn rich_value_errors(
 
 /// The error a cell caches, `cell_value`. Excel caches the errors older readers do not know
 /// (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` and keeps the real one in its value metadata,
-/// `rich_error` (see [`value_metadata_errors`]); an error the engine has no kind for stays `#VALUE!`.
-///
-/// `#CONNECT!`, `#BLOCKED!` and `#FIELD!` also stay `#VALUE!` for now: the exporter would write
-/// them as literals, which Excel refuses to load (T-0999, SPEC-0003).
-// TODO(T-1011): keep the real kind once the exporter writes these as `#VALUE!`.
+/// `rich_error` (see [`value_metadata_errors`]); an unmapped errorType stays `#VALUE!`.
 pub(super) fn cached_error_name<'a>(
     cell_value: Option<&'a str>,
     rich_error: Option<&'a str>,
@@ -305,9 +301,6 @@ pub(super) fn cached_error_name<'a>(
         cell_value,
         rich_error.map(|real| (real, get_error_by_english_name(real))),
     ) {
-        (Some("#VALUE!"), Some((_, Some(Error::CONNECT | Error::BLOCKED | Error::FIELD)))) => {
-            "#VALUE!"
-        }
         (Some("#VALUE!"), Some((real, Some(_)))) => real,
         _ => cell_value.unwrap_or("#ERROR!"),
     }
@@ -399,20 +392,19 @@ mod tests {
     }
 
     #[test]
-    fn cached_error_name_keeps_known_rich_kinds_only() {
+    fn cached_error_name_keeps_mapped_rich_kinds_only() {
         assert_eq!(cached_error_name(Some("#VALUE!"), Some("#CALC!")), "#CALC!");
         assert_eq!(
             cached_error_name(Some("#VALUE!"), Some("#SPILL!")),
             "#SPILL!"
         );
-        // Until T-1011 the exporter would write these as literals Excel refuses (T-0999).
-        for rich in ["#CONNECT!", "#BLOCKED!", "#FIELD!", "#UNKNOWN!"] {
-            assert_eq!(
-                cached_error_name(Some("#VALUE!"), Some(rich)),
-                "#VALUE!",
-                "{rich}"
-            );
+        for rich in ["#CONNECT!", "#BLOCKED!", "#FIELD!"] {
+            assert_eq!(cached_error_name(Some("#VALUE!"), Some(rich)), rich);
         }
+        assert_eq!(
+            cached_error_name(Some("#VALUE!"), Some("#UNKNOWN!")),
+            "#VALUE!"
+        );
         assert_eq!(cached_error_name(Some("#N/A"), Some("#CALC!")), "#N/A");
         assert_eq!(cached_error_name(None, None), "#ERROR!");
     }

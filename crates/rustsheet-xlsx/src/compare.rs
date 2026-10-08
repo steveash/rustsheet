@@ -3,10 +3,11 @@
 use std::path::Path;
 
 use rustsheet_engine::cell::CellValue;
+use rustsheet_engine::expressions::token::Error;
 use rustsheet_engine::types::*;
 use rustsheet_engine::{expressions::utils::number_to_column, Model};
 
-use crate::export::save_to_xlsx;
+use crate::export::{exported_error_literal, save_to_xlsx};
 use crate::import::load_from_xlsx;
 
 use super::util::get_workbook_metadata;
@@ -341,6 +342,31 @@ pub fn test_file(file_path: &str, skip: &[&str]) -> Result<(), String> {
     compare_models(&model1, &model2, skip)
 }
 
+/// Gives the error constants of `model` the kind the exporter saves them as, then recalculates,
+/// so a saved-and-reloaded copy compares equal: until T-1014 `#CALC!`, `#SPILL!`, `#CONNECT!`,
+/// `#BLOCKED!` and `#FIELD!` are written as `#VALUE!` (`exported_error_literal`), and cells that
+/// read them (ERROR.TYPE) follow.
+fn save_error_constants_as_exported(model: &mut Model) {
+    for sheet in &mut model.workbook.worksheets {
+        let lossy: Vec<(i32, i32)> = sheet
+            .sheet_data
+            .cells()
+            .filter_map(|(row, column, cell)| match cell {
+                Cell::ErrorCell { ei, .. } if exported_error_literal(ei) != ei.stored_literal() => {
+                    Some((row, column))
+                }
+                _ => None,
+            })
+            .collect();
+        for (row, column) in lossy {
+            if let Some(Cell::ErrorCell { ei, .. }) = sheet.sheet_data.cell_mut(row, column) {
+                *ei = Error::VALUE;
+            }
+        }
+    }
+    model.evaluate();
+}
+
 /// Tests that file in file_path can be converted to xlsx and read again
 pub fn test_load_and_saving(
     file_path: &str,
@@ -366,6 +392,8 @@ pub fn test_load_and_saving(
     // test can open
     let mut model2 = load_from_xlsx(temp_file_path, &locale, "UTC", "en").unwrap();
     model2.evaluate();
+    let mut model1 = model1;
+    save_error_constants_as_exported(&mut model1);
     compare_models(&model1, &model2, skip)
 }
 

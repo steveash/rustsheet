@@ -112,6 +112,18 @@ impl ErrorKind {
         }
     }
 
+    /// The literal Excel stores for this error in a workbook cell: `#N/A` for
+    /// [`ErrorKind::GettingData`], [`ErrorKind::literal`] otherwise (SPEC-0003, "Stored form").
+    /// `tests::stored_literals_match_engine` keeps this in step with the engine's
+    /// `Error::stored_literal`.
+    #[must_use]
+    pub fn stored_literal(self) -> &'static str {
+        match self {
+            Self::GettingData => Self::NA.literal(),
+            _ => self.literal(),
+        }
+    }
+
     /// Parses an en-US error literal, case-insensitively (not oracle-verified for Excel).
     ///
     /// Uses the engine's stored-name table, so it accepts every kind, including `#BLOCKED!`,
@@ -424,6 +436,19 @@ mod tests {
             );
         }
         assert_eq!(ErrorKind::from_literal("#BOGUS!"), None);
+    }
+
+    #[test]
+    fn stored_literals_match_engine() {
+        assert_eq!(ErrorKind::GettingData.stored_literal(), "#N/A");
+        for kind in ALL {
+            // The engine prints `#N/IMPL` without the `!` its parser requires.
+            assert_eq!(
+                kind.stored_literal().trim_end_matches('!'),
+                kind.to_engine().stored_literal().trim_end_matches('!'),
+                "{kind:?}"
+            );
+        }
     }
 
     #[test]

@@ -49,7 +49,7 @@ impl Evaluated for RustSheetEvaluated {
             ApiValue::Number(n) => Value::Number(n),
             ApiValue::Text(s) => Value::Text(s.to_string()),
             ApiValue::Bool(b) => Value::Bool(b),
-            ApiValue::Error(e) => Value::Error(e.kind.literal().to_string()),
+            ApiValue::Error(e) => Value::Error(e.kind.stored_literal().to_string()),
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
             _ => Value::Empty,
         })
