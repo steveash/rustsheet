@@ -285,14 +285,15 @@ impl Txn<'_> {
             Input::Clear | Input::Value(Value::Empty) => {
                 model.set_user_input(sheet, row, col, String::new())
             }
-            Input::Parse(text) => model.set_user_input(sheet, row, col, text),
             Input::Formula(text) | Input::LegacyFormula(text) if !text.starts_with('=') => {
                 return Err(EditError::InvalidInput {
                     cell,
                     message: format!("\"{text}\" is not a valid formula"),
                 });
             }
-            Input::Formula(text) => model.set_user_input(sheet, row, col, text),
+            Input::Parse(text) | Input::Formula(text) => {
+                model.set_user_input(sheet, row, col, text)
+            }
             Input::LegacyFormula(text) => model
                 .legacy_formula_text(sheet, row, col, &text)
                 .and_then(|text| model.set_user_input(sheet, row, col, text)),
