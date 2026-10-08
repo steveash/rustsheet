@@ -446,10 +446,11 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   SUBTOTAL 9 and 109 (6), INDEX with `area_num` (`INDEX((A1:B2,C3:D4),1,1,2)` = 7, area 3 `#REF!`, area 0
   `#VALUE!`, `area_num` omitted = 1; `SUM(INDEX(..,0,0,2))` = 16), AREAS (2, 3 for `((A1,B2),C3)`, 2 for
   `(A1:B2,A1:B2)`), CELL("address", `(A1,B2)`) = "$A$1, $B$2".
-- `INDEX` `area_num` is read as a number and truncated: below 1 is `#VALUE!`, past the last area (or NaN, or a
+- `INDEX` `area_num` is read as a number and floored: below 1 is `#VALUE!`, past the last area (or NaN, or a
   huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
   3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
-  probes/multiarea-index-*; unit tests in test/test_multi_area_arguments.rs. The 1E+300 and "one area, area_num 2"
+  probes/multiarea-index; unit tests in test/test_multi_area_arguments.rs. The 1E+300, "one area, area_num 2", `INDEX` of an
+  array with `area_num` other than 1 (`#REF!`) and `AREAS` of a non-reference (1; Excel refuses the formula)
   rows are engine choices, UNVERIFIED (no probe).
 - Refuse with `#VALUE!`: SUMPRODUCT, SUMIF, COUNTIF, COUNTBLANK, OFFSET, `@(A1,B2)`, the bare `=A1,B2` (stored in a
   file; it loads), `=(A1,B2)` itself. `ROWS` and `COLUMNS` give `#REF!`, and so does `ROW`.
