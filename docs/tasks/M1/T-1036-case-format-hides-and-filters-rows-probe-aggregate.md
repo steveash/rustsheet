@@ -3,7 +3,7 @@ id: T-1036
 title: "Case format hides and filters rows; probe AGGREGATE and SUBTOTAL over them"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
