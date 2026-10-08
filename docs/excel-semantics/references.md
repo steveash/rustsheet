@@ -524,10 +524,17 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   COUNT skips it (1) and COUNTA counts it (2). SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S and DEVSQ take a union too
   (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF is `#NAME?` in Excel for the web, so it is not probed
   (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+- The remaining `for_each_value` aggregates over `(A1,B2,C3,D4)` = 1, 5, 7, 9 (probes/multiarea-foreach, excel-graph,
+  2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
+  0.3428571429, MINA 1, STDEV.P, STDEVP and STDEVPA 2.9580398915, STDEV and STDEVA 3.4156502553, VAR.P, VARP and
+  VARPA 8.75, VAR and VARA 11.6666666667. All take the union. `MODE` and `MODE.SNGL` are the exception: a union
+  (`MODE((A1,B2,C3,D4,E5))`) is `#VALUE!`, not a mode (engine gives `#N/A`; T-1184). The engine also refuses
+  VARA, VARPA, STDEVA and STDEVPA over a union (T-1184).
 Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
-MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`) walks the areas one after the
+MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`, except VARA, VARPA, STDEVA and
+STDEVPA, T-1184) walks the areas one after the
 other (`Model::for_each_cell_in_areas`). Since T-1068 LARGE, SMALL, RANK.EQ/RANK.AVG and the data_array of FREQUENCY
 take a union the same way (`Model::values_from_areas`; FREQUENCY's bins_array is unprobed and stays a single reference).
 Since T-1064 a LET variable or LAMBDA parameter bound to a union
@@ -537,8 +544,8 @@ CHOOSE picks with a scalar condition or index (`Model::if_impl`, `Model::choose_
 UNVERIFIED (no probe): an IF or CHOOSE over an array condition keeps its value form.
 SPEC-0004 and T-1065, T-1069 to T-1073 implement the rest;
 until then CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`).
-The other users of `for_each_value` (HARMEAN, AVEDEV,
-SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
+PERCENTOF takes a union
+too but is unprobed (`#NAME?` in Excel for the web).
 COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
 (statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
 a union holding an error in COUNTBLANK counts nothing (no probes).
