@@ -48,5 +48,6 @@ several e (10, 100, 500, 900, 1000, 1023) across counts, and non-powers with a s
   2^-1000 * 1.0001 never wrap; 2^-1000 times 1.001, 1.01 and 1.1 do. An in-range product (1.0001) never
   wraps. `exponent_wrap_excess` takes both conditions; numbers.md records them.
 - Eval delta: probes known failures 363 -> 359 (fixed C12-C18; new coverage 3:
-  one-ulp root misses L4, M1, M4, the known "GEOMEAN root rounding");
+  one-ulp root misses L4, M1, M4, the known "GEOMEAN root rounding", filed as T-0290);
   regressions 0.
+- Follow-ups: T-0289 (spec2xlsx writes numbers losslessly), T-0290 (over/underflow root misses).

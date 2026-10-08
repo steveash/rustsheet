@@ -580,9 +580,8 @@ up to 4000, 2 at 1101 and 2000 copies; probes/geomean-overflow-count F1, geomean
 -cut-2 C18) and every positive sum (2^1000 times 1.0001, 1.001 and 1.1 at 1100-3000 copies) are
 exact or plain roots. An in-range plain product never wraps: 1100-3000 copies of 1.0001 are 1.0001
 (H). Three of the bracketing cells (L4, M1, M4) miss by one ulp of the root ("GEOMEAN root
-rounding").
-The rule
-was fitted on T-1120's probes; T-1156's probes tested its predictions and added the two conditions. Ruled out
+rounding"). The rule was fitted on T-1120's probes; T-1156's probes tested its predictions and
+added the two conditions. Ruled out
 earlier: the excess does not depend only on the exponent sum (powers of two with a larger sum gain
 nothing), is not a fixed count threshold (1E-300 and 1E-307 step at different counts) and is not the
 significand product alone (1E-307 steps at a smaller product).

@@ -122,8 +122,10 @@ impl Engine for RustSheetEngine {
 /// cell with 16 significant digits (`{number:.16G}`), so a value that needs 17 reaches Excel rounded.
 /// 2^1000 (1.0715086071862673E+301) is stored as 1.071508607186267E+301, three ulps lower, which is
 /// what made 1500 copies of it `#NUM!` in Excel (probes/geomean-exponent-sum-2 C12-C18, T-1156).
-/// The engine reads the same digits so both evaluate one workbook.
+/// The engine reads the same digits so both evaluate one workbook, until spec2xlsx writes numbers
+/// losslessly (T-0289).
 fn as_written(n: f64) -> f64 {
+    // A finite number's `{:e}` text always parses back; NaN and infinities keep their value.
     format!("{n:.15e}").parse().unwrap_or(n)
 }
 
@@ -157,11 +159,12 @@ mod tests {
     fn spec_numbers_keep_the_16_digits_xlsx_stores() {
         // what Python's f"{x:.16G}" (XlsxWriter) gives for each
         let two_1000 = 2f64.powi(1000);
-        assert_eq!(as_written(two_1000), 1.071_508_607_186_267e301);
+        let bits = |x: f64| x.to_bits();
+        assert_eq!(bits(as_written(two_1000)), bits(1.071_508_607_186_267e301));
         assert!(as_written(two_1000) < two_1000);
-        assert_eq!(as_written(0.1 + 0.2), 0.3);
+        assert_eq!(bits(as_written(0.1 + 0.2)), bits(0.3));
         for exact in [0.1, 1.5, 9.332_636_185_032_189e-302, -42.0, 0.0, 1e-300] {
-            assert_eq!(as_written(exact), exact, "{exact}");
+            assert_eq!(bits(as_written(exact)), bits(exact), "{exact}");
         }
     }
 
