@@ -3,7 +3,7 @@ id: T-1179
 title: "IMAGE, STOCKHISTORY and FIELDVALUE lift over array and range arguments; IMAGE of non-URL text is VALUE"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ probes/rich-errors-arg-kinds (T-1141, excel-graph) fails for these cells; see in
 
 ## Out of scope
 A reachable URL staying `#BLOCKED!` (decision 0014: no fetch) and the pending undecodable cells.
+
+## Outcome
+IMAGE, STOCKHISTORY, FIELDVALUE and ERROR.TYPE lift over array/range arguments; non-URL IMAGE sources are #VALUE!. probes/rich-errors-arg-kinds now passes all 70 cells (was 42).

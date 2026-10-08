@@ -261,7 +261,28 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
+        // Lifts over a multi-cell range or array like the IS* tests (probes/rich-errors-arg-kinds
+        // F10:G10, F40:G41: `ERROR.TYPE(FIELDVALUE(Q1:R2,"Price"))` spills 13s).
+        let error_type = |v: &ArrayNode| match v {
+            ArrayNode::Error(error) => ArrayNode::Number(f64::from(error.error_type_code())),
+            _ => ArrayNode::Error(Error::NA),
+        };
+        let lift = |values: Vec<Vec<ArrayNode>>| {
+            CalcResult::Array(
+                values
+                    .iter()
+                    .map(|row| row.iter().map(error_type).collect())
+                    .collect(),
+            )
+        };
         match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::Range { left, right } if left != right => {
+                match self.evaluate_range(left, right, cell) {
+                    Ok(values) => lift(values),
+                    Err(error) => error,
+                }
+            }
+            CalcResult::Array(values) => lift(values),
             CalcResult::Error { error, .. } => {
                 CalcResult::Number(f64::from(error.error_type_code()))
             }
