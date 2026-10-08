@@ -295,7 +295,7 @@ impl Txn<'_> {
                         Value::Bool(b) => model.update_cell_with_bool(sheet, row, col, b),
                         Value::Text(s) => model.update_cell_with_text(sheet, row, col, &s),
                         Value::Error(e) => {
-                            model.set_user_input(sheet, row, col, e.kind.literal().to_string())
+                            model.update_cell_with_error(sheet, row, col, e.kind.to_engine())
                         }
                         Value::Empty => Ok(()),
                     })
