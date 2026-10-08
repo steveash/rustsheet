@@ -1,7 +1,7 @@
 use chrono::Datelike;
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{
         parser::{ArrayNode, Node},
@@ -813,10 +813,10 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => values.push(value),
                 CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        values.push(value);
-                    }) {
-                        return error;
+                    let areas = [Range { left, right }];
+                    if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
+                    {
+                        return e;
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,

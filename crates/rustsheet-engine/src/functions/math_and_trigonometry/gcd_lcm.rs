@@ -1,3 +1,4 @@
+use crate::calc_result::Range;
 // new implementation gcd_lcm.rs
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
@@ -132,8 +133,10 @@ impl Model {
                 }
                 CalcResult::Range { left, right } => {
                     has_range = true;
-                    if let Err(error) =
-                        self.for_each_cell_in_range(left, right, cell, |model, value| {
+                    if let Err(error) = self.for_each_cell_in_areas(
+                        &[Range { left, right }],
+                        cell,
+                        |model, value| {
                             let number = match value {
                                 CalcResult::Number(value) => value,
                                 CalcResult::String(s) => model
@@ -154,8 +157,8 @@ impl Model {
                                 _ => return Ok(()),
                             };
                             handle_number(number).map_or(Ok(()), Err)
-                        })
-                    {
+                        },
+                    ) {
                         return error;
                     }
                 }

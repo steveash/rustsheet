@@ -155,7 +155,10 @@ impl Model {
                 let branch = if b { args.get(1) } else { args.get(2) };
                 return match branch {
                     Some(node) => match mode {
-                        IfBranchMode::Aggregate => self.evaluate_aggregate_arg(node, cell),
+                        // TODO(T-1064): a union in the branch is its areas.
+                        IfBranchMode::Aggregate => self
+                            .evaluate_reference_arg(node, cell)
+                            .into_single_area(cell),
                         IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell),
                         IfBranchMode::Value => self.evaluate_node_in_context(node, cell),
                     },

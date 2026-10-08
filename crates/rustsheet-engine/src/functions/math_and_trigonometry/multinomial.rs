@@ -1,3 +1,4 @@
+use crate::calc_result::Range;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -42,25 +43,27 @@ impl Model {
                     // A cell past the used area is empty, which counts as 0 here
                     // and changes neither the sum nor the product of factorials.
                     if let Err(error) =
-                        self.for_each_cell_in_range(left, right, cell, |_, value| match value {
-                            CalcResult::Number(v) if v < 0.0 => Err(CalcResult::new_error(
-                                Error::NUM,
-                                cell,
-                                "MULTINOMIAL requires non-negative values".to_string(),
-                            )),
-                            CalcResult::Number(v) => {
-                                values.push(v.trunc() as u64);
-                                Ok(())
+                        self.for_each_cell_in_areas(&[Range { left, right }], cell, |_, value| {
+                            match value {
+                                CalcResult::Number(v) if v < 0.0 => Err(CalcResult::new_error(
+                                    Error::NUM,
+                                    cell,
+                                    "MULTINOMIAL requires non-negative values".to_string(),
+                                )),
+                                CalcResult::Number(v) => {
+                                    values.push(v.trunc() as u64);
+                                    Ok(())
+                                }
+                                CalcResult::EmptyCell | CalcResult::EmptyArg => {
+                                    values.push(0);
+                                    Ok(())
+                                }
+                                _ => Err(CalcResult::new_error(
+                                    Error::VALUE,
+                                    cell,
+                                    "MULTINOMIAL requires numeric values".to_string(),
+                                )),
                             }
-                            CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                                values.push(0);
-                                Ok(())
-                            }
-                            _ => Err(CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "MULTINOMIAL requires numeric values".to_string(),
-                            )),
                         })
                     {
                         return error;

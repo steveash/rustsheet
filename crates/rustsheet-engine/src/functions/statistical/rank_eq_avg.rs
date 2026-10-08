@@ -10,7 +10,11 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        let values = match self.evaluate_aggregate_arg(arg, cell) {
+        // TODO(T-1068): RANK takes a union (probes/multiarea-rank).
+        let values = match self
+            .evaluate_reference_arg(arg, cell)
+            .into_single_area(cell)
+        {
             CalcResult::Array(array) => match self.values_from_array(array) {
                 Ok(v) => v,
                 Err(e) => {

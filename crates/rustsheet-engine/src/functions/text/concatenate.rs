@@ -1,4 +1,5 @@
 use super::text_arg::{broadcast_text, TextArg};
+use crate::calc_result::Range;
 use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
@@ -181,12 +182,17 @@ impl Model {
     pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let mut result = ConcatText::default();
         for arg in args {
-            let value = self.evaluate_aggregate_arg(arg, cell);
+            // A union stays `#VALUE!` here: CONCAT is not probed with one (SPEC-0004).
+            let value = self
+                .evaluate_reference_arg(arg, cell)
+                .into_single_area(cell);
             match value {
                 CalcResult::Range { left, right } => {
                     // 3-D references are walked sheet by sheet by the shared range walk.
-                    if let Err(error) =
-                        self.for_each_cell_or_error_in_range(left, right, cell, |_, cell_value| {
+                    if let Err(error) = self.for_each_cell_or_error_in_areas(
+                        &[Range { left, right }],
+                        cell,
+                        |_, cell_value| {
                             if matches!(cell_value, CalcResult::Array(_) | CalcResult::Lambda(_)) {
                                 return Err(CalcResult::new_error(
                                     Error::NIMPL,
@@ -198,13 +204,13 @@ impl Model {
                                 // Excel: a cell error met once the text is over the limit is
                                 // dropped and the result is #CALC! (probes/text-result-limit-errors
                                 // C1 for a range cell; C10 for a single-cell reference, which
-                                // `evaluate_aggregate_arg` hands over as a range); at exactly the
+                                // `evaluate_reference_arg` hands over as a range); at exactly the
                                 // limit it is returned (C5-C6).
                                 Err(_) if result.units > MAX_TEXT_UNITS => Ok(()),
                                 other => other,
                             }
-                        })
-                    {
+                        },
+                    ) {
                         return error;
                     }
                 }
@@ -257,15 +263,21 @@ impl Model {
             if over_limit {
                 values.clear();
             }
-            match self.evaluate_aggregate_arg(arg, cell) {
+            // A union stays `#VALUE!` here: TEXTJOIN is not probed with one (SPEC-0004).
+            match self
+                .evaluate_reference_arg(arg, cell)
+                .into_single_area(cell)
+            {
                 CalcResult::Number(value) => values.push(number_to_text(value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
                         // A 3-D reference is walked sheet by sheet; an error cell past the limit
                         // is dropped like a range cell's (probes/text-result-limit-errors-refs
                         // D10-D11).
-                        if let Err(error) =
-                            self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                        if let Err(error) = self.for_each_cell_or_error_in_areas(
+                            &[Range { left, right }],
+                            cell,
+                            |_, value| {
                                 size.push_cell(
                                     value,
                                     ignore_empty,
@@ -273,8 +285,8 @@ impl Model {
                                     &mut over_limit,
                                     cell,
                                 )
-                            })
-                        {
+                            },
+                        ) {
                             return error;
                         }
                         continue;

@@ -126,12 +126,16 @@ impl Areas {
     pub(crate) fn new(areas: Vec<Range>, cell: CellReferenceIndex) -> Result<Areas, CalcResult>;
 }
 
+/// The ranges of a reference argument: one range (a 3-D one included) or several areas.
+/// Derefs to `&[Range]`; a single range is borrowed, never copied.
+pub(crate) enum Ranges { One(Range), Areas(Areas) }
+
 /// What a reference-accepting argument evaluates to.
 pub(crate) enum RefArg {
-    /// A union (or a name, LET variable, IF/CHOOSE branch or intersection that stands for one).
-    Areas(Areas),
-    /// Anything else, exactly what `evaluate_aggregate_arg` returns today (a `Range` for a
-    /// single area or a 3-D reference, a value, an array or an error).
+    /// A reference: a plain range, or a union (or a name, LET variable, IF/CHOOSE branch or
+    /// intersection that stands for one).
+    Ranges(Ranges),
+    /// Anything else (a value, an array or an error), never a `CalcResult::Range`.
     Value(CalcResult),
 }
 ```
@@ -145,11 +149,14 @@ pub(crate) enum RefArg {
   this argument is revisited before T-1062.
 - `evaluate_node_in_context` (value context) keeps returning `#VALUE!` for a union, through
   `get_union`, unchanged. It never returns `Areas`, so no existing caller changes.
-- A single area stays `RefArg::Value(CalcResult::Range { .. })`, so existing single-area code is
-  untouched and allocates nothing: `RefArg::Value` passes straight through.
+- A single area is `RefArg::Ranges(Ranges::One(..))`, built from the `CalcResult::Range` with no
+  allocation, so every caller walks one range and several areas through the same arm
+  (`for_each_cell_in_areas` takes `&[Range]`). As implemented by T-1062; the first draft of this
+  spec kept a single range in `RefArg::Value`, which would have given every caller two walk arms.
 - **3-D references are not areas.** A `Range` whose corners sit on two sheets stays
-  `RefArg::Value` and is never put into `Areas`. `Areas::new` refuses it, and so does
-  `union_areas` today, through `evaluate_intersection_operand`. For one, the aggregates keep their
+  `Ranges::One` and is never put into `Areas`. The area-list conversion (`Ranges::from_list`)
+  refuses it and any list on two sheets, and so does `union_areas` today, through
+  `evaluate_intersection_operand`. For one, the aggregates keep their
   3-D walk, while AREAS, INDEX and ISREF keep their VERIFIED `#VALUE!`/FALSE through
   `evaluate_single_sheet_arg` (references.md "3-D references outside the aggregates",
   probes/3d-ref-functions). `RefArg::single_sheet_areas()` gives `&[Range]`, a borrowed
@@ -196,10 +203,9 @@ range. The change is in T-1064, with LET and IF/CHOOSE; T-1065 adds names as ope
 The area cap bounds list length, not work. Nested cuts of `U = (A:A,A:A,A:A,A:A)` reach
 `MAX_AREAS` copies of `A:A` in about 180 characters, and an aggregate over them would walk the
 column 65,536 times (directive 5). So:
-- One walker, `Model::for_each_cell_in_areas` (util.rs), walks an `Areas` through the existing
-  per-range walkers. It is the only way an `Areas` is walked. It looks up each sheet's used area once
-  per walk, not once per area: `clip_to_used_area` calls `Worksheet::dimension()`, which scans the
-  sheet (T-0049 tracks making that O(1)).
+- One walker, `Model::for_each_cell_in_areas` (util.rs, with its position, number and error
+  variants), walks one range or an `Areas`. It is the only way an `Areas` is walked. The used
+  area is looked up per area, which is O(1) since `Worksheet::used_area_end` (T-0049).
 - Before walking, it sums the clipped sizes of all areas, which is arithmetic only. The sum is
   computed in `u64` with saturating arithmetic and stops as soon as it passes `MAX_AREA_CELLS`,
   because one whole-sheet area alone is about 1.7e10 cells. The bound is per argument on purpose:
@@ -250,7 +256,7 @@ unchanged.
 - Any other multi-area body (relative references, intersections, functions) goes through T-0158's
   general-formula body, evaluated per use, and reaches `Areas` through `evaluate_reference_arg`.
   Names are not resolved recursively here: a body naming another name is T-0158's bounded path.
-- A body that fails to parse, holds a cross-sheet or 3-D operand (`Areas::new` refuses it; probe
+- A body that fails to parse, holds a cross-sheet or 3-D operand (`Ranges::from_list` refuses it; probe
   rows 12, 13, 14b; T-1065 matches the error Excel gives there), or has more than `MAX_AREAS` areas becomes `InvalidDefinedNameFormula`. That is the
   name's error value, never a load failure, as for any bad body today. The total areas over all
   names of a workbook are capped at `MAX_AREAS`. Past it, further multi-area names are refused the
