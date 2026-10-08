@@ -84,7 +84,7 @@ fn test_binary_search_over_blanks_and_errors() {
 
 /// Runs of equal values (probes/xmatch-text-bool-equal-runs Run!M1-M42; T-1135, T-1153): every
 /// match mode returns the run's first element, a run starting at the first cell included. Long
-/// runs are galloped, not walked.
+/// runs cost O(log n) probes: an equal hit keeps the search bisecting.
 #[test]
 fn test_binary_search_runs() {
     let t = vec![40, 40, 40];
