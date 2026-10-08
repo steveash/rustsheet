@@ -3,7 +3,7 @@ id: T-0952
 title: "TEXT: a comma between digit placeholders turns on thousands grouping; #,, keeps the sign (13 poi known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
