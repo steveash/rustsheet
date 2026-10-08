@@ -8,7 +8,8 @@
 #   * the signal name, when gdb is missing or cannot trace (ptrace denied);
 #   * the cases that had started but not ended, from the RUSTSHEET_EVAL_CASE_LOG file the eval
 #     writes (crates/rustsheet-eval/src/case_log.rs).
-# Set RUSTSHEET_EVAL_GDB=0 to skip gdb.
+# gdb adds a few status lines ("[Inferior 1 (process N) exited normally]"); exit codes are what
+# gates read. Set RUSTSHEET_EVAL_GDB=0 to skip gdb.
 set -u
 
 if [ "$#" -eq 0 ]; then
@@ -18,18 +19,22 @@ fi
 
 case_log=$(mktemp "${TMPDIR:-/tmp}/rustsheet-eval-cases.XXXXXX") || exit 2
 trap 'rm -f "$case_log"' EXIT
+# Interrupted runs still remove the log (the EXIT trap runs on these exits).
+trap 'exit 130' INT
+trap 'exit 143' TERM
 export RUSTSHEET_EVAL_CASE_LOG="$case_log"
 
 use_gdb=0
 if [ "${RUSTSHEET_EVAL_GDB:-1}" != 0 ] && command -v gdb >/dev/null 2>&1 \
-    && gdb -q -batch -nx -return-child-result -ex run --args true >/dev/null 2>&1; then
+    && gdb -q -batch -nx -return-child-result -ex "set debuginfod enabled off" -ex run \
+        --args true >/dev/null 2>&1; then
     use_gdb=1
 fi
 
 if [ "$use_gdb" = 1 ]; then
     # `thread apply all bt` prints nothing once the program has exited normally.
     gdb -q -batch -nx -return-child-result \
-        -ex "set pagination off" -ex "set print thread-events off" \
+        -ex "set debuginfod enabled off" -ex "set pagination off" -ex "set print thread-events off" \
         -ex "set print inferior-events off" -ex "handle SIGPIPE nostop noprint pass" \
         -ex run -ex "thread apply all bt 40" --args "$@"
     status=$?

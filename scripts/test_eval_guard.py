@@ -45,6 +45,13 @@ class EvalGuard(unittest.TestCase):
         self.assertEqual(guard("exit 3", gdb="1").returncode, 3)
         self.assertEqual(guard("exit 0", gdb="1").returncode, 0)
 
+    @unittest.skipUnless(shutil.which("gdb"), "gdb not installed")
+    def test_gdb_mode_signal_fails_the_run(self) -> None:
+        # The gate must stay fail-closed when gdb catches the crash.
+        run = guard("kill -ABRT $$", gdb="1")
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("  suite/b", run.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

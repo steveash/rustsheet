@@ -31,7 +31,31 @@ pub fn record(event: &str, case_id: &str) {
     if let Some(file) = log_file() {
         if let Ok(mut file) = file.lock() {
             // One `write_all` per line, so a crash leaves at most the last line torn.
-            let _ = file.write_all(format!("{event}\t{case_id}\n").as_bytes());
+            let _ = file.write_all(line(event, case_id).as_bytes());
         }
+    }
+}
+
+/// One log line. Control characters in the id become spaces, so an id cannot forge a line.
+fn line(event: &str, case_id: &str) -> String {
+    let id: String = case_id
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect();
+    format!("{event}\t{id}\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::line;
+
+    #[test]
+    fn line_is_event_tab_id() {
+        // scripts/eval_guard.sh parses exactly this shape.
+        assert_eq!(
+            line("start", "probes/a.case.json"),
+            "start\tprobes/a.case.json\n"
+        );
+        assert_eq!(line("end", "s/x\tend\ny"), "end\ts/x end y\n");
     }
 }

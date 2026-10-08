@@ -24,7 +24,7 @@ this needs a decision record (`make new-decision`).
 ## Acceptance criteria
 - [x] A deliberately crashing run (e.g. `kill -SEGV` of a running `rustsheet-eval`) leaves a backtrace or core summary and the running case ids in the steward's log.
 - [x] Decision record for the protected-path change.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
