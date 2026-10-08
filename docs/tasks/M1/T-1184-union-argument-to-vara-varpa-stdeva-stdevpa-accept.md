@@ -3,7 +3,7 @@ id: T-1184
 title: "Union argument to VARA, VARPA, STDEVA, STDEVPA (accept) and MODE, MODE.SNGL (#VALUE!)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
