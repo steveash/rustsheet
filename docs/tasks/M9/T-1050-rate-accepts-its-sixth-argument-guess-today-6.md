@@ -3,7 +3,7 @@ id: T-1050
 title: "RATE accepts its sixth argument (guess); today 6 arguments give #ERROR!"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
