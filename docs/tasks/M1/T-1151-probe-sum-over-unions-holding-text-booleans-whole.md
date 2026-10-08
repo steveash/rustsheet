@@ -3,7 +3,7 @@ id: T-1151
 title: "Probe SUM over unions holding text, booleans, whole columns and errors (follow-up of T-1149)"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ T-1149's metamorphic test assumes the relation also holds for text/boolean cells
 
 ## Out of scope
 - Engine changes (file them if the probe disagrees with the engine).
+
+## Outcome
+Added probes/multiarea-sum-types (24 cells, excel-graph oracle). Excel treats a union exactly like separate
+arguments for SUM/COUNT/COUNTA over text, booleans, whole columns and errors (first error in area order wins). The engine
+already passes every cell, so no engine task is needed. Recorded in docs/excel-semantics/references.md. Eval delta: +24 passing cells, no regressions.

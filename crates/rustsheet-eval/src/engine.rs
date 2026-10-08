@@ -116,10 +116,18 @@ impl Engine for RustSheetEngine {
                             }
                         }
                         for (a1, input) in &sheet.cells {
-                            let Some(input) = spec_input(input) else {
+                            let Some(mut input) = spec_input(input) else {
                                 continue;
                             };
-                            if matches!(input, Input::Formula(_)) != formulas {
+                            // spec2xlsx writes these as plain `<f>` formulas (T-1077).
+                            if let Input::Formula(text) = &input {
+                                if sheet.legacy_formulas.contains(a1) {
+                                    input = Input::LegacyFormula(text.clone());
+                                }
+                            }
+                            let is_formula =
+                                matches!(input, Input::Formula(_) | Input::LegacyFormula(_));
+                            if is_formula != formulas {
                                 continue;
                             }
                             let addr = Addr::parse(a1).ok_or_else(|| {
@@ -260,6 +268,21 @@ mod tests {
         assert_eq!(at(1), Some(Value::Number(5.0)));
         assert_eq!(at(2), Some(Value::Number(5.0)));
         assert_eq!(at(3), Some(Value::Number(7.0)));
+    }
+
+    #[test]
+    fn spec_legacy_formulas_are_implicitly_intersected() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":1,"A2":2,"H7":"=A1:A2","H8":"=FORMULATEXT(H7)","H9":"=A1:A2"},
+                "legacy_formulas":["H7"]}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let at = |row| evaluated.value("S", Addr { row, col: 8 });
+        assert_eq!(at(7), Some(Value::Error("#VALUE!".into())));
+        assert_eq!(at(8), Some(Value::Text("=@A1:A2".into())));
+        // H9 is not listed: a dynamic-array formula that spills.
+        assert_eq!(at(9), Some(Value::Number(1.0)));
     }
 
     #[test]
