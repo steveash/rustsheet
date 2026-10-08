@@ -753,5 +753,8 @@ mod tests {
 
         assert!(value_needs_quoting("#REF!", en_language));
         assert!(value_needs_quoting("#NAME?", en_language));
+        // SPEC-0003: typed #GETTING_DATA is an error, typed #BLOCKED! stays text (UNVERIFIED, T-1016).
+        assert!(value_needs_quoting("#GETTING_DATA", en_language));
+        assert!(!value_needs_quoting("#BLOCKED!", en_language));
     }
 }
