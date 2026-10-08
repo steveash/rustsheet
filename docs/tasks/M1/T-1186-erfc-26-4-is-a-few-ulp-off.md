@@ -3,7 +3,7 @@ id: T-1186
 title: "ERFC(26.4) is a few ulp off Excel in the erfc continued-fraction tail"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
