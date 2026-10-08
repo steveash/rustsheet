@@ -135,6 +135,7 @@ C	probes/ifs-legacy-sumproduct.case.json	33
 C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
+C	probes/ifs-switch-lift-edges.case.json	26
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/intersection-at-formulatext.case.json	4
@@ -592,18 +593,6 @@ F	probes/ifs-legacy-sumproduct.case.json	Sheet1!L12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!M11
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!M12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!O10
-F	probes/ifs-switch-array-values.case.json	Sheet1!M1
-F	probes/ifs-switch-array-values.case.json	Sheet1!M3
-F	probes/ifs-switch-array-values.case.json	Sheet1!M4
-F	probes/ifs-switch-array-values.case.json	Sheet1!M6
-F	probes/ifs-switch-array-values.case.json	Sheet1!M8
-F	probes/ifs-switch-array-values.case.json	Sheet1!M9
-F	probes/ifs-switch-array-values.case.json	Sheet1!N1
-F	probes/ifs-switch-array-values.case.json	Sheet1!N3
-F	probes/ifs-switch-array-values.case.json	Sheet1!N4
-F	probes/ifs-switch-array-values.case.json	Sheet1!N6
-F	probes/ifs-switch-array-values.case.json	Sheet1!N8
-F	probes/ifs-switch-array-values.case.json	Sheet1!N9
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/multiarea-at-legacy.case.json	Sheet1!H10
