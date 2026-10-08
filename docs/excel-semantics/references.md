@@ -561,7 +561,9 @@ Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/
 D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
 question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), printed by `at_operand`
-(parser/reference_operators.rs; T-1116). The deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the next entry (T-1132). Engine gap: the refused forms, which the engine evaluates (T-1117).
+(parser/reference_operators.rs; T-1116).
+Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand parentheses: every level is kept" below (T-1132).
+Engine gap: the refused forms, which the engine evaluates (T-1117).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
