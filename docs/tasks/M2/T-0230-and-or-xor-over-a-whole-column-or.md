@@ -3,7 +3,7 @@ id: T-0230
 title: "AND/OR/XOR over a whole-column or whole-sheet range walks every cell: clip to the used area"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
