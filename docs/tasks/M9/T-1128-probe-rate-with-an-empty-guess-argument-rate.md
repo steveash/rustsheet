@@ -3,7 +3,7 @@ id: T-1128
 title: "Probe RATE with an empty guess argument (RATE(48,-200,8000,0,1,))"
 milestone: M9
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
