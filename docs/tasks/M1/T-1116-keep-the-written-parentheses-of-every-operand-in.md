@@ -3,7 +3,7 @@ id: T-1116
 title: "Keep the written parentheses of every @ operand in FORMULATEXT"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,9 +22,12 @@ remember that parentheses were written (cf. how T-1109 did it). Mind the xlsx-im
 parentheses and must keep printing bare (`@A1:A3 A2:B2` stays bare, probes/intersection-at-formulatext).
 
 ## Acceptance criteria
-- [ ] probes/at-paren-operands passes; probes/intersection-at-formulatext and probes/at-operand-formulatext still pass.
-- [ ] Printed text re-parses to the same formula (round-trip unit test).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/at-paren-operands passes; probes/intersection-at-formulatext and probes/at-operand-formulatext still pass.
+- [x] Printed text re-parses to the same formula (round-trip unit test).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`Node::ImplicitIntersection` carries `written`, the parenthesis levels around its whole operand (replacing `OpIntersectKind::parenthesized`); `at_operand` prints them back. Counted only when the group is the entire operand, so `@(A1) B1` is not affected. Eval: probes known failures 269 -> 266 (at-paren-operands E30-E32); no regressions.
