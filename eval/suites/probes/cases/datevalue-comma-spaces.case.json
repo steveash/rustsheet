@@ -40,7 +40,25 @@
     "C9": "=VALUE(A9)",
     "A10": "Jul 1 ,2026",
     "B10": "=DATEVALUE(A10)",
-    "C10": "=VALUE(A10)"
+    "C10": "=VALUE(A10)",
+    "A11": "July 1 , 2026 10:00",
+    "B11": "=DATEVALUE(A11)",
+    "C11": "=VALUE(A11)",
+    "A12": "July , 1, 2026 10:00",
+    "B12": "=DATEVALUE(A12)",
+    "C12": "=VALUE(A12)",
+    "A13": "July 1 , 2026 foo",
+    "B13": "=DATEVALUE(A13)",
+    "C13": "=VALUE(A13)",
+    "A14": "July , 1 2026",
+    "B14": "=DATEVALUE(A14)",
+    "C14": "=VALUE(A14)",
+    "A15": "July , 1 , 2026",
+    "B15": "=DATEVALUE(A15)",
+    "C15": "=VALUE(A15)",
+    "A16": "July 1, , 2026",
+    "B16": "=DATEVALUE(A16)",
+    "C16": "=VALUE(A16)"
    }
   }
  ],
@@ -65,6 +83,18 @@
   "S!B9",
   "S!C9",
   "S!B10",
-  "S!C10"
+  "S!C10",
+  "S!B11",
+  "S!C11",
+  "S!B12",
+  "S!C12",
+  "S!B13",
+  "S!C13",
+  "S!B14",
+  "S!C14",
+  "S!B15",
+  "S!C15",
+  "S!B16",
+  "S!C16"
  ]
 }

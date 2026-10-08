@@ -290,8 +290,9 @@ fn remove_separator_spaces(value: &str) -> String {
 ///   "July 1,2026" are #VALUE!);
 /// - "day Month year": "1 July 2026" (no comma);
 /// - the comma of "Month day, year" may also stand as a word of its own after the day
-///   ("July 1 , 2026") or after the month ("July , 1, 2026"); it still needs a space after it
-///   ("July 1 ,2026" and "1 July , 2026" are #VALUE!).
+///   ("July 1 , 2026"), after the month ("July , 1, 2026") or both ("July , 1 , 2026"); it still
+///   needs a space after it ("July 1 ,2026" is #VALUE!). Day-first text never takes a comma
+///   ("1 July , 2026" is #VALUE!).
 ///
 /// Month names follow [`parse_month_name`]; a month name never comes first in a separated word
 /// ("Jul-1-2026" is #VALUE!). Text with a clock time is `time_text`'s ("date clock" text).
@@ -329,6 +330,7 @@ pub(crate) fn parse_date(
         // A comma word of its own: "July 1 , 2026", "July , 1, 2026" (probes/datevalue-comma-spaces).
         [name, day, ",", year] => (*day, *name, *year),
         [name, ",", day, year] if day.ends_with(',') => (&day[..day.len() - 1], *name, *year),
+        [name, ",", day, ",", year] => (*day, *name, *year),
         _ => return Err("Not a valid date".to_string()),
     };
     let (day, _) = parse_day(day)?;
@@ -402,6 +404,7 @@ mod tests {
             "July 1  ,  2026",
             "July 1 ,  2026",
             "July , 1, 2026",
+            "July , 1 , 2026",
         ] {
             assert_eq!(en(text), Some(46204), "{text}");
         }
