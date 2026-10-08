@@ -561,17 +561,32 @@ perhaps doubling the count per step (tentative: only 1E-307 shows two steps). Fo
 exact up to 8200 and 4000 copies. Large positive exponents have a `#NUM!` the significand cut does not
 explain: 1000 copies of 2^1000 (M = 1) give 1.0715086071862671E+301 (two doubles below 2^1000), while
 1500, 1800, 2000, 2047, 2048, 2049 and 3000 copies are `#NUM!` (probes/geomean-exponent-sum-2 C11-C18),
-although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13). No model yet. The excess does not depend only on the exponent sum, since powers of two with a
-larger sum gain nothing. It is not a fixed count threshold, because 1E-300 and 1E-307 step at different
-counts. It is not the significand product alone either: 1E-307 steps at a smaller product than 1E-300.
+although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13).
+Fitted rule (T-1120): with P the [1, 2) significand product and n the count, k is the number of times
+`exponent(P) - n` (the exponent of the [0.5, 1) significand product `P * 2^-n`) falls below the double
+range, wrapping modulo 2048: k = ceil((n - floor(log2 P) - 1022) / 2048) when positive, else 0. As if
+Excel formed `P * 2^-n` by 11-bit exponent-field arithmetic. It predicts k for all 41 probed cells whose
+P is not 1 (1E-300: n - floor(log2 P) is 984 at 1700 copies, k = 0, and 1042 at 1800, k = 1; 1E-307:
+2912 at 3500 copies, k = 1, and 3245 at 3900, k = 2). Powers of two (P = 1) never gain, although the same count
+would wrap: 2^-1000 up to 8200, 2^-100 up to 4000, and 2 at 1101 and 2000 copies are exact
+(probes/geomean-overflow-count F1, geomean-overflow-cut C4, -cut-2 C18). So the `#NUM!` of 2^1000 from
+1500 copies is not the wrap either, and stays unexplained. A positive exponent sum with P above 1 and a
+wrap (say 1100 copies of 2^1000 * 1.0001) is unprobed; RustSheet adds the 2048 * k there too. So is
+an in-range plain product whose significand product wraps (say 1100 copies of 1.0001); RustSheet
+applies the rule only when the plain product leaves the double range (T-1156 probes both). The rule
+was fitted after the probes were filled; no prediction made from it has been probed yet. Ruled out
+earlier: the excess does not depend only on the exponent sum (powers of two with a larger sum gain
+nothing), is not a fixed count threshold (1E-300 and 1E-307 step at different counts) and is not the
+significand product alone (1E-307 steps at a smaller product).
 Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
 probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
 range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
 for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, and all held.
-Status: the significand cut is VERIFIED within the probed ranges, but the rule is incomplete. RustSheet
-implements the cut (T-1112). Still open: the root's last-ulp rounding
-(numbers.md, "GEOMEAN root rounding"; T-1108), the 2048 * k excess and the 2^1000 x 1500 `#NUM!`
-(probes/geomean-exponent-sum, -sum-2; T-1120).
+Status: the significand cut is VERIFIED within the probed ranges; the 2048 * k wrap is VERIFIED on the
+probed cells as a fitted rule (no mechanism for the power-of-two exemption). RustSheet implements both
+(T-1112, T-1120). Still open: the root's last-ulp rounding (numbers.md, "GEOMEAN root rounding";
+T-1108), including 1000 copies of 2^1000 being two doubles below 2^1000, and the 2^1000 x 1500
+`#NUM!` (T-1120 follow-up).
 Tasks: T-1108, T-1112, T-1113, T-1120
 
 ## `^` / POWER are not correctly rounded
