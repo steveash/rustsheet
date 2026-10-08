@@ -21,3 +21,8 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   `D1:D2`: F COUNTIF, G COUNTIFS, H SUMIF, I SUMIF (one-cell sum range B1), J SUMIFS, K AVERAGEIF,
   L AVERAGEIFS, M `_xlfn.MAXIFS`, N `_xlfn.MINIFS`; control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
   legacy). MAXIFS/MINIFS carry the `_xlfn.` prefix Excel itself writes.
+- `rich-error-export.xlsx` (T-1014): written by RustSheet's own exporter (app name then replaced), so
+  it is evidence that Excel reads the exported rich-value form. A1:A5 are the constants `#SPILL!`,
+  `#CONNECT!`, `#BLOCKED!`, `#FIELD!`, `#CALC!`, each stored as `t="e"` `#VALUE!` with `vm` 1-5 into
+  `xl/metadata.xml` and one `_error` rich value per kind (`subType` 0); B = `ERROR.TYPE(A)`,
+  C = `VALUETOTEXT(A)`, D = `ISERROR(A)`. Excel for the web loads it and gives 9, 10, 11, 13, 14.

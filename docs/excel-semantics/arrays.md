@@ -27,6 +27,13 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 The `#GETTING_DATA` row is a formula-literal error, not a rich-value error (no errorType).
 
+Writing them (T-1014): Excel reads a constant rich error written in this form with one `_error` value per
+kind and `subType` 0 for every kind, in a workbook whose metadata lists `XLDAPR` first and `XLRICHVALUE`
+second, with `rdRichValueTypes.xml` as Excel writes it: fixtures/rich-error-export.xlsx (our exporter's
+output; excel-graph, 2026-10-08) gives ERROR.TYPE 9, 10, 11, 13, 14 and VALUETOTEXT the names.
+The same workbook with A1 stored as the plain literal `<c t="e"><v>#SPILL!</v></c>` instead is rejected on load
+(createSession 501 `unsupportedWorkbook`, excel-graph 2026-10-08, T-1014), like the other rich kinds (syntax.md).
+
 Behavior of these errors under ISERR/ISNA/TYPE/IFNA/COUNTIF, and of IMAGE, STOCKHISTORY and FIELDVALUE with error
 arguments (including `FIELDVALUE({1,2},"Price")` spilling two `#FIELD!` cells), is in information.md
 (probes/rich-errors-args, T-1012). An IMAGE source that is empty or a number evaluates as `#VALUE!`; its stored rich-value form is undecoded (UNVERIFIED).

@@ -1,0 +1,74 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "B1": {
+    "t": "n",
+    "v": 9.0
+   },
+   "B2": {
+    "t": "n",
+    "v": 10.0
+   },
+   "B3": {
+    "t": "n",
+    "v": 11.0
+   },
+   "B4": {
+    "t": "n",
+    "v": 13.0
+   },
+   "B5": {
+    "t": "n",
+    "v": 14.0
+   },
+   "C1": {
+    "t": "s",
+    "v": "#SPILL!"
+   },
+   "C2": {
+    "t": "s",
+    "v": "#CONNECT!"
+   },
+   "C3": {
+    "t": "s",
+    "v": "#BLOCKED!"
+   },
+   "C4": {
+    "t": "s",
+    "v": "#FIELD!"
+   },
+   "C5": {
+    "t": "s",
+    "v": "#CALC!"
+   },
+   "D1": {
+    "t": "b",
+    "v": true
+   },
+   "D2": {
+    "t": "b",
+    "v": true
+   },
+   "D3": {
+    "t": "b",
+    "v": true
+   },
+   "D4": {
+    "t": "b",
+    "v": true
+   },
+   "D5": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "8754038e02f92951b7fc67b88ea51674936d783c5c4f67965359824d7ffac931",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-08T08:26:25+00:00",
+  "version": null
+ }
+}
