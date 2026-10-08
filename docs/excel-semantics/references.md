@@ -40,17 +40,23 @@ behind IF bound by LET or LAMBDA (`LET(x,IF(TRUE,K1),MAX(x))` = 0 with K1 text) 
 in place.
 Evidence: probes/3d-ref-values, probes/3d-ref-functions incl. C15:C22 (excel-graph, 2026-10-06),
 probes/3d-ref-choose-let and probes/3d-ref-let-values (excel-graph, 2026-10-08).
-Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span whose end is not a
-sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
-implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
+Span edges (probes/3d-ref-span-edges, excel-graph, 2026-10-08, T-1139; every form loaded, none was refused):
+a span whose end is not a sheet is `#NAME?` (not `#REF!`): `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (Calc!A1, A2),
+while `ISREF(Data1:Nope!A1)` is FALSE (A3). The explicit implicit intersection of a span is `#REF!`, not
+`#VALUE!`: `=@Data1:Data3!A1` (B1) and `=SUM(@Data1:Data3!A1:A2)` (B3); FORMULATEXT keeps `=@Data1:Data3!A1` (B4);
+a one-sheet span is an ordinary reference: `=@Data1:Data1!A1` = 1 (B2). IF-wrapped spans: `AREAS(IF(TRUE,Data1:Data3!A1:A2))`,
+`VLOOKUP(1,IF(TRUE,Data1:Data3!A1:B2),2,FALSE)`, `HLOOKUP(...)` and `COUNTBLANK(IF(TRUE,Data1:Data3!A1:B3))` are `#VALUE!`
+(C1, C3, C4, C5); the one-sheet span `Data1:Data1` works: AREAS 1 (C2), COUNTBLANK 2 (C6).
+Status: VERIFIED (web). Engine mismatches (baselined, T-1170): the engine gives `#REF!` for the missing span end,
+`#VALUE!` for `@` of a span, `#REF!` for the HLOOKUP form and -4 for the COUNTBLANK form.
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
 crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
 the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
-the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their argument with `evaluate_reference_arg` and refuse a 3-D result with `three_d_needs_one_sheet` (T-1063); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
+the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their argument with `evaluate_reference_arg` and refuse a 3-D result with `three_d_needs_one_sheet` (T-1063); IF-wrapped spans inside AREAS and VLOOKUP go through that path, HLOOKUP and COUNTBLANK do not yet (engine mismatches above, T-1170).
 CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET is still `#VALUE!` in the
 engine, also to an aggregate (probes/3d-ref-choose-let C3:C4, 3d-ref-let-values C7, known failures, T-1158;
 `Model::bind_argument` binds `#VALUE!` for a span so no value reader sees a range across sheets).
-Tasks: T-0122, T-0197, T-1026, T-1064
+Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1170
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
@@ -462,6 +468,13 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   SUBTOTAL 9 and 109 (6), INDEX with `area_num` (`INDEX((A1:B2,C3:D4),1,1,2)` = 7, area 3 `#REF!`, area 0
   `#VALUE!`, `area_num` omitted = 1; `SUM(INDEX(..,0,0,2))` = 16), AREAS (2, 3 for `((A1,B2),C3)`, 2 for
   `(A1:B2,A1:B2)`), CELL("address", `(A1,B2)`) = "$A$1, $B$2".
+- CELL of a union (probes/multiarea-cellfn, multiarea-cellfn-types, excel-graph 2026-10-08, T-1072):
+  "address" lists the top-left cell of every area in formula order, duplicates kept, joined by `", "`
+  (`(A1:A2,B2)` = "$A$1, $B$2", `(B2,A1)` = "$B$2, $A$1", `(A1,A1)` = "$A$1, $A$1", `(A1:B2,C3)` =
+  "$A$1, $C$3"). "row", "col", "contents" and "type" read the first area's top-left cell (1, 1, 1, "v"). A
+  union across sheets is `#VALUE!`. `COLUMN` of a union is `#REF!` like `ROW`. UNVERIFIED: `CELL("filename",
+  union)` (excel-graph answers `#VALUE!` even where the plain-reference form is the comparison, so the web
+  value says nothing about desktop); the engine reads the first area.
 - `INDEX` `area_num` is read as a number and floored: below 1 is `#VALUE!`, past the last area (or NaN, or a
   huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
   3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
@@ -576,13 +589,20 @@ Implemented in: `sheet_prefix_after_colon` (crates/rustsheet-engine/src/expressi
 Tasks: T-0130, T-0105
 
 ## Sheet-qualified range corners: order and unprobed forms
-Rule: corners are ordered whichever way
-they are written (`Data!B2:Data!A1` is `Data!A1:B2`; implemented in `get_range`); the formula text
-round-trips as written; `Data!A1:Other!B2` (corners on different sheets) gives `#VALUE!` in the engine;
-the forms with column or row corners are not ranges in Excel (T-0139, see the next entry).
-Status: UNVERIFIED (reversed corners, round-tripping and the cross-sheet `#VALUE!` are engine behavior without
-a probe; T-0139 verified only the second-prefix column/row forms)
-Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs)
+Rule: with two cell corners that both carry the sheet prefix, the corners are ordered whichever way they are
+written (`Data!B2:Data!A1`, `Data!A2:Data!B1` and `'Data'!$B$2:Data!A1` sum the same 2x2 block as
+`Data!A1:Data!B2`; `ROWS(Data!B2:Data!A1)` is 2), and FORMULATEXT keeps the written order and both
+prefixes (`=SUM(Data!B2:Data!A1)`, `=SUM(Data!$B$2:Data!A1)`; the quotes around `Data` are dropped).
+Corners on two different sheets are not a range: `Data!A1:Other!B2` and `Data!A1:Other!A1` are `#VALUE!`,
+`ISREF(Data!A1:Other!B2)` is FALSE and `IFERROR(SUM(...),"e")` yields `"e"`.
+The forms with column or row corners are not ranges in Excel (T-0139, see the next entry).
+None of these forms made the workbook unloadable.
+Evidence: probes/sheet-qualified-corner-order Calc!A1-A4, B1, B2, B4 (order, text), A6-A9 (two sheets),
+A11/B11 (control) (oracle: excel-graph, 2026-10-08, T-1138).
+Status: VERIFIED (web)
+Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs). Known mismatch: the engine
+returns TRUE for the ISREF form (Calc!A7, baselined; T-1166).
+Tasks: T-1138, T-1166
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,

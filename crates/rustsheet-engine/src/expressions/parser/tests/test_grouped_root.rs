@@ -64,14 +64,27 @@ fn printing_round_trips_through_rc_format() {
 }
 
 #[test]
-fn nested_outer_parentheses_keep_one_level() {
-    // A known engine gap, not Excel's behavior: Excel keeps every level of written parentheses
-    // (docs/excel-semantics/references.md), but the printer drops inner grouping parentheses
-    // everywhere, so only the outer level survives. One level is enough to tell the root apart.
+fn nested_outer_parentheses_keep_every_level() {
+    // Excel keeps every written level around a whole formula (probes/near-zero-snap-groups B6,
+    // docs/excel-semantics/numbers.md), one `GroupedRootKind` per level (T-1161).
     let mut parser = parser();
-    let node = parser.parse_cell_formula("((A1-1))", &context());
-    assert!(is_grouped(&node));
-    assert_eq!(to_english_localized_string(&node, &context()), "(A1-1)");
+    for formula in ["((A1-1))", "(((A1-1)))"] {
+        let node = parser.parse_cell_formula(formula, &context());
+        assert!(is_grouped(&node), "{formula}");
+        assert_eq!(to_english_localized_string(&node, &context()), formula);
+    }
+}
+
+#[test]
+fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
+    let mut parser = parser();
+    for formula in ["((A1)+(B1))", "(1+(B1))", "((A1)+B1)", "((A1-1)*2)"] {
+        let node = parser.parse_cell_formula(formula, &context());
+        let Node::GroupedRootKind { child } = &node else {
+            panic!("{formula} is not grouped");
+        };
+        assert!(!is_grouped(child), "{formula} counted a second level");
+    }
 }
 
 #[test]

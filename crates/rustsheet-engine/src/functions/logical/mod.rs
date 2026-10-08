@@ -80,6 +80,20 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// Whether an argument value makes IFS or SWITCH run element by element: an array or a range.
+fn is_lifted(value: &CalcResult) -> bool {
+    matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
+}
+
+/// IFS's and SWITCH's `#N/A` when nothing matches.
+fn no_match(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::Error {
+        error: Error::NA,
+        origin: cell,
+        message: "Did not find a match".to_string(),
+    }
+}
+
 /// Cast one element of a cond array to bool. Returns Err with the error node to
 /// place in the output when the element is itself an error or unparseable string.
 fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
@@ -332,7 +346,11 @@ impl Model {
         CalcResult::Array(output)
     }
 
-    /// =IFS(condition1, value, [condition, value]*)
+    /// =IFS(condition1, value, [condition, value]*). An array or range condition lifts
+    /// IFS element by element over it and the arguments after it, broadcast as the element-wise
+    /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
+    /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
+    /// `SUM(IFS(TRUE,A1:B2))` is 10.
     pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count < 2 {
@@ -344,20 +362,41 @@ impl Model {
         }
         let case_count = args_count / 2;
         for case_index in 0..case_count {
-            let value = self.get_boolean(&args[2 * case_index], cell);
-            match value {
-                Ok(b) => {
-                    if b {
-                        return self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
-                    }
+            let condition = self.evaluate_node_in_context(&args[2 * case_index], cell);
+            if is_lifted(&condition) {
+                // The earlier conditions were all FALSE, so the result is decided element by
+                // element from here (`IFS({TRUE,FALSE},1,TRUE,2)` is {1,2}).
+                let mut lifted = vec![condition];
+                lifted.push(self.evaluate_node_in_context(&args[2 * case_index + 1], cell));
+                for node in &args[2 * case_index + 2..] {
+                    lifted.push(self.evaluate_node_in_context(node, cell));
                 }
-                Err(s) => return s,
+                return self.lift_with_cost(
+                    lifted,
+                    |_| 1,
+                    cell,
+                    |model, pairs| model.ifs_element(pairs, cell),
+                );
+            }
+            match self.cast_to_bool(condition, cell) {
+                Ok(true) => return self.evaluate_node_in_context(&args[2 * case_index + 1], cell),
+                Ok(false) => {}
+                Err(error) => return error,
             }
         }
-        CalcResult::Error {
-            error: Error::NA,
-            origin: cell,
-            message: "Did not find a match".to_string(),
+        no_match(cell)
+    }
+
+    /// IFS on one element of lifted (condition, value) pairs: the value of the first TRUE
+    /// condition, an error condition's error, or `#N/A`.
+    fn ifs_element(&mut self, pairs: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        for pair in pairs.chunks_exact(2) {
+            match self.cast_to_bool(pair[0].clone(), cell) {
+                Ok(true) => return pair[1].clone(),
+                Ok(false) => {}
+                Err(error) => return error,
+            }
         }
+        no_match(cell)
     }
 }

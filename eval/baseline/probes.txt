@@ -6,6 +6,7 @@ C	probes/3d-ref-aggregates.case.json	20
 C	probes/3d-ref-choose-let.case.json	6
 C	probes/3d-ref-functions.case.json	22
 C	probes/3d-ref-let-values.case.json	11
+C	probes/3d-ref-span-edges.case.json	13
 C	probes/3d-ref-values.case.json	10
 C	probes/aggregate-args.case.json	53
 C	probes/aggregate-array-args.case.json	48
@@ -100,6 +101,7 @@ C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/defined-name-formula-bodies.case.json	17
+C	probes/defined-name-grouped-reference.case.json	7
 C	probes/defined-name-intersection.case.json	10
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
@@ -122,6 +124,7 @@ C	probes/geomean-overflow-cut-2.case.json	22
 C	probes/geomean-overflow-cut-3.case.json	18
 C	probes/geomean-overflow-cut.case.json	27
 C	probes/geomean-overflow-many-values.case.json	7
+C	probes/geomean-pow2-count.case.json	117
 C	probes/geomean-product-order.case.json	17
 C	probes/geomean-root-models.case.json	112
 C	probes/geomean-root-refinement.case.json	48
@@ -133,6 +136,7 @@ C	probes/ifs-legacy-sumproduct.case.json	33
 C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
+C	probes/ifs-switch-lift-edges.case.json	26
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/intersection-at-formulatext.case.json	4
@@ -182,6 +186,7 @@ C	probes/multiarea-areas-3d.case.json	1
 C	probes/multiarea-at-legacy.case.json	10
 C	probes/multiarea-at.case.json	6
 C	probes/multiarea-bare.case.json	1
+C	probes/multiarea-cellfn-types.case.json	11
 C	probes/multiarea-cellfn.case.json	3
 C	probes/multiarea-cond.case.json	4
 C	probes/multiarea-count.case.json	3
@@ -203,6 +208,7 @@ C	probes/multiarea-subtotal.case.json	2
 C	probes/multiarea-xname.case.json	0
 C	probes/multiarea-xsheet.case.json	2
 C	probes/near-zero-snap-groups.case.json	14
+C	probes/near-zero-snap-name-bodies.case.json	7
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
@@ -236,6 +242,7 @@ C	probes/round-huge-digits-wrap.case.json	265
 C	probes/round-huge-digits.case.json	216
 C	probes/rows-columns-args.case.json	14
 C	probes/sheet-qualified-both-corners.case.json	9
+C	probes/sheet-qualified-corner-order.case.json	13
 C	probes/sheet-qualified-ref-error-forms.case.json	10
 C	probes/subnormal-flush-edges.case.json	50
 C	probes/subnormal-function-results.case.json	129
@@ -295,6 +302,12 @@ C	probes/xnpv-argument-count.case.json	3
 F	probes/3d-ref-choose-let.case.json	Calc!C3
 F	probes/3d-ref-choose-let.case.json	Calc!C4
 F	probes/3d-ref-let-values.case.json	Calc!C7
+F	probes/3d-ref-span-edges.case.json	Calc!A1
+F	probes/3d-ref-span-edges.case.json	Calc!A2
+F	probes/3d-ref-span-edges.case.json	Calc!B1
+F	probes/3d-ref-span-edges.case.json	Calc!B3
+F	probes/3d-ref-span-edges.case.json	Calc!C4
+F	probes/3d-ref-span-edges.case.json	Calc!C5
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
@@ -318,14 +331,6 @@ F	probes/error-stored-constants.case.json	S!E1
 F	probes/error-stored-constants.case.json	S!G1
 F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!I1
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C11
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C12
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C13
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C14
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C15
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C16
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C17
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C18
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C24
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C28
 F	probes/geomean-exponent-sum.case.json	Sheet1!C2
@@ -339,6 +344,9 @@ F	probes/geomean-overflow-cut-2.case.json	Sheet1!C9
 F	probes/geomean-overflow-cut-3.case.json	Sheet1!C13
 F	probes/geomean-overflow-cut.case.json	Sheet1!C1
 F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
+F	probes/geomean-pow2-count.case.json	Sheet1!L4
+F	probes/geomean-pow2-count.case.json	Sheet1!M1
+F	probes/geomean-pow2-count.case.json	Sheet1!M4
 F	probes/geomean-product-order.case.json	Sheet1!Z10
 F	probes/geomean-product-order.case.json	Sheet1!Z11
 F	probes/geomean-product-order.case.json	Sheet1!Z13
@@ -585,18 +593,6 @@ F	probes/ifs-legacy-sumproduct.case.json	Sheet1!L12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!M11
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!M12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!O10
-F	probes/ifs-switch-array-values.case.json	Sheet1!M1
-F	probes/ifs-switch-array-values.case.json	Sheet1!M3
-F	probes/ifs-switch-array-values.case.json	Sheet1!M4
-F	probes/ifs-switch-array-values.case.json	Sheet1!M6
-F	probes/ifs-switch-array-values.case.json	Sheet1!M8
-F	probes/ifs-switch-array-values.case.json	Sheet1!M9
-F	probes/ifs-switch-array-values.case.json	Sheet1!N1
-F	probes/ifs-switch-array-values.case.json	Sheet1!N3
-F	probes/ifs-switch-array-values.case.json	Sheet1!N4
-F	probes/ifs-switch-array-values.case.json	Sheet1!N6
-F	probes/ifs-switch-array-values.case.json	Sheet1!N8
-F	probes/ifs-switch-array-values.case.json	Sheet1!N9
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/multiarea-at-legacy.case.json	Sheet1!H10
@@ -604,11 +600,8 @@ F	probes/multiarea-at-legacy.case.json	Sheet1!H7
 F	probes/multiarea-at-legacy.case.json	Sheet1!H8
 F	probes/multiarea-at-legacy.case.json	Sheet1!H9
 F	probes/multiarea-bare.case.json	Sheet1!H1
-F	probes/multiarea-cellfn.case.json	Sheet1!H1
-F	probes/multiarea-cellfn.case.json	Sheet1!H3
 F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/multiarea-xname.case.json	!EngineError
-F	probes/near-zero-snap-groups.case.json	Sheet1!B6
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
 F	probes/paren-number-text-forms.case.json	Sheet1!A2
@@ -625,6 +618,7 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A9
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
+F	probes/sheet-qualified-corner-order.case.json	Calc!A7
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3

@@ -166,7 +166,7 @@ impl Model {
                 // Defined-name formulas are stored internally in English, so
                 // they must be parsed with the English parser regardless of the
                 // user's active language.
-                match self.parse_internal_formula(formula_body, &dummy_ref) {
+                match self.parse_internal_cell_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
@@ -429,7 +429,7 @@ impl Model {
                 .formula
                 .strip_prefix('=')
                 .unwrap_or(&defined_name.formula);
-            let mut node = self.parse_internal_formula(body, &context);
+            let mut node = self.parse_internal_cell_formula(body, &context);
             let before = to_english_string(&node, &context);
             rename_sheet_in_node(&mut node, source_index, &new_name);
             let after = to_english_string(&node, &context);
@@ -522,9 +522,15 @@ impl Model {
             column: 1,
         };
         for defined_name in &mut self.workbook.defined_names {
-            let mut t = self.parser.parse(&defined_name.formula, cell_reference);
+            // A stored body may carry a leading `=` (`define_name` keeps the one it is given).
+            let stored = defined_name.formula.trim_start();
+            let (eq, body) = stored.strip_prefix('=').map_or(("", stored), |b| ("=", b));
+            let mut t = self.parser.parse_cell_formula(body, cell_reference);
             rename_sheet_in_node(&mut t, sheet_index, new_name);
-            let formula = to_localized_string(&t, cell_reference, self.locale, self.language);
+            let formula = format!(
+                "{eq}{}",
+                to_localized_string(&t, cell_reference, self.locale, self.language)
+            );
             defined_names.push(DefinedName {
                 name: defined_name.name.clone(),
                 formula,

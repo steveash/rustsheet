@@ -435,11 +435,25 @@ impl Model {
     /// the English language and locale regardless of the user's active
     /// language. This temporarily switches the parser, parses, and restores it.
     pub(crate) fn parse_internal_formula(&mut self, body: &str, context: &CellReferenceRC) -> Node {
+        self.parse_internal_with(|parser| parser.parse(body, context))
+    }
+
+    /// Like [`Model::parse_internal_formula`], but keeps the grouped root, which Excel does not
+    /// snap (numbers.md "Near-zero snapping", T-1164); use it when the node is printed back.
+    pub(crate) fn parse_internal_cell_formula(
+        &mut self,
+        body: &str,
+        ctx: &CellReferenceRC,
+    ) -> Node {
+        self.parse_internal_with(|parser| parser.parse_cell_formula(body, ctx))
+    }
+
+    fn parse_internal_with(&mut self, parse: impl FnOnce(&mut Parser) -> Node) -> Node {
         let locale = self.locale;
         let language = self.language;
         self.parser.set_locale(get_default_locale());
         self.parser.set_language(get_default_language());
-        let node = self.parser.parse(body, context);
+        let node = parse(&mut self.parser);
         self.parser.set_locale(locale);
         self.parser.set_language(language);
         node
@@ -461,11 +475,11 @@ impl Model {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
-        let mut node = self.parser.parse(body, context);
+        let mut node = self.parser.parse_cell_formula(body, context);
         if let Node::ParseErrorKind { .. } = node {
             // The user's language could not parse it: it might already be in the
             // internal English form.
-            node = self.parse_internal_formula(body, context);
+            node = self.parse_internal_cell_formula(body, context);
         }
         if let Node::ParseErrorKind { .. } = node {
             return Err(format!("Invalid formula: '{formula}'"));
@@ -531,7 +545,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
-        let node = parser.parse(body, context);
+        let node = parser.parse_cell_formula(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
         }

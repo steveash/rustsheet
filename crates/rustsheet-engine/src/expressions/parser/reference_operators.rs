@@ -9,12 +9,38 @@
 use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, OpUnary, TokenType};
+use crate::expressions::types::CellReferenceRC;
 use crate::functions::Function;
 use crate::locale::Locale;
 
 use super::stringify::argument_separator;
 
 impl Parser {
+    /// Parses a cell formula like [`Parser::parse`], but a formula written wholly in parentheses
+    /// (`=(A1-1)`, `=((A1-1))`) gets a [`Node::GroupedRootKind`] root per written level, so it prints back with
+    /// them and evaluation can tell it from `=A1-1` (Excel skips near-zero snapping for it,
+    /// probes-numeric/30bc5f8fab02d0a2 `parenthesized-sub`; docs/excel-semantics/numbers.md).
+    /// A union keeps its own written parentheses (`OpUnionKind::written`), so it is not wrapped.
+    pub fn parse_cell_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+        let node = self.parse(formula, context);
+        let levels = self.grouped_root;
+        if levels == 0
+            || matches!(
+                node,
+                Node::ParseErrorKind { .. }
+                    | Node::OpUnionKind { .. }
+                    | Node::GroupedRootKind { .. }
+            )
+        {
+            return node;
+        }
+        // Excel keeps every written level of parentheses around the whole formula
+        // (probes/near-zero-snap-groups B6, `=((0.1+0.2-0.3))`), one node each.
+        (0..levels).fold(node, |child, _| Node::GroupedRootKind {
+            child: Box::new(child),
+        })
+    }
+
     /// `'(' expr (',' expr)* ')'`, after the `(`. Directly inside it, and nowhere else, the
     /// argument separator is the union operator: `(A1,B2)` is one union, `SUM(A1,B2)` two
     /// arguments. The union is the loosest operator inside its parenthesis, so `(A1,B1 C1)` is
@@ -22,6 +48,7 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
+        let open = self.lexer.get_position_index();
         let after_at = std::mem::take(&mut self.at_paren);
         // `@((A1 B1))`: the inner group is a level of the same operand.
         self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
@@ -67,8 +94,14 @@ impl Parser {
                 message: err.message,
             };
         }
+        // A level nests only if the inner group opens right after this `(` and closes right
+        // before this `)`: `((A1))` is two levels, `((A1)+(B1))` one.
+        let inner =
+            (self.root_group.take()).filter(|&(_, start, end)| start == open + 1 && end == close);
+        let levels = inner.map_or(0, |(levels, ..)| levels).saturating_add(1);
+        self.root_group = Some((levels, open, self.lexer.get_position_index()));
         if leading && self.lexer.peek_token() == TokenType::EOF {
-            self.grouped_root = true;
+            self.grouped_root = levels;
         }
         // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
         if let Node::OpUnionKind { written, .. } = &mut t {

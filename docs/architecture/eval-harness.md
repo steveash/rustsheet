@@ -41,7 +41,9 @@ Current suites:
  "expected":{"Sheet1!A3":{"t":"n","v":2}}, "expected_source":"hand", "check":["Sheet1!A3"]}
 ```
 Input conventions:
-- JSON number is a number and JSON bool is a boolean.
+- JSON number is a number and JSON bool is a boolean. A number reaches Excel and the engine as the exact
+  double the case holds: spec2xlsx writes a number that needs 17 significant digits with the shortest
+  text that parses back to it (XlsxWriter alone would round to `{x:.16G}`; T-0289).
 - A string starting with `=` is a formula, written with **dynamic-array (M365) semantics**.
 - Any other string is text. Use the tagged form for text that starts with `=` or for errors.
 - The empty string `""` is materialized as `=""`.
