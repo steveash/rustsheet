@@ -100,3 +100,82 @@ fn rich_errors_round_trip() {
         );
     }
 }
+
+/// One part of the xlsx package at `path`, or `None` if it is absent.
+fn part(path: &str, name: &str) -> Option<String> {
+    let mut archive = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
+    let mut xml = String::new();
+    archive
+        .by_name(name)
+        .ok()?
+        .read_to_string(&mut xml)
+        .unwrap();
+    Some(xml)
+}
+
+/// The `<Override .../>` elements of `[Content_Types].xml` that name a rich-value or metadata
+/// part, sorted.
+fn rich_overrides(path: &str) -> Vec<String> {
+    let types = part(path, "[Content_Types].xml").unwrap();
+    let mut overrides: Vec<String> = types
+        .split("<Override ")
+        .skip(1)
+        .map(|o| o.split("/>").next().unwrap().to_string())
+        .filter(|o| o.contains("/xl/richData/") || o.contains("/xl/metadata.xml"))
+        .collect();
+    overrides.sort();
+    overrides
+}
+
+/// Every cell of sheet 1 that carries `vm`, as `(r, cm, vm)`.
+fn vm_cells(path: &str) -> Vec<(String, Option<String>, String)> {
+    let sheet = part(path, "xl/worksheets/sheet1.xml").unwrap();
+    let attribute = |tag: &str, name: &str| {
+        tag.split(&format!(" {name}=\""))
+            .nth(1)
+            .map(|rest| rest.split('"').next().unwrap().to_string())
+    };
+    sheet
+        .split("<c ")
+        .skip(1)
+        .filter_map(|cell| {
+            let tag = format!(" {}", cell.split('>').next().unwrap());
+            let vm = attribute(&tag, "vm")?;
+            Some((attribute(&tag, "r").unwrap(), attribute(&tag, "cm"), vm))
+        })
+        .collect()
+}
+
+/// The committed fixtures that Excel loaded as evidence for the exported rich-error form
+/// (eval/suites/fixtures/README.md) stay what the exporter writes: loading each one and saving
+/// it again gives the same `vm` cells, `xl/metadata.xml`, `xl/richData/*` and content-type
+/// overrides. A later change to the exporter's parts must then re-run the oracle on new fixtures
+/// instead of leaving stale evidence (T-1148).
+#[test]
+fn rich_error_fixtures_match_the_exporter() {
+    for name in ["rich-error-export", "rich-error-export-formulas"] {
+        let fixture = format!("../../eval/suites/fixtures/cases/{name}.xlsx");
+        let model = load_from_xlsx(&fixture, "en", "UTC", "en").unwrap();
+        let path = format!("temp_{name}.xlsx");
+        save_to_xlsx(&model, &path).unwrap();
+        let parts = [
+            "xl/metadata.xml",
+            "xl/richData/rdrichvalue.xml",
+            "xl/richData/rdrichvaluestructure.xml",
+            "xl/richData/rdRichValueTypes.xml",
+        ];
+        for part_name in parts {
+            let exported = part(&path, part_name);
+            assert!(exported.is_some(), "{name}: {part_name} not exported");
+            assert_eq!(exported, part(&fixture, part_name), "{name}: {part_name}");
+        }
+        assert_eq!(vm_cells(&path), vm_cells(&fixture), "{name}: vm cells");
+        assert!(!vm_cells(&fixture).is_empty(), "{name}: no vm cells");
+        assert_eq!(
+            rich_overrides(&path),
+            rich_overrides(&fixture),
+            "{name}: content types"
+        );
+        std::fs::remove_file(path).unwrap();
+    }
+}

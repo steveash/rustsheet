@@ -3,7 +3,7 @@ id: T-1148
 title: "Oracle-load exported vm errors on formula and dynamic-array cells; pin the rich-error-export fixture to the exporter"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -28,3 +28,11 @@ Also nothing ties the fixture to the exporter: a later change to the parts would
 
 ## Out of scope
 -
+
+## Outcome
+New fixture `rich-error-export-formulas.xlsx` (+ oracle sidecar, excel-graph 2026-10-08): a plain formula with `vm`
+(`IMAGE` → #BLOCKED!), array anchors with `cm` and `vm` (`FIELDVALUE`, `FILTER` no match, blocked `SEQUENCE`) and a
+spilling `cm` cell, in one workbook. Excel for the web loads it and returns #FIELD!, #BLOCKED!, #CALC!, #SPILL! with
+ERROR.TYPE 13, 11, 14, 9. Test `rich_error_fixtures_match_the_exporter` pins both rich-error fixtures to the exporter
+(`vm` cells, metadata, richData parts, content-type overrides); changing `fCollapsed` in the exporter fails it.
+Eval delta: fixtures +1 case (15 cells), all passing, 0 regressions.
