@@ -31,6 +31,7 @@ pub struct ListedCase {
 pub struct MilestoneList {
     /// File stem (`m1-probes`).
     pub name: String,
+    /// The listed cases, in file order.
     pub cases: Vec<ListedCase>,
 }
 
@@ -156,6 +157,7 @@ pub fn check_known(lists: &[MilestoneList], known: &BTreeSet<String>) -> Result<
 /// How one list scored in a run.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ListSummary {
+    /// The list's name (`m1-probes`).
     pub name: String,
     /// Listed cases.
     pub cases: usize,

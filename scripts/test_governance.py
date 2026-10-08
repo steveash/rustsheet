@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import check_governance as gov  # noqa: E402
+import check_governance as gov  # noqa: E402 (import after sys.path setup)
 
 
 class ProtectedPaths(unittest.TestCase):
