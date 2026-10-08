@@ -1,0 +1,65 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1132: FORMULATEXT and value of @ operands with several parenthesis levels, a group that is only part of the operand, and unions (extends at-paren-operands, T-1111).",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe",
+    "T-1132"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "D30": "=@((A1))",
+        "E30": "=FORMULATEXT(D30)",
+        "D31": "=@(((A1)))",
+        "E31": "=FORMULATEXT(D31)",
+        "D32": "=@((A1:B1))",
+        "E32": "=FORMULATEXT(D32)",
+        "D33": "=@((A1,B2))",
+        "E33": "=FORMULATEXT(D33)",
+        "D34": "=@(A1) B1",
+        "E34": "=FORMULATEXT(D34)",
+        "D35": "=@((A1)) B1",
+        "E35": "=FORMULATEXT(D35)",
+        "D36": "=@(A1:B2)",
+        "E36": "=FORMULATEXT(D36)",
+        "D37": "=@((A1 B1))",
+        "E37": "=FORMULATEXT(D37)",
+        "D38": "=@(((A1 B1)))",
+        "E38": "=FORMULATEXT(D38)",
+        "D39": "=@(A1:A2 B1:B2)",
+        "E39": "=FORMULATEXT(D39)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!D30",
+    "Sheet1!E30",
+    "Sheet1!D31",
+    "Sheet1!E31",
+    "Sheet1!D32",
+    "Sheet1!E32",
+    "Sheet1!D33",
+    "Sheet1!E33",
+    "Sheet1!D34",
+    "Sheet1!E34",
+    "Sheet1!D35",
+    "Sheet1!E35",
+    "Sheet1!D36",
+    "Sheet1!E36",
+    "Sheet1!D37",
+    "Sheet1!E37",
+    "Sheet1!D38",
+    "Sheet1!E38",
+    "Sheet1!D39",
+    "Sheet1!E39"
+  ]
+}
