@@ -75,6 +75,27 @@ Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/function
 `test_export_ceiling_has_no_xlfn_prefix`.
 Tasks: T-0172
 
+## Newer functions need `_xlfn.` in the file, eta arguments `_xleta.`
+Rule: a function added after Excel 2007 is recognised only under its stored prefix: `PERCENTOF(1,2)`
+stored bare is `#NAME?`, `_xlfn.PERCENTOF(1,2)` calculates. A function passed by name as a LAMBDA
+argument (eta-reduced, as in `GROUPBY(..., SUM)`) is stored `_xleta.SUM`; a bare `SUM` there is `#NAME?`.
+A prefix on a classic function is accepted (`_xlfn.SUM(1,2)` = 3, `_xlfn.NORMSDIST(0)` = 0.5, see
+also CEILING above); an unknown name with the prefix is still `#NAME?`, and so is `_xlfn.JIS`
+(text.md).
+Evidence: probes/catalog/function-name-forms A1 (5 = #NAME?), A2 (no error), A3 (5), A4 (no error),
+A5 (no error), A6 (5); function-name-forms-2 A3 `_xlfn.SUM(1,2)` = 3; probes/catalog/normsdist-stored-form
+A4 `_xlfn.NORMSDIST(0)` = 0.5 (oracle: excel-graph, 2026-10-07, T-0040; A1 until T-0052). Consequence for case specs: the
+case builder (tools/src/rustsheet_tools/spec2xlsx.py) prefixes every call of a name on its own table
+(the engine exporter's list plus the names only XlsxWriter knew; T-0052), whatever else shares the
+formula; GROUPBY, PIVOTBY and PERCENTOF are not on it, so specs spell them `_xlfn.`
+(probes/catalog/availability-*). The classic NORMSDIST/NORMSINV give the same values bare as
+prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) and A4
+`_xlfn.NORMSDIST(0)` = 0.5 (excel-graph, 2026-10-07, T-0052).
+Status: VERIFIED
+Implemented in: not yet. The engine parser resolves a bare newer name read from a file, and the
+exporter never writes `_xleta.` (T-1089).
+Tasks: T-0040, T-1089
+
 ## Cells and rows without r are positional
 Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
 1 if first); a cell without `r` is the column after the previous cell in its row (column A if first).
@@ -86,3 +107,45 @@ DEVIATION (directive 5, decision 0014): an r-less cell past XFD or r-less row pa
 Implemented in: `rustsheet-xlsx` `import/sheet_data.rs` `start_row` and `start_cell` (an r-less cell or row past XFD or row 1,048,576 is an import error).
 Status: UNVERIFIED (probe pending; ECMA-376 and POI files only, no Excel observation)
 Tasks: T-0181
+
+## Part names match case-insensitively and across backslashes
+Rule: Excel finds a package part whatever the case of its zip entry name, and reads a backslash in
+an entry name as `/`. poi/49609.xlsx (not Excel-authored) names its entries `[content_types].xml`,
+`_rels\.rels`, `xl\workbook.xml`, `xl\sharedstrings.xml`, `xl\worksheets\sheet1.xml`, while its
+relationships point at `/xl/workbook.xml` and `/xl/sharedStrings.xml`; Excel opens it with both
+sheets (FAM, VIC) and their shared-string text (B1 "Cycle"). OPC part names are case-insensitive
+(ECMA-376 Part 2); the backslash reading is Excel's leniency, the schema does not allow it.
+Equivalent entries (`xl/a.xml` and `XL/A.xml` in one zip) are invalid OPC and Excel's choice is
+not probed: an exact name wins, else the first in byte order (our choice; UNVERIFIED, probe
+pending). Percent-encoded part names (`%41` for `A`) are not normalized (not probed either).
+Evidence: oracle: excel-graph, 2026-10-06T19:27Z, T-0112, input sha256 4237e7a06cfba518904fac9d2085bc38c4912290c9c698acd38234b86691c546:
+the unmodified file was uploaded directly (the canary embedder cannot read such a package, so this
+run has no canary and no sidecar; the file has no formulas to score) and Excel for the web opened it and returned a normalized copy with sheets FAM and VIC, B1:E1 "Cycle", "A1", "A2", "A3".
+Status: VERIFIED (Excel for the web; desktop not observed), except the equivalent-entries tie-break
+Implemented in: `PartNames` in crates/rustsheet-xlsx/src/import/package.rs (importer and the eval
+snapshot reader)
+Tasks: T-0112
+
+## Strict OOXML uses other namespaces
+Rule: a workbook saved as "Strict Open XML Spreadsheet" writes `r:id` in the namespace
+`http://purl.oclc.org/ooxml/officeDocument/relationships` (Transitional:
+`http://schemas.openxmlformats.org/officeDocument/2006/relationships`), and stores a date cell as
+`t="d"` with ISO 8601 text (`<c r="A4" s="1" t="d"><v>1990-01-01</v></c>`) instead of a serial.
+Strict files also declare `<workbookPr dateCompatibility="0">`, which ECMA-376 ties to the 1900
+date base compatibility (serial 60 and dates before 1900-03-01); the importer ignores the attribute
+and what Excel computes under it is not probed (T-0407).
+Evidence: poi/SimpleStrict.xlsx, poi/SampleSS.strict.xlsx, poi/sample.strict.xlsx and
+poi/57914.xlsx (Excel-authored): all use the purl namespace for every `<sheet r:id>` and declare
+`dateCompatibility="0"`; SimpleStrict "Sheet Number 2"!A4 is the `t="d"` cell above. Their cached
+formula values pass once `r:id` is read (T-0112).
+Status: VERIFIED for `r:id`. VERIFIED for `t="d"` (T-0406): Excel reads the text as a serial,
+`1990-01-01` = 32874, `1990-01-01T12:00:00` = 32874.5, `1900-02-28` = 59, `1900-03-01` = 61, and
+`ISNUMBER` of the cell is TRUE (fixtures/t-d-iso-date-cells, Excel for the web). Excel for the web
+refuses the whole workbook (`unsupportedWorkbook`) when a `t="d"` cell holds unparsable text
+(`abc`), so there is no value to match: the importer leaves such a cell empty. UNVERIFIED (probe
+pending, T-0407) for `dateCompatibility="0"`. UNVERIFIED (no probe): a trailing `Z`, fractional
+seconds, `1900-02-29` (serial 60), dates before 1900-01-01 and time-only text; the importer reads the
+first two as `serial + fraction` and leaves the rest empty. Probe run 2026-10-07, Excel for the web.
+Implemented in: `XmlNode::relationship_id` in crates/rustsheet-xlsx/src/import/xml.rs;
+`iso8601_to_serial` in crates/rustsheet-xlsx/src/import/iso_date.rs (shared with the eval snapshot reader)
+Tasks: T-0112, T-0406, T-0407

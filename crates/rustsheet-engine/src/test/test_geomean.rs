@@ -71,3 +71,45 @@ fn test_fn_geomean_large_values_no_overflow() {
         "GEOMEAN of two 1e200 values should be 1e200, got {v}"
     );
 }
+
+#[test]
+fn test_fn_geomean_mixed_magnitudes_stay_finite() {
+    let mut model = new_empty_model();
+    // Neither the product (inf / 0) nor a partial product may leave the double range.
+    model._set("B1", "=GEOMEAN(1E154,1E300)");
+    model._set("B2", "=GEOMEAN(1E-154,1E-300)");
+    model._set("B3", "=GEOMEAN(1E300,1E300,1E300)");
+    model.evaluate();
+    for (cell, want) in [("B1", 1e227), ("B2", 1e-227), ("B3", 1e300)] {
+        let v: f64 = model
+            ._get_text(cell)
+            .parse()
+            .unwrap_or_else(|_| panic!("{cell}: {}", model._get_text(cell)));
+        assert!(((v - want) / want).abs() < 1e-9, "{cell}: got {v}");
+    }
+}
+
+// Excel is #NUM! when the product of the values' significands in [1, 2) overflows, whatever the
+// plain product does (numbers.md, "GEOMEAN is #NUM! when the product of significands overflows";
+// probes/geomean-overflow-cut*, T-1112).
+#[test]
+fn test_fn_geomean_significand_product_overflow_is_num() {
+    let mut model = new_empty_model();
+    model._set("A1", "=GEOMEAN(IF(SEQUENCE(1028),5E+204))");
+    model._set("A2", "=GEOMEAN(IF(SEQUENCE(1029),5E+204))");
+    model._set("A3", "=GEOMEAN(IF(ISODD(SEQUENCE(1750)),1.5,0.75))");
+    model._set("A4", "=GEOMEAN(IF(ISODD(SEQUENCE(1752)),1.5,0.75))");
+    model._set("A5", "=GEOMEAN(IF(SEQUENCE(2000),2))");
+    model._set("A6", "=GEOMEAN(IF(SEQUENCE(1770),1E+300))");
+    model._set("A7", "=GEOMEAN(IF(SEQUENCE(1771),1E+300))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5E+204");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "1.060660172");
+    // the plain product, 1.125^876, is in range
+    assert_eq!(model._get_text("A4"), "#NUM!");
+    // powers of two have significand 1
+    assert_eq!(model._get_text("A5"), "2");
+    assert_eq!(model._get_text("A6"), "1E+300");
+    assert_eq!(model._get_text("A7"), "#NUM!");
+}

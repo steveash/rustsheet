@@ -3,7 +3,7 @@ id: T-0158
 title: "Defined names whose body is a formula (intersection, constant) evaluate as Excel"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -26,9 +26,19 @@ name-body evaluation (`Sheet1!#REF!` bodies); reuse whatever it lands rather tha
 second path. Recursion through names (`a` = `=b`, `b` = `=a`) must stay bounded (directive 5).
 
 ## Acceptance criteria
-- [ ] Every cell of `probes/defined-name-intersection.case.json` passes; baseline updated.
-- [ ] A self-referencing name chain does not recurse unboundedly (unit test).
-- [ ] `make check` green; reviewers approve.
+- [x] Every cell of `probes/defined-name-intersection.case.json` passes; baseline updated.
+- [x] A self-referencing name chain does not recurse unboundedly (unit test).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Sheet-scoped names in case specs.
+
+## Outcome
+- Name bodies that are neither a reference, a LAMBDA nor an error literal are kept as
+  `ParsedDefinedName::Formula` and evaluated where the name is used. ISREF looks through them.
+  Name bodies are bounded (64 deep, 10,000 per use, stack budget), so name cycles are `#NAME?`
+  as in Excel
+  (DEVIATION for longer chains of distinct names: references.md "A defined name may be a formula").
+- New probe probes/defined-name-formula-bodies (17 cells, excel-graph): all pass.
+- Follow-up T-1110 (pre-existing debug-build stack overflow on deep cell formulas).
+- Eval: probes 9 fixed (all 9 failing cells of defined-name-intersection), 0 regressions.

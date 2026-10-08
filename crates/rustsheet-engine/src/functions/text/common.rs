@@ -1,4 +1,5 @@
-use super::text_arg::TextArg;
+use super::text_arg::{broadcast_text, TextArg};
+use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
@@ -12,7 +13,7 @@ use crate::{
     formatter::format::format_text,
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{self, substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
     },
     locale::Locale,
     model::Model,
@@ -173,61 +174,6 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
     Ok(ArrayNode::Boolean(string1 == string2))
 }
 
-/// Broadcasts `compute` over the (possibly array) `operands`. When every operand
-/// is a scalar the result is a single value; otherwise it is an array whose shape
-/// is the element-wise maximum of the operand shapes.
-pub(super) fn broadcast_text(
-    cell: CellReferenceIndex,
-    operands: &[&TextArg],
-    compute: impl Fn(usize, usize) -> Result<ArrayNode, Error>,
-) -> CalcResult {
-    let mut rows = 1;
-    let mut cols = 1;
-    for operand in operands {
-        let (r, c) = operand.dims();
-        rows = rows.max(r);
-        cols = cols.max(c);
-    }
-
-    // All scalars: return a single value.
-    if rows <= 1 && cols <= 1 {
-        // An argument that is an error is the result, as it came.
-        if let Some(TextArg::Error(_, error)) =
-            operands.iter().find(|o| matches!(o, TextArg::Error(..)))
-        {
-            return error.clone();
-        }
-        return match compute(0, 0) {
-            Ok(ArrayNode::String(s)) => CalcResult::String(s),
-            Ok(ArrayNode::Number(n)) => CalcResult::Number(n),
-            Ok(ArrayNode::Boolean(b)) => CalcResult::Boolean(b),
-            Ok(ArrayNode::Empty) => CalcResult::String(String::new()),
-            Ok(ArrayNode::Error(e)) | Err(e) => CalcResult::new_error(e, cell, String::new()),
-        };
-    }
-
-    let mut total_bytes: usize = 0;
-    let mut result = Vec::with_capacity(rows);
-    for i in 0..rows {
-        let mut data_row = Vec::with_capacity(cols);
-        for j in 0..cols {
-            let value = compute(i, j).unwrap_or_else(ArrayNode::Error);
-            if let ArrayNode::String(s) = &value {
-                if !util::within_text_budget(&mut total_bytes, s.len()) {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Total text result is too large".to_string(),
-                    );
-                }
-            }
-            data_row.push(value);
-        }
-        result.push(data_row);
-    }
-    CalcResult::Array(result)
-}
-
 /// Finds the first instance of 'search_for' in text starting at char index start
 fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     let ch = text.chars();
@@ -274,59 +220,6 @@ fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
 }
 
 impl Model {
-    pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut result = "".to_string();
-        for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::String(value) => result = format!("{result}{value}"),
-                CalcResult::Number(value) => result.push_str(&number_to_text(value)),
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                CalcResult::Boolean(value) => {
-                    if value {
-                        result = format!("{result}TRUE");
-                    } else {
-                        result = format!("{result}FALSE");
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::Range { left, right } => {
-                    // 3-D references are walked sheet by sheet by the shared range walk.
-                    if let Err(error) =
-                        self.for_each_cell_in_range(left, right, cell, |_, value| {
-                            match value {
-                                CalcResult::String(value) => result.push_str(&value),
-                                CalcResult::Number(value) => {
-                                    result.push_str(&number_to_text(value))
-                                }
-                                CalcResult::Boolean(value) => {
-                                    result.push_str(if value { "TRUE" } else { "FALSE" });
-                                }
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return Err(CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    });
-                                }
-                                _ => {}
-                            }
-                            Ok(())
-                        })
-                    {
-                        return error;
-                    }
-                }
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-            };
-        }
-        CalcResult::String(result)
-    }
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -900,107 +793,6 @@ impl Model {
         }
     }
 
-    // TEXTJOIN(delimiter, ignore_empty, text1, [text2], …)
-    pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if arg_count < 3 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let delimiter = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => return error,
-        };
-        let ignore_empty = match self.get_boolean(&args[1], cell) {
-            Ok(b) => b,
-            Err(error) => return error,
-        };
-        let mut values = Vec::new();
-        for arg in &args[2..] {
-            match self.evaluate_node_in_context(arg, cell) {
-                CalcResult::Number(value) => values.push(number_to_text(value)),
-                CalcResult::Range { left, right } => {
-                    if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
-                    }
-                    let row1 = left.row;
-                    let mut row2 = right.row;
-                    let column1 = left.column;
-                    let mut column2 = right.column;
-                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
-                        Ok((r, c)) => {
-                            row2 = r;
-                            column2 = c;
-                        }
-                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
-                    }
-                    for row in row1..row2 + 1 {
-                        for column in column1..(column2 + 1) {
-                            match self.evaluate_cell(CellReferenceIndex {
-                                sheet: left.sheet,
-                                row,
-                                column,
-                            }) {
-                                CalcResult::Number(value) => {
-                                    values.push(number_to_text(value));
-                                }
-                                CalcResult::String(value) => values.push(value),
-                                CalcResult::Boolean(value) => {
-                                    if value {
-                                        values.push("TRUE".to_string())
-                                    } else {
-                                        values.push("FALSE".to_string())
-                                    }
-                                }
-                                CalcResult::EmptyCell => {
-                                    if !ignore_empty {
-                                        values.push("".to_string())
-                                    }
-                                }
-                                error @ CalcResult::Error { .. } => return error,
-                                CalcResult::EmptyArg | CalcResult::Range { .. } => {}
-                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                                    return CalcResult::Error {
-                                        error: Error::NIMPL,
-                                        origin: cell,
-                                        message: "Arrays not supported yet".to_string(),
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::String(value) => values.push(value),
-                CalcResult::Boolean(value) => {
-                    if value {
-                        values.push("TRUE".to_string())
-                    } else {
-                        values.push("FALSE".to_string())
-                    }
-                }
-                CalcResult::EmptyCell => {
-                    if !ignore_empty {
-                        values.push("".to_string())
-                    }
-                }
-                CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                    return CalcResult::Error {
-                        error: Error::NIMPL,
-                        origin: cell,
-                        message: "Arrays not supported yet".to_string(),
-                    }
-                }
-            };
-        }
-        let result = values.join(&delimiter);
-        CalcResult::String(result)
-    }
-
     // SUBSTITUTE(text, old_text, new_text, [instance_num])
     pub(crate) fn fn_substitute(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
@@ -1067,6 +859,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::String(text) if number_text_too_long(&text) => {
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
+            }
             CalcResult::String(text) => {
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!

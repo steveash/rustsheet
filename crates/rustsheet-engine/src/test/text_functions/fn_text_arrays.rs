@@ -335,3 +335,42 @@ fn text_blank_value_with_empty_format_is_empty() {
     assert_eq!(model._get_text("A2"), "");
     assert_eq!(model._get_text("A3"), "TRUE");
 }
+
+/// An error argument beats a start or length range failure (probes/error-arg-vs-range-check, T-1056).
+#[test]
+fn replace_error_argument_beats_range_check() {
+    let mut model = new_empty_model();
+    model._set("A1", "=REPLACE(\"abc\",0,NA(),\"x\")");
+    model._set("A2", "=REPLACE(\"abc\",1,-1,NA())");
+    model._set("A3", "=REPLACE(\"abc\",0,1,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "#N/A");
+    assert_eq!(model._get_text("A2"), "#N/A");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
+
+/// The *B functions delegate to their non-B counterparts, so they spill over ranges like them
+/// (T-0271: `=LENB(A21:A24)` hit the scalar-context debug_assert from the fuzz target).
+#[test]
+fn byte_functions_spill_like_the_non_byte_functions() {
+    let mut model = model_with_texts();
+    model._set("A3", "=LENB(A1:C1)");
+    model._set("A4", "=LEFTB(A1:C1,2)");
+    model._set("A5", "=RIGHTB(A1:C1,2)");
+    model._set("A6", "=MIDB(A1:C1,2,2)");
+    model._set("A7", "=FINDB(\"o\",A1:C1)");
+    model._set("A8", "=SEARCHB(\"o\",A1:C1)");
+    model._set("A9", "=REPLACEB(A1:C1,1,1,\"Z\")");
+    model._set("A10", "=LENB(A21:A24)");
+    model.evaluate();
+
+    assert_eq!(row(&model, 3, 4), ["11", "7", "5", ""]);
+    assert_eq!(row(&model, 4, 4), ["He", " a", "x-", ""]);
+    assert_eq!(row(&model, 5, 4), ["ld", "c ", "-z", ""]);
+    assert_eq!(row(&model, 6, 4), ["el", "ab", "-y", ""]);
+    assert_eq!(row(&model, 7, 4), ["5", "#VALUE!", "#VALUE!", ""]);
+    assert_eq!(row(&model, 8, 4), ["5", "#VALUE!", "#VALUE!", ""]);
+    assert_eq!(row(&model, 9, 4), ["Zello World", "Zab  c ", "Z-y-z", ""]);
+    assert_eq!(model._get_text("A10"), "0");
+    assert_eq!(model._get_text("A11"), "0");
+}

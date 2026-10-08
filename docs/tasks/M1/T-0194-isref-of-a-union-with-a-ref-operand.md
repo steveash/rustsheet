@@ -3,7 +3,7 @@ id: T-0194
 title: "ISREF of a union with a #REF! operand is FALSE"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0187 probe (excel-graph, 2026-10-06): probes/union-accepted H9 `=ISREF((A1,#RE
 
 ## Out of scope
 - Other ISREF operand kinds.
+
+## Outcome
+`ISREF` of a union now evaluates the union's operands (`Model::union_is_reference`): an error operand makes it FALSE, any valid union stays TRUE. probes/union-accepted H9 passes; baseline shrank.

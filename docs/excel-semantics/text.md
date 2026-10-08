@@ -16,6 +16,14 @@ Array constants may not contain expressions (see syntax.md, "Array constants tak
 Evidence: eval/suites/probes/cases/indirect-text-broadcast.case.json A30:C124 (oracle: excel-graph, 2026-10-05, T-0957).
 Status: VERIFIED (Excel for the web only; the engine matches all 43 text-broadcast cells)
 
+## The *B text functions equal their non-B twins and spill (T-0271)
+Rule: for ASCII (single-byte) text in en-US (non-DBCS) FINDB, LEFTB, LENB, MIDB, REPLACEB, RIGHTB and SEARCHB return what FIND, LEFT, LEN, MID,
+REPLACE, RIGHT and SEARCH return, and lift element-wise over range and array arguments and spill like them
+(`LENB(A1:C1)` = 11, 4, 5; `FINDB("o",A1:C1)` = 5, `#VALUE!`, `#VALUE!`; `LENB(A21:A24)` over blanks spills four 0s).
+Evidence: eval/suites/probes/cases/text-b-functions-broadcast.case.json A3:A13 (oracle: excel-graph, 2026-10-07; engine matches all 29 cells).
+Status: VERIFIED (Excel for the web only)
+Implemented in: `byte_functions.rs` delegates to the twins; `static_analysis.rs` gives them `scalar_arguments` (before T-0271 they were `not_implemented`, so no spill was planned and a fuzz input hit the scalar-context debug_assert).
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the
@@ -31,7 +39,36 @@ Tasks: T-0241
 
 ## CONCAT and TEXTJOIN past 32,767 characters
 Rule: the joined text of CONCAT or TEXTJOIN over 32,767 characters is `#CALC!` (not truncated, not `#VALUE!`).
-Evidence: probes/text-result-limit C8-C9 (excel-graph, 2026-10-05; excel-desktop not used).
-Status: VERIFIED (web only)
-Implemented in: not yet (T-0243)
-Tasks: T-0243
+Evidence: probes/text-result-limit C8-C9, C15-C23 (excel-graph, 2026-10-05 and 2026-10-07; excel-desktop not used).
+Exactly 32,767 characters is fine (C15, C21); the limit counts UTF-16 code units, so an emoji is 2 (C16/C22 fit at 32,767, C17/C23 are `#CALC!` one unit over). An error *argument* after the limit wins over `#CALC!` (`CONCAT(REPT("a",32767),"b",NA())` and the TEXTJOIN equivalent are `#N/A`, C18-C19), but a cell error read from a reference or range does not: `TEXTJOIN(",",TRUE,REPT("a",32767),A1:A2)` with `A1` = "b" and `A2` = `#N/A` is `#CALC!` (C20). The cell error is dropped and evaluation goes on, so a later error argument still wins (`TEXTJOIN(",",TRUE,REPT("a",32767),A1:A2,NA())` is `#N/A`, errors C4).
+Cell errors past the limit (probes/text-result-limit-errors, excel-graph, 2026-10-08, T-0284; `A1` = "b", `A2` = `#N/A`, `A3` empty): a cell error is `#CALC!` once the text read so far, plus for TEXTJOIN the delimiter that precedes the cell, is over 32,767, and the error itself otherwise.
+- CONCAT: `CONCAT(REPT("a",32767),A1:A2)` is `#CALC!` ("b" takes it over, C1) and `CONCAT(REPT("a",32767),"b",A2)` is `#CALC!` (C10), but `CONCAT(REPT("a",32767),A2:A2)` and `...,A2)` are `#N/A` (exactly 32,767 is not over, C5-C6).
+- TEXTJOIN: with a 32,767 prefix the delimiter takes it over before the cell, so `TEXTJOIN(",",TRUE,REPT("a",32767),A2:A2)` and `...,A2)` are `#CALC!` (C2-C3) while an empty delimiter leaves `#N/A` (C7); with a 32,766 prefix `","` is `#N/A` (C9) and `",,"` is `#CALC!` (C8); with ignore_empty FALSE an empty cell before the error adds a delimiter, so `TEXTJOIN(",",FALSE,REPT("a",32767),A3,A2)` is `#CALC!` (C11).
+Unprobed: reference kinds other than a direct A1 cell or range (defined names, INDEX/IF/OFFSET/INDIRECT results, `@A1:A3`, 3-D references) past the limit. The engine treats them differently: CONCAT reads them as references (the error is dropped, `#CALC!`) through `evaluate_aggregate_arg`, TEXTJOIN returns the error unless the argument is a direct cell reference.
+Status: VERIFIED
+Implemented in: `fn_concat`/`fn_textjoin` in functions/text/concatenate.rs (`ConcatText`, `JoinSize`) stop appending text once over the limit but still evaluate later arguments. `fn_concat` drops a range or reference cell error met once over the limit and continues; `fn_textjoin` does the same for range cells and, in its `Node::ReferenceKind` arm, for a direct single-cell reference, counting the preceding delimiter through `JoinSize::exceeds_with_separator` (T-0243, T-0262, T-0284)
+Tasks: T-0243, T-0262, T-0284
+
+## TEXTJOIN with ignore_empty FALSE joins every cell of a whole column or row
+Rule: with ignore_empty FALSE every cell of a whole-column or whole-row argument adds a delimiter, however
+small the used area: `TEXTJOIN(",",FALSE,D:D)` is `#CALC!` (1,048,576 values join to over 32,767
+characters) and `TEXTJOIN(",",FALSE,10:10)` with H10 = "x" and J10 = "y" is ",,,,,,,x,,y" followed by
+16,374 more commas. With ignore_empty TRUE only the non-empty cells count (`TEXTJOIN(",",TRUE,D:D)` =
+"a,c"). `TEXTJOIN(",",FALSE,D1:D16385)` over the same sheet has length 16,386.
+Unprobed: an error cell met after the skipped empties have taken the join over the limit (for example
+`TEXTJOIN(",",FALSE,1:3)` with an error in A3); the engine gives `#CALC!`, as for a walked range (C20).
+Evidence: probes/whole-column-empty-walkers E2, E3, E6, F1, F2, F5, F8 (excel-graph, 2026-10-07, T-1114).
+Status: VERIFIED
+Implemented in: `fn_textjoin` (functions/text/concatenate.rs) walks the used area and adds the skipped
+empty cells per row and after the last row through `JoinSize::push_empties`, which stops at the limit.
+Tasks: T-1114
+
+## JIS is `#NAME?` in en-US Excel for the web
+Rule: `JIS`, although Microsoft's en-US function list includes it, is not a known function in
+en-US Excel for the web: `JIS(1)` is `#NAME?`, stored bare or as `_xlfn.JIS`. `_xlfn.DBCS(1)` is
+recognised.
+Evidence: probes/catalog/availability-22 A8 (TRUE = #NAME?), function-name-forms-2 A1 and A2
+(ERROR.TYPE 5), availability-10 A4 (`_xlfn.DBCS`, recognised) (oracle: excel-graph, 2026-10-07,
+T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
+Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
+

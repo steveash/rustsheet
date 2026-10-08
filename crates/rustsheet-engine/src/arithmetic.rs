@@ -2,8 +2,8 @@ use crate::{
     calc_result::CalcResult,
     cast::{array_node_to_string, concat_text, NumberOrArray, StringOrArray, ValueOrArray},
     expressions::{
-        parser::{ArrayNode, Node},
-        token::{Error, OpCompare, OpSum},
+        parser::{left_chain, ArrayNode, Node},
+        token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
     functions::{util::compare_values, Function},
@@ -74,9 +74,10 @@ pub(crate) fn flush_subnormal(value: f64) -> f64 {
 /// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
 /// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
 /// Excel returns exactly 0. It applies only when the cell formula's outermost operation is `+`/`-`
-/// or SUM (the callers decide that). Across the 1,296 probe cells, snapped results are at most
-/// 7 ULP of the smaller addend and kept ones at least 8 (docs/excel-semantics/numbers.md
-/// "Near-zero snapping in addition and subtraction", probes-numeric/30bc5f8fab02d0a2).
+/// or SUM, and not when the whole formula is parenthesized (the callers decide that). Across the
+/// 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
+/// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
+/// probes-numeric/30bc5f8fab02d0a2).
 pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     if x == 0.0 || y == 0.0 || x.is_sign_negative() == y.is_sign_negative() {
         return total;
@@ -172,8 +173,9 @@ pub(crate) fn array_of_errors(
 
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
-    /// outermost `+`/`-` or SUM to 0 (docs/excel-semantics/numbers.md "Near-zero snapping in
-    /// addition and subtraction"); every other node evaluates as usual.
+    /// outermost `+`/`-` or SUM to 0, but not for a wholly parenthesized formula, which is a
+    /// `GroupedRootKind` root (docs/excel-semantics/numbers.md "Near-zero snapping in addition
+    /// and subtraction"); every other node evaluates as usual.
     pub(crate) fn evaluate_formula_root(
         &mut self,
         node: &Node,
@@ -181,6 +183,7 @@ impl Model {
     ) -> CalcResult {
         match node {
             Node::OpSumKind { kind, left, right } => {
+                let left = self.evaluate_node_in_context(left, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
             Node::FunctionKind {
@@ -191,17 +194,18 @@ impl Model {
         }
     }
 
-    /// A formula's outermost `+`/`-`: like [`Model::handle_arithmetic`], but a scalar result is
-    /// snapped to 0 by [`snap_near_zero`]. Array operands are not snapped (no evidence).
-    pub(crate) fn handle_outermost_sum(
+    /// A formula's outermost `+`/`-` over its evaluated left operand: like
+    /// [`Model::handle_arithmetic`], but a scalar result is snapped to 0 by [`snap_near_zero`].
+    /// Array operands are not snapped (no evidence).
+    fn handle_outermost_sum(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         subtract: bool,
     ) -> CalcResult {
         let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
-        let l = self.get_number_or_array(left, cell);
+        let l = self.number_or_array(left, cell);
         let r = self.get_number_or_array(right, cell);
         if let (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) = (&l, &r) {
             let y = if subtract { -*y } else { *y };
@@ -213,15 +217,54 @@ impl Model {
         self.arithmetic_on_values(l, r, cell, op)
     }
 
-    /// Applies `op` element‐wise for arrays/numbers.
+    /// Evaluates a chain of value operators (`=A1+A2*3&"x"`) in a loop down its
+    /// left operands (T-0128): the first operand, then each operator over the
+    /// result so far and its right operand, the same order and results as
+    /// recursing into each left operand, on one stack frame however long the
+    /// chain is.
+    pub(crate) fn evaluate_operator_chain(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (links, first) = left_chain(node);
+        let mut value = self.evaluate_node_in_context(first, cell);
+        for link in links {
+            value = match link {
+                Node::OpSumKind { kind, right, .. } => match kind {
+                    OpSum::Add => self.handle_arithmetic(value, right, cell, &plus),
+                    OpSum::Minus => self.handle_arithmetic(value, right, cell, &minus),
+                },
+                Node::OpProductKind { kind, right, .. } => match kind {
+                    OpProduct::Times => self.handle_arithmetic(value, right, cell, &times),
+                    OpProduct::Divide => self.handle_arithmetic(value, right, cell, &divide),
+                },
+                Node::OpPowerKind { right, .. } => {
+                    self.handle_arithmetic(value, right, cell, &power)
+                }
+                Node::OpConcatenateKind { right, .. } => {
+                    self.handle_concatenate(value, right, cell)
+                }
+                Node::CompareKind { kind, right, .. } => {
+                    self.handle_comparison(value, right, cell, kind)
+                }
+                // `left_chain` links are value operators only.
+                _ => value,
+            };
+        }
+        value
+    }
+
+    /// Applies `op` element‐wise for arrays/numbers to `left`, the evaluated left
+    /// operand, and `right`.
     pub(crate) fn handle_arithmetic(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         op: &dyn Fn(f64, f64) -> Result<f64, Error>,
     ) -> CalcResult {
-        let l = self.get_number_or_array(left, cell);
+        let l = self.number_or_array(left, cell);
         let r = self.get_number_or_array(right, cell);
         self.arithmetic_on_values(l, r, cell, op)
     }
@@ -365,14 +408,14 @@ impl Model {
 
     /// Applies the concatenation operator (`&`) element-wise.
     /// When either operand is a range or array the result is an array of strings;
-    /// when both are scalars the result is a single String.
+    /// when both are scalars the result is a single String. `left` is the evaluated left operand.
     pub(crate) fn handle_concatenate(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let l = self.get_string_or_array(left, cell);
+        let l = self.string_or_array(left, cell);
         let r = self.get_string_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),
@@ -446,15 +489,15 @@ impl Model {
     /// Applies a comparison operator element-wise.
     /// When either operand is a range or array the result is an array of booleans,
     /// with an error where an element of the operands is an error;
-    /// when both are scalars the result is a single Boolean.
+    /// when both are scalars the result is a single Boolean. `left` is the evaluated left operand.
     pub(crate) fn handle_comparison(
         &mut self,
-        left: &Node,
+        left: CalcResult,
         right: &Node,
         cell: CellReferenceIndex,
         kind: &OpCompare,
     ) -> CalcResult {
-        let l = self.get_value_or_array(left, cell);
+        let l = self.value_or_array(left, cell);
         let r = self.get_value_or_array(right, cell);
         let (l, r) = match (l, r) {
             (Ok(l), Ok(r)) => (l, r),

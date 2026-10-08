@@ -28,6 +28,23 @@ fn general_drops_a_digit_at_exponent_magnitude_99() {
     }
 }
 
+// T-1001: a mantissa that rounds up to 10 carries into the exponent
+// (probes/text-general-exponent-boundary A5-A8, A10).
+#[test]
+fn general_carries_a_rounded_up_mantissa_into_the_exponent() {
+    let cases = [
+        (9.999_999_6e98, "1E+99"),
+        (9.999_999_6e99, "1E+100"),
+        (9.999_999_6e-98, "1E-97"),
+        (9.999_999_6e-99, "1E-98"),
+        (9.999_999_6e-10, "1E-09"),
+        (-9.999_999_6e98, "-1E+99"),
+    ];
+    for (value, text) in cases {
+        assert_eq!(format_number(value, "General", "en").text, text, "{value}");
+    }
+}
+
 #[test]
 fn test_maximum_zeros() {
     let formatted = format_number(1.0 / 3.0, "#,##0.0000000000000000000", "en");
@@ -95,4 +112,92 @@ fn parse_excel_number_truncates_to_15_digits() {
     assert_eq!(parse_excel_number("0.1"), Some(0.1));
     assert_eq!(parse_excel_number("abc"), None);
     assert_eq!(parse_excel_number(""), None);
+}
+
+#[test]
+fn parse_excel_number_tiny_magnitudes() {
+    // probes/text-number-tiny and text-number-tiny-zero (excel-graph): below 1E-309 is not a
+    // number, from 1E-309 to the smallest normal double reads as 0, normal values keep theirs.
+    for text in [
+        "5e-310",
+        "9.9999e-310",
+        "-1e-310",
+        "1e-400",
+        "0.001e-307",
+        "9.99999999999999e-310",
+    ] {
+        assert_eq!(parse_excel_number(text), None, "{text}");
+    }
+    for text in [
+        "1e-309",
+        "-1e-309",
+        "100e-311",
+        "1.000001e-309",
+        "2.2250738585072e-308",
+    ] {
+        assert_eq!(
+            parse_excel_number(text).map(f64::to_bits),
+            Some(0),
+            "{text}"
+        );
+    }
+    assert_eq!(
+        parse_excel_number("2.2250738585073e-308"),
+        Some(2.2250738585073e-308)
+    );
+    assert_eq!(parse_excel_number("1e-307"), Some(1e-307));
+    // A zero mantissa counts its fraction digits against the exponent: within ±308 it is 0.
+    for text in [
+        "0", "-0e308", "0e-308", "0.0e309", "0.00e310", "00.0e309", ".0e309",
+    ] {
+        assert_eq!(
+            parse_excel_number(text).map(f64::to_bits),
+            Some(0),
+            "{text}"
+        );
+    }
+    for text in [
+        "0e309", "0e+309", "0e-309", "0e-400", "0.0e310", "00e309", "0.e309", "0.0e-308",
+    ] {
+        assert_eq!(parse_excel_number(text), None, "{text}");
+    }
+    // A huge exponent clamps instead of overflowing.
+    assert_eq!(parse_excel_number("1e-99999999999999999999999"), None);
+    assert_eq!(parse_excel_number("0e99999999999999999999999"), None);
+}
+
+// T-1101: number text of more than 255 characters is #VALUE! for `0+A` and VALUE, spaces counted
+// (probes/text-number-long-zero).
+#[test]
+fn number_text_longer_than_255_characters_is_value_error() {
+    let mut model = new_empty_model();
+    let text = |len: usize| format!("0.{}1", "0".repeat(len - 3));
+    model._set("A1", &format!("'{}", text(255)));
+    model._set("A2", &format!("'{}", text(256)));
+    model._set("A3", &format!("'1{}", " ".repeat(254)));
+    model._set("A4", &format!("'1{}", " ".repeat(255)));
+    for row in 1..=4 {
+        model._set(&format!("B{row}"), &format!("=0+A{row}"));
+        model._set(&format!("C{row}"), &format!("=VALUE(A{row})"));
+    }
+    model.evaluate();
+    for (row, expected) in [(1, "1E-253"), (2, "#VALUE!"), (3, "1"), (4, "#VALUE!")] {
+        assert_eq!(model._get_text(&format!("B{row}")), expected, "0+A{row}");
+        assert_eq!(
+            model._get_text(&format!("C{row}")),
+            expected,
+            "VALUE(A{row})"
+        );
+    }
+}
+
+// T-1101: NUMBERVALUE has the same 255-character limit (probes/text-number-long-paths A13, A14).
+#[test]
+fn numbervalue_text_longer_than_255_characters_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("A1", &format!("=NUMBERVALUE(\"0.{}1\")", "0".repeat(252)));
+    model._set("A2", &format!("=NUMBERVALUE(\"0.{}1\")", "0".repeat(253)));
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1E-253");
+    assert_eq!(model._get_text("A2"), "#VALUE!");
 }

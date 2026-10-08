@@ -69,7 +69,7 @@ impl Model {
         if count == 0 {
             return CalcResult::new_error(Error::DIV, cell, "Divide by 0".to_string());
         }
-        CalcResult::Number(sum)
+        CalcResult::finite_number_or_num(sum, cell)
     }
 
     // Flattens one SUMX argument (range, array or scalar number) row-major; non-numbers are `None`.
@@ -308,7 +308,6 @@ impl Model {
         if args.is_empty() {
             return Err(CalcResult::new_args_number_error(cell));
         }
-
         let mut sum = SumParts::default();
         for arg in args {
             // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
@@ -317,26 +316,23 @@ impl Model {
                     self.for_each_number_in_range(left, right, cell, |value| sum.add(value))?;
                 }
                 CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => sum.add(value),
-                                ArrayNode::Error(error) => {
-                                    return Err(CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    })
-                                }
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
+                    for value in array.into_iter().flatten() {
+                        match value {
+                            ArrayNode::Number(value) => sum.add(value),
+                            ArrayNode::Error(error) => {
+                                return Err(CalcResult::Error {
+                                    error,
+                                    origin: cell,
+                                    message: "Error in array".to_string(),
+                                })
                             }
+                            // Booleans and text in an array are ignored.
+                            _ => {}
                         }
                     }
                 }
                 error @ CalcResult::Error { .. } => return Err(error),
-                calc_result => sum.add(self.cast_to_number(calc_result, cell)?),
+                calc_result => sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?),
             };
         }
         Ok(sum)

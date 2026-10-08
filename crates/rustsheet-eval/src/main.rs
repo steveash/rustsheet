@@ -21,6 +21,7 @@ use clap::{Parser, Subcommand};
 
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
+use rustsheet_eval::catalog::Catalog;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
 use rustsheet_eval::report::RunReport;
@@ -247,6 +248,7 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
+        &Catalog::load(root)?,
     );
     print_summary(&report);
     let mut failed = false;
@@ -261,12 +263,13 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let old = Baseline::read(&path)?;
         let delta = baseline::diff(&old, &current);
         println!(
-            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, removed cases {})",
+            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
             old.failing.len(),
             current.failing.len(),
             delta.fixed.len(),
             delta.new_failures.len(),
             delta.regressions.len(),
+            delta.new_cases.len(),
             delta.removed_cases.len()
         );
         for r in delta.regressions.iter().take(25) {
@@ -398,6 +401,7 @@ fn run() -> Result<ExitCode> {
                 RustSheetEngine.name(),
                 &results,
                 &RustSheetEngine.implemented_functions(),
+                &Catalog::load(&root)?,
             );
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;

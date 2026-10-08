@@ -1,0 +1,28 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Does a range failure (start<1, negative length, not found) beat a later error argument in REPLACE, MID, FIND (T-1056).",
+ "tags": [
+  "M1",
+  "probe",
+  "text",
+  "T-1056"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=REPLACE(\"abc\",0,NA(),\"x\")",
+    "A2": "=REPLACE(\"abc\",1,-1,NA())",
+    "A3": "=MID(\"abc\",0,NA())",
+    "A4": "=FIND(\"z\",\"abc\",NA())",
+    "A5": "=REPLACE(\"abc\",1,NA(),\"x\")",
+    "A6": "=MID(\"abc\",1,-1)",
+    "A7": "=MID(\"abc\",1,-1)&NA()",
+    "A8": "=FIND(\"z\",\"abc\")",
+    "A9": "=REPLACE(\"abc\",0,1,NA())",
+    "A10": "=MID(\"abc\",NA(),-1)"
+   }
+  }
+ ],
+ "expected": {}
+}

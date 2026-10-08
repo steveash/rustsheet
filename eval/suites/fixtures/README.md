@@ -9,3 +9,15 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   C1 = `=A1&"!"`, D1 = `=EXACT(A1,"Tokyo")`, then xl/sharedStrings.xml patched so the string is
   `<si><t>Tokyo</t><rPh sb="0" eb="5"><t>トウキョウ</t></rPh><phoneticPr fontId="0" type="Hiragana"/></si>`
   and the app name replaced.
+- `workday-intl-legacy-holidays.xlsx` (T-1053): legacy (plain `<f>`, not dynamic-array) formulas,
+  which a spec case cannot express (decision 0007). It was written with XlsxWriter `write_formula`
+  and the app name replaced. C2 = 42429, D2:D5 = 42422, 42423, 42437, 42499; B2 and B7 =
+  `=WORKDAY.INTL(C2,6,1,D2:D5)`, B3 = `=WORKDAY.INTL(C2,6,"0000011",D2:D5)`, B5 =
+  `=WORKDAY(C2,6,D2:D5)`, B6 = `=NETWORKDAYS.INTL(C2,C2+14,1,D2:D5)`, and control E3 = `=D2:D5*1`
+  (implicit intersection proves the formulas stayed legacy). The names are written without the
+  `_xlfn.` prefix Excel itself would store for these Excel 2010 functions; Excel resolved them anyway.
+- `ifs-legacy-range-criteria.xlsx` (T-0263): legacy formulas (XlsxWriter `write_formula`, app name replaced).
+  A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1 = "a", D2 = "c"; rows 1 and 2 hold, with the range criterion
+  `D1:D2`: F COUNTIF, G COUNTIFS, H SUMIF, I SUMIF (one-cell sum range B1), J SUMIFS, K AVERAGEIF,
+  L AVERAGEIFS, M `_xlfn.MAXIFS`, N `_xlfn.MINIFS`; control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
+  legacy). MAXIFS/MINIFS carry the `_xlfn.` prefix Excel itself writes.

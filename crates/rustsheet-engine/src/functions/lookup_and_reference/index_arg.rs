@@ -1,8 +1,9 @@
 //! Reading and validating the VLOOKUP/HLOOKUP index argument.
 
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error,
-    expressions::types::CellReferenceIndex, model::Model,
+    calc_result::CalcResult,
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    model::Model,
 };
 
 /// The row/column index argument of VLOOKUP/HLOOKUP, read before the search but validated only
@@ -18,13 +19,15 @@ pub(super) enum LookupIndexArg {
 impl Model {
     /// Reads the index argument of VLOOKUP/HLOOKUP. A value argument is coerced now, so literal
     /// text or an error fails before the search (probes/lookup-index-order H9, H13, H28); a
-    /// reference is kept for [`Model::resolve_lookup_index`].
+    /// reference is kept for [`Model::resolve_lookup_index`]. `INDEX(...)` is a reference too: its
+    /// selected cell is read only after a match (probes/lookup-index-shapes H2, H3, H11, H12).
     pub(super) fn lookup_index_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<LookupIndexArg, CalcResult> {
-        match self.evaluate_node_with_reference(node, cell) {
+        let index = self.eval_ref_or_index(node, cell);
+        match index {
             range @ CalcResult::Range { .. } => Ok(LookupIndexArg::Reference(range)),
             value => self.cast_to_number(value, cell).map(LookupIndexArg::Number),
         }

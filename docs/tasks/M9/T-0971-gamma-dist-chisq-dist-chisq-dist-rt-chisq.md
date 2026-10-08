@@ -49,11 +49,11 @@ Implement once in `functions/statistical/special.rs`; T-0972 (GAMMA.INV) and pos
 - [ ] No line listed above remains NumericClose (`rustsheet-eval show`), at least 25 of the 43 lines
       leave `eval/baseline/ironcalc-calc.txt`, no new lines in any baseline (POISSON.DIST must not
       regress if it switches kernel; EXPON.DIST stays fixed).
-- [ ] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-0966
+- [ ] Remaining lines (<= 4 ulp) listed in the PR with expected/actual; they wait for the T-1045
       incomplete-gamma sweep (family 6).
 - [ ] CHISQ.TEST and CHISQ.DIST.RT use the direct upper tail (no `1.0 - cdf`).
 - [ ] Unit tests: P(1,x) = -expm1(-x), P(a,x) + Q(a,x) = 1 within 2 ulp at a few points, a in {0.5,
       9, 500}, huge scale (b = 1e6); bounded iteration counts; `make check` green; reviewers approve.
 
 ## Out of scope
-GAMMA.INV/CHISQ.INV (T-0972); GAMMA/GAMMALN (T-0973); legacy GAMMADIST/CHIDIST/CHITEST evidence (T-0966).
+GAMMA.INV/CHISQ.INV (T-0972); GAMMA/GAMMALN (T-0973); legacy GAMMADIST/CHIDIST/CHITEST evidence (T-1047, T-1048).

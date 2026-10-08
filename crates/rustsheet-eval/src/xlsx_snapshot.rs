@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 use rustsheet_engine::expressions::utils::shift::shift_formula_text;
-use rustsheet_xlsx::import::{decode_xlsx_escapes, rich_errors, ImportLimits};
+use rustsheet_xlsx::import::{
+    decode_xlsx_escapes, iso8601_to_serial, rich_errors, ImportLimits, PartNames,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SnapshotError {
@@ -126,7 +128,20 @@ impl WorkbookSnapshot {
     }
 }
 
-type Zip = zip::ZipArchive<Cursor<Vec<u8>>>;
+/// The package, with its parts found the way the importer finds them (case-insensitive names,
+/// backslash separators; see `PartNames`).
+struct Zip {
+    archive: zip::ZipArchive<Cursor<Vec<u8>>>,
+    names: PartNames,
+}
+
+impl Zip {
+    fn new(bytes: &[u8]) -> Result<Self, SnapshotError> {
+        let archive = zip::ZipArchive::new(Cursor::new(bytes.to_vec()))?;
+        let names = PartNames::new(archive.file_names());
+        Ok(Zip { archive, names })
+    }
+}
 
 /// Zip-bomb guard (CLAUDE.md directive 5): one part may not inflate past the
 /// public API's default whole-package limit, so the harness reads what the API would.
@@ -143,7 +158,10 @@ fn read_part_capped(
     name: &str,
     limit: u64,
 ) -> Result<Option<String>, SnapshotError> {
-    let mut file = match zip.by_name(name) {
+    let Some(entry) = zip.names.entry(name) else {
+        return Ok(None);
+    };
+    let mut file = match zip.archive.by_name(entry) {
         Ok(f) => f,
         Err(zip::result::ZipError::FileNotFound) => return Ok(None),
         Err(e) => return Err(e.into()),
@@ -182,7 +200,7 @@ fn attr(e: &BytesStart<'_>, key: &str) -> Option<String> {
 /// # Errors
 /// Returns an error if the bytes are not a readable xlsx package.
 pub fn read_snapshot(bytes: &[u8]) -> Result<WorkbookSnapshot, SnapshotError> {
-    let mut zip = zip::ZipArchive::new(Cursor::new(bytes.to_vec()))?;
+    let mut zip = Zip::new(bytes)?;
     let (application, app_version) = read_app(&mut zip)?;
     let shared = read_shared_strings(&mut zip)?;
     let rich_errors = read_rich_errors(&mut zip)?;
@@ -662,6 +680,7 @@ fn decode_value(
         ("str", v) => Value::Text(decode_xlsx_escapes(v.unwrap_or_default())),
         ("b", Some(v)) => Value::Bool(v.trim() == "1" || v.trim().eq_ignore_ascii_case("true")),
         ("e", Some(v)) => Value::Error(v.trim().to_string()),
+        ("d", Some(v)) => iso8601_to_serial(v).map_or(Value::Empty, Value::Number),
         (_, Some(v)) if !v.trim().is_empty() => v
             .trim()
             .parse::<f64>()
@@ -681,7 +700,7 @@ mod tests {
             .unwrap();
         w.write_all(body).unwrap();
         let bytes = w.finish().unwrap().into_inner();
-        zip::ZipArchive::new(Cursor::new(bytes)).unwrap()
+        Zip::new(&bytes).unwrap()
     }
 
     #[test]
@@ -696,6 +715,18 @@ mod tests {
         );
         let err = read_part_capped(&mut zip, "xl/big.xml", 99).unwrap_err();
         assert!(matches!(&err, SnapshotError::Malformed(m) if m.contains("xl/big.xml")));
+    }
+
+    #[test]
+    fn parts_are_found_case_insensitively_across_backslashes() {
+        let mut zip = zip_with("xl\\sharedstrings.xml", b"s");
+        assert_eq!(
+            read_part(&mut zip, "xl/sharedStrings.xml")
+                .unwrap()
+                .as_deref(),
+            Some("s")
+        );
+        assert_eq!(read_part(&mut zip, "xl/styles.xml").unwrap(), None);
     }
 
     const SHEET: &str = r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>

@@ -3,6 +3,7 @@
 use crate::{
     calc_result::CalcResult,
     cast::array_node_to_string,
+    cast::number_text_too_long,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -12,7 +13,7 @@ use crate::{
     number_format::parse_excel_number,
 };
 
-use super::common::broadcast_text;
+use super::text_arg::broadcast_text;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -156,6 +157,11 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, "Invalid separators".to_string());
         }
 
+        // Excel counts the text with its spaces: 255 characters parse, 256 are #VALUE!
+        // (probes/text-number-long-paths A13, A14).
+        if number_text_too_long(&text) {
+            return CalcResult::new_error(Error::VALUE, cell, "Text too long".to_string());
+        }
         let trimmed = text.trim();
 
         // Handle percentage suffix
@@ -247,16 +253,15 @@ fn replace_element(
     num_chars: Result<f64, Error>,
     new_text: &ArrayNode,
 ) -> Result<ArrayNode, Error> {
+    // Every argument is coerced before the range checks: an error argument beats a start or length
+    // failure (docs/excel-semantics/arrays.md, probes/error-arg-vs-range-check, T-1056).
     let old_text = array_node_to_string(old_text)?;
     let start_num = start_num?.floor();
-    if start_num < 1.0 {
-        return Err(Error::VALUE);
-    }
     let num_chars = num_chars?.floor();
-    if num_chars < 0.0 {
+    let new_text = array_node_to_string(new_text)?;
+    if start_num < 1.0 || num_chars < 0.0 {
         return Err(Error::VALUE);
     }
-    let new_text = array_node_to_string(new_text)?;
 
     let chars: Vec<char> = old_text.chars().collect();
     let len = chars.len();

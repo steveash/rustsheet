@@ -5,9 +5,9 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{logical::IfBranchMode, Function},
     model::Model,
-    number_format::to_excel_precision,
+    number_format::cmp_excel_precision,
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -51,15 +51,14 @@ fn error_sort_rank(e: &Error) -> u8 {
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
-            let value1 = to_excel_precision(*value1, 15);
-            let value2 = to_excel_precision(*value2, 15);
-            if (value2 - value1).abs() < f64::EPSILON {
-                return 0;
+            // Equality is decided on the 15-digit values alone: an absolute tolerance would equate
+            // every tiny value with 0, but Excel says `EXP(-708)=0` is FALSE (docs/excel-semantics/numbers.md,
+            // probes/subnormal-function-results C4-C6).
+            match cmp_excel_precision(*value1, *value2) {
+                std::cmp::Ordering::Less => -1,
+                std::cmp::Ordering::Equal => 0,
+                std::cmp::Ordering::Greater => 1,
             }
-            if value1 < value2 {
-                return -1;
-            }
-            1
         }
         (CalcResult::Number(_value1), CalcResult::String(_value2)) => -1,
         (CalcResult::Number(_value1), CalcResult::Boolean(_value2)) => -1,
@@ -137,6 +136,12 @@ impl Model {
             } if first_index != last_index => {
                 self.get_sheet_span_reference(*first_index, *last_index, reference, cell)
             }
+            // IF hands its chosen branch on as a reference: a 3-D span inside it is
+            // `#VALUE!` here, as it is inside CHOOSE (T-1026).
+            Node::FunctionKind {
+                kind: Function::If,
+                args,
+            } => self.if_impl(args, cell, IfBranchMode::SingleSheet),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -151,7 +156,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match node {
-            Node::ReferenceKind { .. } => self.evaluate_node_with_reference(node, cell),
+            // `@A1:A3` is the intersected cell's reference, so text there is ignored
+            // (probes/min-max-reference-forms C1-C4).
+            Node::ReferenceKind { .. }
+            | Node::ImplicitIntersection { .. }
+            | Node::DefinedNameKind(_)
+            | Node::NamedVariableKind { .. } => self.evaluate_node_with_reference(node, cell),
             Node::SheetSpanKind {
                 first_index,
                 last_index,
@@ -161,7 +171,7 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::If,
                 args,
-            } => self.if_impl(args, cell, true),
+            } => self.if_impl(args, cell, IfBranchMode::Aggregate),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
@@ -208,6 +218,25 @@ impl Model {
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
+        self.for_each_position_in_range(left, right, cell, |model, position| {
+            let value = model.evaluate_cell(position);
+            f(model, value)
+        })
+    }
+
+    /// Calls `f` with the position of every cell of the range `left..=right`, in row-major
+    /// order, without evaluating it: for walks that skip cells by position (AGGREGATE's hidden
+    /// rows and nested SUBTOTAL/AGGREGATE cells). An `Err` from `f` stops the walk.
+    pub(crate) fn for_each_position_in_range<F>(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
+    {
         // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
         // clipped to its own used area, so a span of whole columns walks only data.
         debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
@@ -217,8 +246,7 @@ impl Model {
                 .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
             for row in left.row..=row2 {
                 for column in left.column..=column2 {
-                    let value = self.evaluate_cell(CellReferenceIndex { sheet, row, column });
-                    f(self, value)?;
+                    f(self, CellReferenceIndex { sheet, row, column })?;
                 }
             }
         }

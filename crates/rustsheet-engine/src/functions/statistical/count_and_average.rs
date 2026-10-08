@@ -32,15 +32,7 @@ impl Model {
                     f(if value { 1.0 } else { 0.0 });
                 }
                 CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        f(parsed);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
+                    f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
                 }
                 CalcResult::Array(array) => {
                     for row in array {
@@ -120,6 +112,9 @@ impl Model {
                     f(0.0);
                 }
                 CalcResult::String(value) => {
+                    if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
+                        return Err(error);
+                    }
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
@@ -206,7 +201,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(flush_subnormal(sum / count))
+        CalcResult::finite_number_or_num(flush_subnormal(sum / count), cell)
     }
 
     pub(crate) fn fn_averagea(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -260,6 +255,8 @@ impl Model {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
+                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
+                        return error;
                     } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;
@@ -295,7 +292,7 @@ impl Model {
                 message: "Division by Zero".to_string(),
             };
         }
-        CalcResult::Number(sum / count)
+        CalcResult::Number(flush_subnormal(sum / count))
     }
 
     pub(crate) fn fn_avedev(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -368,7 +365,13 @@ impl Model {
             // even: average of the two middle values
             let a = values[(n / 2) - 1];
             let b = values[n / 2];
-            (a + b) / 2.0
+            // Halve first when the sum would overflow: Excel gives 9E+307 for two 9E+307 values.
+            let sum = a + b;
+            if sum.is_finite() {
+                sum / 2.0
+            } else {
+                a / 2.0 + b / 2.0
+            }
         };
 
         CalcResult::Number(median)
@@ -614,6 +617,23 @@ impl Model {
         CalcResult::Number(kurt)
     }
 
+    /// The `k` of LARGE/SMALL: booleans and numeric text coerce (TRUE is 1) and anything below 1
+    /// is `#NUM!` before rounding. A fractional k then picks the `ceil(k)`-th largest but the
+    /// `floor(k)`-th smallest, and `#NUM!` when `ceil(k)` exceeds the count, so the callers
+    /// round it themselves. Evidence: probes/large-small-k (excel-graph),
+    /// docs/excel-semantics/statistics.md.
+    fn large_small_k(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let k = self.get_number(node, cell)?;
+        if k < 1.0 {
+            return Err(CalcResult::Error {
+                error: Error::NUM,
+                origin: cell,
+                message: "K must be >= 1".to_string(),
+            });
+        }
+        Ok(k)
+    }
+
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
@@ -682,17 +702,10 @@ impl Model {
                 }
             }
         };
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
+        let k = match self.large_small_k(&args[1], cell) {
+            Ok(k) => k,
+            Err(e) => return e,
         };
-        if k < 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            };
-        }
         let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
         if numeric_values.is_empty() {
             return CalcResult::Error {
@@ -702,7 +715,7 @@ impl Model {
             };
         }
         numeric_values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(Ordering::Equal));
-        let k_usize = k as usize;
+        let k_usize = k.ceil() as usize;
         if k_usize > numeric_values.len() {
             return CalcResult::Error {
                 error: Error::NUM,
@@ -783,18 +796,10 @@ impl Model {
             }
         };
 
-        let k = match self.get_number_no_bools(&args[1], cell) {
-            Ok(f) => f.trunc(),
-            Err(s) => return s,
+        let k = match self.large_small_k(&args[1], cell) {
+            Ok(k) => k,
+            Err(e) => return e,
         };
-
-        if k < 1.0 {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "K must be >= 1".to_string(),
-            };
-        }
 
         let mut numeric_values: Vec<f64> = values.into_iter().flatten().collect();
         if numeric_values.is_empty() {
@@ -808,8 +813,9 @@ impl Model {
         // For SMALL, sort ascending
         numeric_values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
-        let k_usize = k as usize;
-        if k_usize > numeric_values.len() {
+        // Excel takes the floor for SMALL but still refuses a k whose ceiling is out of range.
+        let k_usize = k.floor() as usize;
+        if k.ceil() as usize > numeric_values.len() {
             return CalcResult::Error {
                 error: Error::NUM,
                 origin: cell,

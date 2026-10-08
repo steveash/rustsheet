@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "Result-length limit of SUBSTITUTE, CONCAT, TEXTJOIN past 32767 chars (T-0241)",
+ "description": "Result-length limit of SUBSTITUTE, CONCAT, TEXTJOIN past 32767 chars (T-0241); boundary, UTF-16 and error precedence for CONCAT/TEXTJOIN (T-0262)",
  "tags": [
   "M2",
   "limits",
@@ -23,7 +23,19 @@
     "C11": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"z\",REPT(\"b\",32767),1))",
     "C12": "=LEN(SUBSTITUTE(REPT(\"a\",32767),\"z\",REPT(\"b\",32767)))",
     "C13": "=LEN(SUBSTITUTE(REPT(\"a\",20000),\"z\",REPT(\"b\",20000)))",
-    "C14": "=LEN(SUBSTITUTE(REPT(\"a\",20000),\"a\",REPT(\"b\",20000),1))"
+    "C14": "=LEN(SUBSTITUTE(REPT(\"a\",20000),\"a\",REPT(\"b\",20000),1))",
+    "A1": "b",
+    "A2": "=NA()",
+    "C15": "=LEN(CONCAT(REPT(\"a\",32766),\"b\"))",
+    "C16": "=ISTEXT(CONCAT(REPT(\"a\",32765),\"😀\"))",
+    "C17": "=LEN(CONCAT(REPT(\"a\",32766),\"😀\"))",
+    "C18": "=CONCAT(REPT(\"a\",32767),\"b\",NA())",
+    "C19": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),\"b\",NA())",
+    "C20": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),A1:A2)",
+    "C21": "=LEN(TEXTJOIN(\",\",TRUE,REPT(\"a\",32765),\"b\"))",
+    "C22": "=ISTEXT(TEXTJOIN(\"\",TRUE,REPT(\"a\",32765),\"😀\"))",
+    "C23": "=LEN(TEXTJOIN(\"\",TRUE,REPT(\"a\",32766),\"😀\"))",
+    "C24": "=LEN(\"😀\")"
    }
   }
  ],
@@ -42,6 +54,16 @@
   "Sheet1!C11",
   "Sheet1!C12",
   "Sheet1!C13",
-  "Sheet1!C14"
+  "Sheet1!C14",
+  "Sheet1!C15",
+  "Sheet1!C16",
+  "Sheet1!C17",
+  "Sheet1!C18",
+  "Sheet1!C19",
+  "Sheet1!C20",
+  "Sheet1!C21",
+  "Sheet1!C22",
+  "Sheet1!C23",
+  "Sheet1!C24"
  ]
 }

@@ -58,7 +58,7 @@ fn reading_numbers() {
         ("9.99999999999999e307", 9.99999999999999e307),
         ("0", 0.0),
         // Too small to hold is zero, which is a number.
-        // TODO(T-0154): Excel reads "1e-400" as #VALUE! (probes/text-number-words A9, B5)
+        // TODO(T-1100): `"1e-400"+0` is #VALUE! (probes/text-number-words A9); conditional formats unprobed
         ("1e-400", 0.0),
     ] {
         assert_eq!(parse_finite_number(text), Some(number), "{text}");
@@ -272,14 +272,17 @@ fn a_number_too_large_in_a_formula_is_an_error() {
     // Excel does not load a formula with a literal of 1E+308 or more
     // (docs/excel-semantics/numbers.md); it is no number here either
     model._set("A3", "=1e308");
-    // Too small to hold is zero. TODO(T-0154): check against Excel with the tiny-text rule
+    // Below 1E-309 Excel does not load the formula either; from 1E-309 up the literal is 0
+    // (numbers.md, probes/literal-number-tiny)
     model._set("A4", "=1e-400");
+    model._set("A5", "=1e-309");
     model.evaluate();
 
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
     assert_eq!(model._get_text("A3"), "#ERROR!");
-    assert_eq!(model._get_text("A4"), "0");
+    assert_eq!(model._get_text("A4"), "#ERROR!");
+    assert_eq!(model._get_text("A5"), "0");
     // The formula is kept as it was written, not as an infinity
     assert_eq!(model._get_formula("A1"), "=1e400");
     assert_eq!(model._get_formula("A2"), "=SUM(1e400, 1)");

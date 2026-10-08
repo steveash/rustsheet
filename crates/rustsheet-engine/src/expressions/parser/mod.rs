@@ -53,6 +53,7 @@ use super::utils::number_to_column;
 use sheet_span::with_sheet_span;
 use token::OpCompare;
 
+mod chain;
 mod depth;
 mod lambda;
 mod lists;
@@ -62,7 +63,13 @@ mod sheet_span;
 pub mod static_analysis;
 pub mod stringify;
 
-pub use depth::{MAX_FORMULA_DEPTH, TOO_DEEP_MESSAGE};
+pub use chain::ChainLeft;
+use chain::ChainLevel;
+pub(crate) use chain::{for_each_chain_operand_mut, left_chain, value_operands};
+pub(crate) use depth::is_limit_error;
+pub use depth::{
+    MAX_FORMULA_DEPTH, MAX_VALUE_OPERATORS, TOO_DEEP_MESSAGE, TOO_MANY_OPERATORS_MESSAGE,
+};
 
 #[cfg(test)]
 mod tests;
@@ -149,6 +156,7 @@ pub struct CompletionContext {
     pub replace_from: usize,
 }
 
+/// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
     BooleanKind(bool),
@@ -211,31 +219,34 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
+        /// The intersection was written in parentheses, `(A1 B1)`; only an `@` operand prints
+        /// them back, as Excel's FORMULATEXT does (`@(A1 B1)`, T-1109).
+        parenthesized: bool,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// The union was written in its own parentheses as an operand of an enclosing union
-        /// (`((A1,B2),C3)`), so printing keeps them; a plain chain `(A1,B2,C3)` is not grouped.
-        grouped: bool,
+        /// Parentheses levels written around the union: 0 for the left link of a plain chain
+        /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
+        written: usize,
     },
     OpConcatenateKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpSumKind {
         kind: token::OpSum,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpProductKind {
         kind: token::OpProduct,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     OpPowerKind {
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     FunctionKind {
@@ -271,9 +282,15 @@ pub enum Node {
     SpillRangeOperator {
         child: Box<Node>,
     },
+    /// A whole formula written in parentheses, `=(A1-1)`: only ever the root. Excel tells it
+    /// apart from `=A1-1` (it skips near-zero snapping, docs/excel-semantics/numbers.md) and keeps
+    /// the parentheses in the formula text, so it prints them back. It evaluates as `child`.
+    GroupedRootKind {
+        child: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
-        left: Box<Node>,
+        left: ChainLeft,
         right: Box<Node>,
     },
     UnaryKind {
@@ -309,6 +326,13 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
+    /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
+    at_paren: bool,
+    /// The formula starts with `(` and that group has not been parsed yet.
+    leading_paren: bool,
+    /// The group opened by the formula's first `(` closes at the end of the formula: the whole
+    /// formula is parenthesized (`=(A1-1)`).
+    grouped_root: bool,
     /// Primaries (operands) open on the current parse path. Checked before
     /// descending so the parser's own recursion stays bounded.
     nesting: usize,
@@ -316,6 +340,8 @@ pub struct Parser {
     depth: usize,
     /// Deepest subexpression parsed so far inside the primary being parsed.
     inner_depth: usize,
+    /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
+    value_operators: usize,
 }
 
 pub fn new_parser_english(
@@ -352,9 +378,13 @@ impl Parser {
             language,
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
+            at_paren: false,
+            leading_paren: false,
+            grouped_root: false,
             nesting: 0,
             depth: 0,
             inner_depth: 0,
+            value_operators: 0,
         }
     }
     pub fn set_lexer_mode(&mut self, mode: lexer::LexerMode) {
@@ -389,8 +419,33 @@ impl Parser {
         self.nesting = 0;
         self.depth = 0;
         self.inner_depth = 0;
+        self.value_operators = 0;
+        self.leading_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
+        self.grouped_root = false;
         let node = self.parse_expr();
         self.expect_end(node)
+    }
+
+    /// Parses a cell formula like [`Parser::parse`], but a formula written wholly in parentheses
+    /// (`=(A1-1)`, `=((A1-1))`) gets a [`Node::GroupedRootKind`] root, so it prints back with
+    /// them and evaluation can tell it from `=A1-1` (Excel skips near-zero snapping for it,
+    /// probes-numeric/30bc5f8fab02d0a2 `parenthesized-sub`; docs/excel-semantics/numbers.md).
+    /// A union keeps its own written parentheses (`OpUnionKind::written`), so it is not wrapped.
+    pub fn parse_cell_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+        let node = self.parse(formula, context);
+        if !self.grouped_root
+            || matches!(
+                node,
+                Node::ParseErrorKind { .. }
+                    | Node::OpUnionKind { .. }
+                    | Node::GroupedRootKind { .. }
+            )
+        {
+            return node;
+        }
+        Node::GroupedRootKind {
+            child: Box::new(node),
+        }
     }
 
     /// Parses `formula` up to `cursor` (a char offset) and reports what the
@@ -478,141 +533,14 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Node {
-        let mut t = self.parse_concat();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Compare(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_concat();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::CompareKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        self.inner_depth = self.inner_depth.max(depth);
-        t
-    }
-
-    fn parse_concat(&mut self) -> Node {
-        let mut t = self.parse_term();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while next_token == TokenType::And {
-            self.lexer.advance_token();
-            let p = self.parse_term();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpConcatenateKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
+        let t = self.parse_chain(ChainLevel::Compare);
+        if !matches!(t, Node::ParseErrorKind { .. }) {
+            self.inner_depth = self.inner_depth.max(self.depth);
         }
         t
     }
 
-    fn parse_term(&mut self) -> Node {
-        let mut t = self.parse_factor();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Addition(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_factor();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpSumKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_factor(&mut self) -> Node {
-        let mut t = self.parse_prod();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while let TokenType::Product(op) = next_token {
-            self.lexer.advance_token();
-            let p = self.parse_prod();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpProductKind {
-                kind: op,
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_prod(&mut self) -> Node {
-        let mut t = self.parse_power();
-        if let Node::ParseErrorKind { .. } = t {
-            return t;
-        }
-        let mut depth = self.depth;
-        let mut next_token = self.lexer.peek_token();
-        while next_token == TokenType::Power {
-            self.lexer.advance_token();
-            let p = self.parse_power();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
-            depth = self.depth;
-            t = Node::OpPowerKind {
-                left: Box::new(t),
-                right: Box::new(p),
-            };
-            next_token = self.lexer.peek_token();
-        }
-        t
-    }
-
-    fn parse_power(&mut self) -> Node {
+    pub(super) fn parse_power(&mut self) -> Node {
         let mut next_token = self.lexer.peek_token();
         // Every minus is kept (`--x` coerces `x` to a number); a plus is a no-op.
         let mut minus_count = 0;
@@ -653,7 +581,7 @@ impl Parser {
     fn parse_operand(&mut self) -> Node {
         let next_token = self.lexer.next_token();
         match next_token {
-            TokenType::LeftParenthesis => self.parse_parenthesized(),
+            TokenType::LeftParenthesis => self.parse_parenthesized_call(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
             TokenType::LeftBrace => {
@@ -870,8 +798,9 @@ impl Parser {
                             child: Box::new(args[0].clone()),
                         };
                     }
-                    // We should do this *only* importing functions from xlsx: Spill Range Operator
-                    if &name == "_xlfn.ANCHORARRAY" {
+                    // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
+                    // (probes/at-operand-formulatext J1, T-1109).
+                    if display_name.eq_ignore_ascii_case("ANCHORARRAY") {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
                                 formula: self.lexer.get_formula(),

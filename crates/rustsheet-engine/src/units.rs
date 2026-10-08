@@ -1,5 +1,9 @@
 use crate::{
-    expressions::{parser::Node, token::OpProduct, types::CellReferenceIndex},
+    expressions::{
+        parser::{left_chain, Node},
+        token::OpProduct,
+        types::CellReferenceIndex,
+    },
     formatter::parser::{ParsePart, Parser},
     functions::Function,
     model::Model,
@@ -156,125 +160,23 @@ impl Model {
                     column: column1,
                 })
             }
-            Node::OpSumKind {
-                kind: _,
-                left,
-                right,
-            } => {
-                let left_units = self.compute_node_units(left, cell);
-                let right_units = self.compute_node_units(right, cell);
-                match (&left_units, &right_units) {
-                    (Some(_), None) => left_units,
-                    (None, Some(_)) => right_units,
-                    (Some(l), Some(r)) => {
-                        if l.get_precision() < r.get_precision() {
-                            right_units
-                        } else {
-                            left_units
+            Node::OpSumKind { .. } | Node::OpProductKind { .. } => {
+                // A loop down the chain's left operands, not recursion (T-0128). A link that
+                // is neither `+ -` nor `* /` has no units, whatever its operands.
+                let (links, first) = left_chain(node);
+                let mut units = self.compute_node_units(first, cell);
+                for link in links {
+                    units = match link {
+                        Node::OpSumKind { right, .. } => {
+                            sum_units(units, self.compute_node_units(right, cell))
                         }
-                    }
-                    (None, None) => None,
+                        Node::OpProductKind { kind, right, .. } => {
+                            product_units(kind, units, self.compute_node_units(right, cell))
+                        }
+                        _ => None,
+                    };
                 }
-            }
-            Node::OpProductKind { kind, left, right } => {
-                let left_units = self.compute_node_units(left, cell);
-                let right_units = self.compute_node_units(right, cell);
-                match (&left_units, &right_units) {
-                    (
-                        Some(Units::Percentage { precision: l, .. }),
-                        Some(Units::Percentage { precision: r, .. }),
-                    ) => {
-                        if l > r {
-                            left_units
-                        } else {
-                            if *r > 1 {
-                                return right_units;
-                            }
-                            // When multiplying percentage we want at least two decimal places
-                            Some(Units::Percentage {
-                                group_separator: false,
-                                precision: 2,
-                                num_fmt: "0.00%".to_string(),
-                            })
-                        }
-                    }
-                    (
-                        Some(Units::Currency {
-                            currency,
-                            precision,
-                            ..
-                        }),
-                        Some(Units::Percentage { .. }),
-                    ) => {
-                        match kind {
-                            OpProduct::Divide => None,
-                            OpProduct::Times => {
-                                if *precision > 1 {
-                                    return left_units;
-                                }
-                                // This is tricky, we need at least 2 digit precision
-                                // but I do not want to mess with the num_fmt string
-                                Some(Units::Currency {
-                                    currency: currency.to_string(),
-                                    group_separator: true,
-                                    precision: 2,
-                                    num_fmt: format!("{currency}#,##0.00"),
-                                })
-                            }
-                        }
-                    }
-                    (
-                        Some(Units::Percentage { .. }),
-                        Some(Units::Currency {
-                            precision,
-                            currency,
-                            ..
-                        }),
-                    ) => {
-                        match kind {
-                            OpProduct::Divide => None,
-                            OpProduct::Times => {
-                                if *precision > 1 {
-                                    return right_units;
-                                }
-                                // This is tricky, we need at least 2 digit precision
-                                // but I do not want to mess with the num_fmt string
-                                Some(Units::Currency {
-                                    currency: currency.to_string(),
-                                    group_separator: true,
-                                    precision: 2,
-                                    num_fmt: format!("{currency}#,##0.00"),
-                                })
-                            }
-                        }
-                    }
-                    (Some(Units::Percentage { .. }), _) => right_units,
-                    (_, Some(Units::Percentage { .. })) => match kind {
-                        OpProduct::Divide => None,
-                        OpProduct::Times => left_units,
-                    },
-                    (None, _) => match kind {
-                        OpProduct::Divide => None,
-                        OpProduct::Times => right_units,
-                    },
-                    (_, None) => left_units,
-                    (
-                        Some(Units::Number { precision: l, .. }),
-                        Some(Units::Number { precision: r, .. }),
-                    ) => {
-                        if l > r {
-                            left_units
-                        } else {
-                            right_units
-                        }
-                    }
-                    (Some(Units::Number { .. }), _) => match kind {
-                        OpProduct::Divide => None,
-                        OpProduct::Times => right_units,
-                    },
-                    (_, Some(Units::Number { .. })) => left_units,
-                    _ => None,
-                }
+                units
             }
             Node::FunctionKind { kind, args } => self.compute_function_units(kind, args, cell),
             Node::UnaryKind { kind: _, right } => {
@@ -303,6 +205,7 @@ impl Model {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
+            Node::GroupedRootKind { child } => self.compute_node_units(child, cell),
             Node::LambdaDefKind { .. } => None,
             Node::LambdaCallKind { .. } => None,
         }
@@ -403,5 +306,122 @@ impl Model {
 
         // FIXME: Remove weird spaces (we should do that in the locale loading phase)
         Some(Units::Date(date_time_short.replace(' ', " ")))
+    }
+}
+
+/// The units of `left + right` (or `-`) from its operands' units.
+fn sum_units(left_units: Option<Units>, right_units: Option<Units>) -> Option<Units> {
+    match (&left_units, &right_units) {
+        (Some(_), None) => left_units,
+        (None, Some(_)) => right_units,
+        (Some(l), Some(r)) => {
+            if l.get_precision() < r.get_precision() {
+                right_units
+            } else {
+                left_units
+            }
+        }
+        (None, None) => None,
+    }
+}
+
+/// The units of `left * right` (or `/`, by `kind`) from its operands' units.
+fn product_units(
+    kind: &OpProduct,
+    left_units: Option<Units>,
+    right_units: Option<Units>,
+) -> Option<Units> {
+    match (&left_units, &right_units) {
+        (
+            Some(Units::Percentage { precision: l, .. }),
+            Some(Units::Percentage { precision: r, .. }),
+        ) => {
+            if l > r {
+                left_units
+            } else {
+                if *r > 1 {
+                    return right_units;
+                }
+                // When multiplying percentage we want at least two decimal places
+                Some(Units::Percentage {
+                    group_separator: false,
+                    precision: 2,
+                    num_fmt: "0.00%".to_string(),
+                })
+            }
+        }
+        (
+            Some(Units::Currency {
+                currency,
+                precision,
+                ..
+            }),
+            Some(Units::Percentage { .. }),
+        ) => {
+            match kind {
+                OpProduct::Divide => None,
+                OpProduct::Times => {
+                    if *precision > 1 {
+                        return left_units;
+                    }
+                    // This is tricky, we need at least 2 digit precision
+                    // but I do not want to mess with the num_fmt string
+                    Some(Units::Currency {
+                        currency: currency.to_string(),
+                        group_separator: true,
+                        precision: 2,
+                        num_fmt: format!("{currency}#,##0.00"),
+                    })
+                }
+            }
+        }
+        (
+            Some(Units::Percentage { .. }),
+            Some(Units::Currency {
+                precision,
+                currency,
+                ..
+            }),
+        ) => {
+            match kind {
+                OpProduct::Divide => None,
+                OpProduct::Times => {
+                    if *precision > 1 {
+                        return right_units;
+                    }
+                    // This is tricky, we need at least 2 digit precision
+                    // but I do not want to mess with the num_fmt string
+                    Some(Units::Currency {
+                        currency: currency.to_string(),
+                        group_separator: true,
+                        precision: 2,
+                        num_fmt: format!("{currency}#,##0.00"),
+                    })
+                }
+            }
+        }
+        (Some(Units::Percentage { .. }), _) => right_units,
+        (_, Some(Units::Percentage { .. })) => match kind {
+            OpProduct::Divide => None,
+            OpProduct::Times => left_units,
+        },
+        (None, _) => match kind {
+            OpProduct::Divide => None,
+            OpProduct::Times => right_units,
+        },
+        (_, None) => left_units,
+        (Some(Units::Number { precision: l, .. }), Some(Units::Number { precision: r, .. })) => {
+            if l > r {
+                left_units
+            } else {
+                right_units
+            }
+        }
+        (Some(Units::Number { .. }), _) => match kind {
+            OpProduct::Divide => None,
+            OpProduct::Times => right_units,
+        },
+        (_, Some(Units::Number { .. })) => left_units,
+        _ => None,
     }
 }

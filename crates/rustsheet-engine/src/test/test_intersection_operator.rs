@@ -209,3 +209,113 @@ fn ideographic_space_intersection_is_name_error_and_keeps_its_text() {
     assert_eq!(model._get_text("A1"), "#NAME?");
     assert_eq!(model._get_text("B9"), "=A1:A3\u{3000}A2:B2");
 }
+
+#[test]
+fn at_operand_binds_looser_than_the_space() {
+    // probes/intersection-operands H10:H11 and probes/intersection-at-operands (T-0149).
+    let mut model = model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "3"), ("B2", "20")] {
+        model._set(cell, value);
+    }
+    model._set("H10", "=A1 @A1");
+    model._set("H11", "=@A1:A3 A2:B2");
+    model._set("H12", "=@A1:A3 A2:B2 + 1");
+    model._set("H1", "=A1:A3 @A2:B2");
+    model.evaluate();
+    assert_eq!(model._get_text("H10"), "1");
+    assert_eq!(model._get_text("H11"), "2");
+    assert_eq!(model._get_text("H12"), "3");
+    assert_eq!(model._get_text("H1"), "#VALUE!");
+    // Printed as Excel's FORMULATEXT does (probes/intersection-at-formulatext, T-1098).
+    assert_eq!(model._get_formula("H10"), "=A1 @A1");
+    assert_eq!(model._get_formula("H11"), "=@A1:A3 A2:B2");
+}
+
+#[test]
+fn called_parenthesized_reference_is_ref_error() {
+    // probes/paren-call-operands, probes/paren-call-value (Excel refuses `(1)(2)`), T-0149.
+    let mut model = model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("H1", "=(A1)(A2)");
+    model._set("H2", "=(A1) (A2)");
+    model._set("H3", "=(LAMBDA(x,x+1))(2)");
+    model._set("H4", "=(1)(2)");
+    model._set("H5", "=(IF(TRUE,LAMBDA(x,x*2)))(3)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "#REF!");
+    assert_eq!(model._get_text("H2"), "#NULL!");
+    assert_eq!(model._get_text("H3"), "3");
+    assert_eq!(model._get_text("H4"), "#ERROR!");
+    assert_eq!(model._get_text("H5"), "6");
+    assert_eq!(model._get_formula("H1"), "=(A1)(A2)");
+    assert_eq!(model._get_formula("H5"), "=(IF(TRUE,LAMBDA(x,x*2)))(3)");
+}
+
+#[test]
+fn reference_returning_lookups_are_intersection_operands() {
+    // XLOOKUP, TAKE, DROP and TRIMRANGE over a range are references
+    // (probes/intersection-function-operands H8, H11, H12, H14; T-0165).
+    let mut model = model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("A2", "2"),
+        ("A3", "3"),
+        ("B1", "10"),
+        ("B2", "20"),
+        ("B3", "30"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=A1:A3 XLOOKUP(2,A1:A3,A1:B3)");
+    model._set("H2", "=A1:A3 TAKE(A2:B3,1)");
+    model._set("H3", "=A1:A3 DROP(A1:B2,1)");
+    model._set("H4", "=A1:A3 TRIMRANGE(A2:B2)");
+    // Counts from the end, and the cells a TRIMRANGE keeps, sit where the range has them.
+    model._set("H5", "=A1:A3 TAKE(A1:B3,-1)");
+    model._set("H6", "=B1:B3 XLOOKUP(3,A1:A3,A1:B3)");
+    model._set("H7", "=A1:A3 DROP(A1:B3,-2,1)");
+    model._set("H8", "=A3:A9 TRIMRANGE(A1:B9)");
+    // The function's own errors pass through the intersection.
+    model._set("H9", "=A1:A3 DROP(A1:B3,5)");
+    model._set("H10", "=A1:A3 XLOOKUP(9,A1:A3,A1:B3)");
+    model._set("H11", "=A1:A3 TAKE(A1:B3,0)");
+    // A count beyond any i64 takes everything and must not overflow.
+    model._set("H12", "=A1 TAKE(A1:B3,-1E300)");
+    // An array source gives an array, which is not an intersection operand.
+    model._set("H13", "=A1:A3 TAKE({1,2},1)");
+    model.evaluate();
+    for cell in ["H1", "H2", "H3", "H4"] {
+        assert_eq!(model._get_text(cell), "2", "{cell}");
+    }
+    assert_eq!(model._get_text("H5"), "3");
+    assert_eq!(model._get_text("H6"), "30");
+    assert_eq!(model._get_text("H7"), "#NULL!");
+    assert_eq!(model._get_text("H8"), "3");
+    assert_eq!(model._get_text("H9"), "#CALC!");
+    assert_eq!(model._get_text("H10"), "#N/A");
+    assert_eq!(model._get_text("H11"), "#CALC!");
+    assert_eq!(model._get_text("H12"), "1");
+    assert_eq!(model._get_text("H13"), "#VALUE!");
+}
+
+#[test]
+fn reference_returning_lookups_keep_their_values_elsewhere() {
+    // Outside an intersection the calls still give their values (T-0165).
+    let mut model = model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("B1", "10");
+    model._set("B2", "20");
+    model._set("D1", "=TAKE(A1:B2,-1)");
+    model._set("D3", "=SUM(DROP(A1:B2,1))");
+    model._set("D4", "=XLOOKUP(2,A1:A2,B1:B2)");
+    model._set("D5", "=TAKE(A1:B2,-1E300,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "2");
+    assert_eq!(model._get_text("E1"), "20");
+    assert_eq!(model._get_text("D3"), "22");
+    assert_eq!(model._get_text("D4"), "20");
+    assert_eq!(model._get_text("D5"), "1");
+    assert_eq!(model._get_text("D6"), "2");
+}

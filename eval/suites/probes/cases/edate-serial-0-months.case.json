@@ -1,0 +1,25 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "EDATE and EOMONTH of serial 0 with months 2, 3, 13, -1 and -12 (T-1052)",
+  "tags": ["M1", "dates", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=EDATE(0,2)",
+        "A2": "=EDATE(0,-1)",
+        "A3": "=EDATE(0,-12)",
+        "A4": "=EDATE(0,3)",
+        "A5": "=EDATE(0,13)",
+        "A6": "=EDATE(0,24)",
+        "A7": "=EOMONTH(0,2)",
+        "A8": "=EOMONTH(0,-1)",
+        "A9": "=EDATE(0,1)",
+        "A10": "=EDATE(0,12)",
+        "A11": "=EDATE(0,14)",
+        "A12": "=EDATE(0,25)"
+      }
+    }
+  ],
+  "expected": {}
+}

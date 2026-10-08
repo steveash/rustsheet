@@ -11,6 +11,26 @@ use crate::{
 use super::r#let::assign_variable_ids;
 
 impl Model {
+    /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
+    /// reference is `#REF!`, even when its cell holds a LAMBDA (`(A1)(A2)`, `(C1)(2)`;
+    /// docs/excel-semantics/references.md "Calling a parenthesized operand", T-0149); anything
+    /// else is called as a LAMBDA.
+    pub(crate) fn call_callee(
+        &mut self,
+        callee: CalcResult,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        if let CalcResult::Range { .. } = callee {
+            return CalcResult::new_error(
+                Error::REF,
+                cell,
+                "A reference cannot be called".to_string(),
+            );
+        }
+        self.call_lambda(callee, call_args, cell)
+    }
+
     /// Evaluates the body of a named lambda with the given call-site argument nodes.
     /// Optional parameters not covered by call_args receive EmptyArg.
     pub(crate) fn call_lambda(
@@ -49,7 +69,9 @@ impl Model {
 
         for (i, raw_id) in bound_ids.iter().enumerate() {
             let val = if i < call_args.len() {
-                self.evaluate_node_in_context(&call_args[i], cell)
+                // A reference is passed as a reference, a single cell too, so that
+                // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
+                self.evaluate_node_with_reference(&call_args[i], cell)
             } else {
                 CalcResult::EmptyArg
             };

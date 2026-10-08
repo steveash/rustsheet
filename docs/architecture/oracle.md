@@ -81,6 +81,13 @@ Limits of the canary:
    `closeSession`. Before 2026-10-04 it then downloaded the file anyway, which handed back the
    upload. It now raises `OracleError` instead.
 
+**Typed input** (T-0280). A spec cell `{"entered":"text"}` is written into the open session by a
+range `values` PATCH before `calculate`; Excel parses it exactly as typed text (value and number
+format) and the PATCH response's `numberFormat` is logged as `ENTERED <sheet>!<a1> ...` on stderr.
+Only the value reaches the sidecar: the cached result stores no formats the snapshot reads, and
+`CELL("format")` is `#VALUE!` on Excel for the web. Record the logged formats in
+`docs/excel-semantics/` with the probe case id.
+
 **Unsupported territory.** Microsoft documents the workbook endpoints (sessions, `calculate`) as
 **delegated-only**; app-only (client-credentials) use works in this tenant but is undocumented
 and may change without notice. Nothing documents when Excel for the web persists a session
@@ -97,7 +104,8 @@ Proof that it is Excel calculating (2026-10-04): with the fixed flow, the downlo
 
 Calibration against 206 desktop-Excel-saved ironcalc workbooks (71,765 cells, 99.96% bit-exact;
 docs/research/oracle-calibration.md) found where Excel for the web, our oracle, differs (which one
-decides goldens when they disagree: decision 0030, desktop Excel wins):
+decides goldens when they disagree: decision 0030, desktop Excel wins; in Phases 1–3 decision 0039
+matches the web unless desktop evidence already in the repo decides, and desktop probes are Phase 4):
 
 - **References to missing sheets.** `INDIRECT("NoSuchSheet!A1")` is a reference to an empty cell
   in Excel for the web (value 0, `ISREF` TRUE, `ROW` works); desktop Excel returns #REF!. Never
@@ -113,6 +121,13 @@ decides goldens when they disagree: decision 0030, desktop Excel wins):
   `CELL("width")` is unimplemented (`#VALUE!`). The fill leaves such cells pending (`CONFLICT`)
   and refuses `CELL("width")` workbooks; docs/excel-semantics/number-formats.md lists them as
   CONFLICTING (decision 0019).
+- **JIS unknown, FILTERXML failing on en-US Excel for the web (T-0040).** `JIS` is `#NAME?`,
+  bare and as `_xlfn.JIS` (probes/catalog/availability-22 A8, function-name-forms-2 A1/A2);
+  `FILTERXML("<a>1</a>","//a")` is `#VALUE!` (probes/catalog/function-name-forms A7), for valid
+  XML and XPath (its page says it relies on Windows). Whether desktop Excel differs is unknown.
+  The web values are goldens (decision 0039); desktop confirmation is T-1081 (M14). Every other
+  in-scope catalog function is recognised (probes/catalog/availability-*). INFO and SHEETS have no
+  web values at all: the canary refuses their workbooks (catalog `oracle: none`).
 - **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
   settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")` = 36893, `VALUE("1.5")` = 1.5);
   if the site is changed, every fill fails rather than returning another locale's answers.
@@ -219,6 +234,8 @@ Variables read by the tool:
 - `_FOLDER` (default `/rustsheet-oracle`)
 
 ## Owner setup — Windows desktop backend (later, optional)
+Not planned soon. Setting it up starts Phase 4 (M14 in docs/milestones.md; decision 0039). Until
+then nothing waits for it: excel-graph is the oracle of record for Phases 1–3.
 - A Windows 11 machine or VM with Microsoft 365 Apps, signed in, with auto-logon to a dedicated
   user. Excel must run in an interactive session, not as a service.
 - Install Python 3.11+, `uv`, Rust and `pip install pywin32`. Register a GitHub self-hosted runner

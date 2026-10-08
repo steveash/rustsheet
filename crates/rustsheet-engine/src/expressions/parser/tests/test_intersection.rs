@@ -33,7 +33,7 @@ fn is_intersection(node: &Node) -> bool {
 fn space_between_references_is_an_intersection() {
     let mut parser = parser();
     let node = parser.parse("A1:B2 B1:B3", &context());
-    let Node::OpIntersectKind { left, right } = &node else {
+    let Node::OpIntersectKind { left, right, .. } = &node else {
         panic!("expected an intersection, got {node:?}");
     };
     assert!(matches!(**left, Node::RangeKind { .. }));
@@ -44,7 +44,7 @@ fn space_between_references_is_an_intersection() {
 fn intersection_chains_left_to_right() {
     let mut parser = parser();
     let node = parser.parse("Data!C1:D7 Data!C1:C12 Data!A6:E6", &context());
-    let Node::OpIntersectKind { left, right } = &node else {
+    let Node::OpIntersectKind { left, right, .. } = &node else {
         panic!("expected an intersection, got {node:?}");
     };
     assert!(is_intersection(left), "left operand: {left:?}");
@@ -146,7 +146,20 @@ fn intersections_round_trip_through_stringify() {
         ("$A$10:$D$12 A12", "$A$10:$D$12 A12"),
         ("A1 (B1:C3 C1)", "A1 (B1:C3 C1)"),
         ("(A1 B1):C3", "(A1 B1):C3"),
+        // `@` applies to the whole intersection after it; Excel prints it bare, and keeps written
+        // parentheses (T-1098, T-1109).
         ("@(A1:B2 B1)", "@(A1:B2 B1)"),
+        ("@A1:B2 B1", "@A1:B2 B1"),
+        ("A1 @A1", "A1 @A1"),
+        ("A1 @A1 @A1", "A1 @A1 @A1"),
+        ("(A1 @A1) B1", "(A1 @A1) B1"),
+        ("A1 (@A1 B1)", "A1 @A1 B1"),
+        ("(@A1) B1", "(@A1) B1"),
+        // An `@` operand of `:` or `@` is parenthesized so the text re-parses (T-1102).
+        ("A1:(@B1)", "A1:(@B1)"),
+        ("(@(A1 B1)):C3", "(@(A1 B1)):C3"),
+        ("@(@(A1 B1))", "@(@(A1 B1))"),
+        ("(@A1:B2)#", "(@A1:B2)#"),
         ("-A1:A3 A2", "-A1:A3 A2"),
         ("SUM(A1:B2 B1:B3,C1)", "SUM(A1:B2 B1:B3,C1)"),
     ];
@@ -204,6 +217,22 @@ fn long_intersection_chains_hit_the_depth_cap() {
     // U+3000 chains are capped the same way (security review: no unbounded chain).
     let ideographic = vec!["A1"; MAX_FORMULA_DEPTH * 4].join("\u{3000}");
     let node = parser.parse(&ideographic, &context());
+    assert!(matches!(node, Node::ParseErrorKind { .. }), "{node:?}");
+}
+
+#[test]
+fn long_at_operand_chains_hit_the_depth_cap() {
+    // `@` recurses into the intersection with no operand in between (T-0149).
+    let mut parser = parser();
+    let chain = |terms: usize| format!("A1{}", " @A1".repeat(terms));
+    let node = parser.parse(&chain(MAX_FORMULA_DEPTH / 8), &context());
+    assert!(is_intersection(&node), "{node:?}");
+    let node = parser.parse(&chain(MAX_FORMULA_DEPTH * 4), &context());
+    let Node::ParseErrorKind { message, .. } = node else {
+        panic!("expected the depth error, got {node:?}");
+    };
+    assert_eq!(message, TOO_DEEP_MESSAGE);
+    let node = parser.parse(&"@".repeat(MAX_FORMULA_DEPTH * 4), &context());
     assert!(matches!(node, Node::ParseErrorKind { .. }), "{node:?}");
 }
 

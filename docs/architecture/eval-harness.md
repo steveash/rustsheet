@@ -45,6 +45,15 @@ Input conventions:
 - A string starting with `=` is a formula, written with **dynamic-array (M365) semantics**.
 - Any other string is text. Use the tagged form for text that starts with `=` or for errors.
 - The empty string `""` is materialized as `=""`.
+- `{"entered":"(1,000)"}` is text entered *as a user types it* (T-0280): Excel's input parser picks
+  the value and number format. spec2xlsx leaves the cell blank and lists it in docProps custom
+  properties `rustsheet.entered.<n>`; the excel-graph backend writes it with a range `values`
+  PATCH before calculating (and logs the `numberFormat` Excel chose as `ENTERED ...` on stderr),
+  excel-desktop sets `Range.Value` (that this parses exactly like typing is UNVERIFIED: no desktop run yet), libreoffice refuses. The engine adapter enters it as
+  `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
+- Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
+  legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
+  (T-1077). The engine adapter ignores it.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 
@@ -55,7 +64,7 @@ The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and
 - `{"t":"n","v":1.5}` number
 - `{"t":"s","v":"x"}` text
 - `{"t":"b","v":true}` boolean
-- `{"t":"e","v":"#DIV/0!"}` error
+- `{"t":"e","v":"#DIV/0!"}` error (add `"stored":true` for a stored `t="e"` constant instead of a formula, T-0999)
 - `{"t":"empty"}` blank
 
 JSON numbers are written shortest-round-trip, so they are exact.
@@ -89,7 +98,12 @@ Only `pass` counts as passing. Case statuses:
 
 ## Outputs
 - `eval/runs/latest/report.md` (git-ignored): suite table; cases that did not run; functions
-  ranked by failing cells; failing examples per function. This is the hill-climbing to-do list.
+  ranked by failing cells; failing examples per function; Excel evidence per function; out-of-scope
+  functions. This is the hill-climbing to-do list. Function counts follow the catalog's `scope`
+  (decision 0027), read from the generated `eval/catalog/scope.json` (decision 0040): `scope: out`
+  functions leave the function tables and get their own section with their reason; the evidence
+  section lists in-scope catalog functions with no Excel evidence and the `oracle: none` ones that
+  need another evidence source. Suite cell counts and baselines still cover every checked cell.
 - `report.json`: the same data, machine-readable.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 

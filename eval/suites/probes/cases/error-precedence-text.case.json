@@ -1,0 +1,88 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Error precedence for text elements and coercion errors next to an error argument: WEEKDAY array/range with text, boolean, blank; MID/LEFT/RIGHT/REPT/FIND scalar vs array forms (T-0994).",
+  "tags": [
+    "M1",
+    "errors",
+    "arrays",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "C1": "=INDEX(WEEKDAY({\"x\",1,TRUE,\"\"},NA()),1,1)",
+        "C2": "=INDEX(WEEKDAY({\"x\",1,TRUE,\"\"},NA()),1,2)",
+        "C3": "=INDEX(WEEKDAY({\"x\",1,TRUE,\"\"},NA()),1,3)",
+        "C4": "=INDEX(WEEKDAY({\"x\",1,TRUE,\"\"},NA()),1,4)",
+        "C5": "=INDEX(WEEKDAY(Data!A1:D1,NA()),1,1)",
+        "C6": "=INDEX(WEEKDAY(Data!A1:D1,NA()),1,2)",
+        "C7": "=INDEX(WEEKDAY(Data!A1:D1,NA()),1,3)",
+        "C8": "=INDEX(WEEKDAY(Data!A1:D1,NA()),1,4)",
+        "C9": "=WEEKDAY(\"x\",NA())",
+        "C10": "=WEEKDAY(NA(),\"x\")",
+        "C11": "=MID(\"abc\",\"x\",NA())",
+        "C12": "=INDEX(MID({\"abc\"},\"x\",NA()),1,1)",
+        "C13": "=MID(\"abc\",NA(),\"x\")",
+        "C14": "=MID(\"x\",1,NA())",
+        "C15": "=LEFT(\"abc\",\"x\")",
+        "C16": "=LEFT(\"abc\",NA())",
+        "C17": "=INDEX(LEFT({\"abc\"},\"x\"),1,1)",
+        "C18": "=RIGHT(\"abc\",\"x\")",
+        "C19": "=RIGHT(NA(),\"x\")",
+        "C20": "=REPT(\"a\",\"x\")",
+        "C21": "=REPT(NA(),\"x\")",
+        "C22": "=INDEX(REPT({\"a\"},\"x\"),1,1)",
+        "C23": "=INDEX(REPT({\"a\"},NA()),1,1)",
+        "C24": "=FIND(NA(),\"abc\",\"x\")",
+        "C25": "=FIND(\"a\",NA(),\"x\")",
+        "C26": "=FIND(\"a\",\"abc\",\"x\")",
+        "C27": "=INDEX(FIND({\"a\"},\"abc\",\"x\"),1,1)",
+        "C28": "=INDEX(FIND({\"a\"},NA(),\"x\"),1,1)",
+        "C29": "=INDEX(MID({\"abc\"},NA(),\"x\"),1,1)",
+        "C30": "=INDEX(LEFT({\"abc\"},NA()),1,1)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": "x",
+        "B1": 1,
+        "C1": true
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Calc!C1",
+    "Calc!C2",
+    "Calc!C3",
+    "Calc!C4",
+    "Calc!C5",
+    "Calc!C6",
+    "Calc!C7",
+    "Calc!C8",
+    "Calc!C9",
+    "Calc!C10",
+    "Calc!C11",
+    "Calc!C12",
+    "Calc!C13",
+    "Calc!C14",
+    "Calc!C15",
+    "Calc!C16",
+    "Calc!C17",
+    "Calc!C18",
+    "Calc!C19",
+    "Calc!C20",
+    "Calc!C21",
+    "Calc!C22",
+    "Calc!C23",
+    "Calc!C24",
+    "Calc!C25",
+    "Calc!C26",
+    "Calc!C27",
+    "Calc!C28",
+    "Calc!C29",
+    "Calc!C30"
+  ]
+}

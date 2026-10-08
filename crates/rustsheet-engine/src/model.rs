@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::arithmetic::{divide, flush_subnormal, minus, plus, power, times};
 use crate::defined_names::ParsedDefinedName;
 use crate::expressions::parser::static_analysis::run_static_analysis_on_node;
 use crate::{
@@ -12,13 +11,14 @@ use crate::{
     constants::{self, LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{
+            is_limit_error,
             move_formula::{move_formula, MoveContext},
             new_parser_english,
             static_analysis::StaticResult,
             stringify::{to_english_string, to_localized_string, to_rc_format},
-            ArrayNode, CompletionContext, NamedVariable, Node, Parser, TOO_DEEP_MESSAGE,
+            ArrayNode, CompletionContext, NamedVariable, Node, Parser,
         },
-        token::{get_error_by_name, Error, OpProduct, OpSum, OpUnary},
+        token::{get_error_by_name, Error},
         types::*,
         utils::{self, is_valid_column_number, is_valid_row},
     },
@@ -67,8 +67,7 @@ pub fn get_milliseconds_since_epoch() -> i64 {
     Date::now() as i64
 }
 
-// The structure of a cell.
-// It can be:
+// The structure of a cell. It can be:
 // * A single cell
 // * The anchor of an array formula
 // * The anchor of a dynamic formula
@@ -191,6 +190,8 @@ pub struct Model {
     pub(crate) lambdas: HashMap<usize, (Vec<NamedVariable>, Node)>,
     /// Last lambda id used. It is incremented every time a new lambda is created.
     pub(crate) last_lambda_id: usize,
+    /// The defined-name bodies being evaluated right now (`within_defined_name`).
+    pub(crate) defined_names_running: crate::defined_names::DefinedNameRun,
     /// Everything the evaluation algorithm needs besides the workbook. See `evaluation.rs`.
     pub(crate) evaluation: Evaluation,
     /// Evaluated CF results per cell, keyed by (sheet_index, row, column).
@@ -361,6 +362,27 @@ impl Model {
                 reference,
                 ..
             } => self.get_sheet_span_reference(*first_index, *last_index, reference, cell),
+            // A variable holds what it was bound to, a reference included.
+            Node::NamedVariableKind { .. } => self.variable_value(node, cell),
+            // A defined name that stands for a reference is that reference, to a single cell as
+            // well: `MAX(TextCell)` ignores the text in it (upstream MIN_MAX_extras.xlsx A1-A3).
+            Node::DefinedNameKind((name, scope, _)) => {
+                match self
+                    .parsed_defined_names
+                    .get(&(*scope, name.to_lowercase()))
+                {
+                    Some(&ParsedDefinedName::CellReference(reference)) => CalcResult::Range {
+                        left: reference,
+                        right: reference,
+                    },
+                    // Answered here so the name is not looked up a second time.
+                    Some(ParsedDefinedName::RangeReference(range)) => CalcResult::Range {
+                        left: range.left,
+                        right: range.right,
+                    },
+                    _ => self.evaluate_node_in_context(node, cell),
+                }
+            }
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
@@ -555,10 +577,11 @@ impl Model {
     ) -> CalcResult {
         use Node::*;
         match node {
-            OpSumKind { kind, left, right } => match kind {
-                OpSum::Add => self.handle_arithmetic(left, right, cell, &plus),
-                OpSum::Minus => self.handle_arithmetic(left, right, cell, &minus),
-            },
+            OpSumKind { .. }
+            | OpProductKind { .. }
+            | OpPowerKind { .. }
+            | OpConcatenateKind { .. }
+            | CompareKind { .. } => self.evaluate_operator_chain(node, cell),
             NumberKind(value) => CalcResult::Number(*value),
             StringKind(value) => CalcResult::String(value.replace(r#""""#, r#"""#)),
             BooleanKind(value) => CalcResult::Boolean(*value),
@@ -588,7 +611,7 @@ impl Model {
                 CalcResult::new_error(Error::REF, cell, "Wrong reference".to_string())
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
-            OpIntersectKind { left, right } => self.get_intersection(left, right, cell),
+            OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
             SheetSpanKind {
                 first_index,
                 last_index,
@@ -629,12 +652,6 @@ impl Model {
                     },
                 }
             }
-            OpConcatenateKind { left, right } => self.handle_concatenate(left, right, cell),
-            OpProductKind { kind, left, right } => match kind {
-                OpProduct::Times => self.handle_arithmetic(left, right, cell, &times),
-                OpProduct::Divide => self.handle_arithmetic(left, right, cell, &divide),
-            },
-            OpPowerKind { left, right } => self.handle_arithmetic(left, right, cell, &power),
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
@@ -674,11 +691,12 @@ impl Model {
                         }
                     }
                 };
-                self.call_lambda(lambda_result, args, cell)
+                self.call_callee(lambda_result, args, cell)
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
-                if let Ok(Some(parsed_defined_name)) = self.get_parsed_defined_name(name, *scope) {
+                let key = (*scope, name.to_lowercase());
+                if let Some(parsed_defined_name) = self.parsed_defined_names.get(&key).cloned() {
                     match parsed_defined_name {
                         ParsedDefinedName::CellReference(reference) => {
                             self.evaluate_cell(reference)
@@ -697,10 +715,13 @@ impl Model {
                             cell,
                             format!("Defined name \"{name}\" is an error."),
                         ),
+                        ParsedDefinedName::Formula(body) => {
+                            self.evaluate_defined_name_formula(name, &body, cell)
+                        }
                         ParsedDefinedName::InvalidDefinedNameFormula => CalcResult::new_error(
                             Error::NAME,
                             cell,
-                            format!("Defined name \"{name}\" is not a reference."),
+                            format!("Defined name \"{name}\" does not parse."),
                         ),
                     }
                 } else {
@@ -716,32 +737,14 @@ impl Model {
                 cell,
                 format!("table name \"{s}\" not supported."),
             ),
-            NamedVariableKind { name, id: Some(id) } => {
-                match self.variable_stack.get(&(*id as usize)) {
-                    Some(v) => v.clone(),
-                    None => CalcResult::new_error(
-                        Error::NAME,
-                        cell,
-                        format!("Variable \"{name}\" not found in scope."),
-                    ),
-                }
-            }
-            NamedVariableKind { name, id: None } => CalcResult::new_error(
-                Error::NAME,
-                cell,
-                format!("Variable name \"{name}\" not found."),
-            ),
-            CompareKind { kind, left, right } => self.handle_comparison(left, right, cell, kind),
-            // What they are applied to is turned into a number, and they work
-            // element by element on a range or an array
-            UnaryKind { kind, right } => match kind {
-                OpUnary::Minus => self.apply_number_unary(right, cell, |f| Ok(-f)),
-                // A subnormal quotient is 0 like for `/` (numbers.md "Subnormal results
-                // become 0", probes/subnormal-function-results A1, A21).
-                OpUnary::Percentage => {
-                    self.apply_number_unary(right, cell, |f| Ok(flush_subnormal(f / 100.0)))
-                }
+            // A variable bound to a single cell is that cell's value where a value is wanted, and
+            // the reference itself where a reference is wanted (`evaluate_node_with_reference`).
+            NamedVariableKind { .. } => match self.variable_value(node, cell) {
+                CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
+                value => value,
             },
+            // Their operand is turned into a number, element by element on a range or an array.
+            UnaryKind { .. } => self.apply_unary_chain(node, cell),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
                 formula, message, ..
@@ -751,7 +754,8 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
-            SpillRangeOperator { child } => match self.evaluate_node_with_reference(child, cell) {
+            GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
+            SpillRangeOperator { child } => match self.eval_ref_or_index(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
                         return CalcResult::new_error(
@@ -802,6 +806,13 @@ impl Model {
                         ),
                     }
                 }
+                // An `@` that finds no cell is `#VALUE!`, and ANCHORARRAY passes it on
+                // (`=ANCHORARRAY((@A1:B2))` in D20, probes/anchorarray-at-operand, T-1115).
+                error @ CalcResult::Error { .. }
+                    if matches!(**child, ImplicitIntersection { .. }) =>
+                {
+                    error
+                }
                 _ => CalcResult::new_error(
                     Error::ERROR,
                     cell,
@@ -818,8 +829,10 @@ impl Model {
                 CalcResult::Lambda(id)
             }
             LambdaCallKind { lambda, args } => {
-                let lambda_result = self.evaluate_node_in_context(lambda, cell);
-                self.call_lambda(lambda_result, args, cell)
+                // With a reference kept as one, a cell and an INDEX or IF that selects one
+                // included: a called reference is `#REF!` (`call_callee`).
+                let lambda_result = self.evaluate_aggregate_arg(lambda, cell);
+                self.call_callee(lambda_result, args, cell)
             }
         }
     }
@@ -1561,6 +1574,7 @@ impl Model {
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
+            defined_names_running: Default::default(),
             evaluation: Evaluation::default(),
             cf_cache: HashMap::new(),
             links: HashMap::new(),
@@ -1693,7 +1707,7 @@ impl Model {
                 column: source.column,
             };
             let formula_str = move_formula(
-                &self.parser.parse(formula, &cell_reference),
+                &self.parser.parse_cell_formula(formula, &cell_reference),
                 &MoveContext {
                     source_sheet_name: &source_sheet_name,
                     row: source.row,
@@ -1812,7 +1826,7 @@ impl Model {
                 row: source.row,
                 column: source.column,
             };
-            let formula = &self.parser.parse(formula_str, &cell_reference);
+            let formula = &self.parser.parse_cell_formula(formula_str, &cell_reference);
             let cell_reference = CellReferenceRC {
                 sheet: target_sheet_name,
                 row: target.row,
@@ -2498,8 +2512,8 @@ impl Model {
 
     /// Parses a formula typed into a cell. A formula that fails to parse is
     /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
-    /// otherwise kept as a parse error, except one nested too deep (no `)` helps), which
-    /// is rejected: the cell could never hold it.
+    /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
+    /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
     fn parse_cell_formula(
         &mut self,
         sheet: u32,
@@ -2509,16 +2523,17 @@ impl Model {
     ) -> Result<Node, String> {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
-        let mut node = self.parser.parse(formula, cell_reference);
-        if matches!(&node, Node::ParseErrorKind { message, .. } if message != TOO_DEEP_MESSAGE) {
-            let retry = self.parser.parse(&format!("{formula})"), cell_reference);
+        let mut node = self.parser.parse_cell_formula(formula, cell_reference);
+        if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
+            let closed = format!("{formula})");
+            let retry = self.parser.parse_cell_formula(&closed, cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;
             }
         }
         match node {
-            Node::ParseErrorKind { message, .. } if message == TOO_DEEP_MESSAGE => {
-                Err(format!("Formula: {TOO_DEEP_MESSAGE}"))
+            Node::ParseErrorKind { message, .. } if is_limit_error(&message) => {
+                Err(format!("Formula: {message}"))
             }
             node => Ok(node),
         }
@@ -2626,21 +2641,6 @@ impl Model {
     }
 
     // Helper function that returns a defined name given the name and scope
-    fn get_parsed_defined_name(
-        &self,
-        name: &str,
-        scope: Option<u32>,
-    ) -> Result<Option<ParsedDefinedName>, String> {
-        let name_upper = name.to_uppercase();
-
-        for (key, df) in &self.parsed_defined_names {
-            if key.1.to_uppercase() == name_upper && key.0 == scope {
-                return Ok(Some(df.clone()));
-            }
-        }
-        Ok(None)
-    }
-
     // Returns the formula for a defined name
     pub(crate) fn get_defined_name_formula(
         &self,

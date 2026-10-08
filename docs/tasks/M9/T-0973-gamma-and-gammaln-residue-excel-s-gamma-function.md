@@ -47,13 +47,13 @@ GAMMALN(3) = 0.6931471805599454 is one ulp above the correctly rounded ln 2 (0.6
 so Excel's GAMMALN is not correctly rounded either and is not plain `ln(GAMMA(3))` in doubles; test
 whether one shared kernel (e.g. ln of the GAMMA routine's internal Lanczos sum, or the routine's own
 log form) reproduces both families. If the cached cells cannot separate the candidates, stop and fit
-against the T-0966 gamma-function sweep (family 3) instead of guessing.
+against the T-1042 gamma-function sweep instead of guessing.
 
 ## Acceptance criteria
 - [ ] All 16 GAMMA NumericClose lines leave `eval/baseline/ironcalc-calc.txt` (exact integers among
       them), no new lines in any baseline (GAMMALN lines T-0926 fixed must stay fixed).
 - [ ] GAMMALN/GAMMALN.PRECISE: either the 18 lines leave the baseline, or the PR lists them with the
-      formulations tried and this task's Outcome points at the T-0966 sweep follow-up.
+      formulations tried and this task's Outcome points at the T-1042 sweep follow-up.
 - [ ] No statrs `gamma::gamma` left in `functions/statistical/gamma.rs` (one gamma-function definition
       in `special.rs`); unit tests GAMMA(1..=6) exact, GAMMA(0.5), poles are #NUM!.
 - [ ] `make check` green; reviewers approve.

@@ -394,3 +394,36 @@ fn test_build_criteria_bare_equals_skips_empty_string() {
     assert!(empty(&CalcResult::String(String::new())));
     assert!(empty(&CalcResult::EmptyCell));
 }
+
+// Excel: criteria equality compares 15-digit values (docs/excel-semantics/numbers.md#criteria-equality).
+#[test]
+fn test_build_criteria_number_tolerance_is_relative() {
+    let one_plus_ulp = 1.0 + f64::EPSILON;
+    let fn_criteria = build_criteria(&CalcResult::Number(1.0), en_locale(), &year_2026);
+    assert!(fn_criteria(&CalcResult::Number(one_plus_ulp)));
+    let fn_criteria = build_criteria(&CalcResult::Number(0.0), en_locale(), &year_2026);
+    assert!(!fn_criteria(&CalcResult::Number(1e-17)));
+    assert!(fn_criteria(&CalcResult::Number(0.0)));
+    let c = CalcResult::String("<>1".to_string());
+    let fn_criteria = build_criteria(&c, en_locale(), &year_2026);
+    assert!(!fn_criteria(&CalcResult::Number(one_plus_ulp)));
+}
+
+#[test]
+fn test_calc_result_ord_uses_15_digit_values() {
+    use std::cmp::Ordering;
+    let num = CalcResult::Number;
+    assert_eq!(num(0.0).cmp(&num(1e-17)), Ordering::Less);
+    assert_eq!(num(1.0).cmp(&num(1.0 + f64::EPSILON)), Ordering::Equal);
+}
+
+#[test]
+fn cmp_excel_precision_total_order_on_nan_and_signed_zero() {
+    use crate::number_format::cmp_excel_precision;
+    use std::cmp::Ordering;
+    assert_eq!(cmp_excel_precision(f64::NAN, f64::NAN), Ordering::Equal);
+    assert_eq!(cmp_excel_precision(f64::NAN, 1.0), Ordering::Greater);
+    assert_eq!(cmp_excel_precision(1.0, f64::NAN), Ordering::Less);
+    assert_eq!(cmp_excel_precision(-f64::NAN, 1.0), Ordering::Greater);
+    assert_eq!(cmp_excel_precision(-0.0, 0.0), Ordering::Equal);
+}

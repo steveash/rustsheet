@@ -110,12 +110,44 @@ cell and `"<>3"` follow the shared grammar; an explicit `"=ab"` is exact, not a 
 Evidence: probes/criteria-operands C9-C16, D17-D25. Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 
-## COUNTIFS lifts an array criterion
-Rule: an array constant as a criterion makes COUNTIFS return an array of counts, one per element:
-`SUM(COUNTIFS(A1:F1,{"bar","baz"}))` = 3 and `{"foo","bar"}` = 4.
-Evidence: poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
+## *IF(S) lift array criteria
+Rule: an array or multi-cell range as a criterion makes COUNTIF(S), SUMIF(S), AVERAGEIF(S),
+MAXIFS and MINIFS return an array of results, one per criteria element:
+`SUM(COUNTIFS(A1:F1,{"bar","baz"}))` = 3. Several array criteria broadcast against each other like
+the element-wise operators (arrays.md): a row and a column give a grid
+(`COUNTIFS(A1:A6,{"a","b"},B1:B6,{1;2;3})` is 3x2), a length-1 dimension stretches, and a position
+past a shorter array uses an `#N/A` criterion, which counts the `#N/A` cells (usually 0, not an
+`#N/A` result: `COUNTIFS(E1:E3,{"q","q"},F1:F3,{1,1,1})` is 1 at position 3 because E1 is `#N/A`
+and F1 is 1). Each element is computed as the scalar function would be (an AVERAGEIFS element with no
+match is `#DIV/0!`). A 1x1 array criterion gives a single value. In a legacy (non-dynamic) formula
+Excel intersects a COUNTIF range criterion instead: poi/FormulaEvalTestData_Copy.xlsx
+EverythingTests!F296 `COUNTIF(G7:K7,E8:G8)` is 2 (Excel-cached).
+Evidence: probes/ifs-array-criteria H1-H39 (oracle: excel-graph, 2026-10-06, T-0207);
+poi/70005-countifs.xlsx Sheet1!A3, D3 (3), A4, D4 (4) (oracle: excel-graph, 2026-10-04).
 Status: VERIFIED
-Tasks: T-0207
+Legacy formulas (fixtures/ifs-legacy-range-criteria.xlsx, oracle excel-graph 2026-10-07, T-0263): a legacy
+formula intersects a multi-cell range criterion for every *IF(S) function, not only COUNTIF: with D1 = "a",
+D2 = "c" over A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, a formula in row 1 uses D1 and in row 2 uses D2:
+COUNTIF/COUNTIFS 3 and 1, SUMIF/SUMIFS 7 and 1 (SUMIF with a one-cell sum range B1 too), AVERAGEIF(S) 2.333.. and 1,
+MAXIFS 3 and 1, MINIFS 1 and 1. The fixture writes MAXIFS/MINIFS with the `_xlfn.` prefix Excel itself
+stores. COUNTIF and AVERAGEIF already intersect; the rest return `#VALUE!` (T-0278).
+Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
+differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
+a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
+give 0 and AVERAGEIFS `#DIV/0!` at that position, and the COUNTIF result keeps its 3x1 shape (ROWS = 3; the others were probed only at INDEX(...,3,1); unprobed: blank, `""` or 0 cells in the searched range);
+for SUMIFS and SUMIF an error in the sum range is `#N/A` only at the criteria positions whose rows select it
+(`SUMIFS(E1:E3,A1:A3,{"a","b"})` with E1 = #N/A is #N/A, 5; AVERAGEIFS and MAXIFS probed only at position 1: `#N/A`);
+`COUNTIFS(E1:E3,{"a","b"})` ignores it (0 at position 1). A `NA()`/non-range first argument with an array criterion
+(`COUNTIF(NA(),{"a","b"})`, `COUNTIFS(NA(),{"a"})`, `SUMIFS(NA(),...)`) made excel-graph reject the whole workbook as unsupported,
+so those cases are unprobed.
+DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
+(used cells of the walked range x criteria count x distinct consecutive criteria elements) is
+`#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
+over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`).
+AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
+Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
+`criteria_static_result` (expressions/parser/static_analysis.rs)
+Tasks: T-0207, T-0263, T-0278
 
 ## SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS: every range must have the first range's shape
 Rule: if any criteria (or sum) range is shaped differently from the first range, SUMIFS/COUNTIFS
@@ -152,3 +184,10 @@ Evidence: probes/sumif-edge-single-cell F1-F15 (oracle: excel-graph)
 Status: VERIFIED
 Implemented in: `resize_to`, `apply_ifs`, `fn_countifs` in `crates/rustsheet-engine/src/functions/statistical/if_ifs.rs`
 Tasks: T-0234
+
+### Conditional-format Equal/NotEqual compare on 15 digits (no absolute epsilon)
+Rule: the engine's conditional-format "cell value equal to / not equal to" rules compare with the same 15-significant-digit rule as `=` and criteria equality (`cmp_excel_precision`), not an absolute `f64::EPSILON` tolerance, so tiny values never equal 0. NaN orders above every number and equals itself in `CalcResult`'s `Ord`; -0.0 equals 0.0.
+Tests: `test_equal_and_not_equal_use_15_digit_comparison`, `cmp_excel_precision_total_order_on_nan_and_signed_zero`; callers of `cmp_excel_precision` (e.g. `functions/criteria.rs`) now see NaN == NaN. Evidence: none direct. The Graph oracle cannot evaluate conditional formats, so the Excel behavior for tiny values is inferred from the 15-digit comparison rule.
+Status: UNVERIFIED (probe pending: T-1051)
+Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/src/conditional_formatting.rs`, `cmp_excel_precision` in `number_format.rs`
+Tasks: T-1033

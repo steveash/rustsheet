@@ -299,3 +299,45 @@ fn entity_bomb_in_a_part_is_a_limit_error() -> TestResult {
     );
     Ok(())
 }
+
+/// `tests/basic_text.xlsx` as imported, to compare a rewritten package against.
+fn basic_text() -> Result<rustsheet_xlsx::base::types::Workbook, Box<dyn Error>> {
+    Ok(load_from_xlsx_bytes(
+        &zip_of(&parts()?)?,
+        "case",
+        "en",
+        "UTC",
+    )?)
+}
+
+#[test]
+fn backslash_and_lowercase_entry_names_import_like_excel() -> TestResult {
+    // Excel for the web opens poi/49609.xlsx, whose zip entries look like these (T-0112).
+    let parts = parts()?
+        .into_iter()
+        .map(|(name, content)| (name.replace('/', "\\").to_ascii_lowercase(), content))
+        .collect::<Vec<_>>();
+    let workbook = load_from_xlsx_bytes(&zip_of(&parts)?, "case", "en", "UTC")?;
+    assert_eq!(workbook, basic_text()?);
+    Ok(())
+}
+
+#[test]
+fn strict_relationships_namespace_imports() -> TestResult {
+    // Excel writes Strict OOXML r:id attributes in this namespace (poi/SimpleStrict.xlsx).
+    let bytes = rewrite(|name, content| {
+        if name == "xl/workbook.xml" {
+            content.replace(
+                "http://schemas.openxmlformats.org/officeDocument/2006/relationships\"",
+                "http://purl.oclc.org/ooxml/officeDocument/relationships\"",
+            )
+        } else {
+            content
+        }
+    })?;
+    assert_eq!(
+        load_from_xlsx_bytes(&bytes, "case", "en", "UTC")?,
+        basic_text()?
+    );
+    Ok(())
+}

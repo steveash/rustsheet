@@ -292,6 +292,25 @@ fn test_error_na() {
 }
 
 #[test]
+fn test_error_getting_data_any_case() {
+    // probes/error-literals-new A1, A11: Excel accepts `=#getting_data`.
+    for formula in ["#GETTING_DATA", "#getting_data"] {
+        let mut lx = new_lexer(formula, true);
+        assert_eq!(lx.next_token(), Error(Error::GETTINGDATA));
+        assert_eq!(lx.next_token(), EOF);
+    }
+}
+
+#[test]
+fn test_newer_rich_errors_are_not_literals() {
+    // Excel refuses `=#BLOCKED!`, `=#CONNECT!` and `=#FIELD!` (T-0175).
+    for formula in ["#BLOCKED!", "#CONNECT!", "#FIELD!"] {
+        let mut lx = new_lexer(formula, true);
+        assert!(!matches!(lx.next_token(), Error(_)), "{formula}");
+    }
+}
+
+#[test]
 fn test_error_name() {
     let mut lx = new_lexer("#NAME?", true);
     assert_eq!(lx.next_token(), Error(Error::NAME));

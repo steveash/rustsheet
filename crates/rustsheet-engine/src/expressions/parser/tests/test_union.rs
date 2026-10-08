@@ -271,3 +271,51 @@ fn negated_reference_is_a_union_operand() {
     };
     assert!(matches!(**left, Node::UnaryKind { .. }));
 }
+
+#[test]
+fn any_number_of_minuses_is_a_union_operand() {
+    // Excel loads two, three and four minuses (probes/union-operand-{double,triple,quad}-minus).
+    let mut parser = parser();
+    for formula in ["(--A1,B1)", "(---A1,B1)", "(----A1,B1)"] {
+        assert!(is_union(&parser.parse(formula, &context())), "{formula}");
+    }
+}
+
+#[test]
+fn union_with_a_negated_operand_cannot_be_cut_by_an_intersection() {
+    // Excel refuses all of these (`FileCorruptTryRepair`, no oracle value): references.md "Union:
+    // parsing and evaluation", operand forms (T-0998, T-1031 probes).
+    let mut parser = parser();
+    for formula in [
+        "(-A1,B1) A1",
+        "(-A1,B1) B1",
+        "A1 (-A1,B1)",
+        "((-A1,B1),C1) A1",
+        "(-(A1,B2),C1) A1",
+        "(--A1,B1) A1",
+        "(A1,-B1) A1",
+    ] {
+        assert!(
+            is_parse_error(&parser.parse(formula, &context())),
+            "{formula}"
+        );
+    }
+    // Without the negation the cut is fine.
+    assert!(!is_parse_error(&parser.parse("(A1,B1) A1", &context())));
+}
+
+#[test]
+fn parentheses_around_a_union_keep_every_level() {
+    // probes/union-operand-nested-parens: FORMULATEXT keeps each level Excel was given.
+    let mut parser = parser();
+    for formula in [
+        "(A1,B2)",
+        "((A1,B2))",
+        "((A1,B2),C1)",
+        "(((A1,B2),C1))",
+        "((((A1,B2))))",
+    ] {
+        let node = parser.parse(formula, &context());
+        assert_eq!(to_english_localized_string(&node, &context()), formula);
+    }
+}

@@ -29,10 +29,7 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
         let sheet_id = get_attribute(sheet, "sheetId")?.to_string();
         let sheet_id = sheet_id.parse::<u32>()?;
         let id = sheet
-            .attribute_ns(
-                "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-                "id",
-            )
+            .relationship_id()
             .ok_or_else(|| XlsxError::Xml("Missing \"r:id\" XML attribute".to_string()))?
             .to_string();
         let state = match sheet.attribute("state") {

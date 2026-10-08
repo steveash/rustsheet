@@ -1,13 +1,117 @@
-use super::{common::broadcast_text, text_arg::TextArg};
+use super::text_arg::{broadcast_text, TextArg};
+use crate::number_format::number_to_text;
 use crate::{
     calc_result::CalcResult,
-    cast::{array_node_to_string, truncate_text},
+    cast::{array_node_to_string, truncate_text, MAX_TEXT_UNITS},
     expressions::{
         parser::{ArrayNode, Node},
+        token::Error,
         types::CellReferenceIndex,
     },
     model::Model,
 };
+
+/// Excel: CONCAT and TEXTJOIN text over 32767 characters is #CALC!, not truncated
+/// (probes/text-result-limit C8, C9).
+fn text_limit_error(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::CALC,
+        cell,
+        "Result is longer than 32767 characters".to_string(),
+    )
+}
+
+/// Running UTF-16 size of a TEXTJOIN result, kept incrementally so each check is O(new values)
+/// and an oversized join stops before it is built (CLAUDE.md directive 5).
+struct JoinSize {
+    delimiter_units: usize,
+    counted: usize,
+    units: usize,
+}
+
+impl JoinSize {
+    fn new(delimiter: &str) -> Self {
+        JoinSize {
+            delimiter_units: delimiter.encode_utf16().count(),
+            counted: 0,
+            units: 0,
+        }
+    }
+
+    fn exceeds(&mut self, values: &[String]) -> bool {
+        for value in values.get(self.counted..).unwrap_or_default() {
+            let separator = if self.counted == 0 {
+                0
+            } else {
+                self.delimiter_units
+            };
+            self.units = self
+                .units
+                .saturating_add(separator + value.encode_utf16().count());
+            self.counted += 1;
+        }
+        self.units > MAX_TEXT_UNITS
+    }
+
+    /// Whether the join is over the limit once the delimiter before the next value is counted.
+    /// A cell error read from a reference is `#CALC!` when the text so far plus this delimiter is
+    /// over the limit (probes/text-result-limit-errors C2-C3, C7-C9).
+    fn exceeds_with_separator(&mut self, values: &[String]) -> bool {
+        let over = self.exceeds(values);
+        let separator = if self.counted == 0 {
+            0
+        } else {
+            self.delimiter_units
+        };
+        over || self.units.saturating_add(separator) > MAX_TEXT_UNITS
+    }
+
+    /// Adds `count` empty values, the empty cells a clipped range walk skipped, stopping once the
+    /// join is over the limit (so at most about 32,767 are added). Returns whether it is over.
+    /// With an empty delimiter they add nothing, so none are added.
+    fn push_empties(&mut self, values: &mut Vec<String>, count: i64) -> bool {
+        if self.delimiter_units == 0 {
+            return false;
+        }
+        for _ in 0..count {
+            values.push(String::new());
+            if self.exceeds(values) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+/// CONCAT's result under construction with its running UTF-16 size, so each append is O(piece)
+/// however many cells a range has. Once over the cell limit it stops appending but keeps
+/// counting (CLAUDE.md directive 5).
+#[derive(Default)]
+struct ConcatText {
+    text: String,
+    units: usize,
+}
+
+impl ConcatText {
+    fn push(&mut self, piece: &str) {
+        self.units = self.units.saturating_add(piece.encode_utf16().count());
+        if self.units <= MAX_TEXT_UNITS {
+            self.text.push_str(piece);
+        }
+    }
+
+    /// Appends the text of a scalar cell value; an error value is returned as `Err`.
+    fn push_value(&mut self, value: CalcResult) -> Result<(), CalcResult> {
+        match value {
+            CalcResult::String(value) => self.push(&value),
+            CalcResult::Number(value) => self.push(&number_to_text(value)),
+            CalcResult::Boolean(value) => self.push(if value { "TRUE" } else { "FALSE" }),
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => {}
+        }
+        Ok(())
+    }
+}
 
 impl Model {
     /// CONCATENATE(text1, [text2], ...): joins text; array arguments lift element-wise.
@@ -33,5 +137,211 @@ impl Model {
             }
             Ok(ArrayNode::String(joined))
         })
+    }
+
+    /// CONCAT(text1, [text2], ...): joins text and ranges; over 32767 characters is #CALC!
+    /// (probes/text-result-limit C8).
+    pub(crate) fn fn_concat(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let mut result = ConcatText::default();
+        for arg in args {
+            let value = self.evaluate_aggregate_arg(arg, cell);
+            match value {
+                CalcResult::Range { left, right } => {
+                    // 3-D references are walked sheet by sheet by the shared range walk.
+                    if let Err(error) =
+                        self.for_each_cell_or_error_in_range(left, right, cell, |_, cell_value| {
+                            if matches!(cell_value, CalcResult::Array(_) | CalcResult::Lambda(_)) {
+                                return Err(CalcResult::new_error(
+                                    Error::NIMPL,
+                                    cell,
+                                    "Arrays not supported yet".to_string(),
+                                ));
+                            }
+                            match result.push_value(cell_value) {
+                                // Excel: a cell error met once the text is over the limit is
+                                // dropped and the result is #CALC! (probes/text-result-limit-errors
+                                // C1 for a range cell; C10 for a single-cell reference, which
+                                // `evaluate_aggregate_arg` hands over as a range); at exactly the
+                                // limit it is returned (C5-C6).
+                                Err(_) if result.units > MAX_TEXT_UNITS => Ok(()),
+                                other => other,
+                            }
+                        })
+                    {
+                        return error;
+                    }
+                }
+                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                    return CalcResult::new_error(
+                        Error::NIMPL,
+                        cell,
+                        "Arrays not supported yet".to_string(),
+                    );
+                }
+                scalar => {
+                    if let Err(error) = result.push_value(scalar) {
+                        return error;
+                    }
+                }
+            }
+        }
+        // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit
+        // C8). Later arguments are still evaluated so an error argument wins (C18, -errors C4).
+        if result.units > MAX_TEXT_UNITS {
+            return text_limit_error(cell);
+        }
+        CalcResult::String(result.text)
+    }
+
+    /// TEXTJOIN(delimiter, ignore_empty, text1, [text2], ...): joins text with a delimiter; over 32767
+    /// characters is #CALC! (probes/text-result-limit C9).
+    pub(crate) fn fn_textjoin(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        let arg_count = args.len();
+        if arg_count < 3 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        let delimiter = match self.get_string(&args[0], cell) {
+            Ok(s) => s,
+            Err(error) => return error,
+        };
+        let ignore_empty = match self.get_boolean(&args[1], cell) {
+            Ok(b) => b,
+            Err(error) => return error,
+        };
+        let mut values: Vec<String> = Vec::new();
+        let mut size = JoinSize::new(&delimiter);
+        // Once over the limit the values are dropped, but arguments are still evaluated so an error
+        // argument after the limit wins; a cell error read past it is dropped and evaluation goes on,
+        // so the result is #CALC! unless a later error argument wins
+        // (probes/text-result-limit C18-C20, -errors C2-C4).
+        let mut over_limit = false;
+        for arg in &args[2..] {
+            over_limit = over_limit || size.exceeds(&values);
+            if over_limit {
+                values.clear();
+            }
+            match self.evaluate_node_in_context(arg, cell) {
+                CalcResult::Number(value) => values.push(number_to_text(value)),
+                CalcResult::Range { left, right } => {
+                    if left.sheet != right.sheet {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Ranges are in different sheets".to_string(),
+                        );
+                    }
+                    let row1 = left.row;
+                    let mut row2 = right.row;
+                    let column1 = left.column;
+                    let mut column2 = right.column;
+                    let (full_row2, full_column2) = (row2, column2);
+                    match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
+                        Ok((r, c)) => {
+                            row2 = r;
+                            column2 = c;
+                        }
+                        Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
+                    }
+                    // Excel joins every cell of a whole column or row, so the empty cells the clip
+                    // skips still add a delimiter each with ignore_empty FALSE: `TEXTJOIN(",",
+                    // FALSE,D:D)` is #CALC! (over 32,767) and `TEXTJOIN(",",FALSE,10:10)` has 16,383
+                    // delimiters (probes/whole-column-empty-walkers F1, F8; text.md).
+                    let pad = !ignore_empty;
+                    // `max` covers a clip that ends before the range starts (nothing walked).
+                    let skipped_columns =
+                        i64::from(full_column2) - i64::from(column2.max(column1 - 1));
+                    let skipped_rows = i64::from(full_row2) - i64::from(row2.max(row1 - 1));
+                    let width = i64::from(full_column2) - i64::from(column1) + 1;
+                    for row in row1..row2 + 1 {
+                        for column in column1..(column2 + 1) {
+                            over_limit = over_limit || size.exceeds(&values);
+                            if over_limit {
+                                values.clear();
+                            }
+                            match self.evaluate_cell(CellReferenceIndex {
+                                sheet: left.sheet,
+                                row,
+                                column,
+                            }) {
+                                CalcResult::Number(value) => {
+                                    values.push(number_to_text(value));
+                                }
+                                CalcResult::String(value) => values.push(value),
+                                CalcResult::Boolean(value) => {
+                                    if value {
+                                        values.push("TRUE".to_string())
+                                    } else {
+                                        values.push("FALSE".to_string())
+                                    }
+                                }
+                                CalcResult::EmptyCell => {
+                                    if !ignore_empty {
+                                        values.push("".to_string())
+                                    }
+                                }
+                                // Excel: a cell error met after the walk is past the limit is
+                                // dropped and the result is #CALC!, while an error argument still
+                                // wins (probes/text-result-limit C18-C20, -errors C2, C4).
+                                CalcResult::Error { .. }
+                                    if over_limit || size.exceeds_with_separator(&values) =>
+                                {
+                                    over_limit = true;
+                                }
+                                error @ CalcResult::Error { .. } => return error,
+                                CalcResult::EmptyArg | CalcResult::Range { .. } => {}
+                                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                                    return CalcResult::Error {
+                                        error: Error::NIMPL,
+                                        origin: cell,
+                                        message: "Arrays not supported yet".to_string(),
+                                    }
+                                }
+                            }
+                        }
+                        if pad && !over_limit {
+                            over_limit = size.push_empties(&mut values, skipped_columns);
+                        }
+                    }
+                    if pad && !over_limit {
+                        over_limit =
+                            size.push_empties(&mut values, skipped_rows.saturating_mul(width));
+                    }
+                }
+                // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
+                // C3); other reference kinds are unprobed (text.md).
+                CalcResult::Error { .. }
+                    if matches!(arg, Node::ReferenceKind { .. })
+                        && (over_limit || size.exceeds_with_separator(&values)) =>
+                {
+                    over_limit = true;
+                }
+                error @ CalcResult::Error { .. } => return error,
+                CalcResult::String(value) => values.push(value),
+                CalcResult::Boolean(value) => {
+                    if value {
+                        values.push("TRUE".to_string())
+                    } else {
+                        values.push("FALSE".to_string())
+                    }
+                }
+                CalcResult::EmptyCell => {
+                    if !ignore_empty {
+                        values.push("".to_string())
+                    }
+                }
+                CalcResult::EmptyArg => {}
+                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                    return CalcResult::Error {
+                        error: Error::NIMPL,
+                        origin: cell,
+                        message: "Arrays not supported yet".to_string(),
+                    }
+                }
+            };
+        }
+        if over_limit || size.exceeds(&values) {
+            return text_limit_error(cell);
+        }
+        CalcResult::String(values.join(&delimiter))
     }
 }

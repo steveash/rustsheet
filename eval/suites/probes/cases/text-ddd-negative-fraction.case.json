@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXT with d/ddd/dddd of negative fractional serials (T-1035)",
+  "tags": ["M1", "dates", "text", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(-0.5,\"dddd\")",
+        "A2": "=TEXT(-0.5,\"d\")",
+        "A3": "=TEXT(-0.0001,\"ddd\")",
+        "A4": "=TEXT(-0.0001,\"d\")",
+        "A5": "=TEXT(-0.5,\"ddd\")",
+        "A6": "=TEXT(-0.0001,\"dddd\")",
+        "A7": "=TEXT(-1,\"dddd\")",
+        "A8": "=TEXT(-0.5,\"yyyy-mm-dd\")",
+        "A9": "=TEXT(-0.5,\"h:mm\")"
+      }
+    }
+  ],
+  "expected": {}
+}

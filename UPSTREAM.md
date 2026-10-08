@@ -32,6 +32,11 @@ Not in upstream IronCalc; keep when porting nearby code: `Model::prepare_cell_fo
 `Node::SheetSpanKind` (3-D references `First:Last!A1`, T-0122): lexer `consume_sheet_span`, parser
 `parser/sheet_span.rs` (where `get_sheet_index_by_name` now lives), and arms in stringify,
 move_formula, static_analysis and units; a port touching `Node` matches must keep that arm.
+`expressions::token::Error` has four variants upstream lacks, appended after `NULL` (`GETTINGDATA`,
+`CONNECT`, `BLOCKED`, `FIELD`; SPEC-0003, T-1010), plus `Error::stored_literal`. The lexer's
+`consume_error` and `get_error_by_name` also accept `#GETTING_DATA` (any case) as an en-US constant
+outside `Language`; `get_error_by_english_name` knows all sixteen names. A port touching an `Error`
+match must keep those arms.
 
 ## Tracking upstream
 
@@ -42,4 +47,4 @@ Every port records the upstream SHA in its commit message (`Ported-From: ironcal
 
 | Last triaged upstream commit | Date |
 |---|---|
-| `4deab8f6e6a858744f8966f67f70f4ed8d29c78d` | 2026-10-04 |
+| `09e81f53f4c021fc0ec212e95fb353a1c6c5c704` | 2026-10-06 |

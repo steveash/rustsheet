@@ -1,4 +1,5 @@
 mod conditional_formatting;
+mod iso_date;
 mod metadata;
 mod package;
 pub mod rich_errors;
@@ -31,7 +32,8 @@ use rustsheet_engine::{
 
 use crate::error::XlsxError;
 
-pub use package::ImportLimits;
+pub use iso_date::iso8601_to_serial;
+pub use package::{ImportLimits, PartNames};
 pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
 

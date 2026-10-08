@@ -184,3 +184,65 @@ fn test_lookup_result_vector_holding_the_formula_is_circular() {
         assert_eq!(model._get_text("E5"), "#CIRC!", "{formula}");
     }
 }
+
+#[test]
+fn test_lookup_2d_lookup_vector_and_short_result() {
+    // probes/lookup-2d-vector and -wide (excel-graph): a 2-D lookup_vector is searched along its
+    // first column (or first row when wide), a 2-D result_vector is #N/A, and a result range
+    // shorter than the match position reads on past its end.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("B1", "2"), ("A2", "3"), ("B2", "4")] {
+        model._set(cell, value);
+    }
+    for (cell, value) in [("F1", "10"), ("F2", "20"), ("F3", "30"), ("G1", "100")] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=LOOKUP(2,A1:B2,F1:F2)");
+    model._set("H2", "=LOOKUP(2,A1:B1,F1:G2)");
+    model._set("H3", "=LOOKUP(2,A1:B1,F1)");
+    model._set("H4", "=LOOKUP(99,A1:A2,F1:F1)");
+    model._set("H5", "=LOOKUP(99,A1:B2,{10})");
+    model._set("H6", "=LOOKUP(2,{1,2,5;3,4,6},{7,8,9})");
+    model._set("A3", "5");
+    model._set("H7", "=LOOKUP(99,A1:A3,F1048575:F1048576)");
+    model._set("H8", "=LOOKUP(99,A1:B1,XFD1)");
+    model._set("H9", "=LOOKUP(0,A1:B2,F1:F2)");
+    // Wide: A1:C2 has more columns than rows, so A1:C1 is searched.
+    model._set("C1", "5");
+    model._set("C2", "6");
+    model._set("H10", "=LOOKUP(5,A1:C2,F1:F3)");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "10");
+    assert_eq!(model._get_text("H2"), "#N/A");
+    assert_eq!(model._get_text("H3"), "100");
+    assert_eq!(model._get_text("H4"), "100");
+    assert_eq!(model._get_text("H5"), "#N/A");
+    assert_eq!(model._get_text("H6"), "8");
+    // Past the sheet's edge reads a blank: 0 (probes/lookup-vector-edges A15, A17).
+    assert_eq!(model._get_text("H7"), "0");
+    assert_eq!(model._get_text("H8"), "0");
+    assert_eq!(model._get_text("H9"), "#N/A");
+    assert_eq!(model._get_text("H10"), "30");
+}
+
+#[test]
+fn test_lookup_single_cell_vector_and_scalar_result() {
+    // probes/lookup-vector-edges A1-A8 (excel-graph): a single cell is a one-element lookup_vector
+    // and a scalar result_vector is a one-element array, which is not read past.
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "3");
+    model._set("C1", "2");
+    model._set("D1", "10");
+    model._set("B1", "=LOOKUP(2,C1,D1)");
+    model._set("B2", "=LOOKUP(3,C1,D1)");
+    model._set("B3", "=LOOKUP(0,C1,D1)");
+    model._set("B4", "=LOOKUP(2,A1:A2,5)");
+    model._set("B5", "=LOOKUP(99,A1:A2,5)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "10");
+    assert_eq!(model._get_text("B2"), "10");
+    assert_eq!(model._get_text("B3"), "#N/A");
+    assert_eq!(model._get_text("B4"), "5");
+    assert_eq!(model._get_text("B5"), "#N/A");
+}

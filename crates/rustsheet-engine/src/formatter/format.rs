@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use crate::{
     locale::Locale,
     number_format::{parse_excel_number, to_precision},
@@ -7,7 +5,7 @@ use crate::{
 
 use super::{
     date_text::{parse_date, CurrentYear},
-    dates::{excel_serial_to_ymd, from_excel_date},
+    dates::excel_serial_to_ymd,
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -58,6 +56,13 @@ fn use_group_separator(use_thousands: bool, digit_index: i32, group_sizes: &str)
         }
     }
     false
+}
+
+/// Index into the Sunday-first day-name tables for a serial. Excel numbers weekdays as if serial 1
+/// were a Sunday, so serial 0 is a Saturday and 60 (the fictitious 1900-02-29) a Wednesday
+/// (probes/dates-early-1900-edges A26-A34); the same formula is the real weekday from 61 on.
+fn excel_weekday_index(serial: i64) -> usize {
+    (serial - 1).rem_euclid(7) as usize
 }
 
 fn invalid_date(value: f64) -> Formatted {
@@ -170,14 +175,24 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         error: None,
                     };
                 }
-                let exponent = value_abs.log10().floor();
+                let mut exponent = value_abs.log10().floor();
                 value /= 10.0_f64.powf(exponent);
-                let sign = if exponent < 0.0 { '-' } else { '+' };
                 // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
                 // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
                 // "Exponent width").
-                let decimals = if exponent.abs() >= 99.0 { 4 } else { 5 };
-                let s = format!("{value:.decimals$}");
+                let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
+                let mut decimals = decimals_for(exponent);
+                let mut s = format!("{value:.decimals$}");
+                // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa
+                // carries into the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
+                // (probes/text-general-exponent-boundary A5-A8, A10).
+                if s.trim_start_matches('-').starts_with("10.") {
+                    exponent += 1.0;
+                    value = value.signum();
+                    decimals = decimals_for(exponent);
+                    s = format!("{value:.decimals$}");
+                }
+                let sign = if exponent < 0.0 { '-' } else { '+' };
                 let mut text = format!(
                     "{}E{}{:02}",
                     s.trim_end_matches('0').trim_end_matches('.'),
@@ -195,17 +210,33 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
         }
         ParsePart::Date(p) => {
+            // Excel: a negative serial is #VALUE! under a date/time format, even a fraction that
+            // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035). Elapsed
+            // sections ([h], [mm], ...) keep their own sign handling (poi ElapsedFormatTests
+            // A40-A47, docs/excel-semantics/number-formats.md "Elapsed-time tokens").
+            let has_elapsed = p.tokens.iter().any(|t| {
+                matches!(
+                    t,
+                    TextToken::ElapsedHour
+                        | TextToken::ElapsedHourPadded
+                        | TextToken::ElapsedMinute
+                        | TextToken::ElapsedMinutePadded
+                        | TextToken::ElapsedSecond
+                        | TextToken::ElapsedSecondPadded
+                )
+            });
+            if value < 0.0 && !has_elapsed {
+                return invalid_date(value);
+            }
             let tokens = &p.tokens;
             let mut text = "".to_string();
             let time_fract = value.fract();
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
             let seconds = ((((time_fract * 24.0 - hours) * 60.0) - minutes) * 60.0).round();
-            let date = from_excel_date(value as i64).ok();
             // Day/month/year tokens show Excel's exact components (including the fictitious
-            // 1900-02-29) and "1900-01-00" (serial 0); weekday tokens keep the weekday-faithful
-            // stand-in `date`. The fallback is never read: `ymd` is `None` exactly when
-            // `date_valid` is false.
+            // 1900-02-29) and "1900-01-00" (serial 0). The fallback is never read: `ymd` is
+            // `None` exactly when `date_valid` is false.
             let ymd = excel_serial_to_ymd(value as i64);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
@@ -246,37 +277,17 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{day:02}");
                     }
                     TextToken::DayNameShort => {
-                        let date = match date {
-                            Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
-                        };
-                        let mut day = date.weekday().number_from_monday() as usize;
-                        if day == 7 {
-                            day = 0;
+                        if !date_valid {
+                            return invalid_date(value);
                         }
+                        let day = excel_weekday_index(value as i64);
                         text = format!("{}{}", text, locale.dates.day_names_short[day]);
                     }
                     TextToken::DayName => {
-                        let date = match date {
-                            Some(d) => d,
-                            None => {
-                                return Formatted {
-                                    text: "#VALUE!".to_owned(),
-                                    color: None,
-                                    error: Some(format!("Invalid date value: '{value}'")),
-                                }
-                            }
-                        };
-                        let mut day = date.weekday().number_from_monday() as usize;
-                        if day == 7 {
-                            day = 0;
+                        if !date_valid {
+                            return invalid_date(value);
                         }
+                        let day = excel_weekday_index(value as i64);
                         text = format!("{}{}", text, locale.dates.day_names[day]);
                     }
                     TextToken::Month => {
@@ -452,7 +463,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
             // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            // `<=`: a value exactly one unit at the last shown place (-1 for `0`, -1 after a `#,,`
+            // scaling) keeps its sign (poi/NumberFormatTests.xlsx Tests!A95).
+            let is_negative = value <= -(10.0_f64.powf(-(p.precision as f64)));
             let mut needs_period = false;
 
             for token in tokens {
@@ -504,12 +517,20 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     } else {
                                         int_part[number_index as usize]
                                     };
+                                    // The group positions count from the format's last digit
+                                    // placeholder, so padding is grouped too (a padded `?`
+                                    // separator is a space; docs/excel-semantics/number-formats.md,
+                                    // "A comma between digit placeholders turns on thousands grouping").
                                     let sep = if use_group_separator(
                                         p.use_thousands,
-                                        ln - digit_index,
+                                        digit_count - digit_index,
                                         &group_sizes,
                                     ) {
-                                        &group_separator
+                                        if number_index < 0 && digit.kind == '?' {
+                                            " "
+                                        } else {
+                                            &group_separator
+                                        }
                                     } else {
                                         ""
                                     };
@@ -641,59 +662,15 @@ pub(crate) fn parse_formatted_number(
     current_year: CurrentYear,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
-    let scientific_format = "0.00E+00";
 
     let symbols = &locale.numbers.symbols;
     let decimal_separator = symbols.decimal.chars().next().unwrap_or('.');
     let group_separator = symbols.group.chars().next().unwrap_or(',');
 
-    // Check if it is a percentage
-    if let Some(p) = value.strip_suffix('%') {
-        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-        if options.is_scientific {
-            return Ok((f / 100.0, Some(scientific_format.to_string())));
-        }
-        // We ignore the separator
-        if options.decimal_digits > 0 {
-            // Percentage format with decimals
-            return Ok((f / 100.0, Some("#,##0.00%".to_string())));
-        }
-        // Percentage format standard
-        return Ok((f / 100.0, Some("#,##0%".to_string())));
-    }
-
-    // check if it is a currency in currencies
-    for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                return Ok((-f, Some(format!("{currency}#,##0.00"))));
-            }
-            return Ok((-f, Some(format!("{currency}#,##0"))));
-        } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                return Ok((f, Some(format!("{currency}#,##0.00"))));
-            }
-            return Ok((f, Some(format!("{currency}#,##0"))));
-        } else if let Some(p) = value.strip_suffix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                let currency_format = &format!("#,##0.00{currency}");
-                return Ok((f, Some(currency_format.to_string())));
-            }
-            let currency_format = &format!("#,##0{currency}");
-            return Ok((f, Some(currency_format.to_string())));
-        }
+    if let Some(parsed) =
+        parse_percent_or_currency(value, currencies, decimal_separator, group_separator)?
+    {
+        return Ok(parsed);
     }
 
     // Date text, untrimmed: number coercion rejects date text with surrounding spaces (see
@@ -702,10 +679,97 @@ pub(crate) fn parse_formatted_number(
         return Ok((serial_number as f64, Some(format)));
     }
 
-    // Lastly we check if it is a number
+    // Excel reads accounting text in parentheses as negative: `0+"(1)"` = -1, `0+"(1,000)"` =
+    // -1000, `0+"( 1 )"` = -1, `0+"($1)"` = -1, `0+"(1%)"` = -0.01, but `0+"-(1)"`, `0+"(-1)"` and
+    // `0+"((1))"` are #VALUE! (docs/excel-semantics/coercion.md "Parenthesised number text is
+    // negative", probes/paren-negative-variants).
+    if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
+        let inner = inner.trim();
+        if inner.starts_with(['-', '+', '(']) {
+            return Err("Cannot parse number".to_string());
+        }
+        let (f, format) =
+            match parse_percent_or_currency(inner, currencies, decimal_separator, group_separator)?
+            {
+                Some(parsed) => parsed,
+                None => parse_plain_number(inner, decimal_separator, group_separator)?,
+            };
+        return Ok((-f, format));
+    }
+    parse_plain_number(value, decimal_separator, group_separator)
+}
+
+/// Format given to scientific-notation text such as `1E3`.
+const SCIENTIFIC_FORMAT: &str = "0.00E+00";
+
+/// A number written with a percent sign or a currency symbol, with the format that implies.
+/// `Ok(None)` means the text has neither.
+fn parse_percent_or_currency(
+    value: &str,
+    currencies: &[&str],
+    decimal_separator: char,
+    group_separator: char,
+) -> Result<Option<(f64, Option<String>)>, String> {
+    // Check if it is a percentage
+    if let Some(p) = value.strip_suffix('%') {
+        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+        if options.is_scientific {
+            return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
+        }
+        // We ignore the separator
+        if options.decimal_digits > 0 {
+            // Percentage format with decimals
+            return Ok(Some((f / 100.0, Some("#,##0.00%".to_string()))));
+        }
+        // Percentage format standard
+        return Ok(Some((f / 100.0, Some("#,##0%".to_string()))));
+    }
+
+    // check if it is a currency in currencies
+    for currency in currencies {
+        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                return Ok(Some((-f, Some(format!("{currency}#,##0.00")))));
+            }
+            return Ok(Some((-f, Some(format!("{currency}#,##0")))));
+        } else if let Some(p) = value.strip_prefix(currency) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                return Ok(Some((f, Some(format!("{currency}#,##0.00")))));
+            }
+            return Ok(Some((f, Some(format!("{currency}#,##0")))));
+        } else if let Some(p) = value.strip_suffix(currency) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                let currency_format = &format!("#,##0.00{currency}");
+                return Ok(Some((f, Some(currency_format.to_string()))));
+            }
+            let currency_format = &format!("#,##0{currency}");
+            return Ok(Some((f, Some(currency_format.to_string()))));
+        }
+    }
+    Ok(None)
+}
+
+/// A plain number (optionally with group separators or an exponent) and its inferred format.
+fn parse_plain_number(
+    value: &str,
+    decimal_separator: char,
+    group_separator: char,
+) -> Result<(f64, Option<String>), String> {
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
-        return Ok((f, Some(scientific_format.to_string())));
+        return Ok((f, Some(SCIENTIFIC_FORMAT.to_string())));
     }
     if options.has_commas {
         if options.decimal_digits > 0 {

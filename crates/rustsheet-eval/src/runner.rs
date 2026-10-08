@@ -14,6 +14,7 @@ use crate::case::{
     canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
     CASE_FORMAT,
 };
+use crate::case_log;
 use crate::cellref::Addr;
 use crate::engine::{Engine, Evaluated};
 use crate::overrides;
@@ -188,6 +189,7 @@ pub fn run_case(
     // catch before any oracle value exists (T-0007).
     let (tx, rx) = mpsc::channel();
     let engine = Arc::clone(engine);
+    case_log::record("start", &case.id);
     let start = Instant::now();
     let spawned = std::thread::Builder::new()
         .name(format!("case:{}", case.id))
@@ -203,11 +205,15 @@ pub fn run_case(
             let _ = tx.send(outcome);
         });
     if let Err(e) = spawned {
+        case_log::record("end", &case.id);
         result.status = CaseStatus::EngineError;
         result.message = Some(format!("could not spawn worker: {e}"));
         return result;
     }
     let received = rx.recv_timeout(timeout);
+    // A timed-out worker keeps running, so it is logged as such rather than as ended.
+    let event = if received.is_err() { "timeout" } else { "end" };
+    case_log::record(event, &case.id);
     result.millis = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
     match received {
         Err(_) => {

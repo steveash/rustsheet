@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A parenthesized intersection, called: (A1:A3 A2:B2)(1) (T-0149).",
+  "tags": [
+    "M1",
+    "references",
+    "intersection",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=(A1:A3 A2:B2)(1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1"
+  ]
+}

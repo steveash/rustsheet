@@ -1,0 +1,30 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "XNPV argument forms: the task's three-argument call over one 2x2 range for both values and dates, plus a realistic schedule (T-0275). The two-argument form is rejected by Excel on load and cannot be a committed case.",
+  "tags": [
+    "M2",
+    "financial",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "A4": -1000,
+        "A5": 600,
+        "A6": 600,
+        "B4": 45292,
+        "B5": 45474,
+        "B6": 45658,
+        "D1": "=XNPV(1,A1:B2,A1:B2)",
+        "D2": "=XNPV(0.1,A4:A6,B4:B6)",
+        "D3": "=XNPV(0.1,A4:A6,B4:B5)"
+      }
+    }
+  ],
+  "expected": {}
+}

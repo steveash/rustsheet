@@ -50,7 +50,7 @@ impl Model {
                         }
                     }
                 }
-                value => match self.cast_to_number(value, cell) {
+                value => match self.cast_aggregate_arg_to_number(value, cell) {
                     Ok(value) => result = pick(value, result),
                     Err(error) => return error,
                 },
@@ -188,12 +188,12 @@ impl Model {
         }
 
         let mut result = 0.0;
-        if let Err(error) =
-            self.for_each_value_skip_empty(args, cell, |value| result += value * value)
-        {
+        if let Err(error) = self.for_each_value_skip_empty(args, cell, |value| {
+            result += flush_subnormal(value * value);
+        }) {
             return error;
         }
-        CalcResult::Number(flush_subnormal(result))
+        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
     /// PRODUCT(number1, [number2], ...)
@@ -246,7 +246,7 @@ impl Model {
                 CalcResult::Range { left, right } => {
                     if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
                         seen_value = true;
-                        result *= value;
+                        result = flush_subnormal(result * value);
                     }) {
                         return error;
                     }
@@ -254,9 +254,9 @@ impl Model {
                 error @ CalcResult::Error { .. } => return error,
                 calc_result => {
                     seen_value = true;
-                    let cast_result = self.cast_to_number(calc_result, cell);
+                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {
-                        Ok(f) => result *= f,
+                        Ok(f) => result = flush_subnormal(result * f),
                         Err(s) => return s,
                     }
                 }
@@ -265,14 +265,14 @@ impl Model {
         if !seen_value {
             return CalcResult::Number(0.0);
         }
-        CalcResult::Number(flush_subnormal(result))
+        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
     /// SUMIF(criteria_range, criteria, [sum_range])
     /// if sum_range is missing then criteria_range will be used.
     ///
     /// The `criteria` argument may be a single value, a range or an array; in the
-    /// latter two cases SUMIF spills one sum per criterion (see [`Model::sumif`]).
+    /// latter two cases SUMIF spills one sum per criterion (see `Model::lift_criteria`).
     pub(crate) fn fn_sumif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         // When sum_range is missing, criteria_range doubles as the sum_range.
         let (criteria_range, criteria, sum_range) = match args.len() {
@@ -285,12 +285,7 @@ impl Model {
 
     /// SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)
     pub(crate) fn fn_sumifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let mut total = 0.0;
-        let sum = |value| total += value;
-        if let Err(e) = self.apply_ifs(args, cell, true, sum) {
-            return e;
-        }
-        CalcResult::Number(total)
+        self.sum_ifs(args, cell, true)
     }
 
     /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
@@ -330,36 +325,22 @@ impl Model {
         self.round_family(args, cell, RoundMode::Down)
     }
 
-    // (number, divisor)
+    // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
     pub(crate) fn fn_mod(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let divisor = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if divisor == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
-            };
-        }
-        // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
-        // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
-        if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Quotient too large".to_string(),
-            };
-        }
-        CalcResult::Number(crate::functions::util::excel_mod(value, divisor))
+        self.lift_numbers(args, cell, "Invalid arguments", |[value, divisor]| {
+            if divisor == 0.0 {
+                return Err(Error::DIV);
+            }
+            // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
+            // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
+            if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
+                return Err(Error::NUM);
+            }
+            Ok(crate::functions::util::excel_mod(value, divisor))
+        })
     }
 
     pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {

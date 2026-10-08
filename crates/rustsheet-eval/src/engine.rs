@@ -131,7 +131,9 @@ fn spec_input(input: &CellInput) -> Option<Input> {
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
             Input::Value(ApiValue::Text(s.as_str().into()))
         }
-        CellInput::Typed(Value::Error(e)) => Input::Parse(e.clone()),
+        CellInput::Typed(Value::Error(e)) | CellInput::Entered { entered: e } => {
+            Input::Parse(e.clone())
+        }
         CellInput::Typed(Value::Empty) => return None,
     })
 }

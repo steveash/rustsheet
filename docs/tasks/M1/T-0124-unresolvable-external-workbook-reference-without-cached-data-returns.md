@@ -7,13 +7,15 @@ status: todo
 priority: P3
 size: S
 tier: opus
-depends_on: [T-0030]
+depends_on: [T-0030, T-1010]
+spec: docs/specs/SPEC-0003-newer-error-kinds.md
 ---
 
 ## Goal
 A formula that references another workbook with no usable cached values gives Excel's error
 (a vm-coded rich-value error per the excel-graph oracle, errorType 10 / subType 2, cached as `#VALUE!`; T-0030 decoded it as `#BLOCKED!`) instead of `#REF!`. The workbook was written by Apache POI,
-so this is web-only evidence: confirm on desktop Excel (excel-probe skill) before implementing.
+so this is web-only evidence. Implement on it: excel-graph is the oracle of record for Phases 1–3
+(decision 0039), and the desktop confirmation is item 1 of T-1075 (M14), not a gate.
 
 ## Context
 Evidence: `poi/link-external-workbook-b.xlsx` (POI-written, excel-graph sidecar from T-0019)

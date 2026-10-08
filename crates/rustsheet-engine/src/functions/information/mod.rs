@@ -101,29 +101,58 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        match &args[0] {
-            Node::ReferenceKind { .. }
-            | Node::RangeKind { .. }
-            | Node::OpRangeKind { .. }
-            | Node::OpIntersectKind { .. }
-            | Node::OpUnionKind { .. } => CalcResult::Boolean(true),
+        CalcResult::Boolean(self.is_reference(&args[0], cell))
+    }
+
+    /// Whether `node` stands for a reference (ISREF).
+    fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+        match node {
+            Node::ReferenceKind { .. } | Node::RangeKind { .. } | Node::OpRangeKind { .. } => true,
+            // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
+            // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
+            Node::OpIntersectKind { .. } => self.reference_areas(node, cell).is_ok(),
+            Node::OpUnionKind { left, right, .. } => self.union_is_reference(left, right, cell),
             // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
             Node::FunctionKind {
                 kind: crate::functions::Function::Index,
                 args,
-            } => CalcResult::Boolean(matches!(
-                self.index_impl(args, cell, true),
-                CalcResult::Range { .. }
-            )),
-            Node::FunctionKind { kind, args: _ } => CalcResult::Boolean(kind.returns_reference()),
+            } => matches!(self.index_impl(args, cell, true), CalcResult::Range { .. }),
+            // XLOOKUP, TAKE, DROP and TRIMRANGE are references when they pick cells of a range,
+            // and not when they fail or work on an array (probes/isref-reference-lookups).
+            Node::FunctionKind { kind, args } => {
+                match self.evaluate_reference_form(kind, args, cell) {
+                    Some(result) => matches!(result, CalcResult::Range { .. }),
+                    None => kind.returns_reference(),
+                }
+            }
             // A defined name is a reference if what it stands for is one, a single cell included
-            // (Excel-cached: upstream ISREF.xlsx Sheet1!A14-A18; probes/isref-names-filter-if-empty).
-            Node::DefinedNameKind((name, scope, _)) => CalcResult::Boolean(matches!(
-                self.parsed_defined_names
-                    .get(&(*scope, name.to_lowercase())),
-                Some(ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_))
-            )),
-            _ => CalcResult::Boolean(false),
+            // (Excel-cached: upstream ISREF.xlsx Sheet1!A14-A18; probes/isref-names-filter-if-empty),
+            // and so is a name whose body is a reference formula (`=INDEX(...)`, an intersection)
+            // but not one whose body is a value (`=SUM(...)`, `=total*2`): probes/defined-name-
+            // intersection H2, H9 and probes/defined-name-formula-bodies H7, H8, H10, H16.
+            Node::DefinedNameKind((name, scope, _)) => {
+                match self
+                    .parsed_defined_names
+                    .get(&(*scope, name.to_lowercase()))
+                {
+                    Some(
+                        ParsedDefinedName::CellReference(_) | ParsedDefinedName::RangeReference(_),
+                    ) => true,
+                    Some(ParsedDefinedName::Formula(body)) => {
+                        let body = std::sync::Arc::clone(body);
+                        self.within_defined_name(|model| model.is_reference(&body, cell))
+                            .unwrap_or(false)
+                    }
+                    _ => false,
+                }
+            }
+            // A LET variable or LAMBDA parameter is a reference if it was bound to one
+            // (upstream MIN_MAX_extras.xlsx A14-A16).
+            Node::NamedVariableKind { .. } => matches!(
+                self.evaluate_node_with_reference(node, cell),
+                CalcResult::Range { .. }
+            ),
+            _ => false,
         }
     }
 
@@ -292,6 +321,7 @@ impl Model {
                             );
                         }
                         ParsedDefinedName::InvalidDefinedNameFormula
+                        | ParsedDefinedName::Formula(_)
                         | ParsedDefinedName::LambdaDefinition(..) => {
                             return CalcResult::Error {
                                 error: Error::ERROR,

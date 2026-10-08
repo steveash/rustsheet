@@ -1,0 +1,542 @@
+# Microsoft 365 Excel (en-US) functions: the vetted name and minimum-arity list behind
+# eval/catalog/functions.yaml (T-0040). Committed so it never needs re-fetching.
+#
+# Source: https://support.microsoft.com/en-us/office/excel-functions-alphabetical-b3944572-255d-4efb-bb96-c6d90033e188
+#   (canonical https://support.microsoft.com/en-us/excel/excel-functions-alphabetical), fetched 2026-10-07:
+#   521 names ("FIND, FINDB" style rows split). Five more (COPILOT, FIELDVALUE, IMPORTCSV, IMPORTTEXT, PY)
+#   come from the function index on every per-function page, which the alphabetical table lacks;
+#   HIDDEN there is excluded ("available only in another language version").
+# min_args: argument positions a call must have, from the Syntax section of each function's page
+#   (`page`, fetched 2026-10-07), counting arguments not in
+#   [brackets]. A leading optional argument still takes its position (REDUCE([initial_value], array, ...)).
+#   Corrections to the page text are explained in `note`. Probe cases probes/catalog/availability-*
+#   call every in-scope name with exactly min_args arguments (Excel for the web loaded each one).
+# ms_category: the label in the alphabetical table (empty for the five index-only names).
+# Columns (tab-separated): name, ms_category, min_args, syntax, page, note
+name	ms_category	min_args	syntax	page	note
+ABS	Math and trigonometry	1	ABS(number)	https://support.microsoft.com/en-us/excel/functions/abs-function	
+ACCRINT	Financial	6	ACCRINT(issue, first_interest, settlement, rate, par, frequency, [basis], [calc_method])	https://support.microsoft.com/en-us/excel/functions/accrint-function	
+ACCRINTM	Financial	4	ACCRINTM(issue, settlement, rate, par, [basis])	https://support.microsoft.com/en-us/excel/functions/accrintm-function	
+ACOS	Math and trigonometry	1	ACOS(number)	https://support.microsoft.com/en-us/excel/functions/acos-function	
+ACOSH	Math and trigonometry	1	ACOSH(number)	https://support.microsoft.com/en-us/excel/functions/acosh-function	
+ACOT	Math and trigonometry	1	ACOT(number)	https://support.microsoft.com/en-us/excel/functions/acot-function	
+ACOTH	Math and trigonometry	1	ACOTH(number)	https://support.microsoft.com/en-us/excel/functions/acoth-function	
+AGGREGATE	Math and trigonometry	3	AGGREGATE(function_num, options, ref1, [ref2], …)	https://support.microsoft.com/en-us/excel/functions/aggregate-function	
+ADDRESS	Lookup and reference	2	ADDRESS(row_num, column_num, [abs_num], [a1], [sheet_text])	https://support.microsoft.com/en-us/excel/functions/address-function	
+AMORDEGRC	Financial	6	AMORDEGRC(cost, date_purchased, first_period, salvage, period, rate, [basis])	https://support.microsoft.com/en-us/excel/functions/amordegrc-function	
+AMORLINC	Financial	6	AMORLINC(cost, date_purchased, first_period, salvage, period, rate, [basis])	https://support.microsoft.com/en-us/excel/functions/amorlinc-function	
+AND	Logical	1	AND(logical1, [logical2], ...)	https://support.microsoft.com/en-us/excel/functions/and-function	
+ARABIC	Math and trigonometry	1	ARABIC( text )	https://support.microsoft.com/en-us/excel/functions/arabic-function	
+AREAS	Lookup and reference	1	AREAS(reference)	https://support.microsoft.com/en-us/excel/functions/areas-function	
+ARRAYTOTEXT	Text	1	ARRAYTOTEXT(array, [format])	https://support.microsoft.com/en-us/excel/functions/arraytotext-function	
+ASC	Text	1	ASC(text)	https://support.microsoft.com/en-us/excel/functions/asc-function	
+ASIN	Math and trigonometry	1	ASIN(number)	https://support.microsoft.com/en-us/excel/functions/asin-function	
+ASINH	Math and trigonometry	1	ASINH(number)	https://support.microsoft.com/en-us/excel/functions/asinh-function	
+ATAN	Math and trigonometry	1	ATAN(number)	https://support.microsoft.com/en-us/excel/functions/atan-function	
+ATAN2	Math and trigonometry	2	ATAN2(x_num, y_num)	https://support.microsoft.com/en-us/excel/functions/atan2-function	
+ATANH	Math and trigonometry	1	ATANH(number)	https://support.microsoft.com/en-us/excel/functions/atanh-function	
+AVEDEV	Statistical	1	AVEDEV(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/avedev-function	
+AVERAGE	Statistical	1	AVERAGE(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/average-function	
+AVERAGEA	Statistical	1	AVERAGEA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/averagea-function	
+AVERAGEIF	Statistical	2	AVERAGEIF(range, criteria, [average_range])	https://support.microsoft.com/en-us/excel/functions/averageif-function	
+AVERAGEIFS	Statistical	3	AVERAGEIFS(average_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)	https://support.microsoft.com/en-us/excel/functions/averageifs-function	
+BAHTTEXT	Text	1	BAHTTEXT(number)	https://support.microsoft.com/en-us/excel/functions/bahttext-function	
+BASE	Math and trigonometry	2	BASE(Number, Radix [Min_length])	https://support.microsoft.com/en-us/excel/functions/base-function	
+BESSELI	Engineering	2	BESSELI(X, N)	https://support.microsoft.com/en-us/excel/functions/besseli-function	
+BESSELJ	Engineering	2	BESSELJ(X, N)	https://support.microsoft.com/en-us/excel/functions/besselj-function	
+BESSELK	Engineering	2	BESSELK(X, N)	https://support.microsoft.com/en-us/excel/functions/besselk-function	
+BESSELY	Engineering	2	BESSELY(X, N)	https://support.microsoft.com/en-us/excel/functions/bessely-function	
+BETADIST	Compatibility	3	BETADIST(x,alpha,beta,[A],[B])	https://support.microsoft.com/en-us/excel/functions/betadist-function	
+BETA.DIST	Statistical	4	BETA.DIST(x,alpha,beta,cumulative,[A],[B])	https://support.microsoft.com/en-us/excel/functions/beta-dist-function	
+BETAINV	Compatibility	3	BETAINV(probability,alpha,beta,[A],[B])	https://support.microsoft.com/en-us/excel/functions/betainv-function	
+BETA.INV	Statistical	3	BETA.INV(probability,alpha,beta,[A],[B])	https://support.microsoft.com/en-us/excel/functions/beta-inv-function	listed as 'BETA.INVn' (typo) in the alphabetical table
+BIN2DEC	Engineering	1	BIN2DEC(number)	https://support.microsoft.com/en-us/excel/functions/bin2dec-function	
+BIN2HEX	Engineering	1	BIN2HEX(number, [places])	https://support.microsoft.com/en-us/excel/functions/bin2hex-function	
+BIN2OCT	Engineering	1	BIN2OCT(number, [places])	https://support.microsoft.com/en-us/excel/functions/bin2oct-function	
+BINOMDIST	Compatibility	4	BINOMDIST(number_s,trials,probability_s,cumulative)	https://support.microsoft.com/en-us/excel/functions/binomdist-function	
+BINOM.DIST	Statistical	4	BINOM.DIST(number_s,trials,probability_s,cumulative)	https://support.microsoft.com/en-us/excel/functions/binom-dist-function	
+BINOM.DIST.RANGE	Statistical	3	BINOM.DIST.RANGE(trials,probability_s,number_s,[number_s2])	https://support.microsoft.com/en-us/excel/functions/binom-dist-range-function	
+BINOM.INV	Statistical	3	BINOM.INV(trials,probability_s,alpha)	https://support.microsoft.com/en-us/excel/functions/binom-inv-function	
+BITAND	Engineering	2	BITAND( number1, number2)	https://support.microsoft.com/en-us/excel/functions/bitand-function	
+BITLSHIFT	Engineering	2	BITLSHIFT(number, shift_amount)	https://support.microsoft.com/en-us/excel/functions/bitlshift-function	
+BITOR	Engineering	2	BITOR(number1, number2)	https://support.microsoft.com/en-us/excel/functions/bitor-function	
+BITRSHIFT	Engineering	2	BITRSHIFT(number, shift_amount)	https://support.microsoft.com/en-us/excel/functions/bitrshift-function	
+BITXOR	Engineering	2	BITXOR(number1, number2)	https://support.microsoft.com/en-us/excel/functions/bitxor-function	
+BYCOL	Logical	2	BYCOL(array, lambda(column))	https://support.microsoft.com/en-us/excel/functions/bycol-function	
+BYROW	Logical	2	BYROW(array, lambda(row))	https://support.microsoft.com/en-us/excel/functions/byrow-function	
+CALL	Add-in and Automation	1	CALL(register_id,[argument1],...)	https://support.microsoft.com/en-us/excel/functions/call-function	
+CEILING	Compatibility	2	CEILING(number, significance)	https://support.microsoft.com/en-us/excel/functions/ceiling-function	
+CEILING.MATH	Math and trigonometry	1	CEILING.MATH( number , [ significance ], [ mode ])	https://support.microsoft.com/en-us/excel/functions/ceiling-math-function	
+CEILING.PRECISE	Math and trigonometry	1	CEILING.PRECISE(number, [significance])	https://support.microsoft.com/en-us/excel/functions/ceiling-precise-function	
+CELL	Information	1	CELL(info_type, [reference])	https://support.microsoft.com/en-us/excel/functions/cell-function	
+CHAR	Text	1	CHAR(number)	https://support.microsoft.com/en-us/excel/functions/char-function	
+CHIDIST	Compatibility	2	CHIDIST(x,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/chidist-function	
+CHIINV	Compatibility	2	CHIINV(probability,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/chiinv-function	
+CHITEST	Compatibility	2	CHITEST(actual_range,expected_range)	https://support.microsoft.com/en-us/excel/functions/chitest-function	
+CHISQ.DIST	Statistical	3	CHISQ.DIST(x,deg_freedom,cumulative)	https://support.microsoft.com/en-us/excel/functions/chisq-dist-function	
+CHISQ.DIST.RT	Statistical	2	CHISQ.DIST.RT(x,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/chisq-dist-rt-function	
+CHISQ.INV	Statistical	2	CHISQ.INV(probability,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/chisq-inv-function	
+CHISQ.INV.RT	Statistical	2	CHISQ.INV.RT(probability,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/chisq-inv-rt-function	
+CHISQ.TEST	Statistical	2	CHISQ.TEST(actual_range,expected_range)	https://support.microsoft.com/en-us/excel/functions/chisq-test-function	
+CHOOSE	Lookup and reference	2	CHOOSE(index_num, value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/choose-function	
+CHOOSECOLS	Lookup and reference	2	CHOOSECOLS(array,col_num1,[col_num2],…)	https://support.microsoft.com/en-us/excel/functions/choosecols-function	
+CHOOSEROWS	Lookup and reference	2	CHOOSEROWS(array,row_num1,[row_num2],…)	https://support.microsoft.com/en-us/excel/functions/chooserows-function	
+CLEAN	Text	1	CLEAN(text)	https://support.microsoft.com/en-us/excel/functions/clean-function	
+CODE	Text	1	CODE(text)	https://support.microsoft.com/en-us/excel/functions/code-function	
+COLUMN	Lookup and reference	0	COLUMN([reference])	https://support.microsoft.com/en-us/excel/functions/column-function	
+COLUMNS	Lookup and reference	1	COLUMNS(array)	https://support.microsoft.com/en-us/excel/functions/columns-function	
+COMBIN	Math and trigonometry	2	COMBIN(number, number_chosen)	https://support.microsoft.com/en-us/excel/functions/combin-function	
+COMBINA	Math and trigonometry	2	COMBINA(number, number_chosen)	https://support.microsoft.com/en-us/excel/functions/combina-function	
+COMPLEX	Engineering	2	COMPLEX(real_num, i_num, [suffix])	https://support.microsoft.com/en-us/excel/functions/complex-function	
+CONCAT	Text	1	CONCAT(text1, [text2],…)	https://support.microsoft.com/en-us/excel/functions/concat-function	
+CONCATENATE	Text	1	CONCATENATE(text1, [text2], ...)	https://support.microsoft.com/en-us/excel/functions/concatenate-function	
+CONFIDENCE	Compatibility	3	CONFIDENCE(alpha,standard_dev,size)	https://support.microsoft.com/en-us/excel/functions/confidence-function	
+CONFIDENCE.NORM	Statistical	3	CONFIDENCE.NORM(alpha,standard_dev,size)	https://support.microsoft.com/en-us/excel/functions/confidence-norm-function	
+CONFIDENCE.T	Statistical	3	CONFIDENCE.T(alpha,standard_dev,size)	https://support.microsoft.com/en-us/excel/functions/confidence-t-function	
+CONVERT	Engineering	3	CONVERT( number , from_unit , to_unit )	https://support.microsoft.com/en-us/excel/functions/convert-function	
+CORREL	Statistical	2	CORREL(array1, array2)	https://support.microsoft.com/en-us/excel/functions/correl-function	
+COS	Math and trigonometry	1	COS(number)	https://support.microsoft.com/en-us/excel/functions/cos-function	
+COSH	Math and trigonometry	1	COSH(number)	https://support.microsoft.com/en-us/excel/functions/cosh-function	
+COT	Math and trigonometry	1	COT(number)	https://support.microsoft.com/en-us/excel/functions/cot-function	
+COTH	Math and trigonometry	1	COTH(number)	https://support.microsoft.com/en-us/excel/functions/coth-function	
+COUNT	Statistical	1	COUNT(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/count-function	
+COUNTA	Statistical	1	COUNTA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/counta-function	
+COUNTBLANK	Statistical	1	COUNTBLANK(range)	https://support.microsoft.com/en-us/excel/functions/countblank-function	
+COUNTIF	Statistical	2	COUNTIF(range, criteria)	https://support.microsoft.com/en-us/excel/get-started/use-the-countif-function-in-microsoft-excel	
+COUNTIFS	Statistical	2	COUNTIFS(criteria_range1, criteria1, [criteria_range2, criteria2]…)	https://support.microsoft.com/en-us/excel/functions/countifs-function	
+COUPDAYBS	Financial	3	COUPDAYBS(settlement, maturity, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/coupdaybs-function	
+COUPDAYS	Financial	3	COUPDAYS(settlement, maturity, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/coupdays-function	
+COUPDAYSNC	Financial	3	COUPDAYSNC(settlement, maturity, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/coupdaysnc-function	
+COUPNCD	Financial	3	COUPNCD(settlement, maturity, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/coupncd-function	
+COUPNUM	Financial	3	COUPNUM(settlement, maturity, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/coupnum-function	
+COUPPCD	Financial	3	COUPPCD(settlement, maturity, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/couppcd-function	
+COVAR	Compatibility	2	COVAR(array1,array2)	https://support.microsoft.com/en-us/excel/functions/covar-function	
+COVARIANCE.P	Statistical	2	COVARIANCE.P(array1,array2)	https://support.microsoft.com/en-us/excel/functions/covariance-p-function	
+COVARIANCE.S	Statistical	2	COVARIANCE.S(array1,array2)	https://support.microsoft.com/en-us/excel/functions/covariance-s-function	
+CRITBINOM	Compatibility	3	CRITBINOM(trials,probability_s,alpha)	https://support.microsoft.com/en-us/excel/functions/critbinom-function	
+CSC	Math and trigonometry	1	CSC(number)	https://support.microsoft.com/en-us/excel/functions/csc-function	
+CSCH	Math and trigonometry	1	CSCH(number)	https://support.microsoft.com/en-us/excel/functions/csch-function	
+CUBEKPIMEMBER	Cube	3	CUBEKPIMEMBER(connection, kpi_name, kpi_property, [caption])	https://support.microsoft.com/en-us/excel/functions/cubekpimember-function	
+CUBEMEMBER	Cube	2	CUBEMEMBER(connection, member_expression, [caption])	https://support.microsoft.com/en-us/excel/functions/cubemember-function	
+CUBEMEMBERPROPERTY	Cube	3	CUBEMEMBERPROPERTY(connection, member_expression, property)	https://support.microsoft.com/en-us/excel/functions/cubememberproperty-function	
+CUBERANKEDMEMBER	Cube	3	CUBERANKEDMEMBER(connection, set_expression, rank, [caption])	https://support.microsoft.com/en-us/excel/functions/cuberankedmember-function	
+CUBESET	Cube	2	CUBESET(connection, set_expression, [caption], [sort_order], [sort_by])	https://support.microsoft.com/en-us/excel/functions/cubeset-function	
+CUBESETCOUNT	Cube	1	CUBESETCOUNT(set)	https://support.microsoft.com/en-us/excel/functions/cubesetcount-function	
+CUBEVALUE	Cube	1	CUBEVALUE(connection, [member_expression1], [member_expression2], …)	https://support.microsoft.com/en-us/excel/functions/cubevalue-function	
+CUMIPMT	Financial	6	CUMIPMT(rate, nper, pv, start_period, end_period, type)	https://support.microsoft.com/en-us/excel/functions/cumipmt-function	
+CUMPRINC	Financial	6	CUMPRINC(rate, nper, pv, start_period, end_period, type)	https://support.microsoft.com/en-us/excel/functions/cumprinc-function	
+DATE	Date and time	3	DATE(year,month,day)	https://support.microsoft.com/en-us/excel/functions/date-function	
+DATEDIF	Date and time	3	DATEDIF( start_date , end_date , unit )	https://support.microsoft.com/en-us/excel/functions/datedif-function	
+DATEVALUE	Date and time	1	DATEVALUE(date_text)	https://support.microsoft.com/en-us/excel/functions/datevalue-function	
+DAVERAGE	Database	3	DAVERAGE(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/daverage-function	
+DAY	Date and time	1	DAY(serial_number)	https://support.microsoft.com/en-us/excel/functions/day-function	
+DAYS	Date and time	2	DAYS(end_date, start_date)	https://support.microsoft.com/en-us/excel/functions/days-function	
+DAYS360	Date and time	2	DAYS360(start_date,end_date,[method])	https://support.microsoft.com/en-us/excel/functions/days360-function	
+DB	Financial	4	DB(cost, salvage, life, period, [month])	https://support.microsoft.com/en-us/excel/functions/db-function	
+DBCS	Text	1	DBCS(text)	https://support.microsoft.com/en-us/excel/functions/dbcs-function	
+DCOUNT	Database	3	DCOUNT(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dcount-function	
+DCOUNTA	Database	3	DCOUNTA(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dcounta-function	
+DDB	Financial	4	DDB(cost, salvage, life, period, [factor])	https://support.microsoft.com/en-us/excel/functions/ddb-function	
+DEC2BIN	Engineering	1	DEC2BIN(number, [places])	https://support.microsoft.com/en-us/excel/functions/dec2bin-function	
+DEC2HEX	Engineering	1	DEC2HEX(number, [places])	https://support.microsoft.com/en-us/excel/functions/dec2hex-function	
+DEC2OCT	Engineering	1	DEC2OCT(number, [places])	https://support.microsoft.com/en-us/excel/functions/dec2oct-function	
+DECIMAL	Math and trigonometry	2	DECIMAL(text, radix)	https://support.microsoft.com/en-us/excel/functions/decimal-function	
+DEGREES	Math and trigonometry	1	DEGREES(angle)	https://support.microsoft.com/en-us/excel/functions/degrees-function	
+DELTA	Engineering	1	DELTA(number1, [number2])	https://support.microsoft.com/en-us/excel/functions/delta-function	
+DETECTLANGUAGE	Text	1	DETECTLANGUAGE()	https://support.microsoft.com/en-us/excel/functions/detectlanguage-function	syntax given in the page body as =DETECTLANGUAGE(text)
+DEVSQ	Statistical	1	DEVSQ(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/devsq-function	
+DGET	Database	3	DGET(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dget-function	
+DISC	Financial	4	DISC(settlement, maturity, pr, redemption, [basis])	https://support.microsoft.com/en-us/excel/functions/disc-function	
+DMAX	Database	3	DMAX(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dmax-function	
+DMIN	Database	3	DMIN(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dmin-function	
+DOLLAR	Text	1	DOLLAR(number, [decimals])	https://support.microsoft.com/en-us/excel/functions/dollar-function	
+DOLLARDE	Financial	2	DOLLARDE(fractional_dollar, fraction)	https://support.microsoft.com/en-us/excel/functions/dollarde-function	
+DOLLARFR	Financial	2	DOLLARFR(decimal_dollar, fraction)	https://support.microsoft.com/en-us/excel/functions/dollarfr-function	
+DPRODUCT	Database	3	DPRODUCT(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dproduct-function	
+DROP	Lookup and reference	2	DROP(array, rows,[columns])	https://support.microsoft.com/en-us/excel/functions/drop-function	
+DSTDEV	Database	3	DSTDEV(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dstdev-function	
+DSTDEVP	Database	3	DSTDEVP(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dstdevp-function	
+DSUM	Database	3	DSUM(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dsum-function	
+DURATION	Financial	5	DURATION(settlement, maturity, coupon, yld, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/duration-function	
+DVAR	Database	3	DVAR(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dvar-function	
+DVARP	Database	3	DVARP(database, field, criteria)	https://support.microsoft.com/en-us/excel/functions/dvarp-function	
+EDATE	Date and time	2	EDATE(start_date, months)	https://support.microsoft.com/en-us/excel/functions/edate-function	
+EFFECT	Financial	2	EFFECT(nominal_rate, npery)	https://support.microsoft.com/en-us/excel/functions/effect-function	
+ENCODEURL	Web	1	ENCODEURL(text)	https://support.microsoft.com/en-us/excel/functions/encodeurl-function	
+EOMONTH	Date and time	2	EOMONTH(start_date, months)	https://support.microsoft.com/en-us/excel/functions/eomonth-function	
+ERF	Engineering	1	ERF(lower_limit,[upper_limit])	https://support.microsoft.com/en-us/excel/functions/erf-function	
+ERF.PRECISE	Engineering	1	ERF.PRECISE(x)	https://support.microsoft.com/en-us/excel/functions/erf-precise-function	
+ERFC	Engineering	1	ERFC(x)	https://support.microsoft.com/en-us/excel/functions/erfc-function	
+ERFC.PRECISE	Engineering	1	ERFC.PRECISE(x)	https://support.microsoft.com/en-us/excel/functions/erfc-precise-function	
+ERROR.TYPE	Information	1	ERROR.TYPE(error_val)	https://support.microsoft.com/en-us/excel/functions/error-type-function	
+EUROCONVERT	Add-in and Automation	3	EUROCONVERT(number,source,target,full_precision,triangulation_precision)	https://support.microsoft.com/en-us/excel/functions/euroconvert-function	page syntax omits brackets; example =EUROCONVERT(A2,B2,C2)
+EVEN	Math and trigonometry	1	EVEN(number)	https://support.microsoft.com/en-us/excel/functions/even-function	
+EXACT	Text	2	EXACT(text1, text2)	https://support.microsoft.com/en-us/excel/functions/exact-function	
+EXP	Math and trigonometry	1	EXP(number)	https://support.microsoft.com/en-us/excel/functions/exp-function	
+EXPAND	Lookup and reference	2	EXPAND(array, rows, [columns], [pad_with])	https://support.microsoft.com/en-us/excel/functions/expand-function	
+EXPON.DIST	Statistical	3	EXPON.DIST(x,lambda,cumulative)	https://support.microsoft.com/en-us/excel/functions/expon-dist-function	
+EXPONDIST	Compatibility	3	EXPONDIST(x,lambda,cumulative)	https://support.microsoft.com/en-us/excel/functions/expondist-function	
+FACT	Math and trigonometry	1	FACT(number)	https://support.microsoft.com/en-us/excel/functions/fact-function	
+FACTDOUBLE	Math and trigonometry	1	FACTDOUBLE(number)	https://support.microsoft.com/en-us/excel/functions/factdouble-function	
+FALSE	Logical	0	FALSE()	https://support.microsoft.com/en-us/excel/functions/false-function	
+F.DIST	Statistical	4	F.DIST(x,deg_freedom1,deg_freedom2,cumulative)	https://support.microsoft.com/en-us/excel/functions/f-dist-function	
+FDIST	Compatibility	3	FDIST(x,deg_freedom1,deg_freedom2)	https://support.microsoft.com/en-us/excel/functions/fdist-function	
+F.DIST.RT	Statistical	3	F.DIST.RT(x,deg_freedom1,deg_freedom2)	https://support.microsoft.com/en-us/excel/functions/f-dist-rt-function	
+FILTER	Lookup and reference	2	FILTER(array,include,[if_empty])	https://support.microsoft.com/en-us/excel/functions/filter-function	
+FILTERXML	Web	2	FILTERXML(xml, xpath)	https://support.microsoft.com/en-us/excel/functions/filterxml-function	
+FIND	Text	2		https://support.microsoft.com/en-us/topic/c7912941-af2a-4bdf-a553-d0d89b0a0628	the linked page is retired (it redirects to 'this article has been retired'); find_text and within_text are required, as in SEARCH(find_text, within_text, [start_num])
+FINDB	Text	2		https://support.microsoft.com/en-us/topic/c7912941-af2a-4bdf-a553-d0d89b0a0628	listed with FIND (retired page); same arguments as FIND
+F.INV	Statistical	3	F.INV(probability,deg_freedom1,deg_freedom2)	https://support.microsoft.com/en-us/excel/functions/f-inv-function	
+F.INV.RT	Statistical	3	F.INV.RT(probability,deg_freedom1,deg_freedom2)	https://support.microsoft.com/en-us/excel/functions/f-inv-rt-function	
+FINV	Compatibility	3	FINV(probability,deg_freedom1,deg_freedom2)	https://support.microsoft.com/en-us/excel/functions/finv-function	
+FISHER	Statistical	1	FISHER(x)	https://support.microsoft.com/en-us/excel/functions/fisher-function	
+FISHERINV	Statistical	1	FISHERINV(y)	https://support.microsoft.com/en-us/excel/functions/fisherinv-function	
+FIXED	Text	1	FIXED(number, [decimals], [no_commas])	https://support.microsoft.com/en-us/excel/functions/fixed-function	
+FLOOR	Compatibility	2	FLOOR(number, significance)	https://support.microsoft.com/en-us/excel/functions/floor-function	
+FLOOR.MATH	Math and trigonometry	1	FLOOR.MATH(number, significance, mode)	https://support.microsoft.com/en-us/excel/functions/floor-math-function	page syntax omits brackets; significance and mode are documented Optional
+FLOOR.PRECISE	Math and trigonometry	1	FLOOR.PRECISE(number, [significance])	https://support.microsoft.com/en-us/excel/functions/floor-precise-function	
+FORECAST	Statistical	3	FORECAST(x, known_y's, known_x's)	https://support.microsoft.com/en-us/excel/functions/forecast-and-forecast-linear-functions	
+FORECAST.ETS	Statistical	3	FORECAST.ETS(target_date, values, timeline, [seasonality], [data_completion], [aggregation])	https://support.microsoft.com/en-us/excel/functions/forecast-ets-function	
+FORECAST.ETS.CONFINT	Statistical	3	FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level], [seasonality], [data_completion], [aggregation])	https://support.microsoft.com/en-us/excel/functions/forecast-ets-confint-function	
+FORECAST.ETS.SEASONALITY	Statistical	2	FORECAST.ETS.SEASONALITY(values, timeline, [data_completion], [aggregation])	https://support.microsoft.com/en-us/excel/functions/forecast-ets-seasonality-function	
+FORECAST.ETS.STAT	Statistical	3	FORECAST.ETS.STAT(values, timeline, statistic_type, [seasonality], [data_completion], [aggregation])	https://support.microsoft.com/en-us/excel/functions/forecast-ets-stat-function	
+FORECAST.LINEAR	Statistical	3	FORECAST.LINEAR(x, known_y's, known_x's)	https://support.microsoft.com/en-us/excel/functions/forecast-linear-function	
+FORMULATEXT	Lookup and reference	1	FORMULATEXT(reference)	https://support.microsoft.com/en-us/excel/functions/formulatext-function	
+FREQUENCY	Statistical	2	FREQUENCY(data_array, bins_array)	https://support.microsoft.com/en-us/excel/functions/frequency-function	
+F.TEST	Statistical	2	F.TEST(array1,array2)	https://support.microsoft.com/en-us/excel/functions/f-test-function	
+FTEST	Compatibility	2	FTEST(array1,array2)	https://support.microsoft.com/en-us/excel/functions/ftest-function	
+FV	Financial	3	FV(rate,nper,pmt,[pv],[type])	https://support.microsoft.com/en-us/excel/functions/fv-function	
+FVSCHEDULE	Financial	2	FVSCHEDULE(principal, schedule)	https://support.microsoft.com/en-us/excel/functions/fvschedule-function	
+GAMMA	Statistical	1	GAMMA(number)	https://support.microsoft.com/en-us/excel/functions/gamma-function	
+GAMMA.DIST	Statistical	4	GAMMA.DIST(x,alpha,beta,cumulative)	https://support.microsoft.com/en-us/excel/functions/gamma-dist-function	
+GAMMADIST	Compatibility	4	GAMMADIST(x,alpha,beta,cumulative)	https://support.microsoft.com/en-us/excel/functions/gammadist-function	
+GAMMA.INV	Statistical	3	GAMMA.INV(probability,alpha,beta)	https://support.microsoft.com/en-us/excel/functions/gamma-inv-function	
+GAMMAINV	Compatibility	3	GAMMAINV(probability,alpha,beta)	https://support.microsoft.com/en-us/excel/functions/gammainv-function	
+GAMMALN	Statistical	1	GAMMALN(x)	https://support.microsoft.com/en-us/excel/functions/gammaln-function	
+GAMMALN.PRECISE	Statistical	1	GAMMALN.PRECISE(x)	https://support.microsoft.com/en-us/excel/functions/gammaln-precise-function	
+GAUSS	Statistical	1	GAUSS(z)	https://support.microsoft.com/en-us/excel/functions/gauss-function	
+GCD	Math and trigonometry	1	GCD(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/gcd-function	
+GEOMEAN	Statistical	1	GEOMEAN(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/geomean-function	
+GESTEP	Engineering	1	GESTEP(number, [step])	https://support.microsoft.com/en-us/excel/functions/gestep-function	
+GETPIVOTDATA	Lookup and reference	2	GETPIVOTDATA(data_field, pivot_table, [field1, item1, field2, item2], ...)	https://support.microsoft.com/en-us/excel/functions/getpivotdata-function	
+GROUPBY	Lookup and reference	3	GROUPBY(row_fields,values,function,[field_headers],[total_depth],[sort_order],[filter_array],[field_relationship])	https://support.microsoft.com/en-us/excel/functions/groupby-function	
+GROWTH	Statistical	1	GROWTH(known_y's, [known_x's], [new_x's], [const])	https://support.microsoft.com/en-us/excel/functions/growth-function	
+HARMEAN	Statistical	1	HARMEAN(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/harmean-function	
+HEX2BIN	Engineering	1	HEX2BIN(number, [places])	https://support.microsoft.com/en-us/excel/functions/hex2bin-function	
+HEX2DEC	Engineering	1	HEX2DEC(number)	https://support.microsoft.com/en-us/excel/functions/hex2dec-function	
+HEX2OCT	Engineering	1	HEX2OCT(number, [places])	https://support.microsoft.com/en-us/excel/functions/hex2oct-function	
+HLOOKUP	Lookup and reference	3	HLOOKUP(lookup_value, table_array, row_index_num, [range_lookup])	https://support.microsoft.com/en-us/excel/functions/hlookup-function	
+HOUR	Date and time	1	HOUR(serial_number)	https://support.microsoft.com/en-us/excel/functions/hour-function	
+HSTACK	Lookup and reference	1	HSTACK(array1,[array2],...)	https://support.microsoft.com/en-us/excel/functions/hstack-function	
+HYPERLINK	Lookup and reference	1	HYPERLINK(link_location, [friendly_name])	https://support.microsoft.com/en-us/excel/functions/hyperlink-function	
+HYPGEOM.DIST	Statistical	5	HYPGEOM.DIST(sample_s,number_sample,population_s,number_pop,cumulative)	https://support.microsoft.com/en-us/excel/functions/hypgeom-dist-function	
+HYPGEOMDIST	Compatibility	4	HYPGEOMDIST(sample_s,number_sample,population_s,number_pop)	https://support.microsoft.com/en-us/excel/functions/hypgeomdist-function	
+IF	Logical	2	IF(logical_test, value_if_true, [value_if_false])	https://support.microsoft.com/en-us/excel/functions/if-function	
+IFERROR	Logical	2	IFERROR(value, value_if_error)	https://support.microsoft.com/en-us/excel/functions/iferror-function	
+IFNA	Logical	2	IFNA(value, value_if_na)	https://support.microsoft.com/en-us/excel/functions/ifna-function	
+IFS	Logical	2	IFS(logical_test1, value_if_true1, [logical_test2, value_if_true2], [logical_test3, value_if_true3],…)	https://support.microsoft.com/en-us/excel/functions/ifs-function	
+IMABS	Engineering	1	IMABS(inumber)	https://support.microsoft.com/en-us/excel/functions/imabs-function	
+IMAGE	Lookup and reference	1	IMAGE(source, [alt_text], [sizing], [height], [width])	https://support.microsoft.com/en-us/excel/functions/image-function	
+IMAGINARY	Engineering	1	IMAGINARY(inumber)	https://support.microsoft.com/en-us/excel/functions/imaginary-function	
+IMARGUMENT	Engineering	1	IMARGUMENT(inumber)	https://support.microsoft.com/en-us/excel/functions/imargument-function	
+IMCONJUGATE	Engineering	1	IMCONJUGATE(inumber)	https://support.microsoft.com/en-us/excel/functions/imconjugate-function	
+IMCOS	Engineering	1	IMCOS(inumber)	https://support.microsoft.com/en-us/excel/functions/imcos-function	
+IMCOSH	Engineering	1	IMCOSH(inumber)	https://support.microsoft.com/en-us/excel/functions/imcosh-function	
+IMCOT	Engineering	1	IMCOT(inumber)	https://support.microsoft.com/en-us/excel/functions/imcot-function	
+IMCSC	Engineering	1	IMCSC(inumber)	https://support.microsoft.com/en-us/excel/functions/imcsc-function	
+IMCSCH	Engineering	1	IMCSCH(inumber)	https://support.microsoft.com/en-us/excel/functions/imcsch-function	
+IMDIV	Engineering	2	IMDIV(inumber1, inumber2)	https://support.microsoft.com/en-us/excel/functions/imdiv-function	
+IMEXP	Engineering	1	IMEXP(inumber)	https://support.microsoft.com/en-us/excel/functions/imexp-function	
+IMLN	Engineering	1	IMLN(inumber)	https://support.microsoft.com/en-us/excel/functions/imln-function	
+IMLOG10	Engineering	1	IMLOG10(inumber)	https://support.microsoft.com/en-us/excel/functions/imlog10-function	
+IMLOG2	Engineering	1	IMLOG2(inumber)	https://support.microsoft.com/en-us/excel/functions/imlog2-function	
+IMPOWER	Engineering	2	IMPOWER(inumber, number)	https://support.microsoft.com/en-us/excel/functions/impower-function	
+IMPRODUCT	Engineering	1	IMPRODUCT(inumber1, [inumber2], ...)	https://support.microsoft.com/en-us/excel/functions/improduct-function	
+IMREAL	Engineering	1	IMREAL(inumber)	https://support.microsoft.com/en-us/excel/functions/imreal-function	
+IMSEC	Engineering	1	IMSEC(inumber)	https://support.microsoft.com/en-us/excel/functions/imsec-function	
+IMSECH	Engineering	1	IMSECH(inumber)	https://support.microsoft.com/en-us/excel/functions/imsech-function	
+IMSIN	Engineering	1	IMSIN(inumber)	https://support.microsoft.com/en-us/excel/functions/imsin-function	
+IMSINH	Engineering	1	IMSINH(inumber)	https://support.microsoft.com/en-us/excel/functions/imsinh-function	
+IMSQRT	Engineering	1	IMSQRT(inumber)	https://support.microsoft.com/en-us/excel/functions/imsqrt-function	
+IMSUB	Engineering	2	IMSUB(inumber1, inumber2)	https://support.microsoft.com/en-us/excel/functions/imsub-function	
+IMSUM	Engineering	1	IMSUM(inumber1, [inumber2], ...)	https://support.microsoft.com/en-us/excel/functions/imsum-function	
+IMTAN	Engineering	1	IMTAN(inumber)	https://support.microsoft.com/en-us/excel/functions/imtan-function	
+INDEX	Lookup and reference	2	INDEX(array, row_num, [column_num])	https://support.microsoft.com/en-us/excel/functions/index-function	
+INDIRECT	Lookup and reference	1	INDIRECT(ref_text, [a1])	https://support.microsoft.com/en-us/excel/functions/indirect-function	
+INFO	Information	1	INFO(type_text)	https://support.microsoft.com/en-us/excel/functions/info-function	
+INT	Math and trigonometry	1	INT(number)	https://support.microsoft.com/en-us/excel/functions/int-function	
+INTERCEPT	Statistical	2	INTERCEPT(known_y's, known_x's)	https://support.microsoft.com/en-us/excel/functions/intercept-function	
+INTRATE	Financial	4	INTRATE(settlement, maturity, investment, redemption, [basis])	https://support.microsoft.com/en-us/excel/functions/intrate-function	
+IPMT	Financial	4	IPMT(rate, per, nper, pv, [fv], [type])	https://support.microsoft.com/en-us/excel/functions/ipmt-function	
+IRR	Financial	1	IRR(values, [guess])	https://support.microsoft.com/en-us/excel/functions/irr-function	
+ISBLANK	Information	1	ISBLANK(FILTER(A2:D8,A2:A8="Fred"))	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISERR	Information	1	ISERR(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISERROR	Information	1	ISERROR(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISEVEN	Information	1	ISEVEN(number)	https://support.microsoft.com/en-us/excel/functions/iseven-function	
+ISFORMULA	Information	1	ISFORMULA(reference)	https://support.microsoft.com/en-us/excel/functions/isformula-function	
+ISLOGICAL	Information	1	ISLOGICAL(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISNA	Information	1	ISNA(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISNONTEXT	Information	1	ISNONTEXT(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISNUMBER	Information	1	ISNUMBER(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISODD	Information	1	ISODD(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISOMITTED	Information	1	ISOMITTED(argument)	https://support.microsoft.com/en-us/excel/functions/isomitted-function	
+ISREF	Information	1	ISREF(value)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISTEXT	Information	1	ISTEXT(A1)	https://support.microsoft.com/en-us/excel/functions/is-functions	
+ISO.CEILING	Math and trigonometry	1	ISO.CEILING(number, [significance])	https://support.microsoft.com/en-us/excel/functions/iso-ceiling-function	
+ISOWEEKNUM	Date and time	1	ISOWEEKNUM(date)	https://support.microsoft.com/en-us/excel/functions/isoweeknum-function	
+ISPMT	Financial	4	ISPMT(rate, per, nper, pv)	https://support.microsoft.com/en-us/excel/functions/ispmt-function	
+JIS	Text	1	JIS(text)	https://support.microsoft.com/en-us/excel/functions/jis-function	
+KURT	Statistical	1	KURT(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/kurt-function	
+LAMBDA	Logical	1	LAMBDA([parameter1, parameter2, …,] calculation)	https://support.microsoft.com/en-us/excel/functions/lambda-function	syntax LAMBDA([parameter1, ...,] calculation): only calculation is required
+LARGE	Statistical	2	LARGE(array, k)	https://support.microsoft.com/en-us/excel/functions/large-function	
+LCM	Math and trigonometry	1	LCM(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/lcm-function	
+LEFT	Text	1	LEFT(text, [num_chars])	https://support.microsoft.com/en-us/excel/functions/left-function	
+LEFTB	Text	1		https://support.microsoft.com/en-us/excel/functions/left-function	deprecated byte variant; no own syntax, same arguments as LEFT
+LEN	Text	1	LEN(text)	https://support.microsoft.com/en-us/excel/functions/len-function	
+LENB	Text	1		https://support.microsoft.com/en-us/excel/functions/len-function	deprecated byte variant; no own syntax, same arguments as LEN
+LET	Logical	3	LET(name1, name_value1, calculation_or_name2, [name_value2, calculation_or_name3...])	https://support.microsoft.com/en-us/excel/functions/let-function	
+LINEST	Statistical	1	LINEST(known_y's, [known_x's], [const], [stats])	https://support.microsoft.com/en-us/excel/functions/linest-function	
+LN	Math and trigonometry	1	LN(number)	https://support.microsoft.com/en-us/excel/functions/ln-function	
+LOG	Math and trigonometry	1	LOG(number, [base])	https://support.microsoft.com/en-us/excel/functions/log-function	
+LOG10	Math and trigonometry	1	LOG10(number)	https://support.microsoft.com/en-us/excel/functions/log10-function	
+LOGEST	Statistical	1	LOGEST(known_y's, [known_x's], [const], [stats])	https://support.microsoft.com/en-us/excel/functions/logest-function	
+LOGINV	Compatibility	3	LOGINV(probability, mean, standard_dev)	https://support.microsoft.com/en-us/excel/functions/loginv-function	
+LOGNORM.DIST	Statistical	4	LOGNORM.DIST(x,mean,standard_dev,cumulative)	https://support.microsoft.com/en-us/excel/functions/lognorm-dist-function	
+LOGNORMDIST	Compatibility	3	LOGNORMDIST(x,mean,standard_dev)	https://support.microsoft.com/en-us/excel/functions/lognormdist-function	
+LOGNORM.INV	Statistical	3	LOGNORM.INV(probability, mean, standard_dev)	https://support.microsoft.com/en-us/excel/functions/lognorm-inv-function	
+LOOKUP	Lookup and reference	2	LOOKUP(lookup_value, lookup_vector, [result_vector])	https://support.microsoft.com/en-us/excel/functions/lookup-function	
+LOWER	Text	1	LOWER(text)	https://support.microsoft.com/en-us/excel/functions/lower-function	
+MAKEARRAY	Logical	3	MAKEARRAY(rows, cols, lambda(row, col))	https://support.microsoft.com/en-us/excel/functions/makearray-function	
+MAP	Logical	2	MAP(array1, lambda_or_array<#>)	https://support.microsoft.com/en-us/excel/functions/map-function	
+MATCH	Lookup and reference	2	MATCH(lookup_value, lookup_array, [match_type])	https://support.microsoft.com/en-us/excel/functions/match-function	
+MAX	Statistical	1	MAX(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/max-function	
+MAXA	Statistical	1	MAXA(value1,[value2],...)	https://support.microsoft.com/en-us/excel/functions/maxa-function	
+MAXIFS	Statistical	3	MAXIFS(max_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)	https://support.microsoft.com/en-us/excel/functions/maxifs-function	
+MDETERM	Math and trigonometry	1	MDETERM(array)	https://support.microsoft.com/en-us/excel/functions/mdeterm-function	
+MDURATION	Financial	5	MDURATION(settlement, maturity, coupon, yld, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/mduration-function	
+MEDIAN	Statistical	1	MEDIAN(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/median-function	
+MID	Text	3	MID(text, start_num, num_chars)	https://support.microsoft.com/en-us/excel/functions/mid-function	
+MIDB	Text	3		https://support.microsoft.com/en-us/excel/functions/mid-function	deprecated byte variant; no own syntax, same arguments as MID
+MIN	Statistical	1	MIN(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/min-function	
+MINIFS	Statistical	3	MINIFS(min_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)	https://support.microsoft.com/en-us/excel/functions/minifs-function	
+MINA	Statistical	1	MINA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/mina-function	
+MINUTE	Date and time	1	MINUTE(serial_number)	https://support.microsoft.com/en-us/excel/functions/minute-function	
+MINVERSE	Math and trigonometry	1	MINVERSE(array)	https://support.microsoft.com/en-us/excel/functions/minverse-function	
+MIRR	Financial	3	MIRR(values, finance_rate, reinvest_rate)	https://support.microsoft.com/en-us/excel/functions/mirr-function	
+MMULT	Math and trigonometry	2	MMULT(array1, array2)	https://support.microsoft.com/en-us/excel/functions/mmult-function	
+MOD	Math and trigonometry	2	MOD(number, divisor)	https://support.microsoft.com/en-us/excel/functions/mod-function	
+MODE	Compatibility	1	MODE(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/mode-function	
+MODE.MULT	Statistical	1		https://support.microsoft.com/en-us/excel/functions/mode-mult-function	page syntax is malformed (MODE.MULT((number1,[number2],...]); number1 required
+MODE.SNGL	Statistical	1	MODE.SNGL(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/mode-sngl-function	
+MONTH	Date and time	1	MONTH(serial_number)	https://support.microsoft.com/en-us/excel/functions/month-function	
+MROUND	Math and trigonometry	2	MROUND(number, multiple)	https://support.microsoft.com/en-us/excel/functions/mround-function	
+MULTINOMIAL	Math and trigonometry	1	MULTINOMIAL(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/multinomial-function	
+MUNIT	Math and trigonometry	1	MUNIT(dimension)	https://support.microsoft.com/en-us/excel/functions/munit-function	
+N	Information	1	N(value)	https://support.microsoft.com/en-us/excel/functions/n-function	
+NA	Information	0	NA( )	https://support.microsoft.com/en-us/excel/functions/na-function	
+NEGBINOM.DIST	Statistical	4	NEGBINOM.DIST(number_f,number_s,probability_s,cumulative)	https://support.microsoft.com/en-us/excel/functions/negbinom-dist-function	
+NEGBINOMDIST	Compatibility	3	NEGBINOMDIST(number_f,number_s,probability_s)	https://support.microsoft.com/en-us/excel/functions/negbinomdist-function	
+NETWORKDAYS	Date and time	2	NETWORKDAYS(start_date, end_date, [holidays])	https://support.microsoft.com/en-us/excel/functions/networkdays-function	
+NETWORKDAYS.INTL	Date and time	2	NETWORKDAYS.INTL(start_date, end_date, [weekend], [holidays])	https://support.microsoft.com/en-us/excel/functions/networkdays-intl-function	
+NOMINAL	Financial	2	NOMINAL(effect_rate, npery)	https://support.microsoft.com/en-us/excel/functions/nominal-function	
+NORM.DIST	Statistical	4	NORM.DIST(x,mean,standard_dev,cumulative)	https://support.microsoft.com/en-us/excel/functions/norm-dist-function	
+NORMDIST	Compatibility	4	NORMDIST(x,mean,standard_dev,cumulative)	https://support.microsoft.com/en-us/excel/functions/normdist-function	
+NORMINV	Statistical	3	NORMINV(probability,mean,standard_dev)	https://support.microsoft.com/en-us/excel/functions/norminv-function	the alphabetical table labels NORMINV Statistical and NORM.INV Compatibility (swapped)
+NORM.INV	Compatibility	3	NORM.INV(probability,mean,standard_dev)	https://support.microsoft.com/en-us/excel/functions/norm-inv-function	the alphabetical table labels NORM.INV Compatibility and NORMINV Statistical (swapped)
+NORM.S.DIST	Statistical	2	NORM.S.DIST(z,cumulative)	https://support.microsoft.com/en-us/excel/functions/norm-s-dist-function	
+NORMSDIST	Compatibility	1	NORMSDIST(z)	https://support.microsoft.com/en-us/excel/functions/normsdist-function	
+NORM.S.INV	Statistical	1	NORM.S.INV(probability)	https://support.microsoft.com/en-us/excel/functions/norm-s-inv-function	
+NORMSINV	Compatibility	1	NORMSINV(probability)	https://support.microsoft.com/en-us/excel/functions/normsinv-function	
+NOT	Logical	1	NOT(logical)	https://support.microsoft.com/en-us/excel/functions/not-function	
+NOW	Date and time	0	NOW()	https://support.microsoft.com/en-us/excel/functions/now-function	
+NPER	Financial	3	NPER(rate,pmt,pv,[fv],[type])	https://support.microsoft.com/en-us/excel/functions/nper-function	
+NPV	Financial	2	NPV(rate,value1,[value2],...)	https://support.microsoft.com/en-us/excel/functions/npv-function	
+NUMBERVALUE	Text	1	NUMBERVALUE(Text, [Decimal_separator], [Group_separator ])	https://support.microsoft.com/en-us/excel/functions/numbervalue-function	
+OCT2BIN	Engineering	1	OCT2BIN(number, [places])	https://support.microsoft.com/en-us/excel/functions/oct2bin-function	
+OCT2DEC	Engineering	1	OCT2DEC(number)	https://support.microsoft.com/en-us/excel/functions/oct2dec-function	
+OCT2HEX	Engineering	1	OCT2HEX(number, [places])	https://support.microsoft.com/en-us/excel/functions/oct2hex-function	
+ODD	Math and trigonometry	1	ODD(number)	https://support.microsoft.com/en-us/excel/functions/odd-function	
+ODDFPRICE	Financial	8	ODDFPRICE(settlement, maturity, issue, first_coupon, rate, yld, redemption, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/oddfprice-function	
+ODDFYIELD	Financial	8	ODDFYIELD(settlement, maturity, issue, first_coupon, rate, pr, redemption, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/oddfyield-function	
+ODDLPRICE	Financial	7	ODDLPRICE(settlement, maturity, last_interest, rate, yld, redemption, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/oddlprice-function	
+ODDLYIELD	Financial	7	ODDLYIELD(settlement, maturity, last_interest, rate, pr, redemption, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/oddlyield-function	
+OFFSET	Lookup and reference	3	OFFSET(reference, rows, cols, [height], [width])	https://support.microsoft.com/en-us/excel/functions/offset-function	
+OR	Logical	1	OR(logical1, [logical2], ...)	https://support.microsoft.com/en-us/excel/functions/or-function	
+PDURATION	Financial	3	PDURATION(rate, pv, fv)	https://support.microsoft.com/en-us/excel/functions/pduration-function	
+PEARSON	Statistical	2	PEARSON(array1, array2)	https://support.microsoft.com/en-us/excel/functions/pearson-function	
+PERCENTILE.EXC	Statistical	2	PERCENTILE.EXC(array,k)	https://support.microsoft.com/en-us/excel/functions/percentile-exc-function	
+PERCENTILE.INC	Statistical	2	PERCENTILE.INC(array,k)	https://support.microsoft.com/en-us/excel/functions/percentile-inc-function	
+PERCENTILE	Compatibility	2	PERCENTILE(array,k)	https://support.microsoft.com/en-us/excel/functions/percentile-function	
+PERCENTOF	Math and trigonometry	2	PERCENTOF(data_subset,data_all)	https://support.microsoft.com/en-us/excel/functions/percentof-function	
+PERCENTRANK.EXC	Statistical	2	PERCENTRANK.EXC(array,x,[significance])	https://support.microsoft.com/en-us/excel/functions/percentrank-exc-function	
+PERCENTRANK.INC	Statistical	2	PERCENTRANK.INC(array,x,[significance])	https://support.microsoft.com/en-us/excel/functions/percentrank-inc-function	
+PERCENTRANK	Compatibility	2	PERCENTRANK(array,x,[significance])	https://support.microsoft.com/en-us/excel/functions/percentrank-function	
+PERMUT	Statistical	2	PERMUT(number, number_chosen)	https://support.microsoft.com/en-us/excel/functions/permut-function	
+PERMUTATIONA	Statistical	2	PERMUTATIONA(number, number-chosen)	https://support.microsoft.com/en-us/excel/functions/permutationa-function	
+PHI	Statistical	1	PHI(x)	https://support.microsoft.com/en-us/excel/functions/phi-function	
+PHONETIC	Text	1	PHONETIC(reference)	https://support.microsoft.com/en-us/excel/functions/phonetic-function	
+PI	Math and trigonometry	0	PI()	https://support.microsoft.com/en-us/excel/functions/pi-function	
+PIVOTBY	Lookup and reference	4	PIVOTBY(row_fields,col_fields,values,function,[field_headers],[row_total_depth],[row_sort_order],[col_total_depth],[col_sort_order],[filter_array],[relative_to])	https://support.microsoft.com/en-us/excel/functions/pivotby-function	
+PMT	Financial	3	PMT(rate, nper, pv, [fv], [type])	https://support.microsoft.com/en-us/excel/functions/pmt-function	
+POISSON.DIST	Statistical	3	POISSON.DIST(x,mean,cumulative)	https://support.microsoft.com/en-us/excel/functions/poisson-dist-function	
+POISSON	Compatibility	3	POISSON(x,mean,cumulative)	https://support.microsoft.com/en-us/excel/functions/poisson-function	
+POWER	Math and trigonometry	2	POWER(number, power)	https://support.microsoft.com/en-us/excel/functions/power-function	
+PPMT	Financial	4	PPMT(rate, per, nper, pv, [fv], [type])	https://support.microsoft.com/en-us/excel/functions/ppmt-function	
+PRICE	Financial	6	PRICE(settlement, maturity, rate, yld, redemption, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/price-function	
+PRICEDISC	Financial	4	PRICEDISC(settlement, maturity, discount, redemption, [basis])	https://support.microsoft.com/en-us/excel/functions/pricedisc-function	
+PRICEMAT	Financial	5	PRICEMAT(settlement, maturity, issue, rate, yld, [basis])	https://support.microsoft.com/en-us/excel/functions/pricemat-function	
+PROB	Statistical	3	PROB(x_range, prob_range, [lower_limit], [upper_limit])	https://support.microsoft.com/en-us/excel/functions/prob-function	the page marks lower_limit Optional, but Excel for the web rejected the workbook for PROB with 2 arguments and loaded it with 3 (T-0040)
+PRODUCT	Math and trigonometry	1	PRODUCT(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/product-function	
+PROPER	Text	1	PROPER(text)	https://support.microsoft.com/en-us/excel/functions/proper-function	
+PV	Financial	3	PV(rate, nper, pmt, [fv], [type])	https://support.microsoft.com/en-us/excel/functions/pv-function	
+QUARTILE	Compatibility	2	QUARTILE(array,quart)	https://support.microsoft.com/en-us/excel/functions/quartile-function	
+QUARTILE.EXC	Statistical	2	QUARTILE.EXC(array, quart)	https://support.microsoft.com/en-us/excel/functions/quartile-exc-function	
+QUARTILE.INC	Statistical	2	QUARTILE.INC(array,quart)	https://support.microsoft.com/en-us/excel/functions/quartile-inc-function	
+QUOTIENT	Math and trigonometry	2	QUOTIENT(numerator, denominator)	https://support.microsoft.com/en-us/excel/functions/quotient-function	
+RADIANS	Math and trigonometry	1	RADIANS(angle)	https://support.microsoft.com/en-us/excel/functions/radians-function	
+RAND	Math and trigonometry	0	RAND()	https://support.microsoft.com/en-us/excel/functions/rand-function	
+RANDARRAY	Math and trigonometry	0	RANDARRAY([rows],[columns],[min],[max],[whole_number])	https://support.microsoft.com/en-us/excel/functions/randarray-function	
+RANDBETWEEN	Math and trigonometry	2	RANDBETWEEN(bottom, top)	https://support.microsoft.com/en-us/excel/functions/randbetween-function	
+RANK.AVG	Statistical	2	RANK.AVG(number,ref,[order])	https://support.microsoft.com/en-us/excel/functions/rank-avg-function	
+RANK.EQ	Statistical	2	RANK.EQ(number,ref,[order])	https://support.microsoft.com/en-us/excel/functions/rank-eq-function	
+RANK	Compatibility	2	RANK(number,ref,[order])	https://support.microsoft.com/en-us/excel/functions/rank-function	
+RATE	Financial	3	RATE(nper, pmt, pv, [fv], [type], [guess])	https://support.microsoft.com/en-us/excel/functions/rate-function	
+RECEIVED	Financial	4	RECEIVED(settlement, maturity, investment, discount, [basis])	https://support.microsoft.com/en-us/excel/functions/received-function	
+REDUCE	Logical	3	REDUCE([initial_value], array, lambda(accumulator, value, body))	https://support.microsoft.com/en-us/excel/functions/reduce-function	the leading optional initial_value still takes a position: Excel for the web rejected the workbook for REDUCE with 2 arguments and loaded it with 3 (T-0040)
+REGEXEXTRACT	Text	2	REGEXEXTRACT(text, pattern, [return_mode], [case_sensitivity])	https://support.microsoft.com/en-us/excel/functions/regexextract-function	
+REGEXREPLACE	Text	3	REGEXREPLACE(text, pattern, replacement, [occurrence], [case_sensitivity])	https://support.microsoft.com/en-us/excel/functions/regexreplace-function	
+REGEXTEST	Text	2	REGEXTEST(text, pattern, [case_sensitivity])	https://support.microsoft.com/en-us/excel/functions/regextest-function	
+REGISTER.ID	Add-in and Automation	2	REGISTER.ID(module_text,procedure,[type_text])	https://support.microsoft.com/en-us/excel/functions/register-id-function	
+REPLACE	Text	4	REPLACE(old_text, start_num, num_chars, new_text)	https://support.microsoft.com/en-us/excel/functions/replace-function	
+REPLACEB	Text	4		https://support.microsoft.com/en-us/excel/functions/replace-function	deprecated byte variant; no own syntax, same arguments as REPLACE
+REPT	Text	2	REPT(text, number_times)	https://support.microsoft.com/en-us/excel/functions/rept-function	
+RIGHT	Text	1	RIGHT(text,[num_chars])	https://support.microsoft.com/en-us/excel/functions/right-function	
+RIGHTB	Text	1		https://support.microsoft.com/en-us/excel/functions/right-function	deprecated byte variant; no own syntax, same arguments as RIGHT
+ROMAN	Math and trigonometry	1	ROMAN(number, [form])	https://support.microsoft.com/en-us/excel/functions/roman-function	
+ROUND	Math and trigonometry	2	ROUND(number, num_digits)	https://support.microsoft.com/en-us/excel/functions/round-function	
+ROUNDDOWN	Math and trigonometry	2	ROUNDDOWN(number, num_digits)	https://support.microsoft.com/en-us/excel/functions/rounddown-function	
+ROUNDUP	Math and trigonometry	2	ROUNDUP(number, num_digits)	https://support.microsoft.com/en-us/excel/functions/roundup-function	
+ROW	Lookup and reference	0	ROW([reference])	https://support.microsoft.com/en-us/excel/functions/row-function	
+ROWS	Lookup and reference	1	ROWS(array)	https://support.microsoft.com/en-us/excel/functions/rows-function	
+RRI	Financial	3	RRI(nper, pv, fv)	https://support.microsoft.com/en-us/excel/functions/rri-function	
+RSQ	Statistical	2	RSQ(known_y's,known_x's)	https://support.microsoft.com/en-us/excel/functions/rsq-function	
+RTD	Lookup and reference	3	RTD(ProgID, server, topic1, [topic2], ...)	https://support.microsoft.com/en-us/excel/functions/rtd-function	
+SCAN	Logical	3	SCAN([initial_value], array, lambda(accumulator, value, body))	https://support.microsoft.com/en-us/excel/functions/scan-function	the leading optional initial_value still takes a position: Excel for the web rejected the workbook for SCAN with 2 arguments and loaded it with 3 (T-0040)
+SEARCH	Text	2	SEARCH(find_text,within_text,[start_num])	https://support.microsoft.com/en-us/excel/functions/search-function	
+SEARCHB	Text	2		https://support.microsoft.com/en-us/excel/functions/search-function	deprecated byte variant; no own syntax, same arguments as SEARCH
+SEC	Math and trigonometry	1	SEC(number)	https://support.microsoft.com/en-us/excel/functions/sec-function	
+SECH	Math and trigonometry	1	SECH(number)	https://support.microsoft.com/en-us/excel/functions/sech-function	
+SECOND	Date and time	1	SECOND(serial_number)	https://support.microsoft.com/en-us/excel/functions/second-function	
+SEQUENCE	Math and trigonometry	1	SEQUENCE(rows,[columns],[start],[step])	https://support.microsoft.com/en-us/excel/functions/sequence-function	
+SERIESSUM	Math and trigonometry	4	SERIESSUM(x, n, m, coefficients)	https://support.microsoft.com/en-us/excel/functions/seriessum-function	
+SHEET	Information	0	SHEET(value)	https://support.microsoft.com/en-us/excel/functions/sheet-function	value is documented Optional
+SHEETS	Information	0	SHEETS(reference)	https://support.microsoft.com/en-us/excel/functions/sheets-function	reference is documented Optional
+SIGN	Math and trigonometry	1	SIGN(number)	https://support.microsoft.com/en-us/excel/functions/sign-function	
+SIN	Math and trigonometry	1	SIN(number)	https://support.microsoft.com/en-us/excel/functions/sin-function	
+SINH	Math and trigonometry	1	SINH(number)	https://support.microsoft.com/en-us/excel/functions/sinh-function	
+SKEW	Statistical	1	SKEW(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/skew-function	
+SKEW.P	Statistical	1	SKEW.P(number 1, [number 2],…)	https://support.microsoft.com/en-us/excel/functions/skew-p-function	
+SLN	Financial	3	SLN(cost, salvage, life)	https://support.microsoft.com/en-us/excel/functions/sln-function	
+SLOPE	Statistical	2	SLOPE(known_y's, known_x's)	https://support.microsoft.com/en-us/excel/functions/slope-function	
+SMALL	Statistical	2	SMALL(array, k)	https://support.microsoft.com/en-us/excel/functions/small-function	
+SORT	Lookup and reference	1	SORT(array,[sort_index],[sort_order],[by_col])	https://support.microsoft.com/en-us/excel/functions/sort-function	
+SORTBY	Lookup and reference	2	SORTBY(array, by_array1, [sort_order1], [by_array2, sort_order2],…)	https://support.microsoft.com/en-us/excel/functions/sortby-function	
+SQRT	Math and trigonometry	1	SQRT(number)	https://support.microsoft.com/en-us/excel/functions/sqrt-function	
+SQRTPI	Math and trigonometry	1	SQRTPI(number)	https://support.microsoft.com/en-us/excel/functions/sqrtpi-function	
+STANDARDIZE	Statistical	3	STANDARDIZE(x, mean, standard_dev)	https://support.microsoft.com/en-us/excel/functions/standardize-function	
+STDEV	Compatibility	1	STDEV(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/stdev-function	
+STDEV.P	Statistical	1	STDEV.P(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/stdev-p-function	
+STDEV.S	Statistical	1	STDEV.S(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/stdev-s-function	
+STDEVA	Statistical	1	STDEVA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/stdeva-function	
+STDEVP	Compatibility	1	STDEVP(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/stdevp-function	
+STDEVPA	Statistical	1	STDEVPA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/stdevpa-function	
+STEYX	Statistical	2	STEYX(known_y's, known_x's)	https://support.microsoft.com/en-us/excel/functions/steyx-function	
+STOCKHISTORY	Information	2	STOCKHISTORY(stock, start_date, [end_date], [interval], [headers], [property0], [property1], [property2], [property3], [property4], [property5])	https://support.microsoft.com/en-us/excel/functions/stockhistory-function	
+SUBSTITUTE	Text	3	SUBSTITUTE(text, old_text, new_text, [instance_num])	https://support.microsoft.com/en-us/excel/functions/substitute-function	
+SUBTOTAL	Math and trigonometry	2	SUBTOTAL(function_num,ref1,[ref2],...)	https://support.microsoft.com/en-us/excel/functions/subtotal-function	
+SUM	Math and trigonometry	1	SUM(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/sum-function	
+SUMIF	Math and trigonometry	2	SUMIF(range, criteria, [sum_range])	https://support.microsoft.com/en-us/excel/functions/sumif-function	
+SUMIFS	Math and trigonometry	3	SUMIFS(sum_range, criteria_range1, criteria1, [criteria_range2, criteria2], ...)	https://support.microsoft.com/en-us/excel/functions/sumifs-function	
+SUMPRODUCT	Math and trigonometry	1	SUMPRODUCT(array1, [array2], [array3], ...)	https://support.microsoft.com/en-us/excel/functions/sumproduct-function	
+SUMSQ	Math and trigonometry	1	SUMSQ(number1, [number2], ...)	https://support.microsoft.com/en-us/excel/functions/sumsq-function	
+SUMX2MY2	Math and trigonometry	2	SUMX2MY2(array_x, array_y)	https://support.microsoft.com/en-us/excel/functions/sumx2my2-function	
+SUMX2PY2	Math and trigonometry	2	SUMX2PY2(array_x, array_y)	https://support.microsoft.com/en-us/excel/functions/sumx2py2-function	
+SUMXMY2	Math and trigonometry	2	SUMXMY2(array_x, array_y)	https://support.microsoft.com/en-us/excel/functions/sumxmy2-function	
+SWITCH	Logical	3	SWITCH(expression, value1, result1, [default or value2, result2],…[default or value3, result3])	https://support.microsoft.com/en-us/excel/functions/switch-function	syntax SWITCH(expression, value1, result1, [default or value2, result2],...)
+SYD	Financial	4	SYD(cost, salvage, life, per)	https://support.microsoft.com/en-us/excel/functions/syd-function	
+T	Text	1	T(value)	https://support.microsoft.com/en-us/excel/functions/t-function	
+TAN	Math and trigonometry	1	TAN(number)	https://support.microsoft.com/en-us/excel/functions/tan-function	
+TANH	Math and trigonometry	1	TANH(number)	https://support.microsoft.com/en-us/excel/functions/tanh-function	
+TAKE	Lookup and reference	2	TAKE(array, rows,[columns])	https://support.microsoft.com/en-us/excel/functions/take-function	
+TBILLEQ	Financial	3	TBILLEQ(settlement, maturity, discount)	https://support.microsoft.com/en-us/excel/functions/tbilleq-function	
+TBILLPRICE	Financial	3	TBILLPRICE(settlement, maturity, discount)	https://support.microsoft.com/en-us/excel/functions/tbillprice-function	
+TBILLYIELD	Financial	3	TBILLYIELD(settlement, maturity, pr)	https://support.microsoft.com/en-us/excel/functions/tbillyield-function	
+T.DIST	Statistical	3	T.DIST(x,deg_freedom, cumulative)	https://support.microsoft.com/en-us/excel/functions/t-dist-function	
+T.DIST.2T	Statistical	2	T.DIST.2T(x,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/t-dist-2t-function	
+T.DIST.RT	Statistical	2	T.DIST.RT(x,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/t-dist-rt-function	
+TDIST	Compatibility	3	TDIST(x,deg_freedom,tails)	https://support.microsoft.com/en-us/excel/functions/tdist-function	
+TEXT	Text	2	TEXT(value, format_text)	https://support.microsoft.com/en-us/excel/functions/text-function	
+TEXTAFTER	Text	2	TEXTAFTER(text,delimiter,[instance_num], [match_mode], [match_end], [if_not_found])	https://support.microsoft.com/en-us/excel/functions/textafter-function	
+TEXTBEFORE	Text	2	TEXTBEFORE(text,delimiter,[instance_num], [match_mode], [match_end], [if_not_found])	https://support.microsoft.com/en-us/excel/functions/textbefore-function	
+TEXTJOIN	Text	3	TEXTJOIN(delimiter, ignore_empty, text1, [text2], …)	https://support.microsoft.com/en-us/excel/functions/textjoin-function	
+TEXTSPLIT	Text	2	TEXTSPLIT(text,col_delimiter,[row_delimiter],[ignore_empty], [match_mode], [pad_with])	https://support.microsoft.com/en-us/excel/functions/textsplit-function	
+TIME	Date and time	3	TIME(hour, minute, second)	https://support.microsoft.com/en-us/excel/functions/time-function	
+TIMEVALUE	Date and time	1	TIMEVALUE(time_text)	https://support.microsoft.com/en-us/excel/functions/timevalue-function	
+T.INV	Statistical	2	T.INV(probability,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/t-inv-function	
+T.INV.2T	Statistical	2	T.INV.2T(probability,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/t-inv-2t-function	
+TINV	Compatibility	2	TINV(probability,deg_freedom)	https://support.microsoft.com/en-us/excel/functions/tinv-function	
+TOCOL	Lookup and reference	1	TOCOL(array, [ignore], [scan_by_column])	https://support.microsoft.com/en-us/excel/functions/tocol-function	
+TOROW	Lookup and reference	1	TOROW(array, [ignore], [scan_by_column])	https://support.microsoft.com/en-us/excel/functions/torow-function	
+TODAY	Date and time	0	TODAY()	https://support.microsoft.com/en-us/excel/functions/today-function	
+TRANSLATE	Text	1	TRANSLATE()	https://support.microsoft.com/en-us/excel/functions/translate-function	syntax given in the page body as =TRANSLATE(text, [source language], [target language])
+TRANSPOSE	Lookup and reference	1	TRANSPOSE(array)	https://support.microsoft.com/en-us/excel/functions/transpose-function	
+TREND	Statistical	1	TREND(known_y's, [known_x's], [new_x's], [const])	https://support.microsoft.com/en-us/excel/functions/trend-function	
+TRIM	Text	1	TRIM(text)	https://support.microsoft.com/en-us/excel/functions/trim-function	
+TRIMMEAN	Statistical	2	TRIMMEAN(array, percent)	https://support.microsoft.com/en-us/excel/functions/trimmean-function	
+TRIMRANGE	Lookup and reference	1	TRIMRANGE(range,[trim_rows],[trim_cols])	https://support.microsoft.com/en-us/excel/functions/trimrange-function	
+TRUE	Logical	0	TRUE()	https://support.microsoft.com/en-us/excel/functions/true-function	
+TRUNC	Math and trigonometry	1	TRUNC(number, [num_digits])	https://support.microsoft.com/en-us/excel/functions/trunc-function	
+T.TEST	Statistical	4	T.TEST(array1,array2,tails,type)	https://support.microsoft.com/en-us/excel/functions/t-test-function	
+TTEST	Compatibility	4	TTEST(array1,array2,tails,type)	https://support.microsoft.com/en-us/excel/functions/ttest-function	
+TYPE	Information	1	TYPE(value)	https://support.microsoft.com/en-us/excel/functions/type-function	
+UNICHAR	Text	1	UNICHAR(number)	https://support.microsoft.com/en-us/excel/functions/unichar-function	
+UNICODE	Text	1	UNICODE(text)	https://support.microsoft.com/en-us/excel/functions/unicode-function	
+UNIQUE	Lookup and reference	1	UNIQUE(array,[by_col],[exactly_once])	https://support.microsoft.com/en-us/excel/functions/unique-function	
+UPPER	Text	1	UPPER(text)	https://support.microsoft.com/en-us/excel/functions/upper-function	
+VALUE	Text	1	VALUE(text)	https://support.microsoft.com/en-us/excel/functions/value-function	
+VALUETOTEXT	Text	1	VALUETOTEXT(value, [format])	https://support.microsoft.com/en-us/excel/functions/valuetotext-function	
+VAR	Compatibility	1	VAR(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/var-function	
+VAR.P	Statistical	1	VAR.P(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/var-p-function	
+VAR.S	Statistical	1	VAR.S(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/var-s-function	
+VARA	Statistical	1	VARA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/vara-function	
+VARP	Compatibility	1	VARP(number1,[number2],...)	https://support.microsoft.com/en-us/excel/functions/varp-function	
+VARPA	Statistical	1	VARPA(value1, [value2], ...)	https://support.microsoft.com/en-us/excel/functions/varpa-function	
+VDB	Financial	5	VDB(cost, salvage, life, start_period, end_period, [factor], [no_switch])	https://support.microsoft.com/en-us/excel/functions/vdb-function	
+VLOOKUP	Lookup and reference	3	VLOOKUP(lookup_value, table_array, col_index_num, [range_lookup])	https://support.microsoft.com/en-us/excel/functions/vlookup-function	
+VSTACK	Lookup and reference	1	VSTACK(array1,[array2],...)	https://support.microsoft.com/en-us/excel/functions/vstack-function	
+WEBSERVICE	Web	1	WEBSERVICE(url)	https://support.microsoft.com/en-us/excel/functions/webservice-function	
+WEEKDAY	Date and time	1	WEEKDAY(serial_number,[return_type])	https://support.microsoft.com/en-us/excel/functions/weekday-function	
+WEEKNUM	Date and time	1	WEEKNUM(serial_number,[return_type])	https://support.microsoft.com/en-us/excel/functions/weeknum-function	
+WEIBULL	Compatibility	4	WEIBULL(x,alpha,beta,cumulative)	https://support.microsoft.com/en-us/excel/functions/weibull-function	
+WEIBULL.DIST	Statistical	4	WEIBULL.DIST(x,alpha,beta,cumulative)	https://support.microsoft.com/en-us/excel/functions/weibull-dist-function	
+WORKDAY	Date and time	2	WORKDAY(start_date, days, [holidays])	https://support.microsoft.com/en-us/excel/functions/workday-function	
+WORKDAY.INTL	Date and time	2	WORKDAY.INTL(start_date, days, [weekend], [holidays])	https://support.microsoft.com/en-us/excel/functions/workday-intl-function	
+WRAPCOLS	Lookup and reference	2	WRAPCOLS(vector, wrap_count, [pad_with])	https://support.microsoft.com/en-us/excel/functions/wrapcols-function	
+WRAPROWS	Lookup and reference	2	WRAPROWS(vector, wrap_count, [pad_with])	https://support.microsoft.com/en-us/excel/functions/wraprows-function	
+XIRR	Financial	2	XIRR(values, dates, [guess])	https://support.microsoft.com/en-us/excel/functions/xirr-function	
+XLOOKUP	Lookup and reference	3	XLOOKUP(lookup_value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode])	https://support.microsoft.com/en-us/excel/functions/xlookup-function	
+XMATCH	Lookup and reference	2	XMATCH(lookup_value, lookup_array, [match_mode], [search_mode])	https://support.microsoft.com/en-us/excel/functions/xmatch-function	
+XNPV	Financial	3	XNPV(rate, values, dates)	https://support.microsoft.com/en-us/excel/functions/xnpv-function	
+XOR	Logical	1	XOR(logical1, [logical2],…)	https://support.microsoft.com/en-us/excel/functions/xor-function	
+YEAR	Date and time	1	YEAR(serial_number)	https://support.microsoft.com/en-us/excel/functions/year-function	
+YEARFRAC	Date and time	2	YEARFRAC(start_date, end_date, [basis])	https://support.microsoft.com/en-us/excel/functions/yearfrac-function	
+YIELD	Financial	6	YIELD(settlement, maturity, rate, pr, redemption, frequency, [basis])	https://support.microsoft.com/en-us/excel/functions/yield-function	
+YIELDDISC	Financial	4	YIELDDISC(settlement, maturity, pr, redemption, [basis])	https://support.microsoft.com/en-us/excel/functions/yielddisc-function	
+YIELDMAT	Financial	5	YIELDMAT(settlement, maturity, issue, rate, pr, [basis])	https://support.microsoft.com/en-us/excel/functions/yieldmat-function	
+Z.TEST	Statistical	2	Z.TEST(array,x,[sigma])	https://support.microsoft.com/en-us/excel/functions/z-test-function	
+ZTEST	Compatibility	2	ZTEST(array,x,[sigma])	https://support.microsoft.com/en-us/excel/functions/ztest-function	
+COPILOT		1		https://support.microsoft.com/en-us/excel/functions/copilot-function	no syntax line; example =COPILOT("Look up upcoming holidays or major events in Seattle")
+FIELDVALUE		2	FIELDVALUE(value, field_name)	https://support.microsoft.com/en-us/excel/functions/fieldvalue-function	
+PY		2	PY(python_code,return_type)	https://support.microsoft.com/en-us/excel/functions/py-function	
+IMPORTCSV		1	IMPORTCSV(path, [skip_rows], [take_rows], [locale])	https://support.microsoft.com/en-us/excel/functions/importcsv-function	
+IMPORTTEXT		1	IMPORTTEXT(path, [delimiter], [skip_rows], [take_rows], [encoding], [locale])	https://support.microsoft.com/en-us/excel/functions/importtext-function	

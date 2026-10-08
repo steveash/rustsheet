@@ -2,7 +2,11 @@ use std::collections::HashSet;
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{for_each_chain_operand_mut, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     functions::Function,
     model::Model,
 };
@@ -57,20 +61,23 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
                 }
             }
         }
-        Node::OpSumKind { left, right, .. }
-        | Node::OpProductKind { left, right, .. }
-        | Node::OpPowerKind { left, right, .. }
-        | Node::CompareKind { left, right, .. }
-        | Node::OpConcatenateKind { left, right } => {
-            assign_variable_ids(left, target, id);
-            assign_variable_ids(right, target, id);
+        Node::OpSumKind { .. }
+        | Node::OpProductKind { .. }
+        | Node::OpPowerKind { .. }
+        | Node::CompareKind { .. }
+        | Node::OpConcatenateKind { .. } => {
+            for_each_chain_operand_mut(node, |operand| {
+                assign_variable_ids(operand, target, id);
+            });
         }
         Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id),
-        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
+        Node::ImplicitIntersection { child, .. }
+        | Node::SpillRangeOperator { child }
+        | Node::GroupedRootKind { child } => {
             assign_variable_ids(child, target, id);
         }
         Node::OpRangeKind { left, right }
-        | Node::OpIntersectKind { left, right }
+        | Node::OpIntersectKind { left, right, .. }
         | Node::OpUnionKind { left, right, .. } => {
             assign_variable_ids(left, target, id);
             assign_variable_ids(right, target, id);
@@ -144,7 +151,8 @@ impl Model {
             // Eagerly evaluate the binding value and cache it.
             // CalcResult::Range stores only bounds (no cell data), so range bindings are
             // effectively lazy — values are only read when a consuming function iterates the range.
-            let val = self.evaluate_node_in_context(&cloned[2 * i + 1], cell);
+            // A reference stays a reference, a single cell too (upstream MIN_MAX_extras.xlsx A16).
+            let val = self.evaluate_node_with_reference(&cloned[2 * i + 1], cell);
             self.variable_stack.insert(raw_id, val);
         }
 
@@ -157,5 +165,28 @@ impl Model {
         }
 
         result
+    }
+
+    /// What a LET variable or a LAMBDA parameter is bound to; a reference stays a reference.
+    /// Shared by LET, LAMBDA and the evaluator (model.rs).
+    pub(crate) fn variable_value(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match node {
+            Node::NamedVariableKind { name, id: Some(id) } => {
+                match self.variable_stack.get(&(*id as usize)) {
+                    Some(v) => v.clone(),
+                    None => CalcResult::new_error(
+                        Error::NAME,
+                        cell,
+                        format!("Variable \"{name}\" not found in scope."),
+                    ),
+                }
+            }
+            Node::NamedVariableKind { name, id: None } => CalcResult::new_error(
+                Error::NAME,
+                cell,
+                format!("Variable name \"{name}\" not found."),
+            ),
+            _ => CalcResult::new_error(Error::ERROR, cell, "Not a variable".to_string()),
+        }
     }
 }

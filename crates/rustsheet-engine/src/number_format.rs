@@ -1,4 +1,5 @@
 use crate::{
+    arithmetic::flush_subnormal,
     formatter::{self, format::Formatted},
     locale::get_locale,
     types::NumFmt,
@@ -110,6 +111,11 @@ pub fn get_new_num_fmt_index(num_fmts: &[NumFmt]) -> i32 {
 /// magnitude, Excel's typeable range: "1e308", "1e400", "inf" and "NaN" are `None`
 /// (probes/text-number-words A6-A10, H3, K9, K10; docs/excel-semantics/numbers.md
 /// "Number text of 1E+308 or more is not a number").
+/// At the small end (same section, probes/text-number-tiny, text-number-tiny-zero and
+/// literal-number-tiny): a nonzero value below 1E-309 in magnitude is `None`, a value from 1E-309
+/// up to the smallest normal double reads as 0, and a zero mantissa is `None` unless its exponent
+/// less its fraction digits lies within ±308 (`0e308`, `0.0e309`, `0e-308` are 0; `0e309`,
+/// `0e-309`, `0.0e-308` are `None`).
 pub fn parse_excel_number(text: &str) -> Option<f64> {
     let (mantissa, exp) = match text.find(['e', 'E']) {
         Some(i) => text.split_at(i),
@@ -118,6 +124,11 @@ pub fn parse_excel_number(text: &str) -> Option<f64> {
     let mut out = String::with_capacity(text.len());
     let mut sig = 0usize;
     let mut in_fraction = false;
+    // Integer digits from the first significant one on, and fraction digits read so far: they
+    // place the leading digit's power of ten for the small-magnitude rules below.
+    let mut integer_sig_digits = 0i64;
+    let mut fraction_digits = 0i64;
+    let mut leading_fraction_digit = None;
     for c in mantissa.chars() {
         match c {
             '.' => {
@@ -125,6 +136,14 @@ pub fn parse_excel_number(text: &str) -> Option<f64> {
                 out.push(c);
             }
             '0'..='9' => {
+                if in_fraction {
+                    fraction_digits = fraction_digits.saturating_add(1);
+                    if c != '0' && sig == 0 {
+                        leading_fraction_digit = Some(fraction_digits);
+                    }
+                } else if sig > 0 || c != '0' {
+                    integer_sig_digits = integer_sig_digits.saturating_add(1);
+                }
                 if sig > 0 || c != '0' {
                     sig += 1;
                 }
@@ -138,9 +157,50 @@ pub fn parse_excel_number(text: &str) -> Option<f64> {
         }
     }
     out.push_str(exp);
-    out.parse::<f64>()
+    let number = out
+        .parse::<f64>()
         .ok()
-        .filter(|number| in_excel_range(*number))
+        .filter(|number| in_excel_range(*number))?;
+    let exponent = decimal_exponent(exp);
+    if sig == 0 {
+        // A zero mantissa: Excel tests where its last digit sits, not its value.
+        let scale = exponent.saturating_sub(fraction_digits);
+        return (scale.abs() <= TINY_EXPONENT_LIMIT).then_some(0.0);
+    }
+    let leading = match leading_fraction_digit {
+        Some(position) => exponent.saturating_sub(position),
+        None => exponent.saturating_add(integer_sig_digits - 1),
+    };
+    (leading >= MIN_LEADING_EXPONENT).then(|| flush_subnormal(number))
+}
+
+/// The largest power of ten, either way, a zero mantissa's last digit may sit at: `0e308` and
+/// `0e-308` are 0, `0e309` and `0e-309` are not numbers (probes/text-number-tiny-zero).
+const TINY_EXPONENT_LIMIT: i64 = 308;
+
+/// The smallest power of ten nonzero number text may start at: `1e-309` reads as 0,
+/// `9.9999e-310` and `0.001e-307` are not numbers (probes/text-number-tiny, text-number-tiny-zero).
+const MIN_LEADING_EXPONENT: i64 = -309;
+
+/// The exponent of `exp` (`""`, `"e-310"`, `"E+5"`), clamped far beyond any number's range so a
+/// long run of digits cannot overflow. `parse_excel_number` has already rejected malformed text.
+fn decimal_exponent(exp: &str) -> i64 {
+    let digits = exp.trim_start_matches(['e', 'E']);
+    let (negative, digits) = match digits.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, digits.strip_prefix('+').unwrap_or(digits)),
+    };
+    let magnitude = digits
+        .bytes()
+        .filter(u8::is_ascii_digit)
+        .fold(0i64, |acc, d| {
+            (acc * 10 + i64::from(d - b'0')).min(1_000_000)
+        });
+    if negative {
+        -magnitude
+    } else {
+        magnitude
+    }
 }
 
 /// Excel's largest typeable number is 9.99999999999999E+307: text or a literal at or above
@@ -186,6 +246,22 @@ pub fn to_precision(value: f64, precision: usize) -> f64 {
 /// See ([ecma](https://tc39.es/ecma262/#sec-number.prototype.toprecision)).
 pub fn to_excel_precision_str(value: f64) -> String {
     to_precision_str(value, 15)
+}
+
+/// Orders two numbers on their 15-digit values, Excel's comparison rule. There is no absolute
+/// tolerance: tiny values never equal 0 (docs/excel-semantics/numbers.md#criteria-equality). NaN
+/// is a total order (above every number, equal to itself) so sorts stay consistent.
+pub(crate) fn cmp_excel_precision(a: f64, b: f64) -> std::cmp::Ordering {
+    // total_cmp orders -0.0 below 0.0 and negative-sign NaN below every number, so canonicalise
+    // both first (`+ 0.0` turns -0.0 into 0.0).
+    let canon = |x: f64| {
+        if x.is_nan() {
+            f64::NAN
+        } else {
+            to_excel_precision(x, 15) + 0.0
+        }
+    };
+    canon(a).total_cmp(&canon(b))
 }
 
 pub fn to_excel_precision(value: f64, precision: usize) -> f64 {

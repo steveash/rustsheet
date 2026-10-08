@@ -6,6 +6,7 @@ use chrono::{DateTime, NaiveDateTime, NaiveTime, Timelike};
 
 use super::SECONDS_PER_DAY_F64;
 use crate::{
+    cast::number_text_too_long,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
 };
@@ -18,8 +19,9 @@ pub(super) fn parse_time_string(
     locale: &Locale,
     current_year: CurrentYear,
 ) -> Option<f64> {
+    let raw = text;
     let text = trim_spaces(text);
-    if let Some(serial) = parse_clock_text(text) {
+    if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial - serial.floor());
     }
 
@@ -81,8 +83,9 @@ pub(crate) fn parse_time_serial(
     if text.starts_with(' ') {
         return None;
     }
+    let raw = text;
     let text = text.trim_end_matches(' ');
-    if let Some(serial) = parse_clock_text(text) {
+    if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial);
     }
     parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text, locale, current_year))
@@ -134,6 +137,9 @@ fn trim_spaces(text: &str) -> &str {
 /// (`TIMEVALUE("9999:59:59")` parses, `"10000:00:00"` is #VALUE!).
 const MAX_CLOCK_COMPONENT: u32 = 9_999;
 
+/// 2^53: below it every millisecond total is an exact `f64`.
+const MAX_EXACT_MS: f64 = 9_007_199_254_740_992.0;
+
 /// One `H`, `M` or `S` component of clock text: 1-4 ASCII digits, surrounding spaces allowed,
 /// a leading zero only in a 2-digit component (`"10:05"` parses, `"010:11:12"` and `"10:011:12"`
 /// are #VALUE!).
@@ -162,31 +168,36 @@ fn fraction_digits_to_ms(digits: &str) -> u32 {
 
 /// Whole seconds plus milliseconds of the `f` in `H:M.f:S` clock text: the digits are read twice,
 /// once as whole seconds and once as the fraction (`"10:11.25:12"` is 10:11 plus 25.25 s,
-/// `"10:11.0123:12"` plus 123.012 s; probes/clock-text-oddities*). `None` past twelve
-/// significant digits: unprobed, a bound that keeps the millisecond total exact in an `f64`.
-fn fraction_as_seconds(digits: &str) -> Option<(u64, u32)> {
-    let significant = digits.trim_start_matches('0');
-    if significant.len() > 12 {
-        return None;
-    }
-    let whole = if significant.is_empty() {
-        0
-    } else {
-        significant.parse::<u64>().ok()?
-    };
-    Some((whole, fraction_digits_to_ms(digits)))
+/// `"10:11.0123:12"` plus 123.012 s; probes/clock-text-oddities*). The whole seconds are
+/// accumulated digit by digit in an `f64` (`w * 10 + d`), as Excel does: past 18 digits that
+/// differs from the correctly rounded value (probes/clock-text-long-fraction2 B4, B5).
+fn fraction_as_seconds(digits: &str) -> (f64, u32) {
+    let whole = digits
+        .bytes()
+        .fold(0.0, |w, b| w * 10.0 + f64::from(b - b'0'));
+    (whole, fraction_digits_to_ms(digits))
 }
 
 /// Whether at most one clock component is out of its usual range (hours from 24, minutes or
 /// whole seconds from 60, before millisecond rounding): `"10:61"`, `"0:24:60"`, `"24:59:59"`,
 /// `"0:59:9999.9999"` and `"0:11.9999:1"` parse, while `"24:60"`, `"0:60:60"`, `"24:0:60"`,
 /// `"60:60.5"` and `"0:9998.60:1"` are #VALUE! (probes/clock-text-oddities4-7).
-fn at_most_one_out_of_range(hour: u32, minute: u32, second: u64) -> bool {
-    [hour >= 24, minute >= 60, second >= 60]
+fn at_most_one_out_of_range(hour: u32, minute: u32, second: f64) -> bool {
+    [hour >= 24, minute >= 60, second >= 60.0]
         .iter()
         .filter(|out| **out)
         .count()
         <= 1
+}
+
+/// [`parse_clock_text`] of `trimmed`, which is `raw` without its surrounding spaces: Excel rejects
+/// clock text of more than 255 characters counted with those spaces
+/// (probes/clock-text-length-limit).
+fn parse_limited_clock_text(raw: &str, trimmed: &str) -> Option<f64> {
+    if number_text_too_long(raw) {
+        return None;
+    }
+    parse_clock_text(trimmed)
 }
 
 /// Serial value of clock text in Excel's en-US grammar, before any wrap to one day:
@@ -218,7 +229,7 @@ fn parse_clock_text(text: &str) -> Option<f64> {
                 Some((fraction, tail)) => (fraction, Some(tail)),
                 None => (rest, None),
             };
-            let fraction = fraction.trim();
+            let fraction = trim_spaces(fraction);
             if !fraction.bytes().all(|b| b.is_ascii_digit()) {
                 return None;
             }
@@ -234,17 +245,17 @@ fn parse_clock_text(text: &str) -> Option<f64> {
     let ((hour, minute), (second, ms)) = match (parts.as_slice(), fraction, odd_tail) {
         ([h, m], Some(f), Some(tail)) if has_fraction_digits => {
             parse_clock_component(tail)?;
-            ((*h, *m), fraction_as_seconds(f)?)
+            ((*h, *m), fraction_as_seconds(f))
         }
         (_, _, Some(_)) => return None,
         ([h, m, s], ..) => (
             (*h, *m),
-            (u64::from(*s), fraction.map_or(0, fraction_digits_to_ms)),
+            (f64::from(*s), fraction.map_or(0, fraction_digits_to_ms)),
         ),
         ([m, s], Some(f), None) if has_fraction_digits => {
-            ((0, *m), (u64::from(*s), fraction_digits_to_ms(f)))
+            ((0, *m), (f64::from(*s), fraction_digits_to_ms(f)))
         }
-        ([h, m], ..) => ((*h, *m), (0, 0)),
+        ([h, m], ..) => ((*h, *m), (0.0, 0)),
         _ => return None,
     };
     if !at_most_one_out_of_range(hour, minute, second) {
@@ -252,18 +263,23 @@ fn parse_clock_text(text: &str) -> Option<f64> {
     }
     let hour = match suffix_is_pm {
         Some(is_pm) => {
-            if hour > 12 || minute > 59 || second > 59 {
+            if hour > 12 || minute > 59 || second > 59.0 {
                 return None;
             }
             hour_from_12h(hour, is_pm)
         }
         None => hour,
     };
-    let second_ms = second * 1000 + u64::from(ms);
-    let total_ms = (u64::from(hour) * 60 + u64::from(minute)) * 60_000 + second_ms;
-    // Clock values stay below 2^53 ms (at most 9999 h, 9999 min and 10^12 s), so the cast is
-    // exact.
-    let seconds = total_ms as f64 / 1000.0;
+    let clock_seconds = f64::from(hour * 3600 + minute * 60);
+    let total_ms = clock_seconds * 1000.0 + second * 1000.0 + f64::from(ms);
+    // Exact (and bit for bit Excel's) while below 2^53 ms: at most 9999 h, 9999 min and 10^12 s.
+    // A longer `H:M.f:S` fraction makes `second` a rounded double and Excel adds the parts as
+    // `(clock + whole) + ms / 1000` (probes/clock-text-long-fraction2 B2-B5).
+    let seconds = if total_ms < MAX_EXACT_MS {
+        total_ms / 1000.0
+    } else {
+        (clock_seconds + second) + f64::from(ms) / 1000.0
+    };
     Some(seconds / SECONDS_PER_DAY_F64)
 }
 

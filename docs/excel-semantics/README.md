@@ -16,10 +16,11 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   hypothesis, rewrite the rule from the evidence and say what was wrong.
 - **Excel for the web vs desktop.** When the excel-graph oracle contradicts values desktop Excel
   cached in the same workbook, the entry is `Status: CONFLICTING` with both sets of values, the
-  cells stay pending, and nothing is implemented until an excel-desktop probe decides (decision 0019).
-  In general desktop en-US Microsoft 365 Excel wins over the web; web-only values are goldens
-  except for the known divergences in docs/architecture/oracle.md, and non-en-US desktop
-  workbooks are no evidence for locale-dependent behavior (decision 0030).
+  cells stay pending (decision 0019). In Phases 1–3 excel-graph is the oracle of record: a task
+  that must choose a value matches the web, and the desktop probe is Phase 4 work (M14, T-1075).
+  A desktop-only question never blocks a task or a milestone (decision 0039). Desktop evidence
+  already in the repo that cells pass against stays the golden, and non-en-US desktop workbooks
+  are no evidence for locale-dependent behavior (decision 0030).
 - **Deliberate deviations** are allowed only where CLAUDE.md directive 5 (untrusted input)
   requires one: resource, recursion or allocation limits Excel does not have, no I/O from
   formulas (e.g. WEBSERVICE, external links), no panics. Directive 5 wins over fidelity.
@@ -31,7 +32,7 @@ arbitrary, inconsistent or undocumented ones. RustSheet matches every entry exac
   cannot hold).
 
 Files by area: `numbers.md`, `dates.md`, `financial.md`, `coercion.md`, `errors.md`, `criteria.md`,
-`arrays.md`, `lookup.md`, `number-formats.md`, `references.md`, `syntax.md`, … (create as needed). Format per rule:
+`arrays.md`, `lookup.md`, `web.md`, `number-formats.md`, `references.md`, `syntax.md`, `logic.md`, … (create as needed). Format per rule:
 
 ```
 ## <short rule name>

@@ -4,6 +4,7 @@
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    functions::Function,
     model::Model,
 };
 
@@ -42,7 +43,7 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
 fn is_multi_area(node: &Node) -> bool {
     match node {
         Node::OpUnionKind { .. } => true,
-        Node::OpIntersectKind { left, right } => is_multi_area(left) || is_multi_area(right),
+        Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
         _ => false,
     }
 }
@@ -87,6 +88,23 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
+    /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
+    /// a lookup index argument and LOOKUP's result_vector (probes/lookup-vector-edges A9, A12).
+    pub(crate) fn eval_ref_or_index(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::FunctionKind {
+                kind: Function::Index,
+                args,
+            } => self.index_impl(args, cell, true),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
     /// token (the lexer builds those): only two single cells on one sheet are joined, so
     /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
@@ -125,6 +143,11 @@ impl Model {
                     },
                 }
             }
+            // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
+            // `#NULL!` (probes/at-operand-formulatext H12, T-1109). Excel passes the right
+            // operand's error on too (`=A1:INDEX(A1:A3,5)` is `#REF!`, `=A1:(A1 B2)` is `#NULL!`;
+            // probes/range-right-operand-errors D11, D14, T-1115).
+            (error @ CalcResult::Error { .. }, _) | (_, error @ CalcResult::Error { .. }) => error,
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }
     }
@@ -260,6 +283,31 @@ impl Model {
         }
     }
 
+    /// Whether `(left,right)` evaluates to a reference: a union with an error operand (`(A1,#REF!)`)
+    /// is that error, not a reference (probes/union-accepted H9, docs/excel-semantics/references.md).
+    pub(crate) fn union_is_reference(
+        &mut self,
+        left: &Node,
+        right: &Node,
+        cell: CellReferenceIndex,
+    ) -> bool {
+        let mut budget = MAX_AREA_PAIRS;
+        self.count_union_areas(left, right, cell, &mut budget)
+            .is_ok()
+    }
+
+    /// The areas of a reference argument: several for a union, one for any other reference.
+    /// `Err` holds the error the argument evaluates to, or `#VALUE!` if it is not a reference
+    /// (AGGREGATE's reference form; probes/aggregate-args).
+    pub(crate) fn reference_areas(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Range>, CalcResult> {
+        let mut budget = MAX_AREA_PAIRS;
+        self.evaluate_areas(node, cell, &mut budget)
+    }
+
     /// The number of areas `(left,right)` stands for, or the result to give instead, exactly
     /// as [`Model::union_areas`] finds them but without building the union's area list.
     fn count_union_areas(
@@ -295,7 +343,7 @@ impl Model {
     ) -> Result<Vec<Range>, CalcResult> {
         match node {
             Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
-            Node::OpIntersectKind { left, right } => {
+            Node::OpIntersectKind { left, right, .. } => {
                 self.intersect_areas(left, right, cell, budget)
             }
             _ => Ok(vec![self.evaluate_intersection_operand(node, cell)?]),
@@ -362,7 +410,13 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        match self.evaluate_node_with_reference(node, cell) {
+        let reference_form = match node {
+            Node::FunctionKind { kind, args } => self.evaluate_reference_form(kind, args, cell),
+            _ => None,
+        };
+        let operand =
+            reference_form.unwrap_or_else(|| self.evaluate_node_with_reference(node, cell));
+        match operand {
             CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
                 left: CellReferenceIndex {
                     sheet: left.sheet,

@@ -6,7 +6,7 @@ use rustsheet_engine::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use super::package::{part_folder_and_rels, resolve_target, Package};
-use super::rich_errors::load_value_metadata_errors;
+use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::xml::XmlNode;
 use rustsheet_engine::{
     expressions::{
@@ -26,6 +26,7 @@ use crate::error::XlsxError;
 
 use super::{
     conditional_formatting::load_conditional_formatting,
+    iso_date::iso8601_to_serial,
     shared_strings::decode_xlsx_escapes,
     sheet_data::{read_sheet_data, SheetDataXml},
     tables::load_table,
@@ -324,7 +325,7 @@ pub(super) fn from_a1_to_rc(
 ) -> Result<String, XlsxError> {
     let cell_reference =
         parse_reference(&context).map_err(|error| XlsxError::Xml(error.to_string()))?;
-    let mut t = parser.parse(&formula, &cell_reference);
+    let mut t = parser.parse_cell_formula(&formula, &cell_reference);
     if !is_array_formula {
         add_implicit_intersection(&mut t, true);
     }
@@ -354,16 +355,6 @@ pub(super) enum CellArrayKind {
     None,
     DynamicArray(i32, i32),
     ArrayFormula(i32, i32),
-}
-
-/// The error a cell caches, `cell_value`. Excel caches the errors older readers do not know
-/// (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` and keeps the real one in its value metadata,
-/// `rich_error` (see [`super::rich_errors`]); an error the engine has no kind for stays `#VALUE!`.
-fn cached_error_name<'a>(cell_value: Option<&'a str>, rich_error: Option<&'a str>) -> &'a str {
-    match (cell_value, rich_error) {
-        (Some("#VALUE!"), Some(real)) if get_error_by_english_name(real).is_some() => real,
-        _ => cell_value.unwrap_or("#ERROR!"),
-    }
 }
 
 // FIXME
@@ -461,14 +452,12 @@ pub(super) fn get_cell_from_excel(
                     Cell::SharedString { si, s: cell_style }
                 }
             }
-            "d" => {
-                // Not implemented
-                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
-                Cell::ErrorCell {
-                    ei: Error::NIMPL,
-                    s: cell_style,
-                }
-            }
+            "d" => match cell_value.and_then(iso8601_to_serial) {
+                Some(v) => Cell::NumberCell { v, s: cell_style },
+                // Excel refuses a workbook with unparsable `t="d"` text; an empty cell is the
+                // safe import (docs/excel-semantics/xlsx-storage.md).
+                None => Cell::EmptyCell { s: cell_style },
+            },
             "inlineStr" => {
                 let s = rich_text_inline.unwrap_or_default();
                 let si = if let Some(i) = shared_strings.iter().position(|r| r == &s) {
@@ -538,15 +527,10 @@ pub(super) fn get_cell_from_excel(
                     cell_value.unwrap_or(""),
                 )))
             }
-            "d" => {
-                // Not implemented
-                println!("Invalid type (d) in {sheet_name}!{cell_ref}");
-                make_cell(FormulaValue::Error {
-                    ei: Error::NIMPL,
-                    o: format!("{sheet_name}!{cell_ref}"),
-                    m: Error::NIMPL.to_string(),
-                })
-            }
+            "d" => match cell_value.and_then(iso8601_to_serial) {
+                Some(v) => make_cell(FormulaValue::Number(v)),
+                None => make_cell(FormulaValue::Unevaluated),
+            },
             "inlineStr" => {
                 // NB: This is untested, I don't know of any engine that uses inline strings in formulas
                 make_cell(FormulaValue::Text(
@@ -635,10 +619,7 @@ fn load_hyperlinks(
         let (row_start, column_start, row_end, column_end) =
             parse_range(cell_ref).map_err(XlsxError::Xml)?;
         let tooltip = node.attribute("tooltip").map(str::to_string);
-        let rel_id = node.attribute_ns(
-            "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-            "id",
-        );
+        let rel_id = node.relationship_id();
         let link = match rel_id {
             Some(rel_id) => {
                 let target = match hyperlink_rels.get(rel_id) {

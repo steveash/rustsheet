@@ -24,7 +24,9 @@ Code: `crates/rustsheet-engine/src/functions/statistical/geomean.rs`. Excel's ev
 unknown; probe candidate formulations (product then root, `pow(prod, 1/n)`, log-sum) against the
 oracle with the `excel-probe` skill rather than fitting to two cells: `exp(ln(product)/n)` matches
 G27 but `exp(ln(47))` still misses B27, so no single candidate fits both yet. Both values come from
-Excel for the web; check desktop parity too (decision 0030) before fitting a last digit. Record the rule in
+Excel for the web: the goldens are the excel-graph sidecar `GEOMEAN.oracle.json`, because the workbook
+is not Excel-authored. Fit to them. excel-graph is the oracle of record for Phases 1–3 (decision 0039),
+and the desktop confirmation is item 3 of T-1075 (M14), not a gate. Record the rule in
 `docs/excel-semantics/`.
 
 ## Acceptance criteria
