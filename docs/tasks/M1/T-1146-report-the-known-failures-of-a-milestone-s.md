@@ -3,7 +3,7 @@ id: T-1146
 title: "Report the known failures of a milestone's frozen probe list (eval/milestones/m1-probes.txt)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
