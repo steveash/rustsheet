@@ -571,8 +571,8 @@ Status: VERIFIED (web)
 Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs) and `is_reference`
 (crates/rustsheet-engine/src/functions/information/mod.rs), which is TRUE for `a:b` only when `get_range` gives
 a range (T-1166). UNVERIFIED: the same rule makes ISREF FALSE when an operand errors (`A1:INDEX(A1:A3,5)`) or is
-not a reference (`A1:IF(TRUE,1)`); only the two-sheet form has oracle evidence.
-Tasks: T-1138, T-1166
+not a reference (`A1:IF(TRUE,1)`); only the two-sheet form has oracle evidence (T-1177 probes the rest).
+Tasks: T-1138, T-1166, T-1177
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
