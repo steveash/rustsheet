@@ -80,8 +80,6 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
-/// Cast one element of a cond array to bool. Returns Err with the error node to
-/// place in the output when the element is itself an error or unparseable string.
 /// Whether an argument value makes IFS or SWITCH run element by element: an array or a range.
 fn is_lifted(value: &CalcResult) -> bool {
     matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
@@ -96,6 +94,8 @@ fn no_match(cell: CellReferenceIndex) -> CalcResult {
     }
 }
 
+/// Cast one element of a cond array to bool. Returns Err with the error node to
+/// place in the output when the element is itself an error or unparseable string.
 fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
     match node {
         ArrayNode::Boolean(b) => Ok(*b),
