@@ -204,7 +204,7 @@ Implemented in: `linear_scan`/`compare_blank_last` (functions/lookup_and_referen
 Rule: search_mode 2/-2 is the classic binary search on inclusive bounds, probing the lower middle
 `(lo+hi)/2`. Unlike MATCH's approximate search ("skip upwards past other types", T-0212), it never
 skips a blank or an error cell. It compares the cell like any other, and a blank or an error is
-larger than every number. The search stops at an equal value. Otherwise match_mode -1/1 return the
+larger than every number. An equal value does not stop it: see "binary search over runs of equal values" below. Otherwise match_mode -1/1 return the
 last probed smaller/larger cell, which may be a blank. With 5,_,10,_,20,_ in A1:A6:
 `XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(20,A1:A6,0,2)` is 5 (mid 2 is 10). `XMATCH(7,A1:A6,1,2)`
 is 2, the blank A2. Over the whole column, `XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is
@@ -261,3 +261,13 @@ cell ascending, its last descending, match_mode 1 included (Run!M5, M11, M17, M3
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153
+
+## XLOOKUP / XMATCH with an omitted lookup_value orders like a blank (partial evidence)
+Rule: an omitted lookup_value (`XLOOKUP(,L:L,M:M,,1,2)`) is ordered like a blank cell in a binary search: after every number,
+text and boolean, equal to a blank. With L1:L5 = a..e and blanks below, that formula is 6, the first blank's row, which an
+"omitted = 0" reading (1) rules out. The single cell cannot separate "blank" from "empty text", and the linear and exact
+modes, where `linear_scan` only treats an `EmptyCell` lookup value as blank, are unprobed (T-1157).
+Evidence: crates/rustsheet-xlsx/tests/calc_tests/LOOKUP_AND_REFERENCE/XLOOKUP.xlsx Errors!N1 (Excel-authored cached value).
+Status: PARTIAL
+Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`.
+Tasks: T-1153, T-1157
