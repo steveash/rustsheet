@@ -3,7 +3,7 @@ id: T-1063
 title: "AREAS and INDEX area_num on multi-area references (SPEC-0004 step 3)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
