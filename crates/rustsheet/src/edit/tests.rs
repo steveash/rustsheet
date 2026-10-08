@@ -710,3 +710,32 @@ fn add_table_rejects_bad_names_ranges_and_headers() {
     let err = wb.edit(|tx| tx.add_table(bad, "Data", false)).unwrap_err();
     assert!(matches!(err, EditError::Ref(RefError::UnknownSheet(_))));
 }
+
+#[test]
+fn legacy_formulas_store_their_implicit_intersections() {
+    let mut wb = book();
+    wb.set("A1", 1.0).unwrap();
+    wb.set("A2", 2.0).unwrap();
+    for (a1, formula, stored) in [
+        ("B1", "=A1:A2", "=@A1:A2"),
+        ("H7", "=A1:A2", "=@A1:A2"),
+        ("H9", "=ABS(A1:A2)", "=ABS(@A1:A2)"),
+        // A union is not intersected (probes/multiarea-at-legacy H2).
+        ("H1", "=(A1,B2)", "=(A1,B2)"),
+        ("H5", "=SUM(A1:A2)", "=SUM(A1:A2)"),
+    ] {
+        wb.set(a1, Input::LegacyFormula(formula.into())).unwrap();
+        let info = wb.cell(cell(&wb, a1)).unwrap();
+        assert_eq!(info.formula.as_deref(), Some(stored), "{a1}");
+    }
+    // B1 shares row 1 with A1:A2; H7 and H9 (row 7, 9) intersect nothing.
+    assert_eq!(wb.value("B1").unwrap(), Value::Number(1.0));
+    assert_eq!(wb.value("H5").unwrap(), Value::Number(3.0));
+    for a1 in ["H7", "H9"] {
+        assert!(
+            matches!(wb.value(a1).unwrap(), Value::Error(e) if e.kind == ErrorKind::Value),
+            "{a1}"
+        );
+    }
+    assert!(wb.set("C1", Input::LegacyFormula("A1".into())).is_err());
+}

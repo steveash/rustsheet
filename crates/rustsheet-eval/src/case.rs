@@ -41,7 +41,8 @@ pub struct SheetSpec {
     /// A1 address → input.
     pub cells: BTreeMap<String, CellInput>,
     /// Formula cells (A1 addresses in `cells`) that spec2xlsx writes as legacy, non-array formulas
-    /// (no dynamic-array metadata; T-1077). The engine adapter ignores them.
+    /// (no dynamic-array metadata; T-1077). The engine adapter enters them as
+    /// `Input::LegacyFormula`, with the implicit intersections xlsx import adds (T-1096).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub legacy_formulas: Vec<String>,
     /// 1-based rows written hidden (T-1036). On a sheet with a filtered table every hidden row

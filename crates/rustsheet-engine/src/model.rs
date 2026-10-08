@@ -2513,7 +2513,7 @@ impl Model {
     /// retried with a closing parenthesis (`SUM(A1:A3` => `SUM(A1:A3)`) and
     /// otherwise kept as a parse error, except one past the parser's limits (nested too deep
     /// or too many operators; no `)` helps), which is rejected: the cell could never hold it.
-    fn parse_cell_formula(
+    pub(crate) fn parse_cell_formula(
         &mut self,
         sheet: u32,
         row: i32,
