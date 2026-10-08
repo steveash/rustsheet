@@ -1,9 +1,11 @@
 use crate::expressions::types::CellReferenceIndex;
 
-use crate::arithmetic::snap_near_zero;
-use crate::expressions::parser::ArrayNode;
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    arithmetic::snap_near_zero,
+    calc_result::CalcResult,
+    expressions::parser::{ArrayNode, Node},
+    expressions::token::Error,
+    model::Model,
 };
 
 type TwoMatricesResult = (i32, i32, Vec<Option<f64>>, Vec<Option<f64>>);

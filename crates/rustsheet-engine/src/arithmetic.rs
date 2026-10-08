@@ -207,14 +207,19 @@ impl Model {
         let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
         let l = self.number_or_array(left, cell);
         let r = self.get_number_or_array(right, cell);
-        if let (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) = (&l, &r) {
-            let y = if subtract { -*y } else { *y };
-            return match plus(*x, y) {
-                Ok(total) => CalcResult::Number(snap_near_zero(*x, y, total)),
-                Err(error) => CalcResult::new_error(error, cell, "Invalid number".to_string()),
-            };
+        // The two addends of a scalar addition (a subtraction adds the negated right operand).
+        let addends = match (&l, &r) {
+            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
+                Some((*x, if subtract { -*y } else { *y }))
+            }
+            _ => None,
+        };
+        match (self.arithmetic_on_values(l, r, cell, op), addends) {
+            (CalcResult::Number(total), Some((x, y))) => {
+                CalcResult::Number(snap_near_zero(x, y, total))
+            }
+            (result, _) => result,
         }
-        self.arithmetic_on_values(l, r, cell, op)
     }
 
     /// Evaluates a chain of value operators (`=A1+A2*3&"x"`) in a loop down its
