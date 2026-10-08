@@ -568,8 +568,10 @@ None of these forms made the workbook unloadable.
 Evidence: probes/sheet-qualified-corner-order Calc!A1-A4, B1, B2, B4 (order, text), A6-A9 (two sheets),
 A11/B11 (control) (oracle: excel-graph, 2026-10-08, T-1138).
 Status: VERIFIED (web)
-Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs). Known mismatch: the engine
-returns TRUE for the ISREF form (Calc!A7, baselined; T-1166).
+Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs) and `is_reference`
+(crates/rustsheet-engine/src/functions/information/mod.rs), which is TRUE for `a:b` only when `get_range` gives
+a range (T-1166). UNVERIFIED: the same rule makes ISREF FALSE when an operand errors (`A1:INDEX(A1:A3,5)`) or is
+not a reference (`A1:IF(TRUE,1)`); only the two-sheet form has oracle evidence.
 Tasks: T-1138, T-1166
 
 ## Sheet-qualified column or row corners on both sides are not a range
