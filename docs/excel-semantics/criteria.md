@@ -138,6 +138,9 @@ is `#DIV/0!`. Inside SUMPRODUCT there is no intersection at all: SUMPRODUCT eval
 `SUMPRODUCT(COUNTIF(A1:A6,D1:D2))` is 4, SUMIF/SUMIFS 8, AVERAGEIF(S) 3.33.., MAXIFS 4, MINIFS 2 in any row,
 while `SUM(COUNTIF(A1:A6,D1:D2))` intersects (0 off-row) (probes/ifs-legacy-sumproduct, oracle excel-graph
 2026-10-08, T-0278).
+Unprobed: the engine skips intersection for the whole subtree under SUMPRODUCT (`is_array_context`), but only
+*IF(S) directly inside it is probed; IF/INDEX/CHOOSE nested in SUMPRODUCT, deeper nesting and other
+array-context functions (LOOKUP, MMULT) are open (T-0286).
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
