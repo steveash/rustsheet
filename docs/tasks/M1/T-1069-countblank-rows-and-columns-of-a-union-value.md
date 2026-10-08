@@ -3,7 +3,7 @@ id: T-1069
 title: "COUNTBLANK, ROWS and COLUMNS of a union: #VALUE!, #REF!, #REF! (SPEC-0004 row 5)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
