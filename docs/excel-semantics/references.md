@@ -525,6 +525,12 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   COUNT skips it (1) and COUNTA counts it (2). SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S and DEVSQ take a union too
   (`(A1,B2)`: 26, 3, 5, 2.2360679775, 8, 8). PERCENTOF is `#NAME?` in Excel for the web, so it is not probed
   (probes/multiarea-more, oracle: excel-graph, 2026-10-08, T-1062).
+- The remaining `for_each_value` aggregates over `(A1,B2,C3,D4)` = 1, 5, 7, 9 (probes/multiarea-foreach, excel-graph,
+  2026-10-08, T-1150): HARMEAN 2.7510917031, AVEDEV 2.5, SKEW -0.7528371991, SKEW.P -0.4346507596, KURT
+  0.3428571429, MINA 1, STDEV.P and STDEVPA 2.9580398915, STDEV, STDEV.S and STDEVA 3.4156502553, VAR.P, VARP and
+  VARPA 8.75, VAR and VARA 11.6666666667. All take the union. `MODE` and `MODE.SNGL` are the exception: a union
+  (`MODE((A1,B2,C3,D4,E5))`) is `#VALUE!`, not a mode (engine gives `#N/A`; T-1184). The engine also refuses
+  VARA, VARPA, STDEVA and STDEVPA over a union (T-1184).
 Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
