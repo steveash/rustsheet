@@ -291,7 +291,12 @@ Whether that is a flush of a subnormal result or an overflow, underflow or cutof
 overflows a double, so CSCH(710) is 0 without any flush; the band 709.09 < x < 709.78 would tell them apart). A normal result is kept:
 `NORM.S.DIST(-37.6,FALSE)` is 4.0441448093482273E-308 (companion FALSE); `standard_normal_pdf` (the PHI operation order) reproduces it, `normal_pdf`'s `-0.5*d*d / (SQRT_2PI*sd)` order is one ulp off. The NORM.S.DIST TRUE tail is
 also recorded in the m9-norm-s-inv notes below and in statistics.md; the density cutoff near k = -37.616 is unprobed. The engine flushes the result of CSCH, NORM.S.DIST, NORM.DIST, PHI, ERFC and ERFC.PRECISE with `arithmetic::flush_subnormal` (T-1180);
-the mechanism and the boundaries (CSCH 709.3 to 709.6, ERFC 26.4 to 26.6) are unprobed. Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
+the boundaries are probed (probes/subnormal-function-boundaries, excel-graph 2026-10-08): the result is a true 0
+exactly where it would be subnormal, a normal result is kept. `CSCH(709.3)`, `CSCH(709.6)`, `CSCH(-710)` and `CSCH(-709.6)` are
+0 (companion TRUE), `ERFC(26.5)` and `ERFC.PRECISE(26.5)` are 2.2109076642637346E-307 (kept), `ERFC(26.6)` is 0,
+`NORM.S.DIST(-37.61,FALSE)` is 2.776580428767599E-308 (kept; the density is 1.9E-308 at -37.62) and `-37.62` to `-37.65`
+are 0. This is a flush of the subnormal result, not a cutoff in the algorithm. `ERFC(26.4)` is 4.4017768588035533E-305
+and the engine is a few ulp off (T-1186). Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
 reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
 product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flushed before the 1E+300 factor scales it back up;

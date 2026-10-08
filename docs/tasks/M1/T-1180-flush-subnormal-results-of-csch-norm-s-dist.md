@@ -24,4 +24,4 @@ probes/subnormal-text-and-tail-companions (T-1143, excel-graph 2026-10-08) has F
 None.
 
 ## Outcome
-CSCH, NORM.S.DIST, NORM.DIST, PHI, ERFC and ERFC.PRECISE flush a subnormal result (`flush_subnormal`); PHI and NORM.S.DIST share `standard_normal_pdf`, which fixes the one-ulp A9. Eval delta: probes known failures 400 -> 379 (21 fixed), ironcalc-calc 1558 -> 1547 (11 fixed), regressions 0. Boundary probes not done (mechanism still open, noted in numbers.md).
+CSCH, NORM.S.DIST, NORM.DIST, PHI, ERFC and ERFC.PRECISE flush a subnormal result (`flush_subnormal`); PHI and NORM.S.DIST share `standard_normal_pdf`, which fixes the one-ulp A9. Eval delta: probes known failures 400 -> 379 (21 fixed), ironcalc-calc 1558 -> 1547 (11 fixed), regressions 0. Boundary probes done (probes/subnormal-function-boundaries, 30 cells): the flush matches Excel at every boundary cell except `ERFC(26.4)`, a few ulp off (T-1186).
