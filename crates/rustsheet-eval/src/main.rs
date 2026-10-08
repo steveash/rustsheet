@@ -11,6 +11,7 @@
 //! ```
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -25,6 +26,7 @@ use rustsheet_eval::catalog::Catalog;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
+use rustsheet_eval::milestone_lists::{self, ListSummary, MilestoneList};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
@@ -226,6 +228,36 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
+/// Loads the frozen milestone probe lists and fails when a line names a case that no suite
+/// discovers (decision 0044).
+fn load_milestone_lists(root: &Path) -> Result<Vec<MilestoneList>> {
+    let lists = milestone_lists::load_all(root)?;
+    if lists.is_empty() {
+        return Ok(lists);
+    }
+    let mut known = BTreeSet::new();
+    for suite in Suite::load_all(&root.join("eval/suites"))? {
+        known.extend(suite.cases()?.into_iter().map(|c| c.id));
+    }
+    milestone_lists::check_known(&lists, &known)?;
+    Ok(lists)
+}
+
+fn score_milestone_lists(
+    lists: &[MilestoneList],
+    suites: &[Suite],
+    results: &[CaseResult],
+) -> Vec<ListSummary> {
+    let modes: BTreeMap<String, BaselineMode> = suites
+        .iter()
+        .map(|s| (s.manifest.name.clone(), s.manifest.baseline))
+        .collect();
+    lists
+        .iter()
+        .map(|l| milestone_lists::summarize(l, results, &modes))
+        .collect()
+}
+
 fn print_summary(report: &RunReport) {
     println!(
         "{:<28} {:>6} {:>9} {:>9} {:>10} {:>8}",
@@ -251,6 +283,19 @@ fn print_summary(report: &RunReport) {
             println!("  warning: stale deviations line (the cell matches Excel): {line}");
         }
     }
+    for l in report.milestone_lists.iter().filter(|l| l.cases_run > 0) {
+        println!(
+            "milestone list {}: {}/{} cases run, {} cells, {} bit-exact, {} deviations, {} known failures in {} cases",
+            l.name,
+            l.cases_run,
+            l.cases,
+            l.cells,
+            l.bit_exact,
+            l.deviations,
+            l.known_failures,
+            l.failing_cases.len()
+        );
+    }
 }
 
 fn baseline_path(root: &Path, suite: &str) -> PathBuf {
@@ -265,13 +310,15 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     }
     let suites = select(root, sel, true)?;
     check_deviations(root, &suites)?;
+    let lists = load_milestone_lists(root)?;
     let results = execute(&suites, sel);
-    let report = RunReport::build(
+    let mut report = RunReport::build(
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
         &Catalog::load(root)?,
     );
+    report.milestone_lists = score_milestone_lists(&lists, &suites, &results);
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -419,13 +466,15 @@ fn run() -> Result<ExitCode> {
         Cmd::Run { sel, out, examples } => {
             let suites = select(&root, &sel, false)?;
             check_deviations(&root, &suites)?;
+            let lists = load_milestone_lists(&root)?;
             let results = execute(&suites, &sel);
-            let report = RunReport::build(
+            let mut report = RunReport::build(
                 RustSheetEngine.name(),
                 &results,
                 &RustSheetEngine.implemented_functions(),
                 &Catalog::load(&root)?,
             );
+            report.milestone_lists = score_milestone_lists(&lists, &suites, &results);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(

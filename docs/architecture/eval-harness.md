@@ -107,6 +107,18 @@ Only `pass` counts as passing. Case statuses:
 - `report.json`: the same data, machine-readable.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
 
+## Milestone probe lists
+`eval/milestones/<name>.txt` (decisions 0043, 0044) freezes the cases a milestone's probe criterion
+counts: `#` comment lines, then one case id per line in the form of the baseline files
+(`probes/<path>.case.json`); `m1-probes.txt` is the only list today. `run` and `check` parse every
+list (`crates/rustsheet-eval/src/milestone_lists.rs`) and fail, naming the file and line, on a
+duplicate or on a case that no suite discovers. report.md has a "Milestone probe lists" section
+(report.json: `milestone_lists`) with one row per list: cases, scored cells, bit-exact,
+deviations, known failures (cells), and the failing case ids. Known failures are counted as the
+baseline counts its F lines, so they equal the list's F lines in `eval/baseline/`. The lists are
+an exit measure, not a gate on their pass rate; editing one needs a decision record
+(`scripts/check_governance.py`).
+
 ## CLI
 ```
 rustsheet-eval suites | fetch [--suite S] | run [--suite S] [--filter X] | check | update-baseline [--allow-regressions]
