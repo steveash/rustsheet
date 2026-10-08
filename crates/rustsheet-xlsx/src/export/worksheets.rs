@@ -43,15 +43,21 @@ use crate::export::conditional_formatting::get_conditional_formatting_xml;
 use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
 
 /// The literal an error cell is written with. Excel's stored form ([`Error::stored_literal`]),
-/// except `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!`: Excel rejects those as stored
-/// literals (T-0999) and keeps them only in `vm` rich-value metadata, which is not written yet, so
-/// they are saved as `#VALUE!` until T-1014 (SPEC-0003). The eval harness must not use this
+/// except `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!` and the engine-only `#CIRC!`,
+/// `#ERROR!` and `#N/IMPL`: Excel rejects those as stored literals (T-0999; T-1133 for the engine-only
+/// three, docs/excel-semantics/syntax.md) and keeps the first five only in `vm` rich-value metadata,
+/// which is not written yet, so they are saved as `#VALUE!` until T-1014 (SPEC-0003). The eval harness must not use this
 /// fallback: it scores through `Error::stored_literal`.
 pub(crate) fn exported_error_literal(error: &Error) -> &'static str {
     match error {
-        Error::SPILL | Error::CALC | Error::CONNECT | Error::BLOCKED | Error::FIELD => {
-            Error::VALUE.stored_literal()
-        }
+        Error::SPILL
+        | Error::CALC
+        | Error::CONNECT
+        | Error::BLOCKED
+        | Error::FIELD
+        | Error::CIRC
+        | Error::ERROR
+        | Error::NIMPL => Error::VALUE.stored_literal(),
         _ => error.stored_literal(),
     }
 }
@@ -692,11 +698,13 @@ mod tests {
             Error::CONNECT,
             Error::BLOCKED,
             Error::FIELD,
+            Error::CIRC,
+            Error::ERROR,
+            Error::NIMPL,
         ] {
             assert_eq!(exported_error_literal(&error), "#VALUE!", "{error}");
         }
         assert_eq!(exported_error_literal(&Error::GETTINGDATA), "#N/A");
         assert_eq!(exported_error_literal(&Error::DIV), "#DIV/0!");
-        assert_eq!(exported_error_literal(&Error::CIRC), "#CIRC!");
     }
 }
