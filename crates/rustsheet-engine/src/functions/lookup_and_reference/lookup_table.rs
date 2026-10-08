@@ -104,7 +104,7 @@ static EMPTY_CELL: CalcResult = CalcResult::EmptyCell;
 /// exactly the values the full walk would (binary searches probe the same
 /// positions, an exact match on an empty value finds the first empty tail
 /// cell), so the result never depends on where the used area ends.
-pub(super) struct SearchVector {
+pub(crate) struct SearchVector {
     /// The evaluated prefix.
     values: Vec<CalcResult>,
     /// The full length: `values` followed by `len - values.len()` empty cells.
@@ -272,7 +272,7 @@ impl Model {
     /// The search vector of the single row or column `left:right`, walking
     /// down if `down` is set. Only the cells up to the sheet's last used
     /// row/column are evaluated (see `SearchVector`).
-    pub(super) fn range_search_vector(
+    pub(crate) fn range_search_vector(
         &mut self,
         left: &CellReferenceIndex,
         right: &CellReferenceIndex,

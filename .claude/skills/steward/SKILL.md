@@ -50,6 +50,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   against open tasks) per docs/process/agent-workflow.md "When something goes wrong".
 - **Eval regressions** in CI (`eval-check`): the PR broke previously-passing Excel behavior. Fix
   the code, do not touch the baseline.
+- **Accepted deviations** (decision 0036): a suite's `deviations` file lists cells that differ
+  from Excel by design. "100% bit-exact" in an exit criterion means 100% of the scored cells
+  outside the report's `deviations` column. A stale-line warning (the cell now matches Excel)
+  means the line goes in the next PR; a listed cell with any value but its pinned one fails the
+  gate like any regression.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/) changed — add a decision record in docs/decisions/ explaining why, and
   make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.

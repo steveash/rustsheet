@@ -29,6 +29,11 @@ PROTECTED = (
 )
 
 
+def is_deviations_file(path: str) -> bool:
+    """A suite's accepted-deviations list (decision 0036): each line hides a cell from bit-exact."""
+    return path.startswith("eval/suites/") and path.endswith("/deviations")
+
+
 def git(*args: str) -> str:
     return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
@@ -42,7 +47,7 @@ def main() -> int:
         return 0
     changed = git("diff", "--name-status", merge_base, "HEAD").splitlines()
     paths = [line.split("\t")[-1] for line in changed]
-    protected = [p for p in paths if p.startswith(PROTECTED) or p in PROTECTED]
+    protected = [p for p in paths if p.startswith(PROTECTED) or p in PROTECTED or is_deviations_file(p)]
     decisions = [p for p in paths if p.startswith("docs/decisions/") and p.endswith(".md")]
     failed = False
     if protected and not decisions:
