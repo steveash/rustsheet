@@ -223,3 +223,36 @@ fn subtotal_of_a_union_obeys_the_area_cell_bound() {
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
     assert_eq!(model._get_text("Z2"), "32");
 }
+
+#[test]
+fn areas_counts_the_areas_of_a_reference() {
+    // SPEC-0004 probe rows 6 and 20 (probes/multiarea-areas-*).
+    results(
+        &mut model(),
+        &[
+            ("H1", "=AREAS((A1,B2))", "2"),
+            ("H2", "=AREAS(((A1,B2),C3))", "3"),
+            ("H3", "=AREAS((A1:B2,A1:B2))", "2"),
+            ("H4", "=AREAS(A1:B2)", "1"),
+            ("H5", "=AREAS(Sheet1:Data!A1)", "#VALUE!"),
+        ],
+    );
+}
+
+#[test]
+fn index_area_num_selects_an_area() {
+    // SPEC-0004 probe rows 7 and 8.
+    results(
+        &mut model(),
+        &[
+            ("H1", "=INDEX((A1:B2,C3:D4),1,1,2)", "7"),
+            ("H2", "=INDEX((A1:B2,C3:D4),1,1,3)", "#REF!"),
+            ("H3", "=INDEX((A1:B2,C3:D4),1,1,0)", "#VALUE!"),
+            ("H4", "=INDEX((A1:B2,C3:D4),1,1)", "1"),
+            ("H5", "=SUM(INDEX((A1:B2,C3:D4),0,0,2))", "16"),
+            ("H6", "=INDEX((A1:B2,C3:D4),1,1,1E+300)", "#REF!"),
+            ("H7", "=INDEX(A1:B2,1,1,2)", "#REF!"),
+            ("H8", "=INDEX(Sheet1:Data!A1,1,1,1)", "#VALUE!"),
+        ],
+    );
+}
