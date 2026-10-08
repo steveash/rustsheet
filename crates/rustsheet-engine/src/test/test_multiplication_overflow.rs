@@ -242,7 +242,7 @@ fn tiny_values_compare_unequal_to_zero_but_subnormal_literals_are_zero() {
 }
 
 /// probes/subnormal-function-results C69 and text-number-words H6 (excel-graph; T-1027):
-/// `+` and `-` keep a subnormal result, while subnormal number text reads as 0.
+/// `+` and `-` keep a subnormal result; subnormal number text reads as 0 (UNVERIFIED, T-1143).
 #[test]
 fn sums_keep_subnormals_and_number_text_flushes_them() {
     let mut model = new_empty_model();

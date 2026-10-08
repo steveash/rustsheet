@@ -151,7 +151,8 @@ impl Model {
     /// Text as number coercion and VALUE read it, after their own trimming: a formatted number
     /// (dates, currencies in `currencies`, percentages), else time and date-time text
     /// (`0+"10:11:12.5"`; probes/timevalue-*). Number text below the smallest normal double
-    /// reads as 0 like a literal: `"1e-308"+0` is 0 (probes/text-number-words H6, H7, K1, K4, K5).
+    /// reads as 0 like a literal, keeping `"1e-308"+0` at the Graph 0 of probes/text-number-words H6, H7,
+    /// K1, K4, K5 (UNVERIFIED: Graph cannot tell a flush from a kept subnormal; T-1143).
     pub(crate) fn parse_number_text(
         &self,
         text: &str,
