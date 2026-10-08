@@ -101,17 +101,6 @@ impl Parser {
         t
     }
 
-    /// Whether `node` is a chain of cuts whose leftmost operand is a union with its own parentheses.
-    fn cuts_written_union(node: &Node) -> bool {
-        let mut leftmost = node;
-        let mut cut = false;
-        while let Node::OpIntersectKind { left, .. } = leftmost {
-            cut = true;
-            leftmost = left;
-        }
-        cut && matches!(leftmost, Node::OpUnionKind { written, .. } if *written > 0)
-    }
-
     /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
     /// argument list only. There the comma is a reference operator that binds tighter than
     /// arithmetic and looser than the space: Excel loads `=A1,B2` (`#VALUE!`, FORMULATEXT

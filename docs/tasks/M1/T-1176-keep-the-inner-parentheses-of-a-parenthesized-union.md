@@ -3,7 +3,7 @@ id: T-1176
 title: "Keep the inner parentheses of a parenthesized union cut in FORMULATEXT"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/union-cut-precedence F6 (oracle excel-graph, T-1140): Excel prints `=SUM(
 
 ## Out of scope
 -
+
+## Outcome
+`OpIntersectKind` gained `written` (parentheses levels around a cut whose leftmost operand is a parenthesized union); the parser sets it and `stringify` prints it. Other parenthesized cuts are unchanged (Excel behavior unverified, T-1178). Eval: probes known failures 394 -> 393 (F6 fixed), no regressions.
