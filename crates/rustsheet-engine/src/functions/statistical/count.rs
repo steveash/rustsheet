@@ -2,7 +2,7 @@ use crate::calc_result::Range;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
-use crate::reference_operators::RefArg;
+use crate::reference_operators::{is_multi_area, RefArg};
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
@@ -107,7 +107,14 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            match self.evaluate_single_sheet_arg(arg, cell) {
+            let value = if is_multi_area(arg) {
+                // A union is #VALUE! here (probes/multiarea-count H1); one area is a range.
+                self.evaluate_reference_arg(arg, cell)
+                    .into_single_area(cell)
+            } else {
+                self.evaluate_single_sheet_arg(arg, cell)
+            };
+            match value {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s) if s.is_empty() => result += 1.0,
                 CalcResult::Range { left, right } => {
@@ -131,11 +138,11 @@ impl Model {
                     let side = |first: i32, last: i32| f64::from(last - first + 1);
                     result += side(left.row, right.row) * side(left.column, right.column) - filled;
                 }
-                // Only the 3-D reference error; other errors count nothing, as before.
+                // Only the 3-D reference and union errors; other errors count nothing, as before.
                 error @ CalcResult::Error {
                     error: Error::VALUE,
                     ..
-                } if matches!(arg, Node::SheetSpanKind { .. }) => {
+                } if matches!(arg, Node::SheetSpanKind { .. }) || is_multi_area(arg) => {
                     return error;
                 }
                 _ => {}

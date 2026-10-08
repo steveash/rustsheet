@@ -176,3 +176,17 @@ fn whole_columns_over_the_cell_bound_are_not_walked() {
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
     assert_eq!(model._get_text("Z2"), "32");
 }
+
+#[test]
+fn countblank_rows_columns_of_a_union() {
+    // probes/multiarea-count H1:H3 (oracle excel-graph, 2026-10-07): #VALUE!, #REF!, #REF!.
+    let mut model = model();
+    results(
+        &mut model,
+        &[
+            ("H1", "=COUNTBLANK((A1,B2))", "#VALUE!"),
+            ("H2", "=ROWS((A1,B2))", "#REF!"),
+            ("H3", "=COLUMNS((A1,B2))", "#REF!"),
+        ],
+    );
+}
