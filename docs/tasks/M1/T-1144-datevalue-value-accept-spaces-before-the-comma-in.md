@@ -3,7 +3,7 @@ id: T-1144
 title: "DATEVALUE/VALUE accept spaces before the comma in month-day-year text (July 1 , 2026)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
