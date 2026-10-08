@@ -54,8 +54,8 @@ impl JoinSize {
     }
 
     /// Whether the join is over the limit once the delimiter before the next value is counted.
-    /// Excel adds that delimiter before it reads the next reference, so a cell error met there is
-    /// `#CALC!`, not the error (probes/text-result-limit-errors C2-C3).
+    /// A cell error read from a reference is `#CALC!` when the text so far plus this delimiter is
+    /// over the limit (probes/text-result-limit-errors C2-C3, C7-C9).
     fn exceeds_with_separator(&mut self, values: &[String]) -> bool {
         let over = self.exceeds(values);
         let separator = if self.counted == 0 {
@@ -159,8 +159,8 @@ impl Model {
                             }
                             match result.push_value(cell_value) {
                                 // Excel: a range cell error met once the text is over the limit is
-                                // dropped and the result is #CALC!, while an error argument still
-                                // wins (probes/text-result-limit-errors C1, C5).
+                                // dropped and the result is #CALC! (probes/text-result-limit-errors
+                                // C1, C10); at exactly the limit it is returned (C5-C6).
                                 Err(_) if result.units > MAX_TEXT_UNITS => Ok(()),
                                 other => other,
                             }
@@ -184,7 +184,7 @@ impl Model {
             }
         }
         // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit
-        // C8). Later arguments are still evaluated so an error argument wins (C18).
+        // C8). Later arguments are still evaluated so an error argument wins (C18, -errors C4).
         if result.units > MAX_TEXT_UNITS {
             return text_limit_error(cell);
         }
@@ -304,7 +304,8 @@ impl Model {
                             size.push_empties(&mut values, skipped_rows.saturating_mul(width));
                     }
                 }
-                // A single-cell reference is read like a range cell (probes/text-result-limit-errors C3).
+                // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
+                // C3); other reference kinds are unprobed (text.md).
                 CalcResult::Error { .. }
                     if matches!(arg, Node::ReferenceKind { .. })
                         && (over_limit || size.exceeds_with_separator(&values)) =>

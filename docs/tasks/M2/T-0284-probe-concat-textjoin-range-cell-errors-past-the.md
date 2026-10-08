@@ -24,4 +24,4 @@ T-0262 found that `TEXTJOIN(",",TRUE,REPT("a",32767),A1:A2)` with an error in `A
 -
 
 ## Outcome
-Probed with `probes/text-result-limit-errors` (6 cells, excel-graph). The engine differed on four: a range-cell error past the limit is dropped (`#CALC!`) for CONCAT as well as TEXTJOIN, TEXTJOIN counts the delimiter before reading a reference so an error in a first range cell or a single-cell reference is `#CALC!`, and a later error argument still wins. `concatenate.rs` now matches (6/6 pass). text.md Unprobed line resolved.
+Probed with `probes/text-result-limit-errors` (11 cells, excel-graph). The engine differed on four: a range-cell error past the limit is dropped (`#CALC!`) for CONCAT as well as TEXTJOIN, TEXTJOIN counts the delimiter before reading a reference so an error in a first range cell or a single-cell reference is `#CALC!`, and a later error argument still wins. `concatenate.rs` now matches (11/11 pass). text.md Unprobed line resolved.
