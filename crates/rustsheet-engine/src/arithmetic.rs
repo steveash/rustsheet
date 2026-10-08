@@ -26,12 +26,23 @@ pub(crate) fn bcast_idx(len: usize, i: usize) -> Option<usize> {
 /// `x + y`; a sum beyond the double range is `#NUM!` at once, like a product
 /// (probes/arith-overflow Calc!B1:B5, excel-graph).
 pub(crate) fn plus(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_num(x + y)
+    finite_or_overflow(x + y)
 }
 
 /// `x - y`; a difference beyond the double range is `#NUM!` (probes/arith-overflow Calc!B2:B3).
+/// A subnormal difference is kept, unlike a product's: `(3E-308-2.5E-308)=0` is FALSE
+/// (probes/subnormal-function-results C69, T-1027).
 pub(crate) fn minus(x: f64, y: f64) -> Result<f64, Error> {
-    finite_or_num(x - y)
+    finite_or_overflow(x - y)
+}
+
+/// `value`, or `#NUM!` beyond the double range; subnormals are kept (addition, subtraction).
+fn finite_or_overflow(value: f64) -> Result<f64, Error> {
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(Error::NUM)
+    }
 }
 
 /// `x * y`; a product beyond the double range is `#NUM!` at once, so it stays an error through
@@ -53,10 +64,7 @@ pub(crate) fn divide(x: f64, y: f64) -> Result<f64, Error> {
 /// An infinite (or NaN) result is the error `#NUM!`; a result below the smallest normal double
 /// is 0 (docs/excel-semantics/numbers.md "Subnormal results become 0", probes/precision-and-rounding A14).
 fn finite_or_num(value: f64) -> Result<f64, Error> {
-    if !value.is_finite() {
-        return Err(Error::NUM);
-    }
-    Ok(flush_subnormal(value))
+    finite_or_overflow(value).map(flush_subnormal)
 }
 
 /// 0 for a value below the smallest normal double, `value` otherwise. The postfix `%` and the
