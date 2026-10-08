@@ -3,7 +3,7 @@ id: T-1005
 title: "Oracle sweep for T-0917: inverse hyperbolics and SINH/TANH switchover thresholds"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Grid: ASINH/ACOSH/ATANH/ACOTH on log-spaced arguments (1e-10..1e10, and near 1 f
 
 ## Out of scope
 - Fitting or implementing the formulation (T-0917 does that).
+
+## Outcome
+Added `probes-numeric/m9-hyperbolic` (268 cells) with its excel-graph oracle sidecar (no pending cells). 110 of 268 cells differ from the engine (66 ulp, 31 close, 11 mismatch, 2 SINH(+-710) `#NUM!`); quirks recorded in numbers.md. T-0917 already depends on T-1005 and no longer on T-0942. Eval baseline unchanged (probe suite carries its own known failures; see make check).

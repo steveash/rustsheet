@@ -387,6 +387,24 @@ it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x
 1 ulp high; libm and `e^2x` fit). The 0.9 cutoff is a guess between 0.604 (sinh/cosh fits) and 0.995;
 confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
 
+### Inverse hyperbolics, COTH/CSCH and the SINH/TANH thresholds: oracle sweep (T-1005)
+Probe `probes-numeric/m9-hyperbolic` (268 cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0917.
+- ASINH loses precision for small |x|, so it is not `asinh` from libm: ASINH(1E-10) = 1.000000082690371E-10 (relative error
+  8e-8), ASINH(3E-10) = 3.000000247771113E-10, ASINH(1E-9) = 1.000000082240371E-9, ASINH(1E-5) = 9.999999999902983E-6. This is
+  the cancellation signature of `ln(x + sqrt(x^2 + 1))`; the engine returns the exact value (known mismatch, 11 cells).
+- ACOTH(x) for large x is ~1E-7 relative off at x = 1.5E7 and worse beyond (ACOTH(1.5E10) = 6.666666666666667E-11 vs engine
+  6.666667217824696E-11 in libm terms): Excel is accurate there, the engine's `atanh(1/x)` path is not.
+- ACOTH(1 + 1E-12) = 14.162039699929037 while ATANH(1 - 1E-12) = 14.162095209226402: the near-1 side is evaluated in a
+  formulation whose error grows as the argument approaches 1 (ACOSH(1.000000000001) = 1.414276423083533E-6 vs sqrt(2E-12)
+  = 1.41421356E-6).
+- COTH and CSCH at 1E-8 and 1E-6 (COTH(1E-8) = 1E8 exactly, CSCH(1E-8) = 1E8 exactly) differ from libm by an ulp.
+- Overflow: SINH(710) and SINH(-710) are `#NUM!`, but CSCH(710) = 0 (not an error), CSCH(709) = 2.433561501246846E-308,
+  COTH(709) = COTH(710) = 1, TANH(x) = 1 for x >= 20 (probed 20, 20.01, 21, 22, 25, 30, 350, 700, 709, 710).
+- SINH/TANH values on 0.40..1.0 (step 0.01 / 0.02 / 0.025, plus 0.9950546550253772 and 0.9999999999) are in the case; the
+  engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH between 709 and 710.
+Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
+Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0917.
+
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
