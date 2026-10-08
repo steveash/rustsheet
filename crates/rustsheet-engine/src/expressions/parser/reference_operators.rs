@@ -486,6 +486,8 @@ fn starts_reference(token: &TokenType) -> bool {
 /// is `A1 @(A1 B1)` (T-0149).
 pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     let bare = match node {
+        // A cut with its own written parentheses (T-1176) prints them itself.
+        Node::OpIntersectKind { written: 1.., .. } => true,
         Node::OpIntersectKind { right, .. } => {
             is_left && !matches!(**right, Node::ImplicitIntersection { .. })
         }

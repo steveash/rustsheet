@@ -328,8 +328,17 @@ fn parenthesized_cut_of_a_union_keeps_its_parentheses() {
         ("@((A1,B1) B1)", "@((A1,B1) B1)"),
         ("SUM(((A1,B1) B1):C1)", "SUM(((A1,B1) B1):C1)"),
         ("SUM(((A1,B1) B1))", "SUM(((A1,B1) B1))"),
+        // As either operand of another cut it prints its own levels only.
+        ("C1 ((A1,B1) B1)", "C1 ((A1,B1) B1)"),
+        ("A1:B1 ((A1,B1) B1)", "A1:B1 ((A1,B1) B1)"),
+        ("((A1,B1) B1) ((A1,B1) B1)", "((A1,B1) B1) ((A1,B1) B1)"),
+        ("((A1,B1) @B1) C1", "((A1,B1) @B1) C1"),
     ] {
         let node = parser.parse_cell_formula(formula, &context());
-        assert_eq!(to_english_localized_string(&node, &context()), expected);
+        let text = to_english_localized_string(&node, &context());
+        assert_eq!(text, expected);
+        // Printing is a fixed point: a re-parse gains no level.
+        let reparsed = parser.parse_cell_formula(&text, &context());
+        assert_eq!(to_english_localized_string(&reparsed, &context()), expected);
     }
 }
