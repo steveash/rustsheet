@@ -503,7 +503,7 @@ excel-graph). COUNT/COUNTA (2, 3, 102, 103) of a union count each area as writte
 makes 1/9 an error but COUNTA counts it (`SUBTOTAL(3,(A1,C4))` = 2, `SUBTOTAL(2,(A1,C4))` = 1). A union across sheets is `#VALUE!` for 2, 3 and 9
 (`(A1,Data!A1)`). The same unions through `LET(x,(A1,B2),SUBTOTAL(9,x))` (6), `IF(TRUE,(...))` and `CHOOSE(1,(...))` also work in Excel (counts 2); the engine
 does not carry a union through LET/IF/CHOOSE yet (T-1064; probes/multiarea-subtotal-counts-c/d are known failures). Hidden/filtered rows in a union remain
-unprobed: the case format cannot hide rows.
+unprobed (the case format cannot hide rows; T-1036 owns the probe): the engine keeps or skips a row whole by the status at the area's first column.
 Tasks: T-1061, T-1062, T-1068, T-1069
 
 ## Range corners may both carry the sheet prefix

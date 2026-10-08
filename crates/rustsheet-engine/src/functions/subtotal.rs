@@ -135,28 +135,48 @@ impl Model {
                 "Ranges are in different sheets".to_string(),
             ));
         }
-        // The row last found not hidden: a row's cells are consecutive, and the status lookup
-        // scans the sheet's row styles.
-        let mut visible_row: Option<(u32, i32)> = None;
-        self.for_each_position_in_areas(areas, cell, |model, position| {
-            if visible_row != Some((position.sheet, position.row)) {
-                let status = model
-                    .cell_hidden_status(position.sheet, position.row, position.column)
-                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-                if status == CellTableStatus::Filtered
-                    || (*mode == SubTotalMode::SkipHidden && status == CellTableStatus::Hidden)
-                {
-                    return Ok(());
-                }
-                if status == CellTableStatus::Normal {
-                    visible_row = Some((position.sheet, position.row));
-                }
-            }
-            if model.cell_is_subtotal(position.sheet, position.row, position.column) {
-                return Ok(());
-            }
-            f(model.evaluate_cell(position))
-        })
+        if areas.len() > 1 {
+            self.check_area_cells(areas, cell)?;
+        }
+        for area in areas {
+            // A row is skipped or kept whole, by the status at the area's first column (a table
+            // filter is looked up there); unevidenced per column, see T-1036. The row last seen
+            // is cached: its cells are consecutive and the lookup scans the sheet's row styles.
+            let mut last_row: Option<(u32, i32, bool)> = None;
+            // A single area is clipped to the used area like a union's: the cells past it are
+            // empty, which no function number reads.
+            self.for_each_position_in_areas(
+                std::slice::from_ref(area),
+                cell,
+                |model, position| {
+                    let skip = match last_row {
+                        Some((sheet, row, skip))
+                            if (sheet, row) == (position.sheet, position.row) =>
+                        {
+                            skip
+                        }
+                        _ => {
+                            let status = model
+                                .cell_hidden_status(position.sheet, position.row, area.left.column)
+                                .map_err(|message| {
+                                    CalcResult::new_error(Error::ERROR, cell, message)
+                                })?;
+                            let skip = status == CellTableStatus::Filtered
+                                || (*mode == SubTotalMode::SkipHidden
+                                    && status == CellTableStatus::Hidden);
+                            last_row = Some((position.sheet, position.row, skip));
+                            skip
+                        }
+                    };
+                    if skip || model.cell_is_subtotal(position.sheet, position.row, position.column)
+                    {
+                        return Ok(());
+                    }
+                    f(model.evaluate_cell(position))
+                },
+            )?;
+        }
+        Ok(())
     }
 
     /// Pushes the numbers of `areas` as [`Self::subtotal_walk_areas`] reads them; text and
