@@ -137,8 +137,11 @@ impl Model {
     /// `=AREAS(reference)`
     ///
     /// Returns the number of areas in a reference (SPEC-0004, probes/multiarea-areas-*). A 3-D
-    /// reference is `#VALUE!` (probes/3d-ref-functions); an argument that is not a reference
-    /// is 1 unless it is an error.
+    /// reference is `#VALUE!` (probes/3d-ref-functions). The parser refuses an argument not
+    /// written as a reference (`AREAS(1)`), as Excel does; one that evaluates to a value
+    /// (`AREAS(IF(TRUE,5))`, `AREAS(LAMBDA(x,x))`) is `#VALUE!` and an error is itself
+    /// (excel-graph scratch probes, docs/excel-semantics/references.md "SUBTOTAL and AREAS take
+    /// references only", T-1163).
     pub(crate) fn fn_areas(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -148,8 +151,10 @@ impl Model {
             return CalcResult::Number(areas.len() as f64);
         }
         match arg {
-            RefArg::Value(value) if !value.is_error() => CalcResult::Number(1.0),
-            RefArg::Value(error) => error,
+            RefArg::Value(error) if error.is_error() => error,
+            RefArg::Value(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "AREAS takes a reference".to_string())
+            }
             RefArg::Ranges(_) => three_d_needs_one_sheet(cell),
         }
     }
