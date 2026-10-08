@@ -288,10 +288,10 @@ fn remove_separator_spaces(value: &str) -> String {
 /// - "Month year": "Jul 2026", "July 2026" (the first of the month);
 /// - "Month day, year": "July 1, 2026", "Jul 01, 26" (the comma ends the day; "July 1 2026" and
 ///   "July 1,2026" are #VALUE!);
-/// - "day Month year": "1 July 2026" (no comma).
-/// - The comma of "Month day, year" may also stand as a word of its own after the day ("July 1 , 2026")
-///   or after the month ("July , 1, 2026"); it still needs a space after it ("July 1 ,2026" and
-///   "1 July , 2026" are #VALUE!).
+/// - "day Month year": "1 July 2026" (no comma);
+/// - the comma of "Month day, year" may also stand as a word of its own after the day
+///   ("July 1 , 2026") or after the month ("July , 1, 2026"); it still needs a space after it
+///   ("July 1 ,2026" and "1 July , 2026" are #VALUE!).
 ///
 /// Month names follow [`parse_month_name`]; a month name never comes first in a separated word
 /// ("Jul-1-2026" is #VALUE!). Text with a clock time is `time_text`'s ("date clock" text).
@@ -313,8 +313,9 @@ pub(crate) fn parse_date(
             return parse_date(&compact, locale, current_year);
         }
     }
-    // At most 4 words: enough to reject longer text without splitting all of it.
-    let words: Vec<&str> = value.split_whitespace().take(4).collect();
+    // At most 5 words: one more than the longest form (4), enough to reject longer text without
+    // splitting all of it.
+    let words: Vec<&str> = value.split_whitespace().take(5).collect();
     let (day, name, year) = match words.as_slice() {
         [word] => return parse_separated(word, locale, current_year),
         [first, second] => {
