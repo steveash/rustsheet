@@ -158,18 +158,20 @@ fn rich_error_fixtures_match_the_exporter() {
             "xl/richData/rdrichvaluestructure.xml",
             "xl/richData/rdRichValueTypes.xml",
         ];
-        for part_name in parts {
-            let exported = part(&path, part_name);
+        // Read everything before asserting, so a failure leaves no temp file behind.
+        let exported: Vec<_> = parts.iter().map(|name| part(&path, name)).collect();
+        let (exported_vm, exported_overrides) = (vm_cells(&path), rich_overrides(&path));
+        std::fs::remove_file(&path).unwrap();
+        for (part_name, exported) in parts.iter().zip(exported) {
             assert!(exported.is_some(), "{name}: {part_name} not exported");
             assert_eq!(exported, part(&fixture, part_name), "{name}: {part_name}");
         }
-        assert_eq!(vm_cells(&path), vm_cells(&fixture), "{name}: vm cells");
-        assert!(!vm_cells(&fixture).is_empty(), "{name}: no vm cells");
+        assert_eq!(exported_vm, vm_cells(&fixture), "{name}: vm cells");
+        assert!(!exported_vm.is_empty(), "{name}: no vm cells");
         assert_eq!(
-            rich_overrides(&path),
+            exported_overrides,
             rich_overrides(&fixture),
             "{name}: content types"
         );
-        std::fs::remove_file(path).unwrap();
     }
 }
