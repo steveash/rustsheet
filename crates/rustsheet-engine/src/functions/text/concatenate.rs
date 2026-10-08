@@ -53,6 +53,19 @@ impl JoinSize {
         self.units > MAX_TEXT_UNITS
     }
 
+    /// Whether the join is over the limit once the delimiter before the next value is counted.
+    /// A cell error read from a reference is `#CALC!` when the text so far plus this delimiter is
+    /// over the limit (probes/text-result-limit-errors C2-C3, C7-C9).
+    fn exceeds_with_separator(&mut self, values: &[String]) -> bool {
+        let over = self.exceeds(values);
+        let separator = if self.counted == 0 {
+            0
+        } else {
+            self.delimiter_units
+        };
+        over || self.units.saturating_add(separator) > MAX_TEXT_UNITS
+    }
+
     /// Adds `count` empty values, the empty cells a clipped range walk skipped, stopping once the
     /// join is over the limit (so at most about 32,767 are added). Returns whether it is over.
     /// With an empty delimiter they add nothing, so none are added.
@@ -136,7 +149,7 @@ impl Model {
                 CalcResult::Range { left, right } => {
                     // 3-D references are walked sheet by sheet by the shared range walk.
                     if let Err(error) =
-                        self.for_each_cell_in_range(left, right, cell, |_, cell_value| {
+                        self.for_each_cell_or_error_in_range(left, right, cell, |_, cell_value| {
                             if matches!(cell_value, CalcResult::Array(_) | CalcResult::Lambda(_)) {
                                 return Err(CalcResult::new_error(
                                     Error::NIMPL,
@@ -144,7 +157,15 @@ impl Model {
                                     "Arrays not supported yet".to_string(),
                                 ));
                             }
-                            result.push_value(cell_value)
+                            match result.push_value(cell_value) {
+                                // Excel: a cell error met once the text is over the limit is
+                                // dropped and the result is #CALC! (probes/text-result-limit-errors
+                                // C1 for a range cell; C10 for a single-cell reference, which
+                                // `evaluate_aggregate_arg` hands over as a range); at exactly the
+                                // limit it is returned (C5-C6).
+                                Err(_) if result.units > MAX_TEXT_UNITS => Ok(()),
+                                other => other,
+                            }
                         })
                     {
                         return error;
@@ -165,8 +186,7 @@ impl Model {
             }
         }
         // Excel: joined text over 32767 characters is #CALC!, not truncated (probes/text-result-limit
-        // C8). Later arguments are still evaluated so an error argument wins (C18);
-        // an error in a later range cell past the limit is unprobed for CONCAT (T-0284).
+        // C8). Later arguments are still evaluated so an error argument wins (C18, -errors C4).
         if result.units > MAX_TEXT_UNITS {
             return text_limit_error(cell);
         }
@@ -191,8 +211,9 @@ impl Model {
         let mut values: Vec<String> = Vec::new();
         let mut size = JoinSize::new(&delimiter);
         // Once over the limit the values are dropped, but arguments are still evaluated so an error
-        // argument after the limit wins; a range-cell error past it is #CALC!
-        // (probes/text-result-limit C18-C20).
+        // argument after the limit wins; a cell error read past it is dropped and evaluation goes on,
+        // so the result is #CALC! unless a later error argument wins
+        // (probes/text-result-limit C18-C20, -errors C2-C4).
         let mut over_limit = false;
         for arg in &args[2..] {
             over_limit = over_limit || size.exceeds(&values);
@@ -259,10 +280,12 @@ impl Model {
                                     }
                                 }
                                 // Excel: a cell error met after the walk is past the limit is
-                                // #CALC!, while an error argument still wins
-                                // (probes/text-result-limit C18-C20).
-                                CalcResult::Error { .. } if over_limit => {
-                                    return text_limit_error(cell)
+                                // dropped and the result is #CALC!, while an error argument still
+                                // wins (probes/text-result-limit C18-C20, -errors C2, C4).
+                                CalcResult::Error { .. }
+                                    if over_limit || size.exceeds_with_separator(&values) =>
+                                {
+                                    over_limit = true;
                                 }
                                 error @ CalcResult::Error { .. } => return error,
                                 CalcResult::EmptyArg | CalcResult::Range { .. } => {}
@@ -283,6 +306,14 @@ impl Model {
                         over_limit =
                             size.push_empties(&mut values, skipped_rows.saturating_mul(width));
                     }
+                }
+                // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
+                // C3); other reference kinds are unprobed (text.md).
+                CalcResult::Error { .. }
+                    if matches!(arg, Node::ReferenceKind { .. })
+                        && (over_limit || size.exceeds_with_separator(&values)) =>
+                {
+                    over_limit = true;
                 }
                 error @ CalcResult::Error { .. } => return error,
                 CalcResult::String(value) => values.push(value),
