@@ -8,7 +8,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    reference_operators::is_multi_area,
+    reference_operators::{is_multi_area, Ranges},
 };
 
 /// Excel has a complicated way of filtering + hidden rows
@@ -114,51 +114,69 @@ impl Model {
         }
     }
 
-    /// Pushes the numbers of the range `left:right`, skipping filtered rows, hidden rows in
-    /// `SkipHidden` mode and cells holding a SUBTOTAL; text and booleans are ignored.
-    fn subtotal_walk_range(
+    /// Calls `f` with the value of every cell of `areas` that SUBTOTAL reads: filtered rows,
+    /// hidden rows in `SkipHidden` mode and cells holding a SUBTOTAL are skipped unevaluated.
+    /// The one position walk behind every SUBTOTAL function number, for a range and a union alike
+    /// (the areas are walked as [`Self::for_each_position_in_areas`] orders them).
+    fn subtotal_walk_areas<F>(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
+        areas: &[Range],
         cell: CellReferenceIndex,
         mode: &SubTotalMode,
-        result: &mut Vec<f64>,
-    ) -> Result<(), CalcResult> {
-        if left.sheet != right.sheet {
+        mut f: F,
+    ) -> Result<(), CalcResult>
+    where
+        F: FnMut(CalcResult) -> Result<(), CalcResult>,
+    {
+        if areas.iter().any(|area| area.left.sheet != area.right.sheet) {
             return Err(CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Ranges are in different sheets".to_string(),
             ));
         }
-        // We are not expecting subtotal to have open ranges
-        for row in left.row..=right.row {
-            let cell_status = self
-                .cell_hidden_status(left.sheet, row, left.column)
-                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-            if cell_status == CellTableStatus::Filtered {
-                continue;
-            }
-            if *mode == SubTotalMode::SkipHidden && cell_status == CellTableStatus::Hidden {
-                continue;
-            }
-            for column in left.column..=right.column {
-                if self.cell_is_subtotal(left.sheet, row, column) {
-                    continue;
+        // The row last found not hidden: a row's cells are consecutive, and the status lookup
+        // scans the sheet's row styles.
+        let mut visible_row: Option<(u32, i32)> = None;
+        self.for_each_position_in_areas(areas, cell, |model, position| {
+            if visible_row != Some((position.sheet, position.row)) {
+                let status = model
+                    .cell_hidden_status(position.sheet, position.row, position.column)
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+                if status == CellTableStatus::Filtered
+                    || (*mode == SubTotalMode::SkipHidden && status == CellTableStatus::Hidden)
+                {
+                    return Ok(());
                 }
-                match self.evaluate_cell(CellReferenceIndex {
-                    sheet: left.sheet,
-                    row,
-                    column,
-                }) {
-                    CalcResult::Number(value) => result.push(value),
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    // We ignore booleans and strings
-                    _ => {}
+                if status == CellTableStatus::Normal {
+                    visible_row = Some((position.sheet, position.row));
                 }
             }
-        }
-        Ok(())
+            if model.cell_is_subtotal(position.sheet, position.row, position.column) {
+                return Ok(());
+            }
+            f(model.evaluate_cell(position))
+        })
+    }
+
+    /// Pushes the numbers of `areas` as [`Self::subtotal_walk_areas`] reads them; text and
+    /// booleans are ignored, an error cell is the result.
+    fn subtotal_walk_range(
+        &mut self,
+        areas: &[Range],
+        cell: CellReferenceIndex,
+        mode: &SubTotalMode,
+        result: &mut Vec<f64>,
+    ) -> Result<(), CalcResult> {
+        self.subtotal_walk_areas(areas, cell, mode, |value| match value {
+            CalcResult::Number(value) => {
+                result.push(value);
+                Ok(())
+            }
+            error @ CalcResult::Error { .. } => Err(error),
+            // We ignore booleans and strings
+            _ => Ok(()),
+        })
     }
 
     fn subtotal_get_values(
@@ -180,29 +198,7 @@ impl Model {
                 // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
                 _ if is_multi_area(arg) => {
                     let ranges = self.reference_ranges(arg, cell)?;
-                    // Bounded like every union aggregate (decision 0014, references.md "Union
-                    // area cap"), and each area is clipped to the used area: the cells past it
-                    // are empty, which the walk ignores anyway.
-                    self.check_area_cells(&ranges, cell)?;
-                    for Range { left, right } in ranges.iter() {
-                        let (row2, column2) = self
-                            .clip_to_used_area(
-                                left.sheet,
-                                left.row,
-                                left.column,
-                                right.row,
-                                right.column,
-                            )
-                            .map_err(|message| {
-                                CalcResult::new_error(Error::ERROR, cell, message)
-                            })?;
-                        let clipped = CellReferenceIndex {
-                            row: row2,
-                            column: column2,
-                            ..*right
-                        };
-                        self.subtotal_walk_range(*left, clipped, cell, &mode, &mut result)?;
-                    }
+                    self.subtotal_walk_range(&ranges, cell, &mode, &mut result)?;
                 }
                 _ => {
                     match self.evaluate_node_with_reference(arg, cell) {
@@ -214,7 +210,12 @@ impl Model {
                             return Err(error);
                         }
                         CalcResult::Range { left, right } => {
-                            self.subtotal_walk_range(left, right, cell, &mode, &mut result)?;
+                            self.subtotal_walk_range(
+                                &[Range { left, right }],
+                                cell,
+                                &mode,
+                                &mut result,
+                            )?;
                         }
                         CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
                         CalcResult::Array(_) | CalcResult::Lambda(_) => {
@@ -403,83 +404,9 @@ impl Model {
         mode: SubTotalMode,
     ) -> CalcResult {
         let mut counta = 0;
-        for arg in args {
-            match arg {
-                Node::FunctionKind {
-                    kind: Function::Subtotal,
-                    args: _,
-                } => {
-                    // skip
-                }
-                _ => {
-                    match self.evaluate_node_with_reference(arg, cell) {
-                        CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                            // skip
-                        }
-                        CalcResult::Range { left, right } => {
-                            if left.sheet != right.sheet {
-                                return CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Ranges are in different sheets".to_string(),
-                                );
-                            }
-                            // We are not expecting subtotal to have open ranges
-                            let row1 = left.row;
-                            let row2 = right.row;
-                            let column1 = left.column;
-                            let column2 = right.column;
-
-                            for row in row1..=row2 {
-                                let cell_status = match self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                {
-                                    Ok(s) => s,
-                                    Err(message) => {
-                                        return CalcResult::new_error(Error::ERROR, cell, message);
-                                    }
-                                };
-                                if cell_status == CellTableStatus::Filtered {
-                                    continue;
-                                }
-                                if mode == SubTotalMode::SkipHidden
-                                    && cell_status == CellTableStatus::Hidden
-                                {
-                                    continue;
-                                }
-                                for column in column1..=column2 {
-                                    if self.cell_is_subtotal(left.sheet, row, column) {
-                                        continue;
-                                    }
-                                    match self.evaluate_cell(CellReferenceIndex {
-                                        sheet: left.sheet,
-                                        row,
-                                        column,
-                                    }) {
-                                        CalcResult::EmptyCell | CalcResult::EmptyArg => {
-                                            // skip
-                                        }
-                                        _ => counta += 1,
-                                    }
-                                }
-                            }
-                        }
-                        CalcResult::String(_)
-                        | CalcResult::Number(_)
-                        | CalcResult::Boolean(_)
-                        | CalcResult::Error { .. } => counta += 1,
-                        CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                            return CalcResult::Error {
-                                error: Error::NIMPL,
-                                origin: cell,
-                                message: "Arrays not supported yet".to_string(),
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        CalcResult::Number(counta as f64)
+        self.subtotal_count_with(args, cell, &mode, &mut counta, |value| {
+            !matches!(value, CalcResult::EmptyCell | CalcResult::EmptyArg)
+        })
     }
 
     fn subtotal_count(
@@ -489,71 +416,61 @@ impl Model {
         mode: SubTotalMode,
     ) -> CalcResult {
         let mut count = 0;
+        self.subtotal_count_with(args, cell, &mode, &mut count, |value| {
+            matches!(value, CalcResult::Number(_))
+        })
+    }
+
+    /// COUNT and COUNTA of the arguments: `counted` says which values a reference's cells (and a
+    /// direct argument) add to `count`. A union is walked area by area like a range.
+    fn subtotal_count_with(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        mode: &SubTotalMode,
+        count: &mut u32,
+        counted: fn(&CalcResult) -> bool,
+    ) -> CalcResult {
         for arg in args {
-            match arg {
+            let areas = match arg {
+                // skip
                 Node::FunctionKind {
                     kind: Function::Subtotal,
                     args: _,
-                } => {
-                    // skip
-                }
-                _ => {
-                    match self.evaluate_node_with_reference(arg, cell) {
-                        CalcResult::Range { left, right } => {
-                            if left.sheet != right.sheet {
-                                return CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Ranges are in different sheets".to_string(),
-                                );
-                            }
-                            // We are not expecting subtotal to have open ranges
-                            let row1 = left.row;
-                            let row2 = right.row;
-                            let column1 = left.column;
-                            let column2 = right.column;
-
-                            for row in row1..=row2 {
-                                let cell_status = match self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                {
-                                    Ok(s) => s,
-                                    Err(message) => {
-                                        return CalcResult::new_error(Error::ERROR, cell, message);
-                                    }
-                                };
-                                if cell_status == CellTableStatus::Filtered {
-                                    continue;
-                                }
-                                if mode == SubTotalMode::SkipHidden
-                                    && cell_status == CellTableStatus::Hidden
-                                {
-                                    continue;
-                                }
-                                for column in column1..=column2 {
-                                    if self.cell_is_subtotal(left.sheet, row, column) {
-                                        continue;
-                                    }
-                                    if let CalcResult::Number(_) =
-                                        self.evaluate_cell(CellReferenceIndex {
-                                            sheet: left.sheet,
-                                            row,
-                                            column,
-                                        })
-                                    {
-                                        count += 1;
-                                    }
-                                }
-                            }
+                } => continue,
+                _ if is_multi_area(arg) => match self.reference_ranges(arg, cell) {
+                    Ok(ranges) => ranges,
+                    Err(error) => return error,
+                },
+                _ => match self.evaluate_node_with_reference(arg, cell) {
+                    CalcResult::Range { left, right } => Ranges::One(Range { left, right }),
+                    // A direct argument counts as itself (an error only for COUNTA).
+                    CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                        return CalcResult::Error {
+                            error: Error::NIMPL,
+                            origin: cell,
+                            message: "Arrays not supported yet".to_string(),
                         }
-                        // This hasn't been tested
-                        CalcResult::Number(_) => count += 1,
-                        _ => {}
                     }
+                    value => {
+                        if counted(&value) {
+                            *count += 1;
+                        }
+                        continue;
+                    }
+                },
+            };
+            let walked = self.subtotal_walk_areas(&areas, cell, mode, |value| {
+                if counted(&value) {
+                    *count += 1;
                 }
+                Ok(())
+            });
+            if let Err(error) = walked {
+                return error;
             }
         }
-        CalcResult::Number(count as f64)
+        CalcResult::Number(f64::from(*count))
     }
 
     fn subtotal_average(

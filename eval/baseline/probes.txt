@@ -189,6 +189,11 @@ C	probes/multiarea-let.case.json	3
 C	probes/multiarea-more.case.json	14
 C	probes/multiarea-printarea.case.json	0
 C	probes/multiarea-rank.case.json	5
+C	probes/multiarea-subtotal-counts-a.case.json	17
+C	probes/multiarea-subtotal-counts-b.case.json	5
+C	probes/multiarea-subtotal-counts-c.case.json	5
+C	probes/multiarea-subtotal-counts-d.case.json	5
+C	probes/multiarea-subtotal-counts-e.case.json	5
 C	probes/multiarea-subtotal.case.json	2
 C	probes/multiarea-xname.case.json	0
 C	probes/multiarea-xsheet.case.json	2
@@ -401,6 +406,12 @@ F	probes/multiarea-ifchoose.case.json	Sheet1!H3
 F	probes/multiarea-let.case.json	Sheet1!H1
 F	probes/multiarea-let.case.json	Sheet1!H2
 F	probes/multiarea-printarea.case.json	!EngineError
+F	probes/multiarea-subtotal-counts-c.case.json	Sheet1!H19
+F	probes/multiarea-subtotal-counts-c.case.json	Sheet1!H20
+F	probes/multiarea-subtotal-counts-c.case.json	Sheet1!H21
+F	probes/multiarea-subtotal-counts-d.case.json	Sheet1!H22
+F	probes/multiarea-subtotal-counts-d.case.json	Sheet1!H23
+F	probes/multiarea-subtotal-counts-d.case.json	Sheet1!H24
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
