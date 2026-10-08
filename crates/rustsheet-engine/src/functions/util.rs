@@ -219,6 +219,14 @@ impl Model {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Hlookup,
+                args,
+            } => self.hlookup_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Vlookup,
+                args,
+            } => self.vlookup_impl(args, cell, true),
             _ => self.evaluate_node_in_context(node, cell),
         };
         RefArg::from(result)

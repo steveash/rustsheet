@@ -33,6 +33,33 @@ impl LookupTable {
         }
     }
 
+    /// The cell at the 0-based `(row, column)` offset as a 1x1 reference when the table is a
+    /// range and `as_reference` is set (an aggregate argument sees it so, T-0235), else its value.
+    /// Callers must ensure the offsets are within bounds.
+    pub(super) fn pick(
+        &self,
+        model: &mut Model,
+        row: i32,
+        column: i32,
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        match self {
+            LookupTable::Range { left, .. } if as_reference => {
+                let picked = CellReferenceIndex {
+                    sheet: left.sheet,
+                    row: left.row + row,
+                    column: left.column + column,
+                };
+                CalcResult::Range {
+                    left: picked,
+                    right: picked,
+                }
+            }
+            _ => self.get(model, row, column, cell),
+        }
+    }
+
     /// Returns the value at the 0-based `(row, column)` offset within the table.
     /// Callers must ensure the offsets are within bounds.
     pub(super) fn get(

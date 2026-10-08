@@ -597,8 +597,6 @@ F	probes/ifs-legacy-sumproduct.case.json	Sheet1!L12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!M11
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!M12
 F	probes/ifs-legacy-sumproduct.case.json	Sheet1!O10
-F	probes/isref-function-results.case.json	Sheet1!C3
-F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/multiarea-at-legacy.case.json	Sheet1!H10
 F	probes/multiarea-at-legacy.case.json	Sheet1!H7
 F	probes/multiarea-at-legacy.case.json	Sheet1!H8
