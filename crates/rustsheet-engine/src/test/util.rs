@@ -81,7 +81,7 @@ impl Model {
     }
 }
 
-/// Deterministic xorshift64 generator for seeded tests; `seed` must be non-zero.
+/// Deterministic xorshift64 generator for seeded tests; the wrapped state must be non-zero.
 pub struct Rng(pub u64);
 
 impl Rng {
