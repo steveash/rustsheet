@@ -1,0 +1,47 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Whether XLOOKUP, TAKE, DROP and TRIMRANGE over a range are references to ISREF, and the same calls over an array (T-0165).",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=ISREF(XLOOKUP(2,A1:A3,A1:B3))",
+        "H2": "=ISREF(TAKE(A1:B3,1))",
+        "H3": "=ISREF(DROP(A1:B3,1))",
+        "H4": "=ISREF(TRIMRANGE(A1:B3))",
+        "H5": "=ISREF(XLOOKUP(2,A1:A3,B1:B3))",
+        "H6": "=ISREF(TAKE({1,2;3,4},1))",
+        "H7": "=ISREF(DROP({1,2;3,4},1))",
+        "H8": "=ISREF(XLOOKUP(9,A1:A3,B1:B3))",
+        "H9": "=ISREF(DROP(A1:B3,5))",
+        "H10": "=ISREF(XLOOKUP(2,{1;2;3},B1:B3))",
+        "H11": "=ISREF(TAKE(A1:B3,0))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9",
+    "Sheet1!H10",
+    "Sheet1!H11"
+  ]
+}
