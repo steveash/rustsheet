@@ -25,6 +25,6 @@ Oracle (probes/multiarea-cellfn); SPEC-0004 planned #VALUE! for CELL and ROW, bo
 
 ## Outcome
 `CELL("address", union)` lists each area's top-left cell joined by ", ", other info types read the first area;
-`ROW`/`COLUMN` of a union are `#REF!` (new `Model::get_reference_ranges`). `OFFSET` already gave `#VALUE!`.
+`ROW`/`COLUMN` of a union are `#REF!` (via the existing `reference_ranges`). `OFFSET` already gave `#VALUE!`.
 Extra info types probed in probes/multiarea-cellfn-types and recorded in references.md. Eval: probes/multiarea-cellfn
 3/3 (was 1/3), multiarea-cellfn-types 11/11.
