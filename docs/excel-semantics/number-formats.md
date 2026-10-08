@@ -21,7 +21,10 @@ value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@
 (A6), `;;;-@-@-` → "-jello-jello-" (A10), `TRUE` with `;;;-@-` → "-TRUE-" (A17), and
 `TEXT(TRUE,"General")` = "TRUE".
 Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73.
+A doubled quote inside a quoted literal is not an escape: `;;;"h""I"` is the literals "h" and "I" and
+gives "hI" (A4, A14, A23), not `h"I`.
 Status: VERIFIED
+Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; `consume_string` (formatter/lexer.rs) for the quote rule. A text value with a format of fewer than four sections is unprobed and returns the text unchanged.
 Tasks: T-0935
 
 ## Elapsed-time tokens

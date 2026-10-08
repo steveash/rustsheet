@@ -87,6 +87,51 @@ pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatt
     format_number(value.unwrap_or(0.0), format, locale)
 }
 
+/// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
+/// 4th section applies, `@` stands for the text and the section's other tokens print as literals
+/// (poi TextFormatTests A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
+/// booleans use the format's text section"). A format with fewer than four sections returns the
+/// text unchanged; that case is unprobed.
+pub fn format_text_value(text: &str, format: &str) -> Formatted {
+    let mut parser = Parser::new(format);
+    parser.parse();
+    let unchanged = || Formatted {
+        color: None,
+        text: text.to_string(),
+        error: None,
+    };
+    if parser.parts.len() < 4 {
+        return unchanged();
+    }
+    let tokens = match parser.parts.get(3) {
+        Some(ParsePart::Number(p)) => &p.tokens,
+        Some(ParsePart::Date(p)) => &p.tokens,
+        Some(ParsePart::General(_)) | None => return unchanged(),
+        Some(ParsePart::Error(_)) => {
+            return Formatted {
+                text: "#VALUE!".to_owned(),
+                color: None,
+                error: Some("Problem parsing format string".to_owned()),
+            }
+        }
+    };
+    let mut out = String::new();
+    for token in tokens {
+        match token {
+            TextToken::Literal(c) => out.push(*c),
+            TextToken::Text(t) => out.push_str(t),
+            TextToken::Ghost(_) | TextToken::Spacer(_) => out.push(' '),
+            TextToken::Raw => out.push_str(text),
+            _ => {}
+        }
+    }
+    Formatted {
+        color: None,
+        text: out,
+        error: None,
+    }
+}
+
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();

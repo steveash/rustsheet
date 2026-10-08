@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::format_text,
+    formatter::format::{format_text, format_text_value},
     functions::{
         criteria::from_wildcard_to_regex,
         text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
@@ -219,6 +219,33 @@ fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
     })
 }
 
+fn text_result(value: &str, format: &str, cell: CellReferenceIndex) -> CalcResult {
+    match text_str_node(value, format) {
+        ArrayNode::String(s) => CalcResult::String(s),
+        _ => CalcResult::Error {
+            error: Error::VALUE,
+            origin: cell,
+            message: "Invalid format code".to_string(),
+        },
+    }
+}
+
+/// `TEXT` of a text value; a boolean passes its "TRUE"/"FALSE" spelling.
+fn text_str_node(value: &str, format: &str) -> ArrayNode {
+    let d = format_text_value(value, format);
+    d.error.map_or(ArrayNode::String(d.text), |_| {
+        ArrayNode::Error(Error::VALUE)
+    })
+}
+
+fn bool_text(b: bool) -> &'static str {
+    if b {
+        "TRUE"
+    } else {
+        "FALSE"
+    }
+}
+
 impl Model {
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -248,8 +275,8 @@ impl Model {
                         let out = match node {
                             ArrayNode::Number(f) => text_node(Some(f), &format_code, locale),
                             ArrayNode::Empty => text_node(None, &format_code, locale),
-                            ArrayNode::Boolean(b) => ArrayNode::Boolean(b),
-                            ArrayNode::String(s) => ArrayNode::String(s),
+                            ArrayNode::Boolean(b) => text_str_node(bool_text(b), &format_code),
+                            ArrayNode::String(s) => text_str_node(&s, &format_code),
                             e @ ArrayNode::Error(_) => e,
                         };
                         data_row.push(out);
@@ -268,8 +295,8 @@ impl Model {
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
-                    CalcResult::String(s) => return CalcResult::String(s),
-                    CalcResult::Boolean(b) => return CalcResult::Boolean(b),
+                    CalcResult::String(s) => return text_result(&s, &format_code, cell),
+                    CalcResult::Boolean(b) => return text_result(bool_text(b), &format_code, cell),
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,
