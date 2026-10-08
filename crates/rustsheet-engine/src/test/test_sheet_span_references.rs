@@ -148,3 +148,29 @@ fn single_sheet_lookup_functions_give_value_error() {
     assert_eq!(eval(&mut model, "=AREAS(Data1:Data1!A1)"), "1");
     assert_eq!(eval(&mut model, "=COUNTBLANK(Data1:Data1!A1:A5)"), "2");
 }
+
+// Span edge forms (T-1170; probes/3d-ref-span-edges A1, A2, B1-B3, C4, C5).
+#[test]
+fn span_edge_forms_match_excel() {
+    let mut model = sample();
+    // A span whose end is not a sheet is #NAME?, not #REF!.
+    assert_eq!(eval(&mut model, "=SUM(Data1:Nope!A1)"), "#NAME?");
+    assert_eq!(eval(&mut model, "=SUM(Nope:Data3!A1)"), "#NAME?");
+    // An explicit `@` of a span over several sheets is #REF!; of one sheet an ordinary reference.
+    assert_eq!(eval(&mut model, "=@Data1:Data3!A1"), "#REF!");
+    assert_eq!(eval(&mut model, "=SUM(@Data1:Data3!A1:A2)"), "#REF!");
+    assert_eq!(eval(&mut model, "=@Data1:Data1!A1"), "1");
+    // IF-wrapped spans are #VALUE! for HLOOKUP and COUNTBLANK too.
+    assert_eq!(
+        eval(&mut model, "=HLOOKUP(1,IF(TRUE,Data1:Data3!A1:B2),2,FALSE)"),
+        "#VALUE!"
+    );
+    assert_eq!(
+        eval(&mut model, "=COUNTBLANK(IF(TRUE,Data1:Data3!A1:B3))"),
+        "#VALUE!"
+    );
+    assert_eq!(
+        eval(&mut model, "=COUNTBLANK(IF(TRUE,Data1:Data1!A1:A5))"),
+        "2"
+    );
+}
