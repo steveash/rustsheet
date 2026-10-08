@@ -190,3 +190,18 @@ fn countblank_rows_columns_of_a_union() {
         ],
     );
 }
+
+#[test]
+fn subtotal_of_a_union() {
+    // probes/multiarea-subtotal H1, H2 (oracle excel-graph, 2026-10-07): both 6 for (A1,B2).
+    // H3 is not probed: it follows SUM, where an area is counted as written (references.md).
+    let mut model = model();
+    results(
+        &mut model,
+        &[
+            ("H1", "=SUBTOTAL(9,(A1,B2))", "6"),
+            ("H2", "=SUBTOTAL(109,(A1,B2))", "6"),
+            ("H3", "=SUBTOTAL(9,(A1:B2,B2))", "11"),
+        ],
+    );
+}

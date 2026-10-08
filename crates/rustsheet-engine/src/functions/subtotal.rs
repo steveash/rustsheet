@@ -1,6 +1,6 @@
 use crate::arithmetic::flush_subnormal;
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     expressions::{
         parser::{parse_range, Node},
         token::Error,
@@ -8,6 +8,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
+    reference_operators::is_multi_area,
 };
 
 /// Excel has a complicated way of filtering + hidden rows
@@ -113,6 +114,53 @@ impl Model {
         }
     }
 
+    /// Pushes the numbers of the range `left:right`, skipping filtered rows, hidden rows in
+    /// `SkipHidden` mode and cells holding a SUBTOTAL; text and booleans are ignored.
+    fn subtotal_walk_range(
+        &mut self,
+        left: CellReferenceIndex,
+        right: CellReferenceIndex,
+        cell: CellReferenceIndex,
+        mode: &SubTotalMode,
+        result: &mut Vec<f64>,
+    ) -> Result<(), CalcResult> {
+        if left.sheet != right.sheet {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Ranges are in different sheets".to_string(),
+            ));
+        }
+        // We are not expecting subtotal to have open ranges
+        for row in left.row..=right.row {
+            let cell_status = self
+                .cell_hidden_status(left.sheet, row, left.column)
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            if cell_status == CellTableStatus::Filtered {
+                continue;
+            }
+            if *mode == SubTotalMode::SkipHidden && cell_status == CellTableStatus::Hidden {
+                continue;
+            }
+            for column in left.column..=right.column {
+                if self.cell_is_subtotal(left.sheet, row, column) {
+                    continue;
+                }
+                match self.evaluate_cell(CellReferenceIndex {
+                    sheet: left.sheet,
+                    row,
+                    column,
+                }) {
+                    CalcResult::Number(value) => result.push(value),
+                    error @ CalcResult::Error { .. } => return Err(error),
+                    // We ignore booleans and strings
+                    _ => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn subtotal_get_values(
         &mut self,
         args: &[Node],
@@ -128,6 +176,14 @@ impl Model {
                 } => {
                     // skip
                 }
+                // A union walks its areas one after the other, each counted as written
+                // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
+                _ if is_multi_area(arg) => {
+                    let ranges = self.reference_ranges(arg, cell)?;
+                    for Range { left, right } in ranges.iter() {
+                        self.subtotal_walk_range(*left, *right, cell, &mode, &mut result)?;
+                    }
+                }
                 _ => {
                     match self.evaluate_node_with_reference(arg, cell) {
                         CalcResult::String(_) | CalcResult::Boolean(_) => {
@@ -138,52 +194,7 @@ impl Model {
                             return Err(error);
                         }
                         CalcResult::Range { left, right } => {
-                            if left.sheet != right.sheet {
-                                return Err(CalcResult::new_error(
-                                    Error::VALUE,
-                                    cell,
-                                    "Ranges are in different sheets".to_string(),
-                                ));
-                            }
-                            // We are not expecting subtotal to have open ranges
-                            let row1 = left.row;
-                            let row2 = right.row;
-                            let column1 = left.column;
-                            let column2 = right.column;
-
-                            for row in row1..=row2 {
-                                let cell_status = self
-                                    .cell_hidden_status(left.sheet, row, column1)
-                                    .map_err(|message| {
-                                        CalcResult::new_error(Error::ERROR, cell, message)
-                                    })?;
-                                if cell_status == CellTableStatus::Filtered {
-                                    continue;
-                                }
-                                if mode == SubTotalMode::SkipHidden
-                                    && cell_status == CellTableStatus::Hidden
-                                {
-                                    continue;
-                                }
-                                for column in column1..=column2 {
-                                    if self.cell_is_subtotal(left.sheet, row, column) {
-                                        continue;
-                                    }
-                                    match self.evaluate_cell(CellReferenceIndex {
-                                        sheet: left.sheet,
-                                        row,
-                                        column,
-                                    }) {
-                                        CalcResult::Number(value) => {
-                                            result.push(value);
-                                        }
-                                        error @ CalcResult::Error { .. } => return Err(error),
-                                        _ => {
-                                            // We ignore booleans and strings
-                                        }
-                                    }
-                                }
-                            }
+                            self.subtotal_walk_range(left, right, cell, &mode, &mut result)?;
                         }
                         CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
                         CalcResult::Array(_) | CalcResult::Lambda(_) => {
