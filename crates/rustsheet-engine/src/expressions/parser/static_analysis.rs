@@ -108,6 +108,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
+                    written: 0,
                     child: Box::new(Node::RangeKind {
                         sheet_name: sheet_name.clone(),
                         sheet_index: *sheet_index,
@@ -127,6 +128,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
+                    written: 0,
                     child: Box::new(node.clone()),
                 }
             }
@@ -149,6 +151,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 if is_range_reference(&v.2) {
                     *node = Node::ImplicitIntersection {
                         automatic: true,
+                        written: 0,
                         child: Box::new(Node::DefinedNameKind(v.to_owned())),
                     }
                 }
@@ -158,6 +161,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             if add {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
+                    written: 0,
                     child: Box::new(Node::NamedVariableKind {
                         name: name.clone(),
                         id: *id,
@@ -195,6 +199,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             {
                 *node = Node::ImplicitIntersection {
                     automatic: true,
+                    written: 0,
                     child: Box::new(node.clone()),
                 }
             }

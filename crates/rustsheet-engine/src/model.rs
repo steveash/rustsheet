@@ -342,6 +342,7 @@ impl Model {
             Node::ImplicitIntersection {
                 automatic: _,
                 child,
+                written: _,
             } => match self.evaluate_node_with_reference(child, cell) {
                 CalcResult::Range { left, right } => {
                     match implicit_intersection(&cell, &Range { left, right }) {
