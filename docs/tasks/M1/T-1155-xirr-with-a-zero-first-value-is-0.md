@@ -3,7 +3,7 @@ id: T-1155
 title: "XIRR with a zero first value is 0.1/2^25, and date-0 first flows converge"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
