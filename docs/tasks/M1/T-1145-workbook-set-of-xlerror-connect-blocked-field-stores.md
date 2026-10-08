@@ -3,7 +3,7 @@ id: T-1145
 title: "Workbook.set of XlError #CONNECT!/#BLOCKED!/#FIELD! stores text, not an error cell"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
