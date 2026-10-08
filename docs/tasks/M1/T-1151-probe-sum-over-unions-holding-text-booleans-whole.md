@@ -3,7 +3,7 @@ id: T-1151
 title: "Probe SUM over unions holding text, booleans, whole columns and errors (follow-up of T-1149)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
