@@ -118,7 +118,7 @@ fn index_from_array(
 
 impl Model {
     /// A call to a function whose result is a reference when its source argument is one,
-    /// evaluated as that reference: XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
+    /// evaluated as that reference: INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
     /// evaluated to their values (probes/intersection-function-operands H8, H11, H12, H14;
     /// T-0165). `None` for any other function.
     pub(crate) fn evaluate_reference_form(
@@ -128,6 +128,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
         Some(match kind {
+            // `INDEX(A1:A2,2) A1:A2` intersects the cell INDEX picks (T-0235).
+            Function::Index => self.index_impl(args, cell, true),
             Function::Xlookup => self.xlookup_impl(args, cell, true),
             Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
             Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),
@@ -342,6 +344,18 @@ impl Model {
     /// We return the value in row `row_index` of the same column in `table_array`
     /// `is_sorted` is true by default and assumes that values in first row are ordered
     pub(crate) fn fn_hlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.hlookup_impl(args, cell, false)
+    }
+
+    /// HLOOKUP; `as_reference` gives the picked cell of a range table as a reference, as an
+    /// aggregate argument sees it: COUNT skips a picked FALSE (gen-m2 60a543744fc4a8f7 A200,
+    /// excel-graph; T-0235).
+    pub(crate) fn hlookup_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -386,7 +400,7 @@ impl Model {
         // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
             Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
-                Ok(row_index) => table.get(self, row_index, column as i32, cell),
+                Ok(row_index) => table.pick(self, row_index, column as i32, cell, as_reference),
                 Err(error) => error,
             },
             None => CalcResult::Error {
@@ -402,6 +416,18 @@ impl Model {
     /// We return the value in column `column_index` of the same row in `table_array`
     /// `is_sorted` is true by default and assumes that values in first column are ordered
     pub(crate) fn fn_vlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.vlookup_impl(args, cell, false)
+    }
+
+    /// VLOOKUP; `as_reference` gives the picked cell of a range table as a reference, as an
+    /// aggregate argument sees it: COUNT skips a picked FALSE (gen-m2 60a543744fc4a8f7 A200,
+    /// excel-graph; T-0235).
+    pub(crate) fn vlookup_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -446,7 +472,7 @@ impl Model {
         // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
             Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
-                Ok(column_index) => table.get(self, row as i32, column_index, cell),
+                Ok(column_index) => table.pick(self, row as i32, column_index, cell, as_reference),
                 Err(error) => error,
             },
             None => CalcResult::Error {
