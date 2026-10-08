@@ -3,7 +3,7 @@ id: T-1072
 title: "CELL address of a union, OFFSET #VALUE!, ROW #REF! (SPEC-0004 row 18)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
