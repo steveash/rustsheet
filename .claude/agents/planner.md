@@ -19,5 +19,8 @@ Produce:
    implementation tasks (the spec task is itself a task).
 When refilling the sonnet queue (decision 0021), split work so that mechanical pieces meet the
 `sonnet` rubric and stay independently mergeable; never relabel a task to reach the target.
+Frozen probe lists (decision 0043): while `eval/milestones/m1-probes.txt` has known failures,
+file the tasks that fix them (engine and harness lanes) before any new probe task. Never file a
+new probe task with `milestone: M1`: new probes go to M2 or to the probed function's milestone.
 Never create vague tasks ("improve X"). Never duplicate an existing task. Run
 `python3 scripts/tasks.py validate` when done.

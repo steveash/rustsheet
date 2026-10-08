@@ -75,11 +75,15 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
   Remove the `Model<'a>` lifetime (this fixes the leak in the Python binding).
 
 **Exit criteria:**
-- `smoke`, `probes` and `gen-m1` (≥ 3,000 oracle cells, operators and references only) at 100% bit-exact,
-  excluding cells listed as accepted deviations (decision 0036; until T-0191 lands, only
-  probes/resource-limits C12 and C14).
-  Measured by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left, in T-0105,
-  T-0107, T-0130–T-0132, T-0134 and T-0221; T-0221 is an M2 task that also blocks M1).
+- `smoke`, `gen-m1` (≥ 3,000 oracle cells, operators and references only) and the frozen M1
+  probe list at 100% bit-exact, excluding cells listed as accepted deviations (decision 0036).
+  Measured for gen-m1 by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left,
+  in T-0105, T-0107, T-0130–T-0132, T-0134 and T-0221; T-0221 is an M2 task that also blocks M1).
+- The frozen M1 probe list is `eval/milestones/m1-probes.txt` (decision 0043): 89 `probes` cases
+  in M1 scope, fixed at commit e5c7ae9. Its cases have no F line left in
+  eval/baseline/probes.txt (61 at the freeze; `make eval` reports it once T-1146 lands). Probe
+  cases outside the list, including every probe added after the freeze, count toward M2 exit and
+  never toward M1, whatever their tag.
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
   `DATE(1900,2,29)`, and the parser accepting trailing garbage.
 - API v0 spec merged and implemented. Python `rustsheet.Workbook` passes binding tests.
@@ -97,6 +101,10 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 
 **Exit criteria:**
 - `gen-m2` (≥ 10,000 oracle cells across those functions, with edge pools) at 100%.
+- The whole `probes` suite at 100% bit-exact, excluding accepted deviations (decision 0036). This
+  covers every probe case off the frozen M1 list (136 F lines at the M1 freeze) and every probe
+  case added before M2 exits, including probes of functions whose own milestone is later than M2
+  (decision 0043; the owner may move those to their own milestones, an open question there).
 - ironcalc-calc cells using only M1/M2 functions at 100%.
 - One implementation of aggregate-argument iteration and criteria matching, used by every
   consumer. Duplication baseline reduced by ≥ 15%.
