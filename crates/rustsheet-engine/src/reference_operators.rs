@@ -143,6 +143,16 @@ impl RefArg {
     }
 }
 
+/// `#VALUE!` for a 3-D reference where a single-sheet reference is needed (INDEX, AREAS,
+/// VLOOKUP, MATCH, ..., probes/3d-ref-functions).
+pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "3-D reference where one sheet is needed".to_string(),
+    )
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
 fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
@@ -314,11 +324,7 @@ impl Model {
         if first_index == last_index {
             return self.evaluate_node_with_reference(reference, cell);
         }
-        CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "3-D reference where one sheet is needed".to_string(),
-        )
+        three_d_needs_one_sheet(cell)
     }
 
     /// A 3-D reference as an aggregate argument: one `Range` whose corners sit on the first

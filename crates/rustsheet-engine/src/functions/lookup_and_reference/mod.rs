@@ -4,7 +4,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::RefArg;
+use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::parser::Node,
@@ -205,13 +205,7 @@ impl Model {
             CalcResult::Range { left, right }
         } else {
             match arg {
-                RefArg::Ranges(_) => {
-                    return CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "3-D reference where one sheet is needed".to_string(),
-                    )
-                }
+                RefArg::Ranges(_) => return three_d_needs_one_sheet(cell),
                 RefArg::Value(_) if area_num != 1.0 => {
                     return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
                 }

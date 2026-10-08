@@ -34,9 +34,9 @@ Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span
 sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
 implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
-crates/rustsheet-engine/src/reference_operators.rs; INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK reach
+crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
 the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
-the same check (`IfBranchMode::SingleSheet`, T-1026); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
+the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their argument with `evaluate_reference_arg` and refuse a 3-D result with `three_d_needs_one_sheet` (T-1063); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
 Tasks: T-0122, T-0197, T-1026
 
 ## 3-D references when sheets or cells change (unprobed)
@@ -395,7 +395,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
-  function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently
+  function gets `#VALUE!` (`SUM((A1,B2))` before T-1062), so IFERROR silently
   takes its fallback for one, and so does a union returned by IF, CHOOSE or LET. docs/specs/SPEC-0004-multi-area-references.md
   (T-0133) designs multi-area arguments, with rollout T-1061 to T-1065. `add_implicit_intersection` (static_analysis.rs) leaves
   `OpUnionKind` unwrapped, and SPEC-0004 keeps it so: a union is already `#VALUE!` where a scalar is expected (planned, probe rows 15 and 18).
@@ -446,6 +446,11 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   SUBTOTAL 9 and 109 (6), INDEX with `area_num` (`INDEX((A1:B2,C3:D4),1,1,2)` = 7, area 3 `#REF!`, area 0
   `#VALUE!`, `area_num` omitted = 1; `SUM(INDEX(..,0,0,2))` = 16), AREAS (2, 3 for `((A1,B2),C3)`, 2 for
   `(A1:B2,A1:B2)`), CELL("address", `(A1,B2)`) = "$A$1, $B$2".
+- `INDEX` `area_num` is read as a number and truncated: below 1 is `#VALUE!`, past the last area (or NaN, or a
+  huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
+  3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
+  probes/multiarea-index-*; unit tests in test/test_multi_area_arguments.rs. The 1E+300 and "one area, area_num 2"
+  rows are engine choices, UNVERIFIED (no probe).
 - Refuse with `#VALUE!`: SUMPRODUCT, SUMIF, COUNTIF, COUNTBLANK, OFFSET, `@(A1,B2)`, the bare `=A1,B2` (stored in a
   file; it loads), `=(A1,B2)` itself. `ROWS` and `COLUMNS` give `#REF!`, and so does `ROW`.
 - ISERROR and ISNUMBER of a union are TRUE and FALSE, IFERROR gives its fallback (the union is `#VALUE!` as a value).

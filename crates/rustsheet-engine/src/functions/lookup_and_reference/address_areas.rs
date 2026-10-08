@@ -2,7 +2,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
-    reference_operators::RefArg,
+    reference_operators::{three_d_needs_one_sheet, RefArg},
 };
 
 use crate::expressions::utils::number_to_column;
@@ -150,11 +150,7 @@ impl Model {
         match arg {
             RefArg::Value(value) if !value.is_error() => CalcResult::Number(1.0),
             RefArg::Value(error) => error,
-            RefArg::Ranges(_) => CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "3-D reference where one sheet is needed".to_string(),
-            ),
+            RefArg::Ranges(_) => three_d_needs_one_sheet(cell),
         }
     }
 }
