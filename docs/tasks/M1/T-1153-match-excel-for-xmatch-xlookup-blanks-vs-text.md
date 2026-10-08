@@ -3,7 +3,7 @@ id: T-1153
 title: "Match Excel for XMATCH/XLOOKUP blanks vs text and boolean candidates, and a blank lookup value (probes/xmatch-text-bool-equal-runs)"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
