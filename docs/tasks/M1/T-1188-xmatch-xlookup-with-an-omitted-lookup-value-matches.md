@@ -3,7 +3,7 @@ id: T-1188
 title: "XMATCH/XLOOKUP with an omitted lookup_value matches a blank cell in linear modes"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
