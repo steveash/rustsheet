@@ -3,7 +3,7 @@ id: T-1150
 title: "Probe the remaining for_each_value aggregates with a union argument (HARMEAN, AVEDEV, SKEW, KURT, ...)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
