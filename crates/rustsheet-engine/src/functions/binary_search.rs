@@ -48,16 +48,10 @@ impl<T: Ord> Sequence<T> for Vec<T> {
     }
 }
 
-/// The first index of the run of elements equal to `target` that holds `m`, but never below
-/// `floor` unless `m` is. Gallops back, so the cost is logarithmic in the run's length (a
-/// whole-column run of blanks included).
-fn run_start<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-    m: usize,
-    floor: usize,
-) -> usize {
-    let floor = floor.min(m);
+/// The first index of the run of elements equal to `target` that holds `m`. Gallops back, so the
+/// cost is logarithmic in the run's length (a whole-column run of blanks included).
+fn run_start<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, m: usize) -> usize {
+    let floor = 0;
     let mut good = m;
     let mut step = 1;
     while good > floor {
@@ -108,12 +102,10 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
         let ordering = array.at(mid).cmp(target);
         match ordering {
             Ordering::Equal if descending => return Some(walk_forward(target, array, mid)),
-            // Unprobed for runs (T-1135); kept from the earlier searches: match modes 0/-1
-            // returned the run's first element, match mode 1 never one below the second.
-            Ordering::Equal => {
-                let floor = usize::from(mode == Ordering::Greater);
-                return Some(run_start(target, array, mid, floor));
-            }
+            // Every match mode returns the run's first element, also for match mode 1 over a
+            // run that starts at the first cell (probes/xmatch-text-bool-equal-runs Run!M5-M42;
+            // docs/excel-semantics/lookup.md).
+            Ordering::Equal => return Some(run_start(target, array, mid)),
             Ordering::Less => smaller = Some(mid),
             Ordering::Greater => larger = Some(mid),
         }

@@ -42,14 +42,23 @@ impl MatchMode {
     }
 }
 
-/// A blank candidate in an ordered comparison: it sorts as the empty text, so it is
-/// larger than every number and never smaller than one (probes/xmatch-xlookup-blanks
-/// Col!M5-M12; T-1018).
-static BLANK_AS_TEXT: CalcResult = CalcResult::String(String::new());
+/// Orders a candidate against the lookup value in an ordered match mode. A blank is larger than
+/// every number, text and boolean, and equal only to another blank (probes/xmatch-xlookup-blanks
+/// Col!M5-M12, T-1018; probes/xmatch-text-bool-equal-runs Txt!M7, M16, Blk!M6-M9, T-1153).
+fn compare_blank_last(candidate: &CalcResult, lookup_value: &CalcResult) -> i32 {
+    let is_blank = |v: &CalcResult| matches!(v, CalcResult::EmptyCell);
+    match (is_blank(candidate), is_blank(lookup_value)) {
+        (true, true) => 0,
+        (true, false) => 1,
+        (false, true) => -1,
+        (false, false) => compare_values(candidate, lookup_value),
+    }
+}
 
 /// The first (in `indices` order) candidate of `get` that matches `lookup_value` under
 /// `match_mode`, shared by XMATCH and XLOOKUP. A blank candidate never matches a non-blank
-/// lookup value in an exact or wildcard search, and matches a blank one (Col!M14, M30-M34);
+/// lookup value in an exact or wildcard search, and matches a blank one (Col!M14, M30-M34), which
+/// in turn matches nothing but a blank, not a 0, `""` or FALSE (Blk!M1-M5, M19-M22);
 /// the regex mode is XMATCH's own and matches nothing here.
 pub(crate) fn linear_scan<'a>(
     lookup_value: &CalcResult,
@@ -62,8 +71,8 @@ pub(crate) fn linear_scan<'a>(
     match match_mode {
         MatchMode::Exact => indices.into_iter().find(|&idx| {
             let v = get(idx);
-            if is_blank(v) {
-                blank_lookup
+            if is_blank(v) || blank_lookup {
+                is_blank(v) && blank_lookup
             } else {
                 compare_values(v, lookup_value) == 0
             }
@@ -73,17 +82,11 @@ pub(crate) fn linear_scan<'a>(
             let mut best_idx = None;
             let mut best_val: Option<&CalcResult> = None;
             for idx in indices {
-                let mut v = get(idx);
-                if is_blank(v) {
-                    if blank_lookup {
-                        return Some(idx);
-                    }
-                    v = &BLANK_AS_TEXT;
-                }
-                let c = compare_values(v, lookup_value);
+                let v = get(idx);
+                let c = compare_blank_last(v, lookup_value);
                 if c == 0 {
                     return Some(idx);
-                } else if c == m && best_val.is_none_or(|p| compare_values(p, v) == m) {
+                } else if c == m && best_val.is_none_or(|p| compare_blank_last(p, v) == m) {
                     best_val = Some(v);
                     best_idx = Some(idx);
                 }
@@ -99,8 +102,8 @@ pub(crate) fn linear_scan<'a>(
                 };
             indices.into_iter().find(|&idx| {
                 let v = get(idx);
-                if is_blank(v) {
-                    blank_lookup
+                if is_blank(v) || blank_lookup {
+                    is_blank(v) && blank_lookup
                 } else {
                     matches(v)
                 }

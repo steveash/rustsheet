@@ -88,6 +88,9 @@ impl Ord for CalcResult {
             (CalcResult::EmptyCell, CalcResult::Number(_value2)) => Ordering::Greater,
             (CalcResult::EmptyArg, CalcResult::Number(_value2)) => Ordering::Greater,
             (CalcResult::Number(_value1), CalcResult::EmptyCell) => Ordering::Less,
+            // A blank is larger than a boolean too (probes/xmatch-text-bool-equal-runs Txt!M21, M24).
+            (CalcResult::Boolean(_value1), CalcResult::EmptyCell) => Ordering::Less,
+            (CalcResult::EmptyCell, CalcResult::Boolean(_value2)) => Ordering::Greater,
             (CalcResult::EmptyCell, CalcResult::EmptyCell) => Ordering::Equal,
             (CalcResult::EmptyCell, CalcResult::EmptyArg) => Ordering::Equal,
             (CalcResult::EmptyArg, CalcResult::EmptyCell) => Ordering::Equal,
