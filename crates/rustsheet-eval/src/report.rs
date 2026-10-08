@@ -36,7 +36,14 @@ pub struct SuiteSummary {
     pub statuses: BTreeMap<CaseStatus, usize>,
     pub cells: usize,
     pub cells_passed: usize,
+    /// Cells that gave their pinned by-design value, outside the bit-exact denominator
+    /// (decision 0036).
+    #[serde(default)]
+    pub deviations: usize,
     pub verdicts: BTreeMap<Verdict, usize>,
+    /// Listed deviation cells that match Excel: their `deviations` lines are stale.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stale_deviations: Vec<String>,
     /// Total wall time of the suite's cases (informational; never part of the gate).
     #[serde(default)]
     pub millis: u64,
@@ -70,12 +77,14 @@ fn slowest(results: &[CaseResult], n: usize) -> Vec<SlowCase> {
 
 impl SuiteSummary {
     #[must_use]
+    /// Bit-exact rate over the scored cells that are not accepted deviations (decision 0036).
     pub fn cell_pass_rate(&self) -> f64 {
-        if self.cells == 0 {
+        let scored = self.cells - self.deviations;
+        if scored == 0 {
             return 0.0;
         }
         #[allow(clippy::cast_precision_loss)]
-        let rate = self.cells_passed as f64 / self.cells as f64;
+        let rate = self.cells_passed as f64 / scored as f64;
         rate
     }
 }
@@ -228,9 +237,17 @@ impl RunReport {
             *s.statuses.entry(r.status).or_default() += 1;
             s.cells += r.checked;
             s.cells_passed += r.passed;
+            s.deviations += r.deviations;
             s.millis += r.millis;
             for c in &r.cells {
                 *s.verdicts.entry(c.verdict).or_default() += 1;
+                if c.listed_deviation && c.verdict.is_pass() {
+                    s.stale_deviations.push(format!("{}\t{}", r.id, c.key()));
+                }
+                // A by-design value says nothing about how well a function matches Excel.
+                if c.verdict == Verdict::Deviation {
+                    continue;
+                }
                 for f in c.formula.as_deref().map(functions_in).unwrap_or_default() {
                     if c.from_excel {
                         let ev = evidence
@@ -269,7 +286,7 @@ impl RunReport {
             .iter()
             .map(|r| {
                 let mut r = r.clone();
-                r.cells.retain(|c| !c.verdict.is_pass());
+                r.cells.retain(|c| c.verdict.is_failure());
                 r
             })
             .collect();
@@ -353,10 +370,10 @@ impl RunReport {
 
     fn write_suites_table(&self, md: &mut String) {
         let _ = writeln!(md, "## Suites\n");
-        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | cell pass % | ulp | close | mismatch | unsupported | type |");
+        let _ = writeln!(md, "| suite | cases | pass | fail | pending | crashes | errors | cells | deviations | cell pass % | ulp | close | mismatch | unsupported | type |");
         let _ = writeln!(
             md,
-            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"
         );
         for s in &self.suites {
             let st = |k: CaseStatus| s.statuses.get(&k).copied().unwrap_or(0);
@@ -369,7 +386,7 @@ impl RunReport {
                 st(CaseStatus::EngineError) + st(CaseStatus::Panic) + st(CaseStatus::Timeout);
             let _ = writeln!(
                 md,
-                "| {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {} | {} | {} | {} | {} |",
+                "| {} | {} | {} | {} | {} | {} | {} | {} | {} | {:.2} | {} | {} | {} | {} | {} |",
                 s.name,
                 s.cases,
                 st(CaseStatus::Pass),
@@ -378,6 +395,7 @@ impl RunReport {
                 crashes,
                 errors,
                 s.cells,
+                s.deviations,
                 100.0 * s.cell_pass_rate(),
                 v(Verdict::NumericUlp),
                 v(Verdict::NumericClose),
@@ -388,6 +406,20 @@ impl RunReport {
                 v(Verdict::Unsupported),
                 v(Verdict::TypeMismatch),
             );
+        }
+        let stale: Vec<&String> = self
+            .suites
+            .iter()
+            .flat_map(|s| &s.stale_deviations)
+            .collect();
+        if !stale.is_empty() {
+            let _ = writeln!(
+                md,
+                "\nStale `deviations` lines (the cell now matches Excel; remove the line):\n"
+            );
+            for line in stale {
+                let _ = writeln!(md, "- `{line}`");
+            }
         }
     }
 
@@ -555,6 +587,7 @@ mod tests {
             expected_source: String::new(),
             checked: 1,
             passed: 1,
+            deviations: 0,
             skipped_volatile: 0,
             millis,
             cells: Vec::new(),
@@ -582,7 +615,39 @@ mod tests {
             actual: crate::value::Value::Number(1.0),
             verdict,
             from_excel: false,
+            listed_deviation: false,
         }
+    }
+
+    #[test]
+    fn deviations_leave_the_bit_exact_rate_and_stale_lines_are_listed() {
+        let listed = |verdict| CellResult {
+            listed_deviation: true,
+            ..cell("ROWS(SEQUENCE(1048576))", verdict)
+        };
+        let mut r = case("probes/a", 1);
+        r.cells = vec![
+            cell("ABS(1)", Verdict::Pass),
+            cell("ABS(2)", Verdict::NumericMismatch),
+            listed(Verdict::Deviation),
+            listed(Verdict::Pass),
+        ];
+        (r.checked, r.passed, r.deviations) = (4, 2, 1);
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        let s = &report.suites[0];
+        assert_eq!((s.cells, s.deviations), (4, 1));
+        assert!((s.cell_pass_rate() - 2.0 / 3.0).abs() < 1e-12);
+        assert_eq!(s.stale_deviations, ["probes/a\tS!A1"]);
+        // the by-design cell is neither a failing case cell nor a function statistic
+        assert_eq!(report.cases[0].cells.len(), 1);
+        let sequence = report.functions.iter().find(|f| f.name == "SEQUENCE");
+        assert_eq!(sequence.map(|f| (f.cells, f.passed)), Some((1, 1)));
+        let md = report.to_markdown(1);
+        assert!(
+            md.contains("| probes | 1 | 1 | 0 | 0 | 0 | 0 | 4 | 1 | 66.67 |"),
+            "{md}"
+        );
+        assert!(md.contains("- `probes/a\tS!A1`"));
     }
 
     fn excel_cell(formula: &str, verdict: Verdict) -> CellResult {

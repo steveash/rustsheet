@@ -17,6 +17,7 @@ use std::path::{Component, Path};
 
 use crate::case::split_qualified;
 use crate::cellref::Addr;
+use crate::suite::Suite;
 use crate::value::{compare, Value};
 
 /// Directory the semantics reference must point into.
@@ -37,6 +38,27 @@ pub struct Deviation {
     pub anchor: String,
     /// RustSheet's by-design value.
     pub pinned: Value,
+}
+
+/// Why a `deviations` file or one of its lines is unusable.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum DeviationError {
+    /// A line does not follow the format.
+    #[error("deviations line {line}: {why}")]
+    Line { line: usize, why: &'static str },
+    /// The file, or the semantics file a line cites, cannot be read.
+    #[error("{path}: {message}")]
+    Unreadable { path: String, message: String },
+    /// The cited semantics entry is missing or is not an accepted deviation.
+    #[error("{file}#{anchor}: {why}")]
+    Entry {
+        file: String,
+        anchor: String,
+        why: &'static str,
+    },
+    /// A line names a case file the suite does not have.
+    #[error("deviations: no case {0}")]
+    MissingCase(String),
 }
 
 /// How a listed cell scored.
@@ -80,13 +102,13 @@ fn parse_value(text: &str) -> Option<Value> {
 ///
 /// # Errors
 /// Names the first malformed line.
-pub fn parse(text: &str) -> Result<Vec<Deviation>, String> {
+pub fn parse(text: &str) -> Result<Vec<Deviation>, DeviationError> {
     let mut out = Vec::new();
     for (n, line) in text.lines().enumerate() {
         if line.trim().is_empty() || line.starts_with('#') {
             continue;
         }
-        let bad = |why: &str| format!("deviations line {}: {why}", n + 1);
+        let bad = |why: &'static str| DeviationError::Line { line: n + 1, why };
         let fields: Vec<&str> = line.split('\t').collect();
         let [case, cell, decision, semantics, pinned] = fields.as_slice() else {
             return Err(bad("expected 5 tab-separated fields"));
@@ -144,18 +166,19 @@ fn anchor_of(heading: &str) -> String {
 ///
 /// # Errors
 /// When the file is unreadable, the anchor names no heading, or the entry is not a DEVIATION.
-pub fn check_entry(d: &Deviation, repo_root: &Path) -> Result<(), String> {
-    let path = repo_root.join(&d.semantics_file);
-    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+pub fn check_entry(d: &Deviation, repo_root: &Path) -> Result<(), DeviationError> {
+    let text = read(&repo_root.join(&d.semantics_file))?;
+    let entry = |why| DeviationError::Entry {
+        file: d.semantics_file.clone(),
+        anchor: d.anchor.clone(),
+        why,
+    };
     let mut lines = text.lines();
     let found = lines
         .by_ref()
         .any(|line| line.starts_with('#') && anchor_of(line.trim_start_matches('#')) == d.anchor);
     if !found {
-        return Err(format!(
-            "{}#{}: no such heading",
-            d.semantics_file, d.anchor
-        ));
+        return Err(entry("no such heading"));
     }
     if lines
         .take_while(|line| !line.starts_with('#'))
@@ -163,19 +186,52 @@ pub fn check_entry(d: &Deviation, repo_root: &Path) -> Result<(), String> {
     {
         Ok(())
     } else {
-        Err(format!(
-            "{}#{}: the entry has no `Status: DEVIATION` line",
-            d.semantics_file, d.anchor
-        ))
+        Err(entry("the entry has no `Status: DEVIATION` line"))
     }
 }
 
-/// Scores a listed cell (decision 0036).
+fn read(path: &Path) -> Result<String, DeviationError> {
+    std::fs::read_to_string(path).map_err(|e| DeviationError::Unreadable {
+        path: path.display().to_string(),
+        message: e.to_string(),
+    })
+}
+
+/// The suite's parsed `deviations` file, or none when its manifest names no file.
+///
+/// # Errors
+/// When the file is unreadable or malformed.
+pub fn load(suite: &Suite) -> Result<Vec<Deviation>, DeviationError> {
+    match &suite.manifest.deviations {
+        Some(file) => parse(&read(&suite.dir.join(file))?),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// Loads the suite's `deviations` file and checks every line against the repository: the case
+/// file exists and the cited semantics entry is an accepted DEVIATION (decision 0036). Whether
+/// the cell is scored is checked when the case runs.
+///
+/// # Errors
+/// The first unusable line.
+pub fn load_checked(suite: &Suite, repo_root: &Path) -> Result<Vec<Deviation>, DeviationError> {
+    let listed = load(suite)?;
+    let root = suite.root();
+    for d in &listed {
+        if !root.join(&d.case).is_file() {
+            return Err(DeviationError::MissingCase(d.case.clone()));
+        }
+        check_entry(d, repo_root)?;
+    }
+    Ok(listed)
+}
+
+/// Scores a listed cell whose by-design value is `pinned` (decision 0036).
 #[must_use]
-pub fn classify(d: &Deviation, expected: &Value, actual: &Value) -> Outcome {
+pub fn classify(pinned: &Value, expected: &Value, actual: &Value) -> Outcome {
     if compare(expected, actual).is_pass() {
         Outcome::StalePass
-    } else if compare(&d.pinned, actual).is_pass() {
+    } else if compare(pinned, actual).is_pass() {
         Outcome::Deviation
     } else {
         Outcome::Failure
@@ -266,14 +322,49 @@ mod tests {
     }
 
     #[test]
+    fn load_checked_needs_the_case_file() {
+        let root = std::env::temp_dir().join(format!("deviations-case-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("docs/excel-semantics")).expect("dir");
+        std::fs::create_dir_all(root.join("s/cases")).expect("dir");
+        std::fs::write(
+            root.join("docs/excel-semantics/arrays.md"),
+            "## X\nStatus: DEVIATION (decision 0014)\n",
+        )
+        .expect("write");
+        std::fs::write(
+            root.join("s/deviations"),
+            "a.case.json\tS!A1\tdecision 0014\tdocs/excel-semantics/arrays.md#x\t#ERROR!\n",
+        )
+        .expect("write");
+        let suite = Suite {
+            manifest: toml::from_str(
+                "name = \"s\"\nkind = \"spec\"\nlicense = \"MIT\"\nroot = \"cases\"\n\
+                 deviations = \"deviations\"\n",
+            )
+            .expect("manifest"),
+            dir: root.join("s"),
+            cache_dir: std::path::PathBuf::new(),
+        };
+        let missing = load_checked(&suite, &root);
+        std::fs::write(root.join("s/cases/a.case.json"), "{}").expect("write");
+        let present = load_checked(&suite, &root);
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(
+            missing,
+            Err(DeviationError::MissingCase("a.case.json".into()))
+        );
+        assert_eq!(present.map(|d| d.len()), Ok(1));
+    }
+
+    #[test]
     fn scores_the_three_outcomes() {
         let d = parse(LINE).expect("parse").remove(0);
         let excel = Value::Number(1000.0);
         let pinned = Value::Error("#ERROR!".into());
-        assert_eq!(classify(&d, &excel, &pinned), Outcome::Deviation);
-        assert_eq!(classify(&d, &excel, &excel), Outcome::StalePass);
+        assert_eq!(classify(&d.pinned, &excel, &pinned), Outcome::Deviation);
+        assert_eq!(classify(&d.pinned, &excel, &excel), Outcome::StalePass);
         assert_eq!(
-            classify(&d, &excel, &Value::Number(999.0)),
+            classify(&d.pinned, &excel, &Value::Number(999.0)),
             Outcome::Failure
         );
     }

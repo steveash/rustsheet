@@ -70,12 +70,21 @@ pub enum Verdict {
     Unsupported,
     /// Value types differ (e.g. number vs text, value vs error).
     TypeMismatch,
+    /// A listed cell gives its pinned by-design value (decision 0036): neither a pass nor a
+    /// failure, and outside the bit-exact denominator.
+    Deviation,
 }
 
 impl Verdict {
     #[must_use]
     pub fn is_pass(self) -> bool {
         self == Verdict::Pass
+    }
+
+    /// Whether the cell is a known failure: neither a pass nor an accepted deviation.
+    #[must_use]
+    pub fn is_failure(self) -> bool {
+        !matches!(self, Verdict::Pass | Verdict::Deviation)
     }
 }
 
