@@ -113,3 +113,24 @@ fn test_fn_geomean_significand_product_overflow_is_num() {
     assert_eq!(model._get_text("A6"), "1E+300");
     assert_eq!(model._get_text("A7"), "#NUM!");
 }
+
+#[test]
+fn test_fn_geomean_exact_roots_are_exact() {
+    // `exp(ln(P)/n)` is one ulp off on each; Excel gives the exact root (numbers.md, "GEOMEAN
+    // in-range root"; probes/geomean-single-and-copies, probes/geomean-root-refinement).
+    // A difference shows the last bit: `=` would compare at 15 digits.
+    let mut model = new_empty_model();
+    model._set("A1", "=GEOMEAN(3,3)-3");
+    model._set("A2", "=GEOMEAN(1,9)-3");
+    model._set("A3", "=GEOMEAN(IF(SEQUENCE(50),7))-7");
+    model._set("A4", "=GEOMEAN(IF(SEQUENCE(3),0.1))-0.1");
+    model._set("A5", "=GEOMEAN(3)-3");
+    // not exact roots: left as `exp(ln(P)/n)`, which is Excel's value here
+    model._set("A6", "=GEOMEAN(1,3)-1.7320508075688772");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4", "A5"] {
+        assert_eq!(model._get_text(cell), "0", "{cell}");
+    }
+    // 1.7320508075688774 (Excel, ironcalc-calc GEOMEAN C23), one ulp above the correctly rounded root
+    assert_eq!(model._get_text("A6"), "2.22045E-16");
+}

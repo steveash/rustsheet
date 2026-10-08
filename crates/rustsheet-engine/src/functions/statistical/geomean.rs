@@ -65,6 +65,7 @@ impl Model {
             }
             let root = (plain.ln() / n).exp();
             let short = to_excel_precision(root, 15);
+            // `short^n` as n left-to-right multiplications, the way `plain` was formed.
             let exact = short != root && values.iter().fold(1.0, |p, _| p * short) == plain;
             return CalcResult::Number(if exact { short } else { root });
         }
