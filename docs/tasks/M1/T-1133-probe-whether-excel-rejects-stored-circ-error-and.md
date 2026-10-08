@@ -3,7 +3,7 @@ id: T-1133
 title: "Probe whether Excel rejects stored #CIRC!, #ERROR! and #N/IMPL literals; exporter fallback if so"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
