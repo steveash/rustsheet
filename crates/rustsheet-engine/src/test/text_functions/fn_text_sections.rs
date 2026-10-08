@@ -45,4 +45,3 @@ fn test_text_section_doubled_quotes_and_single_at_section() {
     assert_eq!(model._get_text("A2"), "x q");
     assert_eq!(model._get_text("A3"), "x");
 }
-
