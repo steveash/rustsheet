@@ -6,6 +6,10 @@
     "t": "n",
     "v": 0.008052981923885287
    },
+   "A10": {
+    "t": "n",
+    "v": 0.008052981923918023
+   },
    "A2": {
     "t": "n",
     "v": 0.008052981923906556
@@ -42,9 +46,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "510c0311965775b3bb0cee639edce749f1acdfac9b89ce0f1354cc9fa3c03c93",
+  "input_sha256": "ca3b9bf2df9a2afeda564710ebec5fd92dfe14d5432e88725a882e096171ffcf",
   "kind": "excel-graph",
-  "produced_at": "2026-10-08T02:41:54+00:00",
+  "produced_at": "2026-10-08T02:48:44+00:00",
   "version": null
  }
 }
