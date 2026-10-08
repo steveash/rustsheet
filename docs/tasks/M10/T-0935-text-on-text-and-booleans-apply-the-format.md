@@ -41,7 +41,7 @@ A text section with no `@` (A3, A4, A5) prints only its literals.
 Text values with a format that has no text section, such as `TEXT("jello","0.00")`. There is no
 evidence here; use `excel-probe` and file a follow-up if needed.
 
-## Handoff
+## Handoff (resumed)
 Done on this branch (sonnet run): `format_text_value` (formatter/format.rs) and its use in `fn_text` for
 text/boolean scalars and array elements, unit test `text_functions/fn_text_sections.rs`, 25 of the 28 poi
 cells fixed (baseline refreshed).
