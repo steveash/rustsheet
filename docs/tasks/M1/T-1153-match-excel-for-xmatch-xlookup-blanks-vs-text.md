@@ -5,7 +5,7 @@ milestone: M1
 lane: functions-lookup
 status: todo
 priority: P2
-size: S
+size: M
 tier: sonnet
 depends_on: []
 ---
@@ -28,4 +28,4 @@ cell, the engine the second). In Excel a blank candidate is larger than any text
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Changing XMATCH/XLOOKUP behavior beyond the cells of probes/xmatch-text-bool-equal-runs.
