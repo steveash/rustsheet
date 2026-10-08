@@ -1,0 +1,29 @@
+---
+id: T-1153
+title: "Match Excel for XMATCH/XLOOKUP blanks vs text and boolean candidates, and a blank lookup value (probes/xmatch-text-bool-equal-runs)"
+milestone: M1
+lane: functions-lookup
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+XMATCH and XLOOKUP agree with Excel for text and boolean lookup values over blank cells, for a blank lookup value, and for descending binary search over booleans.
+
+## Context
+Oracle evidence is in probes/xmatch-text-bool-equal-runs and docs/excel-semantics/lookup.md (T-1135). Failing cells:
+`Txt!M7` (`XMATCH("a",A1:A6,-1)`: Excel #N/A, engine 2), `Txt!M16` (`XMATCH("z",A1:A6,1)`: Excel 2, engine #N/A),
+`Txt!M59` (XLOOKUP of that: Excel 0), `Txt!M21` (`XMATCH(TRUE,B1:B6,-1,-2)`: Excel 5, engine 3),
+`Blk!M19`, `Blk!M20` (XLOOKUP of a blank lookup value against a 0 or `""` candidate: Excel "nf", engine matches).
+In Excel a blank candidate is larger than any text or boolean, as it is larger than any number; `linear_scan`
+(functions/lookup_and_reference/xmatch.rs) models it as empty text.
+
+## Acceptance criteria
+- [ ] The five cells above pass and are baselined; the rest of the probe case keeps passing.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-

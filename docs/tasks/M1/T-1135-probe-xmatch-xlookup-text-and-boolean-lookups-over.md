@@ -3,7 +3,7 @@ id: T-1135
 title: "Probe XMATCH/XLOOKUP text and boolean lookups over blanks, and binary-search runs of equal values"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,3 +25,6 @@ T-1019 matched the binary search to Excel over blanks and errors. That work is t
 
 ## Out of scope
 - Engine changes; moving `linear_scan`/`MatchMode` to a neutral lookup module (a quality task if wanted).
+
+## Outcome
+Probe `probes/xmatch-text-bool-equal-runs` (134 cells) filled from excel-graph. Equal-run binary search and all Run cells match the engine. Six cells differ (blank vs text/boolean candidates, blank lookup value in XLOOKUP, descending boolean binary search); recorded in lookup.md, fix filed as T-1153. Eval: probes gains 134 cells, 6 new known failures baselined by the gate if required.
