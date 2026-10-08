@@ -3,7 +3,7 @@ id: T-1127
 title: "XLOOKUP: array return_array, binary modes and size edges over an array lookup_array"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1126 added `xlookup_array_lookup` (functions/xlookup.rs) for an array lookup_a
 
 ## Out of scope
 -
+
+## Outcome
+Array return_array, binary search modes (2/-2) and shape edges for an array lookup_array now match Excel (probes/xlookup-array-return, 24 cells all passing; 17 newly). The range path's binary branch now shares `binary_hit` with the array path. A 2-D lookup array is `#VALUE!` (was `#ERROR!`).
