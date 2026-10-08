@@ -19,7 +19,7 @@
 // oracle (`oracle`) is checked on every state regardless: every formula
 // re-run against the final sheet must give its stored value.
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, Rng};
 use crate::Model;
 use crate::UserModel;
 use std::collections::BTreeMap;
@@ -28,22 +28,6 @@ const ROWS: i32 = 5;
 const COLS: i32 = 5;
 const EDITS: usize = 14;
 const SEEDS: u64 = 600;
-
-struct Rng(u64);
-
-impl Rng {
-    fn next(&mut self) -> u64 {
-        let mut x = self.0;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        self.0 = x;
-        x
-    }
-    fn below(&mut self, n: u64) -> u64 {
-        self.next() % n
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 enum Content {
