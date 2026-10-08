@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1180 boundary probes: where a subnormal result of CSCH, ERFC and the normal density becomes a true 0 (column B companion TRUE) versus a kept subnormal (FALSE).",
+  "tags": [
+    "M1",
+    "numbers",
+    "subnormal",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=CSCH(709.3)",
+        "B1": "=(CSCH(709.3))=0",
+        "A2": "=CSCH(709.6)",
+        "B2": "=(CSCH(709.6))=0",
+        "A3": "=CSCH(-710)",
+        "B3": "=(CSCH(-710))=0",
+        "A4": "=CSCH(-709.6)",
+        "B4": "=(CSCH(-709.6))=0",
+        "A5": "=ERFC(26.4)",
+        "B5": "=(ERFC(26.4))=0",
+        "A6": "=ERFC(26.5)",
+        "B6": "=(ERFC(26.5))=0",
+        "A7": "=ERFC(26.6)",
+        "B7": "=(ERFC(26.6))=0",
+        "A8": "=ERFC.PRECISE(26.5)",
+        "B8": "=(ERFC.PRECISE(26.5))=0",
+        "A9": "=NORM.S.DIST(-37.61,FALSE)",
+        "B9": "=(NORM.S.DIST(-37.61,FALSE))=0",
+        "A10": "=NORM.S.DIST(-37.62,FALSE)",
+        "B10": "=(NORM.S.DIST(-37.62,FALSE))=0",
+        "A11": "=NORM.S.DIST(-37.63,FALSE)",
+        "B11": "=(NORM.S.DIST(-37.63,FALSE))=0",
+        "A12": "=NORM.S.DIST(-37.64,FALSE)",
+        "B12": "=(NORM.S.DIST(-37.64,FALSE))=0",
+        "A13": "=NORM.S.DIST(-37.65,FALSE)",
+        "B13": "=(NORM.S.DIST(-37.65,FALSE))=0",
+        "A14": "=NORM.DIST(19,0,0.5,FALSE)",
+        "B14": "=(NORM.DIST(19,0,0.5,FALSE))=0",
+        "A15": "=PHI(-37.65)",
+        "B15": "=(PHI(-37.65))=0"
+      }
+    }
+  ],
+  "expected": {}
+}
