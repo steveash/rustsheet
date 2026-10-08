@@ -8,26 +8,6 @@ pub(crate) trait Sequence<T: Ord> {
     fn seq_len(&self) -> usize;
     /// The element at `index`, which must be below `seq_len`.
     fn at(&self, index: usize) -> &T;
-    /// The index from which every element equals the last one (a virtual run
-    /// of empty cells), or `seq_len` if there is no such run. It lets the walks
-    /// over equal elements jump the run instead of stepping a million cells.
-    fn uniform_tail_start(&self) -> usize {
-        self.seq_len()
-    }
-}
-
-/// From `index`, whose element equals `target`, the end of the run of equal
-/// elements.
-fn walk_forward<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, mut index: usize) -> usize {
-    let n = array.seq_len();
-    let tail = array.uniform_tail_start();
-    while index + 1 < n && array.at(index + 1) == target {
-        if index + 1 >= tail {
-            return n - 1;
-        }
-        index += 1;
-    }
-    index
 }
 
 impl<T: Ord> Sequence<T> for [T] {
@@ -48,47 +28,15 @@ impl<T: Ord> Sequence<T> for Vec<T> {
     }
 }
 
-/// The first index of the run of elements equal to `target` that holds `m`, but never below
-/// `floor` unless `m` is. Gallops back, so the cost is logarithmic in the run's length (a
-/// whole-column run of blanks included).
-fn run_start<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-    m: usize,
-    floor: usize,
-) -> usize {
-    let floor = floor.min(m);
-    let mut good = m;
-    let mut step = 1;
-    while good > floor {
-        let probe = good.saturating_sub(step).max(floor);
-        if array.at(probe) != target {
-            // The run starts in probe+1..=good.
-            let (mut lo, mut hi) = (probe + 1, good);
-            while lo < hi {
-                let mid = lo + (hi - lo) / 2;
-                if array.at(mid) == target {
-                    hi = mid;
-                } else {
-                    lo = mid + 1;
-                }
-            }
-            return lo;
-        }
-        good = probe;
-        step *= 2;
-    }
-    good
-}
-
 /// Excel's binary search (XMATCH/XLOOKUP search_mode 2/-2) over `array`, sorted ascending (or
 /// `descending`). `mode` is the match mode: `Equal` (0) only takes an equal element, `Less` (-1)
 /// else the next smaller one and `Greater` (1) else the next larger one.
 ///
 /// It is the classic search on inclusive bounds probing the lower middle `(lo + hi) / 2`, and it
 /// compares every element with the `Ord` of its values, so a blank or an error is larger than
-/// any number and is never skipped. It ends at the first equal element, moved to its run's start
-/// (its end when `descending`); otherwise the answer is the last probe on the wanted side. On
+/// any number and is never skipped. It remembers the last equal element probed and keeps bisecting
+/// past it, to the left when ascending and to the right when descending, so a gap inside a run ends
+/// it; otherwise the answer is the last probe on the wanted side. On
 /// unsorted data that is whatever those probes give, as in Excel: with 5,_,10,_,20,_ in A1:A6,
 /// `XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(99,A:A,-1,2)` is 1 (probes/xmatch-xlookup-blanks
 /// Col!M16-M26, Err!M6-M7, Row!A18; T-1019). O(log n) probes, so a virtual tail is never walked.
@@ -98,7 +46,7 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
     descending: bool,
     mode: Ordering,
 ) -> Option<usize> {
-    let (mut smaller, mut larger) = (None, None);
+    let (mut smaller, mut larger, mut equal) = (None, None, None);
     // The live range is lo..hi (hi exclusive), so the lower middle of the inclusive bounds is
     // lo + (hi - 1 - lo) / 2.
     let mut lo = 0;
@@ -107,12 +55,19 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
         let mid = lo + (hi - 1 - lo) / 2;
         let ordering = array.at(mid).cmp(target);
         match ordering {
-            Ordering::Equal if descending => return Some(walk_forward(target, array, mid)),
-            // Unprobed for runs (T-1135); kept from the earlier searches: match modes 0/-1
-            // returned the run's first element, match mode 1 never one below the second.
+            // An equal element is remembered and the search goes on past it, to the left when
+            // ascending and to the right when descending, so a gap inside a run ends it: with
+            // FALSE,_,TRUE,_,TRUE,_ in B1:B6 `XMATCH(TRUE,B1:B6,0,-2)` is 5 and with 40,30,40,40,50
+            // `XMATCH(40,R1:R5,0,2)` is 1 (probes/xmatch-text-bool-equal-runs Txt!M21, M24, Run!M1-M42;
+            // probes/xmatch-blank-extensions Ext!M38-M43).
             Ordering::Equal => {
-                let floor = usize::from(mode == Ordering::Greater);
-                return Some(run_start(target, array, mid, floor));
+                equal = Some(mid);
+                if descending {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+                continue;
             }
             Ordering::Less => smaller = Some(mid),
             Ordering::Greater => larger = Some(mid),
@@ -122,6 +77,9 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
         } else {
             hi = mid;
         }
+    }
+    if equal.is_some() {
+        return equal;
     }
     match mode {
         Ordering::Less => smaller,

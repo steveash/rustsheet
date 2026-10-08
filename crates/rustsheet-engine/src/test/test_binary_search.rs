@@ -82,18 +82,27 @@ fn test_binary_search_over_blanks_and_errors() {
     assert_eq!(find(&n(15.0), &errs, false, Some(-1)), Some(2)); // M7: 3
 }
 
-/// Runs of equal values (unprobed, T-1135): match modes 0/-1 return the run's first element,
-/// match mode 1 never one below the second, as the searches before T-1019 did. Long runs are
-/// galloped, not walked.
+/// Runs of equal values (probes/xmatch-text-bool-equal-runs Run!M1-M42; T-1135, T-1153): every
+/// match mode returns the run's first element, a run starting at the first cell included. Long
+/// runs cost O(log n) probes: an equal hit keeps the search bisecting.
 #[test]
 fn test_binary_search_runs() {
     let t = vec![40, 40, 40];
     assert_eq!(find(&40, &t, false, None), Some(0));
     assert_eq!(find(&40, &t, false, Some(-1)), Some(0));
-    assert_eq!(find(&40, &t, false, Some(1)), Some(1));
+    assert_eq!(find(&40, &t, false, Some(1)), Some(0));
+    assert_eq!(find(&40, &t, true, None), Some(2));
+    // The search goes on past an equal element: 60,40,70,40 ends at the last 40 descending,
+    // 40,30,40,40,50 at the first 40 ascending (probes/xmatch-blank-extensions Ext!M38, M41).
+    assert_eq!(find(&40, &[40, 30, 40, 40, 50], false, None), Some(0));
+    let gap = vec![60, 40, 70, 40];
+    assert_eq!(find(&40, &gap, true, None), Some(3));
     let mut long = vec![1];
     long.resize(1_048_576, 7);
     assert_eq!(find(&7, &long, false, None), Some(1));
+    let mut long_desc = vec![9];
+    long_desc.resize(1_048_576, 7);
+    assert_eq!(find(&7, &long_desc, true, None), Some(1_048_575));
 }
 
 /// XLOOKUP's binary search walks the whole column, blanks past the used area included, as
