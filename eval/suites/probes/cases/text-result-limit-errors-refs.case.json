@@ -1,0 +1,81 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "CONCAT/TEXTJOIN with an error reached through names, INDEX/IF/OFFSET/INDIRECT, @ and 3-D refs after the text is over 32767 chars (T-0285); follows text-result-limit-errors. Rows in order: name, index, indexcell, if, offset, offsetcell, indirect, indirectcell, at, d3, d3cell, nmcell.",
+ "tags": [
+  "M2",
+  "limits",
+  "probe",
+  "T-0285"
+ ],
+ "names": {
+  "nmrange": "=Sheet1!$A$1:$A$2",
+  "nmcell": "=Sheet1!$A$2"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "b",
+    "A2": "=NA()",
+    "C1": "=CONCAT(REPT(\"a\",32767),nmrange)",
+    "D1": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),nmrange)",
+    "C2": "=CONCAT(REPT(\"a\",32767),INDEX(A1:A2,1,1):INDEX(A1:A2,2,1))",
+    "D2": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),INDEX(A1:A2,1,1):INDEX(A1:A2,2,1))",
+    "C3": "=CONCAT(REPT(\"a\",32767),INDEX(A1:A2,2))",
+    "D3": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),INDEX(A1:A2,2))",
+    "C4": "=CONCAT(REPT(\"a\",32767),IF(TRUE,A1:A2))",
+    "D4": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),IF(TRUE,A1:A2))",
+    "C5": "=CONCAT(REPT(\"a\",32767),OFFSET(A1,0,0,2,1))",
+    "D5": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),OFFSET(A1,0,0,2,1))",
+    "C6": "=CONCAT(REPT(\"a\",32767),OFFSET(A2,0,0))",
+    "D6": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),OFFSET(A2,0,0))",
+    "C7": "=CONCAT(REPT(\"a\",32767),INDIRECT(\"A1:A2\"))",
+    "D7": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),INDIRECT(\"A1:A2\"))",
+    "C8": "=CONCAT(REPT(\"a\",32767),INDIRECT(\"A2\"))",
+    "D8": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),INDIRECT(\"A2\"))",
+    "C9": "=CONCAT(REPT(\"a\",32767),@A1:A2)",
+    "D9": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),@A1:A2)",
+    "C10": "=CONCAT(REPT(\"a\",32767),Sheet1:Sheet2!A1:A2)",
+    "D10": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),Sheet1:Sheet2!A1:A2)",
+    "C11": "=CONCAT(REPT(\"a\",32767),Sheet1:Sheet2!A2)",
+    "D11": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),Sheet1:Sheet2!A2)",
+    "C12": "=CONCAT(REPT(\"a\",32767),nmcell)",
+    "D12": "=TEXTJOIN(\",\",TRUE,REPT(\"a\",32767),nmcell)"
+   }
+  },
+  {
+   "name": "Sheet2",
+   "cells": {
+    "A1": "b",
+    "A2": "=NA()"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!C1",
+  "Sheet1!D1",
+  "Sheet1!C2",
+  "Sheet1!D2",
+  "Sheet1!C3",
+  "Sheet1!D3",
+  "Sheet1!C4",
+  "Sheet1!D4",
+  "Sheet1!C5",
+  "Sheet1!D5",
+  "Sheet1!C6",
+  "Sheet1!D6",
+  "Sheet1!C7",
+  "Sheet1!D7",
+  "Sheet1!C8",
+  "Sheet1!D8",
+  "Sheet1!C9",
+  "Sheet1!D9",
+  "Sheet1!C10",
+  "Sheet1!D10",
+  "Sheet1!C11",
+  "Sheet1!D11",
+  "Sheet1!C12",
+  "Sheet1!D12"
+ ]
+}

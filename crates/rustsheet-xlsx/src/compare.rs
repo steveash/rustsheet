@@ -343,9 +343,10 @@ pub fn test_file(file_path: &str, skip: &[&str]) -> Result<(), String> {
 }
 
 /// Gives the error constants of `model` the kind the exporter saves them as, then recalculates,
-/// so a saved-and-reloaded copy compares equal: until T-1014 `#CALC!`, `#SPILL!`, `#CONNECT!`,
-/// `#BLOCKED!` and `#FIELD!` are written as `#VALUE!` (`exported_error_literal`), and cells that
-/// read them (ERROR.TYPE) follow.
+/// so a saved-and-reloaded copy compares equal: the kinds `exported_error_literal` rewrites
+/// (`#CALC!`, `#SPILL!`, `#CONNECT!`, `#BLOCKED!`, `#FIELD!` until T-1014, and the engine-only
+/// `#CIRC!`, `#ERROR!`, `#N/IMPL`) are written as `#VALUE!`, and cells that read them
+/// (ERROR.TYPE) follow.
 fn save_error_constants_as_exported(model: &mut Model) {
     for sheet in &mut model.workbook.worksheets {
         let lossy: Vec<(i32, i32)> = sheet
