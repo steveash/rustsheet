@@ -3,7 +3,7 @@ id: T-1013
 title: "IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (SPEC-0003 F1)"
 milestone: M1
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
