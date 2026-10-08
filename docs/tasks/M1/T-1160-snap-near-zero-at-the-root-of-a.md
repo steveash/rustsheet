@@ -3,7 +3,7 @@ id: T-1160
 title: "Snap near-zero at the root of a defined-name body (nz, nz+0, SUM(nz))"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
