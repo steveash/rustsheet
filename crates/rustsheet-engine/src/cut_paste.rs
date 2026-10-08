@@ -400,7 +400,7 @@ impl Model {
                 column: anchor_col,
             };
             // CF formulas are stored internally in English.
-            let node = self.parse_internal_formula(body, &cell_ref);
+            let node = self.parse_internal_cell_formula(body, &cell_ref);
             let new_body = move_formula(
                 &node,
                 &MoveContext {

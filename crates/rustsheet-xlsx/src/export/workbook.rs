@@ -97,7 +97,7 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
             .formula
             .strip_prefix('=')
             .unwrap_or(&defined_name.formula);
-        let node = parser.parse(formula_body, &parse_context);
+        let node = parser.parse_cell_formula(formula_body, &parse_context);
         let formula = to_excel_string(&node, &parse_context);
         let formula = escape_xml(&formula);
         defined_names_str.push(format!(
