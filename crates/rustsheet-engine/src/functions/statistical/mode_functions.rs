@@ -14,7 +14,11 @@ impl Model {
     ) -> Result<Vec<f64>, CalcResult> {
         let mut values = Vec::new();
         for arg in args {
-            match self.evaluate_node_in_context(arg, cell) {
+            // A union is `#VALUE!` here (probes/multiarea-foreach H17, H18).
+            match self
+                .evaluate_reference_arg(arg, cell)
+                .into_single_area(cell)
+            {
                 CalcResult::Range { left, right } => {
                     let v = self.values_from_range(left, right)?;
                     values.extend(v.into_iter().flatten())
@@ -30,6 +34,7 @@ impl Model {
                     }
                 },
                 CalcResult::Number(n) => values.push(n),
+                error @ CalcResult::Error { .. } => return Err(error),
                 // Excel: a text value or a blank single-cell reference is #VALUE!, while
                 // text/blanks inside ranges are skipped (coercion.md, MODE; T-0947). A
                 // single-cell reference to text is unprobed, so it keeps being skipped.
