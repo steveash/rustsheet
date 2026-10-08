@@ -1,0 +1,48 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1143: companion (x)=0 cells for subnormal number text and subnormal tails. A=formula, B=(A)=0 (FALSE means a kept subnormal, TRUE a true 0; Graph reports both as 0.0 in A).",
+  "tags": [
+    "M1",
+    "probe",
+    "numeric",
+    "subnormal"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=(\"1e-308\"+0)",
+        "B1": "=((\"1e-308\"+0))=0",
+        "A2": "=(\"1e-308\"-0)",
+        "B2": "=((\"1e-308\"-0))=0",
+        "A3": "=VALUE(\"1e-309\")",
+        "B3": "=(VALUE(\"1e-309\"))=0",
+        "A4": "=VALUE(\"1e-308\")",
+        "B4": "=(VALUE(\"1e-308\"))=0",
+        "A5": "=CSCH(710)",
+        "B5": "=(CSCH(710))=0",
+        "A6": "=NORM.S.DIST(-37.6,TRUE)",
+        "B6": "=(NORM.S.DIST(-37.6,TRUE))=0",
+        "A7": "=NORM.S.DIST(-37.75,TRUE)",
+        "B7": "=(NORM.S.DIST(-37.75,TRUE))=0",
+        "A8": "=NORM.S.DIST(-38,TRUE)",
+        "B8": "=(NORM.S.DIST(-38,TRUE))=0",
+        "A9": "=NORM.S.DIST(-37.6,FALSE)",
+        "B9": "=(NORM.S.DIST(-37.6,FALSE))=0",
+        "A10": "=NORM.S.DIST(-37.75,FALSE)",
+        "B10": "=(NORM.S.DIST(-37.75,FALSE))=0",
+        "A11": "=NORM.S.DIST(-38,FALSE)",
+        "B11": "=(NORM.S.DIST(-38,FALSE))=0",
+        "A12": "=PHI(-37.7)",
+        "B12": "=(PHI(-37.7))=0",
+        "A13": "=NORM.DIST(19,0,0.5,FALSE)",
+        "B13": "=(NORM.DIST(19,0,0.5,FALSE))=0",
+        "A14": "=ERFC(26.7)",
+        "B14": "=(ERFC(26.7))=0",
+        "A15": "=ERFC.PRECISE(26.7)",
+        "B15": "=(ERFC.PRECISE(26.7))=0"
+      }
+    }
+  ],
+  "expected": {}
+}
