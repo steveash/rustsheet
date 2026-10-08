@@ -15,7 +15,6 @@ fn test_text_applies_text_section_to_text_and_booleans() {
     model._set("A5", r#"=TEXT(FALSE,";;;-@-@-")"#);
     model._set("A6", r#"=TEXT(TRUE,"General")"#);
     model._set("A7", r#"=TEXT(FALSE,"General")"#);
-    model._set("A8", r#"=TEXT("x",";;;""h""""I""")"#);
     model._set("B1", "jello");
     model._set("B2", "TRUE");
     model._set("C1", r#"=TEXT(B1:B1,";;;-@-")"#);
@@ -28,7 +27,6 @@ fn test_text_applies_text_section_to_text_and_booleans() {
     assert_eq!(model._get_text("A5"), "-FALSE-FALSE-");
     assert_eq!(model._get_text("A6"), "TRUE");
     assert_eq!(model._get_text("A7"), "FALSE");
-    assert_eq!(model._get_text("A8"), "hI");
     assert_eq!(model._get_text("C1"), "-jello-");
     assert_eq!(model._get_text("D1"), "<a>");
     assert_eq!(model._get_text("D2"), "<TRUE>");

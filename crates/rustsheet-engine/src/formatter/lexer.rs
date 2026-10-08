@@ -129,10 +129,11 @@ impl Lexer {
         while position < len {
             let x = self.chars[position];
             position += 1;
-            // A doubled quote is not an escape in a format code: `"h""I"` is the two literals
-            // "h" and "I" and prints "hI" (poi TextFormatTests A4, A14, A23, Excel-cached).
             if x != '"' {
                 chars.push(x);
+            } else if position < len && self.chars[position] == '"' {
+                chars.push(x);
+                position += 1;
             } else {
                 self.position = position;
                 return Some(chars);

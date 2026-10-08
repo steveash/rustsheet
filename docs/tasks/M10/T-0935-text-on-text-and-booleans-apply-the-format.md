@@ -3,10 +3,10 @@ id: T-0935
 title: "TEXT on text and booleans: apply the format's text section (28 known failures)"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -40,3 +40,14 @@ A text section with no `@` (A3, A4, A5) prints only its literals.
 ## Out of scope
 Text values with a format that has no text section, such as `TEXT("jello","0.00")`. There is no
 evidence here; use `excel-probe` and file a follow-up if needed.
+
+## Handoff
+Done on this branch (sonnet run): `format_text_value` (formatter/format.rs) and its use in `fn_text` for
+text/boolean scalars and array elements, unit test `text_functions/fn_text_sections.rs`, 25 of the 28 poi
+cells fixed (baseline refreshed).
+Remaining: TextFormatTests Tests!A4, A14, A23 (`;;;"h""I"`, expected "hI", actual `h"I`). The fix is in
+`consume_string` (formatter/lexer.rs): drop the `""` escape branch. I tried it; it fixed the 3 cells but
+broke `formatter::test::test_general::test_string_double_quota` (`0 """Millions"""` expects
+`42 "Millions"`, an IronCalc-era test without Excel evidence). Resolving that needs an excel-probe of
+`"""x"""` and similar shapes, then updating that test with the evidence. Acceptance criteria 1 (all 28
+lines) is open until then.
