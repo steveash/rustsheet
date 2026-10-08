@@ -3,7 +3,7 @@ id: T-0274
 title: "LOOKUP: INDEX result_vector reads past its end like a reference"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-0269: probes/lookup-vector-edges Calc!A9 and A12 expect 8 (G1), the e
 
 ## Out of scope
 -
+
+## Outcome
+`lookup_result` evaluates an `INDEX(...)` result_vector through `index_impl(.., true)` so it stays a reference and reads past its end like `F1`. probes/lookup-vector-edges now passes in full (probes known failures 260 -> 258, no regressions).
