@@ -1,3 +1,4 @@
+use crate::calc_result::Range;
 use chrono::Datelike;
 
 use crate::{
@@ -813,9 +814,11 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => values.push(value),
                 CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        values.push(value);
-                    }) {
+                    if let Err(error) =
+                        self.for_each_number_in_areas(&[Range { left, right }], cell, |value| {
+                            values.push(value);
+                        })
+                    {
                         return error;
                     }
                 }

@@ -1,3 +1,4 @@
+use crate::calc_result::Range;
 use crate::{
     calc_result::CalcResult,
     expressions::{
@@ -107,8 +108,10 @@ impl Model {
                     // The walk is clipped to the used area: a whole-column argument such as
                     // `OR(F:LSE)` must not visit (and record a read of) billions of empty
                     // cells (CLAUDE.md directive 5, T-0230). Empty cells are ignored anyway.
-                    let walk =
-                        self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                    let walk = self.for_each_cell_or_error_in_areas(
+                        &[Range { left, right }],
+                        cell,
+                        |_, value| {
                             match value {
                                 CalcResult::Boolean(value) => result = Some(fold_fn(result, value)),
                                 CalcResult::Number(value) => {
@@ -129,7 +132,8 @@ impl Model {
                                 }
                             }
                             Ok(())
-                        });
+                        },
+                    );
                     if let Err(error) = walk {
                         return error;
                     }

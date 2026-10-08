@@ -5,6 +5,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::to_excel_precision;
+use crate::reference_operators::RefArg;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -30,15 +31,15 @@ impl Model {
     ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
+                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                         result = pick(value, result);
                     }) {
                         return error;
                     }
                 }
-                CalcResult::Array(array) => {
+                RefArg::Value(CalcResult::Array(array)) => {
                     for node in array.into_iter().flatten() {
                         match node {
                             ArrayNode::Number(value) => result = pick(value, result),
@@ -50,7 +51,7 @@ impl Model {
                         }
                     }
                 }
-                value => match self.cast_aggregate_arg_to_number(value, cell) {
+                RefArg::Value(value) => match self.cast_aggregate_arg_to_number(value, cell) {
                     Ok(value) => result = pick(value, result),
                     Err(error) => return error,
                 },
@@ -240,19 +241,17 @@ impl Model {
                 },
                 _ => arg,
             };
-            let cell_value = self.evaluate_aggregate_arg(arg, cell);
-
-            match cell_value {
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
+                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                         seen_value = true;
                         result = flush_subnormal(result * value);
                     }) {
                         return error;
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                calc_result => {
+                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                RefArg::Value(calc_result) => {
                     seen_value = true;
                     let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {

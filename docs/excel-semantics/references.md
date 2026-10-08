@@ -425,10 +425,17 @@ formula length. In a value context a union
 keeps only its area count, not the areas. Excel's limits, if any, are not known, and neither is
 its result past them; it would differ where later cuts bring the areas back down to one, or where
 a later operand's error would come first.
+The area cap bounds the length of an area list, not the work of walking it: `MAX_AREAS` copies of
+`A:A` fit in a short formula. So an aggregate argument of several areas (`SUM((A:A,C:C))`) first
+adds up the cells of its areas, each clipped to its sheet's used area, in saturating arithmetic
+and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
+columns) is `#VALUE!`. The bound is per argument, as a plain range argument's work already is.
+Excel's limit, if any, is not known.
 Status: DEVIATION (decision 0014)
-Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `Model::union_areas`,
-`Model::count_union_areas`, `Model::intersect_areas`)
-Tasks: T-0134
+Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `MAX_AREA_CELLS`,
+`Model::union_areas`, `Model::count_union_areas`, `Model::intersect_areas`); functions/util.rs
+(`Model::check_area_cells`)
+Tasks: T-0134, T-1062
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -460,10 +467,15 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   So the engine must not wrap a union in `@` when printing a legacy formula.
 - `AREAS(Data1:Data3!A1)` is `#VALUE!`. A workbook holding `AREAS(1)` or `AREAS("A1")` is refused by Excel for the web
   (`createSession` 501 `unsupportedWorkbook`, two scratch runs, not kept as cases, like the T-0138 refusals).
-Status: VERIFIED (Excel for the web)
-Implemented in: only AGGREGATE and the intersection take a union today; SPEC-0004 and T-1062 to T-1065, T-1068
-to T-1073 implement the rest.
-Tasks: T-1061
+- Engine choice, not probed: ISREF of a cross-sheet union written in place (`ISREF((Data!A1,A1))`) is
+  FALSE, as for the cross-sheet name above, since the engine reads both through the same evaluator.
+Status: VERIFIED (Excel for the web), except the engine choice marked above
+Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
+(`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
+MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`) walks the areas one after the
+other (`Model::for_each_cell_in_areas`). SPEC-0004 and T-1063 to T-1065, T-1068 to T-1073 implement the rest;
+until then LARGE, RANK, CONCAT, TEXTJOIN and a union inside IF keep `#VALUE!` (`RefArg::into_single_area`).
+Tasks: T-1061, T-1062
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15

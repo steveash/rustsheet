@@ -830,7 +830,9 @@ impl Model {
             LambdaCallKind { lambda, args } => {
                 // With a reference kept as one, a cell and an INDEX or IF that selects one
                 // included: a called reference is `#REF!` (`call_callee`).
-                let lambda_result = self.evaluate_aggregate_arg(lambda, cell);
+                let lambda_result = self
+                    .evaluate_reference_arg(lambda, cell)
+                    .into_single_area(cell);
                 self.call_callee(lambda_result, args, cell)
             }
         }

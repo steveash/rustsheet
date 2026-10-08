@@ -1015,14 +1015,11 @@ impl Model {
         }
     }
 
-    /// Clips a whole-column or whole-row range to the sheet's used area, so
-    /// that a function walking it visits only the cells that can hold
-    /// something. Returns the bottom-right corner to walk to. The cells the
-    /// walk will skip are put on record as read empty first: the formula
-    /// depends on them, and a spill into them must restart the pass, however
-    /// the used area changes while the walk runs.
-    pub(crate) fn clip_to_used_area(
-        &mut self,
+    /// The bottom-right corner of the range `row1:column1..=row2:column2` once a whole-column
+    /// or whole-row range is clipped to the sheet's used area; any other range is unchanged.
+    /// Reads nothing and records nothing (see [`Self::clip_to_used_area`]).
+    pub(crate) fn used_area_corner(
+        &self,
         sheet: u32,
         row1: i32,
         column1: i32,
@@ -1041,6 +1038,27 @@ impl Model {
             .used_area_end();
         let last_row = if whole_rows { max_row } else { row2 };
         let last_column = if whole_columns { max_column } else { column2 };
+        Ok((last_row, last_column))
+    }
+
+    /// Clips a whole-column or whole-row range to the sheet's used area, so
+    /// that a function walking it visits only the cells that can hold
+    /// something. Returns the bottom-right corner to walk to. The cells the
+    /// walk will skip are put on record as read empty first: the formula
+    /// depends on them, and a spill into them must restart the pass, however
+    /// the used area changes while the walk runs.
+    pub(crate) fn clip_to_used_area(
+        &mut self,
+        sheet: u32,
+        row1: i32,
+        column1: i32,
+        row2: i32,
+        column2: i32,
+    ) -> Result<(i32, i32), String> {
+        let (last_row, last_column) = self.used_area_corner(sheet, row1, column1, row2, column2)?;
+        if (last_row, last_column) == (row2, column2) {
+            return Ok((row2, column2));
+        }
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);

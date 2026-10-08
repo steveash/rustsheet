@@ -1,4 +1,5 @@
 use crate::arithmetic::flush_subnormal;
+use crate::calc_result::Range;
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -93,11 +94,13 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => values.push(value),
                 CalcResult::Range { left, right } => {
-                    if let Err(error) =
-                        self.for_each_coerced_number_in_range(left, right, cell, |value| {
+                    if let Err(error) = self.for_each_coerced_number_in_areas(
+                        &[Range { left, right }],
+                        cell,
+                        |value| {
                             values.push(value);
-                        })
-                    {
+                        },
+                    ) {
                         return error;
                     }
                 }

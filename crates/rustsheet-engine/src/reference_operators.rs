@@ -1,6 +1,8 @@
 //! Evaluation of the reference operators: the range (`:`), the intersection (a space) and
 //! the union (a comma inside parentheses).
 
+use std::{ops::Deref, rc::Rc};
+
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
@@ -27,6 +29,104 @@ pub(crate) const TOO_MANY_AREAS: &str = "Too many areas in a reference";
 /// Message of the `#VALUE!` for an expression comparing more than [`MAX_AREA_PAIRS`] pairs.
 pub(crate) const TOO_MANY_AREA_PAIRS: &str = "Too many areas to intersect";
 
+/// Most cells one multi-area argument may walk, counted over its areas clipped to the used
+/// area. The area cap bounds the length of an area list, not the work of walking it:
+/// `MAX_AREAS` copies of `A:A` fit in a short formula. Past the bound the argument is
+/// `#VALUE!`, found before any cell is walked (DEVIATION, decision 0014: references.md "Union
+/// area cap").
+pub(crate) const MAX_AREA_CELLS: u64 = 1 << 24;
+
+/// Message of the `#VALUE!` for a multi-area argument of more than [`MAX_AREA_CELLS`] cells.
+pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a reference";
+
+/// The areas of a reference that has more than one, in formula order, duplicates kept
+/// (`SUM((A1:B2,B2))` counts B2 twice, probes/multiarea-agg H3): 2..=[`MAX_AREAS`] ranges, all
+/// on one sheet, each with its corners in order. Shared, so a copy is never made on read.
+#[derive(Clone)]
+pub(crate) struct Areas(Rc<[Range]>);
+
+/// The ranges a reference argument stands for: one range (a 3-D reference included, whose
+/// corners sit on two sheets), or the areas of a multi-area reference. Derefs to the ranges in
+/// formula order; a single range is borrowed, never copied.
+#[derive(Clone)]
+pub(crate) enum Ranges {
+    One(Range),
+    Areas(Areas),
+}
+
+impl Ranges {
+    /// The ranges of an area list built by [`Model::reference_areas`]: one area is a plain
+    /// range; several must sit on one sheet, as a reference across sheets is `#VALUE!` where a
+    /// function takes a union (`SUM((Data!A1,Other!A1))`, probes/multiarea-xsheet).
+    fn from_list(mut areas: Vec<Range>, cell: CellReferenceIndex) -> Result<Ranges, CalcResult> {
+        if areas.len() > MAX_AREAS {
+            return Err(too_many_areas(cell));
+        }
+        let Some(first) = areas.first() else {
+            return Err(empty_intersection(cell));
+        };
+        let sheet = first.left.sheet;
+        if areas
+            .iter()
+            .any(|area| area.left.sheet != sheet || area.right.sheet != sheet)
+        {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Reference of areas on several sheets".to_string(),
+            ));
+        }
+        if areas.len() == 1 {
+            if let Some(area) = areas.pop() {
+                return Ok(Ranges::One(area));
+            }
+        }
+        Ok(Ranges::Areas(Areas(Rc::from(areas))))
+    }
+}
+
+impl Deref for Ranges {
+    type Target = [Range];
+
+    fn deref(&self) -> &[Range] {
+        match self {
+            Ranges::One(range) => std::slice::from_ref(range),
+            Ranges::Areas(Areas(areas)) => areas,
+        }
+    }
+}
+
+/// What a reference-accepting argument evaluates to ([`Model::evaluate_reference_arg`]). Kept
+/// apart from [`CalcResult`] so that a reference of several areas reaches only the code that
+/// asks for one; everywhere a value is needed it stays `#VALUE!` (SPEC-0004).
+pub(crate) enum RefArg {
+    /// A reference: one range or several areas.
+    Ranges(Ranges),
+    /// Anything else: a value, an array or an error. Never a `CalcResult::Range`.
+    Value(CalcResult),
+}
+
+impl From<CalcResult> for RefArg {
+    fn from(result: CalcResult) -> RefArg {
+        match result {
+            CalcResult::Range { left, right } => RefArg::Ranges(Ranges::One(Range { left, right })),
+            other => RefArg::Value(other),
+        }
+    }
+}
+
+impl RefArg {
+    /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
+    /// as in a value context, and one range is a `CalcResult::Range`.
+    pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            RefArg::Ranges(Ranges::One(Range { left, right })) => CalcResult::Range { left, right },
+            RefArg::Ranges(Ranges::Areas(_)) => several_areas(cell),
+            RefArg::Value(value) => value,
+        }
+    }
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
 fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
@@ -40,7 +140,7 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
 /// An intersection is multi-area only if a union sits somewhere under it: a chain of
 /// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
 /// Recursion is bounded by the parser's depth cap.
-fn is_multi_area(node: &Node) -> bool {
+pub(crate) fn is_multi_area(node: &Node) -> bool {
     match node {
         Node::OpUnionKind { .. } => true,
         Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
@@ -208,8 +308,8 @@ impl Model {
     /// A 3-D reference as an aggregate argument: one `Range` whose corners sit on the first
     /// and the last sheet of the span in tab order, whichever way it was written
     /// (`Data3:Data1!A1` is `Data1:Data3!A1`, probes/3d-ref-aggregates C2). Only
-    /// [`Model::evaluate_aggregate_arg`] builds a `Range` across sheets, and
-    /// [`Model::for_each_cell_or_error_in_range`] walks it sheet by sheet.
+    /// [`Model::evaluate_reference_arg`] builds a `Range` across sheets, and
+    /// [`Model::for_each_cell_or_error_in_areas`] walks it sheet by sheet.
     pub(crate) fn get_sheet_span_range(
         &mut self,
         first_index: u32,
@@ -277,8 +377,8 @@ impl Model {
     }
 
     /// `(left,right)`, the union operator, where a value is needed: `#VALUE!`, even for
-    /// `(E4,E4)` (gen-m1/c940d3cfb0d3b083). The engine has no multi-area value yet (T-0133),
-    /// so this is also what a function argument gets. An operand's own error comes first
+    /// `(E4,E4)` (gen-m1/c940d3cfb0d3b083). A function that takes a union reads it through
+    /// [`Model::evaluate_reference_arg`] instead. An operand's own error comes first
     /// (UNVERIFIED, references.md). The operands are checked in the order
     /// [`Model::union_areas`] evaluates them, with the same errors, but only their area counts
     /// are kept.
@@ -295,17 +395,17 @@ impl Model {
         }
     }
 
-    /// Whether `(left,right)` evaluates to a reference: a union with an error operand (`(A1,#REF!)`)
-    /// is that error, not a reference (probes/union-accepted H9, docs/excel-semantics/references.md).
-    pub(crate) fn union_is_reference(
+    /// The ranges of a reference expression that may stand for several areas (a union, or an
+    /// intersection with one under it), or the result to give instead: an operand's error, in
+    /// formula order, or `#VALUE!` (see [`Ranges::from_list`]). One area left is a plain range
+    /// (`SUM((A1:A3,B1:B3) A1:A2)`); two are both walked (probes/multiarea-intersect H1).
+    pub(crate) fn reference_ranges(
         &mut self,
-        left: &Node,
-        right: &Node,
+        node: &Node,
         cell: CellReferenceIndex,
-    ) -> bool {
-        let mut budget = MAX_AREA_PAIRS;
-        self.count_union_areas(left, right, cell, &mut budget)
-            .is_ok()
+    ) -> Result<Ranges, CalcResult> {
+        let areas = self.reference_areas(node, cell)?;
+        Ranges::from_list(areas, cell)
     }
 
     /// The areas of a reference argument: several for a union, one for any other reference.

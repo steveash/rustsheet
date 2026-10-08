@@ -1,3 +1,4 @@
+use crate::calc_result::Range;
 use crate::tz::Tz;
 use chrono::Datelike;
 use chrono::Months;
@@ -456,19 +457,21 @@ impl Model {
                 handle(serial)?;
             }
             CalcResult::Range { left, right } => {
-                self.for_each_cell_in_range(left, right, cell, |model, value| match value {
-                    CalcResult::Number(v) => {
-                        let serial = v.floor() as i64;
-                        model.excel_date(serial, cell)?;
-                        handle(serial)
+                self.for_each_cell_in_areas(&[Range { left, right }], cell, |model, value| {
+                    match value {
+                        CalcResult::Number(v) => {
+                            let serial = v.floor() as i64;
+                            model.excel_date(serial, cell)?;
+                            handle(serial)
+                        }
+                        // ignore empty cells
+                        CalcResult::EmptyCell => Ok(()),
+                        _ => Err(CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Invalid holiday date".to_string(),
+                        )),
                     }
-                    // ignore empty cells
-                    CalcResult::EmptyCell => Ok(()),
-                    _ => Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Invalid holiday date".to_string(),
-                    )),
                 })?;
             }
             CalcResult::Array(array) => {
