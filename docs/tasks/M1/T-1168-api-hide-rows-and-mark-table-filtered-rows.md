@@ -3,7 +3,7 @@ id: T-1168
 title: "API: hide rows and mark table-filtered rows in an edit transaction"
 milestone: M1
 lane: api
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
