@@ -103,7 +103,7 @@ impl Model {
 
     /// XLOOKUP over an array `lookup_array` (`XLOOKUP(2,{1;2;3},B1:B3)`, probes/isref-reference-lookups
     /// H10) with a range `return_array`, linear search modes only: the match position picks the
-    /// return range's cell, as a reference when `as_reference`. A non-range return_array is `#N/A`.
+    /// return range's cell, as a reference when `as_reference`. A return range of a different size is `#VALUE!`, as in the range path. A non-range return_array is unsupported here (Excel gives its element, e.g. 5 for `XLOOKUP(2,{1;2;3},{4;5;6})`; unprobed, T-1126 follow-up); it answers `#VALUE!` like the range path.
     fn xlookup_array_lookup(
         &mut self,
         lookup_value: &CalcResult,
@@ -133,8 +133,20 @@ impl Model {
             right: result_right,
         } = self.evaluate_node_in_context(return_node, cell)
         else {
-            return CalcResult::new_error(Error::NA, cell, "Range expected".to_string());
+            return CalcResult::new_error(Error::VALUE, cell, "Range expected".to_string());
         };
+        // The same shape rule as the range path: a wide return range only for a column vector.
+        let return_rows = result_right.row - result_left.row + 1;
+        let return_columns = result_right.column - result_left.column + 1;
+        if usize::try_from(return_rows) != Ok(rows)
+            || (!vertical && usize::try_from(return_columns) != Ok(columns))
+        {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Arrays must be of the same size".to_string(),
+            );
+        }
         match linear_search(lookup_value, &values, search_mode, match_mode) {
             Some(index) => {
                 let (row_offset, column_offset) = if vertical {

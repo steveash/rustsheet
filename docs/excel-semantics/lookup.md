@@ -213,5 +213,5 @@ return range, and a wide return range with a different row count (`#VALUE!` is a
 Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
 Array lookup_array (T-1126): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
 reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). Implemented for the linear search modes only
-(`xlookup_array_lookup`); binary search modes over an array are unprobed.
+(`xlookup_array_lookup`); binary search modes over an array, an array return_array (Excel should give its element; the engine answers `#VALUE!`), a 2-D lookup array, a row array with a row return range and mismatched sizes are unprobed.
 Tasks: T-0948

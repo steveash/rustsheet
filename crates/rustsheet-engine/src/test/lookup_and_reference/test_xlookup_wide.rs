@@ -55,3 +55,13 @@ fn array_lookup_array_picks_from_the_return_range() {
     assert_eq!(model._get_text("E2"), *"TRUE");
     assert_eq!(model._get_text("E3"), *"none");
 }
+
+#[test]
+fn array_lookup_array_with_a_mismatched_return_range_is_value_error() {
+    let mut model = model();
+    model._set("E1", "=XLOOKUP(3,{1;2;3},B1:B2)");
+    model._set("E2", "=XLOOKUP(3,{1;2;3},5)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), *"#VALUE!");
+    assert_eq!(model._get_text("E2"), *"#VALUE!");
+}
