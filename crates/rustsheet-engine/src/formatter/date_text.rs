@@ -305,6 +305,7 @@ pub(crate) fn parse_date(
     if value.contains(" -") || value.contains("- ") || value.contains(" /") || value.contains("/ ")
     {
         let compact = remove_separator_spaces(value);
+        // The compact text has no such space, so the recursion ends after one level.
         if compact != value {
             return parse_date(&compact, locale, current_year);
         }
