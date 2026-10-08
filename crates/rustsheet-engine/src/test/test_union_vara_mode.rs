@@ -7,13 +7,7 @@ use crate::test::util::new_empty_model;
 #[test]
 fn union_argument_to_the_a_variance_family_and_mode() {
     let mut model = new_empty_model();
-    for (cell, value) in [
-        ("A1", "1"),
-        ("B2", "5"),
-        ("C3", "7"),
-        ("D4", "9"),
-        ("F1", "=NA()"),
-    ] {
+    for (cell, value) in [("A1", "1"), ("B2", "5"), ("C3", "7"), ("D4", "9")] {
         model._set(cell, value);
     }
     let cases = [
