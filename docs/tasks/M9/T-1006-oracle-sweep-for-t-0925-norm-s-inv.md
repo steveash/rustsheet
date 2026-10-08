@@ -32,7 +32,7 @@ Grid: p = NORM.S.DIST(k,TRUE) for k in -38..8 step 0.25, plus literal tails p = 
 ## Outcome
 Added `probes-numeric/m9-norm-s-inv` (648 cells) with its excel-graph oracle sidecar (no pending cells). 447 of 639 cells differ from the engine (438 ulp, 3 close, 6 flushed-tail `#NUM!`); quirks in numbers.md. T-0925 already depends on T-1006 (not T-0942). Eval gates unchanged (probes-numeric is ungated).
 
-## Handoff
+## Handoff (resumed)
 Tried: built `probes-numeric/m9-norm-s-inv` (648 cells incl. A640-A648 flush probes), filled from excel-graph, `make check` green; security, architecture, quality approved. The fidelity reviewer requested changes twice on the numbers.md section "oracle sweep (T-1006)" (data is sound).
 Open items from round 2 (all doc-only except where noted):
 - A648 `NORM.S.INV(2.3E-308-1E-309)` is not a subnormal p: the literal 1E-309 reads as 0 (see numbers.md T-0189/T-1007), so it equals NORM.S.INV(2.3E-308). Relabel it, or replace it with a subtraction-built subnormal such as `2.3E-308-2E-308` (remove the old sidecar for this case only, then `rustsheet-oracle fill`). Only A647 shows NORM.S.INV accepting a subnormal p.
