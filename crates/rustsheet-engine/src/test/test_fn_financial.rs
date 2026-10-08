@@ -23,7 +23,7 @@ fn fn_arguments() {
 
     model._set("E1", "=RATE()");
     model._set("E2", "=RATE(1,1)");
-    model._set("E3", "=RATE(1,1,1,1,1,1)");
+    model._set("E3", "=RATE(1,1,1,1,1,1,1)");
 
     model.evaluate();
 
@@ -46,6 +46,23 @@ fn fn_arguments() {
     assert_eq!(model._get_text("E1"), *"#ERROR!");
     assert_eq!(model._get_text("E2"), *"#ERROR!");
     assert_eq!(model._get_text("E3"), *"#ERROR!");
+}
+
+// RATE takes 3 to 6 arguments; the sixth is the guess (T-1050, probes-numeric/m9-fin-irr-rate).
+#[test]
+fn fn_rate_guess_argument() {
+    let mut model = new_empty_model();
+    model._set("A1", "=RATE(10,-100,800,0,0,0.1)");
+    model._set("A2", "=RATE(10,-100,800)");
+    model.evaluate();
+
+    let Ok(CellValue::Number(with_guess)) = model.get_cell_value_by_ref("Sheet1!A1") else {
+        panic!("RATE with a guess should be a number");
+    };
+    let Ok(CellValue::Number(without_guess)) = model.get_cell_value_by_ref("Sheet1!A2") else {
+        panic!("RATE without a guess should be a number");
+    };
+    assert!((with_guess - without_guess).abs() < 1e-9);
 }
 
 #[test]
