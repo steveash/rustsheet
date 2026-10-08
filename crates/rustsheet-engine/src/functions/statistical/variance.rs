@@ -77,7 +77,7 @@ impl Model {
     }
 
     /// VARA / VARPA / STDEVA / STDEVPA: like `variance_of_values`, but a range argument
-    /// coerces its cells (`for_each_coerced_number_in_range`).
+    /// coerces its cells (`for_each_coerced_number_in_areas`).
     pub(crate) fn variance_of_values_a(
         &mut self,
         args: &[Node],

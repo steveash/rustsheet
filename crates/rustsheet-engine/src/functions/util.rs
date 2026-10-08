@@ -269,8 +269,10 @@ impl Model {
     }
 
     /// Calls `f` with the position of every cell of `areas`, as
-    /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that skip cells by position (AGGREGATE's hidden
-    /// rows and nested SUBTOTAL/AGGREGATE cells). An `Err` from `f` stops the walk.
+    /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that
+    /// skip cells by position (AGGREGATE's hidden rows and nested SUBTOTAL/AGGREGATE cells).
+    /// Several areas are first held to [`MAX_AREA_CELLS`]; one range is not, as before.
+    /// An `Err` from `f` stops the walk.
     pub(crate) fn for_each_position_in_areas<F>(
         &mut self,
         areas: &[Range],

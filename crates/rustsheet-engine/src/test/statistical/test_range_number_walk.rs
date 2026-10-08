@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-// `for_each_number_in_range` is the shared reference walk behind SUMSQ, NPV,
+// `for_each_number_in_areas` is the shared reference walk behind SUMSQ, NPV,
 // DEVSQ, VAR, ...: numbers count, text/booleans/empties are skipped, the first
 // error cell wins, and cross-sheet ranges are #VALUE!.
 
