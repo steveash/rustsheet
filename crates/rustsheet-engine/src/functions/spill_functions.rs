@@ -70,26 +70,9 @@ fn cell_key(node: &ArrayNode) -> CellKey {
         ArrayNode::Number(n) => CellKey::Number(n.to_bits()),
         ArrayNode::Boolean(b) => CellKey::Boolean(*b),
         ArrayNode::String(s) => CellKey::Str(s.to_uppercase()),
-        ArrayNode::Error(e) => CellKey::Error(error_discriminant(e)),
+        // ERROR.TYPE codes are distinct per kind, so they key errors exactly.
+        ArrayNode::Error(e) => CellKey::Error(e.error_type_code()),
         ArrayNode::Empty => CellKey::Empty,
-    }
-}
-
-fn error_discriminant(e: &crate::expressions::token::Error) -> u8 {
-    use crate::expressions::token::Error;
-    match e {
-        Error::REF => 0,
-        Error::NAME => 1,
-        Error::VALUE => 2,
-        Error::DIV => 3,
-        Error::NA => 4,
-        Error::NUM => 5,
-        Error::ERROR => 6,
-        Error::NIMPL => 7,
-        Error::SPILL => 8,
-        Error::CALC => 9,
-        Error::CIRC => 10,
-        Error::NULL => 11,
     }
 }
 

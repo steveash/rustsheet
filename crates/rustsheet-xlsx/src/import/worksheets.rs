@@ -6,7 +6,7 @@ use rustsheet_engine::expressions::parser::{
 use std::{collections::HashMap, io::Read, num::ParseIntError};
 
 use super::package::{part_folder_and_rels, resolve_target, Package};
-use super::rich_errors::load_value_metadata_errors;
+use super::rich_errors::{cached_error_name, load_value_metadata_errors};
 use super::xml::XmlNode;
 use rustsheet_engine::{
     expressions::{
@@ -355,16 +355,6 @@ pub(super) enum CellArrayKind {
     None,
     DynamicArray(i32, i32),
     ArrayFormula(i32, i32),
-}
-
-/// The error a cell caches, `cell_value`. Excel caches the errors older readers do not know
-/// (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` and keeps the real one in its value metadata,
-/// `rich_error` (see [`super::rich_errors`]); an error the engine has no kind for stays `#VALUE!`.
-fn cached_error_name<'a>(cell_value: Option<&'a str>, rich_error: Option<&'a str>) -> &'a str {
-    match (cell_value, rich_error) {
-        (Some("#VALUE!"), Some(real)) if get_error_by_english_name(real).is_some() => real,
-        _ => cell_value.unwrap_or("#ERROR!"),
-    }
 }
 
 // FIXME

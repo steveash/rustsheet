@@ -52,7 +52,7 @@ use crate::number_format::parse_excel_number;
 use crate::language::Language;
 use crate::locale::Locale;
 
-use super::token::{Error, TokenType};
+use super::token::{starts_with_getting_data, Error, TokenType};
 use super::types::*;
 use super::utils;
 
@@ -802,6 +802,11 @@ impl Lexer {
         } else if rest_of_formula.starts_with(&errors.circ) {
             self.position += errors.circ.chars().count() - 1;
             return TokenType::Error(Error::CIRC);
+        } else if starts_with_getting_data(&rest_of_formula) {
+            // An en-US constant, matched in any case (SPEC-0003). `#BLOCKED!`, `#CONNECT!` and
+            // `#FIELD!` stay unparseable, as Excel refuses them (T-0175).
+            self.position += "#GETTING_DATA".len() - 1;
+            return TokenType::Error(Error::GETTINGDATA);
         }
         // If it is not an error it _might_ be a spill operator.
         TokenType::Spill
