@@ -735,27 +735,6 @@ impl Model {
         }
     }
 
-    /// Like [`Model::get_reference`], but a reference of several areas comes back as its
-    /// [`Ranges`] (probes/multiarea-cellfn, multiarea-cellfn-types: CELL and ROW read a union).
-    pub(crate) fn get_reference_ranges(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<Ranges, CalcResult> {
-        if !is_multi_area(node) {
-            return self.get_reference(node, cell).map(Ranges::One);
-        }
-        match self.evaluate_reference_arg(node, cell) {
-            RefArg::Ranges(ranges) => Ok(ranges),
-            RefArg::Value(value) if value.is_error() => Err(value),
-            RefArg::Value(_) => Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Expected reference".to_string(),
-            )),
-        }
-    }
-
     /// Rows and columns of the reference or array that ROWS/COLUMNS count. An array
     /// is counted, never read: `ROWS(NA()-{1;2;3})` is 3 although every element is
     /// `#N/A` (probes/error-operand-broadcast C1, C3, C6-C8, C10). A non-reference,

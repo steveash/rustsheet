@@ -440,23 +440,20 @@ impl Model {
         if arg_count == 0 || arg_count > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // The areas of the reference; a union is read through its first area for every info type
-        // but "address", which lists them all (probes/multiarea-cellfn-types H1:H7).
-        let areas = if arg_count == 2 {
-            match self.get_reference_ranges(&args[1], cell) {
-                Ok(ranges) => ranges.iter().map(|range| range.left).collect(),
+        // A union is read through its first area for every info type but "address", which lists
+        // them all (probes/multiarea-cellfn-types H1:H7).
+        let ranges = if arg_count == 2 {
+            match self.reference_ranges(&args[1], cell) {
+                Ok(ranges) => Some(ranges),
                 Err(error) => return error,
             }
         } else {
-            vec![CellReferenceIndex {
-                sheet: cell.sheet,
-                row: cell.row,
-                column: cell.column,
-            }]
+            None
         };
-        // we just take the top-left cell of the reference
-        let Some(&reference) = areas.first() else {
-            return CalcResult::new_error(Error::VALUE, cell, "Expected reference".to_string());
+        let reference = match ranges.as_deref().and_then(<[_]>::first) {
+            // we just take the top-left cell of the reference
+            Some(range) => range.left,
+            None => cell,
         };
         let info_type = match self.get_string(&args[0], cell) {
             Ok(s) => s.to_uppercase(),
@@ -471,8 +468,12 @@ impl Model {
                         message: "References to other sheets not implemented".to_string(),
                     };
                 }
-                let mut addresses = Vec::with_capacity(areas.len());
-                for area in &areas {
+                let lefts: Vec<CellReferenceIndex> = match ranges.as_deref() {
+                    Some(areas) => areas.iter().map(|range| range.left).collect(),
+                    None => vec![reference],
+                };
+                let mut addresses = Vec::with_capacity(lefts.len());
+                for area in &lefts {
                     let Some(column) = number_to_column(area.column) else {
                         return CalcResult::Error {
                             error: Error::VALUE,

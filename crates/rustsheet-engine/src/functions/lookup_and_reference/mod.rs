@@ -531,7 +531,7 @@ impl Model {
         if args.is_empty() {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
-        match self.get_reference_ranges(&args[0], cell) {
+        match self.reference_ranges(&args[0], cell) {
             // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
             // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
             Ok(Ranges::Areas(_)) => {
