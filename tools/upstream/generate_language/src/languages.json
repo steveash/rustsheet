@@ -517,7 +517,10 @@
       "seriessum": "SERIESSUM",
       "sumproduct": "SUMPRODUCT",
       "percentof": "PERCENTOF",
-      "encodeurl": "ENCODEURL"
+      "encodeurl": "ENCODEURL",
+      "image": "IMAGE",
+      "stockhistory": "STOCKHISTORY",
+      "fieldvalue": "FIELDVALUE"
     }
   },
   "it": {
@@ -1038,7 +1041,10 @@
       "seriessum": "SOMMA.SERIE",
       "sumproduct": "MATR.SOMMA.PRODOTTO",
       "percentof": "PERCENTUALE.DI",
-      "encodeurl": "CODIFICA.URL"
+      "encodeurl": "CODIFICA.URL",
+      "image": "IMAGE",
+      "stockhistory": "STOCKHISTORY",
+      "fieldvalue": "FIELDVALUE"
     }
   },
   "fr": {
@@ -1559,7 +1565,10 @@
       "seriessum": "SOMME.SERIE",
       "sumproduct": "SOMMEPROD",
       "percentof": "POURCENTDE",
-      "encodeurl": "URLENCODAGE"
+      "encodeurl": "URLENCODAGE",
+      "image": "IMAGE",
+      "stockhistory": "STOCKHISTORY",
+      "fieldvalue": "FIELDVALUE"
     }
   },
   "de": {
@@ -2080,7 +2089,10 @@
       "seriessum": "POTENZREIHE",
       "sumproduct": "SUMMENPRODUKT",
       "percentof": "PROZENTVON",
-      "encodeurl": "URLCODIEREN"
+      "encodeurl": "URLCODIEREN",
+      "image": "IMAGE",
+      "stockhistory": "STOCKHISTORY",
+      "fieldvalue": "FIELDVALUE"
     }
   },
   "es": {
@@ -2601,7 +2613,10 @@
       "seriessum": "SUMA.SERIE",
       "sumproduct": "SUMAPRODUCTO",
       "percentof": "PORCENTAJEDE",
-      "encodeurl": "URLCODIF"
+      "encodeurl": "URLCODIF",
+      "image": "IMAGE",
+      "stockhistory": "STOCKHISTORY",
+      "fieldvalue": "FIELDVALUE"
     }
   }
 }

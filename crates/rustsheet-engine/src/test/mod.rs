@@ -41,6 +41,7 @@ mod test_fn_is_array_lift;
 mod test_fn_maxifs;
 mod test_fn_minifs;
 mod test_fn_minute_second_rounding;
+mod test_fn_offline_errors;
 mod test_fn_or_xor;
 mod test_fn_power;
 mod test_fn_product;

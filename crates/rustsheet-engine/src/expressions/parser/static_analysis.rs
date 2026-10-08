@@ -510,6 +510,15 @@ fn args_signature_scalars(
     }
 }
 
+/// FIELDVALUE(value, field_name): `value` may be an array (the result then has its shape).
+fn args_signature_fieldvalue(arg_count: usize) -> Vec<Signature> {
+    if arg_count == 2 {
+        vec![Signature::Vector, Signature::Scalar]
+    } else {
+        vec![Signature::Error; arg_count]
+    }
+}
+
 fn args_signature_lambda(arg_count: usize) -> Vec<Signature> {
     // LAMBDA([param1, param2, ...], body) — at least 1 arg (the body)
     if arg_count == 0 {
@@ -1276,6 +1285,9 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Arraytotext => args_signature_arraytotext(arg_count),
         Function::Dollar => args_signature_scalars(arg_count, 1, 1),
         Function::Encodeurl => args_signature_scalars(arg_count, 1, 0),
+        Function::Image => args_signature_scalars(arg_count, 1, 4),
+        Function::Stockhistory => args_signature_scalars(arg_count, 2, 9),
+        Function::Fieldvalue => args_signature_fieldvalue(arg_count),
         Function::Findb => args_signature_scalars(arg_count, 2, 1),
         Function::Fixed => args_signature_scalars(arg_count, 1, 2),
         Function::Leftb => args_signature_scalars(arg_count, 1, 1),
@@ -1785,6 +1797,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
         Function::Encodeurl => not_implemented(args),
+        Function::Image | Function::Stockhistory => StaticResult::Scalar,
+        Function::Fieldvalue => StaticResult::Unknown,
         // The *B functions delegate to their non-B counterparts (byte_functions.rs), so they lift
         // over ranges exactly as FIND/LEFT/LEN/... do (T-0271).
         Function::Findb => scalar_arguments(args),

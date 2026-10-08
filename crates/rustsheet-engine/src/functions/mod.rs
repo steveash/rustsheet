@@ -228,6 +228,9 @@ pub enum Function {
     Arraytotext,
     Dollar,
     Encodeurl,
+    Image,
+    Stockhistory,
+    Fieldvalue,
     Findb,
     Fixed,
     Leftb,
@@ -780,6 +783,9 @@ impl_function_lookup! {
     arraytotext => Arraytotext,
     dollar      => Dollar,
     encodeurl   => Encodeurl,
+    image       => Image,
+    stockhistory => Stockhistory,
+    fieldvalue  => Fieldvalue,
     findb       => Findb,
     fixed       => Fixed,
     leftb       => Leftb,
@@ -1306,6 +1312,9 @@ impl Function {
             Function::Arraytotext => functions.arraytotext.clone(),
             Function::Dollar => functions.dollar.clone(),
             Function::Encodeurl => functions.encodeurl.clone(),
+            Function::Image => functions.image.clone(),
+            Function::Stockhistory => functions.stockhistory.clone(),
+            Function::Fieldvalue => functions.fieldvalue.clone(),
             Function::Findb => functions.findb.clone(),
             Function::Fixed => functions.fixed.clone(),
             Function::Leftb => functions.leftb.clone(),
@@ -1618,7 +1627,7 @@ impl Function {
         }
     }
 
-    pub fn into_iter() -> IntoIter<Function, 497> {
+    pub fn into_iter() -> IntoIter<Function, 500> {
         [
             Function::And,
             Function::False,
@@ -1767,6 +1776,9 @@ impl Function {
             Function::Arraytotext,
             Function::Dollar,
             Function::Encodeurl,
+            Function::Image,
+            Function::Stockhistory,
+            Function::Fieldvalue,
             Function::Findb,
             Function::Fixed,
             Function::Leftb,
@@ -2173,6 +2185,9 @@ impl Function {
             Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
             Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
+            Function::Image => "_xlfn.IMAGE".to_string(),
+            Function::Stockhistory => "_xlfn.STOCKHISTORY".to_string(),
+            Function::Fieldvalue => "_xlfn.FIELDVALUE".to_string(),
             Function::Rri => "_xlfn.RRI".to_string(),
             Function::Pduration => "_xlfn.PDURATION".to_string(),
             Function::Bitand => "_xlfn.BITAND".to_string(),
@@ -2429,6 +2444,9 @@ impl Model {
             Function::Arraytotext => self.fn_arraytotext(args, cell),
             Function::Dollar => self.fn_dollar(args, cell),
             Function::Encodeurl => self.fn_encodeurl(args, cell),
+            Function::Image => self.fn_image(args, cell),
+            Function::Stockhistory => self.fn_stockhistory(args, cell),
+            Function::Fieldvalue => self.fn_fieldvalue(args, cell),
             Function::Findb => self.fn_findb(args, cell),
             Function::Fixed => self.fn_fixed(args, cell),
             Function::Leftb => self.fn_leftb(args, cell),
