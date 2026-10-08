@@ -198,7 +198,7 @@ A blank lookup value (`G1`) never matches a 0, `""` or FALSE candidate in an exa
 D1=0, is #N/A, likewise D2 = `=""`, D3 = FALSE, and with search_mode 2/-2). With match_mode -1 the `""` and FALSE
 candidates are the next smaller item (`XMATCH(G1,D3:D3,-1)` is 1), with match_mode 1 they are #N/A. `XMATCH(G1,D:D)` is 4, the first blank. `XLOOKUP(G1,D1:D1,E1:E1,"nf")` is "nf" for all three candidates.
 Status: VERIFIED
-Implemented in: `linear_scan`/`compare_blank_last` (functions/lookup_and_reference/xmatch.rs): a blank candidate is larger than every number, text and boolean; a blank lookup value matches only a blank (T-1153).
+Implemented in: `linear_scan`/`compare_blank_last` (functions/lookup_and_reference/xmatch.rs): a blank candidate is larger than every number, text and boolean; a blank lookup value matches only a blank (T-1153). The same ordering holds for a blank lookup value against numbers, `""` and FALSE in match modes -1/1, linear and binary (`XMATCH(G1,P1:P2,-1)` is 2 with -5,5; `XMATCH(G1,P2:P2,1)` is #N/A), and in wildcard mode (`XMATCH(G1,D:D,2)` is the first blank, `XMATCH(G1,D1:D3,2)` is #N/A): probes/xmatch-blank-extensions Ext!M1-M37.
 
 ## XMATCH / XLOOKUP binary search (search_mode 2/-2) probes blanks and errors
 Rule: search_mode 2/-2 is the classic binary search on inclusive bounds, probing the lower middle
@@ -253,9 +253,11 @@ Rule: search_mode 2 returns the *first* cell of a run of equal values and search
 descending {60,50,40,40,40} gives 3 and 5; seven 40s give 1 and 7. Linear search_mode 1 gives the first cell
 (1) for every match_mode. XLOOKUP agrees (`XLOOKUP(40,B1:B5,D1:D5,"nf",0,2)` is 30, with `-2` it is 50).
 Evidence: probes/xmatch-text-bool-equal-runs Run!M1-M52 (Excel oracle). The engine matches all of them (T-1153).
-Descending (-2) keeps searching to the right of an equal element, so a blank inside a run ends it:
-with FALSE,_,TRUE,_,TRUE,_ in B1:B6, `XMATCH(TRUE,B1:B6,-1,-2)` is 5 (Txt!M21, M24). Ascending returns the run's first cell
-for every match mode, match_mode 1 included (Run!M5, M11, M17, M35, M51).
+A binary search remembers an equal element and keeps bisecting past it, to the left when ascending (2) and to the right when
+descending (-2), so a gap inside a run ends it, for every match mode. With FALSE,_,TRUE,_,TRUE,_ in B1:B6,
+`XMATCH(TRUE,B1:B6,-1,-2)` is 5 (Txt!M21, M24); with 60,40,70,40, `XMATCH(40,Q1:Q4,m,-2)` is 4 and with 40,30,40,40,50,
+`XMATCH(40,R1:R5,m,2)` is 1, not 3 (probes/xmatch-blank-extensions Ext!M38-M43). In a contiguous run that is the run's first
+cell ascending, its last descending, match_mode 1 included (Run!M5, M11, M17, M35, M51).
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
 Tasks: T-1135, T-1153

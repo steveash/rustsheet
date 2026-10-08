@@ -92,7 +92,9 @@ fn test_binary_search_runs() {
     assert_eq!(find(&40, &t, false, Some(-1)), Some(0));
     assert_eq!(find(&40, &t, false, Some(1)), Some(0));
     assert_eq!(find(&40, &t, true, None), Some(2));
-    // Descending, the search goes on to the right of an equal element: 60,40,70,40 ends at the last 40.
+    // The search goes on past an equal element: 60,40,70,40 ends at the last 40 descending,
+    // 40,30,40,40,50 at the first 40 ascending (probes/xmatch-blank-extensions Ext!M38, M41).
+    assert_eq!(find(&40, &[40, 30, 40, 40, 50], false, None), Some(0));
     let gap = vec![60, 40, 70, 40];
     assert_eq!(find(&40, &gap, true, None), Some(3));
     let mut long = vec![1];
