@@ -2006,14 +2006,7 @@ impl Model {
         column: i32,
         value: bool,
     ) -> Result<(), String> {
-        let style_index = self.get_cell_style_index(sheet, row, column)?;
-        let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
-            self.workbook
-                .styles
-                .get_style_without_quote_prefix(style_index)?
-        } else {
-            style_index
-        };
+        let new_style_index = self.style_index_without_quote_prefix(sheet, row, column)?;
         self.set_cell_with_boolean(sheet, row, column, value, new_style_index)
     }
 
@@ -2048,14 +2041,7 @@ impl Model {
         column: i32,
         value: f64,
     ) -> Result<(), String> {
-        let style_index = self.get_cell_style_index(sheet, row, column)?;
-        let new_style_index = if self.workbook.styles.style_is_quote_prefix(style_index) {
-            self.workbook
-                .styles
-                .get_style_without_quote_prefix(style_index)?
-        } else {
-            style_index
-        };
+        let new_style_index = self.style_index_without_quote_prefix(sheet, row, column)?;
         self.set_cell_with_number(sheet, row, column, value, new_style_index)
     }
 

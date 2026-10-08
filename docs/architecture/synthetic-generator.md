@@ -770,6 +770,12 @@ evaluates both and compares. MRs are typed by **exactness**:
 | MR-TEXT | `LEN(a&b)=LEN(a)+LEN(b)`; `LEFT(s,n)&MID(s,n+1,LEN(s))=s`; `UPPER(LOWER(s))=UPPER(s)`; `SUBSTITUTE(s,x,x)=s` | unicode pools |
 | MR-BOOL | `AND(a,b)=NOT(OR(NOT(a),NOT(b)))`; `IF(c,x,y)=IF(NOT(c),y,x)` | |
 
+MR-UNION is implemented (T-1149) as a seeded Rust unit test in the engine
+(`crates/rustsheet-engine/src/test/test_union_sum_metamorphic.rs`), not as a gen-m1 policy: it
+needs no oracle and no xlsx (gen-m1 policies emit xlsx cases scored through the eval pipeline against Excel values), so it runs in `make check` (`cargo test`) with 120 pairs
+`SUM((r1,r2[,r3]))` / `SUM(r1,r2[,r3])` over single cells, ranges, whole columns and duplicated
+(overlapping) operands. Skipping an area in `for_each_position_in_areas` fails it.
+
 ### 10.2 NoREC-style "two implementations" MRs
 These compare an optimized or specialized function with a naive formulation that probably
 goes through a different engine code path:

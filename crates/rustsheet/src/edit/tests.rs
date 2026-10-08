@@ -281,6 +281,49 @@ fn sheet_errors_are_typed() {
     assert!(matches!(wb.set("Nope!A1", 1.0), Err(EditError::Ref(_))));
 }
 
+/// A typed error value is stored as an error cell of that kind, not parsed from text: the
+/// newer kinds are not typeable literals (syntax.md "Newer error literals"), so parsing would
+/// store the text "#CONNECT!" (T-1145).
+#[test]
+fn typed_error_values_store_every_kind() {
+    let kinds = [
+        ErrorKind::Null,
+        ErrorKind::Div0,
+        ErrorKind::Value,
+        ErrorKind::Ref,
+        ErrorKind::Name,
+        ErrorKind::Num,
+        ErrorKind::NA,
+        ErrorKind::Spill,
+        ErrorKind::Calc,
+        ErrorKind::GettingData,
+        ErrorKind::Connect,
+        ErrorKind::Blocked,
+        ErrorKind::Field,
+    ];
+    let mut wb = book();
+    for (i, kind) in kinds.into_iter().enumerate() {
+        let row = i + 1;
+        wb.set(format!("A{row}").as_str(), Value::Error(XlError::new(kind)))
+            .unwrap();
+        wb.set(
+            format!("B{row}").as_str(),
+            format!("=ERROR.TYPE(A{row})").as_str(),
+        )
+        .unwrap();
+        assert!(
+            matches!(wb.value(format!("A{row}").as_str()).unwrap(), Value::Error(e) if e.kind == kind),
+            "{kind:?}"
+        );
+        let code = f64::from(kind.code().expect("excel code"));
+        assert_eq!(
+            wb.value(format!("B{row}").as_str()).unwrap(),
+            Value::Number(code),
+            "{kind:?}"
+        );
+    }
+}
+
 #[test]
 fn typed_values_are_not_reinterpreted() {
     let mut wb = book();

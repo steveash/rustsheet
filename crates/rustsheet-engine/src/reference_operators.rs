@@ -117,6 +117,22 @@ impl From<CalcResult> for RefArg {
 }
 
 impl RefArg {
+    /// The areas of a reference that sits on one sheet: borrowed, never copied. `None` for a
+    /// 3-D reference (corners on two sheets) and for anything that is not a reference, where
+    /// AREAS, INDEX and ISREF keep their `#VALUE!` (probes/3d-ref-functions).
+    pub(crate) fn single_sheet_areas(&self) -> Option<&[Range]> {
+        match self {
+            RefArg::Ranges(ranges)
+                if ranges
+                    .iter()
+                    .all(|area| area.left.sheet == area.right.sheet) =>
+            {
+                Some(ranges)
+            }
+            _ => None,
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {
@@ -200,6 +216,16 @@ impl VariableStack {
         self.bindings.clear();
         self.held_areas = 0;
     }
+}
+
+/// `#VALUE!` for a 3-D reference where a single-sheet reference is needed (INDEX, AREAS,
+/// VLOOKUP, MATCH, ..., probes/3d-ref-functions).
+pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "3-D reference where one sheet is needed".to_string(),
+    )
 }
 
 /// `#VALUE!` for a reference of several areas where one area is needed.
@@ -381,11 +407,7 @@ impl Model {
         if first_index == last_index {
             return self.evaluate_node_with_reference(reference, cell);
         }
-        CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "3-D reference where one sheet is needed".to_string(),
-        )
+        three_d_needs_one_sheet(cell)
     }
 
     /// A 3-D reference as an aggregate argument: one `Range` whose corners sit on the first
@@ -518,7 +540,7 @@ impl Model {
                 Node::OpUnionKind { left, right, .. } => {
                     self.count_union_areas(left, right, cell, budget)?
                 }
-                _ => self.evaluate_areas(node, cell, budget)?.len(),
+                _ => self.evaluate_union_operand(node, cell, budget)?.len(),
             };
             if count > MAX_AREAS {
                 return Err(too_many_areas(cell));
@@ -563,13 +585,39 @@ impl Model {
         cell: CellReferenceIndex,
         budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
-        let mut areas = self.evaluate_areas(left, cell, budget)?;
-        let right = self.evaluate_areas(right, cell, budget)?;
+        let mut areas = self.evaluate_union_operand(left, cell, budget)?;
+        let right = self.evaluate_union_operand(right, cell, budget)?;
         if areas.len() + right.len() > MAX_AREAS {
             return Err(too_many_areas(cell));
         }
         areas.extend(right);
         Ok(areas)
+    }
+
+    /// An operand of a union. A 3-D reference cannot be one: Excel answers `#NAME?`, not the
+    /// `#VALUE!` of other non-reference operands (`SUM((Sheet1:Sheet2!A1,B2))`,
+    /// probes/multiarea-3d-ref).
+    fn evaluate_union_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        budget: &mut usize,
+    ) -> Result<Vec<Range>, CalcResult> {
+        if let Node::SheetSpanKind {
+            first_index,
+            last_index,
+            ..
+        } = node
+        {
+            if first_index != last_index {
+                return Err(CalcResult::new_error(
+                    Error::NAME,
+                    cell,
+                    "3-D reference inside a union".to_string(),
+                ));
+            }
+        }
+        self.evaluate_areas(node, cell, budget)
     }
 
     /// The pairwise intersections of the areas of `left` and `right` that hold a cell. A pair

@@ -94,6 +94,33 @@ fn aggregates_walk_each_area_as_written() {
     );
 }
 
+/// LARGE, SMALL, RANK and FREQUENCY walk the areas as written (T-1068; probes/multiarea-rank
+/// H1:H3, probes/multiarea-cond H1).
+#[test]
+fn order_statistics_take_a_union() {
+    let mut model = model();
+    model._set("E1", "=1/0");
+    results(
+        &mut model,
+        &[
+            ("H1", "=LARGE((A1,B2,C3),2)", "5"),
+            ("H2", "=SMALL((A1,B2,C3),2)", "5"),
+            ("H3", "=RANK(5,(A1,B2,C3))", "2"),
+            ("H4", "=RANK.AVG(5,(A1,B2,C3),1)", "2"),
+            ("H5", "=SUM(FREQUENCY((A1,B2),3))", "2"),
+            // The overlap counts twice, as for SUM; k past the count is #NUM!.
+            ("H6", "=LARGE((A1:B2,B2),2)", "5"),
+            ("H7", "=LARGE((A1,B2),3)", "#NUM!"),
+            // An error cell in an area is the function's error, as in a plain range.
+            ("H8", "=LARGE((A1,E1),1)", "#DIV/0!"),
+            // SMALL resolves its argument like LARGE: a cell, a typed scalar and an error cell.
+            ("H9", "=SMALL(B2,1)", "5"),
+            ("H10", "=SMALL(5,1)", "5"),
+            ("H11", "=SMALL((A1,E1),1)", "#DIV/0!"),
+        ],
+    );
+}
+
 #[test]
 fn union_argument_errors() {
     let mut model = model();
@@ -153,6 +180,113 @@ fn whole_columns_over_the_cell_bound_are_not_walked() {
     assert_eq!(model._get_text("Z1"), "#VALUE!");
     assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
     assert_eq!(model._get_text("Z2"), "32");
+}
+
+#[test]
+fn countblank_rows_columns_of_a_union() {
+    // probes/multiarea-count H1:H3 (oracle excel-graph, 2026-10-07): #VALUE!, #REF!, #REF!.
+    let mut model = model();
+    results(
+        &mut model,
+        &[
+            ("H1", "=COUNTBLANK((A1,B2))", "#VALUE!"),
+            ("H2", "=ROWS((A1,B2))", "#REF!"),
+            ("H3", "=COLUMNS((A1,B2))", "#REF!"),
+        ],
+    );
+}
+
+#[test]
+fn subtotal_of_a_union() {
+    // probes/multiarea-subtotal H1, H2 (oracle excel-graph, 2026-10-07): both 6 for (A1,B2).
+    // H3 is not probed: it follows SUM, where an area is counted as written (references.md).
+    let mut model = model();
+    results(
+        &mut model,
+        &[
+            ("H1", "=SUBTOTAL(9,(A1,B2))", "6"),
+            ("H2", "=SUBTOTAL(109,(A1,B2))", "6"),
+            ("H3", "=SUBTOTAL(9,(A1:B2,B2))", "11"),
+        ],
+    );
+}
+
+#[test]
+fn subtotal_of_a_union_obeys_the_area_cell_bound() {
+    // Same bound as SUM (`whole_columns_over_the_cell_bound_are_not_walked`): MAX_AREAS copies
+    // of A:A over 1,000 used rows are past MAX_AREA_CELLS, so SUBTOTAL answers `#VALUE!` at
+    // once instead of walking them; a handful of whole columns is walked.
+    let mut model = model();
+    model._set("A1000", "1");
+    model._set(
+        "Z1",
+        &format!("=SUBTOTAL(9,{})", balanced_union("A:A", MAX_AREAS)),
+    );
+    model._set("Z2", &format!("=SUBTOTAL(9,{})", balanced_union("A:A", 16)));
+    model.evaluate();
+    assert_eq!(model._get_text("Z1"), "#VALUE!");
+    assert_eq!(error_message(&model, "Z1"), TOO_MANY_AREA_CELLS);
+    assert_eq!(model._get_text("Z2"), "32");
+}
+
+#[test]
+fn areas_counts_the_areas_of_a_reference() {
+    // SPEC-0004 probe rows 6 and 20 (probes/multiarea-areas-*).
+    results(
+        &mut model(),
+        &[
+            ("H1", "=AREAS((A1,B2))", "2"),
+            ("H2", "=AREAS(((A1,B2),C3))", "3"),
+            ("H3", "=AREAS((A1:B2,A1:B2))", "2"),
+            ("H4", "=AREAS(A1:B2)", "1"),
+            ("H5", "=AREAS(Sheet1:Data!A1)", "#VALUE!"),
+        ],
+    );
+}
+
+#[test]
+fn index_area_num_selects_an_area() {
+    // SPEC-0004 probe rows 7 and 8.
+    results(
+        &mut model(),
+        &[
+            ("H1", "=INDEX((A1:B2,C3:D4),1,1,2)", "7"),
+            ("H2", "=INDEX((A1:B2,C3:D4),1,1,3)", "#REF!"),
+            ("H3", "=INDEX((A1:B2,C3:D4),1,1,0)", "#VALUE!"),
+            ("H4", "=INDEX((A1:B2,C3:D4),1,1)", "1"),
+            ("H5", "=SUM(INDEX((A1:B2,C3:D4),0,0,2))", "16"),
+            ("H6", "=INDEX((A1:B2,C3:D4),1,1,1E+300)", "#REF!"),
+            ("H7", "=INDEX(A1:B2,1,1,2)", "#REF!"),
+            ("H8", "=INDEX(Sheet1:Data!A1,1,1,1)", "#VALUE!"),
+        ],
+    );
+}
+
+#[test]
+fn three_d_operand_beside_and_inside_a_union() {
+    // SPEC-0004 probe row 13 (probes/multiarea-3d-ref, excel-graph 2026-10-07): a 3-D
+    // argument beside a union adds up (101 + 1 + 5); a 3-D operand inside a union is #NAME?
+    // (H2). H3 (the 3-D operand on the right) and H4 (the bare union) are UNVERIFIED engine choices.
+    // Sheet2 sits right after Sheet1, as in the probe, so the span holds just those two.
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet2").unwrap();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("B2", "5"),
+        ("Sheet2!A1", "100"),
+        ("Sheet2!B2", "200"),
+    ] {
+        model._set(cell, value);
+    }
+    results(
+        &mut model,
+        &[
+            ("H1", "=SUM(Sheet1:Sheet2!A1,(A1,B2))", "107"),
+            ("H2", "=SUM((Sheet1:Sheet2!A1,B2))", "#NAME?"),
+            ("H3", "=SUM((A1,Sheet1:Sheet2!B2))", "#NAME?"),
+            ("H4", "=(Sheet1:Sheet2!A1,B2)", "#NAME?"),
+        ],
+    );
 }
 
 #[test]

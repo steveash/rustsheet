@@ -44,9 +44,9 @@ Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span
 sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
 implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
-crates/rustsheet-engine/src/reference_operators.rs; INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK reach
+crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
 the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
-the same check (`IfBranchMode::SingleSheet`, T-1026); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
+the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their argument with `evaluate_reference_arg` and refuse a 3-D result with `three_d_needs_one_sheet` (T-1063); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
 CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET is still `#VALUE!` in the
 engine, also to an aggregate (probes/3d-ref-choose-let C3:C4, 3d-ref-let-values C7, known failures, T-1158;
 `Model::bind_argument` binds `#VALUE!` for a span so no value reader sees a range across sheets).
@@ -408,7 +408,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   intersection binds tighter, so `(A1,B1 C1)` is `(A1,(B1 C1))`. A union cut by an intersection runs the cut on each pair of areas,
   drops pairs with no shared cell, and gives `#NULL!` when nothing is left. Further cuts can bring
   several areas down to one (`(A1:A12,D1:D12) A4:D4 D4` is D4). The known gaps: a union reaching a
-  function gets `#VALUE!` (`SUM((A1,B2))`, `AREAS`, `INDEX(...,area_num)`), so IFERROR silently
+  function gets `#VALUE!` (`SUM((A1,B2))` before T-1062), so IFERROR silently
   takes its fallback for one, and so does a union returned by IF, CHOOSE or LET. docs/specs/SPEC-0004-multi-area-references.md
   (T-0133) designs multi-area arguments, with rollout T-1061 to T-1065. `add_implicit_intersection` (static_analysis.rs) leaves
   `OpUnionKind` unwrapped, and SPEC-0004 keeps it so: a union is already `#VALUE!` where a scalar is expected (planned, probe rows 15 and 18).
@@ -462,6 +462,12 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   SUBTOTAL 9 and 109 (6), INDEX with `area_num` (`INDEX((A1:B2,C3:D4),1,1,2)` = 7, area 3 `#REF!`, area 0
   `#VALUE!`, `area_num` omitted = 1; `SUM(INDEX(..,0,0,2))` = 16), AREAS (2, 3 for `((A1,B2),C3)`, 2 for
   `(A1:B2,A1:B2)`), CELL("address", `(A1,B2)`) = "$A$1, $B$2".
+- `INDEX` `area_num` is read as a number and floored: below 1 is `#VALUE!`, past the last area (or NaN, or a
+  huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
+  3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
+  probes/multiarea-index; unit tests in test/test_multi_area_arguments.rs. The 1E+300, "one area, area_num 2", `INDEX` of an
+  array with `area_num` other than 1 (`#REF!`) and `AREAS` of a non-reference (1; Excel refuses the formula)
+  rows are engine choices, UNVERIFIED (no probe).
 - Refuse with `#VALUE!`: SUMPRODUCT, SUMIF, COUNTIF, COUNTBLANK, OFFSET, `@(A1,B2)`, the bare `=A1,B2` (stored in a
   file; it loads), `=(A1,B2)` itself. `ROWS` and `COLUMNS` give `#REF!`, and so does `ROW`.
 - ISERROR and ISNUMBER of a union are TRUE and FALSE, IFERROR gives its fallback (the union is `#VALUE!` as a value).
@@ -479,6 +485,11 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   union name, which is TRUE).
 - 3-D: `SUM(Sheet1:Sheet2!A1,(A1,B2))` = 107 (3-D argument plus the union), but a 3-D operand inside the union,
   `SUM((Sheet1:Sheet2!A1,B2))`, is `#NAME?`.
+  Implemented in `evaluate_union_operand` (reference_operators.rs, T-1070): a multi-sheet span as a direct
+  operand of a union gives `#NAME?`. Only the left operand under SUM is VERIFIED; the right operand, the bare
+  `=(Sheet1:Sheet2!A1,B2)` value context (same check in `count_union_areas`) and the precedence against another
+  operand's error (`SUM((1/0,Sheet1:Sheet2!A1))` is `#DIV/0!` in the engine) are UNVERIFIED (no probe); a 3-D
+  operand of an intersection is unprobed.
 - `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `SUM(Print_Area)` = 6, `AREAS(Print_Area)` = 2.
 - FORMULATEXT of a union written as a dynamic-array formula (the only kind the probe harness writes) has no `@`
   (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The same holds for a legacy
@@ -499,16 +510,23 @@ Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
 MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`) walks the areas one after the
-other (`Model::for_each_cell_in_areas`). Since T-1064 a LET variable or LAMBDA parameter bound to a union
+other (`Model::for_each_cell_in_areas`). Since T-1068 LARGE, SMALL, RANK.EQ/RANK.AVG and the data_array of FREQUENCY
+take a union the same way (`Model::values_from_areas`; FREQUENCY's bins_array is unprobed and stays a single reference).
+Since T-1064 a LET variable or LAMBDA parameter bound to a union
 (`Binding::Areas`, reference_operators.rs; `Model::bind_argument`, functions/logical/let.rs), the branch IF or
 CHOOSE picks with a scalar condition or index (`Model::if_impl`, `Model::choose_impl`) and LET's body
 (`Model::let_impl`) stay areas in reference context and as intersection operands.
 UNVERIFIED (no probe): an IF or CHOOSE over an array condition keeps its value form.
-SPEC-0004 and T-1063, T-1065, T-1068 to T-1073 implement the rest;
-until then LARGE, RANK, CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`;
-LARGE, SMALL and RANK then answer `#N/IMPL!`, as before). The other users of `for_each_value` (HARMEAN, AVEDEV,
+SPEC-0004 and T-1065, T-1069 to T-1073 implement the rest;
+until then CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`).
+The other users of `for_each_value` (HARMEAN, AVEDEV,
 SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
-Tasks: T-1061, T-1062, T-1064
+COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
+(statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
+a union holding an error in COUNTBLANK counts nothing (no probes).
+SUBTOTAL 1, 4-11 and 101, 104-111 walk the areas of a union as SUM does (`subtotal_walk_range`, T-1071; probes/multiarea-subtotal
+probes 9 and 109). UNVERIFIED engine behavior: SUBTOTAL 2, 3, 102 and 103 of a union stay `#VALUE!` (no probe).
+Tasks: T-1061, T-1062, T-1064, T-1068, T-1069
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15

@@ -3,7 +3,7 @@ id: T-1068
 title: "Unions as arguments of LARGE, SMALL, RANK, MEDIAN, STDEV.S and FREQUENCY (SPEC-0004 rows 3-4)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,8 @@ Oracle (probes/multiarea-rank, multiarea-cond): LARGE((A1,B2,C3),2)=5, SMALL(..,
 
 ## Out of scope
 - Other functions' union support (their own tasks under SPEC-0004).
+
+## Outcome
+- LARGE, SMALL, RANK.EQ/RANK.AVG and FREQUENCY's data_array take a union or multi-area intersection via `Model::values_from_areas` (areas walked as written, first error wins). SMALL now resolves its argument with `evaluate_reference_arg` like LARGE.
+- probes/multiarea-rank (H1, H2, H3) and probes/multiarea-cond (H1) pass; probes known failures 195 -> 191. MEDIAN and STDEV.S already passed (T-1062).
+- Unit test `order_statistics_take_a_union`; references.md updated.

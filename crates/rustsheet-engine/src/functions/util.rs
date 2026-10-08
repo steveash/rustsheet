@@ -236,7 +236,7 @@ impl Model {
     /// Checks that walking `areas` stays within [`MAX_AREA_CELLS`] cells once each area is
     /// clipped to its sheet's used area: arithmetic only, before any cell is read, so
     /// `MAX_AREAS` whole columns over a populated sheet are `#VALUE!` without a walk.
-    fn check_area_cells(
+    pub(crate) fn check_area_cells(
         &self,
         areas: &[Range],
         cell: CellReferenceIndex,

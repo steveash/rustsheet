@@ -966,25 +966,25 @@ impl Model {
         if values_count == 0 {
             return CalcResult::new_error(Error::NUM, cell, "Not enough values".to_string());
         }
+        // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
+        // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
+        // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
+        // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
+        // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
+        // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
         let first_date = dates[0];
-        for date in &dates {
-            if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
-                || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
-            {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid number for date".to_string(),
-                );
-            }
-            // If any number in dates precedes the starting date, XIRR returns the #NUM! error value.
-            if date < &first_date {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Date precedes the starting date".to_string(),
-                );
-            }
+        if dates
+            .iter()
+            .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
+        {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid number for date".to_string());
+        }
+        if !dates.iter().any(|date| *date > first_date) {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "No date is later than the starting date".to_string(),
+            );
         }
         match compute_xirr(&values, &dates, guess) {
             Ok(f) => CalcResult::Number(f),
