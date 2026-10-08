@@ -619,7 +619,6 @@ F	probes/rate-empty-arguments.case.json	Sheet1!A9
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
-F	probes/sheet-qualified-corner-order.case.json	Calc!A7
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name.case.json	!EngineError
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3

@@ -3,7 +3,7 @@ id: T-1166
 title: "ISREF is FALSE for a range whose corners are on two different sheets"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Found by T-1138: probes/sheet-qualified-corner-order Calc!A7 (oracle excel-graph
 
 ## Out of scope
 - Changing the `#VALUE!` result of the cross-sheet range itself.
+
+## Outcome
+`is_reference` now evaluates `OpRangeKind` and is TRUE only for a real range. probes known failures 351 -> 350 (Calc!A7 fixed).
