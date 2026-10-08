@@ -253,6 +253,30 @@ fn parse_separated(
     Ok((serial_of(day, month, year)?, format))
 }
 
+/// `value` without the spaces next to a `-` or `/`: a run of spaces on either side goes.
+fn remove_separator_spaces(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut pending_spaces = 0_usize;
+    let mut after_separator = false;
+    for c in value.chars() {
+        if c == ' ' {
+            if !after_separator {
+                pending_spaces += 1;
+            }
+            continue;
+        }
+        let separator = c == '-' || c == '/';
+        if !separator {
+            out.extend(std::iter::repeat_n(' ', pending_spaces));
+        }
+        pending_spaces = 0;
+        out.push(c);
+        after_separator = separator;
+    }
+    out.extend(std::iter::repeat_n(' ', pending_spaces));
+    out
+}
+
 /// Parses date text, returning its serial and the number format Excel gives it when typed.
 ///
 /// Surrounding spaces make the text invalid: VALUE, DATEVALUE and criteria trim it first, but
@@ -275,6 +299,16 @@ pub(crate) fn parse_date(
 ) -> Result<(i32, String), String> {
     if value.trim() != value {
         return Err("Not a valid date".to_string());
+    }
+    // Spaces around a date separator are ignored ("2026 - 01 - 01", "4 - Feb - 2026"; probes/
+    // datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18 and datevalue-separator-spaces-paths, ironcalc-calc DATEVALUE_issue_1380.xlsx).
+    if value.contains(" -") || value.contains("- ") || value.contains(" /") || value.contains("/ ")
+    {
+        let compact = remove_separator_spaces(value);
+        // The compact text has no such space, so the recursion ends after one level.
+        if compact != value {
+            return parse_date(&compact, locale, current_year);
+        }
     }
     // At most 4 words: enough to reject longer text without splitting all of it.
     let words: Vec<&str> = value.split_whitespace().take(4).collect();
@@ -325,6 +359,32 @@ mod tests {
         assert_eq!(en("12/31/99"), Some(36525));
         assert_eq!(en("2026/1/13"), Some(46035));
         assert_eq!(en("2026-01-01"), Some(46023));
+    }
+
+    #[test]
+    fn spaces_around_date_separators_are_ignored() {
+        // probes/datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18
+        for (text, serial) in [
+            ("2026 - 01 - 01", 46023),
+            ("1 / 2 / 2026", 46024),
+            ("4 - Feb - 2026", 46057),
+            ("2026- 01-01", 46023),
+            ("2026 -01-01", 46023),
+            ("1 /2/2026", 46024),
+            ("Jul - 2026", 46204),
+            ("1 - Jul", 46204),
+            ("7 - 1", 46204),
+            ("2026  -  01  -  01", 46023),
+            ("2026 / 1 / 13", 46035),
+            ("1 / Jul / 2026", 46204),
+        ] {
+            assert_eq!(en(text), Some(serial), "{text}");
+        }
+        // A long run of spaces is removed in one pass.
+        let padded = format!("2026-{}01-01", " ".repeat(32_000));
+        assert_eq!(en(&padded), Some(46023));
+        // Spaces away from a separator still make a different word count.
+        assert_eq!(en("2026 01 01"), None);
     }
 
     #[test]
