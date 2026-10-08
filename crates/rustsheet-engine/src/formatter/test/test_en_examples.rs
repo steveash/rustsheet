@@ -267,3 +267,37 @@ fn format_millions_scale_decimal() {
     assert_eq!(r2.text, "12.0");
     assert_eq!(r3.text, "987.65");
 }
+
+// A `,` between digit placeholders turns on thousands grouping wherever it sits, and the padding
+// is grouped too: `0` pads with its separator, `?` pads with a space
+// (docs/excel-semantics/number-formats.md, T-0952; poi/NumberFormatTests.xlsx Tests!A44-A118, A335).
+#[test]
+fn comma_between_placeholders_groups_the_padded_digits() {
+    let locale = get_locale("en").unwrap();
+    for (value, format, expected) in [
+        (1234567.0, "0,0000000", "01,234,567"),
+        (1234567.0, "0,00000000", "001,234,567"),
+        (1234567.0, "0,000000000", "0,001,234,567"),
+        (314159.0, "$000,000,000", "$000,314,159"),
+        (1234567.0, "?,???????", " 1,234,567"),
+        (1234567.0, "?,?????????", "    1,234,567"),
+        (-1234567.0, "?,???????", "- 1,234,567"),
+        (-1234567.0, "?,?????????", "-    1,234,567"),
+        (1234567.0, "#,##0", "1,234,567"),
+        (12.0, "0,000", "0,012"),
+    ] {
+        assert_eq!(
+            format_number(value, format, locale).text,
+            expected,
+            "{format}"
+        );
+    }
+}
+
+// A trailing `,` scales by 1000 and keeps the sign (poi/NumberFormatTests.xlsx Tests!A95).
+#[test]
+fn trailing_commas_keep_the_sign() {
+    let locale = get_locale("en").unwrap();
+    assert_eq!(format_number(-1234567.0, "#,,", locale).text, "-1");
+    assert_eq!(format_number(1234567.0, "#,,", locale).text, "1");
+}
