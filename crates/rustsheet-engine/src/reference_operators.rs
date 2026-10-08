@@ -297,6 +297,22 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
+    /// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
+    /// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).
+    pub(crate) fn wrong_sheet_error(
+        sheet_name: Option<&str>,
+        cell: CellReferenceIndex,
+        message: &str,
+    ) -> CalcResult {
+        let error = if sheet_name.is_some_and(|name| name.contains(':')) {
+            Error::NAME
+        } else {
+            Error::REF
+        };
+        CalcResult::new_error(error, cell, message.to_string())
+    }
+
     /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
     /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
     /// a lookup index argument and LOOKUP's result_vector (probes/lookup-vector-edges A9, A12).
