@@ -3,7 +3,7 @@ id: T-1166
 title: "ISREF is FALSE for a range whose corners are on two different sheets"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
