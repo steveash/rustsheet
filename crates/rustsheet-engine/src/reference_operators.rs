@@ -116,6 +116,22 @@ impl From<CalcResult> for RefArg {
 }
 
 impl RefArg {
+    /// The areas of a reference that sits on one sheet: borrowed, never copied. `None` for a
+    /// 3-D reference (corners on two sheets) and for anything that is not a reference, where
+    /// AREAS, INDEX and ISREF keep their `#VALUE!` (probes/3d-ref-functions).
+    pub(crate) fn single_sheet_areas(&self) -> Option<&[Range]> {
+        match self {
+            RefArg::Ranges(ranges)
+                if ranges
+                    .iter()
+                    .all(|area| area.left.sheet == area.right.sheet) =>
+            {
+                Some(ranges)
+            }
+            _ => None,
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {
@@ -125,6 +141,16 @@ impl RefArg {
             RefArg::Value(value) => value,
         }
     }
+}
+
+/// `#VALUE!` for a 3-D reference where a single-sheet reference is needed (INDEX, AREAS,
+/// VLOOKUP, MATCH, ..., probes/3d-ref-functions).
+pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::VALUE,
+        cell,
+        "3-D reference where one sheet is needed".to_string(),
+    )
 }
 
 /// `#VALUE!` for a reference of several areas where one area is needed.
@@ -298,11 +324,7 @@ impl Model {
         if first_index == last_index {
             return self.evaluate_node_with_reference(reference, cell);
         }
-        CalcResult::new_error(
-            Error::VALUE,
-            cell,
-            "3-D reference where one sheet is needed".to_string(),
-        )
+        three_d_needs_one_sheet(cell)
     }
 
     /// A 3-D reference as an aggregate argument: one `Range` whose corners sit on the first
