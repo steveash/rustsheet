@@ -153,6 +153,7 @@ passes it through, `A1&""` is `#BUSY!`, and `ERROR.TYPE` is 0 (not 7; confirmed 
 100, since XlsxWriter caches 0 for every formula and a stale cell would be indistinguishable from the bare
 0). `#GETTING_DATA` stored: `ERROR.TYPE` 8, `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA` passes through
 (reported `#N/A`), `&""` is reported `#N/A`; stored `#N/A`: 7, `ISNA` TRUE, `IFNA` gives the fallback.
+The engine-only kinds `#CIRC!`, `#ERROR!` and `#N/IMPL` stored as constants are rejected on load the same way (createSession 501 `unsupportedWorkbook`, excel-graph, 2026-10-08, T-1133; throw-away one-cell cases, no sidecar), so the exporter writes them as `#VALUE!` (`exported_error_literal`, `crates/rustsheet-xlsx/src/export/worksheets.rs`).
 Unprobed: `#PYTHON!`, `#EXTERNAL!` stored. The rejected names were re-run as throw-away one-cell cases
 (`A1` = `{"t":"e","v":"<name>","stored":true}`, nothing else), so to reproduce one, write that case.
 Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives. SPEC-0003 keeps
@@ -162,6 +163,6 @@ is settled by T-1012 (information.md): `"#BLOCKED!"` does not match the error.
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
-stored rejections as throw-away one-cell cases (same).
+stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133
