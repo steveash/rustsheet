@@ -16,7 +16,7 @@ Error cells are saved and scored the way Excel stores them: `#GETTING_DATA` as `
 
 ## Context
 SPEC-0003 "Design", sections "xlsx" and "Harness" (rollout X1). Evidence: probes/error-literals-new S!A1 stores `#N/A` (syntax.md "Newer error literals").
-Code: `crates/rustsheet-xlsx/src/export/worksheets.rs` (the three `t="e"` writers), `import/worksheets.rs` (the rich-error guard), and the error comparison in `crates/rustsheet-eval`.
+Code: `crates/rustsheet-xlsx/src/export/worksheets.rs` (the three `t="e"` writers), `import/worksheets.rs` (the rich-error guard); T-1010 left a `TODO(T-1011)` in `cached_error_name` that keeps cached `#CONNECT!`/`#BLOCKED!`/`#FIELD!` as `#VALUE!` until the exporter fallback lands, so remove it in this task. Since T-1010, a plain `t="e"` cell holding `#BLOCKED!`/`#CONNECT!`/`#FIELD!` imports as that kind (it was `#ERROR!`), so the exporter fallback covers those cells too, and the error comparison in `crates/rustsheet-eval`.
 
 ## Acceptance criteria
 - [ ] The exporter writes every error cell with `Error::stored_literal()` (`#N/A` for `#GETTING_DATA`). One exporter-only helper in rustsheet-xlsx writes `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` as plain `#VALUE!` until T-1014, because Excel rejects those stored literals (T-0999). Tests cover both rules, and the PR calls out that `#CALC!`/`#SPILL!` lose their kind on an xlsx round trip in the interim.
