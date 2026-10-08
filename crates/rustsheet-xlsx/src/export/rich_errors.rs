@@ -23,6 +23,7 @@ pub(crate) const RICH_VALUE_TYPES_PART: &str = "xl/richData/rdRichValueTypes.xml
 
 /// The `errorType` codes written, in `vm` order: `vm="k"` is the k-th code (1-based). Each
 /// code's error is the importer's [`rich_error_name`], so export and import share one table.
+/// Append only: reordering would change which kind a `vm` means between exported workbooks.
 const RICH_ERROR_CODES: [&str; 5] = ["8", "9", "10", "12", "13"];
 
 /// The `vm` index Excel needs for `error`, or `None` for a kind stored as a plain literal.
