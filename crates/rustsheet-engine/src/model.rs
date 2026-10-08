@@ -243,22 +243,6 @@ pub struct CellIndex {
     pub column: i32,
 }
 
-/// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
-/// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
-/// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).
-fn wrong_sheet_error(
-    sheet_name: Option<&str>,
-    cell: CellReferenceIndex,
-    message: &str,
-) -> CalcResult {
-    let error = if sheet_name.is_some_and(|name| name.contains(':')) {
-        Error::NAME
-    } else {
-        Error::REF
-    };
-    CalcResult::new_error(error, cell, message.to_string())
-}
-
 impl Model {
     pub(crate) fn get_next_variable_id(&mut self) -> usize {
         let id = self.last_variable_id;
@@ -356,17 +340,7 @@ impl Model {
                 }
             }
             Node::ImplicitIntersection { child, .. } => {
-                if let Node::SheetSpanKind {
-                    first_index,
-                    last_index,
-                    ..
-                } = &**child
-                {
-                    if first_index != last_index {
-                        return self.at_of_span_error(cell);
-                    }
-                }
-                match self.evaluate_node_with_reference(child, cell) {
+                match self.evaluate_at_operand_reference(child, cell) {
                     CalcResult::Range { left, right } => {
                         match implicit_intersection(&cell, &Range { left, right }) {
                             Some(r) => CalcResult::Range { left: r, right: r },
@@ -647,7 +621,7 @@ impl Model {
                 })
             }
             WrongReferenceKind { sheet_name, .. } => {
-                wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
+                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
@@ -659,7 +633,7 @@ impl Model {
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
             WrongRangeKind { sheet_name, .. } => {
-                wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range")
+                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range")
             }
             RangeKind {
                 sheet_index,

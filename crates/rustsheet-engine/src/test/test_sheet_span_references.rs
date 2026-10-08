@@ -96,12 +96,6 @@ fn a_one_sheet_reference_context_is_value_error() {
 }
 
 #[test]
-fn missing_sheet_in_the_span_is_ref_error() {
-    let mut model = sample();
-    assert_eq!(eval(&mut model, "=SUM(Data1:Nope!A1)"), "#REF!");
-}
-
-#[test]
 fn corners_on_two_sheets_are_not_a_span() {
     let mut model = sample();
     assert_eq!(eval(&mut model, "=SUM(Data1!A1:Data3!A1)"), "#VALUE!");

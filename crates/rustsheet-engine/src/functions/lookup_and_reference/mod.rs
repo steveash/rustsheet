@@ -560,18 +560,10 @@ impl Model {
 
     /// Evaluates the operand of `@`. `@ROW(A:A)` and `@COLUMN(A1:Z1)` take a fast path that skips
     /// materialising the whole vector; everything else is evaluated normally.
-    /// `@` of a span over several sheets is `#REF!`, not the `#VALUE!` of a 3-D reference used as
-    /// a single-sheet one: `=@Data1:Data3!A1` and `=SUM(@Data1:Data3!A1:A2)`
-    /// (probes/3d-ref-span-edges B1, B3; T-1170).
-    pub(crate) fn at_of_span_error(&self, cell: CellReferenceIndex) -> CalcResult {
-        CalcResult::new_error(
-            Error::REF,
-            cell,
-            "Implicit intersection of a 3-D reference".to_string(),
-        )
-    }
-
-    pub(crate) fn evaluate_implicit_intersection_operand(
+    /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not
+    /// the `#VALUE!` of a 3-D reference used as a single-sheet one: `=@Data1:Data3!A1` and
+    /// `=SUM(@Data1:Data3!A1:A2)` (probes/3d-ref-span-edges B1, B3; T-1170).
+    pub(crate) fn evaluate_at_operand_reference(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
@@ -581,7 +573,21 @@ impl Model {
                 first_index,
                 last_index,
                 ..
-            } if first_index != last_index => self.at_of_span_error(cell),
+            } if first_index != last_index => CalcResult::new_error(
+                Error::REF,
+                cell,
+                "Implicit intersection of a 3-D reference".to_string(),
+            ),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
+    pub(crate) fn evaluate_implicit_intersection_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
             Node::FunctionKind {
                 kind: Function::Row,
                 args,
@@ -590,7 +596,7 @@ impl Model {
                 kind: Function::Column,
                 args,
             } => self.row_or_column(args, cell, false, true),
-            _ => self.evaluate_node_with_reference(node, cell),
+            _ => self.evaluate_at_operand_reference(node, cell),
         }
     }
 
