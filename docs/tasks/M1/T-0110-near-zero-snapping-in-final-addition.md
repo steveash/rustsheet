@@ -31,4 +31,5 @@ Eval:
 - probes-numeric/30bc5f8fab02d0a2 passes 1296/1296, including the 114 `parenthesized-sub` cells.
 - 0 regressions in every suite.
 - gen-m1 is unchanged at 8 (its last-digit cells are not snapping).
+Follow-up: T-1131 (probe the SUM forms the evidence does not cover).
 

@@ -26,7 +26,7 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum_outermost` (an outermost SUM, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017) and is not snapped. Array operands are not snapped (unprobed).
-Unprobed: whether Excel also skips snapping for `=((X-b))`, for a formula typed as `=(X-b` that Excel completes with `)`, and inside a defined-name body; the engine marks the first two as grouped roots and never the third (name bodies are parsed with `Parser::parse`). Also a known gap: `=((A1-1))` is stored as `=(A1-1)`, one level, while Excel keeps every written level (references.md).
+Unprobed: whether Excel also skips snapping for `=((X-b))`, for a formula typed as `=(X-b` that Excel completes with `)`, and inside a defined-name body; the engine marks the first two as grouped roots and never the third (name bodies are parsed with `Parser::parse`). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). Also a known gap: `=((A1-1))` is stored as `=(A1-1)`, one level, while Excel keeps every written level (references.md).
 Tasks: T-0110 (implementation), T-1017 (grouped root)
 
 ## ROUND family rounds in two decimal stages
