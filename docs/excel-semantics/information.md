@@ -71,14 +71,14 @@ Tasks: T-1012
 
 ## IMAGE and STOCKHISTORY never fetch
 Rule: `IMAGE(source, ...)` evaluates to `#BLOCKED!` and `STOCKHISTORY(stock, start_date, ...)` to
-`#CONNECT!` for the probed arguments: a text source or ticker, after a single argument error and
+`#CONNECT!` for the probed arguments: a URL source (`https://example.invalid/none.png`) or a ticker, after a single argument error and
 IMAGE's empty/number `#VALUE!` (see above).
 Argument kinds (T-1141, probes/rich-errors-arg-kinds, excel-graph, 2026-10-08; VERIFIED): all three functions lift over an array
 or range argument as an ordinary scalar-argument function would. `ROWS`/`COLUMNS` of `IMAGE({"a","b"})` are 1 and 2 and of
 `IMAGE(Q1:Q2)` (Q1="a", Q2="b") 2 and 1; `STOCKHISTORY({"A","B"},DATE(2020,1,2))` is 1x2 and `STOCKHISTORY(Q1:Q2,...)` 2x1, each
 element `#CONNECT!`; `FIELDVALUE(5,{"a","b"})` is 1x2 and `FIELDVALUE(Q1:R2,"Price")` 2x2 of `#FIELD!` (ERROR.TYPE 13), and
-`FIELDVALUE({1},"Price")` is 1x1. A one-cell range is a scalar: `ROWS(FIELDVALUE(Q1:Q1,"Price"))` is `#FIELD!`. A number,
-boolean or empty `stock` is `#CONNECT!` (ERROR.TYPE 10); text, boolean and empty-cell `value` of FIELDVALUE are `#FIELD!`.
+`FIELDVALUE({1},"Price")` is 1x1. A one-cell range is a scalar: `ROWS(FIELDVALUE(Q1:Q1,"Price"))` is `#FIELD!`. A number
+or boolean `stock` is `#CONNECT!` (ERROR.TYPE 10; an empty-cell `stock` is UNVERIFIED, the engine gives `#CONNECT!`); text, boolean and empty-cell `value` of FIELDVALUE are `#FIELD!`.
 `IMAGE("")`, `IMAGE(TRUE)` and `IMAGE` of non-URL text (`"a"`, `"b"`) are `#VALUE!` (ERROR.TYPE 3), not `#BLOCKED!`; only a
 URL-shaped source reaches the fetch (which exact strings count as a URL is not probed). `IMAGE(1/0,NA())` is `#DIV/0!` (leftmost
 error wins). The raw IMAGE cells (A10, A13, A16, A19) and the `ROWS`/`COLUMNS` of `IMAGE("")` and `IMAGE(TRUE)` came back with an undecodable rich error type and stay pending; the wrapped `ERROR.TYPE` cells carry the evidence. The VERIFIED rules above cover argument kinds; the DEVIATION status below covers only the missing fetch.
