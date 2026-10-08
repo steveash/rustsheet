@@ -301,7 +301,7 @@ pub(crate) fn parse_date(
         return Err("Not a valid date".to_string());
     }
     // Spaces around a date separator are ignored ("2026 - 01 - 01", "4 - Feb - 2026"; probes/
-    // datevalue-separator-spaces rows 1-3, 7-14, 16 and datevalue-separator-spaces-paths, ironcalc-calc DATEVALUE_issue_1380.xlsx).
+    // datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18 and datevalue-separator-spaces-paths, ironcalc-calc DATEVALUE_issue_1380.xlsx).
     if value.contains(" -") || value.contains("- ") || value.contains(" /") || value.contains("/ ")
     {
         let compact = remove_separator_spaces(value);
@@ -363,7 +363,7 @@ mod tests {
 
     #[test]
     fn spaces_around_date_separators_are_ignored() {
-        // probes/datevalue-separator-spaces rows 1-3, 7-14, 16 (11-12 unscored: clock)
+        // probes/datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18
         for (text, serial) in [
             ("2026 - 01 - 01", 46023),
             ("1 / 2 / 2026", 46024),
