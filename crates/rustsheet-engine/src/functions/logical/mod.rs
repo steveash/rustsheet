@@ -2,7 +2,7 @@ mod and_or_xor_not;
 mod bycol_byrow;
 mod lambda;
 mod r#let;
-pub(crate) use r#let::Binding;
+pub(crate) use r#let::VariableStack;
 mod map_reduce;
 mod scan;
 mod switch;

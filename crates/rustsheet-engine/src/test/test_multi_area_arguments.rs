@@ -5,8 +5,9 @@
 //! probes/multiarea-* (oracle excel-graph, 2026-10-07, T-1061) unless marked otherwise. See
 //! docs/excel-semantics/references.md "Multi-area references in functions".
 
+use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
-use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS, TOO_MANY_AREA_CELLS};
+use crate::reference_operators::{is_multi_area, MAX_AREAS, TOO_MANY_AREAS, TOO_MANY_AREA_CELLS};
 use crate::test::util::new_empty_model;
 use crate::types::{Cell, FormulaValue};
 
@@ -38,6 +39,10 @@ fn results(model: &mut Model, cases: &[(&str, &str, &str)]) {
 fn error_message(model: &Model, cell: &str) -> String {
     match model._get_cell(cell) {
         Cell::CellFormula {
+            v: FormulaValue::Error { m, .. },
+            ..
+        }
+        | Cell::ArrayFormula {
             v: FormulaValue::Error { m, .. },
             ..
         } => m.clone(),
@@ -163,8 +168,7 @@ fn unions_through_let_if_and_choose() {
             ("H4", "=IF(TRUE,(A1,B2)) A1", "1"),
             ("H5", "=SUM(IF(TRUE,(A1,B2)))", "6"),
             ("H6", "=SUM(CHOOSE(2,A1,(A1,B2)))", "6"),
-            // A nested LET that shadows the union binding sees its own value (UNVERIFIED:
-            // ordinary LET scoping).
+            // probes/multiarea-letbind H5:H6: a nested LET shadowing the union binding.
             ("H7", "=LET(x,(A1,B2),LET(x,C3,SUM(x)))", "7"),
             ("H8", "=LET(x,(A1,B2),SUM(x,LET(x,C3,x)))", "13"),
             // A single-range binding and plain intersections are unchanged.
@@ -175,6 +179,111 @@ fn unions_through_let_if_and_choose() {
             ("H12", "=CHOOSE(1,(A1,B2))", "#VALUE!"),
         ],
     );
+}
+
+#[test]
+fn unions_bound_through_variables_functions_and_lambda() {
+    let mut model = model();
+    // probes/multiarea-letbind (oracle excel-graph, 2026-10-08, T-1064).
+    results(
+        &mut model,
+        &[
+            ("H1", "=LET(x,(A1,B2),y,x,SUM(y))", "6"),
+            ("H2", "=LET(x,IF(TRUE,(A1,B2)),SUM(x))", "6"),
+            ("H3", "=LET(x,CHOOSE(1,(A1,B2)),SUM(x))", "6"),
+            ("H4", "=LET(x,(A1,B2),y,x,y A1)", "1"),
+            ("H7", "=LAMBDA(x,SUM(x))((A1,B2))", "6"),
+            ("H8", "=SUM(LET(x,(A1,B2),x))", "6"),
+            ("H9", "=SUM((IF(TRUE,(A1,B2)),C3))", "13"),
+            ("H10", "=SUM(IF(FALSE,1,(A1,B2)))", "6"),
+            ("H11", "=SUM(CHOOSE(1.9,(A1,B2),C3))", "6"),
+            ("H12", "=SUM(IF(TRUE,CHOOSE(1,(A1,B2))))", "6"),
+            ("H13", "=IF(TRUE,IF(TRUE,(A1,B2))) A1", "1"),
+            ("H14", "=CHOOSE(2,C3,(A1,B2)) B2", "5"),
+            ("H15", "=LET(x,(A1,B2),y,x,y)", "#VALUE!"),
+            ("H16", "=LET(x,(A1,B2),x) A1", "1"),
+        ],
+    );
+}
+
+#[test]
+fn choose_hands_a_3d_reference_to_the_aggregates() {
+    // probes/3d-ref-choose-let C1, C2, C5 and C6 (oracle excel-graph, 2026-10-08, T-1064).
+    let mut model = new_empty_model();
+    for sheet in ["Data1", "Data2", "Data3"] {
+        model.add_sheet(sheet).unwrap();
+    }
+    for (cell, value) in [
+        ("Data1!A1", "1"),
+        ("Data1!A2", "'5"),
+        ("Data2!A1", "10"),
+        ("Data3!A1", "100"),
+        ("Data3!A2", "2"),
+    ] {
+        model._set(cell, value);
+    }
+    results(
+        &mut model,
+        &[
+            ("C1", "=SUM(CHOOSE(1,Data1:Data3!A1:A2))", "113"),
+            ("C2", "=COUNT(CHOOSE(1,Data1:Data3!A1))", "3"),
+            ("C5", "=SUM(IF(TRUE,CHOOSE(1,Data1:Data3!A1)))", "111"),
+            ("C6", "=CHOOSE(1,Data1:Data3!A1)", "#VALUE!"),
+        ],
+    );
+}
+
+#[test]
+fn union_bindings_held_at_once_are_capped() {
+    // x_1..x_15 hold 2^16 - 2 areas between them and each y_i a fresh union of 2^15 + 1, so the
+    // sixth y_i would pass the cap of four `MAX_AREAS` held together and binds `#VALUE!` instead
+    // (references.md "Union area cap").
+    let mut model = model();
+    let mut formula = String::from("=LET(x_1,(A1,A1)");
+    for i in 2..=15 {
+        formula.push_str(&format!(",x_{i},(x_{j},x_{j})", j = i - 1));
+    }
+    for i in 0..6 {
+        formula.push_str(&format!(",y_{i},(x_15,A1)"));
+    }
+    let last = format!("{formula},SUM(y_4))");
+    let over = format!("{formula},SUM(y_5))");
+    let x15 = format!("{formula},SUM(x_15))");
+    results(
+        &mut model,
+        &[
+            ("Z1", &last, &(MAX_AREAS / 2 + 1).to_string()),
+            ("Z2", &over, "#VALUE!"),
+            ("Z3", &x15, &(MAX_AREAS / 2).to_string()),
+        ],
+    );
+    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREAS);
+}
+
+#[test]
+fn plain_intersection_operands_take_the_pair_path() {
+    // `name A1` and `A1:B2 B1:B3` are intersected pairwise without an area list; only an
+    // operand that may stand for several areas builds one.
+    let mut model = model();
+    model
+        .new_defined_name("box", None, "Sheet1!$A$1:$B$2")
+        .unwrap();
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 8,
+    };
+    for (formula, multi) in [
+        ("box A1", false),
+        ("A1:B2 B1:B3", false),
+        ("(A1,B2) A1", true),
+        ("IF(TRUE,A1) A1", true),
+        ("CHOOSE(1,A1) A1", true),
+        ("LET(x,A1,x) A1", true),
+    ] {
+        let node = model.parser.parse(formula, &context);
+        assert_eq!(is_multi_area(&node), multi, "{formula}");
+    }
 }
 
 #[test]

@@ -21,6 +21,7 @@ SPEC-0004 step 5. probes/union-defined-name H1:H5 (T-0187) fails today: `parse_d
 Also move AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) off its `Node::OpUnionKind` syntax match onto `evaluate_reference_arg` (keep its `Array`, number and error arms and `#VALUE!` for a 3-D reference), so it sees unions behind names, LET variables and IF/CHOOSE.
 
 ## Acceptance criteria
+- [ ] AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) reads its reference through `evaluate_reference_arg` instead of matching `Node::OpUnionKind`, so a union behind a LET variable, IF, CHOOSE, LET or a name reaches it (moved from T-1064); its `Array`, number and error arms and the `#VALUE!` for a 3-D reference stay.
 - [ ] probes/union-defined-name H1:H5 (including `mu A1`) and probe row 14 pass; baseline updated.
 - [ ] references.md "Union area cap" DEVIATION covers the name-body and per-workbook caps; unit tests for both.
 - [ ] A Print_Area body round-trips through xlsx export unchanged (unit test).

@@ -182,8 +182,8 @@ impl Model {
                 reference,
                 ..
             } => self.get_sheet_span_range(*first_index, *last_index, reference, cell),
-            // IF and CHOOSE hand back the chosen branch in reference context, a union
-            // included (probes/multiarea-ifchoose H2:H3).
+            // IF and CHOOSE hand back the chosen branch, LET its body, in reference context,
+            // a union included (probes/multiarea-ifchoose H2:H3, multiarea-letbind H8).
             Node::FunctionKind {
                 kind: Function::If,
                 args,
@@ -192,6 +192,10 @@ impl Model {
                 kind: Function::Choose,
                 args,
             } => return self.choose_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } => return self.let_impl(args, cell, true),
             // A LET variable bound to a union is its areas (probes/multiarea-let H1).
             Node::NamedVariableKind { .. } => return self.variable_reference(node, cell),
             Node::FunctionKind {

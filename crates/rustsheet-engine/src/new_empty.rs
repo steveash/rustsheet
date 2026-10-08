@@ -27,6 +27,7 @@ use crate::{
     utils::ParsedReference,
 };
 
+use crate::functions::VariableStack;
 use crate::tz::Tz;
 
 pub const APPLICATION: &str = "IronCalc Sheets";
@@ -690,7 +691,7 @@ impl Model {
             language,
             tz,
             view_id: 0,
-            variable_stack: HashMap::new(),
+            variable_stack: VariableStack::default(),
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,

@@ -29,7 +29,12 @@ A span of one sheet is also that sheet's reference (unlike multi-sheet spans abo
 COUNTBLANK counts the blanks (2 for `Data1:Data1!A1:B3`) and INDEX reads the cell.
 A span wrapped in IF or CHOOSE inside INDEX or MATCH gives `#VALUE!`, not
 `#REF!`; `SUM(IF(TRUE,Data1:Data3!A1:A2))` is 113 (numbers of all three sheets, the text "5" skipped).
-Evidence: probes/3d-ref-values, probes/3d-ref-functions incl. C15:C22 (excel-graph, 2026-10-06).
+CHOOSE hands a span to an aggregate the same way: `SUM(CHOOSE(1,Data1:Data3!A1:A2))` = 113,
+`COUNT(CHOOSE(1,Data1:Data3!A1))` = 3, `SUM(IF(TRUE,CHOOSE(1,Data1:Data3!A1)))` = 111; and so does LET:
+`LET(x,Data1:Data3!A1,SUM(x))` and `SUM(LET(x,Data1:Data3!A1,x))` are 111. As a cell value,
+`=CHOOSE(1,Data1:Data3!A1)` is `#VALUE!`, not the `#REF!` of the bare span.
+Evidence: probes/3d-ref-values, probes/3d-ref-functions incl. C15:C22 (excel-graph, 2026-10-06),
+probes/3d-ref-choose-let (excel-graph, 2026-10-08).
 Status: VERIFIED, except two engine choices without a probe (UNVERIFIED): a span whose end is not a
 sheet (`=SUM(Data1:Nope!A1)`) is `#REF!` like any reference to a missing sheet, and the explicit
 implicit intersection `=@Data1:Data3!A1` is `#VALUE!`.
@@ -37,7 +42,9 @@ Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` 
 crates/rustsheet-engine/src/reference_operators.rs; INDEX, AREAS, VLOOKUP, MATCH and COUNTBLANK reach
 the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
 the same check (`IfBranchMode::SingleSheet`, T-1026); IF-wrapped spans inside AREAS, VLOOKUP/HLOOKUP and COUNTBLANK share that path and are UNVERIFIED (no probe).
-Tasks: T-0122, T-0197, T-1026
+CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET is still `#VALUE!` in the
+engine (probes/3d-ref-choose-let C3:C4, known failures, T-1158).
+Tasks: T-0122, T-0197, T-1026, T-1064
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
@@ -431,11 +438,14 @@ adds up the cells of its areas, each clipped to its sheet's used area, in satura
 and before any cell is read; more than 16,777,216 cells (`MAX_AREA_CELLS`, 2^24, 16 full used
 columns) is `#VALUE!`. The bound is per argument, as a plain range argument's work already is.
 Excel's limit, if any, is not known.
+The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
+four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
+otherwise grow with formula length. A binding that would pass the total is `#VALUE!`.
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `MAX_AREA_CELLS`,
 `Model::union_areas`, `Model::count_union_areas`, `Model::intersect_areas`); functions/util.rs
-(`Model::check_area_cells`)
-Tasks: T-0134, T-1062
+(`Model::check_area_cells`); functions/logical/let.rs (`MAX_HELD_AREAS`, `VariableStack`)
+Tasks: T-0134, T-1062, T-1064
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence
@@ -451,7 +461,13 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
 - ISERROR and ISNUMBER of a union are TRUE and FALSE, IFERROR gives its fallback (the union is `#VALUE!` as a value).
 - A union stands for its areas through `LET` (`LET(x,(A1,B2),SUM(x))` = 6, `x A1` = 1, bare `x` `#VALUE!`), `IF`/`CHOOSE`
   (`IF(TRUE,(A1,B2)) A1` = 1, `SUM(IF(TRUE,(A1,B2)))` = 6, `SUM(CHOOSE(2,A1,(A1,B2)))` = 6) and an intersection
-  that leaves two areas (`SUM((A1:A3,B1:B3) A1:B2)` = 6).
+  that leaves two areas (`SUM((A1:A3,B1:B3) A1:B2)` = 6). It stays its areas wherever it is bound or picked:
+  through another variable (`LET(x,(A1,B2),y,x,SUM(y))` = 6, `y A1` = 1, bare `y` `#VALUE!`), a LET value from
+  IF or CHOOSE (`LET(x,IF(TRUE,(A1,B2)),SUM(x))` = 6), a LAMBDA argument (`LAMBDA(x,SUM(x))((A1,B2))` = 6), a LET
+  body (`SUM(LET(x,(A1,B2),x))` = 6, `LET(x,(A1,B2),x) A1` = 1), the else branch and a truncated index
+  (`SUM(IF(FALSE,1,(A1,B2)))`, `SUM(CHOOSE(1.9,(A1,B2),C3))` = 6), nested IF/CHOOSE (`IF(TRUE,IF(TRUE,(A1,B2))) A1`
+  = 1) and as a union operand (`SUM((IF(TRUE,(A1,B2)),C3))` = 13). A nested LET shadows a union binding as any
+  other (`LET(x,(A1,B2),LET(x,C3,SUM(x)))` = 7; probes/multiarea-letbind, excel-graph, 2026-10-08).
 - Cross-sheet: `SUM((Data!A1,Other!A1))` and `AREAS(..)` are `#VALUE!`. A name with a cross-sheet union body
   (`Data!$A$1,Other!$A$1`) loads, `SUM(xs)` and `=xs` are `#VALUE!` and `ISREF(xs)` is FALSE (unlike a same-sheet
   union name, which is TRUE).
@@ -477,11 +493,12 @@ Status: VERIFIED (Excel for the web)
 Implemented in: AGGREGATE and the intersection; since T-1062 every aggregate on the shared argument path
 (`Model::evaluate_reference_arg`, functions/util.rs: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, MINA,
 MAXA, PRODUCT, the STDEV/VAR families and the other users of `for_each_value`) walks the areas one after the
-other (`Model::for_each_cell_in_areas`). Since T-1064 a LET variable bound to a union (`Binding::Areas`, functions/logical/let.rs) and the branch IF
-or CHOOSE picks with a scalar condition or index (`Model::if_impl`, `Model::choose_impl`) stay areas in
-reference context and as intersection operands. Engine choice, not probed: only a union or multi-area
-intersection written as the LET value binds areas (`LET(x,IF(TRUE,(A1,B2)),SUM(x))` is `#VALUE!`), and an IF or
-CHOOSE over an array condition keeps its value form. SPEC-0004 and T-1063, T-1065, T-1068 to T-1073 implement the rest;
+other (`Model::for_each_cell_in_areas`). Since T-1064 a LET variable or LAMBDA parameter bound to a union
+(`Binding::Areas`, reference_operators.rs; `Model::bind_argument`, functions/logical/let.rs), the branch IF or
+CHOOSE picks with a scalar condition or index (`Model::if_impl`, `Model::choose_impl`) and LET's body
+(`Model::let_impl`) stay areas in reference context and as intersection operands.
+UNVERIFIED (no probe): an IF or CHOOSE over an array condition keeps its value form.
+SPEC-0004 and T-1063, T-1065, T-1068 to T-1073 implement the rest;
 until then LARGE, RANK, CONCAT and TEXTJOIN read a union as `#VALUE!` (`RefArg::into_single_area`;
 LARGE, SMALL and RANK then answer `#N/IMPL!`, as before). The other users of `for_each_value` (HARMEAN, AVEDEV,
 SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.

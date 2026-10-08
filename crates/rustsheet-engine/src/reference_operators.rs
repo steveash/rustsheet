@@ -128,12 +128,40 @@ impl RefArg {
     }
 }
 
+/// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
+/// included), or the areas of a union, which only reference context reads as such
+/// ([`Model::variable_reference`]); everywhere else it is `#VALUE!`, as `LET(x,(A1,B2),x)` is
+/// (probes/multiarea-let H3).
+#[derive(Clone)]
+pub(crate) enum Binding {
+    Value(CalcResult),
+    Areas(Areas),
+}
+
+impl Binding {
+    /// The binding where a value or a single reference is needed.
+    pub(crate) fn value(&self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            Binding::Value(value) => value.clone(),
+            Binding::Areas(_) => several_areas(cell),
+        }
+    }
+
+    /// How many areas the binding holds: those of a union, none for a value.
+    pub(crate) fn held_areas(&self) -> usize {
+        match self {
+            Binding::Value(_) => 0,
+            Binding::Areas(Areas(areas)) => areas.len(),
+        }
+    }
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
-pub(crate) fn several_areas(cell: CellReferenceIndex) -> CalcResult {
+fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
 }
 
-fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
+pub(crate) fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 
@@ -144,12 +172,12 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
 /// Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_multi_area(node: &Node) -> bool {
     match node {
-        // A LET variable, IF and CHOOSE may stand for a union (probes/multiarea-let H2,
-        // multiarea-ifchoose H1).
+        // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let H2,
+        // multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
         Node::OpUnionKind { .. }
         | Node::NamedVariableKind { .. }
         | Node::FunctionKind {
-            kind: Function::If | Function::Choose,
+            kind: Function::If | Function::Choose | Function::Let,
             ..
         } => true,
         Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
@@ -469,7 +497,7 @@ impl Model {
             }
             Node::NamedVariableKind { .. }
             | Node::FunctionKind {
-                kind: Function::If | Function::Choose,
+                kind: Function::If | Function::Choose | Function::Let,
                 ..
             } => match self.evaluate_reference_arg(node, cell) {
                 RefArg::Ranges(Ranges::Areas(areas)) => Ok(areas.0.to_vec()),
