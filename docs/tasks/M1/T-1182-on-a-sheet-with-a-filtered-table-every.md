@@ -3,7 +3,7 @@ id: T-1182
 title: "On a sheet with a filtered table every hidden row counts as filtered for SUBTOTAL"
 milestone: M1
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/subtotal-hidden-filtered (excel-graph, T-1036): Filter!H1 `=SUBTOTAL(9,B2
 
 ## Out of scope
 -
+
+## Outcome
+`get_table_for_cell`/`cell_hidden_status` replaced by `sheet_has_filtered_table` (decided once per sheet per area walk, no table-reference parsing per cell) and `row_hidden_status`: on a sheet with a filtered table every hidden row is filtered. Eval delta: probes known failures 404 -> 402 (Filter!H1, Filter2!H1 fixed), 0 regressions. numbers.md engine gaps updated.
