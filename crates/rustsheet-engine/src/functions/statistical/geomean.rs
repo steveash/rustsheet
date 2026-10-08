@@ -90,7 +90,7 @@ impl Model {
         // `product * 2^r` stays finite up to r = 1000; past that (over 1000 values) the remainder
         // gets its own root (unprobed).
         let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
-        exp2 += exponent_wrap_excess(significands, count);
+        exp2 += exponent_wrap_excess(significands, count, exp2);
         let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
         let root = match i32::try_from(r) {
             Ok(r) if r <= 1000 => (product * 2f64.powi(r)).powf(1.0 / n),
@@ -113,21 +113,24 @@ impl Model {
 /// Span of the 11-bit double exponent field: Excel's power-of-two sum gains one of these per wrap.
 const EXPONENT_FIELD_SPAN: i64 = 2048;
 
-/// The amount Excel's power-of-two sum is too high for `count` values whose [1, 2) significand
-/// product is `significands` (finite, at least 1).
+/// The amount Excel's power-of-two sum `exp2` is too high for `count` values whose [1, 2)
+/// significand product is `significands` (finite, at least 1).
 ///
 /// It is `2048 * k`, where k counts the wraps of the exponent field below the double range by the
 /// [0.5, 1) significand product `significands * 2^-count`, as if Excel formed that product by
-/// exponent-field arithmetic modulo 2048. It matches all 41 probed cells whose significand product
-/// is above 1: 2400 copies of 1E-300 give 1E-300 * 2^(2048/2400), 1700 copies give 1E-300, and
-/// 1E-307 steps to k = 2 between 3500 and 3900 copies. Powers of two (product exactly 1) never
-/// gain: 2^-1000 x 8200 and 2 x 2000 are exact (numbers.md, "GEOMEAN is #NUM! when the product of
-/// significands overflows"; probes/geomean-exponent-sum, -sum-2, geomean-overflow-cut-3 C7; T-1120).
-fn exponent_wrap_excess(significands: f64, count: i64) -> i64 {
+/// exponent-field arithmetic modulo 2048. It matches all 41 probed cells of T-1120: 2400 copies of
+/// 1E-300 give 1E-300 * 2^(2048/2400), 1700 copies give 1E-300, and 1E-307 steps to k = 2 between
+/// 3500 and 3900 copies. Only a product below the double range (negative `exp2`) whose significand
+/// product has reached 2 wraps: 2^-1000 * 1.001 (significand product exponent 1) gains k = 1 from
+/// 1100 copies, while 2^-1000 * 1.0001 (product below 2), powers of two (product 1) and 2^1000 times
+/// 1.001 or 1.1 (positive sum) never gain, up to 3000 or 8200 copies (numbers.md, "GEOMEAN is #NUM!
+/// when the product of significands overflows"; probes/geomean-exponent-sum, -sum-2,
+/// geomean-overflow-cut-3 C7, geomean-pow2-count; T-1120, T-1156).
+fn exponent_wrap_excess(significands: f64, count: i64, exp2: i64) -> i64 {
     // `significands >= 1` puts its exponent in [0, 1023], and `count` is a vector length, so this
     // cannot overflow.
     let below = count - i64::from(split_pow2(significands).1) - 1022;
-    if below > 0 && significands > 1.0 {
+    if below > 0 && exp2 < 0 && significands >= 2.0 {
         EXPONENT_FIELD_SPAN * ((below + EXPONENT_FIELD_SPAN - 1) / EXPONENT_FIELD_SPAN)
     } else {
         0
