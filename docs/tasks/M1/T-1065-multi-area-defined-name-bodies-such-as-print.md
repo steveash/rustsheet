@@ -20,6 +20,9 @@ SPEC-0004 step 5. probes/union-defined-name H1:H5 (T-0187) fails today: `parse_d
 ## Note from T-1064
 Also move AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) off its `Node::OpUnionKind` syntax match onto `evaluate_reference_arg` (keep its `Array`, number and error arms and `#VALUE!` for a 3-D reference), so it sees unions behind names, LET variables and IF/CHOOSE.
 
+## Note from T-1073
+The parser now reads a top-level comma as the bare union (`Parser::parse_bare_union`, cells and name bodies alike), so `mu` = `Sheet1!$A$1,Sheet1!$B$2` parses: probes/union-defined-name loads (H2, H3 pass; H1 `SUM(mu)`, H4 `mu A1`, H5 `COUNT(mu)` still fail, the name is not yet evaluated as its areas) and probes/multiarea-xname passes. No separate name-body entry point is needed.
+
 ## Acceptance criteria
 - [ ] AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) reads its reference through `evaluate_reference_arg` instead of matching `Node::OpUnionKind`, so a union behind a LET variable, IF, CHOOSE, LET or a name reaches it (moved from T-1064); its `Array`, number and error arms and the `#VALUE!` for a 3-D reference stay.
 - [ ] probes/union-defined-name H1:H5 (including `mu A1`) and probe row 14 pass; baseline updated.
