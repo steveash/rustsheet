@@ -340,7 +340,7 @@ impl Model {
                 }
             }
             Node::ImplicitIntersection { child, .. } => {
-                match self.evaluate_node_with_reference(child, cell) {
+                match self.evaluate_at_operand_reference(child, cell) {
                     CalcResult::Range { left, right } => {
                         match implicit_intersection(&cell, &Range { left, right }) {
                             Some(r) => CalcResult::Range { left: r, right: r },
@@ -620,8 +620,8 @@ impl Model {
                     column: column1,
                 })
             }
-            WrongReferenceKind { .. } => {
-                CalcResult::new_error(Error::REF, cell, "Wrong reference".to_string())
+            WrongReferenceKind { sheet_name, .. } => {
+                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong reference")
             }
             OpRangeKind { left, right } => self.get_range(left, right, cell),
             OpIntersectKind { left, right, .. } => self.get_intersection(left, right, cell),
@@ -632,8 +632,8 @@ impl Model {
                 ..
             } => self.get_sheet_span_value(*first_index, *last_index, reference, cell),
             OpUnionKind { left, right, .. } => self.get_union(left, right, cell),
-            WrongRangeKind { .. } => {
-                CalcResult::new_error(Error::REF, cell, "Wrong range".to_string())
+            WrongRangeKind { sheet_name, .. } => {
+                Self::wrong_sheet_error(sheet_name.as_deref(), cell, "Wrong range")
             }
             RangeKind {
                 sheet_index,
