@@ -390,10 +390,10 @@ confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
 ### Inverse hyperbolics, COTH/CSCH and the SINH/TANH thresholds: oracle sweep (T-1005)
 Probe `probes-numeric/m9-hyperbolic` (268 cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0917.
 - ASINH loses precision for small |x|, so it is not `asinh` from libm: ASINH(1E-10) = 1.000000082690371E-10 (relative error
-  8e-8), ASINH(3E-10) = 3.000000247771113E-10, ASINH(1E-9) = 1.000000082240371E-9, ASINH(1E-5) = 9.999999999902983E-6. This is
-  the cancellation signature of `ln(x + sqrt(x^2 + 1))`; the engine returns the exact value (known mismatch, 11 cells).
-- ACOTH(x) for large x is ~1E-7 relative off at x = 1.5E7 and worse beyond (ACOTH(1.5E10) = 6.666666666666667E-11 vs engine
-  6.666667217824696E-11 in libm terms): Excel is accurate there, the engine's `atanh(1/x)` path is not.
+  8e-8), ASINH(3E-10) = 3.000000247771113E-10, ASINH(1E-9) = 1.000000082240371E-9, ASINH(1E-5) = 9.999999999902983E-6. This
+  matches (hypothesis, not measured) the cancellation signature of `ln(x + sqrt(x^2 + 1))`; the engine returns the exact value (known mismatch, 11 cells).
+- ACOTH(x) for large x is ~1E-7 relative off at x = 1.5E7 and worse beyond (ACOTH(1.5E10): Excel 6.666666666666667E-11, engine
+  6.666667217824696E-11): Excel is accurate there, the engine's `atanh(1/x)` path is not.
 - ACOTH(1 + 1E-12) = 14.162039699929037 while ATANH(1 - 1E-12) = 14.162095209226402: the near-1 side is evaluated in a
   formulation whose error grows as the argument approaches 1 (ACOSH(1.000000000001) = 1.414276423083533E-6 vs sqrt(2E-12)
   = 1.41421356E-6).
