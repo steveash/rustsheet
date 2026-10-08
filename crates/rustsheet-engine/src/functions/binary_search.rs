@@ -8,26 +8,6 @@ pub(crate) trait Sequence<T: Ord> {
     fn seq_len(&self) -> usize;
     /// The element at `index`, which must be below `seq_len`.
     fn at(&self, index: usize) -> &T;
-    /// The index from which every element equals the last one (a virtual run
-    /// of empty cells), or `seq_len` if there is no such run. It lets the walks
-    /// over equal elements jump the run instead of stepping a million cells.
-    fn uniform_tail_start(&self) -> usize {
-        self.seq_len()
-    }
-}
-
-/// From `index`, whose element equals `target`, the end of the run of equal
-/// elements.
-fn walk_forward<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, mut index: usize) -> usize {
-    let n = array.seq_len();
-    let tail = array.uniform_tail_start();
-    while index + 1 < n && array.at(index + 1) == target {
-        if index + 1 >= tail {
-            return n - 1;
-        }
-        index += 1;
-    }
-    index
 }
 
 impl<T: Ord> Sequence<T> for [T] {
@@ -92,7 +72,7 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
     descending: bool,
     mode: Ordering,
 ) -> Option<usize> {
-    let (mut smaller, mut larger) = (None, None);
+    let (mut smaller, mut larger, mut equal) = (None, None, None);
     // The live range is lo..hi (hi exclusive), so the lower middle of the inclusive bounds is
     // lo + (hi - 1 - lo) / 2.
     let mut lo = 0;
@@ -101,7 +81,14 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
         let mid = lo + (hi - 1 - lo) / 2;
         let ordering = array.at(mid).cmp(target);
         match ordering {
-            Ordering::Equal if descending => return Some(walk_forward(target, array, mid)),
+            // Descending, an equal element is remembered and the search goes on to its right, so
+            // a blank inside a run ends it: with FALSE,_,TRUE,_,TRUE,_ in B1:B6
+            // `XMATCH(TRUE,B1:B6,0,-2)` is 5 (probes/xmatch-text-bool-equal-runs Txt!M21, M24).
+            Ordering::Equal if descending => {
+                equal = Some(mid);
+                lo = mid + 1;
+                continue;
+            }
             // Every match mode returns the run's first element, also for match mode 1 over a
             // run that starts at the first cell (probes/xmatch-text-bool-equal-runs Run!M5-M42;
             // docs/excel-semantics/lookup.md).
@@ -114,6 +101,9 @@ pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
         } else {
             hi = mid;
         }
+    }
+    if equal.is_some() {
+        return equal;
     }
     match mode {
         Ordering::Less => smaller,
