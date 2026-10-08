@@ -26,3 +26,4 @@ T-1137 oracle evidence (probes/near-zero-snap-groups, excel-graph 2026-10-08): w
 
 ## Outcome
 `evaluate_defined_name_formula` now evaluates the body with `evaluate_formula_root`, so a name body is snapped at its own root. probes/near-zero-snap-groups C1-C5 pass (probes known failures 171 -> 166); B7/B8 unchanged. A grouped body `=(X-b)` stays unprobed.
+Follow-up T-1164 probes grouped and SUM name bodies, which the engine now snaps unevidenced (recorded in numbers.md).
