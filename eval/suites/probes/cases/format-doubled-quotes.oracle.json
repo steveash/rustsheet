@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "C1": {
+    "t": "s",
+    "v": "42 Millions"
+   },
+   "C10": {
+    "t": "s",
+    "v": "ax"
+   },
+   "C11": {
+    "t": "s",
+    "v": "x q"
+   },
+   "C2": {
+    "t": "s",
+    "v": "42 ab"
+   },
+   "C3": {
+    "t": "s",
+    "v": "hI"
+   },
+   "C4": {
+    "t": "s",
+    "v": "42 "
+   },
+   "C5": {
+    "t": "s",
+    "v": "42 "
+   },
+   "C6": {
+    "t": "s",
+    "v": "42 a"
+   },
+   "C7": {
+    "t": "s",
+    "v": "4 x 2"
+   },
+   "C8": {
+    "t": "s",
+    "v": "hI"
+   },
+   "C9": {
+    "t": "s",
+    "v": "x"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "db8666ba10d726f9842f25d6055a6396c8f3fad524a6d39390cbf9e804c87a3a",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-08T04:01:31+00:00",
+  "version": null
+ }
+}

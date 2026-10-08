@@ -105,6 +105,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-constants.case.json	24
 C	probes/filter-if-empty-array.case.json	12
+C	probes/format-doubled-quotes.case.json	11
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-exponent-sum-2.case.json	34
 C	probes/geomean-exponent-sum.case.json	28
@@ -226,6 +227,7 @@ C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-b-functions-broadcast.case.json	29
 C	probes/text-ddd-negative-fraction.case.json	9
+C	probes/text-format-text-limit.case.json	25
 C	probes/text-general-exponent-boundary.case.json	10
 C	probes/text-number-15-digits.case.json	16
 C	probes/text-number-long-paths.case.json	16
@@ -398,7 +400,6 @@ F	probes/lifted-range-rows.case.json	Sheet1!C1
 F	probes/lifted-range-rows.case.json	Sheet1!C2
 F	probes/lifted-range-rows.case.json	Sheet1!C3
 F	probes/lifted-range-rows.case.json	Sheet1!E1
-F	probes/literal-digits.case.json	Sheet1!C4
 F	probes/min-max-reference-forms.case.json	Sheet1!D8
 F	probes/multiarea-3d-ref.case.json	Sheet1!H1
 F	probes/multiarea-3d-ref.case.json	Sheet1!H2
@@ -449,10 +450,6 @@ F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
 F	probes/paren-number-text-forms.case.json	Sheet1!A2
 F	probes/paren-number-text-forms.case.json	Sheet1!A6
-F	probes/precision-and-rounding.case.json	Sheet1!A15
-F	probes/precision-and-rounding.case.json	Sheet1!A2
-F	probes/precision-and-rounding.case.json	Sheet1!A3
-F	probes/precision-and-rounding.case.json	Sheet1!A4
 F	probes/rate-empty-arguments.case.json	Sheet1!A1
 F	probes/rate-empty-arguments.case.json	Sheet1!A10
 F	probes/rate-empty-arguments.case.json	Sheet1!A2
