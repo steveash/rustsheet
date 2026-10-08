@@ -21,4 +21,4 @@ probes/multiarea-foreach (excel-graph, T-1150), cells H13, H14, H8, H9 (engine g
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Aggregates that already pass over a union (HARMEAN, AVEDEV, SKEW, KURT, MINA, STDEV, STDEV.P, VAR, VAR.P and the rest of probes/multiarea-foreach).
