@@ -3,7 +3,7 @@ id: T-1064
 title: "Unions through LET, IF and CHOOSE in reference context (SPEC-0004 step 4)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
