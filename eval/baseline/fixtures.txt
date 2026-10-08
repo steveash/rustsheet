@@ -3,20 +3,7 @@
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 C	fixtures/ifs-legacy-range-criteria.xlsx	20
+C	fixtures/rich-error-export.xlsx	15
 C	fixtures/shared-string-phonetic-runs.xlsx	3
 C	fixtures/t-d-iso-date-cells.xlsx	8
 C	fixtures/workday-intl-legacy-holidays.xlsx	6
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!G1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!G2
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!H1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!H2
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!I1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!I2
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!J1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!J2
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!L1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!L2
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!M1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!M2
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!N1
-F	fixtures/ifs-legacy-range-criteria.xlsx	Sheet1!N2

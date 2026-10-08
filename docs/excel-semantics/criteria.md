@@ -130,7 +130,17 @@ formula intersects a multi-cell range criterion for every *IF(S) function, not o
 D2 = "c" over A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, a formula in row 1 uses D1 and in row 2 uses D2:
 COUNTIF/COUNTIFS 3 and 1, SUMIF/SUMIFS 7 and 1 (SUMIF with a one-cell sum range B1 too), AVERAGEIF(S) 2.333.. and 1,
 MAXIFS 3 and 1, MINIFS 1 and 1. The fixture writes MAXIFS/MINIFS with the `_xlfn.` prefix Excel itself
-stores. COUNTIF and AVERAGEIF already intersect; the rest return `#VALUE!` (T-0278).
+stores. All of them intersect through the criterion arguments' scalar signatures (T-0278).
+A failed intersection is not an error result: the criterion becomes the error value `#VALUE!`, which then
+matches `#VALUE!` cells (poi/FormulaEvalTestData_Copy.xlsx EverythingTests!E1324, `SUMIF(AA7:AA13,C10:D10,C7)` = 1.1
+in row 1324: AA9 is `#VALUE!` and the resized sum range gives C9); with no such cell the count is 0 and AVERAGEIF(S)
+is `#DIV/0!`. Inside SUMPRODUCT there is no intersection at all: SUMPRODUCT evaluates its arguments as arrays, so
+`SUMPRODUCT(COUNTIF(A1:A6,D1:D2))` is 4, SUMIF/SUMIFS 8, AVERAGEIF(S) 3.33.., MAXIFS 4, MINIFS 2 in any row,
+while `SUM(COUNTIF(A1:A6,D1:D2))` intersects (0 off-row) (probes/ifs-legacy-sumproduct, oracle excel-graph
+2026-10-08, T-0278).
+Unprobed: the engine skips intersection for the whole subtree under SUMPRODUCT (`is_array_context`), but only
+*IF(S) directly inside it is probed; IF/INDEX/CHOOSE nested in SUMPRODUCT, deeper nesting and other
+array-context functions (LOOKUP, MMULT) are open (T-0286).
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS

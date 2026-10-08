@@ -146,7 +146,7 @@ Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and
 `#GETTING_DATA` special precedence: it is an ordinary error kind.
 Stored constants (`<c t="e"><v>#BUSY!</v></c>`, spec2xlsx `{"t":"e","v":"#BUSY!","stored":true}`, T-0999)
 are different from formula literals: of the newer names only `#BUSY!` (and `#GETTING_DATA`, `#N/A`) load.
-A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` is rejected on load
+A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!`, `#CALC!` or `#SPILL!` is rejected on load
 (createSession 501 `unsupportedWorkbook`), like the formula literals (`=#CALC!` itself loads). A
 stored `#BUSY!` is an error that is not `#N/A`: `ISERROR` and `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA`
 passes it through, `A1&""` is `#BUSY!`, and `ERROR.TYPE` is 0 (not 7; confirmed by `ERROR.TYPE(A1)+100` =
@@ -165,4 +165,4 @@ rejections were run as throw-away one-cell cases (not committed; no value to rec
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014
