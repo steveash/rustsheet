@@ -601,12 +601,6 @@ F	probes/multiarea-at-legacy.case.json	Sheet1!H10
 F	probes/multiarea-at-legacy.case.json	Sheet1!H7
 F	probes/multiarea-at-legacy.case.json	Sheet1!H8
 F	probes/multiarea-at-legacy.case.json	Sheet1!H9
-F	probes/multiarea-foreach.case.json	Sheet1!H13
-F	probes/multiarea-foreach.case.json	Sheet1!H14
-F	probes/multiarea-foreach.case.json	Sheet1!H17
-F	probes/multiarea-foreach.case.json	Sheet1!H18
-F	probes/multiarea-foreach.case.json	Sheet1!H8
-F	probes/multiarea-foreach.case.json	Sheet1!H9
 F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
