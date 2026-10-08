@@ -54,6 +54,8 @@ fn fn_rate_guess_argument() {
     let mut model = new_empty_model();
     model._set("A1", "=RATE(10,-100,800,0,0,0.1)");
     model._set("A2", "=RATE(10,-100,800)");
+    // A different guess still reaches the same root; Excel's exact digits are T-0916's job.
+    model._set("A3", "=RATE(10,-100,800,0,0,0.5)");
     model.evaluate();
 
     let Ok(CellValue::Number(with_guess)) = model.get_cell_value_by_ref("Sheet1!A1") else {
@@ -63,6 +65,10 @@ fn fn_rate_guess_argument() {
         panic!("RATE without a guess should be a number");
     };
     assert!((with_guess - without_guess).abs() < 1e-9);
+    let Ok(CellValue::Number(other_guess)) = model.get_cell_value_by_ref("Sheet1!A3") else {
+        panic!("RATE with another guess should be a number");
+    };
+    assert!((other_guess - without_guess).abs() < 1e-6);
 }
 
 #[test]
