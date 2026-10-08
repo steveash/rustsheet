@@ -220,15 +220,42 @@ impl Model {
             if over_limit {
                 values.clear();
             }
-            match self.evaluate_node_in_context(arg, cell) {
+            match self.evaluate_aggregate_arg(arg, cell) {
                 CalcResult::Number(value) => values.push(number_to_text(value)),
                 CalcResult::Range { left, right } => {
                     if left.sheet != right.sheet {
-                        return CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Ranges are in different sheets".to_string(),
-                        );
+                        // A 3-D reference is walked sheet by sheet; an error cell past the limit
+                        // is dropped like a range cell's (probes/text-result-limit-errors-refs
+                        // D10-D11).
+                        if let Err(error) =
+                            self.for_each_cell_or_error_in_range(left, right, cell, |_, value| {
+                                over_limit = over_limit || size.exceeds(&values);
+                                if over_limit {
+                                    values.clear();
+                                }
+                                match value {
+                                    CalcResult::Number(n) => values.push(number_to_text(n)),
+                                    CalcResult::String(text) => values.push(text),
+                                    CalcResult::Boolean(b) => {
+                                        values.push(if b { "TRUE" } else { "FALSE" }.to_string());
+                                    }
+                                    CalcResult::EmptyCell if !ignore_empty => {
+                                        values.push(String::new());
+                                    }
+                                    CalcResult::Error { .. }
+                                        if over_limit || size.exceeds_with_separator(&values) =>
+                                    {
+                                        over_limit = true;
+                                    }
+                                    error @ CalcResult::Error { .. } => return Err(error),
+                                    _ => {}
+                                }
+                                Ok(())
+                            })
+                        {
+                            return error;
+                        }
+                        continue;
                     }
                     let row1 = left.row;
                     let mut row2 = right.row;
