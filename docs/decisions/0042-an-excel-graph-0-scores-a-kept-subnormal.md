@@ -23,13 +23,15 @@
 - **Decision:**
   - `runner.rs` `graph_hides_subnormal`: the cell scores as a pass only when all of these hold:
     - its expectation came from an `excel-graph` oracle sidecar;
+    - the same spec case has a cell `=(<its formula>)=0` whose excel-graph value is FALSE, so
+      Excel's own evidence says the result is non-zero;
     - the expectation is exactly 0;
     - the engine's value is a non-zero number below the smallest normal double.
   - Cached values and `excel-desktop` expectations are untouched, and so is every other value.
-  - Whether a result is flushed or kept stays evidenced by `(x)=0` companion cells. Every probe
-    of a subnormal result must keep one.
+  - The companion requirement keeps the rule to evidenced cells. A cell without one, such as
+    the probes-numeric CSCH/NORM.S.DIST/ERFC tails, still scores as a mismatch until a probe adds
+    a companion (T-1143).
 - **Consequences:**
-  - A wrongly kept subnormal, where Excel flushes, is no longer caught by the numeric cell, only
-    by its companion. The probes that pin the flush (subnormal-function-results,
-    subnormal-flush-edges, subnormal-sumsq-sumproduct-edges) all have companions.
+  - A wrongly kept subnormal is still caught. Where Excel flushes, the companion is TRUE, so the
+    rule does not apply and the numeric cell fails.
   - If an oracle backend that reports subnormals ever lands, this rule is not applied to it.

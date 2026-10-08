@@ -113,15 +113,17 @@ struct Expectation {
     from_excel: bool,
     /// The pinned by-design value when the suite's `deviations` file lists the cell.
     pinned: Option<Value>,
-    /// Whether the expectation came from the excel-graph oracle, which reports a kept
-    /// subnormal as 0 (`graph_hides_subnormal`).
+    /// Whether the expectation is an excel-graph value with an excel-graph companion
+    /// `=(<formula>)=0` that is FALSE: Excel kept a non-zero result that Graph may report as 0
+    /// (`graph_hides_subnormal`).
     from_graph: bool,
 }
 
 /// Whether an excel-graph expectation of 0 hides `actual`. The Graph API reports a subnormal
 /// cell value as 0.0, so its 0 cannot tell a true 0 from a kept subnormal: Excel keeps
-/// `3E-308-2.5E-308` yet Graph reports 0 (probes/subnormal-function-results A69; the `C`
-/// companions `(x)=0` carry the evidence). Decision 0042.
+/// `3E-308-2.5E-308` yet Graph reports 0 (probes/subnormal-function-results A69). Only cells
+/// whose companion `(x)=0` is FALSE qualify (`from_graph`), so the evidence is Excel's.
+/// Decision 0042.
 fn graph_hides_subnormal(e: &Expectation, actual: &Value) -> bool {
     e.from_graph
         && e.expected == Value::Number(0.0)
@@ -410,7 +412,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
                 expected: lookup(sheet, addr).filter(|v| !is_undecoded(v))?,
                 from_excel,
                 pinned: None,
-                from_graph: source == GRAPH_ORACLE,
+                from_graph: false,
             })
         })
         .collect();
@@ -511,6 +513,16 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     } else {
         spec.check.clone()
     };
+    // Formulas `(x)=0` whose excel-graph value is FALSE: Excel kept `x` non-zero (decision 0042).
+    let from_graph_oracle = source == GRAPH_ORACLE;
+    let kept_nonzero: BTreeSet<String> = formulas
+        .iter()
+        .filter(|(sheet, addr, _)| {
+            let key = cell_key(sheet, *addr);
+            oracle_cells.contains(&key) && expected.get(&key) == Some(&Value::Bool(false))
+        })
+        .map(|(_, _, formula)| formula.clone())
+        .collect();
     let mut expectations = Vec::new();
     let mut skipped_volatile = 0;
     for q in wanted {
@@ -521,6 +533,10 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             continue; // pending oracle for this cell (or an undecoded rich error)
         };
         let formula = formula_of(&sheet, &a1);
+        let from_graph = from_graph_oracle
+            && formula
+                .as_deref()
+                .is_some_and(|f| kept_nonzero.contains(&format!("({f})=0")));
         if volatile.contains(&(sheet.clone(), addr)) {
             skipped_volatile += 1;
             continue;
@@ -532,7 +548,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             expected: value,
             from_excel: oracle_is_excel && oracle_cells.contains(&key),
             pinned: None,
-            from_graph: source == GRAPH_ORACLE && oracle_cells.contains(&key),
+            from_graph,
         });
     }
     Ok(PreparedCase {

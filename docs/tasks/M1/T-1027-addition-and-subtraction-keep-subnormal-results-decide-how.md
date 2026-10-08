@@ -29,4 +29,5 @@ Left over from T-0989. probes/subnormal-function-results C69, C73-C75 (and A4, A
 - `parse_number_text` flushes subnormal number text, so `"1e-308"+0` stays 0 (text-number-tiny and text-number-words do not regress).
 - Decision 0042: an excel-graph 0 against a kept subnormal scores as a pass (`graph_hides_subnormal`, runner.rs), because Graph reports both as 0. The `C` companions carry the evidence. The `excel-graph` kind is now one constant (`case::GRAPH_ORACLE`).
 - Eval delta: probes fixed 11 (subnormal-function-results now 129/129), regressions 0.
-- Follow-up: T-1142 checks that every probe scored through decision 0042 keeps a `(x)=0` companion.
+- The rule applies only when the spec case has a FALSE excel-graph companion `(x)=0` (excel-fidelity review). Without it, cells such as the probes-numeric ERFC/NORM.S.DIST tails stay mismatches.
+- `parse_number_text`'s flush is UNVERIFIED in numbers.md. Follow-ups: T-1143 probes it and the function tails, and T-1142 reports which cells the rule passed.
