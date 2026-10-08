@@ -99,7 +99,7 @@ fn arrays_from_reference_operands_spill_value_errors() {
         ("H11", "=SUBTOTAL(9,A1:A2,IF(TRUE,{1,2}))", "#VALUE!"),
         ("H13", "=SUBTOTAL(9,IF(TRUE,{1;2}))", "#VALUE!"),
     ]);
-    // Each element is `#VALUE!` unless it is an error, which stays itself.
+    // The `I` cells (and H14) are the second element of each spill. Each element is `#VALUE!` unless it is an error, which stays itself.
     for cell in ["I1", "I3", "I5", "I7", "I11", "H14"] {
         assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
     }

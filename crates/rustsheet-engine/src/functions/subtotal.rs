@@ -267,6 +267,18 @@ impl Model {
             Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
+        // An invalid function number is `#VALUE!` before the arguments are read, as it was
+        // before T-1163 (the order is unprobed, T-1175).
+        let invalid = || {
+            CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                format!("Invalid value for SUBTOTAL: {value}"),
+            )
+        };
+        if !matches!(value, 1..=11 | 101..=111) {
+            return invalid();
+        }
         let resolved = match self.subtotal_reference_args(&args[1..], cell) {
             Ok(resolved) => resolved,
             Err(error) => return error,
@@ -295,11 +307,7 @@ impl Model {
             109 => self.subtotal_sum(args, cell, SubTotalMode::SkipHidden),
             110 => self.subtotal_vars(args, cell, SubTotalMode::Full),
             111 => self.subtotal_varp(args, cell, SubTotalMode::Full),
-            _ => CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                format!("Invalid value for SUBTOTAL: {value}"),
-            ),
+            _ => invalid(),
         }
     }
 

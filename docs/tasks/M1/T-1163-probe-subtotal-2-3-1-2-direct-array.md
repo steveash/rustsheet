@@ -3,7 +3,7 @@ id: T-1163
 title: "Probe SUBTOTAL(2/3,{1,2}) direct array and lambda arguments (follow-up of T-1154)"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -19,16 +19,13 @@ T-1154 moved COUNT/COUNTA onto `subtotal_walk_areas`; `subtotal_count_with` (fun
 ## Acceptance criteria
 - [x] A probe case (excel-graph) covers `SUBTOTAL(2,{1,2})`, `SUBTOTAL(3,{1,2})`, 102/103 and a lambda argument; the finding is in docs/excel-semantics/references.md.
 - [x] The engine matches the oracle; eval baseline shrinks accordingly.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Handoff (resumed)
-Probed on excel-graph (2026-10-08): `SUBTOTAL(2,{1,2})` (and 3/102/103/9 variants), `SUBTOTAL(2,A1:A2*1)` and
-`SUBTOTAL(3,A1:A2*1)` each make createSession fail 501 `unsupportedWorkbook`, so Excel yields no cell value
-and the oracle cannot fill a case; a defined-name lambda gave `#NAME?` (uninformative). Finding recorded in
-docs/excel-semantics/references.md. No probe case committed (it could never get a sidecar). Open design
-question for opus: Excel refuses the formula at entry, so the engine should probably reject it at parse time
-(like `=(1)(2)`) instead of returning `#N/IMPL` from `subtotal_count_with`; decide whether that is worth a
-parse-time reference-type check, or close the task as "no value to match" with a DEVIATION/decision note.
+Resumed by an opus run on 2026-10-08. The tier was raised from sonnet to opus by the handoff.
+
+## Outcome
+Excel for the web refuses a workbook holding a SUBTOTAL argument (after the function number) that is not a reference operand: an array, a computed array, a literal, a value function, an empty argument or a nested SUBTOTAL. It refuses `AREAS(1)` the same way. Each form was probed in its own scratch workbook. The parser now turns these into parse errors (`Parser::function_call`, decision 0045), which also settles the AREAS non-reference row that T-1063 left as an engine choice. Reference operands that evaluate to something else load in Excel. A value is `#VALUE!`, an error stays itself, and either beats an error cell inside a range. An array spills `#VALUE!` per element. A LAMBDA argument is `#VALUE!`. SUBTOTAL resolves every argument before it reads any cell (`subtotal_reference_args`), and the old `#N/IMPL` paths are gone. The new case probes/subtotal-reference-operands passes all 40 of its cells. Eval delta: +1 case, +40 passing cells, 0 regressions, known failures unchanged. Follow-ups: T-1174 (desktop Excel, blocked on the desktop oracle) and T-1175 (the UNVERIFIED rows).

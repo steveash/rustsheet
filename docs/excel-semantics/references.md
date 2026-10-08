@@ -558,10 +558,12 @@ Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) for the loadi
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, spill shape in
 `subtotal_static_result`. UNVERIFIED: which of two non-reference arguments wins (the engine takes the
-first), AREAS of an array (the engine gives `#VALUE!`), and a function number that is itself invalid
-next to a non-reference argument (the engine checks the arguments first). Typed entry is a desktop
+first), AREAS of an array (the engine gives `#VALUE!`), a function number that is itself invalid
+next to a non-reference argument (the engine gives `#VALUE!` for the function number first), and
+the SUBTOTAL operands taken over from the intersection rule without a SUBTOTAL probe: OFFSET,
+XLOOKUP, IFS, SWITCH, TAKE, DROP, TRIMRANGE, INDIRECT and defined names (T-1175). Typed entry is a desktop
 question (M14).
-Tasks: T-1063, T-1163
+Tasks: T-1063, T-1163, T-1174, T-1175 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15

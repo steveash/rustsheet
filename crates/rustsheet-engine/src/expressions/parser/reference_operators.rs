@@ -341,7 +341,7 @@ fn has_negated_operand(node: &Node) -> bool {
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// intersection, and for SUBTOTAL and AREAS arguments ([`Parser::function_call`]) (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as
