@@ -4,7 +4,6 @@ use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
-use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -136,15 +135,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         // A single cell is read as a reference, so that it can be read past (`LOOKUP(99,A1:B2,F1)`).
-        // INDEX is a reference too (probes/lookup-vector-edges A9, A12).
-        let evaluated = match node {
-            Node::FunctionKind {
-                kind: Function::Index,
-                args,
-            } => self.index_impl(args, cell, true),
-            _ => self.evaluate_node_with_reference(node, cell),
-        };
-        let value = match evaluated {
+        let value = match self.eval_ref_or_index(node, cell) {
             // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
             // (probes/lookup-vector-edges A5-A8).
             scalar @ (CalcResult::Number(_)
