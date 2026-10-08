@@ -3,7 +3,7 @@ id: T-1120
 title: "GEOMEAN of 2400 x 1E-300 is 1.8066704015823645E-300: model Excel's exponent sum"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: todo
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,19 @@ counter (an underflow rescale step of 2^2048?) is a guess to test. Engine: `fn_g
 product of significands overflows".
 
 ## Acceptance criteria
-- [ ] A probe that brackets where the extra power of two appears, filled from excel-graph; the rule goes in numbers.md.
+- [x] A probe that brackets where the extra power of two appears, filled from excel-graph; the rule goes in numbers.md.
 - [ ] The engine matches probes/geomean-overflow-cut-3 C7 and the new cells, with no regression.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Progress (2026-10-08 opus run, PR for probes only)
+Two bracketing probes landed, probes/geomean-exponent-sum and -sum-2 (62 cells, excel-graph). Their
+findings are in numbers.md "GEOMEAN is #NUM! when the product of significands overflows". The excess is
+always 2048 * k, and k steps with n at counts that depend on the value. Powers of two never get it. There
+is also a second positive-exponent `#NUM!` (2^1000 x 1500). Models ruled out: a threshold on the exponent
+sum alone, on the count alone, and on the [1, 2) significand product alone. Untested ideas: a [0.5, 1)
+frexp significand product with an underflow rescale step that is miscounted by 2048; a powers-of-two exact
+path; a running plain product rescaled by 2^±1024 steps. The engine still misses these 36 new cells and
+geomean-overflow-cut-3 C7 (new-coverage failures, baselined).

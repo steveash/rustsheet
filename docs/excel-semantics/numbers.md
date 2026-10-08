@@ -466,7 +466,17 @@ Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.00000
 5.0000000000000006E+204, 1100 copies of 5E+300 5.000000000000001E+300. In range, 1101 copies of 1.5
 give exactly 1.5 (the engine matches since T-1113). 2400 copies of 1E-300 give
 1.8066704015823645E-300 = 1E-300 * 2^(2048/2400): the power-of-two sum is 2048 too high there (1100
-copies give 1E-300 exactly; T-1120).
+copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-sum, -sum-2, excel-graph,
+2026-10-08, T-1120): the excess is always 2048 * k, so the result is `v * 2^(2048k/n)`. k grows with n,
+roughly doubling the count per step. For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
+2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
+1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
+exact up to 8200 and 4000 copies. Positive exponents have a separate `#NUM!` that the significand cut
+does not explain: 1000 copies of 2^1000 give 1.0715086071862671E+301 (one ulp low), while 1500, 1800,
+2000-2049 and 3000 copies are `#NUM!`; 1E+307 is `#NUM!` from 2000 copies, yet 1770 copies of 1E+300 are
+finite. No model yet. The excess does not depend only on the exponent sum, since powers of two with a
+larger sum gain nothing. It is not a fixed count threshold, because 1E-300 and 1E-307 step at different
+counts. It is not the significand product alone either: 1E-307 steps at a smaller product than 1E-300.
 Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
 probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
 range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
