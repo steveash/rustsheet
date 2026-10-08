@@ -25,7 +25,9 @@ The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Tasks: T-0110 (implementation, waits on T-1017: the AST must keep the outer parentheses)
+Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum_outermost` (an outermost SUM, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017) and is not snapped. Array operands are not snapped (unprobed).
+Unprobed: whether Excel also skips snapping for `=((X-b))`, for a formula typed as `=(X-b` that Excel completes with `)`, and inside a defined-name body; the engine marks the first two as grouped roots and never the third (name bodies are parsed with `Parser::parse`). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). Also a known gap: `=((A1-1))` is stored as `=(A1-1)`, one level, while Excel keeps every written level (references.md).
+Tasks: T-0110 (implementation), T-1017 (grouped root)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
@@ -192,7 +194,7 @@ F1:F2 (9E+307 twice) and over F5:F6 (1E+200 twice), and for the spilling array-c
 `INDEX(SUMIF(F1:F3,{">0","<0"}),1,1)` is `#NUM!` while `...,1,2` is -9E+307. The engine matches for VAR.S, STDEV.S and SUMIF;
 VAR.P, STDEV.P, VARA and STDEVA have matched since T-1037, when all twelve VAR/STDEV functions moved onto `excel_variance` with the same check (this closed T-1029).
 Equal huge values still overflow: F5:F6 is 1E+200 twice (true variance 0) and Excel gives `#NUM!` for all six (A55:A60). Excel tries the one-pass sum of squares first and only then switches to two passes (statistics.md, "VAR/STDEV switch"), so do not "fix" this to 0.
-MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range, with the whole part of the root's power of two applied exactly and its remainder under the root, `(m * 2^r)^(1/n) * 2^q` (T-0992, T-1076; in range the log-sum is kept, it matches the oracle where the n-th root does not). Mixed-magnitude GEOMEAN is probed (probes/geomean-mixed-magnitude, excel-graph, 2026-10-07, T-1032): `GEOMEAN(1E+100,9E+307)` is 9.486832980505138e203 (the engine was one ulp high with `2^(e/n)` as a float power; it matches since T-1076), `GEOMEAN(1E-100,1E-300)` is 1.0000000000000001E-200 (one ulp above 1E-200; the engine matches bit for bit) and `GEOMEAN(1E+154,1E+300)` is 1E+227, and three equal 1E+200 or 1E-200 values give that value; the engine matches all five. Past 500 values (probes/geomean-overflow-many-values, excel-graph, 2026-10-07, T-1095): GEOMEAN over 600 cells alternating 1E+300 and 3E+250 is 1.7320508075688774E+275, over the first 501 of them 1.940817314759203E+275, over 600 x 1E+300 exactly 1E+300 and over 501 cells holding 7E+280 in every third row and 2E+200 otherwise 1.4094597464129783E+227; the engine matches all four. With 599 equal values and one half-size one, which reached the engine's then remainder-over-500 branch, 599 x 1E+300 and 5E+299 is 9.988454217380303E+299 and 599 x 1E-300 and 5E-301 is 9.988454217380302E-301, and the engine matches both. The underflowing counterpart, 600 cells alternating 1E-300 and 3E-250, is 1.7320508075688772E-275 and the engine is one ulp high (T-1099; its remainder is 0, so the miss is on the ordinary root path). Since T-1099 the engine keeps the product as a significand in [1, 2) (the bits of the plain left-to-right product) and puts the whole remainder r < n under the root; the remainder-over-500 branch above is gone (F6 and F7 still match), and the one-ulp miss is explained under "GEOMEAN root rounding". AGGREGATE A27-A29 pass since T-0993
+MEDIAN halves before adding when the sum of the two middle values overflows, and GEOMEAN takes the n-th root of a power-of-two-scaled product when the plain product leaves the normal range, with the whole part of the root's power of two applied exactly and its remainder under the root, `(m * 2^r)^(1/n) * 2^q` (T-0992, T-1076; in range see "GEOMEAN in-range root", T-1113). Mixed-magnitude GEOMEAN is probed (probes/geomean-mixed-magnitude, excel-graph, 2026-10-07, T-1032): `GEOMEAN(1E+100,9E+307)` is 9.486832980505138e203 (the engine was one ulp high with `2^(e/n)` as a float power; it matches since T-1076), `GEOMEAN(1E-100,1E-300)` is 1.0000000000000001E-200 (one ulp above 1E-200; the engine matches bit for bit) and `GEOMEAN(1E+154,1E+300)` is 1E+227, and three equal 1E+200 or 1E-200 values give that value; the engine matches all five. Past 500 values (probes/geomean-overflow-many-values, excel-graph, 2026-10-07, T-1095): GEOMEAN over 600 cells alternating 1E+300 and 3E+250 is 1.7320508075688774E+275, over the first 501 of them 1.940817314759203E+275, over 600 x 1E+300 exactly 1E+300 and over 501 cells holding 7E+280 in every third row and 2E+200 otherwise 1.4094597464129783E+227; the engine matches all four. With 599 equal values and one half-size one, which reached the engine's then remainder-over-500 branch, 599 x 1E+300 and 5E+299 is 9.988454217380303E+299 and 599 x 1E-300 and 5E-301 is 9.988454217380302E-301, and the engine matches both. The underflowing counterpart, 600 cells alternating 1E-300 and 3E-250, is 1.7320508075688772E-275 and the engine is one ulp high (T-1099; its remainder is 0, so the miss is on the ordinary root path). Since T-1099 the engine keeps the product as a significand in [1, 2) (the bits of the plain left-to-right product) and puts the whole remainder r < n under the root; the remainder-over-500 branch above is gone (F6 and F7 still match), and the one-ulp miss is explained under "GEOMEAN root rounding". AGGREGATE A27-A29 pass since T-0993
 ("AGGREGATE" below).
 Evidence: probes/aggregate-overflow Calc!A1:C62 (aggregates); probes/arith-overflow Calc!A1:D7, A10:D15; probes-numeric/4f413cc257ce15c4 Calc!A121-A124;
 probes/precision-and-rounding A12, A13. Oracle: excel-graph, 2026-10-06.
@@ -229,14 +231,14 @@ Evidence: probes/tiny-vs-zero-criteria (A1-A33); the general 15-digit rule rests
 Implemented in: `numbers_equal` (functions/criteria.rs), `Ord for CalcResult` (calc_result.rs). Tasks: T-1028. Oracle: excel-graph, 2026-10-06. Status: VERIFIED
 
 ## Comparison tolerance
-Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
-Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
+Rule: comparisons round both numbers to 15 significant digits and compare the results exactly, so
+operands a few ULP apart can be equal or not depending on where the 15th digit falls. Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
 uninformative here because X ≥ b in every probe. No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
 reproduces all 648 cells (T-0989; it also fixed the 2^-10 base, where an absolute epsilon wrongly said equal).
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `compare_values` (functions/util.rs). Tasks: T-0989
+Implemented in: `cmp_excel_precision` (number_format.rs), used by `compare_values` (functions/util.rs) and `Ord for CalcResult` (calc_result.rs). Tasks: T-0989, T-0180
 
 ## 15-digit literal parsing
 Rule: numeric literals, `"text"+0` and `VALUE("text")` keep only 15 significant digits;
@@ -338,7 +340,7 @@ Number text longer than 255 characters is #VALUE! for every form probed (the sam
 fraction (`0.`, zeros, `1`, which keeps its value, 1E-253 at LEN 255) read as numbers (0, 1, 1, 0, 1, 1E-253), and at LEN 256, 257, 260,
 300, 306, 307, 308 and 320 all six forms are #VALUE!. This explains the 305- and 320-zero cells above (LEN 307 and 322).
 The engine applies the limit through the shared number-text coercion (`cast_number_in`), VALUE and NUMBERVALUE, counting surrounding spaces (`MAX_NUMBER_TEXT_LEN`, shared with clock text; T-1101).
-Other paths (probes/text-number-long-paths, excel-graph 2026-10-07, text of LEN 255 vs 256): `SUM(text,1)` and `AVERAGE(text,2)` read 255 and give `#N/A` at 256 (QUIRK; T-1107), `COUNT(text,1)` counts the text at 255 and skips it at 256 (2 vs 1), `ROUND`, `ABS`, unary minus, `(text)%` and NUMBERVALUE are `#VALUE!` at 256. Criteria (COUNTIF/SUMIF), DATEVALUE with padding and cell input (`-` plus long text typed into a cell) are unprobed.
+Other paths (probes/text-number-long-paths, excel-graph 2026-10-07, text of LEN 255 vs 256): `SUM(text,1)` and `AVERAGE(text,2)` read 255 and give `#N/A` at 256 (QUIRK; T-1107: any direct text argument over 255 characters, numeric or not, padded with spaces or not, is `#N/A` in SUM, AVERAGE, SUMSQ, PRODUCT and MAX, while 255 characters of non-numeric text is `#VALUE!`; probes/sum-long-text-args), `COUNT(text,1)` counts the text at 255 and skips it at 256 (2 vs 1), `ROUND`, `ABS`, unary minus, `(text)%` and NUMBERVALUE are `#VALUE!` at 256. T-1121 (probes/long-text-args-min-criteria, excel-graph 2026-10-07): the same `#N/A` at LEN 256 (`#VALUE!` at 255 non-numeric) holds for MIN, AVERAGEA, MAXA and MINA direct text arguments. A criterion over 255 characters is `#VALUE!` in COUNTIF, COUNTIFS, SUMIF, SUMIFS, AVERAGEIF, AVERAGEIFS, MINIFS and MAXIFS, whether a literal, a cell reference or `"="&text`; at 255 it matches normally. In an array or multi-cell range criterion only the element over 255 characters is `#VALUE!`, shorter elements match normally (`COUNTIF(B1:B3,B1:B3)`, A24:A26: 1, 1, `#VALUE!`; array constants cannot hold REPT, so only ranges are probed). Against other errors (T-1125, probes/ifs-long-criterion-precedence, excel-graph 2026-10-07) a bad criteria range (`#REF!`) wins over the long criterion, while the long criterion still gives `#VALUE!` next to a `#N/A` criterion in either position, and mismatched range shapes are `#VALUE!` anyway so their order cannot be seen. A `#REF!` sum range, a non-range criteria range and ranges on different sheets against the long criterion are unprobed (the engine resolves them first). DATEVALUE with padding and cell input (`-` plus long text typed into a cell) are unprobed.
 Formula literals follow the same rule: `=1E-309`, `=-1E-309`, `=2E-308`, `=0E308`, `=0.0E309`,
 `=0E-308` evaluate to 0 and `=2.2250738585073E-308` keeps its value (probes/literal-number-tiny),
 while Excel refuses to open a workbook holding `=1E-310`, `=-1E-310`, `=5E-324`, `=0E309` or
@@ -386,6 +388,85 @@ it: x = ±0.9999999999 (`SINH_COSH_TANH!D15/D17`, sinh/cosh and libm miss) and x
 (poi `FormulaEvalTestData_Copy.xlsx` `EverythingTests!G1360`, sinh/cosh and the exp quotient both
 1 ulp high; libm and `e^2x` fit). The 0.9 cutoff is a guess between 0.604 (sinh/cosh fits) and 0.995;
 confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
+
+### NORM.S.INV / NORMSINV / NORM.INV(p,0,1): oracle sweep (T-1006)
+Probe `probes-numeric/m9-norm-s-inv` (639 sweep cells = 213 arguments x 3 functions, plus 9 flush/subnormal cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0925.
+- The three functions agree on all 213 arguments (same value or same error).
+- NORM.S.DIST flushes its far tail to 0 instead of returning a subnormal: `NORM.S.DIST(k,TRUE)=0` is TRUE for k = -37.6, -37.75
+  and -38 (A640-A642) and FALSE for k = -37.5 (A643), where the value is 4.605353009581954E-308 (A646). The true Phi(-37.6) is about
+  1.07E-309 (subnormal) and Phi(-37.5) about 4.6E-308 (normal), so the cutoff is where Phi crosses the smallest normal double, near
+  k = -37.52 (unprobed). The bare values A644/A645 read 0.0 but are not flush evidence on their own: Graph also reports a kept
+  subnormal as 0.0. The engine keeps the subnormal there (A640-A642, A644, A645 fail), which a NORM.S.DIST follow-up (T-0968, T-1040)
+  must match.
+  Hence `NORM.S.INV(NORM.S.DIST(k,TRUE))` is `#NUM!` at k = -38 and -37.75 (the engine returns -38.000000000082615 and -37.74999999999998) and
+  finite at k = -37.5; this is the ordinary p = 0 `#NUM!`, not a subnormal-p rejection. NORM.S.INV accepts a subnormal p:
+  `NORM.S.INV(3E-308-2.5E-308)` = -37.55912122001426 (A647; the subtraction keeps the subnormal, T-1027 covers that in the engine).
+  A648 `NORM.S.INV(2.3E-308-1E-309)` = -37.5184972450123 is not a subnormal p: the literal 1E-309 reads as 0 ("Subnormal results become 0", T-1007),
+  so it is NORM.S.INV(2.3E-308). 1E-300 gives -37.0470962993612.
+- Excel does not round-trip: `NORM.S.INV(NORM.S.DIST(k,TRUE))` is mostly 0-2 ulp off k for k <= 2, counting ulp as the spacing of
+  doubles at |k| (k = +-1 give a result below |k|, 2 ulp(1) = 4 doubles away); 3 ulp at k = -31.75, -30.5, -29.25 and -25.5.
+  Above 2 the error grows overall, not monotonically, with the resolution of p near 1 (k = 2.5 is -4 ulp, 3.0 is -7, 3.25 is
+  exact, 3.5 is -38, 3.75 is -71, 4.25 is +706, k = 8 gives 7.991573950493902). Inferred, not measured: it comes from rounding p,
+  not from the inverse, since the inverse is within 1 ulp where p is well resolved (k = -37.5 gives -37.50000000000001,
+  k = 0.5 gives 0.5000000000000001, k = -0.5 gives -0.5000000000000001). NORM.S.INV(0.5) is exactly 0.
+- Values at the AS241 region edges and around 0.5 (no pattern is claimed, T-0925 fits them): p = 0.02425 - 1E-6 gives
+  -1.972978604638878, 0.02425 + 1E-6 gives -1.9729434985927772, 0.97575 - 1E-6 gives 1.972943498592777, 0.97575 + 1E-6 gives
+  1.9729786046388784, 0.5 - 1E-9 gives -2.5066283428845328E-9, 0.5 + 1E-9 gives 2.5066282037387115E-9.
+- 1 - 1E-k for k = 1..15 is in the case (for example k = 10: 6.361340889697421, k = 15: 7.941444487415977).
+Evidence: `probes-numeric/m9-norm-s-inv` (`rustsheet-eval show probes-numeric/m9-norm-s-inv.case.json`). As of 2026-10-08, 192 of 639
+sweep cells pass: 438 ulp-level and 3 close mismatches, plus the six `#NUM!` cells (A1-A6). Of the 9 flush/subnormal
+cells, A643 and A648 pass; A640-A642, A644 and A645 (NORM.S.DIST keeps the subnormal) and A646 (close) are NORM.S.DIST cells
+(T-0968, T-1040), and A647 is the subtraction flush (T-1027).
+Status: VERIFIED (excel-graph); the NORM.S.INV mismatches are tracked by T-0925.
+
+### Inverse hyperbolics, COTH/CSCH and the SINH/TANH thresholds: oracle sweep (T-1005)
+Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: excel-graph, 2026-10-08) is the fitting set for T-0917.
+- ASINH and ACOSH are the plain log formulas, not libm: all 65 ASINH/ACOSH cells equal `ln(x + sqrt(x*x + 1))` (negative x:
+  `-ln(-x + sqrt(x*x + 1))`) and `ln(x + sqrt(x*x - 1))` bit-for-bit in IEEE doubles. So small arguments lose precision:
+  ASINH(1E-10) = 1.000000082690371E-10 (relative error 8e-8), ASINH(3E-10) = 3.000000247771113E-10,
+  ASINH(1E-9) = 1.000000082240371E-9, and ACOSH(1.000000000001) = 1.414276423083533E-6 (about 7e-11 relative below the
+  true value 1.4142764231805424E-6). The engine returns the correctly rounded value (ASINH: 22 failing cells, 6 of them clear mismatches).
+- ACOTH for large x (A101-A110, x = 15 .. 1.5E10) tracks libm `atanh(1/x)` within 1 ulp: bit-for-bit on A105 and
+  A107-A110, 1 ulp off glibc `atanh(1/x)` on A101-A104 and A106 (A103 matches Rust's `f64::atanh`), so Excel is not
+  correctly rounded there either; the exact formula is left open for T-0917. The engine uses `0.5*ln((x+1)/(x-1))`
+  there and loses digits: ACOTH(1.5E7) engine 6.666666662802374E-8 vs Excel 6.666666666666676E-8 (6e-10 relative),
+  ACOTH(1.5E10) engine 6.666667217824696E-11 vs Excel 6.666666666666667E-11 (8e-8 relative).
+- Near 1, ACOTH(1 + 1E-12) = 14.162039699929037 and ATANH(1 - 1E-12) = 14.162095209226402 differ only because the stored
+  inputs sit at different distances from 1 (x-1 = 1.0000889E-12, 1-y = 0.99997788E-12); both are correctly rounded and the
+  engine matches both cells. Not a quirk.
+- COTH and CSCH (A117-A156) are close to, but not exactly, libm `1/tanh(x)` and `1/sinh(x)`. COTH differs by 1 ulp at
+  1E-4, 0.01, 0.1, 2 and 5 (A123, A127, A129, A135, A137) and by 2 ulp at 1E-3 (A125); CSCH differs by 1 ulp at 1E-8 and
+  0.01 (A120, A128). Notably CSCH(1E-8) = 1E8 exactly, where libm `1/sinh(x)` (and the engine) gives 99999999.99999999.
+  The other COTH/CSCH cells equal the libm expressions bit-for-bit, except CSCH(710) (below); the formula is left open for T-0917.
+- Overflow: SINH(710) and SINH(-710) are `#NUM!` (engine: +-1.117E308), but CSCH(710) = 0 (not an error; engine 8.95E-309),
+  CSCH(709) = 2.433561501246846E-308, COTH(709) = COTH(710) = 1, TANH(x) = 1 for every probed x >= 19 (19, 19.5, 19.99, 20, 20.01,
+  21, 22, 25, 30, 350, 700, 709, 710). SINH(709.78) = 8.964113971972578E307 is finite.
+- SINH/TANH values on 0.40..1.0 (step 0.01 / 0.02 / 0.025, plus 0.9950546550253772 and 0.9999999999) are in the case; the
+  engine's 0.5 (SINH) and 0.9 (TANH) cutoffs are fitted against them by T-0917. Not probed: SINH in (709.78, 710).
+Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
+Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0917.
+
+### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
+Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 functions, oracle: excel-graph, 2026-10-08) is the fitting
+set for T-0915. Arguments are `k*PI()+d` (k = 1, 2, 3, 10, 100, 1000, 1E4, 1E5, 1E6; d = 0, +-1E-12, +-1E-9, +-1E-6, +-0.25) and
+`k*PI()/2+d` (k = 1, 3, 5, 11, 101, 1001; d = 0, +-1E-12, +-1E-9). No cell is an error.
+Observed (no formulation is claimed; T-0915 fits it):
+- Excel differs from the correctly rounded result of the double argument by an amount that grows with k, the number of periods
+  reduced, and is not tied to how close the argument is to the multiple: `SIN(PI())` = 1.22514845490862E-16 (the correctly rounded result,
+  which the engine returns, is 1.2246467991473532E-16), `SIN(3*PI())` = 3.67544536472586E-16, `SIN(10*PI())` = -1.22514845490862E-15,
+  `SIN(10000*PI())` = -4.861840097181158E-13 (engine -4.85682353956849E-13), `SIN(100000*PI())` = -3.396567055391486E-11,
+  `SIN(1000000*PI())` = -2.232413837122138E-10. `CSC(PI())` = 8162276138809536 (engine 8165619676597685).
+- Away from the multiples the offset persists: `SIN(PI()+1E-12)` = -9.999663857368501E-13 (engine -9.999664359024263E-13),
+  `SIN(PI()+1E-9)` = -9.999999602255255E-10, `SIN(PI()-1E-9)` = 1.0000002052552165E-9, `SIN(PI()+1E-6)` = -1.0000000000170965E-6.
+  For SIN(k*PI()+d) with |d| <= 1E-6, Excel minus engine is about (-1)^(k+1) * k * 5.0166E-20 on 57 of the 63 such rows (the rest
+  differ by rounding), for every d in the grid. The offset only vanishes in the result when it is under half an ulp of the value
+  (for example d = +-0.25 with small k).
+- `SEC(PI()/2)` = 1.6324552277619072E16 (engine 1.633123935319537E16), `COS(2*PI()+1E-9)` = 1, `SIN(PI()/2)` = 1, `SIN(3*PI()/2-1E-9)` = -1.
+- Hypothesis, not a rule: Excel's `SIN(PI())` is exactly the 15-digit literal 1.22514845490862E-16 and `SIN(2*PI())` is exactly twice that
+  with the opposite sign, which would fit a reduction by a two-part pi whose low part is that literal (true pi - fl(pi) is 1.2246467991473532E-16).
+Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeric/m9-trig-reduction.case.json`). As of 2026-10-08,
+247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
+Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
 
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
@@ -450,18 +531,44 @@ match.
 Status: VERIFIED (the misses and the probe values); no reproducible root model (T-1108).
 Tasks: T-1099, T-1108, T-0221
 
-## GEOMEAN over about 1100 overflowing values is #NUM!
-Rule: GEOMEAN over 1100 copies of 5E+204, or 1100 copies of 5E+204 or 3E+200 followed by one half-size
-value, is `#NUM!`, while 1001, 1024 and 1025 copies of 5E+204, 1000 copies of 1E+300, 1001 copies of
-1E-300 and 1101 copies of 2 are finite. The rule behind the cut is not established: it is not the count
-alone (1101 copies of 2 work), and it is not the size of the product's exponent (1000 x 1E+300 works).
-Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204 and
-1024 copies 4.9999999999999995E+204, but 1025 copies give 5E+204.
-In range, 1101 copies of 1.5 give exactly 1.5; the engine's log-sum gives 1.499999999999995.
-Evidence: probes/geomean-root-models Fallback!D1-D2 and probes/geomean-overflow-count A1-K1 (excel-graph,
-2026-10-07, T-1108). RustSheet today: the cut is not implemented (finite results), A1-C1 are one ulp
-off, and H1 is 5E-15 low.
-Status: VERIFIED (the values); the rule is open (T-1112), and so is the in-range precision (T-1113).
+## GEOMEAN is #NUM! when the product of significands overflows
+Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
+the significands into one double without rescaling (the order is unprobed: the probes use equal or
+alternating values), and is `#NUM!` when that product
+overflows, i.e. when the sum of log2(M) reaches 1024. Within the probed exponent sums, magnitude does not
+matter, only M (but large positive exponent sums have a further `#NUM!`, see 2^1000 below):
+1028 copies of 5E+204 (M = 1.9934) are finite and 1029 are `#NUM!`; so are 1100 copies of 1.25E+204
+(the same M) and 3E+200 (M = 1.96), while 1100 copies of 1E+300 (M = 1.49), 5E+300, 9E+204 or
+7E+150 are finite; for M = 1.5 (1.5, 3, 0.75) the cut is 1750 finite / 1751 `#NUM!`; 1E+300
+1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); 1E+307
+(M = 1.78, predicted cut about 1231) is `#NUM!` at every probed count from 2000; powers of two (M = 1) never trip it
+(2000 copies of 2), but see 2^1000 below. It applies even when the plain product is in range: 1752 values alternating 1.5
+and 0.75 (plain product 1.125^876) are `#NUM!`, 1750 are 1.0606601717798212.
+Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204,
+1024 copies 4.9999999999999995E+204, 1025 and 1027 copies 5E+204, 1028 copies
+5.0000000000000006E+204, 1100 copies of 5E+300 5.000000000000001E+300. In range, 1101 copies of 1.5
+give exactly 1.5 (the engine matches since T-1113). 2400 copies of 1E-300 give
+1.8066704015823645E-300 = 1E-300 * 2^(2048/2400): the power-of-two sum is 2048 too high there (1100
+copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-sum, -sum-2, excel-graph,
+2026-10-08, T-1120): the excess is always 2048 * k, so the result is `v * 2^(2048k/n)`. k grows with n,
+perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
+2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
+1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
+exact up to 8200 and 4000 copies. Large positive exponents have a `#NUM!` the significand cut does not
+explain: 1000 copies of 2^1000 (M = 1) give 1.0715086071862671E+301 (two doubles below 2^1000), while
+1500, 1800, 2000, 2047, 2048, 2049 and 3000 copies are `#NUM!` (probes/geomean-exponent-sum-2 C11-C18),
+although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13). No model yet. The excess does not depend only on the exponent sum, since powers of two with a
+larger sum gain nothing. It is not a fixed count threshold, because 1E-300 and 1E-307 step at different
+counts. It is not the significand product alone either: 1E-307 steps at a smaller product than 1E-300.
+Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
+probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
+range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
+for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, and all held.
+Status: the significand cut is VERIFIED within the probed ranges, but the rule is incomplete. RustSheet
+implements the cut (T-1112). Still open: the root's last-ulp rounding
+(numbers.md, "GEOMEAN root rounding"; T-1108), the 2048 * k excess and the 2^1000 x 1500 `#NUM!`
+(probes/geomean-exponent-sum, -sum-2; T-1120).
+Tasks: T-1108, T-1112, T-1113, T-1120
 
 ## `^` / POWER are not correctly rounded
 Rule: Excel's power differs from correctly rounded pow in the last digit: `=2^(-0.5)` =
@@ -524,11 +631,30 @@ cached value are the desktop value (T-0142; the fill prints a `DESKTOP` line); n
 ## GEOMEAN last digits differ from a log-sum evaluation
 
 `=GEOMEAN("47")` is exactly 47 in Excel, and `=GEOMEAN(1,2,"5",TRUE)` is 1.778279410038923;
-a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. Excel's
-formulation is not yet known (T-0941). Evidence: Excel for the web (excel-graph) sidecar
+a log-sum evaluation (`exp(mean(ln x))`) gives 46.99999999999999 and 1.7782794100389228. The
+engine matches both since T-1113 (next section). Evidence: Excel for the web (excel-graph) sidecar
 `crates/rustsheet-xlsx/tests/calc_tests/STATISTICAL/GEOMEAN.oracle.json`, cells Sheet1!B27, G27.
 Values are from Excel for the web, which can differ from desktop in the last digit (decision 0030).
-Status: VERIFIED (these two values, web); general rule and formulation UNVERIFIED.
+Status: VERIFIED (these two values, web).
+
+## GEOMEAN in-range root
+Rule: when the plain product P of the values is a normal double, GEOMEAN is closest to
+`exp(ln(P) / n)` in doubles, with a single value returned as is: that matches 67 of 72 many-value
+sets, all 33 ironcalc-calc GEOMEAN cells and 1101 x 1.5 = 1.5. It is not exact: the 20-value
+mixed set A2 is one ulp low, and n copies of 3 or 7 (50 and 200 of each) are exactly 3 and 7 where
+the model is one ulp off (3.0000000000000004, 6.999999999999999). Other models do worse over all
+the evidence: glibc `pow(P, 1/n)` matches 71 of the 72 but rounds `GEOMEAN(1,3)` to
+1.7320508075688772 where Excel gives …774, and G27 too; `exp2(log2(P)/n)` 69; a log-sum 36; the
+power-of-two-split root of the overflow path 64 (`powf`) or 53 (`exp/ln`); an extended-precision
+(56- to 80-bit) ln/exp or log2/exp2 misses 3 or 4, always including C23 and G27, which Excel
+rounds away from the exact root. The over/underflow path keeps its own root (previous sections):
+`exp(ln/n)` there fixes 10 probed cells but breaks 4.
+Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
+copies of one value, 50-1100; excel-graph, 2026-10-07, T-1113), ironcalc-calc GEOMEAN C23, B27, G27,
+probes/geomean-overflow-count H1, probes/geomean-overflow-cut-3 C1, C5, C11, E1.
+Status: VERIFIED for the probed cells; the formulation is a best fit (5 of 72 one-ulp misses).
+Implemented in: functions/statistical/geomean.rs
+Tasks: T-1113, T-1108, T-1123
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:

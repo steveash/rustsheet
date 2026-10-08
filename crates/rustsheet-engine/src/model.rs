@@ -67,8 +67,7 @@ pub fn get_milliseconds_since_epoch() -> i64 {
     Date::now() as i64
 }
 
-// The structure of a cell.
-// It can be:
+// The structure of a cell. It can be:
 // * A single cell
 // * The anchor of an array formula
 // * The anchor of a dynamic formula
@@ -744,8 +743,7 @@ impl Model {
                 CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
                 value => value,
             },
-            // What they are applied to is turned into a number, and they work
-            // element by element on a range or an array
+            // Their operand is turned into a number, element by element on a range or an array.
             UnaryKind { .. } => self.apply_unary_chain(node, cell),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
@@ -756,7 +754,8 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
-            SpillRangeOperator { child } => match self.evaluate_spill_anchor(child, cell) {
+            GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
+            SpillRangeOperator { child } => match self.eval_ref_or_index(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
                         return CalcResult::new_error(
@@ -806,6 +805,13 @@ impl Model {
                             format!("Cell {sheet}!{row},{column} not found: {e}"),
                         ),
                     }
+                }
+                // An `@` that finds no cell is `#VALUE!`, and ANCHORARRAY passes it on
+                // (`=ANCHORARRAY((@A1:B2))` in D20, probes/anchorarray-at-operand, T-1115).
+                error @ CalcResult::Error { .. }
+                    if matches!(**child, ImplicitIntersection { .. }) =>
+                {
+                    error
                 }
                 _ => CalcResult::new_error(
                     Error::ERROR,
@@ -1701,7 +1707,7 @@ impl Model {
                 column: source.column,
             };
             let formula_str = move_formula(
-                &self.parser.parse(formula, &cell_reference),
+                &self.parser.parse_cell_formula(formula, &cell_reference),
                 &MoveContext {
                     source_sheet_name: &source_sheet_name,
                     row: source.row,
@@ -1820,7 +1826,7 @@ impl Model {
                 row: source.row,
                 column: source.column,
             };
-            let formula = &self.parser.parse(formula_str, &cell_reference);
+            let formula = &self.parser.parse_cell_formula(formula_str, &cell_reference);
             let cell_reference = CellReferenceRC {
                 sheet: target_sheet_name,
                 row: target.row,
@@ -2517,9 +2523,10 @@ impl Model {
     ) -> Result<Node, String> {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
-        let mut node = self.parser.parse(formula, cell_reference);
+        let mut node = self.parser.parse_cell_formula(formula, cell_reference);
         if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
-            let retry = self.parser.parse(&format!("{formula})"), cell_reference);
+            let closed = format!("{formula})");
+            let retry = self.parser.parse_cell_formula(&closed, cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;
             }

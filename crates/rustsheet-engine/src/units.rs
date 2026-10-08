@@ -205,6 +205,7 @@ impl Model {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
+            Node::GroupedRootKind { child } => self.compute_node_units(child, cell),
             Node::LambdaDefKind { .. } => None,
             Node::LambdaCallKind { .. } => None,
         }

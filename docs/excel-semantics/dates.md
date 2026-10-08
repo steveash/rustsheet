@@ -119,7 +119,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   value-clock-text C14, C34-C37). Only the space character U+0020 counts, for trimming and before
   an AM/PM suffix: a tab, a no-break space (U+00A0) or an ideographic space (U+3000) is #VALUE! in
   all three (`"10:00\t"`, `"10:00\u00a0"`, `"10:00\u00a0AM"`, `"\u300010:00"`, and
-  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters between
+  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters inside the fraction of `H:M.f:S` text (inferred from this rule) and between
   the date and the clock of date-clock text.
 - **VALUE of clock text** is the coercion serial of the trimmed text, unwrapped like coercion
   (`VALUE("25:00")` = 1.0416666666666667, `VALUE("24:00")` = 1, `VALUE("10:11.5")` =
@@ -183,8 +183,8 @@ Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: h
 coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
 43832.416666666664, value-clock-text row 27; the engine already matched).
 `H:M.f:S`, the one-out-of-range limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
-Out of the oracle's reach: `+10:00` typed into a cell (the oracle uploads xlsx files, so it
-cannot type; the engine stores it as text).
+Unprobed: `+10:00` typed into a cell (the engine stores it as text). The oracle can now type
+cell input through `{"entered": ...}` spec cells (T-0280).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not

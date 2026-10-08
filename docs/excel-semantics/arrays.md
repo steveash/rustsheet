@@ -45,8 +45,21 @@ DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was
 wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was already right.)
 Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/rich_errors.rs`, shared by
-the importer (cached `#CALC!`/`#SPILL!`; errors the engine has no kind for stay `#VALUE!`) and the eval
+the importer (cached `#CALC!`/`#SPILL!`/`#CONNECT!`/`#BLOCKED!`/`#FIELD!`; unmapped errorTypes stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
+
+## MOD lifts over array arguments
+Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
+two arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions past a
+shorter array are `#N/A`); the zero divisor (`#DIV/0!`) and huge quotient (`#NUM!`) rules hold per
+element, and an error element stays in its position.
+Evidence: probes/geomean-overflow-cut-3 E4 and probes/mod-array-lift (excel-graph, 2026-10-07):
+ranges, a per-element `#DIV/0!`, an `#N/A` element staying in place, a scalar divisor repeating, `#N/A`
+past the end of a shorter divisor, `MOD(NA(),{1,2})` giving `#N/A` in every element, row x column
+broadcast, text elements cast like a scalar (`"x"` gives `#VALUE!`) and booleans as 1/0.
+Status: VERIFIED
+Tasks: T-1119
+Implemented in: `Model::lift_numbers` (DATE uses it too) (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
 
 ## NOT and CONCATENATE lift over array arguments
 Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the

@@ -31,6 +31,14 @@ pub enum ErrorKind {
     NotImplemented,
     /// `#ERROR!` (engine-specific: the formula could not be processed). Not Excel's `#UNKNOWN!`.
     Unknown,
+    /// `#GETTING_DATA` (saved to xlsx as `#N/A`, as Excel does)
+    GettingData,
+    /// `#CONNECT!`
+    Connect,
+    /// `#BLOCKED!`
+    Blocked,
+    /// `#FIELD!`
+    Field,
 }
 
 impl ErrorKind {
@@ -49,6 +57,10 @@ impl ErrorKind {
             EngineError::CIRC => Self::Circ,
             EngineError::NIMPL => Self::NotImplemented,
             EngineError::ERROR => Self::Unknown,
+            EngineError::GETTINGDATA => Self::GettingData,
+            EngineError::CONNECT => Self::Connect,
+            EngineError::BLOCKED => Self::Blocked,
+            EngineError::FIELD => Self::Field,
         }
     }
 
@@ -67,6 +79,10 @@ impl ErrorKind {
             Self::Circ => EngineError::CIRC,
             Self::NotImplemented => EngineError::NIMPL,
             Self::Unknown => EngineError::ERROR,
+            Self::GettingData => EngineError::GETTINGDATA,
+            Self::Connect => EngineError::CONNECT,
+            Self::Blocked => EngineError::BLOCKED,
+            Self::Field => EngineError::FIELD,
         }
     }
 
@@ -89,14 +105,32 @@ impl ErrorKind {
             Self::Circ => "#CIRC!",
             Self::NotImplemented => "#N/IMPL!",
             Self::Unknown => "#ERROR!",
+            Self::GettingData => "#GETTING_DATA",
+            Self::Connect => "#CONNECT!",
+            Self::Blocked => "#BLOCKED!",
+            Self::Field => "#FIELD!",
         }
     }
 
-    /// Parses an en-US error literal (case-insensitive, as the engine's parser is; not oracle-verified for Excel).
+    /// The literal Excel stores for this error in a workbook cell: `#N/A` for
+    /// [`ErrorKind::GettingData`], [`ErrorKind::literal`] otherwise (SPEC-0003, "Stored form").
+    /// `tests::stored_literals_match_engine` keeps this in step with the engine's
+    /// `Error::stored_literal`.
+    #[must_use]
+    pub fn stored_literal(self) -> &'static str {
+        match self {
+            Self::GettingData => Self::NA.literal(),
+            _ => self.literal(),
+        }
+    }
+
+    /// Parses an en-US error literal, case-insensitively (not oracle-verified for Excel).
+    ///
+    /// Uses the engine's stored-name table, so it accepts every kind, including `#BLOCKED!`,
+    /// `#CONNECT!` and `#FIELD!`, which are not formula literals (SPEC-0003).
     #[must_use]
     pub fn from_literal(literal: &str) -> Option<Self> {
-        let language = rustsheet_engine::language::get_default_language();
-        rustsheet_engine::expressions::token::get_error_by_name(&literal.to_uppercase(), language)
+        rustsheet_engine::expressions::token::get_error_by_english_name(&literal.to_uppercase())
             .as_ref()
             .map(Self::from_engine)
     }
@@ -372,7 +406,7 @@ impl Array {
 mod tests {
     use super::*;
 
-    const ALL: [ErrorKind; 12] = [
+    const ALL: [ErrorKind; 16] = [
         ErrorKind::Null,
         ErrorKind::Div0,
         ErrorKind::Value,
@@ -385,6 +419,10 @@ mod tests {
         ErrorKind::Circ,
         ErrorKind::NotImplemented,
         ErrorKind::Unknown,
+        ErrorKind::GettingData,
+        ErrorKind::Connect,
+        ErrorKind::Blocked,
+        ErrorKind::Field,
     ];
 
     #[test]
@@ -398,6 +436,19 @@ mod tests {
             );
         }
         assert_eq!(ErrorKind::from_literal("#BOGUS!"), None);
+    }
+
+    #[test]
+    fn stored_literals_match_engine() {
+        assert_eq!(ErrorKind::GettingData.stored_literal(), "#N/A");
+        for kind in ALL {
+            // The engine prints `#N/IMPL` without the `!` its parser requires.
+            assert_eq!(
+                kind.stored_literal().trim_end_matches('!'),
+                kind.to_engine().stored_literal().trim_end_matches('!'),
+                "{kind:?}"
+            );
+        }
     }
 
     #[test]
@@ -420,13 +471,18 @@ mod tests {
                 engine.trim_end_matches('!'),
                 "{kind:?}"
             );
+            assert_eq!(
+                ErrorKind::from_literal(kind.literal()),
+                Some(kind),
+                "{kind:?}"
+            );
         }
     }
 
     #[test]
     fn codes_follow_error_type() {
         // Excel's ERROR.TYPE numbers; 101/102/104 are engine-specific.
-        let expected = [1, 2, 3, 4, 5, 6, 7, 9, 14, 104, 102, 101];
+        let expected = [1, 2, 3, 4, 5, 6, 7, 9, 14, 104, 102, 101, 8, 10, 11, 13];
         for (kind, code) in ALL.into_iter().zip(expected) {
             assert_eq!(kind.code(), Some(code), "{kind:?}");
         }

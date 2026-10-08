@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Precedence of an over-255-character *IFS criterion against other errors (T-1125).",
+ "tags": [
+  "M1",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B1": "x",
+    "B2": "y",
+    "C1": 1,
+    "C2": 2,
+    "C3": 3,
+    "A1": "=COUNTIFS(B1:B2,REPT(\"a\",256),C1:C3,1)",
+    "A2": "=COUNTIFS(B1:B2,REPT(\"a\",256),C1:C2,#N/A)",
+    "A3": "=COUNTIFS(B1:B2,#N/A,C1:C2,REPT(\"a\",256))",
+    "A5": "=SUMIFS(C1:C3,B1:B2,REPT(\"a\",256))",
+    "A6": "=SUMIFS(C1:C2,#REF!,REPT(\"a\",256))",
+    "A7": "=COUNTIFS(B1:B2,REPT(\"a\",256),C1:C2,1)",
+    "A8": "=COUNTIFS(B1:B2,\"x\",C1:C3,1)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8"
+ ]
+}

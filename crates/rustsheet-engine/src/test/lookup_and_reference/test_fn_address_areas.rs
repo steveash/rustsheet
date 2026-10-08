@@ -109,3 +109,16 @@ fn test_areas_range() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "1");
 }
+
+#[test]
+fn test_address_book_sheet_text_unquoted() {
+    // Excel-cached: poi FormulaEvalTestData_Copy EverythingTests!F128.
+    let mut model = new_empty_model();
+    model._set("A1", "=ADDRESS(2,3,3,TRUE,\"[Book1]Sheet1\")");
+    model._set("A2", "=ADDRESS(1,1,1,TRUE,\"Sheet 1\")");
+    model._set("A3", "=ADDRESS(1,1,1,TRUE,\"Sheet2\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "[Book1]Sheet1!$C2");
+    assert_eq!(model._get_text("A2"), "'Sheet 1'!$A$1");
+    assert_eq!(model._get_text("A3"), "Sheet2!$A$1");
+}

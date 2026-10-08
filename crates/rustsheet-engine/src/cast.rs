@@ -1,4 +1,4 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
 use crate::{
@@ -16,6 +16,16 @@ use crate::{
 pub(crate) enum NumberOrArray {
     Number(f64),
     Array(Vec<Vec<ArrayNode>>),
+}
+
+impl NumberOrArray {
+    /// Rows and columns; a number is 1x1.
+    fn dims(&self) -> (usize, usize) {
+        match self {
+            NumberOrArray::Number(_) => (1, 1),
+            NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, Vec::len)),
+        }
+    }
 }
 
 /// A scalar CalcResult or a 2-D array, used for element-wise comparison.
@@ -213,6 +223,97 @@ impl Model {
     ) -> Result<NumberOrArray, CalcResult> {
         let value = self.evaluate_node_in_context(node, cell);
         self.number_or_array(value, cell)
+    }
+
+    /// Applies `op` to `N` number arguments, element-wise when any is an array or range.
+    /// Arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions
+    /// past a shorter array are `#N/A`) and an element that is an error stays one. An argument
+    /// that is an error is the result (the leftmost one), unless another is an array: then it
+    /// is broadcast and every element is that error (as for DATE). `message` goes with a
+    /// scalar error of `op`.
+    pub(crate) fn lift_numbers<const N: usize>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        message: &str,
+        op: impl Fn([f64; N]) -> Result<f64, Error>,
+    ) -> CalcResult {
+        debug_assert!(args.len() >= N, "callers check the argument count");
+        let operands: Vec<_> = args
+            .iter()
+            .take(N)
+            .map(|arg| self.get_number_or_array(arg, cell))
+            .collect();
+        let any_array = operands
+            .iter()
+            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
+        let mut lifted = Vec::with_capacity(N);
+        for na in operands {
+            match na {
+                Err(CalcResult::Error { error, .. }) if any_array => {
+                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+                }
+                Ok(na) => lifted.push(na),
+                Err(e) => return e,
+            }
+        }
+        if !any_array {
+            // Without an array every operand is a `Number` (an error returned above).
+            let mut numbers = [0.0; N];
+            for (slot, na) in numbers.iter_mut().zip(&lifted) {
+                if let NumberOrArray::Number(n) = na {
+                    *slot = *n;
+                }
+            }
+            return match op(numbers) {
+                Ok(n) => CalcResult::Number(n),
+                Err(e) => CalcResult::new_error(e, cell, message.to_string()),
+            };
+        }
+        let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
+        let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
+        let result = (0..rows)
+            .map(|i| {
+                (0..cols)
+                    .map(|j| {
+                        let mut numbers = [0.0; N];
+                        let mut value = Ok(());
+                        for (slot, na) in numbers.iter_mut().zip(&lifted) {
+                            match self.number_at(na, i, j) {
+                                Ok(n) => *slot = n,
+                                Err(e) => {
+                                    value = Err(e);
+                                    break;
+                                }
+                            }
+                        }
+                        match value.and_then(|()| op(numbers)) {
+                            Ok(n) => ArrayNode::Number(n),
+                            Err(e) => ArrayNode::Error(e),
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(result)
+    }
+
+    /// The number at (`i`, `j`) of `na`, a size-1 dimension repeating; text is cast like a scalar
+    /// argument, a position past a shorter array is `#N/A`.
+    fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
+        match na {
+            NumberOrArray::Number(f) => Ok(*f),
+            NumberOrArray::Array(a) => {
+                let (rows, cols) = na.dims();
+                let node = bcast_idx(rows, i)
+                    .and_then(|ri| a.get(ri))
+                    .and_then(|r| bcast_idx(cols, j).and_then(|cj| r.get(cj)));
+                match node {
+                    None => Err(Error::NA),
+                    Some(node) => self.array_node_to_number(node),
+                }
+            }
+        }
     }
 
     /// [`Model::get_number_or_array`] of an already evaluated `value`.
@@ -434,6 +535,33 @@ impl Model {
             }
             other => other,
         }
+    }
+
+    /// The `#N/A` an aggregate gives for a direct text argument of more than 255 characters,
+    /// numeric or not (`None` for shorter text), where every other path gives `#VALUE!`
+    /// (probes/sum-long-text-args, probes/long-text-args-min-criteria, excel-graph;
+    /// docs/excel-semantics/numbers.md).
+    pub(crate) fn aggregate_text_too_long(
+        text: &str,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        number_text_too_long(text)
+            .then(|| CalcResult::new_error(Error::NA, cell, "Text too long".to_string()))
+    }
+
+    /// [`Model::cast_to_number`] for a direct argument of the aggregates (SUM, PRODUCT, MIN, MAX,
+    /// AVERAGE, SUMSQ, ...; AVERAGEA, MAXA and MINA via [`Model::aggregate_text_too_long`]).
+    pub(crate) fn cast_aggregate_arg_to_number(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        if let CalcResult::String(text) = &result {
+            if let Some(error) = Self::aggregate_text_too_long(text, cell) {
+                return Err(error);
+            }
+        }
+        self.cast_to_number(result, cell)
     }
 
     pub(crate) fn cast_to_number(

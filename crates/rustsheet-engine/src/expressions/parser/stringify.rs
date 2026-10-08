@@ -724,6 +724,7 @@ fn stringify(
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
+                    | GroupedRootKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
@@ -775,6 +776,7 @@ fn stringify(
         ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        GroupedRootKind { child } => format!("({})", sub(child)),
         SpillRangeOperator { child } => {
             if export_to_excel {
                 return format!(
@@ -1033,7 +1035,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
-        Node::SpillRangeOperator { child } => {
+        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
 
@@ -1115,7 +1117,7 @@ pub(crate) fn rename_defined_name_in_node(
         } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-        Node::SpillRangeOperator { child } => {
+        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
         // Do nothing

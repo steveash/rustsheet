@@ -32,15 +32,7 @@ impl Model {
                     f(if value { 1.0 } else { 0.0 });
                 }
                 CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        f(parsed);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
+                    f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
                 }
                 CalcResult::Array(array) => {
                     for row in array {
@@ -120,6 +112,9 @@ impl Model {
                     f(0.0);
                 }
                 CalcResult::String(value) => {
+                    if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
+                        return Err(error);
+                    }
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
@@ -260,6 +255,8 @@ impl Model {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
+                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
+                        return error;
                     } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;

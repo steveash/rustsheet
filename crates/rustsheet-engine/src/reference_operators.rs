@@ -88,9 +88,10 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
-    /// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
-    /// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
-    pub(crate) fn evaluate_spill_anchor(
+    /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
+    /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
+    /// a lookup index argument and LOOKUP's result_vector (probes/lookup-vector-edges A9, A12).
+    pub(crate) fn eval_ref_or_index(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
@@ -144,8 +145,9 @@ impl Model {
             }
             // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
             // `#NULL!` (probes/at-operand-formulatext H12, T-1109). Excel passes the right
-            // operand's error on too (probes/range-right-operand-errors); TODO(T-1115).
-            (error @ CalcResult::Error { .. }, _) => error,
+            // operand's error on too (`=A1:INDEX(A1:A3,5)` is `#REF!`, `=A1:(A1 B2)` is `#NULL!`;
+            // probes/range-right-operand-errors D11, D14, T-1115).
+            (error @ CalcResult::Error { .. }, _) | (_, error @ CalcResult::Error { .. }) => error,
             _ => CalcResult::new_error(Error::VALUE, cell, "Invalid range".to_string()),
         }
     }
@@ -408,7 +410,13 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        match self.evaluate_node_with_reference(node, cell) {
+        let reference_form = match node {
+            Node::FunctionKind { kind, args } => self.evaluate_reference_form(kind, args, cell),
+            _ => None,
+        };
+        let operand =
+            reference_form.unwrap_or_else(|| self.evaluate_node_with_reference(node, cell));
+        match operand {
             CalcResult::Range { left, right } if left.sheet == right.sheet => Ok(Range {
                 left: CellReferenceIndex {
                     sheet: left.sheet,

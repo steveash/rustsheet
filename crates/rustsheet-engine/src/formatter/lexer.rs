@@ -129,11 +129,11 @@ impl Lexer {
         while position < len {
             let x = self.chars[position];
             position += 1;
+            // Excel: `""` inside a literal is not an escaped quote but the end of one literal and
+            // the start of the next, so `0 """Millions"""` shows `42 Millions`
+            // (probes/format-doubled-quotes C1-C11; docs/excel-semantics/number-formats.md).
             if x != '"' {
                 chars.push(x);
-            } else if position < len && self.chars[position] == '"' {
-                chars.push(x);
-                position += 1;
             } else {
                 self.position = position;
                 return Some(chars);

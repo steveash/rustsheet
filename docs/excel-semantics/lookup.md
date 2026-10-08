@@ -64,7 +64,7 @@ Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
   `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
   `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).
 - `OFFSET(F1,0,0)` as result_vector reads past its end like a plain `F1`, and so does a reference-returning `INDEX(F1:F1,1)`
-  or `INDEX(F1:G1,1,1)` (G1 / 7); the engine returns `#N/A` for the INDEX forms (T-0274).
+  or `INDEX(F1:G1,1,1)` (G1 / 8); `lookup_result` keeps INDEX as a reference (T-0274).
 Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224), probes/lookup-vector-edges A1:A21 (T-0269).
 Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
@@ -211,4 +211,12 @@ Open (unprobed, T-0962): reference-vs-array result (ISREF, implicit intersection
 spilling as 0), `@`/nesting such as `UPPER(XLOOKUP(2,A1:A3,B1:C3))`, a one-cell lookup vector with a wide
 return range, and a wide return range with a different row count (`#VALUE!` is a guess).
 Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
+Array lookup_array (T-1126, T-1127): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
+reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). All of the following are from
+probes/xlookup-array-return (excel-graph): an array return_array gives its element (`XLOOKUP(2,{1;2;3},{4;5;6})` is 5, E1; row arrays E4),
+`if_not_found` and `#N/A` work as for ranges (E2, E3); the binary search modes 2 and -2 work over an array lookup_array with a range or
+array return_array, including match modes -1/1 (E9-E15); search modes 1 and -1 explicit (E22-E24). Shape rules: a 2-D lookup array is
+`#VALUE!` (E8); the return_array needs the lookup array's row count, so a column lookup array with a row return (E16), a row lookup array
+with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider return_array and gives the
+matched row (E7, E19, E20). Still unprobed: an error or scalar return_array, wildcard match mode with a binary search mode, and a 2-D *range* lookup_array (the engine answers `#ERROR!` there, `#VALUE!` for an array).
 Tasks: T-0948
