@@ -3,7 +3,7 @@ id: T-1010
 title: "Error/ErrorKind variants for #GETTING_DATA, #CONNECT!, #BLOCKED!, #FIELD! (SPEC-0003 E1)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -31,3 +31,12 @@ Code: `crates/rustsheet-engine/src/expressions/token.rs` (`enum Error`, `error_t
 
 ## Out of scope
 - IMAGE/STOCKHISTORY/FIELDVALUE (T-1013) and xlsx export (T-1011).
+
+## Outcome
+The engine `Error` enum has `GETTINGDATA`, `CONNECT`, `BLOCKED` and `FIELD`, appended after `NULL` with ERROR.TYPE 8/10/11/13. The stored-name table has all sixteen names. `#GETTING_DATA`, in any case, is the only new formula and typed-input literal. `Error::stored_literal` is added; T-1011 uses it.
+
+The facade `ErrorKind` has the four new kinds, and `from_literal` uses the stored-name table, so Python `XlError("#BLOCKED!")` has code 11. UNIQUE now keys errors by `error_type_code` instead of a duplicate table. COUNTIF criteria names are unchanged (T-1012). Typed input follows SPEC-0003's UNVERIFIED choice (T-1016).
+
+The xlsx importer still keeps cached `#CONNECT!`/`#BLOCKED!`/`#FIELD!` as `#VALUE!` (`TODO(T-1011)`), so that a round trip never writes literals Excel refuses.
+
+Eval: probes known failures 290 -> 260 (30 fixed: error-literals-new 10, error-literals-new2 15, error-stored-constants 5), no regressions. The remaining error-literals cells expect the stored `#N/A` (T-1011).

@@ -306,7 +306,7 @@ fn test_newer_rich_errors_are_not_literals() {
     // Excel refuses `=#BLOCKED!`, `=#CONNECT!` and `=#FIELD!` (T-0175).
     for formula in ["#BLOCKED!", "#CONNECT!", "#FIELD!"] {
         let mut lx = new_lexer(formula, true);
-        assert_ne!(lx.next_token(), Error(Error::BLOCKED), "{formula}");
+        assert!(!matches!(lx.next_token(), Error(_)), "{formula}");
     }
 }
 
