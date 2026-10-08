@@ -435,11 +435,26 @@ impl Model {
     /// the English language and locale regardless of the user's active
     /// language. This temporarily switches the parser, parses, and restores it.
     pub(crate) fn parse_internal_formula(&mut self, body: &str, context: &CellReferenceRC) -> Node {
+        self.parse_internal_with(|parser| parser.parse(body, context))
+    }
+
+    /// Like [`Model::parse_internal_formula`], but a body written wholly in parentheses keeps a
+    /// [`Node::GroupedRootKind`] root as a cell formula does: Excel does not snap a grouped defined
+    /// name body to zero (docs/excel-semantics/numbers.md "Near-zero snapping", T-1164).
+    pub(crate) fn parse_internal_cell_formula(
+        &mut self,
+        body: &str,
+        context: &CellReferenceRC,
+    ) -> Node {
+        self.parse_internal_with(|parser| parser.parse_cell_formula(body, context))
+    }
+
+    fn parse_internal_with(&mut self, parse: impl FnOnce(&mut Parser) -> Node) -> Node {
         let locale = self.locale;
         let language = self.language;
         self.parser.set_locale(get_default_locale());
         self.parser.set_language(get_default_language());
-        let node = self.parser.parse(body, context);
+        let node = parse(&mut self.parser);
         self.parser.set_locale(locale);
         self.parser.set_language(language);
         node
@@ -461,11 +476,13 @@ impl Model {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
-        let mut node = self.parser.parse(body, context);
+        // A body written wholly in parentheses keeps them (`GroupedRootKind`): Excel does not snap
+        // such a defined name to zero (docs/excel-semantics/numbers.md "Near-zero snapping").
+        let mut node = self.parser.parse_cell_formula(body, context);
         if let Node::ParseErrorKind { .. } = node {
             // The user's language could not parse it: it might already be in the
             // internal English form.
-            node = self.parse_internal_formula(body, context);
+            node = self.parse_internal_cell_formula(body, context);
         }
         if let Node::ParseErrorKind { .. } = node {
             return Err(format!("Invalid formula: '{formula}'"));

@@ -3,7 +3,7 @@ id: T-1164
 title: "Probe near-zero snapping of grouped and SUM defined-name bodies (follow-up of T-1160)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1160 snaps a name body at its root via `evaluate_formula_root`. A name body is
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/near-zero-snap-name-bodies (excel-graph sidecar, 7 cells). Excel does not snap a grouped name body (`(0.1+0.2-0.3)`, `((0.1+0.2-0.3))`) and does snap `SUM(0.1,0.2,-0.3)`. The engine snapped the grouped ones because name bodies were parsed without a grouped root; they now keep it (model.rs `parse_internal_cell_formula`, `user_formula_to_internal`; xlsx import re-parse). Eval delta: 7/7 cells pass, no baseline change, 0 regressions. numbers.md updated.

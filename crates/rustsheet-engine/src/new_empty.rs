@@ -166,7 +166,7 @@ impl Model {
                 // Defined-name formulas are stored internally in English, so
                 // they must be parsed with the English parser regardless of the
                 // user's active language.
-                match self.parse_internal_formula(formula_body, &dummy_ref) {
+                match self.parse_internal_cell_formula(formula_body, &dummy_ref) {
                     Node::LambdaDefKind { parameters, body } => {
                         ParsedDefinedName::LambdaDefinition(parameters, *body)
                     }
