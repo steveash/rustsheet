@@ -118,7 +118,7 @@ fn index_from_array(
 
 impl Model {
     /// A call to a function whose result is a reference when its source argument is one,
-    /// evaluated as that reference: XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
+    /// evaluated as that reference: INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
     /// evaluated to their values (probes/intersection-function-operands H8, H11, H12, H14;
     /// T-0165). `None` for any other function.
     pub(crate) fn evaluate_reference_form(
@@ -128,6 +128,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Option<CalcResult> {
         Some(match kind {
+            // `INDEX(A1:A2,2) A1:A2` intersects the cell INDEX picks (T-0235).
+            Function::Index => self.index_impl(args, cell, true),
             Function::Xlookup => self.xlookup_impl(args, cell, true),
             Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
             Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),

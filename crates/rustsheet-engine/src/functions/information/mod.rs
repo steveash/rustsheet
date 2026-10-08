@@ -130,13 +130,9 @@ impl Model {
                 kind: crate::functions::Function::If | crate::functions::Function::Choose,
                 ..
             } => matches!(self.evaluate_reference_arg(node, cell), RefArg::Ranges(_)),
-            // INDEX is a reference unless it fails (`ISREF(INDEX(A1,1,2,2))` is FALSE).
-            Node::FunctionKind {
-                kind: crate::functions::Function::Index,
-                args,
-            } => matches!(self.index_impl(args, cell, true), CalcResult::Range { .. }),
-            // XLOOKUP, TAKE, DROP and TRIMRANGE are references when they pick cells of a range,
-            // and not when they fail or work on an array (probes/isref-reference-lookups).
+            // INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE are references when they pick cells of a
+            // range, and not when they fail or work on an array (`ISREF(INDEX(A1,1,2,2))` is
+            // FALSE; probes/isref-reference-lookups).
             Node::FunctionKind { kind, args } => {
                 match self.evaluate_reference_form(kind, args, cell) {
                     Some(result) => matches!(result, CalcResult::Range { .. }),

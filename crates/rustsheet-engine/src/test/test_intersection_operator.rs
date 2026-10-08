@@ -359,3 +359,18 @@ fn reference_returning_lookups_keep_their_values_elsewhere() {
     assert_eq!(model._get_text("D5"), "1");
     assert_eq!(model._get_text("D6"), "2");
 }
+
+/// INDEX as an intersection operand is the cell it picks (T-0235).
+#[test]
+fn index_operand_intersects_the_picked_cell() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C2", "=INDEX(A1:A2,2) A1:A2");
+    model._set("C3", "=INDEX(A1:A2,1) A1:A2");
+    model._set("C4", "=INDEX(A1:A2,3) A1:A2");
+    model.evaluate();
+    assert_eq!(model._get_text("C2"), *"2");
+    assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"#REF!");
+}

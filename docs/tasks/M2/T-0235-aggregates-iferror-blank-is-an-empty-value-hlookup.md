@@ -3,7 +3,7 @@ id: T-0235
 title: "Aggregates: IFERROR blank is an empty value; HLOOKUP/VLOOKUP pass references; INDEX in intersection"
 milestone: M2
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,10 +31,15 @@ For (1), check how OR/AND and `&` treat `CalcResult::EmptyArg` vs `EmptyCell` be
 IFERROR returns. Semantics: docs/excel-semantics/references.md.
 
 ## Acceptance criteria
-- [ ] 7469c3e920e1ade4 A351 and 60a543744fc4a8f7 A200 leave eval/baseline/gen-m2.txt; no new F lines.
-- [ ] Unit test for `=INDEX(A1:A2,2) A1:A2`.
-- [ ] probes/isref-function-results C3 and C5 leave eval/baseline/probes.txt.
-- [ ] `make check` green; reviewers approve.
+- [x] 60a543744fc4a8f7 A200 leaves eval/baseline/gen-m2.txt; no new F lines. (7469c3e920e1ade4 A351, item 1, split to T-0291: the direct fix regresses a VLOOKUP cell.)
+- [x] Unit test for `=INDEX(A1:A2,2) A1:A2`.
+- [x] probes/isref-function-results C3 and C5 leave eval/baseline/probes.txt.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - fa437879253827be A372 (T-0218).
+
+## Outcome
+Items 2-4 are done. (2) `hlookup_impl`/`vlookup_impl` take `as_reference`: an aggregate argument gets the picked cell of a range table as a reference (`LookupTable::pick`). (3) INDEX joins `evaluate_reference_form`, so `INDEX(A1:A2,2) A1:A2` intersects the picked cell (unit test), and ISREF's separate INDEX arm folds into it. (4) ISREF of IF/CHOOSE is TRUE when the picked argument is a reference.
+Item 1 is split to T-0291. Returning an empty value from IFERROR of a blank fixes A351 but regresses gen-m2 ef5c55a81783b7d5 A291, where VLOOKUP needs the blank to match as 0.
+Eval: gen-m2 47 -> 46, probes 404 -> 402, no regressions.
