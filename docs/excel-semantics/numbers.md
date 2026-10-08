@@ -565,12 +565,12 @@ significand 1.99999999999999933 and so the significand cut above applied (1024 c
 spec2xlsx now writes the shortest text that parses back to the same double (T-0289) and Excel reloads: with
 2^1000 stored exactly, 1000-3000 copies of it all give 1.0715086071862673E+301 = 2^1000 (probes/geomean-exponent-sum-2
 C11-C18, refilled 2026-10-08), the stored minus the computed 2^1000 is 0 (probes/geomean-pow2-count Q3, Q4), and
-R1-R7 are all 1.0715086071862673E+301. Computed in the formula
+R1-R7 are all 1.0715086071862673E+301.
 The earlier behaviour is reproduced by storing the 16-digit value itself (probes/geomean-stored-3ulps-low, excel-graph,
 2026-10-08, T-1172): `Q1 = 1.071508607186267E+301` satisfies `Q1=2^1000` (TRUE, Excel's comparison ignores the low
 bits) yet `(Q1-2^1000)/2^947` is -3; GEOMEAN of 1000 copies is 1.0715086071862671E+301 and of 1024 copies
 1.0715086071862668E+301, and 1025, 1026, 1100, 1500 and 3000 copies are `#NUM!` (the significand cut). The engine
-matches all but the 1000-copy last ulp (the open root-rounding item below).
+matches all but the 1000-copy last ulp (the open root-rounding item below, T-1108).
 Computed in the formula, 2^1000 was exact at every probed count, as
 are 2^10, 2^100, 2^500, 2^900 and 2^1023 at 500-3000 copies (probes/geomean-pow2-count A-F, J; T-1156).
 Fitted rule (T-1120, T-1156): with P the [1, 2) significand product and n the count, k is the number

@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1172: GEOMEAN of copies of the stored 16-digit 1.071508607186267E+301 (three ulps below 2^1000, significand 1.99999999999999933), the value spec2xlsx used to write for 2^1000. Before T-0289 probes/geomean-pow2-count R3, R4 and geomean-exponent-sum-2 C12-C18 showed 1024 copies finite and 1025+ #NUM!. Q1 is stored, Q2 compares it with 2^1000, Q3 its distance in units of 2^947. R1:R8 are GEOMEAN of 1000-3000 copies.",
+  "description": "T-1172: GEOMEAN of copies of the stored 16-digit 1.071508607186267E+301 (three ulps below 2^1000, significand 1.99999999999999933), the value spec2xlsx used to write for 2^1000. Before T-0289 probes/geomean-pow2-count R3, R4 and geomean-exponent-sum-2 C12-C18 showed 1024 copies finite and 1025+ #NUM!. Q1 is stored, Q2 compares it with 2^1000, Q3 its distance in units of 2^947. R1:R7 are GEOMEAN of 1000-3000 copies.",
   "tags": ["M1", "numbers", "geomean", "probe"],
   "sheets": [
     {
