@@ -388,13 +388,11 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
 
         // Defined names and tables: their shape is not tracked.
         Node::DefinedNameKind(_) | Node::TableNameKind(_) => StaticResult::Unknown,
-        Node::NamedVariableKind { .. } => StaticResult::Scalar,
+        Node::NamedVariableKind { .. } | Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
-        Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
         Node::GroupedRootKind { child } => run_static_analysis_on_node(child),
-        Node::LambdaDefKind { .. } => StaticResult::Unknown,
-        Node::LambdaCallKind { .. } => StaticResult::Unknown,
+        Node::LambdaDefKind { .. } | Node::LambdaCallKind { .. } => StaticResult::Unknown,
     }
 }
 

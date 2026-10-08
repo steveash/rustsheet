@@ -67,8 +67,7 @@ pub fn get_milliseconds_since_epoch() -> i64 {
     Date::now() as i64
 }
 
-// The structure of a cell.
-// It can be:
+// The structure of a cell. It can be:
 // * A single cell
 // * The anchor of an array formula
 // * The anchor of a dynamic formula
@@ -744,8 +743,7 @@ impl Model {
                 CalcResult::Range { left, right } if left == right => self.evaluate_cell(left),
                 value => value,
             },
-            // What they are applied to is turned into a number, and they work
-            // element by element on a range or an array
+            // Their operand is turned into a number, element by element on a range or an array.
             UnaryKind { .. } => self.apply_unary_chain(node, cell),
             ErrorKind(kind) => CalcResult::new_error(kind.clone(), cell, "".to_string()),
             ParseErrorKind {
@@ -2527,9 +2525,8 @@ impl Model {
         let cell_reference = &CellReferenceRC { sheet, row, column };
         let mut node = self.parser.parse_cell_formula(formula, cell_reference);
         if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
-            let retry = self
-                .parser
-                .parse_cell_formula(&format!("{formula})"), cell_reference);
+            let closed = format!("{formula})");
+            let retry = self.parser.parse_cell_formula(&closed, cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;
             }

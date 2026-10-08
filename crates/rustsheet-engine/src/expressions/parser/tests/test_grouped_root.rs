@@ -65,8 +65,9 @@ fn printing_round_trips_through_rc_format() {
 
 #[test]
 fn nested_outer_parentheses_keep_one_level() {
-    // Inner grouping parentheses are dropped as everywhere else in the printer; one level is
-    // enough to tell the grouped root apart.
+    // A known engine gap, not Excel's behavior: Excel keeps every level of written parentheses
+    // (docs/excel-semantics/references.md), but the printer drops inner grouping parentheses
+    // everywhere, so only the outer level survives. One level is enough to tell the root apart.
     let mut parser = parser();
     let node = parser.parse_cell_formula("((A1-1))", &context());
     assert!(is_grouped(&node));

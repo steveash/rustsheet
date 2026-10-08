@@ -26,6 +26,7 @@ Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/3
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
 Implemented in: the parser records a wholly parenthesized cell formula as a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017), which keeps the parentheses in the stored and exported formula text; the snapping itself is T-0110.
+Unprobed: whether Excel also skips snapping for `=((X-b))`, for a formula typed as `=(X-b` that Excel completes with `)`, and inside a defined-name body; the engine marks the first two as grouped roots and never the third (name bodies are parsed with `Parser::parse`). Also a known gap: `=((A1-1))` is stored as `=(A1-1)`, one level, while Excel keeps every written level (references.md).
 Tasks: T-0110 (implementation), T-1017 (grouped root)
 
 ## ROUND family rounds in two decimal stages

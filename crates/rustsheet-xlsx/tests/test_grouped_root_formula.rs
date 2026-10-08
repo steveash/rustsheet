@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 //! A cell formula written wholly in parentheses keeps them through the model and an xlsx round
 //! trip (T-1017): Excel tells `=(A1-1)` apart from `=A1-1` (docs/excel-semantics/numbers.md
