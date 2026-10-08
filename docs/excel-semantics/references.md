@@ -466,8 +466,8 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   huge value such as 1E+300) is `#REF!`; a reference of one area with `area_num` other than 1 is `#REF!`. `AREAS` of a
   3-D span is `#VALUE!`. Implemented by T-1063 (`index_impl`, `fn_areas`), cases in probes/multiarea-areas-* and
   probes/multiarea-index; unit tests in test/test_multi_area_arguments.rs. The 1E+300, "one area, area_num 2", `INDEX` of an
-  array with `area_num` other than 1 (`#REF!`) and `AREAS` of a non-reference (1; Excel refuses the formula)
-  rows are engine choices, UNVERIFIED (no probe).
+  array with `area_num` other than 1 (`#REF!`)
+  rows are engine choices, UNVERIFIED (no probe). `AREAS` of a non-reference: see "SUBTOTAL and AREAS take references only".
 - Refuse with `#VALUE!`: SUMPRODUCT, SUMIF, COUNTIF, COUNTBLANK, OFFSET, `@(A1,B2)`, the bare `=A1,B2` (stored in a
   file; it loads), `=(A1,B2)` itself. `ROWS` and `COLUMNS` give `#REF!`, and so does `ROW`.
 - ISERROR and ISNUMBER of a union are TRUE and FALSE, IFERROR gives its fallback (the union is `#VALUE!` as a value).
@@ -533,14 +533,35 @@ matches (T-1064; probes/multiarea-subtotal-counts-c/d). Hidden/filtered rows in 
 unprobed (the case format cannot hide rows; T-1036 owns the probe): the engine keeps or skips a row whole by the status at the area's first column.
 Tasks: T-1061, T-1062, T-1064, T-1068, T-1069
 
-SUBTOTAL with a non-reference argument is refused when the workbook loads: Excel for the web returns createSession 501
-`unsupportedWorkbook` (`FileCorruptTryRepair`) for a workbook holding `=SUBTOTAL(2,{1,2})` (one scratch workbook
-with the 102/103/9 variants), and also for `=SUBTOTAL(2,A1:A2*1)` and `=SUBTOTAL(3,A1:A2*1)` (a computed array,
-scratch probe, excel-graph 2026-10-08, T-1163), so Excel has no cell value for these formulas (typed in the
-desktop UI it reports a formula error). A `LAMBDA` argument could not be probed: through a defined name
-`SUBTOTAL(2,Twice)` gave `#NAME?` on excel-graph, which says nothing about a lambda value. The engine currently
-returns `#N/IMPL` for the direct-array case; the matching behaviour (a syntax/parse refusal, like `=(1)(2)`
-above) is a parse-time type check and is not implemented.
+## SUBTOTAL and AREAS take references only
+Rule: every SUBTOTAL argument after the function number, and the AREAS argument, must be written as
+a reference operand, the same set the intersection accepts ("Intersection operands must be
+references"): references, unions, intersections, `@`, `(A1)`, `#REF!`, names, LAMBDA, and the
+reference-returning calls INDEX, OFFSET, IF, CHOOSE, LET, XLOOKUP, IFS, SWITCH, TAKE, DROP,
+TRIMRANGE, INDIRECT. Anything else makes Excel for the web refuse the workbook (createSession 501
+`unsupportedWorkbook`, `FileCorruptTryRepair`): `SUBTOTAL(9,{1,2})`, `SUBTOTAL(2,{1,2})`,
+`SUBTOTAL(109,{1,2})`, `SUBTOTAL(9,A1:A2*1)`, `SUBTOTAL(9,SUM(A1:A2))`, `SUBTOTAL(9,ABS(A1:A2))`,
+`SUBTOTAL(9,1)`, `SUBTOTAL(9,"A1")`, `SUBTOTAL(9,TRUE)`, `SUBTOTAL(9,A1:A2,{1,2})`,
+`SUBTOTAL(9,FILTER(..))`, `SUBTOTAL(9,VSTACK(A1:A2))`, `SUBTOTAL(9,-A1)`, `SUBTOTAL(9,#N/A)`, an
+empty argument (`SUBTOTAL(9,A1,)`, `SUBTOTAL(2,A1,)`) and a nested SUBTOTAL (`SUBTOTAL(9,SUBTOTAL(9,A1:A2))`,
+also after a range), plus `AREAS(1)` and `AREAS("A1")` (T-1063). One scratch workbook per formula,
+excel-graph 2026-10-08 (T-1163); a refused workbook cannot be a case. An argument written as a
+reference operand that evaluates to something else loads and gives:
+- a value is `#VALUE!`: `SUBTOTAL(9,IF(TRUE,5))`, `SUBTOTAL(2,IF(TRUE,"a"))`, `SUBTOTAL(3,IF(TRUE,"a"))`,
+  `SUBTOTAL(9,LAMBDA(x,x))` (also 2, 3, 109 and through LET), `AREAS(IF(TRUE,5))`, `AREAS(LAMBDA(x,x))`;
+- an error is itself: `SUBTOTAL(2,IF(TRUE,1/0))` = `#DIV/0!`;
+- the non-reference result wins over an error cell in a range, whatever the order:
+  `SUBTOTAL(9,C1,IF(TRUE,5))` and `SUBTOTAL(9,IF(TRUE,5),C1)` are `#VALUE!` with C1 = `#DIV/0!`;
+- an array spills, `#VALUE!` per element and an error element kept: `SUBTOTAL(9,IF(TRUE,{1,#N/A}))`
+  spills `#VALUE!`, `#N/A`; `SUBTOTAL(9,A1:A2,IF(TRUE,{1,2}))` spills two `#VALUE!`.
+Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) for the loading forms.
+Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
+`Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, spill shape in
+`subtotal_static_result`. UNVERIFIED: which of two non-reference arguments wins (the engine takes the
+first), AREAS of an array (the engine gives `#VALUE!`), and a function number that is itself invalid
+next to a non-reference argument (the engine checks the arguments first). Typed entry is a desktop
+question (M14).
+Tasks: T-1063, T-1163
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15

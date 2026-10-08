@@ -15,3 +15,22 @@ pub(super) fn aggregate_static_result(args: &[Node]) -> StaticResult {
         .map(|(_, arg)| arg);
     broadcast_static_result(lifted)
 }
+
+/// SUBTOTAL spills when an argument after the function number evaluates to an array (each
+/// element is `#VALUE!` or its own error, `Model::subtotal_reference_args`, T-1163). A written
+/// reference is read, not lifted; anything else counts at its shape, a call even when that is
+/// a range, since CHOOSE gives a range's shape to its array arms (`CHOOSE(1,{1,2})`).
+pub(super) fn subtotal_static_result(args: &[Node]) -> StaticResult {
+    broadcast_static_result(args.iter().skip(1).filter(|arg| {
+        !matches!(
+            arg,
+            Node::ReferenceKind { .. }
+                | Node::RangeKind { .. }
+                | Node::OpRangeKind { .. }
+                | Node::OpIntersectKind { .. }
+                | Node::OpUnionKind { .. }
+                | Node::SheetSpanKind { .. }
+                | Node::TableNameKind(_)
+        )
+    }))
+}

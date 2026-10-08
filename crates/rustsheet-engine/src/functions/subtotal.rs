@@ -2,13 +2,13 @@ use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
-        parser::{parse_range, Node},
+        parser::{parse_range, ArrayNode, Node},
         token::Error,
         types::CellReferenceIndex,
     },
     functions::Function,
     model::Model,
-    reference_operators::{is_multi_area, Ranges},
+    reference_operators::{Ranges, RefArg},
 };
 
 /// Excel has a complicated way of filtering + hidden rows
@@ -199,57 +199,64 @@ impl Model {
         })
     }
 
+    /// The numbers of `args` (already resolved by [`Self::subtotal_reference_args`]) as
+    /// [`Self::subtotal_walk_areas`] reads them.
     fn subtotal_get_values(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> Result<Vec<f64>, CalcResult> {
         let mut result: Vec<f64> = Vec::new();
+        for areas in args {
+            self.subtotal_walk_range(areas, cell, &mode, &mut result)?;
+        }
+        Ok(result)
+    }
+
+    /// The areas of every SUBTOTAL argument after the function number, resolved before any cell
+    /// is read. The parser refuses an argument that is not written as a reference, as Excel
+    /// does; one that evaluates to something else (`IF(TRUE,5)`, `LAMBDA(x,x)`) is `#VALUE!`
+    /// and an error is itself, whatever the other arguments hold: `SUBTOTAL(9,C1,IF(TRUE,5))`
+    /// is `#VALUE!` with C1 = `#DIV/0!`. An array is mapped element by element and spills
+    /// (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is `#VALUE!`, `#N/A`). Scratch probes on excel-graph,
+    /// docs/excel-semantics/references.md "SUBTOTAL and AREAS take references only" (T-1163).
+    fn subtotal_reference_args(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Ranges>, CalcResult> {
+        let mut resolved = Vec::with_capacity(args.len());
         for arg in args {
-            match arg {
-                Node::FunctionKind {
-                    kind: Function::Subtotal,
-                    args: _,
-                } => {
-                    // skip
-                }
-                // A union walks its areas one after the other, each counted as written
-                // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
-                _ if is_multi_area(arg) => {
-                    let ranges = self.reference_ranges(arg, cell)?;
-                    self.subtotal_walk_range(&ranges, cell, &mode, &mut result)?;
-                }
-                _ => {
-                    match self.evaluate_node_with_reference(arg, cell) {
-                        CalcResult::String(_) | CalcResult::Boolean(_) => {
-                            // Skip
-                        }
-                        CalcResult::Number(f) => result.push(f),
-                        error @ CalcResult::Error { .. } => {
-                            return Err(error);
-                        }
-                        CalcResult::Range { left, right } => {
-                            self.subtotal_walk_range(
-                                &[Range { left, right }],
-                                cell,
-                                &mode,
-                                &mut result,
-                            )?;
-                        }
-                        CalcResult::EmptyCell | CalcResult::EmptyArg => result.push(0.0),
-                        CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                            return Err(CalcResult::Error {
-                                error: Error::NIMPL,
-                                origin: cell,
-                                message: "Arrays not supported yet".to_string(),
+            // A union walks its areas one after the other, each counted as written
+            // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(ranges) => resolved.push(ranges),
+                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
+                RefArg::Value(CalcResult::Array(rows)) => {
+                    return Err(CalcResult::Array(
+                        rows.into_iter()
+                            .map(|row| {
+                                row.into_iter()
+                                    .map(|value| match value {
+                                        ArrayNode::Error(error) => ArrayNode::Error(error),
+                                        _ => ArrayNode::Error(Error::VALUE),
+                                    })
+                                    .collect()
                             })
-                        }
-                    }
+                            .collect(),
+                    ))
+                }
+                RefArg::Value(_) => {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "SUBTOTAL takes references".to_string(),
+                    ))
                 }
             }
         }
-        Ok(result)
+        Ok(resolved)
     }
 
     pub(crate) fn fn_subtotal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -260,29 +267,34 @@ impl Model {
             Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
+        let resolved = match self.subtotal_reference_args(&args[1..], cell) {
+            Ok(resolved) => resolved,
+            Err(error) => return error,
+        };
+        let args = resolved.as_slice();
         match value {
-            1 => self.subtotal_average(&args[1..], cell, SubTotalMode::Full),
-            2 => self.subtotal_count(&args[1..], cell, SubTotalMode::Full),
-            3 => self.subtotal_counta(&args[1..], cell, SubTotalMode::Full),
-            4 => self.subtotal_max(&args[1..], cell, SubTotalMode::Full),
-            5 => self.subtotal_min(&args[1..], cell, SubTotalMode::Full),
-            6 => self.subtotal_product(&args[1..], cell, SubTotalMode::Full),
-            7 => self.subtotal_stdevs(&args[1..], cell, SubTotalMode::Full),
-            8 => self.subtotal_stdevp(&args[1..], cell, SubTotalMode::Full),
-            9 => self.subtotal_sum(&args[1..], cell, SubTotalMode::Full),
-            10 => self.subtotal_vars(&args[1..], cell, SubTotalMode::Full),
-            11 => self.subtotal_varp(&args[1..], cell, SubTotalMode::Full),
-            101 => self.subtotal_average(&args[1..], cell, SubTotalMode::SkipHidden),
-            102 => self.subtotal_count(&args[1..], cell, SubTotalMode::SkipHidden),
-            103 => self.subtotal_counta(&args[1..], cell, SubTotalMode::SkipHidden),
-            104 => self.subtotal_max(&args[1..], cell, SubTotalMode::SkipHidden),
-            105 => self.subtotal_min(&args[1..], cell, SubTotalMode::SkipHidden),
-            106 => self.subtotal_product(&args[1..], cell, SubTotalMode::SkipHidden),
-            107 => self.subtotal_stdevs(&args[1..], cell, SubTotalMode::SkipHidden),
-            108 => self.subtotal_stdevp(&args[1..], cell, SubTotalMode::SkipHidden),
-            109 => self.subtotal_sum(&args[1..], cell, SubTotalMode::SkipHidden),
-            110 => self.subtotal_vars(&args[1..], cell, SubTotalMode::Full),
-            111 => self.subtotal_varp(&args[1..], cell, SubTotalMode::Full),
+            1 => self.subtotal_average(args, cell, SubTotalMode::Full),
+            2 => self.subtotal_count(args, cell, SubTotalMode::Full),
+            3 => self.subtotal_counta(args, cell, SubTotalMode::Full),
+            4 => self.subtotal_max(args, cell, SubTotalMode::Full),
+            5 => self.subtotal_min(args, cell, SubTotalMode::Full),
+            6 => self.subtotal_product(args, cell, SubTotalMode::Full),
+            7 => self.subtotal_stdevs(args, cell, SubTotalMode::Full),
+            8 => self.subtotal_stdevp(args, cell, SubTotalMode::Full),
+            9 => self.subtotal_sum(args, cell, SubTotalMode::Full),
+            10 => self.subtotal_vars(args, cell, SubTotalMode::Full),
+            11 => self.subtotal_varp(args, cell, SubTotalMode::Full),
+            101 => self.subtotal_average(args, cell, SubTotalMode::SkipHidden),
+            102 => self.subtotal_count(args, cell, SubTotalMode::SkipHidden),
+            103 => self.subtotal_counta(args, cell, SubTotalMode::SkipHidden),
+            104 => self.subtotal_max(args, cell, SubTotalMode::SkipHidden),
+            105 => self.subtotal_min(args, cell, SubTotalMode::SkipHidden),
+            106 => self.subtotal_product(args, cell, SubTotalMode::SkipHidden),
+            107 => self.subtotal_stdevs(args, cell, SubTotalMode::SkipHidden),
+            108 => self.subtotal_stdevp(args, cell, SubTotalMode::SkipHidden),
+            109 => self.subtotal_sum(args, cell, SubTotalMode::SkipHidden),
+            110 => self.subtotal_vars(args, cell, SubTotalMode::Full),
+            111 => self.subtotal_varp(args, cell, SubTotalMode::Full),
             _ => CalcResult::new_error(
                 Error::VALUE,
                 cell,
@@ -293,7 +305,7 @@ impl Model {
 
     fn subtotal_vars(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -325,7 +337,7 @@ impl Model {
 
     fn subtotal_varp(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -356,7 +368,7 @@ impl Model {
 
     fn subtotal_stdevs(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -388,7 +400,7 @@ impl Model {
 
     fn subtotal_stdevp(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -419,7 +431,7 @@ impl Model {
 
     fn subtotal_counta(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -431,7 +443,7 @@ impl Model {
 
     fn subtotal_count(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -441,46 +453,18 @@ impl Model {
         })
     }
 
-    /// COUNT and COUNTA of the arguments: `counted` says which values a reference's cells (and a
-    /// direct argument) add to `count`. A union is walked area by area like a range.
+    /// COUNT and COUNTA of the resolved arguments: `counted` says which cell values add to
+    /// `count`. A union is walked area by area like a range.
     fn subtotal_count_with(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: &SubTotalMode,
         count: &mut u32,
         counted: fn(&CalcResult) -> bool,
     ) -> CalcResult {
-        for arg in args {
-            let areas = match arg {
-                // skip
-                Node::FunctionKind {
-                    kind: Function::Subtotal,
-                    args: _,
-                } => continue,
-                _ if is_multi_area(arg) => match self.reference_ranges(arg, cell) {
-                    Ok(ranges) => ranges,
-                    Err(error) => return error,
-                },
-                _ => match self.evaluate_node_with_reference(arg, cell) {
-                    CalcResult::Range { left, right } => Ranges::One(Range { left, right }),
-                    // A direct argument counts as itself (an error only for COUNTA).
-                    CalcResult::Array(_) | CalcResult::Lambda(_) => {
-                        return CalcResult::Error {
-                            error: Error::NIMPL,
-                            origin: cell,
-                            message: "Arrays not supported yet".to_string(),
-                        }
-                    }
-                    value => {
-                        if counted(&value) {
-                            *count += 1;
-                        }
-                        continue;
-                    }
-                },
-            };
-            let walked = self.subtotal_walk_areas(&areas, cell, mode, |value| {
+        for areas in args {
+            let walked = self.subtotal_walk_areas(areas, cell, mode, |value| {
                 if counted(&value) {
                     *count += 1;
                 }
@@ -495,7 +479,7 @@ impl Model {
 
     fn subtotal_average(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -520,7 +504,7 @@ impl Model {
 
     fn subtotal_sum(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -537,7 +521,7 @@ impl Model {
 
     fn subtotal_product(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -554,7 +538,7 @@ impl Model {
 
     fn subtotal_max(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
@@ -574,7 +558,7 @@ impl Model {
 
     fn subtotal_min(
         &mut self,
-        args: &[Node],
+        args: &[Ranges],
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
