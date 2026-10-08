@@ -229,14 +229,14 @@ Evidence: probes/tiny-vs-zero-criteria (A1-A33); the general 15-digit rule rests
 Implemented in: `numbers_equal` (functions/criteria.rs), `Ord for CalcResult` (calc_result.rs). Tasks: T-1028. Oracle: excel-graph, 2026-10-06. Status: VERIFIED
 
 ## Comparison tolerance
-Rule: comparisons treat operands within a few ULP of each other as equal, like the +/- snapping.
-Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
+Rule: comparisons round both numbers to 15 significant digits and compare the results exactly, so
+operands a few ULP apart can be equal or not depending on where the 15th digit falls. Measured with X = b·(1+k·2^-52) against b: `=`, `<>`, `<=` and `>` treat X as equal to b for
 k ≤ 2 at every base; for k = 3–8 only some bases (7 of 12 still equal at k = 8). `<` and `>=` are
 uninformative here because X ≥ b in every probe. No absolute tolerance exists: rounding both operands to 15 significant digits and comparing exactly
 reproduces all 648 cells (T-0989; it also fixed the 2^-10 base, where an absolute epsilon wrongly said equal).
 Evidence: probes-numeric/99bc3137b5869417 `compare-tolerance/*` (648 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `compare_values` (functions/util.rs). Tasks: T-0989
+Implemented in: `cmp_excel_precision` (number_format.rs), used by `compare_values` (functions/util.rs) and `Ord for CalcResult` (calc_result.rs). Tasks: T-0989, T-0180
 
 ## 15-digit literal parsing
 Rule: numeric literals, `"text"+0` and `VALUE("text")` keep only 15 significant digits;
@@ -412,6 +412,28 @@ Probe `probes-numeric/m9-hyperbolic` (268 cells, 255 distinct formulas, oracle: 
 Evidence: `probes-numeric/m9-hyperbolic` (`rustsheet-eval show probes-numeric/m9-hyperbolic.case.json`).
 Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0917.
 
+### SIN/COS/TAN/SEC/CSC/COT near multiples of PI(): oracle sweep (T-1008)
+Probe `probes-numeric/m9-trig-reduction` (666 cells = 111 arguments x 6 functions, oracle: excel-graph, 2026-10-08) is the fitting
+set for T-0915. Arguments are `k*PI()+d` (k = 1, 2, 3, 10, 100, 1000, 1E4, 1E5, 1E6; d = 0, +-1E-12, +-1E-9, +-1E-6, +-0.25) and
+`k*PI()/2+d` (k = 1, 3, 5, 11, 101, 1001; d = 0, +-1E-12, +-1E-9). No cell is an error.
+Observed (no formulation is claimed; T-0915 fits it):
+- Excel differs from the correctly rounded result of the double argument by an amount that grows with k, the number of periods
+  reduced, and is not tied to how close the argument is to the multiple: `SIN(PI())` = 1.22514845490862E-16 (the correctly rounded result,
+  which the engine returns, is 1.2246467991473532E-16), `SIN(3*PI())` = 3.67544536472586E-16, `SIN(10*PI())` = -1.22514845490862E-15,
+  `SIN(10000*PI())` = -4.861840097181158E-13 (engine -4.85682353956849E-13), `SIN(100000*PI())` = -3.396567055391486E-11,
+  `SIN(1000000*PI())` = -2.232413837122138E-10. `CSC(PI())` = 8162276138809536 (engine 8165619676597685).
+- Away from the multiples the offset persists: `SIN(PI()+1E-12)` = -9.999663857368501E-13 (engine -9.999664359024263E-13),
+  `SIN(PI()+1E-9)` = -9.999999602255255E-10, `SIN(PI()-1E-9)` = 1.0000002052552165E-9, `SIN(PI()+1E-6)` = -1.0000000000170965E-6.
+  For SIN(k*PI()+d) with |d| <= 1E-6, Excel minus engine is about (-1)^(k+1) * k * 5.0166E-20 on 57 of the 63 such rows (the rest
+  differ by rounding), for every d in the grid. The offset only vanishes in the result when it is under half an ulp of the value
+  (for example d = +-0.25 with small k).
+- `SEC(PI()/2)` = 1.6324552277619072E16 (engine 1.633123935319537E16), `COS(2*PI()+1E-9)` = 1, `SIN(PI()/2)` = 1, `SIN(3*PI()/2-1E-9)` = -1.
+- Hypothesis, not a rule: Excel's `SIN(PI())` is exactly the 15-digit literal 1.22514845490862E-16 and `SIN(2*PI())` is exactly twice that
+  with the opposite sign, which would fit a reduction by a two-part pi whose low part is that literal (true pi - fl(pi) is 1.2246467991473532E-16).
+Evidence: `probes-numeric/m9-trig-reduction` (`rustsheet-eval show probes-numeric/m9-trig-reduction.case.json`). As of 2026-10-08,
+247 of 666 cells pass; the 419 others differ from the engine (252 clear mismatches, 152 close, 15 ulp).
+Status: VERIFIED (excel-graph); the engine mismatches are tracked by T-0915.
+
 ## POWER and `^`: odd roots of negatives, zero and overflow
 Rule: `POWER(-8, 1/3)` is -2 (an odd root of a negative number is real); `POWER(0,0)` is #NUM!;
 `POWER(0,-1)` is #DIV/0!; text operands give #VALUE!; array operands work element by element.
@@ -479,26 +501,39 @@ Tasks: T-1099, T-1108, T-0221
 Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
 the significands into one double without rescaling (the order is unprobed: the probes use equal or
 alternating values), and is `#NUM!` when that product
-overflows, i.e. when the sum of log2(M) reaches 1024. Magnitude does not matter, only M:
+overflows, i.e. when the sum of log2(M) reaches 1024. Within the probed exponent sums, magnitude does not
+matter, only M (but large positive exponent sums have a further `#NUM!`, see 2^1000 below):
 1028 copies of 5E+204 (M = 1.9934) are finite and 1029 are `#NUM!`; so are 1100 copies of 1.25E+204
 (the same M) and 3E+200 (M = 1.96), while 1100 copies of 1E+300 (M = 1.49), 5E+300, 9E+204 or
 7E+150 are finite; for M = 1.5 (1.5, 3, 0.75) the cut is 1750 finite / 1751 `#NUM!`; 1E+300
-1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); powers of two (M = 1) never trip it
-(2000 copies of 2). It applies even when the plain product is in range: 1752 values alternating 1.5
+1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); 1E+307
+(M = 1.78, predicted cut about 1231) is `#NUM!` at every probed count from 2000; powers of two (M = 1) never trip it
+(2000 copies of 2), but see 2^1000 below. It applies even when the plain product is in range: 1752 values alternating 1.5
 and 0.75 (plain product 1.125^876) are `#NUM!`, 1750 are 1.0606601717798212.
 Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204,
 1024 copies 4.9999999999999995E+204, 1025 and 1027 copies 5E+204, 1028 copies
 5.0000000000000006E+204, 1100 copies of 5E+300 5.000000000000001E+300. In range, 1101 copies of 1.5
 give exactly 1.5 (the engine matches since T-1113). 2400 copies of 1E-300 give
 1.8066704015823645E-300 = 1E-300 * 2^(2048/2400): the power-of-two sum is 2048 too high there (1100
-copies give 1E-300 exactly; T-1120).
+copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-sum, -sum-2, excel-graph,
+2026-10-08, T-1120): the excess is always 2048 * k, so the result is `v * 2^(2048k/n)`. k grows with n,
+perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
+2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
+1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
+exact up to 8200 and 4000 copies. Large positive exponents have a `#NUM!` the significand cut does not
+explain: 1000 copies of 2^1000 (M = 1) give 1.0715086071862671E+301 (two doubles below 2^1000), while
+1500, 1800, 2000, 2047, 2048, 2049 and 3000 copies are `#NUM!` (probes/geomean-exponent-sum-2 C11-C18),
+although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13). No model yet. The excess does not depend only on the exponent sum, since powers of two with a
+larger sum gain nothing. It is not a fixed count threshold, because 1E-300 and 1E-307 step at different
+counts. It is not the significand product alone either: 1E-307 steps at a smaller product than 1E-300.
 Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
 probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
 range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
 for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, and all held.
-Status: VERIFIED. RustSheet implements the cut (T-1112). Still open: the root's last-ulp rounding
-(numbers.md, "GEOMEAN root rounding"; T-1108) and the 1E-300 x 2400
-exponent (T-1120).
+Status: the significand cut is VERIFIED within the probed ranges, but the rule is incomplete. RustSheet
+implements the cut (T-1112). Still open: the root's last-ulp rounding
+(numbers.md, "GEOMEAN root rounding"; T-1108), the 2048 * k excess and the 2^1000 x 1500 `#NUM!`
+(probes/geomean-exponent-sum, -sum-2; T-1120).
 Tasks: T-1108, T-1112, T-1113, T-1120
 
 ## `^` / POWER are not correctly rounded

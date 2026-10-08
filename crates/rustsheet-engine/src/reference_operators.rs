@@ -88,9 +88,10 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
-    /// The anchor of a spill range operator: a reference, or an INDEX that selects one cell,
-    /// which stays a reference, `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109).
-    pub(crate) fn evaluate_spill_anchor(
+    /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
+    /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
+    /// a lookup index argument and LOOKUP's result_vector (probes/lookup-vector-edges A9, A12).
+    pub(crate) fn eval_ref_or_index(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
