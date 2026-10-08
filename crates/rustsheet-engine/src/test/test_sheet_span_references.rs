@@ -150,6 +150,7 @@ fn span_edge_forms_match_excel() {
     // A span whose end is not a sheet is #NAME?, not #REF!.
     assert_eq!(eval(&mut model, "=SUM(Data1:Nope!A1)"), "#NAME?");
     assert_eq!(eval(&mut model, "=SUM(Nope:Data3!A1)"), "#NAME?");
+    assert_eq!(eval(&mut model, "=SUM(Data1:Nope!A1:B2)"), "#NAME?");
     // An explicit `@` of a span over several sheets is #REF!; of one sheet an ordinary reference.
     assert_eq!(eval(&mut model, "=@Data1:Data3!A1"), "#REF!");
     assert_eq!(eval(&mut model, "=SUM(@Data1:Data3!A1:A2)"), "#REF!");

@@ -25,4 +25,4 @@ Found by T-1139: probes/3d-ref-span-edges (excel-graph, 2026-10-08) cells Calc!A
 - LET-bound spans (T-1158).
 
 ## Outcome
-Six cells fixed: `wrong_sheet_error` (`#NAME?` for a span with a missing end), `at_of_span_error` (`#REF!` for `@` of a multi-sheet span), HLOOKUP reads its table through `evaluate_single_sheet_arg`, COUNTBLANK treats an IF-wrapped span as a span (`is_span_or_if_of_span`). probes known failures down by 6.
+Six cells fixed: `Model::wrong_sheet_error` (`#NAME?` for a span with a missing end), `evaluate_at_operand_reference` (`#REF!` for `@` of a multi-sheet span), HLOOKUP reads its table through `evaluate_single_sheet_arg`, COUNTBLANK treats an IF-wrapped span as a span (`is_span_or_if_of_span`). probes known failures down by 6.
