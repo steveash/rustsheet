@@ -69,6 +69,7 @@ workbook, but not every NORM.DIST (sigma != 1) or LOGNORM.DIST density cell, so 
 formulation is open.
 Evidence: `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`!C3, C5, C7, C16, C17,
 C24, C25, C26, C32 (checked during T-0903).
+Update: refuted as a general rule by the T-1041 sweep, see "Normal density oracle sweep (T-1041)" below.
 Status: UNVERIFIED (fits the NORM.S.DIST cells; NORM.DIST/LOGNORM.DIST open, T-0975)
 Tasks: T-0975
 
