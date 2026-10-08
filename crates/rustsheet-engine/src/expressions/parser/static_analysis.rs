@@ -156,6 +156,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::TableNameKind(_) => {
             // noop for now
         }
+        Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
@@ -261,6 +262,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
                 remove_redundant_implicit_intersection(operand, add)
             });
         }
+        Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
@@ -271,6 +273,13 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
     };
+}
+
+/// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
+/// (`SUMPRODUCT(SUMIFS(B1:B6,A1:A6,D1:D2))` lifts the criterion where `SUM` intersects it;
+/// probes/ifs-legacy-sumproduct, excel-graph, T-0278), so on export no `@` inside is redundant.
+fn is_array_context(kind: &Function) -> bool {
+    matches!(kind, Function::Sumproduct)
 }
 
 /// The result of the static analysis of a node
@@ -552,12 +561,10 @@ fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {
 }
 
 fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
@@ -602,39 +609,32 @@ fn args_signature_hlookup(arg_count: usize) -> Vec<Signature> {
 }
 
 fn args_signature_index(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 4 {
-        vec![
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Vector, Signature::Scalar, Signature::Scalar],
+        4 => vec![
             Signature::Vector,
             Signature::Scalar,
             Signature::Scalar,
             Signature::Scalar,
-        ]
-    } else {
-        vec![Signature::Error; arg_count]
+        ],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
 fn args_signature_lookup(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Vector],
+        3 => vec![Signature::Vector, Signature::Vector, Signature::Vector],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
 fn args_signature_match(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Vector],
+        3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 

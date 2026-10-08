@@ -48,4 +48,11 @@ criterion; dynamic formulas still lift (probes/ifs-array-criteria unchanged). SU
 `args_signature_sumif_spill` is gone. The fuzz reproducer is `crates/rustsheet/tests/legacy_ifs_range_criteria.rs`
 (loads the fixture through the facade with `recalc: true`; it panicked in debug before).
 The `sumif_unique` round-trip test now expects the automatic `@` on the criterion internally; the export is unchanged.
-Eval: fixtures known failures 14 -> 0, 0 regressions.
+Review follow-up: Excel evaluates SUMPRODUCT's arguments as arrays in a legacy formula, so a range
+criterion nested in it lifts (probes/ifs-legacy-sumproduct, excel-graph): `add_implicit_intersection`
+adds no `@` inside SUMPRODUCT and `remove_redundant_implicit_intersection` keeps every `@` there
+(`is_array_context`). criteria.md records that and the failed-intersection quirk (the criterion becomes
+`#VALUE!`, poi E1324). The probe's 17 off-row SUM/standalone cells are new-coverage known failures: the
+spec adapter evaluates `legacy_formulas` as dynamic formulas (as for multiarea-at-legacy).
+Eval: fixtures known failures 14 -> 0, poi 572 -> 571, probes +1 case (16 passing, 17 adapter-only
+known failures), 0 regressions.

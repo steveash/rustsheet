@@ -222,3 +222,27 @@ fn too_many_arguments_for_a_fixed_signature_do_not_panic() {
         check(&[(formula, formula, formula)]);
     }
 }
+
+// SUMPRODUCT's arguments are an array context in a legacy formula: the import adds no `@` inside
+// (a range criterion lifts, probes/ifs-legacy-sumproduct, T-0278), and an explicit one there is
+// never redundant, however deep.
+#[test]
+fn sumproduct_is_an_array_context() {
+    check(&[
+        (
+            "SUMPRODUCT(COUNTIF(A1:A6,D1:D2))",
+            "SUMPRODUCT(COUNTIF(A1:A6,D1:D2))",
+            "SUMPRODUCT(COUNTIF(A1:A6,D1:D2))",
+        ),
+        (
+            "SUMPRODUCT(ABS(_xlfn.SINGLE(A1:A2)))",
+            "SUMPRODUCT(ABS(@A1:A2))",
+            "SUMPRODUCT(ABS(_xlfn.SINGLE(A1:A2)))",
+        ),
+        (
+            "SUM(COUNTIF(A1:A6,D1:D2))",
+            "SUM(COUNTIF(A1:A6,@D1:D2))",
+            "SUM(COUNTIF(A1:A6,D1:D2))",
+        ),
+    ]);
+}
