@@ -22,7 +22,7 @@ In Excel a blank candidate is larger than any text or boolean, as it is larger t
 (functions/lookup_and_reference/xmatch.rs) models it as empty text.
 
 ## Acceptance criteria
-- [ ] The five cells above pass and are baselined; the rest of the probe case keeps passing.
+- [ ] Every probes/xmatch-text-bool-equal-runs cell passes (24 baselined failures, listed in `make eval` output) and is removed from the baseline; the rest of the probe case keeps passing.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
