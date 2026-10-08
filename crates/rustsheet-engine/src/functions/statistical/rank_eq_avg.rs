@@ -1,4 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -10,40 +11,39 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        // TODO(T-1068): RANK takes a union (probes/multiarea-rank).
-        let values = match self
-            .evaluate_reference_arg(arg, cell)
-            .into_single_area(cell)
-        {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
+        let values = match self.evaluate_reference_arg(arg, cell) {
+            RefArg::Ranges(areas @ Ranges::Areas(_)) => self.values_from_areas(&areas, cell)?,
+            single => match single.into_single_area(cell) {
+                CalcResult::Array(array) => match self.values_from_array(array) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        return Err(CalcResult::Error {
+                            error: Error::VALUE,
+                            origin: cell,
+                            message: format!("Unsupported array argument: {}", e),
+                        })
+                    }
+                },
+                CalcResult::Range { left, right } => self.values_from_range(left, right)?,
+                CalcResult::Boolean(value) => {
+                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                        vec![Some(if value { 1.0 } else { 0.0 })]
+                    } else {
+                        return Err(CalcResult::Error {
+                            error: Error::NUM,
+                            origin: cell,
+                            message: "Unsupported argument type".to_string(),
+                        });
+                    }
+                }
+                _ => {
                     return Err(CalcResult::Error {
-                        error: Error::VALUE,
+                        error: Error::NIMPL,
                         origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
+                        message: "Unsupported argument type".to_string(),
                     })
                 }
             },
-            CalcResult::Range { left, right } => self.values_from_range(left, right)?,
-            CalcResult::Boolean(value) => {
-                if !matches!(arg, Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return Err(CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    });
-                }
-            }
-            _ => {
-                return Err(CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                })
-            }
         };
 
         let numeric_values: Vec<f64> = values.into_iter().flatten().collect();

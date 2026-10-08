@@ -1,4 +1,4 @@
-use crate::reference_operators::RefArg;
+use crate::reference_operators::{Ranges, RefArg};
 use std::cmp::Ordering;
 
 use crate::arithmetic::flush_subnormal;
@@ -644,77 +644,61 @@ impl Model {
         Ok(k)
     }
 
+    /// The numbers LARGE and SMALL rank: a reference (one range, or the areas of a union, each
+    /// counted as written; probes/multiarea-rank), an array, or a scalar typed in place.
+    fn large_small_values(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let by_reference = matches!(node, Node::ReferenceKind { .. });
+        let unsupported = |error: Error| {
+            Err(CalcResult::Error {
+                error,
+                origin: cell,
+                message: "Unsupported argument type".to_string(),
+            })
+        };
+        let single = match self.evaluate_reference_arg(node, cell) {
+            RefArg::Ranges(areas @ Ranges::Areas(_)) => {
+                return self.values_from_areas(&areas, cell)
+            }
+            single => single.into_single_area(cell),
+        };
+        match single {
+            CalcResult::Array(array) => {
+                self.values_from_array(array)
+                    .map_err(|e| CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: format!("Unsupported array argument: {}", e),
+                    })
+            }
+            CalcResult::Range { left, right } => self.values_from_range(left, right),
+            // A cell holding a scalar is a reference the function cannot rank (#NUM!); the same
+            // scalar typed in place is a one-element list.
+            CalcResult::Boolean(_) | CalcResult::Number(_) | CalcResult::String(_)
+                if by_reference =>
+            {
+                unsupported(Error::NUM)
+            }
+            CalcResult::Boolean(value) => Ok(vec![Some(if value { 1.0 } else { 0.0 })]),
+            CalcResult::Number(value) => Ok(vec![Some(value)]),
+            CalcResult::String(value) => match self.cast_number(&value) {
+                Some(parsed) => Ok(vec![Some(parsed)]),
+                None => unsupported(Error::VALUE),
+            },
+            _ => unsupported(Error::NIMPL),
+        }
+    }
+
     pub(crate) fn fn_large(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // TODO(T-1068): LARGE takes a union (probes/multiarea-rank).
-        let values = match self
-            .evaluate_reference_arg(&args[0], cell)
-            .into_single_area(cell)
-        {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
+        let values = match self.large_small_values(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         let k = match self.large_small_k(&args[1], cell) {
             Ok(k) => k,
@@ -745,71 +729,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
+        let values = match self.large_small_values(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
-
         let k = match self.large_small_k(&args[1], cell) {
             Ok(k) => k,
             Err(e) => return e,
