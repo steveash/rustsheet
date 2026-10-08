@@ -3,7 +3,7 @@ id: T-0285
 title: "Probe CONCAT/TEXTJOIN cell errors past 32,767 through names, INDEX/IF/OFFSET/INDIRECT, @ and 3-D references"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
