@@ -332,3 +332,30 @@ fn fuzz_oom_or_over_whole_columns() {
     assert_eq!(model._get_text("A1"), *"#VALUE!");
     assert_eq!(model._get_text("A2"), *"#VALUE!");
 }
+
+/// Several errors: the first one, arguments left to right and ranges row by row, wins for
+/// AND, OR and XOR (probes/and-or-xor-error-order, excel-graph, T-0229).
+#[test]
+fn first_error_wins_row_by_row() {
+    let mut model = new_empty_model();
+    // D1:F2 = TRUE, #DIV/0!, FALSE / #N/A, TRUE, #NUM!
+    model._set("D1", "TRUE");
+    model._set("E1", "=1/0");
+    model._set("F1", "FALSE");
+    model._set("D2", "=NA()");
+    model._set("E2", "TRUE");
+    model._set("F2", "=SQRT(-1)");
+    model._set("A1", "=OR(TRUE,NA(),1/0)");
+    model._set("A2", "=AND(FALSE,1/0,NA())");
+    model._set("A3", "=XOR(D1:F2)");
+    model._set("A4", "=OR(TRANSPOSE(D1:F2))");
+    model._set("A5", "=AND(D1:F2,NA())");
+    model._set("A6", "=OR({TRUE,#DIV/0!,#N/A})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#DIV/0!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+}
