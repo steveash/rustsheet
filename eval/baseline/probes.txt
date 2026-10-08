@@ -328,7 +328,6 @@ F	probes/error-stored-constants.case.json	S!E1
 F	probes/error-stored-constants.case.json	S!G1
 F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!I1
-F	probes/geomean-exponent-sum-2.case.json	Sheet1!C11
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C24
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C28
 F	probes/geomean-exponent-sum.case.json	Sheet1!C2
@@ -345,8 +344,6 @@ F	probes/geomean-overflow-many-values.case.json	Sheet1!F4
 F	probes/geomean-pow2-count.case.json	Sheet1!L4
 F	probes/geomean-pow2-count.case.json	Sheet1!M1
 F	probes/geomean-pow2-count.case.json	Sheet1!M4
-F	probes/geomean-pow2-count.case.json	Sheet1!R1
-F	probes/geomean-pow2-count.case.json	Sheet1!R2
 F	probes/geomean-product-order.case.json	Sheet1!Z10
 F	probes/geomean-product-order.case.json	Sheet1!Z11
 F	probes/geomean-product-order.case.json	Sheet1!Z13
