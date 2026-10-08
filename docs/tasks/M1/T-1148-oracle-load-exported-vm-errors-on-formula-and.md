@@ -1,5 +1,5 @@
 ---
-id: T-1147
+id: T-1148
 title: "Oracle-load exported vm errors on formula and dynamic-array cells; pin the rich-error-export fixture to the exporter"
 milestone: M1
 lane: harness
