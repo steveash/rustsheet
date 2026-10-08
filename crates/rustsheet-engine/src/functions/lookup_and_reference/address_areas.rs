@@ -6,6 +6,20 @@ use crate::{
 
 use crate::expressions::utils::number_to_column;
 
+/// Quotes `sheet_text` for ADDRESS. A leading `[workbook]` part does not by
+/// itself force quotes: the decision is made on the text after the `]`
+/// (Excel-cached poi EverythingTests!F128; docs/excel-semantics/references.md).
+fn address_sheet_text(s: &str) -> String {
+    if let Some(rest) = s.strip_prefix('[') {
+        if let Some((book, sheet)) = rest.split_once(']') {
+            if !book.contains('[') && quote_name(sheet) == sheet {
+                return s.to_string();
+            }
+        }
+    }
+    quote_name(s)
+}
+
 impl Model {
     // ── ADDRESS ───────────────────────────────────────────────────────────────
 
@@ -67,7 +81,7 @@ impl Model {
         // `sheet_text` that is omitted entirely produces no prefix.
         let sheet_prefix = if args.len() == 5 {
             match self.get_string(&args[4], cell) {
-                Ok(s) => format!("{}!", quote_name(&s)),
+                Ok(s) => format!("{}!", address_sheet_text(&s)),
                 Err(e) => return e,
             }
         } else {
