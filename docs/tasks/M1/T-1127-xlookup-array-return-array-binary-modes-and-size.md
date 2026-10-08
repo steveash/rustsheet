@@ -3,7 +3,7 @@ id: T-1127
 title: "XLOOKUP: array return_array, binary modes and size edges over an array lookup_array"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
