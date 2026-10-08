@@ -533,6 +533,15 @@ matches (T-1064; probes/multiarea-subtotal-counts-c/d). Hidden/filtered rows in 
 unprobed (the case format cannot hide rows; T-1036 owns the probe): the engine keeps or skips a row whole by the status at the area's first column.
 Tasks: T-1061, T-1062, T-1064, T-1068, T-1069
 
+SUBTOTAL with a non-reference argument is refused when the workbook loads: Excel for the web returns createSession 501
+`unsupportedWorkbook` (`FileCorruptTryRepair`) for a workbook holding `=SUBTOTAL(2,{1,2})` (one scratch workbook
+with the 102/103/9 variants), and also for `=SUBTOTAL(2,A1:A2*1)` and `=SUBTOTAL(3,A1:A2*1)` (a computed array,
+scratch probe, excel-graph 2026-10-08, T-1163), so Excel has no cell value for these formulas (typed in the
+desktop UI it reports a formula error). A `LAMBDA` argument could not be probed: through a defined name
+`SUBTOTAL(2,Twice)` gave `#NAME?` on excel-graph, which says nothing about a lambda value. The engine currently
+returns `#N/IMPL` for the direct-array case; the matching behaviour (a syntax/parse refusal, like `=(1)(2)`
+above) is a parse-time type check and is not implemented.
+
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
 (Data!B12) and `Data!C2:Data!E4 Data!C4` = 100. A single-cell range can also start a range-of-ranges:

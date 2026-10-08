@@ -3,10 +3,10 @@ id: T-1163
 title: "Probe SUBTOTAL(2/3,{1,2}) direct array and lambda arguments (follow-up of T-1154)"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -23,3 +23,12 @@ T-1154 moved COUNT/COUNTA onto `subtotal_walk_areas`; `subtotal_count_with` (fun
 
 ## Out of scope
 -
+
+## Handoff
+Probed on excel-graph (2026-10-08): `SUBTOTAL(2,{1,2})` (and 3/102/103/9 variants), `SUBTOTAL(2,A1:A2*1)` and
+`SUBTOTAL(3,A1:A2*1)` each make createSession fail 501 `unsupportedWorkbook`, so Excel yields no cell value
+and the oracle cannot fill a case; a defined-name lambda gave `#NAME?` (uninformative). Finding recorded in
+docs/excel-semantics/references.md. No probe case committed (it could never get a sidecar). Open design
+question for opus: Excel refuses the formula at entry, so the engine should probably reject it at parse time
+(like `=(1)(2)`) instead of returning `#N/IMPL` from `subtotal_count_with`; decide whether that is worth a
+parse-time reference-type check, or close the task as "no value to match" with a DEVIATION/decision note.
