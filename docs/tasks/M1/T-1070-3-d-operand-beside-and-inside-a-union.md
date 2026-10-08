@@ -28,3 +28,5 @@ The first cell (`SUM(3-D,(A1,B2))` = 107) already passed after T-1062; a unit te
 evaluates its operands through `evaluate_union_operand`, which answers `#NAME?` for a multi-sheet span
 operand. Tests in `test_multi_area_arguments.rs`; references.md updated.
 Eval delta: probes known failures 193 -> 192 (fixed 1: multiarea-3d-ref H2), no regressions.
+
+Follow-up: T-1159 probes the unverified union cases.
