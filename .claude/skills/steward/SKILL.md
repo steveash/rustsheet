@@ -55,6 +55,11 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   outside the report's `deviations` column. A stale-line warning (the cell now matches Excel)
   means the line goes in the next PR; a listed cell with any value but its pinned one fails the
   gate like any regression.
+- **Frozen probe lists** (decision 0043): M1's probe criterion is `eval/milestones/m1-probes.txt`,
+  never the whole `probes` suite; every other probe case, including any added later, is M2 exit
+  scope. Report the list's known failures (`make eval`, or the decision's `awk` count until
+  T-1146 lands). While the list has failures, put the fixing lanes (engine, then harness) first on
+  the `**Critical lane:**` line, ahead of research. Never add a line to a frozen list.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/) changed — add a decision record in docs/decisions/ explaining why, and
   make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
