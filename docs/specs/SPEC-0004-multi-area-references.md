@@ -118,7 +118,7 @@ agrees; a different oracle answer changes the implementation task, not this desi
 /// 2..=MAX_AREAS entries, each a range on ONE sheet with its corners in order.
 /// Shared, so a LET binding or a defined name is never copied on read.
 #[derive(Clone)]
-pub(crate) struct Areas(Rc<[Range]>);
+pub(crate) struct Areas(Arc<[Range]>);
 
 impl Areas {
     /// The only constructor: refuses fewer than 2 or more than MAX_AREAS areas, and any area

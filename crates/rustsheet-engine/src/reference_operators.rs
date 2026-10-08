@@ -1,7 +1,7 @@
 //! Evaluation of the reference operators: the range (`:`), the intersection (a space) and
 //! the union (a comma inside parentheses).
 
-use std::{ops::Deref, rc::Rc};
+use std::{ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
@@ -41,9 +41,10 @@ pub(crate) const TOO_MANY_AREA_CELLS: &str = "Too many cells in the areas of a r
 
 /// The areas of a reference that has more than one, in formula order, duplicates kept
 /// (`SUM((A1:B2,B2))` counts B2 twice, probes/multiarea-agg H3): 2..=[`MAX_AREAS`] ranges, all
-/// on one sheet, each with its corners in order. Shared, so a copy is never made on read.
+/// on one sheet, each with its corners in order. Shared (`Arc`, so a `Model` holding one in a LET
+/// binding stays `Send`), so a copy is never made on read.
 #[derive(Clone)]
-pub(crate) struct Areas(Rc<[Range]>);
+pub(crate) struct Areas(Arc<[Range]>);
 
 /// The ranges a reference argument stands for: one range (a 3-D reference included, whose
 /// corners sit on two sheets), or the areas of a multi-area reference. Derefs to the ranges in
@@ -81,7 +82,7 @@ impl Ranges {
                 return Ok(Ranges::One(area));
             }
         }
-        Ok(Ranges::Areas(Areas(Rc::from(areas))))
+        Ok(Ranges::Areas(Areas(Arc::from(areas))))
     }
 }
 

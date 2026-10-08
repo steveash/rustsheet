@@ -3,7 +3,7 @@ id: T-1064
 title: "Unions through LET, IF and CHOOSE in reference context (SPEC-0004 step 4)"
 milestone: M1
 lane: engine
-status: done
+status: in-progress
 priority: P2
 size: M
 tier: opus
@@ -26,9 +26,17 @@ SPEC-0004 step 4 ("Intersection operands", "LET, IF, CHOOSE"). Intersection oper
 ## Out of scope
 - Defined names (T-1065).
 
-## Outcome
+## Progress (not merged; review round 1 open)
 - `Binding` (`Value` | `Areas`) replaces `CalcResult` in `variable_stack`; every reader but `Model::variable_reference` (reference context) sees `#VALUE!` for an `Areas` binding. LET binds areas when its value is a union or a multi-area intersection.
 - `if_impl` and the new `choose_impl` return `RefArg`; in reference context (`evaluate_reference_arg`) the branch a scalar condition or index picks is itself evaluated in reference context, so a union survives. `fn_if`, `fn_choose` and the single-sheet path collapse it with `into_single_area`.
 - Intersection operands: `is_multi_area` now also treats a LET variable, IF and CHOOSE as possibly several areas, and `evaluate_areas` reads them through the evaluator; plain references and defined names keep the allocation-free pair path. Deviation from the plan: `is_multi_area` stays (extended) instead of branching on evaluated results, which would allocate for every name operand; the pair budget is unchanged (a function operand starts its own, as before).
 - Not done here: AGGREGATE's array form still matches `Node::OpUnionKind` (it now only misses a union behind a LET variable or IF/CHOOSE). Moved to T-1065, where names add the remaining hidden case.
 - Eval: probes +5 (multiarea-let H1:H2, multiarea-ifchoose H1:H3), no regressions.
+
+## Open review findings (round 1, 2026-10-08)
+Security and architecture asked for changes; quality approved. Excel fidelity and performance had not reported when the session budget ran out. Still to do before merge:
+1. Security (MAJOR): `Binding::Areas` values held in `variable_stack` have no total cap. A chain of doubling LET bindings (`x2,(x1,x1)`, ...) can hold many `MAX_AREAS` lists at once, so memory grows with formula length. Keep a running total of areas held by `Binding::Areas` (reset with `clear_variable_stack`, decremented when a LET frame ends). Past a cap, give `#VALUE!` and add it to the references.md "Union area cap" DEVIATION. Add a doubling-chain regression test, and avoid the `areas.0.to_vec()` copy for a variable operand in `evaluate_areas` where possible.
+2. Architecture (MAJOR): SPEC-0004 "Intersection operands" says to branch on `evaluate_reference_arg` results and delete `is_multi_area`. This branch instead extends `is_multi_area` syntactically (LET variable, IF, CHOOSE). Either implement the spec, or amend SPEC-0004 with the reason (a defined-name operand would allocate) and the replacement rule.
+3. Architecture (MAJOR): add a test that observes the pair path for `name A1` and `A1:B2 B1:B3`, not only their values (for example by unit-testing `is_multi_area`).
+4. Architecture (MAJOR): AGGREGATE's array form is still on its `Node::OpUnionKind` syntax match. Migrate it here, or move it explicitly into T-1065's acceptance criteria. The T-1065 note added on this branch is a start.
+5. Minor: LET binds areas only for a syntactic union or intersection, so `LET(y,x,SUM(y))` with `x` bound to a union is `#VALUE!`. Route `NamedVariableKind` values through `variable_reference`. Move `Binding` next to `RefArg` in reference_operators.rs (now `Arc`-backed so `Model` stays `Send`). Re-wrap the long references.md line.
