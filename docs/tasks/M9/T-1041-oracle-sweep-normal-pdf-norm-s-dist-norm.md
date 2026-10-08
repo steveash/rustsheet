@@ -29,4 +29,4 @@ Split from T-0966 (one sweep per kernel family), which explains why: Excel's dis
 - Fitting or changing any implementation (the dependent fitting tasks do that).
 
 ## Outcome
-Seven probe case files (`m9-normpdf-*`) with oracle sidecars, 1,346 cells, none pending; findings in `docs/excel-semantics/statistics.md` (PHI == NORM.S.DIST pdf; sqrt(2*pi) hypothesis refuted on 305/369; subnormal flush to 0). No eval baseline change (probes only).
+Seven probe case files (`m9-normpdf-*`) with oracle sidecars, 1,346 cells, none pending; findings in `docs/excel-semantics/statistics.md` (PHI == NORM.S.DIST pdf; sqrt(2*pi) hypothesis refuted: 272/369 match, 97 differ; subnormal flush to 0). No eval baseline change (probes only).

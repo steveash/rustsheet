@@ -77,9 +77,10 @@ Tasks: T-0975
 Rule: on the 369-point grid z = -38..8 step 0.125, `PHI(z)` equals `NORM.S.DIST(z,FALSE)` bit for
 bit (one kernel). The hypothesis above (`exp(-z*z/2) / sqrt(2*pi)`, divisor 2.5066282746310002) matches 272 of the
 369 values (97 differ in the last digit), so it is refuted as a general rule; the correctly rounded
-divisor 2.5066282746310007 (the engine's current constant) matches only 64. The best lead is
-`exp(-z*z/2) * 0.3989422804014327`, which matches 350 of 369 (15 misses are 1 ulp, 4 are the flushed
-zeros below). T-0975 must fit against the sweep, not the 9 cached cells. For the NORM.DIST grids,
+divisor 2.5066282746310007 (the engine's `SQRT_2PI` for NORM.S.DIST/NORM.DIST/LOGNORM.DIST; PHI
+currently computes the ...0002 form) matches only 64. The best lead is
+`exp(-z*z/2) * 0.3989422804014327`, which matches 350 of 369 (12 misses are 1 ulp, 3 are 2 ulp at z = -34.625,
+-25.875, -23.25, 4 are the flushed zeros below). T-0975 must fit against the sweep, not the 9 cached cells. For the NORM.DIST grids,
 `exp(-((x-m)/s)^2/2) / sqrt(2*pi) / s` matches 106/122 (s=0.5), 88/122 (1.2), 73/122 (3) and
 75/122 (10): the NORM.DIST kernel is not that form; these grids and LOGNORM.DIST are otherwise left
 to T-0975's fit (all cells are numbers, no errors). Results below the normal double range flush to 0:
