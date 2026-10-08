@@ -3,7 +3,7 @@ id: T-0284
 title: "Probe CONCAT/TEXTJOIN range-cell errors past the 32,767 limit"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0262 found that `TEXTJOIN(",",TRUE,REPT("a",32767),A1:A2)` with an error in `A
 
 ## Out of scope
 -
+
+## Outcome
+Probed with `probes/text-result-limit-errors` (6 cells, excel-graph). The engine differed on four: a range-cell error past the limit is dropped (`#CALC!`) for CONCAT as well as TEXTJOIN, TEXTJOIN counts the delimiter before reading a reference so an error in a first range cell or a single-cell reference is `#CALC!`, and a later error argument still wins. `concatenate.rs` now matches (6/6 pass). text.md Unprobed line resolved.
