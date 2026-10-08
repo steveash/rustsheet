@@ -450,11 +450,6 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name.case.json	!EngineError
-F	probes/weeknum-stale-return-type.case.json	Mixed!A3
-F	probes/weeknum-stale-return-type.case.json	Mixed!A4
-F	probes/weeknum-stale-return-type.case.json	Type1!A1
-F	probes/weeknum-stale-return-type.case.json	Type21!A1
-F	probes/weeknum-stale-return-type.case.json	Up!A1
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E4
 F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
