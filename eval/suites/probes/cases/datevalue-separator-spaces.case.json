@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1136: DATEVALUE/VALUE with spaces around date separators and ISO T separator. Column B DATEVALUE, C VALUE of column A. Year-less rows (1 - Jul, 7 - 1) are not scored: they read the clock (1 - Jul and 7 - 1 are 46204 on the 2026 oracle clock).",
+ "description": "T-1136: DATEVALUE/VALUE with spaces around date separators and ISO T separator. Column B DATEVALUE, C VALUE of column A. Rows 11-12 (year-less '1 - Jul', '7 - 1') read the clock, so they are in the oracle sidecar but not in `check`.",
  "tags": [
   "M1",
   "dates",
@@ -58,7 +58,13 @@
     "C17": "=VALUE(A17)",
     "A18": "1 / 2 / 2026 25:00",
     "B18": "=DATEVALUE(A18)",
-    "C18": "=VALUE(A18)"
+    "C18": "=VALUE(A18)",
+    "A11": "1 - Jul",
+    "A12": "7 - 1",
+    "B11": "=DATEVALUE(A11)",
+    "C11": "=VALUE(A11)",
+    "B12": "=DATEVALUE(A12)",
+    "C12": "=VALUE(A12)"
    }
   }
  ],

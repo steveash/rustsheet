@@ -94,6 +94,7 @@ C	probes/date-text-yearless.case.json	48
 C	probes/dates-and-blanks.case.json	15
 C	probes/dates-early-1900-edges.case.json	132
 C	probes/dates-early-1900.case.json	25
+C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/defined-name-formula-bodies.case.json	17
 C	probes/defined-name-intersection.case.json	10

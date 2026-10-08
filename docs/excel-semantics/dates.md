@@ -235,13 +235,19 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   (`MROUND(" 2024-01-10 ",7)` is #VALUE!; ironcalc-calc MROUND_TRUNC_INT.xlsx MROUND!C32).
   Spaces around a `-` or `/` separator are ignored by VALUE and DATEVALUE (`"2026 - 01 - 01"` =
   46023, `"1 / 2 / 2026"` = 46024, `"4 - Feb - 2026"` = 46057, `"2026- 01-01"`, `"2026 -01-01"`,
-  `"Jul - 2026"`, `"1 / Jul / 2026"`, year-less `"1 - Jul"` and `"7 - 1"` (unscored, clock-dependent), a clock may follow:
-  `"2026 - 01 - 01 12:00"`; probes/datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18, excel-graph,
-  2026-10-08, and ironcalc-calc DATEVALUE_issue_1380.xlsx, Excel 16.03). The ISO `T` separator is
-  not accepted: `"2026-01-01T24:00:00"` and `"2026-01-01T12:00:00"` are #VALUE! in DATEVALUE and
-  VALUE (rows 5-6), so IronCalc's `T24:00:00` rollover test (upstream issue 1379, whose
-  DATEVALUE_issue_1379.xlsx only evidences the space-separated `"2026-01-01 24:00:00"` = 46024)
-  is not ported. Unimplemented: a space before the comma of month-day-year text is accepted
+  `"Jul - 2026"`, `"1 / Jul / 2026"`; a clock may follow: `"2026 - 01 - 01 12:00"`; probes/
+  datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18, excel-graph, 2026-10-08, and
+  ironcalc-calc DATEVALUE_issue_1380.xlsx, Excel 16.03). Year-less `"1 - Jul"` and `"7 - 1"` are
+  accepted too (rows 11-12, 46204 on the 2026 oracle clock; in the sidecar but unscored). The same
+  holds on the other paths that read date text (probes/datevalue-separator-spaces-paths): text
+  coercion (`0+"2026 - 01 - 01"` = 46023, B1), a `COUNTIF` criterion (`"2026 - 01 - 01"` matches
+  the serial 46023, G1) and typed cell input (`"2026 - 01 - 01"` and `"4 - Feb - 2026"` become
+  numbers, 46023 and 46057 with format `d-mmm-yy` for the latter; year-less `"1 - 2"` and
+  `"10 / 20"` become dates too, 2 Jan and 20 Oct of the oracle year, B3/B4, C3/C4 unscored). The
+  ISO `T` separator is not accepted: `"2026-01-01T24:00:00"` and `"2026-01-01T12:00:00"` are
+  #VALUE! in DATEVALUE and VALUE (rows 5-6), so IronCalc's `T24:00:00` rollover test (upstream
+  issue 1379, whose DATEVALUE_issue_1379.xlsx only evidences the space-separated
+  `"2026-01-01 24:00:00"` = 46024)   is not ported. Unimplemented: a space before the comma of month-day-year text is accepted
   (`"July 1 , 2026"` = 46204, row 15).
 - **Clock suffix**: date text may end in a clock time (`"July 1, 2026 10:00"`,
   `"Jul 1, 2026 4:35 PM"`, `"July 1, 2026 6 PM"`): VALUE adds it, DATEVALUE returns the day the
