@@ -3,7 +3,7 @@ id: T-1140
 title: "Probe union and intersection precedence inside one parenthesis and chained cuts of a union"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
