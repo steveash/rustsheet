@@ -189,8 +189,8 @@ Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared
 Text and boolean lookup values (probes/xmatch-text-bool-equal-runs, Excel oracle): with b,_,d,_,f,_ in
 A1:A6, a blank is *larger* than every text, as it is larger than every number: `XMATCH("z",A1:A6,1)` is 2 (the first
 blank), `XMATCH("z",A1:A6,-1)` is 5, `XMATCH("a",A1:A6,-1)` is #N/A (a blank is never the smaller candidate),
-`XMATCH("a",A1:A6,1)` is 1. Binary search agrees (`XMATCH("z",A1:A6,1,2)` is 6, `XMATCH("z",A1:A6,-1,2)` is 5). With b,#N/A,d,#DIV/0!,f in C1:C5 (Txt!M43-M48) `XMATCH("z",C1:C5,1)` is 4, the #DIV/0! cell (the #N/A at C2 is not chosen over it),
-`XMATCH("z",C1:C5,-1)` is 5 and `XMATCH("z",C1:C5,-1,2)` is 4, the error cell again; whether the linear modes skip #N/A and
+`XMATCH("a",A1:A6,1)` is 1. Binary search agrees (`XMATCH("z",A1:A6,1,2)` is 6, `XMATCH("z",A1:A6,-1,2)` is 5). With b,#N/A,d,#DIV/0!,f in C1:C5 (Txt!M31-M48) `XMATCH("z",C1:C5,1)` is 4, the #DIV/0! cell (the #N/A at C2 is not chosen over it),
+`XMATCH("z",C1:C5,-1)` is 5, `XMATCH("z",C1:C5,1,2)` is 4, the error cell again, and `XMATCH("z",C1:C5,-1,2)` is 3; whether the linear modes skip #N/A and
 how errors order among themselves is not settled by this probe. Booleans over B1:B6 = FALSE,_,TRUE,_,TRUE,_ (Txt!M19-M30):
 `XMATCH(FALSE,B1:B6,1,-2)` is 6 (a blank), `XMATCH(FALSE,B1:B6,-1,-2)` is #N/A, `XMATCH(TRUE,B1:B6,1,-2)` is 5.
 `XLOOKUP("z",A1:A6,A1:A6,"nf",1)` returns the blank return cell as 0.
@@ -259,7 +259,8 @@ descending {60,50,40,40,40} gives 3 and 5; seven 40s give 1 and 7. Linear search
 Evidence: probes/xmatch-text-bool-equal-runs Run!M1-M52 (Excel oracle). The engine differs on the match_mode 1 / search_mode 2 cells whose run starts at the first cell (see below).
 DIVERGES (engine; fix is T-1153): match_mode 1 with search_mode 2 returns the run's first cell in Excel, including a run
 that starts at the first cell (`XMATCH(40,A1:A3,1,2)` is 1, `XMATCH(40,F1:F7,1,2)` is 1), but the engine never returns
-below the second cell (2): Run!M5, M11, M17, M35, M51 (`XLOOKUP(40,B1:B5,D1:D5,"nf",1,2)` is 30, engine 40). A run that
+below the second cell (2) for runs of three or more (a two-cell run, G1:G2, agrees): Run!M5, M11, M17, M35, M51 (`XLOOKUP(40,B1:B5,D1:D5,"nf",1,2)` is 30, engine 40). A run that
 does not start at the first cell (D1:D5) already agrees.
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs).
+Tasks: T-1135, T-1153

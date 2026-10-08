@@ -20,7 +20,7 @@ Oracle evidence is in probes/xmatch-text-bool-equal-runs and docs/excel-semantic
 `Blk!M19`, `Blk!M20` (XLOOKUP of a blank lookup value against a 0 or `""` candidate: Excel "nf", engine matches).
 Also `Txt!M24`, `Txt!M51`, `Blk!M1-M5`, `Blk!M7`, `Blk!M9`, `Blk!M16`, `Blk!M17`, `Blk!M21`, `Blk!M22` (a blank lookup value
 matches a 0, `""` or FALSE candidate in the engine) and `Run!M5`, `M11`, `M17`, `M35`, `M51` (match_mode 1 with search_mode 2: Excel returns the run's first
-cell, the engine the second). In Excel a blank candidate is larger than any text or boolean, as it is larger than any number; `linear_scan`
+cell, the engine the second). In Excel a blank candidate is larger than any text (and, in binary search, any boolean), as it is larger than any number; `linear_scan`
 (functions/lookup_and_reference/xmatch.rs) models it as empty text.
 
 ## Acceptance criteria
