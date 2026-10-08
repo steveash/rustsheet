@@ -3,7 +3,7 @@ id: T-1068
 title: "Unions as arguments of LARGE, SMALL, RANK, MEDIAN, STDEV.S and FREQUENCY (SPEC-0004 rows 3-4)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
