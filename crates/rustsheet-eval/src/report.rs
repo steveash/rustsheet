@@ -44,6 +44,10 @@ pub struct SuiteSummary {
     /// Listed deviation cells that match Excel: their `deviations` lines are stale.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stale_deviations: Vec<String>,
+    /// Cells decision 0042 passed (excel-graph 0 against a kept subnormal), as `case<TAB>cell`;
+    /// each has a FALSE `(x)=0` companion in its case (T-1142).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub graph_subnormal_passes: Vec<String>,
     /// Total wall time of the suite's cases (informational; never part of the gate).
     #[serde(default)]
     pub millis: u64,
@@ -244,6 +248,10 @@ impl RunReport {
                 if c.listed_deviation && c.verdict.is_pass() {
                     s.stale_deviations.push(format!("{}\t{}", r.id, c.key()));
                 }
+                if c.graph_subnormal {
+                    s.graph_subnormal_passes
+                        .push(format!("{}\t{}", r.id, c.key()));
+                }
                 // A by-design value says nothing about how well a function matches Excel.
                 if c.verdict == Verdict::Deviation {
                     continue;
@@ -418,6 +426,21 @@ impl RunReport {
                 "\nStale `deviations` lines (the cell now matches Excel; remove the line):\n"
             );
             for line in stale {
+                let _ = writeln!(md, "- `{line}`");
+            }
+        }
+        let kept: Vec<&String> = self
+            .suites
+            .iter()
+            .flat_map(|s| &s.graph_subnormal_passes)
+            .collect();
+        if !kept.is_empty() {
+            let _ = writeln!(
+                md,
+                "\nCells passed by decision 0042 (excel-graph 0 against a kept subnormal; each has a \
+                 FALSE `(x)=0` companion in its case):\n"
+            );
+            for line in kept {
                 let _ = writeln!(md, "- `{line}`");
             }
         }
@@ -616,6 +639,7 @@ mod tests {
             verdict,
             from_excel: false,
             listed_deviation: false,
+            graph_subnormal: false,
         }
     }
 
@@ -648,6 +672,21 @@ mod tests {
             "{md}"
         );
         assert!(md.contains("- `probes/a\tS!A1`"));
+    }
+
+    #[test]
+    fn cells_passed_by_decision_0042_are_listed() {
+        let mut r = case("probes/a", 1);
+        r.cells = vec![
+            CellResult {
+                graph_subnormal: true,
+                ..cell("3E-308-2.5E-308", Verdict::Pass)
+            },
+            cell("ABS(1)", Verdict::Pass),
+        ];
+        let report = RunReport::build("e", &[r], &[], &Catalog::default());
+        assert_eq!(report.suites[0].graph_subnormal_passes, ["probes/a\tS!A1"]);
+        assert!(report.to_markdown(1).contains("- `probes/a\tS!A1`"));
     }
 
     fn excel_cell(formula: &str, verdict: Verdict) -> CellResult {

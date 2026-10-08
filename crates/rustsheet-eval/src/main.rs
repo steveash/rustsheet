@@ -241,6 +241,12 @@ fn print_summary(report: &RunReport) {
             s.deviations,
             100.0 * s.cell_pass_rate()
         );
+        if !s.graph_subnormal_passes.is_empty() {
+            println!(
+                "  note: {} cell(s) passed by decision 0042 (graph 0 vs kept subnormal; each has a FALSE (x)=0 companion)",
+                s.graph_subnormal_passes.len()
+            );
+        }
         for line in &s.stale_deviations {
             println!("  warning: stale deviations line (the cell matches Excel): {line}");
         }
