@@ -3,7 +3,7 @@ id: T-1011
 title: "xlsx export and eval scoring use Error::stored_literal; import keeps rich-value kinds (SPEC-0003 X1)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
