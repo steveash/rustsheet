@@ -740,7 +740,8 @@ impl Model {
     single_number_fn!(fn_csch, |f| if f == 0.0 {
         Err(Error::DIV)
     } else {
-        Ok(1.0 / f64::sinh(f))
+        // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
+        Ok(flush_subnormal(1.0 / f64::sinh(f)))
     });
     single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));
