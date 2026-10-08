@@ -21,4 +21,4 @@ probes/xlookup-omitted-lookup-value (excel-graph, T-1157): the omitted forms N1-
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- Binary-mode behavior (already matches).
