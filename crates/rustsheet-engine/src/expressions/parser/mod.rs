@@ -546,6 +546,8 @@ impl Parser {
         None
     }
 
+    /// An expression at the current level; parentheses and argument lists call
+    /// [`Parser::parse_enclosed_expr`] instead, so their commas are not bare unions.
     pub(super) fn parse_expr(&mut self) -> Node {
         let t = self.parse_chain(ChainLevel::Compare);
         if !matches!(t, Node::ParseErrorKind { .. }) {

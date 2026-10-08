@@ -54,37 +54,15 @@ impl Parser {
         self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
         // The first group parsed is the one the formula's first `(` opens.
         let leading = std::mem::take(&mut self.leading_paren);
-        let mut t = self.parse_enclosed_expr();
+        let t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        let separator = self.get_argument_separator_token();
-        let mut union_depth = self.depth;
-        while self.lexer.peek_token() == separator {
-            self.lexer.advance_token();
-            let p = self.parse_enclosed_expr();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if !is_union_operand(&t) || !is_union_operand(&p) {
-                return Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Range],
-                    position: self.lexer.get_position() as usize,
-                    message: "Union needs references".to_string(),
-                };
-            }
-            if let Err(error) = self.grow(union_depth, self.depth) {
-                return error;
-            }
-            union_depth = self.depth;
-            t = Node::OpUnionKind {
-                left: Box::new(t),
-                right: Box::new(p),
-                written: 0,
-                bare: false,
-            };
-        }
+        let (mut t, union_depth) = match self.parse_union_chain(t, Self::parse_enclosed_expr, false)
+        {
+            Ok(chain) => chain,
+            Err(error) => return error,
+        };
         self.inner_depth = self.inner_depth.max(union_depth);
         let close = self.lexer.get_position_index();
         if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
@@ -125,39 +103,55 @@ impl Parser {
     /// "Bare union", T-1073). Inside parentheses the union is the loosest operator instead
     /// ([`Parser::parse_parenthesized`]).
     pub(super) fn parse_bare_union(&mut self) -> Node {
-        let mut t = self.parse_intersection();
+        let t = self.parse_intersection();
         if !self.top_level || matches!(t, Node::ParseErrorKind { .. }) {
             return t;
         }
+        match self.parse_union_chain(t, Self::parse_intersection, true) {
+            Ok((t, depth)) => {
+                self.depth = depth;
+                t
+            }
+            Err(error) => error,
+        }
+    }
+
+    /// `first (',' operand)*`, left associative, each further operand parsed by `operand`: the
+    /// union chain and its depth. Every operand must be a reference, or a negated one
+    /// ([`is_union_operand`]); `bare` marks a chain written outside parentheses.
+    fn parse_union_chain(
+        &mut self,
+        first: Node,
+        operand: fn(&mut Self) -> Node,
+        bare: bool,
+    ) -> Result<(Node, usize), Node> {
         let separator = self.get_argument_separator_token();
+        let mut t = first;
         let mut depth = self.depth;
         while self.lexer.peek_token() == separator {
             self.lexer.advance_token();
-            let p = self.parse_intersection();
+            let p = operand(self);
             if let Node::ParseErrorKind { .. } = p {
-                return p;
+                return Err(p);
             }
-            if !is_reference_operand(&t) || !is_reference_operand(&p) {
-                return Node::ParseErrorKind {
+            if !is_union_operand(&t) || !is_union_operand(&p) {
+                return Err(Node::ParseErrorKind {
                     formula: self.lexer.get_formula(),
                     expecting: vec![ExpectedTokens::Range],
                     position: self.lexer.get_position() as usize,
                     message: "Union needs references".to_string(),
-                };
+                });
             }
-            if let Err(error) = self.grow(depth, self.depth) {
-                return error;
-            }
+            self.grow(depth, self.depth)?;
             depth = self.depth;
             t = Node::OpUnionKind {
                 left: Box::new(t),
                 right: Box::new(p),
                 written: 0,
-                bare: true,
+                bare,
             };
         }
-        self.depth = depth;
-        t
+        Ok((t, depth))
     }
 
     /// `intersect => range (' ' range)*`, left associative.

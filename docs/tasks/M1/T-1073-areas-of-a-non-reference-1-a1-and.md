@@ -7,7 +7,7 @@ status: done
 priority: P3
 size: S
 tier: opus
-depends_on: [T-1062]
+depends_on: [T-1062, T-1163]
 ---
 
 ## Goal
@@ -24,18 +24,8 @@ Oracle (T-1061): a workbook holding AREAS(1) or AREAS("A1") is refused by Excel 
 - Other functions' union support (their own tasks under SPEC-0004).
 
 ## Handoff (resumed)
-No code written. The acceptance criteria hinge on a design call, not on oracle values: Excel refuses to load a
-workbook holding `AREAS(1)` / `AREAS("A1")` (createSession 501 unsupportedWorkbook), so there is no cell value to
-match, and whether it refuses the bare `=A1,B2` when typed cannot be probed on Excel for the web. The same question
-came up in T-1163 (SUBTOTAL with a direct or computed array argument is refused the same way, see
-docs/excel-semantics/references.md; PR #413 is the draft handoff). Both want a shared parse-time "reference-only
-argument" check, modelled on the intersection-operand refusal list in references.md ("Union: parsing and
-evaluation", T-0138/T-0149; the engine reads a refused form as a syntax error). Suggested next step for opus: write
-one decision/spec for that check (which functions' arguments must be references: AREAS, SUBTOTAL, ... and what the
-engine returns), then implement it once and close T-1163 and T-1073 with it. The bare `=A1,B2` case needs its own
-call: probes/multiarea-bare shows the stored form evaluates to #VALUE!, so keep that unless a desktop oracle says
-otherwise (M14, Phase 4).
+Resumed by an opus run on 2026-10-08 (tier raised to opus at handoff). The handoff proposed one shared reference-only argument check; T-1163 built it (decision 0045).
 
 ## Outcome
-`AREAS(1)` and `AREAS("A1")` are handled by T-1163 (PR #413, decision 0045): they are parse errors, as Excel refuses them, and a reference operand that evaluates to a value is `#VALUE!`. The bare `=A1,B2` turned out to be a precedence question. Outside every parenthesis and argument list, Excel reads the comma as the union operator, binding tighter than arithmetic and looser than the space. Its operands must be references (scratch probes, excel-graph). The parser now does the same (`parse_bare_union`, `OpUnionKind::bare`), and these formulas print as written (references.md "Bare union"). Eval delta: probes/multiarea-bare H1 is fixed, the new case probes/multiarea-bare-precedence passes all 20 cells, probes/multiarea-xname now passes, and probes/union-defined-name now loads, with 2 of its 5 cells passing (the other 3 belong to T-1065). Regressions: 0.
+`AREAS(1)` and `AREAS("A1")` are handled by T-1163 (PR #413, decision 0045, merged before this PR): they are parse errors, as Excel refuses them, and a reference operand that evaluates to a value is `#VALUE!`. The bare `=A1,B2` turned out to be a precedence question. Outside every parenthesis and argument list, Excel reads the comma as the union operator, binding tighter than arithmetic and looser than the space. Its operands must be references (scratch probes, excel-graph). The parser now does the same (`parse_bare_union`, `OpUnionKind::bare`), and these formulas print as written (references.md "Bare union"). Eval delta: probes/multiarea-bare H1 is fixed, the new case probes/multiarea-bare-precedence passes all 20 cells, probes/multiarea-xname now passes, and probes/union-defined-name now loads, with 2 of its 5 cells passing (the other 3 belong to T-1065). Regressions: 0.
 
