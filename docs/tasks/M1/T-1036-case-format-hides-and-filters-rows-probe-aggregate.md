@@ -32,5 +32,5 @@ sets formulas, then hides rows. Probe probes/subtotal-hidden-filtered (150 cells
 SUBTOTAL 1-11 and skipped by 101-111; filtered rows are skipped by both; on a sheet with a filtered table every hidden row is
 filtered; AGGREGATE odd options skip both kinds; any formula containing SUBTOTAL or AGGREGATE is skipped. Recorded in
 docs/excel-semantics/numbers.md "SUBTOTAL and AGGREGATE over hidden and filtered rows".
-Eval delta: probes +1 case, 119/150 cells pass, 31 new-coverage known failures, 0 regressions. Gaps filed: T-1181 (SUBTOTAL
+Eval delta: probes +1 case, 119/150 cells pass, 31 new-coverage known failures, 0 regressions. Gaps filed: T-1185 (SUBTOTAL
 110/111 read hidden rows), T-1182 (sheet-wide filter rule), T-1183 (nested SUBTOTAL/AGGREGATE detection).

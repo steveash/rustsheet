@@ -812,7 +812,7 @@ re-applying the filter. A worksheet-level autoFilter (no table), a manual hide i
 application, and hidden columns are unprobed.
 Evidence: probes/subtotal-hidden-filtered (150 cells; oracle: excel-graph, 2026-10-08, T-1036).
 Status: VERIFIED
-Engine gaps: SUBTOTAL 110 and 111 read hidden rows (T-1181); a hidden row outside the filtered table's cells is read
+Engine gaps: SUBTOTAL 110 and 111 read hidden rows (T-1185); a hidden row outside the filtered table's cells is read
 by SUBTOTAL 1-11 (T-1182); only a formula whose outermost call is SUBTOTAL (for SUBTOTAL) or SUBTOTAL/AGGREGATE (for
 AGGREGATE) is skipped (T-1183).
 Implemented in: `fn_subtotal` and `cell_hidden_status` (crates/rustsheet-engine/src/functions/subtotal.rs),

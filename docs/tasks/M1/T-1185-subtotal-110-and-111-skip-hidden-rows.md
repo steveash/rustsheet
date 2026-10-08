@@ -1,5 +1,5 @@
 ---
-id: T-1181
+id: T-1185
 title: "SUBTOTAL 110 and 111 skip hidden rows"
 milestone: M1
 lane: functions-math
