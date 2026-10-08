@@ -12,12 +12,12 @@ depends_on: []
 
 ## Goal
 Oracle evidence settles three XMATCH/XLOOKUP questions that docs/excel-semantics/lookup.md lists as unprobed:
-- text and boolean lookup values with match_mode -1/1 over blank cells (linear search);
+- text and boolean lookup values with match_mode -1/1 over blank and error cells, in linear and binary (2/-2) search modes;
 - a blank lookup value against 0, "" and FALSE candidates;
 - binary search (search_mode 2/-2) over runs of equal values, including a run that starts at the first cell.
 
 ## Context
-T-1019 matched the binary search to Excel over blanks and errors. That work is the "XMATCH / XLOOKUP binary search" entry, `binary_search` in functions/binary_search.rs. Equal runs keep the engine's earlier walk: to the first cell of the run (the last when descending), never moving back below the second cell. Linear modes live in `linear_scan` (functions/lookup_and_reference/xmatch.rs). Write a new probe case next to probes/xmatch-xlookup-blanks with the excel-probe skill and fill it with the oracle. If the oracle shows the engine is wrong, file the fix as its own task.
+T-1019 matched the binary search to Excel over blanks and errors. That work is the "XMATCH / XLOOKUP binary search" entry, `binary_search` in functions/binary_search.rs. Equal runs keep the earlier searches' answers: the run's first cell for match_mode 0/-1, never one below the second cell for match_mode 1, and the run's last cell when descending. Probe runs that start at the first cell, e.g. {40,40,40} and {40,40,40,40,40}, with match modes 0/-1/1 and search modes 2/-2. Linear modes live in `linear_scan` (functions/lookup_and_reference/xmatch.rs). Write a new probe case next to probes/xmatch-xlookup-blanks with the excel-probe skill and fill it with the oracle. If the oracle shows the engine is wrong, file the fix as its own task.
 
 ## Acceptance criteria
 - [ ] A probe case with oracle values covers all three questions, and lookup.md records each finding (or says what still differs, with a fix task filed).

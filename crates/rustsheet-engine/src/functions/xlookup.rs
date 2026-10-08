@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
@@ -5,7 +7,7 @@ use crate::{
 };
 
 use super::{
-    binary_search::binary_search,
+    binary_search::{binary_search, Sequence},
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
     util::array_node_to_calc_result,
 };
@@ -59,23 +61,25 @@ enum BinaryHit {
 /// The binary-search XLOOKUP modes (2 ascending, -2 descending) over `values`: the position of
 /// the match, or of the next smaller/larger item for match modes -1/1. Exact match mode only
 /// accepts an equal item.
-fn binary_hit(
+fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
     lookup_value: &CalcResult,
-    values: &[CalcResult],
+    values: &S,
     search_mode: &SearchMode,
     match_mode: &MatchMode,
 ) -> BinaryHit {
     if *match_mode == MatchMode::WildcardMatch {
         return BinaryHit::Wildcard;
     }
-    let probe = binary_search(
+    let side = match match_mode {
+        MatchMode::ExactMatchSmaller => Ordering::Less,
+        MatchMode::ExactMatchLarger => Ordering::Greater,
+        _ => Ordering::Equal,
+    };
+    match binary_search(
         lookup_value,
         values,
         *search_mode == SearchMode::BinarySearchDescending,
-    );
-    match probe.pick(
-        *match_mode == MatchMode::ExactMatchSmaller,
-        *match_mode == MatchMode::ExactMatchLarger,
+        side,
     ) {
         Some(index) => BinaryHit::Found(index),
         None => BinaryHit::NotFound,
@@ -396,6 +400,9 @@ impl Model {
                                 message: "Arrays must be of the same size".to_string(),
                             };
                         }
+                        // The binary search walks the whole vector, blanks past the used area
+                        // included (they are probed like any cell; T-1019).
+                        let full_right = right;
                         let mut row2 = right.row;
                         let row1 = left.row;
                         let mut column2 = right.column;
@@ -443,7 +450,8 @@ impl Model {
                             }
                             SearchMode::BinarySearchAscending
                             | SearchMode::BinarySearchDescending => {
-                                let values = self.prepare_array(&left, &right, is_row_vector);
+                                let values =
+                                    self.range_search_vector(&left, &full_right, is_row_vector);
                                 match binary_hit(&lookup_value, &values, &search_mode, &match_mode)
                                 {
                                     BinaryHit::NotFound => if_not_found,

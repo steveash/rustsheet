@@ -31,6 +31,17 @@ pub(crate) enum MatchMode {
     Regex = 3,
 }
 
+impl MatchMode {
+    /// The side a binary search may settle on when nothing is equal (`binary_search`).
+    fn ordering(self) -> std::cmp::Ordering {
+        match self {
+            MatchMode::ExactMatchSmaller => std::cmp::Ordering::Less,
+            MatchMode::ExactMatchLarger => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal,
+        }
+    }
+}
+
 /// A blank candidate in an ordered comparison: it sorts as the empty text, so it is
 /// larger than every number and never smaller than one (probes/xmatch-xlookup-blanks
 /// Col!M5-M12; T-1018).
@@ -276,14 +287,11 @@ impl Model {
                         "Wildcard/regex match cannot be used with binary search".to_string(),
                     );
                 }
-                let probe = binary_search(
+                match binary_search(
                     &lookup_value,
                     &array,
                     search_mode == SearchMode::BinaryDescending,
-                );
-                match probe.pick(
-                    match_mode == MatchMode::ExactMatchSmaller,
-                    match_mode == MatchMode::ExactMatchLarger,
+                    match_mode.ordering(),
                 ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
                     Some(l) => CalcResult::Number(l as f64 + 1.0),

@@ -203,8 +203,10 @@ Along a row, `XMATCH(99,1:1,-1,2)` is 1. With 5,#N/A,10,#DIV/0!,20, `XMATCH(15,A
 Evidence: probes/xmatch-xlookup-blanks Col!M16-M26, M44-M46, Err!M6-M7, Row!A18-A19 (Excel oracle).
 Status: VERIFIED
 Implemented in: `binary_search` (functions/binary_search.rs), shared by XMATCH and XLOOKUP.
-Unprobed: runs of equal values. The engine moves to the first of the run (the last when
-descending), and never below the second cell when moving back.
+XLOOKUP over a range searches the full vector, so cells past the used area are probed as blanks.
+Unprobed (T-1134): runs of equal values. The engine returns the run's first cell for match_mode 0/-1
+and never one below the second cell for match_mode 1 (both as before T-1019), and the run's last
+cell when descending. Also unprobed: text and boolean lookup values over blanks and errors.
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
