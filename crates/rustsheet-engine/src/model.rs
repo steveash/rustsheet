@@ -34,7 +34,7 @@ use crate::{
 };
 
 use crate::evaluation::{CellKey, Evaluation, FormulaCell, Seen};
-use crate::{cf_types::CfCellResult, tz::Tz};
+use crate::{cf_types::CfCellResult, reference_operators::VariableStack, tz::Tz};
 
 #[cfg(any(test, feature = "mock_time"))]
 pub use crate::mock_time::get_milliseconds_since_epoch;
@@ -183,7 +183,7 @@ pub struct Model {
     /// The view id. A view consists of a selected sheet and ranges.
     pub(crate) view_id: u32,
     /// A stack of variables used for LET function evaluation. The key is the variable id, and the value is the variable value.
-    pub(crate) variable_stack: HashMap<usize, CalcResult>,
+    pub(crate) variable_stack: VariableStack,
     /// Last variable id used. It is incremented every time a new variable is created (for example, when evaluating a LET function).
     pub(crate) last_variable_id: usize,
     /// Lambdas
@@ -655,8 +655,8 @@ impl Model {
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
                     // Bound by LET — look up the variable, which should be a Lambda.
-                    match self.variable_stack.get(&(*var_id as usize)) {
-                        Some(v) => v.clone(),
+                    match self.variable_stack.get(*var_id as usize) {
+                        Some(binding) => binding.value(cell),
                         None => {
                             return CalcResult::new_error(
                                 Error::NAME,
@@ -1569,7 +1569,7 @@ impl Model {
             locale,
             tz,
             view_id: 0,
-            variable_stack: HashMap::new(),
+            variable_stack: VariableStack::default(),
             last_variable_id: 0,
             lambdas: HashMap::new(),
             last_lambda_id: 0,
