@@ -3,7 +3,7 @@ id: T-1137
 title: "Probe near-zero snapping of doubly parenthesised roots and defined-name bodies"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
