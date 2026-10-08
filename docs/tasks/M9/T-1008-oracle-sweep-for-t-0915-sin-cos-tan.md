@@ -3,7 +3,7 @@ id: T-1008
 title: "Oracle sweep for T-0915: SIN/COS/TAN/SEC/CSC/COT near k*pi"
 milestone: M9
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Grid: Arguments k*PI() + d for k in {1,2,3,10,100,1000,1e4,1e5,1e6} and d in {0,
 
 ## Out of scope
 - Fitting or implementing the formulation (T-0915 does that).
+
+## Outcome
+Added `probes-numeric/m9-trig-reduction` (666 cells) with its excel-graph oracle sidecar (no pending cells). 419 of 666 cells differ from the engine; observations in numbers.md. Eval gates unchanged (probes-numeric is ungated).
