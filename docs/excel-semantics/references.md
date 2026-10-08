@@ -531,7 +531,7 @@ Rule: ADDRESS does not quote a `sheet_text` made of a `[workbook]` part and a pl
 quoted (`'Me lo invente'!$C$2`, `'A Wird One$'!$A$1`) and `"Sheet2"` is not.
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!F128;
 ironcalc-calc LOOKUP_AND_REFERENCE/ADDRESS.xlsx (Excel-cached) Sheet1!E2, B33, B38.
-Status: VERIFIED (Excel-cached). Open (unprobed): `[Book1]My Sheet` and brackets elsewhere in the name.
+Status: VERIFIED (Excel-cached). Open (unprobed): `[Book1]My Sheet`, brackets elsewhere in the name, an empty book (`[]Sheet1`), a book part with spaces or dots, an empty sheet part (`[Book1]`) and a cell-reference-like sheet part (`[Book1]A1`); the implementation decides on the part after `]` only.
 Implemented in: `address_sheet_text` in functions/lookup_and_reference/address_areas.rs
 Tasks: T-0984
 
