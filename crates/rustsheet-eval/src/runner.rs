@@ -677,6 +677,26 @@ mod tests {
         assert!(unscored.is_err_and(|e| e.contains("unscored cell S!Z9")));
     }
 
+    /// An excel-graph 0 hides a kept subnormal (decision 0042); other sources and values do not.
+    #[test]
+    fn graph_zero_hides_only_a_subnormal() {
+        let e = |expected: f64, from_graph| Expectation {
+            sheet: "S".into(),
+            addr: Addr::parse("A1").expect("addr"),
+            formula: None,
+            expected: Value::Number(expected),
+            from_excel: true,
+            pinned: None,
+            from_graph,
+        };
+        let subnormal = Value::Number(5e-309);
+        assert!(graph_hides_subnormal(&e(0.0, true), &subnormal));
+        assert!(!graph_hides_subnormal(&e(0.0, false), &subnormal));
+        assert!(!graph_hides_subnormal(&e(1.0, true), &subnormal));
+        assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(1e-300)));
+        assert!(!graph_hides_subnormal(&e(0.0, true), &Value::Number(0.0)));
+    }
+
     /// A listed cell is a deviation when it gives its pinned value, a pass when it matches Excel
     /// and a failure otherwise; a deviation leaves the case passing, and a line naming an
     /// unscored cell is an error (decision 0036).
