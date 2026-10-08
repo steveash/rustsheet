@@ -156,6 +156,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::TableNameKind(_) => {
             // noop for now
         }
+        Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
@@ -261,6 +262,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
                 remove_redundant_implicit_intersection(operand, add)
             });
         }
+        Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
         Node::FunctionKind { kind, args } => {
             let signature = get_function_args_signature(kind, args.len());
             for (index, arg) in args.iter_mut().enumerate() {
@@ -271,6 +273,13 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             }
         }
     };
+}
+
+/// Legacy formulas evaluate SUMPRODUCT's arguments as arrays, with no implicit intersection inside
+/// (`SUMPRODUCT(SUMIFS(B1:B6,A1:A6,D1:D2))` lifts the criterion where `SUM` intersects it;
+/// probes/ifs-legacy-sumproduct, excel-graph, T-0278), so on export no `@` inside is redundant.
+fn is_array_context(kind: &Function) -> bool {
+    matches!(kind, Function::Sumproduct)
 }
 
 /// The result of the static analysis of a node
@@ -552,29 +561,25 @@ fn args_signature_one_vector(arg_count: usize) -> Vec<Signature> {
 }
 
 fn args_signature_sumif(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Vector, Signature::Scalar, Signature::Vector],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
-/// SUMIF signature with the criteria argument as a `Vector` instead of a
-/// `Scalar`. This stops a range/array criteria from being collapsed by implicit
-/// intersection, so SUMIF can spill one sum per criterion. (COUNTIF/AVERAGEIF
-/// keep the classic [`args_signature_sumif`], intersecting range criteria: in a legacy
-/// formula Excel intersects them, poi/FormulaEvalTestData_Copy.xlsx EverythingTests!F296
-/// `COUNTIF(G7:K7,E8:G8)` is 2.)
-fn args_signature_sumif_spill(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
+/// COUNTIFS (`first_criterion` 1), SUMIFS/AVERAGEIFS/MAXIFS/MINIFS (2): every criterion is a
+/// scalar, so a legacy formula intersects a range criterion like COUNTIF and a dynamic one lifts
+/// it (T-0278, fixtures/ifs-legacy-range-criteria, oracle excel-graph; T-0207).
+fn args_signature_ifs(arg_count: usize, first_criterion: usize) -> Vec<Signature> {
+    if arg_count <= first_criterion || (arg_count - first_criterion).is_multiple_of(2) {
+        return vec![Signature::Error; arg_count];
     }
+    let mut signature = vec![Signature::Vector; arg_count];
+    for slot in signature.iter_mut().skip(first_criterion).step_by(2) {
+        *slot = Signature::Scalar;
+    }
+    signature
 }
 
 // 1 or none scalars
@@ -604,39 +609,32 @@ fn args_signature_hlookup(arg_count: usize) -> Vec<Signature> {
 }
 
 fn args_signature_index(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Scalar]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Scalar, Signature::Scalar]
-    } else if arg_count == 4 {
-        vec![
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Scalar],
+        3 => vec![Signature::Vector, Signature::Scalar, Signature::Scalar],
+        4 => vec![
             Signature::Vector,
             Signature::Scalar,
             Signature::Scalar,
             Signature::Scalar,
-        ]
-    } else {
-        vec![Signature::Error; arg_count]
+        ],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
 fn args_signature_lookup(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Vector]
-    } else {
-        vec![Signature::Error; arg_count]
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Vector],
+        3 => vec![Signature::Vector, Signature::Vector, Signature::Vector],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
 fn args_signature_match(arg_count: usize) -> Vec<Signature> {
-    if arg_count == 2 {
-        vec![Signature::Vector, Signature::Vector]
-    } else if arg_count == 3 {
-        vec![Signature::Vector, Signature::Vector, Signature::Scalar]
-    } else {
-        vec![Signature::Error; arg_count]
+    match arg_count {
+        2 => vec![Signature::Vector, Signature::Vector],
+        3 => vec![Signature::Vector, Signature::Vector, Signature::Scalar],
+        _ => vec![Signature::Error; arg_count],
     }
 }
 
@@ -1021,8 +1019,8 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Sqrt => args_signature_scalars(arg_count, 1, 0),
         Function::Sqrtpi => args_signature_scalars(arg_count, 1, 0),
         Function::Sum => vec![Signature::Vector; arg_count],
-        Function::Sumif => args_signature_sumif_spill(arg_count),
-        Function::Sumifs => vec![Signature::Vector; arg_count],
+        Function::Sumif => args_signature_sumif(arg_count),
+        Function::Sumifs => args_signature_ifs(arg_count, 2),
         Function::Tan => args_signature_scalars(arg_count, 1, 0),
         Function::Tanh => args_signature_scalars(arg_count, 1, 0),
         Function::ErrorType => args_signature_scalars(arg_count, 1, 0),
@@ -1117,14 +1115,14 @@ fn get_function_args_signature(kind: &Function, arg_count: usize) -> Vec<Signatu
         Function::Avedev => vec![Signature::Vector; arg_count],
         Function::Averagea => vec![Signature::Vector; arg_count],
         Function::Averageif => args_signature_sumif(arg_count),
-        Function::Averageifs => vec![Signature::Vector; arg_count],
+        Function::Averageifs => args_signature_ifs(arg_count, 2),
         Function::Count => vec![Signature::Vector; arg_count],
         Function::Counta => vec![Signature::Vector; arg_count],
         Function::Countblank => vec![Signature::Vector; arg_count],
         Function::Countif => args_signature_sumif(arg_count),
-        Function::Countifs => vec![Signature::Vector; arg_count],
-        Function::Maxifs => vec![Signature::Vector; arg_count],
-        Function::Minifs => vec![Signature::Vector; arg_count],
+        Function::Countifs => args_signature_ifs(arg_count, 1),
+        Function::Maxifs => args_signature_ifs(arg_count, 2),
+        Function::Minifs => args_signature_ifs(arg_count, 2),
         Function::Date => args_signature_scalars(arg_count, 3, 0),
         Function::Datedif => args_signature_scalars(arg_count, 3, 0),
         Function::Datevalue => args_signature_scalars(arg_count, 1, 0),
