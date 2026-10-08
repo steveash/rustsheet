@@ -388,7 +388,6 @@ F	probes/ifs-switch-array-values.case.json	Sheet1!N9
 F	probes/isref-function-results.case.json	Sheet1!C3
 F	probes/isref-function-results.case.json	Sheet1!C5
 F	probes/min-max-reference-forms.case.json	Sheet1!D8
-F	probes/multiarea-3d-ref.case.json	Sheet1!H2
 F	probes/multiarea-at-legacy.case.json	Sheet1!H10
 F	probes/multiarea-at-legacy.case.json	Sheet1!H7
 F	probes/multiarea-at-legacy.case.json	Sheet1!H8

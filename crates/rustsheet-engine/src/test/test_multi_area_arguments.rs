@@ -256,3 +256,30 @@ fn index_area_num_selects_an_area() {
         ],
     );
 }
+
+#[test]
+fn three_d_operand_beside_and_inside_a_union() {
+    // SPEC-0004 probe row 13 (probes/multiarea-3d-ref, excel-graph 2026-10-07): a 3-D
+    // argument beside a union adds up (101 + 1 + 5); a 3-D operand inside a union is #NAME?
+    // (H2). H3 (the 3-D operand on the right) and H4 (the bare union) are UNVERIFIED engine choices.
+    // Sheet2 sits right after Sheet1, as in the probe, so the span holds just those two.
+    let mut model = new_empty_model();
+    model.add_sheet("Sheet2").unwrap();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("B2", "5"),
+        ("Sheet2!A1", "100"),
+        ("Sheet2!B2", "200"),
+    ] {
+        model._set(cell, value);
+    }
+    results(
+        &mut model,
+        &[
+            ("H1", "=SUM(Sheet1:Sheet2!A1,(A1,B2))", "107"),
+            ("H2", "=SUM((Sheet1:Sheet2!A1,B2))", "#NAME?"),
+            ("H3", "=SUM((A1,Sheet1:Sheet2!B2))", "#NAME?"),
+            ("H4", "=(Sheet1:Sheet2!A1,B2)", "#NAME?"),
+        ],
+    );
+}
