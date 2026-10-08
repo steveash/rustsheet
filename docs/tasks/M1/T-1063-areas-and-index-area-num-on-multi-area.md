@@ -30,3 +30,4 @@ SPEC-0004 step 3. `fn_areas` (lookup_and_reference/address_areas.rs) always answ
 argument stays 1); `INDEX` selects `area_num` from the areas, range-checked as a float (below 1
 `#VALUE!`, NaN or past the last area `#REF!`). Added `RefArg::single_sheet_areas`. Unit tests in
 `test_multi_area_arguments.rs` cover probe rows 6, 7, 8, 20 and a huge `area_num`.
+Eval delta: probes known failures 210 -> 204 (fixed 6), no regressions.
