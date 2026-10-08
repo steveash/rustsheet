@@ -34,7 +34,7 @@ see `crates/rustsheet-eval/src/deviations.rs` for the format and the existing en
 ## Out of scope
 - Modelling the stale state.
 
-## Handoff
+## Handoff (resumed)
 - Tried (sonnet run, PR #394, draft): listed the five cells in `eval/suites/probes/deviations` (decision 0038, dates.md
   anchor `weeknum-return_type-edge-cases-and-serial-0-t-1023`, pinned `#NUM!`), made the dates.md entry's status line start
   `Status: DEVIATION` (the parser requires it), ran `make eval-baseline` (removes the five F lines). All five cells were
