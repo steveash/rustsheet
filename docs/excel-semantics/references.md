@@ -481,7 +481,10 @@ other (`Model::for_each_cell_in_areas`). SPEC-0004 and T-1063 to T-1065, T-1068 
 until then LARGE, RANK, CONCAT, TEXTJOIN and a union inside IF read a union as `#VALUE!` (`RefArg::into_single_area`;
 LARGE, SMALL and RANK then answer `#N/IMPL!`, as before). The other users of `for_each_value` (HARMEAN, AVEDEV,
 SKEW, KURT, ...) and PERCENTOF take a union with no probe of their own.
-Tasks: T-1061, T-1062
+COUNTBLANK (`#VALUE!`) and ROWS/COLUMNS (`#REF!`) of a union: `Model::rows_columns_extent` (cast.rs) and `fn_countblank`
+(statistical/count.rs), T-1069. UNVERIFIED engine behavior: a cross-sheet union in ROWS/COLUMNS stays `#VALUE!`, and
+a union holding an error in COUNTBLANK counts nothing (no probes).
+Tasks: T-1061, T-1062, T-1069
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
