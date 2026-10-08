@@ -1312,7 +1312,7 @@
   "Calc!A645": "dist/k=-37.6",
   "Calc!A646": "dist/k=-37.5",
   "Calc!A647": "inv/subnormal-by-subtraction",
-  "Calc!A648": "inv/just-below-min-normal-by-subtraction"
+  "Calc!A648": "inv/min-normal (1E-309 literal reads as 0)"
  },
  "expected": {}
 }

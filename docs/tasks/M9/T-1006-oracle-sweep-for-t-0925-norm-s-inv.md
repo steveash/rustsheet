@@ -3,7 +3,7 @@ id: T-1006
 title: "Oracle sweep for T-0925: NORM.S.INV at NORM.S.DIST(k), tails to 1e-300"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -30,13 +30,17 @@ Grid: p = NORM.S.DIST(k,TRUE) for k in -38..8 step 0.25, plus literal tails p = 
 - Fitting or implementing the formulation (T-0925 does that).
 
 ## Outcome
-Added `probes-numeric/m9-norm-s-inv` (648 cells) with its excel-graph oracle sidecar (no pending cells). 447 of 639 cells differ from the engine (438 ulp, 3 close, 6 flushed-tail `#NUM!`); quirks in numbers.md. T-0925 already depends on T-1006 (not T-0942). Eval gates unchanged (probes-numeric is ungated).
+Added `probes-numeric/m9-norm-s-inv` (648 cells: 639 sweep cells plus 9 flush/subnormal probes) with its excel-graph oracle sidecar, which has no pending cells. 454 of 648 cells differ from the engine:
+- 438 ulp, 4 close, 2 mismatch, 3 bool and 7 type cells;
+- the six flushed-tail `#NUM!` cells are among the type mismatches.
+
+The quirks are in numbers.md, and the flush cells point at T-0968/T-1040 (NORM.S.DIST) and T-1027 (subtraction). T-0925 already depends on T-1006, not on T-0942. Eval gates are unchanged, because probes-numeric is ungated.
 
 ## Handoff (resumed)
-Tried: built `probes-numeric/m9-norm-s-inv` (648 cells incl. A640-A648 flush probes), filled from excel-graph, `make check` green; security, architecture, quality approved. The fidelity reviewer requested changes twice on the numbers.md section "oracle sweep (T-1006)" (data is sound).
-Open items from round 2 (all doc-only except where noted):
-- A648 `NORM.S.INV(2.3E-308-1E-309)` is not a subnormal p: the literal 1E-309 reads as 0 (see numbers.md T-0189/T-1007), so it equals NORM.S.INV(2.3E-308). Relabel it, or replace it with a subtraction-built subnormal such as `2.3E-308-2E-308` (remove the old sidecar for this case only, then `rustsheet-oracle fill`). Only A647 shows NORM.S.INV accepting a subnormal p.
-- "0-2 ulp for k <= 2" omits k = +-1 (4 doubles apart, 2 ulp of 1.0): list them or say how ulp is measured.
-- A640-A645 engine failures are a NORM.S.DIST non-flush issue and A647 is the `-` flush (T-1027), not T-0925: point them at T-1027 and a NORM.S.DIST task (T-0968 / T-1040 or a new follow-up); true Phi(-37.6) ~ 1.07E-309 is subnormal and Phi(-37.5) ~ 4.6E-308 is normal, cutoff near k = -37.52, keep it marked unprobed.
-- A644/A645 (numeric 0.0) are not flush evidence (Graph reports 0.0 for a kept subnormal); the claim rests on A640-A642.
-Then rerun `reviewer-excel-fidelity`, set `status: done` (keep the Outcome below, update its counts to 648 cells), merge on green CI.
+Resumed by an opus run (2026-10-08). The round 2 fidelity items are addressed:
+- A648 is relabelled: 1E-309 reads as 0.
+- The ulp measure is defined, with k = +-1 explained.
+- The flush cells are routed to T-0968/T-1040 and T-1027.
+- A644/A645 are not flush evidence.
+- The Phi cutoff is near k = -37.52 (unprobed).
+- The counts are updated to 648 cells.
