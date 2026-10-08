@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::case::{
     canonical_key, cell_key, is_excel_evidence, split_qualified, CaseSpec, CellInput, OracleFile,
-    CASE_FORMAT,
+    CASE_FORMAT, GRAPH_ORACLE,
 };
 use crate::case_log;
 use crate::cellref::Addr;
@@ -117,9 +117,6 @@ struct Expectation {
     /// subnormal as 0 (`graph_hides_subnormal`).
     from_graph: bool,
 }
-
-/// The oracle kind of the Microsoft Graph backend.
-const GRAPH_ORACLE: &str = "excel-graph";
 
 /// Whether an excel-graph expectation of 0 hides `actual`. The Graph API reports a subnormal
 /// cell value as 0.0, so its 0 cannot tell a true 0 from a kept subnormal: Excel keeps

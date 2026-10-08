@@ -240,3 +240,19 @@ fn tiny_values_compare_unequal_to_zero_but_subnormal_literals_are_zero() {
     assert_eq!(model._get_text("A4"), *"FALSE");
     assert_eq!(model._get_text("A5"), *"TRUE");
 }
+
+/// probes/subnormal-function-results C69 and text-number-words H6 (excel-graph; T-1027):
+/// `+` and `-` keep a subnormal result, while subnormal number text reads as 0.
+#[test]
+fn sums_keep_subnormals_and_number_text_flushes_them() {
+    let mut model = new_empty_model();
+    model._set("A1", "=(3E-308-2.5E-308)=0");
+    model._set("A2", "=(3E-308+-2.5E-308)=0");
+    model._set("A4", "=(\"1e-308\"+0)=0");
+    model._set("A5", "=(3E-308*0.5)=0");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"FALSE");
+    assert_eq!(model._get_text("A2"), *"FALSE");
+    assert_eq!(model._get_text("A4"), *"TRUE");
+    assert_eq!(model._get_text("A5"), *"TRUE");
+}
