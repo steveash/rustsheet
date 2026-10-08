@@ -3,7 +3,7 @@ id: T-1124
 title: "XIRR skips empty value and date cells and accepts dates before the first"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
