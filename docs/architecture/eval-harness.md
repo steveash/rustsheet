@@ -55,7 +55,8 @@ Input conventions:
   `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
-  (T-1077). The engine adapter ignores it.
+  (T-1077). The engine adapter enters them as `Input::LegacyFormula`, which adds the implicit
+  intersections xlsx import adds to a plain `<f>` (`=A1:A2` reads as `=@A1:A2`; T-1096).
 - Optional per-sheet `"hidden_rows": [2, 5]` (1-based rows written `hidden="1"`) and
   `"tables": [{"name": "Data", "ref": "A1:B9", "filter": true}]` (T-1036). A table's header row is
   the first row of `ref` and must hold literal text. With `"filter": true` spec2xlsx gives the table's
