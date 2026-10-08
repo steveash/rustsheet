@@ -3,7 +3,7 @@ id: T-1149
 title: "Metamorphic generator family: SUM((r1,r2)) equals SUM(r1,r2) for same-sheet references"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -33,3 +33,9 @@ fits docs/architecture/synthetic-generator.md and record the choice there.
 ## Out of scope
 - Cross-sheet and 3-D operands (they are errors, not a metamorphic pair).
 - AREAS(u) = operand count (T-1063's half of the test plan).
+
+## Outcome
+Chose a seeded engine unit test over a gen-m1 policy (recorded in
+docs/architecture/synthetic-generator.md §10.1): `test_union_sum_metamorphic.rs`, 120 pairs
+`SUM((r1,r2[,r3]))` vs `SUM(r1,r2[,r3])`, every fifth with overlapping areas. Mutation check:
+walking only the first area in `for_each_position_in_areas` fails it. Eval delta: none.
