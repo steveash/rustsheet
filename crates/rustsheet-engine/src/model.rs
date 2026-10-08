@@ -434,22 +434,18 @@ impl Model {
     /// [Model::user_formula_to_internal]. They must therefore be parsed with
     /// the English language and locale regardless of the user's active
     /// language. This temporarily switches the parser, parses, and restores it.
-    ///
-    /// Use [`Model::parse_internal_cell_formula`] when the node is printed back and a formula written
-    /// wholly in parentheses must keep them (defined names).
     pub(crate) fn parse_internal_formula(&mut self, body: &str, context: &CellReferenceRC) -> Node {
         self.parse_internal_with(|parser| parser.parse(body, context))
     }
 
-    /// Like [`Model::parse_internal_formula`], but a body written wholly in parentheses keeps a
-    /// [`Node::GroupedRootKind`] root as a cell formula does: Excel does not snap a grouped defined
-    /// name body to zero (docs/excel-semantics/numbers.md "Near-zero snapping", T-1164).
+    /// Like [`Model::parse_internal_formula`], but keeps the grouped root, which Excel does not
+    /// snap (numbers.md "Near-zero snapping", T-1164); use it when the node is printed back.
     pub(crate) fn parse_internal_cell_formula(
         &mut self,
         body: &str,
-        context: &CellReferenceRC,
+        ctx: &CellReferenceRC,
     ) -> Node {
-        self.parse_internal_with(|parser| parser.parse_cell_formula(body, context))
+        self.parse_internal_with(|parser| parser.parse_cell_formula(body, ctx))
     }
 
     fn parse_internal_with(&mut self, parse: impl FnOnce(&mut Parser) -> Node) -> Node {
@@ -479,8 +475,6 @@ impl Model {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
-        // A body written wholly in parentheses keeps them (`GroupedRootKind`): Excel does not snap
-        // such a defined name to zero (docs/excel-semantics/numbers.md "Near-zero snapping").
         let mut node = self.parser.parse_cell_formula(body, context);
         if let Node::ParseErrorKind { .. } = node {
             // The user's language could not parse it: it might already be in the
