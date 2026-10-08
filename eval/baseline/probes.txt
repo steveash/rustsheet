@@ -430,8 +430,6 @@ F	probes/multiarea-index.case.json	Sheet1!H5
 F	probes/multiarea-let.case.json	Sheet1!H1
 F	probes/multiarea-let.case.json	Sheet1!H2
 F	probes/multiarea-printarea.case.json	!EngineError
-F	probes/multiarea-subtotal.case.json	Sheet1!H1
-F	probes/multiarea-subtotal.case.json	Sheet1!H2
 F	probes/multiarea-xname.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
