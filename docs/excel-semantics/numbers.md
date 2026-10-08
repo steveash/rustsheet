@@ -454,12 +454,14 @@ Tasks: T-1099, T-1108, T-0221
 Rule: Excel splits every value into a binary significand M in [1, 2) and a power of two, multiplies
 the significands into one double without rescaling (the order is unprobed: the probes use equal or
 alternating values), and is `#NUM!` when that product
-overflows, i.e. when the sum of log2(M) reaches 1024. Magnitude does not matter, only M:
+overflows, i.e. when the sum of log2(M) reaches 1024. Within the probed exponent sums, magnitude does not
+matter, only M (but large positive exponent sums have a further `#NUM!`, see 2^1000 below):
 1028 copies of 5E+204 (M = 1.9934) are finite and 1029 are `#NUM!`; so are 1100 copies of 1.25E+204
 (the same M) and 3E+200 (M = 1.96), while 1100 copies of 1E+300 (M = 1.49), 5E+300, 9E+204 or
 7E+150 are finite; for M = 1.5 (1.5, 3, 0.75) the cut is 1750 finite / 1751 `#NUM!`; 1E+300
-1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); powers of two (M = 1) never trip it
-(2000 copies of 2). It applies even when the plain product is in range: 1752 values alternating 1.5
+1770 / 1771; 1.9999 1024 / 1025; 1E-300 2400 finite / 2500 `#NUM!` (predicted cut 2428/2429, not probed); 1E+307
+(M = 1.78, predicted cut about 1231) is `#NUM!` at every probed count from 2000; powers of two (M = 1) never trip it
+(2000 copies of 2), but see 2^1000 below. It applies even when the plain product is in range: 1752 values alternating 1.5
 and 0.75 (plain product 1.125^876) are `#NUM!`, 1750 are 1.0606601717798212.
 Equal values are not always returned exactly: 1001 copies of 5E+204 give 5.0000000000000006E+204,
 1024 copies 4.9999999999999995E+204, 1025 and 1027 copies 5E+204, 1028 copies
@@ -468,22 +470,23 @@ give exactly 1.5 (the engine matches since T-1113). 2400 copies of 1E-300 give
 1.8066704015823645E-300 = 1E-300 * 2^(2048/2400): the power-of-two sum is 2048 too high there (1100
 copies give 1E-300 exactly; T-1120). Bracketed further (probes/geomean-exponent-sum, -sum-2, excel-graph,
 2026-10-08, T-1120): the excess is always 2048 * k, so the result is `v * 2^(2048k/n)`. k grows with n,
-roughly doubling the count per step. For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
+perhaps doubling the count per step (tentative: only 1E-307 shows two steps). For 1E-300: k = 0 at 1500-1700 copies and k = 1 from 1800 to
 2428. For 1E-307: k = 1 from 1700 to 3500 copies and k = 2 from 3900 to 6000. 1E-200 (1000, 1600) and
 1E-100 (1000, 1200) give k = 0. Powers of two (significand 1) never gain anything: 2^-1000 and 2^-100 are
-exact up to 8200 and 4000 copies. Positive exponents have a separate `#NUM!` that the significand cut
-does not explain: 1000 copies of 2^1000 give 1.0715086071862671E+301 (one ulp low), while 1500, 1800,
-2000-2049 and 3000 copies are `#NUM!`; 1E+307 is `#NUM!` from 2000 copies, yet 1770 copies of 1E+300 are
-finite. No model yet. The excess does not depend only on the exponent sum, since powers of two with a
+exact up to 8200 and 4000 copies. Large positive exponents have a `#NUM!` the significand cut does not
+explain: 1000 copies of 2^1000 (M = 1) give 1.0715086071862671E+301 (two doubles below 2^1000), while
+1500, 1800, 2000, 2047, 2048, 2049 and 3000 copies are `#NUM!` (probes/geomean-exponent-sum-2 C11-C18),
+although 1770 copies of 1E+300 (exponent sum 1.76M) are finite (geomean-overflow-cut-3 C13). No model yet. The excess does not depend only on the exponent sum, since powers of two with a
 larger sum gain nothing. It is not a fixed count threshold, because 1E-300 and 1E-307 step at different
 counts. It is not the significand product alone either: 1E-307 steps at a smaller product than 1E-300.
 Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
 probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
 range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts
 for M = 1.5, 1E+300, 1.9999 and 1E-300 were probed after the rule was fitted, and all held.
-Status: VERIFIED. RustSheet implements the cut (T-1112). Still open: the root's last-ulp rounding
-(numbers.md, "GEOMEAN root rounding"; T-1108) and the 1E-300 x 2400
-exponent (T-1120).
+Status: the significand cut is VERIFIED within the probed ranges, but the rule is incomplete. RustSheet
+implements the cut (T-1112). Still open: the root's last-ulp rounding
+(numbers.md, "GEOMEAN root rounding"; T-1108), the 2048 * k excess and the 2^1000 x 1500 `#NUM!`
+(probes/geomean-exponent-sum, -sum-2; T-1120).
 Tasks: T-1108, T-1112, T-1113, T-1120
 
 ## `^` / POWER are not correctly rounded
