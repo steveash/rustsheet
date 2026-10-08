@@ -3,7 +3,7 @@ id: T-1139
 title: "Probe 3-D spans ending on a missing sheet, @ of a 3-D span, and IF-wrapped spans in AREAS, VLOOKUP, HLOOKUP, COUNTBLANK"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
