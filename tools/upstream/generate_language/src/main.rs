@@ -524,6 +524,9 @@ pub struct Functions {
     pub sumproduct: String,
     pub percentof: String,
     pub encodeurl: String,
+    pub image: String,
+    pub stockhistory: String,
+    pub fieldvalue: String,
 }
 
 #[derive(Encode, Decode, Serialize, Deserialize, Clone)]
