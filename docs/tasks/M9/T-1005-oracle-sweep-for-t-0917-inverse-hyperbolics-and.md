@@ -3,7 +3,7 @@ id: T-1005
 title: "Oracle sweep for T-0917: inverse hyperbolics and SINH/TANH switchover thresholds"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
