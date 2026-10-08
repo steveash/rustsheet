@@ -3,7 +3,7 @@ id: T-1010
 title: "Error/ErrorKind variants for #GETTING_DATA, #CONNECT!, #BLOCKED!, #FIELD! (SPEC-0003 E1)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
