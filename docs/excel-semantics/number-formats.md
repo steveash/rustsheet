@@ -124,6 +124,7 @@ and keeps the sign.
 Evidence: poi/NumberFormatTests.xlsx Tests!A44:A46, A67:A69, A80:A82, A95, A112, A118, A335
 (desktop Excel cached values, Microsoft Macintosh Excel 16.0; no web sidecar).
 Status: VERIFIED
+Implemented in: crates/rustsheet-engine/src/formatter/format.rs (group positions count from the format's last digit placeholder; `?` padding separator is a space; a value exactly one unit at the last shown place keeps its sign)
 Tasks: T-0952
 
 ## `£`, `¥` and `|` print as literals without quotes

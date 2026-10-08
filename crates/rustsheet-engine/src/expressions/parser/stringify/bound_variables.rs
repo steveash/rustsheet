@@ -78,9 +78,9 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
             for_each_chain_operand_mut(node, |operand| prefix_bound_variables(operand, bound));
         }
         Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
-        Node::ImplicitIntersection { child, .. } | Node::SpillRangeOperator { child } => {
-            prefix_bound_variables(child, bound)
-        }
+        Node::ImplicitIntersection { child, .. }
+        | Node::SpillRangeOperator { child }
+        | Node::GroupedRootKind { child } => prefix_bound_variables(child, bound),
         Node::BooleanKind(_)
         | Node::NumberKind(_)
         | Node::StringKind(_)

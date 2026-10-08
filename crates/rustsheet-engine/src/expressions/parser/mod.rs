@@ -282,6 +282,12 @@ pub enum Node {
     SpillRangeOperator {
         child: Box<Node>,
     },
+    /// A whole formula written in parentheses, `=(A1-1)`: only ever the root. Excel tells it
+    /// apart from `=A1-1` (it skips near-zero snapping, docs/excel-semantics/numbers.md) and keeps
+    /// the parentheses in the formula text, so it prints them back. It evaluates as `child`.
+    GroupedRootKind {
+        child: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: ChainLeft,
@@ -322,6 +328,11 @@ pub struct Parser {
     trailing_name: Option<(String, usize)>,
     /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
     at_paren: bool,
+    /// The formula starts with `(` and that group has not been parsed yet.
+    leading_paren: bool,
+    /// The group opened by the formula's first `(` closes at the end of the formula: the whole
+    /// formula is parenthesized (`=(A1-1)`).
+    grouped_root: bool,
     /// Primaries (operands) open on the current parse path. Checked before
     /// descending so the parser's own recursion stays bounded.
     nesting: usize,
@@ -368,6 +379,8 @@ impl Parser {
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
             at_paren: false,
+            leading_paren: false,
+            grouped_root: false,
             nesting: 0,
             depth: 0,
             inner_depth: 0,
@@ -407,8 +420,32 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
+        self.leading_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
+        self.grouped_root = false;
         let node = self.parse_expr();
         self.expect_end(node)
+    }
+
+    /// Parses a cell formula like [`Parser::parse`], but a formula written wholly in parentheses
+    /// (`=(A1-1)`, `=((A1-1))`) gets a [`Node::GroupedRootKind`] root, so it prints back with
+    /// them and evaluation can tell it from `=A1-1` (Excel skips near-zero snapping for it,
+    /// probes-numeric/30bc5f8fab02d0a2 `parenthesized-sub`; docs/excel-semantics/numbers.md).
+    /// A union keeps its own written parentheses (`OpUnionKind::written`), so it is not wrapped.
+    pub fn parse_cell_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+        let node = self.parse(formula, context);
+        if !self.grouped_root
+            || matches!(
+                node,
+                Node::ParseErrorKind { .. }
+                    | Node::OpUnionKind { .. }
+                    | Node::GroupedRootKind { .. }
+            )
+        {
+            return node;
+        }
+        Node::GroupedRootKind {
+            child: Box::new(node),
+        }
     }
 
     /// Parses `formula` up to `cursor` (a char offset) and reports what the

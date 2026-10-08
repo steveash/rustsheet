@@ -80,6 +80,19 @@ its sixth argument (guess) with `#ERROR!` (T-1050).
 Status: VERIFIED (observations); the iteration (update rule, stopping test, cap) is UNVERIFIED (T-0916)
 Implemented in: n/a (T-0916)
 
+
+## RATE: an empty guess is guess 0, not the default 0.1
+Rule: an empty guess argument (`RATE(48,-200,8000,0,1,)`) or a reference to an empty cell behaves as
+guess 0, not the default 0.1: the result has the same bits as an explicit `0` (0.008052981923885287)
+and differs from the 0.1 result in the last digits (…906556). Omitting the guess altogether uses 0.1
+(A4 equals A2). An empty `fv` (`RATE(48,-200,8000,,1)`, A4) is 0 (the same bits as the explicit 0 and 0.1 guess
+row A2), and an empty `type` is 0 (same bits as `type` 0, A5 = A6). A text guess (`""`) is `#VALUE!` and
+`TRUE` is guess 1 (A9 = A10, same bits). Excel converges for guess 0 here; the engine's solver returns `#NUM!` (T-0916,
+iteration fit).
+Evidence: probes/rate-empty-arguments A1-A10 (excel-graph, T-1128)
+Status: VERIFIED
+Implemented in: n/a (empty argument already reads as 0; convergence is T-0916)
+
 ## XIRR skips empty cells and accepts dates before the first; XNPV is #NUM! on empty cells
 Rule: XIRR ignores empty cells in its value and date ranges: `XIRR(A1:A3,B1:B3)` with A3 and B3 empty
 is the same 0.09999999403953552 as `XIRR(A1:A2,B1:B2)`, and so are whole-column `XIRR(Data!A:A,Data!B:B)`
