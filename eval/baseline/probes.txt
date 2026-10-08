@@ -476,10 +476,3 @@ F	probes/xirr-xnpv-whole-column-nogaps.case.json	Sheet1!A2
 F	probes/xirr-xnpv-whole-column-nogaps.case.json	Sheet1!A4
 F	probes/xirr-xnpv-whole-column-nogaps.case.json	Sheet1!A5
 F	probes/xirr-xnpv-whole-column-nogaps.case.json	Sheet1!A8
-F	probes/xmatch-xlookup-blanks.case.json	Col!M16
-F	probes/xmatch-xlookup-blanks.case.json	Col!M17
-F	probes/xmatch-xlookup-blanks.case.json	Col!M20
-F	probes/xmatch-xlookup-blanks.case.json	Col!M23
-F	probes/xmatch-xlookup-blanks.case.json	Col!M44
-F	probes/xmatch-xlookup-blanks.case.json	Err!M6
-F	probes/xmatch-xlookup-blanks.case.json	Row!A18

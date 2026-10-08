@@ -11,12 +11,7 @@ use crate::{
 
 use super::lookup_table::SearchVector;
 use crate::functions::{
-    binary_search::{
-        binary_search_descending_or_greater, binary_search_descending_or_smaller,
-        binary_search_or_greater, binary_search_or_smaller,
-    },
-    criteria::wildcard_text_matcher,
-    util::compare_values,
+    binary_search::binary_search, criteria::wildcard_text_matcher, util::compare_values,
 };
 
 #[derive(PartialEq)]
@@ -34,6 +29,17 @@ pub(crate) enum MatchMode {
     ExactMatchLarger = 1,
     Wildcard = 2,
     Regex = 3,
+}
+
+impl MatchMode {
+    /// The side a binary search may settle on when nothing is equal (`binary_search`).
+    fn ordering(self) -> std::cmp::Ordering {
+        match self {
+            MatchMode::ExactMatchSmaller => std::cmp::Ordering::Less,
+            MatchMode::ExactMatchLarger => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal,
+        }
+    }
 }
 
 /// A blank candidate in an ordered comparison: it sorts as the empty text, so it is
@@ -281,33 +287,14 @@ impl Model {
                         "Wildcard/regex match cannot be used with binary search".to_string(),
                     );
                 }
-                let idx_opt = if match_mode == MatchMode::ExactMatchLarger {
-                    if search_mode == SearchMode::BinaryAscending {
-                        binary_search_or_greater(&lookup_value, &array)
-                    } else {
-                        binary_search_descending_or_greater(&lookup_value, &array)
-                    }
-                } else if search_mode == SearchMode::BinaryAscending {
-                    binary_search_or_smaller(&lookup_value, &array)
-                } else {
-                    binary_search_descending_or_smaller(&lookup_value, &array)
-                };
-
-                match idx_opt {
+                match binary_search(
+                    &lookup_value,
+                    &array,
+                    search_mode == SearchMode::BinaryDescending,
+                    match_mode.ordering(),
+                ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
-                    Some(l) => {
-                        if match_mode == MatchMode::Exact {
-                            let v = array.get(l as usize);
-                            if compare_values(v, &lookup_value) != 0 {
-                                return CalcResult::new_error(
-                                    Error::NA,
-                                    cell,
-                                    "Not found".to_string(),
-                                );
-                            }
-                        }
-                        CalcResult::Number(l as f64 + 1.0)
-                    }
+                    Some(l) => CalcResult::Number(l as f64 + 1.0),
                 }
             }
         }

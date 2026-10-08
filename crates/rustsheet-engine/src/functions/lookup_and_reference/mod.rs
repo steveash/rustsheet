@@ -19,7 +19,7 @@ mod expand;
 mod hstack_vstack;
 mod index_arg;
 mod lookup;
-mod lookup_table;
+pub(crate) mod lookup_table;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
