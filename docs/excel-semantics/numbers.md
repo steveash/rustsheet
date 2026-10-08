@@ -289,9 +289,9 @@ Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, pro
 `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
 Whether that is a flush of a subnormal result or an overflow, underflow or cutoff inside Excel's algorithm is NOT determined (e^710
 overflows a double, so CSCH(710) is 0 without any flush; the band 709.09 < x < 709.78 would tell them apart). A normal result is kept:
-`NORM.S.DIST(-37.6,FALSE)` is 4.0441448093482273E-308 (companion FALSE); the engine is one ulp off there. The NORM.S.DIST TRUE tail is
-also recorded in the m9-norm-s-inv notes below and in statistics.md; the density cutoff near k = -37.616 is unprobed. The engine keeps
-the subnormal at the probed cells: T-1180.
+`NORM.S.DIST(-37.6,FALSE)` is 4.0441448093482273E-308 (companion FALSE); `standard_normal_pdf` (the PHI operation order) reproduces it, `normal_pdf`'s `-0.5*d*d / (SQRT_2PI*sd)` order is one ulp off. The NORM.S.DIST TRUE tail is
+also recorded in the m9-norm-s-inv notes below and in statistics.md; the density cutoff near k = -37.616 is unprobed. The engine flushes the result of CSCH, NORM.S.DIST, NORM.DIST, PHI, ERFC and ERFC.PRECISE with `arithmetic::flush_subnormal` (T-1180);
+the mechanism and the boundaries (CSCH 709.3 to 709.6, ERFC 26.4 to 26.6) are unprobed. Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
 reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
 product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flushed before the 1E+300 factor scales it back up;
