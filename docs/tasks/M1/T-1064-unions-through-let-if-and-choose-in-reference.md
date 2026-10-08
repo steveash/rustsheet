@@ -3,7 +3,7 @@ id: T-1064
 title: "Unions through LET, IF and CHOOSE in reference context (SPEC-0004 step 4)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,7 +27,7 @@ SPEC-0004 step 4 ("Intersection operands", "LET, IF, CHOOSE"). Intersection oper
 ## Out of scope
 - Defined names (T-1065).
 
-## Progress (not merged; review round 2)
+## Outcome
 - `Binding` (`Value` | `Areas`, reference_operators.rs) replaces `CalcResult` in `variable_stack`, now a `VariableStack` (also reference_operators.rs) that caps the areas all bindings in scope hold at `MAX_HELD_AREAS` (4 × `MAX_AREAS`; DEVIATION in references.md "Union area cap"; doubling-chain unit test).
 - LET values and LAMBDA arguments bind through one helper, `Model::bind_argument`: whatever `is_multi_area` admits is evaluated with `evaluate_reference_arg`, so a union through another variable, IF, CHOOSE, LET or as a LAMBDA argument stays its areas. LET in reference context evaluates its body there (`let_impl`), so `SUM(LET(x,(A1,B2),x))` = 6 and `SUM(LET(x,K1,x))` ignores text in K1.
 - `if_impl`, `choose_impl` and `let_impl` return `RefArg`; `fn_if`, `fn_choose`, `fn_let` and the single-sheet path collapse it with `into_single_area`.
@@ -36,5 +36,5 @@ SPEC-0004 step 4 ("Intersection operands", "LET, IF, CHOOSE"). Intersection oper
 - A 3-D span from IF or CHOOSE bound by LET or LAMBDA is `#VALUE!` (probes/3d-ref-let-values C1:C6, all `#VALUE!` in Excel), so no value reader sees a range across sheets; the aggregate read (C7 = 111) joins T-1158.
 - AGGREGATE's array form moved into T-1065's acceptance criteria.
 - Fixed the LET duplicate-name early return, which left the frame's earlier bindings in scope.
-- Not done: one cell budget per formula for `SUM(x,x,...)` (performance minor, approved): each argument is already bounded by `MAX_AREA_CELLS`, the same as a plain range argument repeated.
+- Not done: one pair and cell budget per formula (performance minors: `SUM(x,x,...)`, per-operand pair budgets, the `to_vec` copy, the pair path for a single-range variable), filed as T-1162. Bounded and linear as is.
 - Eval: probes fixed 1 (min-max-reference-forms D8) on top of round 1's +5; new coverage 33 cells, 3 known failures (3d-ref-choose-let C3:C4, 3d-ref-let-values C7; T-1158); no regressions.
