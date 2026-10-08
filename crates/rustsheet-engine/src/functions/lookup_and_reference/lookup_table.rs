@@ -46,11 +46,7 @@ impl LookupTable {
     ) -> CalcResult {
         match self {
             LookupTable::Range { left, .. } if as_reference => {
-                let picked = CellReferenceIndex {
-                    sheet: left.sheet,
-                    row: left.row + row,
-                    column: left.column + column,
-                };
+                let picked = offset_cell(left, row, column);
                 CalcResult::Range {
                     left: picked,
                     right: picked,
@@ -70,11 +66,7 @@ impl LookupTable {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match self {
-            LookupTable::Range { left, .. } => model.evaluate_cell(CellReferenceIndex {
-                sheet: left.sheet,
-                row: left.row + row,
-                column: left.column + column,
-            }),
+            LookupTable::Range { left, .. } => model.evaluate_cell(offset_cell(left, row, column)),
             LookupTable::Array(array) => {
                 array_node_to_calc_result(&array[row as usize][column as usize], cell)
             }
@@ -351,5 +343,14 @@ impl Model {
         let last = column2.min(last_used);
         self.record_seen_empty_range(sheet, row, last.max(column1 - 1) + 1, row, column2);
         last
+    }
+}
+
+/// The cell `(row, column)` cells (0-based) below and right of `left`.
+fn offset_cell(left: &CellReferenceIndex, row: i32, column: i32) -> CellReferenceIndex {
+    CellReferenceIndex {
+        sheet: left.sheet,
+        row: left.row + row,
+        column: left.column + column,
     }
 }

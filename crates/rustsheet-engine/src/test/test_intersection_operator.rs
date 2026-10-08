@@ -374,3 +374,21 @@ fn index_operand_intersects_the_picked_cell() {
     assert_eq!(model._get_text("C3"), *"1");
     assert_eq!(model._get_text("C4"), *"#REF!");
 }
+
+/// An aggregate sees the cell HLOOKUP picks as a reference, so COUNT skips a picked FALSE
+/// (gen-m2 60a543744fc4a8f7 A200, excel-graph; T-0235); a direct FALSE is counted.
+#[test]
+fn hlookup_aggregate_argument_is_the_picked_cell() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "FALSE");
+    model._set("B2", "5");
+    model._set("C1", "=COUNT(HLOOKUP(1,A1:B2,2))");
+    model._set("C2", "=COUNT(HLOOKUP(2,A1:B2,2))");
+    model._set("C3", "=COUNT(FALSE)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"0");
+    assert_eq!(model._get_text("C2"), *"1");
+    assert_eq!(model._get_text("C3"), *"1");
+}
