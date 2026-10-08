@@ -17,7 +17,9 @@
   time, and an array result spills `#VALUE!` per element. Both are probed.
 - **Consequences:** an imported workbook holding a refused form now gets `#ERROR!` where it used to
   get a computed value. A nested SUBTOTAL argument used to be skipped. Excel for the web will not
-  open such a file at all, and none of the upstream test workbooks hold one (all their SUBTOTAL
-  and AREAS arguments are references). Desktop Excel's behavior is UNVERIFIED: typed entry and
+  open such a file at all, and none of the upstream test workbooks hold one: listing every `<f>`
+  holding `SUBTOTAL(` or `AREAS(` in `find crates/rustsheet-xlsx/tests -name '*.xlsx'` (unzip of
+  `xl/worksheets/*.xml`) shows only reference arguments, and the ironcalc-calc suite has no
+  regressions. Desktop Excel's behavior is UNVERIFIED: typed entry and
   desktop loading of these formulas are M14 questions (decision 0039), filed as a follow-up task.
   If desktop evidence shows Excel loads and evaluates a form, the check narrows for that form.
