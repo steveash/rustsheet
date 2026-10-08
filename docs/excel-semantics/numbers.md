@@ -281,14 +281,17 @@ file (`unsupportedWorkbook`) when they appeared.
 Scoring (decision 0042): an excel-graph 0 against a kept subnormal scores as a pass when the case has a
 FALSE excel-graph companion `(x)=0` for the same formula, since Graph reports both as 0.
 Implemented in: `arithmetic::plus`/`minus` keep subnormals (T-1027); number text below the smallest
-normal reads as 0 (`Model::parse_number_text`; VERIFIED, T-1143: the `(x)=0` companions of `("1e-308"+0)`, `("1e-308"-0)`, `VALUE("1e-309")` and `VALUE("1e-308")` are all TRUE, probes/subnormal-text-and-tail-companions); `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
+normal reads as 0 (`Model::parse_number_text`; VERIFIED for the strings `1e-308` and `1e-309` only, T-1143: the `(x)=0` companions of `("1e-308"+0)`, `("1e-308"-0)`, `VALUE("1e-309")` and `VALUE("1e-308")` are all TRUE, probes/subnormal-text-and-tail-companions); `arithmetic::finite_or_num` flushes `*`, `/`, `^` and POWER; `arithmetic::flush_subnormal`
 flushes the results of PRODUCT and SUMPRODUCT (each running product, T-1007), SUMSQ (each square, T-1057), AVERAGE, AVERAGEA, AVERAGEIF(S) and
 SUBTOTAL 1/101 (final result; T-0987, T-1007), and of the postfix `%` (T-0988).
-Subnormal tails of functions (T-1143, VERIFIED, probes/subnormal-text-and-tail-companions, excel-graph 2026-10-08): number text flushing
-is recorded above.
-These functions flush a subnormal result to a true 0 (companion `(x)=0` TRUE): `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6,
--37.75 and -38, `NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and
-`ERFC.PRECISE(26.7)`. A normal result is kept: `NORM.S.DIST(-37.6,FALSE)` is 4.0441448093482273E-308 (companion FALSE); the engine is one ulp off there. The engine keeps the subnormal in the flushed cases: T-1180.
+Subnormal tails of functions (T-1143, VERIFIED at the probed arguments only, probes/subnormal-text-and-tail-companions, excel-graph
+2026-10-08): these return a true 0 (companion `(x)=0` TRUE) at `CSCH(710)`, `NORM.S.DIST(k,TRUE)` for k = -37.6, -37.75 and -38,
+`NORM.S.DIST(k,FALSE)` for k = -37.75 and -38, `PHI(-37.7)`, `NORM.DIST(19,0,0.5,FALSE)`, `ERFC(26.7)` and `ERFC.PRECISE(26.7)`.
+Whether that is a flush of a subnormal result or an overflow, underflow or cutoff inside Excel's algorithm is NOT determined (e^710
+overflows a double, so CSCH(710) is 0 without any flush; the band 709.09 < x < 709.78 would tell them apart). A normal result is kept:
+`NORM.S.DIST(-37.6,FALSE)` is 4.0441448093482273E-308 (companion FALSE); the engine is one ulp off there. The NORM.S.DIST TRUE tail is
+also recorded in the m9-norm-s-inv notes below and in statistics.md; the density cutoff near k = -37.616 is unprobed. The engine keeps
+the subnormal at the probed cells: T-1180.
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
 reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
 product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flushed before the 1E+300 factor scales it back up;
