@@ -15,6 +15,7 @@ C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/at-operand-formulatext.case.json	14
+C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
 C	probes/average-value-args.case.json	32
 C	probes/catalog/availability-01.case.json	12
@@ -269,6 +270,8 @@ C	probes/xirr-xnpv-whole-column-nogaps.case.json	8
 C	probes/xlookup-array-return.case.json	27
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
+F	probes/at-paren-operands-levels.case.json	Sheet1!E34
+F	probes/at-paren-operands-levels.case.json	Sheet1!E35
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
