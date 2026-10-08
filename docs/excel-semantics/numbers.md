@@ -403,7 +403,7 @@ confirm with an oracle probe of TANH on [0.5, 1) once T-0004 lands.
 ### NORM.S.INV / NORMSINV / NORM.INV(p,0,1): oracle sweep (T-1006)
 Probe `probes-numeric/m9-norm-s-inv` (639 sweep cells = 213 arguments x 3 functions, plus 9 flush/subnormal cells, oracle: excel-graph, 2026-10-08) is the fitting set for T-0925.
 - The three functions agree on all 213 arguments (same value or same error).
-- NORM.S.DIST flushes its far tail to 0 instead of returning a subnormal: `NORM.S.DIST(k,TRUE)=0` is TRUE for k = -37.6, -37.75
+- NORM.S.DIST returns 0 in its far tail instead of a subnormal (flush versus cutoff is not determined, see "Subnormal tails of functions"): `NORM.S.DIST(k,TRUE)=0` is TRUE for k = -37.6, -37.75
   and -38 (A640-A642) and FALSE for k = -37.5 (A643), where the value is 4.605353009581954E-308 (A646). The true Phi(-37.6) is about
   1.07E-309 (subnormal) and Phi(-37.5) about 4.6E-308 (normal), so the cutoff is where Phi crosses the smallest normal double, near
   k = -37.52 (unprobed). The bare values A644/A645 read 0.0 but are not flush evidence on their own: Graph also reports a kept
