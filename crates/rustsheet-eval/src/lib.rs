@@ -15,6 +15,7 @@ pub mod case;
 pub mod case_log;
 pub mod catalog;
 pub mod cellref;
+pub mod deviations;
 pub mod engine;
 pub mod fetch;
 pub mod overrides;

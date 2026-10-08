@@ -57,3 +57,15 @@
     a directive-5 limit, never a convenience.
   - Lifting a deviation (raising a limit until Excel's value fits) turns the cell into a pass. The
     harness warns, and the PR removes the line.
+- **Implemented (T-0191, 2026-10-08):**
+  - The harness side is `crates/rustsheet-eval/src/deviations.rs`, wired in through the suite
+    manifest key `deviations = "<file>"`. A cell giving its pinned value gets the verdict
+    `deviation`. The case's `deviations` count leaves the bit-exact rate, and the report has the
+    per-suite column. `eval-check` and `eval` run the entry check before any case.
+    docs/process/quality-gates.md and the steward skill describe the file.
+  - probes/resource-limits C12 and C14 have passed since T-0047 raised the bound to one whole
+    column (1,048,576 cells), so they are not listed. The first lines are
+    probes/lifted-range-rows C1, C2, C3 and E1, pinned `#ERROR!`. They cite
+    `docs/excel-semantics/arrays.md#array-results-above-1048576-cells-are-error`.
+  - The interim rule above is retired. `make eval-baseline` dropped the four F lines from
+    eval/baseline/probes.txt.
