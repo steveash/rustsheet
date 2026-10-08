@@ -3,7 +3,7 @@ id: T-1072
 title: "CELL address of a union, OFFSET #VALUE!, ROW #REF! (SPEC-0004 row 18)"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,9 @@ Oracle (probes/multiarea-cellfn); SPEC-0004 planned #VALUE! for CELL and ROW, bo
 
 ## Out of scope
 - Other functions' union support (their own tasks under SPEC-0004).
+
+## Outcome
+`CELL("address", union)` lists each area's top-left cell joined by ", ", other info types read the first area;
+`ROW`/`COLUMN` of a union are `#REF!` (new `Model::get_reference_ranges`). `OFFSET` already gave `#VALUE!`.
+Extra info types probed in probes/multiarea-cellfn-types and recorded in references.md. Eval: probes/multiarea-cellfn
+3/3 (was 1/3), multiarea-cellfn-types 10/10.

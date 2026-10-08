@@ -440,18 +440,23 @@ impl Model {
         if arg_count == 0 || arg_count > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let reference = if arg_count == 2 {
-            match self.get_reference(&args[1], cell) {
-                // we just take the top-left cell of the reference
-                Ok(range) => range.left,
+        // The areas of the reference; a union is read through its first area for every info type
+        // but "address", which lists them all (probes/multiarea-cellfn-types H1:H7).
+        let areas = if arg_count == 2 {
+            match self.get_reference_ranges(&args[1], cell) {
+                Ok(ranges) => ranges.iter().map(|range| range.left).collect(),
                 Err(error) => return error,
             }
         } else {
-            CellReferenceIndex {
+            vec![CellReferenceIndex {
                 sheet: cell.sheet,
                 row: cell.row,
                 column: cell.column,
-            }
+            }]
+        };
+        // we just take the top-left cell of the reference
+        let Some(&reference) = areas.first() else {
+            return CalcResult::new_error(Error::VALUE, cell, "Expected reference".to_string());
         };
         let info_type = match self.get_string(&args[0], cell) {
             Ok(s) => s.to_uppercase(),
@@ -466,18 +471,18 @@ impl Model {
                         message: "References to other sheets not implemented".to_string(),
                     };
                 }
-                let column = match number_to_column(reference.column) {
-                    Some(c) => c,
-                    None => {
+                let mut addresses = Vec::with_capacity(areas.len());
+                for area in &areas {
+                    let Some(column) = number_to_column(area.column) else {
                         return CalcResult::Error {
                             error: Error::VALUE,
                             origin: cell,
                             message: "Invalid column".to_string(),
-                        }
-                    }
-                };
-                let address = format!("${}${}", column, reference.row);
-                CalcResult::String(address)
+                        };
+                    };
+                    addresses.push(format!("${}${}", column, area.row));
+                }
+                CalcResult::String(addresses.join(", "))
             }
             "COL" => CalcResult::Number(reference.column as f64),
             "COLOR" | "FORMAT" | "PARENTHESES" | "PREFIX" | "PROTECT" | "WIDTH" => {
