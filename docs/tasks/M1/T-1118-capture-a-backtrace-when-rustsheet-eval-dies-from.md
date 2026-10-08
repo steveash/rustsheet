@@ -3,7 +3,7 @@ id: T-1118
 title: "Capture a backtrace when rustsheet-eval dies from a signal in steward and CI runs"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
