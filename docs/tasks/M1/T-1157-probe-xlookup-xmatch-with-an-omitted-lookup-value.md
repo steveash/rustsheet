@@ -3,7 +3,7 @@ id: T-1157
 title: "Probe XLOOKUP/XMATCH with an omitted lookup_value: blank or empty text, linear and binary"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
