@@ -104,49 +104,6 @@ fn engine_load_error(message: impl std::fmt::Display) -> LoadError {
     LoadError::Format(message.to_string())
 }
 
-/// Rejects zip containers that list too many entries or inflate past the byte limit.
-///
-/// The declared sizes are only a fast reject (an attacker controls them); the limit is enforced
-/// on the bytes actually produced by inflating every entry into a sink, so the importer later
-/// decompresses at most the same bounded amount.
-fn check_zip_limits(bytes: &[u8], opts: &LoadOptions) -> Result<(), LoadError> {
-    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(engine_load_error)?;
-    if u64::try_from(archive.len()).map_or(true, |n| n > u64::from(opts.max_zip_entries)) {
-        return Err(LoadError::Options(format!(
-            "zip lists {} entries, limit is {}",
-            archive.len(),
-            opts.max_zip_entries
-        )));
-    }
-    let too_big = || {
-        LoadError::Options(format!(
-            "zip inflates to more than {} bytes",
-            opts.max_uncompressed_bytes
-        ))
-    };
-    let mut declared: u64 = 0;
-    for i in 0..archive.len() {
-        declared =
-            declared.saturating_add(archive.by_index_raw(i).map_err(engine_load_error)?.size());
-    }
-    if declared > opts.max_uncompressed_bytes {
-        return Err(too_big());
-    }
-    let mut remaining = opts.max_uncompressed_bytes;
-    for i in 0..archive.len() {
-        let entry = archive.by_index(i).map_err(engine_load_error)?;
-        // Read one byte past the budget so an overrun is distinguishable from an exact fit.
-        let limit = remaining.saturating_add(1);
-        let copied = std::io::copy(&mut entry.take(limit), &mut std::io::sink())
-            .map_err(engine_load_error)?;
-        if copied > remaining {
-            return Err(too_big());
-        }
-        remaining -= copied;
-    }
-    Ok(())
-}
-
 /// All sheets of a model in workbook order.
 pub(crate) fn sheet_metas(model: &Model) -> Vec<SheetMeta> {
     model
@@ -241,7 +198,6 @@ impl Workbook {
     /// [`LoadError::Options`] when the zip exceeds the limits or the locale is unknown,
     /// [`LoadError::Format`] when the bytes are not a valid workbook.
     pub fn from_xlsx_bytes(bytes: &[u8], opts: &LoadOptions) -> Result<Self, LoadError> {
-        check_zip_limits(bytes, opts)?;
         let w = &opts.workbook;
         // The importer enforces the same limits on the parts it reads, so a caller raising
         // them here is not stopped by the importer's defaults.
@@ -590,12 +546,24 @@ mod tests {
         ));
     }
 
-    fn zip_of_zeros(len: usize) -> Vec<u8> {
+    /// A valid workbook whose `xl/sharedStrings.xml` (a part the importer reads) is replaced by
+    /// `len` zero bytes; deflate keeps the archive tiny.
+    fn workbook_with_bomb_part(len: usize) -> Vec<u8> {
         use std::io::Write;
+        let good = sample().to_xlsx_bytes(SaveOptions::default()).unwrap();
+        let mut src = zip::ZipArchive::new(Cursor::new(good)).unwrap();
         let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
-        zip.start_file("bomb.xml", zip::write::FileOptions::default())
-            .unwrap();
-        zip.write_all(&vec![0u8; len]).unwrap();
+        for i in 0..src.len() {
+            let mut entry = src.by_index(i).unwrap();
+            let name = entry.name().to_string();
+            zip.start_file(&name, zip::write::FileOptions::default())
+                .unwrap();
+            if name == "xl/sharedStrings.xml" {
+                zip.write_all(&vec![0u8; len]).unwrap();
+            } else {
+                std::io::copy(&mut entry, &mut zip).unwrap();
+            }
+        }
         zip.finish().unwrap().into_inner()
     }
 
@@ -605,7 +573,7 @@ mod tests {
             max_uncompressed_bytes: 1 << 20,
             ..LoadOptions::default()
         };
-        let bomb = zip_of_zeros(20 << 20);
+        let bomb = workbook_with_bomb_part(20 << 20);
         assert!(bomb.len() < 100_000, "test zip must be tiny");
         assert!(matches!(
             Workbook::from_xlsx_bytes(&bomb, &opts),
@@ -613,11 +581,15 @@ mod tests {
         ));
         // Understate the declared size in the central directory (offset 24 of its header).
         let mut lying = bomb;
-        let at = lying
-            .windows(4)
-            .position(|w| w == b"PK\x01\x02")
-            .expect("central directory");
-        lying[at + 24..at + 28].copy_from_slice(&10u32.to_le_bytes());
+        let mut at = 0;
+        while let Some(p) = lying[at..].windows(4).position(|w| w == b"PK\x01\x02") {
+            at += p;
+            let name = &lying[at + 46..at + 46 + 20];
+            if name == b"xl/sharedStrings.xml" {
+                lying[at + 24..at + 28].copy_from_slice(&10u32.to_le_bytes());
+            }
+            at += 4;
+        }
         assert!(matches!(
             Workbook::from_xlsx_bytes(&lying, &opts),
             Err(LoadError::Options(_))
