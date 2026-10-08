@@ -20,7 +20,8 @@ numbers.md "GEOMEAN in-range root" lists the evidence and every rejected model. 
 engine uses `r = exp(ln(P)/n)`, snapped to its 15-digit value when that value multiplied n times
 gives P back. Excel's LN and EXP are glibc's. Excel is faithful but not always correctly rounded
 (GEOMEAN(1,3) and GEOMEAN(1,2,5,1) are r, 0.55 and 0.81 ulp from the exact root), while most
-refinement-probe sets are the correctly rounded root. Ideas not yet tried: a product formed in
+refinement-probe sets are the correctly rounded root. The clearest lead: GEOMEAN(0.01,1) is exactly 0.1 (geomean-root-refinement A7, A8) although
+0.1*0.1 != 0.01 in doubles, so Excel's real condition is not the snap's. Ideas not yet tried: a product formed in
 another order or precision for n > 2, a correction applied only when |r^n - P| exceeds a bound,
 and probing two-value sets (a, b) with a*b fixed to map where Excel leaves r alone.
 Code: crates/rustsheet-engine/src/functions/statistical/geomean.rs.

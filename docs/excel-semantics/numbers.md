@@ -670,8 +670,11 @@ from sqrt(3); the correctly rounded root is …772) and GEOMEAN(1,2,"5",TRUE) is
 exactly r. Excel's own LN and EXP equal glibc's `log` and `exp` bit for bit on every probed P, and
 `EXP(LN(P)/n)` in a cell is r, so the remaining misses are not a libm difference.
 Remaining misses (r and c both wrong, one ulp): the 20-value mixed set (geomean-in-range-many A2,
-0.61 ulp from the exact root) and 25 of the 48 sets of probes/geomean-root-refinement. Rows 19-48
-of that case were picked because r and a Newton-corrected root differ there.
+0.61 ulp from the exact root) and 25 of the 48 sets of probes/geomean-root-refinement: 22 of rows
+19-48 (picked because r and a Newton-corrected root differ there), A17 (GEOMEAN(7,7,1)), and A7 and
+A8. A7 and A8 refute the snap's condition as Excel's own: GEOMEAN(0.01,1) and GEOMEAN(1,0.01) are
+exactly 0.1, the correctly rounded root, although 0.1*0.1 is not the double 0.01, so c does not
+multiply back to P there.
 Rejected models, scored on all 159 in-range cells (geomean-in-range-many, geomean-single-and-copies,
 geomean-root-refinement, geomean-overflow-count H1, ironcalc-calc GEOMEAN C23, G27, B27):
 - r with all equal values returned as is: 72 of 73 in-range-many, but GEOMEAN(1,9) refutes it.
