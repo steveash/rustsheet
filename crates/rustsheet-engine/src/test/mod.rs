@@ -71,6 +71,7 @@ mod test_model_is_empty_cell;
 mod test_move_formula;
 mod test_mround_trunc_int;
 mod test_multiplication_overflow;
+mod test_near_zero_snapping;
 mod test_networkdays_networkdaysintl;
 mod test_newer_error_kinds;
 mod test_quote_prefix;

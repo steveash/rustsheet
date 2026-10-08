@@ -6,7 +6,7 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::util::compare_values,
+    functions::{util::compare_values, Function},
     model::Model,
 };
 
@@ -68,6 +68,28 @@ pub(crate) fn flush_subnormal(value: f64) -> f64 {
         0.0
     } else {
         value
+    }
+}
+
+/// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
+/// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
+/// Excel returns exactly 0. It applies only when the cell formula's outermost operation is `+`/`-`
+/// or SUM, and not when the whole formula is parenthesized (the callers decide that). Across the
+/// 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
+/// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
+/// probes-numeric/30bc5f8fab02d0a2).
+pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
+    if x == 0.0 || y == 0.0 || x.is_sign_negative() == y.is_sign_negative() {
+        return total;
+    }
+    let smaller = x.abs().min(y.abs());
+    // 2^floor(log2(smaller)) for a normal double (its exponent bits alone); 0 for a subnormal.
+    let scale = f64::from_bits(smaller.to_bits() & 0x7FF0_0000_0000_0000);
+    // 8 ULP of `smaller` is scale * 2^-49.
+    if total.abs() < scale * 2f64.powi(-49) {
+        0.0
+    } else {
+        total
     }
 }
 
@@ -150,6 +172,56 @@ pub(crate) fn array_of_errors(
 }
 
 impl Model {
+    /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
+    /// outermost `+`/`-` or SUM to 0, but not for a wholly parenthesized formula, which is a
+    /// `GroupedRootKind` root (docs/excel-semantics/numbers.md "Near-zero snapping in addition
+    /// and subtraction"); every other node evaluates as usual.
+    pub(crate) fn evaluate_formula_root(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::OpSumKind { kind, left, right } => {
+                let left = self.evaluate_node_in_context(left, cell);
+                self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
+            }
+            Node::FunctionKind {
+                kind: Function::Sum,
+                args,
+            } => self.fn_sum_outermost(args, cell),
+            _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// A formula's outermost `+`/`-` over its evaluated left operand: like
+    /// [`Model::handle_arithmetic`], but a scalar result is snapped to 0 by [`snap_near_zero`].
+    /// Array operands are not snapped (no evidence).
+    fn handle_outermost_sum(
+        &mut self,
+        left: CalcResult,
+        right: &Node,
+        cell: CellReferenceIndex,
+        subtract: bool,
+    ) -> CalcResult {
+        let op: &dyn Fn(f64, f64) -> Result<f64, Error> = if subtract { &minus } else { &plus };
+        let l = self.number_or_array(left, cell);
+        let r = self.get_number_or_array(right, cell);
+        // The two addends of a scalar addition (a subtraction adds the negated right operand).
+        let addends = match (&l, &r) {
+            (Ok(NumberOrArray::Number(x)), Ok(NumberOrArray::Number(y))) => {
+                Some((*x, if subtract { -*y } else { *y }))
+            }
+            _ => None,
+        };
+        match (self.arithmetic_on_values(l, r, cell, op), addends) {
+            (CalcResult::Number(total), Some((x, y))) => {
+                CalcResult::Number(snap_near_zero(x, y, total))
+            }
+            (result, _) => result,
+        }
+    }
+
     /// Evaluates a chain of value operators (`=A1+A2*3&"x"`) in a loop down its
     /// left operands (T-0128): the first operand, then each operator over the
     /// result so far and its right operand, the same order and results as
