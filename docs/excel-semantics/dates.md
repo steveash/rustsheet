@@ -247,13 +247,13 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
   ISO `T` separator is not accepted: `"2026-01-01T24:00:00"` and `"2026-01-01T12:00:00"` are
   #VALUE! in DATEVALUE and VALUE (rows 5-6), so IronCalc's `T24:00:00` rollover test (upstream
   issue 1379, whose DATEVALUE_issue_1379.xlsx only evidences the space-separated
-  `"2026-01-01 24:00:00"` = 46024)   is not ported. In month-day-year text the comma may be a word of its own
+  `"2026-01-01 24:00:00"` = 46024) is not ported. In month-day-year text the comma may be a word of its own
   after the day or the month (`"July 1 , 2026"`, `"July 1  ,  2026"`, `"July 1 ,  2026"`,
-  `"July , 1, 2026"`, `"July , 1 , 2026"`, `"July 1 , 26"` = 46204; datevalue-separator-spaces row 15,
-  probes/datevalue-comma-spaces), but it still needs a space after it: `"July 1 ,2026"`,
+  `"July , 1, 2026"`, `"July , 1 , 2026"`, `"July 1 , 26"` = 46204; probes/datevalue-separator-spaces row 15 and
+  probes/datevalue-comma-spaces rows 2-5, 8, 9, 15), but it still needs a space after it: `"July 1 ,2026"`,
   `"Jul 1 ,2026"`, `"1 July , 2026"` and `"1 July, 2026"` are #VALUE!, as are `"July , 1 2026"` and
   `"July 1, , 2026"`. A clock suffix works as for `"July 1, 2026 10:00"` (`"July 1 , 2026 10:00"`: DATEVALUE
-  46204, VALUE 46204.41666…); any other fifth word is #VALUE! (`"July 1 , 2026 foo"`; rows 11-16).
+  46204, VALUE 46204.41666…); any other fifth word is #VALUE! (`"July 1 , 2026 foo"`; probes/datevalue-comma-spaces rows 11-16; row 12 is `"July , 1, 2026 10:00"`, same values).
 - **Clock suffix**: date text may end in a clock time (`"July 1, 2026 10:00"`,
   `"Jul 1, 2026 4:35 PM"`, `"July 1, 2026 6 PM"`): VALUE adds it, DATEVALUE returns the day the
   sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
