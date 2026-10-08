@@ -3,7 +3,7 @@ id: T-1180
 title: "Flush subnormal results of CSCH, NORM.S.DIST, PHI, NORM.DIST, ERFC and ERFC.PRECISE to 0"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
