@@ -3,6 +3,7 @@
 # known failures. Removing an F line = a fix. Adding an F line to an unchanged case = a regression
 # and requires --allow-regressions plus a justification in the PR (docs/process/quality-gates.md).
 C	fixtures/ifs-legacy-range-criteria.xlsx	20
+C	fixtures/rich-error-export-formulas.xlsx	15
 C	fixtures/rich-error-export.xlsx	15
 C	fixtures/shared-string-phonetic-runs.xlsx	3
 C	fixtures/t-d-iso-date-cells.xlsx	8
