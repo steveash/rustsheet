@@ -772,7 +772,7 @@ evaluates both and compares. MRs are typed by **exactness**:
 
 MR-UNION is implemented (T-1149) as a seeded Rust unit test in the engine
 (`crates/rustsheet-engine/src/test/test_union_sum_metamorphic.rs`), not as a gen-m1 policy: it
-needs no oracle and no xlsx, so it runs in `make check` (`cargo test`) with 120 pairs
+needs no oracle and no xlsx (gen-m1 policies emit xlsx cases scored through the eval pipeline against Excel values), so it runs in `make check` (`cargo test`) with 120 pairs
 `SUM((r1,r2[,r3]))` / `SUM(r1,r2[,r3])` over single cells, ranges, whole columns and duplicated
 (overlapping) operands. Skipping an area in `for_each_position_in_areas` fails it.
 

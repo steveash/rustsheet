@@ -80,3 +80,21 @@ impl Model {
         self.range_clear_all(&area)
     }
 }
+
+/// Deterministic xorshift64 generator for seeded tests; `seed` must be non-zero.
+pub struct Rng(pub u64);
+
+impl Rng {
+    pub fn next(&mut self) -> u64 {
+        let mut x = self.0;
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        self.0 = x;
+        x
+    }
+
+    pub fn below(&mut self, n: u64) -> u64 {
+        self.next() % n
+    }
+}

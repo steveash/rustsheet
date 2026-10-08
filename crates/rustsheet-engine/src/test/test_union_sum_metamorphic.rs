@@ -5,26 +5,9 @@
 //! (probes/multiarea-agg H1:H3; docs/excel-semantics/references.md "Multi-area references in
 //! functions"). No oracle needed: the two cells of each pair must agree with each other.
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, Rng};
 
 const PAIRS: usize = 120;
-
-/// Small deterministic generator (SplitMix64); the family is reproducible from `SEED`.
-struct Rng(u64);
-
-impl Rng {
-    fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.0;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
-    }
-
-    fn below(&mut self, n: u64) -> u64 {
-        self.next() % n
-    }
-}
 
 const SEED: u64 = 0x5EED_1149;
 const ROWS: u64 = 8;
@@ -87,11 +70,15 @@ fn union_sum_equals_separate_arguments() {
         pairs.push((union_cell, plain_cell, joined));
     }
     model.evaluate();
+    let mut numeric = 0;
     for (union_cell, plain_cell, joined) in pairs {
+        numeric += usize::from(model._get_text(&plain_cell).parse::<f64>().is_ok());
         assert_eq!(
             model._get_text(&union_cell),
             model._get_text(&plain_cell),
             "SUM(({joined})) vs SUM({joined})"
         );
     }
+    // Guards against both sides agreeing on an error.
+    assert!(numeric > PAIRS / 2, "only {numeric} numeric results");
 }

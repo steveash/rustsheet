@@ -22,7 +22,7 @@
 // by design. When the states differ and one of them
 // shows a #CIRC! or a #SPILL!, only 3 and 4 are required.
 
-use crate::test::util::new_empty_model;
+use crate::test::util::{new_empty_model, Rng};
 use crate::types::{Cell, FormulaValue};
 use crate::Model;
 
@@ -30,23 +30,6 @@ const ROWS: i32 = 5;
 const COLS: i32 = 5;
 const CELLS_PER_SHEET: usize = 12;
 const SEEDS: u64 = 1000;
-
-struct Rng(u64);
-
-impl Rng {
-    fn next(&mut self) -> u64 {
-        // xorshift64
-        let mut x = self.0;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        self.0 = x;
-        x
-    }
-    fn below(&mut self, n: u64) -> u64 {
-        self.next() % n
-    }
-}
 
 fn column_name(column: i32) -> String {
     ((b'A' + (column - 1) as u8) as char).to_string()
