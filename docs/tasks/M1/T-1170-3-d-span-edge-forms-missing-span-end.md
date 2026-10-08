@@ -3,7 +3,7 @@ id: T-1170
 title: "3-D span edge forms: missing span end is NAME, explicit @ of a span is REF, HLOOKUP and COUNTBLANK over IF-wrapped spans"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
