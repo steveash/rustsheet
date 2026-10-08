@@ -236,6 +236,7 @@ C	probes/text-number-tiny-paths.case.json	46
 C	probes/text-number-tiny-zero.case.json	88
 C	probes/text-number-tiny.case.json	60
 C	probes/text-number-words.case.json	62
+C	probes/text-result-limit-errors.case.json	11
 C	probes/text-result-limit.case.json	24
 C	probes/timevalue-ampm-limits.case.json	44
 C	probes/timevalue-component-limits.case.json	72
