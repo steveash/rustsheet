@@ -571,11 +571,13 @@ P is not 1 (1E-300: n - floor(log2 P) is 984 at 1700 copies, k = 0, and 1042 at 
 would wrap: 2^-1000 up to 8200, 2^-100 up to 4000, and 2 at 1101 and 2000 copies are exact
 (probes/geomean-overflow-count F1, geomean-overflow-cut C4, -cut-2 C18). So the `#NUM!` of 2^1000 from
 1500 copies is not the wrap either, and stays unexplained. A positive exponent sum with P above 1 and a
-wrap (say 1100 copies of 2^1000 * 1.0001) is unprobed; RustSheet adds the 2048 * k there too. RustSheet
-applies the rule only when the plain product leaves the double range (an in-range product with a wrap,
-such as 1100 copies of 1.0001, is unprobed). Ruled out earlier: the excess does not depend only on the exponent sum (powers of
-two with a larger sum gain nothing), is not a fixed count threshold (1E-300 and 1E-307 step at
-different counts) and is not the significand product alone (1E-307 steps at a smaller product).
+wrap (say 1100 copies of 2^1000 * 1.0001) is unprobed; RustSheet adds the 2048 * k there too. So is
+an in-range plain product whose significand product wraps (say 1100 copies of 1.0001); RustSheet
+applies the rule only when the plain product leaves the double range (T-1153 probes both). The rule
+was fitted after the probes were filled; no prediction made from it has been probed yet. Ruled out
+earlier: the excess does not depend only on the exponent sum (powers of two with a larger sum gain
+nothing), is not a fixed count threshold (1E-300 and 1E-307 step at different counts) and is not the
+significand product alone (1E-307 steps at a smaller product).
 Evidence: probes/geomean-root-models Fallback!D1-D2, probes/geomean-overflow-count A1-K1 (range form),
 probes/geomean-overflow-cut, -cut-2, -cut-3 (array form `GEOMEAN(IF(SEQUENCE(n),v))`, which matches the
 range form on the repeated controls), excel-graph, 2026-10-07, T-1108 and T-1112. The predicted cuts

@@ -25,6 +25,9 @@ several e (10, 100, 500, 900, 1000, 1023) across counts, and non-powers with a s
 
 ## Acceptance criteria
 - [ ] A bracketing probe filled from excel-graph; the rule goes in numbers.md.
+- [ ] The probe also checks T-1120's unprobed extrapolations: a positive exponent sum with a significand
+  product above 1 that wraps (1100+ copies of 2^1000 * 1.0001) and an in-range plain product whose
+  significand product wraps (1100 to 3000 copies of 1.0001); the engine follows whatever Excel shows.
 - [ ] The engine matches probes/geomean-exponent-sum-2 C12-C18 and the new cells, with no regression.
 - [ ] `make check` green; reviewers approve.
 
