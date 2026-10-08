@@ -3,7 +3,7 @@ id: T-1040
 title: "Oracle sweep: normal CDF and erfc (NORM.S.DIST cumulative, ERFC, ERFC.PRECISE, GAUSS)"
 milestone: M9
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
