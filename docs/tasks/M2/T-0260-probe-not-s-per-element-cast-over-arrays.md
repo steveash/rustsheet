@@ -3,7 +3,7 @@ id: T-0260
 title: "Probe NOT's per-element cast over arrays: text, empty and error elements"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
