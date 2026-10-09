@@ -10,7 +10,7 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        let values = self.numbers_from_reference_arg(arg, cell)?;
+        let values = self.numbers_from_rank_ref_arg(arg, cell)?;
 
         let numeric_values: Vec<f64> = values.into_iter().flatten().collect();
         Ok(numeric_values)
