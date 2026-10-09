@@ -3,7 +3,7 @@ id: T-1178
 title: "Probe whether Excel keeps parentheses nested inside an @ operand"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
