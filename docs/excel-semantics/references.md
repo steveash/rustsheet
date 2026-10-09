@@ -767,7 +767,7 @@ Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134
 
 ## Order statistics over unions
-Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells in the order written;
+Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;
 overlapping areas count twice (`LARGE((A1:B2,B2),2)` = 9 with A1:B2 = 7,1,3,9 and B2 = 9; `SMALL((A1:B2,B2),2)` = 3;
 `RANK(7,(A1:B2,B2))` = 3; `RANK.AVG(9,(A1:B2,B2))` = 1.5). The order of the areas does not change the result
 (`LARGE((C3,B2,A1),2)` = `LARGE((A1,B2,C3),2)` = 7, `RANK(7,(C3,B2,A1))` = `RANK(7,(A1,B2,C3),1)` = 2). A real error cell in an area propagates:
