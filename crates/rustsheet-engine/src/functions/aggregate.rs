@@ -18,6 +18,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
+    reference_operators::RefArg,
 };
 
 /// What an option (0-7) leaves out.
@@ -257,10 +258,10 @@ impl Model {
             );
         };
         let mut collected = Collected::default();
-        let result = match array {
-            Node::OpUnionKind { .. } => self.reference_areas(array, cell),
-            _ => match self.evaluate_node_with_reference(array, cell) {
-                CalcResult::Range { left, right } => Ok(vec![Range { left, right }]),
+        // A union reaches it behind a name, a LET variable, IF or CHOOSE too (SPEC-0004).
+        let result = match self.evaluate_reference_arg(array, cell) {
+            RefArg::Ranges(ranges) => Ok(ranges.to_vec()),
+            RefArg::Value(value) => match value {
                 CalcResult::Array(rows) => {
                     for value in rows.iter().flatten() {
                         collect_value(value_of(value, cell), ignore, &mut collected);
