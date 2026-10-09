@@ -9,6 +9,9 @@ use crate::{
     model::Model,
 };
 
+/// The largest `n` whose `n!` is finite in a double; MULTINOMIAL's arguments may sum to at most this.
+const MAX_FACTORIAL_ARGUMENT: u64 = 170;
+
 fn log_factorial(n: u64) -> f64 {
     (1..=n).map(|i| (i as f64).ln()).sum()
 }
@@ -114,18 +117,23 @@ impl Model {
             }
         }
 
-        // Compute (sum)! / (n1! * n2! * ... * nk!) using f64 to handle large values.
-        // Use the log-factorial approach for numerical stability.
-        let sum: u64 = values.iter().sum();
+        // Excel is #NUM! once the truncated arguments sum past 170, the largest n whose n! is
+        // finite in a double (`MULTINOMIAL(170)` is a number, `(171)`, `(170,1)` and `(100,71)`
+        // are #NUM!). Checking first also bounds the factorial loops below to 170 steps whatever
+        // the argument (directive 5). Excel: see docs/excel-semantics/numbers.md#multinomial-of-a-huge-argument
+        let sum = match values.iter().try_fold(0_u64, |acc, &v| acc.checked_add(v)) {
+            Some(sum) if sum <= MAX_FACTORIAL_ARGUMENT => sum,
+            _ => {
+                return CalcResult::new_error(
+                    Error::NUM,
+                    cell,
+                    "MULTINOMIAL: result overflow".to_string(),
+                )
+            }
+        };
+        // Compute (sum)! / (n1! * n2! * ... * nk!) with log-factorials for numerical stability.
         let log_result = log_factorial(sum) - values.iter().map(|&v| log_factorial(v)).sum::<f64>();
         let result = log_result.exp();
-        if !result.is_finite() {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "MULTINOMIAL: result overflow".to_string(),
-            );
-        }
         CalcResult::Number(result.round())
     }
 }

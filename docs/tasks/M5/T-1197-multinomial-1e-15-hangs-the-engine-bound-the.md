@@ -3,7 +3,7 @@ id: T-1197
 title: "MULTINOMIAL(1E+15) hangs the engine: bound the loop (gen-m5 timeout)"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -23,3 +23,7 @@ T-1192's gen-m5 case 21b9ae9affd6b38c times out (60s): `MULTINOMIAL(1E+15)` hang
 
 ## Out of scope
 -
+
+## Outcome
+Superseded by T-1217, which bounds MULTINOMIAL with Excel's evidence (probes/multinomial-huge: `#NUM!` once the
+truncated arguments sum past 170, including `MULTINOMIAL(1E+15)`). gen-m5/21b9ae9affd6b38c now runs to completion.

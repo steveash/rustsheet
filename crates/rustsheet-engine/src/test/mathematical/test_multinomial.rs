@@ -65,3 +65,38 @@ fn test_multinomial_overflow_num_error() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#NUM!");
 }
+
+#[test]
+fn test_multinomial_sum_past_170_is_num_error() {
+    // Excel (probes/multinomial-huge): 170 is a number; a sum past 170 is #NUM!.
+    let mut model = new_empty_model();
+    model._set("A1", "=MULTINOMIAL(170)");
+    model._set("A2", "=MULTINOMIAL(171)");
+    model._set("A3", "=MULTINOMIAL(170,1)");
+    model._set("A4", "=MULTINOMIAL(85,85)");
+    model._set("A5", "=MULTINOMIAL(100,71)");
+    model._set("A6", "=MULTINOMIAL(1E+15,\"x\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "1");
+    assert_eq!(model._get_text("A2"), "#NUM!");
+    assert_eq!(model._get_text("A3"), "#NUM!");
+    assert_ne!(model._get_text("A4"), "#NUM!");
+    assert_eq!(model._get_text("A5"), "#NUM!");
+    assert_eq!(model._get_text("A6"), "#VALUE!");
+}
+
+#[test]
+fn test_multinomial_huge_arguments_are_bounded() {
+    // These looped once per unit of the argument (or overflowed the u64 sum) before T-1217.
+    let start = std::time::Instant::now();
+    let mut model = new_empty_model();
+    model._set("A1", "=MULTINOMIAL(1E+15)");
+    model._set("A2", "=MULTINOMIAL(1E+300)");
+    model._set("A3", "=MULTINOMIAL(2^63,2^63)");
+    model._set("A4", "=MULTINOMIAL(1E+307,1E+307,1E+307)");
+    model.evaluate();
+    for cell in ["A1", "A2", "A3", "A4"] {
+        assert_eq!(model._get_text(cell), "#NUM!", "{cell}");
+    }
+    assert!(start.elapsed() < std::time::Duration::from_secs(5));
+}

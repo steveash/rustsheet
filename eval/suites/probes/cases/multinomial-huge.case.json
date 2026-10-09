@@ -1,0 +1,49 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "MULTINOMIAL with huge arguments: overflow threshold and bounded work (T-1217)",
+  "tags": [
+    "M5",
+    "probe",
+    "multinomial"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1000000000000000.0,
+        "A2": 1,
+        "C1": "=MULTINOMIAL(170)",
+        "C2": "=MULTINOMIAL(171)",
+        "C3": "=MULTINOMIAL(1E+15)",
+        "C4": "=MULTINOMIAL(1E+15,1)",
+        "C5": "=MULTINOMIAL(2^53)",
+        "C7": "=MULTINOMIAL(85,85)",
+        "C8": "=MULTINOMIAL(86,86)",
+        "C9": "=MULTINOMIAL(3,1E+15)",
+        "C10": "=MULTINOMIAL(2^63,2^63)",
+        "C11": "=MULTINOMIAL(0)",
+        "C12": "=MULTINOMIAL(0,0)",
+        "C13": "=MULTINOMIAL(1)",
+        "C14": "=MULTINOMIAL(169,1)",
+        "C15": "=MULTINOMIAL(170,1)",
+        "C16": "=MULTINOMIAL(1,170)",
+        "C17": "=MULTINOMIAL(100,70)",
+        "C18": "=MULTINOMIAL(100,71)",
+        "C19": "=MULTINOMIAL(1000,1)",
+        "C20": "=MULTINOMIAL(1E+15,1E+15)",
+        "C21": "=MULTINOMIAL(A1)",
+        "C22": "=MULTINOMIAL(A1:A2)",
+        "C24": "=MULTINOMIAL(4294967296)",
+        "C25": "=MULTINOMIAL(171,-1)",
+        "C26": "=MULTINOMIAL(1E+15,\"x\")",
+        "C27": "=MULTINOMIAL(2,3)",
+        "C28": "=MULTINOMIAL(1,1)",
+        "C29": "=MULTINOMIAL(10,10)",
+        "C30": "=MULTINOMIAL(1,2,3,4)",
+        "C31": "=MULTINOMIAL(20)",
+        "C32": "=MULTINOMIAL(50,50)"
+      }
+    }
+  ],
+  "expected": {}
+}

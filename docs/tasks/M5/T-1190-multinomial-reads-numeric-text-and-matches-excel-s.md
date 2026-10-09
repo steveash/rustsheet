@@ -23,6 +23,8 @@ and a blank cell reads as 0. The engine returns the exact value and `#VALUE!` fo
 (failing cells C9, C35, C47, C49:C53). Finding Excel's algorithm is numeric fitting: probe more
 (many small and large argument sets, one and three arguments) and test candidates (a running
 product of COMBIN-like ratios, exp(gammaln), division order) against every cell.
+More evidence: probes/multinomial-huge (T-1217) has nine more inexact cells, e.g. `MULTINOMIAL(20)` =
+0.9999999999999969, `(170)` = 1.0000000000001974, `(10,10)` = 184755.9999999998, `(85,85)` = 9.144841845133712E+49.
 Code: `fn_multinomial` in crates/rustsheet-engine/src/functions/math_and_trigonometry/multinomial.rs.
 Semantics: docs/excel-semantics/numbers.md "MULTINOMIAL is inexact"; coercion.md "GCD / LCM / MULTINOMIAL range cells".
 

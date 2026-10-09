@@ -843,7 +843,15 @@ Status: VERIFIED for the observed cells; the threshold and SIN/TAN siblings are 
 Tasks: T-1192, T-1201, T-1202
 
 ## MULTINOMIAL of a huge argument
-Rule: Excel returns an answer for `MULTINOMIAL(1E+15)` at once (value not yet probed); the engine loops proportionally to the argument and hangs.
-Evidence: gen-m5/21b9ae9affd6b38c Calc!A25 (the case times out here; its oracle `#NUM!` comes from a base-0 LOG, so it says nothing about MULTINOMIAL's value).
-Status: UNVERIFIED (Excel's value)
-Tasks: T-1197
+Rule: MULTINOMIAL is `#NUM!` whenever its truncated arguments sum past 170 (the largest n whose n! is finite in a
+double): `MULTINOMIAL(170)` = 1.0000000000001974 and `(85,85)` = 9.144841845133712E+49, but `(171)`, `(170,1)`,
+`(1,170)`, `(100,71)`, `(1E+15)`, `(2^53)`, `(2^63,2^63)` and `(4294967296)` are `#NUM!`, as is a range holding 1E+15.
+A text argument is still `#VALUE!` (`MULTINOMIAL(1E+15,"x")`): every argument is read before the overflow check.
+The answers come at once, so Excel does not loop per unit of the argument either. (The values for sums up to 170 are
+inexact, see "MULTINOMIAL is inexact".) A workbook with the literal `1E+300` or `1E+308` in a MULTINOMIAL formula was
+refused by excel-graph as unsupported, so those two forms are unprobed.
+Evidence: probes/multinomial-huge (excel-graph, 2026-10-09, T-1217).
+Ours: the same rule; the overflow check runs before the factorial loops, which then take at most 170 steps.
+Status: VERIFIED
+Implemented in: `fn_multinomial` (crates/rustsheet-engine/src/functions/math_and_trigonometry/multinomial.rs).
+Tasks: T-1197, T-1217, T-1190 (inexact values)
