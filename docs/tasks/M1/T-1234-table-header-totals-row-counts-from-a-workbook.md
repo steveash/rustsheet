@@ -3,7 +3,7 @@ id: T-1234
 title: "Table header/totals row counts from a workbook use unchecked i32 arithmetic in structured_reference_operand (follow-up of T-1210)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
