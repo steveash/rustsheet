@@ -3,7 +3,7 @@ id: T-1092
 title: "A called LET name follows Excel: #REF! for a reference, odd results for values"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
