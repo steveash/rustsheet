@@ -708,12 +708,6 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
-F	probes/text-argument-modes.case.json	Sheet1!C31
-F	probes/text-argument-modes.case.json	Sheet1!F17
-F	probes/text-argument-modes.case.json	Sheet1!F18
-F	probes/text-argument-modes.case.json	Sheet1!F19
-F	probes/text-argument-modes.case.json	Sheet1!F5
-F	probes/text-argument-modes.case.json	Sheet1!F6
 F	probes/text-modes-bahttext.case.json	Sheet1!C1
 F	probes/text-modes-bahttext.case.json	Sheet1!C2
 F	probes/text-modes-dbcs.case.json	Sheet1!C3
