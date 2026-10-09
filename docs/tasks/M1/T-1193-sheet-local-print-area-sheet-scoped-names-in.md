@@ -3,7 +3,7 @@ id: T-1193
 title: "Sheet-local Print_Area: sheet-scoped names in the case loader and _xlnm. names (SPEC-0004 probe row 14)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
