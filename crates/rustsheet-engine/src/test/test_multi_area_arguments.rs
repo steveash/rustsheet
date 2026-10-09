@@ -422,6 +422,11 @@ fn plain_intersection_operands_take_the_pair_path() {
     model
         .new_defined_name("box", None, "Sheet1!$A$1:$B$2")
         .unwrap();
+    model.define_name("arr", None, "{1,2,3}").unwrap();
+    model
+        .define_name("mu", None, "Sheet1!$A$1,Sheet1!$B$2")
+        .unwrap();
+    model.define_name("alias", None, "mu").unwrap();
     let context = CellReferenceRC {
         sheet: "Sheet1".to_string(),
         row: 1,
@@ -434,6 +439,10 @@ fn plain_intersection_operands_take_the_pair_path() {
         ("IF(TRUE,A1) A1", true),
         ("CHOOSE(1,A1) A1", true),
         ("LET(x,A1,x) A1", true),
+        // A formula-bodied name is multi-area only when its body is (T-1065).
+        ("arr", false),
+        ("mu A1", true),
+        ("alias A1", true),
     ] {
         let node = model.parser.parse(formula, &context);
         assert_eq!(model.is_multi_area(&node), multi, "{formula}");
@@ -478,6 +487,7 @@ fn union_bodied_names_stand_for_their_areas() {
     model
         .define_name("xs", None, "Data!$A$1,Sheet1!$A$1")
         .unwrap();
+    model.define_name("arr", None, "{1,2,3}").unwrap();
     results(
         &mut model,
         &[
@@ -493,6 +503,8 @@ fn union_bodied_names_stand_for_their_areas() {
             ("H10", "=SUM(alias)", "6"),
             ("H11", "=SUM(xs)", "#VALUE!"),
             ("H12", "=AGGREGATE(14,0,IF(TRUE,(A1,B2)),2)", "1"),
+            // A name whose body is not a union keeps its path (probes/union-defined-name-uses H9).
+            ("H13", "=ROWS(FREQUENCY(arr,2))", "2"),
         ],
     );
 }

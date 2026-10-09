@@ -436,11 +436,19 @@ impl Model {
     /// Whether `node` may stand for several areas, so evaluating it as an intersection
     /// operand or reference argument needs an area list.
     /// An intersection is multi-area only if a union sits somewhere under it: a chain of
-    /// plain references (`A1:C3 B1:D4 C1:C9`) and a name for a cell or a range (`box A1`)
-    /// stay on the allocation-free pair path. A name is not looked through: its body is
-    /// checked again, under the name depth limit, when it is evaluated
-    /// ([`Model::defined_name_reference`]). Recursion is bounded by the parser's depth cap.
+    /// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path. A name
+    /// is multi-area when its formula body is: a name for a cell, a range, an array or a
+    /// scalar formula keeps the path it had (`box A1`, `FREQUENCY(arr,2)`). Recursion is
+    /// bounded by the parser's depth cap.
     pub(crate) fn is_multi_area(&self, node: &Node) -> bool {
+        self.may_be_multi_area(node, true)
+    }
+
+    /// [`Model::is_multi_area`]; `look_through_names` is false inside a name's body, where a
+    /// name with a formula body counts as multi-area without being opened, so names that
+    /// refer to each other cannot recurse here (they are bounded when evaluated, by
+    /// [`Model::within_defined_name`]).
+    fn may_be_multi_area(&self, node: &Node, look_through_names: bool) -> bool {
         match node {
             // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let
             // H2, multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
@@ -450,10 +458,13 @@ impl Model {
                 kind: Function::If | Function::Choose | Function::Let,
                 ..
             } => true,
-            // So may a name whose body is a formula (probes/union-defined-name H4).
-            Node::DefinedNameKind(_) => self.defined_name_formula(node).is_some(),
+            // So may a name whose body does (probes/union-defined-name H4).
+            Node::DefinedNameKind(_) => self
+                .defined_name_formula(node)
+                .is_some_and(|body| !look_through_names || self.may_be_multi_area(&body, false)),
             Node::OpIntersectKind { left, right, .. } => {
-                self.is_multi_area(left) || self.is_multi_area(right)
+                self.may_be_multi_area(left, look_through_names)
+                    || self.may_be_multi_area(right, look_through_names)
             }
             _ => false,
         }

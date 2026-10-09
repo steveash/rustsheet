@@ -37,12 +37,14 @@ The parser now reads a top-level comma as the bare union (`Parser::parse_bare_un
 A name whose body is a union now stands for its areas wherever a reference is accepted:
 `Model::defined_name_reference` evaluates a `Formula` body through `evaluate_reference_arg` under
 the name depth and budget limits, and `is_multi_area` became a `Model` method that is true for a
-name with a `Formula` body (cell and range names keep the allocation-free intersection path; a
-body that cannot stand for areas keeps the value path, so root snapping still applies). AGGREGATE's
+name whose formula body may itself stand for several areas (looked through one level; cell,
+range, array and scalar names keep their old paths, so FREQUENCY and root snapping are unchanged). AGGREGATE's
 array form reads its argument through `evaluate_reference_arg`, so it takes a union behind a name,
 LET, IF or CHOOSE. Unlike SPEC-0004's plan there is no stored `ParsedDefinedName::Areas` and no
 per-workbook cap (names store no area list; spec "As built" note and references.md "Union area cap"
 updated). Unit tests: names in SUM/COUNT/AREAS/INDEX/AGGREGATE/LET/intersection, a name of a name,
 a cross-sheet body, the area cap through a name, self-referential union names, and an xlsx
-round-trip of a union body. Eval delta: probes 360 -> 357 known failures (union-defined-name H1, H4,
-H5 fixed), 0 regressions. Probe row 14 (sheet-local Print_Area) split to T-1193.
+round-trip of a union body. New probe probes/union-defined-name-uses (18 cells, excel-graph) backs
+AREAS, INDEX, AGGREGATE, name-of-name, CHOOSE and LET uses; 17 pass, COUNTBLANK(bad) is a
+pre-existing gap (T-1195). Eval delta: probes 360 -> 358 known failures (union-defined-name H1, H4,
+H5 fixed; one new-coverage failure), 0 regressions. Follow-ups: T-1193, T-1194, T-1195, T-1196. Probe row 14 (sheet-local Print_Area) split to T-1193.

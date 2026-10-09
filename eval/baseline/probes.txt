@@ -290,6 +290,7 @@ C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/typed-paren-number-input.case.json	24
 C	probes/union-accepted.case.json	9
 C	probes/union-cut-precedence.case.json	15
+C	probes/union-defined-name-uses.case.json	18
 C	probes/union-defined-name.case.json	5
 C	probes/union-neg-operand.case.json	2
 C	probes/union-operand-double-minus.case.json	2
@@ -648,6 +649,7 @@ F	probes/subtotal-hidden-filtered.case.json	Nest!G7
 F	probes/subtotal-hidden-filtered.case.json	Nest!G8
 F	probes/subtotal-hidden-filtered.case.json	Nest!G9
 F	probes/text-result-limit.case.json	Sheet1!C24
+F	probes/union-defined-name-uses.case.json	Sheet1!H12
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1

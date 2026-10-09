@@ -431,7 +431,13 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   another name or a LET variable too; `=mu` stays `#VALUE!` (probes/union-defined-name H1:H5). The engine
   evaluates the body at each use (`Model::defined_name_reference`), under the name depth and budget limits, so a
   name that reaches itself through a union (`loop` = `Sheet1!$A$1,loop`) is `#NAME?` like any self-reference.
-  A cross-sheet body is `#VALUE!` in SUM (probes/multiarea-xname). A sheet-local `Print_Area` is T-1193.
+  A cross-sheet body is `#VALUE!` in SUM (probes/multiarea-xname). Probed (probes/union-defined-name-uses, excel-graph
+  2026-10-09): `AREAS(mu)` 2, `INDEX(mu,1,1,2)` 5, `AGGREGATE(14,0,mu,1)` 5 and `(15,0,mu,1)` 1, a name of a name (`alias` =
+  `mu`: `SUM` 6, `alias A1` 1, `ISREF` TRUE, `AREAS` 2), a CHOOSE body returning a union (`SUM(ch)` 6, `COUNT(ch)` 2),
+  `LET(x,mu,SUM(x))` 6, `SUM(FREQUENCY(mu,2))` 2 and `COUNTBLANK(mu)` `#VALUE!`. A name whose body is not a union keeps
+  its path: `FREQUENCY(arr,2)` with `arr` = `{1,2,3}` is {2;1}. `COUNTBLANK(bad)` with `bad` = `=1+"a"` is `#VALUE!` in
+  Excel (engine 0, T-1195). The self-referential case is an engine extension of probes/defined-name-formula-bodies H11
+  bounded per decision 0014, not probed. A sheet-local `Print_Area` is T-1193.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
