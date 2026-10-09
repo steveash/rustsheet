@@ -181,7 +181,9 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 ### Stored `#BUSY!` (amendment, T-1020)
 The answers T-1222 implements. Each cites evidence or is marked UNVERIFIED.
 1. **A new variant, `Error::BUSY`, appended after `FIELD`.** For the reason given in Engine step 1,
-   appending keeps every serialized index. There is no `_` arm, so the compiler lists every site.
+   appending keeps every serialized index. No `_` arm is added, so the compiler lists every
+   exhaustive match. `exported_error_literal` is the exception: it already ends in
+   `_ => stored_literal()`, so the export round-trip test covers it.
    - `Display` and `english_literal`: `"#BUSY!"`. `to_localized_error_string` gives the en-US
      name, as for the other newer kinds (not in `Language`, non-goal).
    - `error_type_code`: **0** (S!B1, H1). The table is still the single source. Its comment keeps
@@ -286,7 +288,8 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
   - The facade sync tests, plus a Python `XlError("#BUSY!")` test.
   - An xlsx import test of a stored `<c t="e"><v>#BUSY!</v></c>` (ERROR.TYPE 0), and an export
     round trip that writes `#BUSY!`.
-  - Eval: probes/error-stored-constants passes 24/24, which clears its 7 known failures.
+  - Eval: probes/error-stored-constants passes 24/24, which clears its known failures (S!B1, D1, H1, I1 in
+    eval/baseline/probes.txt today).
 
 ## Rollout
 | # | Task | Lane | Size | Tier | Depends on |

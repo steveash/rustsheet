@@ -13,8 +13,8 @@ spec: docs/specs/SPEC-0003-newer-error-kinds.md
 
 ## Goal
 A stored `#BUSY!` error constant behaves as in Excel, both from a case spec and from an xlsx file.
-The 7 known-failure cells of the frozen M1 probe `probes/error-stored-constants` (S!B1, C1, D1, E1,
-G1, H1, I1) pass.
+The known-failure cells of the frozen M1 probe `probes/error-stored-constants` pass (S!B1, D1, H1
+and I1 in eval/baseline/probes.txt after T-1221; 7 cells before it).
 
 ## Context
 Expected and actual values (`make eval-show CASE=probes/error-stored-constants.case.json`):

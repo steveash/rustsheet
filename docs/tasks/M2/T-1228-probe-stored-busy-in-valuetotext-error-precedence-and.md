@@ -22,7 +22,7 @@ with ERROR.TYPE 0 (probes/error-stored-constants S!B1:I1). These parts are UNVER
   and `SUM(A1,1/0)`.
 - COUNTIF criteria: `COUNTIF(A1:A2,"#BUSY!")` counts 0 and `"<>#BUSY!"` counts the cell, as for
   `#BLOCKED!` (T-1012); the spec keeps `#BUSY!` out of `is_english_error_string`.
-- `IFERROR(A1,"y")` gives "y"; `ERROR.TYPE` of an array holding it.
+- `IFERROR(A1,"y")` gives "y", and `ERROR.TYPE(A1:A2)` spills 0 for the `#BUSY!` cell.
 Use stored constants (`{"t":"e","v":"#BUSY!","stored":true}`, see syntax.md "Newer error literals").
 `=#BUSY!` cannot be used: Excel rejects the workbook.
 
