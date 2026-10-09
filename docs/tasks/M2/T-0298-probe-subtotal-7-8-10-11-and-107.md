@@ -3,7 +3,7 @@ id: T-0298
 title: "Probe SUBTOTAL 7/8/10/11 and 107-111 one-pass vs two-pass variance and overflow"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -31,3 +31,10 @@ two-pass and overflow UNVERIFIED until this lands) and fix numbers.md if it over
 
 ## Out of scope
 - AGGREGATE (already probed).
+
+## Outcome
+Added probes/subtotal-variance-one-vs-two-pass (72 cells; SUBTOTAL 7/8/10/11 and 107-111 over offset,
+small-magnitude and 1E+200 data), oracle-filled on excel-graph. The engine already matched all 72 cells
+(offset and small-variance sets take the two-pass form, a well-spread set the one-pass form, and
+`{1E+200,-1E+200}` is `#NUM!`), so no engine task was needed. Recorded in
+docs/excel-semantics/statistics.md. Eval delta: +72 passing probe cells, no baseline change.

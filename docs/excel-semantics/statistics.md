@@ -164,6 +164,12 @@ divisors (DVAR/DSTDEV like VAR.S/STDEV.S, DVARP/DSTDEVP like VAR.P/STDEV.P), and
 (32 cells over eight data sets, excel-graph 2026-10-07). Implemented by `excel_variance` over the matching
 numeric values (`db_numeric_values` in functions/database.rs).
 
+SUBTOTAL variance codes (T-0298, VERIFIED): SUBTOTAL 7, 8, 10, 11 and 107-111 follow the same one-pass/two-pass switch
+and overflow rule (7/107 and 10/110 like VAR.S/STDEV.S, 11/111 and 8/108 like VAR.P/STDEV.P). Offset data
+({1000000003,…}) is two-pass (8.966666666666669 for code 10), `{11,12,14}` is one-pass (1.5275252316519499 for code 7),
+`{101,102,104}` is two-pass, and `{1E+200,-1E+200}` is `#NUM!` for all eight codes. Evidence:
+probes/subtotal-variance-one-vs-two-pass (72 cells, excel-graph 2026-10-09); the engine already matches every cell.
+
 ## LARGE/SMALL: a fractional k rounds up for LARGE and down for SMALL
 Rule: `k` is coerced like any number argument (TRUE is 1, FALSE is 0, `"2"` is 2, `"x"` is `#VALUE!`,
 a referenced TRUE is 1). k below 1 is `#NUM!` before any rounding (`LARGE(r,0.5)`, `0`, `-0.5`, FALSE).
