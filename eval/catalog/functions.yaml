@@ -739,8 +739,7 @@ functions:
   - { name: DURATION, category: financial, milestone: M9, scope: in }
   - { name: DVAR, category: database, milestone: M9, scope: in }
   - { name: DVARP, category: database, milestone: M9, scope: in }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: EDATE
     category: date
     milestone: M6
@@ -759,8 +758,7 @@ functions:
     prior: 0.05
     returns: text
     params: [{ name: text, mode: value, type: text }]
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: EOMONTH
     category: date
     milestone: M6
@@ -1293,8 +1291,7 @@ functions:
     params: []
   - { name: NEGBINOM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: NEGBINOMDIST, category: statistical, milestone: M9, scope: in }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS
     category: date
     milestone: M6
@@ -1305,8 +1302,7 @@ functions:
       - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: holidays, mode: array, type: number, optional: true }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS.INTL
     category: date
     milestone: M6
@@ -1875,8 +1871,7 @@ functions:
     params:
       - { name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WEEKNUM
     category: date
     milestone: M6
@@ -1888,8 +1883,7 @@ functions:
       - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 2 } }
   - { name: WEIBULL, category: statistical, milestone: M9, scope: in }
   - { name: WEIBULL.DIST, category: statistical, milestone: M9, scope: in }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WORKDAY
     category: date
     milestone: M6
@@ -1900,8 +1894,7 @@ functions:
       - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: days, mode: value, type: number, domain: { int: true, min: -30, max: 30 } }
       - { name: holidays, mode: array, type: number, optional: true }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WORKDAY.INTL
     category: date
     milestone: M6
@@ -1928,8 +1921,7 @@ functions:
     returns: bool
     params:
       - { name: logical, mode: aggregate, type: bool, repeat: true, min: 1, max: 254 }
-  # Lifts over an array but is #VALUE! for a multi-cell range in its date and count arguments, and a boolean is
-  # #VALUE! (Analysis ToolPak heritage; probes/date-argument-modes, dates.md "Date function argument modes").
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: YEARFRAC
     category: date
     milestone: M6
