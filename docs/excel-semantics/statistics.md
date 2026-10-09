@@ -219,6 +219,7 @@ Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An a
 Evidence: probes/rank-nonref-06..08 (references), rank-nonref-12..14 (arrays), probes/multiarea-order-stats H14:J14 (excel-graph, 2026-10-09, T-1203).
 Ours: matches since T-1203: the RANK family returns a `#VALUE!` array of the argument's shape, and static analysis
 (`static_analysis_rank`) makes such a formula a dynamic-array anchor so it spills. For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
-UNVERIFIED (the oracle refuses the workbook).
+UNVERIFIED (the oracle refuses the workbook). Scalar literals (`RANK(5,5)`, `"5"`, `TRUE`) still rank as a
+one-element list, also UNVERIFIED (decision 0039).
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
 Tasks: T-1152, T-1203
