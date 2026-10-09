@@ -1,5 +1,4 @@
 use crate::arithmetic::flush_subnormal;
-use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::reference_operators::RefArg;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
@@ -62,21 +61,15 @@ impl Model {
                 // Like a range, an array argument contributes only its numbers; text and
                 // booleans inside it are skipped (same rule as `for_each_value`).
                 RefArg::Value(CalcResult::Array(array)) => {
-                    for value in array.into_iter().flatten() {
-                        match value {
-                            ArrayNode::Number(value) => {
-                                seen_value = true;
-                                result = flush_subnormal(result * value);
-                            }
-                            ArrayNode::Error(error) => {
-                                return CalcResult::Error {
-                                    error,
-                                    origin: cell,
-                                    message: "Error in array".to_string(),
-                                };
-                            }
-                            _ => {}
+                    let values = match self.values_from_array(array) {
+                        Ok(values) => values,
+                        Err(error) => {
+                            return CalcResult::new_error(error, cell, "Error in array".to_string())
                         }
+                    };
+                    for value in values.into_iter().flatten() {
+                        seen_value = true;
+                        result = flush_subnormal(result * value);
                     }
                 }
                 RefArg::Value(calc_result) => {

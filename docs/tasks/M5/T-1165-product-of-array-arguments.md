@@ -26,7 +26,7 @@ PRODUCT multiplies the numbers of an array argument (`PRODUCT(IF(SEQUENCE(5),7))
 
 ## Acceptance criteria
 - [x] Copies!B1:B35 and the cells derived from them pass; no regression.
-- [x] Array elements that are text, booleans or errors behave as Excel shows (evidence cited).
+- [ ] Array elements that are text, booleans or errors behave as Excel shows (evidence cited).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -34,3 +34,4 @@ PRODUCT multiplies the numbers of an array argument (`PRODUCT(IF(SEQUENCE(5),7))
 
 ## Outcome
 `fn_product` now multiplies the numbers of an array argument (text/booleans skipped, errors propagate, as `for_each_value`). probes baseline: 159 known-failure lines removed (Copies!B1:B35 and derived cells), no regressions. Text/boolean/error elements inside arrays follow the shared aggregate rule; no direct Excel probe, noted in coercion.md.
+Follow-up task filed: probe `PRODUCT({1,"a",TRUE,2})`, `PRODUCT({1,#N/A})` and `PRODUCT({"a"})` (T-1165 criterion 2 is unticked until then). `fn_product` moved to product.rs verbatim apart from the array arm because mathematical.rs hit the 1000-line limit.

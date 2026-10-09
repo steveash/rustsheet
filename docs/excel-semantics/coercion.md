@@ -242,7 +242,8 @@ boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a t
 `x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). SUMPRODUCT is the opposite: anything that is not a
 number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
 `SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
-PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3). PRODUCT of an array argument (`PRODUCT(IF(SEQUENCE(5),7))`) multiplies its numbers left to right
+PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).
+PRODUCT of an array argument (`PRODUCT(IF(SEQUENCE(5),7))`) multiplies its numbers left to right
 (probes/geomean-single-and-copies Copies!B1:B35, excel-graph); text and booleans inside an array are skipped like
 in a range, an error element propagates (same rule as `for_each_value`; not separately probed).
 MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
