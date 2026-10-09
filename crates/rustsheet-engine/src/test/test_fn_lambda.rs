@@ -232,3 +232,28 @@ fn a_defined_name_for_a_single_cell_is_a_reference() {
     assert_eq!(model._get_text("A8"), *"text");
     assert_eq!(model._get_text("A9"), *"2");
 }
+
+// A called LET name or LAMBDA parameter that holds a value: a number or boolean is #NAME?, text
+// is 0, an error is itself, an array is called per element and a reference (INDEX's too) is
+// #REF! (probes/let-name-call*, lambda-param-call; T-1092).
+#[test]
+fn called_variable_holding_a_value() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C1", "=LET(f, 1, f(2))");
+    model._set("C2", "=LET(f, \"a\", f(2))");
+    model._set("C3", "=LET(f, 1/0, f(2))");
+    model._set("C4", "=LET(f, INDEX(A1:A2, 2), f(2))");
+    model._set("C5", "=LAMBDA(f, f(2))(TRUE)");
+    model._set("C6", "=LET(f, {1;\"a\"}, f(2))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("C1"), *"#NAME?");
+    assert_eq!(model._get_text("C2"), *"0");
+    assert_eq!(model._get_text("C3"), *"#DIV/0!");
+    assert_eq!(model._get_text("C4"), *"#REF!");
+    assert_eq!(model._get_text("C5"), *"#NAME?");
+    assert_eq!(model._get_text("C6"), *"#NAME?");
+    assert_eq!(model._get_text("C7"), *"0");
+}

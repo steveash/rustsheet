@@ -265,14 +265,28 @@ called: `=(LAMBDA(x,x+1))(2)` is 3 and `=(IF(TRUE,LAMBDA(x,x*2)))(3)` is 6. A pa
 refused: Excel for the web refuses a workbook holding `=(1)(2)` (`FileCorruptTryRepair`, one scratch
 workbook, T-0149), so the engine reads it as a syntax error. A space makes it the intersection:
 `=(A1) (A2)` is `#NULL!`.
-A LET name called like a function: `=LET(f,A1,f(2))` is `#REF!` too, and with a value bound the results
-are odd: `=LET(f,1,f(2))`, `=LET(f,A1+0,f(2))` and `=LET(f,{1,2},f(2))` are `#NAME?`,
-`=LET(f,"a",f(2))` is 0 and `=LET(f,1/0,f(2))` is `#DIV/0!` (scratch probe, oracle: excel-graph,
-2026-10-07, T-0149; not committed, UNVERIFIED whether the case builder's `_xlpm.` naming of a called
-LET name plays a part). The engine gives `#VALUE!` for those calls (T-1092).
+A LET name called like a function is `#REF!` when bound to a reference, whatever the reference:
+`=LET(f,A1,f(2))`, `=LET(f,A1:A3,f(2))`, `=LET(f,C9,f(2))` (C9 empty), `=LET(f,A1,f())`,
+`=LET(f,INDEX(A1:A3,2),f(2))` and `=LET(f,IF(TRUE,A1),f(2))`, an ordinary error again
+(`IFERROR` catches it, `ERROR.TYPE` is 4). So LET binds what INDEX selects as a reference. Bound to a
+value, the call gives odd results, without the arguments mattering: a number or boolean is `#NAME?`
+(`=LET(f,1,f(2))`, `=LET(f,A1+0,f(2))`, `=LET(f,TRUE,f(2))`), text is the number 0 (`=LET(f,"a",f(2))`,
+`"abc"`, `"1"`, `f()` too; `TYPE` of it is 1 and `+5` gives 5), an error is itself
+(`=LET(f,1/0,f(2))` is `#DIV/0!`), and an array is called element by element, keeping its shape:
+`=LET(f,{1,2},f(2))` spills `#NAME?`,`#NAME?` (`#SPILL!` when blocked), `=LET(f,{1;"a"},f(2))` spills
+`#NAME?`;0 and `ROWS(LET(f,{1,2;3,4},f(2)))` is 2. Bound to a LAMBDA it is called
+(`=LET(f,LAMBDA(x,x+1),f(2))` is 3). The case builder writes the called name as `_xlpm.f(2)`, and
+Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
+A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
+`#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
+Excel for the web refuses a workbook holding `=LET(f,"",f(2))` (`createSession` fails, three scratch
+workbooks, T-1092), so empty text cannot be a case.
 Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probes/paren-call-lambda-cell,
 probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
-probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149).
+probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149);
+called LET names: probes/let-name-call, let-name-call-refs, let-name-call-arrays, let-name-call-bool and
+let-name-call-text-*, called LAMBDA parameters: probes/lambda-param-call (oracle: excel-graph,
+2026-10-09, T-1092).
 Callee forms (probes/paren-call-callee-offset and -indirect H1, oracle: excel-graph, 2026-10-07, T-1094):
 `=(OFFSET(A1,0,0))(2)` and `=(INDIRECT("A1"))(2)` load and are `#REF!`, calls of a reference. Excel for the
 web refuses a workbook holding `=(1+1)(2)` or `=(SUM(A1))(2)` (`FileCorruptTryRepair`, one scratch
@@ -283,8 +297,10 @@ other value-returning callees are refused like `(1)(2)`. A second call,
 `(A1)(1)(2)`, is left-over input (not probed).
 Status: VERIFIED
 Implemented in: expressions/parser/lambda.rs (`Parser::parse_parenthesized_call`);
-functions/logical/lambda.rs (`Model::call_callee`); model.rs (the callee is evaluated with
-`evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
+functions/logical/lambda.rs (`Model::call_callee`, `Model::call_variable` for a called LET name
+or LAMBDA parameter);
+functions/logical/let.rs (`Model::bind_argument`, which binds in reference context); model.rs (the
+callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
 Tasks: T-0149, T-1092
 
 ## A defined name may be an intersection
