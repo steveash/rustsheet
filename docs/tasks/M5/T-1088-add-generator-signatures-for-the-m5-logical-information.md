@@ -43,7 +43,7 @@ XOR is `aggregate`, TYPE, ISREF and SHEET take a range whole (`array`), ISFORMUL
 keys: `domain.enum` (CELL's info_type), `cell: true` (pass one cell to a `range` param) and `always: true` (never
 omit CELL's reference). A seeded sample (`rustsheet-gen --milestone M5 --count 25 --seed 11`, not committed) was all
 accepted by excel-graph (0 failures). The engine passed 922 of 960 cells; one case timed out on
-`MULTINOMIAL` of about 1e30 (filed as P0 T-1217). Quirks: information.md "Information function argument modes",
+`MULTINOMIAL` of about 1e30 (T-1197; first filed as T-1217, a duplicate, since removed). Quirks: information.md "Information function argument modes",
 logic.md "XOR argument modes", web.md "ENCODEURL is #VALUE! in Excel for the web". Eval delta: 4 new probe cases,
 56 cells, 39 pass, 17 new known failures (T-1218, T-1219; `CELL("address")` across sheets stays unimplemented).
-Follow-ups: T-1217, T-1218, T-1219.
+Follow-ups: T-1197 (existing), T-1218, T-1219.

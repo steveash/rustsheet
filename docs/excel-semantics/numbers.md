@@ -843,7 +843,13 @@ Status: VERIFIED for the observed cells; the threshold and SIN/TAN siblings are 
 Tasks: T-1192, T-1201, T-1202
 
 ## MULTINOMIAL of a huge argument
-Rule: Excel returns an answer for `MULTINOMIAL(1E+15)` at once (value not yet probed); the engine loops proportionally to the argument and hangs.
-Evidence: gen-m5/21b9ae9affd6b38c Calc!A25 (the case times out here; its oracle `#NUM!` comes from a base-0 LOG, so it says nothing about MULTINOMIAL's value).
-Status: UNVERIFIED (Excel's value)
+Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
+even when the ratio is small: `MULTINOMIAL(171)`, `(170,1)`, `(86,86)`, `(100,100)`, `(1000)`, `(2^31)`, `(2^53)`,
+`(1E+15)`, `(1E+15,0)`, `(1E+15,1)`, `(3,1E+15)` and `(1E+300)` are all `#NUM!`. Sums up to 170 have values:
+`(170)` 1.0000000000001974, `(169,1)` 170.0000000000337, `(85,85)` 9.144841845133712e+49, `(150,20)` 5.221123511166111e+25, `(100,70)` 6.491922168402309e+48. `(100,100)` is `#NUM!` though its exact value (about 9e58) fits a double, so the limit is on the sum. `(0)` and `(0,0)` are 1.
+The non-integer values are the inexactness in "MULTINOMIAL is inexact" (T-1190).
+Evidence: probes/multinomial-large-arguments A1:A20 (excel-graph, 2026-10-09, T-1197); gen-m5/21b9ae9affd6b38c Calc!A25.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_multinomial` (functions/math_and_trigonometry/multinomial.rs) checks the saturating sum against 170
+before any factorial, so the work is bounded (directive 5).
 Tasks: T-1197

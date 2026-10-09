@@ -9,6 +9,9 @@ use crate::{
     model::Model,
 };
 
+/// The largest `n` whose `n!` is finite in a double (170! is about 7.3e306).
+const MAX_FACTORIAL_ARGUMENT: u64 = 170;
+
 fn log_factorial(n: u64) -> f64 {
     (1..=n).map(|i| (i as f64).ln()).sum()
 }
@@ -114,9 +117,21 @@ impl Model {
             }
         }
 
+        // Excel: `#NUM!` once the arguments add up to more than 170, where `sum!` overflows a
+        // double: `MULTINOMIAL(171)`, `(170,1)`, `(86,86)` and `(1E+15)` are `#NUM!`, while
+        // `(170)`, `(169,1)` and `(85,85)` have values (probes/multinomial-large-arguments,
+        // T-1197). Checking first also bounds the log-factorial loops below to 170 steps
+        // (CLAUDE.md directive 5); the sum saturates, so huge arguments cannot overflow it.
+        let sum = values.iter().fold(0u64, |acc, &v| acc.saturating_add(v));
+        if sum > MAX_FACTORIAL_ARGUMENT {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "MULTINOMIAL: result overflow".to_string(),
+            );
+        }
         // Compute (sum)! / (n1! * n2! * ... * nk!) using f64 to handle large values.
         // Use the log-factorial approach for numerical stability.
-        let sum: u64 = values.iter().sum();
         let log_result = log_factorial(sum) - values.iter().map(|&v| log_factorial(v)).sum::<f64>();
         let result = log_result.exp();
         if !result.is_finite() {
