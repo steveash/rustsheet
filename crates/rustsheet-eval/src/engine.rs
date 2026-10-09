@@ -177,7 +177,8 @@ fn spec_input(input: &CellInput) -> Option<Input> {
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
             Input::Value(ApiValue::Text(s.as_str().into()))
         }
-        // As xlsx import reads `<c t="e">`: the stored-name table, `#ERROR!` for an unknown name.
+        // As xlsx import reads `<c t="e">`: the stored-name table, `#ERROR!` for an unknown name (the one
+        // difference: `from_literal` folds case, the importer does not; no case stores a lowercase name).
         CellInput::StoredError(e) => Input::Value(ApiValue::Error(XlError::new(
             ErrorKind::from_literal(&e.v).unwrap_or(ErrorKind::Unknown),
         ))),
