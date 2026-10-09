@@ -3,7 +3,7 @@ id: T-0292
 title: "Probe VLOOKUP/HLOOKUP results in aggregates and INDEX past its range as an intersection operand"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
