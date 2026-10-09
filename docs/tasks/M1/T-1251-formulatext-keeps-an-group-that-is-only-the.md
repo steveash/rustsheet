@@ -3,7 +3,7 @@ id: T-1251
 title: "FORMULATEXT keeps an @ group that is only the leftmost part of the operand: nested group, dropped (B1) and corner group with no intersection (follow-up of T-1245)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
