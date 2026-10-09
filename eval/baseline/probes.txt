@@ -311,6 +311,7 @@ C	probes/subtotal-hidden-filtered.case.json	150
 C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17
 C	probes/subtotal-reference-operands.case.json	40
+C	probes/subtotal-variance-one-vs-two-pass.case.json	72
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-argument-modes.case.json	47
