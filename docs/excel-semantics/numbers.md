@@ -711,6 +711,27 @@ geomean-root-refinement, geomean-overflow-count H1, ironcalc-calc GEOMEAN C23, G
 - From T-1113: glibc `pow(P, 1/n)` (71/72, but it breaks C23 and G27), `exp2(log2(P)/n)` (69), a
   log-sum (36), the overflow path's power-of-two-split root (64 or 53), and an extended-precision
   ln/exp (always misses C23 and G27).
+- From T-0288, scored on 167 cells (the 159 plus the Copies duplicates): glibc `pow(P, 1/n)` with the
+  snap above is the best fit so far, 157 of 167 (the current r with the snap: 140), but it breaks C23,
+  G27 and geomean-root-refinement A20, which r matches, so it is not taken. Searching r and its
+  neighbours (1 or 2 ulps) for the one whose left-to-right n-th power is nearest P: 152 and 155 (it
+  breaks A20 and A33); with binary-exponentiation or `pow` powers 143 to 155. `exp(ln(P) * (1/n))`
+  104, `10^(log10(P)/n)` 141, `2^(log2(P)/n)` 138 (149 each with the snap).
+Excel's in-range root is a function of the double product P and n alone: every probed way of writing
+the same P gives the same result (probes/geomean-same-product: P = 3 as (1,3), (3,1), (0.5,6), (1.5,2),
+(0.75,4), (6,0.5) all 1.7320508075688774; P = 10.704 as (6.69,1.6), (1.6,6.69), (10.704,1), (2,5.352),
+(0.5,21.408) all 3.271696807468565; P = 10 as four values in five orders all 1.778279410038923). So the
+order or precision of the product is not the cause. Its rounding is not decided by the residual or by
+the distance from the exact root either: GEOMEAN(1,3) (C23) and GEOMEAN(6.69,1.6) (geomean-root-refinement
+A36) are both n = 2, r is 0.55 and 0.59 ulp above the exact root, and r squared misses P by +1 ulp and
+the correctly rounded root squared by -1 ulp in both, yet Excel keeps r for the first and gives the
+correctly rounded root for the second (the engine gives r, so the P = 10.704 cells A9-A15 and
+GEOMEAN(8.2,1.71) A21 are one ulp off, the A36 and A29 misses again). That points to a library root (Excel's own power, not glibc's)
+whose own error of up to about 0.8 ulp decides the last bit, which no formula in doubles reproduces.
+Side finding for `^`: on geomean-single-and-copies Copies!E (Excel's `P^(1/n)`), `exp((1/n)*ln(P))` in
+doubles matches 32 of 35 cells and glibc `pow` 19; the three misses are exact square roots (9, 49, 0.01
+to the power 0.5), which Excel returns exactly. It matches only 2 of the 4 non-integer `^` cells of
+T-0221, so it is a lead, not a rule.
 Single values (probes/geomean-single-and-copies Single!A1-A15): GEOMEAN of 3, 0.1, 1E-300, 1E+300,
 7, 0.3, 1.1, PI(), 2^-1022 and 1E+307, of a cell, a one-cell range and a range with text beside one
 number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for 3,
@@ -718,11 +739,11 @@ number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for
 Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
 copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single: one value; Copies:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
-(T-1123), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
+(T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
 Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in 159).
 Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123
+Tasks: T-1113, T-1108, T-1123, T-0288
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
