@@ -267,7 +267,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             if (cell_number := _write(ws, row, col, raw)) is not None and _is_lossy(cell_number):
                 lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
     for name, formula in spec.get("names", {}).items():
-        wb.define_name(name, formula)
+        wb.define_name(name, _formula_text(formula))
     for n, entry in enumerate(entered, start=1):
         value = json.dumps(entry, ensure_ascii=False)
         if len(value) > 255:  # Excel's custom-property limit; fail here, not at the oracle
