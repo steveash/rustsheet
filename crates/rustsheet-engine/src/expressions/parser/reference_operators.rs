@@ -328,7 +328,9 @@ impl Parser {
             let whole = group.filter(|&(_, end)| end == self.lexer.get_position_index());
             let written = whole.map_or(0, |(group, _)| group.levels);
             let lead = match group {
-                Some((group, _)) if whole.is_none() && matches!(t, Node::OpIntersectKind { .. }) => {
+                Some((group, _))
+                    if whole.is_none() && matches!(t, Node::OpIntersectKind { .. }) =>
+                {
                     group
                 }
                 _ => LeadGroup::default(),
