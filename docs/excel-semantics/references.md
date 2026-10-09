@@ -251,7 +251,7 @@ call's own error passes through (`DROP(A1:B3,5)` and `TAKE(A1:B3,0)` are `#CALC!
 and a not-found XLOOKUP with a range `if_not_found` is that reference (`=C1:C3 XLOOKUP(9,A1:A3,B1:B3,C1)` is
 C1, and ISREF of it TRUE) (probes/intersection-lookup-operand-errors, excel-graph 2026-10-07).
 - FORMULATEXT of an `@` operand of `:` or `@` keeps the written parentheses: `=A1:(@B1)` stays `=A1:(@B1)` (spills `1, 2` across H10:I10), `=(@(A1 B1)):C3` stays `=(@(A1 B1)):C3` and `=@(@(A1 B1))` stays `=@(@(A1 B1))` (both `#NULL!`). The engine drops the inner parentheses on the last two (probes/at-operand-formulatext, T-1104; T-1116).
-- `=ANCHORARRAY(D1)` prints `=D1#` and `=ANCHORARRAY(INDEX(D1:D2,1))` prints `=INDEX(D1:D2,1)#`, `ANCHORARRAY(D1)` and `D1#` are the same stored file text (`_xlfn.ANCHORARRAY(D1)`), so this is how Excel prints that stored form; how a typed `ANCHORARRAY(D1)` prints is not probed. Engine requirement for T-1109: xlsx import must not print the automatic `@` it adds inside `#`. Stored as `_xlfn.ANCHORARRAY((@A1:B2))`, `=(@A1:B2)#` loads, prints as `=(@A1:B2)#` and is `#VALUE!` from D20 (no intersecting cell) (probes/anchorarray-at-operand, T-1111; the engine matches since T-1115). UNVERIFIED: the engine passes any `@` error through `#` (`=(@(A1 B1))#` gives `#NULL!`), and gives the left error when both operands of `:` are errors; only the `#VALUE!` and right-operand cases are probed. `=ANCHORARRAY(1)` is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1111; engine in T-1117). `=@D1#` prints as `=@D1#` and evaluates to `#VALUE!` (probes/at-operand-formulatext, T-1104).
+- `=ANCHORARRAY(D1)` prints `=D1#` and `=ANCHORARRAY(INDEX(D1:D2,1))` prints `=INDEX(D1:D2,1)#`, `ANCHORARRAY(D1)` and `D1#` are the same stored file text (`_xlfn.ANCHORARRAY(D1)`), so this is how Excel prints that stored form; how a typed `ANCHORARRAY(D1)` prints is not probed. Engine requirement for T-1109: xlsx import must not print the automatic `@` it adds inside `#`. Stored as `_xlfn.ANCHORARRAY((@A1:B2))`, `=(@A1:B2)#` loads, prints as `=(@A1:B2)#` and is `#VALUE!` from D20 (no intersecting cell) (probes/anchorarray-at-operand, T-1111; the engine matches since T-1115). UNVERIFIED: the engine passes any `@` error through `#` (`=(@(A1 B1))#` gives `#NULL!`), and gives the left error when both operands of `:` are errors; only the `#VALUE!` and right-operand cases are probed. `=ANCHORARRAY(1)` is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1111); the engine reads it as a syntax error since T-1117. `=@D1#` prints as `=@D1#` and evaluates to `#VALUE!` (probes/at-operand-formulatext, T-1104).
 Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098, T-1103, T-1104, T-1109, T-1111, T-1115, T-1117
 
 ## Calling a parenthesized operand
@@ -784,9 +784,16 @@ Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/
 D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
 question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), printed by `at_operand`
-(parser/reference_operators.rs; T-1116).
+(parser/reference_operators.rs; T-1116); the refusals in `Parser::parse_range`, `Parser::parse_implicit`
+and the ANCHORARRAY call in parser/operands.rs (T-1117).
 Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand parentheses: every level is kept" below (T-1132).
-Engine gap: the refused forms, which the engine evaluates (T-1117).
+Engine rule (T-1117): the parser takes for each operand of `:`, for the argument of ANCHORARRAY and for
+the operand of `#` (stored as `_xlfn.ANCHORARRAY`) exactly the reference operands of the intersection
+(`is_reference_operand`, entry "Intersection operands must be references") and reads every other operand
+as a syntax error, so the four refused forms are no longer evaluated (they used to be, and `=A1:(1/0)`
+printed as `=A1:1/0`, which does not re-parse to the same formula). The refusal of value operands not
+probed for `:` (`A1:"a"`, `A1:#N/A`, `A1:SUM(B1)`) and of a value operand of a typed `#` (`(1/0)#`) is
+inferred from the probed forms, UNVERIFIED.
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
 
 ## `:` joins multi-cell operands and names into their bounding box
