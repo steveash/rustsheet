@@ -180,6 +180,14 @@ C	probes/mod-quotient-threshold3.case.json	19
 C	probes/mod-quotient-threshold4.case.json	30
 C	probes/mod-quotient-threshold5.case.json	16
 C	probes/multiarea-3d-ref.case.json	2
+C	probes/multiarea-3d-union-h1.case.json	1
+C	probes/multiarea-3d-union-h2.case.json	1
+C	probes/multiarea-3d-union-h3.case.json	2
+C	probes/multiarea-3d-union-h4.case.json	2
+C	probes/multiarea-3d-union-h5.case.json	1
+C	probes/multiarea-3d-union-h6.case.json	1
+C	probes/multiarea-3d-union-h7.case.json	1
+C	probes/multiarea-3d-union-h8.case.json	1
 C	probes/multiarea-agg.case.json	9
 C	probes/multiarea-areas-1.case.json	1
 C	probes/multiarea-areas-2.case.json	1
