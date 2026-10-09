@@ -37,6 +37,27 @@ fn test_asc_passthrough() {
     assert_eq!(model._get_text("A1"), "hello");
 }
 
+// ── DBCS, PHONETIC ────────────────────────────────────────────────────────────
+
+#[test]
+fn test_dbcs_and_phonetic_as_the_web_oracle_evaluates_them() {
+    // probes/text-modes-dbcs C3 and text-modes-phonetic{,-range,-number} C1 (T-1213).
+    let mut model = new_empty_model();
+    model._set("A1", "abc");
+    model._set("A2", "5");
+    model._set("B1", "=DBCS(A1)");
+    model._set("B2", "=PHONETIC(A1)");
+    model._set("B3", "=PHONETIC(A2)");
+    model._set("B4", "=PHONETIC(A1:A2)");
+    model._set("B5", "=DBCS()");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "abc");
+    for cell in ["B2", "B3", "B4"] {
+        assert_eq!(model._get_text(cell), "#N/A", "{cell}");
+    }
+    assert_eq!(model._get_text("B5"), "#ERROR!");
+}
+
 // ── DOLLAR ────────────────────────────────────────────────────────────────────
 
 #[test]
