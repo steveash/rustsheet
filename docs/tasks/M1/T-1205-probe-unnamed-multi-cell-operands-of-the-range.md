@@ -3,7 +3,7 @@ id: T-1205
 title: "Probe unnamed multi-cell operands of the range operator and undefined column-spelled names before a colon"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
