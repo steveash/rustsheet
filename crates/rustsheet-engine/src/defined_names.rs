@@ -131,7 +131,11 @@ impl Model {
     /// (probes/union-defined-name H1, H4, H5) and a cross-sheet one `#VALUE!`
     /// (probes/multiarea-xname). Any other name is read as [`Model::evaluate_node_with_reference`]
     /// reads it. The body runs under the same depth and budget as its value read.
-    pub(crate) fn defined_name_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
+    pub(crate) fn defined_name_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
         if let Node::DefinedNameKind((name, scope, _)) = node {
             if let Some(ParsedDefinedName::Formula(body)) = self
                 .parsed_defined_names

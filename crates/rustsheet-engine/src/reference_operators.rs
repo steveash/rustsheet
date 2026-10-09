@@ -461,7 +461,8 @@ impl Model {
             } => true,
             // So may a name whose body is a formula (probes/union-defined-name H4).
             Node::DefinedNameKind((name, scope, _)) => matches!(
-                self.parsed_defined_names.get(&(*scope, name.to_lowercase())),
+                self.parsed_defined_names
+                    .get(&(*scope, name.to_lowercase())),
                 Some(ParsedDefinedName::Formula(_))
             ),
             Node::OpIntersectKind { left, right, .. } => {

@@ -475,7 +475,9 @@ fn union_bodied_names_stand_for_their_areas() {
         .define_name("mu", None, "Sheet1!$A$1,Sheet1!$B$2")
         .unwrap();
     model.define_name("alias", None, "mu").unwrap();
-    model.define_name("xs", None, "Data!$A$1,Sheet1!$A$1").unwrap();
+    model
+        .define_name("xs", None, "Data!$A$1,Sheet1!$A$1")
+        .unwrap();
     results(
         &mut model,
         &[

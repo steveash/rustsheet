@@ -425,7 +425,9 @@ fn test_union_defined_name_round_trips_through_export() {
     model
         .define_name("mu", None, "Sheet1!$A$1,Sheet1!$B$2")
         .unwrap();
-    model.set_user_input(0, 1, 3, "=SUM(mu)".to_string()).unwrap();
+    model
+        .set_user_input(0, 1, 3, "=SUM(mu)".to_string())
+        .unwrap();
     model.evaluate();
     let temp_file_name = "temp_file_test_union_defined_name.xlsx";
     save_to_xlsx(&model, temp_file_name).unwrap();
