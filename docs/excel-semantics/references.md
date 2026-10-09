@@ -661,13 +661,18 @@ Evidence: probes/subtotal-reference-operands (excel-graph, T-1163), probes/subto
 Further rules (-c): TAKE over a literal array is an array, not a reference, so `SUBTOTAL(9,TAKE({1,2;3,4},1))` and
 `AREAS(TAKE({1,2},1))` spill two `#VALUE!` (H1:I2); `AREAS(IF(TRUE,{1,#N/A}))` spills `#VALUE!`, `#N/A`: the error
 element is kept (H3:I3). SUM, COUNT and AVERAGE treat a single-cell XLOOKUP/TAKE/DROP/TRIMRANGE result as a
-reference: text, a boolean and a blank in the picked cell are ignored (`SUM`/`COUNT` give 0, `AVERAGE` gives
-`#DIV/0!`, H4:H14).
+reference: SUM ignores a text (H4) and a boolean (H5, H6, H11) picked cell and gives 0, COUNT ignores a boolean
+(H7) and a blank (H8, H12), COUNTA does not count a blank (H13), AVERAGE of a boolean picked cell is `#DIV/0!`
+(H9). The SUM blank cases (H10, H14) do not tell a reference from a value, since a blank value sums to 0 too.
+AVERAGE is probed with a boolean only.
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
 `subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
-`Model::evaluate_picked_reference_arg` (SUBTOTAL, AREAS, SUM, COUNT and AVERAGE/`for_each_value`). UNVERIFIED: the
-other aggregates (MIN, MAX, COUNTA, AVERAGEA, ...) still evaluate those calls to values. Typed entry is a desktop
+`Model::evaluate_picked_reference_arg` (SUBTOTAL, AREAS, SUM, COUNT and `for_each_value`). `for_each_value` is shared,
+so MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, VAR*/STDEV*, AVEDEV, DEVSQ and SUMSQ also read these results as references:
+implemented by the same rule, UNVERIFIED. MIN, MAX, COUNTA and AVERAGEA still evaluate those calls to values,
+UNVERIFIED. A computed array source (`TAKE(SEQUENCE(4),1)`) is sized as a scalar for SUBTOTAL/AREAS spill:
+UNVERIFIED. Typed entry is a desktop
 question (M14).
 Tasks: T-1063, T-1163, T-1174, T-1175, T-1206 (decision 0045)
 
