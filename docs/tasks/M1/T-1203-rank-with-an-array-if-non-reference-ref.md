@@ -3,7 +3,7 @@ id: T-1203
 title: "RANK with an array (IF/non-reference) ref argument is #VALUE! spilled over the array"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
