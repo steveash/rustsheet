@@ -3,7 +3,7 @@ id: T-1229
 title: "Probe VALUETOTEXT format 1 on text and invalid format values"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
