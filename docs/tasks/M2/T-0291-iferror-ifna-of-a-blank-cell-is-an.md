@@ -3,7 +3,7 @@ id: T-0291
 title: "IFERROR/IFNA of a blank cell is an empty value (FALSE in OR, 0 as a lookup value)"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
