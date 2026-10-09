@@ -3,7 +3,7 @@ id: T-1185
 title: "SUBTOTAL 110 and 111 skip hidden rows"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
