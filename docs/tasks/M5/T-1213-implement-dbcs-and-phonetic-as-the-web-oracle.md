@@ -23,6 +23,6 @@ From T-1087's probes: probes/text-modes-dbcs C3 (`DBCS("abc")` = "abc") and prob
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Implemented and pushed on branch `agent/functions-text/T-1213-dbcs-phonetic`: `dbcs` and `phonetic` fields in `Language` (language/mod.rs) and in tools/upstream/generate_language (languages.json for all 5 locales as the English names, main.rs), `language.bin` regenerated with `cargo run` there, `Function::Dbcs`/`Function::Phonetic` (functions/mod.rs, static_analysis.rs), `fn_dbcs`/`fn_phonetic` in functions/text/char_code.rs, a unit test in test/text_functions/mod.rs, text.md updated, baseline updated (6 cells fixed: the four probes plus probes/catalog/availability-10 A4 and availability-30 A1). The four probe cells pass.
 Blocked: `make check` fails the oversized-file ratchet because `crates/rustsheet-engine/src/functions/mod.rs` grew 2388 -> 2397 lines (enum +2, name table +2, name fn +2, xlfn +1, dispatch +2); `static_analysis.rs` is back to 2156 (arms merged). Raising the ratchet needs `quality/oversized-files.json` (protected path, decision record) or shrinking 9 lines elsewhere in functions/mod.rs. Next: decide which (a decision record, or a small refactor of that file), then `make check`, review, PR, and set the Outcome and `status: done`. Draft PR opened for the branch.
