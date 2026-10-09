@@ -1,0 +1,21 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Data": {},
+  "Other": {},
+  "Sheet1": {
+   "H8": {
+    "t": "e",
+    "v": "#NAME?"
+   }
+  },
+  "Sheet2": {}
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "2b89858455545ae418a2ef94be87a868160fa8921ee180ff2d2cacf75a8df65d",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-08T23:49:39+00:00",
+  "version": null
+ }
+}

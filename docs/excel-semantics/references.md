@@ -523,11 +523,15 @@ probes/multiarea-*, oracle: excel-graph, 2026-10-07, T-1061):
   union name, which is TRUE).
 - 3-D: `SUM(Sheet1:Sheet2!A1,(A1,B2))` = 107 (3-D argument plus the union), but a 3-D operand inside the union,
   `SUM((Sheet1:Sheet2!A1,B2))`, is `#NAME?`.
-  Implemented in `evaluate_union_operand` (reference_operators.rs, T-1070): a multi-sheet span as a direct
-  operand of a union gives `#NAME?`. Only the left operand under SUM is VERIFIED; the right operand, the bare
-  `=(Sheet1:Sheet2!A1,B2)` value context (same check in `count_union_areas`) and the precedence against another
-  operand's error (`SUM((1/0,Sheet1:Sheet2!A1))` is `#DIV/0!` in the engine) are UNVERIFIED (no probe); a 3-D
-  operand of an intersection is unprobed.
+  Implemented in `evaluate_union_operand` (reference_operators.rs, T-1070). VERIFIED by T-1159
+  (probes/multiarea-3d-union-h1..h8, excel-graph, 2026-10-08): a multi-sheet span as a direct operand of a union
+  is `#NAME?` whichever side it is on and whichever context reads it: `SUM((A1,Sheet1:Sheet2!B2))`, the bare
+  `=(Sheet1:Sheet2!A1,B2)`, `SUM((Sheet1:Sheet2!A1,Sheet1:Sheet2!B2))` and `AREAS((A1,Sheet1:Sheet2!B2))` are all
+  `#NAME?`. The `#NAME?` also beats another operand's error: `SUM((E1,Sheet1:Sheet2!A1))` and
+  `SUM((Sheet1:Sheet2!A1,E1))` with E1 = `1/0` are `#NAME?`, not `#DIV/0!`. A 3-D operand of an intersection is
+  `#VALUE!` on either side: `SUM(Sheet1:Sheet2!A1 A1:B2)` and `SUM(A1:B2 Sheet1:Sheet2!A1)`. The engine matches all
+  eight. Probe-harness limit: a computed or literal-error operand inside a union (`(1/0,x)`, `(#DIV/0!,x)`) makes
+  Excel for the web refuse the workbook (`FileCorruptTryRepair`), so the error operand is a cell reference.
 - `_xlnm.Print_Area` = `Sheet1!$A$1,Sheet1!$B$2` (sheet-local): `SUM(Print_Area)` = 6, `AREAS(Print_Area)` = 2.
 - FORMULATEXT of a union written as a dynamic-array formula (the only kind the probe harness writes) has no `@`
   (`=(A1,B2)`, `=SUM((A1,B2))`); a written `@(A1,B2)` is kept (`=@(A1,B2)`), and gives `#VALUE!`. The same holds for a legacy
