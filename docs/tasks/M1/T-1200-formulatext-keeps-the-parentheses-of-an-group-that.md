@@ -1,5 +1,5 @@
 ---
-id: T-1199
+id: T-1200
 title: "FORMULATEXT keeps the parentheses of an @ group that is not the whole operand"
 milestone: M1
 lane: engine

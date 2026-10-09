@@ -24,4 +24,4 @@ T-1134 prints a group that is exactly the leftmost operand (`@(A1) B1`, oracle E
 -
 
 ## Outcome
-probes/at-group-not-whole-operand holds the five shapes with excel-graph values: Excel prints every group as written (all `#NULL!`). The engine matches `@(A1) B1 C1` and `@(A1) B1:C1`, and drops the group in the other three; filed as T-1199. references.md records it. Eval delta: +1 case, 10 cells, 3 new known failures (E30:E32, tracked by T-1199).
+probes/at-group-not-whole-operand holds the five shapes with excel-graph values: Excel prints every group as written (all `#NULL!`). The engine matches `@(A1) B1 C1` and `@(A1) B1:C1`, and drops the group in the other three; filed as T-1200. references.md records it. Eval delta: +1 case, 10 cells, 3 new known failures (E30:E32, tracked by T-1200).

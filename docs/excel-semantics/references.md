@@ -755,7 +755,7 @@ only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with t
 (`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) until T-1134 (`ImplicitIntersection::lead`). Excel keeps the group for every shape where it is
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
 print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches the last two and
-prints the first three without the group (`=@A1 B1 C1` for both of the first two, `=@A1:B1 C1`): T-1199. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+prints the first three without the group (`=@A1 B1 C1` for both of the first two, `=@A1:B1 C1`): T-1200. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
