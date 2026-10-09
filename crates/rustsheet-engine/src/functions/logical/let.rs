@@ -194,10 +194,10 @@ impl Model {
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
         match self.evaluate_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
-            // A 3-D span, written out or from IF or CHOOSE: every value read of the binding is `#VALUE!`
-            // (probes/3d-ref-let-values C1:C6, C11). Only `evaluate_reference_arg` may hold a range
-            // across sheets, so the binding does not keep it; an aggregate reading the span
-            // through the variable (C7, 111) is T-1158.
+            // A 3-D span, written out or from IF or CHOOSE: every value read of the binding is
+            // `#VALUE!` (probes/3d-ref-let-values C1:C6, C11). Only `evaluate_reference_arg` may
+            // hold a range across sheets, so the binding does not keep it; an aggregate reading
+            // the span through the variable (C7, 111) is T-1158.
             RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
                 Binding::Value(CalcResult::new_error(
                     Error::VALUE,
