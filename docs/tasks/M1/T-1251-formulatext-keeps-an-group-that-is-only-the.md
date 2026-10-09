@@ -3,7 +3,7 @@ id: T-1251
 title: "FORMULATEXT keeps an @ group that is only the leftmost part of the operand: nested group, dropped (B1) and corner group with no intersection (follow-up of T-1245)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
@@ -23,7 +23,7 @@ probes/at-group-leftmost-shapes E34, E35, E36 (excel-graph, T-1245): Excel print
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Sonnet run read the code (parser/reference_operators.rs `lead_group_text`, `LeadGroup` in parser/mod.rs) and stopped before implementing: two of the three forms are the general "written parentheses are not kept in the tree" problem of T-1244, a design question.
 - `=@((A1 B1) C1) D1`: `LeadGroup` is Copy and holds one (levels, operands) pair, and the chain is flattened left-associative, so the inner `(A1 B1)` group is lost. It needs a nested-group record (or the T-1244 `Group` node).
 - `=@(A1):(B1) C1`: the parentheses around the right operand of `:` are not kept anywhere in the tree (same cause).
