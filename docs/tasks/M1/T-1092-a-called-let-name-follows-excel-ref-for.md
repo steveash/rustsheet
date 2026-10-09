@@ -3,7 +3,7 @@ id: T-1092
 title: "A called LET name follows Excel: #REF! for a reference, odd results for values"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -26,9 +26,18 @@ reference needs the binding to keep its reference, as `call_callee` (functions/l
 expects.
 
 ## Acceptance criteria
-- [ ] A committed probe case with the forms above (one workbook per form Excel may refuse) passes.
-- [ ] references.md "Calling a parenthesized operand" records the rule, without the UNVERIFIED note.
-- [ ] `make check` green; reviewers approve.
+- [x] A committed probe case with the forms above (one workbook per form Excel may refuse) passes.
+- [x] references.md "Calling a parenthesized operand" records the rule, without the UNVERIFIED note.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probed (excel-graph, 2026-10-09): a called LET name or LAMBDA parameter bound to a reference is
+`#REF!` (INDEX's reference included), a number or boolean is `#NAME?`, text is the number 0, an
+error is itself and an array is called per element. Excel stores the call as `_xlpm.f(2)` and reads
+it back as `f(2)`, so the builder's naming is Excel's own. `Model::call_variable` implements the
+value rule; a LET/LAMBDA binding of INDEX is now read in reference context (`bind_argument`), so
+it keeps its reference, while VLOOKUP/HLOOKUP bind their value (probes/let-bind-reference-forms). `=LET(f,"",f(2))` makes Excel for the web refuse the workbook (not a case).
+Eval delta: +11 probe cases (let-name-call*, lambda-param-call, let-bind-reference-forms), 49 cells, all pass; no regressions.

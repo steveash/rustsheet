@@ -265,14 +265,32 @@ called: `=(LAMBDA(x,x+1))(2)` is 3 and `=(IF(TRUE,LAMBDA(x,x*2)))(3)` is 6. A pa
 refused: Excel for the web refuses a workbook holding `=(1)(2)` (`FileCorruptTryRepair`, one scratch
 workbook, T-0149), so the engine reads it as a syntax error. A space makes it the intersection:
 `=(A1) (A2)` is `#NULL!`.
-A LET name called like a function: `=LET(f,A1,f(2))` is `#REF!` too, and with a value bound the results
-are odd: `=LET(f,1,f(2))`, `=LET(f,A1+0,f(2))` and `=LET(f,{1,2},f(2))` are `#NAME?`,
-`=LET(f,"a",f(2))` is 0 and `=LET(f,1/0,f(2))` is `#DIV/0!` (scratch probe, oracle: excel-graph,
-2026-10-07, T-0149; not committed, UNVERIFIED whether the case builder's `_xlpm.` naming of a called
-LET name plays a part). The engine gives `#VALUE!` for those calls (T-1092).
+A LET name called like a function is `#REF!` when bound to a reference, whatever the reference:
+`=LET(f,A1,f(2))`, `=LET(f,A1:A3,f(2))`, `=LET(f,C9,f(2))` (C9 empty), `=LET(f,A1,f())`,
+`=LET(f,INDEX(A1:A3,2),f(2))` and `=LET(f,IF(TRUE,A1),f(2))`, an ordinary error again
+(`IFERROR` catches it, `ERROR.TYPE` is 4). So LET binds what INDEX, CHOOSE and IF select as a
+reference (`=LET(x,INDEX(A1:A3,2),ISREF(x))` and `=LET(x,CHOOSE(2,A1,A2),ISREF(x))` are TRUE,
+`=LET(x,INDEX(A1:A3,2),ROW(x))` is 2, and COUNT through an INDEX-bound text cell is 0), but VLOOKUP
+and HLOOKUP bind their value: `=LET(x,VLOOKUP(2,A1:B3,2,FALSE),ISREF(x))` is FALSE, COUNT through it
+counts the text "5" (1), calling it gives 0 as for text, and a LAMBDA argument behaves the same. Bound to a
+value, the call gives odd results, without the arguments mattering: a number or boolean is `#NAME?`
+(`=LET(f,1,f(2))`, `=LET(f,A1+0,f(2))`, `=LET(f,TRUE,f(2))`), text is the number 0 (`=LET(f,"a",f(2))`,
+`"abc"`, `"1"`, `f()` too; `TYPE` of it is 1 and `+5` gives 5), an error is itself
+(`=LET(f,1/0,f(2))` is `#DIV/0!`), and an array is called element by element, keeping its shape:
+`=LET(f,{1,2},f(2))` spills `#NAME?`,`#NAME?` (`#SPILL!` when blocked), `=LET(f,{1;"a"},f(2))` spills
+`#NAME?`;0 and `ROWS(LET(f,{1,2;3,4},f(2)))` is 2. Bound to a LAMBDA it is called
+(`=LET(f,LAMBDA(x,x+1),f(2))` is 3). The case builder writes the called name as `_xlpm.f(2)`, and
+Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
+A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
+`#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
+Excel for the web refuses a workbook holding `=LET(f,"",f(2))` (`createSession` fails, three scratch
+workbooks, T-1092), so empty text cannot be a case.
 Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probes/paren-call-lambda-cell,
 probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
-probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149).
+probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149);
+called LET names: probes/let-name-call, let-name-call-refs, let-name-call-arrays, let-name-call-bool and
+let-name-call-text-*, let-bind-reference-forms, called LAMBDA parameters: probes/lambda-param-call (oracle: excel-graph,
+2026-10-09, T-1092).
 Callee forms (probes/paren-call-callee-offset and -indirect H1, oracle: excel-graph, 2026-10-07, T-1094):
 `=(OFFSET(A1,0,0))(2)` and `=(INDIRECT("A1"))(2)` load and are `#REF!`, calls of a reference. Excel for the
 web refuses a workbook holding `=(1+1)(2)` or `=(SUM(A1))(2)` (`FileCorruptTryRepair`, one scratch
@@ -283,8 +301,10 @@ other value-returning callees are refused like `(1)(2)`. A second call,
 `(A1)(1)(2)`, is left-over input (not probed).
 Status: VERIFIED
 Implemented in: expressions/parser/lambda.rs (`Parser::parse_parenthesized_call`);
-functions/logical/lambda.rs (`Model::call_callee`); model.rs (the callee is evaluated with
-`evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
+functions/logical/lambda.rs (`Model::call_callee`, `Model::call_variable` for a called LET name
+or LAMBDA parameter);
+functions/logical/let.rs (`Model::bind_argument`, which binds in reference context); model.rs (the
+callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
 Tasks: T-0149, T-1092
 
 ## A defined name may be an intersection
@@ -746,6 +766,20 @@ question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), prin
 Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand parentheses: every level is kept" below (T-1132).
 Engine gap: the refused forms, which the engine evaluates (T-1117).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
+
+## `:` joins multi-cell operands and names into their bounding box
+Rule: the operands of `:` may be multi-cell references or defined names (a parenthesized body
+included), and the result is the bounding box of both: with `rg` = `=(Sheet1!$B$1:$B$2)` and
+`ig` = `=(INDEX(Sheet1!$B$1:$B$2,2))` (B1:B3 = 1, 2, 3), `ROWS(rg:B3)` is 3 and `SUM(ig:B3)` is 5.
+A name spelled like a column (`ig`, `rg`) before `:` is still a name when the right side is not a
+column range (`ig:B3`). Other reference-position uses of a grouped name agree with the bare
+reference: `OFFSET(rg,1,0,1,1)` is 2, `AREAS(rg)` 1, `INDEX(rg,2)` 2, `CELL("address",rg)` `$B$1`.
+Evidence: probes/defined-name-grouped-reference A8:A13 (excel-graph, 2026-10-09).
+Unnamed multi-cell operands join the same way (T-1205, probes/range-operator-unnamed-operands, excel-graph 2026-10-09; B1:B3 = 1, 2, 3, C1:C3 = 10, 20, 30): `ROWS(OFFSET(B1,0,0,2,1):B3)` is 3, `SUM(INDEX(B1:B3,1):INDEX(B1:B3,3))` 6, `SUM(B1:B2:C3)` and `SUM(B1:B2:C3:C2)` 66, `ROWS((B1:B2):B3)` 3, and the OFFSET form is a reference (`ISREF` TRUE). An undefined name on either side of `:` is `#NAME?` (`SUM(xx:B3)`, `SUM(B3:xx)`), `ISREF(xx:B3)` FALSE and the bare `=xx:B3` is `#NAME?` too, and so is a bare column letter: `=SUM(A:B3)` is accepted and gives `#NAME?` (probes/range-operator-column-letter-before-colon), which is why the lexer reads a column-spelled identifier before a non-column-range `:` as a name.
+Status: VERIFIED. Corner order: see "Sheet-qualified range corners" above.
+Implemented in: `Model::get_range`, `range_operand` and `defined_name_range_operand`
+(reference_operators.rs, defined_names.rs); the lexer keeps a column-spelled name before `:` an identifier (lexer/mod.rs).
+Tasks: T-1173, T-1205
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and

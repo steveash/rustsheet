@@ -141,6 +141,22 @@ impl Model {
         }
     }
 
+    /// The formula-bodied defined name `node` as an operand of `:`: its body read as a `:`
+    /// operand, under the same depth and budget as its value read.
+    pub(crate) fn defined_name_range_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let (Node::DefinedNameKind((name, ..)), Some(body)) =
+            (node, self.defined_name_formula(node))
+        else {
+            return self.evaluate_node_with_reference(node, cell);
+        };
+        self.within_defined_name(|model| model.range_operand(&body, cell))
+            .unwrap_or_else(|| name_refers_to_itself(name, cell))
+    }
+
     /// The defined name `node` where a reference is accepted. A name whose body is a formula
     /// stands for what the body is in reference context, so a union body is its areas
     /// (probes/union-defined-name H1, H4, H5) and a cross-sheet one `#VALUE!`

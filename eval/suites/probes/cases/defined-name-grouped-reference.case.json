@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Defined-name bodies that are a reference written wholly in parentheses stay references (T-1164)",
+  "description": "Defined-name bodies that are a reference written wholly in parentheses stay references, including in reference positions (T-1164, T-1173)",
   "tags": [
     "M1",
     "references",
@@ -23,7 +23,14 @@
         "A6": "=SUM(ig)",
         "A7": "=ROWS(og)",
         "B1": 1,
-        "B2": 2
+        "B2": 2,
+        "A8": "=OFFSET(rg,1,0,1,1)",
+        "A9": "=AREAS(rg)",
+        "A10": "=SUM(ig:B3)",
+        "A11": "=ROWS(rg:B3)",
+        "A12": "=INDEX(rg,2)",
+        "A13": "=CELL(\"address\",rg)",
+        "B3": 3
       }
     }
   ],
@@ -35,6 +42,12 @@
     "Sheet1!A4",
     "Sheet1!A5",
     "Sheet1!A6",
-    "Sheet1!A7"
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13"
   ]
 }
