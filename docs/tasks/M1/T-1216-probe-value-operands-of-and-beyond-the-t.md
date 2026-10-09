@@ -19,7 +19,7 @@ T-1117 made the parser refuse every operand of `:`, `#` and ANCHORARRAY that the
 `=(1/0):(A1 A2)` and `=ANCHORARRAY(1)` were probed (T-1111, one scratch workbook per formula). Unprobed and
 marked UNVERIFIED in docs/excel-semantics/references.md ("FORMULATEXT keeps the parentheses of an `@`
 operand..."): `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`,
-`=ANCHORARRAY(A1+0)`. Use the `excel-probe` skill; a refused workbook (`FileCorruptTryRepair`) is the expected
+`=ANCHORARRAY(A1+0)`, and the negated references `=(-A1):B1`, `=A1:(-B1)` and `=(-A1)#` (the union accepts `(-A1,B1)`). Use the `excel-probe` skill; a refused workbook (`FileCorruptTryRepair`) is the expected
 evidence for a refusal, one scratch workbook per formula.
 
 ## Acceptance criteria

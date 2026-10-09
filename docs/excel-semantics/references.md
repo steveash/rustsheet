@@ -792,8 +792,9 @@ the operand of `#` (stored as `_xlfn.ANCHORARRAY`) exactly the reference operand
 (`is_reference_operand`, entry "Intersection operands must be references") and reads every other operand
 as a syntax error, so the four refused forms are no longer evaluated (they used to be, and `=A1:(1/0)`
 printed as `=A1:1/0`, which does not re-parse to the same formula). The refusal of value operands not
-probed for `:` (`A1:"a"`, `A1:#N/A`, `A1:SUM(B1)`) and of a value operand of a typed `#` (`(1/0)#`) is
-inferred from the probed forms, UNVERIFIED.
+probed for `:` (`A1:"a"`, `A1:#N/A`, `A1:SUM(B1)`, a function outside the intersection's list), of a negated
+reference (`(-A1):B1`, `A1:(-B1)`, `(-A1)#`, which the union does accept) and of a value operand of a typed `#`
+(`(1/0)#`) is inferred from the probed forms, UNVERIFIED (probe: T-1216).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
 
 ## `:` joins multi-cell operands and names into their bounding box
