@@ -37,4 +37,4 @@ Added probes/subtotal-variance-one-vs-two-pass (72 cells; SUBTOTAL 7/8/10/11 and
 small-magnitude and 1E+200 data), oracle-filled on excel-graph. The engine already matched all 72 cells
 (offset and small-variance sets take the two-pass form, a well-spread set the one-pass form, and
 `{1E+200,-1E+200}` is `#NUM!`), so no engine task was needed. Recorded in
-docs/excel-semantics/statistics.md. Eval delta: +72 passing probe cells, no baseline change.
+docs/excel-semantics/statistics.md. Eval delta: +72 passing probe cells (new case recorded in eval/baseline/probes.txt), no regressions.
