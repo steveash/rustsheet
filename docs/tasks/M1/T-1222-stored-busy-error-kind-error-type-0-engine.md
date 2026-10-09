@@ -13,8 +13,8 @@ spec: docs/specs/SPEC-0003-newer-error-kinds.md
 
 ## Goal
 A stored `#BUSY!` error constant behaves as in Excel, both from a case spec and from an xlsx file.
-The 7 known-failure cells of the frozen M1 probe `probes/error-stored-constants` (S!B1, C1, D1, E1,
-G1, H1, I1) pass.
+The known-failure cells of the frozen M1 probe `probes/error-stored-constants` pass (S!B1, D1, H1
+and I1 in eval/baseline/probes.txt after T-1221; 7 cells before it).
 
 ## Context
 Expected and actual values (`make eval-show CASE=probes/error-stored-constants.case.json`):
@@ -53,6 +53,8 @@ kinds:
       (`ERROR.TYPE` 0). Export writes what the spec decides, with a test.
 - [ ] The facade `ErrorKind` round-trips the kind through `from_literal`/`literal`, and a Python test
       covers `XlError("#BUSY!")`.
+- [ ] A unit test runs UNIQUE over cells holding `#BUSY!` and `#NULL!` (code 0 is its own
+      `CellKey::Error` key; SPEC-0003 "Stored `#BUSY!`"). This pins the engine; Excel is T-1228.
 - [ ] syntax.md "Newer error literals" gets an `Implemented in:` line naming the code.
 - [ ] `make check` green; reviewers approve.
 

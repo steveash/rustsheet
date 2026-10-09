@@ -3,7 +3,7 @@ id: T-1020
 title: "Stored #BUSY! constant: decide representation (ERROR.TYPE 0) per SPEC-0003"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: opus
@@ -44,13 +44,25 @@ Questions the amendment must answer, citing evidence or marking UNVERIFIED:
   assumption.
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-0003-newer-error-kinds.md is amended. `#BUSY!` moves out of "Non-goals" into
+- [x] docs/specs/SPEC-0003-newer-error-kinds.md is amended. `#BUSY!` moves out of "Non-goals" into
       "Excel behavior to match" and "Design", citing probes/error-stored-constants S!B1:I1. The
       rollout table row B1 points to T-1222 for the implementation.
-- [ ] Each question above is answered, with evidence or as an explicit UNVERIFIED assumption.
-- [ ] Follow-up research tasks are filed for any unprobed behavior the design depends on.
-- [ ] No code changes. `make check` green; reviewers approve.
+- [x] Each question above is answered, with evidence or as an explicit UNVERIFIED assumption.
+- [x] Follow-up research tasks are filed for any unprobed behavior the design depends on.
+- [x] No code changes. `make check` green; reviewers approve.
 
 ## Out of scope
 - The implementation (T-1222) and the eval adapter (T-1221).
 - `#PYTHON!`, `#EXTERNAL!` and `#UNKNOWN!` (unprobed, or rejected when stored).
+
+## Outcome
+SPEC-0003 is amended with a "Stored `#BUSY!`" design section, a row in the behavior table (citing
+probes/error-stored-constants S!B1:I1), and rollout rows B2 (T-1222) and R3 (T-1228). The decisions:
+- A new `Error::BUSY`, appended after `FIELD`, with ERROR.TYPE 0.
+- It goes in the stored-name table only. The formula, input and criteria tables stay unchanged:
+  typed input and the criteria table are UNVERIFIED (T-1016, T-1228).
+- Export writes `#BUSY!` as is.
+- The facade has `ErrorKind::Busy` with `code()` `Some(0)`, and Python tests compare with `== 0`.
+- VALUETOTEXT, precedence and IFERROR are assumed to work as for the other kinds. Probe T-1228
+  checks them.
+syntax.md points to the design. No code changes, eval unchanged.

@@ -1,6 +1,6 @@
-# SPEC-0003 — Excel's newer error kinds (#GETTING_DATA, #CONNECT!, #BLOCKED!, #FIELD!)
+# SPEC-0003 — Excel's newer error kinds (#GETTING_DATA, #CONNECT!, #BLOCKED!, #FIELD!, stored #BUSY!)
 
-- **Status:** accepted (on merge of T-0177)
+- **Status:** accepted (on merge of T-0177); amended by T-1020 (stored `#BUSY!`)
 - **Milestone / lane:** M1 / api (implementation in engine, harness, research, functions-logic)
 - **Tasks:** T-0177 (this spec); rollout tasks below
 
@@ -32,10 +32,15 @@ Goals:
 - A defined headless result for IMAGE, STOCKHISTORY and FIELDVALUE (decision 0027 keeps their
   values out of scope, but their *error* is in scope).
 
+- A stored `#BUSY!` constant (`<c t="e"><v>#BUSY!</v></c>`) with its Excel behavior, so the frozen M1
+  probe probes/error-stored-constants passes (amendment, T-1020; design under "Stored `#BUSY!`").
+
 Non-goals:
-- `#BUSY!`, `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!` and any other code. No formula produced them in a
-  saved workbook, and their literals are rejected (arrays.md, syntax.md "Newer error literals").
-  `ErrorKind` is `#[non_exhaustive]`, so they can be added later without a breaking change.
+- `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!` and any other code. No formula produced them in a saved
+  workbook, their literals are rejected, and `#UNKNOWN!` is also rejected when stored (arrays.md,
+  syntax.md "Newer error literals"). `ErrorKind` is `#[non_exhaustive]`, so they can be added later
+  without a breaking change.
+- A formula that produces `#BUSY!`: none is known.
 - Localized error names. The engine is en-US (decision 0030).
 - Linked data types, images as cell values, and stock data (decision 0027).
 
@@ -46,8 +51,9 @@ Non-goals:
 | `#CONNECT!` | 10 | no (workbook rejected) | `t="e"`, `<v>#VALUE!</v>` plus `vm` → rich value errorType 9 | arrays.md table; probes/rich-errors-stockhistory A1–E1 |
 | `#BLOCKED!` | 11 | no (workbook rejected) | `#VALUE!` plus `vm` → errorType 10 | arrays.md table; probes/rich-errors-image; references.md "External reference with no cached data is `#BLOCKED!`" |
 | `#FIELD!` | 13 | no (workbook rejected) | `#VALUE!` plus `vm` → errorType 12 | arrays.md table; probes/rich-errors-field |
+| `#BUSY!` | **0** | no (workbook rejected) | `t="e"`, `<v>#BUSY!</v>`, no `vm`: Excel loads this stored constant. No formula is known to produce it. | syntax.md "Newer error literals"; probes/error-stored-constants S!B1:I1 |
 
-Behavior shared by all four:
+Behavior shared by all five (for `#BUSY!`, only what the stored-constant probe shows; see below):
 - **Ordinary error kinds.** They propagate like any error. The leftmost error operand wins for
   `=`, `+`, `-`, `*` and `SUM` (syntax.md, T-0195: `#GETTING_DATA+#DIV/0!` is 8 and
   `#DIV/0!+#GETTING_DATA` is 2). For `&` and comparisons the rule is arrays.md "Errors broadcast
@@ -60,13 +66,20 @@ Behavior shared by all four:
   error-literals-new A6, rich-errors-* E1/D1).
 - **Stored constants (T-0999, syntax.md).** Excel for the web **rejects** a workbook that stores
   `<c t="e"><v>#BLOCKED!</v></c>`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` as a literal
-  (501 `unsupportedWorkbook`). It loads stored `#GETTING_DATA`, `#N/A` and `#BUSY!`. A stored `#BUSY!`
-  is an error with `ERROR.TYPE` 0; it stays a non-goal here (follow-up T-1020).
+  (501 `unsupportedWorkbook`). It loads stored `#GETTING_DATA`, `#N/A` and `#BUSY!`.
+- **Stored `#BUSY!` (probes/error-stored-constants, excel-graph 2026-10-06).** `ERROR.TYPE` is 0
+  (B1; `ERROR.TYPE(A1)+100` is 100, H1), `ISERROR` and `ISERR` TRUE (C1, E1), `ISNA` FALSE (F1),
+  `TYPE` 16 (G1), `IFNA(A1,"y")` passes it through (I1), and `A1&""` is `#BUSY!` (D1). It is an
+  ordinary error that is not `#N/A`. Unlike stored `#GETTING_DATA`, which the Graph API reports as `#N/A`
+  (D2, I2), it is reported under its own name. 0 is a real
+  ERROR.TYPE result here, not "no code".
 - **Formula literals.** The other names (`=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!`, and `#BUSY!`,
   `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!`) make Excel for the web reject the whole workbook. They are
   not formula grammar.
 - **Unknown, need evidence:**
-  - what typing `#BLOCKED!` as cell input gives (T-1016).
+  - what typing `#BLOCKED!` (or `#BUSY!`) as cell input gives (T-1016, desktop only).
+  - for stored `#BUSY!`: VALUETOTEXT/ARRAYTOTEXT, leftmost-error precedence, `IFERROR`, and COUNTIF
+    criteria naming it (T-1228). The design below assumes the answers and does not depend on them.
 
 The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 - **IMAGE** of an unreachable URL is `#BLOCKED!` (subType 12). It fetches the URL otherwise.
@@ -166,6 +179,55 @@ The functions that produce them, as Excel evaluates them (oracle: excel-graph):
   kinds with no new code. One test per kind checks `XlError("#BLOCKED!").code == 11`, plus
   equality, and that a `=#GETTING_DATA` cell reads back as `XlError("#GETTING_DATA")`.
 
+### Stored `#BUSY!` (amendment, T-1020)
+The answers T-1222 implements. Each cites evidence or is marked UNVERIFIED.
+1. **A new variant, `Error::BUSY`, appended after `FIELD`.** For the reason given in Engine step 1,
+   appending keeps every serialized index. No `_` arm is added, so the compiler lists every
+   exhaustive match. `exported_error_literal` is the exception: it already ends in
+   `_ => stored_literal()`, so the export round-trip test covers it.
+   - `Display` and `english_literal`: `"#BUSY!"`. `to_localized_error_string` gives the en-US
+     name, as for the other newer kinds (not in `Language`, non-goal).
+   - `error_type_code`: **0** (S!B1, H1). The table is still the single source. Its comment keeps
+     `#UNKNOWN!` (12) and `#EXTERNAL!` (19) as the codes with no kind.
+     Its other users take the `u8` as is: the ERROR.TYPE array path and the `CellKey::Error(code)`
+     dedupe key in `functions/spill_functions.rs` (UNIQUE and similar). 0 is a distinct key there,
+     and a T-1222 test pins that engine behavior. Whether Excel's UNIQUE keeps `#BUSY!` and `#NULL!`
+     apart is **UNVERIFIED** (T-1228).
+   - `stored_literal`: `"#BUSY!"`, the `Display` text. Excel loads that stored form, which is how
+     the probe's own A1 was written.
+   - No function produces it, so no evaluator code changes. It propagates and is caught like any
+     error kind, by the existing code paths.
+2. **Name tables.**
+   - **Stored names** (`get_error_by_english_name`): gains `"#BUSY!"`. That one change gives xlsx
+     import (the `t="e"` arms in `import/worksheets.rs`: `#BUSY!` no longer falls to
+     `unwrap_or(Error::ERROR)`, which stays for unknown names), the eval snapshot reader, the eval adapter's stored constants (T-1221, through
+     `ErrorKind::from_literal`) and Python `XlError("#BUSY!")`.
+   - **Formula and input names** (`get_error_by_name`, the lexer): unchanged. `=#BUSY!` makes
+     Excel reject the workbook (syntax.md), so `#BUSY!` stays a parse error in formulas. Typed
+     `#BUSY!` cell input stays the text "#BUSY!". **UNVERIFIED**: typed input needs desktop Excel,
+     and T-1016 now covers `#BUSY!` too.
+   - **Criteria** (`is_english_error_string`): unchanged, so `"#BUSY!"` stays a text criterion.
+     **UNVERIFIED**: this assumes the T-1012 result for the rich kinds (COUNTIF `"#BLOCKED!"`
+     counts 0) holds for `#BUSY!` too (T-1228).
+   - **Rich values**: no `errorType` is known for `#BUSY!`, so `rich_error_name` is unchanged.
+3. **xlsx export** writes `#BUSY!` as is. `exported_error_literal` takes it through its
+   `stored_literal()` arm and adds no fallback, because Excel loads the stored literal (T-0999). The
+   round trip keeps the kind.
+4. **Facade and Python.**
+   - `ErrorKind::Busy`: literal `"#BUSY!"`, `stored_literal` the same, `from_engine`/`to_engine` arms.
+   - `code()` is `Some(0)`. The `Option` stays for a kind with no ERROR.TYPE code. `#BUSY!` has
+     one, and it is 0.
+   - `literals_match_engine` and `stored_literals_match_engine` cover it.
+   - Python: `XlError("#BUSY!").code == 0`. Tests compare with `== 0` and never rely on
+     truthiness, because 0 is falsy in Python.
+   - The `ErrorKind::Unknown` naming note above is unaffected.
+5. **Behavior assumed, not probed** (T-1228; none of it changes the design):
+   - `VALUETOTEXT(A1)` and `ARRAYTOTEXT` give the text "#BUSY!" (the `Display` text, as for the
+     other kinds).
+   - The leftmost error operand wins (the kind-independent rule above; arrays.md).
+   - `IFERROR` catches it: expected because ISERROR is TRUE (C1), but not probed.
+6. **UPSTREAM.md** records the extra variant in its entry on the diverged `Error` enum.
+
 ### Functions with no I/O (directive 5)
 All three keep their Excel arity, and the result is a scalar error, never a spill, except FIELDVALUE with an
 array first argument (below). Arguments are evaluated first. An argument error wins for IMAGE and STOCKHISTORY and for FIELDVALUE's `field_name`, but not for
@@ -222,6 +284,14 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
   regressions.
 - Probe R1 (T-1012, done) added the evidence once marked "needs evidence": see information.md and
   probes/rich-errors-args. F1 implements the functions from it.
+- Stored `#BUSY!` (B2):
+  - Unit tests in token.rs: code 0, the stored-name round trip, `stored_literal`, `#BUSY!` not
+    lexing, and `is_english_error_string("#BUSY!")` FALSE.
+  - The facade sync tests, plus a Python `XlError("#BUSY!")` test.
+  - An xlsx import test of a stored `<c t="e"><v>#BUSY!</v></c>` (ERROR.TYPE 0), and an export
+    round trip that writes `#BUSY!`.
+  - Eval: probes/error-stored-constants passes 24/24, which clears its known failures (S!B1, D1, H1, I1 in
+    eval/baseline/probes.txt today).
 
 ## Rollout
 | # | Task | Lane | Size | Tier | Depends on |
@@ -231,8 +301,10 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
 | R1 | T-1012 (done): Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
 | F1 | T-1013: IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (DEVIATION entries for IMAGE and STOCKHISTORY) | functions-logic | S | sonnet | E1, R1 |
 | X2 | T-1014: Export rich-value errors (`#SPILL!`, `#CALC!`, and the three new kinds) as `#VALUE!` plus `vm` metadata; T-0999 showed that stored literals make Excel reject the workbook | harness | M | opus | X1 |
-| R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |
-| B1 | T-1020: Stored `#BUSY!` constant (ERROR.TYPE 0): decide its representation | engine | S | opus | E1 |
+| R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA`/`#BUSY!` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |
+| B1 | T-1020 (done): Stored `#BUSY!` constant (ERROR.TYPE 0): decide its representation (this amendment) | engine | S | opus | E1 |
+| B2 | T-1222: Stored `#BUSY!` kind in engine, facade and xlsx ("Stored `#BUSY!`" above) | engine | M | opus | B1, T-1221 |
+| R3 | T-1228: Probe stored `#BUSY!` in VALUETOTEXT, error precedence, IFERROR and COUNTIF criteria | research | S | sonnet | — |
 | — | T-0124 (existing): uncached external reference is `#BLOCKED!` | engine | S | — | E1 |
 
 Nothing stays behind an old path: each task replaces behavior in place. Until E1 lands, cells
