@@ -15,6 +15,7 @@ use crate::{
 
 use super::criteria::wildcard_text_matcher;
 use index_arg::LookupIndexArg;
+use lookup_each::LookupSearch;
 use lookup_table::{LookupTable, SearchVector};
 
 mod address_areas;
@@ -24,6 +25,7 @@ mod expand;
 mod hstack_vstack;
 mod index_arg;
 mod lookup;
+mod lookup_each;
 pub(crate) mod lookup_table;
 mod tocol_torow;
 mod transpose;
@@ -399,18 +401,22 @@ impl Model {
         };
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
-        // Excel searches first: a value that is not found is #N/A whatever the index is.
-        match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
-                Ok(row_index) => table.pick(self, row_index, column as i32, cell, as_reference),
-                Err(error) => error,
+        let search = LookupSearch {
+            search_vector: &search_vector,
+            index: row_index,
+            size: table.rows(),
+            is_sorted,
+        };
+        self.lookup_each(
+            lookup_value,
+            &args[1],
+            &search,
+            as_reference,
+            cell,
+            |model, column, row, as_reference| {
+                table.pick(model, row, column as i32, cell, as_reference)
             },
-            None => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not found".to_string(),
-            },
-        }
+        )
     }
 
     /// VLOOKUP(lookup_value, table_array, row_index, [is_sorted])
@@ -472,18 +478,22 @@ impl Model {
         };
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
-        // Excel searches first: a value that is not found is #N/A whatever the index is.
-        match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
-                Ok(column_index) => table.pick(self, row as i32, column_index, cell, as_reference),
-                Err(error) => error,
+        let search = LookupSearch {
+            search_vector: &search_vector,
+            index: column_index,
+            size: table.columns(),
+            is_sorted,
+        };
+        self.lookup_each(
+            lookup_value,
+            &args[1],
+            &search,
+            as_reference,
+            cell,
+            |model, row, column, as_reference| {
+                table.pick(model, row as i32, column, cell, as_reference)
             },
-            None => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not found".to_string(),
-            },
-        }
+        )
     }
 
     // HYPERLINK(link_location, [friendly_name])

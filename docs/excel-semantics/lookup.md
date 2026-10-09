@@ -70,6 +70,21 @@ Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
 Tasks: T-0224, T-0269
 
+## VLOOKUP / HLOOKUP lift over an array lookup_value
+Rule: an array or multi-cell range lookup_value is looked up element by element into a same-shaped
+spilled array (`VLOOKUP({2;3},A1:B4,2,FALSE)` → "two"; "three", a row lifts across, `INDEX(A1:B2,1,0)`
+too). Each element follows the scalar rules, searching before validating the index: with index 0,
+`{2;99}` gives `#VALUE!`, `#N/A`; with an index past the table `#REF!`, `#N/A`. An error element is
+itself (`{2;#DIV/0!;"x"}` → "two", `#DIV/0!`, `#N/A`). Approximate match lifts the same way. A whole
+column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine bounds it by the
+shared cell-visit cap (criteria.md). An array col_index or range_lookup is not lifted:
+`VLOOKUP({2;3},A1:B4,{1,2},FALSE)` spills only 2; 3 (it reads the first element, one probe; the engine
+gives `#N/IMPL!`, T-1269).
+Evidence: probes/vlookup-array-lookup-value (39 cells, excel-graph, 2026-10-09, T-0270).
+Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
+`Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
+Status: VERIFIED (web)
+
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
 (`=VLOOKUP("a",Data!E2:E6,3)` → `#N/A`; indexes -1, 0, -2.5 and past the table too). Only a found

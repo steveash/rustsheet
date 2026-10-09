@@ -1707,7 +1707,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,
-        Function::Hlookup => not_implemented(args),
+        Function::Hlookup => broadcast_static_result(args.first()), // lifts over lookup_value
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
         Function::Index => static_analysis_index(args),
@@ -1717,7 +1717,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Offset => static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
-        Function::Vlookup => not_implemented(args),
+        Function::Vlookup => broadcast_static_result(args.first()), // T-0270
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,

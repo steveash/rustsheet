@@ -224,3 +224,28 @@ fn test_vlookup_index_function_index_is_a_reference() {
     assert_eq!(model._get_text("H4"), "#N/A");
     assert_eq!(model._get_text("H5"), "2");
 }
+
+#[test]
+fn array_lookup_value_lifts_element_by_element() {
+    // probes/vlookup-array-lookup-value (excel-graph, T-0270). The spill shape follows the
+    // lookup value, so a 2-row lookup in a dynamic cell spills without the scalar-cell assert.
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("B1", "one"), ("B2", "two")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=VLOOKUP({2;9},A1:B2,2,FALSE)");
+    model._set("E1", "=VLOOKUP(A1:A2,A1:B2,2,FALSE)");
+    model._set("F1", "=VLOOKUP({2;9},A1:B2,0,FALSE)");
+    model._set("G1", "=HLOOKUP({1,2},A1:B2,2,FALSE)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"two");
+    assert_eq!(model._get_text("D2"), *"#N/A");
+    assert_eq!(model._get_text("E1"), *"one");
+    assert_eq!(model._get_text("E2"), *"two");
+    // Search first: the found element fails the index, the missing one is #N/A.
+    assert_eq!(model._get_text("F1"), *"#VALUE!");
+    assert_eq!(model._get_text("F2"), *"#N/A");
+    assert_eq!(model._get_text("G1"), *"2");
+    assert_eq!(model._get_text("H1"), *"#N/A");
+}
