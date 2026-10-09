@@ -3,7 +3,7 @@ id: T-1177
 title: "Probe ISREF of a:b with an error or non-reference operand"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
