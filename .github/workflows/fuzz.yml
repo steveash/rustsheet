@@ -50,8 +50,13 @@ jobs:
       - run: python3 fuzz/seed_corpus.py
       # cargo-fuzz defaults --target to the triple it was built for; the prebuilt binary is musl,
       # which the nightly toolchain lacks and ASan does not support. Fuzz the host (glibc) triple.
+      # ASan keeps every distinct allocation stack trace in its stack depot for the life of the
+      # process, so its RSS grows with the inputs fuzzed while the live heap stays small; that hit
+      # the 2 GiB limit (T-1220). Not recording allocation stacks keeps RSS flat (decision 0046).
       - name: fuzz for 20 minutes
         working-directory: fuzz
+        env:
+          ASAN_OPTIONS: malloc_context_size=0
         run: >-
           cargo fuzz run --target "$(rustc -vV | sed -n 's/^host: //p')"
           ${{ matrix.target }} corpus/${{ matrix.target }} --
