@@ -114,7 +114,9 @@ def test_generator_emits_every_m5_math_function_but_the_volatile_ones() -> None:
 def test_generator_emits_every_m5_text_function() -> None:
     # T-1087: every M5 text signature is generator-ready.
     m5_text = {
-        f["name"] for f in catalog().functions if "params" in f and f["milestone"] == "M5" and f["category"] == "text"
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M5" and f["category"] == "text"
     }
     assert len(m5_text) == 33
     seen: set[str] = set()
