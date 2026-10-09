@@ -126,6 +126,21 @@ impl Model {
             .unwrap_or_else(|| name_refers_to_itself(name, cell))
     }
 
+    /// The body of the defined name `node` when it is a formula (T-0158), shared, not copied;
+    /// `None` for any other node or name.
+    pub(crate) fn defined_name_formula(&self, node: &Node) -> Option<std::sync::Arc<Node>> {
+        let Node::DefinedNameKind((name, scope, _)) = node else {
+            return None;
+        };
+        match self
+            .parsed_defined_names
+            .get(&(*scope, name.to_lowercase()))
+        {
+            Some(ParsedDefinedName::Formula(body)) => Some(std::sync::Arc::clone(body)),
+            _ => None,
+        }
+    }
+
     /// The defined name `node` where a reference is accepted. A name whose body is a formula
     /// stands for what the body is in reference context, so a union body is its areas
     /// (probes/union-defined-name H1, H4, H5) and a cross-sheet one `#VALUE!`
@@ -136,12 +151,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        if let Node::DefinedNameKind((name, scope, _)) = node {
-            if let Some(ParsedDefinedName::Formula(body)) = self
-                .parsed_defined_names
-                .get(&(*scope, name.to_lowercase()))
-                .cloned()
-            {
+        if let Node::DefinedNameKind((name, ..)) = node {
+            if let Some(body) = self.defined_name_formula(node) {
                 // Only a body that may stand for several areas leaves the value path, which
                 // snaps the body at its root (`SUM(nz)` with `nz` = `0.1+0.2-0.3` is 0,
                 // probes/near-zero-snap-groups C5).

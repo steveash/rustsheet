@@ -5,7 +5,6 @@ use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
-    defined_names::ParsedDefinedName,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::Function,
     model::Model,
@@ -434,14 +433,6 @@ impl Model {
         }
     }
 
-    /// `left right`, the intersection operator: the reference to the cells both operands
-    /// contain. Excel (docs/excel-semantics/references.md, gen-m1/4dc8ed1de05a61be): an
-    /// operand's error propagates, areas that share no cell give `#NULL!`, and areas on two
-    /// different sheets give `#VALUE!` even where their coordinates overlap. An operand may be
-    /// a union: a result of one area is that area (`(Data!A1:A12,Data!C1:C12) Data!A7` is
-    /// Data!A7, gen-m1/c940d3cfb0d3b083), and one of several areas is `#VALUE!`, even when
-    /// they are the same cell (`=A1:A3 (A2:B2,A2)`,
-    /// probes/intersection-function-operands H5).
     /// Whether `node` may stand for several areas, so evaluating it as an intersection
     /// operand or reference argument needs an area list.
     /// An intersection is multi-area only if a union sits somewhere under it: a chain of
@@ -460,11 +451,7 @@ impl Model {
                 ..
             } => true,
             // So may a name whose body is a formula (probes/union-defined-name H4).
-            Node::DefinedNameKind((name, scope, _)) => matches!(
-                self.parsed_defined_names
-                    .get(&(*scope, name.to_lowercase())),
-                Some(ParsedDefinedName::Formula(_))
-            ),
+            Node::DefinedNameKind(_) => self.defined_name_formula(node).is_some(),
             Node::OpIntersectKind { left, right, .. } => {
                 self.is_multi_area(left) || self.is_multi_area(right)
             }
@@ -472,6 +459,14 @@ impl Model {
         }
     }
 
+    /// `left right`, the intersection operator: the reference to the cells both operands
+    /// contain. Excel (docs/excel-semantics/references.md, gen-m1/4dc8ed1de05a61be): an
+    /// operand's error propagates, areas that share no cell give `#NULL!`, and areas on two
+    /// different sheets give `#VALUE!` even where their coordinates overlap. An operand may be
+    /// a union: a result of one area is that area (`(Data!A1:A12,Data!C1:C12) Data!A7` is
+    /// Data!A7, gen-m1/c940d3cfb0d3b083), and one of several areas is `#VALUE!`, even when
+    /// they are the same cell (`=A1:A3 (A2:B2,A2)`,
+    /// probes/intersection-function-operands H5).
     pub(crate) fn get_intersection(
         &mut self,
         left: &Node,
