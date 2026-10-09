@@ -891,3 +891,14 @@ reference) as the ref argument, `RANK(5,IF(A1:C1>0,A1:C1))`, is `#VALUE!` spille
 Evidence: probes/multiarea-order-stats (excel-graph, 2026-10-09, T-1152). Ours: matches (the RANK-of-array row since T-1203; see statistics.md "RANK of a non-reference array").
 Status: VERIFIED (excel-graph)
 Tasks: T-1068, T-1152, T-1203
+
+## A structured reference to a table whose stored range does not parse is `#REF!`
+Rule: when a table's stored `ref` is not a valid range (an untrusted or corrupt xlsx), every structured
+reference to that table evaluates to `#REF!`. This is the choice made when the engine's `expect` on the parse
+was removed (a panic on untrusted input is forbidden); the neighbouring cases of a missing table or a missing
+table sheet are parse errors, so the two differ. Excel never writes such a `ref` and its handling of a file that
+has one is unknown (likely repair or refusal).
+Evidence: none for Excel; input hardening (CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
+Tasks: T-1210

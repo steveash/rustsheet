@@ -102,3 +102,24 @@ fn simple_table() {
         "SUBTOTAL(109,'Sheet One'!$A$2:$A$3)"
     );
 }
+
+#[test]
+fn malformed_table_reference_is_ref_error_not_a_panic() {
+    // The table metadata comes from the workbook, which is untrusted (directive 5).
+    let worksheets = vec!["Sheet One".to_string()];
+    let mut tables = create_test_table("tblIncome", &["Jan", "Feb"], "A1", 3);
+    if let Some(table) = tables.get_mut("tblIncome") {
+        table.reference = "not a range".to_string();
+    }
+    let mut parser = new_parser(worksheets, vec![], tables);
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 2,
+        column: 6,
+    };
+    let t = parser.parse("SUM(tblIncome[Jan])", &cell_reference);
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "SUM(#REF!)"
+    );
+}

@@ -417,10 +417,13 @@ impl Parser {
             Some(table.sheet_name.clone())
         };
 
-        // context must be with tables.reference
-        #[allow(clippy::expect_used)]
-        let (column_start, mut row_start, column_end, mut row_end) =
-            parse_range(&table.reference).expect("Failed parsing range");
+        // The table metadata comes from the workbook (untrusted): a stored reference that does not
+        // parse is #REF! (directive 5: no panics; docs/excel-semantics/references.md, DEVIATION).
+        let Ok((column_start, mut row_start, column_end, mut row_end)) =
+            parse_range(&table.reference)
+        else {
+            return Node::ErrorKind(token::Error::REF);
+        };
 
         let totals_row_count = table.totals_row_count as i32;
         let header_row_count = table.header_row_count as i32;
