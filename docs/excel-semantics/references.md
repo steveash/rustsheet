@@ -826,8 +826,7 @@ as a syntax error, so the four refused forms are no longer evaluated (they used 
 printed as `=A1:1/0`, which does not re-parse to the same formula). T-1216 (excel-graph, 2026-10-09; one scratch workbook per formula, a control `=SUM(A1:B1)` in the same shape loaded) verified the inferred refusals: Excel refuses (`FileCorruptTryRepair`)
 `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`, `=ANCHORARRAY(A1+0)` and the negated
 references `=(-A1):B1`, `=A1:(-B1)` and `=(-A1)#` (unlike the union, which accepts `(-A1,B1)`). It loads, as `#VALUE!`, `=A1:LAMBDA(x,x)`, `=A1:(@1)` and
-`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these except `=ANCHORARRAY(@1)`, which the
-parser refuses although Excel loads it (T-1226); so the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (other `@`-of-value forms are inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
+`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these (`=ANCHORARRAY(@1)` evaluates to `#VALUE!` and prints bare as `=@1#`; T-1226). UNVERIFIED (T-1226): the bare print could follow the operand kind (a value) or the absence of written parentheses; the engine prints bare only the `@` of a number and keeps parentheses for every other `@` operand (`(@A1:B2)#` is probed, but it was written with parentheses), so `ANCHORARRAY((@1))` prints `=@1#` too, the engine does not record parentheses around an `@`. The `#VALUE!` for the `@` of a non-number value (`@"a"`, `@TRUE`, `@SUM(A1)`) is inferred. The printed `=@1#` re-parses as `@(1#)`, which the engine refuses; move and paste print `(@1)#`, which round-trips. So the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (other `@`-of-value forms are inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117, T-1216, T-1226
 
 ## `:` joins multi-cell operands and names into their bounding box
@@ -897,8 +896,10 @@ Rule: when a table's stored `ref` is not a valid range (an untrusted or corrupt 
 reference to that table evaluates to `#REF!`. This is the choice made when the engine's `expect` on the parse
 was removed (a panic on untrusted input is forbidden); the neighbouring cases of a missing table or a missing
 table sheet are parse errors, so the two differ. Excel never writes such a `ref` and its handling of a file that
-has one is unknown (likely repair or refusal).
+has one is unknown (likely repair or refusal). The same holds for a stored header or totals row count that
+does not fit the row arithmetic (a count above `i32::MAX`, or one that overflows `i32` with the range's rows): `#REF!`, not a
+wrap or a panic (T-1234).
 Evidence: none for Excel; input hardening (CLAUDE.md directive 5).
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
-Tasks: T-1210
+Tasks: T-1210, T-1234

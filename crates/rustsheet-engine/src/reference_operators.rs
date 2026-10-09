@@ -318,6 +318,22 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// The error of a spill range operator whose anchor is not a single reference. The `@` of a
+    /// value (`=ANCHORARRAY(@1)`) is `#VALUE!` in Excel (probes/colon-hash-value-operands D3,
+    /// T-1226).
+    pub(crate) fn spill_anchor_error(child: &Node, cell: CellReferenceIndex) -> CalcResult {
+        let error = if matches!(child, Node::ImplicitIntersection { .. }) {
+            Error::VALUE
+        } else {
+            Error::ERROR
+        };
+        CalcResult::new_error(
+            error,
+            cell,
+            format!("Error with Spill Range Operator in cell {cell:?}"),
+        )
+    }
+
     /// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
     /// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
     /// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).

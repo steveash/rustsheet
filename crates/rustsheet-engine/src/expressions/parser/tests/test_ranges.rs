@@ -163,3 +163,22 @@ fn range_keeps_reference_operands() {
         assert_eq!(to_english_localized_string(&node, &context), formula);
     }
 }
+
+/// Excel loads `ANCHORARRAY(@1)` and prints it `=@1#` (probes/colon-hash-value-operands E3,
+/// T-1226); every other `@` operand keeps its parentheses (UNVERIFIED, T-1240).
+#[test]
+fn anchorarray_of_at_value_prints_bare() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for (formula, printed) in [
+        ("ANCHORARRAY(@1)", "@1#"),
+        ("ANCHORARRAY(@A1:B2)", "(@A1:B2)#"),
+    ] {
+        let node = parser.parse(formula, &context);
+        assert_eq!(to_english_localized_string(&node, &context), printed);
+    }
+}
