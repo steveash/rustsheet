@@ -1,6 +1,6 @@
 # SPEC-0005 — Workbook date system (1900 / 1904)
 
-- **Status:** draft
+- **Status:** accepted (on merge of T-1266)
 - **Milestone / lane:** M1 / engine (formatter: functions-date; import/export: engine)
 - **Tasks:** T-1266 (this spec), T-1105 (first consumer)
 
@@ -51,7 +51,7 @@ Non-goals (separate tasks after this spec is accepted, each with its own probes)
 
 ```rust
 /// The workbook's date system (`<workbookPr date1904>`); serial 0 is 1900-01-00 or 1904-01-01.
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Encode, Decode, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DateSystem {
     #[default]
     Excel1900,
@@ -71,7 +71,9 @@ If one is, decode with a defaulted field instead.
 
 **Import/export (rustsheet-xlsx).** `import/workbook.rs` reads `workbookPr@date1904` (`1`/`true`
 → `Excel1904`; absent, `0` or `false` → `Excel1900`; anything else → `Excel1900`, never an
-error, since workbooks are untrusted). `export` writes `<workbookPr date1904="1"/>` only for
+error, since workbooks are untrusted). The eval harness already reads the same attribute with the same
+rule (`crates/rustsheet-eval/src/xlsx_snapshot.rs`, `matches!(.., Some("1" | "true"))`); T-1267
+makes it reuse the importer's value so the rule is defined once. `export` writes `<workbookPr date1904="1"/>` only for
 1904, so 1900 exports stay byte-identical.
 
 **Formatter.** `format_number` and `format_text` gain the date system through a small options
@@ -81,15 +83,18 @@ value, not a bare bool, so later per-workbook format inputs have one home:
 pub struct FormatContext<'a> { pub locale: &'a Locale, pub date_system: DateSystem }
 ```
 
-The 12 current call sites pass `self.locale` today. Model call sites build the context from
-`self.workbook.settings`; locale-only helpers (`number_format.rs`, examples in `model.rs`) use
-`DateSystem::default()`. The `ParsePart::Date` arm becomes:
+The current call sites (`rg 'format_number\(|format_text\(' crates`, about 12, including
+`Model::get_cell_formatted` and `functions/text/common.rs`) pass `self.locale` today; step 3 lists them. Model call sites build the context from
+`self.workbook.settings`; locale-only helpers (`number_format.rs`, which builds its own `Locale` from a `&str`, and
+the examples in `model.rs`) stay 1900 and use `DateSystem::default()`. The `ParsePart::Date` arm becomes:
 `if value < 0.0 && !(has_elapsed && date_system == Excel1904) { return invalid_date(value) }`.
 The rule lives in one function, `formatter::dates::negative_serial_allowed(tokens, date_system)`,
-cited by dates.md.
+cited by dates.md. It is called only for `value < 0.0` and checks `date_system` before scanning the
+tokens, so a 1900 workbook never scans (today `has_elapsed` is computed for every value).
 
 **Facade (crates/rustsheet).** `WorkbookOptions` gains `date_system` (default 1900) for new
-workbooks, and `Workbook` exposes it read-only. Python bindings mirror both. The eval
+workbooks, and `Workbook` exposes it read-only; `rustsheet` re-exports `DateSystem` with doc
+comments. Python bindings mirror both (`"1900"`/`"1904"` strings). The eval
 harness needs no change for imported cases: it loads xlsx, so it gets the flag for free.
 
 ## Alternatives considered
@@ -117,3 +122,5 @@ harness needs no change for imported cases: it loads xlsx, so it gets the flag f
 3. (functions-date, S) `FormatContext` and `negative_serial_allowed`. T-1105 is done when
    probes/text-negative-serial-elapsed-mixed passes and poi A40-A47 does not regress.
 4. Later, per evidence: 1904 epoch in date functions and TEXT date tokens (planner splits).
+   The 1462-day shift applies to untrusted serials: checked arithmetic, an Excel error out of
+   range, never a panic or overflow (CLAUDE.md directive 5).

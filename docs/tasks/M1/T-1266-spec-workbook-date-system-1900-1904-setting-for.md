@@ -3,7 +3,7 @@ id: T-1266
 title: "Spec: workbook date system (1900/1904) setting for the formatter and date functions"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -22,10 +22,16 @@ TODO). Adding it changes `WorkbookSettings` (bitcode format), xlsx import/export
 signature, which is architectural (CLAUDE.md directive 4).
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-0005-workbook-date-system.md covers model, import/export, formatter, facade,
+- [x] docs/specs/SPEC-0005-workbook-date-system.md covers model, import/export, formatter, facade,
       alternatives, tests and rollout; architecture and performance reviewers approve.
-- [ ] T-1105 links the spec and depends on the implementation tasks; rollout tasks filed.
-- [ ] `make check` green; reviewers approve.
+- [x] T-1105 links the spec and depends on the implementation tasks; rollout tasks filed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Implementing any rollout step.
+
+## Outcome
+SPEC-0005 (accepted): `DateSystem` in `WorkbookSettings`, `workbookPr@date1904` import/export, a
+`FormatContext` for the formatter, a facade option, and a 4-step rollout. Filed T-1267 (step 1,
+sonnet), T-1268 (step 2, harness/probes, opus); T-1105 is step 3 and now depends on both.
+Eval: no change (docs only).

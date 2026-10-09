@@ -22,8 +22,9 @@ SPEC-0005 "Design" (Model, Import/export, Facade) and rollout step 1. Code: `typ
 
 ## Acceptance criteria
 - [ ] Import maps `date1904` `1`/`true` to 1904, absent/`0`/`false`/garbage to 1900 (unit tests, no error on garbage).
+- [ ] `rustsheet-eval`'s `xlsx_snapshot.rs` (and `calibrate.rs`'s hardcoded `date1904: false`) reuse the importer's value; the `1`/`true` rule exists once.
 - [ ] Export writes `<workbookPr date1904="1"/>` only for 1904; 1900 exports are unchanged; round-trip test.
-- [ ] `WorkbookOptions::date_system` (default 1900) and a read-only getter, mirrored in Python.
+- [ ] `WorkbookOptions::date_system` (default 1900) and a read-only getter; `rustsheet` re-exports a documented `DateSystem`; Python mirrors both as `"1900"`/`"1904"`.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
