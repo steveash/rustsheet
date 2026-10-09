@@ -165,6 +165,17 @@ def test_generator_emits_every_m6_lookup_function_but_getpivotdata() -> None:
     assert not sorted(m6_lookup - emitted("M6"))
 
 
+def test_generator_emits_every_m9_statistical_function() -> None:
+    # T-1080: every in-scope M9 statistical entry is generator-ready; modes from probes/stat-argument-modes.
+    m9_stat = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M9" and f["category"] == "statistical"
+    }
+    assert len(m9_stat) == 142
+    assert not sorted(m9_stat - emitted("M9"))
+
+
 def test_vector_params_get_one_column() -> None:
     # T-1238: XMATCH's lookup_array is `vector: true`; a 2-D lookup vector only gives an error.
     arrays: list[str] = []

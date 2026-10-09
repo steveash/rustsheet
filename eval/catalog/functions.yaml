@@ -447,10 +447,40 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: AVEDEV, category: statistical, milestone: M9, scope: in }
-  - { name: AVERAGEA, category: statistical, milestone: M9, scope: in }
-  - { name: AVERAGEIF, category: statistical, milestone: M9, scope: in }
-  - { name: AVERAGEIFS, category: statistical, milestone: M9, scope: in }
+  - name: AVEDEV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: AVERAGEA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: AVERAGEIF
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: range, mode: range, type: any }
+      - { name: criteria, mode: criteria, type: any }
+      - { name: average_range, mode: range, type: number, optional: true }
+  - name: AVERAGEIFS
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: average_range, mode: range, type: number }
+      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria, mode: criteria, type: any }
   - name: BAHTTEXT
     category: text
     milestone: M5
@@ -473,17 +503,101 @@ functions:
   - { name: BESSELJ, category: engineering, milestone: M9, scope: in }
   - { name: BESSELK, category: engineering, milestone: M9, scope: in }
   - { name: BESSELY, category: engineering, milestone: M9, scope: in }
-  - { name: BETA.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: BETA.INV, category: statistical, milestone: M9, scope: in }
-  - { name: BETADIST, category: statistical, milestone: M9, scope: in }
-  - { name: BETAINV, category: statistical, milestone: M9, scope: in }
+  - name: BETA.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+      - { name: "A", mode: value, type: number, optional: true }
+      - { name: "B", mode: value, type: number, optional: true }
+  - name: BETA.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: "A", mode: value, type: number, optional: true }
+      - { name: "B", mode: value, type: number, optional: true }
+  - name: BETADIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: "A", mode: value, type: number, optional: true }
+      - { name: "B", mode: value, type: number, optional: true }
+  - name: BETAINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: "A", mode: value, type: number, optional: true }
+      - { name: "B", mode: value, type: number, optional: true }
   - { name: BIN2DEC, category: engineering, milestone: M9, scope: in }
   - { name: BIN2HEX, category: engineering, milestone: M9, scope: in }
   - { name: BIN2OCT, category: engineering, milestone: M9, scope: in }
-  - { name: BINOM.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: BINOM.DIST.RANGE, category: statistical, milestone: M9, scope: in }
-  - { name: BINOM.INV, category: statistical, milestone: M9, scope: in }
-  - { name: BINOMDIST, category: statistical, milestone: M9, scope: in }
+  - name: BINOM.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: number_s, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: BINOM.DIST.RANGE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
+      - { name: number_s, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: number_s2, mode: value, type: number, domain: { int: true, min: 0, max: 10 }, optional: true }
+  - name: BINOM.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+  - name: BINOMDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: number_s, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
   - { name: BITAND, category: engineering, milestone: M9, scope: in }
   - { name: BITLSHIFT, category: engineering, milestone: M9, scope: in }
   - { name: BITOR, category: engineering, milestone: M9, scope: in }
@@ -538,14 +652,79 @@ functions:
     returns: text
     params:
       - { name: number, mode: value, type: number, domain: { int: true, min: 1, max: 255 } }
-  - { name: CHIDIST, category: statistical, milestone: M9, scope: in }
-  - { name: CHIINV, category: statistical, milestone: M9, scope: in }
-  - { name: CHISQ.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: CHISQ.DIST.RT, category: statistical, milestone: M9, scope: in }
-  - { name: CHISQ.INV, category: statistical, milestone: M9, scope: in }
-  - { name: CHISQ.INV.RT, category: statistical, milestone: M9, scope: in }
-  - { name: CHISQ.TEST, category: statistical, milestone: M9, scope: in }
-  - { name: CHITEST, category: statistical, milestone: M9, scope: in }
+  - name: CHIDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: CHIINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: CHISQ.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: cumulative, mode: value, type: bool }
+  - name: CHISQ.DIST.RT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: CHISQ.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: CHISQ.INV.RT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: CHISQ.TEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: actual_range, mode: array, type: number }
+      - { name: expected_range, mode: array, type: number }
+  - name: CHITEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: actual_range, mode: array, type: number }
+      - { name: expected_range, mode: array, type: number }
   - name: CHOOSE
     category: lookup
     milestone: M6
@@ -624,12 +803,47 @@ functions:
       - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 30 } }
       - { name: number_chosen, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
   - { name: COMPLEX, category: engineering, milestone: M9, scope: in }
-  - { name: CONFIDENCE, category: statistical, milestone: M9, scope: in }
-  - { name: CONFIDENCE.NORM, category: statistical, milestone: M9, scope: in }
-  - { name: CONFIDENCE.T, category: statistical, milestone: M9, scope: in }
+  - name: CONFIDENCE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: alpha, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+      - { name: size, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
+  - name: CONFIDENCE.NORM
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: alpha, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+      - { name: size, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
+  - name: CONFIDENCE.T
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: alpha, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+      - { name: size, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
   - { name: CONVERT, category: engineering, milestone: M9, scope: in }
   - { name: COPILOT, category: text, milestone: M5, scope: out, reason: "AI service (decision 0027); no longer available from 2026-09-14 per https://support.microsoft.com/en-us/excel/functions/copilot-function (fetched 2026-10-07)" }
-  - { name: CORREL, category: statistical, milestone: M9, scope: in }
+  - name: CORREL
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
   - name: COS
     category: math
     milestone: M5
@@ -658,17 +872,56 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: COUNTBLANK, category: statistical, milestone: M9, scope: in }
+  - name: COUNTBLANK
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params: [{ name: range, mode: range, type: any }]
   - { name: COUPDAYBS, category: financial, milestone: M9, scope: in }
   - { name: COUPDAYS, category: financial, milestone: M9, scope: in }
   - { name: COUPDAYSNC, category: financial, milestone: M9, scope: in }
   - { name: COUPNCD, category: financial, milestone: M9, scope: in }
   - { name: COUPNUM, category: financial, milestone: M9, scope: in }
   - { name: COUPPCD, category: financial, milestone: M9, scope: in }
-  - { name: COVAR, category: statistical, milestone: M9, scope: in }
-  - { name: COVARIANCE.P, category: statistical, milestone: M9, scope: in }
-  - { name: COVARIANCE.S, category: statistical, milestone: M9, scope: in }
-  - { name: CRITBINOM, category: statistical, milestone: M9, scope: in }
+  - name: COVAR
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
+  - name: COVARIANCE.P
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
+  - name: COVARIANCE.S
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
+  - name: CRITBINOM
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: trials, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
   - name: CSC
     category: math
     milestone: M5
@@ -773,7 +1026,13 @@ functions:
     params: [{ name: angle, mode: value, type: number }]
   - { name: DELTA, category: engineering, milestone: M9, scope: in }
   - { name: DETECTLANGUAGE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
-  - { name: DEVSQ, category: statistical, milestone: M9, scope: in }
+  - name: DEVSQ
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - { name: DGET, category: database, milestone: M9, scope: in }
   - { name: DISC, category: financial, milestone: M9, scope: in }
   - { name: DMAX, category: database, milestone: M9, scope: in }
@@ -863,13 +1122,76 @@ functions:
     returns: number
     params: [{ name: number, mode: value, type: number }]
   - { name: EXPAND, category: lookup, milestone: M7, scope: in }
-  - { name: EXPON.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: EXPONDIST, category: statistical, milestone: M9, scope: in }
-  - { name: F.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: F.DIST.RT, category: statistical, milestone: M9, scope: in }
-  - { name: F.INV, category: statistical, milestone: M9, scope: in }
-  - { name: F.INV.RT, category: statistical, milestone: M9, scope: in }
-  - { name: F.TEST, category: statistical, milestone: M9, scope: in }
+  - name: EXPON.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: lambda, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: EXPONDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: lambda, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: F.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: cumulative, mode: value, type: bool }
+  - name: F.DIST.RT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: F.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: F.INV.RT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: F.TEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
   - name: FACT
     category: math
     milestone: M5
@@ -891,7 +1213,16 @@ functions:
     prior: 0.2
     returns: bool
     params: []
-  - { name: FDIST, category: statistical, milestone: M9, scope: in }
+  - name: FDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
   - { name: FIELDVALUE, category: lookup, milestone: M6, scope: out, reason: "reads linked data types (decision 0027)" }
   - { name: FILTER, category: lookup, milestone: M7, scope: in }
   # #VALUE! on the web for valid input (function-name-forms A7); desktop confirmation T-1081
@@ -924,9 +1255,30 @@ functions:
       - { name: find_text, mode: value, type: text }
       - { name: within_text, mode: value, type: text }
       - { name: start_num, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 8 } }
-  - { name: FINV, category: statistical, milestone: M9, scope: in }
-  - { name: FISHER, category: statistical, milestone: M9, scope: in }
-  - { name: FISHERINV, category: statistical, milestone: M9, scope: in }
+  - name: FINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom1, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: deg_freedom2, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: FISHER
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: x, mode: value, type: number }]
+  - name: FISHERINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: "y", mode: value, type: number }]
   - name: FIXED
     category: text
     milestone: M5
@@ -965,12 +1317,77 @@ functions:
     params:
       - { name: number, mode: value, type: number }
       - { name: significance, mode: value, type: number, optional: true }
-  - { name: FORECAST, category: statistical, milestone: M9, scope: in }
-  - { name: FORECAST.ETS, category: statistical, milestone: M9, scope: in }
-  - { name: FORECAST.ETS.CONFINT, category: statistical, milestone: M9, scope: in }
-  - { name: FORECAST.ETS.SEASONALITY, category: statistical, milestone: M9, scope: in }
-  - { name: FORECAST.ETS.STAT, category: statistical, milestone: M9, scope: in }
-  - { name: FORECAST.LINEAR, category: statistical, milestone: M9, scope: in }
+  - name: FORECAST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number }
+  - name: FORECAST.ETS
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: target_date, mode: value, type: number }
+      - { name: values, mode: array, type: number }
+      - { name: timeline, mode: array, type: number }
+      - { name: seasonality, mode: value, type: number, domain: { int: true, min: 0, max: 4 }, optional: true }
+      - { name: data_completion, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
+      - { name: aggregation, mode: value, type: number, domain: { int: true, min: 1, max: 7 }, optional: true }
+  - name: FORECAST.ETS.CONFINT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: target_date, mode: value, type: number }
+      - { name: values, mode: array, type: number }
+      - { name: timeline, mode: array, type: number }
+      - { name: confidence_level, mode: value, type: number, optional: true }
+      - { name: seasonality, mode: value, type: number, domain: { int: true, min: 0, max: 4 }, optional: true }
+      - { name: data_completion, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
+      - { name: aggregation, mode: value, type: number, domain: { int: true, min: 1, max: 7 }, optional: true }
+  - name: FORECAST.ETS.SEASONALITY
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: values, mode: array, type: number }
+      - { name: timeline, mode: array, type: number }
+      - { name: data_completion, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
+      - { name: aggregation, mode: value, type: number, domain: { int: true, min: 1, max: 7 }, optional: true }
+  - name: FORECAST.ETS.STAT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: values, mode: array, type: number }
+      - { name: timeline, mode: array, type: number }
+      - { name: statistic_type, mode: value, type: number, domain: { int: true, min: 1, max: 8 } }
+      - { name: seasonality, mode: value, type: number, domain: { int: true, min: 0, max: 4 }, optional: true }
+      - { name: data_completion, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
+      - { name: aggregation, mode: value, type: number, domain: { int: true, min: 1, max: 7 }, optional: true }
+  - name: FORECAST.LINEAR
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number }
   - name: FORMULATEXT
     category: lookup
     milestone: M6
@@ -979,18 +1396,96 @@ functions:
     returns: text
     params:
       - { name: reference, mode: range, type: any, cell: true }
-  - { name: FREQUENCY, category: statistical, milestone: M9, scope: in }
-  - { name: FTEST, category: statistical, milestone: M9, scope: in }
+  - name: FREQUENCY
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: data_array, mode: array, type: number }
+      - { name: bins_array, mode: array, type: number }
+  - name: FTEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
   - { name: FV, category: financial, milestone: M9, scope: in }
   - { name: FVSCHEDULE, category: financial, milestone: M9, scope: in }
-  - { name: GAMMA, category: statistical, milestone: M9, scope: in }
-  - { name: GAMMA.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: GAMMA.INV, category: statistical, milestone: M9, scope: in }
-  - { name: GAMMADIST, category: statistical, milestone: M9, scope: in }
-  - { name: GAMMAINV, category: statistical, milestone: M9, scope: in }
-  - { name: GAMMALN, category: statistical, milestone: M9, scope: in }
-  - { name: GAMMALN.PRECISE, category: statistical, milestone: M9, scope: in }
-  - { name: GAUSS, category: statistical, milestone: M9, scope: in }
+  - name: GAMMA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: x, mode: value, type: number }]
+  - name: GAMMA.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: GAMMA.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+  - name: GAMMADIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: GAMMAINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+  - name: GAMMALN
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: x, mode: value, type: number }]
+  - name: GAMMALN.PRECISE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: x, mode: value, type: number }]
+  - name: GAUSS
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: z, mode: value, type: number }]
   - name: GCD
     category: math
     milestone: M5
@@ -998,13 +1493,35 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: array, type: number, repeat: true, min: 1, max: 255 }]
-  - { name: GEOMEAN, category: statistical, milestone: M9, scope: in }
+  - name: GEOMEAN
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - { name: GESTEP, category: engineering, milestone: M9, scope: in }
   # No signature: GETPIVOTDATA reads a pivot table, which generated workbooks do not have (T-1238).
   - { name: GETPIVOTDATA, category: lookup, milestone: M6, scope: in }
   - { name: GROUPBY, category: lookup, milestone: M7, scope: in }
-  - { name: GROWTH, category: statistical, milestone: M9, scope: in }
-  - { name: HARMEAN, category: statistical, milestone: M9, scope: in }
+  - name: GROWTH
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number, optional: true }
+      - { name: "new_x's", mode: array, type: number, optional: true }
+      - { name: const, mode: value, type: bool, optional: true }
+  - name: HARMEAN
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - { name: HEX2BIN, category: engineering, milestone: M9, scope: in }
   - { name: HEX2DEC, category: engineering, milestone: M9, scope: in }
   - { name: HEX2OCT, category: engineering, milestone: M9, scope: in }
@@ -1026,8 +1543,29 @@ functions:
     params:
       - { name: link_location, mode: value, type: text, domain: { enum: ["http://example.com", "#Data!A1", "mailto:a@example.com"] } }
       - { name: friendly_name, mode: value, type: any, optional: true }
-  - { name: HYPGEOM.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: HYPGEOMDIST, category: statistical, milestone: M9, scope: in }
+  - name: HYPGEOM.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: sample_s, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: number_sample, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
+      - { name: population_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: number_pop, mode: value, type: number, domain: { int: true, min: 1, max: 20 } }
+      - { name: cumulative, mode: value, type: bool }
+  - name: HYPGEOMDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: sample_s, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+      - { name: number_sample, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
+      - { name: population_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: number_pop, mode: value, type: number, domain: { int: true, min: 1, max: 20 } }
   # Lifts over a range (probes/info-logic-argument-modes A16).
   - name: IFNA
     category: logical
@@ -1094,7 +1632,15 @@ functions:
     prior: 2
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: INTERCEPT, category: statistical, milestone: M9, scope: in }
+  - name: INTERCEPT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number }
   - { name: INTRATE, category: financial, milestone: M9, scope: in }
   - { name: IPMT, category: financial, milestone: M9, scope: in }
   - { name: IRR, category: financial, milestone: M9, scope: in }
@@ -1214,9 +1760,23 @@ functions:
     returns: text
     params:
       - { name: text, mode: value, type: text }
-  - { name: KURT, category: statistical, milestone: M9, scope: in }
+  - name: KURT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - { name: LAMBDA, category: logical, milestone: M7, scope: in }
-  - { name: LARGE, category: statistical, milestone: M9, scope: in }
+  - name: LARGE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: k, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
   - name: LCM
     category: math
     milestone: M5
@@ -1242,7 +1802,17 @@ functions:
     params:
       - { name: text, mode: value, type: text }
   - { name: LET, category: logical, milestone: M7, scope: in }
-  - { name: LINEST, category: statistical, milestone: M9, scope: in }
+  - name: LINEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number, optional: true }
+      - { name: const, mode: value, type: bool, optional: true }
+      - { name: stats, mode: value, type: bool, optional: true }
   - name: LN
     category: math
     milestone: M5
@@ -1266,11 +1836,58 @@ functions:
     prior: 0.3
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: LOGEST, category: statistical, milestone: M9, scope: in }
-  - { name: LOGINV, category: statistical, milestone: M9, scope: in }
-  - { name: LOGNORM.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: LOGNORM.INV, category: statistical, milestone: M9, scope: in }
-  - { name: LOGNORMDIST, category: statistical, milestone: M9, scope: in }
+  - name: LOGEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number, optional: true }
+      - { name: const, mode: value, type: bool, optional: true }
+      - { name: stats, mode: value, type: bool, optional: true }
+  - name: LOGINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+  - name: LOGNORM.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: LOGNORM.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+  - name: LOGNORMDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
   - name: LOOKUP
     category: lookup
     milestone: M6
@@ -1283,8 +1900,23 @@ functions:
       - { name: result_vector, mode: range, type: any, optional: true, vector: true }
   - { name: MAKEARRAY, category: logical, milestone: M7, scope: in }
   - { name: MAP, category: logical, milestone: M7, scope: in }
-  - { name: MAXA, category: statistical, milestone: M9, scope: in }
-  - { name: MAXIFS, category: statistical, milestone: M9, scope: in }
+  - name: MAXA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: MAXIFS
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: max_range, mode: range, type: number }
+      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria, mode: criteria, type: any }
   - name: MDETERM
     category: math
     milestone: M5
@@ -1293,7 +1925,13 @@ functions:
     returns: number
     params: [{ name: array, mode: array, type: number }]
   - { name: MDURATION, category: financial, milestone: M9, scope: in }
-  - { name: MEDIAN, category: statistical, milestone: M9, scope: in }
+  - name: MEDIAN
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - name: MIDB
     category: text
     milestone: M5
@@ -1304,8 +1942,23 @@ functions:
       - { name: text, mode: value, type: text }
       - { name: start_num, mode: value, type: number, domain: { int: true, min: 1, max: 8 } }
       - { name: num_bytes, mode: value, type: number, domain: { int: true, min: 0, max: 8 } }
-  - { name: MINA, category: statistical, milestone: M9, scope: in }
-  - { name: MINIFS, category: statistical, milestone: M9, scope: in }
+  - name: MINA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: MINIFS
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: min_range, mode: range, type: number }
+      - { name: criteria_range, mode: range, type: any, repeat: { group: [criteria_range, criteria], min: 1, max: 127 } }
+      - { name: criteria, mode: criteria, type: any }
   - name: MINUTE
     category: date
     milestone: M6
@@ -1340,9 +1993,27 @@ functions:
     params:
       - { name: number, mode: value, type: number }
       - { name: divisor, mode: value, type: number }
-  - { name: MODE, category: statistical, milestone: M9, scope: in }
-  - { name: MODE.MULT, category: statistical, milestone: M9, scope: in }
-  - { name: MODE.SNGL, category: statistical, milestone: M9, scope: in }
+  - name: MODE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: MODE.MULT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: MODE.SNGL
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - name: MROUND
     category: math
     milestone: M5
@@ -1381,8 +2052,27 @@ functions:
     prior: 0.5
     returns: any
     params: []
-  - { name: NEGBINOM.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: NEGBINOMDIST, category: statistical, milestone: M9, scope: in }
+  - name: NEGBINOM.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: number_f, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: number_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: NEGBINOMDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: number_f, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: number_s, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: probability_s, mode: value, type: number }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: NETWORKDAYS
     category: date
@@ -1407,14 +2097,78 @@ functions:
       - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
       - { name: holidays, mode: array, type: number, optional: true }
   - { name: NOMINAL, category: financial, milestone: M9, scope: in }
-  - { name: NORM.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: NORM.INV, category: statistical, milestone: M9, scope: in }
-  - { name: NORM.S.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: NORM.S.INV, category: statistical, milestone: M9, scope: in }
-  - { name: NORMDIST, category: statistical, milestone: M9, scope: in }
-  - { name: NORMINV, category: statistical, milestone: M9, scope: in }
-  - { name: NORMSDIST, category: statistical, milestone: M9, scope: in }
-  - { name: NORMSINV, category: statistical, milestone: M9, scope: in }
+  - name: NORM.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: NORM.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+  - name: NORM.S.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: z, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: NORM.S.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: probability, mode: value, type: number }]
+  - name: NORMDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: NORMINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+  - name: NORMSDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: z, mode: value, type: number }]
+  - name: NORMSINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: probability, mode: value, type: number }]
   - { name: NOW, category: date, milestone: M2, scope: in }
   - { name: NPER, category: financial, milestone: M9, scope: in }
   - { name: NPV, category: financial, milestone: M9, scope: in }
@@ -1455,10 +2209,42 @@ functions:
       - { name: height, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
       - { name: width, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
   - { name: PDURATION, category: financial, milestone: M9, scope: in }
-  - { name: PEARSON, category: statistical, milestone: M9, scope: in }
-  - { name: PERCENTILE, category: statistical, milestone: M9, scope: in }
-  - { name: PERCENTILE.EXC, category: statistical, milestone: M9, scope: in }
-  - { name: PERCENTILE.INC, category: statistical, milestone: M9, scope: in }
+  - name: PEARSON
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
+  - name: PERCENTILE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: k, mode: value, type: number }
+  - name: PERCENTILE.EXC
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: k, mode: value, type: number }
+  - name: PERCENTILE.INC
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: k, mode: value, type: number }
   - name: PERCENTOF
     category: math
     milestone: M5
@@ -1468,12 +2254,61 @@ functions:
     params:
       - { name: data_subset, mode: aggregate, type: number }
       - { name: data_all, mode: aggregate, type: number }
-  - { name: PERCENTRANK, category: statistical, milestone: M9, scope: in }
-  - { name: PERCENTRANK.EXC, category: statistical, milestone: M9, scope: in }
-  - { name: PERCENTRANK.INC, category: statistical, milestone: M9, scope: in }
-  - { name: PERMUT, category: statistical, milestone: M9, scope: in }
-  - { name: PERMUTATIONA, category: statistical, milestone: M9, scope: in }
-  - { name: PHI, category: statistical, milestone: M9, scope: in }
+  - name: PERCENTRANK
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: x, mode: value, type: number }
+      - { name: significance, mode: value, type: number, domain: { int: true, min: 1, max: 5 }, optional: true }
+  - name: PERCENTRANK.EXC
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: x, mode: value, type: number }
+      - { name: significance, mode: value, type: number, domain: { int: true, min: 1, max: 5 }, optional: true }
+  - name: PERCENTRANK.INC
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: x, mode: value, type: number }
+      - { name: significance, mode: value, type: number, domain: { int: true, min: 1, max: 5 }, optional: true }
+  - name: PERMUT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: number_chosen, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+  - name: PERMUTATIONA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: number_chosen, mode: value, type: number, domain: { int: true, min: 0, max: 5 } }
+  - name: PHI
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: x, mode: value, type: number }]
   - name: PHONETIC
     category: text
     milestone: M5
@@ -1491,8 +2326,26 @@ functions:
     params: []
   - { name: PIVOTBY, category: lookup, milestone: M7, scope: in }
   - { name: PMT, category: financial, milestone: M9, scope: in }
-  - { name: POISSON, category: statistical, milestone: M9, scope: in }
-  - { name: POISSON.DIST, category: statistical, milestone: M9, scope: in }
+  - name: POISSON
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: mean, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: POISSON.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number, domain: { int: true, min: 0, max: 10 } }
+      - { name: mean, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
   - name: POWER
     category: math
     milestone: M5
@@ -1506,7 +2359,17 @@ functions:
   - { name: PRICE, category: financial, milestone: M9, scope: in }
   - { name: PRICEDISC, category: financial, milestone: M9, scope: in }
   - { name: PRICEMAT, category: financial, milestone: M9, scope: in }
-  - { name: PROB, category: statistical, milestone: M9, scope: in }
+  - name: PROB
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x_range, mode: array, type: number }
+      - { name: prob_range, mode: array, type: number }
+      - { name: lower_limit, mode: value, type: number }
+      - { name: upper_limit, mode: value, type: number, optional: true }
   - name: PRODUCT
     category: math
     milestone: M5
@@ -1524,9 +2387,33 @@ functions:
       - { name: text, mode: value, type: text }
   - { name: PV, category: financial, milestone: M9, scope: in }
   - { name: PY, category: addin, milestone: M5, scope: out, reason: "runs Python in the Microsoft Cloud (decision 0027)" }
-  - { name: QUARTILE, category: statistical, milestone: M9, scope: in }
-  - { name: QUARTILE.EXC, category: statistical, milestone: M9, scope: in }
-  - { name: QUARTILE.INC, category: statistical, milestone: M9, scope: in }
+  - name: QUARTILE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: quart, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
+  - name: QUARTILE.EXC
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: quart, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
+  - name: QUARTILE.INC
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: quart, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
   - name: QUOTIENT
     category: math
     milestone: M5
@@ -1562,9 +2449,36 @@ functions:
     params:
       - { name: bottom, mode: value, type: number, domain: { int: true, min: -10, max: 10 } }
       - { name: top, mode: value, type: number, domain: { int: true, min: 0, max: 100 } }
-  - { name: RANK, category: statistical, milestone: M9, scope: in }
-  - { name: RANK.AVG, category: statistical, milestone: M9, scope: in }
-  - { name: RANK.EQ, category: statistical, milestone: M9, scope: in }
+  - name: RANK
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: ref, mode: range, type: number }
+      - { name: order, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
+  - name: RANK.AVG
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: ref, mode: range, type: number }
+      - { name: order, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
+  - name: RANK.EQ
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: number, mode: value, type: number }
+      - { name: ref, mode: range, type: number }
+      - { name: order, mode: value, type: number, domain: { int: true, min: 0, max: 1 }, optional: true }
   - { name: RATE, category: financial, milestone: M9, scope: in }
   - { name: RECEIVED, category: financial, milestone: M9, scope: in }
   - { name: REDUCE, category: logical, milestone: M7, scope: in }
@@ -1638,7 +2552,15 @@ functions:
     params:
       - { name: array, mode: array, type: any }
   - { name: RRI, category: financial, milestone: M9, scope: in }
-  - { name: RSQ, category: statistical, milestone: M9, scope: in }
+  - name: RSQ
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number }
   - { name: RTD, category: lookup, milestone: M6, scope: out, reason: "real-time data server (decision 0027)" }
   - { name: SCAN, category: logical, milestone: M7, scope: in }
   - name: SEARCH
@@ -1725,11 +2647,39 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: SKEW, category: statistical, milestone: M9, scope: in }
-  - { name: SKEW.P, category: statistical, milestone: M9, scope: in }
+  - name: SKEW
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: SKEW.P
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
   - { name: SLN, category: financial, milestone: M9, scope: in }
-  - { name: SLOPE, category: statistical, milestone: M9, scope: in }
-  - { name: SMALL, category: statistical, milestone: M9, scope: in }
+  - name: SLOPE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number }
+  - name: SMALL
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: k, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
   - { name: SORT, category: lookup, milestone: M7, scope: in }
   - { name: SORTBY, category: lookup, milestone: M7, scope: in }
   - name: SQRT
@@ -1746,14 +2696,67 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: STANDARDIZE, category: statistical, milestone: M9, scope: in }
-  - { name: STDEV, category: statistical, milestone: M9, scope: in }
-  - { name: STDEV.P, category: statistical, milestone: M9, scope: in }
-  - { name: STDEV.S, category: statistical, milestone: M9, scope: in }
-  - { name: STDEVA, category: statistical, milestone: M9, scope: in }
-  - { name: STDEVP, category: statistical, milestone: M9, scope: in }
-  - { name: STDEVPA, category: statistical, milestone: M9, scope: in }
-  - { name: STEYX, category: statistical, milestone: M9, scope: in }
+  - name: STANDARDIZE
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: mean, mode: value, type: number }
+      - { name: standard_dev, mode: value, type: number }
+  - name: STDEV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: STDEV.P
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: STDEV.S
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.5
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: STDEVA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: STDEVP
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: STDEVPA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: STEYX
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number }
   - { name: STOCKHISTORY, category: information, milestone: M5, scope: out, reason: "online financial data service (decision 0027)" }
   - name: SUBSTITUTE
     category: text
@@ -1837,12 +2840,63 @@ functions:
     returns: text
     params:
       - { name: value, mode: value, type: any }
-  - { name: T.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: T.DIST.2T, category: statistical, milestone: M9, scope: in }
-  - { name: T.DIST.RT, category: statistical, milestone: M9, scope: in }
-  - { name: T.INV, category: statistical, milestone: M9, scope: in }
-  - { name: T.INV.2T, category: statistical, milestone: M9, scope: in }
-  - { name: T.TEST, category: statistical, milestone: M9, scope: in }
+  - name: T.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: cumulative, mode: value, type: bool }
+  - name: T.DIST.2T
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: T.DIST.RT
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: T.INV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: T.INV.2T
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+  - name: T.TEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
+      - { name: tails, mode: value, type: number, domain: { int: true, min: 1, max: 2 } }
+      - { name: type, mode: value, type: number, domain: { int: true, min: 1, max: 3 } }
   - { name: TAKE, category: lookup, milestone: M7, scope: in }
   - name: TAN
     category: math
@@ -1861,7 +2915,16 @@ functions:
   - { name: TBILLEQ, category: financial, milestone: M9, scope: in }
   - { name: TBILLPRICE, category: financial, milestone: M9, scope: in }
   - { name: TBILLYIELD, category: financial, milestone: M9, scope: in }
-  - { name: TDIST, category: statistical, milestone: M9, scope: in }
+  - name: TDIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
+      - { name: tails, mode: value, type: number, domain: { int: true, min: 1, max: 2 } }
   - name: TEXT
     category: text
     milestone: M5
@@ -1902,7 +2965,15 @@ functions:
     returns: number
     params:
       - { name: time_text, mode: value, type: text, domain: { enum: ["1:30 PM", "13:45:10", "6:00", "12:00:00 AM", "1/15/2024 18:30"] } }
-  - { name: TINV, category: statistical, milestone: M9, scope: in }
+  - name: TINV
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: probability, mode: value, type: number }
+      - { name: deg_freedom, mode: value, type: number, domain: { int: true, min: 1, max: 10 } }
   - { name: TOCOL, category: lookup, milestone: M7, scope: in }
   - { name: TODAY, category: date, milestone: M2, scope: in }
   - { name: TOROW, category: lookup, milestone: M7, scope: in }
@@ -1915,8 +2986,26 @@ functions:
     returns: any
     params:
       - { name: array, mode: array, type: any }
-  - { name: TREND, category: statistical, milestone: M9, scope: in }
-  - { name: TRIMMEAN, category: statistical, milestone: M9, scope: in }
+  - name: TREND
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: "known_y's", mode: array, type: number }
+      - { name: "known_x's", mode: array, type: number, optional: true }
+      - { name: "new_x's", mode: array, type: number, optional: true }
+      - { name: const, mode: value, type: bool, optional: true }
+  - name: TRIMMEAN
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: percent, mode: value, type: number }
   - name: TRIMRANGE
     category: lookup
     milestone: M6
@@ -1943,7 +3032,17 @@ functions:
     params:
       - { name: number, mode: value, type: number }
       - { name: num_digits, mode: value, type: number, optional: true, domain: { int: true, min: -6, max: 10 } }
-  - { name: TTEST, category: statistical, milestone: M9, scope: in }
+  - name: TTEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array1, mode: array, type: number }
+      - { name: array2, mode: array, type: number }
+      - { name: tails, mode: value, type: number, domain: { int: true, min: 1, max: 2 } }
+      - { name: type, mode: value, type: number, domain: { int: true, min: 1, max: 3 } }
   # A range or array is 64, no lift (probes/info-logic-argument-modes A7, A23).
   - name: TYPE
     category: information
@@ -1986,12 +3085,48 @@ functions:
     params:
       - { name: value, mode: value, type: any }
       - { name: format, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
-  - { name: VAR, category: statistical, milestone: M9, scope: in }
-  - { name: VAR.P, category: statistical, milestone: M9, scope: in }
-  - { name: VAR.S, category: statistical, milestone: M9, scope: in }
-  - { name: VARA, category: statistical, milestone: M9, scope: in }
-  - { name: VARP, category: statistical, milestone: M9, scope: in }
-  - { name: VARPA, category: statistical, milestone: M9, scope: in }
+  - name: VAR
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: VAR.P
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: VAR.S
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: VARA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
+  - name: VARP
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: number, mode: aggregate, type: number, repeat: true, min: 1, max: 255 }]
+  - name: VARPA
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.1
+    returns: number
+    params: [{ name: value, mode: aggregate_a, type: any, repeat: true, min: 1, max: 255 }]
   - { name: VDB, category: financial, milestone: M9, scope: in }
   - { name: VSTACK, category: lookup, milestone: M7, scope: in }
   - { name: WEBSERVICE, category: web, milestone: M5, scope: out, reason: "calls a web service (decision 0027)" }
@@ -2014,8 +3149,28 @@ functions:
     params:
       - { name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
       - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 2 } }
-  - { name: WEIBULL, category: statistical, milestone: M9, scope: in }
-  - { name: WEIBULL.DIST, category: statistical, milestone: M9, scope: in }
+  - name: WEIBULL
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
+  - name: WEIBULL.DIST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: x, mode: value, type: number }
+      - { name: alpha, mode: value, type: number }
+      - { name: beta, mode: value, type: number }
+      - { name: cumulative, mode: value, type: bool }
   # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
   - name: WORKDAY
     category: date
@@ -2090,5 +3245,23 @@ functions:
   - { name: YIELD, category: financial, milestone: M9, scope: in }
   - { name: YIELDDISC, category: financial, milestone: M9, scope: in }
   - { name: YIELDMAT, category: financial, milestone: M9, scope: in }
-  - { name: Z.TEST, category: statistical, milestone: M9, scope: in }
-  - { name: ZTEST, category: statistical, milestone: M9, scope: in }
+  - name: Z.TEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: x, mode: value, type: number }
+      - { name: sigma, mode: value, type: number, optional: true }
+  - name: ZTEST
+    category: statistical
+    milestone: M9
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: array, mode: array, type: number }
+      - { name: x, mode: value, type: number }
+      - { name: sigma, mode: value, type: number, optional: true }
