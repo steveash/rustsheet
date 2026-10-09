@@ -853,3 +853,14 @@ Status: VERIFIED (excel-graph)
 Implemented in: `fn_multinomial` (functions/math_and_trigonometry/multinomial.rs) checks the saturating sum against 170
 before any factorial, so the work is bounded (directive 5).
 Tasks: T-1197
+
+## BASE min_length is at most 255
+Rule: BASE's `min_length` truncates and may be at most 255: `BASE(1,2,255.9)` pads to 255 characters, `BASE(1,2,254.5)`
+to 254, and `BASE(1,2,256)`, `(1,2,1E+15)` and `(1,2,"300")` (numeric text) are `#NUM!`, as is a negative one
+(`-0.5`, `-1`). A non-numeric number is `#VALUE!` first (`BASE("x",2,1E+15)`); `BASE(-1,2,1E+15)` and `BASE(1,37,1E+15)`
+are `#NUM!`.
+Evidence: probes/base-min-length (excel-graph, 2026-10-09, T-1243); gen-m6 sample seed 17 `BASE(245,30,1E+15)` = `#NUM!`.
+Ours: the same; the bound is checked before padding, which also bounds the allocation (it used to abort the process).
+Status: VERIFIED
+Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
+Tasks: T-1243

@@ -26,6 +26,7 @@ C	probes/at-operand-formulatext.case.json	14
 C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
 C	probes/average-value-args.case.json	32
+C	probes/base-min-length.case.json	14
 C	probes/catalog/availability-01.case.json	12
 C	probes/catalog/availability-02.case.json	12
 C	probes/catalog/availability-03.case.json	12

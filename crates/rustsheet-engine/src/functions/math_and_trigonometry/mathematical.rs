@@ -16,6 +16,9 @@ use std::f64::consts::PI;
 /// power of two (probes/mod-quotient-threshold5).
 const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
+/// The largest `min_length` BASE accepts (probes/base-min-length).
+const BASE_MAX_MIN_LENGTH: f64 = 255.0;
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -98,7 +101,18 @@ impl Model {
                             message: "Minimum length must be non-negative".to_string(),
                         };
                     }
-                    f.trunc() as usize
+                    // Excel: min_length truncates and may be at most 255 (`BASE(1,2,255.9)` pads to 255,
+                    // `BASE(1,2,256)` is #NUM!; probes/base-min-length). Checking before padding also
+                    // bounds the allocation (CLAUDE.md directive 5).
+                    let min_length = f.trunc();
+                    if min_length > BASE_MAX_MIN_LENGTH {
+                        return CalcResult::Error {
+                            error: Error::NUM,
+                            origin: cell,
+                            message: "Minimum length must be at most 255".to_string(),
+                        };
+                    }
+                    min_length as usize
                 }
                 Err(s) => return s,
             }
