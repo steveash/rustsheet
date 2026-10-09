@@ -295,7 +295,7 @@ impl Model {
     }
 
     /// SUM's total without the near-zero snap, for callers whose snapping is not probed
-    /// (SUBTOTAL(9), PERCENTOF).
+    /// (AGGREGATE(9), PERCENTOF).
     pub(crate) fn fn_sum_unsnapped(
         &mut self,
         args: &[Node],
