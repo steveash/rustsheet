@@ -48,7 +48,8 @@ Tasks: T-0249
 Rule: a MID or REPLACE position that splits a surrogate pair keeps the lone surrogate:
 `LEN(MID("a😀b",3,2))` is 2 (low surrogate and "b"), `LEN(MID("a😀b",2,1))` is 1,
 `LEN(MID("😀",2,5))` is 1, `LEN(REPLACE("a😀b",3,1,"x"))` is 4, and
-`LEFT("a😀b",2)&MID("a😀b",3,2)` rejoins the pair. `UNICODE` of a lone low surrogate is its code
+`LEFT("a😀b",2)&MID("a😀b",3,2)` is "a😀", a lone U+DE00, then "b" (LEFT already took the whole
+emoji). `UNICODE` of a lone low surrogate is its code
 (`UNICODE(MID("a😀b",3,1))` is 56832), unlike a lone high one (`#VALUE!`, coercion.md
 "Truncation inside a surrogate pair keeps a lone high surrogate"). LEFT and RIGHT treat a lone
 surrogate as one character and do not pair a lone high surrogate with a following character
