@@ -3,7 +3,7 @@ id: T-1152
 title: "Probe LARGE/SMALL/RANK.AVG/FREQUENCY over unions: overlap, error cells, area order, SMALL(IF/INDEX/3-D)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,8 +23,11 @@ cannot show the order areas are walked in. SMALL now reads its argument like LAR
 Write a probe next to probes/multiarea-rank with the excel-probe skill and fill it with the oracle.
 
 ## Acceptance criteria
-- [ ] A probe case with oracle values covers the forms above (use values whose order matters, e.g. 7, 1, 5); references.md records each finding, and a fix task is filed for any engine mismatch.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with oracle values covers the forms above (use values whose order matters, e.g. 7, 1, 5); references.md records each finding, and a fix task is filed for any engine mismatch.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/multiarea-order-stats (oracle-filled, excel-graph). The engine already matched Excel on 19 of 22 scored cells: overlap counts twice, area order is irrelevant, error cells in a union are skipped, SMALL(IF/INDEX/3-D) work. The one mismatch (RANK of an array ref argument is `#VALUE!`) is T-1203. probes baseline updated (3 known-failure cells).

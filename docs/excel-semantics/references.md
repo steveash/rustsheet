@@ -765,3 +765,16 @@ parentheses is UNVERIFIED (T-1167, T-1178); the likely answer is yes, as Excel k
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134
+
+## Order statistics over unions
+Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells in the order written;
+overlapping areas count twice (`LARGE((A1:B2,B2),2)` = 9 with A1:B2 = 7,1,3,9 and B2 = 9; `SMALL((A1:B2,B2),2)` = 3;
+`RANK(7,(A1:B2,B2))` = 3; `RANK.AVG(9,(A1:B2,B2))` = 1.5). The order of the areas does not change the result
+(`SMALL((C3,B2,A1),2)` = `SMALL((A1,B2,C3),2)` = 7). An error cell in an area is skipped, not propagated:
+`LARGE((A1,E1),1)` = 7 and `SMALL((A1,E1),1)` = 7 with E1 = #DIV/0!, `RANK(7,(A1,E1))` = 1, and FREQUENCY over such a union counts it in no bin
+(`FREQUENCY((A1,E1),{4})` = 0, 1). SMALL reads `IF(..)`, `INDEX(..)` and a 3-D reference like LARGE
+(`SMALL(IF(A1:C1>0,A1:C1),2)` = 5, `SMALL(INDEX(A1:C2,0,2),1)` = 1, `SMALL(Sheet1:Data!A1,1)` = 7). RANK with an array (not a
+reference) as the ref argument, `RANK(5,IF(A1:C1>0,A1:C1))`, is `#VALUE!` spilled over the array's shape (1x3).
+Evidence: probes/multiarea-order-stats (excel-graph, 2026-10-09, T-1152). Ours: matches except the RANK-of-array row (engine returns 2; T-1203).
+Status: VERIFIED (excel-graph)
+Tasks: T-1068, T-1152, T-1203
