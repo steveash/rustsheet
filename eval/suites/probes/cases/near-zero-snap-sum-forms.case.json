@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1131: near-zero snapping of an outermost SUM over ranges (blanks, text between), trailing zero, array arguments, a parenthesized SUM and 2-D range order. Also a SUM that is not the outermost operation or is parenthesized.",
+  "description": "T-1131: near-zero snapping of a SUM call, outermost or not, over ranges (blanks, text between), trailing zero, array arguments, a parenthesized SUM and 2-D range order. Also a SUM that is not the outermost operation or is parenthesized.",
   "tags": [
     "M1",
     "numbers",

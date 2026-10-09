@@ -181,9 +181,10 @@ pub(crate) fn array_of_errors(
 
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
-    /// outermost `+`/`-` to 0 (a SUM call snaps wherever it sits, `fn_sum`), but not for a wholly parenthesized formula, which is a
+    /// outermost `+`/`-` to 0, but not for a wholly parenthesized formula, which is a
     /// `GroupedRootKind` root (docs/excel-semantics/numbers.md "Near-zero snapping in addition
-    /// and subtraction"); every other node evaluates as usual.
+    /// and subtraction"); every other node evaluates as usual. A SUM call snaps wherever it
+    /// sits, so it needs no case here (`fn_sum`).
     pub(crate) fn evaluate_formula_root(
         &mut self,
         node: &Node,

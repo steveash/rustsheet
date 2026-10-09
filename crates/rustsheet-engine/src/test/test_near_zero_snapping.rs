@@ -94,4 +94,5 @@ fn sum_call_snaps_anywhere_but_not_with_a_trailing_zero() {
         assert_eq!(model._get_text(&format!("B{row}")), "TRUE", "row {row}");
     }
     assert_eq!(model._get_text("B6"), "FALSE");
+    assert_eq!(model._get_text("A6"), "5.55112E-17");
 }
