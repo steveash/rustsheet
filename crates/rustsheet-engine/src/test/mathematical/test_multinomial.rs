@@ -93,5 +93,9 @@ fn multinomial_past_170_is_num_at_once() {
         assert_eq!(model._get_text(cell), "#NUM!", "{formula}");
     }
     assert_eq!(model._get_text("B2"), "170");
-    assert!(model._get_text("B1").starts_with("9.1448"), "{}", model._get_text("B1"));
+    assert!(
+        model._get_text("B1").starts_with("9.1448"),
+        "{}",
+        model._get_text("B1")
+    );
 }
