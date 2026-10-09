@@ -221,5 +221,13 @@ Ours: matches since T-1203: the RANK family returns a `#VALUE!` array of the arg
 (`static_analysis_rank`) makes such a formula a dynamic-array anchor so it spills. For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
 UNVERIFIED (the oracle refuses the workbook). Scalar literals (`RANK(5,5)`, `"5"`, `TRUE`) still rank as a
 one-element list, also UNVERIFIED (decision 0039).
+Error and text arguments next to such a ref (probes/rank-nonref-errors, excel-graph, 2026-10-09, T-1208; RANK and RANK.AVG
+agree): an error `number` is that error in every element of the ref's shape (`RANK(#N/A,IF(A1:C1>0,A1:C1))` fills F1:H1 with
+`#N/A`, a `#DIV/0!` number fills `#DIV/0!`), a text `number` is `#VALUE!` in every element, and an `order` of an error, text or a
+number `1` is `#VALUE!` in every element (the array ref decides the shape and its `#VALUE!` wins over an `order` error). An error
+`number` therefore takes precedence over the ref's own `#VALUE!` and the result still spills. Not probed: an error `number` together
+with an error `order` (which wins).
+RANK.EQ shares the RANK implementation and was not probed separately.
+Ours: a single cell for the error and text `number` cases (no spill), which differs; fix filed as T-1215. The `order` cases match.
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
-Tasks: T-1152, T-1203
+Tasks: T-1152, T-1203, T-1208
