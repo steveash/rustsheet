@@ -182,6 +182,7 @@ C	probes/lookup-approximate-search.case.json	44
 C	probes/lookup-index-hlookup.case.json	11
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
+C	probes/lookup-pick-aggregates.case.json	16
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/math-argument-modes.case.json	56
@@ -642,6 +643,12 @@ F	probes/geomean-single-and-copies.case.json	Copies!G7
 F	probes/geomean-single-and-copies.case.json	Copies!G8
 F	probes/geomean-single-and-copies.case.json	Copies!G9
 F	probes/geomean-stored-3ulps-low.case.json	Sheet1!R1
+F	probes/lookup-pick-aggregates.case.json	Calc!D1
+F	probes/lookup-pick-aggregates.case.json	Calc!D13
+F	probes/lookup-pick-aggregates.case.json	Calc!D14
+F	probes/lookup-pick-aggregates.case.json	Calc!D15
+F	probes/lookup-pick-aggregates.case.json	Calc!D2
+F	probes/lookup-pick-aggregates.case.json	Calc!D3
 F	probes/math-argument-modes.case.json	Sheet1!C35
 F	probes/math-argument-modes.case.json	Sheet1!C44
 F	probes/math-argument-modes.case.json	Sheet1!C47
