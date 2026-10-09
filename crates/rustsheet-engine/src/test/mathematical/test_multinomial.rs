@@ -80,6 +80,7 @@ fn test_multinomial_sum_past_170_is_num_error() {
     assert_eq!(model._get_text("A1"), "1");
     assert_eq!(model._get_text("A2"), "#NUM!");
     assert_eq!(model._get_text("A3"), "#NUM!");
+    // Excel gives 9.144841845133712E+49; ours is inexact in the last digits (T-1190).
     assert_ne!(model._get_text("A4"), "#NUM!");
     assert_eq!(model._get_text("A5"), "#NUM!");
     assert_eq!(model._get_text("A6"), "#VALUE!");
