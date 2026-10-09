@@ -29,7 +29,7 @@ T-1200 (an `@` group that is not the whole operand) becomes one case of it.
 
 ## Acceptance criteria
 - [ ] docs/specs/SPEC-XXXX (template docs/specs/TEMPLATE.md) is written and approved by the architecture and performance reviewers.
-- [ ] Implementation tasks are filed from it; the end state makes probes/at-operand-nested-groups pass.
+- [ ] Implementation tasks are filed from it; the end state makes probes/at-operand-nested-groups pass and flips the T-1167 test `at_operand_adds_no_level_for_a_nested_inner_group` (E40, E41, E43, E44) to Excel's text.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

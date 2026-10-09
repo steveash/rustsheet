@@ -873,7 +873,7 @@ prints the first three without the group (`=@A1 B1 C1` for both of the first two
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
 level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
-written, as it does in every formula (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
+written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
 excel-graph 2026-10-09, T-1178; engine: T-1240).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
