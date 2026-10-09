@@ -11,7 +11,7 @@ depends_on: []
 ---
 
 ## Goal
-WEEKDAY of a serial in [0, 1) is 7 (a Saturday, like serial 0 in TEXT's `dddd`), and a return_type that truncates to 0 is `#NUM!`, as Excel does.
+WEEKDAY of a serial in [0, 1) is 7 (a Saturday, like serial 0 in TEXT's `dddd`), and a return_type of -0.0001 (and 0 or -1, as probed) is `#NUM!`, as Excel does.
 
 ## Context
 T-1239's gen-m6 suite (excel-graph sidecars, 2026-10-09):
