@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "Called LET names and LAMBDA parameters bound to unions, erroring arguments, an empty element and other reference-returning functions (T-1224, follow-up of T-1092). Sheet1 A1:B3 = 1,2,3 / 10,20,30. H6 (the bare `=LAMBDA(f,f(2))()`) returns an error type the oracle client cannot decode, so H15:H17 wrap it.",
+ "description": "Called LET names and LAMBDA parameters bound to unions, erroring arguments, an empty element and other reference-returning functions (T-1224, follow-up of T-1092). Sheet1 A1:B3 = 1,2,3 / 10,20,30. H6 (the bare `=LAMBDA(f,f(2))()`) returns an error type the oracle client cannot decode, so H15:H17 wrap it (a call with too few arguments, which fails LAMBDA's arity check, not an empty element). I5 is the second element of H5's spill.",
  "tags": [
   "M1",
   "references",
