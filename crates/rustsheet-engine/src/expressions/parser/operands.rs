@@ -418,7 +418,7 @@ impl Parser {
         };
 
         // The table metadata comes from the workbook (untrusted): a stored reference that does not
-        // parse is #REF!, as for any table whose range is gone (directive 5: no panics).
+        // parse is #REF! (directive 5: no panics; docs/excel-semantics/references.md, DEVIATION).
         let Ok((column_start, mut row_start, column_end, mut row_end)) =
             parse_range(&table.reference)
         else {
