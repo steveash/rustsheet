@@ -1,5 +1,7 @@
 use crate::functions::Function;
 
+use crate::expressions::parser::reference_operators::is_reference_operand;
+
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
 
 /// AGGREGATE spills over an array function_num, options or fourth argument, broadcast against
@@ -45,12 +47,14 @@ fn is_read_reference(arg: &Node) -> bool {
         | Node::OpUnionKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::TableNameKind(_) => true,
-        // Over a literal array they pick values, not cells, and spill like any array
-        // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206).
+        // Over a literal or computed array they pick values, not cells, and spill like any array
+        // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206;
+        // `SUBTOTAL(9,TAKE(SEQUENCE(4),2))` is two `#VALUE!`, probes/subtotal-reference-operands-d
+        // J4:J5, T-1211).
         Node::FunctionKind {
             kind: Function::Take | Function::Drop | Function::Trimrange,
             args,
-        } => !matches!(args.first(), Some(Node::ArrayKind(_))),
+        } => args.first().is_some_and(is_reference_operand),
         Node::FunctionKind {
             kind: Function::Xlookup,
             args,

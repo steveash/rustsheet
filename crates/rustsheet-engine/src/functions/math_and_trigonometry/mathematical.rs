@@ -34,7 +34,7 @@ impl Model {
     ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                         result = pick(value, result);
