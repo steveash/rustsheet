@@ -3,7 +3,7 @@ id: T-1213
 title: "Implement DBCS and PHONETIC as the web oracle evaluates them"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ From T-1087's probes: probes/text-modes-dbcs C3 (`DBCS("abc")` = "abc") and prob
 
 ## Out of scope
 -
+
+## Outcome
+DBCS (text unchanged; exported as `_xlfn.DBCS`) and PHONETIC (`#N/A` for any reference) are implemented; `dbcs` and `phonetic` were added to `Language`/`languages.json` and `language.bin` regenerated with tools/upstream/generate_language. The four probe cells (text-modes-dbcs C3, text-modes-phonetic, -range, -number C1) pass; DBCS widening of non-ASCII text is UNVERIFIED (text.md).
