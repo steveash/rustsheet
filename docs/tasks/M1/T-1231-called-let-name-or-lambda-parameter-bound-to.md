@@ -3,7 +3,7 @@ id: T-1231
 title: "Called LET name or LAMBDA parameter bound to a union is #REF!, not #VALUE! (follow-up of T-1224)"
 milestone: M1
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
