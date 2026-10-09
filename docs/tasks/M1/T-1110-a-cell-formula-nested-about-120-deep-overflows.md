@@ -3,7 +3,7 @@ id: T-1110
 title: "A cell formula nested about 120 deep overflows a debug-build test thread"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
