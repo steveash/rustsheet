@@ -22,7 +22,7 @@ impl Model {
         for arg in args {
             // References (also via IF/INDEX) arrive as a Range; the scalar
             // arms below only see values.
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }

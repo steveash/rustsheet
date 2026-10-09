@@ -84,6 +84,7 @@ C	probes/clock-text-oddities6.case.json	35
 C	probes/clock-text-oddities7.case.json	12
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
+C	probes/countblank-formula-names-b.case.json	13
 C	probes/countblank-formula-names.case.json	21
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
@@ -289,6 +290,7 @@ C	probes/subnormal-sumsq-sumproduct-edges.case.json	24
 C	probes/subnormal-text-and-tail-companions.case.json	30
 C	probes/subtotal-hidden-filtered.case.json	150
 C	probes/subtotal-reference-operands-b.case.json	23
+C	probes/subtotal-reference-operands-c.case.json	17
 C	probes/subtotal-reference-operands.case.json	40
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
