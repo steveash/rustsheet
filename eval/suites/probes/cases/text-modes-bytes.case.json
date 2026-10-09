@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1087 argument-mode probe (bytes): A1=\"abc\", A2=5. Split by function because excel-graph refuses some of these workbooks.",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abc",
+    "A2": 5,
+    "C1": "=LEFTB(A1,2)",
+    "C2": "=MIDB(A1,2,1)",
+    "C3": "=REPLACEB(A1,1,1,\"z\")",
+    "C4": "=FINDB(\"b\",A1)",
+    "C5": "=SEARCHB(\"B\",A1)",
+    "C6": "=RIGHTB(A1)",
+    "C7": "=LENB(A1:A2)"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -292,6 +292,8 @@ Key schema elements:
   The generator treats domains as **soft**: in-domain with probability `1 − p_violate`
   (default 0.15), otherwise a deliberate violation drawn from the edge pool. The resulting
   errors are themselves test targets.
+  A domain marked `hard: true` is never violated: outside it Excel refuses the whole workbook
+  (MUNIT's dimension, T-1087), so a violation would cost every other formula of the case.
 - `edge_classes`: named, function-specific value or structure generators. They join the
   global type pools (§6) and become coverage-matrix columns (§13).
 - `introduced`, `xlfn_prefix`, `volatile`, `dynamic_array`, `locale_sensitive`.

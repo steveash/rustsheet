@@ -1,0 +1,19 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1087: PHONETIC of a single cell reference, A1=\"abc\". excel-graph refuses the workbook (unsupportedWorkbook) whenever it calls PHONETIC.",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abc",
+    "C1": "=PHONETIC(A1)"
+   }
+  }
+ ],
+ "expected": {}
+}

@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1087 argument-mode probe (dbcs): A1=\"abc\", A2=5. Split by function because excel-graph refuses some of these workbooks.",
+ "tags": [
+  "M5",
+  "probe",
+  "text"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "abc",
+    "A2": 5,
+    "C1": "=ASC(A2)",
+    "C2": "=JIS(A2)",
+    "C3": "=DBCS(A1)"
+   }
+  }
+ ],
+ "expected": {}
+}

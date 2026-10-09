@@ -202,7 +202,8 @@ class Gen:
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
         dom = p.get("domain") or {}
-        if dom.get("int") and self.rng.random() < 0.7:
+        # A `hard` domain is never violated: outside it Excel refuses the workbook (MUNIT(10^6)).
+        if dom.get("int") and (dom.get("hard") or self.rng.random() < 0.7):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
         return self.expr(p.get("type", "any"), depth + 1)
 
