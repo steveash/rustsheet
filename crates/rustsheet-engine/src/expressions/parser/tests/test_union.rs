@@ -77,16 +77,10 @@ fn comma_in_a_call_still_separates_arguments() {
 }
 
 #[test]
-fn comma_outside_parentheses_is_not_a_union() {
+fn malformed_unions_are_parse_errors() {
+    // A bare comma is a union (`=A1,B2`, T-1073, test/test_bare_union.rs); these are not.
     let mut parser = parser();
-    for formula in [
-        "A1,B2",
-        "A1 B1,C1",
-        "(A1,B2),C3",
-        "(A1,)",
-        "(,A1)",
-        "(A1,B2",
-    ] {
+    for formula in ["A1,", "(A1,)", "(,A1)", "(A1,B2"] {
         let node = parser.parse(formula, &context());
         assert!(is_parse_error(&node), "{formula}: {node:?}");
     }
@@ -317,5 +311,34 @@ fn parentheses_around_a_union_keep_every_level() {
     ] {
         let node = parser.parse(formula, &context());
         assert_eq!(to_english_localized_string(&node, &context()), formula);
+    }
+}
+
+/// A cut of a parenthesized union keeps the parentheses written around it (T-1176,
+/// probes/union-cut-precedence F6); other cuts print as before (the whole-formula levels are the grouped root's).
+#[test]
+fn parenthesized_cut_of_a_union_keeps_its_parentheses() {
+    let mut parser = parser();
+    for (formula, expected) in [
+        ("((A1,B1) B1)", "((A1,B1) B1)"),
+        ("(((A1,B1) B1))", "(((A1,B1) B1))"),
+        ("(A1 B1)", "(A1 B1)"),
+        ("(A1:B1 B1)", "(A1:B1 B1)"),
+        // The wrapper levels the formula, `@` and `:` track themselves are not counted twice.
+        ("@((A1,B1) B1)", "@((A1,B1) B1)"),
+        ("SUM(((A1,B1) B1):C1)", "SUM(((A1,B1) B1):C1)"),
+        ("SUM(((A1,B1) B1))", "SUM(((A1,B1) B1))"),
+        // As either operand of another cut it prints its own levels only.
+        ("C1 ((A1,B1) B1)", "C1 ((A1,B1) B1)"),
+        ("A1:B1 ((A1,B1) B1)", "A1:B1 ((A1,B1) B1)"),
+        ("((A1,B1) B1) ((A1,B1) B1)", "((A1,B1) B1) ((A1,B1) B1)"),
+        ("((A1,B1) @B1) C1", "((A1,B1) @B1) C1"),
+    ] {
+        let node = parser.parse_cell_formula(formula, &context());
+        let text = to_english_localized_string(&node, &context());
+        assert_eq!(text, expected);
+        // Printing is a fixed point: a re-parse gains no level.
+        let reparsed = parser.parse_cell_formula(&text, &context());
+        assert_eq!(to_english_localized_string(&reparsed, &context()), expected);
     }
 }

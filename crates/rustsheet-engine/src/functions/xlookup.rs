@@ -1,15 +1,15 @@
+use std::cmp::Ordering;
+
+use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 use super::{
-    binary_search::{
-        binary_search_descending_or_greater, binary_search_descending_or_smaller,
-        binary_search_or_greater, binary_search_or_smaller,
-    },
+    binary_search::{binary_search, Sequence},
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
-    util::compare_values,
+    util::array_node_to_calc_result,
 };
 
 #[derive(PartialEq)]
@@ -50,6 +50,67 @@ fn linear_search(
     }
 }
 
+/// Where a binary-search XLOOKUP lands in `values`.
+enum BinaryHit {
+    Found(usize),
+    NotFound,
+    /// Wildcard match mode with a binary search, which is `#VALUE!`.
+    Wildcard,
+}
+
+/// The binary-search XLOOKUP modes (2 ascending, -2 descending) over `values`: the position of
+/// the match, or of the next smaller/larger item for match modes -1/1. Exact match mode only
+/// accepts an equal item.
+fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
+    lookup_value: &CalcResult,
+    values: &S,
+    search_mode: &SearchMode,
+    match_mode: &MatchMode,
+) -> BinaryHit {
+    if *match_mode == MatchMode::WildcardMatch {
+        return BinaryHit::Wildcard;
+    }
+    let side = match match_mode {
+        MatchMode::ExactMatchSmaller => Ordering::Less,
+        MatchMode::ExactMatchLarger => Ordering::Greater,
+        _ => Ordering::Equal,
+    };
+    match binary_search(
+        lookup_value,
+        values,
+        *search_mode == SearchMode::BinarySearchDescending,
+        side,
+    ) {
+        Some(index) => BinaryHit::Found(index),
+        None => BinaryHit::NotFound,
+    }
+}
+
+/// The XLOOKUP result at `index` of an array `return_array`: the element, or for a column lookup
+/// vector over a wide array the whole matched row as a 1xN array (the range path's shape).
+fn xlookup_pick_array(
+    returns: &[Vec<ArrayNode>],
+    vertical: bool,
+    index: usize,
+    cell: CellReferenceIndex,
+) -> CalcResult {
+    if !vertical {
+        return returns.first().and_then(|row| row.get(index)).map_or(
+            CalcResult::Error {
+                error: Error::VALUE,
+                origin: cell,
+                message: "Index out of range".to_string(),
+            },
+            |node| array_node_to_calc_result(node, cell),
+        );
+    }
+    match returns.get(index) {
+        Some(row) if row.len() == 1 => array_node_to_calc_result(&row[0], cell),
+        Some(row) => CalcResult::Array(vec![row.clone()]),
+        None => CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string()),
+    }
+}
+
 impl Model {
     /// The XLOOKUP result at (`row_offset`, `column_offset`) of the return range. A multi-column
     /// return range (only accepted for a column lookup vector) yields the whole matched row as a
@@ -61,14 +122,31 @@ impl Model {
         column_lookup: bool,
         row_offset: i32,
         column_offset: i32,
+        as_reference: bool,
     ) -> CalcResult {
         let row = result_left.row + row_offset;
         if !column_lookup || result_right.column == result_left.column {
-            return self.evaluate_cell(CellReferenceIndex {
+            let picked = CellReferenceIndex {
                 sheet: result_left.sheet,
                 row,
                 column: result_left.column + column_offset,
-            });
+            };
+            if as_reference {
+                return CalcResult::Range {
+                    left: picked,
+                    right: picked,
+                };
+            }
+            return self.evaluate_cell(picked);
+        }
+        if as_reference {
+            return CalcResult::Range {
+                left: CellReferenceIndex { row, ..result_left },
+                right: CellReferenceIndex {
+                    row,
+                    ..result_right
+                },
+            };
         }
         let values = (result_left.column..=result_right.column)
             .map(|column| {
@@ -81,6 +159,98 @@ impl Model {
             })
             .collect();
         CalcResult::Array(vec![values])
+    }
+
+    /// XLOOKUP over an array `lookup_array` (`XLOOKUP(2,{1;2;3},B1:B3)`, probes/isref-reference-lookups
+    /// H10): the match position picks the cell of a range `return_array` (a reference when
+    /// `as_reference`) or the element of an array one. A 2-D lookup array, and a return_array
+    /// with a different row count (or, for a row lookup array, column count), are `#VALUE!`;
+    /// a wide return_array is accepted for a column lookup array only
+    /// (probes/xlookup-array-return E1-E24, docs/excel-semantics/lookup.md "Array lookup_array").
+    fn xlookup_array_lookup(
+        &mut self,
+        lookup_value: &CalcResult,
+        array: &[Vec<ArrayNode>],
+        return_node: &Node,
+        (search_mode, match_mode, if_not_found): (SearchMode, MatchMode, CalcResult),
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        let rows = array.len();
+        let columns = array.first().map_or(0, Vec::len);
+        let vertical = columns == 1;
+        if rows != 1 && !vertical {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Second argument must be a vector".to_string(),
+            );
+        }
+        let values: Vec<CalcResult> = array
+            .iter()
+            .flatten()
+            .map(|node| array_node_to_calc_result(node, cell))
+            .collect();
+        let returned = self.evaluate_node_in_context(return_node, cell);
+        let (return_rows, return_columns) = match &returned {
+            CalcResult::Range { left, right } => (
+                usize::try_from(right.row - left.row + 1).ok(),
+                usize::try_from(right.column - left.column + 1).ok(),
+            ),
+            CalcResult::Array(returns) => (Some(returns.len()), returns.first().map(Vec::len)),
+            error @ CalcResult::Error { .. } => return error.clone(),
+            _ => return CalcResult::new_error(Error::VALUE, cell, "Range expected".to_string()),
+        };
+        if return_rows != Some(rows) || (!vertical && return_columns != Some(columns)) {
+            return CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Arrays must be of the same size".to_string(),
+            );
+        }
+        let index = match search_mode {
+            SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
+                linear_search(lookup_value, &values, search_mode, match_mode)
+            }
+            SearchMode::BinarySearchAscending | SearchMode::BinarySearchDescending => {
+                match binary_hit(lookup_value, &values, &search_mode, &match_mode) {
+                    BinaryHit::Found(index) => Some(index),
+                    BinaryHit::NotFound => None,
+                    BinaryHit::Wildcard => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "Cannot use wildcard in binary search".to_string(),
+                        )
+                    }
+                }
+            }
+        };
+        let Some(index) = index else {
+            return if_not_found;
+        };
+        match returned {
+            CalcResult::Range {
+                left: result_left,
+                right: result_right,
+            } => {
+                let (row_offset, column_offset) = if vertical {
+                    (index as i32, 0)
+                } else {
+                    (0, index as i32)
+                };
+                self.xlookup_pick(
+                    result_left,
+                    result_right,
+                    vertical,
+                    row_offset,
+                    column_offset,
+                    as_reference,
+                )
+            }
+            CalcResult::Array(returns) => xlookup_pick_array(&returns, vertical, index, cell),
+            other => other,
+        }
     }
 
     /// The XLOOKUP function searches a range or an array, and then returns the item corresponding
@@ -109,6 +279,18 @@ impl Model {
     ///   * -2 - Perform a binary search that relies on lookup_array being sorted
     ///     in descending order. If not sorted, invalid results will be returned.
     pub(crate) fn fn_xlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.xlookup_impl(args, cell, false)
+    }
+
+    /// XLOOKUP; `as_reference` gives the picked cells of a return range as a reference, as an
+    /// intersection operand sees them: `=A1:A3 XLOOKUP(2,A1:A3,A1:B3)` is 2
+    /// (probes/intersection-function-operands H8; T-0165).
+    pub(crate) fn xlookup_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() < 3 || args.len() > 6 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -118,7 +300,13 @@ impl Model {
         }
         // Get optional arguments
         let if_not_found = if args.len() >= 4 {
-            let v = self.evaluate_node_in_context(&args[3], cell);
+            // A range `if_not_found` stays a reference in the reference form:
+            // `ISREF(XLOOKUP(9,A1:A3,B1:B3,C1))` is TRUE (probes/intersection-lookup-operand-errors H10).
+            let v = if as_reference {
+                self.evaluate_node_with_reference(&args[3], cell)
+            } else {
+                self.evaluate_node_in_context(&args[3], cell)
+            };
             match v {
                 CalcResult::EmptyArg => CalcResult::Error {
                     error: Error::NA,
@@ -212,6 +400,9 @@ impl Model {
                                 message: "Arrays must be of the same size".to_string(),
                             };
                         }
+                        // The binary search walks the whole vector, blanks past the used area
+                        // included (they are probed like any cell; T-1019).
+                        let full_right = right;
                         let mut row2 = right.row;
                         let row1 = left.row;
                         let mut column2 = right.column;
@@ -251,6 +442,7 @@ impl Model {
                                             is_row_vector,
                                             row_index,
                                             column_index,
+                                            as_reference,
                                         )
                                     }
                                     None => if_not_found,
@@ -258,72 +450,26 @@ impl Model {
                             }
                             SearchMode::BinarySearchAscending
                             | SearchMode::BinarySearchDescending => {
-                                let index = if match_mode == MatchMode::ExactMatchLarger {
-                                    if search_mode == SearchMode::BinarySearchAscending {
-                                        binary_search_or_greater(
-                                            &lookup_value,
-                                            &self.prepare_array(&left, &right, is_row_vector),
+                                let values =
+                                    self.range_search_vector(&left, &full_right, is_row_vector);
+                                match binary_hit(&lookup_value, &values, &search_mode, &match_mode)
+                                {
+                                    BinaryHit::NotFound => if_not_found,
+                                    BinaryHit::Wildcard => CalcResult::Error {
+                                        error: Error::VALUE,
+                                        origin: cell,
+                                        message: "Cannot use wildcard in binary search".to_string(),
+                                    },
+                                    BinaryHit::Found(l) => {
+                                        let l = l as i32;
+                                        self.xlookup_pick(
+                                            result_left,
+                                            result_right,
+                                            is_row_vector,
+                                            if is_row_vector { l } else { 0 },
+                                            if is_row_vector { 0 } else { l },
+                                            as_reference,
                                         )
-                                    } else {
-                                        binary_search_descending_or_greater(
-                                            &lookup_value,
-                                            &self.prepare_array(&left, &right, is_row_vector),
-                                        )
-                                    }
-                                } else if search_mode == SearchMode::BinarySearchAscending {
-                                    binary_search_or_smaller(
-                                        &lookup_value,
-                                        &self.prepare_array(&left, &right, is_row_vector),
-                                    )
-                                } else {
-                                    binary_search_descending_or_smaller(
-                                        &lookup_value,
-                                        &self.prepare_array(&left, &right, is_row_vector),
-                                    )
-                                };
-                                match index {
-                                    None => if_not_found,
-                                    Some(l) => {
-                                        let row =
-                                            result_left.row + if is_row_vector { l } else { 0 };
-                                        let column =
-                                            result_left.column + if is_row_vector { 0 } else { l };
-                                        if match_mode == MatchMode::ExactMatch {
-                                            let value = self.evaluate_cell(CellReferenceIndex {
-                                                sheet: left.sheet,
-                                                row: left.row + if is_row_vector { l } else { 0 },
-                                                column: left.column
-                                                    + if is_row_vector { 0 } else { l },
-                                            });
-                                            if compare_values(&value, &lookup_value) == 0 {
-                                                self.xlookup_pick(
-                                                    result_left,
-                                                    result_right,
-                                                    is_row_vector,
-                                                    row - result_left.row,
-                                                    column - result_left.column,
-                                                )
-                                            } else {
-                                                if_not_found
-                                            }
-                                        } else if match_mode == MatchMode::ExactMatchSmaller
-                                            || match_mode == MatchMode::ExactMatchLarger
-                                        {
-                                            self.xlookup_pick(
-                                                result_left,
-                                                result_right,
-                                                is_row_vector,
-                                                row - result_left.row,
-                                                column - result_left.column,
-                                            )
-                                        } else {
-                                            CalcResult::Error {
-                                                error: Error::VALUE,
-                                                origin: cell,
-                                                message: "Cannot use wildcard in binary search"
-                                                    .to_string(),
-                                            }
-                                        }
                                     }
                                 }
                             }
@@ -337,6 +483,14 @@ impl Model {
                     },
                 }
             }
+            CalcResult::Array(array) => self.xlookup_array_lookup(
+                &lookup_value,
+                &array,
+                &args[2],
+                (search_mode, match_mode, if_not_found),
+                cell,
+                as_reference,
+            ),
             error @ CalcResult::Error { .. } => error,
             _ => CalcResult::Error {
                 error: Error::NA,

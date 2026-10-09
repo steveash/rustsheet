@@ -83,3 +83,90 @@ fn countblank_counts_the_clipped_cells() {
     assert_eq!(model._get_text("Sheet2!E2"), "16382");
     assert_eq!(model._get_text("Sheet2!E3"), "3");
 }
+
+// Clipping costs O(1) per walk, not a visit of every cell of the sheet
+// (T-0049): 10,000 walks of a whole column over a wide sheet of 160,000
+// cells would visit 1.6 billion cells if each one scanned the sheet (about
+// 30 s unoptimised; a fraction of a second without the scan).
+#[test]
+fn whole_column_walks_do_not_scan_the_sheet() {
+    let mut model = new_empty_model();
+    for row in 1..=10 {
+        for column in 1..=16_000 {
+            model
+                .set_user_input(0, row, column, "1".to_string())
+                .unwrap();
+        }
+    }
+    model.new_sheet();
+    for row in 1..=10_000 {
+        model
+            .set_user_input(1, row, 1, "=COUNT(Sheet1!A:A)".to_string())
+            .unwrap();
+    }
+    let start = Instant::now();
+    model.evaluate();
+    assert!(
+        start.elapsed() < Duration::from_secs(10),
+        "a whole-column walk scanned the sheet"
+    );
+    assert_eq!(model._get_text("Sheet2!A10000"), "10");
+}
+
+#[test]
+fn used_area_end_over_approximates_and_follows_writes() {
+    let mut model = new_empty_model();
+    let end = |model: &crate::Model| model.workbook.worksheet(0).unwrap().used_area_end();
+    // An empty sheet ends at A1, as `dimension` says.
+    assert_eq!(end(&model), (1, 1));
+    model._set("C7", "1");
+    model._set("E2", "1");
+    assert_eq!(end(&model), (7, 5));
+    let dimension = model.workbook.worksheet(0).unwrap().dimension();
+    assert_eq!(end(&model), (dimension.max_row, dimension.max_column));
+    model
+        .workbook
+        .worksheet_mut(0)
+        .unwrap()
+        .remove_cell(7, 3)
+        .unwrap();
+    assert_eq!(end(&model), (2, 5));
+}
+
+// CONCAT walks a range through the shared clipped walk, so a whole column or the whole sheet
+// costs the used cells and joins the same text as the used-area range (T-0261).
+#[test]
+fn concat_over_whole_sheet_ranges() {
+    same_as_used_area("CONCAT", "A:A", "A1:A3");
+    same_as_used_area("CONCAT", "1:1", "A1:C1");
+    same_as_used_area("CONCAT", "A:XFD", "A1:C3");
+    let mut model = sample();
+    model._set("Sheet2!E1", "=CONCAT(Sheet1!A:XFD)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), "21345x");
+}
+
+// AND, OR and XOR ignore empty cells (T-0230). Sheet1 holds no logical values but
+// numbers: 2, 1, 3, 4, 5 are all TRUE.
+#[test]
+fn and_or_xor_over_whole_sheet_and_columns() {
+    for function in ["AND", "OR", "XOR"] {
+        same_as_used_area(function, "A:XFD", "A1:C3");
+        same_as_used_area(function, "1:1048576", "A1:C3");
+        same_as_used_area(function, "B:B", "B1:B3");
+        same_as_used_area(function, "2:3", "A2:C3");
+    }
+}
+
+// A value set later beyond the used area is seen by the clipped walk: the
+// skipped cells were recorded as read empty.
+#[test]
+fn and_over_whole_column_sees_later_cell() {
+    let mut model = sample();
+    model._set("Sheet2!E1", "=AND(Sheet1!B:B)");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), *"TRUE");
+    model._set("Sheet1!B1000", "FALSE");
+    model.evaluate();
+    assert_eq!(model._get_text("Sheet2!E1"), *"FALSE");
+}

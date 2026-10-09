@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1040 sweep for T-0968: LOGNORM.DIST(x,m,s,TRUE) with s != 1",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-0968",
+  "T-1040",
+  "sweep"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=LOGNORM.DIST(1,0,2,TRUE)",
+    "A2": "=LOGNORM.DIST(2,0.5,0.5,TRUE)",
+    "A3": "=LOGNORM.DIST(0.5,0,0.3,TRUE)",
+    "A4": "=LOGNORM.DIST(10,2,0.2,TRUE)",
+    "A5": "=LOGNORM.DIST(100,3,1.5,TRUE)",
+    "A6": "=LOGNORM.DIST(0.01,-2,0.5,TRUE)",
+    "A7": "=LOGNORM.DIST(5,1,0.1,TRUE)",
+    "A8": "=LOGNORM.DIST(5,1.6,0.1,TRUE)",
+    "A9": "=LOGNORM.DIST(3,1,2,TRUE)",
+    "A10": "=LOGNORM.DIST(0.001,0,3,TRUE)",
+    "A11": "=LOGNORM.DIST(20,3,0.25,TRUE)",
+    "A12": "=LOGNORM.DIST(7,2,0.7,TRUE)",
+    "A13": "=LOGNORM.DIST(0.1,0,0.1,TRUE)",
+    "A14": "=LOGNORM.DIST(50,4,2,TRUE)",
+    "A15": "=LOGNORM.DIST(1,0,0.5,TRUE)",
+    "A16": "=LOGNORM.DIST(2,1,0.01,TRUE)",
+    "A17": "=LOGNORM.DIST(8,2,0.3,TRUE)",
+    "A18": "=LOGNORM.DIST(1000,6,0.8,TRUE)",
+    "A19": "=LOGNORM.DIST(0.2,-1,0.6,TRUE)",
+    "A20": "=LOGNORM.DIST(4,1.4,0.05,TRUE)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4",
+  "Calc!A5",
+  "Calc!A6",
+  "Calc!A7",
+  "Calc!A8",
+  "Calc!A9",
+  "Calc!A10",
+  "Calc!A11",
+  "Calc!A12",
+  "Calc!A13",
+  "Calc!A14",
+  "Calc!A15",
+  "Calc!A16",
+  "Calc!A17",
+  "Calc!A18",
+  "Calc!A19",
+  "Calc!A20"
+ ],
+ "expected": {}
+}

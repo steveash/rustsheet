@@ -11,6 +11,7 @@
 //! ```
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -22,8 +23,10 @@ use clap::{Parser, Subcommand};
 use rustsheet_eval::baseline::{self, Baseline};
 use rustsheet_eval::calibrate::compare_snapshots;
 use rustsheet_eval::catalog::Catalog;
+use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
+use rustsheet_eval::milestone_lists::{self, ListSummary, MilestoneList};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
@@ -215,19 +218,82 @@ fn execute(suites: &[Suite], sel: &Selection) -> Vec<CaseResult> {
     run_suites(&engine, suites, &opts)
 }
 
+/// Fails unless every suite's `deviations` lines name an existing case and cite an accepted
+/// `Status: DEVIATION` semantics entry (decision 0036).
+fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
+    for suite in suites {
+        deviations::load_checked(suite, root)
+            .with_context(|| format!("suite {}", suite.manifest.name))?;
+    }
+    Ok(())
+}
+
+/// Loads the frozen milestone probe lists and fails when a line names a case that no suite
+/// discovers (decision 0044).
+fn load_milestone_lists(root: &Path) -> Result<Vec<MilestoneList>> {
+    let lists = milestone_lists::load_all(root)?;
+    if lists.is_empty() {
+        return Ok(lists);
+    }
+    let mut known = BTreeSet::new();
+    for suite in Suite::load_all(&root.join("eval/suites"))? {
+        known.extend(suite.cases()?.into_iter().map(|c| c.id));
+    }
+    milestone_lists::check_known(&lists, &known)?;
+    Ok(lists)
+}
+
+fn score_milestone_lists(
+    lists: &[MilestoneList],
+    suites: &[Suite],
+    results: &[CaseResult],
+) -> Vec<ListSummary> {
+    let modes: BTreeMap<String, BaselineMode> = suites
+        .iter()
+        .map(|s| (s.manifest.name.clone(), s.manifest.baseline))
+        .collect();
+    lists
+        .iter()
+        .map(|l| milestone_lists::summarize(l, results, &modes))
+        .collect()
+}
+
 fn print_summary(report: &RunReport) {
     println!(
-        "{:<28} {:>6} {:>9} {:>9} {:>8}",
-        "suite", "cases", "cells", "passed", "pass%"
+        "{:<28} {:>6} {:>9} {:>9} {:>10} {:>8}",
+        "suite", "cases", "cells", "passed", "deviations", "pass%"
     );
     for s in &report.suites {
         println!(
-            "{:<28} {:>6} {:>9} {:>9} {:>7.2}%",
+            "{:<28} {:>6} {:>9} {:>9} {:>10} {:>7.2}%",
             s.name,
             s.cases,
             s.cells,
             s.cells_passed,
+            s.deviations,
             100.0 * s.cell_pass_rate()
+        );
+        if !s.graph_subnormal_passes.is_empty() {
+            println!(
+                "  note: {} cell(s) passed by decision 0042 (graph 0 vs kept subnormal; each has a FALSE (x)=0 companion)",
+                s.graph_subnormal_passes.len()
+            );
+        }
+        for line in &s.stale_deviations {
+            println!("  warning: stale deviations line (the cell matches Excel): {line}");
+        }
+    }
+    for l in report.milestone_lists.iter().filter(|l| l.cases_run > 0) {
+        println!(
+            "milestone list {}: {}/{} cases run, {} cells, {} bit-exact, {} deviations, {} known failures in {} cases",
+            l.name,
+            l.cases_run,
+            l.cases,
+            l.cells,
+            l.bit_exact,
+            l.deviations,
+            l.known_failures,
+            l.failing_cases.len()
         );
     }
 }
@@ -243,13 +309,16 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         );
     }
     let suites = select(root, sel, true)?;
+    check_deviations(root, &suites)?;
+    let lists = load_milestone_lists(root)?;
     let results = execute(&suites, sel);
-    let report = RunReport::build(
+    let mut report = RunReport::build(
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
         &Catalog::load(root)?,
     );
+    report.milestone_lists = score_milestone_lists(&lists, &suites, &results);
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -263,12 +332,13 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
         let old = Baseline::read(&path)?;
         let delta = baseline::diff(&old, &current);
         println!(
-            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, removed cases {})",
+            "[{name}] known failures {} -> {}  (fixed {}, new-coverage failures {}, REGRESSIONS {}, new cases {}, removed cases {})",
             old.failing.len(),
             current.failing.len(),
             delta.fixed.len(),
             delta.new_failures.len(),
             delta.regressions.len(),
+            delta.new_cases.len(),
             delta.removed_cases.len()
         );
         for r in delta.regressions.iter().take(25) {
@@ -313,8 +383,8 @@ fn cmd_show(root: &Path, case_id: &str, all: bool) -> Result<ExitCode> {
         bail!("case {case_id} not found");
     };
     println!(
-        "{}  status={:?}  checked={} passed={}  source={}",
-        r.id, r.status, r.checked, r.passed, r.expected_source
+        "{}  status={:?}  checked={} passed={} deviations={}  source={}",
+        r.id, r.status, r.checked, r.passed, r.deviations, r.expected_source
     );
     if let Some(m) = &r.message {
         println!("message: {m}");
@@ -395,13 +465,16 @@ fn run() -> Result<ExitCode> {
         }
         Cmd::Run { sel, out, examples } => {
             let suites = select(&root, &sel, false)?;
+            check_deviations(&root, &suites)?;
+            let lists = load_milestone_lists(&root)?;
             let results = execute(&suites, &sel);
-            let report = RunReport::build(
+            let mut report = RunReport::build(
                 RustSheetEngine.name(),
                 &results,
                 &RustSheetEngine.implemented_functions(),
                 &Catalog::load(&root)?,
             );
+            report.milestone_lists = score_milestone_lists(&lists, &suites, &results);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(

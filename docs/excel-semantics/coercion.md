@@ -1,10 +1,19 @@
 # Coercion and argument handling
 
-## AND / OR evaluate every argument; an error anywhere wins
+## AND / OR / XOR evaluate every argument; the first error wins
 Rule: AND/OR do not short-circuit: `=OR(TRUE,(2<COUNTIFS(…shape mismatch…)))` → `#VALUE!`.
-Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6c5b99e2e A170, dd99be1f2454159f A3; AND: 75840b9c71a50596 A56, 96a0952412cefa6c A126. Unprobed: which error wins with several errors, and an error inside the same range as the deciding value (T-0229). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Evidence: gen-m2/78bc88199fc96650 Calc!A217; OR: 1b6ceed7489e0800 A143, 893302d6c5b99e2e A170, dd99be1f2454159f A3; AND: 75840b9c71a50596 A56, 96a0952412cefa6c A126. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
+Which error: the first one, taking arguments left to right and each range or array row by row, for AND, OR and XOR
+alike, whatever value decides the result: `OR(TRUE,NA(),1/0)` → `#N/A`, `OR(TRUE,1/0,NA())` → `#DIV/0!`,
+`AND(FALSE,1/0,NA())` → `#DIV/0!`; with D1:F2 = TRUE, `#DIV/0!`, FALSE / `#N/A`, TRUE, `#NUM!`, `OR(D1:F2)`,
+`AND(D1:F2)` and `XOR(D1:F2)` are `#DIV/0!` (row-major first) and `OR(TRANSPOSE(D1:F2))` is `#N/A`;
+`OR({TRUE,#DIV/0!,#N/A})` → `#DIV/0!`; `OR(TRUE,B1:B2)` with an error in B1:B2 is that error; text before an error
+in a range neither wins nor makes `#VALUE!` (`OR(H1:H2)` with H1 = "x", H2 = `#N/A` → `#N/A`; a text-only range and
+direct text arguments are not covered here); an intersection `OR(D1:F2 E1:F2)` reads its own cells.
+Evidence: probes/and-or-xor-error-order (30 cells; oracle: excel-graph, 2026-10-08, T-0229).
 Status: VERIFIED
-Tasks: T-0215
+Implemented in: `logical_nary` (functions/logical/and_or_xor_not.rs; unit test `first_error_wins_row_by_row` in test/test_fn_or_xor.rs).
+Tasks: T-0215, T-0229
 
 ## MIN / MAX coerce value arguments like SUM; ranges and arrays give only their numbers
 Rule: a value argument (literal or function result, e.g. IFERROR or CONCATENATE) is coerced like
@@ -204,10 +213,10 @@ Tasks: T-0252
 
 ## Parenthesised number text is negative
 Rule: `"(1)"` is read as -1 wherever text is coerced to a number: `0+"(1)"` = -1, `SUM("(1)")` = -1,
-`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine does not read the form yet.
-Evidence: probes/paren-negative-text (excel-graph, 2026-10-06).
+`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine reads it in `parse_formatted_number` (formatter/format.rs), after the currency and date forms, so VALUE and typed cell input inherit it. Probed variants (all through `0+`, `VALUE` and `ISNUMBER` of a text cell; `ISNUMBER` is FALSE for all): padding inside the parentheses is accepted (`( 1 )` = -1), currency and percent inside are accepted (`($1)` = -1, `(1%)` = -0.01), decimals are accepted (`(1.5)` = -1.5); a sign inside (`(-1)`), nested parentheses (`((1))`) and trailing text (`(1)x`) are #VALUE!. The engine matches (T-0279) except for the forms below (T-0282). More forms (probes/paren-number-text-forms, excel-graph, T-0281): e-notation is accepted (`(1e3)` = -1000, `(1E-3)` = -0.001, `(1.5e2)` = -150), `(0)` and `($0)` are 0 (the sign of zero is not observable), `($1)` is accepted but a sign after the currency (`($-1)`, `($ -1)`), a sign before it (`(-$1)`), a plus sign (`(+1)`), a minus before e-notation (`(-1e3)`, `(-0)`) and currency after the digits (`(1$)`) are #VALUE!. The engine wrongly accepts `($-1)` and `($ -1)` (as 1) and `(1$)` (as -1). Typed into a cell (probes/typed-paren-number-input, excel-graph 2026-10-07, typed entry through a Graph range `values` write, T-0280): `(1)` and `( 1 )` are -1 with format General, `(1,000)` is -1000 with `#,##0`, `($1)` is -1 and `($1,000)` -1000 with `$#,##0_);[Red]($#,##0)`, `(1%)` is -0.01 with `0%`, and `(-1)` stays text. The unparenthesised controls get the same formats: `1`, `-1` General, `1,000` `#,##0`, `$1` `$#,##0_);[Red]($#,##0)`, `1%` `0%`. So the parentheses only negate; the format comes from the inner text, and typed currency gets the red-negative accounting-style format, not `$#,##0`. The engine's values all match; its formats for currency (`$#,##0`) and percent (`#,##0%`) differ (T-0283). Formats are VERIFIED by the oracle's `ENTERED` log, committed in docs/research/typed-input-formats-2026-10-07.md (not scored: `CELL("format")` is `#VALUE!` on excel-graph).
+Evidence: probes/paren-negative-text, probes/paren-negative-variants, probes/paren-number-text-forms, probes/typed-paren-number-input (excel-graph, 2026-10-07; formats: docs/research/typed-input-formats-2026-10-07.md).
 Status: VERIFIED
-Tasks: T-0259
+Tasks: T-0259, T-0277, T-0280, T-0281, T-0282, T-0283
 
 ## AND/OR/XOR text arguments
 Rule: an empty text literal is skipped (`AND("",TRUE)` = TRUE) and a text literal that is not
@@ -220,3 +229,26 @@ gen-m2/893302d6c5b99e2e Calc!A108 (oracle: excel-graph).
 Status: UNVERIFIED (probe pending, T-0258): whether literal vs computed text, empty vs non-empty, or
 Excel version decides is not isolated.
 Tasks: T-0258
+
+## GCD / LCM / MULTINOMIAL range cells
+Rule: GCD, LCM and MULTINOMIAL take ranges, but unlike SUM they do not skip what is not a number: a
+text or boolean cell in a range is `#VALUE!` (`GCD(G1:G3)` with 4, "x", 6; `GCD(H1:H3)` with 4, TRUE,
+6), a numeric-text cell counts as its number (`GCD(I1:I3)` with 4, "2", 6 is 2, LCM 12) and a blank
+cell reads as 0 (`LCM(F1:F3)` with 4, blank, 6 is 0). Typed, numeric text is a number
+(`GCD("8",4)` = 4, `MULTINOMIAL("2",3)`) but a boolean is `#VALUE!` (`GCD(TRUE,4)`,
+`MULTINOMIAL(TRUE,3)`; typed LCM arguments are unprobed), whereas
+`FACT(TRUE)` = 1 and `COMBIN("5",2)` = 10. SERIESSUM's coefficient range is stricter still: text,
+boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a typed numeric-text
+`x` is accepted (`SERIESSUM("1",0,1,{1,2})` = 3). SUMPRODUCT is the opposite: anything that is not a
+number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
+`SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
+PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).
+MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
+These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
+SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
+PERCENTOF's `aggregate` on Microsoft's page only (it is `#NAME?` on excel-graph).
+Evidence: probes/math-argument-modes Sheet1!C1:C56 (excel-graph, 2026-10-08).
+Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190)
+and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
+Status: VERIFIED
+Tasks: T-1082, T-1190, T-1191

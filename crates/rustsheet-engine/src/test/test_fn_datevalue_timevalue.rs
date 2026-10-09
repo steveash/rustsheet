@@ -123,7 +123,7 @@ fn coercion_of_minutes_fraction_clock_text() {
 #[test]
 fn value_and_coercion_of_clock_text() {
     // (text, VALUE(text), 0+text)
-    let cases: [(&str, Option<f64>, Option<f64>); 15] = [
+    let cases: [(&str, Option<f64>, Option<f64>); 19] = [
         ("10:00", Some(10.0 / 24.0), Some(10.0 / 24.0)),
         (
             "25:00",
@@ -139,6 +139,10 @@ fn value_and_coercion_of_clock_text() {
         ("10:00 ", Some(10.0 / 24.0), Some(10.0 / 24.0)),
         ("10:00\u{a0}", None, None),
         ("10:00\u{a0}AM", None, None),
+        ("10:11.\u{a0}5", None, None),
+        ("10:11.\u{3000}5", None, None),
+        ("10:11.5\u{a0}", None, None),
+        ("10:11.\u{a0}5:12", None, None),
         ("10:00\t", None, None),
         ("1/2/2020\u{a0}", None, None),
         ("6 P.", Some(0.75), Some(0.75)),
@@ -169,4 +173,28 @@ fn value_and_coercion_of_clock_text() {
             }
         }
     }
+}
+
+// Excel ignores spaces around the date separators (ironcalc-calc DATEVALUE_issue_1380.xlsx;
+// probes/datevalue-separator-spaces). It does not accept the ISO "T" separator, so the
+// upstream T24:00:00 rollover (IronCalc #1379) is not ported: the oracle gives #VALUE!.
+#[test]
+fn datevalue_spaces_around_separators() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEVALUE(\"2026 - 01 - 01\")");
+    model._set("A2", "=DATEVALUE(\"1 / 2 / 2026\")");
+    model._set("A3", "=DATEVALUE(\"4 - Feb - 2026\")");
+    model._set("A4", "=DATEVALUE(\"2026 - 01 - 01 12:00\")");
+    model._set("A5", "=VALUE(\"2026 - 01 - 01 12:00\")");
+    model._set("A6", "=DATEVALUE(\"2026-01-01T24:00:00\")");
+    model._set("A7", "=DATEVALUE(\"2026-01-01 24:00:00\")");
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"46023");
+    assert_eq!(model._get_text("A2"), *"46024");
+    assert_eq!(model._get_text("A3"), *"46057");
+    assert_eq!(model._get_text("A4"), *"46023");
+    assert_eq!(model._get_text("A5"), *"46023.5");
+    assert_eq!(model._get_text("A6"), *"#VALUE!");
+    assert_eq!(model._get_text("A7"), *"46024");
 }

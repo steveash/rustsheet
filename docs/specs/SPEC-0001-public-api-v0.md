@@ -143,7 +143,9 @@ in v0 (every edit recalculates synchronously).
 
 ### Edits and change sets
 ```rust
-pub enum Input { Value(Value), Formula(String), Parse(String), Clear }
+pub enum Input { Value(Value), Formula(String), LegacyFormula(String), Parse(String), Clear }
+// LegacyFormula: a pre-dynamic-array formula, stored with the implicit intersections xlsx
+// import adds to a plain <f> (`=A1:A2` -> `=@A1:A2`; T-1096).
 impl From<f64>/From<bool>/From<&str> /* = Parse */ /* for Input */;
 
 impl Workbook {
@@ -157,6 +159,8 @@ impl Txn<'_> {
     pub fn delete_sheet(&mut self, id: SheetId) -> Result<(), EditError>;
     pub fn first_sheet(&self) -> Result<SheetId, EditError>;
     pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError>; // workbook scope; T-0043
+    pub fn set_row_hidden(&mut self, sheet: SheetId, row: u32, hidden: bool) -> Result<(), EditError>; // 0-based row, manual hide; T-1168
+    pub fn add_table(&mut self, range: RangeRef, name: &str, filtered: bool) -> Result<(), EditError>; // header row first; T-1036
 }
 pub struct ChangeSet { pub inputs: Vec<InputChange>, pub values: Vec<ValueChange>, pub sheets: Vec<SheetChange> }
 pub struct InputChange { pub cell: CellRef, pub before: Option<String>, pub after: Option<String> } // formula or literal text as the user sees it

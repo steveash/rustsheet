@@ -1,4 +1,5 @@
 use super::text_arg::{broadcast_text, TextArg};
+use crate::cast::number_text_too_long;
 use crate::number_format::number_to_text;
 use crate::{
     arithmetic::{array_of_errors, own_error},
@@ -9,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::format_text,
+    formatter::format::{format_text, format_text_value, Formatted},
     functions::{
         criteria::from_wildcard_to_regex,
         text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
@@ -210,12 +211,37 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-/// The TEXT array element for a number (`None`: a blank): its text, or `#VALUE!` for a bad format.
-fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
-    let d = format_text(value, format, locale);
+/// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
+fn formatted_node(d: Formatted) -> ArrayNode {
     d.error.map_or(ArrayNode::String(d.text), |_| {
         ArrayNode::Error(Error::VALUE)
     })
+}
+
+/// The TEXT array element for a number (`None`: a blank).
+fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
+    formatted_node(format_text(value, format, locale))
+}
+
+/// The TEXT array element for a text or boolean value: the format's text section applied to its
+/// text ("TRUE"/"FALSE" for a boolean).
+fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
+    match array_node_to_string(value) {
+        Ok(text) => formatted_node(format_text_value(&text, format)),
+        Err(error) => ArrayNode::Error(error),
+    }
+}
+
+/// TEXT of a scalar text or boolean value.
+fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) -> CalcResult {
+    match text_value_node(value, format) {
+        ArrayNode::String(s) => CalcResult::String(s),
+        _ => CalcResult::Error {
+            error: Error::VALUE,
+            origin: cell,
+            message: "Invalid format code".to_string(),
+        },
+    }
 }
 
 impl Model {
@@ -247,8 +273,9 @@ impl Model {
                         let out = match node {
                             ArrayNode::Number(f) => text_node(Some(f), &format_code, locale),
                             ArrayNode::Empty => text_node(None, &format_code, locale),
-                            ArrayNode::Boolean(b) => ArrayNode::Boolean(b),
-                            ArrayNode::String(s) => ArrayNode::String(s),
+                            text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
+                                text_value_node(&text, &format_code)
+                            }
                             e @ ArrayNode::Error(_) => e,
                         };
                         data_row.push(out);
@@ -267,8 +294,12 @@ impl Model {
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
-                    CalcResult::String(s) => return CalcResult::String(s),
-                    CalcResult::Boolean(b) => return CalcResult::Boolean(b),
+                    CalcResult::String(s) => {
+                        return text_value_result(&ArrayNode::String(s), &format_code, cell)
+                    }
+                    CalcResult::Boolean(b) => {
+                        return text_value_result(&ArrayNode::Boolean(b), &format_code, cell)
+                    }
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,
@@ -858,6 +889,9 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
         match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::String(text) if number_text_too_long(&text) => {
+                CalcResult::new_error(Error::VALUE, cell, "Invalid number".to_string())
+            }
             CalcResult::String(text) => {
                 // VALUE trims spaces around date and clock text, unlike number coercion, but
                 // only the space character: `VALUE("1/2/2020\u{a0}")` is #VALUE!

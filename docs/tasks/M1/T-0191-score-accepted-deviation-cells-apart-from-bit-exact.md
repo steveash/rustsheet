@@ -3,7 +3,7 @@ id: T-0191
 title: "Score accepted-deviation cells apart from bit-exact (decision 0036)"
 milestone: M1
 lane: harness
-status: todo
+status: done
 priority: P1
 size: M
 tier: opus
@@ -19,9 +19,27 @@ Decision 0036 sets out the file format (`<case>\t<Sheet!A1>\t<decision NNNN>\t<s
 ## Acceptance criteria
 - [ ] `rustsheet-eval` reads an optional `deviations` file per suite. The case/cell must exist, the cited semantics entry must have a `Status: DEVIATION` line, and the pinned value must parse; otherwise it is a typed error, never a panic.
 - [ ] Scoring follows decision 0036. Deviation cells are not in the bit-exact denominator or in baseline F lines, and the report has a per-suite `deviations` column.
-- [ ] `eval/suites/probes/deviations` lists C12 and C14. `make eval-baseline` removes their F lines (no hand edit), and probes reaches 100% of non-deviation cells if no other failures remain.
+- [ ] `eval/suites/probes/deviations` lists C12 and C14 (delivered: lifted-range-rows C1–C3 and E1, since C12/C14 pass after T-0047; see Outcome). `make eval-baseline` removes their F lines (no hand edit), and probes reaches 100% of non-deviation cells if no other failures remain.
 - [ ] Unit tests cover parse errors and the three scoring outcomes. docs/process/quality-gates.md and the steward skill mention the file.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Changing any limit; adding deviation lines beyond C12/C14 (each needs its own evidence).
+
+## Outcome
+- `rustsheet-eval` reads the suite manifest key `deviations = "<file>"` (crates/rustsheet-eval/src/deviations.rs).
+  Malformed lines, missing cases and cited entries without `Status: DEVIATION` are a typed
+  `DeviationError`, checked by `eval` and `eval-check` before any case runs. A line naming an
+  unscored cell makes the case invalid.
+- Scoring follows decision 0036. The pinned value gives the new `deviation` verdict, which leaves
+  the bit-exact rate and is never an F line. Excel's value passes with a stale-line warning in
+  the CLI and the report. Anything else keeps its mismatch verdict, so it fails the gate. The
+  report and the CLI summary have a per-suite `deviations` column.
+- The listed cells are probes/lifted-range-rows C1, C2, C3 and E1, not resource-limits C12/C14,
+  which have passed since T-0047, as the Context notes. Decision 0036 records this and retires its
+  interim rule.
+- Eval delta: probes known failures 255 → 251 (4 cells now deviations, via `make eval-baseline`);
+  no other suite changed and there are 0 regressions.
+- Unit tests cover the parse errors, the entry check, the missing case, the three outcomes
+  end-to-end, and the report rate and column. docs/process/quality-gates.md and the steward skill
+  describe the file.

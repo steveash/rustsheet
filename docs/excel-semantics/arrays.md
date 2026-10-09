@@ -27,9 +27,16 @@ always ERROR.TYPE − 1 and `subType` (the reason) does not change the error:
 
 The `#GETTING_DATA` row is a formula-literal error, not a rich-value error (no errorType).
 
+Writing them (T-1014): Excel reads a constant rich error written in this form with one `_error` value per
+kind and `subType` 0 for every kind, in a workbook whose metadata lists `XLDAPR` first and `XLRICHVALUE`
+second, with `rdRichValueTypes.xml` as Excel writes it: fixtures/rich-error-export.xlsx (our exporter's
+output; excel-graph, 2026-10-08) gives ERROR.TYPE 9, 10, 11, 13, 14 and VALUETOTEXT the names.
+The same workbook with A1 stored as the plain literal `<c t="e"><v>#SPILL!</v></c>` instead is rejected on load
+(createSession 501 `unsupportedWorkbook`, excel-graph 2026-10-08, T-1014), like the other rich kinds (syntax.md).
+
 Behavior of these errors under ISERR/ISNA/TYPE/IFNA/COUNTIF, and of IMAGE, STOCKHISTORY and FIELDVALUE with error
 arguments (including `FIELDVALUE({1,2},"Price")` spilling two `#FIELD!` cells), is in information.md
-(probes/rich-errors-args, T-1012). An IMAGE source that is empty or a number evaluates as `#VALUE!`; its stored rich-value form is undecoded (UNVERIFIED).
+(probes/rich-errors-args, T-1012). An IMAGE source that is empty, a number, a boolean or non-URL text evaluates as `#VALUE!` (probes/rich-errors-arg-kinds, information.md); its stored rich-value form is undecoded (UNVERIFIED).
 
 A cell that only propagates the error (`ARRAYTOTEXT(A1)`) keeps the errorType in a different
 `_error` structure, `errorType, propagated` (`propagated` = 1, a boolean; no subType). The
@@ -45,8 +52,21 @@ DROP_TAKE.xlsx C2/E2/F2/I2/L2, FILTER_ERRORS.xlsx E1, SEQUENCE.xlsx C16/E18 (all
 Status: confirmed from Excel-cached files. (An earlier theory that these were CSE `#VALUE!` results was
 wrong: the cells are `cm="1"` dynamic arrays and the engine's `#CALC!` was already right.)
 Implemented in: `value_metadata_errors` in `crates/rustsheet-xlsx/src/import/rich_errors.rs`, shared by
-the importer (cached `#CALC!`/`#SPILL!`; errors the engine has no kind for stay `#VALUE!`) and the eval
+the importer (cached `#CALC!`/`#SPILL!`/`#CONNECT!`/`#BLOCKED!`/`#FIELD!`; unmapped errorTypes stay `#VALUE!`) and the eval
 snapshot reader (expected values; T-0921).
+
+## MOD lifts over array arguments
+Rule: `MOD(array, n)` returns an array, one `MOD` per element, so `SUM(MOD(SEQUENCE(4),2))` is 2. The
+two arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions past a
+shorter array are `#N/A`); the zero divisor (`#DIV/0!`) and huge quotient (`#NUM!`) rules hold per
+element, and an error element stays in its position.
+Evidence: probes/geomean-overflow-cut-3 E4 and probes/mod-array-lift (excel-graph, 2026-10-07):
+ranges, a per-element `#DIV/0!`, an `#N/A` element staying in place, a scalar divisor repeating, `#N/A`
+past the end of a shorter divisor, `MOD(NA(),{1,2})` giving `#N/A` in every element, row x column
+broadcast, text elements cast like a scalar (`"x"` gives `#VALUE!`) and booleans as 1/0.
+Status: VERIFIED
+Tasks: T-1119
+Implemented in: `Model::lift_numbers` (DATE uses it too) (crates/rustsheet-engine/src/cast.rs), used by `fn_mod`.
 
 ## NOT and CONCATENATE lift over array arguments
 Rule: `NOT(array)` and `CONCATENATE(array, …)` return an array, one result per element, like the
@@ -160,8 +180,8 @@ before any cell is read, to bound allocation on untrusted input (CLAUDE.md direc
 `#VALUE!` as in Excel. Excel for the web refuses to open a workbook whose formula sums such a
 31M-cell array (`SUM(DATE(11:1899,12,1))`: Graph `SessionMemoryQuotaExceededOnOpenWorkbook`).
 Evidence: probes/resource-limits C12–C14 (excel-graph, 2026-10-05); probes/lifted-range-size
-C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are known
-failures by design).
+C4–C8, C10 and probes/lifted-range-rows C1–C3, E1 (excel-graph, 2026-10-06; rows C1–C3 and E1 are listed in
+eval/suites/probes/deviations, decision 0036).
 Status: DEVIATION (decision 0014)
 Implemented in: functions/math_and_trigonometry/array_size.rs (`MAX_SIZE`, `check_array_size`,
 `check_range_size`); `Model::evaluate_range` in crates/rustsheet-engine/src/cast.rs

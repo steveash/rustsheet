@@ -15,6 +15,8 @@ The cumulative normal family and erfc reproduce Excel's last digits from the sin
 in `functions/statistical/special.rs`, finishing what T-0924 started.
 
 ## Context
+Oracle sweep (T-1040): probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf-b`, `t1040-erfc`, `t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf`; summary in docs/excel-semantics/statistics.md.
+
 Triage T-0903. T-0924 (done) replaced statrs' erf with a series / continued-fraction kernel that is
 correctly rounded or nearly so; the remaining lines are Excel's own last digits, which are not
 correctly rounded: `NORM.S.DIST(1,TRUE)` is 0.841344746068543 while Phi(1) rounds to

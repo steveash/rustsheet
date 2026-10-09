@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MOD lifts element-wise: ranges, error and zero-divisor elements, broadcast shapes, short arrays (T-1119).",
+ "tags": [
+  "M1",
+  "arrays",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B1": 5,
+    "B2": "=NA()",
+    "B3": 7,
+    "C1": 2,
+    "C2": 2,
+    "C3": 0,
+    "A1": "=MOD(B1:B3,C1:C3)",
+    "D1": "=MOD(B1:B3,4)",
+    "E1": "=MOD(B1:B3,C1:C2)",
+    "G1": "=MOD(NA(),{1,2})",
+    "I1": "=MOD({5,7},{2;3})",
+    "K1": "=MOD(B1:B3,{1,2})",
+    "N1": "=MOD(-7,{3,-3})",
+    "P1": "=MOD(TRUE,{2,\"x\"})"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!D1",
+  "Sheet1!D2",
+  "Sheet1!D3",
+  "Sheet1!E1",
+  "Sheet1!E2",
+  "Sheet1!E3",
+  "Sheet1!G1",
+  "Sheet1!H1",
+  "Sheet1!I1",
+  "Sheet1!J1",
+  "Sheet1!I2",
+  "Sheet1!J2",
+  "Sheet1!K1",
+  "Sheet1!L1",
+  "Sheet1!K2",
+  "Sheet1!L2",
+  "Sheet1!K3",
+  "Sheet1!L3",
+  "Sheet1!N1",
+  "Sheet1!O1",
+  "Sheet1!P1",
+  "Sheet1!Q1"
+ ]
+}

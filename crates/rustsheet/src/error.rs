@@ -72,6 +72,9 @@ pub enum EditError {
     /// The defined name is invalid or already exists, or its formula does not parse.
     #[error("invalid defined name: {0}")]
     DefinedName(String),
+    /// The table name is invalid or taken, or its range or header row is not valid.
+    #[error("invalid table: {0}")]
+    Table(String),
     /// Any other engine error, passed through verbatim.
     #[error("engine error: {0}")]
     Engine(String),

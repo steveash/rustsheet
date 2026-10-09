@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT of an @ operand of :, # and @, and ANCHORARRAY forms (T-1104).",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "B2": 3,
+        "D1": "=SEQUENCE(3)",
+        "H10": "=A1:(@B1)",
+        "H11": "=FORMULATEXT(H10)",
+        "H12": "=(@(A1 B1)):C3",
+        "H13": "=FORMULATEXT(H12)",
+        "H16": "=@(@(A1 B1))",
+        "H17": "=FORMULATEXT(H16)",
+        "J30": "=ANCHORARRAY(D1)",
+        "J1": "=FORMULATEXT(J30)",
+        "K30": "=ANCHORARRAY(INDEX(D1:D2,1))",
+        "K1": "=FORMULATEXT(K30)",
+        "L30": "=D1#",
+        "L1": "=FORMULATEXT(L30)",
+        "M30": "=@D1#",
+        "M1": "=FORMULATEXT(M30)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H10",
+    "Sheet1!H11",
+    "Sheet1!H12",
+    "Sheet1!H13",
+    "Sheet1!H16",
+    "Sheet1!H17",
+    "Sheet1!J1",
+    "Sheet1!J30",
+    "Sheet1!K1",
+    "Sheet1!K30",
+    "Sheet1!L1",
+    "Sheet1!L30",
+    "Sheet1!M1",
+    "Sheet1!M30"
+  ]
+}

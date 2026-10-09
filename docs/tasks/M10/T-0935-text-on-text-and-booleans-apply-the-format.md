@@ -3,10 +3,10 @@ id: T-0935
 title: "TEXT on text and booleans: apply the format's text section (28 known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -31,12 +31,27 @@ Evidence (excel-graph, T-0019):
 A text section with no `@` (A3, A4, A5) prints only its literals.
 
 ## Acceptance criteria
-- [ ] The 28 known-failure lines above (TextFormatTests A3:A10, A12:A29; GeneralFormatTests
+- [x] The 28 known-failure lines above (TextFormatTests A3:A10, A12:A29; GeneralFormatTests
       A72, A73) disappear from eval/baseline/poi.txt with no new F lines.
-- [ ] Same behavior for scalar and array (spilled) arguments; unit tests for both.
-- [ ] Rule recorded in `docs/excel-semantics/number-formats.md` citing these cells.
-- [ ] `make check` green; reviewers approve.
+- [x] Same behavior for scalar and array (spilled) arguments; unit tests for both.
+- [x] Rule recorded in `docs/excel-semantics/number-formats.md` citing these cells.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Text values with a format that has no text section, such as `TEXT("jello","0.00")`. There is no
 evidence here; use `excel-probe` and file a follow-up if needed.
+
+## Handoff (resumed; superseded by the Outcome below)
+Done on this branch (sonnet run): `format_text_value` (formatter/format.rs) and its use in `fn_text` for
+text/boolean scalars and array elements, unit test `text_functions/fn_text_sections.rs`, 25 of the 28 poi
+cells fixed (baseline refreshed).
+Remaining: TextFormatTests Tests!A4, A14, A23 (`;;;"h""I"`, expected "hI", actual `h"I`). The fix is in
+`consume_string` (formatter/lexer.rs): drop the `""` escape branch. I tried it; it fixed the 3 cells but
+broke `formatter::test::test_general::test_string_double_quota` (`0 """Millions"""` expects
+`42 "Millions"`, an IronCalc-era test without Excel evidence). Resolving that needs an excel-probe of
+`"""x"""` and similar shapes, then updating that test with the evidence. Acceptance criteria 1 (all 28
+lines) is open until then.
+
+## Outcome
+`fn_text` formats text and booleans with the format's text section (`format_text_value`, formatter/format.rs), for scalars and array elements; a lone section containing `@` is a text section too. Probe `probes/format-doubled-quotes` (11 cells, excel-graph) showed a doubled quote in a format literal is not an escaped quote, so `consume_string` (formatter/lexer.rs) now ends the literal at every `"`, and `test_string_double_quota` asserts the Excel value (`42 Millions`). Probe `probes/text-format-text-limit` (25 cells) showed TEXT of a text value is `#VALUE!` over 255 characters; `format_text_value` enforces it as the result grows (also the directive-5 bound on repeated `@`). Eval: poi known failures 600 -> 572 (all 28 cells), probes +36 passing cells (two new cases), 0 regressions. number-formats.md records the three rules. Follow-up: T-1130 (unprobed text-section shapes).
+

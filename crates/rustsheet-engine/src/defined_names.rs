@@ -1,7 +1,8 @@
 //! Workbook defined names: creating, validating, renaming and deleting them.
 
 use crate::{
-    calc_result::Range,
+    calc_result::{CalcResult, Range},
+    evaluation::stack_address,
     expressions::{
         lexer::LexerMode,
         parser::{
@@ -13,9 +14,19 @@ use crate::{
         utils::is_valid_identifier,
     },
     model::Model,
+    reference_operators::RefArg,
     types::DefinedName,
     utils as common,
 };
+
+/// The `#NAME?` of a name whose body runs out of depth or budget ([`Model::within_defined_name`]).
+fn name_refers_to_itself(name: &str, cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NAME,
+        cell,
+        format!("Defined name \"{name}\" refers to itself."),
+    )
+}
 
 /// A parsed formula for a defined name
 #[derive(Clone)]
@@ -28,11 +39,134 @@ pub(crate) enum ParsedDefinedName {
     LambdaDefinition(Vec<NamedVariable>, Node),
     /// An error literal, possibly sheet-qualified (`=Sheet1!#REF!`): the name evaluates to it
     ErrorLiteral(Error),
-    /// `=SomethingElse`
+    /// Any other formula (`=SUM(Sheet1!$A$1:$A$3)`, `=Sheet1!$A$1:$A$3 Sheet1!$A$2:$B$2`,
+    /// `=0.5`): evaluated where the name is used, in that cell's context
+    Formula(std::sync::Arc<Node>),
+    /// A body that does not parse
     InvalidDefinedNameFormula,
 }
 
+/// How many defined-name bodies may be evaluated inside one another. A name whose body
+/// reaches itself, directly (`=selfref+1`) or through others (`a` is `=b`, `b` is `=a`), is
+/// `#NAME?` in Excel (probes/defined-name-formula-bodies H11, H13); the engine gives that by
+/// running out of depth or budget. A chain of distinct names deeper than this is `#NAME?` too,
+/// where Excel would evaluate it (DEVIATION, decision 0014: references.md "A defined name may be
+/// a formula").
+const MAX_DEFINED_NAME_DEPTH: usize = 64;
+
+/// How many name bodies one cell's formula may evaluate in all. The depth limit alone
+/// does not bound the work: `x` = `=x+x` doubles it at every level. Past this the use is
+/// `#NAME?` (same DEVIATION).
+const MAX_DEFINED_NAME_EVALUATIONS: usize = 10_000;
+
+/// The state of the defined-name bodies being evaluated right now (`Model::within_defined_name`).
+#[derive(Default)]
+pub(crate) struct DefinedNameRun {
+    /// Bodies evaluated inside one another.
+    depth: usize,
+    /// Bodies evaluated so far in this cell's formula, or in this outermost use outside a cell.
+    evaluations: usize,
+    /// Where the stack was when the outermost one started.
+    stack_base: usize,
+}
+
 impl Model {
+    /// Runs `f` one defined-name body deeper, or gives `None` past [`MAX_DEFINED_NAME_DEPTH`],
+    /// [`MAX_DEFINED_NAME_EVALUATIONS`] or the evaluation's stack budget, so that names
+    /// referring to themselves stay bounded in depth, time and stack.
+    pub(crate) fn within_defined_name<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> Option<T> {
+        let here = stack_address();
+        // Inside a cell, measure from where its recursion started, so that names and cells
+        // share one stack budget (evaluation.rs).
+        let in_cell = self.evaluation.depth > 0;
+        let cell_base = in_cell.then_some(self.evaluation.stack_base);
+        let run = &mut self.defined_names_running;
+        if run.depth == 0 {
+            // A cell's formula has one budget however many names it uses (`=x+x+x`), set up by
+            // `run_cell_formula`; outside a cell (conditional formats, `evaluate_formula`) every
+            // outermost use starts afresh.
+            if !in_cell {
+                run.evaluations = 0;
+            }
+            run.stack_base = cell_base.unwrap_or(here);
+        }
+        if run.depth >= MAX_DEFINED_NAME_DEPTH
+            || run.evaluations >= MAX_DEFINED_NAME_EVALUATIONS
+            || run.stack_base.abs_diff(here) >= self.evaluation.max_stack
+        {
+            return None;
+        }
+        run.depth += 1;
+        run.evaluations += 1;
+        let result = f(self);
+        self.defined_names_running.depth -= 1;
+        Some(result)
+    }
+
+    /// Evaluates the formula `node` of the cell `cell` with a name budget of its own, so that
+    /// the budget belongs to this one run of this one formula: a cell evaluated inside another
+    /// cell's name body, or the same cell run again after a restart, does not inherit it.
+    pub(crate) fn run_cell_formula(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        let outer = std::mem::take(&mut self.defined_names_running);
+        let result = self.evaluate_formula_root(node, cell);
+        self.defined_names_running = outer;
+        result
+    }
+
+    /// The value of the defined name `name` whose body is the formula `body`, used in `cell`. The
+    /// body is snapped at its own root like a cell formula (docs/excel-semantics/numbers.md
+    /// "Near-zero snapping", probes/near-zero-snap-groups C1-C5).
+    pub(crate) fn evaluate_defined_name_formula(
+        &mut self,
+        name: &str,
+        body: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        self.within_defined_name(|model| model.evaluate_formula_root(body, cell))
+            .unwrap_or_else(|| name_refers_to_itself(name, cell))
+    }
+
+    /// The body of the defined name `node` when it is a formula (T-0158), shared, not copied;
+    /// `None` for any other node or name.
+    pub(crate) fn defined_name_formula(&self, node: &Node) -> Option<std::sync::Arc<Node>> {
+        let Node::DefinedNameKind((name, scope, _)) = node else {
+            return None;
+        };
+        match self
+            .parsed_defined_names
+            .get(&(*scope, name.to_lowercase()))
+        {
+            Some(ParsedDefinedName::Formula(body)) => Some(std::sync::Arc::clone(body)),
+            _ => None,
+        }
+    }
+
+    /// The defined name `node` where a reference is accepted. A name whose body is a formula
+    /// stands for what the body is in reference context, so a union body is its areas
+    /// (probes/union-defined-name H1, H4, H5) and a cross-sheet one `#VALUE!`
+    /// (probes/multiarea-xname). Any other name is read as [`Model::evaluate_node_with_reference`]
+    /// reads it. The body runs under the same depth and budget as its value read.
+    pub(crate) fn defined_name_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        if let Node::DefinedNameKind((name, ..)) = node {
+            if let Some(body) = self.defined_name_formula(node) {
+                // Only a body that may stand for several areas leaves the value path, which
+                // snaps the body at its root (`SUM(nz)` with `nz` = `0.1+0.2-0.3` is 0,
+                // probes/near-zero-snap-groups C5).
+                if !self.is_multi_area(&body) {
+                    return RefArg::from(self.evaluate_node_with_reference(node, cell));
+                }
+                return self
+                    .within_defined_name(|model| model.evaluate_reference_arg(&body, cell))
+                    .unwrap_or_else(|| RefArg::Value(name_refers_to_itself(name, cell)));
+            }
+        }
+        RefArg::from(self.evaluate_node_with_reference(node, cell))
+    }
+
     /// Adds a new defined name.
     /// If scope is None it is a global defined name, otherwise it is local to the sheet with index scope.
     pub fn new_defined_name(
@@ -245,7 +379,7 @@ impl Model {
                         };
                         let mut formulas = Vec::new();
                         for formula in &worksheet.shared_formulas {
-                            let mut t = self.parser.parse(formula, &cell_reference);
+                            let mut t = self.parser.parse_cell_formula(formula, &cell_reference);
                             rename_defined_name_in_node(&mut t, name, scope, new_name);
                             formulas.push(to_rc_format(&t));
                         }

@@ -9,12 +9,39 @@
 use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
 use crate::expressions::parser::{ExpectedTokens, Node, Parser};
 use crate::expressions::token::{Error, OpUnary, TokenType};
+use crate::expressions::types::CellReferenceRC;
 use crate::functions::Function;
 use crate::locale::Locale;
 
 use super::stringify::argument_separator;
 
 impl Parser {
+    /// Parses a cell formula like [`Parser::parse`], but a formula written wholly in parentheses
+    /// (`=(A1-1)`, `=((A1-1))`) gets a [`Node::GroupedRootKind`] root per written level, so it prints back with
+    /// them and evaluation can tell it from `=A1-1` (Excel skips near-zero snapping for it,
+    /// probes-numeric/30bc5f8fab02d0a2 `parenthesized-sub`; docs/excel-semantics/numbers.md).
+    /// A union keeps its own written parentheses (`OpUnionKind::written`), so it is not wrapped.
+    pub fn parse_cell_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
+        let node = self.parse(formula, context);
+        let levels = self.grouped_root;
+        if levels == 0
+            || matches!(
+                node,
+                Node::ParseErrorKind { .. }
+                    | Node::OpUnionKind { .. }
+                    | Node::OpIntersectKind { written: 1.., .. }
+                    | Node::GroupedRootKind { .. }
+            )
+        {
+            return node;
+        }
+        // Excel keeps every written level of parentheses around the whole formula
+        // (probes/near-zero-snap-groups B6, `=((0.1+0.2-0.3))`), one node each.
+        (0..levels).fold(node, |child, _| Node::GroupedRootKind {
+            child: Box::new(child),
+        })
+    }
+
     /// `'(' expr (',' expr)* ')'`, after the `(`. Directly inside it, and nowhere else, the
     /// argument separator is the union operator: `(A1,B2)` is one union, `SUM(A1,B2)` two
     /// arguments. The union is the loosest operator inside its parenthesis, so `(A1,B1 C1)` is
@@ -22,37 +49,23 @@ impl Parser {
     /// but refuses `(1,A1)` and `(A1+B1,C1)` (docs/excel-semantics/references.md, "Union:
     /// parsing and evaluation", T-0187).
     pub(super) fn parse_parenthesized(&mut self) -> Node {
-        let mut t = self.parse_expr();
+        let open = self.lexer.get_position_index();
+        let after_at = std::mem::take(&mut self.at_paren);
+        // `@((A1 B1))`: the inner group is a level of the same operand.
+        self.at_paren = after_at && self.lexer.peek_token() == TokenType::LeftParenthesis;
+        // The first group parsed is the one the formula's first `(` opens.
+        let leading = std::mem::take(&mut self.leading_paren);
+        let t = self.parse_enclosed_expr();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        let separator = self.get_argument_separator_token();
-        let mut union_depth = self.depth;
-        while self.lexer.peek_token() == separator {
-            self.lexer.advance_token();
-            let p = self.parse_expr();
-            if let Node::ParseErrorKind { .. } = p {
-                return p;
-            }
-            if !is_union_operand(&t) || !is_union_operand(&p) {
-                return Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Range],
-                    position: self.lexer.get_position() as usize,
-                    message: "Union needs references".to_string(),
-                };
-            }
-            if let Err(error) = self.grow(union_depth, self.depth) {
-                return error;
-            }
-            union_depth = self.depth;
-            t = Node::OpUnionKind {
-                left: Box::new(t),
-                right: Box::new(p),
-                written: 0,
-            };
-        }
+        let (mut t, union_depth) = match self.parse_union_chain(t, Self::parse_enclosed_expr, false)
+        {
+            Ok(chain) => chain,
+            Err(error) => return error,
+        };
         self.inner_depth = self.inner_depth.max(union_depth);
+        let close = self.lexer.get_position_index();
         if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
             return Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -61,11 +74,91 @@ impl Parser {
                 message: err.message,
             };
         }
+        // A level nests only if the inner group opens right after this `(` and closes right
+        // before this `)`: `((A1))` is two levels, `((A1)+(B1))` one.
+        let inner =
+            (self.root_group.take()).filter(|&(_, start, end)| start == open + 1 && end == close);
+        let levels = inner.map_or(0, |(levels, ..)| levels).saturating_add(1);
+        self.root_group = Some((levels, open, self.lexer.get_position_index()));
+        if leading && self.lexer.peek_token() == TokenType::EOF {
+            self.grouped_root = levels;
+        }
         // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
         }
+        // Excel also keeps them around a cut of a parenthesized union (`((A1,B1) B1)`, T-1176).
+        if cuts_written_union(&t) {
+            if let Node::OpIntersectKind { written, .. } = &mut t {
+                *written = written.saturating_add(1);
+            }
+        }
+        // An `@` operand prints its written levels back (`ImplicitIntersection::written`).
+        if after_at {
+            let inner = self.at_group.take().filter(|&(_, end)| end == close);
+            let levels = inner.map_or(0, |(levels, _)| levels).saturating_add(1);
+            self.at_group = Some((levels, self.lexer.get_position_index()));
+        }
         t
+    }
+
+    /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
+    /// argument list only. There the comma is a reference operator that binds tighter than
+    /// arithmetic and looser than the space: Excel loads `=A1,B2` (`#VALUE!`, FORMULATEXT
+    /// `=A1,B2`), `=1+A1,B2` (`#VALUE!`), `=NA()+A1,B2` (`#N/A`) and `=A1,B2 C3` (`#NULL!`, the
+    /// empty `B2 C3`), and refuses `=A1,1` and `=SUM(A1),B2` (docs/excel-semantics/references.md
+    /// "Bare union", T-1073). Inside parentheses the union is the loosest operator instead
+    /// ([`Parser::parse_parenthesized`]).
+    pub(super) fn parse_bare_union(&mut self) -> Node {
+        let t = self.parse_intersection();
+        if !self.top_level || matches!(t, Node::ParseErrorKind { .. }) {
+            return t;
+        }
+        match self.parse_union_chain(t, Self::parse_intersection, true) {
+            Ok((t, depth)) => {
+                self.depth = depth;
+                t
+            }
+            Err(error) => error,
+        }
+    }
+
+    /// `first (',' operand)*`, left associative, each further operand parsed by `operand`: the
+    /// union chain and its depth. Every operand must be a reference, or a negated one
+    /// ([`is_union_operand`]); `bare` marks a chain written outside parentheses.
+    fn parse_union_chain(
+        &mut self,
+        first: Node,
+        operand: fn(&mut Self) -> Node,
+        bare: bool,
+    ) -> Result<(Node, usize), Node> {
+        let separator = self.get_argument_separator_token();
+        let mut t = first;
+        let mut depth = self.depth;
+        while self.lexer.peek_token() == separator {
+            self.lexer.advance_token();
+            let p = operand(self);
+            if let Node::ParseErrorKind { .. } = p {
+                return Err(p);
+            }
+            if !is_union_operand(&t) || !is_union_operand(&p) {
+                return Err(Node::ParseErrorKind {
+                    formula: self.lexer.get_formula(),
+                    expecting: vec![ExpectedTokens::Range],
+                    position: self.lexer.get_position() as usize,
+                    message: "Union needs references".to_string(),
+                });
+            }
+            self.grow(depth, self.depth)?;
+            depth = self.depth;
+            t = Node::OpUnionKind {
+                left: Box::new(t),
+                right: Box::new(p),
+                written: 0,
+                bare,
+            };
+        }
+        Ok((t, depth))
     }
 
     /// `intersect => range (' ' range)*`, left associative.
@@ -80,6 +173,13 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
+        // An `@` group is the leftmost operand of an intersection only if it closes exactly there
+        // and holds a single operand: `@(A1):B1 C1` and `@(A1 B1) C1` would print parentheses
+        // the user did not write around that node (T-1134).
+        let mut stray_group = matches!(t, Node::OpIntersectKind { .. } | Node::OpUnionKind { .. })
+            || self
+                .at_group
+                .is_some_and(|(_, end)| end != self.lexer.get_position_index());
         let mut depth = self.depth;
         let mut as_name = false;
         while !is_constant(&t)
@@ -107,6 +207,9 @@ impl Parser {
                 return self.intersection_error();
             }
             as_name |= name_error;
+            if std::mem::take(&mut stray_group) {
+                self.at_group = None;
+            }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
             }
@@ -114,6 +217,7 @@ impl Parser {
             t = Node::OpIntersectKind {
                 left: Box::new(t),
                 right: Box::new(p),
+                written: 0,
             };
         }
         if as_name {
@@ -173,6 +277,8 @@ impl Parser {
             if self.nesting + PRIMARY_DEPTH > MAX_FORMULA_DEPTH {
                 return self.too_deep();
             }
+            self.at_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
+            self.at_group = None;
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
@@ -188,9 +294,25 @@ impl Parser {
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
+            // Whole-operand parentheses (`@(A1)`) are `written`; a group that is only the leftmost
+            // operand of an intersection (`@(A1) B1`) is `lead`.
+            let group = self.at_group.take();
+            let whole = group.filter(|&(_, end)| end == self.lexer.get_position_index());
+            let written = whole.map_or(0, |(levels, _)| levels);
+            let lead = match group {
+                Some((levels, _))
+                    if whole.is_none() && matches!(t, Node::OpIntersectKind { .. }) =>
+                {
+                    levels
+                }
+                _ => 0,
+            };
+            self.at_paren = false;
             return Node::ImplicitIntersection {
                 automatic: false,
                 child: Box::new(t),
+                written,
+                lead,
             };
         }
         let primary = self.parse_primary();
@@ -223,6 +345,34 @@ impl Parser {
             position: self.lexer.get_position() as usize,
             message: "Unexpected input after the end of the formula".to_string(),
         }
+    }
+
+    /// The call `kind(args)`, or a parse error when an argument that must be a reference is not
+    /// one. Excel for the web refuses a workbook (`FileCorruptTryRepair`) holding SUBTOTAL with
+    /// a non-reference argument after the function number (`{1,2}`, `A1:A2*1`, `1`, `"A1"`,
+    /// `-A1`, `#N/A`, `SUM(A1:A2)`, `FILTER(..)`, `VSTACK(..)`), an empty one (`SUBTOTAL(9,A1,)`)
+    /// or a nested SUBTOTAL, and AREAS of `1` or `"A1"`; the operands the intersection accepts all
+    /// load (docs/excel-semantics/references.md "SUBTOTAL and AREAS take references only",
+    /// T-1063, T-1163).
+    pub(super) fn function_call(&self, kind: Function, args: Vec<Node>) -> Node {
+        let first_reference = match kind {
+            Function::Subtotal => 1,
+            Function::Areas => 0,
+            _ => return Node::FunctionKind { kind, args },
+        };
+        let refused = args
+            .iter()
+            .skip(first_reference)
+            .any(|arg| matches!(arg, Node::EmptyArgKind) || !is_reference_operand(arg));
+        if refused {
+            return Node::ParseErrorKind {
+                formula: self.lexer.get_formula(),
+                expecting: vec![ExpectedTokens::Other],
+                position: self.lexer.get_position() as usize,
+                message: "This argument must be a reference".to_string(),
+            };
+        }
+        Node::FunctionKind { kind, args }
     }
 }
 
@@ -270,7 +420,8 @@ fn has_negated_operand(node: &Node) -> bool {
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection (docs/excel-semantics/references.md "Intersection operands must be
+/// intersection and for SUBTOTAL and AREAS arguments ([`Parser::function_call`])
+/// (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning
 /// functions below (probes/intersection-function-operands; T-0161); value functions such as
@@ -335,6 +486,8 @@ fn starts_reference(token: &TokenType) -> bool {
 /// is `A1 @(A1 B1)` (T-0149).
 pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> String {
     let bare = match node {
+        // A cut with its own written parentheses (T-1176) prints them itself.
+        Node::OpIntersectKind { written: 1.., .. } => true,
         Node::OpIntersectKind { right, .. } => {
             is_left && !matches!(**right, Node::ImplicitIntersection { .. })
         }
@@ -367,9 +520,10 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
 /// and so does an `@`, which would otherwise take the rest of the operator's text
 /// (`A1:(@B1)`, `(@(A1 B1)):C3`; T-1102).
 pub(crate) fn tight_operand(text: String, node: &Node) -> String {
+    // A cut with its own written parentheses (T-1176) prints them itself.
     if matches!(
         node,
-        Node::OpIntersectKind { .. } | Node::ImplicitIntersection { .. }
+        Node::OpIntersectKind { written: 0, .. } | Node::ImplicitIntersection { .. }
     ) {
         format!("({text})")
     } else {
@@ -378,13 +532,60 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
-/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102).
-pub(crate) fn at_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::ImplicitIntersection { .. }) {
-        format!("({text})")
+/// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and any operand
+/// keeps the `written` levels it had, `@(A1 B1)`, `@(A1)`, `@((A1 B1))` (T-1109, T-1116).
+pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
+    // A nested `@` needs one level even when none was written (programmatic trees).
+    let levels = if matches!(node, Node::ImplicitIntersection { .. }) {
+        written.max(1)
+    } else if matches!(
+        node,
+        Node::OpUnionKind { .. } | Node::OpIntersectKind { written: 1.., .. }
+    ) {
+        // A union, or a cut of one (T-1176), prints the levels it was written in itself,
+        // `@(A1,B2)`.
+        0
     } else {
-        text
+        written
+    };
+    (0..levels).fold(text, |text, _| format!("({text})"))
+}
+
+/// The text of the intersection chain `child` whose leftmost operand was written in `lead` levels
+/// of parentheses, `(A1) B1` (`@(A1) B1`, T-1134); `None` when there are none to print. `sub`
+/// prints an operand.
+pub(crate) fn lead_group_text(
+    child: &Node,
+    lead: u8,
+    sub: &dyn Fn(&Node) -> String,
+) -> Option<String> {
+    let mut rights = Vec::new();
+    let mut leftmost = child;
+    while let Node::OpIntersectKind { left, right, .. } = leftmost {
+        rights.push(&**right);
+        leftmost = left;
     }
+    if lead == 0 || rights.is_empty() {
+        return None;
+    }
+    let mut text = (0..lead).fold(sub(leftmost), |text, _| format!("({text})"));
+    for right in rights.into_iter().rev() {
+        text = format!("{text} {}", intersection_operand(sub(right), right, false));
+    }
+    Some(text)
+}
+
+/// The printed `@` operand `child` with the parentheses it was written in: `written` around the
+/// whole operand, `lead` around its leftmost operand only. `sub` prints a node.
+pub(crate) fn at_text(
+    child: &Node,
+    written: u8,
+    lead: u8,
+    sub: &dyn Fn(&Node) -> String,
+) -> String {
+    let operand =
+        lead_group_text(child, lead, sub).unwrap_or_else(|| at_operand(sub(child), child, written));
+    format!("@{operand}")
 }
 
 /// `text` (the printed `node`) as the callee of a call, `(A1)(A2)`: a LAMBDA prints bare
@@ -411,22 +612,43 @@ pub(crate) fn union_text(
     locale: &Locale,
 ) -> String {
     // Callers pass only unions; any other node prints as a plain one-level union of its texts.
-    let (left, written) = match node {
-        Node::OpUnionKind { left, written, .. } => (&**left, *written),
-        other => (other, 1),
+    let (left, written, bare) = match node {
+        Node::OpUnionKind {
+            left,
+            written,
+            bare,
+            ..
+        } => (&**left, *written, *bare),
+        other => (other, 1, false),
     };
     let left_text = match left {
-        Node::OpUnionKind { written: 0, .. } => left_text
+        Node::OpUnionKind {
+            written: 0,
+            bare: false,
+            ..
+        } => left_text
             .strip_prefix('(')
             .and_then(|text| text.strip_suffix(')'))
             .unwrap_or(left_text),
         _ => left_text,
     };
-    let levels = written.max(1);
+    // A bare union (`=A1,B2`) has no parentheses of its own.
+    let levels = if bare { written } else { written.max(1) };
     format!(
         "{}{left_text}{}{right_text}{}",
         "(".repeat(levels),
         argument_separator(locale),
         ")".repeat(levels)
     )
+}
+
+/// Whether `node` is a chain of cuts whose leftmost operand is a union with its own parentheses.
+fn cuts_written_union(node: &Node) -> bool {
+    let mut leftmost = node;
+    let mut cut = false;
+    while let Node::OpIntersectKind { left, .. } = leftmost {
+        cut = true;
+        leftmost = left;
+    }
+    cut && matches!(leftmost, Node::OpUnionKind { written, .. } if *written > 0)
 }

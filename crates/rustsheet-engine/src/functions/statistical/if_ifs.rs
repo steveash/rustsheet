@@ -1,5 +1,5 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal, MISSING};
-use crate::cast::calc_result_to_array_node;
+use crate::cast::{calc_result_to_array_node, number_text_too_long};
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::criteria::build_criteria;
@@ -48,6 +48,12 @@ enum CriteriaArg {
     Scalar(CalcResult),
     /// An array, or a multi-cell range read element by element.
     Grid(Vec<Vec<ArrayNode>>),
+}
+
+const TOO_LONG: &str = "Criterion too long";
+
+fn criterion_too_long(criterion: &CalcResult) -> bool {
+    matches!(criterion, CalcResult::String(text) if number_text_too_long(text))
 }
 
 impl CriteriaArg {
@@ -226,7 +232,8 @@ impl Model {
                                 (_, None) => CalcResult::EmptyCell,
                             })
                             .collect();
-                        let value = calc_result_to_array_node(compute(self, &values));
+                        let result = compute(self, &values);
+                        let value = calc_result_to_array_node(result);
                         previous = Some((key, value.clone()));
                         value
                     }
@@ -336,6 +343,12 @@ impl Model {
         if !same_shape(ranges) {
             return shape_mismatch(cell);
         }
+        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
+        // range), but only once the ranges resolved: a bad range wins
+        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+        if criteria.iter().any(criterion_too_long) {
+            return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
+        }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale, &|| {
                 self.current_year()
@@ -349,8 +362,8 @@ impl Model {
         let right_row = first_range.right.row;
         let right_column = first_range.right.column;
 
-        let dimension = match self.workbook.worksheet(first_range.left.sheet) {
-            Ok(s) => s.dimension(),
+        let (max_row, max_column) = match self.workbook.worksheet(first_range.left.sheet) {
+            Ok(s) => s.used_area_end(),
             Err(_) => {
                 return CalcResult::new_error(
                     Error::ERROR,
@@ -359,8 +372,6 @@ impl Model {
                 )
             }
         };
-        let max_row = dimension.max_row;
-        let max_column = dimension.max_column;
 
         let open_row = left_row == 1 && right_row == LAST_ROW;
         let open_column = left_column == 1 && right_column == LAST_COLUMN;
@@ -516,6 +527,16 @@ impl Model {
             // range from its top-left cell (gen-m2/04cfd82f54dbc2b2 Calc!A344,
             // gen-m2/629e6e8b76fab8b9 Calc!A217; probes/ifs-shape-mismatch F9-F11).
             sum_range = resize_to(&sum_range, &ranges[0]);
+        }
+        // A criterion over 255 characters is #VALUE! (from a literal, a cell or one element of a
+        // range), but only once the ranges resolved: a bad range wins
+        // (probes/long-text-args-min-criteria A10-A26, probes/ifs-long-criterion-precedence).
+        if criteria.iter().any(criterion_too_long) {
+            return Err(CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                TOO_LONG.to_string(),
+            ));
         }
         for criterion in criteria.iter() {
             fn_criteria.push(build_criteria(criterion, self.locale, &|| {

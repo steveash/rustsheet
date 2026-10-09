@@ -25,6 +25,9 @@ correctly rounded constant `SQRT_2PI` = 2.5066282746310007; LOGNORM.DIST's densi
 - `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`: C3, C5, C7, C16, C17, C24, F24, C25, C26, C32, C44, C45
 - `ironcalc-calc/STATISTICAL/PHI.xlsx` `Sheet1`: B5
 
+Oracle sweep (T-1041): probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`,
+`m9-normpdf-norm-dist-s0p5`, `-s1p2`, `-s3`, `-s10`, `m9-normpdf-lognorm-dist`.
+
 Examples (expected vs actual):
 - `NORM.S.DIST(0,FALSE)` C7/C25/C45: expected 0.3989422804014327, actual 0.39894228040143265.
 - `NORM.S.DIST(1.5,FALSE)` C24 (and C26, C32, C44, F24 `NORM.DIST(1.5,0,1,FALSE)`): expected

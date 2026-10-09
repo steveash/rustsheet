@@ -162,7 +162,6 @@ F	poi/57535.xlsx	Sheet1!E6
 F	poi/58616.xlsx	!InvalidCase
 F	poi/59021.xlsx	!EngineError
 F	poi/60825.xlsx	!EngineError
-F	poi/61063.xlsx	Tabelle1!A4
 F	poi/63934.xlsx	Sheet1!B2
 F	poi/DateFormatNumberTests.xlsx	Tests!A10
 F	poi/DateFormatNumberTests.xlsx	Tests!A11
@@ -287,12 +286,10 @@ F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1060
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!D1112
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1056
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1060
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E1324
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E260
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!E584
-F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F128
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F160
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F392
 F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!F584
@@ -319,8 +316,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5
 F	poi/GeneralFormatTests.xlsx	Tests!A27
 F	poi/GeneralFormatTests.xlsx	Tests!A61
-F	poi/GeneralFormatTests.xlsx	Tests!A72
-F	poi/GeneralFormatTests.xlsx	Tests!A73
 F	poi/HsGetVal.xlsx	Sheet1!B5
 F	poi/HsGetVal.xlsx	Sheet1!C5
 F	poi/LIBRE_OFFICE-128382-0.xlsx	!EngineError
@@ -433,12 +428,10 @@ F	poi/NumberFormatTests.xlsx	Tests!A107
 F	poi/NumberFormatTests.xlsx	Tests!A108
 F	poi/NumberFormatTests.xlsx	Tests!A109
 F	poi/NumberFormatTests.xlsx	Tests!A110
-F	poi/NumberFormatTests.xlsx	Tests!A112
 F	poi/NumberFormatTests.xlsx	Tests!A113
 F	poi/NumberFormatTests.xlsx	Tests!A114
 F	poi/NumberFormatTests.xlsx	Tests!A115
 F	poi/NumberFormatTests.xlsx	Tests!A116
-F	poi/NumberFormatTests.xlsx	Tests!A118
 F	poi/NumberFormatTests.xlsx	Tests!A120
 F	poi/NumberFormatTests.xlsx	Tests!A121
 F	poi/NumberFormatTests.xlsx	Tests!A122
@@ -654,44 +647,7 @@ F	poi/NumberFormatTests.xlsx	Tests!A329
 F	poi/NumberFormatTests.xlsx	Tests!A330
 F	poi/NumberFormatTests.xlsx	Tests!A331
 F	poi/NumberFormatTests.xlsx	Tests!A332
-F	poi/NumberFormatTests.xlsx	Tests!A335
-F	poi/NumberFormatTests.xlsx	Tests!A44
-F	poi/NumberFormatTests.xlsx	Tests!A45
-F	poi/NumberFormatTests.xlsx	Tests!A46
 F	poi/NumberFormatTests.xlsx	Tests!A5
-F	poi/NumberFormatTests.xlsx	Tests!A67
-F	poi/NumberFormatTests.xlsx	Tests!A68
-F	poi/NumberFormatTests.xlsx	Tests!A69
-F	poi/NumberFormatTests.xlsx	Tests!A80
-F	poi/NumberFormatTests.xlsx	Tests!A81
-F	poi/NumberFormatTests.xlsx	Tests!A82
-F	poi/NumberFormatTests.xlsx	Tests!A95
-F	poi/TextFormatTests.xlsx	Tests!A10
-F	poi/TextFormatTests.xlsx	Tests!A12
-F	poi/TextFormatTests.xlsx	Tests!A13
-F	poi/TextFormatTests.xlsx	Tests!A14
-F	poi/TextFormatTests.xlsx	Tests!A15
-F	poi/TextFormatTests.xlsx	Tests!A16
-F	poi/TextFormatTests.xlsx	Tests!A17
-F	poi/TextFormatTests.xlsx	Tests!A18
-F	poi/TextFormatTests.xlsx	Tests!A19
-F	poi/TextFormatTests.xlsx	Tests!A20
-F	poi/TextFormatTests.xlsx	Tests!A21
-F	poi/TextFormatTests.xlsx	Tests!A22
-F	poi/TextFormatTests.xlsx	Tests!A23
-F	poi/TextFormatTests.xlsx	Tests!A24
-F	poi/TextFormatTests.xlsx	Tests!A25
-F	poi/TextFormatTests.xlsx	Tests!A26
-F	poi/TextFormatTests.xlsx	Tests!A27
-F	poi/TextFormatTests.xlsx	Tests!A28
-F	poi/TextFormatTests.xlsx	Tests!A29
-F	poi/TextFormatTests.xlsx	Tests!A3
-F	poi/TextFormatTests.xlsx	Tests!A4
-F	poi/TextFormatTests.xlsx	Tests!A5
-F	poi/TextFormatTests.xlsx	Tests!A6
-F	poi/TextFormatTests.xlsx	Tests!A7
-F	poi/TextFormatTests.xlsx	Tests!A8
-F	poi/TextFormatTests.xlsx	Tests!A9
 F	poi/clone_sheet.xlsx	Arkusz1!H10
 F	poi/clone_sheet.xlsx	Arkusz1!H11
 F	poi/clone_sheet.xlsx	Arkusz1!H13
@@ -747,10 +703,4 @@ F	poi/ref2-56737.xlsx	Refs!G3
 F	poi/ref2-56737.xlsx	Refs!G5
 F	poi/ref2-56737.xlsx	Refs!I3
 F	poi/ref2-56737.xlsx	Refs!I5
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!E4
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!E9
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!F9
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!G9
-F	poi/simple-monthly-budget.xlsx	Simple Monthly Budget!H4
-F	poi/simple-table-named-range.xlsx	Sheet1!B7
 F	poi/style-alternate-content.xlsx	!EngineError

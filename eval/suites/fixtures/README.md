@@ -16,3 +16,23 @@ docProps/app.xml so that their placeholder cached values are never mistaken for 
   `=WORKDAY(C2,6,D2:D5)`, B6 = `=NETWORKDAYS.INTL(C2,C2+14,1,D2:D5)`, and control E3 = `=D2:D5*1`
   (implicit intersection proves the formulas stayed legacy). The names are written without the
   `_xlfn.` prefix Excel itself would store for these Excel 2010 functions; Excel resolved them anyway.
+- `ifs-legacy-range-criteria.xlsx` (T-0263): legacy formulas (XlsxWriter `write_formula`, app name replaced).
+  A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, D1 = "a", D2 = "c"; rows 1 and 2 hold, with the range criterion
+  `D1:D2`: F COUNTIF, G COUNTIFS, H SUMIF, I SUMIF (one-cell sum range B1), J SUMIFS, K AVERAGEIF,
+  L AVERAGEIFS, M `_xlfn.MAXIFS`, N `_xlfn.MINIFS`; control O = `=B1:B6*1` (implicit intersection proves the formulas stayed
+  legacy). MAXIFS/MINIFS carry the `_xlfn.` prefix Excel itself writes.
+- `rich-error-export.xlsx` (T-1014): written by RustSheet's own exporter (app name then replaced), so
+  it is evidence that Excel reads the exported rich-value form. A1:A5 are the constants `#SPILL!`,
+  `#CONNECT!`, `#BLOCKED!`, `#FIELD!`, `#CALC!`, each stored as `t="e"` `#VALUE!` with `vm` 1-5 into
+  `xl/metadata.xml` and one `_error` rich value per kind (`subType` 0); B = `ERROR.TYPE(A)`,
+  C = `VALUETOTEXT(A)`, D = `ISERROR(A)`. Excel for the web loads it and gives 9, 10, 11, 13, 14.
+- `rich-error-export-formulas.xlsx` (T-1148): the other shapes of the exported rich-value form, written by
+  RustSheet's own exporter (app name replaced) from `set_user_input` of A1 `=FIELDVALUE(1,"Price")` (array
+  anchor, `cm="1" vm="4"`), A2 `=IMAGE("https://example.com/a.png")` (plain formula with `vm="3"`),
+  G1:G3 = 1, 2, 3 with D1 `=FILTER(G1:G3,G1:G3>5)` (anchor `cm="1" vm="5"`), I1 `=SEQUENCE(2)` (a spilling `cm`
+  cell, no `vm`) and K1 `=SEQUENCE(2)` blocked by K2 = 5 (anchor `cm="1" vm="1"`), with ERROR.TYPE in B1, B2, E1, L1,
+  `=SUM(I1:I2)` in M1 and VALUETOTEXT in N1:N4. Excel for the web loads it and gives #FIELD!, #BLOCKED!, #CALC!,
+  #SPILL! and ERROR.TYPE 13, 11, 14, 9. `rich_error_fixtures_match_the_exporter`
+  (crates/rustsheet-xlsx/tests/error_cell_export.rs) loads this and `rich-error-export.xlsx`, saves them again and
+  requires the same `vm` cells, `xl/metadata.xml`, `xl/richData/*` and content-type overrides, so a change to the
+  exporter's parts needs new fixtures and an oracle refill.

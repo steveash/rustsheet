@@ -68,3 +68,43 @@ The raw `IMAGE(A1)`/`IMAGE(A10)` cells could not be decoded by the oracle (rich-
 unknown), so they are probed through ERROR.TYPE/ISERROR/VALUETOTEXT/TYPE wrappers.
 Status: VERIFIED (excel-graph) for values; stored form of IMAGE(empty/number) UNVERIFIED
 Tasks: T-1012
+
+## IMAGE and STOCKHISTORY never fetch
+Rule: `IMAGE(source, ...)` evaluates to `#BLOCKED!` and `STOCKHISTORY(stock, start_date, ...)` to
+`#CONNECT!` for the probed arguments: a URL source (`https://example.invalid/none.png`) or a ticker, after a single argument error and
+IMAGE's empty/number `#VALUE!` (see above; more argument kinds below).
+Argument kinds (T-1141, probes/rich-errors-arg-kinds, excel-graph, 2026-10-08) VERIFIED for the probed arguments only: IMAGE `source`,
+STOCKHISTORY `stock`, FIELDVALUE `value` (array and range) and FIELDVALUE `field_name` (array) lift over an array or range
+argument as an ordinary scalar-argument function would. UNVERIFIED: IMAGE's `alt_text`/`sizing`/`height`/`width`, STOCKHISTORY's
+other arguments, a range `field_name`, and a one-cell range for IMAGE or STOCKHISTORY. `ROWS`/`COLUMNS` of `IMAGE({"a","b"})` are 1 and 2 and of
+`IMAGE(Q1:Q2)` (Q1="a", Q2="b") 2 and 1; `STOCKHISTORY({"A","B"},DATE(2020,1,2))` is 1x2 and `STOCKHISTORY(Q1:Q2,...)` 2x1, each
+element `#CONNECT!`; `FIELDVALUE(5,{"a","b"})` is 1x2 and `FIELDVALUE(Q1:R2,"Price")` 2x2 of `#FIELD!` (ERROR.TYPE 13), and
+`FIELDVALUE({1},"Price")` is 1x1. A one-cell range `value` of FIELDVALUE is a scalar: `ROWS(FIELDVALUE(Q1:Q1,"Price"))` is `#FIELD!`. A number
+or boolean `stock` is `#CONNECT!` (ERROR.TYPE 10; an empty-cell `stock` is UNVERIFIED, the engine gives `#CONNECT!`); text, boolean and empty-cell `value` of FIELDVALUE are `#FIELD!`.
+`IMAGE("")`, `IMAGE(TRUE)` and `IMAGE` of non-URL text (`"a"`, `"b"`) are `#VALUE!` (ERROR.TYPE 3), not `#BLOCKED!`; only a
+URL-shaped source reaches the fetch (which exact strings count as a URL is not probed). `IMAGE(1/0,NA())` is `#DIV/0!` (a `source`
+error wins over an `alt_text` error; other orders are not probed). The raw IMAGE cells (A10, B10, A13, A14, A16, A19) and the `ROWS`/`COLUMNS` of `IMAGE("")` and `IMAGE(TRUE)` came back with an undecodable rich error type and stay pending; the wrapped `ERROR.TYPE` cells carry the evidence. The VERIFIED rules above cover argument kinds; the DEVIATION status below covers only the missing fetch.
+The engine lifts over array and range `source`/`stock`/`value`/`field_name` and gives `#VALUE!` for non-URL IMAGE sources (URL-shaped = starts with http:// or https://, not probed further); `ERROR.TYPE` lifts over arrays too (probes/rich-errors-arg-kinds F10:G10, F13:G14, F40:G41; over a direct multi-cell range it follows the IS* lifting evidence). UNVERIFIED (engine guesses, probe task filed): FIELDVALUE with two array arguments of different shapes (the engine fills the larger shape with `#FIELD!`; the usual broadcast would pad `#N/A`), an error element inside an array `field_name` (engine: `#FIELD!`), an error element inside an array `source`/`stock` (engine: the element keeps its error), `ERROR.TYPE` over a direct multi-cell or one-cell range (engine: lifts like the IS* tests), an array first argument of IMAGE/STOCKHISTORY with an error in a later argument (engine: that scalar error), and which strings count as an IMAGE URL (engine: `http://`/`https://` prefix).
+Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
+Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
+`#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
+is the deviation. Which of the two errors Excel gives for other failures is unknown beyond these two cells.
+Evidence: probes/rich-errors-image A1, probes/rich-errors-stockhistory A1, probes/rich-errors-args A40, A50,
+probes/rich-errors-arg-kinds (excel-graph); the engine's results are unit-tested in `test/test_fn_offline_errors.rs`.
+Status: DEVIATION (decision 0014)
+Implemented in: functions/information/offline_errors.rs
+Unverified: the localized (de/es/fr/it) names of IMAGE, STOCKHISTORY and FIELDVALUE; the language
+tables use the English names.
+Tasks: T-1013, T-1141, T-1179
+
+## FIELDVALUE of a plain value is `#FIELD!`
+Rule: `FIELDVALUE(value, field_name)` is `#FIELD!` for a number `value` and for an error `value` (the
+error does not win), and `FIELDVALUE({1,2},"Price")` spills a 1x2 array of `#FIELD!` (argument-error
+precedence is in "IMAGE/STOCKHISTORY/FIELDVALUE argument errors" above). No value here is a linked data type
+(decision 0027).
+Text, boolean and empty-cell values are `#FIELD!` too, and a multi-cell range or array lifts (T-1141, probes/rich-errors-arg-kinds:
+VERIFIED, see "IMAGE and STOCKHISTORY never fetch").
+Evidence: probes/rich-errors-field A1, probes/rich-errors-args A60:A61, A20:A28 (excel-graph).
+Status: VERIFIED (excel-graph)
+Implemented in: functions/information/offline_errors.rs
+Tasks: T-1013

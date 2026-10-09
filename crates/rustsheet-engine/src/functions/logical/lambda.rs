@@ -9,6 +9,7 @@ use crate::{
 };
 
 use super::r#let::assign_variable_ids;
+use crate::reference_operators::Binding;
 
 impl Model {
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
@@ -68,18 +69,19 @@ impl Model {
         }
 
         for (i, raw_id) in bound_ids.iter().enumerate() {
-            let val = if i < call_args.len() {
-                self.evaluate_node_in_context(&call_args[i], cell)
-            } else {
-                CalcResult::EmptyArg
+            // A reference is passed as a reference, a single cell too, so that
+            // `LAMBDA(x, MAX(x))(A2)` ignores the text in A2 (upstream MAX_MIN.xlsx H54).
+            let binding = match call_args.get(i) {
+                Some(arg) => self.bind_argument(arg, cell),
+                None => Binding::Value(CalcResult::EmptyArg),
             };
-            self.variable_stack.insert(*raw_id, val);
+            self.variable_stack.insert(*raw_id, binding, cell);
         }
 
         let result = self.evaluate_node_in_context(&patched_body, cell);
 
         for raw_id in bound_ids {
-            self.variable_stack.remove(&raw_id);
+            self.variable_stack.remove(raw_id);
         }
 
         result
@@ -127,13 +129,14 @@ impl Model {
             } else {
                 CalcResult::EmptyArg
             };
-            self.variable_stack.insert(*raw_id, val);
+            self.variable_stack
+                .insert(*raw_id, Binding::Value(val), cell);
         }
 
         let result = self.evaluate_node_in_context(&patched_body, cell);
 
         for raw_id in bound_ids {
-            self.variable_stack.remove(&raw_id);
+            self.variable_stack.remove(raw_id);
         }
 
         result

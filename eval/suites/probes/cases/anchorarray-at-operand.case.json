@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ANCHORARRAY of a parenthesised @ operand (T-1111).",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "A3": 5,
+        "D20": "=ANCHORARRAY((@A1:B2))",
+        "E20": "=FORMULATEXT(D20)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!D20",
+    "Sheet1!E20"
+  ]
+}

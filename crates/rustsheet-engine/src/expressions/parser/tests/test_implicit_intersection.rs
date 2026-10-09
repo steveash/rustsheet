@@ -34,7 +34,9 @@ fn simple() {
         t,
         Node::ImplicitIntersection {
             automatic: false,
-            child: Box::new(child)
+            child: Box::new(child),
+            written: 0,
+            lead: 0
         }
     )
 }
@@ -69,7 +71,9 @@ fn simple_add() {
             kind: crate::expressions::token::OpSum::Add,
             left: ChainLeft::new(Node::ImplicitIntersection {
                 automatic: false,
-                child: Box::new(child)
+                child: Box::new(child),
+                written: 0,
+                lead: 0
             }),
             right: Box::new(Node::NumberKind(12.0))
         }

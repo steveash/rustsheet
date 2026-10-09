@@ -21,7 +21,7 @@ use crate::value::Value;
 
 /// Oracle sources that may replace a cached value: a live Excel, never cached values or an
 /// approximate backend.
-const GOLDEN_KINDS: [&str; 2] = ["excel-graph", "excel-desktop"];
+const GOLDEN_KINDS: [&str; 2] = [crate::case::GRAPH_ORACLE, "excel-desktop"];
 
 /// One `cached_overrides` line: a cached cell and the golden cell that replaces it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,12 +36,14 @@ pub struct CachedOverride {
     pub evidence_addr: Addr,
 }
 
-fn parse_cell(text: &str) -> Option<(String, Addr)> {
+/// A qualified `Sheet!A1` cell of a per-cell suite file.
+pub(crate) fn parse_cell(text: &str) -> Option<(String, Addr)> {
     let (sheet, a1) = split_qualified(text)?;
     Some((sheet, Addr::parse(&a1)?))
 }
 
-fn is_inner_relative(path: &str) -> bool {
+/// Whether `path` is relative and stays inside its base (no root, `..` or `.`).
+pub(crate) fn is_inner_relative(path: &str) -> bool {
     !path.is_empty()
         && Path::new(path)
             .components()

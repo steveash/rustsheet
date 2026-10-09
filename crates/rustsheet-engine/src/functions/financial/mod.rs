@@ -1,7 +1,7 @@
 use chrono::Datelike;
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
     expressions::{
         parser::{ArrayNode, Node},
@@ -232,33 +232,22 @@ impl Model {
                 let mut row2 = right.row;
                 let column1 = left.column;
                 let mut column2 = right.column;
+                let (used_row, used_column) = self
+                    .workbook
+                    .worksheet(sheet)
+                    .map_err(|_| {
+                        CalcResult::new_error(
+                            Error::ERROR,
+                            *cell,
+                            format!("Invalid worksheet index: '{sheet}'"),
+                        )
+                    })?
+                    .used_area_end();
                 if row1 == 1 && row2 == LAST_ROW {
-                    row2 = self
-                        .workbook
-                        .worksheet(sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                *cell,
-                                format!("Invalid worksheet index: '{sheet}'"),
-                            )
-                        })?
-                        .dimension()
-                        .max_row;
+                    row2 = used_row;
                 }
                 if column1 == 1 && column2 == LAST_COLUMN {
-                    column2 = self
-                        .workbook
-                        .worksheet(sheet)
-                        .map_err(|_| {
-                            CalcResult::new_error(
-                                Error::ERROR,
-                                *cell,
-                                format!("Invalid worksheet index: '{sheet}'"),
-                            )
-                        })?
-                        .dimension()
-                        .max_column;
+                    column2 = used_column;
                 }
                 for row in row1..=row2 {
                     for column in column1..=column2 {
@@ -278,6 +267,11 @@ impl Model {
                             }
                         }
                     }
+                }
+                // The clip skips empty cells Excel still walks, so an empty-cell error applies after
+                // the used area: `XNPV(0.1,A:A,B:B)` is #NUM! (probes/xirr-xnpv-whole-column-nogaps A1).
+                if row2 < right.row || column2 < right.column {
+                    handle_empty_cell()?;
                 }
             }
             CalcResult::Array(arr) => {
@@ -492,7 +486,7 @@ impl Model {
     // RATE(nper, pmt, pv, [fv], [type], [guess])
     pub(crate) fn fn_rate(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arg_count = args.len();
-        if !(3..=5).contains(&arg_count) {
+        if !(3..=6).contains(&arg_count) {
             return CalcResult::new_args_number_error(cell);
         }
         let nper = match self.get_number(&args[0], cell) {
@@ -819,10 +813,10 @@ impl Model {
             match self.evaluate_node_in_context(arg, cell) {
                 CalcResult::Number(value) => values.push(value),
                 CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        values.push(value);
-                    }) {
-                        return error;
+                    let areas = [Range { left, right }];
+                    if let Err(e) = self.for_each_number_in_areas(&areas, cell, |v| values.push(v))
+                    {
+                        return e;
                     }
                 }
                 error @ CalcResult::Error { .. } => return error,
@@ -874,19 +868,19 @@ impl Model {
 
     // XNPV(rate, values, dates)
     pub(crate) fn fn_xnpv(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        let arg_count = args.len();
-        if !(2..=3).contains(&arg_count) {
+        // All three are required (docs/excel-semantics/syntax.md, "Minimum argument counts").
+        let [rate, values, dates] = args else {
             return CalcResult::new_args_number_error(cell);
-        }
-        let rate = match self.get_number(&args[0], cell) {
+        };
+        let rate = match self.get_number(rate, cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let values = match self.get_array_of_numbers_xpnv(&args[1], &cell, Error::NUM) {
+        let values = match self.get_array_of_numbers_xpnv(values, &cell, Error::NUM) {
             Ok(s) => s,
             Err(error) => return error,
         };
-        let dates = match self.get_array_of_numbers_xpnv(&args[2], &cell, Error::VALUE) {
+        let dates = match self.get_array_of_numbers_xpnv(dates, &cell, Error::VALUE) {
             Ok(s) => s,
             Err(error) => return error,
         };
@@ -972,25 +966,25 @@ impl Model {
         if values_count == 0 {
             return CalcResult::new_error(Error::NUM, cell, "Not enough values".to_string());
         }
+        // Excel reads an empty value or date cell as 0 and accepts date 0 and dates before the
+        // first one, but is #NUM! for a negative date, a date past 9999-12-31, or when no date is
+        // later than the first: {-1000,1100} on {0,45365} is 1.1^(365/45365) - 1,
+        // {-1000,1100,-1000} on {45000,45365,44000} is -0.2467, and {-1000,1100} on
+        // {45365,45000} is #NUM! although it has a root (financial.md, "XIRR reads empty cells as
+        // 0 and accepts earlier dates"; probes/xirr-mismatched-empties, xirr-early-dates; T-1124).
         let first_date = dates[0];
-        for date in &dates {
-            if *date < MINIMUM_DATE_SERIAL_NUMBER as f64
-                || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64
-            {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Invalid number for date".to_string(),
-                );
-            }
-            // If any number in dates precedes the starting date, XIRR returns the #NUM! error value.
-            if date < &first_date {
-                return CalcResult::new_error(
-                    Error::NUM,
-                    cell,
-                    "Date precedes the starting date".to_string(),
-                );
-            }
+        if dates
+            .iter()
+            .any(|date| *date < 0.0 || *date > MAXIMUM_DATE_SERIAL_NUMBER as f64)
+        {
+            return CalcResult::new_error(Error::NUM, cell, "Invalid number for date".to_string());
+        }
+        if !dates.iter().any(|date| *date > first_date) {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "No date is later than the starting date".to_string(),
+            );
         }
         match compute_xirr(&values, &dates, guess) {
             Ok(f) => CalcResult::Number(f),

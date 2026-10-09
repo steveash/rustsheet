@@ -398,3 +398,46 @@ fn test_defined_name_lambda_exports_excel_prefixes() {
     );
     fs::remove_file(temp_file_name).unwrap();
 }
+
+// Excel does not snap a grouped defined-name body to zero (numbers.md "Near-zero snapping",
+// T-1164), so export and import must keep the outer parentheses.
+#[test]
+fn test_grouped_defined_name_keeps_parentheses_through_export() {
+    let mut model = new_empty_model();
+    model
+        .define_name("grouped", None, "=(0.1+0.2-0.3)")
+        .unwrap();
+    let temp_file_name = "temp_file_test_grouped_defined_name.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    let defined_names = model.get_defined_name_list();
+    assert_eq!(defined_names[0].2.trim_start_matches('='), "(0.1+0.2-0.3)");
+}
+
+// A Print_Area-shaped union body is stored without parentheses and must come back as stored,
+// still standing for its two areas (SPEC-0004 "Defined names", probes/union-defined-name).
+#[test]
+fn test_union_defined_name_round_trips_through_export() {
+    let mut model = new_empty_model();
+    model.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+    model.set_user_input(0, 2, 2, "5".to_string()).unwrap();
+    model
+        .define_name("mu", None, "Sheet1!$A$1,Sheet1!$B$2")
+        .unwrap();
+    model
+        .set_user_input(0, 1, 3, "=SUM(mu)".to_string())
+        .unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_union_defined_name.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+    let mut model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    let defined_names = model.get_defined_name_list();
+    assert_eq!(
+        defined_names[0].2.trim_start_matches('='),
+        "Sheet1!$A$1,Sheet1!$B$2"
+    );
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "6");
+}

@@ -289,6 +289,27 @@ fn filter_no_match_with_if_empty() {
     assert_eq!(model._get_text("C1"), "No results");
 }
 
+// Excel: upstream MAX_MIN.xlsx H39/H40/H43; probes/min-max-reference-forms E1-E3.
+#[test]
+fn filter_if_empty_is_the_value_itself() {
+    // It is not an array holding the value: a text reaches the outer function
+    // as a text, which MAX does not accept, and an array spills.
+    let mut model = new_empty_model();
+    model._set("A1", "x");
+    model._set("B1", "FALSE");
+    model._set("C1", "=MAX(FILTER(A1:A1,B1:B1,\"\"))");
+    model._set("C2", "=FILTER(A1:A1,B1:B1,7)+1");
+    model._set("C3", "=FILTER(A1:A1,B1:B1,{1,2,3})");
+    model._set("C4", "=FILTER(A1:A1,B1:B1,1/0)");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), "#VALUE!");
+    assert_eq!(model._get_text("C2"), "8");
+    assert_eq!(model._get_text("C3"), "1");
+    assert_eq!(model._get_text("D3"), "2");
+    assert_eq!(model._get_text("E3"), "3");
+    assert_eq!(model._get_text("C4"), "#DIV/0!");
+}
+
 // Excel: probes/filter-if-empty-array (docs/excel-semantics/arrays.md).
 #[test]
 fn filter_no_match_with_array_if_empty_spills_it() {
@@ -424,4 +445,41 @@ fn sort_after_filter() {
     model.evaluate();
     assert_eq!(model._get_text("D1"), "Alice");
     assert_eq!(model._get_text("D2"), "Charlie");
+}
+
+#[test]
+fn anchorarray_spells_the_spill_operator() {
+    // probes/at-operand-formulatext J1, K1, K30 (T-1109): `ANCHORARRAY(x)` is `x#`, and a
+    // reference-returning call is a valid anchor.
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("J30", "=ANCHORARRAY(D1)");
+    model._set("J1", "=FORMULATEXT(J30)");
+    model._set("K30", "=ANCHORARRAY(INDEX(D1:D2,1))");
+    model._set("K1", "=FORMULATEXT(K30)");
+    model.evaluate();
+    assert_eq!(model._get_text("J1"), "=D1#");
+    assert_eq!(model._get_text("K1"), "=INDEX(D1:D2,1)#");
+    assert_eq!(model._get_text("J32"), "3");
+    assert_eq!(model._get_text("K32"), "3");
+}
+
+#[test]
+fn anchorarray_of_an_at_with_no_cell_is_value() {
+    // probes/anchorarray-at-operand D20 (T-1115): D20 is outside rows 1-2, so `@` finds no cell.
+    let mut model = new_empty_model();
+    model._set("D20", "=ANCHORARRAY((@A1:B2))");
+    model.evaluate();
+    assert_eq!(model._get_text("D20"), "#VALUE!");
+}
+
+#[test]
+fn range_operator_passes_a_right_operand_error_on() {
+    // probes/range-right-operand-errors D11, D14 (T-1115).
+    let mut model = new_empty_model();
+    model._set("D11", "=A1:INDEX(A1:A3,5)");
+    model._set("D14", "=A1:(A1 B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D11"), "#REF!");
+    assert_eq!(model._get_text("D14"), "#NULL!");
 }

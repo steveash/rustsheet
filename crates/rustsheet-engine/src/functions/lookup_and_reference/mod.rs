@@ -4,8 +4,12 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
+use crate::reference_operators::{three_d_needs_one_sheet, Ranges, RefArg};
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    calc_result::{CalcResult, Range},
+    expressions::parser::Node,
+    expressions::token::Error,
+    model::Model,
     utils::ParsedReference,
 };
 
@@ -19,7 +23,7 @@ mod expand;
 mod hstack_vstack;
 mod index_arg;
 mod lookup;
-mod lookup_table;
+pub(crate) mod lookup_table;
 mod tocol_torow;
 mod transpose;
 mod trimrange;
@@ -113,6 +117,27 @@ fn index_from_array(
 }
 
 impl Model {
+    /// A call to a function whose result is a reference when its source argument is one,
+    /// evaluated as that reference: INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
+    /// evaluated to their values (probes/intersection-function-operands H8, H11, H12, H14;
+    /// T-0165). `None` for any other function.
+    pub(crate) fn evaluate_reference_form(
+        &mut self,
+        kind: &Function,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        Some(match kind {
+            // `INDEX(A1:A2,2) A1:A2` intersects the cell INDEX picks (T-0235).
+            Function::Index => self.index_impl(args, cell, true),
+            Function::Xlookup => self.xlookup_impl(args, cell, true),
+            Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
+            Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),
+            Function::Trimrange => self.trimrange_impl(args, cell, true),
+            _ => return None,
+        })
+    }
+
     // INDEX(array, row_num, [column_num])
     // INDEX(range, row_num, [column_num], [area_num])
     // At the moment IronCalc does not support references with multiple areas,
@@ -132,20 +157,20 @@ impl Model {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        // area_num (4th argument). We only support references with a single area,
-        // so anything other than 1 is out of range.
-        if args.len() == 4 {
-            let area_num = match self.get_number(&args[3], cell) {
-                Ok(f) => f.floor() as i64,
+        // area_num (4th argument), read as a float and range-checked before any integer
+        // conversion: below 1 is #VALUE!, past the last area (or NaN) is #REF! (SPEC-0004).
+        let area_num = if args.len() == 4 {
+            let n = match self.get_number(&args[3], cell) {
+                Ok(f) => f.floor(),
                 Err(s) => return s,
             };
-            if area_num < 1 {
+            if n < 1.0 {
                 return CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 1".into());
             }
-            if area_num != 1 {
-                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
-            }
-        }
+            n
+        } else {
+            1.0
+        };
         let negative_index =
             || CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 0".to_string());
         // A missing or empty argument evaluates to 0, which means "the whole
@@ -172,7 +197,24 @@ impl Model {
         let row_num = row_num.floor() as usize;
         let col_num = col_num.floor() as usize;
 
-        match self.evaluate_single_sheet_arg(&args[0], cell) {
+        let arg = self.evaluate_reference_arg(&args[0], cell);
+        let reference = if let Some(areas) = arg.single_sheet_areas() {
+            // NaN is out of range too; in range the conversion below is exact.
+            if area_num.is_nan() || area_num > areas.len() as f64 {
+                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
+            }
+            let Range { left, right } = areas[area_num as usize - 1];
+            CalcResult::Range { left, right }
+        } else {
+            match arg {
+                RefArg::Ranges(_) => return three_d_needs_one_sheet(cell),
+                RefArg::Value(_) if area_num != 1.0 => {
+                    return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
+                }
+                RefArg::Value(value) => value,
+            }
+        };
+        match reference {
             CalcResult::Range { left, right } => {
                 let num_rows = (right.row - left.row + 1) as usize;
                 let (row_eff, col_eff) =
@@ -302,6 +344,18 @@ impl Model {
     /// We return the value in row `row_index` of the same column in `table_array`
     /// `is_sorted` is true by default and assumes that values in first row are ordered
     pub(crate) fn fn_hlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.hlookup_impl(args, cell, false)
+    }
+
+    /// HLOOKUP; `as_reference` gives the picked cell of a range table as a reference, as an
+    /// aggregate argument sees it: COUNT skips a picked FALSE (gen-m2 60a543744fc4a8f7 A200,
+    /// excel-graph; T-0235).
+    pub(crate) fn hlookup_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -321,7 +375,7 @@ impl Model {
         } else {
             true
         };
-        let range = self.evaluate_node_in_context(&args[1], cell);
+        let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
             CalcResult::Range { left, right } => LookupTable::Range { left, right },
             CalcResult::Array(array) => LookupTable::Array(array),
@@ -346,7 +400,7 @@ impl Model {
         // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
             Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
-                Ok(row_index) => table.get(self, row_index, column as i32, cell),
+                Ok(row_index) => table.pick(self, row_index, column as i32, cell, as_reference),
                 Err(error) => error,
             },
             None => CalcResult::Error {
@@ -362,6 +416,18 @@ impl Model {
     /// We return the value in column `column_index` of the same row in `table_array`
     /// `is_sorted` is true by default and assumes that values in first column are ordered
     pub(crate) fn fn_vlookup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.vlookup_impl(args, cell, false)
+    }
+
+    /// VLOOKUP; `as_reference` gives the picked cell of a range table as a reference, as an
+    /// aggregate argument sees it: COUNT skips a picked FALSE (gen-m2 60a543744fc4a8f7 A200,
+    /// excel-graph; T-0235).
+    pub(crate) fn vlookup_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.len() > 4 || args.len() < 3 {
             return CalcResult::new_args_number_error(cell);
         }
@@ -406,7 +472,7 @@ impl Model {
         // Excel searches first: a value that is not found is #N/A whatever the index is.
         match lookup_index(&lookup_value, &search_vector, is_sorted) {
             Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
-                Ok(column_index) => table.get(self, row as i32, column_index, cell),
+                Ok(column_index) => table.pick(self, row as i32, column_index, cell, as_reference),
                 Err(error) => error,
             },
             None => CalcResult::Error {
@@ -491,8 +557,13 @@ impl Model {
         if args.is_empty() {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
-        match self.get_reference(&args[0], cell) {
-            Ok(range) => {
+        match self.reference_ranges(&args[0], cell) {
+            // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
+            // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
+            Ok(Ranges::Areas(_)) => {
+                CalcResult::new_error(Error::REF, cell, "Reference of several areas".to_string())
+            }
+            Ok(Ranges::One(range)) => {
                 let (a, b) = if by_row {
                     (range.left.row, range.right.row)
                 } else {
@@ -513,6 +584,28 @@ impl Model {
         }
     }
 
+    /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not
+    /// the `#VALUE!` of a 3-D reference used as a single-sheet one: `=@Data1:Data3!A1` and
+    /// `=SUM(@Data1:Data3!A1:A2)` (probes/3d-ref-span-edges B1, B3; T-1170).
+    pub(crate) fn evaluate_at_operand_reference(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match node {
+            Node::SheetSpanKind {
+                first_index,
+                last_index,
+                ..
+            } if first_index != last_index => CalcResult::new_error(
+                Error::REF,
+                cell,
+                "Implicit intersection of a 3-D reference".to_string(),
+            ),
+            _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
     /// Evaluates the operand of `@`. `@ROW(A:A)` and `@COLUMN(A1:Z1)` take a fast path that skips
     /// materialising the whole vector; everything else is evaluated normally.
     pub(crate) fn evaluate_implicit_intersection_operand(
@@ -529,7 +622,7 @@ impl Model {
                 kind: Function::Column,
                 args,
             } => self.row_or_column(args, cell, false, true),
-            _ => self.evaluate_node_with_reference(node, cell),
+            _ => self.evaluate_at_operand_reference(node, cell),
         }
     }
 
@@ -556,8 +649,20 @@ impl Model {
     /// CHOOSE(index_num, value1, [value2], ...)
     /// Uses index_num to return a value from the list of value arguments.
     pub(crate) fn fn_choose(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.choose_impl(args, cell, false).into_single_area(cell)
+    }
+
+    /// CHOOSE; with `as_reference` a scalar index hands back the chosen argument in
+    /// reference context, so a union there stays its areas: `SUM(CHOOSE(2,A1,(A1,B2)))` is 6
+    /// (probes/multiarea-ifchoose H3).
+    pub(crate) fn choose_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> RefArg {
         if args.len() < 2 {
-            return CalcResult::new_args_number_error(cell);
+            return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
 
         // The index argument may be a single number or an array/range. In the array
@@ -567,9 +672,14 @@ impl Model {
             Ok(NumberOrArray::Number(index_num)) => {
                 let index_num = index_num as usize;
                 if index_num < 1 || index_num > (args.len() - 1) {
-                    return CalcResult::new_error(Error::VALUE, cell, "Invalid index".to_string());
+                    let error = CalcResult::new_error(Error::VALUE, cell, "Invalid index".into());
+                    return RefArg::Value(error);
+                }
+                if as_reference {
+                    return self.evaluate_reference_arg(&args[index_num], cell);
                 }
                 self.evaluate_node_with_reference(&args[index_num], cell)
+                    .into()
             }
             Ok(NumberOrArray::Array(index_array)) => {
                 let result = index_array
@@ -580,9 +690,9 @@ impl Model {
                             .collect()
                     })
                     .collect();
-                CalcResult::Array(result)
+                RefArg::Value(CalcResult::Array(result))
             }
-            Err(calc_err) => calc_err,
+            Err(calc_err) => RefArg::Value(calc_err),
         }
     }
 

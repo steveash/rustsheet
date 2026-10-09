@@ -54,6 +54,7 @@ use sheet_span::with_sheet_span;
 use token::OpCompare;
 
 mod chain;
+mod contains_function;
 mod depth;
 mod lambda;
 mod lists;
@@ -219,6 +220,9 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
+        /// Parentheses levels written around a cut whose leftmost operand is a parenthesized
+        /// union, `((A1,B1) B1)`; FORMULATEXT keeps them (T-1176). Plain cuts drop theirs.
+        written: usize,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
@@ -227,6 +231,9 @@ pub enum Node {
         /// Parentheses levels written around the union: 0 for the left link of a plain chain
         /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
         written: usize,
+        /// Written outside any parentheses or argument list, where the comma is a reference
+        /// operator binding tighter than arithmetic: `=A1,B2`, `=1+A1,B2` (T-1073).
+        bare: bool,
     },
     OpConcatenateKind {
         left: ChainLeft,
@@ -275,8 +282,19 @@ pub enum Node {
     ImplicitIntersection {
         automatic: bool,
         child: Box<Node>,
+        /// Levels of parentheses written around the whole operand, `@((A1 B1))` is 2. Excel's
+        /// FORMULATEXT prints them back (`@(A1)`, `@(A1:B1)`, `@((A1 B1))`; probes/at-paren-operands,
+        /// T-1116); the automatic `@` of an xlsx import has none.
+        written: u8,
+        lead: u8,
     },
     SpillRangeOperator {
+        child: Box<Node>,
+    },
+    /// A whole formula written in parentheses, `=(A1-1)`: only ever the root. Excel tells it
+    /// apart from `=A1-1` (it skips near-zero snapping, docs/excel-semantics/numbers.md) and keeps
+    /// the parentheses in the formula text, so it prints them back. It evaluates as `child`.
+    GroupedRootKind {
         child: Box<Node>,
     },
     CompareKind {
@@ -299,6 +317,21 @@ pub enum Node {
     EmptyArgKind,
 }
 
+impl Node {
+    /// The `@` an xlsx import adds around a range-valued operand.
+    pub(crate) fn automatic_at(child: Node) -> Node {
+        Node::at(child, true)
+    }
+    fn at(child: Node, automatic: bool) -> Node {
+        Node::ImplicitIntersection {
+            automatic,
+            child: Box::new(child),
+            written: 0,
+            lead: 0,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Parser {
     lexer: lexer::Lexer,
@@ -317,6 +350,20 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
+    /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
+    at_paren: bool,
+    /// The parenthesized group an `@` operand was just parsed from: its levels and the lexer
+    /// position after its last `)`, so `@(A1) B1` (whose group is only part of the operand) is not
+    /// counted.
+    at_group: Option<(u8, usize)>,
+    /// The formula starts with `(` and that group has not been parsed yet.
+    leading_paren: bool,
+    /// The group opened by the formula's first `(` closes at the end of the formula: the whole
+    /// formula is parenthesized (`=(A1-1)`, `=((A1-1))`). The levels written, 0 if it is not.
+    grouped_root: u8,
+    /// The last parenthesized group parsed: its levels (a group holding only such a group has
+    /// one more), and the lexer positions after its `(` and after its `)`.
+    root_group: Option<(u8, usize, usize)>,
     /// Primaries (operands) open on the current parse path. Checked before
     /// descending so the parser's own recursion stays bounded.
     nesting: usize,
@@ -326,6 +373,9 @@ pub struct Parser {
     inner_depth: usize,
     /// Value operators in the formula so far, bounded by [`MAX_VALUE_OPERATORS`].
     value_operators: usize,
+    /// The parser is outside every parenthesis and argument list, where a comma is the bare
+    /// union operator (`=A1,B2`, T-1073).
+    top_level: bool,
 }
 
 pub fn new_parser_english(
@@ -362,7 +412,13 @@ impl Parser {
             language,
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
+            at_paren: false,
+            at_group: None,
+            leading_paren: false,
+            grouped_root: 0,
+            root_group: None,
             nesting: 0,
+            top_level: false,
             depth: 0,
             inner_depth: 0,
             value_operators: 0,
@@ -391,6 +447,11 @@ impl Parser {
         self.defined_names = defined_names;
     }
 
+    /// Replaces the tables structured references resolve against.
+    pub fn set_tables(&mut self, tables: HashMap<String, Table>) {
+        self.tables = tables;
+    }
+
     pub fn parse(&mut self, formula: &str, context: &CellReferenceRC) -> Node {
         self.lexer.set_formula(formula);
         self.context = context.clone();
@@ -401,7 +462,12 @@ impl Parser {
         self.depth = 0;
         self.inner_depth = 0;
         self.value_operators = 0;
+        self.leading_paren = self.lexer.peek_token() == TokenType::LeftParenthesis;
+        self.grouped_root = 0;
+        self.root_group = None;
+        self.top_level = true;
         let node = self.parse_expr();
+        self.top_level = false;
         self.expect_end(node)
     }
 
@@ -489,7 +555,9 @@ impl Parser {
         None
     }
 
-    fn parse_expr(&mut self) -> Node {
+    /// An expression at the current level; parentheses and argument lists call
+    /// [`Parser::parse_enclosed_expr`] instead, so their commas are not bare unions.
+    pub(super) fn parse_expr(&mut self) -> Node {
         let t = self.parse_chain(ChainLevel::Compare);
         if !matches!(t, Node::ParseErrorKind { .. }) {
             self.inner_depth = self.inner_depth.max(self.depth);
@@ -507,7 +575,7 @@ impl Parser {
             next_token = self.lexer.peek_token();
         }
 
-        let mut t = self.parse_intersection();
+        let mut t = self.parse_bare_union();
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
@@ -750,13 +818,11 @@ impl Parser {
                                     .to_string(),
                             };
                         }
-                        return Node::ImplicitIntersection {
-                            automatic: false,
-                            child: Box::new(args[0].clone()),
-                        };
+                        return Node::at(args[0].clone(), false);
                     }
-                    // We should do this *only* importing functions from xlsx: Spill Range Operator
-                    if &name == "_xlfn.ANCHORARRAY" {
+                    // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
+                    // (probes/at-operand-formulatext J1, T-1109).
+                    if display_name.eq_ignore_ascii_case("ANCHORARRAY") {
                         if args.len() != 1 {
                             return Node::ParseErrorKind {
                                 formula: self.lexer.get_formula(),
@@ -775,10 +841,7 @@ impl Parser {
                         .functions
                         .lookup(name.trim_start_matches("_xlfn._xlws."))
                     {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
+                        return self.function_call(function_kind, args);
                     }
 
                     if let Some(function_kind) = self
@@ -786,10 +849,7 @@ impl Parser {
                         .functions
                         .lookup(name.trim_start_matches("_xlfn."))
                     {
-                        return Node::FunctionKind {
-                            kind: function_kind,
-                            args,
-                        };
+                        return self.function_call(function_kind, args);
                     }
                     return Node::NamedFunctionKind {
                         name: name.trim_start_matches("_xlpm.").to_string(),

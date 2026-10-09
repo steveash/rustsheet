@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1072: CELL info types, ROW/COLUMN, ROWS of a union, range areas and a cross-sheet union. Sheet1 A1=1,B2=5,C3=7.",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B2": 5,
+        "C3": 7,
+        "H1": "=CELL(\"address\",(A1:A2,B2))",
+        "H2": "=CELL(\"address\",(B2,A1))",
+        "H3": "=CELL(\"address\",(A1,B2,C3))",
+        "H4": "=CELL(\"row\",(A1,B2))",
+        "H5": "=CELL(\"col\",(A1,B2))",
+        "H6": "=CELL(\"contents\",(A1,B2))",
+        "H7": "=CELL(\"type\",(A1,B2))",
+        "H9": "=COLUMN((A1,B2))",
+        "H10": "=CELL(\"address\",(A1,Data!A1))",
+        "H11": "=CELL(\"address\",(A1:B2,C3))",
+        "H12": "=CELL(\"address\",(A1,A1))"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {
+        "A1": 11
+      }
+    }
+  ],
+  "expected": {}
+}

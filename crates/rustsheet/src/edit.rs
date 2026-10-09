@@ -16,7 +16,7 @@ use rustsheet_engine::Model;
 
 use self::diff::{capture_derived, input_changes, value_changes, Before, Key, KeySet};
 use crate::error::{EditError, RefError};
-use crate::refs::{CellRef, SheetId, Target};
+use crate::refs::{CellRef, RangeRef, SheetId, Target};
 use crate::value::Value;
 use crate::workbook::{engine_rc, resolve_range, sheet_index, sheet_metas, Workbook};
 
@@ -28,6 +28,10 @@ pub enum Input {
     Value(Value),
     /// A formula; must start with `=`.
     Formula(String),
+    /// A formula as a pre-dynamic-array workbook stores it; must start with `=`. Functions
+    /// that expect a scalar implicitly intersect a range, so `=A1:A2` is stored as `=@A1:A2`,
+    /// exactly as xlsx import reads a plain `<f>`.
+    LegacyFormula(String),
     /// Text as a user would type it: `=` starts a formula, numbers, booleans, errors and
     /// percentages/currencies are recognised, a leading `'` forces text.
     Parse(String),
@@ -147,6 +151,14 @@ enum Undo {
     },
     /// A workbook-scoped defined name added by `define_name`.
     DefinedName(String),
+    /// A table added by `add_table`.
+    Table(String),
+    /// A row's hidden flag as it was before `set_row_hidden`.
+    RowHidden {
+        sheet_id: u32,
+        row: i32,
+        hidden: bool,
+    },
 }
 
 /// The write-only handle passed to [`Workbook::edit`].
@@ -273,16 +285,18 @@ impl Txn<'_> {
             Input::Clear | Input::Value(Value::Empty) => {
                 model.set_user_input(sheet, row, col, String::new())
             }
-            Input::Parse(text) => model.set_user_input(sheet, row, col, text),
-            Input::Formula(text) => {
-                if !text.starts_with('=') {
-                    return Err(EditError::InvalidInput {
-                        cell,
-                        message: format!("\"{text}\" is not a valid formula"),
-                    });
-                }
+            Input::Formula(text) | Input::LegacyFormula(text) if !text.starts_with('=') => {
+                return Err(EditError::InvalidInput {
+                    cell,
+                    message: format!("\"{text}\" is not a valid formula"),
+                });
+            }
+            Input::Parse(text) | Input::Formula(text) => {
                 model.set_user_input(sheet, row, col, text)
             }
+            Input::LegacyFormula(text) => model
+                .legacy_formula_text(sheet, row, col, &text)
+                .and_then(|text| model.set_user_input(sheet, row, col, text)),
             Input::Value(value) => {
                 // Typed setters skip the spill/array/merge checks that `set_user_input` does.
                 model
@@ -295,7 +309,7 @@ impl Txn<'_> {
                         Value::Bool(b) => model.update_cell_with_bool(sheet, row, col, b),
                         Value::Text(s) => model.update_cell_with_text(sheet, row, col, &s),
                         Value::Error(e) => {
-                            model.set_user_input(sheet, row, col, e.kind.literal().to_string())
+                            model.update_cell_with_error(sheet, row, col, e.kind.to_engine())
                         }
                         Value::Empty => Ok(()),
                     })
@@ -409,6 +423,64 @@ impl Txn<'_> {
         self.undo.push(Undo::DefinedName(name.to_string()));
         Ok(())
     }
+
+    /// Hides or shows a row (0-based): SUBTOTAL 101-111 and AGGREGATE's odd options skip it, and
+    /// on a sheet with a filtered table (see [`Txn::add_table`]) SUBTOTAL 1-11 skip it too. The
+    /// usual recalculation after the closure picks up functions that read the flag.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet or a row outside the Excel limits.
+    pub fn set_row_hidden(
+        &mut self,
+        sheet: SheetId,
+        row: u32,
+        hidden: bool,
+    ) -> Result<(), EditError> {
+        let index = sheet_index(self.model, sheet)?;
+        let (row, _) = engine_rc(row, 0).ok_or(RefError::OutOfBounds)?;
+        let was_hidden = self
+            .model
+            .is_row_hidden(index, row)
+            .map_err(|_| RefError::OutOfBounds)?;
+        self.model
+            .set_row_hidden(index, row, hidden)
+            .map_err(|_| RefError::OutOfBounds)?;
+        self.undo.push(Undo::RowHidden {
+            sheet_id: sheet.get(),
+            row,
+            hidden: was_hidden,
+        });
+        Ok(())
+    }
+
+    /// Adds a table (an Excel `ListObject`) over `range`. Its first row is the header row, whose
+    /// cells (set them first) name the columns. With `filtered` the table carries an active
+    /// filter, as an imported table whose autoFilter has a criterion does: on such a sheet every
+    /// hidden row counts as filtered, which SUBTOTAL 1-11 skips (docs/excel-semantics/numbers.md,
+    /// "SUBTOTAL and AGGREGATE over hidden and filtered rows"). Hide the filtered rows with
+    /// [`Txn::set_row_hidden`]; filters are not re-applied. Like a sheet-level op it reparses
+    /// and re-evaluates the workbook.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet, [`EditError::Table`] for an invalid or taken
+    /// name, a range outside the sheet, without a data row or overlapping another table, or an
+    /// empty or repeated header.
+    pub fn add_table(
+        &mut self,
+        range: RangeRef,
+        name: &str,
+        filtered: bool,
+    ) -> Result<(), EditError> {
+        let index = sheet_index(self.model, range.sheet)?;
+        let (top, left) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let (bottom, right) = engine_rc(range.bottom, range.right).ok_or(RefError::OutOfBounds)?;
+        self.model
+            .add_table(index, name, (top, left, bottom, right), filtered)
+            .map_err(EditError::Table)?;
+        self.sheet_op = true;
+        self.undo.push(Undo::Table(name.to_string()));
+        Ok(())
+    }
 }
 
 fn sheet_name(model: &Model, index: u32) -> String {
@@ -487,6 +559,20 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
             Undo::DefinedName(name) => {
                 let undone = model.delete_defined_name(&name, None);
                 debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
+            }
+            Undo::Table(name) => {
+                let undone = model.remove_table(&name);
+                debug_assert!(undone.is_ok(), "undo of add_table failed: {undone:?}");
+            }
+            Undo::RowHidden {
+                sheet_id,
+                row,
+                hidden,
+            } => {
+                if let Ok(index) = sheet_index(model, SheetId::new(sheet_id)) {
+                    let undone = model.set_row_hidden(index, row, hidden);
+                    debug_assert!(undone.is_ok(), "undo of set_row_hidden failed: {undone:?}");
+                }
             }
         }
     }

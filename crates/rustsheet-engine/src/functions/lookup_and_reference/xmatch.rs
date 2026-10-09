@@ -11,12 +11,7 @@ use crate::{
 
 use super::lookup_table::SearchVector;
 use crate::functions::{
-    binary_search::{
-        binary_search_descending_or_greater, binary_search_descending_or_smaller,
-        binary_search_or_greater, binary_search_or_smaller,
-    },
-    criteria::wildcard_text_matcher,
-    util::compare_values,
+    binary_search::binary_search, criteria::wildcard_text_matcher, util::compare_values,
 };
 
 #[derive(PartialEq)]
@@ -36,14 +31,40 @@ pub(crate) enum MatchMode {
     Regex = 3,
 }
 
-/// A blank candidate in an ordered comparison: it sorts as the empty text, so it is
-/// larger than every number and never smaller than one (probes/xmatch-xlookup-blanks
-/// Col!M5-M12; T-1018).
-static BLANK_AS_TEXT: CalcResult = CalcResult::String(String::new());
+impl MatchMode {
+    /// The side a binary search may settle on when nothing is equal (`binary_search`).
+    fn ordering(self) -> std::cmp::Ordering {
+        match self {
+            MatchMode::ExactMatchSmaller => std::cmp::Ordering::Less,
+            MatchMode::ExactMatchLarger => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal,
+        }
+    }
+}
+
+fn is_blank(v: &CalcResult) -> bool {
+    // An omitted lookup_value is a blank in every match and search mode
+    // (probes/xlookup-omitted-lookup-value, docs/excel-semantics/lookup.md, T-1188).
+    matches!(v, CalcResult::EmptyCell | CalcResult::EmptyArg)
+}
+
+/// Orders a candidate against the lookup value in an ordered match mode. A blank is larger than
+/// every number, text and boolean, and equal only to another blank (probes/xmatch-xlookup-blanks
+/// Col!M5-M12, T-1018; probes/xmatch-text-bool-equal-runs Txt!M7, M16, Blk!M6-M9, T-1153).
+/// Unlike `compare_values`, which reads a blank as 0, `""` or FALSE.
+fn compare_blank_last(candidate: &CalcResult, lookup_value: &CalcResult) -> i32 {
+    match (is_blank(candidate), is_blank(lookup_value)) {
+        (true, true) => 0,
+        (true, false) => 1,
+        (false, true) => -1,
+        (false, false) => compare_values(candidate, lookup_value),
+    }
+}
 
 /// The first (in `indices` order) candidate of `get` that matches `lookup_value` under
 /// `match_mode`, shared by XMATCH and XLOOKUP. A blank candidate never matches a non-blank
-/// lookup value in an exact or wildcard search, and matches a blank one (Col!M14, M30-M34);
+/// lookup value in an exact or wildcard search, and matches a blank one (Col!M14, M30-M34), which
+/// in turn matches nothing but a blank, not a 0, `""` or FALSE (Blk!M1-M5, M19-M22);
 /// the regex mode is XMATCH's own and matches nothing here.
 pub(crate) fn linear_scan<'a>(
     lookup_value: &CalcResult,
@@ -51,13 +72,12 @@ pub(crate) fn linear_scan<'a>(
     get: impl Fn(usize) -> &'a CalcResult,
     match_mode: MatchMode,
 ) -> Option<usize> {
-    let blank_lookup = matches!(lookup_value, CalcResult::EmptyCell);
-    let is_blank = |v: &CalcResult| matches!(v, CalcResult::EmptyCell);
+    let blank_lookup = is_blank(lookup_value);
     match match_mode {
         MatchMode::Exact => indices.into_iter().find(|&idx| {
             let v = get(idx);
-            if is_blank(v) {
-                blank_lookup
+            if is_blank(v) || blank_lookup {
+                is_blank(v) && blank_lookup
             } else {
                 compare_values(v, lookup_value) == 0
             }
@@ -67,17 +87,11 @@ pub(crate) fn linear_scan<'a>(
             let mut best_idx = None;
             let mut best_val: Option<&CalcResult> = None;
             for idx in indices {
-                let mut v = get(idx);
-                if is_blank(v) {
-                    if blank_lookup {
-                        return Some(idx);
-                    }
-                    v = &BLANK_AS_TEXT;
-                }
-                let c = compare_values(v, lookup_value);
+                let v = get(idx);
+                let c = compare_blank_last(v, lookup_value);
                 if c == 0 {
                     return Some(idx);
-                } else if c == m && best_val.is_none_or(|p| compare_values(p, v) == m) {
+                } else if c == m && best_val.is_none_or(|p| compare_blank_last(p, v) == m) {
                     best_val = Some(v);
                     best_idx = Some(idx);
                 }
@@ -93,8 +107,8 @@ pub(crate) fn linear_scan<'a>(
                 };
             indices.into_iter().find(|&idx| {
                 let v = get(idx);
-                if is_blank(v) {
-                    blank_lookup
+                if is_blank(v) || blank_lookup {
+                    is_blank(v) && blank_lookup
                 } else {
                     matches(v)
                 }
@@ -281,33 +295,14 @@ impl Model {
                         "Wildcard/regex match cannot be used with binary search".to_string(),
                     );
                 }
-                let idx_opt = if match_mode == MatchMode::ExactMatchLarger {
-                    if search_mode == SearchMode::BinaryAscending {
-                        binary_search_or_greater(&lookup_value, &array)
-                    } else {
-                        binary_search_descending_or_greater(&lookup_value, &array)
-                    }
-                } else if search_mode == SearchMode::BinaryAscending {
-                    binary_search_or_smaller(&lookup_value, &array)
-                } else {
-                    binary_search_descending_or_smaller(&lookup_value, &array)
-                };
-
-                match idx_opt {
+                match binary_search(
+                    &lookup_value,
+                    &array,
+                    search_mode == SearchMode::BinaryDescending,
+                    match_mode.ordering(),
+                ) {
                     None => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
-                    Some(l) => {
-                        if match_mode == MatchMode::Exact {
-                            let v = array.get(l as usize);
-                            if compare_values(v, &lookup_value) != 0 {
-                                return CalcResult::new_error(
-                                    Error::NA,
-                                    cell,
-                                    "Not found".to_string(),
-                                );
-                            }
-                        }
-                        CalcResult::Number(l as f64 + 1.0)
-                    }
+                    Some(l) => CalcResult::Number(l as f64 + 1.0),
                 }
             }
         }

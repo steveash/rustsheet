@@ -432,7 +432,7 @@ const DEFAULT_MAX_STACK: usize = 256 * 1024;
 
 /// Roughly where the stack is: the address of a local.
 #[inline(never)]
-fn stack_address() -> usize {
+pub(crate) fn stack_address() -> usize {
     let marker = 0u8;
     std::hint::black_box(&marker) as *const u8 as usize
 }
@@ -919,7 +919,7 @@ impl Model {
         // Shares the formula, it does not copy it.
         let node =
             Arc::clone(&self.parsed_formulas[cell_reference.sheet as usize][formula as usize].0);
-        match self.evaluate_node_in_context(&node, cell_reference) {
+        match self.run_cell_formula(&node, cell_reference) {
             CalcResult::Range { left, right } => {
                 if left == right {
                     self.evaluate_cell(left)
@@ -1029,22 +1029,10 @@ impl Model {
         row2: i32,
         column2: i32,
     ) -> Result<(i32, i32), String> {
-        let whole_rows = row1 == 1 && row2 == LAST_ROW;
-        let whole_columns = column1 == 1 && column2 == LAST_COLUMN;
-        if !whole_rows && !whole_columns {
+        let (last_row, last_column) = self.used_area_corner(sheet, row1, column1, row2, column2)?;
+        if (last_row, last_column) == (row2, column2) {
             return Ok((row2, column2));
         }
-        let dimension = self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .dimension();
-        let last_row = if whole_rows { dimension.max_row } else { row2 };
-        let last_column = if whole_columns {
-            dimension.max_column
-        } else {
-            column2
-        };
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);

@@ -81,6 +81,18 @@ Limits of the canary:
    `closeSession`. Before 2026-10-04 it then downloaded the file anyway, which handed back the
    upload. It now raises `OracleError` instead.
 
+**Typed input** (T-0280). A spec cell `{"entered":"text"}` is written into the open session by a
+range `values` PATCH before `calculate`; Excel parses it exactly as typed text (value and number
+format) and the PATCH response's `numberFormat` is logged as `ENTERED <sheet>!<a1> ...` on stderr.
+Only the value reaches the sidecar: the cached result stores no formats the snapshot reads, and
+`CELL("format")` is `#VALUE!` on Excel for the web. Record the logged formats in
+`docs/excel-semantics/` with the probe case id.
+
+**Unobservable features** (T-1171). The sidecar holds cell values only, so anything whose effect
+is visual is out of reach of excel-graph: conditional-formatting rule results (fills, fonts, and
+whether a rule formula such as `=(0.1+0.2-0.3)=0` snaps near zero) cannot be probed. Such questions
+go to desktop Excel (M14, Phase 4, decision 0039).
+
 **Unsupported territory.** Microsoft documents the workbook endpoints (sessions, `calculate`) as
 **delegated-only**; app-only (client-credentials) use works in this tenant but is undocumented
 and may change without notice. Nothing documents when Excel for the web persists a session

@@ -2,9 +2,24 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
+    reference_operators::{three_d_needs_one_sheet, RefArg},
 };
 
 use crate::expressions::utils::number_to_column;
+
+/// Quotes `sheet_text` for ADDRESS. A leading `[workbook]` part does not by
+/// itself force quotes: the decision is made on the text after the `]`
+/// (Excel-cached poi EverythingTests!F128; docs/excel-semantics/references.md).
+fn address_sheet_text(s: &str) -> String {
+    if let Some(rest) = s.strip_prefix('[') {
+        if let Some((book, sheet)) = rest.split_once(']') {
+            if !book.contains('[') && quote_name(sheet) == sheet {
+                return s.to_string();
+            }
+        }
+    }
+    quote_name(s)
+}
 
 impl Model {
     // ── ADDRESS ───────────────────────────────────────────────────────────────
@@ -67,7 +82,7 @@ impl Model {
         // `sheet_text` that is omitted entirely produces no prefix.
         let sheet_prefix = if args.len() == 5 {
             match self.get_string(&args[4], cell) {
-                Ok(s) => format!("{}!", quote_name(&s)),
+                Ok(s) => format!("{}!", address_sheet_text(&s)),
                 Err(e) => return e,
             }
         } else {
@@ -121,16 +136,26 @@ impl Model {
 
     /// `=AREAS(reference)`
     ///
-    /// Returns the number of areas in a reference. IronCalc does not support
-    /// multi-area references, so this always returns 1.
+    /// Returns the number of areas in a reference (SPEC-0004, probes/multiarea-areas-*). A 3-D
+    /// reference is `#VALUE!` (probes/3d-ref-functions). The parser refuses an argument not
+    /// written as a reference (`AREAS(1)`), as Excel does; one that evaluates to a value
+    /// (`AREAS(IF(TRUE,5))`, `AREAS(LAMBDA(x,x))`) is `#VALUE!` and an error is itself
+    /// (excel-graph scratch probes, docs/excel-semantics/references.md "SUBTOTAL and AREAS take
+    /// references only", T-1163).
     pub(crate) fn fn_areas(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let result = self.evaluate_single_sheet_arg(&args[0], cell);
-        if result.is_error() {
-            return result;
+        let arg = self.evaluate_reference_arg(&args[0], cell);
+        if let Some(areas) = arg.single_sheet_areas() {
+            return CalcResult::Number(areas.len() as f64);
         }
-        CalcResult::Number(1.0)
+        match arg {
+            RefArg::Value(error) if error.is_error() => error,
+            RefArg::Value(_) => {
+                CalcResult::new_error(Error::VALUE, cell, "AREAS takes a reference".to_string())
+            }
+            RefArg::Ranges(_) => three_d_needs_one_sheet(cell),
+        }
     }
 }

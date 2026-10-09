@@ -8,39 +8,6 @@ pub(crate) trait Sequence<T: Ord> {
     fn seq_len(&self) -> usize;
     /// The element at `index`, which must be below `seq_len`.
     fn at(&self, index: usize) -> &T;
-    /// The index from which every element equals the last one (a virtual run
-    /// of empty cells), or `seq_len` if there is no such run. It lets the walks
-    /// over equal elements jump the run instead of stepping a million cells.
-    fn uniform_tail_start(&self) -> usize {
-        self.seq_len()
-    }
-}
-
-/// From `m`, whose element equals `target`, the start of the run of equal
-/// elements (never below 1, as before T-0127).
-fn walk_back<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, mut m: usize) -> usize {
-    let tail = array.uniform_tail_start();
-    if m > tail {
-        m = tail.max(1);
-    }
-    while m > 1 && array.at(m - 1) == target {
-        m -= 1;
-    }
-    m
-}
-
-/// From `index`, whose element equals `target`, the end of the run of equal
-/// elements.
-fn walk_forward<T: Ord, S: Sequence<T> + ?Sized>(target: &T, array: &S, mut index: usize) -> usize {
-    let n = array.seq_len();
-    let tail = array.uniform_tail_start();
-    while index + 1 < n && array.at(index + 1) == target {
-        if index + 1 >= tail {
-            return n - 1;
-        }
-        index += 1;
-    }
-    index
 }
 
 impl<T: Ord> Sequence<T> for [T] {
@@ -61,128 +28,64 @@ impl<T: Ord> Sequence<T> for Vec<T> {
     }
 }
 
-// NOTE: We don't know how Excel exactly implements binary search internally.
-// This means that if the values on the lookup range are not in order our results and Excel's will differ
-
-// Assumes values are in ascending order, returns matching index or the largest value smaller than target.
-// Returns None if target is smaller than the smaller value.
-pub(crate) fn binary_search_or_smaller<T: Ord, S: Sequence<T> + ?Sized>(
+/// Excel's binary search (XMATCH/XLOOKUP search_mode 2/-2) over `array`, sorted ascending (or
+/// `descending`). `mode` is the match mode: `Equal` (0) only takes an equal element, `Less` (-1)
+/// else the next smaller one and `Greater` (1) else the next larger one.
+///
+/// It is the classic search on inclusive bounds probing the lower middle `(lo + hi) / 2`, and it
+/// compares every element with the `Ord` of its values, so a blank or an error is larger than
+/// any number and is never skipped. It remembers the last equal element probed and keeps bisecting
+/// past it, to the left when ascending and to the right when descending, so a gap inside a run ends
+/// it; otherwise the answer is the last probe on the wanted side. On
+/// unsorted data that is whatever those probes give, as in Excel: with 5,_,10,_,20,_ in A1:A6,
+/// `XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(99,A:A,-1,2)` is 1 (probes/xmatch-xlookup-blanks
+/// Col!M16-M26, Err!M6-M7, Row!A18; T-1019). O(log n) probes, so a virtual tail is never walked.
+pub(crate) fn binary_search<T: Ord, S: Sequence<T> + ?Sized>(
     target: &T,
     array: &S,
-) -> Option<i32> {
-    // We apply binary search leftmost for value in the range
-    let n = array.seq_len();
-    let mut l = 0;
-    let mut r = n;
-    while l < r {
-        let m = (l + r) / 2;
-        if array.at(m) < target {
-            l = m + 1;
+    descending: bool,
+    mode: Ordering,
+) -> Option<usize> {
+    let (mut smaller, mut larger, mut equal) = (None, None, None);
+    // The live range is lo..hi (hi exclusive), so the lower middle of the inclusive bounds is
+    // lo + (hi - 1 - lo) / 2.
+    let mut lo = 0;
+    let mut hi = array.seq_len();
+    while lo < hi {
+        let mid = lo + (hi - 1 - lo) / 2;
+        let ordering = array.at(mid).cmp(target);
+        match ordering {
+            // An equal element is remembered and the search goes on past it, to the left when
+            // ascending and to the right when descending, so a gap inside a run ends it: with
+            // FALSE,_,TRUE,_,TRUE,_ in B1:B6 `XMATCH(TRUE,B1:B6,0,-2)` is 5 and with 40,30,40,40,50
+            // `XMATCH(40,R1:R5,0,2)` is 1 (probes/xmatch-text-bool-equal-runs Txt!M21, M24, Run!M1-M42;
+            // probes/xmatch-blank-extensions Ext!M38-M43).
+            Ordering::Equal => {
+                equal = Some(mid);
+                if descending {
+                    lo = mid + 1;
+                } else {
+                    hi = mid;
+                }
+                continue;
+            }
+            Ordering::Less => smaller = Some(mid),
+            Ordering::Greater => larger = Some(mid),
+        }
+        if (ordering == Ordering::Less) != descending {
+            lo = mid + 1;
         } else {
-            r = m;
+            hi = mid;
         }
     }
-    if l == n {
-        return Some((l - 1) as i32);
+    if equal.is_some() {
+        return equal;
     }
-    // Now l points to the leftmost element
-    if array.at(l) == target {
-        return Some(l as i32);
+    match mode {
+        Ordering::Less => smaller,
+        Ordering::Equal => None,
+        Ordering::Greater => larger,
     }
-    // If target is less than the minimum return None
-    if l == 0 {
-        return None;
-    }
-    Some((l - 1) as i32)
-}
-
-// Assumes values are in ascending order, returns matching index or the smaller value larger than target.
-// Returns None if target is smaller than the smaller value.
-pub(crate) fn binary_search_or_greater<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-) -> Option<i32> {
-    let mut l = 0;
-    let mut r = array.seq_len();
-    while l < r {
-        let m = (l + r) / 2;
-        match array.at(m).cmp(target) {
-            Ordering::Less => {
-                l = m + 1;
-            }
-            Ordering::Greater => {
-                r = m;
-            }
-            Ordering::Equal => {
-                return Some(walk_back(target, array, m) as i32);
-            }
-        }
-    }
-    // If target is larger than the maximum return None
-    if r == array.seq_len() {
-        return None;
-    }
-    // Now r points to the rightmost element
-    Some(r as i32)
-}
-
-// Assumes values are in descending order
-pub(crate) fn binary_search_descending_or_smaller<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-) -> Option<i32> {
-    let n = array.seq_len();
-    let mut l = 0;
-    let mut r = n;
-    while l < r {
-        let m = (l + r) / 2;
-        let index = n - m - 1;
-        match array.at(index).cmp(target) {
-            Ordering::Less => {
-                l = m + 1;
-            }
-            Ordering::Greater => {
-                r = m;
-            }
-            Ordering::Equal => {
-                return Some(walk_forward(target, array, index) as i32);
-            }
-        }
-    }
-    if l == 0 {
-        return None;
-    }
-    Some((n - l) as i32)
-}
-
-// Assumes values are in descending order, returns matching index or the smaller value larger than target.
-// Returns None if target is smaller than the smaller value.
-pub(crate) fn binary_search_descending_or_greater<T: Ord, S: Sequence<T> + ?Sized>(
-    target: &T,
-    array: &S,
-) -> Option<i32> {
-    let n = array.seq_len();
-    let mut l = 0;
-    let mut r = n;
-    while l < r {
-        let m = (l + r) / 2;
-        let index = n - m - 1;
-        match array.at(index).cmp(target) {
-            Ordering::Less => {
-                l = m + 1;
-            }
-            Ordering::Greater => {
-                r = m;
-            }
-            Ordering::Equal => {
-                return Some(walk_forward(target, array, index) as i32);
-            }
-        }
-    }
-    if r == n {
-        return None;
-    }
-    Some((n - r - 1) as i32)
 }
 
 impl Model {

@@ -1,6 +1,7 @@
-use crate::arithmetic::flush_subnormal;
+use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -16,6 +17,16 @@ use crate::{
 pub(crate) enum NumberOrArray {
     Number(f64),
     Array(Vec<Vec<ArrayNode>>),
+}
+
+impl NumberOrArray {
+    /// Rows and columns; a number is 1x1.
+    fn dims(&self) -> (usize, usize) {
+        match self {
+            NumberOrArray::Number(_) => (1, 1),
+            NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, Vec::len)),
+        }
+    }
 }
 
 /// A scalar CalcResult or a 2-D array, used for element-wise comparison.
@@ -92,6 +103,16 @@ pub(crate) fn array_node_to_string(node: &ArrayNode) -> Result<String, Error> {
     }
 }
 
+/// Longest text Excel reads as a number or as clock text, counted in characters with any
+/// surrounding spaces: at 255 it parses, at 256 it is #VALUE! (docs/excel-semantics/numbers.md,
+/// probes/text-number-long-zero, probes/clock-text-length-limit).
+pub(crate) const MAX_NUMBER_TEXT_LEN: usize = 255;
+
+/// True when `text`, counted with its surrounding spaces, is too long to read as a number.
+pub(crate) fn number_text_too_long(text: &str) -> bool {
+    text.len() > MAX_NUMBER_TEXT_LEN && text.chars().count() > MAX_NUMBER_TEXT_LEN
+}
+
 impl Model {
     /// Coerces a single array element to a number the way a scalar number argument is: booleans
     /// are 1 and 0, text goes through `cast_number` (`Data!D7:D7/1` with D7 = " 2 " is 2,
@@ -112,6 +133,9 @@ impl Model {
 
     /// [`Model::cast_number`] with year-less date text read in `current_year`.
     pub(crate) fn cast_number_in(&self, s: &str, current_year: CurrentYear) -> Option<f64> {
+        if number_text_too_long(s) {
+            return None;
+        }
         match parse_excel_number(s.trim()) {
             Some(f) => Some(f),
             _ => {
@@ -127,7 +151,9 @@ impl Model {
 
     /// Text as number coercion and VALUE read it, after their own trimming: a formatted number
     /// (dates, currencies in `currencies`, percentages), else time and date-time text
-    /// (`0+"10:11:12.5"`; probes/timevalue-*).
+    /// (`0+"10:11:12.5"`; probes/timevalue-*). Number text below the smallest normal double
+    /// reads as 0 like a literal, keeping `"1e-308"+0` at the Graph 0 of probes/text-number-words H6, H7,
+    /// K1, K4, K5 (UNVERIFIED: Graph cannot tell a flush from a kept subnormal; T-1143).
     pub(crate) fn parse_number_text(
         &self,
         text: &str,
@@ -136,7 +162,7 @@ impl Model {
     ) -> Option<f64> {
         if let Ok((v, _number_format)) = parse_formatted_number(text, currencies, self.locale, year)
         {
-            return Some(v);
+            return Some(crate::arithmetic::flush_subnormal(v));
         }
         crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
     }
@@ -200,6 +226,97 @@ impl Model {
     ) -> Result<NumberOrArray, CalcResult> {
         let value = self.evaluate_node_in_context(node, cell);
         self.number_or_array(value, cell)
+    }
+
+    /// Applies `op` to `N` number arguments, element-wise when any is an array or range.
+    /// Arguments broadcast like the arithmetic operators (a size-1 dimension repeats, positions
+    /// past a shorter array are `#N/A`) and an element that is an error stays one. An argument
+    /// that is an error is the result (the leftmost one), unless another is an array: then it
+    /// is broadcast and every element is that error (as for DATE). `message` goes with a
+    /// scalar error of `op`.
+    pub(crate) fn lift_numbers<const N: usize>(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        message: &str,
+        op: impl Fn([f64; N]) -> Result<f64, Error>,
+    ) -> CalcResult {
+        debug_assert!(args.len() >= N, "callers check the argument count");
+        let operands: Vec<_> = args
+            .iter()
+            .take(N)
+            .map(|arg| self.get_number_or_array(arg, cell))
+            .collect();
+        let any_array = operands
+            .iter()
+            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
+        let mut lifted = Vec::with_capacity(N);
+        for na in operands {
+            match na {
+                Err(CalcResult::Error { error, .. }) if any_array => {
+                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+                }
+                Ok(na) => lifted.push(na),
+                Err(e) => return e,
+            }
+        }
+        if !any_array {
+            // Without an array every operand is a `Number` (an error returned above).
+            let mut numbers = [0.0; N];
+            for (slot, na) in numbers.iter_mut().zip(&lifted) {
+                if let NumberOrArray::Number(n) = na {
+                    *slot = *n;
+                }
+            }
+            return match op(numbers) {
+                Ok(n) => CalcResult::Number(n),
+                Err(e) => CalcResult::new_error(e, cell, message.to_string()),
+            };
+        }
+        let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
+        let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
+        let result = (0..rows)
+            .map(|i| {
+                (0..cols)
+                    .map(|j| {
+                        let mut numbers = [0.0; N];
+                        let mut value = Ok(());
+                        for (slot, na) in numbers.iter_mut().zip(&lifted) {
+                            match self.number_at(na, i, j) {
+                                Ok(n) => *slot = n,
+                                Err(e) => {
+                                    value = Err(e);
+                                    break;
+                                }
+                            }
+                        }
+                        match value.and_then(|()| op(numbers)) {
+                            Ok(n) => ArrayNode::Number(n),
+                            Err(e) => ArrayNode::Error(e),
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(result)
+    }
+
+    /// The number at (`i`, `j`) of `na`, a size-1 dimension repeating; text is cast like a scalar
+    /// argument, a position past a shorter array is `#N/A`.
+    fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
+        match na {
+            NumberOrArray::Number(f) => Ok(*f),
+            NumberOrArray::Array(a) => {
+                let (rows, cols) = na.dims();
+                let node = bcast_idx(rows, i)
+                    .and_then(|ri| a.get(ri))
+                    .and_then(|r| bcast_idx(cols, j).and_then(|cj| r.get(cj)));
+                match node {
+                    None => Err(Error::NA),
+                    Some(node) => self.array_node_to_number(node),
+                }
+            }
+        }
     }
 
     /// [`Model::get_number_or_array`] of an already evaluated `value`.
@@ -423,6 +540,33 @@ impl Model {
         }
     }
 
+    /// The `#N/A` an aggregate gives for a direct text argument of more than 255 characters,
+    /// numeric or not (`None` for shorter text), where every other path gives `#VALUE!`
+    /// (probes/sum-long-text-args, probes/long-text-args-min-criteria, excel-graph;
+    /// docs/excel-semantics/numbers.md).
+    pub(crate) fn aggregate_text_too_long(
+        text: &str,
+        cell: CellReferenceIndex,
+    ) -> Option<CalcResult> {
+        number_text_too_long(text)
+            .then(|| CalcResult::new_error(Error::NA, cell, "Text too long".to_string()))
+    }
+
+    /// [`Model::cast_to_number`] for a direct argument of the aggregates (SUM, PRODUCT, MIN, MAX,
+    /// AVERAGE, SUMSQ, ...; AVERAGEA, MAXA and MINA via [`Model::aggregate_text_too_long`]).
+    pub(crate) fn cast_aggregate_arg_to_number(
+        &mut self,
+        result: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<f64, CalcResult> {
+        if let CalcResult::String(text) = &result {
+            if let Some(error) = Self::aggregate_text_too_long(text, cell) {
+                return Err(error);
+            }
+        }
+        self.cast_to_number(result, cell)
+    }
+
     pub(crate) fn cast_to_number(
         &mut self,
         result: CalcResult,
@@ -600,7 +744,23 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<(usize, usize), CalcResult> {
-        match self.evaluate_node_with_reference(node, cell) {
+        // ROWS/COLUMNS of a reference of several areas is #REF!, not the #VALUE! of a value
+        // context (probes/multiarea-count H2, H3; SPEC-0004 row 5).
+        let result = if self.is_multi_area(node) {
+            match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(Ranges::Areas(_)) => {
+                    return Err(CalcResult::new_error(
+                        Error::REF,
+                        cell,
+                        "Reference of several areas".to_string(),
+                    ))
+                }
+                other => other.into_single_area(cell),
+            }
+        } else {
+            self.evaluate_node_with_reference(node, cell)
+        };
+        match result {
             CalcResult::Range { left, right } => Ok((
                 (right.row - left.row + 1) as usize,
                 (right.column - left.column + 1) as usize,

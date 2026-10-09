@@ -119,7 +119,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   value-clock-text C14, C34-C37). Only the space character U+0020 counts, for trimming and before
   an AM/PM suffix: a tab, a no-break space (U+00A0) or an ideographic space (U+3000) is #VALUE! in
   all three (`"10:00\t"`, `"10:00\u00a0"`, `"10:00\u00a0AM"`, `"\u300010:00"`, and
-  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters between
+  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters inside the fraction of `H:M.f:S` text (inferred from this rule) and between
   the date and the clock of date-clock text.
 - **VALUE of clock text** is the coercion serial of the trimmed text, unwrapped like coercion
   (`VALUE("25:00")` = 1.0416666666666667, `VALUE("24:00")` = 1, `VALUE("10:11.5")` =
@@ -166,8 +166,8 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   characters parse, 256 and 318 are #VALUE!; `0+text` rejects a leading space at any length). A
   301-digit `H:M.f:S` fraction (316 characters) is #VALUE! while a 238-digit one (253 characters)
   gives 1.1574074074074075e+232. Whole seconds around the 2^53 ms formula switch
-  (`1/2/2020 0:0.9007199254730:0` to `...50:0`) match the engine. The engine has no limit on
-  date-clock text, so it diverges on 256 or more characters (follow-up T-0273). Plain number text has the same limit (numbers.md "Number text of 1E+308 or more is not a number", T-1097).
+  (`1/2/2020 0:0.9007199254730:0` to `...50:0`) match the engine. The engine applies the shared
+  `MAX_NUMBER_TEXT_LEN` limit to date-clock text (T-1101, closing T-0273). Plain number text has the same limit (numbers.md "Number text of 1E+308 or more is not a number", T-1097).
 - **One trailing `:` is ignored**: `"10:11:"` is 10:11, `"10:11:12.5:"` is 10:11:12.5, `"10:11.5:"`
   is `"10:11.5"` (M:S.f, 611.5 s) and `"10:11.5:12 :"` parses; `"10:11.5::"` is #VALUE!.
   Unprobed: a trailing `:` before an AM/PM suffix.
@@ -183,8 +183,8 @@ Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: h
 coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
 43832.416666666664, value-clock-text row 27; the engine already matched).
 `H:M.f:S`, the one-out-of-range limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
-Out of the oracle's reach: `+10:00` typed into a cell (the oracle uploads xlsx files, so it
-cannot type; the engine stores it as text).
+Unprobed: `+10:00` typed into a cell (the engine stores it as text). The oracle can now type
+cell input through `{"entered": ...}` spec cells (T-0280).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
@@ -233,6 +233,27 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
 - **Spaces**: VALUE and DATEVALUE trim surrounding spaces and treat a run of inner spaces as one
   (`"  July 1, 2026  "`, `"July  1, 2026"`); number coercion does not trim
   (`MROUND(" 2024-01-10 ",7)` is #VALUE!; ironcalc-calc MROUND_TRUNC_INT.xlsx MROUND!C32).
+  Spaces around a `-` or `/` separator are ignored by VALUE and DATEVALUE (`"2026 - 01 - 01"` =
+  46023, `"1 / 2 / 2026"` = 46024, `"4 - Feb - 2026"` = 46057, `"2026- 01-01"`, `"2026 -01-01"`,
+  `"Jul - 2026"`, `"1 / Jul / 2026"`; a clock may follow: `"2026 - 01 - 01 12:00"`; probes/
+  datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18, excel-graph, 2026-10-08, and
+  ironcalc-calc DATEVALUE_issue_1380.xlsx, Excel 16.03). Year-less `"1 - Jul"` and `"7 - 1"` are
+  accepted too (rows 11-12, 46204 on the 2026 oracle clock; in the sidecar but unscored). The same
+  holds on the other paths that read date text (probes/datevalue-separator-spaces-paths): text
+  coercion (`0+"2026 - 01 - 01"` = 46023, B1), a `COUNTIF` criterion (`"2026 - 01 - 01"` matches
+  the serial 46023, G1) and typed cell input (`"2026 - 01 - 01"` and `"4 - Feb - 2026"` become
+  numbers, 46023 and 46057 (the number format is UNVERIFIED); year-less `"1 - 2"` and
+  `"10 / 20"` become dates too, 2 Jan and 20 Oct of the oracle year; B3/B4 are scored, C3/C4 unscored: clock). The
+  ISO `T` separator is not accepted: `"2026-01-01T24:00:00"` and `"2026-01-01T12:00:00"` are
+  #VALUE! in DATEVALUE and VALUE (rows 5-6), so IronCalc's `T24:00:00` rollover test (upstream
+  issue 1379, whose DATEVALUE_issue_1379.xlsx only evidences the space-separated
+  `"2026-01-01 24:00:00"` = 46024) is not ported. In month-day-year text the comma may be a word of its own
+  after the day or the month (`"July 1 , 2026"`, `"July 1  ,  2026"`, `"July 1 ,  2026"`,
+  `"July , 1, 2026"`, `"July , 1 , 2026"`, `"July 1 , 26"` = 46204; probes/datevalue-separator-spaces row 15 and
+  probes/datevalue-comma-spaces rows 2-5, 8, 9, 15), but it still needs a space after it: `"July 1 ,2026"`,
+  `"Jul 1 ,2026"`, `"1 July , 2026"` and `"1 July, 2026"` are #VALUE!, as are `"July , 1 2026"` and
+  `"July 1, , 2026"`. A clock suffix works as for `"July 1, 2026 10:00"` (`"July 1 , 2026 10:00"`: DATEVALUE
+  46204, VALUE 46204.41666…); any other fifth word is #VALUE! (`"July 1 , 2026 foo"`; probes/datevalue-comma-spaces rows 11-16; row 12 is `"July , 1, 2026 10:00"`, same values).
 - **Clock suffix**: date text may end in a clock time (`"July 1, 2026 10:00"`,
   `"Jul 1, 2026 4:35 PM"`, `"July 1, 2026 6 PM"`): VALUE adds it, DATEVALUE returns the day the
   sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
@@ -275,7 +296,7 @@ classifies typed sign-prefixed input is unprobed. UNVERIFIED (hand-derived from 
 oracle-observed, since the oracle clock is 2026): in a leap year `"2/29"`, `"Feb-29"`, `"29-Feb"`
 and `"Feb 29"` are 29 February; in a non-leap year `"29-Feb"` is #VALUE!.
 Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
-`functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
+`functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159); `remove_separator_spaces` in `parse_date` (spaces around `-` and `/`, T-1136, Ported-From: ironcalc@753da658)
 
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no

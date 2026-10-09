@@ -25,6 +25,11 @@ three `$Z$1` arguments (oracle: excel-graph, 2026-10-07). With two, single-call 
 `rustsheet-oracle recalc -b excel-graph` got createSession 501 `FileCorruptTryRepair` /
 `unsupportedWorkbook` (2026-10-07, T-0040; rejected inputs cannot be committed). Every other
 in-scope catalog function loaded at the count in excel-functions.tsv (probes/catalog/availability-*).
+`XNPV(rate, values, dates)` needs all three: `=XNPV(1,A1:B2)` got the same 501
+`FileCorruptTryRepair` (`rustsheet-oracle recalc -b excel-graph`, 2026-10-07, T-0275), while
+`=XNPV(1,A1:B2,A1:B2)` loads and gives 9.962109338017495 (probes/xnpv-argument-count D1; D3 shows
+values and dates of different lengths are `#NUM!`). RustSheet gives `#ERROR!` for a call below the
+minimum, as for every other function (`fn_xnpv`).
 Status: VERIFIED
 
 ## Unary minus binds tighter than `^`
@@ -141,22 +146,23 @@ Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and
 `#GETTING_DATA` special precedence: it is an ordinary error kind.
 Stored constants (`<c t="e"><v>#BUSY!</v></c>`, spec2xlsx `{"t":"e","v":"#BUSY!","stored":true}`, T-0999)
 are different from formula literals: of the newer names only `#BUSY!` (and `#GETTING_DATA`, `#N/A`) load.
-A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!` or `#CALC!` is rejected on load
+A workbook storing `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#UNKNOWN!`, `#CALC!` or `#SPILL!` is rejected on load
 (createSession 501 `unsupportedWorkbook`), like the formula literals (`=#CALC!` itself loads). A
 stored `#BUSY!` is an error that is not `#N/A`: `ISERROR` and `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA`
 passes it through, `A1&""` is `#BUSY!`, and `ERROR.TYPE` is 0 (not 7; confirmed by `ERROR.TYPE(A1)+100` =
 100, since XlsxWriter caches 0 for every formula and a stale cell would be indistinguishable from the bare
 0). `#GETTING_DATA` stored: `ERROR.TYPE` 8, `ISERR` TRUE, `ISNA` FALSE, `TYPE` 16, `IFNA` passes through
 (reported `#N/A`), `&""` is reported `#N/A`; stored `#N/A`: 7, `ISNA` TRUE, `IFNA` gives the fallback.
+The engine-only kinds `#CIRC!`, `#ERROR!` and `#N/IMPL` stored as constants are rejected on load the same way (createSession 501 `unsupportedWorkbook`, excel-graph, 2026-10-08, T-1133; throw-away one-cell cases, no sidecar), so the exporter writes them as `#VALUE!` (`exported_error_literal`, `crates/rustsheet-xlsx/src/export/worksheets.rs`).
 Unprobed: `#PYTHON!`, `#EXTERNAL!` stored. The rejected names were re-run as throw-away one-cell cases
 (`A1` = `{"t":"e","v":"<name>","stored":true}`, nothing else), so to reproduce one, write that case.
-Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives, and whether a
-COUNTIF criterion `"#BLOCKED!"` matches the error (SPEC-0003 keeps today's input table plus
-`#GETTING_DATA`, and keeps COUNTIF-family criteria on today's twelve names; T-1012 probes the
-criterion, T-1016 typed input on desktop; UNVERIFIED).
+Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives. SPEC-0003 keeps
+today's input table plus `#GETTING_DATA` (implemented in T-1010: typed `#GETTING_DATA` is the error,
+typed `#BLOCKED!` is text); T-1016 probes it on desktop; UNVERIFIED. The COUNTIF criterion question
+is settled by T-1012 (information.md): `"#BLOCKED!"` does not match the error.
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
-stored rejections as throw-away one-cell cases (same).
+stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014

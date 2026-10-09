@@ -124,13 +124,14 @@ fn union_errors() {
     model._set("A3", "=(Data!A1:A3,Other!A1:A3) Data!A2");
     // A value that is not a reference cannot be in a union: Excel-style refusal.
     model._set("A4", "=(1,Data!A1)");
+    // A bare union loads and is `#VALUE!` as a value (probes/multiarea-bare, T-1073).
     model._set("A5", "=Data!A1,Data!B1");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#REF!");
     assert_eq!(model._get_text("A2"), "#REF!");
     assert_eq!(model._get_text("A3"), "#VALUE!");
     assert_eq!(model._get_text("A4"), "#ERROR!");
-    assert_eq!(model._get_text("A5"), "#ERROR!");
+    assert_eq!(model._get_text("A5"), "#VALUE!");
 }
 
 #[test]

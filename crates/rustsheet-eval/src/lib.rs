@@ -12,10 +12,13 @@
 pub mod baseline;
 pub mod calibrate;
 pub mod case;
+pub mod case_log;
 pub mod catalog;
 pub mod cellref;
+pub mod deviations;
 pub mod engine;
 pub mod fetch;
+pub mod milestone_lists;
 pub mod overrides;
 pub mod report;
 pub mod runner;

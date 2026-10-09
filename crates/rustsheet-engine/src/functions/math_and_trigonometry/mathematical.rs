@@ -5,6 +5,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::math_and_trigonometry::decimal_round::{round_decimal, RoundMode};
 use crate::number_format::to_excel_precision;
+use crate::reference_operators::RefArg;
 use crate::single_number_fn;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
@@ -30,15 +31,15 @@ impl Model {
     ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
+                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                         result = pick(value, result);
                     }) {
                         return error;
                     }
                 }
-                CalcResult::Array(array) => {
+                RefArg::Value(CalcResult::Array(array)) => {
                     for node in array.into_iter().flatten() {
                         match node {
                             ArrayNode::Number(value) => result = pick(value, result),
@@ -50,7 +51,7 @@ impl Model {
                         }
                     }
                 }
-                value => match self.cast_to_number(value, cell) {
+                RefArg::Value(value) => match self.cast_aggregate_arg_to_number(value, cell) {
                     Ok(value) => result = pick(value, result),
                     Err(error) => return error,
                 },
@@ -182,68 +183,6 @@ impl Model {
         }
     }
 
-    /// SUM(number1, [number2], ...)
-    ///
-    /// The SUM function adds values. You can add individual values, cell references or ranges or a mix of all three.
-    ///
-    /// # Details
-    /// Generally each argument is evaluated and the result is converted to a number. However there are some special
-    /// cases:
-    /// - **Args evaluating to CalcResult::Range**: The sum of all the numbers in the range is calculated. No
-    ///   conversions are performed, non-numeric values are ignored and errors are propagated.
-    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
-    ///   referenced cell and errors are propagated.
-    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
-    pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
-
-        let mut result = 0.0;
-        for arg in args {
-            // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
-                        result += value;
-                    }) {
-                        return error;
-                    }
-                }
-                CalcResult::Array(array) => {
-                    for row in array {
-                        for value in row {
-                            match value {
-                                ArrayNode::Number(value) => {
-                                    result += value;
-                                }
-                                ArrayNode::Error(error) => {
-                                    return CalcResult::Error {
-                                        error,
-                                        origin: cell,
-                                        message: "Error in array".to_string(),
-                                    }
-                                }
-                                _ => {
-                                    // We ignore booleans and strings
-                                }
-                            }
-                        }
-                    }
-                }
-                error @ CalcResult::Error { .. } => return error,
-                calc_result => {
-                    let cast_result = self.cast_to_number(calc_result, cell);
-                    match cast_result {
-                        Ok(f) => result += f,
-                        Err(s) => return s,
-                    }
-                }
-            };
-        }
-        CalcResult::finite_number_or_num(result, cell)
-    }
-
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -302,21 +241,19 @@ impl Model {
                 },
                 _ => arg,
             };
-            let cell_value = self.evaluate_aggregate_arg(arg, cell);
-
-            match cell_value {
-                CalcResult::Range { left, right } => {
-                    if let Err(error) = self.for_each_number_in_range(left, right, cell, |value| {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
+                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                         seen_value = true;
                         result = flush_subnormal(result * value);
                     }) {
                         return error;
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                calc_result => {
+                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                RefArg::Value(calc_result) => {
                     seen_value = true;
-                    let cast_result = self.cast_to_number(calc_result, cell);
+                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
                     match cast_result {
                         Ok(f) => result = flush_subnormal(result * f),
                         Err(s) => return s,
@@ -387,36 +324,22 @@ impl Model {
         self.round_family(args, cell, RoundMode::Down)
     }
 
-    // (number, divisor)
+    // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
     pub(crate) fn fn_mod(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let divisor = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if divisor == 0.0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Divide by 0".to_string(),
-            };
-        }
-        // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
-        // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
-        if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Quotient too large".to_string(),
-            };
-        }
-        CalcResult::Number(crate::functions::util::excel_mod(value, divisor))
+        self.lift_numbers(args, cell, "Invalid arguments", |[value, divisor]| {
+            if divisor == 0.0 {
+                return Err(Error::DIV);
+            }
+            // Excel: #NUM! once |number/divisor| reaches 1.1259E+12, whatever the signs
+            // (docs/excel-semantics/numbers.md "MOD is #NUM! for a huge quotient").
+            if (value / divisor).abs() >= MOD_MAX_QUOTIENT {
+                return Err(Error::NUM);
+            }
+            Ok(crate::functions::util::excel_mod(value, divisor))
+        })
     }
 
     pub(crate) fn fn_quotient(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -817,7 +740,8 @@ impl Model {
     single_number_fn!(fn_csch, |f| if f == 0.0 {
         Err(Error::DIV)
     } else {
-        Ok(1.0 / f64::sinh(f))
+        // Excel: a subnormal CSCH result is a true 0 (CSCH(710), docs/excel-semantics/numbers.md).
+        Ok(flush_subnormal(1.0 / f64::sinh(f)))
     });
     single_number_fn!(fn_sec, |f| Ok(1.0 / f64::cos(f)));
     single_number_fn!(fn_sech, |f| Ok(1.0 / f64::cosh(f)));

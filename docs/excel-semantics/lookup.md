@@ -64,7 +64,7 @@ Edges (probes/lookup-vector-edges, excel-graph, 2026-10-07, T-0269):
   `LOOKUP(99,A5:B5,XFD5)` are 0, while a position still on the sheet reads its cell (`LOOKUP(3,A1:A3,F1048575:F1048576)` is F1048576's 12,
   `LOOKUP(99,A5:B5,XFC5:XFD5)` is XFD5).
 - `OFFSET(F1,0,0)` as result_vector reads past its end like a plain `F1`, and so does a reference-returning `INDEX(F1:F1,1)`
-  or `INDEX(F1:G1,1,1)` (G1 / 7); the engine returns `#N/A` for the INDEX forms (T-0274).
+  or `INDEX(F1:G1,1,1)` (G1 / 8); `lookup_result` keeps INDEX as a reference (T-0274).
 Evidence: probes/lookup-2d-vector H1:H13, H19, probes/lookup-2d-vector-wide L1:L13 (excel-graph, 2026-10-07, T-0224), probes/lookup-vector-edges A1:A21 (T-0269).
 Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
@@ -178,7 +178,7 @@ Tasks: T-0126, T-1018
 Rule: in an exact or wildcard search (search_mode 1/-1) a blank candidate never matches a non-blank
 lookup value; a blank lookup value (`G1`, an empty cell) matches the first blank candidate. For
 match_mode -1/1 and a numeric lookup value a blank candidate is larger than every number and never
-smaller than one (the engine models it as empty text; unprobed for text and boolean lookup values). So with 5,_,10,_,20,_ in A1:A6: `XMATCH(0,A1:A6,-1)` is #N/A, `XMATCH(0,A1:A6,1)` is 1,
+smaller than one. So with 5,_,10,_,20,_ in A1:A6: `XMATCH(0,A1:A6,-1)` is #N/A, `XMATCH(0,A1:A6,1)` is 1,
 `XMATCH(7,A1:A6,1)` is 3 (10 is the smaller of the larger candidates) but `XMATCH(25,A1:A6,1)` and
 `XMATCH(99,A:A,1)` are 2 (the first blank, the only candidate "larger" than 25). `XMATCH(0,A1:A6,2)`
 is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"nf")` is "nf",
@@ -186,11 +186,36 @@ is #N/A. XLOOKUP matches XMATCH in every one of these (`XLOOKUP(0,A1:A6,B1:B6,"n
 Evidence: probes/xmatch-xlookup-blanks (Excel oracle; Col, Err, Row sheets, bounded and whole column/row).
 Status: VERIFIED
 Implemented in: `linear_scan` (functions/lookup_and_reference/xmatch.rs), shared by XLOOKUP.
-Open (T-1019): binary search_mode 2/-2 over blanks: exact lookups of present values skip the blanks,
-e.g. `XMATCH(10,A1:A6,0,2)` is 3 and `XLOOKUP(10,A1:A6,B1:B6,"nf",0,2)` is "c" (engine #N/A / "nf");
-`XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is 2 (engine 5 / 6), unexplained by simple skipping.
-Also unprobed: text and boolean lookup values with match_mode -1/1 over blanks, and a blank lookup
-value against 0/""/FALSE candidates (`XMATCH(G1,A:A)` is 2 here, where `MATCH(G1,A:A,0)` is #N/A).
+Text and boolean lookup values (probes/xmatch-text-bool-equal-runs, Excel oracle): with b,_,d,_,f,_ in
+A1:A6, a blank is *larger* than every text, as it is larger than every number: `XMATCH("z",A1:A6,1)` is 2 (the first
+blank), `XMATCH("z",A1:A6,-1)` is 5, `XMATCH("a",A1:A6,-1)` is #N/A (a blank is never the smaller candidate),
+`XMATCH("a",A1:A6,1)` is 1. Binary search also treats a blank as larger (`XMATCH("z",A1:A6,1,2)` is 6, `XMATCH("z",A1:A6,-1,2)` is 5). With b,#N/A,d,#DIV/0!,f in C1:C5 (Txt!M31-M48) `XMATCH("z",C1:C5,1)` is 4, the #DIV/0! cell (the #N/A at C2 is not chosen over it),
+`XMATCH("z",C1:C5,-1)` is 5, `XMATCH("z",C1:C5,1,2)` is 4, the error cell again, and `XMATCH("z",C1:C5,-1,2)` is 3; whether the linear modes skip #N/A and
+how errors order among themselves is not settled by this probe. Booleans over B1:B6 = FALSE,_,TRUE,_,TRUE,_ (Txt!M19-M30):
+`XMATCH(FALSE,B1:B6,1,-2)` is 6 (a blank), `XMATCH(FALSE,B1:B6,-1,-2)` is #N/A, `XMATCH(TRUE,B1:B6,1,-2)` is 5.
+`XLOOKUP("z",A1:A6,A1:A6,"nf",1)` returns the blank return cell as 0.
+A blank lookup value (`G1`) never matches a 0, `""` or FALSE candidate in an exact search (`XMATCH(G1,D1:D1)`,
+D1=0, is #N/A, likewise D2 = `=""`, D3 = FALSE, and with search_mode 2/-2). With match_mode -1 the `""` and FALSE
+candidates are the next smaller item (`XMATCH(G1,D3:D3,-1)` is 1), with match_mode 1 they are #N/A. `XMATCH(G1,D:D)` is 4, the first blank. `XLOOKUP(G1,D1:D1,E1:E1,"nf")` is "nf" for all three candidates.
+Status: VERIFIED
+Implemented in: `linear_scan`/`compare_blank_last` (functions/lookup_and_reference/xmatch.rs): a blank candidate is larger than every number, text and boolean; a blank lookup value matches only a blank (T-1153). The same ordering holds for a blank lookup value against numbers, `""` and FALSE in match modes -1/1, linear and binary (`XMATCH(G1,P1:P2,-1)` is 2 with -5,5; `XMATCH(G1,P2:P2,1)` is #N/A), and in wildcard mode (`XMATCH(G1,D:D,2)` is the first blank, `XMATCH(G1,D1:D3,2)` is #N/A): probes/xmatch-blank-extensions Ext!M1-M37.
+
+## XMATCH / XLOOKUP binary search (search_mode 2/-2) probes blanks and errors
+Rule: search_mode 2/-2 is the classic binary search on inclusive bounds, probing the lower middle
+`(lo+hi)/2`. Unlike MATCH's approximate search ("skip upwards past other types", T-0212), it never
+skips a blank or an error cell. It compares the cell like any other, and a blank or an error is
+larger than every number. An equal value does not stop it: see "binary search over runs of equal values" below. Otherwise match_mode -1/1 return the
+last probed smaller/larger cell, which may be a blank. With 5,_,10,_,20,_ in A1:A6:
+`XMATCH(10,A1:A6,0,2)` is 3 and `XMATCH(20,A1:A6,0,2)` is 5 (mid 2 is 10). `XMATCH(7,A1:A6,1,2)`
+is 2, the blank A2. Over the whole column, `XMATCH(99,A:A,-1,2)` is 1 and `XMATCH(99,A:A,1,2)` is
+2: the probes 524287, 262143, ..., 3, 1, 0 are all blank until A1. `XMATCH(99,A:A,-1,-2)` is #N/A.
+Along a row, `XMATCH(99,1:1,-1,2)` is 1. With 5,#N/A,10,#DIV/0!,20, `XMATCH(15,A1:A5,-1,2)` is 3
+(the #DIV/0! probe counts as larger). XLOOKUP agrees (`XLOOKUP(10,A1:A6,B1:B6,"nf",0,2)` is "c").
+Evidence: probes/xmatch-xlookup-blanks Col!M16-M26, M44-M46, Err!M6-M7, Row!A18-A19 (Excel oracle).
+Status: VERIFIED
+Implemented in: `binary_search` (functions/binary_search.rs), shared by XMATCH and XLOOKUP.
+XLOOKUP over a range searches the full vector, so cells past the used area are probed as blanks.
+Runs of equal values: see "binary search over runs of equal values" below (T-1135).
 
 Performance invariant (T-0119, T-0127, not an Excel rule): MATCH, LOOKUP, HLOOKUP, VLOOKUP and XMATCH evaluate a
 search vector only up to the sheet's last used row (column, for ranges running to XFD); the rest
@@ -211,4 +236,42 @@ Open (unprobed, T-0962): reference-vs-array result (ISREF, implicit intersection
 spilling as 0), `@`/nesting such as `UPPER(XLOOKUP(2,A1:A3,B1:C3))`, a one-cell lookup vector with a wide
 return range, and a wide return range with a different row count (`#VALUE!` is a guess).
 Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
+Array lookup_array (T-1126, T-1127): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
+reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). All of the following are from
+probes/xlookup-array-return (excel-graph): an array return_array gives its element (`XLOOKUP(2,{1;2;3},{4;5;6})` is 5, E1; row arrays E4),
+`if_not_found` and `#N/A` work as for ranges (E2, E3); the binary search modes 2 and -2 work over an array lookup_array with a range or
+array return_array, including match modes -1/1 (E9-E15); search modes 1 and -1 explicit (E22-E24). Shape rules: a 2-D lookup array is
+`#VALUE!` (E8); the return_array needs the lookup array's row count, so a column lookup array with a row return (E16), a row lookup array
+with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider return_array and gives the
+matched row (E7, E19, E20). Still unprobed: an error or scalar return_array, wildcard match mode with a binary search mode, and a 2-D *range* lookup_array (the engine answers `#ERROR!` there, `#VALUE!` for an array).
 Tasks: T-0948
+
+## XMATCH / XLOOKUP binary search over runs of equal values
+Rule: search_mode 2 returns the *first* cell of a run of equal values and search_mode -2 the *last*, for match_mode 0,
+-1 and 1 alike, including runs that start at the first cell or fill the range: `XMATCH(40,A1:A3,m,2)` is 1 and
+`XMATCH(40,A1:A3,m,-2)` is 3 with {40,40,40}; {40,40,40,40,40} gives 1 and 5; {30,40,40,40,50} gives 2 and 4;
+descending {60,50,40,40,40} gives 3 and 5; seven 40s give 1 and 7. Linear search_mode 1 gives the first cell
+(1) for every match_mode. XLOOKUP agrees (`XLOOKUP(40,B1:B5,D1:D5,"nf",0,2)` is 30, with `-2` it is 50).
+Evidence: probes/xmatch-text-bool-equal-runs Run!M1-M52 (Excel oracle). The engine matches all of them (T-1153).
+A binary search remembers an equal element and keeps bisecting past it, to the left when ascending (2) and to the right when
+descending (-2), so a gap inside a run ends it, for every match mode. With FALSE,_,TRUE,_,TRUE,_ in B1:B6,
+`XMATCH(TRUE,B1:B6,-1,-2)` is 5 (Txt!M21, M24); with 60,40,70,40, `XMATCH(40,Q1:Q4,m,-2)` is 4 and with 40,30,40,40,50,
+`XMATCH(40,R1:R5,m,2)` is 1, not 3 (probes/xmatch-blank-extensions Ext!M38-M43). In a contiguous run that is the run's first
+cell ascending, its last descending, match_mode 1 included (Run!M5, M11, M17, M35, M51).
+Status: VERIFIED
+Implemented in: `binary_search` (functions/binary_search.rs).
+Tasks: T-1135, T-1153
+
+## XLOOKUP / XMATCH with an omitted lookup_value is a blank cell
+Rule: an omitted lookup_value (`XMATCH(,H1:H4)`, `XLOOKUP(,...)`) is indistinguishable from a reference to a blank cell, in every
+match mode and search mode: exact, -1, 1, wildcard (2), reverse linear (-1) and binary (2, -2). With H1:H4 = 1, blank, "a", empty
+text, `XMATCH(,H1:H4)`, with match_mode -1, 1 and 2, and with search_mode -1 are all 2, the blank cell's position (and the
+`XLOOKUP` forms return the 2nd return value). Empty text is not equal to the omitted value: `XMATCH("",H1:H4)` is 4. In binary
+search over J1:J5 = 1, "a", TRUE, blank, blank, `XMATCH(,J1:J5,0,2)` is 4 and the -1 and 1 match modes give 4 too; the descending search
+gives #N/A (exact and 1) and 1 (match_mode -1); `XMATCH("",J1:J5,0,2)` is #N/A. Inline arrays holding no blank, such as
+`XLOOKUP(,{"";1},{1;2})`, `XMATCH(,{"";1})` and `XMATCH(,{1;"a";TRUE},0,2)`, are #N/A, so an omitted value is not empty text; it is not 0 either, since `XMATCH(0,J1:J5,0,2)` is #N/A where the omitted form is 4.
+Evidence: probes/xlookup-omitted-lookup-value (excel-graph, 2026-10-08, 40 cells, omitted and G9-blank twins identical), plus
+XLOOKUP.xlsx Errors!N1 (Excel-authored) for binary.
+Status: VERIFIED (web)
+Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`; `is_blank` / `linear_scan` (xmatch.rs) read `EmptyArg` as a blank in the linear modes (T-1188).
+Tasks: T-1153, T-1157, T-1188

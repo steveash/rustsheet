@@ -87,6 +87,93 @@ pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatt
     format_number(value.unwrap_or(0.0), format, locale)
 }
 
+/// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
+/// 4th section applies, `@` stands for the text and the section's other tokens print as literals
+/// (poi TextFormatTests A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
+/// booleans use the format's text section"). A single section with `@` is a text section too
+/// (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11). Any other format with fewer
+/// than four sections returns the text unchanged; that case is unprobed. A result over 255
+/// characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
+pub fn format_text_value(text: &str, format: &str) -> Formatted {
+    let mut parser = Parser::new(format);
+    parser.parse();
+    let section = match parser.parts.as_slice() {
+        [only]
+            if section_tokens(only)
+                .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
+        {
+            0
+        }
+        parts if parts.len() < 4 => return capped_text(text.to_string()),
+        _ => 3,
+    };
+    let tokens = match parser.parts.get(section) {
+        Some(ParsePart::Error(_)) => {
+            return Formatted {
+                text: "#VALUE!".to_owned(),
+                color: None,
+                error: Some("Problem parsing format string".to_owned()),
+            }
+        }
+        Some(part) => match section_tokens(part) {
+            Some(tokens) => tokens,
+            None => return capped_text(text.to_string()),
+        },
+        None => return capped_text(text.to_string()),
+    };
+    let mut out = String::new();
+    let mut chars = 0;
+    for token in tokens {
+        let start = out.len();
+        match token {
+            TextToken::Literal(c) => out.push(*c),
+            TextToken::Text(t) => out.push_str(t),
+            TextToken::Ghost(_) | TextToken::Spacer(_) => out.push(' '),
+            TextToken::Raw => out.push_str(text),
+            _ => {}
+        }
+        // Checked as it grows, so a format of many `@` cannot build a huge string.
+        chars += out[start..].chars().count();
+        if chars > MAX_TEXT_FORMAT_CHARS {
+            return text_too_long();
+        }
+    }
+    capped_text(out)
+}
+
+/// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
+/// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
+const MAX_TEXT_FORMAT_CHARS: usize = 255;
+
+fn text_too_long() -> Formatted {
+    Formatted {
+        text: "#VALUE!".to_owned(),
+        color: None,
+        error: Some("TEXT result over 255 characters".to_owned()),
+    }
+}
+
+/// `text` as a TEXT result, or `#VALUE!` when it is over [`MAX_TEXT_FORMAT_CHARS`].
+fn capped_text(text: String) -> Formatted {
+    if text.chars().count() > MAX_TEXT_FORMAT_CHARS {
+        return text_too_long();
+    }
+    Formatted {
+        color: None,
+        text,
+        error: None,
+    }
+}
+
+/// The tokens of a number or date section; `None` for General or an unparsable section.
+fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
+    match part {
+        ParsePart::Number(p) => Some(&p.tokens),
+        ParsePart::Date(p) => Some(&p.tokens),
+        ParsePart::General(_) | ParsePart::Error(_) => None,
+    }
+}
+
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
@@ -465,7 +552,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
             // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            // `<=`: a value exactly one unit at the last shown place (-1 for `0`, -1 after a `#,,`
+            // scaling) keeps its sign (poi/NumberFormatTests.xlsx Tests!A95).
+            let is_negative = value <= -(10.0_f64.powf(-(p.precision as f64)));
             let mut needs_period = false;
 
             for token in tokens {
@@ -517,12 +606,20 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     } else {
                                         int_part[number_index as usize]
                                     };
+                                    // The group positions count from the format's last digit
+                                    // placeholder, so padding is grouped too (a padded `?`
+                                    // separator is a space; docs/excel-semantics/number-formats.md,
+                                    // "A comma between digit placeholders turns on thousands grouping").
                                     let sep = if use_group_separator(
                                         p.use_thousands,
-                                        ln - digit_index,
+                                        digit_count - digit_index,
                                         &group_sizes,
                                     ) {
-                                        &group_separator
+                                        if number_index < 0 && digit.kind == '?' {
+                                            " "
+                                        } else {
+                                            &group_separator
+                                        }
                                     } else {
                                         ""
                                     };
@@ -654,59 +751,15 @@ pub(crate) fn parse_formatted_number(
     current_year: CurrentYear,
 ) -> Result<(f64, Option<String>), String> {
     let value = original.trim();
-    let scientific_format = "0.00E+00";
 
     let symbols = &locale.numbers.symbols;
     let decimal_separator = symbols.decimal.chars().next().unwrap_or('.');
     let group_separator = symbols.group.chars().next().unwrap_or(',');
 
-    // Check if it is a percentage
-    if let Some(p) = value.strip_suffix('%') {
-        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-        if options.is_scientific {
-            return Ok((f / 100.0, Some(scientific_format.to_string())));
-        }
-        // We ignore the separator
-        if options.decimal_digits > 0 {
-            // Percentage format with decimals
-            return Ok((f / 100.0, Some("#,##0.00%".to_string())));
-        }
-        // Percentage format standard
-        return Ok((f / 100.0, Some("#,##0%".to_string())));
-    }
-
-    // check if it is a currency in currencies
-    for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                return Ok((-f, Some(format!("{currency}#,##0.00"))));
-            }
-            return Ok((-f, Some(format!("{currency}#,##0"))));
-        } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                return Ok((f, Some(format!("{currency}#,##0.00"))));
-            }
-            return Ok((f, Some(format!("{currency}#,##0"))));
-        } else if let Some(p) = value.strip_suffix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok((f, Some(scientific_format.to_string())));
-            }
-            if options.decimal_digits > 0 {
-                let currency_format = &format!("#,##0.00{currency}");
-                return Ok((f, Some(currency_format.to_string())));
-            }
-            let currency_format = &format!("#,##0{currency}");
-            return Ok((f, Some(currency_format.to_string())));
-        }
+    if let Some(parsed) =
+        parse_percent_or_currency(value, currencies, decimal_separator, group_separator)?
+    {
+        return Ok(parsed);
     }
 
     // Date text, untrimmed: number coercion rejects date text with surrounding spaces (see
@@ -715,10 +768,97 @@ pub(crate) fn parse_formatted_number(
         return Ok((serial_number as f64, Some(format)));
     }
 
-    // Lastly we check if it is a number
+    // Excel reads accounting text in parentheses as negative: `0+"(1)"` = -1, `0+"(1,000)"` =
+    // -1000, `0+"( 1 )"` = -1, `0+"($1)"` = -1, `0+"(1%)"` = -0.01, but `0+"-(1)"`, `0+"(-1)"` and
+    // `0+"((1))"` are #VALUE! (docs/excel-semantics/coercion.md "Parenthesised number text is
+    // negative", probes/paren-negative-variants).
+    if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
+        let inner = inner.trim();
+        if inner.starts_with(['-', '+', '(']) {
+            return Err("Cannot parse number".to_string());
+        }
+        let (f, format) =
+            match parse_percent_or_currency(inner, currencies, decimal_separator, group_separator)?
+            {
+                Some(parsed) => parsed,
+                None => parse_plain_number(inner, decimal_separator, group_separator)?,
+            };
+        return Ok((-f, format));
+    }
+    parse_plain_number(value, decimal_separator, group_separator)
+}
+
+/// Format given to scientific-notation text such as `1E3`.
+const SCIENTIFIC_FORMAT: &str = "0.00E+00";
+
+/// A number written with a percent sign or a currency symbol, with the format that implies.
+/// `Ok(None)` means the text has neither.
+fn parse_percent_or_currency(
+    value: &str,
+    currencies: &[&str],
+    decimal_separator: char,
+    group_separator: char,
+) -> Result<Option<(f64, Option<String>)>, String> {
+    // Check if it is a percentage
+    if let Some(p) = value.strip_suffix('%') {
+        let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+        if options.is_scientific {
+            return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
+        }
+        // We ignore the separator
+        if options.decimal_digits > 0 {
+            // Percentage format with decimals
+            return Ok(Some((f / 100.0, Some("#,##0.00%".to_string()))));
+        }
+        // Percentage format standard
+        return Ok(Some((f / 100.0, Some("#,##0%".to_string()))));
+    }
+
+    // check if it is a currency in currencies
+    for currency in currencies {
+        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                return Ok(Some((-f, Some(format!("{currency}#,##0.00")))));
+            }
+            return Ok(Some((-f, Some(format!("{currency}#,##0")))));
+        } else if let Some(p) = value.strip_prefix(currency) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                return Ok(Some((f, Some(format!("{currency}#,##0.00")))));
+            }
+            return Ok(Some((f, Some(format!("{currency}#,##0")))));
+        } else if let Some(p) = value.strip_suffix(currency) {
+            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            if options.is_scientific {
+                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
+            }
+            if options.decimal_digits > 0 {
+                let currency_format = &format!("#,##0.00{currency}");
+                return Ok(Some((f, Some(currency_format.to_string()))));
+            }
+            let currency_format = &format!("#,##0{currency}");
+            return Ok(Some((f, Some(currency_format.to_string()))));
+        }
+    }
+    Ok(None)
+}
+
+/// A plain number (optionally with group separators or an exponent) and its inferred format.
+fn parse_plain_number(
+    value: &str,
+    decimal_separator: char,
+    group_separator: char,
+) -> Result<(f64, Option<String>), String> {
     let (f, options) = parse_number(value, decimal_separator, group_separator)?;
     if options.is_scientific {
-        return Ok((f, Some(scientific_format.to_string())));
+        return Ok((f, Some(SCIENTIFIC_FORMAT.to_string())));
     }
     if options.has_commas {
         if options.decimal_digits > 0 {

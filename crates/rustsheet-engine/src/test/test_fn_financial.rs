@@ -23,7 +23,7 @@ fn fn_arguments() {
 
     model._set("E1", "=RATE()");
     model._set("E2", "=RATE(1,1)");
-    model._set("E3", "=RATE(1,1,1,1,1,1)");
+    model._set("E3", "=RATE(1,1,1,1,1,1,1)");
 
     model.evaluate();
 
@@ -46,6 +46,29 @@ fn fn_arguments() {
     assert_eq!(model._get_text("E1"), *"#ERROR!");
     assert_eq!(model._get_text("E2"), *"#ERROR!");
     assert_eq!(model._get_text("E3"), *"#ERROR!");
+}
+
+// RATE takes 3 to 6 arguments; the sixth is the guess (T-1050, probes-numeric/m9-fin-irr-rate).
+#[test]
+fn fn_rate_guess_argument() {
+    let mut model = new_empty_model();
+    model._set("A1", "=RATE(10,-100,800,0,0,0.1)");
+    model._set("A2", "=RATE(10,-100,800)");
+    // A different guess still reaches the same root; Excel's exact digits are T-0916's job.
+    model._set("A3", "=RATE(10,-100,800,0,0,0.5)");
+    model.evaluate();
+
+    let Ok(CellValue::Number(with_guess)) = model.get_cell_value_by_ref("Sheet1!A1") else {
+        panic!("RATE with a guess should be a number");
+    };
+    let Ok(CellValue::Number(without_guess)) = model.get_cell_value_by_ref("Sheet1!A2") else {
+        panic!("RATE without a guess should be a number");
+    };
+    assert!((with_guess - without_guess).abs() < 1e-9);
+    let Ok(CellValue::Number(other_guess)) = model.get_cell_value_by_ref("Sheet1!A3") else {
+        panic!("RATE with another guess should be a number");
+    };
+    assert!((other_guess - without_guess).abs() < 1e-6);
 }
 
 #[test]
@@ -488,4 +511,27 @@ fn fn_npv_whole_column_sees_a_spill_beyond_the_used_area() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "10.652588311");
     assert_eq!(model.evaluation.restarts_in_last_evaluation, 0);
+}
+
+// Excel rejects a workbook whose XNPV call has fewer than three arguments
+// (docs/excel-semantics/syntax.md, "Minimum argument counts"); we give #ERROR! and must not panic
+// (T-0275). The three-argument value is probes/xnpv-argument-count D1; the four-argument row is
+// only a no-panic check (no oracle evidence: such a workbook would not load either).
+#[test]
+fn fn_xnpv_argument_count() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "3");
+    model._set("B2", "4");
+    model._set("D1", "=XNPV(1,A1:B2)");
+    model._set("D2", "=XNPV(1)");
+    model._set("D3", "=XNPV(1,A1:B2,A1:B2,A1:B2)");
+    model._set("D4", "=XNPV(1,A1:B2,A1:B2)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"#ERROR!");
+    assert_eq!(model._get_text("D2"), *"#ERROR!");
+    assert_eq!(model._get_text("D3"), *"#ERROR!");
+    assert_eq!(model._get_text("D4"), *"9.962109338");
 }
