@@ -3,7 +3,7 @@ id: T-1250
 title: "Probe an Excel-saved workbook's _xlnm. built-in names (Print_Area, Print_Titles, _FilterDatabase, Criteria) on load and save"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,8 @@ T-1193 maps only Print_Area, Print_Titles and _FilterDatabase (prefix dropped on
 
 ## Out of scope
 -
+
+## Outcome
+- The export no longer panics on a defined name scoped to a missing sheet: `get_workbook_xml` returns `XlsxError::Workbook`, the file-wide `unwrap_used` allow is gone, and a unit test covers it.
+- Evidence criterion only partly met: no Excel-saved workbook with `_xlnm.` names exists in the repo or the oracle (excel-graph cannot save workbooks). The open questions are recorded in `docs/excel-semantics/xlsx-storage.md`; `BUILT_IN_NAMES` stays at three names. A desktop-Excel save is needed (M14, Phase 4, decision 0039).
+- Eval delta: none.
