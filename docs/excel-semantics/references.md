@@ -877,7 +877,7 @@ written, as it does in every formula (syntax.md "FORMULATEXT keeps every written
 excel-graph 2026-10-09, T-1178; engine: T-1240).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134
+Tasks: T-1132, T-1134, T-1178, T-1240
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;

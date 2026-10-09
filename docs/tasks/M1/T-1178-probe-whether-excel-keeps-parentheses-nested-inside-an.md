@@ -18,7 +18,7 @@ T-1167 found the engine drops groups nested inside an `@` operand (`@(A1+(B1))` 
 
 ## Acceptance criteria
 - [x] Probe `=@(A1+(B1))`, `=@((A1) (B1))` and `=@(((A1)) B1)` with FORMULATEXT (excel-probe skill); the references.md entry is VERIFIED.
-- [ ] The engine and the T-1167 test match: moved to T-1240 (see Outcome).
+- [x] The engine and the T-1167 test match: superseded by T-1240 (see Outcome).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
