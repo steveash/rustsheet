@@ -3,7 +3,7 @@ id: T-1065
 title: "Multi-area defined-name bodies such as Print_Area (SPEC-0004 step 5)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
