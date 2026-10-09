@@ -3,7 +3,7 @@ id: T-1231
 title: "Called LET name or LAMBDA parameter bound to a union is #REF!, not #VALUE! (follow-up of T-1224)"
 milestone: M1
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/let-name-call-forms H1, H2, H13 (excel-graph 2026-10-09, T-1224): `=LET(f
 
 ## Out of scope
 -
+
+## Outcome
+A LET name or LAMBDA parameter bound to a union and called (`f(2)`, `f()`) is now `#REF!` (model.rs, NamedFunctionKind). Eval: probes/let-name-call-forms H1, H2, H13 left the baseline (-3 known failures).

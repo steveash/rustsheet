@@ -302,7 +302,7 @@ Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name b
 an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it, H15:H17); the bare cell returns an error type the oracle client cannot
 decode (probes/let-name-call-forms description). UNVERIFIED: the engine's mapping of an empty element to `#NAME?` (`called_value` in
 lambda.rs). A workbook holding `=LAMBDA([f],f(2))()` (an omitted optional parameter) is refused by Excel for the web (`FileCorruptTryRepair`,
-`unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the engine gives `#VALUE!` for the union forms (T-1231) and `#NAME?`/`#SPILL!` for the
+`unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the union forms (H1, H2, H13) are `#REF!` as in Excel since T-1231; the engine gives `#NAME?`/`#SPILL!` for the
 XLOOKUP/TAKE/DROP/TRIMRANGE forms (T-1232); the rest match.
 A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
 `#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
