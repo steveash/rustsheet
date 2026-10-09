@@ -3,7 +3,7 @@ id: T-1207
 title: "Probe COUNTBLANK of names whose body is an IF, CHOOSE or LET returning a scalar"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1199 (probes/countblank-formula-names) covers error, scalar and reference bodi
 
 ## Out of scope
 - Evaluating the name body once instead of twice.
+
+## Outcome
+New probe `probes/countblank-formula-names-b` (excel-graph, 13 cells): IF and CHOOSE bodies picking a scalar are `#VALUE!`, an error is itself, a range or single cell counts as a reference. The engine counted a scalar (0, or 1 for `""`); `fn_countblank` now returns `#VALUE!` for it. LET bodies could not be probed (the case builder does not write `_xlpm.` in name bodies); filed as T-1209. Eval: probes known failures 350 -> 350 (4 cells fixed within the new case, 0 regressions).
