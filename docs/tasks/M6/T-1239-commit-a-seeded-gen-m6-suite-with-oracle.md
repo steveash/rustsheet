@@ -19,7 +19,7 @@ accepted by excel-graph and the engine passed 957/1000 cells. Date and time miss
 `YEARFRAC(11194,<text or blank>)` (Excel -31.65 in context, ours `#NUM!`), `DATEDIF(<cell>,36657,"MD")` (ours `#NUM!`),
 `DATE(<cell>,NETWORKDAYS(<cell>,9857),<x>)` (ours `#NUM!`), `SUM(WORKDAY(MROUND(..),..,COUNTIF(..)))` (Excel 0, ours `#NUM!`),
 `TIME(<cell>,8,34)` and `WEEKNUM(27631,NETWORKDAYS.INTL(..,6))` (Excel `#NUM!`, ours `#VALUE!`). Many other misses are M5
-gaps already filed (FILTERXML, PHONETIC, BAHTTEXT, DBCS, PERCENTOF, MULTINOMIAL). Decide whether to commit after T-1238
+gaps already filed (FILTERXML, PHONETIC, BAHTTEXT, DBCS, PERCENTOF, MULTINOMIAL). T-1238's seed-17 sample also aborted the engine on `BASE(245,30,1E+15)` (T-1243, P0): land that fix first. Decide whether to commit after T-1238
 lands (so the suite also covers lookup) or now for the date half.
 
 ## Acceptance criteria

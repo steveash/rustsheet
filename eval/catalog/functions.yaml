@@ -18,6 +18,8 @@
 # `hard: true`. `cell: true` on a `range` param makes the generator pass one cell, not a range (ISFORMULA lifts over
 # a range, so a range would spill into the next formula). `always: true` on an optional param means the generator
 # never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
+# `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
+# vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself).
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report). Most
@@ -32,7 +34,7 @@
 # The eval harness reads names, milestones, scope and oracle from the generated eval/catalog/scope.json
 # (decision 0040): after editing, run `cd tools && uv run rustsheet-catalog-view`.
 # Entries with `params` are generator-ready signatures (the M2 block, then the M5 math (T-1082), text (T-1087),
-# logical, information and web (T-1088) ones and the M6 date and time ones (T-1090) in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
+# logical, information and web (T-1088) ones and the M6 date and time (T-1090) and lookup (T-1238) ones in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
 #   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
 #              statistical, financial, engineering, database, cube (M9). Compatibility functions take
 #              their family (CEILING/FLOOR math, the rest statistical).
@@ -352,7 +354,18 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: ADDRESS, category: lookup, milestone: M6, scope: in }
+  - name: ADDRESS
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: text
+    params:
+      - { name: row_num, mode: value, type: number, domain: { int: true, min: 1, max: 20 } }
+      - { name: column_num, mode: value, type: number, domain: { int: true, min: 1, max: 30 } }
+      - { name: abs_num, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 4 } }
+      - { name: a1, mode: value, type: bool, optional: true }
+      - { name: sheet_text, mode: value, type: text, optional: true, domain: { enum: [Data, Other Sheet] } }
   - name: AGGREGATE
     category: math
     milestone: M5
@@ -372,7 +385,14 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: text, mode: value, type: text }]
-  - { name: AREAS, category: lookup, milestone: M6, scope: in }
+  - name: AREAS
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.05
+    returns: number
+    params:
+      - { name: reference, mode: range, type: any }
   - name: ARRAYTOTEXT
     category: text
     milestone: M5
@@ -526,9 +546,33 @@ functions:
   - { name: CHISQ.INV.RT, category: statistical, milestone: M9, scope: in }
   - { name: CHISQ.TEST, category: statistical, milestone: M9, scope: in }
   - { name: CHITEST, category: statistical, milestone: M9, scope: in }
-  - { name: CHOOSE, category: lookup, milestone: M6, scope: in }
-  - { name: CHOOSECOLS, category: lookup, milestone: M6, scope: in }
-  - { name: CHOOSEROWS, category: lookup, milestone: M6, scope: in }
+  - name: CHOOSE
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 1.5
+    returns: any
+    params:
+      - { name: index_num, mode: value, type: number, domain: { int: true, min: 1, max: 3 } }
+      - { name: value, mode: value, type: any, repeat: true, min: 1, max: 254 }
+  - name: CHOOSECOLS
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: col_num, mode: value, type: number, repeat: true, min: 1, max: 254, domain: { int: true, min: -2, max: 3 } }
+  - name: CHOOSEROWS
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: row_num, mode: value, type: number, repeat: true, min: 1, max: 254, domain: { int: true, min: -3, max: 6 } }
   - name: CLEAN
     category: text
     milestone: M5
@@ -545,8 +589,22 @@ functions:
     returns: number
     params:
       - { name: text, mode: value, type: text }
-  - { name: COLUMN, category: lookup, milestone: M6, scope: in }
-  - { name: COLUMNS, category: lookup, milestone: M6, scope: in }
+  - name: COLUMN
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.8
+    returns: number
+    params:
+      - { name: reference, mode: range, type: any, optional: true, cell: true }
+  - name: COLUMNS
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: array, mode: array, type: any }
   - name: COMBIN
     category: math
     milestone: M5
@@ -913,7 +971,14 @@ functions:
   - { name: FORECAST.ETS.SEASONALITY, category: statistical, milestone: M9, scope: in }
   - { name: FORECAST.ETS.STAT, category: statistical, milestone: M9, scope: in }
   - { name: FORECAST.LINEAR, category: statistical, milestone: M9, scope: in }
-  - { name: FORMULATEXT, category: lookup, milestone: M6, scope: in }
+  - name: FORMULATEXT
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.05
+    returns: text
+    params:
+      - { name: reference, mode: range, type: any, cell: true }
   - { name: FREQUENCY, category: statistical, milestone: M9, scope: in }
   - { name: FTEST, category: statistical, milestone: M9, scope: in }
   - { name: FV, category: financial, milestone: M9, scope: in }
@@ -935,6 +1000,7 @@ functions:
     params: [{ name: number, mode: array, type: number, repeat: true, min: 1, max: 255 }]
   - { name: GEOMEAN, category: statistical, milestone: M9, scope: in }
   - { name: GESTEP, category: engineering, milestone: M9, scope: in }
+  # No signature: GETPIVOTDATA reads a pivot table, which generated workbooks do not have (T-1238).
   - { name: GETPIVOTDATA, category: lookup, milestone: M6, scope: in }
   - { name: GROUPBY, category: lookup, milestone: M7, scope: in }
   - { name: GROWTH, category: statistical, milestone: M9, scope: in }
@@ -951,7 +1017,15 @@ functions:
     params:
       - { name: serial_number, mode: value, type: number }
   - { name: HSTACK, category: lookup, milestone: M7, scope: in }
-  - { name: HYPERLINK, category: lookup, milestone: M6, scope: in }
+  - name: HYPERLINK
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: link_location, mode: value, type: text, domain: { enum: ["http://example.com", "#Data!A1", "mailto:a@example.com"] } }
+      - { name: friendly_name, mode: value, type: any, optional: true }
   - { name: HYPGEOM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: HYPGEOMDIST, category: statistical, milestone: M9, scope: in }
   # Lifts over a range (probes/info-logic-argument-modes A16).
@@ -1002,7 +1076,16 @@ functions:
   - { name: IMSUB, category: engineering, milestone: M9, scope: in }
   - { name: IMSUM, category: engineering, milestone: M9, scope: in }
   - { name: IMTAN, category: engineering, milestone: M9, scope: in }
-  - { name: INDIRECT, category: lookup, milestone: M6, scope: in }
+  # ref_text names Data cells only: a Calc reference could point the formula at itself (a circular reference).
+  - name: INDIRECT
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 1.5
+    returns: any
+    params:
+      - { name: ref_text, mode: value, type: text, domain: { enum: ["Data!A1", "Data!B3", "Data!$C$5", "Data!A2:A4", "Data!E12", "Data!Z99"] } }
+      - { name: a1, mode: value, type: bool, optional: true }
   - { name: INFO, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
   - name: INT
     category: math
@@ -1188,7 +1271,16 @@ functions:
   - { name: LOGNORM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: LOGNORM.INV, category: statistical, milestone: M9, scope: in }
   - { name: LOGNORMDIST, category: statistical, milestone: M9, scope: in }
-  - { name: LOOKUP, category: lookup, milestone: M6, scope: in }
+  - name: LOOKUP
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 1
+    returns: any
+    params:
+      - { name: lookup_value, mode: value, type: any }
+      - { name: lookup_vector, mode: range, type: any, vector: true }
+      - { name: result_vector, mode: range, type: any, optional: true, vector: true }
   - { name: MAKEARRAY, category: logical, milestone: M7, scope: in }
   - { name: MAP, category: logical, milestone: M7, scope: in }
   - { name: MAXA, category: statistical, milestone: M9, scope: in }
@@ -1350,7 +1442,18 @@ functions:
   - { name: ODDFYIELD, category: financial, milestone: M9, scope: in }
   - { name: ODDLPRICE, category: financial, milestone: M9, scope: in }
   - { name: ODDLYIELD, category: financial, milestone: M9, scope: in }
-  - { name: OFFSET, category: lookup, milestone: M6, scope: in }
+  - name: OFFSET
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 2
+    returns: any
+    params:
+      - { name: reference, mode: range, type: any }
+      - { name: rows, mode: value, type: number, domain: { int: true, min: -1, max: 6 } }
+      - { name: cols, mode: value, type: number, domain: { int: true, min: -1, max: 3 } }
+      - { name: height, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
+      - { name: width, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
   - { name: PDURATION, category: financial, milestone: M9, scope: in }
   - { name: PEARSON, category: statistical, milestone: M9, scope: in }
   - { name: PERCENTILE, category: statistical, milestone: M9, scope: in }
@@ -1518,8 +1621,22 @@ functions:
     params:
       - { name: number, mode: value, type: number, domain: { int: true, min: 0, max: 3999 } }
       - { name: form, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
-  - { name: ROW, category: lookup, milestone: M6, scope: in }
-  - { name: ROWS, category: lookup, milestone: M6, scope: in }
+  - name: ROW
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.8
+    returns: number
+    params:
+      - { name: reference, mode: range, type: any, optional: true, cell: true }
+  - name: ROWS
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: array, mode: array, type: any }
   - { name: RRI, category: financial, milestone: M9, scope: in }
   - { name: RSQ, category: statistical, milestone: M9, scope: in }
   - { name: RTD, category: lookup, milestone: M6, scope: out, reason: "real-time data server (decision 0027)" }
@@ -1790,10 +1907,26 @@ functions:
   - { name: TODAY, category: date, milestone: M2, scope: in }
   - { name: TOROW, category: lookup, milestone: M7, scope: in }
   - { name: TRANSLATE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
-  - { name: TRANSPOSE, category: lookup, milestone: M6, scope: in }
+  - name: TRANSPOSE
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
   - { name: TREND, category: statistical, milestone: M9, scope: in }
   - { name: TRIMMEAN, category: statistical, milestone: M9, scope: in }
-  - { name: TRIMRANGE, category: lookup, milestone: M6, scope: in }
+  - name: TRIMRANGE
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.05
+    returns: any
+    params:
+      - { name: range, mode: range, type: any }
+      - { name: trim_rows, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
+      - { name: trim_cols, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
   - name: "TRUE"
     category: logical
     milestone: M5
@@ -1909,8 +2042,30 @@ functions:
   - { name: WRAPCOLS, category: lookup, milestone: M7, scope: in }
   - { name: WRAPROWS, category: lookup, milestone: M7, scope: in }
   - { name: XIRR, category: financial, milestone: M9, scope: in }
-  - { name: XLOOKUP, category: lookup, milestone: M6, scope: in }
-  - { name: XMATCH, category: lookup, milestone: M6, scope: in }
+  - name: XLOOKUP
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 1.5
+    returns: any
+    params:
+      - { name: lookup_value, mode: value, type: any }
+      - { name: lookup_array, mode: range, type: any, vector: true }
+      - { name: return_array, mode: range, type: any }
+      - { name: if_not_found, mode: value, type: any, optional: true }
+      - { name: match_mode, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 2 } }
+      - { name: search_mode, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+  - name: XMATCH
+    category: lookup
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: lookup_value, mode: value, type: any }
+      - { name: lookup_array, mode: range, type: any, vector: true }
+      - { name: match_mode, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 2 } }
+      - { name: search_mode, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
   - { name: XNPV, category: financial, milestone: M9, scope: in }
   # Like AND: text and blanks in a range or array are skipped, direct text is coerced, a lone text cell is #VALUE! (probes/info-logic-argument-modes A1:A5, -2 A10:A11); XOR() is refused (T-1088).
   - name: XOR
