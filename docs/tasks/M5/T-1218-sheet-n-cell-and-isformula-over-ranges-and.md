@@ -3,7 +3,7 @@ id: T-1218
 title: "SHEET, N, CELL and ISFORMULA over ranges and arrays as excel-graph gives them"
 milestone: M5
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
