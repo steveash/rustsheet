@@ -3,7 +3,7 @@ id: T-1199
 title: "COUNTBLANK of a formula-bodied name that evaluates to an error is #VALUE! (engine 0)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
