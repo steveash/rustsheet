@@ -11,7 +11,17 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
+        let value = self.evaluate_node_in_context(arg, cell);
+        self.freq_values_of(value, cell)
+    }
+
+    /// The numbers FREQUENCY counts in the evaluated argument `value`.
+    fn freq_values_of(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        match value {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(e) => Err(e),
@@ -49,7 +59,10 @@ impl Model {
                 RefArg::Ranges(areas) => self
                     .values_from_areas(&areas, cell)
                     .map(|v| v.into_iter().flatten().collect()),
-                RefArg::Value(error) => Err(error),
+                // A LET variable, IF or name that holds an array or a number is counted like
+                // any other data_array; only an error is the result (T-1065 fidelity review).
+                RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
+                RefArg::Value(value) => self.freq_values_of(value, cell),
             }
         } else {
             self.collect_freq_values(&args[0], cell)

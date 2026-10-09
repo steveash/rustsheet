@@ -14,7 +14,8 @@
     "ch": "=CHOOSE(2,Sheet1!$A$1,(Sheet1!$A$1,Sheet1!$B$2))",
     "arr": "={1,2,3}",
     "total": "=SUM(Sheet1!$A$1:$A$3)",
-    "bad": "=1+\"a\""
+    "bad": "=1+\"a\"",
+    "aa": "=arr"
   },
   "sheets": [
     {
@@ -41,7 +42,11 @@
         "H15": "=AGGREGATE(14,0,IF(TRUE,(A1,B2)),2)",
         "H16": "=ISREF(alias)",
         "H17": "=AREAS(alias)",
-        "H18": "=COUNT(ch)"
+        "H18": "=COUNT(ch)",
+        "H19": "=SUM(FREQUENCY(aa,2))",
+        "H20": "=ROWS(FREQUENCY(aa,2))",
+        "H21": "=LET(x,{1,2,3},SUM(FREQUENCY(x,2)))",
+        "H22": "=SUM(FREQUENCY(IF(TRUE,{1,2,3}),2))"
       }
     }
   ],
@@ -64,6 +69,10 @@
     "Sheet1!H15",
     "Sheet1!H16",
     "Sheet1!H17",
-    "Sheet1!H18"
+    "Sheet1!H18",
+    "Sheet1!H19",
+    "Sheet1!H20",
+    "Sheet1!H21",
+    "Sheet1!H22"
   ]
 }

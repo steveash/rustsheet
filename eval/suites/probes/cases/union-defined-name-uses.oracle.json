@@ -42,9 +42,25 @@
     "t": "n",
     "v": 2.0
    },
+   "H19": {
+    "t": "n",
+    "v": 3.0
+   },
    "H2": {
     "t": "n",
     "v": 5.0
+   },
+   "H20": {
+    "t": "n",
+    "v": 2.0
+   },
+   "H21": {
+    "t": "n",
+    "v": 3.0
+   },
+   "H22": {
+    "t": "n",
+    "v": 3.0
    },
    "H3": {
     "t": "n",
@@ -78,9 +94,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "a25639d614df3538b2dfc2d4259eb61a4e89df1ac0f8642b1d600d8133a4d784",
+  "input_sha256": "974f64eb73671272bd3bf3ac69cb7c304ed473f612f586e4dd9fa2780becf449",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T00:23:33+00:00",
+  "produced_at": "2026-10-09T00:31:23+00:00",
   "version": null
  }
 }

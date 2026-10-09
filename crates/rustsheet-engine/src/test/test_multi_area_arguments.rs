@@ -488,6 +488,7 @@ fn union_bodied_names_stand_for_their_areas() {
         .define_name("xs", None, "Data!$A$1,Sheet1!$A$1")
         .unwrap();
     model.define_name("arr", None, "{1,2,3}").unwrap();
+    model.define_name("arr_alias", None, "arr").unwrap();
     results(
         &mut model,
         &[
@@ -505,6 +506,10 @@ fn union_bodied_names_stand_for_their_areas() {
             ("H12", "=AGGREGATE(14,0,IF(TRUE,(A1,B2)),2)", "1"),
             // A name whose body is not a union keeps its path (probes/union-defined-name-uses H9).
             ("H13", "=ROWS(FREQUENCY(arr,2))", "2"),
+            // Behind another name, a LET variable or IF, an array is counted too (T-1196).
+            ("H14", "=SUM(FREQUENCY(arr_alias,2))", "3"),
+            ("H15", "=LET(x,{1,2,3},SUM(FREQUENCY(x,2)))", "3"),
+            ("H16", "=SUM(FREQUENCY(IF(TRUE,{1,2,3}),2))", "3"),
         ],
     );
 }

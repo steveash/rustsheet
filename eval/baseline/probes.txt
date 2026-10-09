@@ -290,7 +290,7 @@ C	probes/tiny-vs-zero-criteria.case.json	75
 C	probes/typed-paren-number-input.case.json	24
 C	probes/union-accepted.case.json	9
 C	probes/union-cut-precedence.case.json	15
-C	probes/union-defined-name-uses.case.json	18
+C	probes/union-defined-name-uses.case.json	22
 C	probes/union-defined-name.case.json	5
 C	probes/union-neg-operand.case.json	2
 C	probes/union-operand-double-minus.case.json	2

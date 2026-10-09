@@ -3,7 +3,7 @@ id: T-1196
 title: "FREQUENCY data_array: a LET variable or IF bound to an array is counted, not returned"
 milestone: M1
 lane: functions-stat
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,8 +24,14 @@ like `collect_freq_values` does. Add probe cells (LET, IF and CHOOSE returning a
 oracle values.
 
 ## Acceptance criteria
-- [ ] `=LET(x,{1,2,3},SUM(FREQUENCY(x,2)))` is 3 and the new probe cells match the oracle; baseline updated.
-- [ ] `make check` green; reviewers approve.
+- [x] `=LET(x,{1,2,3},SUM(FREQUENCY(x,2)))` is 3 and the new probe cells match the oracle; baseline updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - bins_array (single-reference path, unchanged).
+
+## Outcome
+Fixed in the T-1065 PR at the fidelity reviewer's request (a name behind a name reached the same arm):
+`fn_frequency` now counts a non-error value from `evaluate_reference_arg` via `freq_values_of`.
+probes/union-defined-name-uses H19:H22 (excel-graph, 2026-10-09: `aa` = `=arr` 3 and ROWS 2, the LET
+form 3, the IF form 3) pass.
