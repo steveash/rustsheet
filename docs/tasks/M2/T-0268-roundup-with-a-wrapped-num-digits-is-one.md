@@ -3,7 +3,7 @@ id: T-0268
 title: "ROUNDUP with a wrapped num_digits is one ulp above the decimal result (3 probes known failures)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
