@@ -297,7 +297,7 @@ value, the call gives odd results, without the arguments mattering: a number or 
 Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
 Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name bound to a union is `#REF!` too (`=LET(f,(A1,A2),f(2))`,
 `=LET(f,(A1,A2),f())`, `=LAMBDA(f,f(2))((A1,A2))`), as is one bound to `XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,1)`, `DROP(A1:A3,1)`,
-`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
+`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; `bind_argument` (functions/logical/let.rs) binds XLOOKUP, TAKE, DROP and TRIMRANGE as the reference they pick (T-1232; whether the bound name is ISREF is not probed); erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
 (H5:I5), `=LET(f,LAMBDA(x,x+1),f(1/0))` is `#DIV/0!`). `=LAMBDA(f,f(2))()` is a call with too few arguments, not an empty element: it is
 an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it, H15:H17); the bare cell returns an error type the oracle client cannot
 decode (probes/let-name-call-forms description). UNVERIFIED: the engine's mapping of an empty element to `#NAME?` (`called_value` in
