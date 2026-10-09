@@ -11,8 +11,8 @@ depends_on: [T-0040]
 ---
 
 ## Goal
-`rustsheet-gen --milestone M6` can generate formulas for the lookup & reference and date & time functions (39 in scope): each in-scope catalog
-entry with milestone M6 has a full signature (`returns`, `params` with `mode`, `type`, `domain`, `prior`).
+`rustsheet-gen --milestone M6` can generate formulas for the date & time functions (20 in scope; lookup & reference split to T-1238): each in-scope catalog
+date entry with milestone M6 has a full signature (`returns`, `params` with `mode`, `type`, `domain`, `prior`).
 
 ## Context
 T-0040 cataloged every Excel function, but only the 35 M2 entries carry signatures; the others
