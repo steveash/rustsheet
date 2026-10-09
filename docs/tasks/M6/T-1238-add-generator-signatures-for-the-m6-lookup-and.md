@@ -36,7 +36,9 @@ literal (as ISFORMULA did). Extend test_generator.py's `emitted` checks.
 reads a pivot table, which generated workbooks lack; the catalog says so). INDIRECT's ref_text is an enum of Data
 references (a Calc one could be circular). The generator gained `vector: true` (a one-column range for the LOOKUP,
 XLOOKUP and XMATCH lookup vectors), tested by test_vector_params_get_one_column; test_generator.py checks all 18 are
-emitted. OFFSET and INDIRECT stay generated: the harness skips only RAND* and the clock as volatile. Modes come from the
+emitted. Spilling results (TRANSPOSE, CHOOSECOLS, CHOOSEROWS, TRIMRANGE,
+OFFSET) are generated as is: at the top of a formula they spill into the next one, which Excel and the engine both score
+as `#SPILL!`, and nested they feed their consumer. OFFSET and INDIRECT stay generated: the harness skips only RAND* and the clock as volatile. Modes come from the
 new probe probes/lookup-argument-modes (117 cells, excel-graph 2026-10-09): every scalar argument lifts, vector and array
 arguments take array literals whole (lookup.md "Lookup and reference function argument modes"). A seeded sample
 (`rustsheet-gen --milestone M6 --count 25 --seed 17`, not committed) was all accepted by excel-graph (0 failures); one

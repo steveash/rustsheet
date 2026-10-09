@@ -297,6 +297,8 @@ Key schema elements:
   `enum` lists the usual text values of a parameter (CELL's info_type; T-1088), soft like `int`.
 - `cell: true` (a `range` parameter): the generator passes one cell. ISFORMULA lifts over a range, which would spill into
   the next formula, and Excel refuses a literal (T-1088).
+- `vector: true` (a `range` parameter): the generator passes a one-column range. LOOKUP and the XLOOKUP/XMATCH lookup
+  vectors give only `#N/A` or `#VALUE!` for a 2-D range, which would hide the search itself (T-1238).
 - `always: true` (an optional parameter): the generator never omits it. CELL without a reference reads the cell last
   changed, which no oracle value can match.
 - `edge_classes`: named, function-specific value or structure generators. They join the
