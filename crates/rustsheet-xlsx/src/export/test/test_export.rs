@@ -441,3 +441,50 @@ fn test_union_defined_name_round_trips_through_export() {
     model.evaluate();
     assert_eq!(model.get_formatted_cell_value(0, 1, 3).unwrap(), "6");
 }
+
+// A sheet-local Print_Area is `_xlnm.Print_Area` with `localSheetId` in workbook.xml and plain
+// `Print_Area` in formulas (probes/multiarea-printarea, T-1193).
+#[test]
+fn test_sheet_local_print_area_round_trips_with_xlnm_prefix() {
+    let mut model = new_empty_model();
+    model.add_sheet("Other").unwrap();
+    model.set_user_input(0, 1, 1, "1".to_string()).unwrap();
+    model.set_user_input(0, 2, 2, "5".to_string()).unwrap();
+    model
+        .define_name("Print_Area", Some(0), "Sheet1!$A$1,Sheet1!$B$2")
+        .unwrap();
+    model
+        .set_user_input(0, 1, 8, "=SUM(Print_Area)".to_string())
+        .unwrap();
+    model
+        .set_user_input(0, 2, 8, "=AREAS(Print_Area)".to_string())
+        .unwrap();
+    model.evaluate();
+    let temp_file_name = "temp_file_test_sheet_local_print_area.xlsx";
+    save_to_xlsx(&model, temp_file_name).unwrap();
+
+    let file = fs::File::open(temp_file_name).unwrap();
+    let mut archive = zip::ZipArchive::new(file).unwrap();
+    let mut workbook_xml = String::new();
+    std::io::Read::read_to_string(
+        &mut archive.by_name("xl/workbook.xml").unwrap(),
+        &mut workbook_xml,
+    )
+    .unwrap();
+    drop(archive);
+    assert!(
+        workbook_xml.contains(
+            "<definedName name=\"_xlnm.Print_Area\" localSheetId=\"0\">Sheet1!$A$1,Sheet1!$B$2</definedName>"
+        ),
+        "{workbook_xml}"
+    );
+
+    let mut model = load_from_xlsx(temp_file_name, "en", "UTC", "en").unwrap();
+    fs::remove_file(temp_file_name).unwrap();
+    let defined_names = model.get_defined_name_list();
+    assert_eq!(defined_names[0].0, "Print_Area");
+    assert_eq!(defined_names[0].1, Some(0));
+    model.evaluate();
+    assert_eq!(model.get_formatted_cell_value(0, 1, 8).unwrap(), "6");
+    assert_eq!(model.get_formatted_cell_value(0, 2, 8).unwrap(), "2");
+}

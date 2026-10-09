@@ -37,6 +37,7 @@ use rustsheet_engine::types::{SheetState, Workbook};
 
 use super::escape::escape_xml;
 use super::xml_constants::XML_DECLARATION;
+use crate::util::name_to_xlsx;
 
 pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> String {
     // sheets
@@ -83,8 +84,8 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
     };
     let mut defined_names_str: Vec<String> = vec![];
     for defined_name in &workbook.defined_names {
-        let name = &defined_name.name;
-        let name = escape_xml(name);
+        let name = name_to_xlsx(&defined_name.name);
+        let name = escape_xml(&name);
         let local_sheet_id = if let Some(sheet_id) = defined_name.sheet_id {
             // In Excel the localSheetId is actually the index of the sheet.
             let excel_local_sheet_id = sheet_id_to_sheet_index.get(&sheet_id).unwrap();
