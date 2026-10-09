@@ -3,7 +3,7 @@ id: T-1217
 title: "MULTINOMIAL loops once per unit of its argument: bound the work"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
