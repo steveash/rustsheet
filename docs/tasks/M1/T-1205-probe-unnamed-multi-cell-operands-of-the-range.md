@@ -24,4 +24,4 @@ T-1173 made `:` join any same-sheet operands into a bounding box and made the le
 - Corner order and cross-sheet operands.
 
 ## Outcome
-Two probe cases (10 cells, excel-graph sidecars): unnamed multi-cell operands of `:` join into a bounding box, and undefined or column-spelled names before `:` give `#NAME?` (the formula is accepted). The engine already matched every cell after T-1173, so no engine change. references.md updated (the UNVERIFIED markers dropped). Eval delta: +10 checked cells, all pass, 0 regressions. No follow-up.
+Two probe cases (11 cells, excel-graph sidecars): unnamed multi-cell operands of `:` join into a bounding box, and undefined or column-spelled names before `:` give `#NAME?` (the formula is accepted). The engine already matched every cell after T-1173, so no engine change. references.md updated (the UNVERIFIED markers dropped). Eval delta: +11 checked cells, all pass, 0 regressions. No follow-up.

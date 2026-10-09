@@ -24,7 +24,8 @@
         "A6": "=ISREF(OFFSET(B1,0,0,2,1):B3)",
         "A7": "=SUM(xx:B3)",
         "A8": "=ISREF(xx:B3)",
-        "A9": "=SUM(B3:xx)"
+        "A9": "=SUM(B3:xx)",
+        "A10": "=xx:B3"
       }
     }
   ],
@@ -38,6 +39,7 @@
     "Sheet1!A6",
     "Sheet1!A7",
     "Sheet1!A8",
-    "Sheet1!A9"
+    "Sheet1!A9",
+    "Sheet1!A10"
   ]
 }
