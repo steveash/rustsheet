@@ -3,7 +3,7 @@ id: T-1210
 title: "A table reference whose table range fails to parse is a parse error, not a panic"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
