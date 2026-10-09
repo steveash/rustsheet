@@ -32,7 +32,7 @@
 # The eval harness reads names, milestones, scope and oracle from the generated eval/catalog/scope.json
 # (decision 0040): after editing, run `cd tools && uv run rustsheet-catalog-view`.
 # Entries with `params` are generator-ready signatures (the M2 block, then the M5 math (T-1082), text (T-1087),
-# logical, information and web (T-1088) ones in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
+# logical, information and web (T-1088) ones and the M6 date and time ones (T-1090) in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
 #   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
 #              statistical, financial, engineering, database, cube (M9). Compatibility functions take
 #              their family (CEILING/FLOOR math, the rest statistical).
@@ -634,12 +634,54 @@ functions:
   - { name: CUBEVALUE, category: cube, milestone: M9, scope: out, reason: "OLAP cube server (decision 0027)" }
   - { name: CUMIPMT, category: financial, milestone: M9, scope: in }
   - { name: CUMPRINC, category: financial, milestone: M9, scope: in }
-  - { name: DATE, category: date, milestone: M6, scope: in }
-  - { name: DATEDIF, category: date, milestone: M6, scope: in }
-  - { name: DATEVALUE, category: date, milestone: M6, scope: in }
+  - name: DATE
+    category: date
+    milestone: M6
+    scope: in
+    prior: 3
+    returns: number
+    params:
+      - { name: year, mode: value, type: number, domain: { int: true, min: 1900, max: 2100 } }
+      - { name: month, mode: value, type: number, domain: { int: true, min: 1, max: 12 } }
+      - { name: day, mode: value, type: number, domain: { int: true, min: 1, max: 31 } }
+  - name: DATEDIF
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: unit, mode: value, type: text, domain: { enum: [Y, M, D, MD, YM, YD] } }
+  - name: DATEVALUE
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: date_text, mode: value, type: text, domain: { enum: ["1/15/2024", "2023-03-01", "15-Mar-2021", "March 5, 2020", "12/31/1899"] } }
   - { name: DAVERAGE, category: database, milestone: M9, scope: in }
-  - { name: DAYS, category: date, milestone: M6, scope: in }
-  - { name: DAYS360, category: date, milestone: M6, scope: in }
+  - name: DAYS
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: number
+    params:
+      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+  - name: DAYS360
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: method, mode: value, type: bool, optional: true }
   - { name: DB, category: financial, milestone: M9, scope: in }
   - name: DBCS
     category: text
@@ -697,7 +739,16 @@ functions:
   - { name: DURATION, category: financial, milestone: M9, scope: in }
   - { name: DVAR, category: database, milestone: M9, scope: in }
   - { name: DVARP, category: database, milestone: M9, scope: in }
-  - { name: EDATE, category: date, milestone: M6, scope: in }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: EDATE
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.8
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: months, mode: value, type: number, domain: { int: true, min: -24, max: 24 } }
   - { name: EFFECT, category: financial, milestone: M9, scope: in }
   # Lifts over an array; #VALUE! for every argument on excel-graph (probes/info-logic-argument-modes-2, T-1088).
   - name: ENCODEURL
@@ -707,7 +758,16 @@ functions:
     prior: 0.05
     returns: text
     params: [{ name: text, mode: value, type: text }]
-  - { name: EOMONTH, category: date, milestone: M6, scope: in }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: EOMONTH
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.8
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: months, mode: value, type: number, domain: { int: true, min: -24, max: 24 } }
   - { name: ERF, category: engineering, milestone: M9, scope: in }
   - { name: ERF.PRECISE, category: engineering, milestone: M9, scope: in }
   - { name: ERFC, category: engineering, milestone: M9, scope: in }
@@ -882,7 +942,14 @@ functions:
   - { name: HEX2BIN, category: engineering, milestone: M9, scope: in }
   - { name: HEX2DEC, category: engineering, milestone: M9, scope: in }
   - { name: HEX2OCT, category: engineering, milestone: M9, scope: in }
-  - { name: HOUR, category: date, milestone: M6, scope: in }
+  - name: HOUR
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: serial_number, mode: value, type: number }
   - { name: HSTACK, category: lookup, milestone: M7, scope: in }
   - { name: HYPERLINK, category: lookup, milestone: M6, scope: in }
   - { name: HYPGEOM.DIST, category: statistical, milestone: M9, scope: in }
@@ -1031,7 +1098,14 @@ functions:
     returns: bool
     params: [{ name: number, mode: value, type: number }]
   - { name: ISOMITTED, category: information, milestone: M7, scope: in }
-  - { name: ISOWEEKNUM, category: date, milestone: M6, scope: in }
+  - name: ISOWEEKNUM
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.1
+    returns: number
+    params:
+      - { name: date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
   - { name: ISPMT, category: financial, milestone: M9, scope: in }
   # Takes a range whole (TRUE, no lift) and any value (ISREF(1) is FALSE; probes/info-logic-argument-modes A9:A10).
   - name: ISREF
@@ -1140,7 +1214,14 @@ functions:
       - { name: num_bytes, mode: value, type: number, domain: { int: true, min: 0, max: 8 } }
   - { name: MINA, category: statistical, milestone: M9, scope: in }
   - { name: MINIFS, category: statistical, milestone: M9, scope: in }
-  - { name: MINUTE, category: date, milestone: M6, scope: in }
+  - name: MINUTE
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: serial_number, mode: value, type: number }
   - name: MINVERSE
     category: math
     milestone: M5
@@ -1210,8 +1291,29 @@ functions:
     params: []
   - { name: NEGBINOM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: NEGBINOMDIST, category: statistical, milestone: M9, scope: in }
-  - { name: NETWORKDAYS, category: date, milestone: M6, scope: in }
-  - { name: NETWORKDAYS.INTL, category: date, milestone: M6, scope: in }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: NETWORKDAYS
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: holidays, mode: array, type: number, optional: true }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: NETWORKDAYS.INTL
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
+      - { name: holidays, mode: array, type: number, optional: true }
   - { name: NOMINAL, category: financial, milestone: M9, scope: in }
   - { name: NORM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: NORM.INV, category: statistical, milestone: M9, scope: in }
@@ -1456,7 +1558,14 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: SECOND, category: date, milestone: M6, scope: in }
+  - name: SECOND
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: number
+    params:
+      - { name: serial_number, mode: value, type: number }
   - { name: SEQUENCE, category: math, milestone: M7, scope: in }
   - name: SERIESSUM
     category: math
@@ -1658,8 +1767,24 @@ functions:
       - { name: ignore_empty, mode: value, type: bool }
       - { name: text, mode: array, type: any, repeat: true, min: 1, max: 252 }
   - { name: TEXTSPLIT, category: text, milestone: M7, scope: in }
-  - { name: TIME, category: date, milestone: M6, scope: in }
-  - { name: TIMEVALUE, category: date, milestone: M6, scope: in }
+  - name: TIME
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.8
+    returns: number
+    params:
+      - { name: hour, mode: value, type: number, domain: { int: true, min: 0, max: 23 } }
+      - { name: minute, mode: value, type: number, domain: { int: true, min: 0, max: 59 } }
+      - { name: second, mode: value, type: number, domain: { int: true, min: 0, max: 59 } }
+  - name: TIMEVALUE
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: number
+    params:
+      - { name: time_text, mode: value, type: text, domain: { enum: ["1:30 PM", "13:45:10", "6:00", "12:00:00 AM", "1/15/2024 18:30"] } }
   - { name: TINV, category: statistical, milestone: M9, scope: in }
   - { name: TOCOL, category: lookup, milestone: M7, scope: in }
   - { name: TODAY, category: date, milestone: M2, scope: in }
@@ -1737,12 +1862,50 @@ functions:
   - { name: VDB, category: financial, milestone: M9, scope: in }
   - { name: VSTACK, category: lookup, milestone: M7, scope: in }
   - { name: WEBSERVICE, category: web, milestone: M5, scope: out, reason: "calls a web service (decision 0027)" }
-  - { name: WEEKDAY, category: date, milestone: M6, scope: in }
-  - { name: WEEKNUM, category: date, milestone: M6, scope: in }
+  - name: WEEKDAY
+    category: date
+    milestone: M6
+    scope: in
+    prior: 1
+    returns: number
+    params:
+      - { name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: WEEKNUM
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: serial_number, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: return_type, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 2 } }
   - { name: WEIBULL, category: statistical, milestone: M9, scope: in }
   - { name: WEIBULL.DIST, category: statistical, milestone: M9, scope: in }
-  - { name: WORKDAY, category: date, milestone: M6, scope: in }
-  - { name: WORKDAY.INTL, category: date, milestone: M6, scope: in }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: WORKDAY
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.5
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: days, mode: value, type: number, domain: { int: true, min: -30, max: 30 } }
+      - { name: holidays, mode: array, type: number, optional: true }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: WORKDAY.INTL
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.2
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: days, mode: value, type: number, domain: { int: true, min: -30, max: 30 } }
+      - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
+      - { name: holidays, mode: array, type: number, optional: true }
   - { name: WRAPCOLS, category: lookup, milestone: M7, scope: in }
   - { name: WRAPROWS, category: lookup, milestone: M7, scope: in }
   - { name: XIRR, category: financial, milestone: M9, scope: in }
@@ -1758,7 +1921,17 @@ functions:
     returns: bool
     params:
       - { name: logical, mode: aggregate, type: bool, repeat: true, min: 1, max: 254 }
-  - { name: YEARFRAC, category: date, milestone: M6, scope: in }
+  # Array lifts, a range is #VALUE! (dates.md "Date function argument modes").
+  - name: YEARFRAC
+    category: date
+    milestone: M6
+    scope: in
+    prior: 0.3
+    returns: number
+    params:
+      - { name: start_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: end_date, mode: value, type: number, domain: { int: true, min: 1, max: 60000 } }
+      - { name: basis, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - { name: YIELD, category: financial, milestone: M9, scope: in }
   - { name: YIELDDISC, category: financial, milestone: M9, scope: in }
   - { name: YIELDMAT, category: financial, milestone: M9, scope: in }

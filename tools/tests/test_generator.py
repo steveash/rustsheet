@@ -95,6 +95,14 @@ def test_generator_emits_every_m2_function() -> None:
     assert not [n for n in M2_ADDED if n not in seen]
 
 
+def emitted(milestone: str) -> set[str]:
+    """Every tag (function name) the generator emits over 40 seeds at `milestone`."""
+    seen: set[str] = set()
+    for seed in range(40):
+        seen.update(generate_case(catalog(), seed, milestone=milestone, formulas=80)["tags"])
+    return seen
+
+
 def test_generator_emits_every_m5_math_function_but_the_volatile_ones() -> None:
     # T-1082: every M5 math signature is generator-ready; RAND/RANDBETWEEN never match an oracle.
     m5_math = {
@@ -104,9 +112,7 @@ def test_generator_emits_every_m5_math_function_but_the_volatile_ones() -> None:
     }
     volatile = {n for n, f in m5_math.items() if f.get("volatile")}
     assert volatile == {"RAND", "RANDBETWEEN"}
-    seen: set[str] = set()
-    for seed in range(40):
-        seen.update(generate_case(catalog(), seed, milestone="M5", formulas=80)["tags"])
+    seen = emitted("M5")
     assert not seen & volatile
     assert not sorted(set(m5_math) - volatile - seen)
 
@@ -119,9 +125,7 @@ def test_generator_emits_every_m5_text_function() -> None:
         if "params" in f and f["milestone"] == "M5" and f["category"] == "text"
     }
     assert len(m5_text) == 33
-    seen: set[str] = set()
-    for seed in range(40):
-        seen.update(generate_case(catalog(), seed, milestone="M5", formulas=80)["tags"])
+    seen = emitted("M5")
     assert not sorted(m5_text - seen)
 
 
@@ -134,10 +138,19 @@ def test_generator_emits_every_m5_logical_information_and_web_function() -> None
         if "params" in f and f["milestone"] == "M5" and f["category"] in {"logical", "information", "web"}
     }
     assert len(m5) == 26
-    seen: set[str] = set()
-    for seed in range(40):
-        seen.update(generate_case(catalog(), seed, milestone="M5", formulas=80)["tags"])
+    seen = emitted("M5")
     assert not sorted(m5 - seen)
+
+
+def test_generator_emits_every_m6_date_function() -> None:
+    # T-1090: every in-scope M6 date and time entry is generator-ready.
+    m6_date = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M6" and f["category"] == "date"
+    }
+    assert len(m6_date) == 20
+    assert not sorted(m6_date - emitted("M6"))
 
 
 def test_reference_params_get_one_cell_and_cell_always_gets_one() -> None:
