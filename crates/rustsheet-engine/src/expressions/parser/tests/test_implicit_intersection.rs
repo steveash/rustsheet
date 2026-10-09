@@ -1,6 +1,6 @@
 #![allow(clippy::panic)]
 
-use crate::expressions::parser::{ChainLeft, Node};
+use crate::expressions::parser::{ChainLeft, LeadGroup, Node};
 use crate::expressions::types::CellReferenceRC;
 use std::collections::HashMap;
 
@@ -36,7 +36,7 @@ fn simple() {
             automatic: false,
             child: Box::new(child),
             written: 0,
-            lead: 0
+            lead: LeadGroup::default()
         }
     )
 }
@@ -73,7 +73,7 @@ fn simple_add() {
                 automatic: false,
                 child: Box::new(child),
                 written: 0,
-                lead: 0
+                lead: LeadGroup::default()
             }),
             right: Box::new(Node::NumberKind(12.0))
         }

@@ -867,8 +867,14 @@ Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` op
 only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
 (`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) until T-1134 (`ImplicitIntersection::lead`). Excel keeps the group for every shape where it is
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
-print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches the last two and
-prints the first three without the group (`=@A1 B1 C1` for both of the first two, `=@A1:B1 C1`): T-1200. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches all five
+(`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
+UNVERIFIED (inferred from those five, T-1200): the engine prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`, `=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1` and
+`=@(A1):OFFSET(B1,0,0) C1` as written; `=@((A1 B1) C1) D1` as `=@(A1 B1 C1) D1` (the inner group is dropped, the printed group covers
+three operands); `=@(A1):(B1) C1` as `=@(A1):B1 C1` (the written `(B1)` is dropped); `=@(A1):B1` as `=@A1:B1` (a corner group with
+no intersection after it is dropped); `=@(A1 B1):C1` as written. Pinned as characterization in
+`at_operand_group_shapes_no_probe_covers_are_characterized`; probe task T-1245.
+The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
@@ -877,7 +883,7 @@ written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every wr
 excel-graph 2026-10-09, T-1178; engine: T-1244).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134, T-1178, T-1244
+Tasks: T-1132, T-1134, T-1178, T-1200, T-1244
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;

@@ -392,15 +392,10 @@ F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S10
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
-F	probes/at-group-not-whole-operand.case.json	Sheet1!E30
-F	probes/at-group-not-whole-operand.case.json	Sheet1!E31
-F	probes/at-group-not-whole-operand.case.json	Sheet1!E32
 F	probes/at-operand-nested-groups.case.json	Sheet1!F10
 F	probes/at-operand-nested-groups.case.json	Sheet1!F11
 F	probes/at-operand-nested-groups.case.json	Sheet1!F13
 F	probes/at-operand-nested-groups.case.json	Sheet1!F14
-F	probes/at-operand-nested-groups.case.json	Sheet1!F15
-F	probes/at-operand-nested-groups.case.json	Sheet1!F16
 F	probes/at-operand-nested-groups.case.json	Sheet1!F18
 F	probes/at-operand-nested-groups.case.json	Sheet1!F30
 F	probes/at-operand-nested-groups.case.json	Sheet1!F31
