@@ -18,8 +18,8 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 /// `=` are formulas, other strings are literal text. Use the tagged form
 /// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
 /// carry `"stored":true`: spec2xlsx writes it as a stored `t="e"` constant (T-0999) and the engine
-/// adapter enters it as one, as xlsx import does (T-1221), not as typed input. `{"entered":"(1)"}` is text entered as a user types it, so
-/// Excel picks the value and number format (T-0280).
+/// adapter enters it as one, as xlsx import does (T-1221), not as typed input. `{"entered":"(1)"}`
+/// is text entered as a user types it, so Excel picks the value and number format (T-0280).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellInput {
