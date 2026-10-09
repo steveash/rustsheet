@@ -25,7 +25,7 @@ Evidence: gen-m6/2c1a6e93a1974f48 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3, gen
 (excel-graph, 2026-10-09, T-1239).
 Ours: `#VALUE!` for all three (the lexer rejects these formats).
 Status: UNVERIFIED (probe pending: which letters are tokens, the integer-before-point rule, the value of `TEXT(x,"")`)
-Tasks: T-1251
+Tasks: T-1262
 
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the

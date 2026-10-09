@@ -1,5 +1,5 @@
 ---
-id: T-1251
+id: T-1262
 title: "TEXT: bare letters and digits 1-9 in a number format are literals, and an empty format is empty text (3 gen-m6 cells)"
 milestone: M5
 lane: functions-text
