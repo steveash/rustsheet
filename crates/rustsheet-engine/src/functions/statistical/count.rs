@@ -3,7 +3,7 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::token::Error;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::is_span_or_if_of_span;
-use crate::reference_operators::{is_multi_area, RefArg};
+use crate::reference_operators::RefArg;
 use crate::{calc_result::CalcResult, expressions::parser::Node, model::Model};
 
 impl Model {
@@ -108,7 +108,7 @@ impl Model {
         }
         let mut result = 0.0;
         for arg in args {
-            let value = if is_multi_area(arg) && !is_span_or_if_of_span(arg) {
+            let value = if self.is_multi_area(arg) && !is_span_or_if_of_span(arg) {
                 // A union is #VALUE! here (probes/multiarea-count H1); one area is a range.
                 self.evaluate_reference_arg(arg, cell)
                     .into_single_area(cell)
@@ -145,7 +145,7 @@ impl Model {
                     ..
                 } if is_span_or_if_of_span(arg)
                     || matches!(arg, Node::SheetSpanKind { .. })
-                    || is_multi_area(arg) =>
+                    || self.is_multi_area(arg) =>
                 {
                     return error;
                 }

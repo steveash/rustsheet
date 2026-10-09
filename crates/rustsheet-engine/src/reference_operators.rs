@@ -5,6 +5,7 @@ use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
+    defined_names::ParsedDefinedName,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::Function,
     model::Model,
@@ -237,26 +238,6 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 
-/// Whether `node` may stand for several areas, so evaluating it as an intersection operand
-/// needs an area list.
-/// An intersection is multi-area only if a union sits somewhere under it: a chain of
-/// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
-/// Recursion is bounded by the parser's depth cap.
-pub(crate) fn is_multi_area(node: &Node) -> bool {
-    match node {
-        // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let H2,
-        // multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
-        Node::OpUnionKind { .. }
-        | Node::NamedVariableKind { .. }
-        | Node::FunctionKind {
-            kind: Function::If | Function::Choose | Function::Let,
-            ..
-        } => true,
-        Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
-        _ => false,
-    }
-}
-
 /// The cells `a` and `b` share: `None` if none, `#VALUE!` if they are on different sheets.
 fn intersect_pair(
     a: &Range,
@@ -461,6 +442,35 @@ impl Model {
     /// Data!A7, gen-m1/c940d3cfb0d3b083), and one of several areas is `#VALUE!`, even when
     /// they are the same cell (`=A1:A3 (A2:B2,A2)`,
     /// probes/intersection-function-operands H5).
+    /// Whether `node` may stand for several areas, so evaluating it as an intersection
+    /// operand or reference argument needs an area list.
+    /// An intersection is multi-area only if a union sits somewhere under it: a chain of
+    /// plain references (`A1:C3 B1:D4 C1:C9`) and a name for a cell or a range (`box A1`)
+    /// stay on the allocation-free pair path. A name is not looked through: its body is
+    /// checked again, under the name depth limit, when it is evaluated
+    /// ([`Model::defined_name_reference`]). Recursion is bounded by the parser's depth cap.
+    pub(crate) fn is_multi_area(&self, node: &Node) -> bool {
+        match node {
+            // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let
+            // H2, multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
+            Node::OpUnionKind { .. }
+            | Node::NamedVariableKind { .. }
+            | Node::FunctionKind {
+                kind: Function::If | Function::Choose | Function::Let,
+                ..
+            } => true,
+            // So may a name whose body is a formula (probes/union-defined-name H4).
+            Node::DefinedNameKind((name, scope, _)) => matches!(
+                self.parsed_defined_names.get(&(*scope, name.to_lowercase())),
+                Some(ParsedDefinedName::Formula(_))
+            ),
+            Node::OpIntersectKind { left, right, .. } => {
+                self.is_multi_area(left) || self.is_multi_area(right)
+            }
+            _ => false,
+        }
+    }
+
     pub(crate) fn get_intersection(
         &mut self,
         left: &Node,
@@ -483,7 +493,7 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        if !is_multi_area(left) && !is_multi_area(right) {
+        if !self.is_multi_area(left) && !self.is_multi_area(right) {
             // Two single areas, the common case: no area list.
             let a = self.evaluate_intersection_operand(left, cell)?;
             let b = self.evaluate_intersection_operand(right, cell)?;
@@ -580,6 +590,7 @@ impl Model {
                 self.intersect_areas(left, right, cell, budget)
             }
             Node::NamedVariableKind { .. }
+            | Node::DefinedNameKind(_)
             | Node::FunctionKind {
                 kind: Function::If | Function::Choose | Function::Let,
                 ..

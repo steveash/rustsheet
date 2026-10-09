@@ -426,6 +426,12 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   takes its fallback for one, and so does a union returned by IF, CHOOSE or LET. docs/specs/SPEC-0004-multi-area-references.md
   (T-0133) designs multi-area arguments, with rollout T-1061 to T-1065. `add_implicit_intersection` (static_analysis.rs) leaves
   `OpUnionKind` unwrapped, and SPEC-0004 keeps it so: a union is already `#VALUE!` where a scalar is expected (planned, probe rows 15 and 18).
+- Multi-area defined names (T-1065): a name whose body is a union stands for its areas wherever a reference
+  is accepted (`SUM(mu)` 6, `COUNT(mu)` 2, `mu A1` 1, AREAS, INDEX's area_num, AGGREGATE's array form), through
+  another name or a LET variable too; `=mu` stays `#VALUE!` (probes/union-defined-name H1:H5). The engine
+  evaluates the body at each use (`Model::defined_name_reference`), under the name depth and budget limits, so a
+  name that reaches itself through a union (`loop` = `Sheet1!$A$1,loop`) is `#NAME?` like any self-reference.
+  A cross-sheet body is `#VALUE!` in SUM (probes/multiarea-xname). A sheet-local `Print_Area` is T-1193.
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
@@ -461,11 +467,15 @@ Excel's limit, if any, is not known.
 The LET variables and LAMBDA parameters in scope may hold at most 262,144 areas together (`MAX_HELD_AREAS`,
 four `MAX_AREAS`): each binding may hold a fresh union (`LET(x_1,(A1,A1),x_2,(x_1,x_1),...)`), so memory would
 otherwise grow with formula length. A binding that would pass the total is `#VALUE!`.
+A defined name's union body is capped like a written union, at each use: more than `MAX_AREAS` areas is
+`#VALUE!` where the name is used, never a load failure, and the name still loads. No per-workbook cap is
+needed (SPEC-0004 planned one for stored area lists): names keep only their parsed body, never an area list,
+so memory is bounded by the workbook's formula text and each use by the caps above.
 Status: DEVIATION (decision 0014)
 Implemented in: reference_operators.rs (`MAX_AREAS`, `MAX_AREA_PAIRS`, `MAX_AREA_CELLS`,
 `Model::union_areas`, `Model::count_union_areas`, `Model::intersect_areas`); functions/util.rs
 (`Model::check_area_cells`); reference_operators.rs (`MAX_HELD_AREAS`, `VariableStack`)
-Tasks: T-0134, T-1062, T-1064
+Tasks: T-0134, T-1062, T-1064, T-1065
 
 ## Multi-area references in functions
 Rule: which functions take a union, and what they give (Sheet1 A1=1, B2=5, C3=7, D4=9; evidence

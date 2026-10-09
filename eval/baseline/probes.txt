@@ -640,9 +640,6 @@ F	probes/subtotal-hidden-filtered.case.json	Nest!G7
 F	probes/subtotal-hidden-filtered.case.json	Nest!G8
 F	probes/subtotal-hidden-filtered.case.json	Nest!G9
 F	probes/text-result-limit.case.json	Sheet1!C24
-F	probes/union-defined-name.case.json	Sheet1!H1
-F	probes/union-defined-name.case.json	Sheet1!H4
-F	probes/union-defined-name.case.json	Sheet1!H5
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1

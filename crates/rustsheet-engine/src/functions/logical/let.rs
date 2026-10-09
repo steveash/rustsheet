@@ -9,7 +9,7 @@ use crate::{
     },
     functions::Function,
     model::Model,
-    reference_operators::{is_multi_area, Binding, Ranges, RefArg},
+    reference_operators::{Binding, Ranges, RefArg},
 };
 
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
@@ -191,7 +191,7 @@ impl Model {
     /// wherever it comes from: written out, another variable, IF, CHOOSE or LET
     /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
-        if !is_multi_area(node) {
+        if !self.is_multi_area(node) {
             return Binding::Value(self.evaluate_node_with_reference(node, cell));
         }
         match self.evaluate_reference_arg(node, cell) {

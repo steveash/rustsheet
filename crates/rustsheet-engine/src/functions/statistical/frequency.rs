@@ -1,6 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
-use crate::reference_operators::{is_multi_area, RefArg};
+use crate::reference_operators::RefArg;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -44,7 +44,7 @@ impl Model {
 
         // Only data_array is probed with a union (probes/multiarea-cond); bins_array keeps its
         // single-reference path.
-        let data = if is_multi_area(&args[0]) {
+        let data = if self.is_multi_area(&args[0]) {
             match self.evaluate_reference_arg(&args[0], cell) {
                 RefArg::Ranges(areas) => self
                     .values_from_areas(&areas, cell)

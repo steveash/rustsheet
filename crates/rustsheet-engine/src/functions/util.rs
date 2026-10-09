@@ -9,7 +9,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
-    reference_operators::{is_multi_area, RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS},
+    reference_operators::{RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS},
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -181,7 +181,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> RefArg {
         let result = match node {
-            Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if is_multi_area(node) => {
+            Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {
                     Ok(ranges) => RefArg::Ranges(ranges),
                     Err(error) => RefArg::Value(error),
@@ -191,8 +191,11 @@ impl Model {
             // (probes/min-max-reference-forms C1-C4).
             Node::ReferenceKind { .. }
             | Node::ImplicitIntersection { .. }
-            | Node::OpRangeKind { .. }
-            | Node::DefinedNameKind(_) => self.evaluate_node_with_reference(node, cell),
+            | Node::OpRangeKind { .. } => self.evaluate_node_with_reference(node, cell),
+            // A name whose body is a formula, a union included, stands for what the body does
+            // in reference context: `SUM(mu)` with `mu` = `Sheet1!$A$1,Sheet1!$B$2` is 6
+            // (probes/union-defined-name H1).
+            Node::DefinedNameKind(_) => return self.defined_name_reference(node, cell),
             Node::SheetSpanKind {
                 first_index,
                 last_index,

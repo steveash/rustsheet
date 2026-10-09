@@ -14,9 +14,19 @@ use crate::{
         utils::is_valid_identifier,
     },
     model::Model,
+    reference_operators::RefArg,
     types::DefinedName,
     utils as common,
 };
+
+/// The `#NAME?` of a name whose body runs out of depth or budget ([`Model::within_defined_name`]).
+fn name_refers_to_itself(name: &str, cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(
+        Error::NAME,
+        cell,
+        format!("Defined name \"{name}\" refers to itself."),
+    )
+}
 
 /// A parsed formula for a defined name
 #[derive(Clone)]
@@ -113,13 +123,33 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         self.within_defined_name(|model| model.evaluate_formula_root(body, cell))
-            .unwrap_or_else(|| {
-                CalcResult::new_error(
-                    Error::NAME,
-                    cell,
-                    format!("Defined name \"{name}\" refers to itself."),
-                )
-            })
+            .unwrap_or_else(|| name_refers_to_itself(name, cell))
+    }
+
+    /// The defined name `node` where a reference is accepted. A name whose body is a formula
+    /// stands for what the body is in reference context, so a union body is its areas
+    /// (probes/union-defined-name H1, H4, H5) and a cross-sheet one `#VALUE!`
+    /// (probes/multiarea-xname). Any other name is read as [`Model::evaluate_node_with_reference`]
+    /// reads it. The body runs under the same depth and budget as its value read.
+    pub(crate) fn defined_name_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
+        if let Node::DefinedNameKind((name, scope, _)) = node {
+            if let Some(ParsedDefinedName::Formula(body)) = self
+                .parsed_defined_names
+                .get(&(*scope, name.to_lowercase()))
+                .cloned()
+            {
+                // Only a body that may stand for several areas leaves the value path, which
+                // snaps the body at its root (`SUM(nz)` with `nz` = `0.1+0.2-0.3` is 0,
+                // probes/near-zero-snap-groups C5).
+                if !self.is_multi_area(&body) {
+                    return RefArg::from(self.evaluate_node_with_reference(node, cell));
+                }
+                return self
+                    .within_defined_name(|model| model.evaluate_reference_arg(&body, cell))
+                    .unwrap_or_else(|| RefArg::Value(name_refers_to_itself(name, cell)));
+            }
+        }
+        RefArg::from(self.evaluate_node_with_reference(node, cell))
     }
 
     /// Adds a new defined name.
