@@ -238,15 +238,43 @@ fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
     model._set("E34", "=@(A1) B1");
     model._set("E35", "=@((A1)) B1");
     model._set("E36", "=@(A1) B1 C1");
-    // E36..E38 are hand-written: current engine output for shapes no probe covers yet (T-1134 follow-up).
+    // E37 and E38 are probes/at-group-not-whole-operand E30 and E32 (T-1200); E39 is E31.
     model._set("E37", "=@(A1 B1) C1");
     model._set("E38", "=@(A1):B1 C1");
+    model._set("E39", "=@((A1 B1)) C1");
     model.evaluate();
-    assert_eq!(model._get_formula("E37"), "=@A1 B1 C1");
-    assert_eq!(model._get_formula("E38"), "=@A1:B1 C1");
+    assert_eq!(model._get_formula("E37"), "=@(A1 B1) C1");
+    assert_eq!(model._get_formula("E38"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("E39"), "=@((A1 B1)) C1");
     assert_eq!(model._get_formula("E34"), "=@(A1) B1");
     assert_eq!(model._get_formula("E35"), "=@((A1)) B1");
     assert_eq!(model._get_formula("E36"), "=@(A1) B1 C1");
+}
+
+#[test]
+fn at_operand_group_shapes_no_probe_covers_are_characterized() {
+    // Hand-written current engine output, not Excel: shapes probes/at-group-not-whole-operand
+    // does not cover, extrapolated from it (UNVERIFIED, references.md "@ operand", T-1200).
+    let mut model = model();
+    for (cell, formula) in [
+        ("E50", "=@((A1)):B1 C1"),
+        ("E51", "=@(A1):B1:C1 D1"),
+        ("E52", "=@(A1 B1) C1 D1"),
+        ("E53", "=@((A1 B1) C1) D1"),
+        ("E54", "=@(A1):(B1) C1"),
+        ("E55", "=@(A1 B1):C1"),
+    ] {
+        model._set(cell, formula);
+    }
+    model.evaluate();
+    assert_eq!(model._get_formula("E50"), "=@((A1)):B1 C1");
+    assert_eq!(model._get_formula("E51"), "=@(A1):B1:C1 D1");
+    assert_eq!(model._get_formula("E52"), "=@(A1 B1) C1 D1");
+    // The printed group covers three operands though two were written inside it.
+    assert_eq!(model._get_formula("E53"), "=@(A1 B1 C1) D1");
+    // The written `(B1)` is dropped.
+    assert_eq!(model._get_formula("E54"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("E55"), "=@(A1 B1):C1");
 }
 
 #[test]
