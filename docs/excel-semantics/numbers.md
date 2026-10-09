@@ -844,6 +844,6 @@ Tasks: T-1192, T-1196, T-1199
 
 ## MULTINOMIAL of a huge argument
 Rule: Excel returns an answer for `MULTINOMIAL(1E+15)` at once (value not yet probed); the engine loops proportionally to the argument and hangs.
-Evidence: gen-m5/21b9ae9affd6b38c Calc!A25 (the case times out here).
+Evidence: gen-m5/21b9ae9affd6b38c Calc!A25 (the case times out here; its oracle `#NUM!` comes from a base-0 LOG, so it says nothing about MULTINOMIAL's value).
 Status: UNVERIFIED (Excel's value)
 Tasks: T-1197
