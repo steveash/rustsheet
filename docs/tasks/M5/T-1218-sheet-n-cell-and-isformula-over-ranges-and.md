@@ -3,7 +3,7 @@ id: T-1218
 title: "SHEET, N, CELL and ISFORMULA over ranges and arrays as excel-graph gives them"
 milestone: M5
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,8 +25,11 @@ docs/excel-semantics/information.md "Information function argument modes"). The 
 engine does not know. Leave it as `#N/IMPL!` and do not write a baseline entry for A19 by hand.
 
 ## Acceptance criteria
-- [ ] The probe cells above (other than A19) pass; `make eval-baseline` records them.
-- [ ] `make check` green; reviewers approve.
+- [x] The probe cells above (other than A19) pass; `make eval-baseline` records them.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+SHEET/N of a range, CELL array info_type + other-sheet multi-cell `contents` (#VALUE!), ISFORMULA lift (static analysis now spills). probes known failures 377 -> 370; no regressions. A19 (`CELL("address")` cross-sheet) left as #N/IMPL! as instructed.

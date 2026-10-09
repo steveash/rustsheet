@@ -128,6 +128,7 @@ Rule: how the other M5 information functions take a range, an array and a direct
 Evidence: probes/info-logic-argument-modes A6:A29, info-logic-argument-modes-2 A7:A8, info-modes-sheet-text,
 info-modes-isref-value-op (oracle: excel-graph, 2026-10-09, T-1088). The refusals come from scratch fills that failed and were not kept.
 Status: VERIFIED (excel-graph)
-Engine gaps: SHEET of a range, N of a range, CELL's array info_type and multi-cell `contents`, and ISFORMULA's lift (T-1218).
+Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` of a multi-cell range on another sheet = `#VALUE!`).
+UNVERIFIED: ironcalc-calc CELL.xlsx B14 (excel-cached, a legacy CSE array formula) shows `CELL("contents",A10:A14)` on the formula's own sheet giving the top-left cell (3.4, not the intersection with row 14), while probes/info-logic-argument-modes A18 (a dynamic-array formula) is `#VALUE!` for an other-sheet row range. We key on the sheet, but the evidence does not separate that from "the formula cell is not inside the range" or "CSE reads the top-left, dynamic arrays give `#VALUE!`". Also unprobed: a non-string element in an array `info_type` (we give `#VALUE!`) and `N(range)` whose top-left cell is an error (we pass the error through).
 `CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
 Tasks: T-1088, T-1218
