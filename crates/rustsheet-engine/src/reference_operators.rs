@@ -167,13 +167,17 @@ impl RefArg {
 }
 
 /// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
-/// included), or the areas of a union, which only reference context reads as such
-/// ([`Model::variable_reference`]); everywhere else it is `#VALUE!`, as `LET(x,(A1,B2),x)` is
-/// (probes/multiarea-let H3).
+/// included), the areas of a union, or a 3-D span. Only reference context reads the last two as
+/// such ([`Model::variable_reference`]); everywhere else they are `#VALUE!`, as `LET(x,(A1,B2),x)`
+/// is (probes/multiarea-let H3) and as the bare span is (`LET(x,Data1:Data3!A1,x)`,
+/// `INDEX(x,1)`, `ROWS(x)`: probes/3d-ref-let-bound-span, T-1158).
 #[derive(Clone)]
 pub(crate) enum Binding {
     Value(CalcResult),
     Areas(Areas),
+    /// A range whose corners sit on two sheets: an aggregate reads it like the written span
+    /// (`LET(x,Data1:Data3!A1,SUM(x))` is 111, probes/3d-ref-let-bound-span C1:C3).
+    Span(Range),
 }
 
 impl Binding {
@@ -182,13 +186,14 @@ impl Binding {
         match self {
             Binding::Value(value) => value.clone(),
             Binding::Areas(_) => several_areas(cell),
+            Binding::Span(_) => three_d_needs_one_sheet(cell),
         }
     }
 
-    /// How many areas the binding holds: those of a union, none for a value.
+    /// How many areas the binding holds: those of a union, none for a value or a span.
     pub(crate) fn held_areas(&self) -> usize {
         match self {
-            Binding::Value(_) => 0,
+            Binding::Value(_) | Binding::Span(_) => 0,
             Binding::Areas(Areas(areas)) => areas.len(),
         }
     }

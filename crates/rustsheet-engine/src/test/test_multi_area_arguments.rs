@@ -383,6 +383,29 @@ fn choose_hands_a_3d_reference_to_the_aggregates() {
             ("D8", "=LET(x,IF(TRUE,K1),MAX(x))", "0"),
             ("D9", "=LAMBDA(x,MAX(x))(IF(TRUE,K1))", "0"),
             ("D10", "=IF(TRUE,Data1:Data3!A1) A1", "#VALUE!"),
+            // probes/3d-ref-let-values C7 and 3d-ref-choose-let C3:C4: an aggregate reads a span
+            // bound by LET, written or from CHOOSE (T-1158).
+            ("D7", "=LET(x,CHOOSE(1,Data1:Data3!A1),SUM(x))", "111"),
+            ("E3", "=LET(x,Data1:Data3!A1,SUM(x))", "111"),
+            ("E4", "=SUM(LET(x,Data1:Data3!A1,x))", "111"),
+            // probes/3d-ref-let-bound-span (excel-graph, 2026-10-09, T-1158): through another
+            // variable or a LAMBDA too, while value readers, INDEX, ROWS and ISREF give what the
+            // written span gives.
+            ("F1", "=LET(x,Data1:Data3!A1,y,x,SUM(y))", "111"),
+            ("F2", "=LAMBDA(x,SUM(x))(Data1:Data3!A1)", "111"),
+            ("F3", "=LET(x,Data1:Data3!A1,COUNT(x))", "3"),
+            ("F4", "=LET(x,Data1:Data3!A1,INDEX(x,1))", "#VALUE!"),
+            ("F5", "=INDEX(Data1:Data3!A1,1)", "#VALUE!"),
+            ("F6", "=LET(x,Data1:Data3!A1:A2,SUM(x))", "113"),
+            ("F7", "=LET(x,Data1:Data3!A1,ROWS(x))", "#VALUE!"),
+            ("F8", "=ROWS(Data1:Data3!A1)", "#VALUE!"),
+            ("F9", "=LET(x,Data1:Data3!A1,ISREF(x))", "FALSE"),
+            ("F10", "=ISREF(Data1:Data3!A1)", "FALSE"),
+            ("F11", "=LET(x,Data1:Data3!A1,MAX(x)+0)", "100"),
+            ("F12", "=LAMBDA(x,x)(Data1:Data3!A1)", "#VALUE!"),
+            ("F13", "=LET(x,Data1:Data3!A1,SUM(x,x))", "222"),
+            ("F14", "=LET(x,Data1:Data3!A1,SUM(IF(TRUE,x)))", "111"),
+            ("F15", "=LET(x,Data1:Data3!A1,x+1)", "#VALUE!"),
         ],
     );
 }

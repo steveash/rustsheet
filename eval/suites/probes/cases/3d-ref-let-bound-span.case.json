@@ -1,0 +1,65 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "A 3-D span bound directly by LET or LAMBDA, read by aggregates, value readers and reference functions, next to the bare span (T-1158). Same data as 3d-ref-let-values.",
+ "tags": [
+  "M1",
+  "probe",
+  "references",
+  "3d"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "C1": "=LET(x,Data1:Data3!A1,y,x,SUM(y))",
+    "C2": "=LAMBDA(x,SUM(x))(Data1:Data3!A1)",
+    "C3": "=LET(x,Data1:Data3!A1,COUNT(x))",
+    "C4": "=LET(x,Data1:Data3!A1,INDEX(x,1))",
+    "C5": "=INDEX(Data1:Data3!A1,1)",
+    "C6": "=LET(x,Data1:Data3!A1:A2,SUM(x))",
+    "C7": "=LET(x,Data1:Data3!A1,ROWS(x))",
+    "C8": "=ROWS(Data1:Data3!A1)",
+    "C9": "=LET(x,Data1:Data3!A1,ISREF(x))",
+    "C10": "=ISREF(Data1:Data3!A1)",
+    "C11": "=LET(x,Data1:Data3!A1,MAX(x)+0)",
+    "C12": "=LAMBDA(x,x)(Data1:Data3!A1)",
+    "C13": "=LET(x,Data1:Data3!A1,SUM(x,x))",
+    "C14": "=LET(x,Data1:Data3!A1,SUM(IF(TRUE,x)))",
+    "C15": "=LET(x,Data1:Data3!A1,x+1)"
+   }
+  },
+  {
+   "name": "Data1",
+   "cells": {
+    "A1": 1,
+    "A2": "5",
+    "A3": true,
+    "B1": 3
+   }
+  },
+  {
+   "name": "Data2",
+   "cells": {
+    "A1": 10,
+    "B1": "=1/0",
+    "C1": "x"
+   }
+  },
+  {
+   "name": "Data3",
+   "cells": {
+    "A1": 100,
+    "A2": 2,
+    "A3": -4,
+    "B1": 7
+   }
+  },
+  {
+   "name": "Q 4",
+   "cells": {
+    "A1": 1000
+   }
+  }
+ ],
+ "expected": {}
+}
