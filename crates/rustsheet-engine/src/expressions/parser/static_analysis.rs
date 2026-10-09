@@ -1690,7 +1690,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Iserr => scalar_arguments(args),
         Function::Iserror => scalar_arguments(args),
         Function::Iseven => scalar_arguments(args),
-        Function::Isformula => not_implemented(args),
+        Function::Isformula => scalar_arguments(args),
         Function::Islogical => scalar_arguments(args),
         Function::Isna => scalar_arguments(args),
         Function::Isnontext => scalar_arguments(args),
