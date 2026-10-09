@@ -192,8 +192,8 @@ The answers T-1222 implements. Each cites evidence or is marked UNVERIFIED.
      error kind, by the existing code paths.
 2. **Name tables.**
    - **Stored names** (`get_error_by_english_name`): gains `"#BUSY!"`. That one change gives xlsx
-     import (the `t="e"` arms in `import/worksheets.rs`, where `unwrap_or(Error::ERROR)` no
-     longer applies), the eval snapshot reader, the eval adapter's stored constants (T-1221, through
+     import (the `t="e"` arms in `import/worksheets.rs`: `#BUSY!` no longer falls to
+     `unwrap_or(Error::ERROR)`, which stays for unknown names), the eval snapshot reader, the eval adapter's stored constants (T-1221, through
      `ErrorKind::from_literal`) and Python `XlError("#BUSY!")`.
    - **Formula and input names** (`get_error_by_name`, the lexer): unchanged. `=#BUSY!` makes
      Excel reject the workbook (syntax.md), so `#BUSY!` stays a parse error in formulas. Typed
