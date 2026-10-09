@@ -1,9 +1,25 @@
+use crate::arithmetic::array_of_errors;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 impl Model {
+    /// A bad `number` next to a non-reference array `ref`: Excel spills that error over the
+    /// array's shape instead of returning one cell (docs/excel-semantics/statistics.md,
+    /// "RANK of a non-reference array"; probes/rank-nonref-errors, T-1208).
+    fn rank_number_error(
+        &mut self,
+        error: CalcResult,
+        ref_arg: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.numbers_from_rank_ref_arg(ref_arg, cell) {
+            Err(CalcResult::Array(shape)) => array_of_errors(&shape, error, |_| None),
+            _ => error,
+        }
+    }
+
     // Helper to collect numeric values from the 2nd argument of RANK.*
     fn collect_rank_values(
         &mut self,
@@ -25,7 +41,7 @@ impl Model {
         // number
         let number = match self.get_number_no_bools(&args[0], cell) {
             Ok(f) => f,
-            Err(e) => return e,
+            Err(e) => return self.rank_number_error(e, &args[1], cell),
         };
 
         // ref
@@ -93,7 +109,7 @@ impl Model {
         // number
         let number = match self.get_number_no_bools(&args[0], cell) {
             Ok(f) => f,
-            Err(e) => return e,
+            Err(e) => return self.rank_number_error(e, &args[1], cell),
         };
 
         // ref

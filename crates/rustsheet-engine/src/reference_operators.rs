@@ -359,6 +359,15 @@ impl Model {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
+            // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
+            // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
+            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed,
+            // T-1227).
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
             // A name whose body is a formula, parenthesized or not, joins as what the body is
             // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
             Node::GroupedRootKind { child } => self.range_operand(child, cell),
