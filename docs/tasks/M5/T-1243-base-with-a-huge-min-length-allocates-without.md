@@ -3,7 +3,7 @@ id: T-1243
 title: "BASE with a huge min_length allocates without bound (abort); Excel is #NUM!"
 milestone: M5
 lane: functions-math
-status: todo
+status: done
 priority: P0
 size: S
 tier: opus
@@ -23,9 +23,16 @@ Microsoft documents min_length up to 255), then reject beyond it before allocati
 `places`, TEXT/REPT-like padding and other functions that size a buffer from an argument (rg `repeat(`, `with_capacity(`).
 
 ## Acceptance criteria
-- [ ] A unit test evaluates `BASE(245,30,1E+15)` to `#NUM!` without a large allocation; the probed bound matches Excel.
-- [ ] Other argument-sized allocations found by the search are bounded or filed.
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test evaluates `BASE(245,30,1E+15)` to `#NUM!` without a large allocation; the probed bound matches Excel.
+- [x] Other argument-sized allocations found by the search are bounded or filed.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/base-min-length (14 cells, excel-graph, 2026-10-09): `min_length` truncates and may be at most 255
+(`BASE(1,2,256)` and `BASE(245,30,1E+15)` are `#NUM!`). `fn_base` now returns `#NUM!` past 255 before padding, so it never
+allocates more than 255 characters; unit test test_base.rs. Search for other argument-sized buffers: the DEC2BIN/BIN2HEX
+family already caps `places` at 10 (engineering/number_basis.rs); the remaining `with_capacity` calls are sized by data
+already in memory. Recorded in numbers.md "BASE min_length is at most 255". Eval delta: probes +1 case, 14 cells, all pass.
