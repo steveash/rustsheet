@@ -265,10 +265,11 @@ fn at_operand_group_leftmost_shapes_match_the_probe() {
         "=@(A1 B1 C1) D1",
         "=@(A1):OFFSET(B1,0,0) C1",
         // E36: the group is the left corner of a range that is the whole operand (T-1251); the
-        // next three are probes/at-group-range-corner-whole E30, E31 and E33 (excel-graph).
+        // next four are probes/at-group-range-corner-whole E30:E33 (excel-graph).
         "=@(A1):B1",
         "=@(A1:B1):C1",
         "=@((A1)):B1:C1",
+        "=@((A1)):B1",
         "=@(A1):B1:C1",
     ];
     for (i, formula) in forms.iter().enumerate() {
