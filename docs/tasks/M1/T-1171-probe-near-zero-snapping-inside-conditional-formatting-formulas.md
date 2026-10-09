@@ -18,11 +18,11 @@ T-1164 made `user_formula_to_internal` keep the grouped root of a CF formula the
 
 ## Acceptance criteria
 - [x] A probe case or a recorded reason it cannot be observed; numbers.md updated.
-- [x] Engine mismatches: N/A, nothing observable mismatches baselined and a follow-up filed.
+- [x] No engine mismatches observable; desktop follow-up filed as T-1204 (M14).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Engine changes.
 
 ## Outcome
-CF rule results are not observable: excel-graph returns cell values only and the case format has no CF rules or rendered-fill output. Recorded in numbers.md (near-zero snapping) and oracle.md (Unobservable features); the desktop-Excel question belongs to M14 Phase 4. No eval delta, no engine change, no follow-up task.
+CF rule results are not observable: excel-graph returns cell values only and the case format has no CF rules or rendered-fill output. Recorded in numbers.md (near-zero snapping) and oracle.md (Unobservable features); the desktop-Excel question belongs to M14 Phase 4. No eval delta, no engine change. Follow-up: T-1204 (desktop Excel probe, M14).
