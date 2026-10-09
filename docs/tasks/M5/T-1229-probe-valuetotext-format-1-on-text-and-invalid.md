@@ -3,7 +3,7 @@ id: T-1229
 title: "Probe VALUETOTEXT format 1 on text and invalid format values"
 milestone: M5
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1212 accepts the format argument but ignores it (fn_valuetotext in functions/t
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/valuetotext-format` (37 cells, excel-graph). VALUETOTEXT now honours the format: 1 quotes text (embedded quotes doubled), the format must be in [0, 2) after number coercion (else `#VALUE!`), an error format propagates, and the format lifts over arrays (static_analysis no longer reads it as a scalar). Unit test `fn_valuetotext.rs`; documented in text.md. Eval: probes 37/37 on the new case, no regressions.
