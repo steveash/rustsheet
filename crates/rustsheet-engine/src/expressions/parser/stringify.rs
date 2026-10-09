@@ -1,6 +1,6 @@
 mod bound_variables;
 use super::reference_operators::{
-    at_text, callee_operand, intersection_operand, tight_operand, union_text,
+    at_text, callee_operand, intersection_operand, spill_operand, tight_operand, union_text,
 };
 use super::{
     super::utils::{name_needs_quoting, quote_name},
@@ -796,7 +796,7 @@ fn stringify(
                     )
                 );
             };
-            format!("{}#", tight_operand(sub(child), child))
+            format!("{}#", spill_operand(sub(child), child))
         }
         LambdaDefKind { parameters, body } => {
             let lambda_name = if export_to_excel {

@@ -3,7 +3,7 @@ id: T-1226
 title: "ANCHORARRAY(@1) loads in Excel as #VALUE! (prints =@1#); the parser refuses it (follow-up of T-1216)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,3 +26,6 @@ Code: `is_reference_operand` in crates/rustsheet-engine/src/expressions/parser/r
 
 ## Out of scope
 -
+
+## Outcome
+`SpillRangeOperator` over an `@` of a non-reference now evaluates to `#VALUE!` (was `#ERROR!`) and `@<number>` prints bare, `=@1#`; the refused forms stay refused. probes/colon-hash-value-operands D3 and E3 pass (2 known failures removed from eval/baseline/probes.txt). The wider print rule is UNVERIFIED; follow-up T-1240.
