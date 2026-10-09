@@ -1,5 +1,5 @@
 ---
-id: T-1252
+id: T-1261
 title: "GCD and MULTINOMIAL: a text or boolean range cell is #VALUE! even after a negative argument (2 gen-m6 cells)"
 milestone: M5
 lane: functions-math
