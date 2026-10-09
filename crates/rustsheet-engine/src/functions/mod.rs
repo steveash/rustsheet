@@ -582,7 +582,6 @@ macro_rules! impl_function_lookup {
         }
 
         impl Function {
-
             /// Every function, in the order of the lookup table, which must therefore list
             /// every variant of the enum (`function_iterator` checks it).
             pub fn into_iter() -> impl Iterator<Item = Function> {
