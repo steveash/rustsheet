@@ -1,6 +1,6 @@
 ---
 id: T-1016
-title: "Desktop probe: typed #BLOCKED!/#GETTING_DATA cell input (SPEC-0003)"
+title: "Desktop probe: typed #BLOCKED!/#GETTING_DATA/#BUSY! cell input (SPEC-0003)"
 milestone: M14
 lane: research
 status: blocked
@@ -12,10 +12,10 @@ spec: docs/specs/SPEC-0003-newer-error-kinds.md
 ---
 
 ## Goal
-Evidence of what desktop Excel stores when a user types `#BLOCKED!`, `#CONNECT!`, `#FIELD!` or `#GETTING_DATA` (any case) into a cell: an error constant, or text.
+Evidence of what desktop Excel stores when a user types `#BLOCKED!`, `#CONNECT!`, `#FIELD!`, `#GETTING_DATA` or `#BUSY!` (any case) into a cell: an error constant, or text.
 
 ## Context
-SPEC-0003 "Two name tables" chose, without evidence, that typed `#GETTING_DATA` becomes an error and typed `#BLOCKED!` stays text (syntax.md "Newer error literals", UNVERIFIED). Typed input goes through the UI, which the excel-graph oracle cannot drive. It needs the `excel-desktop` backend (docs/architecture/oracle.md), for example COM `Range.Value = "#BLOCKED!"` followed by `ERROR.TYPE`/`ISTEXT` next to it.
+SPEC-0003 "Two name tables" chose, without evidence, that typed `#GETTING_DATA` becomes an error and typed `#BLOCKED!` stays text (syntax.md "Newer error literals", UNVERIFIED). The T-1020 amendment ("Stored `#BUSY!`") likewise keeps typed `#BUSY!` as text (UNVERIFIED). Typed input goes through the UI, which the excel-graph oracle cannot drive. It needs the `excel-desktop` backend (docs/architecture/oracle.md), for example COM `Range.Value = "#BLOCKED!"` followed by `ERROR.TYPE`/`ISTEXT` next to it.
 
 ## Acceptance criteria
 - [ ] Each typed name's result is recorded in syntax.md with desktop evidence, and SPEC-0003 and `Model::set_user_input` are updated if they differ.
