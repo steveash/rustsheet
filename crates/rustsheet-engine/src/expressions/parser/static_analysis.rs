@@ -444,25 +444,15 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
     if arg_count == 3 {
         return StaticResult::Scalar;
     }
-    match args[3] {
-        Node::NumberKind(f) => {
-            if f != 1.0 {
-                return StaticResult::Unknown;
-            }
-        }
-        _ => return StaticResult::Unknown,
-    };
+    if !matches!(args[3], Node::NumberKind(f) if f == 1.0) {
+        return StaticResult::Unknown;
+    }
     if arg_count == 4 {
         return StaticResult::Scalar;
     }
-    match args[4] {
-        Node::NumberKind(f) => {
-            if f != 1.0 {
-                return StaticResult::Unknown;
-            }
-        }
-        _ => return StaticResult::Unknown,
-    };
+    if !matches!(args[4], Node::NumberKind(f) if f == 1.0) {
+        return StaticResult::Unknown;
+    }
     // Both height and width are explicitly 1, so OFFSET will return a single cell
     StaticResult::Scalar
 }
