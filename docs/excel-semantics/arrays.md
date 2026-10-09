@@ -89,7 +89,7 @@ booleans in arrays become text as in `&` ({1;TRUE;FALSE;1.5} gives "1-","TRUE-",
 1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array argument gives a single-cell result.
 Status: VERIFIED (CONCATENATE array shape, #SPILL! and element values)
 NOT status: VERIFIED for the array shape and #SPILL! (NOT returns an array), and VERIFIED for the per-element cast:
-each element is cast exactly like a scalar argument. Text "TRUE"/"false" (any case) is a boolean, so NOT gives
+each element is cast exactly like a scalar argument. Text "TRUE" and "false" are booleans (other casings not probed), so NOT gives
 FALSE/TRUE; other text ("abc", "1", " TRUE", "" and a formula's "") is `#VALUE!`; a number is FALSE when non-zero;
 an error stays; an empty cell in a range is FALSE, so NOT gives TRUE. A range and an array literal give the same
 element values (`NOT({"TRUE","abc","1",#N/A,0,2,"false"," TRUE",""})` is FALSE, `#VALUE!`, `#VALUE!`, `#N/A`, TRUE,
