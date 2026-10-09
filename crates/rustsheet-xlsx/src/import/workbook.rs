@@ -6,6 +6,7 @@ use super::xml::XmlNode;
 use rustsheet_engine::types::{DefinedName, SheetState};
 
 use crate::error::XlsxError;
+use crate::util::name_from_xlsx;
 
 use super::{
     util::get_attribute,
@@ -51,13 +52,18 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
         .filter(|n| n.has_tag_name("definedName"))
         .collect();
     for node in name_nodes {
-        let name = get_attribute(node, "name")?.to_string();
+        let name = name_from_xlsx(get_attribute(node, "name")?).to_string();
         let formula = node.text().unwrap_or("").to_string();
         // NOTE: In Excel the `localSheetId` is just the index of the worksheet and unrelated to the sheetId
         let sheet_id = match node.attribute("localSheetId") {
             Some(s) => {
                 let index = s.parse::<usize>()?;
-                Some(sheets[index].sheet_id)
+                let sheet = sheets.get(index).ok_or_else(|| {
+                    XlsxError::Workbook(format!(
+                        "definedName {name}: no sheet at localSheetId {index}"
+                    ))
+                })?;
+                Some(sheet.sheet_id)
             }
             None => None,
         };

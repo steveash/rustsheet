@@ -7,7 +7,7 @@ use rustsheet::{
     WorkbookOptions, XlError,
 };
 
-use crate::case::{CaseSpec, CellInput};
+use crate::case::{split_qualified, CaseSpec, CellInput};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 
@@ -100,8 +100,25 @@ impl Engine for RustSheetEngine {
                 }
                 // Names need their sheets; each reparses the workbook, so define them before
                 // any cell is set.
+                // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
+                // reads it.
                 for (name, formula) in &spec.names {
-                    tx.define_name(name, formula)?;
+                    match split_qualified(name) {
+                        Some((sheet, local)) => {
+                            let id = spec
+                                .sheets
+                                .iter()
+                                .position(|s| s.name.eq_ignore_ascii_case(&sheet))
+                                .and_then(|i| ids.get(i).copied())
+                                .ok_or_else(|| {
+                                    rustsheet::EditError::Engine(format!(
+                                        "name {name}: no sheet {sheet}"
+                                    ))
+                                })?;
+                            tx.define_sheet_name(id, &local, formula)?;
+                        }
+                        None => tx.define_name(name, formula)?,
+                    }
                 }
                 // Values first, then tables (they read their headers), then formulas (a
                 // structured reference parses only once its table exists).
@@ -249,6 +266,34 @@ mod tests {
             evaluated.value("Calc", Addr { row: 1, col: 1 }),
             Some(Value::Number(10.0))
         );
+    }
+
+    #[test]
+    fn sheet_qualified_spec_names_are_sheet_scoped() {
+        // probes/multiarea-printarea's spelling (T-1193): the name is local to Sheet1.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","names":{"Sheet1!Print_Area":"=Sheet1!$A$1,Sheet1!$B$2"},
+                "sheets":[{"name":"Sheet1","cells":{"A1":1,"B2":5,"H1":"=SUM(Print_Area)"}},
+                          {"name":"Other","cells":{"A1":"=SUM(Print_Area)"}}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        assert_eq!(
+            evaluated.value("Sheet1", Addr { row: 1, col: 8 }),
+            Some(Value::Number(6.0))
+        );
+        assert_eq!(
+            evaluated.value("Other", Addr { row: 1, col: 1 }),
+            Some(Value::Error("#NAME?".into()))
+        );
+    }
+
+    #[test]
+    fn a_spec_name_on_an_unknown_sheet_fails_the_case() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","names":{"Nope!x":"=1"},
+                "sheets":[{"name":"Sheet1","cells":{}}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
     }
 
     #[test]

@@ -341,3 +341,20 @@ fn strict_relationships_namespace_imports() -> TestResult {
     );
     Ok(())
 }
+
+#[test]
+fn defined_name_with_out_of_range_local_sheet_id_is_an_error() -> TestResult {
+    let bytes = rewrite(|name, content| {
+        if name == "xl/workbook.xml" {
+            content.replace(
+                "</sheets>",
+                "</sheets><definedNames><definedName name=\"_xlnm.Print_Area\" \
+                 localSheetId=\"9\">Sheet1!$A$1</definedName></definedNames>",
+            )
+        } else {
+            content
+        }
+    })?;
+    assert_import_error(&bytes, "localSheetId 9");
+    Ok(())
+}
