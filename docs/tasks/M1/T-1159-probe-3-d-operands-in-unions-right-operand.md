@@ -25,4 +25,4 @@ T-1070 implemented `#NAME?` for a 3-D operand inside a union from one oracle cel
 - Changing engine behavior (file a task if an oracle value differs).
 
 ## Outcome
-Eight probe cases (multiarea-3d-union-h1..h8) with excel-graph values: 3-D union operands are `#NAME?` on either side, in a bare context, under AREAS and ahead of another operand's error; 3-D operands of an intersection are `#VALUE!`. The engine already matched all eight; references.md records the answers and drops the UNVERIFIED marks. Eval delta: +8 cases, +10 cells, all passing, no baseline change.
+Eight probe cases (multiarea-3d-union-h1..h8) with excel-graph values: 3-D union operands are `#NAME?` on either side, in a bare context, under AREAS and ahead of another operand's error; 3-D operands of an intersection are `#VALUE!`. The engine already matched all eight; references.md records the answers and drops the UNVERIFIED marks. Eval delta: +8 cases, +10 cells, all passing, no known failures added (8 coverage lines in the probes baseline).
