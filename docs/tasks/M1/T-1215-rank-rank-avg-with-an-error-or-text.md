@@ -3,7 +3,7 @@ id: T-1215
 title: "RANK/RANK.AVG with an error or text number and a non-reference array ref spill the error over the ref's shape (follow-up of T-1208)"
 milestone: M1
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/rank-nonref-errors (T-1208) cells G1,H1,G3,H3,G5,H5 and G15..H19 fail: th
 
 ## Out of scope
 -
+
+## Outcome
+RANK/RANK.EQ/RANK.AVG now spill an error or text `number` over a non-reference array ref's shape (`rank_number_error`). probes/rank-nonref-errors 44/44; probes known failures 388 -> 376.
