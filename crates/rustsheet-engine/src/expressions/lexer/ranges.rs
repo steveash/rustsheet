@@ -235,6 +235,7 @@ impl Lexer {
                 // the two references (references.md "Range corners may both carry the sheet prefix").
                 if self.peek_char() == Some(':') && !self.sheet_prefix_after_colon() {
                     // It's a range
+                    let colon = self.position;
                     self.position += 1;
                     if let Ok(cell2) = self.consume_reference_a1() {
                         Ok(ParsedRange {
@@ -242,6 +243,17 @@ impl Lexer {
                             right: Some(cell2),
                         })
                     } else {
+                        // An off-grid second corner is a name joined by the range operator:
+                        // `A1:B0` and `Data!A1:B1048577` are `#NAME?`, not references
+                        // (probes/off-grid-corners, excel-graph, T-0296).
+                        self.position = colon + 1;
+                        if self.consume_off_grid_cell_as_name().is_some() {
+                            self.position = colon;
+                            return Ok(ParsedRange {
+                                left: cell,
+                                right: None,
+                            });
+                        }
                         Err(self.set_error("Expecting reference in range", self.position))
                     }
                 } else {

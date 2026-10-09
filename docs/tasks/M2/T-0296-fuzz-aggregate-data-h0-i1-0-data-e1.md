@@ -46,6 +46,8 @@ Two causes. Static analysis compared AGGREGATE's range function_num against `Ran
 result reached a scalar cell. Separately, `Data!H0` lexed as a row-0 reference. Excel
 (probes/aggregate-range-function-num-grid, 22 cells, excel-graph 2026-10-09) reads a
 sheet-qualified cell off the grid (row 0 or past 1048576) as a name, so the fuzz formula is one
-`#NAME?`, and a 2x2 function_num spills a 2x2 grid. Unit tests: `range_function_num_grid_spills_and_off_grid_names`,
-`test_sheet_qualified_off_grid_cells_are_names`. Eval: +1 probe case, 22/22 passing; no other change.
-Follow-ups: T-1264 (unprobed off-grid shapes), T-1265 (CHOOSE `Range` convention).
+`#NAME?`, and a 2x2 function_num spills a 2x2 grid. An off-grid second corner (`A1:B0`) is a name
+too (probes/off-grid-corners, 6 cells); `$`-qualified off-grid rows cannot be stored in Excel for
+the web and now stay a parse error (they read row 0 before). Unit tests: `range_function_num_grid_spills_and_off_grid_names`,
+`test_sheet_qualified_off_grid_cells_are_names`. Eval: +2 probe cases, 28/28 cells passing; no other change.
+Follow-up: T-1265 (CHOOSE `Range` convention).

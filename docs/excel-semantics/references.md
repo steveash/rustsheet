@@ -758,13 +758,18 @@ Rule: column letters with a row of 0 or past row 1048576 are not a cell referenc
 prefix either, but a sheet-scoped name, as they are without one: `=Data!H0`, `=Data!H00` and
 `=Data!A1048577` are `#NAME?`, `ISREF(Data!H0)` is FALSE, and `Data!H0:I1` is that name joined
 to I1 by `:`, so `ROWS(Data!H0:I1)`, `SUM(Data!G0:H2)` and `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`
-are one `#NAME?` (no spill). A leading zero is still a row: `Data!H01` is H1.
-Implemented: the lexer reads such a corner as an identifier (sheet prefix kept); before T-0296
-`Data!H0` lexed as a row-0 reference, found by the formula_eval fuzz target. Unprobed and still
-`#ERROR!`: an off-grid second corner after a cell (`Data!A1:B0`) and an absolute off-grid cell
-(`Data!$H$0`).
-Evidence: probes/aggregate-range-function-num-grid Calc!A16, A21:A29 (oracle: excel-graph,
-2026-10-09, T-0296).
+are one `#NAME?` (no spill). A leading zero is still a row: `Data!H01` is H1. An off-grid second
+corner is a name too, joined to the first cell by `:`: `ISREF(Data!A1:B0)` and `ISREF(A1:B0)` are
+FALSE, `=Data!A1:B0`, `SUM(A1:B0)`, `SUM(H0:I1)` and `SUM(Data!A1:B1048577)` are `#NAME?`.
+An off-grid row next to a `$` (`$H$0`, `H$0`, `$H0`, `Data!$H$0`, `Data!H$0`, `SUM(Data!$H0:I1)`)
+cannot be stored: Excel for the web refuses the workbook (createSession 501 FileCorruptTryRepair,
+each formula tried alone, 2026-10-09), so there is no value to match; the engine keeps a parse
+error (`#ERROR!`) for them, where before T-0296 it read row 0 (`=$H$0` was 0).
+Implemented: the lexer reads such a corner as an identifier (sheet prefix kept), and ends a range
+token at the first cell when the second corner is off the grid; before T-0296 a row-0 corner lexed
+as a reference, found by the formula_eval fuzz target.
+Evidence: probes/aggregate-range-function-num-grid Calc!A16, A21:A29 and probes/off-grid-corners
+(oracle: excel-graph, 2026-10-09, T-0296).
 Status: VERIFIED (web)
 Tasks: T-0296
 
