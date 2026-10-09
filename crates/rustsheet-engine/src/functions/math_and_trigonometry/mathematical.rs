@@ -265,6 +265,26 @@ impl Model {
                     }
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                // Like a range, an array argument contributes only its numbers; text and
+                // booleans inside it are skipped (same rule as `for_each_value`).
+                RefArg::Value(CalcResult::Array(array)) => {
+                    for value in array.into_iter().flatten() {
+                        match value {
+                            ArrayNode::Number(value) => {
+                                seen_value = true;
+                                result = flush_subnormal(result * value);
+                            }
+                            ArrayNode::Error(error) => {
+                                return CalcResult::Error {
+                                    error,
+                                    origin: cell,
+                                    message: "Error in array".to_string(),
+                                };
+                            }
+                            _ => {}
+                        }
+                    }
+                }
                 RefArg::Value(calc_result) => {
                     seen_value = true;
                     let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);

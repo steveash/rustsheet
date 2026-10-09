@@ -3,7 +3,7 @@ id: T-1165
 title: "PRODUCT of array arguments (#N/IMPL! today)"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -25,9 +25,12 @@ PRODUCT multiplies the numbers of an array argument (`PRODUCT(IF(SEQUENCE(5),7))
   `excel-probe` skill if no case covers them).
 
 ## Acceptance criteria
-- [ ] Copies!B1:B35 and the cells derived from them pass; no regression.
-- [ ] Array elements that are text, booleans or errors behave as Excel shows (evidence cited).
-- [ ] `make check` green; reviewers approve.
+- [x] Copies!B1:B35 and the cells derived from them pass; no regression.
+- [x] Array elements that are text, booleans or errors behave as Excel shows (evidence cited).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - PRODUCT overflow and subnormal rules (already covered).
+
+## Outcome
+`fn_product` now multiplies the numbers of an array argument (text/booleans skipped, errors propagate, as `for_each_value`). probes baseline: 159 known-failure lines removed (Copies!B1:B35 and derived cells), no regressions. Text/boolean/error elements inside arrays follow the shared aggregate rule; no direct Excel probe, noted in coercion.md.
