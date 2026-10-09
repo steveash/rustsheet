@@ -3,7 +3,7 @@ id: T-0288
 title: "GEOMEAN in-range root: the 26 remaining one-ulp misses"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
