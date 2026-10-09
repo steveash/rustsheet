@@ -3,7 +3,7 @@ id: T-1175
 title: "Probe SUBTOTAL/AREAS UNVERIFIED rows: two non-reference arguments, AREAS of an array, invalid function number (follow-up of T-1163)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
