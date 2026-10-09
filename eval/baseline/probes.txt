@@ -18,6 +18,7 @@ C	probes/and-or-xor-error-order.case.json	37
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
+C	probes/at-group-not-whole-operand.case.json	10
 C	probes/at-operand-formulatext.case.json	14
 C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
@@ -323,6 +324,9 @@ C	probes/xnpv-argument-count.case.json	3
 F	probes/3d-ref-choose-let.case.json	Calc!C3
 F	probes/3d-ref-choose-let.case.json	Calc!C4
 F	probes/3d-ref-let-values.case.json	Calc!C7
+F	probes/at-group-not-whole-operand.case.json	Sheet1!E30
+F	probes/at-group-not-whole-operand.case.json	Sheet1!E31
+F	probes/at-group-not-whole-operand.case.json	Sheet1!E32
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
