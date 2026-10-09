@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Range operator `:` with unnamed multi-cell operands and an undefined name operand (T-1205)",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "C1": 10,
+        "C2": 20,
+        "C3": 30,
+        "A1": "=ROWS(OFFSET(B1,0,0,2,1):B3)",
+        "A2": "=SUM(INDEX(B1:B3,1):INDEX(B1:B3,3))",
+        "A3": "=SUM(B1:B2:C3)",
+        "A4": "=SUM(B1:B2:C3:C2)",
+        "A5": "=ROWS((B1:B2):B3)",
+        "A6": "=ISREF(OFFSET(B1,0,0,2,1):B3)",
+        "A7": "=SUM(xx:B3)",
+        "A8": "=ISREF(xx:B3)",
+        "A9": "=SUM(B3:xx)",
+        "A10": "=xx:B3"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10"
+  ]
+}

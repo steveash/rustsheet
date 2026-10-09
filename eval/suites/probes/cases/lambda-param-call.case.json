@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LAMBDA parameter called like a function, f(2), with a number, text, an error, a reference and a LAMBDA passed (T-1092). Sheet1 A1:B3 = 1,2,3 / 10,20,30.",
+  "tags": [
+    "M1",
+    "references",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=LAMBDA(f,f(2))(1)",
+        "H2": "=LAMBDA(f,f(2))(\"a\")",
+        "H3": "=LAMBDA(f,f(2))(1/0)",
+        "H4": "=LAMBDA(f,f(2))(A1)",
+        "H5": "=LAMBDA(f,f(2))(LAMBDA(x,x*3))",
+        "H6": "=LAMBDA(f,f(2))(TRUE)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6"
+  ]
+}
