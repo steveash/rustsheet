@@ -127,7 +127,7 @@ impl Model {
                 value
             } else if self.is_multi_area(arg) {
                 // A body that may stand for a union keeps the union path; its error is the result,
-                // and a scalar it picks (`IF(TRUE,5,6)`, `CHOOSE(1,"x",2)`, `IF(TRUE,"",1)`) is
+                // and a scalar it picks (`IF(TRUE,5,6)`, `CHOOSE(1,5,6)`, `IF(TRUE,"",1)`) is
                 // `#VALUE!` like any other name that is not a reference
                 // (probes/countblank-formula-names-b, excel-graph 2026-10-09, T-1207).
                 match value {

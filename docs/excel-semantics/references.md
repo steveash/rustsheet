@@ -798,10 +798,12 @@ A body that is an IF or CHOOSE follows the same rule: one that picks a scalar is
 `=IF(TRUE,"x",1)`, `=IF(TRUE,"",1)`), one that picks an error is that error (`=IF(TRUE,1/0,1)` `#DIV/0!`,
 `=CHOOSE(1,NA(),1)` `#N/A`), and one that picks a range or a single cell counts it as a reference (`=IF(TRUE,Sheet1!$B$1:$B$3)`,
 `=IF(FALSE,5,Sheet1!$B$1:$B$3)` and `=CHOOSE(1,Sheet1!$B$1:$B$3,5)` give 1; `=IF(TRUE,Sheet1!$C$2)` and
-`=CHOOSE(1,Sheet1!$C$2)` 1 for an empty cell, 0 for a number or an error cell) (probes/countblank-formula-names-b, excel-graph,
+`=CHOOSE(1,Sheet1!$C$2)` give 1 for an empty cell; `=IF(TRUE,Sheet1!$C$3)` and `=IF(TRUE,Sheet1!$C$1)` give 0 for a
+number and an error cell; CHOOSE was probed with the empty cell only) (probes/countblank-formula-names-b, excel-graph,
 2026-10-09, T-1207). UNVERIFIED: LET bodies. The case builder does not write `_xlpm.` in defined-name bodies, so Excel
-read the LET variable as an undefined name (`#NAME?`) and no value exists (T-1209).
-Evidence: probes/countblank-formula-names A1:A21 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
+read the LET variable as an undefined name (`#NAME?`) and no value exists (T-1209); a name whose body is another
+formula name is unprobed too.
+Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-names-b A1:A13 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
 Status: VERIFIED for non-LET bodies. Implemented in: `fn_countblank` (functions/statistical/count.rs).
 Tasks: T-1199, T-1207
 
