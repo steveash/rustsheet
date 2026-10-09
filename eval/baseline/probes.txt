@@ -211,7 +211,7 @@ C	probes/multiarea-iserror.case.json	3
 C	probes/multiarea-let.case.json	3
 C	probes/multiarea-letbind.case.json	16
 C	probes/multiarea-more.case.json	14
-C	probes/multiarea-order-stats.case.json	30
+C	probes/multiarea-order-stats.case.json	33
 C	probes/multiarea-printarea.case.json	0
 C	probes/multiarea-rank.case.json	5
 C	probes/multiarea-subtotal-counts-a.case.json	17

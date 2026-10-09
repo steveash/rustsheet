@@ -770,9 +770,9 @@ Tasks: T-1132, T-1134
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells in the order written;
 overlapping areas count twice (`LARGE((A1:B2,B2),2)` = 9 with A1:B2 = 7,1,3,9 and B2 = 9; `SMALL((A1:B2,B2),2)` = 3;
 `RANK(7,(A1:B2,B2))` = 3; `RANK.AVG(9,(A1:B2,B2))` = 1.5). The order of the areas does not change the result
-(`SMALL((C3,B2,A1),2)` = `SMALL((A1,B2,C3),2)` = 7). An error cell in an area is skipped, not propagated:
-`LARGE((A1,E1),1)` = 7 and `SMALL((A1,E1),1)` = 7 with E1 = #DIV/0!, `RANK(7,(A1,E1))` = 1, and FREQUENCY over such a union counts it in no bin
-(`FREQUENCY((A1,E1),{4})` = 0, 1). SMALL reads `IF(..)`, `INDEX(..)` and a 3-D reference like LARGE
+(`LARGE((C3,B2,A1),2)` = `LARGE((A1,B2,C3),2)` = 7, `RANK(7,(C3,B2,A1))` = `RANK(7,(A1,B2,C3),1)` = 2). A real error cell in an area propagates:
+`LARGE((A1,E1),1)`, `SMALL((A1,E1),1)`, `RANK(7,(A1,E1))`, `RANK.AVG(7,(A1,E1),1)` and `FREQUENCY((A1,E1),{4})` are all `#DIV/0!` with E1 = `1/0`, while a text cell
+in an area ("#DIV/0!" in F1) is ignored (`LARGE((A1,F1),1)` = 7, `RANK(7,(A1,F1))` = 1). SMALL reads `IF(..)`, `INDEX(..)` and a 3-D reference like LARGE
 (`SMALL(IF(A1:C1>0,A1:C1),2)` = 5, `SMALL(INDEX(A1:C2,0,2),1)` = 1, `SMALL(Sheet1:Data!A1,1)` = 7). RANK with an array (not a
 reference) as the ref argument, `RANK(5,IF(A1:C1>0,A1:C1))`, is `#VALUE!` spilled over the array's shape (1x3).
 Evidence: probes/multiarea-order-stats (excel-graph, 2026-10-09, T-1152). Ours: matches except the RANK-of-array row (engine returns 2; T-1203).

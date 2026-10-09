@@ -30,4 +30,4 @@ Write a probe next to probes/multiarea-rank with the excel-probe skill and fill 
 -
 
 ## Outcome
-Added probes/multiarea-order-stats (oracle-filled, excel-graph). The engine already matched Excel on 27 of 30 scored cells: overlap counts twice, area order is irrelevant, error cells in a union are skipped, SMALL(IF/INDEX/3-D) work. The one mismatch (RANK of an array ref argument is `#VALUE!`) is T-1203. probes baseline updated (3 known-failure cells).
+Added probes/multiarea-order-stats (oracle-filled, excel-graph). The engine already matched Excel on 30 of 33 scored cells: overlap counts twice, area order is irrelevant, a text cell in a union is ignored while a real error cell propagates, SMALL(IF/INDEX/3-D) work. The one mismatch (RANK of an array ref argument is `#VALUE!`) is T-1203. probes baseline updated (3 known-failure cells).
