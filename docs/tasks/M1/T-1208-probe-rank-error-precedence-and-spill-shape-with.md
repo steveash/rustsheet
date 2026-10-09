@@ -3,7 +3,7 @@ id: T-1208
 title: "Probe RANK error precedence and spill shape with a non-reference array ref"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
