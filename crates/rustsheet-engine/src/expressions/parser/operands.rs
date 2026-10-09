@@ -6,6 +6,7 @@
 use super::super::token::{self, TableReference, TokenType};
 use super::super::types::ParsedReference;
 use super::super::utils::number_to_column;
+use super::reference_operators::is_reference_operand;
 use super::*;
 
 impl Parser {
@@ -290,6 +291,10 @@ impl Parser {
                     position: self.lexer.get_position() as usize,
                     message: "ANCHORARRAY requires one argument".to_string(),
                 };
+            }
+            // `=ANCHORARRAY(1)` is refused like a value operand of `:` (T-1111, T-1117).
+            if !is_reference_operand(&args[0]) {
+                return self.range_operand_error();
             }
             return Node::SpillRangeOperator {
                 child: Box::new(args[0].clone()),
