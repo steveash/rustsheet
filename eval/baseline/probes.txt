@@ -222,6 +222,7 @@ C	probes/multiarea-iserror.case.json	3
 C	probes/multiarea-let.case.json	3
 C	probes/multiarea-letbind.case.json	16
 C	probes/multiarea-more.case.json	14
+C	probes/multiarea-order-stats.case.json	33
 C	probes/multiarea-printarea.case.json	0
 C	probes/multiarea-rank.case.json	5
 C	probes/multiarea-subtotal-counts-a.case.json	17
@@ -616,6 +617,9 @@ F	probes/math-argument-modes.case.json	Sheet1!C51
 F	probes/math-argument-modes.case.json	Sheet1!C52
 F	probes/math-argument-modes.case.json	Sheet1!C53
 F	probes/math-argument-modes.case.json	Sheet1!C9
+F	probes/multiarea-order-stats.case.json	Sheet1!H14
+F	probes/multiarea-order-stats.case.json	Sheet1!I14
+F	probes/multiarea-order-stats.case.json	Sheet1!J14
 F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
@@ -634,9 +638,6 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
-F	probes/subtotal-hidden-filtered.case.json	Hide!C10
-F	probes/subtotal-hidden-filtered.case.json	Hide!D10
-F	probes/subtotal-hidden-filtered.case.json	Hide!D11
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name-uses.case.json	Sheet1!H12
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
