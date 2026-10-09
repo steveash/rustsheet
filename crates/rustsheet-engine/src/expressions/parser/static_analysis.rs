@@ -1779,9 +1779,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
         Function::Code => scalar_arguments(args),
-        Function::Asc | Function::Dbcs | Function::Phonetic | Function::Bahttext => {
-            not_implemented(args)
-        }
+        Function::Bahttext => scalar_arguments(args),
+        Function::Asc | Function::Dbcs | Function::Phonetic => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
         Function::Encodeurl => not_implemented(args),
