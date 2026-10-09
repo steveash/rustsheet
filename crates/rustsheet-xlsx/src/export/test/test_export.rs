@@ -488,3 +488,18 @@ fn test_sheet_local_print_area_round_trips_with_xlnm_prefix() {
     assert_eq!(model.get_formatted_cell_value(0, 1, 8).unwrap(), "6");
     assert_eq!(model.get_formatted_cell_value(0, 2, 8).unwrap(), "2");
 }
+
+#[test]
+fn defined_name_scoped_to_a_missing_sheet_is_an_export_error() {
+    let mut model = new_empty_model();
+    model
+        .workbook
+        .defined_names
+        .push(rustsheet_engine::types::DefinedName {
+            name: "Print_Area".to_string(),
+            formula: "Sheet1!$A$1".to_string(),
+            sheet_id: Some(99),
+        });
+    let result = crate::export::workbook::get_workbook_xml(&model.workbook, 0);
+    assert!(matches!(result, Err(XlsxError::Workbook(_))));
+}
