@@ -19,6 +19,7 @@ From T-1192's gen-m5 run (excel-graph oracle): `COS(1E+15)` is `#NUM!` in Excel;
 ## Acceptance criteria
 - [ ] A probe case with oracle values for the threshold and the sibling trig functions.
 - [ ] gen-m5 c2ce66769f6cc566 A32 and 065c0542a4ce3d1c A26 pass; baseline updated if the suite gains one.
+- [ ] In `(A-COS(1E+15))=INDEX(B11:D11,6,2)` the left operand's `#NUM!` wins over INDEX's `#REF!` (error precedence).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

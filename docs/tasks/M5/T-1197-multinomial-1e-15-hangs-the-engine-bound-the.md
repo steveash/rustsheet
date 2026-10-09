@@ -4,7 +4,7 @@ title: "MULTINOMIAL(1E+15) hangs the engine: bound the loop (gen-m5 timeout)"
 milestone: M5
 lane: functions-math
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: []
