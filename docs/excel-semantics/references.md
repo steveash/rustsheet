@@ -747,6 +747,19 @@ Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand 
 Engine gap: the refused forms, which the engine evaluates (T-1117).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
 
+## `:` joins multi-cell operands and names into their bounding box
+Rule: the operands of `:` may be multi-cell references or defined names (a parenthesized body
+included), and the result is the bounding box of both: with `rg` = `=(Sheet1!$B$1:$B$2)` and
+`ig` = `=(INDEX(Sheet1!$B$1:$B$2,2))` (B1:B3 = 1, 2, 3), `ROWS(rg:B3)` is 3 and `SUM(ig:B3)` is 5.
+A name spelled like a column (`ig`, `rg`) before `:` is still a name when the right side is not a
+column range (`ig:B3`). Other reference-position uses of a grouped name agree with the bare
+reference: `OFFSET(rg,1,0,1,1)` is 2, `AREAS(rg)` 1, `INDEX(rg,2)` 2, `CELL("address",rg)` `$B$1`.
+Evidence: probes/defined-name-grouped-reference A8:A13 (excel-graph, 2026-10-09).
+Status: VERIFIED for these cells; corner order and cross-sheet operands of multi-cell references stay as in the entry above (UNVERIFIED).
+Implemented in: `Model::get_range`, `range_operand` and `defined_name_range_operand`
+(reference_operators.rs, defined_names.rs); the lexer keeps a column-spelled name before `:` an identifier (lexer/mod.rs).
+Tasks: T-1173
+
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
 `=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value

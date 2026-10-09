@@ -312,18 +312,24 @@ impl Model {
 
     /// An operand of `:`. An INDEX operand is the cell it selects, not its value
     /// (probes/text-result-limit-errors-refs C2, D2).
-    fn range_operand(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+    pub(crate) fn range_operand(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
         match node {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
+            // A name whose body is a formula, parenthesized or not, joins as what the body is
+            // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
+            Node::GroupedRootKind { child } => self.range_operand(child, cell),
+            Node::DefinedNameKind(..) if self.defined_name_formula(node).is_some() => {
+                self.defined_name_range_operand(node, cell)
+            }
             _ => self.evaluate_node_with_reference(node, cell),
         }
     }
 
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
-    /// token (the lexer builds those): only two single cells on one sheet are joined, so
+    /// token (the lexer builds those): two references on one sheet are joined into their bounding box, so
     /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
     /// is only ever a 3-D reference.
     pub(crate) fn get_range(
@@ -344,19 +350,33 @@ impl Model {
                     left: left2,
                     right: right2,
                 },
-            ) if left1 == right1 && left2 == right2 && left1.sheet == left2.sheet => {
-                // Corners may be written in either order (`Data!B2:Data!A1` is `Data!A1:B2`).
-                // UNVERIFIED against the oracle (references.md).
+            ) if left1.sheet == left2.sheet
+                && left1.sheet == right1.sheet
+                && left2.sheet == right2.sheet =>
+            {
+                // The result is the bounding box of both operands, whichever order the corners
+                // are written in (`Data!B2:Data!A1` is `Data!A1:B2`). Multi-cell operands join
+                // too: with `rg` = `(Sheet1!$B$1:$B$2)`, `rg:B3` is B1:B3 and `ig:B3` (ig =
+                // `(INDEX(Sheet1!$B$1:$B$2,2))`) is B2:B3 (probes/defined-name-grouped-reference
+                // A10, A11, T-1173). Corner order is UNVERIFIED against the oracle (references.md).
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: left1.sheet,
-                        row: left1.row.min(right2.row),
-                        column: left1.column.min(right2.column),
+                        row: left1.row.min(right1.row).min(left2.row).min(right2.row),
+                        column: left1
+                            .column
+                            .min(right1.column)
+                            .min(left2.column)
+                            .min(right2.column),
                     },
                     right: CellReferenceIndex {
                         sheet: right2.sheet,
-                        row: left1.row.max(right2.row),
-                        column: left1.column.max(right2.column),
+                        row: left1.row.max(right1.row).max(left2.row).max(right2.row),
+                        column: left1
+                            .column
+                            .max(right1.column)
+                            .max(left2.column)
+                            .max(right2.column),
                     },
                 }
             }

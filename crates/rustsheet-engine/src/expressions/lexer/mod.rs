@@ -439,6 +439,14 @@ impl Lexer {
                                                     };
                                                 }
                                             }
+                                            // A name spelled like a column before a `:` that is
+                                            // not a column range (`ig:B3`) is a name, the left
+                                            // operand of the range operator (probes/defined-name-
+                                            // grouped-reference A10, A11, T-1173).
+                                            if utils::is_valid_a1_identifier(&name) {
+                                                self.position = position_indent;
+                                                return TokenType::Ident(name);
+                                            }
                                             self.position = self.len;
                                             return TokenType::Illegal(error);
                                         }
