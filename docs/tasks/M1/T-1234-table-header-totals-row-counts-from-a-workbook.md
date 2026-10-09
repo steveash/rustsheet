@@ -3,7 +3,7 @@ id: T-1234
 title: "Table header/totals row counts from a workbook use unchecked i32 arithmetic in structured_reference_operand (follow-up of T-1210)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ From the T-1210 security review: `table.totals_row_count as i32`, `header_row_co
 
 ## Out of scope
 -
+
+## Outcome
+`structured_reference_operand` converts the workbook header/totals row counts with `i32::try_from` and does the row arithmetic with checked ops; anything that does not fit is `#REF!` (unit test `huge_header_or_totals_row_counts_are_ref_error_not_an_overflow`, red before the change). No eval cells change.
