@@ -3,7 +3,7 @@ id: T-1247
 title: "ANCHORARRAY(@-1) parses, and ANCHORARRAY(@INDEX(..)) spills the reference (follow-up of T-1240)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/anchorarray-at-operand-kinds (excel-graph, T-1240): H101 `=ANCHORARRAY(@-
 
 ## Out of scope
 -
+
+## Outcome
+`@` now accepts a signed operand (`ANCHORARRAY(@-1)` is `#VALUE!`), and `eval_ref_or_index` keeps the one-cell reference of `@INDEX(..)` so it spills. Eval delta: probes 561 -> 557 known failures (H81:H83, H101 fixed).

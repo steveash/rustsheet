@@ -310,6 +310,13 @@ impl Parser {
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
+            } else if matches!(self.lexer.peek_token(), TokenType::Addition(_)) {
+                // `@-1` loads (probes/anchorarray-at-operand-kinds H101, T-1247): the sign is
+                // the operand's, a value, so the `@` of it is a value too.
+                self.nesting += PRIMARY_DEPTH;
+                let t = self.parse_power();
+                self.nesting -= PRIMARY_DEPTH;
+                t
             } else {
                 self.nesting += PRIMARY_DEPTH;
                 let t = self.parse_intersection();

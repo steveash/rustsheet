@@ -373,10 +373,6 @@ C	probes/xmatch-blank-extensions.case.json	43
 C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
 C	probes/xnpv-argument-count.case.json	3
-F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!H101
-F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!H81
-F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!H82
-F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!H83
 F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!I101
 F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!I41
 F	probes/anchorarray-at-operand-kinds.case.json	Sheet1!I51
