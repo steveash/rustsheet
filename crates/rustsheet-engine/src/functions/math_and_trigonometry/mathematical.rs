@@ -755,6 +755,11 @@ impl Model {
         let mut k = 2.0;
         while k <= x {
             acc *= k;
+            // Excel: FACT is #NUM! once the product overflows (FACT(171), FACT(1E+15); numbers.md
+            // "FACT and FACTDOUBLE of a huge argument"); stop there so the work stays bounded.
+            if !acc.is_finite() {
+                return Err(Error::NUM);
+            }
             k += 1.0;
         }
         Ok(acc)
@@ -771,6 +776,10 @@ impl Model {
         let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
         while k <= x {
             acc *= k;
+            // Excel: as FACT, overflow is #NUM! (FACTDOUBLE(301)); bounded work.
+            if !acc.is_finite() {
+                return Err(Error::NUM);
+            }
             k += 2.0;
         }
         Ok(acc)

@@ -21,3 +21,30 @@ fn arguments() {
     assert_eq!(model._get_text("A5"), *"#ERROR!");
     assert_eq!(model._get_text("A6"), *"#ERROR!");
 }
+
+// Excel: numbers.md "FACT and FACTDOUBLE of a huge argument" (probes/fact-large-arguments).
+#[test]
+fn huge_arguments_are_num_without_looping() {
+    let mut model = new_empty_model();
+    for (i, f) in [
+        "FACT(171)",
+        "FACT(1E+15)",
+        "FACT(1E+300)",
+        "FACTDOUBLE(301)",
+        "FACTDOUBLE(1E+15)",
+        "FACTDOUBLE(1E+300)",
+    ]
+    .iter()
+    .enumerate()
+    {
+        model._set(&format!("A{}", i + 1), &format!("={f}"));
+    }
+    model._set("B1", "=FACT(170.9)");
+    model._set("B2", "=FACTDOUBLE(300)");
+    model.evaluate();
+    for i in 1..=6 {
+        assert_eq!(model._get_text(&format!("A{i}")), *"#NUM!");
+    }
+    assert_eq!(model._get_text("B1"), *"7.2574E+306");
+    assert_eq!(model._get_text("B2"), *"8.1544E+307");
+}
