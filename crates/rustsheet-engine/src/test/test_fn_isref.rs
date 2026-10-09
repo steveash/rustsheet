@@ -95,3 +95,36 @@ fn wrong_number_of_arguments() {
     assert_eq!(model._get_text("A1"), *"#ERROR!");
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
+
+// A range corner may be an error, a value or an IF that picks a reference
+// (probes/isref-range-operands, excel-graph; T-1177).
+#[test]
+fn range_operand_errors_values_and_if() {
+    let mut model = new_empty_model();
+    for (cell, value) in [("A1", "1"), ("A2", "2"), ("A3", "3")] {
+        model._set(cell, value);
+    }
+    for (cell, value) in [("B1", "10"), ("B2", "20"), ("B3", "30")] {
+        model._set(cell, value);
+    }
+    model._set("D1", "=ISREF(A1:INDEX(A1:A3,5))");
+    model._set("D2", "=ISREF(A1:(A1 B2))");
+    model._set("D3", "=ISREF(A1:IF(TRUE,1))");
+    model._set("D4", "=ISREF(A1:IF(TRUE,B2))");
+    model._set("D5", "=ISREF(IF(TRUE,B2):A1)");
+    model._set("E1", "=SUM(A1:IF(FALSE,B2,B3))");
+    model._set("E2", "=A1:IF(TRUE,A1)");
+    model._set("E3", "=ROWS(A1:IF(TRUE,B3))");
+    model._set("E4", "=ERROR.TYPE(A1:IF(TRUE,1))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("D1"), *"FALSE");
+    assert_eq!(model._get_text("D2"), *"FALSE");
+    assert_eq!(model._get_text("D3"), *"FALSE");
+    assert_eq!(model._get_text("D4"), *"TRUE");
+    assert_eq!(model._get_text("D5"), *"TRUE");
+    assert_eq!(model._get_text("E1"), *"66");
+    assert_eq!(model._get_text("E2"), *"1");
+    assert_eq!(model._get_text("E3"), *"3");
+    assert_eq!(model._get_text("E4"), *"3");
+}

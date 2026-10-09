@@ -161,6 +161,7 @@ C	probes/intersection-whitespace.case.json	8
 C	probes/is-functions-array-lift.case.json	79
 C	probes/isref-function-results.case.json	6
 C	probes/isref-names-filter-if-empty.case.json	10
+C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
 C	probes/lambda-param-call.case.json	6
