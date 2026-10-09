@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1206: SUBTOTAL/AREAS over arrays from TAKE, AREAS of an array holding an error, and SUM/AVERAGE/COUNT over a single-cell XLOOKUP/TAKE holding text, a boolean or a blank. Sheet1 A1=1,A2=2,A3=3,A4=4, B1=\"x\", B2=TRUE, B3 blank.",
+  "tags": ["M1", "references", "subtotal", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "B1": "x",
+        "B2": true,
+        "H1": "=SUBTOTAL(9,TAKE({1,2;3,4},1))",
+        "H2": "=AREAS(TAKE({1,2},1))",
+        "H3": "=AREAS(IF(TRUE,{1,#N/A}))",
+        "H4": "=SUM(XLOOKUP(1,A1:A2,B1:B2))",
+        "H5": "=SUM(XLOOKUP(2,A1:A2,B1:B2))",
+        "H6": "=SUM(XLOOKUP(2,A1:A3,B1:B3))",
+        "H7": "=COUNT(XLOOKUP(2,A1:A2,B1:B2))",
+        "H8": "=COUNT(XLOOKUP(3,A1:A3,B1:B3))",
+        "H9": "=AVERAGE(XLOOKUP(2,A1:A2,B1:B2))",
+        "H10": "=SUM(TAKE(B1:B3,1))",
+        "H11": "=SUM(TAKE(B2:B3,1))",
+        "H12": "=COUNT(TAKE(B2:B3,1))",
+        "H13": "=COUNTA(TAKE(B3:B3,1))",
+        "H14": "=SUM(XLOOKUP(3,A1:A3,B1:B3))"
+      }
+    }
+  ],
+  "expected": {}
+}

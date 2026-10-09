@@ -15,7 +15,7 @@ impl Model {
         for arg in args {
             // References (also via IF/INDEX) arrive as a Range; the scalar
             // arms below only see values.
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Value(CalcResult::Number(_)) => {
                     result += 1.0;
                 }
@@ -126,11 +126,21 @@ impl Model {
             let value = if self.defined_name_formula(arg).is_none() {
                 value
             } else if self.is_multi_area(arg) {
-                // A body that may stand for a union keeps the union path; its error is the result.
-                if let error @ CalcResult::Error { .. } = value {
-                    return error;
+                // A body that may stand for a union keeps the union path; its error is the result,
+                // and a scalar it picks (`IF(TRUE,5,6)`, `CHOOSE(1,5,6)`, `IF(TRUE,"",1)`) is
+                // `#VALUE!` like any other name that is not a reference
+                // (probes/countblank-formula-names-b, excel-graph 2026-10-09, T-1207).
+                match value {
+                    error @ CalcResult::Error { .. } => return error,
+                    range @ CalcResult::Range { .. } => range,
+                    _ => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "COUNTBLANK needs a reference".to_string(),
+                        )
+                    }
                 }
-                value
             } else {
                 match self.defined_name_range_operand(arg, cell) {
                     range @ CalcResult::Range { .. } => range,
