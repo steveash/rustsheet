@@ -72,3 +72,21 @@ Evidence: probes/catalog/availability-22 A8 (TRUE = #NAME?), function-name-forms
 T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
+
+## Text function argument modes
+Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill),
+except TEXTJOIN's text arguments and ARRAYTOTEXT's array, which take a range whole, and PHONETIC's argument, which
+must be a reference. TEXTJOIN turns numbers and booleans in a range into their text (`TEXTJOIN("-",TRUE,A1:A6)` over 5,
+"ab", TRUE, blank, "x", "2" is "5-ab-TRUE-x-2"; with ignore_empty FALSE the blank adds a delimiter); ARRAYTOTEXT gives
+"5, ab, TRUE, , x, 2" and, with format 1, `{5;"ab";TRUE;;"x";"2"}`. A boolean argument is its text where the function
+wants text (`CODE(TRUE)` = 84, `PROPER(TRUE)` = "True", `TEXT(TRUE,"0")` = "TRUE", `LENB(TRUE)` = 4) and 1 where it wants
+a number (`CHAR(TRUE)` and `UNICHAR(TRUE)` = CHAR(1), `REPT("a",TRUE)` = "a"), but `VALUE(TRUE)` and `NUMBERVALUE(TRUE)`
+are `#VALUE!`. `FIXED("ab")` is `#VALUE!`, `FIXED("2")` = "2.00". On the web JIS is `#NAME?`, PHONETIC of any
+reference (a text cell, a number cell, a range) is `#N/A`, and a workbook calling PHONETIC with a literal
+(`PHONETIC("abc")`) is refused (HTTP 501 `unsupportedWorkbook`), as is one calling MUNIT with a large dimension.
+Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
+-phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
+Ours: matches except CODE and VALUETOTEXT over a range and `VALUETOTEXT(TRUE,1)` (T-1212), DBCS and PHONETIC (T-1213) and
+BAHTTEXT (T-1214), which are not implemented.
+Status: VERIFIED (excel-graph)
+Tasks: T-1087, T-1212, T-1213, T-1214
