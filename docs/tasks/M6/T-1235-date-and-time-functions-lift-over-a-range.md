@@ -3,7 +3,7 @@ id: T-1235
 title: "Date and time functions lift over a range or an array argument (DATE, DAYS, HOUR, TIME, WEEKDAY and seven more)"
 milestone: M6
 lane: functions-date
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
