@@ -641,7 +641,10 @@ Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) and probes/su
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
 `subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
-`Model::evaluate_reference_arg`. Typed entry is a desktop question (M14).
+`Model::evaluate_picked_reference_arg` (SUBTOTAL and AREAS only; SUM and the other aggregates still evaluate those calls
+to values, UNVERIFIED for them, so `SUM(XLOOKUP(2,A1:A2,B1:B2))` over a boolean cell is not settled). UNVERIFIED: the
+same calls over an array (`SUBTOTAL(9,TAKE({1,2;3,4},1))` is one `#VALUE!` in the engine, Excel may spill) and an error
+element kept by AREAS (`AREAS(IF(TRUE,{1,#N/A}))`). Typed entry is a desktop question (M14).
 Tasks: T-1063, T-1163, T-1174, T-1175 (decision 0045)
 
 ## Range corners may both carry the sheet prefix

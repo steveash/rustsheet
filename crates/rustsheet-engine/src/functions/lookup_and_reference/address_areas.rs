@@ -146,7 +146,7 @@ impl Model {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let arg = self.evaluate_reference_arg(&args[0], cell);
+        let arg = self.evaluate_picked_reference_arg(&args[0], cell);
         if let Some(areas) = arg.single_sheet_areas() {
             return CalcResult::Number(areas.len() as f64);
         }

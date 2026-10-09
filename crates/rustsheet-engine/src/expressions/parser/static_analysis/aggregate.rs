@@ -35,7 +35,7 @@ pub(super) fn areas_static_result(args: &[Node]) -> StaticResult {
 
 /// An argument that SUBTOTAL and AREAS read as a reference instead of lifting over: a written
 /// reference, or XLOOKUP, TAKE, DROP and TRIMRANGE, which evaluate to the cells they pick
-/// (`Model::evaluate_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
+/// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
 fn is_read_reference(arg: &Node) -> bool {
     matches!(
         arg,

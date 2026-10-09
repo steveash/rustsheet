@@ -214,7 +214,7 @@ impl Model {
         for arg in args {
             // A union walks its areas one after the other, each counted as written
             // (probes/multiarea-subtotal: SUBTOTAL(9,(A1,B2)) = 6, T-1071).
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(ranges) => resolved.push(ranges),
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 RefArg::Value(CalcResult::Array(rows)) => return Err(not_a_reference_array(rows)),
