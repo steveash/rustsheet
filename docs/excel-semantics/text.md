@@ -96,4 +96,4 @@ Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-mo
 Ours: matches except DBCS and PHONETIC (T-1213) and BAHTTEXT (T-1214), which are not implemented. CODE and VALUETOTEXT
 lift over ranges (T-1212). Unprobed (T-1229): VALUETOTEXT format 1 on text and an invalid format value; we ignore the format.
 Status: VERIFIED (excel-graph)
-Tasks: T-1087, T-1212, T-1213, T-1214
+Tasks: T-1087, T-1212, T-1213, T-1214, T-1229
