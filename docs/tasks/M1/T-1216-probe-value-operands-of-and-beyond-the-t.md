@@ -3,7 +3,7 @@ id: T-1216
 title: "Probe value operands of : and # beyond the T-1111 forms"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
