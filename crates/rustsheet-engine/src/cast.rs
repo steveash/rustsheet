@@ -755,7 +755,9 @@ impl Model {
                         "Reference of several areas".to_string(),
                     ))
                 }
-                other => other.into_single_area(cell),
+                // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
+                // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
+                other => other.into_single_sheet_area(cell),
             }
         } else {
             self.evaluate_node_with_reference(node, cell)

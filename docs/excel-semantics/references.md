@@ -35,7 +35,15 @@ CHOOSE hands a span to an aggregate the same way: `SUM(CHOOSE(1,Data1:Data3!A1:A
 `=CHOOSE(1,Data1:Data3!A1)` is `#VALUE!`, not the `#REF!` of the bare span. A span bound by LET or LAMBDA,
 written out or from IF or CHOOSE, is `#VALUE!` to every value reader: `=x`, `x+1`, `ROWS(..)`, `INDEX(..,2)`
 (`LET(x,CHOOSE(1,Data1:Data3!A1),x)`, `LAMBDA(x,x)(CHOOSE(1,..))`); only an aggregate reads it
-(`LET(x,CHOOSE(1,Data1:Data3!A1),SUM(x))` = 111). `IF(TRUE,Data1:Data3!A1) A1` is `#VALUE!`. MAX skips text
+(`LET(x,CHOOSE(1,Data1:Data3!A1),SUM(x))` = 111). A span bound directly behaves the same way, like the bare
+span (probes/3d-ref-let-bound-span, excel-graph, 2026-10-09, T-1158). Aggregates read it, including through a second
+variable or a LAMBDA: `LET(x,Data1:Data3!A1,y,x,SUM(y))`, `LAMBDA(x,SUM(x))(Data1:Data3!A1)` and
+`LET(x,..,SUM(IF(TRUE,x)))` are 111, `COUNT(x)` is 3, `SUM(x,x)` is 222 and `MAX(x)+0` is 100. `INDEX(x,1)`, `ROWS(x)`,
+`x+1` and `LAMBDA(x,x)(..)` are `#VALUE!`, as `INDEX(Data1:Data3!A1,1)` and `ROWS(Data1:Data3!A1)` are, and `ISREF(x)` is
+FALSE, as `ISREF(Data1:Data3!A1)` is. More readers (probes/3d-ref-let-bound-span-readers, same date) also treat it
+like the bare span. CONCAT and TEXTJOIN walk it (`"110100"`, `"1,10,100"`). AGGREGATE(9,0,..), AREAS and
+COUNTBLANK are `#VALUE!`, and `SUM((x,Data1!B1))` is `#VALUE!`. The bare union `SUM((Data1:Data3!A1,Data1!B1))` is
+`#NAME?`, not `#VALUE!` (the engine matches). `IF(TRUE,Data1:Data3!A1) A1` is `#VALUE!`. MAX skips text
 behind IF bound by LET or LAMBDA (`LET(x,IF(TRUE,K1),MAX(x))` = 0 with K1 text) as it does for IF written
 in place.
 Evidence: probes/3d-ref-values, probes/3d-ref-functions incl. C15:C22 (excel-graph, 2026-10-06),
@@ -52,10 +60,10 @@ Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` 
 crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
 the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
 the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their argument with `evaluate_reference_arg` and refuse a 3-D result with `three_d_needs_one_sheet` (T-1063); IF-wrapped spans inside AREAS and VLOOKUP go through that path, HLOOKUP and COUNTBLANK read it through `evaluate_single_sheet_arg` (T-1170). A span whose end is not a sheet is `#NAME?` (`Model::wrong_sheet_error`, reference_operators.rs); `@` of a multi-sheet span is `#REF!` (`evaluate_at_operand_reference`).
-CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET is still `#VALUE!` in the
-engine, also to an aggregate (probes/3d-ref-choose-let C3:C4, 3d-ref-let-values C7, known failures, T-1158;
-`Model::bind_argument` binds `#VALUE!` for a span so no value reader sees a range across sheets).
-Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1170
+CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET or LAMBDA is a `Binding::Span`
+(`Model::bind_argument`, functions/logical/let.rs). Only `Model::variable_reference` hands it out as a range, so it reaches the aggregates;
+every value read is `three_d_needs_one_sheet`, and ROWS/COLUMNS and COUNTBLANK refuse it through `RefArg::into_single_sheet_area` (T-1158).
+Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
@@ -100,11 +108,18 @@ Outside aggregate arguments the reference-ness is invisible: `VLOOKUP(IF(TRUE,Da
 today and regress if IF returns a reference everywhere).
 Evidence: gen-m2/96a0952412cefa6c A88, 942bdade381b7537 A212, dd99be1f2454159f A264,
 04cfd82f54dbc2b2 A182, dd99be1f2454159f A110, d0c29dd5c530e28c A112 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-HLOOKUP's result is a reference too: `COUNT(…,HLOOKUP(…))` skips a FALSE it picks (gen-m2/60a543744fc4a8f7 A200).
-Status: VERIFIED
-The engine passes the cell HLOOKUP or VLOOKUP picks from a range table to an aggregate as a reference
-(T-0235), and an INDEX intersection operand (`INDEX(A1:A2,2) A1:A2`) is the cell it picks.
-Status: UNVERIFIED for VLOOKUP (by analogy with HLOOKUP) and for INDEX past its range as an operand (`#REF!`); probe task T-0292.
+VLOOKUP's and HLOOKUP's picked cell is a reference to an aggregate only when the row/column index argument is itself a
+cell reference: `COUNT(HLOOKUP(42,F5:G6,G5))` (G5 holds 2, picking FALSE) is 0, `SUM(VLOOKUP(2,I5:J7,A2))` picking text "5" is 0,
+`MAX(VLOOKUP(3,I5:J7,A2))` picking text "x" is 0 (probes/lookup-pick-aggregates P1-P3, P5, P6, Q1, Q2, Q4, Q6; a parenthesized
+reference counts as one). With a literal or computed index (`INT(Data!A10)`) the pick is a plain value: `COUNT(VLOOKUP(1,A1:B3,2,FALSE))`
+picking FALSE is 1, `SUM` of a picked "5" is 5, `MAX` of a picked "x" is `#VALUE!` (D1-D3, D13, E1-E14, P4, Q3). That holds for exact and
+approximate match, a fractional literal index, a table on another sheet, and array tables (D4, D5, D8, D9); a reference
+lookup value changes nothing (P8). `ISREF` of the lookup result is FALSE either way (D12, E6, E12, P7), so the reference-ness is
+visible only to aggregates. This explains gen-m2/60a543744fc4a8f7 A200 (index `Data!C9` is a cell, the picked FALSE is skipped: -2;
+replicated in L1-L7). A bare `=HLOOKUP(..)` is the picked value (N1-N7).
+`INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); `INDEX(A1:A3,2) A1:A3` is the picked cell (E16, E17).
+Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine DISAGREES: T-0235 passes the pick as a reference whatever the
+index argument is, so literal-index picks are skipped by COUNT/SUM/MAX (the probe's known failures); filed as T-0295.
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
