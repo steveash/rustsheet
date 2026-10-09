@@ -3,7 +3,7 @@ id: T-1211
 title: "Probe MEDIAN/STDEV/GEOMEAN/SUMSQ/MIN/MAX/COUNTA over single-cell XLOOKUP/TAKE results and SUBTOTAL over computed-array TAKE (follow-up of T-1206)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
