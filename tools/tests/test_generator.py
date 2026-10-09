@@ -111,6 +111,31 @@ def test_generator_emits_every_m5_math_function_but_the_volatile_ones() -> None:
     assert not sorted(set(m5_math) - volatile - seen)
 
 
+def test_generator_emits_every_m5_text_function() -> None:
+    # T-1087: every M5 text signature is generator-ready.
+    m5_text = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M5" and f["category"] == "text"
+    }
+    assert len(m5_text) == 33
+    seen: set[str] = set()
+    for seed in range(40):
+        seen.update(generate_case(catalog(), seed, milestone="M5", formulas=80)["tags"])
+    assert not sorted(m5_text - seen)
+
+
+def test_hard_domains_are_never_violated() -> None:
+    # MUNIT of a large dimension makes excel-graph refuse the whole workbook (T-1087), so its
+    # `hard` domain always gets an in-domain integer.
+    calls: list[str] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M5", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            calls += re.findall(r"MUNIT\(([^()]*)\)", formula)
+    assert calls and all(c in {"1", "2", "3", "4"} for c in calls), calls
+
+
 def test_array_params_are_sometimes_ranges() -> None:
     cat = catalog().scoped("M5")
     spec = generate_case(cat, 2, milestone="M5", formulas=400)

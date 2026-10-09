@@ -763,7 +763,9 @@ J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VAL
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
 O1352 (all top-left cells are non-text: 545, 1.001, blank).
 Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
-cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array formulas.
+cell or is always "" for a multi-cell range, and N's behaviour. In a dynamic-array formula T does not lift
+over the range either: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill (probes/text-argument-modes
+F9, excel-graph, 2026-10-09, T-1087).
 Tasks: T-0985
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
