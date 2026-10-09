@@ -54,7 +54,7 @@ kinds:
 - [ ] The facade `ErrorKind` round-trips the kind through `from_literal`/`literal`, and a Python test
       covers `XlError("#BUSY!")`.
 - [ ] A unit test runs UNIQUE over cells holding `#BUSY!` and `#NULL!` (code 0 is its own
-      `CellKey::Error` key; SPEC-0003 "Stored `#BUSY!`").
+      `CellKey::Error` key; SPEC-0003 "Stored `#BUSY!`"). This pins the engine; Excel is T-1228.
 - [ ] syntax.md "Newer error literals" gets an `Implemented in:` line naming the code.
 - [ ] `make check` green; reviewers approve.
 

@@ -191,7 +191,8 @@ The answers T-1222 implements. Each cites evidence or is marked UNVERIFIED.
      `#UNKNOWN!` (12) and `#EXTERNAL!` (19) as the codes with no kind.
      Its other users take the `u8` as is: the ERROR.TYPE array path and the `CellKey::Error(code)`
      dedupe key in `functions/spill_functions.rs` (UNIQUE and similar). 0 is a distinct key there,
-     and a T-1222 test covers UNIQUE over a `#BUSY!` cell.
+     and a T-1222 test pins that engine behavior. Whether Excel's UNIQUE keeps `#BUSY!` and `#NULL!`
+     apart is **UNVERIFIED** (T-1228).
    - `stored_literal`: `"#BUSY!"`, the `Display` text. Excel loads that stored form, which is how
      the probe's own A1 was written.
    - No function produces it, so no evaluator code changes. It propagates and is caught like any
