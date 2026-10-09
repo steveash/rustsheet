@@ -3,7 +3,7 @@ id: T-1235
 title: "Date and time functions lift over a range or an array argument (DATE, DAYS, HOUR, TIME, WEEKDAY and seven more)"
 milestone: M6
 lane: functions-date
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: sonnet
@@ -27,3 +27,10 @@ Semantics: docs/excel-semantics/dates.md "Date function argument modes". Split p
 
 ## Out of scope
 -
+
+## Outcome
+DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift over ranges and arrays
+(`lift_numbers` / a text lifting helper), and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL lifts. DATEDIF with
+numeric text now works (F89). probes: 65 cells fixed, known failures 561 -> 496. Remaining probe cells are the
+date arguments of EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC over an array (T-1236) and
+G3/G4 (T-1237).

@@ -329,7 +329,9 @@ than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells 
 a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
 the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
-Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`); WORKDAY.INTL and NETWORKDAYS.INTL
-are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
+Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
+DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
+a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC;
+`DATE(2024,45031.5,1)` is a number (1415864).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
