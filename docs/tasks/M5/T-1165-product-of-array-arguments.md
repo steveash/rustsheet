@@ -3,7 +3,7 @@ id: T-1165
 title: "PRODUCT of array arguments (#N/IMPL! today)"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
