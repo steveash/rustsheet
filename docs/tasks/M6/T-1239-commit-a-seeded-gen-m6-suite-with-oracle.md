@@ -3,7 +3,7 @@ id: T-1239
 title: "Commit a seeded gen-m6 suite with oracle values and file its gaps"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
