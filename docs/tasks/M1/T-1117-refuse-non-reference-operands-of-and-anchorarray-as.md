@@ -3,7 +3,7 @@ id: T-1117
 title: "Refuse non-reference operands of : and ANCHORARRAY as Excel's loader does"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,9 +24,16 @@ probes/at-operand-formulatext, probes/range-right-operand-errors) and refuse the
 behavior is a desktop question (M14).
 
 ## Acceptance criteria
-- [ ] Parser unit tests: the four refused forms are syntax errors; every `:` form in eval/suites/probes still parses and evaluates as before (`make eval-check` no regressions).
-- [ ] references.md updated with the engine rule.
-- [ ] `make check` green; reviewers approve.
+- [x] Parser unit tests: the four refused forms are syntax errors; every `:` form in eval/suites/probes still parses and evaluates as before (`make eval-check` no regressions).
+- [x] references.md updated with the engine rule.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+The parser reads a non-reference operand of `:` (either side), of a typed `#` and of ANCHORARRAY as a
+syntax error, using the intersection's `is_reference_operand` rule (`range_operand_error` in
+parser/reference_operators.rs). The four probed refusals are now parse errors; every `:` form in the
+probes suite still parses (eval-check: 0 regressions, 0 fixed; eval delta none). references.md records the
+engine rule and marks the unprobed value operands as inferred (UNVERIFIED).
