@@ -3,7 +3,7 @@ id: T-1224
 title: "Probe called LET names bound to unions, erroring arguments, empty elements and other reference-returning functions"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
