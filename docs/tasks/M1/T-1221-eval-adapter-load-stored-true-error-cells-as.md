@@ -3,7 +3,7 @@ id: T-1221
 title: "Eval adapter: load stored:true error cells as stored constants, as xlsx import does"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
