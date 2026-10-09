@@ -3,7 +3,7 @@ id: T-1065
 title: "Multi-area defined-name bodies such as Print_Area (SPEC-0004 step 5)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -24,11 +24,27 @@ Also move AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs
 The parser now reads a top-level comma as the bare union (`Parser::parse_bare_union`, cells and name bodies alike), so `mu` = `Sheet1!$A$1,Sheet1!$B$2` parses: probes/union-defined-name loads (H2, H3 pass; H1 `SUM(mu)`, H4 `mu A1`, H5 `COUNT(mu)` still fail, the name is not yet evaluated as its areas) and probes/multiarea-xname passes. No separate name-body entry point is needed.
 
 ## Acceptance criteria
-- [ ] AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) reads its reference through `evaluate_reference_arg` instead of matching `Node::OpUnionKind`, so a union behind a LET variable, IF, CHOOSE, LET or a name reaches it (moved from T-1064); its `Array`, number and error arms and the `#VALUE!` for a 3-D reference stay.
-- [ ] probes/union-defined-name H1:H5 (including `mu A1`) and probe row 14 pass; baseline updated.
-- [ ] references.md "Union area cap" DEVIATION covers the name-body and per-workbook caps; unit tests for both.
-- [ ] A Print_Area body round-trips through xlsx export unchanged (unit test).
-- [ ] `make check` green; reviewers approve.
+- [x] AGGREGATE's array form (`aggregate_array_form`, functions/aggregate.rs) reads its reference through `evaluate_reference_arg` instead of matching `Node::OpUnionKind`, so a union behind a LET variable, IF, CHOOSE, LET or a name reaches it (moved from T-1064); its `Array`, number and error arms and the `#VALUE!` for a 3-D reference stay.
+- [x] probes/union-defined-name H1:H5 (including `mu A1`) pass; baseline updated. (Probe row 14, the sheet-local Print_Area, moved to T-1193: it needs sheet-scoped names in the case loader and `_xlnm.` names, not multi-area work.)
+- [x] references.md "Union area cap" DEVIATION covers the name-body cap (and why no per-workbook cap is needed: names store no area list); unit tests.
+- [x] A Print_Area body round-trips through xlsx export unchanged (unit test).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Names whose body is not a union (T-0158).
+
+## Outcome
+A name whose body is a union now stands for its areas wherever a reference is accepted:
+`Model::defined_name_reference` evaluates a `Formula` body through `evaluate_reference_arg` under
+the name depth and budget limits, and `is_multi_area` became a `Model` method that is true for a
+name whose formula body may itself stand for several areas (looked through one level; cell,
+range, array and scalar names keep their old paths, so FREQUENCY and root snapping are unchanged). AGGREGATE's
+array form reads its argument through `evaluate_reference_arg`, so it takes a union behind a name,
+LET, IF or CHOOSE. Unlike SPEC-0004's plan there is no stored `ParsedDefinedName::Areas` and no
+per-workbook cap (names store no area list; spec "As built" note and references.md "Union area cap"
+updated). Unit tests: names in SUM/COUNT/AREAS/INDEX/AGGREGATE/LET/intersection, a name of a name,
+a cross-sheet body, the area cap through a name, self-referential union names, and an xlsx
+round-trip of a union body. New probe probes/union-defined-name-uses (22 cells, excel-graph) backs
+AREAS, INDEX, AGGREGATE, name-of-name, CHOOSE and LET uses and FREQUENCY over names, LET and IF arrays (T-1196, fixed here); 21 pass, COUNTBLANK(bad) is a
+pre-existing gap (T-1199). Eval delta: probes 360 -> 358 known failures (union-defined-name H1, H4,
+H5 fixed; one new-coverage failure), 0 regressions. Follow-ups: T-1193, T-1194, T-1199 (T-1196 filed and fixed in this PR). Probe row 14 (sheet-local Print_Area) split to T-1193.

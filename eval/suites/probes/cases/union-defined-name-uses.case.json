@@ -1,0 +1,78 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Union-bodied defined names beyond union-defined-name H1:H5: AREAS, INDEX area_num, AGGREGATE array form, a name of a name, a CHOOSE body, LET, and non-union formula names in FREQUENCY/COUNTBLANK (T-1065)",
+  "tags": [
+    "M1",
+    "references",
+    "union",
+    "names",
+    "probe"
+  ],
+  "names": {
+    "mu": "=Sheet1!$A$1,Sheet1!$B$2",
+    "alias": "=mu",
+    "ch": "=CHOOSE(2,Sheet1!$A$1,(Sheet1!$A$1,Sheet1!$B$2))",
+    "arr": "={1,2,3}",
+    "total": "=SUM(Sheet1!$A$1:$A$3)",
+    "bad": "=1+\"a\"",
+    "aa": "=arr"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 4,
+        "A3": 6,
+        "B2": 5,
+        "H1": "=AREAS(mu)",
+        "H2": "=INDEX(mu,1,1,2)",
+        "H3": "=AGGREGATE(14,0,mu,1)",
+        "H4": "=AGGREGATE(15,0,mu,1)",
+        "H5": "=SUM(alias)",
+        "H6": "=alias A1",
+        "H7": "=SUM(ch)",
+        "H8": "=LET(x,mu,SUM(x))",
+        "H9": "=ROWS(FREQUENCY(arr,2))",
+        "H10": "=SUM(FREQUENCY(arr,2))",
+        "H11": "=SUM(FREQUENCY(total,2))",
+        "H12": "=COUNTBLANK(bad)",
+        "H13": "=COUNTBLANK(mu)",
+        "H14": "=SUM(FREQUENCY(mu,2))",
+        "H15": "=AGGREGATE(14,0,IF(TRUE,(A1,B2)),2)",
+        "H16": "=ISREF(alias)",
+        "H17": "=AREAS(alias)",
+        "H18": "=COUNT(ch)",
+        "H19": "=SUM(FREQUENCY(aa,2))",
+        "H20": "=ROWS(FREQUENCY(aa,2))",
+        "H21": "=LET(x,{1,2,3},SUM(FREQUENCY(x,2)))",
+        "H22": "=SUM(FREQUENCY(IF(TRUE,{1,2,3}),2))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7",
+    "Sheet1!H8",
+    "Sheet1!H9",
+    "Sheet1!H10",
+    "Sheet1!H11",
+    "Sheet1!H12",
+    "Sheet1!H13",
+    "Sheet1!H14",
+    "Sheet1!H15",
+    "Sheet1!H16",
+    "Sheet1!H17",
+    "Sheet1!H18",
+    "Sheet1!H19",
+    "Sheet1!H20",
+    "Sheet1!H21",
+    "Sheet1!H22"
+  ]
+}

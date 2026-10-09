@@ -54,6 +54,7 @@ use sheet_span::with_sheet_span;
 use token::OpCompare;
 
 mod chain;
+mod contains_function;
 mod depth;
 mod lambda;
 mod lists;

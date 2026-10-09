@@ -258,6 +258,13 @@ bindings in scope hold at `4 * MAX_AREAS` (DEVIATION, references.md "Union area 
 unchanged.
 
 ### Defined names
+- As built (T-1065, amending the plan below): no `ParsedDefinedName::Areas` and no per-workbook cap.
+  A union body stays T-0158's `Formula` body and is evaluated at each use in reference context
+  (`Model::defined_name_reference`) under the name depth and budget limits, so the one builder
+  (`union_areas`) and its caps apply unchanged and names store no area list. `is_multi_area` became
+  a `Model` method that is true for a name with a `Formula` body (a cell or range name keeps the
+  pair path). A sheet-local Print_Area needs sheet-scoped names in the case loader and `_xlnm.`
+  name mapping on import, which are not multi-area work: T-1193.
 - `parse_name_body` returns a `Node`. A body that is a union of absolute single-sheet references
   only (the Print_Area shape) becomes `ParsedDefinedName::Areas(Areas)`, resolved once at load by
   evaluating the node through `reference_areas`, the same builder, not a second walker. Reads are
