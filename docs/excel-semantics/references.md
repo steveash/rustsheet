@@ -869,11 +869,10 @@ only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with t
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
 print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches all five
 (`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
-UNVERIFIED (inferred from those five, T-1200): the engine prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`, `=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1` and
-`=@(A1):OFFSET(B1,0,0) C1` as written; `=@((A1 B1) C1) D1` as `=@(A1 B1 C1) D1` (the inner group is dropped, the printed group covers
-three operands); `=@(A1):(B1) C1` as `=@(A1):B1 C1` (the written `(B1)` is dropped); `=@(A1):B1` as `=@A1:B1` (a corner group with
-no intersection after it is dropped); `=@(A1 B1):C1` as written. Pinned as characterization in
-`at_operand_group_shapes_no_probe_covers_are_characterized`; probe task T-1245.
+More shapes (probes/at-group-leftmost-shapes, excel-graph, 2026-10-09, T-1245): Excel prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`,
+`=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1`, `=@(A1):OFFSET(B1,0,0) C1`, `=@((A1 B1) C1) D1`, `=@(A1):(B1) C1`, `=@(A1):B1`
+(`#VALUE!`) and `=@(A1 B1):C1` all as written. The engine matches the first six and the last; it prints `=@((A1 B1) C1) D1` as
+`=@(A1 B1 C1) D1`, `=@(A1):(B1) C1` as `=@(A1):B1 C1` and `=@(A1):B1` as `=@A1:B1` (T-1251).
 The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
@@ -883,7 +882,7 @@ written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every wr
 excel-graph 2026-10-09, T-1178; engine: T-1244).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134, T-1178, T-1200, T-1244
+Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;

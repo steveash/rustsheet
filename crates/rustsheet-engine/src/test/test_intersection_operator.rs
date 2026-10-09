@@ -252,29 +252,33 @@ fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
 }
 
 #[test]
-fn at_operand_group_shapes_no_probe_covers_are_characterized() {
-    // Hand-written current engine output, not Excel: shapes probes/at-group-not-whole-operand
-    // does not cover, extrapolated from it (UNVERIFIED, references.md "@ operand", T-1200).
+fn at_operand_group_leftmost_shapes_match_the_probe() {
+    // probes/at-group-leftmost-shapes E30:E39 (excel-graph, T-1245): Excel prints every form as
+    // written. The engine matches all but E34, E35 and E36, asserted separately below.
     let mut model = model();
-    for (cell, formula) in [
-        ("E50", "=@((A1)):B1 C1"),
-        ("E51", "=@(A1):B1:C1 D1"),
-        ("E52", "=@(A1 B1) C1 D1"),
-        ("E53", "=@((A1 B1) C1) D1"),
-        ("E54", "=@(A1):(B1) C1"),
-        ("E55", "=@(A1 B1):C1"),
-    ] {
-        model._set(cell, formula);
+    let forms = [
+        "=@((A1)):B1 C1",
+        "=@(A1):B1:C1 D1",
+        "=@(A1:B1):C1 D1",
+        "=@(A1 B1) C1 D1",
+        "=@(A1 B1):C1",
+        "=@(A1 B1 C1) D1",
+        "=@(A1):OFFSET(B1,0,0) C1",
+    ];
+    for (i, formula) in forms.iter().enumerate() {
+        model._set(&format!("E{}", 50 + i), formula);
     }
+    model._set("F50", "=@((A1 B1) C1) D1");
+    model._set("F51", "=@(A1):(B1) C1");
+    model._set("F52", "=@(A1):B1");
     model.evaluate();
-    assert_eq!(model._get_formula("E50"), "=@((A1)):B1 C1");
-    assert_eq!(model._get_formula("E51"), "=@(A1):B1:C1 D1");
-    assert_eq!(model._get_formula("E52"), "=@(A1 B1) C1 D1");
-    // The printed group covers three operands though two were written inside it.
-    assert_eq!(model._get_formula("E53"), "=@(A1 B1 C1) D1");
-    // The written `(B1)` is dropped.
-    assert_eq!(model._get_formula("E54"), "=@(A1):B1 C1");
-    assert_eq!(model._get_formula("E55"), "=@(A1 B1):C1");
+    for (i, formula) in forms.iter().enumerate() {
+        assert_eq!(model._get_formula(&format!("E{}", 50 + i)), *formula);
+    }
+    // Engine output that differs from Excel, which prints each as written (T-1251).
+    assert_eq!(model._get_formula("F50"), "=@(A1 B1 C1) D1");
+    assert_eq!(model._get_formula("F51"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("F52"), "=@A1:B1");
 }
 
 #[test]
