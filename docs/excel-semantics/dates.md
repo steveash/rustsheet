@@ -324,11 +324,12 @@ an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE(
 (`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007); `holidays` is read whole (see "WORKDAY holidays take the whole
 range"). Typed coercion differs the same way: a boolean date is `#VALUE!` for EDATE, WORKDAY and YEARFRAC, but
 counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 for `(TRUE,46000,"d")`) and
-ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for all eight probed functions,
-DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000). A month that carries DATE past year 9999 is `#NUM!`
-(`DATE(2024,45031.5,1)`).
+ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for the seven probed functions other
+than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells are all 0 and cannot tell coercion from
+a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
+the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`); WORKDAY.INTL and NETWORKDAYS.INTL
-are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number.
+are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
