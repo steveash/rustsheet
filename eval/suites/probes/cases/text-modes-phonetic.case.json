@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1087: PHONETIC of a single cell reference, A1=\"abc\". excel-graph refuses the workbook (unsupportedWorkbook) whenever it calls PHONETIC.",
+ "description": "T-1087: PHONETIC of a single cell reference, A1=\"abc\". Web value #N/A; only a literal argument (PHONETIC(\"abc\")) makes excel-graph refuse the workbook.",
  "tags": [
   "M5",
   "probe",

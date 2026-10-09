@@ -1436,6 +1436,7 @@ functions:
       - { name: array_y, mode: array, type: number }
   - { name: SWITCH, category: logical, milestone: M5, scope: in }
   - { name: SYD, category: financial, milestone: M9, scope: in }
+  # T does not lift over a range (probes/text-argument-modes F9); `value` only gets scalars from the generator.
   - name: T
     category: text
     milestone: M5

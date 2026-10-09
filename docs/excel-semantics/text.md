@@ -74,19 +74,24 @@ Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
 
 ## Text function argument modes
-Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill),
-except TEXTJOIN's text arguments and ARRAYTOTEXT's array, which take a range whole, and PHONETIC's argument, which
-must be a reference. TEXTJOIN turns numbers and booleans in a range into their text (`TEXTJOIN("-",TRUE,A1:A6)` over 5,
-"ab", TRUE, blank, "x", "2" is "5-ab-TRUE-x-2"; with ignore_empty FALSE the blank adds a delimiter); ARRAYTOTEXT gives
-"5, ab, TRUE, , x, 2" and, with format 1, `{5;"ab";TRUE;;"x";"2"}`. A boolean argument is its text where the function
-wants text (`CODE(TRUE)` = 84, `PROPER(TRUE)` = "True", `TEXT(TRUE,"0")` = "TRUE", `LENB(TRUE)` = 4) and 1 where it wants
-a number (`CHAR(TRUE)` and `UNICHAR(TRUE)` = CHAR(1), `REPT("a",TRUE)` = "a"), but `VALUE(TRUE)` and `NUMBERVALUE(TRUE)`
-are `#VALUE!`. `FIXED("ab")` is `#VALUE!`, `FIXED("2")` = "2.00". On the web JIS is `#NAME?`, PHONETIC of any
-reference (a text cell, a number cell, a range) is `#N/A`, and a workbook calling PHONETIC with a literal
-(`PHONETIC("abc")`) is refused (HTTP 501 `unsupportedWorkbook`), as is one calling MUNIT with a large dimension.
+Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill;
+probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text
+arguments and ARRAYTOTEXT's array take a range whole, PHONETIC's argument must be a reference, and T does not lift:
+`T(A1:A3)` in a dynamic-array formula is one "" with no spill although A2 = "ab" (F9; see references.md "T of a
+multi-cell range is not intersected"). TEXTJOIN turns numbers and booleans in a range into their text
+(`TEXTJOIN("-",TRUE,A1:A6)` over 5, "ab", TRUE, blank, "x", "2" is "5-ab-TRUE-x-2"; with ignore_empty FALSE the blank
+adds a delimiter); ARRAYTOTEXT gives "5, ab, TRUE, , x, 2" and, with format 1, `{5;"ab";TRUE;;"x";"2"}`. A boolean read
+from a cell (A3 = TRUE; literal TRUE arguments are unprobed) is its text where the function wants text (`CODE(A3)` = 84,
+`PROPER(A3)` = "True", `TEXT(A3,"0")` = "TRUE", `LENB(A3)` = 4) and 1 where it wants a number (`CHAR(A3)` and
+`UNICHAR(A3)` = CHAR(1), `REPT("a",A3)` = "a"), but `VALUE(A3)` and `NUMBERVALUE(A3)` are `#VALUE!`. `FIXED(A2)` with
+A2 = "ab" is `#VALUE!`, `FIXED(A6)` with A6 = "2" (text) is "2.00". On the web JIS is `#NAME?` and PHONETIC of any
+reference (a text cell, a number cell, a range) is `#N/A`. excel-graph refuses a workbook (HTTP 501
+`unsupportedWorkbook`) that calls `PHONETIC("abc")` or `MUNIT(SUBTOTAL(9,..))` whose sum is a large dimension (seen
+while generating, not committed: a refused workbook has no oracle file); both are web-only observations, desktop
+unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
-Ours: matches except CODE and VALUETOTEXT over a range and `VALUETOTEXT(TRUE,1)` (T-1212), DBCS and PHONETIC (T-1213) and
+Ours: matches except CODE and VALUETOTEXT over a range and `VALUETOTEXT(A3,1)` (T-1212), DBCS and PHONETIC (T-1213) and
 BAHTTEXT (T-1214), which are not implemented.
 Status: VERIFIED (excel-graph)
 Tasks: T-1087, T-1212, T-1213, T-1214
