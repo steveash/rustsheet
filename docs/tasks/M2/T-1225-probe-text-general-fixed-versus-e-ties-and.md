@@ -20,7 +20,8 @@ T-0938 implemented `format_general` (crates/rustsheet-engine/src/formatter/forma
 notation with 9 decimals (trimmed) when `1E-09 <= |x| < 1E+11` and it shows at least as many
 significant digits as E notation; otherwise E notation. Ties go to
 fixed. Every TEXT/General cell in the suites passes, but none of them tests these cases:
-- Ties: `0.000123456789` (fixed "0.000123457" vs "1.23457E-04", 6 digits each; the rule gives
+- Multi-digit ties (single-digit ties already go to fixed, poi/GeneralFormatTests A27):
+  `0.000123456789` (fixed "0.000123457" vs "1.23457E-04", 6 digits each; the rule gives
   fixed), `1.2345E-05` (5 vs 5; fixed "0.000012345"), `1.5E-09` (fixed "0.000000002", 1 digit,
   against "1.5E-09"; the rule gives E).
 - Wide fixed values: the engine keeps 9 decimals from 1 on, so `123456.123456789` prints

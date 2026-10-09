@@ -132,13 +132,14 @@ as many significant digits as the E form (6 significant digits; 5 from `|exp| >=
   against 6), and 9.9999996E-10 → "1E-09" (boundary A10: below 1E-09, although the fixed
   "0.000000001" would show the same digit).
 This differs from number→text conversion (`numbers.md`, 15 digits).
-Unprobed (T-1225): ties in digit count (`0.000123456789`, `1.2345E-05`: the engine prints fixed)
+Single-digit ties go to fixed (A27: "0.000000001" against "1E-09"). Unprobed (T-1225): multi-digit
+ties (`0.000123456789`, `1.2345E-05`: the engine prints fixed)
 and fixed values from 1 on whose integer digits plus 9 decimals exceed 11 characters (the engine
 keeps 9 decimals, `123456.123456789` → "123456.123456789"; if the 11-character limit holds there
 too it would be "123456.1235").
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
 Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07).
-Status: VERIFIED (ties and wide fixed values: INFERRED)
+Status: VERIFIED (multi-digit ties and wide fixed values: INFERRED)
 Implemented in: `format_general` (formatter/format.rs).
 Tasks: T-0938, T-1225
 
