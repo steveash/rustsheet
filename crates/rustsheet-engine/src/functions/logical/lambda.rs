@@ -13,6 +13,11 @@ use crate::{
 use super::r#let::assign_variable_ids;
 use crate::reference_operators::Binding;
 
+/// `#REF!` for a reference that is called like a function.
+fn reference_called(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::REF, cell, "A reference cannot be called".to_string())
+}
+
 impl Model {
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
     /// reference is `#REF!`, even when its cell holds a LAMBDA (`(A1)(A2)`, `(C1)(2)`;
@@ -25,13 +30,28 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         if let CalcResult::Range { .. } = callee {
-            return CalcResult::new_error(
-                Error::REF,
-                cell,
-                "A reference cannot be called".to_string(),
-            );
+            return reference_called(cell);
         }
         self.call_lambda(callee, call_args, cell)
+    }
+
+    /// What a called LET variable or LAMBDA parameter holds. A union is a reference, so calling
+    /// it is `#REF!` like any reference (probes/let-name-call-forms H1, H2, H13, T-1231).
+    pub(crate) fn variable_callee(
+        &self,
+        var_id: u32,
+        name: &str,
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, CalcResult> {
+        match self.variable_stack.get(var_id as usize) {
+            Some(Binding::Areas(_)) => Err(reference_called(cell)),
+            Some(binding) => Ok(binding.value(cell)),
+            None => Err(CalcResult::new_error(
+                Error::NAME,
+                cell,
+                format!("Variable \"{name}\" not found in scope."),
+            )),
+        }
     }
 
     /// A LET variable or LAMBDA parameter called like a function, `f(2)` in `LET(f,..,f(2))` or

@@ -769,10 +769,7 @@ F	probes/info-logic-argument-modes-2.case.json	Calc!B5
 F	probes/info-logic-argument-modes.case.json	Calc!A15
 F	probes/info-logic-argument-modes.case.json	Calc!A19
 F	probes/info-logic-argument-modes.case.json	Calc!B15
-F	probes/let-name-call-forms.case.json	Sheet1!H1
 F	probes/let-name-call-forms.case.json	Sheet1!H11
-F	probes/let-name-call-forms.case.json	Sheet1!H13
-F	probes/let-name-call-forms.case.json	Sheet1!H2
 F	probes/let-name-call-forms.case.json	Sheet1!H7
 F	probes/let-name-call-forms.case.json	Sheet1!H8
 F	probes/let-name-call-forms.case.json	Sheet1!H9
