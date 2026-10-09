@@ -3,7 +3,7 @@ id: T-1220
 title: "Fuzz: formula_parse hits the 2 GB RSS limit after 2.5M runs with a 46 MB live heap"
 milestone: M1
 lane: harness
-status: todo
+status: done
 priority: P0
 size: S
 tier: opus
@@ -27,9 +27,30 @@ growth unrelated to live memory (then adjust the fuzz job's limits in `.github/w
 a protected path, with a decision record).
 
 ## Acceptance criteria
-- [ ] The cause is identified, with the measurements recorded in this task's Outcome.
-- [ ] A fix (engine) or a reviewed limit change (workflow plus decision record) lands; a local `formula_parse` run of the same length stays under the limit.
-- [ ] `make check` green; reviewers approve.
+- [x] The cause is identified, with the measurements recorded in this task's Outcome.
+- [x] A fix (engine) or a reviewed limit change (workflow plus decision record) lands; a local `formula_parse` run of the same length stays under the limit.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Raising limits without first ruling out a leak in our code.
+
+## Outcome
+Cause (b): RSS growth inside ASan, not a leak in the engine. Local runs of `formula_parse` used
+the same options as the job (`-dict -max_len=512 -rss_limit_mb=2048`), a seeded corpus and nightly
+cargo-fuzz 0.13.2 on 4 cores. RSS is shown as (runs, MB):
+
+| run | settings | RSS over the run | peak | exec/s |
+|---|---|---|---|---|
+| A | ASan defaults, 900 s | (0.1M, 1000) → (1.08M, 1043) → (1.87M, 1392) → (2.47M, 1662) | 1662 MB | 2746 |
+| B | ASan `quarantine_size_mb=16`, 900 s | (0.2M, 358) → (1.30M, 820) → (3.07M, 1358) | 1358 MB | 3412 |
+| C | no sanitizer (`-s none`), 300 s | (0.04M, 45) → (6.28M, 60) | 60 MB | 20851 |
+| D | ASan `malloc_context_size=0`, 480 s | (0.23M, 688) → (2.60M, 688) | 688 MB | 5404 |
+
+- C shows the engine's memory is flat over 6.28M parses, so the parser has no leak or growing
+  cache. A and B grow at about 400 MB per million runs even with a small quarantine.
+- D shows that recording no allocation stacks stops the growth. The growth was ASan's stack depot,
+  which keeps every distinct allocation stack, and recursive parsing of fuzzed input keeps making
+  new ones. The CI live-heap report fits this: 46.6 MB live at 2 GB RSS.
+- Fix: `.github/workflows/fuzz.yml` sets `ASAN_OPTIONS=malloc_context_size=0` on the fuzz step for
+  all targets (decision 0046). Run D, the same length as the failing job, stays at 688 MB, far
+  under the limit. No engine change, so no eval delta.
