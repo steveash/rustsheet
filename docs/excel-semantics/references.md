@@ -100,11 +100,15 @@ Outside aggregate arguments the reference-ness is invisible: `VLOOKUP(IF(TRUE,Da
 today and regress if IF returns a reference everywhere).
 Evidence: gen-m2/96a0952412cefa6c A88, 942bdade381b7537 A212, dd99be1f2454159f A264,
 04cfd82f54dbc2b2 A182, dd99be1f2454159f A110, d0c29dd5c530e28c A112 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-HLOOKUP's result is a reference too: `COUNT(…,HLOOKUP(…))` skips a FALSE it picks (gen-m2/60a543744fc4a8f7 A200).
-Status: VERIFIED
-The engine passes the cell HLOOKUP or VLOOKUP picks from a range table to an aggregate as a reference
-(T-0235), and an INDEX intersection operand (`INDEX(A1:A2,2) A1:A2`) is the cell it picks.
-Status: UNVERIFIED for VLOOKUP (by analogy with HLOOKUP) and for INDEX past its range as an operand (`#REF!`); probe task T-0292.
+VLOOKUP's and HLOOKUP's results are NOT references: the picked cell reaches an aggregate as a plain value, so
+`COUNT(VLOOKUP(1,A1:B3,2,FALSE))` picking FALSE is 1, `SUM(VLOOKUP(..))` picking text "5" is 5, `MAX(VLOOKUP(..))` picking
+text "x" is `#VALUE!`, the same for HLOOKUP, and `ISREF(VLOOKUP(..))`/`ISREF(HLOOKUP(..))` are FALSE
+(probes/lookup-pick-aggregates D1-D3, D13-D16, excel-graph 2026-10-09, T-0292). Array tables behave the same (D4, D5, D8, D9).
+The earlier claim that HLOOKUP's result is a reference (gen-m2/60a543744fc4a8f7 A200, a `-2` from a multi-argument COUNT) was
+an inference from a cell that cannot distinguish the two readings; the direct probes supersede it.
+`INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); an in-range `INDEX(A1:A2,2) A1:A2` is the picked cell.
+Status: VERIFIED. The engine DISAGREES for VLOOKUP/HLOOKUP over range tables (T-0235 passes the picked cell as a reference,
+so COUNT/SUM/MAX skip text and booleans); it matches the INDEX cases and the array-table cases. Fix filed as a follow-up task.
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).

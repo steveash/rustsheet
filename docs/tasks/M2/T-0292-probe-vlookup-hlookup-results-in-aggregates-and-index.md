@@ -3,7 +3,7 @@ id: T-0292
 title: "Probe VLOOKUP/HLOOKUP results in aggregates and INDEX past its range as an intersection operand"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0235 made both lookups pass the picked cell of a range table to aggregates as 
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/lookup-pick-aggregates` (16 cells, excel-graph) filled. Excel treats VLOOKUP/HLOOKUP picks as values, not references (the engine's T-0235 assumption was wrong for range tables); INDEX past its range as an operand is `#REF!` (engine matches). references.md updated to VERIFIED/corrected; mismatch filed as T-0295. Eval: new probe 10/16 cells pass; 6 known failures.
