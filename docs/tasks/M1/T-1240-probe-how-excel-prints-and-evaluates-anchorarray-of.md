@@ -3,7 +3,7 @@ id: T-1240
 title: "Probe how Excel prints and evaluates ANCHORARRAY of an @ operand (follow-up of T-1226)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1226 evidence has two points that confound operand kind with written parenthes
 
 ## Out of scope
 -
+
+## Outcome
+Probed all forms (probes/anchorarray-at-operand-kinds, excel-graph; `@1/0` is refused by the web client). Rule: the printed text keeps the written parentheses, whatever the operand kind; recorded in references.md. The engine differs on the prints and on `@-1`/`@INDEX(..)`: follow-ups T-1246, T-1247. Eval: new probe case, 14 cells, 5 pass, 9 added to the baseline as known failures (T-1246, T-1247).
