@@ -27,8 +27,10 @@ probes/3d-ref-choose-let C3:C4 and 3d-ref-let-values C7 (excel-graph, 2026-10-08
 ## Outcome
 A span bound by LET or LAMBDA, written out or from IF or CHOOSE, is now a `Binding::Span` (reference_operators.rs).
 `Model::variable_reference` hands it to the aggregates as the cross-sheet range, and every value read gives the bare span's
-`#VALUE!`. `rows_columns_extent` (cast.rs) refuses a 3-D range for ROWS/COLUMNS, as it does for the written span. A first try
-that made `RefArg::into_single_area` refuse every 3-D range regressed eight probe cells, so the check stays local. A new probe,
+`#VALUE!`. ROWS/COLUMNS (`rows_columns_extent`) and COUNTBLANK refuse a 3-D range through the new
+`RefArg::into_single_sheet_area`, as they refuse the written span. A first try that made `RefArg::into_single_area` refuse
+every 3-D range regressed eight probe cells, so only these two callers refuse it. A new probe,
 probes/3d-ref-let-bound-span (15 cells, excel-graph 2026-10-09), covers a second variable, a LAMBDA, COUNT, INDEX,
-ROWS, ISREF and MAX next to the bare span. Eval delta: probes fixed 3 (3d-ref-choose-let C3:C4, 3d-ref-let-values C7), new
-case 15/15 passing, 0 regressions.
+ROWS, ISREF and MAX next to the bare span. A review-round probe, probes/3d-ref-let-bound-span-readers (12 cells), covers
+CONCAT, TEXTJOIN, AGGREGATE, AREAS, a union and COUNTBLANK; it caught COUNTBLANK counting -2, which is now fixed. Eval delta:
+probes fixed 3 (3d-ref-choose-let C3:C4, 3d-ref-let-values C7), two new cases all passing, 0 regressions.

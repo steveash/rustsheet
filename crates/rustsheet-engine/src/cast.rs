@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{three_d_needs_one_sheet, Ranges, RefArg};
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -757,10 +757,7 @@ impl Model {
                 }
                 // A 3-D span through a variable, IF or CHOOSE is `#VALUE!`, as the written one
                 // is (probes/3d-ref-let-bound-span C7:C8, 3d-ref-let-values C5).
-                RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
-                    return Err(three_d_needs_one_sheet(cell));
-                }
-                other => other.into_single_area(cell),
+                other => other.into_single_sheet_area(cell),
             }
         } else {
             self.evaluate_node_with_reference(node, cell)

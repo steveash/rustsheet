@@ -407,6 +407,15 @@ fn choose_and_let_hand_a_3d_reference_to_the_aggregates() {
             ("F13", "=LET(x,Data1:Data3!A1,SUM(x,x))", "222"),
             ("F14", "=LET(x,Data1:Data3!A1,SUM(IF(TRUE,x)))", "111"),
             ("F15", "=LET(x,Data1:Data3!A1,x+1)", "#VALUE!"),
+            // probes/3d-ref-let-bound-span-readers (excel-graph, 2026-10-09): text readers walk
+            // it like the written span, single-sheet readers refuse it.
+            ("G1", "=LET(x,Data1:Data3!A1,CONCAT(x))", "110100"),
+            ("G3", "=LET(x,Data1:Data3!A1,TEXTJOIN(\",\",TRUE,x))", "1,10,100"),
+            ("G5", "=LET(x,Data1:Data3!A1,AGGREGATE(9,0,x))", "#VALUE!"),
+            ("G7", "=LET(x,Data1:Data3!A1,AREAS(x))", "#VALUE!"),
+            ("G9", "=LET(x,Data1:Data3!A1,SUM((x,Data1!B1)))", "#VALUE!"),
+            ("G10", "=SUM((Data1:Data3!A1,Data1!B1))", "#NAME?"),
+            ("G11", "=LET(x,Data1:Data3!A1,COUNTBLANK(x))", "#VALUE!"),
         ],
     );
 }

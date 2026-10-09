@@ -155,6 +155,20 @@ impl RefArg {
         }
     }
 
+    /// [`RefArg::into_single_area`] where the area must sit on one sheet: a 3-D range (a span
+    /// bound by LET, from IF or CHOOSE) is `#VALUE!`, as the written span is there
+    /// (`ROWS(x)`, `COUNTBLANK(x)` for `x` = `Data1:Data3!A1`: probes/3d-ref-let-bound-span C7,
+    /// 3d-ref-let-bound-span-readers C11, 3d-ref-let-values C5; T-1158). Not every caller of
+    /// `into_single_area` may refuse one: making that refuse 3-D ranges regressed probe cells.
+    pub(crate) fn into_single_sheet_area(self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
+                three_d_needs_one_sheet(cell)
+            }
+            other => other.into_single_area(cell),
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {

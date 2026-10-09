@@ -5,6 +5,7 @@
 C	probes/3d-ref-aggregates.case.json	20
 C	probes/3d-ref-choose-let.case.json	6
 C	probes/3d-ref-functions.case.json	22
+C	probes/3d-ref-let-bound-span-readers.case.json	13
 C	probes/3d-ref-let-bound-span.case.json	16
 C	probes/3d-ref-let-values.case.json	11
 C	probes/3d-ref-span-edges.case.json	13
