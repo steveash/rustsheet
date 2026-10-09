@@ -314,7 +314,7 @@ impl Model {
         let mut sum = SumParts::default();
         for arg in args {
             // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))?;
                 }

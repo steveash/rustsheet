@@ -656,16 +656,26 @@ reference operand that evaluates to something else loads and gives:
 - operands taken over from the intersection rule load and are the cells they pick: OFFSET, XLOOKUP, IFS, SWITCH,
   TAKE, DROP, TRIMRANGE, INDIRECT and a name holding a range (`SUBTOTAL(9,DROP(A1:A2,1))` = 2); a name holding a
   constant (`=5`) is `#VALUE!`.
-Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) and probes/subtotal-reference-operands-b
-(excel-graph, 2026-10-09, T-1175).
+Evidence: probes/subtotal-reference-operands (excel-graph, T-1163), probes/subtotal-reference-operands-b
+(excel-graph, 2026-10-09, T-1175) and probes/subtotal-reference-operands-c (excel-graph, 2026-10-09, T-1206).
+Further rules (-c): TAKE over a literal array is an array, not a reference, so `SUBTOTAL(9,TAKE({1,2;3,4},1))` and
+`AREAS(TAKE({1,2},1))` spill two `#VALUE!` (H1:I2); `AREAS(IF(TRUE,{1,#N/A}))` spills `#VALUE!`, `#N/A`: the error
+element is kept (H3:I3). SUM, COUNT and AVERAGE treat a single-cell XLOOKUP/TAKE/DROP/TRIMRANGE result as a
+reference. Through XLOOKUP: SUM ignores a text (H4) and a boolean (H5, H6) picked cell and gives 0, COUNT ignores a
+boolean (H7) and a blank (H8), AVERAGE of a boolean picked cell is `#DIV/0!` (H9). The TAKE cells (H10 text, H11 and
+H12 boolean, H13 COUNTA of a blank gives 0) and the SUM blank case H14 give the same values but cannot tell a
+reference from a 1x1 array or a blank value, so they are not evidence for the rule (T-1211). AVERAGE is probed with
+a boolean only.
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
 `subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
-`Model::evaluate_picked_reference_arg` (SUBTOTAL and AREAS only; SUM and the other aggregates still evaluate those calls
-to values, UNVERIFIED for them, so `SUM(XLOOKUP(2,A1:A2,B1:B2))` over a boolean cell is not settled). UNVERIFIED: the
-same calls over an array (`SUBTOTAL(9,TAKE({1,2;3,4},1))` is one `#VALUE!` in the engine, Excel may spill) and an error
-element kept by AREAS (`AREAS(IF(TRUE,{1,#N/A}))`). Typed entry is a desktop question (M14).
-Tasks: T-1063, T-1163, T-1174, T-1175 (decision 0045)
+`Model::evaluate_picked_reference_arg` (SUBTOTAL, AREAS, SUM, COUNT and `for_each_value`). `for_each_value` is shared,
+so MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, VAR*/STDEV*, AVEDEV, DEVSQ and SUMSQ also read these results as references:
+implemented by the same rule, UNVERIFIED. MIN, MAX, COUNTA and AVERAGEA still evaluate those calls to values,
+UNVERIFIED. A computed array source (`TAKE(SEQUENCE(4),1)`) is sized as a scalar for SUBTOTAL/AREAS spill:
+UNVERIFIED. Typed entry is a desktop
+question (M14).
+Tasks: T-1063, T-1163, T-1174, T-1175, T-1206 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
