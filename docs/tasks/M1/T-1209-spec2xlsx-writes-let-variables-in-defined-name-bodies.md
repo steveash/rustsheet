@@ -3,7 +3,7 @@ id: T-1209
 title: "spec2xlsx writes LET variables in defined-name bodies without _xlpm. (follow-up of T-1207)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
