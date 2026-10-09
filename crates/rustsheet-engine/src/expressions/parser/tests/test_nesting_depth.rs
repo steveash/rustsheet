@@ -23,7 +23,8 @@ fn parse(formula: &str) -> Node {
 /// Runs `f` on a thread whose stack is what the limit is sized for: 1 MiB (the
 /// WebAssembly default, the smallest common stack) in an optimized build. An
 /// unoptimized build spends about ten times more stack per nesting level
-/// (measured: ~23 KB vs ~2 KB), so it gets 16 MiB.
+/// (measured: ~23 KB vs ~2 KB before T-1110 split the largest frames, ~11 KB since), so it gets
+/// 16 MiB.
 fn on_small_stack(f: impl FnOnce() + Send + 'static) {
     let stack = if cfg!(debug_assertions) {
         16 << 20
