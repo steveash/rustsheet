@@ -300,7 +300,7 @@ array first argument to FIELDVALUE gives an array result (information.md, T-1012
 | R1 | T-1012 (done): Probe IMAGE/STOCKHISTORY/FIELDVALUE argument errors, ISERR/ISNA/TYPE of rich errors, and COUNTIF criteria naming them | research | S | sonnet | — |
 | F1 | T-1013: IMAGE, STOCKHISTORY, FIELDVALUE return their offline errors (DEVIATION entries for IMAGE and STOCKHISTORY) | functions-logic | S | sonnet | E1, R1 |
 | X2 | T-1014: Export rich-value errors (`#SPILL!`, `#CALC!`, and the three new kinds) as `#VALUE!` plus `vm` metadata; T-0999 showed that stored literals make Excel reject the workbook | harness | M | opus | X1 |
-| R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |
+| R2 | T-1016: Desktop probe of typed `#BLOCKED!`/`#GETTING_DATA`/`#BUSY!` cell input (needs the excel-desktop oracle) | research | S | sonnet | — |
 | B1 | T-1020 (done): Stored `#BUSY!` constant (ERROR.TYPE 0): decide its representation (this amendment) | engine | S | opus | E1 |
 | B2 | T-1222: Stored `#BUSY!` kind in engine, facade and xlsx ("Stored `#BUSY!`" above) | engine | M | opus | B1, T-1221 |
 | R3 | T-1228: Probe stored `#BUSY!` in VALUETOTEXT, error precedence, IFERROR and COUNTIF criteria | research | S | sonnet | — |
