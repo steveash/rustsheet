@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1216: value operands of `:` and `#` that Excel loads. A1=1, B1=2. `=A1:LAMBDA(x,x)`, `=A1:(@1)` and `=ANCHORARRAY(@1)` (printed `=@1#`) load and are #VALUE!. The refused forms (no value, FileCorruptTryRepair) are listed in docs/excel-semantics/references.md.",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "D1": "=A1:LAMBDA(x,x)",
+        "D2": "=A1:(@1)",
+        "D3": "=ANCHORARRAY(@1)",
+        "E1": "=FORMULATEXT(D1)",
+        "E2": "=FORMULATEXT(D2)",
+        "E3": "=FORMULATEXT(D3)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!D1",
+    "Sheet1!D2",
+    "Sheet1!D3",
+    "Sheet1!E1",
+    "Sheet1!E2",
+    "Sheet1!E3"
+  ]
+}
