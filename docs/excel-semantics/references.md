@@ -297,13 +297,17 @@ value, the call gives odd results, without the arguments mattering: a number or 
 Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
 Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name bound to a union is `#REF!` too (`=LET(f,(A1,A2),f(2))`,
 `=LET(f,(A1,A2),f())`, `=LAMBDA(f,f(2))((A1,A2))`), as is one bound to `XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,1)`, `DROP(A1:A3,1)`,
-`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; `bind_argument` (functions/logical/let.rs) binds XLOOKUP, TAKE, DROP and TRIMRANGE as the reference they pick (T-1232; whether the bound name is ISREF is not probed); erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
+`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; `bind_argument` (functions/logical/let.rs) binds XLOOKUP, TAKE, DROP and TRIMRANGE as the reference they pick (T-1232); erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
 (H5:I5), `=LET(f,LAMBDA(x,x+1),f(1/0))` is `#DIV/0!`). `=LAMBDA(f,f(2))()` is a call with too few arguments, not an empty element: it is
 an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it, H15:H17); the bare cell returns an error type the oracle client cannot
 decode (probes/let-name-call-forms description). UNVERIFIED: the engine's mapping of an empty element to `#NAME?` (`called_value` in
 lambda.rs). A workbook holding `=LAMBDA([f],f(2))()` (an omitted optional parameter) is refused by Excel for the web (`FileCorruptTryRepair`,
 `unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the union forms (H1, H2, H13) are `#REF!` as in Excel since T-1231; the engine gives `#NAME?`/`#SPILL!` for the
 XLOOKUP/TAKE/DROP/TRIMRANGE forms (T-1232); the rest match.
+Uncalled (probes/let-name-uncalled-picked-refs, excel-graph, 2026-10-09, T-1252): a LET name or LAMBDA parameter bound to
+`XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,2)`, `DROP(A1:A3,1)` or `TRIMRANGE(A1:A3)` is the reference it picks: `ISREF`, `CELL("address",f)`, `ROWS`, `SUM` and
+`COUNTIF` through the name all read the cells, as they do for the written call; the engine matches on all 40 cells. Not a quirk of the binding:
+`SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 in Excel (an array `lookup_value` looks up each element), and the engine gives `#N/A` (H21, a known failure).
 A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
 `#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
 Excel for the web refuses a workbook holding `=LET(f,"",f(2))` (`createSession` fails, three scratch
@@ -328,7 +332,7 @@ functions/logical/lambda.rs (`Model::call_callee`, `Model::call_variable` for a 
 or LAMBDA parameter);
 functions/logical/let.rs (`Model::bind_argument`, which binds in reference context); model.rs (the
 callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
-Tasks: T-0149, T-1092, T-1224, T-1231, T-1232
+Tasks: T-0149, T-1092, T-1224, T-1231, T-1232, T-1252
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
