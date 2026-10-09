@@ -18,7 +18,7 @@ T-1167 found the engine drops groups nested inside an `@` operand (`@(A1+(B1))` 
 
 ## Acceptance criteria
 - [x] Probe `=@(A1+(B1))`, `=@((A1) (B1))` and `=@(((A1)) B1)` with FORMULATEXT (excel-probe skill); the references.md entry is VERIFIED.
-- [x] The engine and the T-1167 test match: superseded by T-1240 (see Outcome).
+- [x] The engine and the T-1167 test match: superseded by T-1244 (see Outcome).
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
@@ -29,7 +29,7 @@ probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09): Excel keeps
 operands and in plain formulas alike (`=@(A1+(B1))`, `=@((A1) (B1))`, `=@(((A1)) B1)`, `=A1+(B1)`, `=-(A1)`, `=((A1))`).
 Recorded in syntax.md "FORMULATEXT keeps every written parenthesis"; references.md's UNVERIFIED note now points there.
 The engine drops redundant groups everywhere, not only in `@` operands, so matching Excel means keeping groups in the
-parse tree, an architectural change that needs a spec first (directive 4): filed as T-1240 (engine, opus), which also
-subsumes T-1200. The T-1167 test still pins the engine's current output; its comment now cites the evidence and T-1240.
-Eval delta: probes +1 case, 36 cells, 22 pass (all 18 values and 4 FORMULATEXT cells), 14 new known failures (T-1240).
-Follow-ups: T-1240.
+parse tree, an architectural change that needs a spec first (directive 4): filed as T-1244 (engine, opus), which also
+subsumes T-1200. The T-1167 test still pins the engine's current output; its comment now cites the evidence and T-1244.
+Eval delta: probes +1 case, 36 cells, 22 pass (all 18 values and 4 FORMULATEXT cells), 14 new known failures (T-1244).
+Follow-ups: T-1244.

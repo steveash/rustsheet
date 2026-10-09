@@ -1,5 +1,5 @@
 ---
-id: T-1240
+id: T-1244
 title: "Spec: keep written parentheses in parsed formulas so FORMULATEXT prints them back"
 milestone: M1
 lane: engine
