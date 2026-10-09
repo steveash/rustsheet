@@ -3,7 +3,7 @@ id: T-1212
 title: "CODE and VALUETOTEXT lift over a range argument; VALUETOTEXT of a TRUE cell with format 1 is TRUE"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
