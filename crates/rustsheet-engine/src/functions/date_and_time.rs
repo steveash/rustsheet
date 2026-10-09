@@ -1,6 +1,7 @@
 use crate::tz::Tz;
 use chrono::Datelike;
 use chrono::Months;
+use std::collections::HashMap;
 
 pub(crate) mod time_text;
 mod weeknum;
@@ -197,6 +198,7 @@ impl Weekend {
         let into_node = |r: Result<f64, CalcResult>| match r {
             Ok(n) => ArrayNode::Number(n),
             Err(CalcResult::Error { error, .. }) => ArrayNode::Error(error),
+            // Every `Err` of the weekend argument is a `CalcResult::Error`.
             Err(_) => ArrayNode::Error(Error::VALUE),
         };
         match self {
@@ -204,18 +206,26 @@ impl Weekend {
                 Ok(n) => CalcResult::Number(n),
                 Err(e) => e,
             },
-            Weekend::Many(rows) => CalcResult::Array(
-                rows.iter()
-                    .map(|row| {
-                        row.iter()
-                            .map(|mask| match mask {
-                                Ok(mask) => into_node(compute(*mask)),
-                                Err(e) => into_node(Err(e.clone())),
-                            })
-                            .collect()
-                    })
-                    .collect(),
-            ),
+            Weekend::Many(rows) => {
+                // At most 128 distinct masks exist, however many cells the argument has, so each
+                // is computed once: the day loop of the caller is millions of steps long.
+                let mut computed: HashMap<[bool; 7], ArrayNode> = HashMap::new();
+                CalcResult::Array(
+                    rows.iter()
+                        .map(|row| {
+                            row.iter()
+                                .map(|mask| match mask {
+                                    Ok(mask) => computed
+                                        .entry(*mask)
+                                        .or_insert_with(|| into_node(compute(*mask)))
+                                        .clone(),
+                                    Err(e) => into_node(Err(e.clone())),
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                )
+            }
         }
     }
 }
@@ -709,15 +719,29 @@ impl Model {
         } else {
             (end_serial, start_serial, -1.0)
         };
-        weekend.lift(|weekend_pattern| {
-            let mut count = 0i64;
-            for serial in from..=to {
-                let date = self.excel_date(serial, cell)?;
-                let weekday = date.weekday().number_from_monday() as usize - 1;
-                if !weekend_pattern[weekday] && !holidays.contains(&serial) {
-                    count += 1;
-                }
+        // The days between are counted per weekday once, so each mask of a lifted weekend
+        // costs seven additions, not another scan of up to 2.9M days. Serials between two valid
+        // ones are valid.
+        let mut per_weekday = [0i64; 7];
+        for serial in [from, to] {
+            if let Err(e) = self.excel_date(serial, cell) {
+                return e;
             }
+        }
+        for serial in from..=to {
+            if holidays.contains(&serial) {
+                continue;
+            }
+            let Ok(date) = from_excel_date(serial) else {
+                continue;
+            };
+            per_weekday[date.weekday().number_from_monday() as usize - 1] += 1;
+        }
+        weekend.lift(|weekend_pattern| {
+            let count: i64 = (0..7)
+                .filter(|&d| !weekend_pattern[d])
+                .map(|d| per_weekday[d])
+                .sum();
             Ok(count as f64 * sign)
         })
     }
