@@ -35,8 +35,8 @@ and information functions, which is fine).
 
 ## Outcome
 Committed eval/suites/gen-m5 (10 cases, seed 1, excel-graph sidecars, non-gating so no baseline file
-is written). Scores 350/360 cells; one case times out. Mismatch families: COS(1E+15) `#NUM!` → T-1196;
-ACOS(1E+15) NaN leaking through SERIESSUM → T-1199;
+is written). Scores 350/360 cells; one case times out. Mismatch families: COS(1E+15) `#NUM!` → T-1201;
+ACOS(1E+15) NaN leaking through SERIESSUM → T-1202;
 MULTINOMIAL(1E+15) hang (the timeout) → T-1197; DECIMAL error kind → T-1198; ACOTH large-x precision loss, COTH/POWER ulp
 differences → existing T-0917 (and T-0905 for evaluation order); PERCENTOF `#NAME?` on the web is a
 web golden (decision 0039), no task.
