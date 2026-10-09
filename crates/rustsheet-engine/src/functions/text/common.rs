@@ -936,18 +936,39 @@ impl Model {
         }
     }
 
-    // VALUETOTEXT(value)
+    // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
+    // (probes/text-argument-modes F17:F19); an error element is spelled out.
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
+        if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => match error {
-                CalcResult::Error { error, .. } => error.to_string(),
-                _ => "".to_string(),
-            },
+        let strict = if args.len() == 2 {
+            match self.get_number(&args[1], cell) {
+                Ok(f) if f.trunc() == 0.0 => false,
+                Ok(f) if f.trunc() == 1.0 => true,
+                Ok(_) => {
+                    return CalcResult::new_error(Error::VALUE, cell, "Invalid format".to_string())
+                }
+                Err(e) => return e,
+            }
+        } else {
+            false
         };
-        CalcResult::String(text)
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
+        };
+        let value_to_text = |node: &ArrayNode| match node {
+            ArrayNode::Error(e) => e.to_string(),
+            // Strict format quotes text; TRUE stays TRUE (probes/text-argument-modes C31).
+            ArrayNode::String(s) if strict => format!("\"{s}\""),
+            other => array_node_to_string(other).unwrap_or_default(),
+        };
+        match text {
+            TextArg::Error(node, _) => CalcResult::String(value_to_text(&node)),
+            _ => broadcast_text(cell, &[&text], |i, j| {
+                Ok(ArrayNode::String(value_to_text(text.elem(i, j))))
+            }),
+        }
     }
 }
