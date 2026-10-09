@@ -18,7 +18,7 @@ T-1164 made `user_formula_to_internal` keep the grouped root of a CF formula the
 
 ## Acceptance criteria
 - [x] A probe case or a recorded reason it cannot be observed; numbers.md updated.
-- [x] Engine (none: nothing observed) mismatches baselined and a follow-up filed.
+- [x] Engine mismatches: N/A, nothing observable mismatches baselined and a follow-up filed.
 - [x] `make check` green; reviewers approve.
 
 ## Out of scope
