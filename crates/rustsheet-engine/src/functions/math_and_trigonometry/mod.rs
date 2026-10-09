@@ -7,6 +7,7 @@ mod mathematical;
 mod matrix;
 mod mmult;
 mod multinomial;
+mod product;
 mod random;
 mod sequence;
 mod seriessum;
