@@ -500,7 +500,7 @@ functions:
     params:
       - { name: number, mode: value, type: number }
       - { name: significance, mode: value, type: number, optional: true }
-  # info_type lifts over an array (probes/info-logic-argument-modes A27); a literal or array reference makes excel-graph refuse the workbook (T-1088). "address" names the workbook file for another sheet and "format" is #VALUE! on excel-graph, so neither is in the enum; an omitted reference reads the last changed cell, so the generator always passes one.
+  # info_type lifts over an array (probes/info-logic-argument-modes A27); a literal or array reference makes excel-graph refuse the workbook (T-1088). "address" names the workbook file for another sheet and "format" is #VALUE! on excel-graph (coercion.md, probes/typed-paren-number-input, T-0280), so neither is in the enum; an omitted reference reads the last changed cell, so the generator always passes one.
   - name: CELL
     category: information
     milestone: M5
