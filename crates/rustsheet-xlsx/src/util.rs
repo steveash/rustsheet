@@ -6,17 +6,11 @@ use rustsheet_engine::Model;
 /// formulas and the engine use the bare name (`=SUM(Print_Area)`); ECMA-376 Part 1, `definedName`.
 const BUILT_IN_NAME_PREFIX: &str = "_xlnm.";
 
-/// The built-in names ECMA-376 Part 1 (`definedName`) lists with the `_xlnm.` prefix.
-const BUILT_IN_NAMES: [&str; 8] = [
-    "Consolidate_Area",
-    "Criteria",
-    "Database",
-    "Extract",
-    "Print_Area",
-    "Print_Titles",
-    "Sheet_Title",
-    "_FilterDatabase",
-];
+/// The built-in names whose prefix import drops and export restores. ECMA-376 lists more
+/// (`Criteria`, `Database`, `Extract`, ...), but those are also plausible user names, and a user's
+/// `Criteria` exported as `_xlnm.Criteria` would turn into Excel's built-in; they stay as written
+/// until an Excel-saved workbook shows how Excel treats them (T-1250).
+const BUILT_IN_NAMES: [&str; 3] = ["Print_Area", "Print_Titles", "_FilterDatabase"];
 
 fn is_built_in_name(name: &str) -> bool {
     BUILT_IN_NAMES.iter().any(|b| b.eq_ignore_ascii_case(name))
