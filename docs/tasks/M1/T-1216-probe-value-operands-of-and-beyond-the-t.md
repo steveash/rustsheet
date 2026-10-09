@@ -3,7 +3,7 @@ id: T-1216
 title: "Probe value operands of : and # beyond the T-1111 forms"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,9 +23,9 @@ operand..."): `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:
 evidence for a refusal, one scratch workbook per formula.
 
 ## Acceptance criteria
-- [ ] Each listed formula is recorded as loading (with its value, as a probes case) or refused, in references.md.
-- [ ] Any form Excel loads that the engine refuses gets an engine follow-up task.
-- [ ] `make check` green; reviewers approve.
+- [x] Each listed formula is recorded as loading (with its value, as a probes case) or refused, in references.md.
+- [x] Any form Excel loads that the engine refuses gets an engine follow-up task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -36,3 +36,6 @@ parser, so an Excel-authored workbook holding one that Excel loads imports here 
 the negated operands first (`=(-A1):B1`, `=A1:(-B1)`, `=(-A1)#`): Excel loads negated union operands
 (probes/union-neg-operand), so the inference is weakest there. Also add the forms the parser still
 accepts without evidence: `=A1:LAMBDA(x,x)`, `=A1:(@1)`, `=ANCHORARRAY(@1)`.
+
+## Outcome
+Excel (excel-graph, one workbook per formula, control loaded) refuses `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`, `=ANCHORARRAY(A1+0)`, `=(-A1):B1`, `=A1:(-B1)`, `=(-A1)#`; it loads `=A1:LAMBDA(x,x)`, `=A1:(@1)` and `=ANCHORARRAY(@1)` as #VALUE!. New probes/colon-hash-value-operands (6 cells); engine passes 4, fails D3/E3 (`=ANCHORARRAY(@1)`), baselined; follow-up T-1226. Recorded in references.md.
