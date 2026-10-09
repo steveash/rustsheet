@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Whether Excel accepts a bare column letter before `:` and a cell (T-1205)",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 1,
+        "B2": 2,
+        "B3": 3,
+        "C1": 10,
+        "C2": 20,
+        "C3": 30,
+        "A1": "=SUM(A:B3)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1"
+  ]
+}
