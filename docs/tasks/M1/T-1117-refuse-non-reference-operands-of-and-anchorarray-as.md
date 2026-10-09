@@ -3,7 +3,7 @@ id: T-1117
 title: "Refuse non-reference operands of : and ANCHORARRAY as Excel's loader does"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
