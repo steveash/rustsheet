@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXT of negative serials under formats mixing an elapsed token with day/month/year tokens (T-1079). See docs/excel-semantics/dates.md",
+  "tags": ["M1", "date", "text", "probe"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=TEXT(-0.5,\"[h] dddd\")",
+        "A2": "=TEXT(-1.5,\"[h]:mm yyyy\")",
+        "A3": "=TEXT(-0.5,\"[h]:mm\")",
+        "A4": "=TEXT(-1.5,\"[h] d\")",
+        "A5": "=TEXT(-0.5,\"[mm] mmm\")",
+        "A6": "=TEXT(-0.5,\"[s] yy\")",
+        "A7": "=TEXT(-0.5,\"dddd\")",
+        "A8": "=TEXT(0.5,\"[h] dddd\")",
+        "A9": "=TEXT(1.5,\"[h]:mm yyyy\")"
+      }
+    }
+  ],
+  "expected": {}
+}

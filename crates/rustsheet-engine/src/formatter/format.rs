@@ -301,6 +301,8 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035). Elapsed
             // sections ([h], [mm], ...) keep their own sign handling (poi ElapsedFormatTests
             // A40-A47, docs/excel-semantics/number-formats.md "Elapsed-time tokens").
+            // TODO(T-1105): that workbook is 1904-system; in the 1900 system Excel gives #VALUE!
+            // here too (probes/text-negative-serial-elapsed-mixed A1, A3, A5, A6).
             let has_elapsed = p.tokens.iter().any(|t| {
                 matches!(
                     t,
