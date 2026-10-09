@@ -1,5 +1,5 @@
 ---
-id: T-1229
+id: T-1230
 title: "Probe CELL(contents) of a multi-cell range: same-sheet vs other-sheet vs intersection (follow-up of T-1218)"
 milestone: M5
 lane: functions-logic
