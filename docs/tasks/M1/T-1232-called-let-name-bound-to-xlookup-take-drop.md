@@ -3,7 +3,7 @@ id: T-1232
 title: "Called LET name bound to XLOOKUP, TAKE, DROP or TRIMRANGE is #REF! (follow-up of T-1224)"
 milestone: M1
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
