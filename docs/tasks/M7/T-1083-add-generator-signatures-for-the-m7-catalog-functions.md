@@ -3,7 +3,7 @@ id: T-1083
 title: "Add generator signatures for the M7 catalog functions"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
