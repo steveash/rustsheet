@@ -3,7 +3,7 @@ id: T-1131
 title: "Probe near-zero snapping for SUM over ranges, trailing zeros, arrays and =(SUM(...))"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
