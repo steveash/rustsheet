@@ -201,10 +201,19 @@ impl Model {
             }
         );
         let is_span = matches!(node, Node::SheetSpanKind { .. });
-        if !is_index && !is_span && !self.is_multi_area(node) {
+        // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
+        // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
+        let is_picked = matches!(
+            node,
+            Node::FunctionKind {
+                kind: Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange,
+                ..
+            }
+        );
+        if !is_index && !is_span && !is_picked && !self.is_multi_area(node) {
             return Binding::Value(self.evaluate_node_with_reference(node, cell));
         }
-        match self.evaluate_reference_arg(node, cell) {
+        match self.evaluate_picked_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
             // A 3-D span, written or from IF or CHOOSE: an aggregate reads it through the
             // variable (probes/3d-ref-let-values C7, 3d-ref-let-bound-span C1:C3, 111), every
