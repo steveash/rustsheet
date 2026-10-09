@@ -3,7 +3,7 @@ id: T-0286
 title: "Probe legacy array context beyond *IF(S) in SUMPRODUCT: IF/INDEX/CHOOSE nested in SUMPRODUCT, deeper nesting, LOOKUP/MMULT arguments"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -31,3 +31,6 @@ also add a fixtures/ xlsx copy if the engine's import path needs gating.
 
 ## Out of scope
 -
+
+## Outcome
+New probe `probes/array-context-legacy-sumproduct` (excel-graph, 15 formulas on and off the row). Result in criteria.md: arithmetic, ABS/LEN/`--`/COUNTIF nesting, CHOOSE and IF's value branches get an array context under SUMPRODUCT; the condition of IF does not (it intersects); LOOKUP/MMULT/INDEX arithmetic arrays work without SUMPRODUCT; legacy INDEX with an array row gives its first element. The engine differs on the IF condition (T-0293) and INDEX/CHOOSE arrays (T-0294). Eval: probes 339 -> 351 known failures (12 new-coverage cells, 0 regressions).
