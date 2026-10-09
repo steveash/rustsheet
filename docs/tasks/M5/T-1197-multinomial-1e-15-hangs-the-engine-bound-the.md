@@ -3,8 +3,8 @@ id: T-1197
 title: "MULTINOMIAL(1E+15) hangs the engine: bound the loop (gen-m5 timeout)"
 milestone: M5
 lane: functions-math
-status: todo
-priority: P1
+status: in-progress
+priority: P0
 size: S
 tier: opus
 depends_on: []
