@@ -224,6 +224,8 @@ pub enum Function {
     Clean,
     Code,
     Asc,
+    Dbcs,
+    Phonetic,
     Arraytotext,
     Dollar,
     Encodeurl,
@@ -787,6 +789,8 @@ impl_function_lookup! {
     clean       => Clean,
     code        => Code,
     asc         => Asc,
+    dbcs        => Dbcs,
+    phonetic    => Phonetic,
     arraytotext => Arraytotext,
     dollar      => Dollar,
     encodeurl   => Encodeurl,
@@ -1316,6 +1320,8 @@ impl Function {
             Function::Clean => functions.clean.clone(),
             Function::Code => functions.code.clone(),
             Function::Asc => functions.asc.clone(),
+            Function::Dbcs => functions.dbcs.clone(),
+            Function::Phonetic => functions.phonetic.clone(),
             Function::Arraytotext => functions.arraytotext.clone(),
             Function::Dollar => functions.dollar.clone(),
             Function::Encodeurl => functions.encodeurl.clone(),
@@ -1685,6 +1691,7 @@ impl Function {
             Function::Unichar => "_xlfn.UNICHAR".to_string(),
             Function::Numbervalue => "_xlfn.NUMBERVALUE".to_string(),
             Function::Arraytotext => "_xlfn.ARRAYTOTEXT".to_string(),
+            Function::Dbcs => "_xlfn.DBCS".to_string(),
             Function::Encodeurl => "_xlfn.ENCODEURL".to_string(),
             Function::Image => "_xlfn.IMAGE".to_string(),
             Function::Stockhistory => "_xlfn.STOCKHISTORY".to_string(),
@@ -1947,6 +1954,8 @@ impl Model {
             Function::Clean => Self::fn_clean,
             Function::Code => Self::fn_code,
             Function::Asc => Self::fn_asc,
+            Function::Dbcs => Self::fn_dbcs,
+            Function::Phonetic => Self::fn_phonetic,
             Function::Arraytotext => Self::fn_arraytotext,
             Function::Dollar => Self::fn_dollar,
             Function::Encodeurl => Self::fn_encodeurl,
@@ -2340,49 +2349,5 @@ impl Model {
             Function::Small => Self::fn_small,
         };
         implementation(self, args, cell)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(clippy::unwrap_used)]
-    use std::{
-        fs::File,
-        io::{BufRead, BufReader},
-    };
-
-    #[test]
-    fn function_iterator() {
-        // Checks that `impl_function_lookup!`, which generates `Function::into_iter`, lists
-        // every variant of the enum: Rust cannot iterate an enum's variants, so this reads the
-        // enum's variants from this file and compares the counts.
-        let file = File::open("src/functions/mod.rs").unwrap();
-        let reader = BufReader::new(file);
-        let mut start = false;
-        let mut list = Vec::new();
-
-        for line in reader.lines() {
-            let text = line.unwrap();
-            let text = text.trim().trim_end_matches(',');
-            if text == "pub enum Function {" {
-                start = true;
-                continue;
-            }
-            if start {
-                if text == "}" {
-                    break;
-                }
-                if text.starts_with("//") {
-                    // skip comments
-                    continue;
-                }
-                if text.is_empty() {
-                    // skip empty lines
-                    continue;
-                }
-                list.push(text.to_owned());
-            }
-        }
-        assert_eq!(list.len(), super::Function::into_iter().count());
     }
 }

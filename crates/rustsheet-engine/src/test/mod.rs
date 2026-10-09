@@ -59,6 +59,7 @@ mod test_fn_time;
 mod test_fn_type_array;
 mod test_forecast;
 mod test_frozen_rows_columns;
+mod test_function_iterator;
 mod test_gcd_lcm;
 mod test_general;
 mod test_ifs_array_criteria;

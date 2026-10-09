@@ -154,6 +154,33 @@ impl Model {
         };
         CalcResult::String(asc_convert(&s))
     }
+
+    /// DBCS(text) — text unchanged: en-US Excel for the web does not widen it
+    /// (probes/text-modes-dbcs C3, `DBCS("abc")` = "abc"; T-1213). Only ASCII is probed, and
+    /// so is only a scalar argument: like ASC it does not lift over a range until a probe shows how.
+    pub(crate) fn fn_dbcs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        match self.get_string(&args[0], cell) {
+            Ok(s) => CalcResult::String(s),
+            Err(e) => e,
+        }
+    }
+
+    /// PHONETIC(reference) — `#N/A` for a text cell, a number cell and a range alike, as
+    /// excel-graph evaluates it (probes/text-modes-phonetic, -range, -number; T-1213). A
+    /// literal argument is refused by the oracle, so it is unobservable.
+    pub(crate) fn fn_phonetic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        CalcResult::new_error(
+            Error::NA,
+            cell,
+            "PHONETIC has no phonetic text to return".to_string(),
+        )
+    }
 }
 
 /// Converts full-width Unicode characters to their ASCII half-width equivalents.
