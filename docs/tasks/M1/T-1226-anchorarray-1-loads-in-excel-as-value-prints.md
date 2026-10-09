@@ -3,7 +3,7 @@ id: T-1226
 title: "ANCHORARRAY(@1) loads in Excel as #VALUE! (prints =@1#); the parser refuses it (follow-up of T-1216)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
