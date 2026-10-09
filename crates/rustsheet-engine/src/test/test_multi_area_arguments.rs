@@ -7,7 +7,7 @@
 
 use crate::expressions::types::CellReferenceRC;
 use crate::model::Model;
-use crate::reference_operators::{is_multi_area, MAX_AREAS, TOO_MANY_AREAS, TOO_MANY_AREA_CELLS};
+use crate::reference_operators::{MAX_AREAS, TOO_MANY_AREAS, TOO_MANY_AREA_CELLS};
 use crate::test::util::new_empty_model;
 use crate::types::{Cell, FormulaValue};
 
@@ -422,6 +422,11 @@ fn plain_intersection_operands_take_the_pair_path() {
     model
         .new_defined_name("box", None, "Sheet1!$A$1:$B$2")
         .unwrap();
+    model.define_name("arr", None, "{1,2,3}").unwrap();
+    model
+        .define_name("mu", None, "Sheet1!$A$1,Sheet1!$B$2")
+        .unwrap();
+    model.define_name("alias", None, "mu").unwrap();
     let context = CellReferenceRC {
         sheet: "Sheet1".to_string(),
         row: 1,
@@ -434,9 +439,13 @@ fn plain_intersection_operands_take_the_pair_path() {
         ("IF(TRUE,A1) A1", true),
         ("CHOOSE(1,A1) A1", true),
         ("LET(x,A1,x) A1", true),
+        // A formula-bodied name is multi-area only when its body is (T-1065).
+        ("arr", false),
+        ("mu A1", true),
+        ("alias A1", true),
     ] {
         let node = model.parser.parse(formula, &context);
-        assert_eq!(is_multi_area(&node), multi, "{formula}");
+        assert_eq!(model.is_multi_area(&node), multi, "{formula}");
     }
 }
 
@@ -464,4 +473,80 @@ fn deep_if_chain_over_a_union() {
         })
         .unwrap();
     handle.join().unwrap();
+}
+
+#[test]
+fn union_bodied_names_stand_for_their_areas() {
+    // probes/union-defined-name H1:H5; a name reaches AGGREGATE's array form, AREAS, INDEX and
+    // an intersection, and another name or a LET variable passes its areas on.
+    let mut model = model();
+    model
+        .define_name("mu", None, "Sheet1!$A$1,Sheet1!$B$2")
+        .unwrap();
+    model.define_name("alias", None, "mu").unwrap();
+    model
+        .define_name("xs", None, "Data!$A$1,Sheet1!$A$1")
+        .unwrap();
+    model.define_name("arr", None, "{1,2,3}").unwrap();
+    model.define_name("arr_alias", None, "arr").unwrap();
+    results(
+        &mut model,
+        &[
+            ("H1", "=SUM(mu)", "6"),
+            ("H2", "=mu", "#VALUE!"),
+            ("H3", "=ISREF(mu)", "TRUE"),
+            ("H4", "=mu A1", "1"),
+            ("H5", "=COUNT(mu)", "2"),
+            ("H6", "=AGGREGATE(14,0,mu,1)", "5"),
+            ("H7", "=LET(x,mu,AGGREGATE(15,0,x,1))", "1"),
+            ("H8", "=AREAS(mu)", "2"),
+            ("H9", "=INDEX(mu,1,1,2)", "5"),
+            ("H10", "=SUM(alias)", "6"),
+            ("H11", "=SUM(xs)", "#VALUE!"),
+            ("H12", "=AGGREGATE(14,0,IF(TRUE,(A1,B2)),2)", "1"),
+            // A name whose body is not a union keeps its path (probes/union-defined-name-uses H9).
+            ("H13", "=ROWS(FREQUENCY(arr,2))", "2"),
+            // Behind another name, a LET variable or IF, an array is counted too (T-1196).
+            ("H14", "=SUM(FREQUENCY(arr_alias,2))", "3"),
+            ("H15", "=LET(x,{1,2,3},SUM(FREQUENCY(x,2)))", "3"),
+            ("H16", "=SUM(FREQUENCY(IF(TRUE,{1,2,3}),2))", "3"),
+        ],
+    );
+}
+
+#[test]
+fn union_bodied_name_over_the_area_cap() {
+    // DEVIATION (references.md "Union area cap"): a name body is capped like a written union,
+    // at each use: MAX_AREAS areas are summed, one more is `#VALUE!`.
+    let mut model = model();
+    let at_cap = balanced_union("Sheet1!$A$1", MAX_AREAS);
+    let over_cap = balanced_union("Sheet1!$A$1", MAX_AREAS + 1);
+    model.define_name("cap", None, &at_cap).unwrap();
+    model.define_name("over", None, &over_cap).unwrap();
+    results(
+        &mut model,
+        &[
+            ("Z1", "=SUM(cap)", &MAX_AREAS.to_string()),
+            ("Z2", "=SUM(over)", "#VALUE!"),
+        ],
+    );
+    assert_eq!(error_message(&model, "Z2"), TOO_MANY_AREAS);
+}
+
+#[test]
+fn self_referential_union_names_are_bounded() {
+    // A name that reaches itself through a union runs out of name depth (`#NAME?`, as Excel's
+    // self-reference is; probes/defined-name-formula-bodies H11) instead of recursing.
+    let mut model = model();
+    model.define_name("loop", None, "Sheet1!$A$1,loop").unwrap();
+    model.define_name("ping", None, "Sheet1!$A$1,pong").unwrap();
+    model.define_name("pong", None, "Sheet1!$B$2,ping").unwrap();
+    results(
+        &mut model,
+        &[
+            ("Z1", "=SUM(loop)", "#NAME?"),
+            ("Z2", "=SUM(ping)", "#NAME?"),
+            ("Z3", "=loop A1", "#NAME?"),
+        ],
+    );
 }

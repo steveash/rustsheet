@@ -237,26 +237,6 @@ fn too_many_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREAS.to_string())
 }
 
-/// Whether `node` may stand for several areas, so evaluating it as an intersection operand
-/// needs an area list.
-/// An intersection is multi-area only if a union sits somewhere under it: a chain of
-/// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path.
-/// Recursion is bounded by the parser's depth cap.
-pub(crate) fn is_multi_area(node: &Node) -> bool {
-    match node {
-        // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let H2,
-        // multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
-        Node::OpUnionKind { .. }
-        | Node::NamedVariableKind { .. }
-        | Node::FunctionKind {
-            kind: Function::If | Function::Choose | Function::Let,
-            ..
-        } => true,
-        Node::OpIntersectKind { left, right, .. } => is_multi_area(left) || is_multi_area(right),
-        _ => false,
-    }
-}
-
 /// The cells `a` and `b` share: `None` if none, `#VALUE!` if they are on different sheets.
 fn intersect_pair(
     a: &Range,
@@ -453,6 +433,43 @@ impl Model {
         }
     }
 
+    /// Whether `node` may stand for several areas, so evaluating it as an intersection
+    /// operand or reference argument needs an area list.
+    /// An intersection is multi-area only if a union sits somewhere under it: a chain of
+    /// plain references (`A1:C3 B1:D4 C1:C9`) stays on the allocation-free pair path. A name
+    /// is multi-area when its formula body is: a name for a cell, a range, an array or a
+    /// scalar formula keeps the path it had (`box A1`, `FREQUENCY(arr,2)`). Recursion is
+    /// bounded by the parser's depth cap.
+    pub(crate) fn is_multi_area(&self, node: &Node) -> bool {
+        self.may_be_multi_area(node, true)
+    }
+
+    /// [`Model::is_multi_area`]; `look_through_names` is false inside a name's body, where a
+    /// name with a formula body counts as multi-area without being opened, so names that
+    /// refer to each other cannot recurse here (they are bounded when evaluated, by
+    /// [`Model::within_defined_name`]).
+    fn may_be_multi_area(&self, node: &Node, look_through_names: bool) -> bool {
+        match node {
+            // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let
+            // H2, multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
+            Node::OpUnionKind { .. }
+            | Node::NamedVariableKind { .. }
+            | Node::FunctionKind {
+                kind: Function::If | Function::Choose | Function::Let,
+                ..
+            } => true,
+            // So may a name whose body does (probes/union-defined-name H4).
+            Node::DefinedNameKind(_) => self
+                .defined_name_formula(node)
+                .is_some_and(|body| !look_through_names || self.may_be_multi_area(&body, false)),
+            Node::OpIntersectKind { left, right, .. } => {
+                self.may_be_multi_area(left, look_through_names)
+                    || self.may_be_multi_area(right, look_through_names)
+            }
+            _ => false,
+        }
+    }
+
     /// `left right`, the intersection operator: the reference to the cells both operands
     /// contain. Excel (docs/excel-semantics/references.md, gen-m1/4dc8ed1de05a61be): an
     /// operand's error propagates, areas that share no cell give `#NULL!`, and areas on two
@@ -483,7 +500,7 @@ impl Model {
         right: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
-        if !is_multi_area(left) && !is_multi_area(right) {
+        if !self.is_multi_area(left) && !self.is_multi_area(right) {
             // Two single areas, the common case: no area list.
             let a = self.evaluate_intersection_operand(left, cell)?;
             let b = self.evaluate_intersection_operand(right, cell)?;
@@ -580,6 +597,7 @@ impl Model {
                 self.intersect_areas(left, right, cell, budget)
             }
             Node::NamedVariableKind { .. }
+            | Node::DefinedNameKind(_)
             | Node::FunctionKind {
                 kind: Function::If | Function::Choose | Function::Let,
                 ..
