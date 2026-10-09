@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LET name bound to text, called like a function: LET(f,\"a\",f()) (T-1092).",
+  "tags": [
+    "M1",
+    "references",
+    "let",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=LET(f,\"a\",f())"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1"
+  ]
+}

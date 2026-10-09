@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "H1": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H2": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H3": {
+    "t": "n",
+    "v": 0.0
+   },
+   "H4": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H5": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "H6": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "H7": {
+    "t": "n",
+    "v": 3.0
+   },
+   "I1": {
+    "t": "s",
+    "v": "=LET(f,A1,f(2))"
+   },
+   "I2": {
+    "t": "s",
+    "v": "=LET(f,1,f(2))"
+   },
+   "I3": {
+    "t": "s",
+    "v": "=LET(f,\"a\",f(2))"
+   },
+   "I4": {
+    "t": "s",
+    "v": "=LET(f,A1+0,f(2))"
+   },
+   "I5": {
+    "t": "s",
+    "v": "=LET(f,1/0,f(2))"
+   },
+   "I6": {
+    "t": "s",
+    "v": "=LET(f,{1,2},f(2))"
+   },
+   "I7": {
+    "t": "s",
+    "v": "=LET(f,LAMBDA(x,x+1),f(2))"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "b7afe4af79a0e6827cb2d7ca5f58d2dd77ed497c72e6540e98a78f78a3bdaed9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-09T01:25:14+00:00",
+  "version": null
+ }
+}
