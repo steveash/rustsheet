@@ -1,0 +1,55 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Stored ANCHORARRAY of an @ operand: value and FORMULATEXT per operand kind (T-1240, follow-up of T-1226). `ANCHORARRAY(@1/0)` is refused by Excel for the web (FileCorruptTryRepair) so it is not a case.",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4,
+        "D1": "=SEQUENCE(3)",
+        "H41": "=ANCHORARRAY(@A1:B2)",
+        "I41": "=FORMULATEXT(H41)",
+        "H51": "=ANCHORARRAY((@1))",
+        "I51": "=FORMULATEXT(H51)",
+        "H61": "=ANCHORARRAY(@\"a\")",
+        "I61": "=FORMULATEXT(H61)",
+        "H71": "=ANCHORARRAY(@SUM(A1))",
+        "I71": "=FORMULATEXT(H71)",
+        "H81": "=ANCHORARRAY(@INDEX(D1:D2,1))",
+        "I81": "=FORMULATEXT(H81)",
+        "H91": "=ANCHORARRAY(@LAMBDA(x,x))",
+        "I91": "=FORMULATEXT(H91)",
+        "H101": "=ANCHORARRAY(@-1)",
+        "I101": "=FORMULATEXT(H101)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H41",
+    "Sheet1!I41",
+    "Sheet1!H51",
+    "Sheet1!I51",
+    "Sheet1!H61",
+    "Sheet1!I61",
+    "Sheet1!H71",
+    "Sheet1!I71",
+    "Sheet1!H81",
+    "Sheet1!H82",
+    "Sheet1!H83",
+    "Sheet1!I81",
+    "Sheet1!H91",
+    "Sheet1!I91",
+    "Sheet1!H101",
+    "Sheet1!I101"
+  ]
+}
