@@ -3,7 +3,7 @@ id: T-1252
 title: "Probe a LET or LAMBDA name bound to XLOOKUP, TAKE, DROP or TRIMRANGE when not called (ISREF, CELL, ROWS, SUM)"
 milestone: M1
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
