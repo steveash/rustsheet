@@ -3,7 +3,7 @@ id: T-1147
 title: "Probe FORMULATEXT of @ groups that are not the whole operand (@(A1 B1) C1, @(A1):B1 C1, @(A1) B1 C1)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
