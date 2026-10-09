@@ -169,6 +169,7 @@ C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
+C	probes/math-argument-modes.case.json	56
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
 C	probes/mod-array-lift.case.json	25
@@ -582,6 +583,15 @@ F	probes/geomean-single-and-copies.case.json	Copies!G7
 F	probes/geomean-single-and-copies.case.json	Copies!G8
 F	probes/geomean-single-and-copies.case.json	Copies!G9
 F	probes/geomean-stored-3ulps-low.case.json	Sheet1!R1
+F	probes/math-argument-modes.case.json	Sheet1!C35
+F	probes/math-argument-modes.case.json	Sheet1!C44
+F	probes/math-argument-modes.case.json	Sheet1!C47
+F	probes/math-argument-modes.case.json	Sheet1!C49
+F	probes/math-argument-modes.case.json	Sheet1!C50
+F	probes/math-argument-modes.case.json	Sheet1!C51
+F	probes/math-argument-modes.case.json	Sheet1!C52
+F	probes/math-argument-modes.case.json	Sheet1!C53
+F	probes/math-argument-modes.case.json	Sheet1!C9
 F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1

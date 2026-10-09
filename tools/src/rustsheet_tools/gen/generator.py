@@ -99,13 +99,14 @@ class Catalog:
         """Operators and generator-ready functions in scope at `milestone`.
 
         Catalog entries without `params` only name a function (T-0040: every Excel function is
-        listed, most without a signature yet), so the generator cannot call them."""
+        listed, most without a signature yet), so the generator cannot call them. Volatile functions
+        (RAND) have a signature but are left out: their value never matches an oracle's."""
         limit = MILESTONES.index(milestone)
 
         def ok(entry: dict[str, Any]) -> bool:
             return MILESTONES.index(entry.get("milestone", "M10")) <= limit
 
-        functions = [f for f in self.functions if "params" in f and ok(f)]
+        functions = [f for f in self.functions if "params" in f and not f.get("volatile") and ok(f)]
         return Catalog([o for o in self.operators if ok(o)], functions)
 
 
@@ -193,7 +194,7 @@ class Gen:
 
     def argument(self, p: dict[str, Any], depth: int) -> str:
         mode = p.get("mode", "value")
-        if mode == "range":
+        if mode == "range" or (mode == "array" and self.rng.random() < 0.5):
             return self.range_ref(width=self.rng.randint(1, min(4, self.data_cols)))
         if mode == "criteria":
             c = self.rng.choice(CRITERIA_POOL)
