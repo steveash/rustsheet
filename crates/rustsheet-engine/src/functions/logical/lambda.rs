@@ -1,10 +1,12 @@
 use crate::{
     calc_result::CalcResult,
+    cast::calc_result_to_array_node,
     expressions::{
-        parser::{NamedVariable, Node},
+        parser::{ArrayNode, NamedVariable, Node},
         token::Error,
         types::CellReferenceIndex,
     },
+    functions::util::array_node_to_calc_result,
     model::Model,
 };
 
@@ -30,6 +32,35 @@ impl Model {
             );
         }
         self.call_lambda(callee, call_args, cell)
+    }
+
+    /// A LET variable or LAMBDA parameter called like a function, `f(2)` in `LET(f,..,f(2))` or
+    /// `LAMBDA(f,f(2))`.
+    /// A LAMBDA is called and a reference is `#REF!` (`call_callee`); a value gives Excel's odd
+    /// results without its arguments being read: a number or boolean is `#NAME?`, text is 0, an
+    /// error is itself, and an array is called element by element
+    /// (docs/excel-semantics/references.md "Calling a parenthesized operand", T-1092).
+    pub(crate) fn call_variable(
+        &mut self,
+        callee: CalcResult,
+        call_args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match callee {
+            CalcResult::Lambda(_) | CalcResult::Range { .. } => {
+                self.call_callee(callee, call_args, cell)
+            }
+            CalcResult::Array(array) => CalcResult::Array(
+                array
+                    .iter()
+                    .map(|row| row.iter().map(called_value).collect())
+                    .collect(),
+            ),
+            error @ CalcResult::Error { .. } => error,
+            other => {
+                array_node_to_calc_result(&called_value(&calc_result_to_array_node(other)), cell)
+            }
+        }
     }
 
     /// Evaluates the body of a named lambda with the given call-site argument nodes.
@@ -196,5 +227,18 @@ fn check_arg_count(
         Err(CalcResult::new_error(Error::VALUE, cell, msg))
     } else {
         Ok(())
+    }
+}
+
+/// What calling one value (not a LAMBDA, not a reference) gives (`Model::call_variable`).
+fn called_value(value: &ArrayNode) -> ArrayNode {
+    match value {
+        ArrayNode::String(_) => ArrayNode::Number(0.0),
+        ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+        // An empty element is taken as a number (not probed: `LET(f,"",f(2))` makes Excel refuse
+        // the workbook).
+        ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {
+            ArrayNode::Error(Error::NAME)
+        }
     }
 }

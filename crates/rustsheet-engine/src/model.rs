@@ -668,7 +668,7 @@ impl Model {
             FunctionKind { kind, args } => self.evaluate_function(kind, args, cell),
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
-                    // Bound by LET — look up the variable, which should be a Lambda.
+                    // Bound by LET or LAMBDA: what it holds is called, a value too.
                     match self.variable_stack.get(*var_id as usize) {
                         Some(binding) => binding.value(cell),
                         None => {
@@ -704,7 +704,7 @@ impl Model {
                         }
                     }
                 };
-                self.call_callee(lambda_result, args, cell)
+                self.call_variable(lambda_result, args, cell)
             }
             ArrayKind(s) => CalcResult::Array(s.to_owned()),
             DefinedNameKind((name, scope, _)) => {
