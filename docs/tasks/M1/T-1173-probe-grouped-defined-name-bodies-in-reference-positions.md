@@ -3,7 +3,7 @@ id: T-1173
 title: "Probe grouped defined-name bodies in reference positions (OFFSET, AREAS, range operator, INDEX, CELL)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
