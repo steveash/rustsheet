@@ -155,6 +155,20 @@ impl RefArg {
         }
     }
 
+    /// [`RefArg::into_single_area`] where the area must sit on one sheet: a 3-D range (a span
+    /// bound by LET, from IF or CHOOSE) is `#VALUE!`, as the written span is there
+    /// (`ROWS(x)`, `COUNTBLANK(x)` for `x` = `Data1:Data3!A1`: probes/3d-ref-let-bound-span C7,
+    /// 3d-ref-let-bound-span-readers C11, 3d-ref-let-values C5; T-1158). Not every caller of
+    /// `into_single_area` may refuse one: making that refuse 3-D ranges regressed probe cells.
+    pub(crate) fn into_single_sheet_area(self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
+                three_d_needs_one_sheet(cell)
+            }
+            other => other.into_single_area(cell),
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {
@@ -167,13 +181,17 @@ impl RefArg {
 }
 
 /// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
-/// included), or the areas of a union, which only reference context reads as such
-/// ([`Model::variable_reference`]); everywhere else it is `#VALUE!`, as `LET(x,(A1,B2),x)` is
-/// (probes/multiarea-let H3).
+/// included), the areas of a union, or a 3-D span. Only reference context reads the last two as
+/// such ([`Model::variable_reference`]); everywhere else they are `#VALUE!`, as `LET(x,(A1,B2),x)`
+/// is (probes/multiarea-let H3) and as the bare span is (`LET(x,Data1:Data3!A1,x)`,
+/// `INDEX(x,1)`, `ROWS(x)`: probes/3d-ref-let-bound-span, T-1158).
 #[derive(Clone)]
 pub(crate) enum Binding {
     Value(CalcResult),
     Areas(Areas),
+    /// A range whose corners sit on two sheets: an aggregate reads it like the written span
+    /// (`LET(x,Data1:Data3!A1,SUM(x))` is 111, probes/3d-ref-let-bound-span C1:C3).
+    Span(Range),
 }
 
 impl Binding {
@@ -182,13 +200,14 @@ impl Binding {
         match self {
             Binding::Value(value) => value.clone(),
             Binding::Areas(_) => several_areas(cell),
+            Binding::Span(_) => three_d_needs_one_sheet(cell),
         }
     }
 
-    /// How many areas the binding holds: those of a union, none for a value.
+    /// How many areas the binding holds: those of a union, none for a value or a span.
     pub(crate) fn held_areas(&self) -> usize {
         match self {
-            Binding::Value(_) => 0,
+            Binding::Value(_) | Binding::Span(_) => 0,
             Binding::Areas(Areas(areas)) => areas.len(),
         }
     }

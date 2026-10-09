@@ -109,9 +109,10 @@ impl Model {
         let mut result = 0.0;
         for arg in args {
             let value = if self.is_multi_area(arg) && !is_span_or_if_of_span(arg) {
-                // A union is #VALUE! here (probes/multiarea-count H1); one area is a range.
+                // A union is #VALUE! here (probes/multiarea-count H1), and so is a 3-D span bound
+                // by LET (probes/3d-ref-let-bound-span-readers C11); one area is a range.
                 self.evaluate_reference_arg(arg, cell)
-                    .into_single_area(cell)
+                    .into_single_sheet_area(cell)
             } else {
                 self.evaluate_single_sheet_arg(arg, cell)
             };
