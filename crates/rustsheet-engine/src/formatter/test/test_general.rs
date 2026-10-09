@@ -317,6 +317,7 @@ fn general_fixed_versus_scientific() {
     assert_eq!(general(9.999_999_6E-10), "1E-09");
     assert_eq!(general(0.01), "0.01");
     assert_eq!(general(1.234_567_891_2), "1.234567891");
+    assert_eq!(general(1.123_456_789E-4), "0.000112346");
     assert_eq!(general(1E10), "10000000000");
     assert_eq!(general(-1E10), "-10000000000");
     assert_eq!(general(9.999_999_6E10), "99999996000");

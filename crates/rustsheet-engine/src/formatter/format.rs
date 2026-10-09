@@ -936,50 +936,36 @@ fn parse_number(
     }
 }
 
-/// Characters the General format may use for the digits and decimal point (the minus sign does
-/// not count): poi/GeneralFormatTests A17 `1E10` → "10000000000", A61 `-1E-09` → "-0.000000001".
-const GENERAL_WIDTH: usize = 11;
+/// Decimals General keeps in fixed notation: "0." plus 9 decimals fills the 11 characters Excel
+/// allows below 1 (poi/GeneralFormatTests A27 `1E-09` → "0.000000001", A61 `-1E-09` →
+/// "-0.000000001": the sign does not count). From 1 on the engine keeps 9 decimals as well;
+/// whether the integer digits take their share of the 11 characters is unprobed (T-1225).
+const GENERAL_DECIMALS: usize = 9;
 
 /// `value` under the General format, with "." as the decimal point.
 ///
-/// General prints fixed notation, rounded to fit [`GENERAL_WIDTH`] characters, when
-/// `|value| >= 1E-09`, the fixed form fits and it shows at least as many significant digits as E
-/// notation would; otherwise it prints E notation. So `1E-09` is "0.000000001" but `1E-10` is
-/// "1E-10", and `1.23456789012345E-05` is "1.23457E-05" because the fixed "0.000012346" keeps 5
-/// digits against 6 (probes/number-text-exponent-digits D8,
+/// General prints fixed notation when `1E-09 <= |value| < 1E+11` and the fixed form shows at least
+/// as many significant digits as E notation would; otherwise it prints E notation. So `1E-09` is
+/// "0.000000001" but `1E-10` is "1E-10", and `1.23456789012345E-05` is "1.23457E-05" because the
+/// fixed "0.000012346" keeps 5 digits against 6 (probes/number-text-exponent-digits D8,
 /// poi/GeneralFormatTests A13-A33; `docs/excel-semantics/number-formats.md`).
 fn format_general(value: f64) -> String {
     if value == 0.0 {
         return "0".to_string();
     }
     let scientific = format_general_scientific(value);
-    if let Some(fixed) = format_general_fixed(value) {
+    // Below 1E-09 General is E notation even when the fixed form would show the same digits:
+    // `9.9999996E-10` is "1E-09", not "0.000000001" (probes/text-general-exponent-boundary A10).
+    // From 1E+11 the integer part alone needs 12 characters (A18 `1E11` → "1E+11").
+    if (1e-9..1e11).contains(&value.abs()) {
+        let fixed = format!("{value:.GENERAL_DECIMALS$}");
+        let fixed = fixed.trim_end_matches('0').trim_end_matches('.');
         let mantissa = scientific.split('E').next().unwrap_or_default();
-        if significant_digits(&fixed) >= significant_digits(mantissa) {
-            return fixed;
+        if significant_digits(fixed) >= significant_digits(mantissa) {
+            return fixed.to_string();
         }
     }
     scientific
-}
-
-/// `value` in fixed notation rounded to [`GENERAL_WIDTH`] characters (trailing fractional zeros
-/// trimmed), or `None` when General never prints it fixed.
-fn format_general_fixed(value: f64) -> Option<String> {
-    // Below 1E-09 General is always E notation, even when rounding would make the fixed form
-    // show the same digits: `9.9999996E-10` is "1E-09", not "0.000000001"
-    // (probes/text-general-exponent-boundary A10). From 1e11 on the integer part needs 12
-    // characters; checking first also bounds the strings formatted below.
-    if !(1e-9..1e11).contains(&value.abs()) {
-        return None;
-    }
-    // The integer digits ("0" below 1) and the decimal point take their share of the width.
-    let integer_digits = format!("{:.0}", value.abs().trunc()).len();
-    let decimals = GENERAL_WIDTH.saturating_sub(integer_digits + 1);
-    let mut text = format!("{value:.decimals$}");
-    if text.contains('.') {
-        text = text.trim_end_matches('0').trim_end_matches('.').to_string();
-    }
-    (text.trim_start_matches('-').len() <= GENERAL_WIDTH).then_some(text)
 }
 
 /// `value` (non-zero) in General's E notation: "1.23457E-05", "1.2346E+100".

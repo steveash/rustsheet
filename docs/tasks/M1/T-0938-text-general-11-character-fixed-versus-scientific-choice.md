@@ -60,11 +60,13 @@ Number-to-text coercion (T-0107). Booleans in TEXT (T-0935). Width-dependent cel
 (`formatted()` with column widths, M10).
 
 ## Outcome
-The General branch of `format_number` now calls `format_general`: fixed notation rounded to 11
-characters (sign not counted) when `|x| >= 1E-09`, the fixed form fits, and it shows at least as
-many significant digits as E notation; otherwise E notation. The `1E-09` floor comes from
+The General branch of `format_number` now calls `format_general`: fixed notation (9 decimals,
+trimmed) when `1E-09 <= |x| < 1E+11` and it shows at least as many significant digits as E
+notation; otherwise E notation. The `1E-09` floor comes from
 probes/text-general-exponent-boundary A10 (`9.9999996E-10` → "1E-09"), which the digit rule alone
-would print fixed. Ties go to fixed and are unprobed, as are fixed values wider than 11
-characters (`123456.123456789` → "123456.1235"): probe task T-1225 (M2). Unit test
-`general_fixed_versus_scientific`. Eval: poi known failures 570 -> 568 (GeneralFormatTests A27,
+would print fixed. Ties go to fixed and are unprobed, as is whether values from 1 on lose
+decimals to the 11-character limit (the engine keeps 9; changing it would move 30 IronCalc-era
+unit tests with no oracle evidence): probe task T-1225 (M2). Unit test
+`general_fixed_versus_scientific`; `test_timevalue_malformed_but_parseable` now expects
+1/86400 as "1.15741E-05" (same rule as D8). Eval: poi known failures 570 -> 568 (GeneralFormatTests A27,
 A61), probes 413 -> 412 (number-text-exponent-digits D8), no regressions.

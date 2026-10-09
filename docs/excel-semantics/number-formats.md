@@ -120,10 +120,10 @@ Status: VERIFIED
 Tasks: T-0937
 
 ## `TEXT(x,"General")` uses an 11-character fixed-notation limit
-Rule: General prints fixed notation, rounded to fit 11 characters (sign not counted), when
-`|x| >= 1E-09`, the fixed form fits, and it shows at least as many significant digits as the E
-form (6 significant digits; 5 from `|exp| >= 99`, `numbers.md` "Exponent width"). Otherwise it
-prints E notation.
+Rule: General prints fixed notation, with at most 9 decimals ("0." plus 9 decimals is 11
+characters; the sign does not count), when `1E-09 <= |x| < 1E+11` and the fixed form shows at least
+as many significant digits as the E form (6 significant digits; 5 from `|exp| >= 99`, `numbers.md`
+"Exponent width"). Otherwise it prints E notation.
 - Fixed: 1E-09 → "0.000000001" (A27), -1E-09 → "-0.000000001" (A61), 1E10 → "10000000000"
   (A17), 1.2345678912 → "1.234567891" (A13, 10 digits against 6), 9.9999996E+10 →
   "99999996000" (boundary A9).
@@ -132,9 +132,10 @@ prints E notation.
   against 6), and 9.9999996E-10 → "1E-09" (boundary A10: below 1E-09, although the fixed
   "0.000000001" would show the same digit).
 This differs from number→text conversion (`numbers.md`, 15 digits).
-Unprobed (T-1225): ties in digit count (`0.000123456789`, `1.2345E-05`: the rule gives fixed) and
-fixed values whose integer part leaves fewer decimals (`123456.123456789` → "123456.1235" by the
-rule).
+Unprobed (T-1225): ties in digit count (`0.000123456789`, `1.2345E-05`: the engine prints fixed)
+and fixed values from 1 on whose integer digits plus 9 decimals exceed 11 characters (the engine
+keeps 9 decimals, `123456.123456789` → "123456.123456789"; if the 11-character limit holds there
+too it would be "123456.1235").
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
 Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07).
 Status: VERIFIED (ties and wide fixed values: INFERRED)
