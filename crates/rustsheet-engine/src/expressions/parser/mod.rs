@@ -156,6 +156,19 @@ pub struct CompletionContext {
     pub replace_from: usize,
 }
 
+/// The parenthesized group an `@` operand begins with when the group is only its leftmost part
+/// (`@(A1) B1`, `@(A1 B1) C1`, `@(A1):B1 C1`): Excel's FORMULATEXT prints it back (T-1134,
+/// T-1200). `levels == 0` means none.
+#[derive(PartialEq, Clone, Copy, Debug, Default)]
+pub struct LeadGroup {
+    /// Levels of parentheses written around the group.
+    pub levels: u8,
+    /// Operands of the intersection chain inside the group, `(A1 B1)` is 2.
+    pub operands: u8,
+    /// The group is the left operand of a `:` range, `(A1):B1`, not a chain operand itself.
+    pub of_range: bool,
+}
+
 /// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
@@ -285,7 +298,7 @@ pub enum Node {
         /// FORMULATEXT prints them back (`@(A1)`, `@(A1:B1)`, `@((A1 B1))`; probes/at-paren-operands,
         /// T-1116); the automatic `@` of an xlsx import has none.
         written: u8,
-        lead: u8,
+        lead: LeadGroup,
     },
     SpillRangeOperator {
         child: Box<Node>,
@@ -326,7 +339,7 @@ impl Node {
             automatic,
             child: Box::new(child),
             written: 0,
-            lead: 0,
+            lead: LeadGroup::default(),
         }
     }
 }
@@ -351,10 +364,10 @@ pub struct Parser {
     trailing_name: Option<(String, usize)>,
     /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
     at_paren: bool,
-    /// The parenthesized group an `@` operand was just parsed from: its levels and the lexer
+    /// The parenthesized group an `@` operand was just parsed from: its shape and the lexer
     /// position after its last `)`, so `@(A1) B1` (whose group is only part of the operand) is not
     /// counted.
-    at_group: Option<(u8, usize)>,
+    at_group: Option<(LeadGroup, usize)>,
     /// The formula starts with `(` and that group has not been parsed yet.
     leading_paren: bool,
     /// The group opened by the formula's first `(` closes at the end of the formula: the whole

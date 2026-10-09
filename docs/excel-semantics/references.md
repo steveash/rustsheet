@@ -302,7 +302,7 @@ Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name b
 an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it, H15:H17); the bare cell returns an error type the oracle client cannot
 decode (probes/let-name-call-forms description). UNVERIFIED: the engine's mapping of an empty element to `#NAME?` (`called_value` in
 lambda.rs). A workbook holding `=LAMBDA([f],f(2))()` (an omitted optional parameter) is refused by Excel for the web (`FileCorruptTryRepair`,
-`unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the engine gives `#VALUE!` for the union forms (T-1231) and `#NAME?`/`#SPILL!` for the
+`unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the union forms (H1, H2, H13) are `#REF!` as in Excel since T-1231; the engine gives `#NAME?`/`#SPILL!` for the
 XLOOKUP/TAKE/DROP/TRIMRANGE forms (T-1232); the rest match.
 A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
 `#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
@@ -866,17 +866,23 @@ Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` op
 only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
 (`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) until T-1134 (`ImplicitIntersection::lead`). Excel keeps the group for every shape where it is
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
-print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches the last two and
-prints the first three without the group (`=@A1 B1 C1` for both of the first two, `=@A1:B1 C1`): T-1200. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches all five
+(`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
+UNVERIFIED (inferred from those five, T-1200): the engine prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`, `=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1` and
+`=@(A1):OFFSET(B1,0,0) C1` as written; `=@((A1 B1) C1) D1` as `=@(A1 B1 C1) D1` (the inner group is dropped, the printed group covers
+three operands); `=@(A1):(B1) C1` as `=@(A1):B1 C1` (the written `(B1)` is dropped); `=@(A1):B1` as `=@A1:B1` (a corner group with
+no intersection after it is dropped); `=@(A1 B1):C1` as written. Pinned as characterization in
+`at_operand_group_shapes_no_probe_covers_are_characterized`; probe task T-1245.
+The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
-level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; whether Excel keeps those inner
-parentheses is UNVERIFIED (T-1167, T-1178); the likely answer is yes, as Excel keeps written parentheses elsewhere
-(probes/union-cut-precedence F6 prints `=SUM(((A1,B1) B1))`, kept for a cut of a parenthesized union since T-1176).
+level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
+written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
+excel-graph 2026-10-09, T-1178; engine: T-1244).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134
+Tasks: T-1132, T-1134, T-1178, T-1200, T-1244
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;
@@ -896,8 +902,10 @@ Rule: when a table's stored `ref` is not a valid range (an untrusted or corrupt 
 reference to that table evaluates to `#REF!`. This is the choice made when the engine's `expect` on the parse
 was removed (a panic on untrusted input is forbidden); the neighbouring cases of a missing table or a missing
 table sheet are parse errors, so the two differ. Excel never writes such a `ref` and its handling of a file that
-has one is unknown (likely repair or refusal).
+has one is unknown (likely repair or refusal). The same holds for a stored header or totals row count that
+does not fit the row arithmetic (a count above `i32::MAX`, or one that overflows `i32` with the range's rows): `#REF!`, not a
+wrap or a panic (T-1234).
 Evidence: none for Excel; input hardening (CLAUDE.md directive 5).
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
-Tasks: T-1210
+Tasks: T-1210, T-1234

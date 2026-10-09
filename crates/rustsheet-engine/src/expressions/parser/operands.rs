@@ -425,9 +425,23 @@ impl Parser {
             return Node::ErrorKind(token::Error::REF);
         };
 
-        let totals_row_count = table.totals_row_count as i32;
-        let header_row_count = table.header_row_count as i32;
-        row_end -= totals_row_count;
+        // The counts are workbook values too: arithmetic that does not fit is #REF!, not a wrap.
+        let (Ok(totals_row_count), Ok(header_row_count)) = (
+            i32::try_from(table.totals_row_count),
+            i32::try_from(table.header_row_count),
+        ) else {
+            return Node::ErrorKind(token::Error::REF);
+        };
+        let (Some(data_end), Some(data_start)) = (
+            row_end.checked_sub(totals_row_count),
+            row_start.checked_add(header_row_count),
+        ) else {
+            return Node::ErrorKind(token::Error::REF);
+        };
+        let Some(totals_row) = data_end.checked_add(1) else {
+            return Node::ErrorKind(token::Error::REF);
+        };
+        row_end = data_end;
 
         match specifier {
             Some(token::TableSpecifier::ThisRow) => {
@@ -436,7 +450,7 @@ impl Parser {
             }
             Some(token::TableSpecifier::Totals) => {
                 if totals_row_count != 0 {
-                    row_start = row_end + 1;
+                    row_start = totals_row;
                     row_end = row_start;
                 } else {
                     // Table1[#Totals] is #REF! if Table1 does not have totals
@@ -447,16 +461,16 @@ impl Parser {
                 row_end = row_start;
             }
             Some(token::TableSpecifier::Data) => {
-                row_start += header_row_count;
+                row_start = data_start;
             }
             Some(token::TableSpecifier::All) => {
                 if totals_row_count != 0 {
-                    row_end += 1;
+                    row_end = totals_row;
                 }
             }
             None => {
                 // skip the headers
-                row_start += header_row_count;
+                row_start = data_start;
             }
         }
         match table_reference {
