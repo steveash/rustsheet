@@ -169,3 +169,16 @@ probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading 
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
+
+## FORMULATEXT keeps every written parenthesis
+Rule: Excel keeps redundant parentheses exactly as written; FORMULATEXT prints every level back, in plain formulas and
+inside an `@` operand alike: `=A1+(B1)`, `=SUM((A1)+(B1))`, `=(A1) (B1)`, `=-(A1)`, `=(A1)*((B1))`, `=A1+(B1*C1)`,
+`=((A1))`, `=IF((A1>0),(B1),C1)`, `=@(A1+(B1))`, `=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`,
+`=@(A1+((B1)))`, `=@((A1+B1))`, `=@(A1 B1) C1` and `=@(A1):B1 C1` all print as typed. The values are unaffected
+(`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
+Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
+Ours: the parsed formula keeps no groups except the levels around a whole `@` operand, a whole parenthesized formula
+(`GroupedRootKind`) and a few cut/union shapes, so the printer re-derives parentheses from precedence: `=A1+(B1)` prints
+`=A1+B1`, `=-(A1)` prints `=-A1`, `=@(A1+(B1))` prints `=@(A1+B1)`. All 18 values match; 14 FORMULATEXT cells differ.
+Status: VERIFIED
+Tasks: T-1178, T-1240 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand)
