@@ -25,3 +25,27 @@ fn grouped_name_body_keeps_its_parentheses_through_copy_and_rename() {
         && *scope == Some(0)
         && formula == "=(Renamed!$A$1-0.3)"));
 }
+
+// `:` joins a grouped reference name with a cell into their bounding box, and `ig` (a column
+// spelling) before `:` is still a name (probes/defined-name-grouped-reference A10, A11,
+// excel-graph, T-1173).
+#[test]
+fn grouped_reference_name_joins_with_a_cell_in_the_range_operator() {
+    let mut model = new_empty_model();
+    model
+        .define_name("rg", Some(0), "=(Sheet1!$B$1:$B$2)")
+        .unwrap();
+    model
+        .define_name("ig", Some(0), "=(INDEX(Sheet1!$B$1:$B$2,2))")
+        .unwrap();
+    model._set("B1", "1");
+    model._set("B2", "2");
+    model._set("B3", "3");
+    model._set("A1", "=SUM(ig:B3)");
+    model._set("A2", "=ROWS(rg:B3)");
+    model._set("A3", "=SUM(B3:ig)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "5");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "5");
+}
