@@ -3,7 +3,7 @@ id: T-1183
 title: "SUBTOTAL and AGGREGATE skip any cell whose formula contains SUBTOTAL or AGGREGATE"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
