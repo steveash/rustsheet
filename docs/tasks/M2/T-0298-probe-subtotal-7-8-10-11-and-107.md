@@ -38,3 +38,4 @@ small-magnitude and 1E+200 data), oracle-filled on excel-graph. The engine alrea
 (offset and small-variance sets take the two-pass form, a well-spread set the one-pass form, and
 `{1E+200,-1E+200}` is `#NUM!`), so no engine task was needed. Recorded in
 docs/excel-semantics/statistics.md. Eval delta: +72 passing probe cells (new case recorded in eval/baseline/probes.txt), no regressions.
+docs/excel-semantics/numbers.md was checked: it only claims SUBTOTAL 1, 6, 9 overflow and says 101/106/109 are unprobed, so it needed no change.
