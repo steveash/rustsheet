@@ -509,6 +509,7 @@ dependencies = [
  "rustsheet_engine",
  "rustsheet_xlsx",
  "thiserror",
+ "zip",
 ]
 
 [[package]]
