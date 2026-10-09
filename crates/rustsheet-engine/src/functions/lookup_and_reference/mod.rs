@@ -409,7 +409,6 @@ impl Model {
         };
         self.lookup_each(
             lookup_value,
-            &args[1],
             &search,
             as_reference,
             cell,
@@ -486,7 +485,6 @@ impl Model {
         };
         self.lookup_each(
             lookup_value,
-            &args[1],
             &search,
             as_reference,
             cell,

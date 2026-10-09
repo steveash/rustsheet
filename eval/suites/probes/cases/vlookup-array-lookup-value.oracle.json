@@ -102,29 +102,13 @@
     "t": "n",
     "v": 10.0
    },
-   "A45": {
-    "t": "n",
-    "v": 2.0
-   },
-   "A46": {
-    "t": "n",
-    "v": 3.0
-   },
    "A48": {
     "t": "n",
     "v": 0.0
    },
-   "A49": {
-    "t": "s",
-    "v": "two"
-   },
    "A5": {
     "t": "s",
     "v": "one"
-   },
-   "A50": {
-    "t": "s",
-    "v": "three"
    },
    "A6": {
     "t": "e",
@@ -163,9 +147,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "648937af04f9c929f4555d95e7c30d5883c9ba8f794e7ff95b5b4832fcd39159",
+  "input_sha256": "beac9e4bbade6d2925ab2f315fe729cfe2e3073aa47277d60706d8c19f7e3661",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T14:37:56+00:00",
+  "produced_at": "2026-10-09T14:56:03+00:00",
   "version": null
  }
 }

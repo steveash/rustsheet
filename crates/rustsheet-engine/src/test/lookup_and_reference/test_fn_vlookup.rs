@@ -249,3 +249,17 @@ fn array_lookup_value_lifts_element_by_element() {
     assert_eq!(model._get_text("G1"), *"2");
     assert_eq!(model._get_text("H1"), *"#N/A");
 }
+
+#[test]
+fn lifted_lookup_over_an_array_table_hits_the_visit_cap() {
+    // A computed table is charged its length per element (T-0270, CLAUDE.md directive 5): 2^20
+    // lookups over a 2^20-row array would be ~10^12 comparisons. DEVIATION (decision 0014):
+    // Excel computes it; we refuse past the shared cell-visit cap.
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        "=ROWS(VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE))",
+    );
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#ERROR!");
+}

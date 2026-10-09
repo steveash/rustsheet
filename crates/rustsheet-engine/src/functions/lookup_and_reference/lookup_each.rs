@@ -2,7 +2,7 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{token::Error, types::CellReferenceIndex},
     model::Model,
 };
 
@@ -23,11 +23,11 @@ impl Model {
     /// index is. An array or multi-cell range `lookup_value` is looked up element by element
     /// into a same-shaped array, each element by the scalar rules (an error element is itself,
     /// probes/vlookup-array-lookup-value, T-0270); it lifts through [`Model::lift_with_cost`],
-    /// so a whole column of lookup values is bounded by the shared cell-visit cap.
+    /// so a whole column of lookup values is bounded by the shared cell-visit cap
+    /// (elements times the search vector length).
     pub(super) fn lookup_each(
         &mut self,
         lookup_value: CalcResult,
-        table_node: &Node,
         search: &LookupSearch<'_>,
         as_reference: bool,
         cell: CellReferenceIndex,
@@ -41,7 +41,13 @@ impl Model {
         let as_reference = as_reference && !lifts;
         self.lift_with_cost(
             vec![lookup_value],
-            |model| model.walk_cost(table_node, cell),
+            // Each element scans the evaluated cells of the first column (or row) once, however
+            // the table was given: a computed array table counts too, not just a range.
+            |_| {
+                u64::try_from(search.search_vector.search_cost())
+                    .unwrap_or(u64::MAX)
+                    .max(1)
+            },
             cell,
             |model, values| {
                 let value = &values[0];

@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "VLOOKUP/HLOOKUP with an array or multi-cell lookup_value: exact/approximate, not found, errors, bad index, array index (T-0270).",
+ "description": "VLOOKUP/HLOOKUP with an array or multi-cell lookup_value: exact/approximate, not found, errors, bad index (T-0270). Array col_index/range_lookup: T-1269.",
  "tags": [
   "M2",
   "probe",
@@ -27,9 +27,7 @@
     "A37": "=HLOOKUP({\"b\";\"c\"},Data!F1:H2,0,FALSE)",
     "A40": "=HLOOKUP({\"b\";\"c\"},Data!F1:H2,3,FALSE)",
     "A43": "=HLOOKUP(Data!F1:G1,Data!F1:H2,2,FALSE)",
-    "A45": "=VLOOKUP({2;3},Data!A1:B4,{1,2},FALSE)",
-    "A48": "=SUM(VLOOKUP({2;3},Data!A1:B4,2,FALSE))",
-    "A49": "=VLOOKUP({2;3},Data!A1:B4,2,{FALSE;TRUE})"
+    "A48": "=SUM(VLOOKUP({2;3},Data!A1:B4,2,FALSE))"
    }
   },
   {

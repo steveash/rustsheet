@@ -77,10 +77,14 @@ too). Each element follows the scalar rules, searching before validating the ind
 `{2;99}` gives `#VALUE!`, `#N/A`; with an index past the table `#REF!`, `#N/A`. An error element is
 itself (`{2;#DIV/0!;"x"}` → "two", `#DIV/0!`, `#N/A`). Approximate match lifts the same way. A whole
 column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine bounds it by the
-shared cell-visit cap (criteria.md). An array col_index or range_lookup is not lifted:
-`VLOOKUP({2;3},A1:B4,{1,2},FALSE)` spills only 2; 3 (it reads the first element, one probe; the engine
-gives `#N/IMPL!`, T-1269).
-Evidence: probes/vlookup-array-lookup-value (39 cells, excel-graph, 2026-10-09, T-0270).
+shared cell-visit cap (criteria.md): elements times the evaluated cells of the searched column or row,
+whatever the table is (DEVIATION, decision 0014: `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)`
+is `#ERROR!`). UNVERIFIED: an array col_index or range_lookup looks unlifted (a first oracle fill showed
+`VLOOKUP({2;3},A1:B4,{1,2},FALSE)` spilling only 2; 3); the cells were moved to T-1269, which re-probes
+them (the engine gives `#N/IMPL!`).
+Unprobed: blank elements of a multi-cell lookup_value, and an error or bad-text index or range_lookup with an
+array lookup_value (the engine gives one scalar error before lifting; T-1269 probes it).
+Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
 Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
 `Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
 Status: VERIFIED (web)
