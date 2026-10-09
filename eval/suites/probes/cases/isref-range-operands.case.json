@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ISREF and readers of a:b when an operand is an error or not a reference (T-1177). A1:(1/0) is left out: the Graph workbook builder refused the file with it (unsupportedWorkbook).",
+  "tags": [
+    "M1",
+    "references",
+    "isref",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "D1": "=ISREF(A1:INDEX(A1:A3,5))",
+        "D2": "=ISREF(A1:(A1 B2))",
+        "D3": "=ISREF(A1:IF(TRUE,1))",
+        "D4": "=ISREF(A1:INDEX(A1:A3,2))",
+        "D5": "=ISREF(INDEX(A1:A3,5):A1)",
+        "D6": "=ISREF(A1:(A1:B2 B1:B3))",
+        "D7": "=ISREF(A1:IF(TRUE,B2))",
+        "D8": "=ISREF(A1:CHOOSE(1,5))",
+        "E1": "=ERROR.TYPE(A1:INDEX(A1:A3,5))",
+        "E2": "=ERROR.TYPE(A1:(A1 B2))",
+        "E3": "=ERROR.TYPE(A1:IF(TRUE,1))",
+        "E4": "=SUM(A1:INDEX(A1:A3,2))",
+        "E5": "=ERROR.TYPE(INDEX(A1:A3,5):A1)",
+        "E6": "=SUM(A1:(A1:B2 B1:B3))",
+        "E7": "=SUM(A1:IF(TRUE,B2))",
+        "E8": "=ERROR.TYPE(A1:CHOOSE(1,5))",
+        "F1": "=ISERROR(A1:INDEX(A1:A3,5))",
+        "F2": "=ISERROR(A1:(A1 B2))",
+        "F3": "=ISERROR(A1:IF(TRUE,1))",
+        "D9": "=ISREF(A1:CHOOSE(1,B2))",
+        "E9": "=SUM(A1:CHOOSE(1,B2))",
+        "D10": "=ISREF(IF(TRUE,B2):A1)",
+        "E10": "=SUM(IF(TRUE,B2):A1)",
+        "D11": "=ISREF(A1:IF(FALSE,B2,B3))",
+        "E11": "=SUM(A1:IF(FALSE,B2,B3))",
+        "E12": "=A1:IF(TRUE,A1)",
+        "E13": "=ROWS(A1:IF(TRUE,B3))"
+      }
+    }
+  ],
+  "expected": {}
+}

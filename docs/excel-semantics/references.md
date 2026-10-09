@@ -715,8 +715,17 @@ A11/B11 (control) (oracle: excel-graph, 2026-10-08, T-1138).
 Status: VERIFIED (web)
 Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs) and `is_reference`
 (crates/rustsheet-engine/src/functions/information/mod.rs), which is TRUE for `a:b` only when `get_range` gives
-a range (T-1166). UNVERIFIED: the same rule makes ISREF FALSE when an operand errors (`A1:INDEX(A1:A3,5)`) or is
-not a reference (`A1:IF(TRUE,1)`); only the two-sheet form has oracle evidence (T-1177 probes the rest).
+a range (T-1166).
+The same holds when an operand errors or is not a reference (probes/isref-range-operands, excel-graph
+2026-10-09, T-1177): `ISREF(A1:INDEX(A1:A3,5))` (`#REF!`, E1), `ISREF(INDEX(A1:A3,5):A1)`, `ISREF(A1:(A1 B2))`
+(`#NULL!`), `ISREF(A1:IF(TRUE,1))` and `ISREF(A1:CHOOSE(1,5))` (`#VALUE!`) are FALSE, ISERROR TRUE; with a
+reference, `ISREF(A1:INDEX(A1:A3,2))` and `ISREF(A1:(A1:B2 B1:B3))` are TRUE (`SUM` 3 and 33).
+An IF corner is the reference it picks, on either side: `ISREF(A1:IF(TRUE,B2))`, `ISREF(IF(TRUE,B2):A1)` and
+`ISREF(A1:IF(FALSE,B2,B3))` are TRUE, `SUM(A1:IF(TRUE,B2))` is 33, `ROWS(A1:IF(TRUE,B3))` 3 and `=A1:IF(TRUE,A1)`
+1. CHOOSE likewise (`SUM(A1:CHOOSE(1,B2))` = 33), which the engine already matched; the IF arm was added to
+`range_operand` (T-1177). UNVERIFIED (T-1227): an IF corner that picks a union (the engine gives `#VALUE!`),
+an error, or a 3-D span, and an IF with an array condition. `=A1:(1/0)` is refused
+by the Graph workbook builder (`unsupportedWorkbook`, as T-1111 found below), so it is not in the probe.
 Tasks: T-1138, T-1166, T-1177
 
 ## Sheet-qualified column or row corners on both sides are not a range
