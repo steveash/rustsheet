@@ -123,3 +123,34 @@ fn malformed_table_reference_is_ref_error_not_a_panic() {
         "SUM(#REF!)"
     );
 }
+
+#[test]
+fn huge_header_or_totals_row_counts_are_ref_error_not_an_overflow() {
+    // Row counts come from the workbook, which is untrusted (directive 5, T-1234).
+    let cell_reference = CellReferenceRC {
+        sheet: "Sheet One".to_string(),
+        row: 2,
+        column: 6,
+    };
+    for (header, totals) in [
+        (u32::MAX, 0),
+        (0, u32::MAX),
+        (i32::MAX as u32, 0),
+        (0, 1 << 31),
+    ] {
+        let mut tables = create_test_table("tblIncome", &["Jan", "Feb"], "A1", 3);
+        if let Some(table) = tables.get_mut("tblIncome") {
+            table.header_row_count = header;
+            table.totals_row_count = totals;
+        }
+        let mut parser = new_parser(vec!["Sheet One".to_string()], vec![], tables);
+        for formula in ["SUM(tblIncome[Jan])", "SUM(tblIncome[[#Totals],[Jan]])"] {
+            let t = parser.parse(formula, &cell_reference);
+            assert_eq!(
+                to_english_localized_string(&t, &cell_reference),
+                "SUM(#REF!)",
+                "{formula} with header {header}, totals {totals}"
+            );
+        }
+    }
+}

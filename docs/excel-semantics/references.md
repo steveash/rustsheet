@@ -896,8 +896,10 @@ Rule: when a table's stored `ref` is not a valid range (an untrusted or corrupt 
 reference to that table evaluates to `#REF!`. This is the choice made when the engine's `expect` on the parse
 was removed (a panic on untrusted input is forbidden); the neighbouring cases of a missing table or a missing
 table sheet are parse errors, so the two differ. Excel never writes such a `ref` and its handling of a file that
-has one is unknown (likely repair or refusal).
+has one is unknown (likely repair or refusal). The same holds for a stored header or totals row count that
+does not fit the row arithmetic (a count above `i32::MAX`, or one that overflows `i32` with the range's rows): `#REF!`, not a
+wrap or a panic (T-1234).
 Evidence: none for Excel; input hardening (CLAUDE.md directive 5).
 Status: DEVIATION (decision 0014)
 Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
-Tasks: T-1210
+Tasks: T-1210, T-1234
