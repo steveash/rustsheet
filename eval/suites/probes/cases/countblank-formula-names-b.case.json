@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1207: COUNTBLANK of names whose body is an IF or CHOOSE returning a scalar, an error, a range or a single cell (follow-up of T-1199). B1=1, B3=3 (B2 empty); C1=#N/A, C2 empty, C3=5. LET bodies are not here: the case builder does not write `_xlpm.` in defined-name bodies, so Excel reads the LET variable as an undefined name (`#NAME?`).",
+  "description": "T-1207: COUNTBLANK of names whose body is an IF or CHOOSE returning a scalar, an error, a range or a single cell (follow-up of T-1199). B1=1, B3=3 (B2 empty); C1=#N/A, C2 empty, C3=5. LET-bodied names (T-1209) are stored with `_xlpm.` variables.",
   "tags": [
     "M1",
     "statistical",
@@ -19,7 +19,11 @@
     "nmifblankcell": "=IF(TRUE,Sheet1!$C$2)",
     "nmifnumcell": "=IF(TRUE,Sheet1!$C$3)",
     "nmiferrcell": "=IF(TRUE,Sheet1!$C$1)",
-    "nmchooseblankcell": "=CHOOSE(1,Sheet1!$C$2)"
+    "nmchooseblankcell": "=CHOOSE(1,Sheet1!$C$2)",
+    "nmletnum": "=LET(x,5,x)",
+    "nmleterr": "=LET(x,1/0,x)",
+    "nmletrange": "=LET(x,Sheet1!$B$1:$B$3,x)",
+    "nmletblankcell": "=LET(x,Sheet1!$C$2,x)"
   },
   "sheets": [
     {
@@ -41,7 +45,11 @@
         "A10": "=COUNTBLANK(nmifblankcell)",
         "A11": "=COUNTBLANK(nmifnumcell)",
         "A12": "=COUNTBLANK(nmiferrcell)",
-        "A13": "=COUNTBLANK(nmchooseblankcell)"
+        "A13": "=COUNTBLANK(nmchooseblankcell)",
+        "A14": "=COUNTBLANK(nmletnum)",
+        "A15": "=COUNTBLANK(nmleterr)",
+        "A16": "=COUNTBLANK(nmletrange)",
+        "A17": "=COUNTBLANK(nmletblankcell)"
       }
     }
   ],
@@ -59,6 +67,10 @@
     "Sheet1!A10",
     "Sheet1!A11",
     "Sheet1!A12",
-    "Sheet1!A13"
+    "Sheet1!A13",
+    "Sheet1!A14",
+    "Sheet1!A15",
+    "Sheet1!A16",
+    "Sheet1!A17"
   ]
 }
