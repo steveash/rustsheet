@@ -3,7 +3,7 @@ id: T-1207
 title: "Probe COUNTBLANK of names whose body is an IF, CHOOSE or LET returning a scalar"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
