@@ -70,11 +70,16 @@ impl Model {
     }
 
     fn cell_is_subtotal(&self, sheet_index: u32, row: i32, column: i32) -> bool {
-        self.cell_formula_is_one_of(sheet_index, row, column, &[Function::Subtotal])
+        self.cell_formula_is_one_of(
+            sheet_index,
+            row,
+            column,
+            &[Function::Subtotal, Function::Aggregate],
+        )
     }
 
-    /// Whether the cell holds a formula whose outermost call is one of `kinds` (SUBTOTAL and
-    /// AGGREGATE skip such cells).
+    /// Whether the cell holds a formula that calls one of `kinds` anywhere (SUBTOTAL and
+    /// AGGREGATE skip such cells; probes/subtotal-hidden-filtered Nest sheet, T-1036).
     pub(crate) fn cell_formula_is_one_of(
         &self,
         sheet_index: u32,
@@ -82,25 +87,14 @@ impl Model {
         column: i32,
         kinds: &[Function],
     ) -> bool {
-        let cell = match self.workbook.worksheets[sheet_index as usize].cell(row, column) {
-            Some(c) => c,
-            None => {
-                return false;
-            }
+        let Some(cell) = self.workbook.worksheets[sheet_index as usize].cell(row, column) else {
+            return false;
         };
-
-        match cell.get_formula() {
-            Some(f) => {
-                let node: &Node = &self.parsed_formulas[sheet_index as usize][f as usize].0;
-                // `=(SUBTOTAL(...))` (at any depth) is a SUBTOTAL formula too, as it was before grouped roots.
-                let mut node = node;
-                while let Node::GroupedRootKind { child } = node {
-                    node = child;
-                }
-                matches!(node, Node::FunctionKind { kind, .. } if kinds.contains(kind))
-            }
-            None => false,
-        }
+        cell.get_formula().is_some_and(|f| {
+            self.parsed_formulas[sheet_index as usize][f as usize]
+                .0
+                .contains_function(kinds)
+        })
     }
 
     /// Calls `f` with the value of every cell of `areas` that SUBTOTAL reads: filtered rows,
