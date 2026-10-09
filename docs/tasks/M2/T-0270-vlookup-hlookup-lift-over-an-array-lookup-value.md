@@ -3,7 +3,7 @@ id: T-0270
 title: "VLOOKUP/HLOOKUP lift over an array lookup_value (unblocks T-0222)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
