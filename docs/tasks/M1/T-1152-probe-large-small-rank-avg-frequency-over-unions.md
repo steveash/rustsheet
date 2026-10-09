@@ -3,7 +3,7 @@ id: T-1152
 title: "Probe LARGE/SMALL/RANK.AVG/FREQUENCY over unions: overlap, error cells, area order, SMALL(IF/INDEX/3-D)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
