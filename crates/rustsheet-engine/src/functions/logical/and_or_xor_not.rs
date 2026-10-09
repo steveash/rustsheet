@@ -13,7 +13,8 @@ use crate::{
 impl Model {
     /// NOT lifts over ranges and arrays, one result per element (T-0225,
     /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument:
-    /// text "TRUE" is FALSE, other text `#VALUE!`, an empty cell TRUE (probes/not-array-cast, T-0260).
+    /// text "TRUE" is FALSE, other text `#VALUE!`, an empty cell TRUE
+    /// (probes/not-array-cast, T-0260).
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
