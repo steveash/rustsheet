@@ -70,7 +70,8 @@ Behavior shared by all five (for `#BUSY!`, only what the stored-constant probe s
 - **Stored `#BUSY!` (probes/error-stored-constants, excel-graph 2026-10-06).** `ERROR.TYPE` is 0
   (B1; `ERROR.TYPE(A1)+100` is 100, H1), `ISERROR` and `ISERR` TRUE (C1, E1), `ISNA` FALSE (F1),
   `TYPE` 16 (G1), `IFNA(A1,"y")` passes it through (I1), and `A1&""` is `#BUSY!` (D1). It is an
-  ordinary error that is not `#N/A`, like `#GETTING_DATA` except for its code. 0 is a real
+  ordinary error that is not `#N/A`. Unlike stored `#GETTING_DATA`, which the Graph API reports as `#N/A`
+  (D2, I2), it is reported under its own name. 0 is a real
   ERROR.TYPE result here, not "no code".
 - **Formula literals.** The other names (`=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!`, and `#BUSY!`,
   `#UNKNOWN!`, `#PYTHON!`, `#EXTERNAL!`) make Excel for the web reject the whole workbook. They are
@@ -202,8 +203,8 @@ The answers T-1222 implements. Each cites evidence or is marked UNVERIFIED.
      `ErrorKind::from_literal`) and Python `XlError("#BUSY!")`.
    - **Formula and input names** (`get_error_by_name`, the lexer): unchanged. `=#BUSY!` makes
      Excel reject the workbook (syntax.md), so `#BUSY!` stays a parse error in formulas. Typed
-     `#BUSY!` cell input stays the text "#BUSY!". **UNVERIFIED** (typed input needs desktop Excel,
-     as T-1016 does).
+     `#BUSY!` cell input stays the text "#BUSY!". **UNVERIFIED**: typed input needs desktop Excel,
+     and T-1016 now covers `#BUSY!` too.
    - **Criteria** (`is_english_error_string`): unchanged, so `"#BUSY!"` stays a text criterion.
      **UNVERIFIED**: this assumes the T-1012 result for the rich kinds (COUNTIF `"#BLOCKED!"`
      counts 0) holds for `#BUSY!` too (T-1228).
@@ -223,7 +224,7 @@ The answers T-1222 implements. Each cites evidence or is marked UNVERIFIED.
    - `VALUETOTEXT(A1)` and `ARRAYTOTEXT` give the text "#BUSY!" (the `Display` text, as for the
      other kinds).
    - The leftmost error operand wins (the kind-independent rule above; arrays.md).
-   - `IFERROR` catches it (ISERROR is TRUE, C1).
+   - `IFERROR` catches it: expected because ISERROR is TRUE (C1), but not probed.
 6. **UPSTREAM.md** records the extra variant in its entry on the diverged `Error` enum.
 
 ### Functions with no I/O (directive 5)
