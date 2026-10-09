@@ -235,6 +235,28 @@ impl Model {
         RefArg::from(result)
     }
 
+    /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL and AREAS take: XLOOKUP, TAKE,
+    /// DROP and TRIMRANGE over a range are also the cells they pick (probes/subtotal-reference-
+    /// operands-b H12, H15:H17, T-1175). Only these two functions are probed; SUM and the other
+    /// aggregates still evaluate those calls to values. The call list is repeated in
+    /// `is_read_reference` (static_analysis/aggregate.rs).
+    pub(crate) fn evaluate_picked_reference_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        if let Node::FunctionKind {
+            kind: kind @ (Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange),
+            args,
+        } = node
+        {
+            if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
+                return RefArg::from(result);
+            }
+        }
+        self.evaluate_reference_arg(node, cell)
+    }
+
     /// The bottom-right corner of the range `row1:column1..=row2:column2` once a whole-column
     /// or whole-row range is clipped to the sheet's used area; any other range is unchanged.
     /// Reads nothing and records nothing (see [`Self::clip_to_used_area`]).

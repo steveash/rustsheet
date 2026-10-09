@@ -5,7 +5,11 @@ use std::{collections::HashMap, ops::Deref, sync::Arc};
 
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     functions::Function,
     model::Model,
 };
@@ -105,6 +109,24 @@ pub(crate) enum RefArg {
     Ranges(Ranges),
     /// Anything else: a value, an array or an error. Never a `CalcResult::Range`.
     Value(CalcResult),
+}
+
+/// What an array stands for where a function takes a reference (SUBTOTAL, AREAS): `#VALUE!`
+/// per element, an element that is an error kept (`SUBTOTAL(9,IF(TRUE,{1,#N/A}))` is `#VALUE!`,
+/// `#N/A`; probes/subtotal-reference-operands, T-1163).
+pub(crate) fn not_a_reference_array(rows: Vec<Vec<ArrayNode>>) -> CalcResult {
+    CalcResult::Array(
+        rows.into_iter()
+            .map(|row| {
+                row.into_iter()
+                    .map(|value| match value {
+                        ArrayNode::Error(error) => ArrayNode::Error(error),
+                        _ => ArrayNode::Error(Error::VALUE),
+                    })
+                    .collect()
+            })
+            .collect(),
+    )
 }
 
 impl From<CalcResult> for RefArg {
