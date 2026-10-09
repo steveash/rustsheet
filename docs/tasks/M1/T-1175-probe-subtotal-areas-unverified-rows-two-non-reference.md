@@ -3,7 +3,7 @@ id: T-1175
 title: "Probe SUBTOTAL/AREAS UNVERIFIED rows: two non-reference arguments, AREAS of an array, invalid function number (follow-up of T-1163)"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1163 left these engine choices unprobed: which of two non-reference arguments 
 
 ## Out of scope
 -
+
+## Outcome
+New probe `probes/subtotal-reference-operands-b` (excel-graph, 20 cells). The engine already matched on the first-wins rule, the OFFSET/IFS/SWITCH/INDIRECT/name operands and the name constant. Fixed: AREAS of an array now spills `#VALUE!` per element; an error or array in SUBTOTAL's arguments now beats an invalid function number (`SUBTOTAL(99,#REF!)` = `#REF!`); XLOOKUP, TAKE, DROP and TRIMRANGE are references as SUBTOTAL/AREAS operands (they were `#VALUE!` or `#SPILL!`). Eval: probes 339 known failures before and after (the case adds none; 0 regressions). references.md updated.

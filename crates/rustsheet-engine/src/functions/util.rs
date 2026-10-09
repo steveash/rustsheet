@@ -222,6 +222,16 @@ impl Model {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
+            // XLOOKUP, TAKE, DROP and TRIMRANGE over a range are the cells they pick, as
+            // SUBTOTAL sees them (probes/subtotal-reference-operands-b H12, H15:H17, T-1175).
+            Node::FunctionKind {
+                kind:
+                    kind @ (Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange),
+                args,
+            } => match self.evaluate_reference_form(kind, args, cell) {
+                Some(result) => result,
+                None => self.evaluate_node_in_context(node, cell),
+            },
             Node::FunctionKind {
                 kind: Function::Hlookup,
                 args,

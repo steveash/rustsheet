@@ -1,17 +1,13 @@
 use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::{CalcResult, Range},
-    expressions::{
-        parser::{ArrayNode, Node},
-        token::Error,
-        types::CellReferenceIndex,
-    },
+    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::{
         statistical::variance::{variance_result, VarianceKind},
         Function,
     },
     model::Model,
-    reference_operators::{Ranges, RefArg},
+    reference_operators::{not_a_reference_array, Ranges, RefArg},
 };
 
 /// Excel has a complicated way of filtering + hidden rows
@@ -221,20 +217,7 @@ impl Model {
             match self.evaluate_reference_arg(arg, cell) {
                 RefArg::Ranges(ranges) => resolved.push(ranges),
                 RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
-                RefArg::Value(CalcResult::Array(rows)) => {
-                    return Err(CalcResult::Array(
-                        rows.into_iter()
-                            .map(|row| {
-                                row.into_iter()
-                                    .map(|value| match value {
-                                        ArrayNode::Error(error) => ArrayNode::Error(error),
-                                        _ => ArrayNode::Error(Error::VALUE),
-                                    })
-                                    .collect()
-                            })
-                            .collect(),
-                    ))
-                }
+                RefArg::Value(CalcResult::Array(rows)) => return Err(not_a_reference_array(rows)),
                 RefArg::Value(_) => {
                     return Err(CalcResult::new_error(
                         Error::VALUE,
@@ -255,8 +238,10 @@ impl Model {
             Ok(f) => f.trunc() as i32,
             Err(s) => return s,
         };
-        // An invalid function number is `#VALUE!` before the arguments are read, as it was
-        // before T-1163 (the order is unprobed, T-1175).
+        // The arguments are read first: an error or an array there beats an invalid function
+        // number, which is `#VALUE!` only next to arguments that resolve to references
+        // (`SUBTOTAL(99,#REF!)` is `#REF!`, `SUBTOTAL(12,IF(TRUE,1/0))` is `#DIV/0!`;
+        // probes/subtotal-reference-operands-b H5:H10, T-1175).
         let invalid = || {
             CalcResult::new_error(
                 Error::VALUE,
@@ -264,13 +249,13 @@ impl Model {
                 format!("Invalid value for SUBTOTAL: {value}"),
             )
         };
-        if !matches!(value, 1..=11 | 101..=111) {
-            return invalid();
-        }
         let resolved = match self.subtotal_reference_args(&args[1..], cell) {
             Ok(resolved) => resolved,
             Err(error) => return error,
         };
+        if !matches!(value, 1..=11 | 101..=111) {
+            return invalid();
+        }
         let args = resolved.as_slice();
         match value {
             1 => self.subtotal_average(args, cell, SubTotalMode::Full),

@@ -2,7 +2,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::{parser::Node, token::Error, types::CellReferenceIndex, utils::quote_name},
     model::Model,
-    reference_operators::{three_d_needs_one_sheet, RefArg},
+    reference_operators::{not_a_reference_array, three_d_needs_one_sheet, RefArg},
 };
 
 use crate::expressions::utils::number_to_column;
@@ -152,6 +152,8 @@ impl Model {
         }
         match arg {
             RefArg::Value(error) if error.is_error() => error,
+            // An array spills `#VALUE!` per element (probes/subtotal-reference-operands-b H4).
+            RefArg::Value(CalcResult::Array(rows)) => not_a_reference_array(rows),
             RefArg::Value(_) => {
                 CalcResult::new_error(Error::VALUE, cell, "AREAS takes a reference".to_string())
             }
