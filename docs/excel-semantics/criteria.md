@@ -138,9 +138,19 @@ is `#DIV/0!`. Inside SUMPRODUCT there is no intersection at all: SUMPRODUCT eval
 `SUMPRODUCT(COUNTIF(A1:A6,D1:D2))` is 4, SUMIF/SUMIFS 8, AVERAGEIF(S) 3.33.., MAXIFS 4, MINIFS 2 in any row,
 while `SUM(COUNTIF(A1:A6,D1:D2))` intersects (0 off-row) (probes/ifs-legacy-sumproduct, oracle excel-graph
 2026-10-08, T-0278).
-Unprobed: the engine skips intersection for the whole subtree under SUMPRODUCT (`is_array_context`), but only
-*IF(S) directly inside it is probed; IF/INDEX/CHOOSE nested in SUMPRODUCT, deeper nesting and other
-array-context functions (LOOKUP, MMULT) are open (T-0286).
+Beyond *IF(S): which legacy arguments get an array context under SUMPRODUCT (probes/array-context-legacy-sumproduct,
+excel-graph 2026-10-09, T-0286; A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, each formula on row 1 and off-row on row 10,
+`=B1:B6*1` off-row is `#VALUE!` as the control). Array context, same value on and off the row: arithmetic and wrapped
+functions nested in SUMPRODUCT (`ABS(B1:B6)` 12, `ABS(B1:B6-2)` 4, `LEN(A1:A6)` 6, `--(A1:A6="a")` 3,
+`--(COUNTIF(A1:A6,D1:D2)>0)` 2), `CHOOSE({1,2},B1:B6,B1:B6)` (24), and the value branches of IF
+(`SUMPRODUCT(IF(TRUE,B1:B6))` 12). Not array context: the condition of IF still intersects, even directly under
+SUMPRODUCT: `SUMPRODUCT(IF(B1:B6>1,B1:B6,0))` is 0 on row 1 and `#VALUE!` on row 10, `SUMPRODUCT(IF(A1:A6="a",1,0))` 1 and
+`#VALUE!`, exactly like `SUM(IF(A1:A6="a",1,0))` (it needs CSE). LOOKUP's vector and MMULT/INDEX arguments evaluate
+their arithmetic as arrays without SUMPRODUCT: `LOOKUP(2,1/(B1:B6>1),B1:B6)` 3, `SUM(MMULT(B1:B6*1,{1}))` 12,
+`INDEX(B1:B6*1,2)` 2, on and off the row. An array `row_num` in legacy INDEX gives its first element only:
+`SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine's `is_array_context` skips
+intersection for the whole subtree under SUMPRODUCT, so it differs on the IF condition (F, R, S cells), the INDEX array
+row (`#N/IMPL!` or 12) and CHOOSE with an array index (2): filed as T-0293 and T-0294.
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS
