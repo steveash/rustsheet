@@ -1,0 +1,37 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1197: MULTINOMIAL with large arguments and sums near the 170! overflow boundary.",
+ "tags": [
+  "M5",
+  "probe",
+  "math"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=MULTINOMIAL(170)",
+    "A2": "=MULTINOMIAL(171)",
+    "A3": "=MULTINOMIAL(1E+15)",
+    "A4": "=MULTINOMIAL(1E+15,1)",
+    "A5": "=MULTINOMIAL(2^53)",
+    "A6": "=MULTINOMIAL(1E+300)",
+    "A7": "=MULTINOMIAL(85,85)",
+    "A8": "=MULTINOMIAL(86,86)",
+    "A9": "=MULTINOMIAL(3,1E+15)",
+    "A10": "=MULTINOMIAL(1000)",
+    "A11": "=MULTINOMIAL(100,70)",
+    "A12": "=MULTINOMIAL(170,1)",
+    "A13": "=MULTINOMIAL(169,1)",
+    "A14": "=MULTINOMIAL(1,1,1,1,1,1,1,1,1,1)",
+    "A15": "=MULTINOMIAL(0)",
+    "A16": "=MULTINOMIAL(0,0)",
+    "A17": "=MULTINOMIAL(2^31)",
+    "A18": "=MULTINOMIAL(1E+15,0)",
+    "A19": "=MULTINOMIAL(100,100)",
+    "A20": "=MULTINOMIAL(150,20)"
+   }
+  }
+ ],
+ "expected": {}
+}
