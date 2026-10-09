@@ -3,7 +3,7 @@ id: T-1090
 title: "Add generator signatures for the M6 catalog functions"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
