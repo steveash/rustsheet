@@ -4,7 +4,7 @@ title: "Probe value operands of : and # beyond the T-1111 forms"
 milestone: M1
 lane: research
 status: todo
-priority: P3
+priority: P2
 size: S
 tier: sonnet
 depends_on: []
@@ -29,3 +29,10 @@ evidence for a refusal, one scratch workbook per formula.
 
 ## Out of scope
 -
+
+## Steward note (2026-10-09)
+Raised to P2 by the weekly spot-audit of PR #464 (T-1117): T-1117 already refuses these forms in the
+parser, so an Excel-authored workbook holding one that Excel loads imports here as `#ERROR!`. Probe
+the negated operands first (`=(-A1):B1`, `=A1:(-B1)`, `=(-A1)#`): Excel loads negated union operands
+(probes/union-neg-operand), so the inference is weakest there. Also add the forms the parser still
+accepts without evidence: `=A1:LAMBDA(x,x)`, `=A1:(@1)`, `=ANCHORARRAY(@1)`.
