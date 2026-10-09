@@ -108,7 +108,7 @@ The earlier claim that HLOOKUP's result is a reference (gen-m2/60a543744fc4a8f7 
 an inference from a cell that cannot distinguish the two readings; the direct probes supersede it.
 `INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); an in-range `INDEX(A1:A2,2) A1:A2` is the picked cell.
 Status: VERIFIED. The engine DISAGREES for VLOOKUP/HLOOKUP over range tables (T-0235 passes the picked cell as a reference,
-so COUNT/SUM/MAX skip text and booleans); it matches the INDEX cases and the array-table cases. Fix filed as a follow-up task.
+so COUNT/SUM/MAX skip text and booleans); it matches the INDEX cases and the array-table cases. Fix filed as T-0295.
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
