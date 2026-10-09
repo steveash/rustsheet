@@ -255,5 +255,6 @@ fn called_variable_holding_a_value() {
     assert_eq!(model._get_text("C4"), *"#REF!");
     assert_eq!(model._get_text("C5"), *"#NAME?");
     assert_eq!(model._get_text("C6"), *"#NAME?");
+    // C7 is C6's spill.
     assert_eq!(model._get_text("C7"), *"0");
 }
