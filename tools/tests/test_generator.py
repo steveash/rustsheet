@@ -153,6 +153,29 @@ def test_generator_emits_every_m6_date_function() -> None:
     assert not sorted(m6_date - emitted("M6"))
 
 
+def test_generator_emits_every_m6_lookup_function_but_getpivotdata() -> None:
+    # T-1238: every in-scope M6 lookup entry is generator-ready but GETPIVOTDATA (no pivot table to read).
+    m6_lookup = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M6" and f["category"] == "lookup"
+    }
+    assert len(m6_lookup) == 18
+    assert "GETPIVOTDATA" not in m6_lookup
+    assert not sorted(m6_lookup - emitted("M6"))
+
+
+def test_vector_params_get_one_column() -> None:
+    # T-1238: XMATCH's lookup_array is `vector: true`; a 2-D lookup vector only gives an error.
+    arrays: list[str] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M6", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            arrays += re.findall(r"XMATCH\([^,()]*,(Data![A-Z]\d+:[A-Z]\d+)", formula)
+    assert arrays
+    assert all(a[5] == a.split(":")[1][0] for a in arrays), arrays
+
+
 def test_reference_params_get_one_cell_and_cell_always_gets_one() -> None:
     # T-1088: a literal ISFORMULA or CELL reference makes excel-graph refuse the workbook, a range
     # would spill ISFORMULA into the next formula, and CELL without a reference reads the cell last
