@@ -383,11 +383,9 @@ F	probes/at-group-not-whole-operand.case.json	Sheet1!E30
 F	probes/at-group-not-whole-operand.case.json	Sheet1!E31
 F	probes/at-group-not-whole-operand.case.json	Sheet1!E32
 F	probes/catalog/availability-03.case.json	Sheet1!A3
-F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
 F	probes/catalog/availability-17.case.json	Sheet1!A4
-F	probes/catalog/availability-30.case.json	Sheet1!A1
 F	probes/catalog/availability-30.case.json	Sheet1!A3
 F	probes/catalog/function-name-forms.case.json	Sheet1!A7
 F	probes/concatenate-limit-spill.case.json	Sheet1!E10
@@ -794,10 +792,6 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
 F	probes/text-modes-bahttext.case.json	Sheet1!C1
 F	probes/text-modes-bahttext.case.json	Sheet1!C2
-F	probes/text-modes-dbcs.case.json	Sheet1!C3
-F	probes/text-modes-phonetic-number.case.json	Sheet1!C1
-F	probes/text-modes-phonetic-range.case.json	Sheet1!C1
-F	probes/text-modes-phonetic.case.json	Sheet1!C1
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A1
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A3
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A5
