@@ -248,10 +248,22 @@ impl Parser {
     /// Parses `operand (operator operand)*` for the operators of `level`, as
     /// left-nested nodes (`1-2-3` is `(1-2)-3`), in a loop.
     pub(super) fn parse_chain(&mut self, level: ChainLevel) -> Node {
-        let mut t = self.parse_chain_operand(level);
-        if let Node::ParseErrorKind { .. } = t {
+        let t = self.parse_chain_operand(level);
+        if matches!(t, Node::ParseErrorKind { .. }) || !self.at_chain_operator(level) {
             return t;
         }
+        self.parse_chain_links(level, t)
+    }
+
+    /// Whether the next token is an operator of `level`. A method of its own, like
+    /// [`Self::parse_chain_links`], so that the frame `parse_chain` keeps on the stack for every
+    /// nesting level of a formula stays small in unoptimized builds (T-1110).
+    fn at_chain_operator(&mut self, level: ChainLevel) -> bool {
+        ChainOperator::at(level, &self.lexer.peek_token()).is_some()
+    }
+
+    /// The links of a chain after its first operand `t`.
+    fn parse_chain_links(&mut self, level: ChainLevel, mut t: Node) -> Node {
         let mut depth = self.depth;
         while let Some(operator) = ChainOperator::at(level, &self.lexer.peek_token()) {
             self.lexer.advance_token();

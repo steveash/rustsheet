@@ -37,18 +37,24 @@ pub(super) fn areas_static_result(args: &[Node]) -> StaticResult {
 /// reference, or XLOOKUP, TAKE, DROP and TRIMRANGE, which evaluate to the cells they pick
 /// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
 fn is_read_reference(arg: &Node) -> bool {
-    matches!(
-        arg,
+    match arg {
         Node::ReferenceKind { .. }
-            | Node::RangeKind { .. }
-            | Node::OpRangeKind { .. }
-            | Node::OpIntersectKind { .. }
-            | Node::OpUnionKind { .. }
-            | Node::SheetSpanKind { .. }
-            | Node::TableNameKind(_)
-            | Node::FunctionKind {
-                kind: Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange,
-                ..
-            }
-    )
+        | Node::RangeKind { .. }
+        | Node::OpRangeKind { .. }
+        | Node::OpIntersectKind { .. }
+        | Node::OpUnionKind { .. }
+        | Node::SheetSpanKind { .. }
+        | Node::TableNameKind(_) => true,
+        // Over a literal array they pick values, not cells, and spill like any array
+        // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206).
+        Node::FunctionKind {
+            kind: Function::Take | Function::Drop | Function::Trimrange,
+            args,
+        } => !matches!(args.first(), Some(Node::ArrayKind(_))),
+        Node::FunctionKind {
+            kind: Function::Xlookup,
+            args,
+        } => !matches!(args.get(2), Some(Node::ArrayKind(_))),
+        _ => false,
+    }
 }
