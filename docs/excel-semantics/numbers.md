@@ -859,7 +859,8 @@ Rule: FACT is `#NUM!` once n! overflows a double and FACTDOUBLE once n!! does: `
 Evidence: probes/fact-large-arguments A1:A18 (excel-graph, 2026-10-09, T-1233).
 Status: VERIFIED (excel-graph)
 Implemented in: `fn_fact`, `fn_factdouble` (functions/math_and_trigonometry/mathematical.rs) stop at the first infinite product, so the work is bounded (directive 5).
-Tasks: T-1233
+Ours: the overflow boundary and the `#NUM!` results match; the last digits of `FACT(170)`, `FACT(170.9)` and `FACTDOUBLE(297, 298, 300)` do not yet (T-1249).
+Tasks: T-1233, T-1249
 
 ## BASE min_length is at most 255
 Rule: BASE's `min_length` truncates and may be at most 255: `BASE(1,2,255.9)` pads to 255 characters, `BASE(1,2,254.5)`
