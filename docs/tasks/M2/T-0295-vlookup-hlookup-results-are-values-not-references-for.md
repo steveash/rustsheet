@@ -3,7 +3,7 @@ id: T-0295
 title: "VLOOKUP/HLOOKUP picks reach aggregates as references only when the index argument is a cell reference (follow-up of T-0292)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-0292 probe `probes/lookup-pick-aggregates` (excel-graph) and docs/excel-semant
 
 ## Out of scope
 -
+
+## Outcome
+`hlookup_impl`/`vlookup_impl` now pass the picked cell to aggregates as a reference only when the index argument is a cell reference (`LookupIndexArg::Reference`; parenthesized refs included, `INT(ref)` is a value). Stale A200-as-evidence comments and the unit test rewritten. Eval: probes known failures 407 -> 385 (22 fixed, 0 regressions); gen-m2 A200 still passes.
