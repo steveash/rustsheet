@@ -3,7 +3,7 @@ id: T-1240
 title: "Probe how Excel prints and evaluates ANCHORARRAY of an @ operand (follow-up of T-1226)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
