@@ -1,0 +1,35 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1233: FACT and FACTDOUBLE at and past the overflow point and with huge arguments.",
+ "tags": [
+  "M5",
+  "probe",
+  "math"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=FACT(170)",
+    "A2": "=FACT(171)",
+    "A3": "=FACT(1E+15)",
+    "A4": "=FACT(2^53)",
+    "A5": "=FACT(1E+300)",
+    "A6": "=FACT(170.9)",
+    "A7": "=FACT(-0.5)",
+    "A8": "=FACT(-1)",
+    "A9": "=FACTDOUBLE(300)",
+    "A10": "=FACTDOUBLE(301)",
+    "A11": "=FACTDOUBLE(297)",
+    "A12": "=FACTDOUBLE(298)",
+    "A13": "=FACTDOUBLE(1E+15)",
+    "A14": "=FACTDOUBLE(2^53)",
+    "A15": "=FACTDOUBLE(1E+300)",
+    "A16": "=FACTDOUBLE(-1)",
+    "A17": "=FACTDOUBLE(-1.5)",
+    "A18": "=FACTDOUBLE(-2)"
+   }
+  }
+ ],
+ "expected": {}
+}
