@@ -3,7 +3,7 @@ id: T-1192
 title: "Commit a seeded gen-m5 suite with oracle values and file its gaps"
 milestone: M5
 lane: harness
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -26,9 +26,17 @@ unless the catalog changed; if T-1087/T-1088 landed first, the sample also cover
 and information functions, which is fine).
 
 ## Acceptance criteria
-- [ ] eval/suites/gen-m5 committed (suite.toml non-gating, cases + oracle sidecars), `make eval-baseline` run.
-- [ ] Each distinct mismatch family has a task (via the gap-triager or `make new-task`) or an existing one is cited.
-- [ ] `make check` green; reviewers approve.
+- [x] eval/suites/gen-m5 committed (suite.toml non-gating, cases + oracle sidecars), `make eval-baseline` run.
+- [x] Each distinct mismatch family has a task (via the gap-triager or `make new-task`) or an existing one is cited.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the mismatches.
+
+## Outcome
+Committed eval/suites/gen-m5 (10 cases, seed 1, excel-graph sidecars, non-gating so no baseline file
+is written). Scores 350/360 cells; one case times out. Mismatch families: COS(1E+15) `#NUM!` → T-1201;
+ACOS(1E+15) NaN leaking through SERIESSUM → T-1202;
+MULTINOMIAL(1E+15) hang (the timeout) → T-1197; DECIMAL error kind → T-1198; ACOTH large-x precision loss, COTH/POWER ulp
+differences → existing T-0917 (and T-0905 for evaluation order); PERCENTOF `#NAME?` on the web is a
+web golden (decision 0039), no task.

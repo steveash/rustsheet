@@ -832,3 +832,18 @@ Evidence: probes/math-argument-modes Sheet1!C9, C35, C47, C49:C53 (excel-graph, 
 Ours: the exact ratio (10, 210, 13860).
 Status: VERIFIED
 Tasks: T-1082, T-1190
+
+## Huge arguments of trig functions
+Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
+later operand's: in `(x-COS(1E+15))=INDEX(B11:D11,6,2)` the result is `#NUM!`, not INDEX's `#REF!`. An
+out-of-domain `ACOS(1E+15)` is `#NUM!` and stays an error when nested (`SERIESSUM(ACOS(1E+15),0,n,m)` is `#NUM!`).
+Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09).
+Ours: COS computes a number; ACOS yields a NaN number that `powf(0)` turns into 1.
+Status: VERIFIED for the observed cells; the threshold and SIN/TAN siblings are UNVERIFIED.
+Tasks: T-1192, T-1201, T-1202
+
+## MULTINOMIAL of a huge argument
+Rule: Excel returns an answer for `MULTINOMIAL(1E+15)` at once (value not yet probed); the engine loops proportionally to the argument and hangs.
+Evidence: gen-m5/21b9ae9affd6b38c Calc!A25 (the case times out here; its oracle `#NUM!` comes from a base-0 LOG, so it says nothing about MULTINOMIAL's value).
+Status: UNVERIFIED (Excel's value)
+Tasks: T-1197

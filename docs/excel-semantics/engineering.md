@@ -44,3 +44,10 @@ untrusted input (CLAUDE.md directive 5). Excel gives `BESSELJ(10,1000000)` = `0`
 Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orders; the cap itself is a resource limit, not an Excel observation.
 Status: DEVIATION (decision 0014)
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`)
+
+## DECIMAL of a number with a decimal point is #NUM!
+Rule: `DECIMAL(0.5,13)` is `#NUM!` in Excel, not `#VALUE!`: hypothesis (unprobed, T-1198): the number is read as the text "0.5" and "." is an invalid digit.
+Evidence: gen-m5/98ed0b6354e3394a Calc!A9 (Data!C12=0.5; excel-graph, 2026-10-09).
+Ours: `#VALUE!`.
+Status: VERIFIED for this cell; other unreadable inputs UNVERIFIED.
+Tasks: T-1198
