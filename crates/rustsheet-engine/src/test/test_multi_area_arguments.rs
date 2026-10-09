@@ -341,8 +341,9 @@ fn unions_bound_through_variables_functions_and_lambda() {
 }
 
 #[test]
-fn choose_hands_a_3d_reference_to_the_aggregates() {
-    // probes/3d-ref-choose-let C1, C2, C5 and C6 (oracle excel-graph, 2026-10-08, T-1064).
+fn choose_and_let_hand_a_3d_reference_to_the_aggregates() {
+    // probes/3d-ref-choose-let (oracle excel-graph, 2026-10-08, T-1064), 3d-ref-let-values and
+    // 3d-ref-let-bound-span (T-1158).
     let mut model = new_empty_model();
     for sheet in ["Data1", "Data2", "Data3"] {
         model.add_sheet(sheet).unwrap();
