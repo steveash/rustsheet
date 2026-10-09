@@ -22,6 +22,7 @@ C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
 C	probes/array-context-legacy-sumproduct.case.json	31
+C	probes/at-group-leftmost-shapes.case.json	20
 C	probes/at-group-not-whole-operand.case.json	10
 C	probes/at-operand-formulatext.case.json	14
 C	probes/at-operand-nested-groups.case.json	36
@@ -389,6 +390,9 @@ F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S10
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
+F	probes/at-group-leftmost-shapes.case.json	Sheet1!E34
+F	probes/at-group-leftmost-shapes.case.json	Sheet1!E35
+F	probes/at-group-leftmost-shapes.case.json	Sheet1!E36
 F	probes/at-operand-nested-groups.case.json	Sheet1!F10
 F	probes/at-operand-nested-groups.case.json	Sheet1!F11
 F	probes/at-operand-nested-groups.case.json	Sheet1!F13
