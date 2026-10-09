@@ -1,0 +1,25 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1203 probe: RANK/RANK.EQ/RANK.AVG ref argument that is not a reference (array constant, scalar, text, IF/arithmetic arrays, INDEX/CHOOSE/OFFSET refs). Sheet1 A1=7,B1=1,C1=5,A2=3,B2=9,C2=2. Formulas in column F every third row so spills do not collide.",
+ "tags": [
+  "M1",
+  "statistics",
+  "rank",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 7,
+    "B1": 1,
+    "C1": 5,
+    "A2": 3,
+    "B2": 9,
+    "C2": 2,
+    "F1": "=RANK.EQ(5,IF(A1:C1>0,A1:C1))"
+   }
+  }
+ ],
+ "expected": {}
+}
