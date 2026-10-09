@@ -24,4 +24,4 @@ T-0235 made both lookups pass the picked cell of a range table to aggregates as 
 -
 
 ## Outcome
-Probe `probes/lookup-pick-aggregates` (16 cells, excel-graph) filled. Excel treats VLOOKUP/HLOOKUP picks as values, not references (the engine's T-0235 assumption was wrong for range tables); INDEX past its range as an operand is `#REF!` (engine matches). references.md updated to VERIFIED/corrected; mismatch filed as T-0295. Eval: new probe 10/16 cells pass; 6 known failures.
+Probe `probes/lookup-pick-aggregates` filled from excel-graph (16 cells then about 60 more, four rounds after review). Finding: a VLOOKUP/HLOOKUP pick reaches aggregates as a reference only when the index argument is a cell reference; otherwise it is a value (exact/approximate, fractional index, other sheet, array tables alike). This also explains gen-m2 A200. `INDEX(A1:A2,3) A1:A2` is `#REF!` (engine matches). references.md updated; engine mismatch filed as T-0295.

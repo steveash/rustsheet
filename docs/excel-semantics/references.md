@@ -100,15 +100,18 @@ Outside aggregate arguments the reference-ness is invisible: `VLOOKUP(IF(TRUE,Da
 today and regress if IF returns a reference everywhere).
 Evidence: gen-m2/96a0952412cefa6c A88, 942bdade381b7537 A212, dd99be1f2454159f A264,
 04cfd82f54dbc2b2 A182, dd99be1f2454159f A110, d0c29dd5c530e28c A112 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-VLOOKUP's and HLOOKUP's results are NOT references: the picked cell reaches an aggregate as a plain value, so
-`COUNT(VLOOKUP(1,A1:B3,2,FALSE))` picking FALSE is 1, `SUM(VLOOKUP(..))` picking text "5" is 5, `MAX(VLOOKUP(..))` picking
-text "x" is `#VALUE!`, the same for HLOOKUP, and `ISREF(VLOOKUP(..))`/`ISREF(HLOOKUP(..))` are FALSE
-(probes/lookup-pick-aggregates D1-D3, D13-D16, excel-graph 2026-10-09, T-0292). Array tables behave the same (D4, D5, D8, D9).
-The earlier claim that HLOOKUP's result is a reference (gen-m2/60a543744fc4a8f7 A200, a `-2` from a multi-argument COUNT) was
-an inference from a cell that cannot distinguish the two readings; the direct probes supersede it.
-`INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); an in-range `INDEX(A1:A2,2) A1:A2` is the picked cell.
-Status: VERIFIED. The engine DISAGREES for VLOOKUP/HLOOKUP over range tables (T-0235 passes the picked cell as a reference,
-so COUNT/SUM/MAX skip text and booleans); it matches the INDEX cases and the array-table cases. Fix filed as T-0295.
+VLOOKUP's and HLOOKUP's picked cell is a reference to an aggregate only when the row/column index argument is itself a
+cell reference: `COUNT(HLOOKUP(42,F5:G6,G5))` (G5 holds 2, picking FALSE) is 0, `SUM(VLOOKUP(2,I5:J7,A2))` picking text "5" is 0,
+`MAX(VLOOKUP(3,I5:J7,A2))` picking text "x" is 0 (probes/lookup-pick-aggregates P1-P3, P5, P6, Q1, Q2, Q4, Q6; a parenthesized
+reference counts as one). With a literal or computed index (`INT(Data!A10)`) the pick is a plain value: `COUNT(VLOOKUP(1,A1:B3,2,FALSE))`
+picking FALSE is 1, `SUM` of a picked "5" is 5, `MAX` of a picked "x" is `#VALUE!` (D1-D3, D13-D15, E1-E14, P4, Q3). That holds for exact and
+approximate match, a fractional literal index, a table on another sheet, and array tables (D4, D5, D8, D9); a reference
+lookup value changes nothing (P8, P9). `ISREF` of the lookup result is FALSE either way (D12, D16, E6, E12, P7), so the reference-ness is
+visible only to aggregates. This explains gen-m2/60a543744fc4a8f7 A200 (index `Data!C9` is a cell, the picked FALSE is skipped: -2;
+replicated in L1-L7). A bare `=HLOOKUP(..)` is the picked value (N1-N7).
+`INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); `INDEX(A1:A3,2) A1:A3` is the picked cell (E16, E17).
+Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine DISAGREES: T-0235 passes the pick as a reference whatever the
+index argument is, so literal-index picks are skipped by COUNT/SUM/MAX (the probe's known failures); filed as T-0295.
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
