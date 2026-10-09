@@ -209,8 +209,8 @@ def test_lambdas_get_as_many_parameters_as_values() -> None:
         )
     ]
     assert mapped and all(a.count(",") == b.count(",") for a, b in mapped)
-    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(\w+,\w+,", " ".join(formulas))
-    assert made
+    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(((?:[a-z_]+,)+)", " ".join(formulas))
+    assert made and all(names.count(",") == 2 for names in made), made
 
 
 def test_full_arrays_span_every_row_and_masks_compare_one_column() -> None:
