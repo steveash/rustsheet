@@ -210,13 +210,17 @@ class Gen:
             return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
-        dom = p.get("domain") or {}
+        in_domain = self.domain_value(p.get("domain") or {})
+        return in_domain if in_domain is not None else self.expr(p.get("type", "any"), depth + 1)
+
+    def domain_value(self, dom: dict[str, Any]) -> str | None:
+        """An in-domain literal, or None to draw a free expression (a soft domain, 30% of the time)."""
         # A `hard` domain is never violated: outside it Excel refuses the workbook (MUNIT(10^6)).
-        if dom.get("int") and (dom.get("hard") or self.rng.random() < 0.7):
+        if not (dom.get("int") or dom.get("enum")) or not (dom.get("hard") or self.rng.random() < 0.7):
+            return None
+        if dom.get("int"):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
-        if dom.get("enum") and (dom.get("hard") or self.rng.random() < 0.7):
-            return '"' + str(self.rng.choice(dom["enum"])) + '"'
-        return self.expr(p.get("type", "any"), depth + 1)
+        return '"' + str(self.rng.choice(dom["enum"])) + '"'
 
     def weighted(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         # sqrt-tempered prior so rare functions still get coverage
