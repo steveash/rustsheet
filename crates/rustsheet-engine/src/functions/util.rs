@@ -51,6 +51,18 @@ fn error_sort_rank(e: &Error) -> u8 {
 
 // ..., -2, -1, 0, 1, 2, ..., A-Z, FALSE, TRUE;
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
+    // An empty value (`IFERROR(<blank>,1)`, `CalcResult::EmptyArg`) compares as a blank cell:
+    // `IFERROR(B1,1)=0`, `=""` and `=FALSE` are TRUE and SWITCH matches it to 0
+    // (probes/iferror-blank-value D2:D5, D18, D19; T-0291).
+    fn as_blank(value: &CalcResult) -> &CalcResult {
+        static BLANK: CalcResult = CalcResult::EmptyCell;
+        if matches!(value, CalcResult::EmptyArg) {
+            &BLANK
+        } else {
+            value
+        }
+    }
+    let (left, right) = (as_blank(left), as_blank(right));
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
             // Equality is decided on the 15-digit values alone: an absolute tolerance would equate

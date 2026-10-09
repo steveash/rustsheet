@@ -30,12 +30,17 @@ Tasks: T-1088
 
 ## IFERROR / IFNA of a blank cell is an empty value, not the reference
 Rule: when IFERROR's or IFNA's value argument is a blank cell, the result is the blank's value, not a reference to it.
-OR reads that value as FALSE (`OR(IFERROR(D9,A9))` with D9 blank is FALSE, whereas OR ignores a blank cell it is
-given directly and is then `#VALUE!` with nothing else), `&` reads it as "" (`IFERROR(D5,A3)&" x "&"1"` is " x 1"), and
-a lookup reads it as 0 (`VLOOKUP(IFERROR(B8,D1),C8:D10,1,TRUE)` with B8 blank finds the largest value <= 0, -1), like an
-omitted lookup value (lookup.md, "XLOOKUP / XMATCH with an omitted lookup_value is a blank cell").
-Evidence: gen-m2 7469c3e920e1ade4 Calc!A351, ef5c55a81783b7d5 Calc!A291, dd99be1f2454159f Calc!A110 (excel-graph).
-Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`; `lookup_key` reads it as 0). IFNA is the same
-code path; its cells are not probed separately.
-Status: VERIFIED (excel-graph, IFERROR)
-Tasks: T-0235, T-0291
+OR and AND read that value as FALSE (`OR(IFERROR(D9,A9))` with D9 blank is FALSE, whereas OR ignores a blank cell it is
+given directly and is then `#VALUE!` with nothing else), `&` reads it as "" (`IFERROR(D5,A3)&" x "&"1"` is " x 1"), a
+lookup reads it as 0 (`VLOOKUP(IFERROR(B8,D1),C8:D10,1,TRUE)` with B8 blank finds the largest value <= 0, -1;
+`MATCH(IFERROR(B1,1),{-1;0},0)` is 2), like an omitted lookup value (lookup.md, "XLOOKUP / XMATCH with an omitted
+lookup_value is a blank cell"), and comparisons treat it as a blank: `IFERROR(B1,1)=0`, `=""`, `=FALSE`, `<1` and `<"a"`
+are all TRUE and `SWITCH(IFERROR(B1,1),0,"zero",..)` is "zero". Unlike a blank cell given directly, COUNT and COUNTA
+count it (`COUNT(IFERROR(B1,1))` = 1, COUNTA 1), yet ISBLANK of it is TRUE, ISNUMBER and ISTEXT FALSE, TYPE 1, N 0,
+and the cell itself shows 0. IFNA behaves the same (OR FALSE, `&` "", VLOOKUP 0).
+Evidence: gen-m2 7469c3e920e1ade4 Calc!A351, ef5c55a81783b7d5 Calc!A291, dd99be1f2454159f Calc!A110 (excel-graph);
+probes/iferror-blank-value D1:D23 (excel-graph, 2026-10-09, T-0291).
+Ours: matches since T-0291 (`if_error_like` returns `CalcResult::EmptyArg`; `lookup_key` reads it as 0 and
+`compare_values` as a blank cell) except COUNTA, which is 0 (T-1294).
+Status: VERIFIED (excel-graph)
+Tasks: T-0235, T-0291, T-1294

@@ -325,8 +325,8 @@ fn ifna_wrong_number_of_args() {
 
 #[test]
 fn iferror_of_a_blank_cell_is_an_empty_value() {
-    // T-0291 (excel-graph gen-m2): OR reads it as FALSE (7469c3e920e1ade4 A351), a lookup as 0
-    // (ef5c55a81783b7d5 A291) and `&` as "" (dd99be1f2454159f A110).
+    // T-0291 (excel-graph): OR reads it as FALSE (gen-m2 7469c3e920e1ade4 A351), a lookup as 0
+    // (ef5c55a81783b7d5 A291) and `&` as "" (dd99be1f2454159f A110); IFNA is probes/iferror-blank-value D11, D12.
     let mut model = new_empty_model();
     model._set("C1", "-1");
     model._set("C2", "1");
@@ -334,9 +334,20 @@ fn iferror_of_a_blank_cell_is_an_empty_value() {
     model._set("A2", "=IFNA(B1,1)&\"x\"");
     model._set("A3", "=VLOOKUP(IFERROR(B1,1),C1:C2,1,TRUE)");
     model._set("A4", "=OR(IFNA(B1,1))");
+    // probes/iferror-blank-value D2, D3, D5, D7, D9: it compares as a blank and COUNT counts it.
+    model._set("A5", "=IFERROR(B1,1)=0");
+    model._set("A6", "=IFERROR(B1,1)=\"\"");
+    model._set("A7", "=SWITCH(IFERROR(B1,1),0,\"zero\",\"other\")");
+    model._set("A8", "=COUNT(IFERROR(B1,1))");
+    model._set("A9", "=AND(IFERROR(B1,1))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "FALSE");
     assert_eq!(model._get_text("A2"), "x");
     assert_eq!(model._get_text("A3"), "-1");
     assert_eq!(model._get_text("A4"), "FALSE");
+    assert_eq!(model._get_text("A5"), "TRUE");
+    assert_eq!(model._get_text("A6"), "TRUE");
+    assert_eq!(model._get_text("A7"), "zero");
+    assert_eq!(model._get_text("A8"), "1");
+    assert_eq!(model._get_text("A9"), "FALSE");
 }

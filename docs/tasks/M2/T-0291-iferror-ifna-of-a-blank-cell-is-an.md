@@ -24,8 +24,12 @@ Split from T-0235 (item 1). Evidence, all excel-graph gen-m2: 7469c3e920e1ade4 C
 -
 
 ## Outcome
-`if_error_like` (IFERROR and IFNA) now returns `CalcResult::EmptyArg` for a blank value, so OR reads it as
-FALSE and `&` as "", and `lookup_key` reads an empty value as 0 like a blank cell (the same rule as an omitted
-XLOOKUP lookup_value). A351 passes, and A291, A110 and A112 still pass. Recorded in logic.md, "IFERROR / IFNA of a blank cell is
-an empty value, not the reference"; unit test `iferror_of_a_blank_cell_is_an_empty_value`.
-Eval delta: gen-m2 known failures 46 -> 45 (fixed 7469c3e920e1ade4 A351), regressions 0. Follow-ups: none.
+`if_error_like` (IFERROR and IFNA) now returns `CalcResult::EmptyArg` for a blank value, so OR and AND read it as FALSE
+and `&` as ""; `lookup_key` reads an empty value as 0 like a blank cell (the same rule as an omitted XLOOKUP
+lookup_value), and `compare_values` reads it as a blank, so comparisons and SWITCH are unchanged from the blank-cell
+behavior. The new probe probes/iferror-blank-value (23 cells, excel-graph) checks every consumer the change reaches
+(comparisons, SWITCH, COUNT, COUNTA, AND, OR, `&`, IS*, TYPE, N, MATCH, VLOOKUP, IFNA): all pass but COUNTA (D8, 1 in Excel,
+0 here and on main; T-1294). A351 now passes; A291, A110 and A112 still pass. Recorded in logic.md, "IFERROR / IFNA of a
+blank cell is an empty value, not the reference"; unit test `iferror_of_a_blank_cell_is_an_empty_value`.
+Eval delta: gen-m2 known failures 46 -> 45 (fixed 7469c3e920e1ade4 A351); probes +1 case, 23 cells, 22 pass, 1 known
+failure (T-1294). Regressions 0. Follow-ups: T-1294.
