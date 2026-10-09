@@ -13,6 +13,11 @@ use crate::{
 use super::r#let::assign_variable_ids;
 use crate::reference_operators::Binding;
 
+/// `#REF!` for a reference that is called like a function.
+fn reference_called(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::REF, cell, "A reference cannot be called".to_string())
+}
+
 impl Model {
     /// A call written in the formula, `callee(args)`, of what its callee evaluates to. A called
     /// reference is `#REF!`, even when its cell holds a LAMBDA (`(A1)(A2)`, `(C1)(2)`;
@@ -25,11 +30,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         if let CalcResult::Range { .. } = callee {
-            return CalcResult::new_error(
-                Error::REF,
-                cell,
-                "A reference cannot be called".to_string(),
-            );
+            return reference_called(cell);
         }
         self.call_lambda(callee, call_args, cell)
     }
@@ -43,11 +44,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> Result<CalcResult, CalcResult> {
         match self.variable_stack.get(var_id as usize) {
-            Some(Binding::Areas(_)) => Err(CalcResult::new_error(
-                Error::REF,
-                cell,
-                "A reference cannot be called".to_string(),
-            )),
+            Some(Binding::Areas(_)) => Err(reference_called(cell)),
             Some(binding) => Ok(binding.value(cell)),
             None => Err(CalcResult::new_error(
                 Error::NAME,
