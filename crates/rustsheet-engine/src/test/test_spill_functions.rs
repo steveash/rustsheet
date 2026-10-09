@@ -495,5 +495,6 @@ fn anchorarray_of_at_negation_is_value_and_of_at_index_spills() {
     model.evaluate();
     assert_eq!(model._get_text("H101"), "#VALUE!");
     assert_eq!(model._get_text("H81"), "1");
+    assert_eq!(model._get_text("H82"), "2");
     assert_eq!(model._get_text("H83"), "3");
 }

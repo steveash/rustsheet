@@ -312,7 +312,8 @@ impl Parser {
                 self.parse_primary()
             } else if matches!(self.lexer.peek_token(), TokenType::Addition(_)) {
                 // `@-1` loads (probes/anchorarray-at-operand-kinds H101, T-1247): the sign is
-                // the operand's, a value, so the `@` of it is a value too.
+                // the operand's, a value, so the `@` of it is a value too. The precedence against
+                // `%`, `^` and ranges is inferred (UNVERIFIED, T-1285).
                 self.nesting += PRIMARY_DEPTH;
                 let t = self.parse_power();
                 self.nesting -= PRIMARY_DEPTH;
