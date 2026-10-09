@@ -3,7 +3,7 @@ id: T-0299
 title: "Probe lookup picks when the index argument is INDEX/IF/CHOOSE/OFFSET/a name (follow-up of T-0295)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
