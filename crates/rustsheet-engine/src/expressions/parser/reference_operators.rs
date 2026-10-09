@@ -241,6 +241,21 @@ impl Parser {
         }
     }
 
+    /// The error for a `:` or ANCHORARRAY operand that is not a reference expression
+    /// ([`is_reference_operand`]). Excel for the web refuses a workbook holding `=A1:(1/0)`,
+    /// `=(1/0):(A1 B1)`, `=(1/0):(A1 A2)` or `=ANCHORARRAY(1)` (`FileCorruptTryRepair`, one
+    /// scratch workbook per formula, T-1111), as it does a value operand of an intersection or
+    /// a union (docs/excel-semantics/references.md, T-1117).
+    pub(super) fn range_operand_error(&self) -> Node {
+        Node::ParseErrorKind {
+            formula: self.lexer.get_formula(),
+            expecting: vec![ExpectedTokens::Range],
+            position: self.lexer.get_position() as usize,
+            message: "The operands of a range must be references".to_string(),
+        }
+    }
+
+    /// `implicit [':' primary]`; both operands must be references (`range_operand_error`).
     pub(super) fn parse_range(&mut self) -> Node {
         let t = self.parse_implicit();
         if let Node::ParseErrorKind { .. } = t {
@@ -253,6 +268,9 @@ impl Parser {
             let p = self.parse_primary();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
+            }
+            if !is_reference_operand(&t) || !is_reference_operand(&p) {
+                return self.range_operand_error();
             }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
@@ -322,6 +340,10 @@ impl Parser {
         let next_token = self.lexer.peek_token();
         if next_token == TokenType::Spill {
             self.lexer.advance_token();
+            // `x#` is stored as `_xlfn.ANCHORARRAY(x)`, so it takes the same operands.
+            if !is_reference_operand(&primary) {
+                return self.range_operand_error();
+            }
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
@@ -420,7 +442,8 @@ fn has_negated_operand(node: &Node) -> bool {
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection and for SUBTOTAL and AREAS arguments ([`Parser::function_call`])
+/// intersection, for the operands of `:`, `#` and ANCHORARRAY (T-1117) and for SUBTOTAL and AREAS
+/// arguments ([`Parser::function_call`])
 /// (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning

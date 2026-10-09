@@ -177,7 +177,13 @@ class Gen:
         while i < len(params):
             p = params[i]
             # Excel allows omitting trailing optionals only.
-            if p.get("optional") and self.rng.random() < 0.4 and all(q.get("optional") for q in params[i:]):
+            # `always` optionals are never omitted (CELL's reference: without it CELL reads the cell last changed).
+            if (
+                p.get("optional")
+                and not p.get("always")
+                and self.rng.random() < 0.4
+                and all(q.get("optional") for q in params[i:])
+            ):
                 break
             rep = p.get("repeat")
             if isinstance(rep, dict):
@@ -194,6 +200,9 @@ class Gen:
 
     def argument(self, p: dict[str, Any], depth: int) -> str:
         mode = p.get("mode", "value")
+        if mode == "range" and p.get("cell"):
+            # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
+            return self.cell_ref()
         if mode == "range" or (mode == "array" and self.rng.random() < 0.5):
             return self.range_ref(width=self.rng.randint(1, min(4, self.data_cols)))
         if mode == "criteria":
@@ -201,11 +210,17 @@ class Gen:
             return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
         if mode in ("aggregate", "aggregate_a") and self.rng.random() < 0.5:
             return self.range_ref()
-        dom = p.get("domain") or {}
+        in_domain = self.domain_value(p.get("domain") or {})
+        return in_domain if in_domain is not None else self.expr(p.get("type", "any"), depth + 1)
+
+    def domain_value(self, dom: dict[str, Any]) -> str | None:
+        """An in-domain literal, or None to draw a free expression (a soft domain, 30% of the time)."""
         # A `hard` domain is never violated: outside it Excel refuses the workbook (MUNIT(10^6)).
-        if dom.get("int") and (dom.get("hard") or self.rng.random() < 0.7):
+        if not (dom.get("int") or dom.get("enum")) or not (dom.get("hard") or self.rng.random() < 0.7):
+            return None
+        if dom.get("int"):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
-        return self.expr(p.get("type", "any"), depth + 1)
+        return '"' + str(self.rng.choice(dom["enum"])) + '"'
 
     def weighted(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         # sqrt-tempered prior so rare functions still get coverage

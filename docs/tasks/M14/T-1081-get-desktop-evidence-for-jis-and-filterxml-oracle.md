@@ -19,7 +19,8 @@ T-0040 probed every in-scope catalog function on excel-graph. Two behave unlike 
 documentation there: `JIS` is `#NAME?` (probes/catalog/availability-22 A8; function-name-forms-2
 A1/A2 with and without `_xlfn.`), and `FILTERXML("<a>1</a>","//a")` is `#VALUE!`
 (probes/catalog/function-name-forms A7) for valid XML and XPath; its page says it relies on
-Windows. See
+Windows. ENCODEURL is `#VALUE!` on the web for every argument too (probes/info-logic-argument-modes-2, T-1088,
+T-1219): check it on desktop in the same run. See
 docs/architecture/oracle.md, "JIS unknown, FILTERXML failing on en-US Excel for the web" (and docs/excel-semantics text.md, web.md). Decision 0039: desktop-only
 questions are M14 work and never block Phase 1.
 
