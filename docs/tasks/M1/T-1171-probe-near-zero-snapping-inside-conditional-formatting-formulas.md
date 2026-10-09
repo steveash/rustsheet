@@ -3,7 +3,7 @@ id: T-1171
 title: "Probe near-zero snapping inside conditional-formatting formulas written in parentheses"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
