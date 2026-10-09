@@ -1,5 +1,17 @@
 # xlsx storage quirks
 
+## Built-in defined names carry `_xlnm.` in workbook.xml only
+Rule: Excel's built-in names (`Print_Area`, `Print_Titles`, `_FilterDatabase` and others ECMA-376 lists) are stored as `<definedName name="_xlnm.Print_Area"
+localSheetId="0">` but formulas use the bare name: `=SUM(Print_Area)`. The importer drops the prefix
+for the three named here and the exporter puts it back; any other `_xlnm.` name is kept as written.
+A sheet-local `Print_Area` written without the prefix (as xlsxwriter's `define_name("Sheet1!Print_Area")`
+does) also computes: Excel for the web gave `SUM(Print_Area)` 6 and `AREAS(Print_Area)` 2 for it.
+Evidence: probes/multiarea-printarea H1:H2 (excel-graph, 2026-10-07; its spec2xlsx workbook stores
+the unprefixed form). The prefixed spelling is ECMA-376 Part 1 (`definedName`); no oracle case
+stores it yet.
+Status: VERIFIED (unprefixed); prefixed form per ECMA-376
+Implemented in: crates/rustsheet-xlsx/src/util.rs (`name_from_xlsx`, `name_to_xlsx`), T-1193; only Print_Area, Print_Titles and _FilterDatabase are mapped, the other ECMA built-ins load as written (T-1250).
+
 ## Control characters in text are stored as `_xHHHH_`
 Characters invalid in XML 1.0 (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F) are written as
 `_xHHHH_` (hex, upper-case) in shared strings, inline strings and cached `<v>` of `t="str"`
