@@ -6,7 +6,7 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::{util::compare_values, Function},
+    functions::util::compare_values,
     model::Model,
 };
 
@@ -181,7 +181,7 @@ pub(crate) fn array_of_errors(
 
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
-    /// outermost `+`/`-` or SUM to 0, but not for a wholly parenthesized formula, which is a
+    /// outermost `+`/`-` to 0 (a SUM call snaps wherever it sits, `fn_sum`), but not for a wholly parenthesized formula, which is a
     /// `GroupedRootKind` root (docs/excel-semantics/numbers.md "Near-zero snapping in addition
     /// and subtraction"); every other node evaluates as usual.
     pub(crate) fn evaluate_formula_root(
@@ -194,10 +194,6 @@ impl Model {
                 let left = self.evaluate_node_in_context(left, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
-            Node::FunctionKind {
-                kind: Function::Sum,
-                args,
-            } => self.fn_sum_outermost(args, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }

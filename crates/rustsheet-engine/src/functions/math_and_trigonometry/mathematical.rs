@@ -956,11 +956,11 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let part = match self.fn_sum(&args[0..1], cell) {
+        let part = match self.fn_sum_unsnapped(&args[0..1], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };
-        let total = match self.fn_sum(&args[1..2], cell) {
+        let total = match self.fn_sum_unsnapped(&args[1..2], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };

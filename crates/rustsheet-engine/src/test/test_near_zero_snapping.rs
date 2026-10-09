@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, reason = "tests")]
 
-//! Excel snaps a near-zero result of a cell formula's outermost `+`/`-` or SUM to 0, but not of
-//! a wholly parenthesized formula or of an inner operation (docs/excel-semantics/numbers.md
+//! Excel snaps a near-zero result of a cell formula's outermost `+`/`-` and of every SUM call to
+//! 0, but not of a wholly parenthesized `+`/`-` formula or of an inner operation (docs/excel-semantics/numbers.md
 //! "Near-zero snapping in addition and subtraction"; probes/literal-digits C4,
 //! probes-numeric/30bc5f8fab02d0a2).
 
@@ -71,4 +71,27 @@ fn whole_formula_keeps_every_parenthesis_level() {
     assert_eq!(model._get_formula("A2"), "=(((0.1+0.2-0.3)))");
     assert_eq!(model._get_text("A1"), "5.55112E-17");
     assert_eq!(model._get_text("A2"), "5.55112E-17");
+}
+
+/// A SUM call snaps wherever it sits, and a trailing zero argument stops it (the last two
+/// addends are `-0.3` and `0` or `0.2` and `0`): probes/near-zero-snap-sum-forms (T-1131).
+#[test]
+fn sum_call_snaps_anywhere_but_not_with_a_trailing_zero() {
+    let mut model = new_empty_model();
+    for (cell, formula) in [
+        ("A1", "=SUM(0.1,0.2,-0.3)*1"),
+        ("A2", "=(SUM(0.1,0.2,-0.3))"),
+        ("A3", "=IF(TRUE,SUM(0.1,0.2,-0.3))"),
+        ("A4", "=SUM(SUM(0.1,0.2,-0.3))"),
+        ("A5", "=SUM({0.1,0.2,-0.3})"),
+        ("A6", "=SUM(0.1,0.2,-0.3,0)"),
+    ] {
+        model._set(cell, formula);
+        model._set(&cell.replace('A', "B"), &format!("={cell}=0"));
+    }
+    model.evaluate();
+    for row in 1..=5 {
+        assert_eq!(model._get_text(&format!("B{row}")), "TRUE", "row {row}");
+    }
+    assert_eq!(model._get_text("B6"), "FALSE");
 }

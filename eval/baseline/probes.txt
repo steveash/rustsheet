@@ -257,6 +257,7 @@ C	probes/multiarea-xsheet.case.json	2
 C	probes/multinomial-large-arguments.case.json	20
 C	probes/near-zero-snap-groups.case.json	14
 C	probes/near-zero-snap-name-bodies.case.json	7
+C	probes/near-zero-snap-sum-forms.case.json	34
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
