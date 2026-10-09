@@ -72,3 +72,28 @@ Evidence: probes/catalog/availability-22 A8 (TRUE = #NAME?), function-name-forms
 T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
+
+## Text function argument modes
+Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill;
+probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text
+arguments and ARRAYTOTEXT's array take a range whole, PHONETIC's argument must be a reference, and T does not lift:
+`T(A1:A3)` in a dynamic-array formula is one "" with no spill although A2 = "ab" (F9; see references.md "T of a
+multi-cell range is not intersected"). TEXTJOIN turns numbers and booleans in a range into their text
+(`TEXTJOIN("-",TRUE,A1:A6)` over 5, "ab", TRUE, blank, "x", "2" is "5-ab-TRUE-x-2"; with ignore_empty FALSE the blank
+adds a delimiter); ARRAYTOTEXT gives "5, ab, TRUE, , x, 2" and, with format 1, `{5;"ab";TRUE;;"x";"2"}`. A boolean read
+from a cell (A3 = TRUE; literal TRUE arguments are unprobed) is its text where the function wants text (`CODE(A3)` = 84,
+`PROPER(A3)` = "True", `TEXT(A3,"0")` = "TRUE", `LENB(A3)` = 4) and 1 where it wants a number (`CHAR(A3)` and
+`UNICHAR(A3)` = CHAR(1), `REPT("a",A3)` = "a"), but `VALUE(A3)` and `NUMBERVALUE(A3)` are `#VALUE!`. `FIXED(A2)` with
+A2 = "ab" is `#VALUE!`, `FIXED(A6)` with A6 = "2" (text) is "2.00". Also: `ASC(A2)` with A2 = 5 is "5", `DBCS(A1)` with
+A1 = "abc" is "abc", `CLEAN(A3)` = "TRUE", `REPT("z",A1:A3)` spills "zzzzz", `#VALUE!` (for "ab"), "z", and
+`LENB(A1:A2)` spills 3, 1 (text-modes-dbcs C1/C3, text-argument-modes C28/F21:F23, text-modes-bytes C7:C8). On the web JIS is `#NAME?` and PHONETIC of any
+reference (a text cell, a number cell, a range) is `#N/A`. excel-graph refuses a workbook (HTTP 501
+`unsupportedWorkbook`) that calls `PHONETIC("abc")` or `MUNIT(SUBTOTAL(9,..))` whose sum is a large dimension (seen
+while generating, not committed: a refused workbook has no oracle file); both are web-only observations, desktop
+unconfirmed (decision 0039).
+Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
+-phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
+Ours: matches except CODE and VALUETOTEXT over a range and `VALUETOTEXT(A3,1)` (T-1212), DBCS and PHONETIC (T-1213) and
+BAHTTEXT (T-1214), which are not implemented.
+Status: VERIFIED (excel-graph)
+Tasks: T-1087, T-1212, T-1213, T-1214
