@@ -288,8 +288,7 @@ pub enum StaticResult {
     Scalar,
     // The result of the evaluation is an array with dimensions (rows, columns)
     Array(i32, i32),
-    // The result of the evaluation is a range spanning (rows - 1, columns - 1): the extents
-    // minus one, so a single cell is Range(0, 0) (unlike Array, which holds the counts)
+    // The result is a range of (rows - 1, columns - 1): a single cell is Range(0, 0) (Array holds counts)
     Range(i32, i32),
     // The result of the evaluation is unknown, we cannot guaranty it is a scalar, an array or a range
     Unknown,
