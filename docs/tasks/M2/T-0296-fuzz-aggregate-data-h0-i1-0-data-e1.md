@@ -3,7 +3,7 @@ id: T-0296
 title: "Fuzz: AGGREGATE(Data!H0:I1,0,Data!E1:E6) reaches a scalar-context cell with a 2x2 array (debug_assert panic)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
