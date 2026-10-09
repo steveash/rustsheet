@@ -14,6 +14,10 @@
 #   any        any value
 # `repeat: true` marks the trailing repeating param; `repeat: {group: [a, b], min, max}` on the first
 # member marks a repeating group of params (SUMIFS criteria_range/criteria pairs). Types: number | text | bool | any.
+# `domain: {enum: [...]}` lists the usual text values (CELL's info_type); like an `int` domain it is soft unless
+# `hard: true`. `cell: true` on a `range` param makes the generator pass one cell, not a range (ISFORMULA lifts over
+# a range, so a range would spill into the next formula). `always: true` on an optional param means the generator
+# never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report). Most
@@ -27,8 +31,8 @@
 # function list with its provenance; tools/tests/test_catalog.py keeps the two in step.
 # The eval harness reads names, milestones, scope and oracle from the generated eval/catalog/scope.json
 # (decision 0040): after editing, run `cd tools && uv run rustsheet-catalog-view`.
-# Entries with `params` are generator-ready signatures (the M2 block, then the M5 math (T-1082) and text (T-1087)
-# ones in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
+# Entries with `params` are generator-ready signatures (the M2 block, then the M5 math (T-1082), text (T-1087),
+# logical, information and web (T-1088) ones in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
 #   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
 #              statistical, financial, engineering, database, cube (M9). Compatibility functions take
 #              their family (CEILING/FLOOR math, the rest statistical).
@@ -496,7 +500,16 @@ functions:
     params:
       - { name: number, mode: value, type: number }
       - { name: significance, mode: value, type: number, optional: true }
-  - { name: CELL, category: information, milestone: M5, scope: in }
+  # info_type lifts over an array (probes/info-logic-argument-modes A27); a literal or array reference makes excel-graph refuse the workbook (T-1088). "address" names the workbook file for another sheet and "format" is #VALUE! on excel-graph, so neither is in the enum; an omitted reference reads the last changed cell, so the generator always passes one.
+  - name: CELL
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: info_type, mode: value, type: text, domain: { enum: [row, col, contents, type] } }
+      - { name: reference, mode: range, type: any, optional: true, always: true, cell: true }
   - name: CHAR
     category: text
     milestone: M5
@@ -686,13 +699,27 @@ functions:
   - { name: DVARP, category: database, milestone: M9, scope: in }
   - { name: EDATE, category: date, milestone: M6, scope: in }
   - { name: EFFECT, category: financial, milestone: M9, scope: in }
-  - { name: ENCODEURL, category: web, milestone: M5, scope: in }
+  # Lifts over an array; #VALUE! for every argument on excel-graph (probes/info-logic-argument-modes-2, T-1088).
+  - name: ENCODEURL
+    category: web
+    milestone: M5
+    scope: in
+    prior: 0.05
+    returns: text
+    params: [{ name: text, mode: value, type: text }]
   - { name: EOMONTH, category: date, milestone: M6, scope: in }
   - { name: ERF, category: engineering, milestone: M9, scope: in }
   - { name: ERF.PRECISE, category: engineering, milestone: M9, scope: in }
   - { name: ERFC, category: engineering, milestone: M9, scope: in }
   - { name: ERFC.PRECISE, category: engineering, milestone: M9, scope: in }
-  - { name: ERROR.TYPE, category: information, milestone: M5, scope: in }
+  # Lifts over a range (probes/info-logic-argument-modes A8).
+  - name: ERROR.TYPE
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.3
+    returns: number
+    params: [{ name: error_val, mode: value, type: any }]
   - { name: EUROCONVERT, category: addin, milestone: M5, scope: out, reason: "Euro Currency Tools add-in (decision 0027)" }
   - name: EVEN
     category: math
@@ -739,11 +766,26 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: number, mode: value, type: number, domain: { int: true, min: 0, max: 30 } }]
-  - { name: "FALSE", category: logical, milestone: M5, scope: in }
+  - name: "FALSE"
+    category: logical
+    milestone: M5
+    scope: in
+    prior: 0.2
+    returns: bool
+    params: []
   - { name: FDIST, category: statistical, milestone: M9, scope: in }
   - { name: FIELDVALUE, category: lookup, milestone: M6, scope: out, reason: "reads linked data types (decision 0027)" }
   - { name: FILTER, category: lookup, milestone: M7, scope: in }
-  - { name: FILTERXML, category: web, milestone: M5, scope: in }  # #VALUE! on the web for valid input (function-name-forms A7); desktop confirmation T-1081
+  # #VALUE! on the web for valid input (function-name-forms A7); desktop confirmation T-1081
+  - name: FILTERXML
+    category: web
+    milestone: M5
+    scope: in
+    prior: 0.05
+    returns: any
+    params:
+      - { name: xml, mode: value, type: text }
+      - { name: xpath, mode: value, type: text }
   - name: FIND
     category: text
     milestone: M5
@@ -845,8 +887,26 @@ functions:
   - { name: HYPERLINK, category: lookup, milestone: M6, scope: in }
   - { name: HYPGEOM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: HYPGEOMDIST, category: statistical, milestone: M9, scope: in }
-  - { name: IFNA, category: logical, milestone: M5, scope: in }
-  - { name: IFS, category: logical, milestone: M5, scope: in }
+  # Lifts over a range (probes/info-logic-argument-modes A16).
+  - name: IFNA
+    category: logical
+    milestone: M5
+    scope: in
+    prior: 1
+    returns: any
+    params:
+      - { name: value, mode: value, type: any }
+      - { name: value_if_na, mode: value, type: any }
+  # IFS and SWITCH lift over array conditions (docs/excel-semantics/logic.md).
+  - name: IFS
+    category: logical
+    milestone: M5
+    scope: in
+    prior: 0.5
+    returns: any
+    params:
+      - { name: logical_test, mode: value, type: bool, repeat: { group: [logical_test, value_if_true], min: 1, max: 127 } }
+      - { name: value_if_true, mode: value, type: any }
   - { name: IMABS, category: engineering, milestone: M9, scope: in }
   - { name: IMAGE, category: lookup, milestone: M6, scope: out, reason: "loads an image from the web (decision 0027)" }
   - { name: IMAGINARY, category: engineering, milestone: M9, scope: in }
@@ -888,15 +948,72 @@ functions:
   - { name: INTRATE, category: financial, milestone: M9, scope: in }
   - { name: IPMT, category: financial, milestone: M9, scope: in }
   - { name: IRR, category: financial, milestone: M9, scope: in }
-  - { name: ISBLANK, category: information, milestone: M5, scope: in }
-  - { name: ISERR, category: information, milestone: M5, scope: in }
-  - { name: ISERROR, category: information, milestone: M5, scope: in }
-  - { name: ISEVEN, category: information, milestone: M5, scope: in }
-  - { name: ISFORMULA, category: information, milestone: M5, scope: in }
-  - { name: ISLOGICAL, category: information, milestone: M5, scope: in }
-  - { name: ISNA, category: information, milestone: M5, scope: in }
-  - { name: ISNONTEXT, category: information, milestone: M5, scope: in }
-  - { name: ISNUMBER, category: information, milestone: M5, scope: in }
+  # The IS* type tests lift over ranges and arrays (docs/excel-semantics/information.md).
+  - name: ISBLANK
+    category: information
+    milestone: M5
+    scope: in
+    prior: 1.5
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
+  - name: ISERR
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.3
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
+  - name: ISERROR
+    category: information
+    milestone: M5
+    scope: in
+    prior: 2
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
+  # ISEVEN and ISODD are #VALUE! for a multi-cell range (no lift) and lift over an array (information.md).
+  - name: ISEVEN
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params: [{ name: number, mode: value, type: number }]
+  # Lifts over a range; a literal or text argument makes excel-graph refuse the workbook (probes/info-logic-argument-modes A11, T-1088).
+  - name: ISFORMULA
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params: [{ name: reference, mode: range, type: any, cell: true }]
+  - name: ISLOGICAL
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
+  - name: ISNA
+    category: information
+    milestone: M5
+    scope: in
+    prior: 1
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
+  - name: ISNONTEXT
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
+  - name: ISNUMBER
+    category: information
+    milestone: M5
+    scope: in
+    prior: 1
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
   - name: ISO.CEILING
     category: math
     milestone: M5
@@ -906,12 +1023,31 @@ functions:
     params:
       - { name: number, mode: value, type: number }
       - { name: significance, mode: value, type: number, optional: true }
-  - { name: ISODD, category: information, milestone: M5, scope: in }
+  - name: ISODD
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params: [{ name: number, mode: value, type: number }]
   - { name: ISOMITTED, category: information, milestone: M7, scope: in }
   - { name: ISOWEEKNUM, category: date, milestone: M6, scope: in }
   - { name: ISPMT, category: financial, milestone: M9, scope: in }
-  - { name: ISREF, category: information, milestone: M5, scope: in }
-  - { name: ISTEXT, category: information, milestone: M5, scope: in }
+  # Takes a range whole (TRUE, no lift) and any value (ISREF(1) is FALSE; probes/info-logic-argument-modes A9:A10).
+  - name: ISREF
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params: [{ name: value, mode: array, type: any }]
+  - name: ISTEXT
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.5
+    returns: bool
+    params: [{ name: value, mode: value, type: any }]
   # #NAME? on the web (availability-22 A8, function-name-forms-2 A1/A2); desktop confirmation T-1081
   - name: JIS
     category: text
@@ -1057,8 +1193,21 @@ functions:
     prior: 0.1
     returns: number
     params: [{ name: dimension, mode: value, type: number, domain: { int: true, min: 1, max: 4, hard: true } }]
-  - { name: "N", category: information, milestone: M5, scope: in }
-  - { name: NA, category: information, milestone: M5, scope: in }
+  # A range gives its top-left cell, no lift and no implicit intersection (probes/info-logic-argument-modes A6, -2 A7).
+  - name: "N"
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.3
+    returns: number
+    params: [{ name: value, mode: value, type: any }]
+  - name: NA
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.5
+    returns: any
+    params: []
   - { name: NEGBINOM.DIST, category: statistical, milestone: M9, scope: in }
   - { name: NEGBINOMDIST, category: statistical, milestone: M9, scope: in }
   - { name: NETWORKDAYS, category: date, milestone: M6, scope: in }
@@ -1320,7 +1469,14 @@ functions:
       - { name: n, mode: value, type: number, domain: { int: true, min: 0, max: 3 } }
       - { name: m, mode: value, type: number, domain: { int: true, min: 0, max: 3 } }
       - { name: coefficients, mode: array, type: number }
-  - { name: SHEET, category: information, milestone: M5, scope: in }
+  # A range gives its sheet, no lift; a sheet-name text gives that sheet, other values #N/A (probes/info-logic-argument-modes A12:A14, A26).
+  - name: SHEET
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.05
+    returns: number
+    params: [{ name: value, mode: array, type: any, optional: true }]
   - { name: SHEETS, category: information, milestone: M5, scope: in, oracle: none }  # the oracle canary refuses SHEETS()/INFO() workbooks (tools/src/rustsheet_tools/oracle/canary.py)
   - name: SIGN
     category: math
@@ -1434,7 +1590,17 @@ functions:
     params:
       - { name: array_x, mode: array, type: number }
       - { name: array_y, mode: array, type: number }
-  - { name: SWITCH, category: logical, milestone: M5, scope: in }
+  - name: SWITCH
+    category: logical
+    milestone: M5
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: expression, mode: value, type: any }
+      - { name: value, mode: value, type: any, repeat: { group: [value, result], min: 1, max: 126 } }
+      - { name: result, mode: value, type: any }
+      - { name: default, mode: value, type: any, optional: true }
   - { name: SYD, category: financial, milestone: M9, scope: in }
   # T does not lift over a range (probes/text-argument-modes F9); `value` only gets scalars from the generator.
   - name: T
@@ -1503,7 +1669,13 @@ functions:
   - { name: TREND, category: statistical, milestone: M9, scope: in }
   - { name: TRIMMEAN, category: statistical, milestone: M9, scope: in }
   - { name: TRIMRANGE, category: lookup, milestone: M6, scope: in }
-  - { name: "TRUE", category: logical, milestone: M5, scope: in }
+  - name: "TRUE"
+    category: logical
+    milestone: M5
+    scope: in
+    prior: 0.2
+    returns: bool
+    params: []
   - name: TRUNC
     category: math
     milestone: M5
@@ -1514,7 +1686,14 @@ functions:
       - { name: number, mode: value, type: number }
       - { name: num_digits, mode: value, type: number, optional: true, domain: { int: true, min: -6, max: 10 } }
   - { name: TTEST, category: statistical, milestone: M9, scope: in }
-  - { name: TYPE, category: information, milestone: M5, scope: in }
+  # A range or array is 64, no lift (probes/info-logic-argument-modes A7, A23).
+  - name: TYPE
+    category: information
+    milestone: M5
+    scope: in
+    prior: 0.2
+    returns: number
+    params: [{ name: value, mode: array, type: any }]
   - name: UNICHAR
     category: text
     milestone: M5
@@ -1570,7 +1749,15 @@ functions:
   - { name: XLOOKUP, category: lookup, milestone: M6, scope: in }
   - { name: XMATCH, category: lookup, milestone: M6, scope: in }
   - { name: XNPV, category: financial, milestone: M9, scope: in }
-  - { name: XOR, category: logical, milestone: M5, scope: in }
+  # Like AND: text and blanks in a range or array are skipped, direct text is coerced, a lone text cell is #VALUE! (probes/info-logic-argument-modes A1:A5, -2 A10:A11); XOR() is refused (T-1088).
+  - name: XOR
+    category: logical
+    milestone: M5
+    scope: in
+    prior: 0.1
+    returns: bool
+    params:
+      - { name: logical, mode: aggregate, type: bool, repeat: true, min: 1, max: 254 }
   - { name: YEARFRAC, category: date, milestone: M6, scope: in }
   - { name: YIELD, category: financial, milestone: M9, scope: in }
   - { name: YIELDDISC, category: financial, milestone: M9, scope: in }

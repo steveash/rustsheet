@@ -177,7 +177,13 @@ class Gen:
         while i < len(params):
             p = params[i]
             # Excel allows omitting trailing optionals only.
-            if p.get("optional") and self.rng.random() < 0.4 and all(q.get("optional") for q in params[i:]):
+            # `always` optionals are never omitted (CELL's reference: without it CELL reads the cell last changed).
+            if (
+                p.get("optional")
+                and not p.get("always")
+                and self.rng.random() < 0.4
+                and all(q.get("optional") for q in params[i:])
+            ):
                 break
             rep = p.get("repeat")
             if isinstance(rep, dict):
@@ -194,6 +200,9 @@ class Gen:
 
     def argument(self, p: dict[str, Any], depth: int) -> str:
         mode = p.get("mode", "value")
+        if mode == "range" and p.get("cell"):
+            # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
+            return self.cell_ref()
         if mode == "range" or (mode == "array" and self.rng.random() < 0.5):
             return self.range_ref(width=self.rng.randint(1, min(4, self.data_cols)))
         if mode == "criteria":
@@ -205,6 +214,8 @@ class Gen:
         # A `hard` domain is never violated: outside it Excel refuses the workbook (MUNIT(10^6)).
         if dom.get("int") and (dom.get("hard") or self.rng.random() < 0.7):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
+        if dom.get("enum") and (dom.get("hard") or self.rng.random() < 0.7):
+            return '"' + str(self.rng.choice(dom["enum"])) + '"'
         return self.expr(p.get("type", "any"), depth + 1)
 
     def weighted(self, items: list[dict[str, Any]]) -> dict[str, Any]:
