@@ -144,8 +144,8 @@ is "1.23457E+98", `E+99` "1.2346E+99", `E-98` "1.23457E-98", `9.87654321098765E-
 up to 10 carries into the exponent: `9.9999996E+98` → "1E+99", `E+99` → "1E+100", `E-98` → "1E-97", `E-99` → "1E-98",
 `E-10` → "1E-09" (never "10E+98"); `9.9999996E+10` stays fixed "99999996000". Evidence:
 probes/text-general-exponent-boundary (excel-graph, 2026-10-07). It is implemented in the formatter's General branch (T-0986, carry T-1001). D8
-(`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) needs the 11-character
-fixed-versus-E rule, T-0938, and still fails.
+(`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) follows the 11-character
+fixed-versus-E rule (number-formats.md, T-0938) and passes.
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
 probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,

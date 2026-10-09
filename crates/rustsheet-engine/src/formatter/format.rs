@@ -1,3 +1,4 @@
+use super::general::format_general;
 use crate::{
     locale::Locale,
     number_format::{parse_excel_number, to_precision},
@@ -240,60 +241,14 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             error: Some("Problem parsing format string".to_owned()),
         },
         ParsePart::General(..) => {
-            // FIXME: This is "General formatting"
-            // We should have different codepaths for general formatting and errors
-            let value_abs = value.abs();
-            if (1.0e-8..1.0e+11).contains(&value_abs) {
-                let mut text = format!("{value:.9}");
-                text = text.trim_end_matches('0').trim_end_matches('.').to_string();
-                if locale.numbers.symbols.decimal != "." {
-                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-                }
-                Formatted {
-                    text,
-                    color: None,
-                    error: None,
-                }
-            } else {
-                if value_abs == 0.0 {
-                    return Formatted {
-                        text: "0".to_string(),
-                        color: None,
-                        error: None,
-                    };
-                }
-                let mut exponent = value_abs.log10().floor();
-                value /= 10.0_f64.powf(exponent);
-                // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
-                // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
-                // "Exponent width").
-                let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
-                let mut decimals = decimals_for(exponent);
-                let mut s = format!("{value:.decimals$}");
-                // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa
-                // carries into the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
-                // (probes/text-general-exponent-boundary A5-A8, A10).
-                if s.trim_start_matches('-').starts_with("10.") {
-                    exponent += 1.0;
-                    value = value.signum();
-                    decimals = decimals_for(exponent);
-                    s = format!("{value:.decimals$}");
-                }
-                let sign = if exponent < 0.0 { '-' } else { '+' };
-                let mut text = format!(
-                    "{}E{}{:02}",
-                    s.trim_end_matches('0').trim_end_matches('.'),
-                    sign,
-                    exponent.abs()
-                );
-                if locale.numbers.symbols.decimal != "." {
-                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-                }
-                Formatted {
-                    text,
-                    color: None,
-                    error: None,
-                }
+            let mut text = format_general(value);
+            if locale.numbers.symbols.decimal != "." {
+                text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+            }
+            Formatted {
+                text,
+                color: None,
+                error: None,
             }
         }
         ParsePart::Date(p) => {

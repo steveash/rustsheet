@@ -20,8 +20,10 @@ const TIME_2_30_AM: &str = "0.104166667"; // 2:30 AM = 2.5/24 ≈ 0.104166667
 const TIME_1_AM: &str = "0.041666667"; // 1:00 AM = 1/24 ≈ 0.041666667
 const TIME_9_PM: &str = "0.875"; // 9:00 PM = 21/24 = 0.875
 const TIME_2_AM: &str = "0.083333333"; // 2:00 AM = 2/24 ≈ 0.083333333
-                                       // Additional helper: 1-second past midnight (00:00:01)
-const TIME_00_00_01: &str = "0.000011574"; // 1 second = 1/86400 ≈ 0.000011574
+
+// Additional helper: 1 second past midnight (00:00:01) = 1/86400. General prints it in E notation
+// (inferred from probes/number-text-exponent-digits D8, T-0938: "0.000011574" keeps 5 digits of 6).
+const TIME_00_00_01: &str = "1.15741E-05";
 
 /// Helper function to set up and evaluate a model with time expressions
 fn test_time_expressions(expressions: &[(&str, &str)]) -> crate::model::Model {
