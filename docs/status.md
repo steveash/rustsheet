@@ -5,69 +5,78 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
-## Snapshot — 2026-10-08 (M1 in progress)
+## Snapshot — 2026-10-09 (M1 in progress)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
-| ironcalc-calc | 214 | 72,197 | 97.84% | 1,558 |
-| poi | 336 | 27,290 | 97.96% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 572 |
-| gen-m2 | 30 | 12,000 | 99.61% | 47 |
-| gen-m1 | 15 | 3,750 | 99.79% (M1 exit needs 100%; 8 cells left, all last-digit) | 8 |
-| probes | 267 | 8,641 | 97.12% | 252 |
+| ironcalc-calc | 217 | 72,203 | 97.86% | 1,547 |
+| poi | 336 | 27,290 | 97.97% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 570 |
+| gen-m2 | 30 | 12,000 | 99.62% | 46 |
+| gen-m1 | 15 | 3,750 | 99.79% (M1 exit needs 100%; 8 cells left, all power-operator last-digit, T-0221) | 8 |
+| probes | 353 | 10,527 | 96.48% (4 accepted deviations, 11 cells passed by decision 0042) | 371 |
 | smoke | 6 | 46 | 100% | 0 |
-| fixtures | 4 | 37 | 62.16% (T-0278 fixture, new coverage) | 14 |
-| probes-numeric | 27 | 10,129 | 51.43% | not gated |
+| fixtures | 6 | 67 | 100% | 0 |
+| gen-m5 | 10 | 360 | 97.50% (not gated; 1 case times out, T-1197) | not gated |
+| probes-numeric | 27 | 10,129 | 53.82% | not gated |
 
-`make eval` on `main` (bccce59). `eval-check` shows 0 regressions in every suite. CI on `main` (bccce59) is green.
-Probes known failures rose 192 → 252 with 135 new probe cases (new coverage, not regressions).
+`make eval` on `main` (2da0c8c). `eval-check` shows 0 regressions in every suite. CI on `main` is green (last completed run, 71bc356; the run on 2da0c8c was still in progress).
+Probes known failures rose 252 → 371 with 86 new probe cases (new coverage, not regressions).
+Frozen M1 probe list (`eval/milestones/m1-probes.txt`): 89 cases, 1,856 cells, 1,845 bit-exact, 12 known failures in 4 cases: error-stored-constants (7 cells: T-1020 spec, T-1221, T-1222), number-text-exponent-digits D8 (T-0938, moved to M1), paren-number-text-forms (3 cells: T-0282, now P1) and multiarea-printarea (load error: T-1193, now P1).
 
-Hygiene: lint-debt 99 allow entries · duplicated lines 7,158 (ratchet file still 7,323) · oversized files 16 (ratchet file still lists 18; `text/common.rs` and `math_and_trigonometry/mathematical.rs` are now under the limit).
+Hygiene: lint-debt 99 allow entries · duplicated lines 6,835 (ratchet file still 7,158) · oversized files 15 (ratchet file still lists 16; `expressions/parser/mod.rs` is now under the limit).
 `quality/` is protected, so the next PR that touches it records the drops.
 
-Since the 2026-10-07 snapshot (108315e), 50 PRs merged to `main` through bccce59, all tasks, and none was reverted:
-T-0049/0052, T-0110, T-0165/0180/0183, T-0223, T-0261/0262/0263/0267, T-0274/0275/0277/0279/0280/0281/0284,
-T-0935/0952/0984, T-1004/1005/1006/1008/1010/1011/1017, T-1040/1041/1050/1059,
-T-1107–T-1109, T-1111–T-1116, T-1118–T-1122, T-1125–T-1128. T-1132 (#372), T-0191 (#371, deviation scoring) and T-1019 (#373) merged during this run, after the eval above.
-Blocked (12): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp);
-the M14 desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081 (decision 0039).
-T-1100 is blocked on its branch (#314, draft).
+Since the 2026-10-08 snapshot (da9d5d9), 89 PRs merged to `main` through 2da0c8c. 86 were tasks and 3 were task or decision filings (#376, #383, #385). None was reverted.
+- T-0163, T-0229, T-0230, T-0235, T-0276, T-0278, T-0285–T-0287, T-0289
+- T-1013, T-1014, T-1027, T-1036, T-1062–T-1065, T-1068–T-1073, T-1079, T-1082, T-1087, T-1092, T-1096
+- T-1110, T-1117, T-1120, T-1123, T-1124, T-1133–T-1157 (except T-1155)
+- T-1159–T-1161, T-1163, T-1164, T-1166–T-1168, T-1170–T-1173, T-1175, T-1176
+- T-1179, T-1180, T-1182–T-1185, T-1188, T-1192, T-1199, T-1203, T-1205–T-1208
 
-**Nightly fuzz is red, with two real findings.** The T-1067 build fix works: run 37724893331 (2026-10-08, b38d244) fuzzed, and two of three targets failed.
-- `formula_eval` ran out of memory on `OR(IFERROR(ERROR.TYPE(TRUNC($Z$1))=5,F:LSE))`. OR walks every cell of the 8,606 whole columns and memory grows per empty cell (`OR(F:AZ)`: 23 s, 4.3 GB). This is T-0230, now P0 and moved to `functions-logic`.
-- `xlsx_import` panicked on an unmutated seed, `fixtures/ifs-legacy-range-criteria.xlsx`. Its legacy `COUNTIFS(A1:A6,D1:D2)` hits the debug_assert "Larger-than-1x1 array reached scalar-context cell" (`model.rs:984`). This is T-0278, now P0.
-- Both were reproduced locally on bccce59. Each task now carries the reproducer, and its unit test is an acceptance criterion (decision 0035).
-- `formula_parse` passed its 20 minutes.
+Blocked (13): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp);
+the M14 desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081, T-1174 (decision 0039).
 
-Open PRs at the start of the run: 5, none older than 24 h, so none needed steward action.
-- #370 (T-1013, draft, handed off to opus) is under 1 h old. #371 (T-0191) merged during this run.
-- #330 (T-0411) is about 10 h old.
-- #312 (T-1079) and #314 (T-1100, draft, blocked) are about 15 h old.
-- #203, #129 and #105 from the last run are closed. T-0040 is done.
+**Nightly fuzz is red again, with two new findings.** Run 37881397477 (2026-10-09, b5dd7cd): `xlsx_import` passed (the T-0278 fix holds), and two targets failed.
+- `formula_eval` panicked on `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`. This is the same debug_assert as T-0278 ("Larger-than-1x1 array reached scalar-context cell", now `model.rs:998`), reached through AGGREGATE. I reproduced it locally on 2da0c8c. Filed as T-0296 (P0, functions-math), with the reproducer.
+- `formula_parse` stopped at libFuzzer's 2 GB RSS limit after 2.5M runs. The artifact is the empty input, and the live heap was only 46.6 MB (33.7 MB in ASan quarantine). This looks like RSS growth rather than one bad input, but no leak in our code has been ruled out. Filed as T-1220 (P0, harness).
 
-T-0163's claim branch has had no commit since 2026-10-07 08:27, so workers will resume it.
+Open PRs: 5.
+- #330 (T-0411, about 34 h old) is green and approved but about 100 commits behind `main`. I test-merged `main`; `make check` then fails the oversized-file ratchet (`functions/mod.rs` 2388 → 2393). I commented the blocker on the PR and pushed nothing.
+- #314 (T-1100, draft, about 39 h old) is blocked, and its task is blocked on its branch. No action.
+- #409 (T-1155, draft, blocked on T-0916) is about 14 h old, #436 (T-1186, draft, blocked) about 8 h and #461 (T-0953) about 1 h.
 
 Queues at the start of the run:
-- functions: 36 ready. The sonnet buffer is 19. research 13, quality 6, perf 5 (Phase 2).
-- engine and harness: 0 ready only because both lanes are busy. They have 15 and 5 unclaimed M1 todo tasks (engine 14 and harness 4 after T-1019 and T-0191 merged).
-- research has 1 M1 todo task and api has only the claimed T-0163, so the planner ran for M1 research and filed T-1137–T-1140 (sonnet probes). It filed no api tasks: no M1 api scope is left.
-- The gap-triager did not run: functions has 36 ready, and the sonnet buffer is at least 10.
+- functions: 41 ready. The sonnet buffer is 21.
+- engine: 19 ready. quality 6, perf 7.
+- harness, research and api: 0 ready. research has 7 unclaimed M1 todo tasks, but its lane is busy. harness had 1 M1 todo task.
+- The planner ran for M1. It filed T-1221 (harness, eval adapter loads stored error cells) and T-1222 (engine, the stored #BUSY! kind), cut T-1020 down to its SPEC-0003 amendment (now P1), moved T-0938 into M1 (engine, P1, for number-text-exponent-digits D8), and raised T-1193 and T-0282 to P1. It filed no api tasks: no M1 api scope is left.
+- The gap-triager did not run: functions has 41 ready, and the sonnet buffer is at least 10.
 
-Upstream IronCalc: 3 new commits past 09e81f53, now triaged through 106c587d.
-- 753da658 and 03beb38e (spaces around DATEVALUE/TIMEVALUE separators) and 106c587d (DATEVALUE rolls over at 24:00) became T-1136 (functions-date, sonnet).
-- TIMEVALUE spacing and the space-separated 24:00 rollover already match. Spaced DATEVALUE forms and `T24:00:00` do not.
+Upstream IronCalc: 9 new commits past 106c587d, now triaged through 6a1d35a6. Three became tasks:
+- 4d38ff0e (quote doubling in conditional-format text rules) became T-0413 (engine, sonnet).
+- 31b0c731 (shared-string index, which removes a quadratic import) became T-0414 (engine, sonnet, P1).
+- b93d4224 (ROUND/TRUNC at 15 significant digits and huge digit counts) became T-0297 (functions-math, probe first).
+- Skipped: 6a1d35a6 (test-only), and the storage refactors 65608f71, c7b71f00, a9975baa, dff5eec8 and fc767b35 (Phase 2 storage and MMULT on number ranges).
 
-Oracle: excel-graph OK. The fill on ironcalc-calc wrote 0 sidecars (211 skipped). The fill on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
+Oracle: excel-graph OK. The fill on ironcalc-calc wrote 0 sidecars (214 skipped). The fill on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
 
-Spot-audit: none yet. The first weekly audit is due 2026-10-09.
+Spot-audit: 2026-10-09, the first weekly audit. I re-reviewed #464 (T-1117), #448 (T-1185) and #453 (T-1092) with every reviewer on opus.
+- Opus approved #464 and #448. On #453, reviewer-quality returned REQUEST_CHANGES.
+- Misses (each finding was missed by the reviewer of the same role at merge time, which runs on the model set in decision 0015):
+  - #453, reviewer-quality (merge-time sonnet): `bind_argument` repeats the INDEX-as-reference rule that `Model::eval_ref_or_index` already owns (directive 3). This is a real defect, now T-1223.
+  - #453, reviewer-excel-fidelity (merge-time opus) and reviewer-architecture (merge-time sonnet): references.md claims more than the probes show (union bindings, erroring arguments, empty elements, other reference-returning functions). Now T-1224.
+  - #464, reviewer-excel-fidelity (merge-time opus) and reviewer-architecture (merge-time sonnet): the parser refuses negated `:`/`#` operands on inference only, while Excel loads negated union operands. T-1216 is raised to P2, with the negated forms first.
+  - #448, reviewer-excel-fidelity (merge-time opus): moving SUBTOTAL's variance codes onto `excel_variance` applies the two-pass switch and overflow `#NUM!` without a SUBTOTAL probe. Now T-0298.
+  - Minor findings that were not filed: #448's four SUBTOTAL variance wrappers could share one function; #464's four parser refusal-error builders could share one helper.
+- The next audit is due 2026-10-16.
 
-**Critical lane:** engine, harness, research, api
+**Critical lane:** engine, harness, research
 
 (Ordered list read by both tier workers, which then fall back to `functions`.
-- M1 exit needs gen-m1 at 100% (8 last-digit cells left) and probes at 100% (252 known failures before T-0191; accepted deviations now score in their own column).
-- engine holds the parity work.
-- harness has 4 M1 todo tasks (T-1014, T-1036, T-1096, T-1133). T-0191, the deviation scoring that M1 exit is measured with, merged during this run.
-- research holds the probes that settle open questions. api holds only T-0163.
-- The two fuzz P0s are in `functions-logic` and `functions-criteria`, which workers reach through `functions` (P0 first). perf stays out: Phase 2.)
+- M1 exit needs gen-m1 at 100% (8 last-digit cells, T-0221) and the frozen M1 probe list at 100% (12 cells, owned by T-1020/T-1221/T-1222, T-0938, T-0282 and T-1193).
+- engine holds most of that work. harness holds T-1221 (and the T-1220 fuzz P0). research holds the probes that settle open questions.
+- api is off the line: no M1 api scope is left.
+- The new fuzz P0 T-0296 is in `functions-math`, which workers reach through `functions` (P0 first). perf stays out: Phase 2.)
 
 ## Needs owner
 

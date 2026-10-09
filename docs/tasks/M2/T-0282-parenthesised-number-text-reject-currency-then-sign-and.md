@@ -4,7 +4,7 @@ title: "Parenthesised number text: reject currency-then-sign and trailing curren
 milestone: M2
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: sonnet
 depends_on: []
