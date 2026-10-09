@@ -3,7 +3,7 @@ id: T-1224
 title: "Probe called LET names bound to unions, erroring arguments, empty elements and other reference-returning functions"
 milestone: M1
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,9 +28,12 @@ Write the probe cases (excel-probe skill), get excel-graph values, record each r
 (remove claims the oracle contradicts) and file engine tasks for mismatches.
 
 ## Acceptance criteria
-- [ ] A probe case covering every form above is oracle-filled and committed.
-- [ ] references.md states only what the evidence shows; each engine mismatch has a filed task.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case covering every form above that the web oracle can open is oracle-filled and committed.
+- [x] references.md states only what the evidence shows; each engine mismatch has a filed task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Fixing the engine (file tasks).
+
+## Outcome
+probes/let-name-call-forms (17 checked cells, excel-graph). Union and XLOOKUP/TAKE/DROP/TRIMRANGE callees are `#REF!` (engine mismatches: T-1231, T-1232); erroring arguments behave as documented. `LAMBDA(f,f(2))()` is `#VALUE!` but only tests LAMBDA's arity; a real empty element cannot be probed (Excel for the web refuses `LAMBDA([f],f(2))()`), so the `#NAME?` mapping stays UNVERIFIED in references.md. `make eval-baseline` records 7 new known failures from those mismatches.

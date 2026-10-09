@@ -1,0 +1,82 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "H1": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H10": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H11": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H12": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H13": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H14": {
+    "t": "e",
+    "v": "#DIV/0!"
+   },
+   "H15": {
+    "t": "n",
+    "v": 3.0
+   },
+   "H16": {
+    "t": "s",
+    "v": "e"
+   },
+   "H17": {
+    "t": "b",
+    "v": true
+   },
+   "H2": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H3": {
+    "t": "n",
+    "v": 0.0
+   },
+   "H4": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H5": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H7": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H8": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "H9": {
+    "t": "e",
+    "v": "#REF!"
+   },
+   "I5": {
+    "t": "e",
+    "v": "#NAME?"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "136c63e2c91b58ab491d15c1efd3abb15577c414a1ef3575fbed7884a3f027cc",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-09T09:01:26+00:00",
+  "version": null
+ }
+}

@@ -172,6 +172,7 @@ C	probes/lcm-result-edge.case.json	6
 C	probes/let-bind-reference-forms.case.json	11
 C	probes/let-name-call-arrays.case.json	4
 C	probes/let-name-call-bool.case.json	2
+C	probes/let-name-call-forms.case.json	17
 C	probes/let-name-call-refs.case.json	7
 C	probes/let-name-call-text-abc.case.json	1
 C	probes/let-name-call-text-digit.case.json	1
@@ -658,6 +659,13 @@ F	probes/info-logic-argument-modes-2.case.json	Calc!B5
 F	probes/info-logic-argument-modes.case.json	Calc!A15
 F	probes/info-logic-argument-modes.case.json	Calc!A19
 F	probes/info-logic-argument-modes.case.json	Calc!B15
+F	probes/let-name-call-forms.case.json	Sheet1!H1
+F	probes/let-name-call-forms.case.json	Sheet1!H11
+F	probes/let-name-call-forms.case.json	Sheet1!H13
+F	probes/let-name-call-forms.case.json	Sheet1!H2
+F	probes/let-name-call-forms.case.json	Sheet1!H7
+F	probes/let-name-call-forms.case.json	Sheet1!H8
+F	probes/let-name-call-forms.case.json	Sheet1!H9
 F	probes/math-argument-modes.case.json	Sheet1!C35
 F	probes/math-argument-modes.case.json	Sheet1!C44
 F	probes/math-argument-modes.case.json	Sheet1!C47
