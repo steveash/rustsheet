@@ -242,7 +242,7 @@ C	probes/multiarea-let.case.json	3
 C	probes/multiarea-letbind.case.json	16
 C	probes/multiarea-more.case.json	14
 C	probes/multiarea-order-stats.case.json	33
-C	probes/multiarea-printarea.case.json	0
+C	probes/multiarea-printarea.case.json	2
 C	probes/multiarea-rank.case.json	5
 C	probes/multiarea-subtotal-counts-a.case.json	17
 C	probes/multiarea-subtotal-counts-b.case.json	5
@@ -873,7 +873,6 @@ F	probes/math-argument-modes.case.json	Sheet1!C51
 F	probes/math-argument-modes.case.json	Sheet1!C52
 F	probes/math-argument-modes.case.json	Sheet1!C53
 F	probes/math-argument-modes.case.json	Sheet1!C9
-F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/multinomial-large-arguments.case.json	Sheet1!A1
 F	probes/multinomial-large-arguments.case.json	Sheet1!A11
 F	probes/multinomial-large-arguments.case.json	Sheet1!A13

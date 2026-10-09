@@ -23,7 +23,7 @@ Goals:
 Non-goals (later phases per api-design.md "Phasing"): incremental `ChangeSet` from dirty
 propagation, `CalcMode`, precedents/dependents (v0.5, M3); snapshots, scenarios, structural edits
 and `RefMap` (v0.8, M4); undo/redo; styles; tables and names editing beyond adding a
-workbook-scoped name (`Txn::define_name`, T-0043); `Calculator`; Java/FFI;
+workbook- or sheet-scoped name (`Txn::define_name`, T-0043; `Txn::define_sheet_name`, T-1193); `Calculator`; Java/FFI;
 numpy/arrow bulk transfer (M12). The `UserModel` UI layer stays out of the facade.
 
 ## Excel behavior to match
@@ -159,6 +159,7 @@ impl Txn<'_> {
     pub fn delete_sheet(&mut self, id: SheetId) -> Result<(), EditError>;
     pub fn first_sheet(&self) -> Result<SheetId, EditError>;
     pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError>; // workbook scope; T-0043
+    pub fn define_sheet_name(&mut self, sheet: SheetId, name: &str, formula: &str) -> Result<(), EditError>; // sheet scope; T-1193
     pub fn set_row_hidden(&mut self, sheet: SheetId, row: u32, hidden: bool) -> Result<(), EditError>; // 0-based row, manual hide; T-1168
     pub fn add_table(&mut self, range: RangeRef, name: &str, filtered: bool) -> Result<(), EditError>; // header row first; T-1036
 }
