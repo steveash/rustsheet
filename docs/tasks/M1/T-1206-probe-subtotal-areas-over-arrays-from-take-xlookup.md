@@ -3,7 +3,7 @@ id: T-1206
 title: "Probe SUBTOTAL/AREAS over arrays from TAKE/XLOOKUP, AREAS error elements, SUM of XLOOKUP cells (follow-up of T-1175)"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1175 sized XLOOKUP/TAKE/DROP/TRIMRANGE as scalars for SUBTOTAL/AREAS spill sha
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/subtotal-reference-operands-c` (excel-graph) answered all cells. Excel spills SUBTOTAL/AREAS over TAKE of a literal array, keeps the error element in AREAS, and SUM/COUNT/AVERAGE treat a single-cell XLOOKUP/TAKE result as a reference. Engine now matches (spill analysis excludes literal-array sources; SUM/COUNT/AVERAGE use `evaluate_picked_reference_arg`). Other aggregates stay UNVERIFIED in references.md.

@@ -235,11 +235,11 @@ impl Model {
         RefArg::from(result)
     }
 
-    /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL and AREAS take: XLOOKUP, TAKE,
-    /// DROP and TRIMRANGE over a range are also the cells they pick (probes/subtotal-reference-
-    /// operands-b H12, H15:H17, T-1175). Only these two functions are probed; SUM and the other
-    /// aggregates still evaluate those calls to values. The call list is repeated in
-    /// `is_read_reference` (static_analysis/aggregate.rs).
+    /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT and AVERAGE
+    /// take: XLOOKUP, TAKE, DROP and TRIMRANGE over a range are also the cells they pick
+    /// (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206). The other
+    /// aggregates are not probed and still evaluate those calls to values. The call list is
+    /// repeated in `is_read_reference` (static_analysis/aggregate.rs).
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
         node: &Node,
