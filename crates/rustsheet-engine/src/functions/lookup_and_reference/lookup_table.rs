@@ -34,7 +34,8 @@ impl LookupTable {
     }
 
     /// The cell at the 0-based `(row, column)` offset as a 1x1 reference when the table is a
-    /// range and `as_reference` is set (an aggregate argument sees it so, T-0235), else its value.
+    /// range and `as_reference` is set (an aggregate argument sees it so when the lookup's index
+    /// argument is a cell reference, T-0295), else its value.
     /// Callers must ensure the offsets are within bounds.
     pub(super) fn pick(
         &self,

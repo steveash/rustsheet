@@ -14,6 +14,7 @@ use crate::{
 };
 
 use super::criteria::wildcard_text_matcher;
+use index_arg::LookupIndexArg;
 use lookup_table::{LookupTable, SearchVector};
 
 mod address_areas;
@@ -347,9 +348,9 @@ impl Model {
         self.hlookup_impl(args, cell, false)
     }
 
-    /// HLOOKUP; `as_reference` gives the picked cell of a range table as a reference, as an
-    /// aggregate argument sees it: COUNT skips a picked FALSE (gen-m2 60a543744fc4a8f7 A200,
-    /// excel-graph; T-0235).
+    /// HLOOKUP; `as_reference` gives the picked cell of a range table as a reference to an
+    /// aggregate argument, but only when the row index argument is itself a cell reference
+    /// (docs/excel-semantics/references.md, probes/lookup-pick-aggregates P1-P6, Q1-Q6; T-0295).
     pub(crate) fn hlookup_impl(
         &mut self,
         args: &[Node],
@@ -367,6 +368,7 @@ impl Model {
             Ok(index) => index,
             Err(error) => return error,
         };
+        let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
                 Ok(v) => v,
@@ -419,9 +421,9 @@ impl Model {
         self.vlookup_impl(args, cell, false)
     }
 
-    /// VLOOKUP; `as_reference` gives the picked cell of a range table as a reference, as an
-    /// aggregate argument sees it: COUNT skips a picked FALSE (gen-m2 60a543744fc4a8f7 A200,
-    /// excel-graph; T-0235).
+    /// VLOOKUP; `as_reference` gives the picked cell of a range table as a reference to an
+    /// aggregate argument, but only when the column index argument is itself a cell reference
+    /// (docs/excel-semantics/references.md, probes/lookup-pick-aggregates P1-P6, Q1-Q6; T-0295).
     pub(crate) fn vlookup_impl(
         &mut self,
         args: &[Node],
@@ -439,6 +441,7 @@ impl Model {
             Ok(index) => index,
             Err(error) => return error,
         };
+        let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
         let is_sorted = if args.len() == 4 {
             match self.get_boolean(&args[3], cell) {
                 Ok(v) => v,

@@ -3,7 +3,8 @@
 //! can be plugged in and compared side by side.
 
 use rustsheet::{
-    CellRef, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue, Workbook, WorkbookOptions,
+    CellRef, ErrorKind, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue, Workbook,
+    WorkbookOptions, XlError,
 };
 
 use crate::case::{CaseSpec, CellInput};
@@ -176,6 +177,11 @@ fn spec_input(input: &CellInput) -> Option<Input> {
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
             Input::Value(ApiValue::Text(s.as_str().into()))
         }
+        // As xlsx import reads `<c t="e">`: the stored-name table, `#ERROR!` for an unknown name (the one
+        // difference: `from_literal` folds case, the importer does not; no case stores a lowercase name).
+        CellInput::StoredError(e) => Input::Value(ApiValue::Error(XlError::new(
+            ErrorKind::from_literal(&e.v).unwrap_or(ErrorKind::Unknown),
+        ))),
         CellInput::Typed(Value::Error(e)) | CellInput::Entered { entered: e } => {
             Input::Parse(e.clone())
         }
@@ -243,6 +249,29 @@ mod tests {
             evaluated.value("Calc", Addr { row: 1, col: 1 }),
             Some(Value::Number(10.0))
         );
+    }
+
+    #[test]
+    fn stored_error_cells_load_as_constants_not_text() {
+        let spec = spec(
+            r##"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":{"t":"e","v":"#N/A","stored":true},
+                "A2":{"t":"e","v":"#GETTING_DATA","stored":true},
+                "A3":{"t":"e","v":"#BUSY!","stored":true},
+                "A4":{"t":"e","v":"#N/A"},
+                "B2":"=ERROR.TYPE(A2)"}}]}"##,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let at = |row| evaluated.value("S", Addr { row, col: 1 });
+        assert_eq!(at(1), Some(Value::Error("#N/A".into())));
+        assert_eq!(at(2), Some(Value::Error("#N/A".into())));
+        assert_eq!(
+            evaluated.value("S", Addr { row: 2, col: 2 }),
+            Some(Value::Number(8.0))
+        );
+        // Unknown to the stored-name table: `#ERROR!` (xlsx import's fallback), not the text "#BUSY!".
+        assert_eq!(at(3), Some(Value::Error("#ERROR!".into())));
+        assert_eq!(at(4), Some(Value::Error("#N/A".into())));
     }
 
     #[test]
