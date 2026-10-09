@@ -65,3 +65,4 @@ case's checked-cell count or a failure's verdict changes, say so in the PR.
 
 ## Outcome
 Added `£`, `¥` and `|` to the unquoted literal list in the formatter lexer (`next_token`). poi known failures 570 -> 557 (13 fixed, no regressions, no new F lines); unit test added; number-formats.md has the `Implemented in:` line.
+Side effect: fraction formats containing `|` (e.g. poi/NumberFormatTests.xlsx Tests!A120:A124) changed verdict from TypeMismatch (#VALUE!) to TextMismatch (wrong text, e.g. A120 actual "|:2/4|"); they remain known failures, no new F lines.
