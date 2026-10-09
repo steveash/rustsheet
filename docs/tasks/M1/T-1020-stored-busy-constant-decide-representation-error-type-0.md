@@ -3,7 +3,7 @@ id: T-1020
 title: "Stored #BUSY! constant: decide representation (ERROR.TYPE 0) per SPEC-0003"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: opus
