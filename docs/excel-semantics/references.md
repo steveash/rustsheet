@@ -104,9 +104,9 @@ VLOOKUP's and HLOOKUP's picked cell is a reference to an aggregate only when the
 cell reference: `COUNT(HLOOKUP(42,F5:G6,G5))` (G5 holds 2, picking FALSE) is 0, `SUM(VLOOKUP(2,I5:J7,A2))` picking text "5" is 0,
 `MAX(VLOOKUP(3,I5:J7,A2))` picking text "x" is 0 (probes/lookup-pick-aggregates P1-P3, P5, P6, Q1, Q2, Q4, Q6; a parenthesized
 reference counts as one). With a literal or computed index (`INT(Data!A10)`) the pick is a plain value: `COUNT(VLOOKUP(1,A1:B3,2,FALSE))`
-picking FALSE is 1, `SUM` of a picked "5" is 5, `MAX` of a picked "x" is `#VALUE!` (D1-D3, D13-D15, E1-E14, P4, Q3). That holds for exact and
+picking FALSE is 1, `SUM` of a picked "5" is 5, `MAX` of a picked "x" is `#VALUE!` (D1-D3, D13, E1-E14, P4, Q3). That holds for exact and
 approximate match, a fractional literal index, a table on another sheet, and array tables (D4, D5, D8, D9); a reference
-lookup value changes nothing (P8, P9). `ISREF` of the lookup result is FALSE either way (D12, D16, E6, E12, P7), so the reference-ness is
+lookup value changes nothing (P8). `ISREF` of the lookup result is FALSE either way (D12, E6, E12, P7), so the reference-ness is
 visible only to aggregates. This explains gen-m2/60a543744fc4a8f7 A200 (index `Data!C9` is a cell, the picked FALSE is skipped: -2;
 replicated in L1-L7). A bare `=HLOOKUP(..)` is the picked value (N1-N7).
 `INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); `INDEX(A1:A3,2) A1:A3` is the picked cell (E16, E17).
