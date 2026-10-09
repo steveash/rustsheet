@@ -273,7 +273,7 @@ impl Model {
             };
         }
         if left == right {
-            return CalcResult::Boolean(self.has_formula(left));
+            return CalcResult::Boolean(self.cell_has_formula(left));
         }
         // A multi-cell reference lifts, one flag per cell (probes/info-logic-argument-modes A11:B11,
         // excel-graph); cells outside the used area hold no formula.
@@ -300,7 +300,7 @@ impl Model {
                             row,
                             column,
                         };
-                        ArrayNode::Boolean(inside && self.has_formula(at))
+                        ArrayNode::Boolean(inside && self.cell_has_formula(at))
                     })
                     .collect()
             })
@@ -308,7 +308,7 @@ impl Model {
         CalcResult::Array(flags)
     }
 
-    fn has_formula(&self, at: CellReferenceIndex) -> bool {
+    fn cell_has_formula(&self, at: CellReferenceIndex) -> bool {
         matches!(
             self.get_cell_formula(at.sheet, at.row, at.column),
             Ok(Some(_))
