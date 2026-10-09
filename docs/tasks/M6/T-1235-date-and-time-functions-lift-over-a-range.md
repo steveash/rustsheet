@@ -34,3 +34,6 @@ DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEE
 numeric text now works (F89). probes: 65 cells fixed, known failures 561 -> 496. Remaining probe cells are the
 date arguments of EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC over an array (T-1236) and
 G3/G4 (T-1237).
+Review notes: a single-cell range `weekend` (`NETWORKDAYS.INTL(1,30,C1:C1)`) and a 3D range in the lifted text/weekend
+arguments are unprobed and keep the old behavior (`#VALUE!` / first sheet); probe them before changing. Follow-up
+T-1295 (WORKDAY.INTL week stepping).

@@ -26,3 +26,20 @@ fn weekend_lifts_per_element() {
 
     assert_eq!(model._get_text("A2"), *"45007");
 }
+
+// Review of T-1235: the leftmost error wins over the unit and method of DATEDIF and DAYS360,
+// and a single-cell range is the value of its cell for TIMEVALUE.
+#[test]
+fn leftmost_error_and_single_cell_ranges() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEDIF(1/0,5,NA())");
+    model._set("A2", "=DAYS360(1/0,5,NA())");
+    model._set("B3", "10:30");
+    model._set("A3", "=TIMEVALUE(B3:B3)");
+
+    model.evaluate();
+
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"0.4375");
+}

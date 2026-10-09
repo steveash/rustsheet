@@ -181,6 +181,14 @@ use crate::{
     model::Model,
 };
 
+/// The error kind of a failed argument evaluation.
+fn error_kind(result: &CalcResult) -> Error {
+    match result {
+        CalcResult::Error { error, .. } => error.clone(),
+        _ => Error::VALUE,
+    }
+}
+
 /// Saturday-Sunday weekend (pattern 1), Monday first.
 const DEFAULT_WEEKEND: [bool; 7] = [false, false, false, false, false, true, true];
 
@@ -912,6 +920,23 @@ impl Model {
             }
             // An error argument is returned as it came (with its origin).
             err @ CalcResult::Error { .. } => err,
+            // A single-cell range is the value of its cell.
+            CalcResult::Range { left, .. } => {
+                let value = self.evaluate_cell(left);
+                self.lift_text_value(value, cell, op)
+            }
+            other => self.lift_text_value(other, cell, op),
+        }
+    }
+
+    fn lift_text_value(
+        &self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+        op: impl Fn(&Model, &ArrayNode) -> Result<f64, Error>,
+    ) -> CalcResult {
+        match value {
+            err @ CalcResult::Error { .. } => err,
             other => match op(self, &calc_result_to_array_node(other)) {
                 Ok(n) => CalcResult::Number(n),
                 Err(e) => CalcResult::new_error(e, cell, "Invalid value".to_string()),
@@ -924,15 +949,18 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let unit = match self.get_string(&args[2], cell) {
-            Ok(s) => s.to_uppercase(),
-            Err(e) => return e,
-        };
-
+        // The leftmost error wins, so a unit error only counts when the dates are fine.
+        let unit = self.get_string(&args[2], cell).map(|s| s.to_uppercase());
         // Both dates lift over a range or array (probes/date-argument-modes F5:F8).
-        self.lift_numbers(args, cell, "Invalid arguments", |[start, end]| {
-            Self::datedif_value(start, end, &unit)
-        })
+        self.lift_numbers(
+            args,
+            cell,
+            "Invalid arguments",
+            |[start, end]| match &unit {
+                Ok(unit) => Self::datedif_value(start, end, unit),
+                Err(e) => Err(error_kind(e)),
+            },
+        )
     }
 
     /// DATEDIF of two date serials for the (upper-cased) `unit`.
@@ -1050,13 +1078,11 @@ impl Model {
         }
         // The European-method flag follows Excel's logical coercion: numbers are
         // truthy when non-zero, and only the text "TRUE"/"FALSE" is accepted.
+        // The leftmost error wins, so a method error only counts when the dates are fine.
         let method = if args.len() == 3 {
-            match self.get_boolean(&args[2], cell) {
-                Ok(b) => b,
-                Err(s) => return s,
-            }
+            self.get_boolean(&args[2], cell)
         } else {
-            false
+            Ok(false)
         };
         // Both dates lift over a range or array (probes/date-argument-modes F15:F18).
         self.lift_numbers(
@@ -1066,7 +1092,8 @@ impl Model {
             |[start, end]| {
                 let start = excel_serial_to_ymd(days360_serial(start)).ok_or(Error::NUM)?;
                 let end = excel_serial_to_ymd(days360_serial(end)).ok_or(Error::NUM)?;
-                Ok(if method {
+                let method = method.as_ref().map_err(error_kind)?;
+                Ok(if *method {
                     days360_eu(start, end)
                 } else {
                     days360_us(start, end)
