@@ -6,6 +6,22 @@
     "t": "b",
     "v": true
    },
+   "A10": {
+    "t": "n",
+    "v": 5.0
+   },
+   "A11": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A12": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A13": {
+    "t": "s",
+    "v": "$B$1"
+   },
    "A2": {
     "t": "b",
     "v": true
@@ -29,14 +45,22 @@
    "A7": {
     "t": "n",
     "v": 2.0
+   },
+   "A8": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A9": {
+    "t": "n",
+    "v": 1.0
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "cc85ddf9ab615e204e867e9c53eb66f77b3da25cb301285b82f0f92037b503a2",
+  "input_sha256": "4b91aca442f2dd12432dcb895fb8730fb0cebd801aae986949e46800150cac3e",
   "kind": "excel-graph",
-  "produced_at": "2026-10-08T17:44:56+00:00",
+  "produced_at": "2026-10-09T02:03:23+00:00",
   "version": null
  }
 }

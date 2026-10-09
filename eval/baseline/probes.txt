@@ -103,7 +103,7 @@ C	probes/datevalue-comma-spaces.case.json	32
 C	probes/datevalue-separator-spaces-paths.case.json	15
 C	probes/datevalue-separator-spaces.case.json	32
 C	probes/defined-name-formula-bodies.case.json	17
-C	probes/defined-name-grouped-reference.case.json	7
+C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
