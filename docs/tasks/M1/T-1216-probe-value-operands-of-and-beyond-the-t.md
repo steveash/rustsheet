@@ -1,0 +1,31 @@
+---
+id: T-1216
+title: "Probe value operands of : and # beyond the T-1111 forms"
+milestone: M1
+lane: research
+status: todo
+priority: P3
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Oracle evidence on whether Excel loads value operands of `:` and of `#`/ANCHORARRAY that T-1111 did not probe, so the engine's inferred refusals (T-1117) are VERIFIED or corrected.
+
+## Context
+T-1117 made the parser refuse every operand of `:`, `#` and ANCHORARRAY that the intersection rule
+(`is_reference_operand`, parser/reference_operators.rs) refuses. Only `=A1:(1/0)`, `=(1/0):(A1 B1)`,
+`=(1/0):(A1 A2)` and `=ANCHORARRAY(1)` were probed (T-1111, one scratch workbook per formula). Unprobed and
+marked UNVERIFIED in docs/excel-semantics/references.md ("FORMULATEXT keeps the parentheses of an `@`
+operand..."): `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`,
+`=ANCHORARRAY(A1+0)`. Use the `excel-probe` skill; a refused workbook (`FileCorruptTryRepair`) is the expected
+evidence for a refusal, one scratch workbook per formula.
+
+## Acceptance criteria
+- [ ] Each listed formula is recorded as loading (with its value, as a probes case) or refused, in references.md.
+- [ ] Any form Excel loads that the engine refuses gets an engine follow-up task.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-
