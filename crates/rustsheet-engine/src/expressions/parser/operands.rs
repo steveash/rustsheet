@@ -19,6 +19,7 @@ impl Parser {
         }
     }
 
+    /// An array constant, `{1,2;3,4}`, after its `{`.
     pub(super) fn parse_array_operand(&mut self) -> Node {
         // It's an array. It's a collection of rows all of the same dimension
         let column_separator_token = self.get_column_separator_token();
@@ -61,6 +62,7 @@ impl Parser {
         Node::ArrayKind(matrix)
     }
 
+    /// A cell reference token, made relative to the formula's cell in A1 mode.
     pub(super) fn reference_operand(
         &mut self,
         sheet: Option<String>,
@@ -102,6 +104,7 @@ impl Parser {
         with_sheet_span(span, node)
     }
 
+    /// A range token, its corners ordered and made relative to the formula's cell in A1 mode.
     pub(super) fn range_operand(
         &mut self,
         sheet: Option<String>,
@@ -174,6 +177,7 @@ impl Parser {
         with_sheet_span(span, node)
     }
 
+    /// An identifier: a call when `(` follows, otherwise a name.
     pub(super) fn parse_identifier(&mut self, name: String) -> Node {
         let next_token = self.lexer.peek_token();
         // If this identifier is the last token before the cursor (its
@@ -314,6 +318,7 @@ impl Parser {
         }
     }
 
+    /// `TRUE` or `FALSE`, or the calls `TRUE()` and `FALSE()`.
     pub(super) fn parse_boolean_operand(&mut self, value: bool) -> Node {
         // Could be a function call "TRUE()"
         let next_token = self.lexer.peek_token();
@@ -349,6 +354,7 @@ impl Parser {
         Node::BooleanKind(value)
     }
 
+    /// A structured reference, `Table1[Column]`, resolved to the range it stands for.
     pub(super) fn structured_reference_operand(
         &mut self,
         table_name: String,
