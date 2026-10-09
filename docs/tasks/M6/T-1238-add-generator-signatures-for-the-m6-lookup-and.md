@@ -3,7 +3,7 @@ id: T-1238
 title: "Add generator signatures for the M6 lookup and reference functions"
 milestone: M6
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
