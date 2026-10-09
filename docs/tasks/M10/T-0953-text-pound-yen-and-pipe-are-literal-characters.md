@@ -3,7 +3,7 @@ id: T-0953
 title: "TEXT: £, ¥ and | are literal characters in number formats (13 poi known failures)"
 milestone: M10
 lane: functions-text
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -62,3 +62,6 @@ case's checked-cell count or a failure's verdict changes, say so in the PR.
   formats.
 - Any other currency symbol or punctuation without Excel evidence. Use the `excel-probe` skill and
   file a follow-up if needed.
+
+## Outcome
+Added `£`, `¥` and `|` to the unquoted literal list in the formatter lexer (`next_token`). poi known failures 570 -> 557 (13 fixed, no regressions, no new F lines); unit test added; number-formats.md has the `Implemented in:` line.

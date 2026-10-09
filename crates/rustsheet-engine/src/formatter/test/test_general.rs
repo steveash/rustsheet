@@ -303,3 +303,15 @@ fn test_german_locale() {
     let locale = get_locale("de").expect("");
     assert_eq!(format_number(1234.56, "General", locale).text, "1234,56");
 }
+
+// Excel evidence: poi/NumberFormatTests.xlsx Tests!A5, A18, A22, A107 (docs/excel-semantics/number-formats.md).
+#[test]
+fn pound_yen_and_pipe_are_unquoted_literals() {
+    let locale = get_default_locale();
+    assert_eq!(format_number(12.3, "£000.00", locale).text, "£012.30");
+    assert_eq!(
+        format_number(-12.3, "\"before \"¥#.00", locale).text,
+        "-before ¥12.30"
+    );
+    assert_eq!(format_number(1.1, "|?.?|", locale).text, "|1.1|");
+}
