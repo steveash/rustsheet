@@ -3,7 +3,7 @@ id: T-1245
 title: "Probe FORMULATEXT of an @ group that is only the leftmost part of the operand: nested, range-corner and multi-operand shapes (follow-up of T-1200)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
