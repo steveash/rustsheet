@@ -24,4 +24,4 @@ T-1226 evidence has two points that confound operand kind with written parenthes
 -
 
 ## Outcome
-Probed all forms (probes/anchorarray-at-operand-kinds, excel-graph; `@1/0` is refused by the web client). Rule: the printed text keeps the written parentheses, whatever the operand kind; recorded in references.md. The engine differs on the prints and on `@-1`/`@INDEX(..)`: follow-ups T-1246, T-1247. Eval: new probe case, 14 cells, 5 pass, 9 added to the baseline as known failures (T-1246, T-1247).
+Probed all forms (probes/anchorarray-at-operand-kinds, excel-graph; `@1/0` is refused by the web client). Rule: the printed text keeps the written parentheses, whatever the operand kind; recorded in references.md. The engine differs on the prints and on `@-1`/`@INDEX(..)`: follow-ups T-1246, T-1247. Eval: new probe case, 16 cells, 5 pass, 11 added to the baseline as known failures (T-1246, T-1247).
