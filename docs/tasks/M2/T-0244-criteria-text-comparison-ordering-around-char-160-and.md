@@ -3,7 +3,7 @@ id: T-0244
 title: "Criteria text comparison ordering around CHAR(160) and spaces (probes/criteria-padded-text C13)"
 milestone: M2
 lane: functions-criteria
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
