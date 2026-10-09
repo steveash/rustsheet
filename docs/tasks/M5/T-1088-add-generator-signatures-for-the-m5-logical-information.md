@@ -3,7 +3,7 @@ id: T-1088
 title: "Add generator signatures for the M5 logical, information and web catalog functions"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
