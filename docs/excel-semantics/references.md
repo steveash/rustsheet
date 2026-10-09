@@ -295,6 +295,13 @@ value, the call gives odd results, without the arguments mattering: a number or 
 `#NAME?`;0 and `ROWS(LET(f,{1,2;3,4},f(2)))` is 2. Bound to a LAMBDA it is called
 (`=LET(f,LAMBDA(x,x+1),f(2))` is 3). The case builder writes the called name as `_xlpm.f(2)`, and
 Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
+Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name bound to a union is `#REF!` too (`=LET(f,(A1,A2),f(2))`,
+`=LET(f,(A1,A2),f())`, `=LAMBDA(f,f(2))((A1,A2))`), as is one bound to `XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,1)`, `DROP(A1:A3,1)`,
+`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0,
+`=LET(f,1,f(NA()))` and `=LET(f,{1,2},f(1/0))` are `#NAME?`, `=LET(f,LAMBDA(x,x+1),f(1/0))` is `#DIV/0!`). `=LAMBDA(f,f(2))()` (an empty
+element) is an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it); the bare cell returns an error type the oracle client
+cannot decode. Ours: the engine gives `#VALUE!` for the union forms (T-1231) and `#NAME?`/`#SPILL!` for the
+XLOOKUP/TAKE/DROP/TRIMRANGE forms (T-1232); the rest match.
 A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
 `#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
 Excel for the web refuses a workbook holding `=LET(f,"",f(2))` (`createSession` fails, three scratch
@@ -319,7 +326,7 @@ functions/logical/lambda.rs (`Model::call_callee`, `Model::call_variable` for a 
 or LAMBDA parameter);
 functions/logical/let.rs (`Model::bind_argument`, which binds in reference context); model.rs (the
 callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
-Tasks: T-0149, T-1092
+Tasks: T-0149, T-1092, T-1224, T-1231, T-1232
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
