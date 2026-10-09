@@ -3,7 +3,7 @@ id: T-1206
 title: "Probe SUBTOTAL/AREAS over arrays from TAKE/XLOOKUP, AREAS error elements, SUM of XLOOKUP cells (follow-up of T-1175)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
