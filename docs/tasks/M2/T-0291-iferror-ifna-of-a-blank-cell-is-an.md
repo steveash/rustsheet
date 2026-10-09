@@ -24,7 +24,7 @@ Split from T-0235 (item 1). Evidence, all excel-graph gen-m2: 7469c3e920e1ade4 C
 -
 
 ## Outcome
-`if_error_like` (IFERROR and IFNA) now returns `CalcResult::EmptyArg` for a blank value, so OR and AND read it as
+`if_error_like` (IFERROR and IFNA) now returns `CalcResult::EmptyArg` for a blank value, so OR reads it as
 FALSE and `&` as "", and `lookup_key` reads an empty value as 0 like a blank cell (the same rule as an omitted
 XLOOKUP lookup_value). A351 passes, and A291, A110 and A112 still pass. Recorded in logic.md, "IFERROR / IFNA of a blank cell is
 an empty value, not the reference"; unit test `iferror_of_a_blank_cell_is_an_empty_value`.
