@@ -1776,7 +1776,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Unichar => not_implemented(args),
         Function::Char => not_implemented(args),
         Function::Clean => scalar_arguments(args),
-        Function::Code => not_implemented(args),
+        Function::Code => scalar_arguments(args),
         Function::Asc => not_implemented(args),
         Function::Arraytotext => not_implemented(args),
         Function::Dollar => not_implemented(args),
@@ -1798,7 +1798,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Searchb => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
         Function::Value => not_implemented(args),
-        Function::Valuetotext => not_implemented(args),
+        // Only the value lifts; the format is read as a scalar.
+        Function::Valuetotext => scalar_arguments(&args[..args.len().min(1)]),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),
