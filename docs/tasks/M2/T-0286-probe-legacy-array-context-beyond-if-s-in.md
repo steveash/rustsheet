@@ -3,7 +3,7 @@ id: T-0286
 title: "Probe legacy array context beyond *IF(S) in SUMPRODUCT: IF/INDEX/CHOOSE nested in SUMPRODUCT, deeper nesting, LOOKUP/MMULT arguments"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
