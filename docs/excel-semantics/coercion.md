@@ -69,7 +69,8 @@ equal to a space or ignored (`CHAR(160)&"1"="1"` is FALSE). `>` and COUNTIF's `"
 pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria.md). In passing:
 a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3, still FALSE in the engine; T-0220).
 Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (operators, sort,
-lookups) and the text criteria in functions/criteria.rs.
+lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
+place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
 Tasks: T-0220, T-0244
 
 ## Double unary minus coerces to a number

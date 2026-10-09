@@ -46,7 +46,7 @@ fn error_sort_rank(e: &Error) -> u8 {
 }
 
 /// Orders two (already case-folded) texts the way Excel's `<`/`>` and `">"` criteria do: by
-/// character, with CHAR(160) right after the space and before every other character, where code
+/// character, with CHAR(160) right after the space and before every printable character, where code
 /// points would put it after the letters. `" 1" < CHAR(160)&"1" < "0"`, `"1"&CHAR(160) > "1"`
 /// (probes/text-order-nbsp-space, excel-graph, T-0244). Equal texts stay equal: only CHAR(160)
 /// moves. The rest of Excel's collation (`"-1" > "0"`, `"x" >= "ü"`) is T-0220.
