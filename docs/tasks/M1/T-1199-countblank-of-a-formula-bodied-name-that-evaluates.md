@@ -3,7 +3,7 @@ id: T-1199
 title: "COUNTBLANK of a formula-bodied name that evaluates to an error is #VALUE! (engine 0)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -21,8 +21,11 @@ non-reference body that decides (`bad2` = `=1/0`, `num` = `=5`, `txt` = `="x"`),
 path in `fn_countblank` (functions/statistical/count.rs). Record the rule in references.md.
 
 ## Acceptance criteria
-- [ ] probes/union-defined-name-uses H12 passes, plus the new probe cells; baseline updated.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/union-defined-name-uses H12 passes, plus the new probe cells; baseline updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - COUNTBLANK of ranges and unions (already verified).
+
+## Outcome
+probes/countblank-formula-names (21 cells, excel-graph): a name that is not a reference gives its own error when the body is an error and `#VALUE!` for any other value (`=5`, `="x"`, `=""`, `=TRUE`); reference names and bodies (a single cell, INDEX included) count blanks, decided in reference context. `fn_countblank` now returns those errors for a defined-name argument. Eval delta: probes/union-defined-name-uses H12 fixed, +21 new passing cells, 0 regressions. Literal expression arguments are refused by Excel (recorded, no case). No follow-up.
