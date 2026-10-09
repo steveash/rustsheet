@@ -313,6 +313,20 @@ Status: VERIFIED (Excel-cached; Excel oracle for WORKDAY.INTL and NETWORKDAYS.IN
 Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983, T-1053
 
+## WEEKDAY of serial 0 and return_type 0
+Rule: WEEKDAY of a serial in [0, 1) is 7 (serial 0 is Saturday 0 January 1900, as in `TEXT(0,"dddd")`):
+`WEEKDAY(SIN(SECH(2.5)))` (0.1623) = 7. A return_type that truncates to 0 is `#NUM!`: `WEEKDAY(31330,-0.0001)` is
+`#NUM!`, seen as the column index of a VLOOKUP whose lookup value is found
+(`VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))&REPLACE(NA(),..)` is `#NUM!`).
+WORKDAY and NETWORKDAYS take serial 0 too (inferred, values unprobed): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
+is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number) and
+`VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
+Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
+gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
+Ours: `WEEKDAY(0.16)`, `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!`; `WEEKDAY(31330,0)` is `#VALUE!`.
+Status: VERIFIED for WEEKDAY (excel-graph); UNVERIFIED for the WORKDAY/NETWORKDAYS values (probe pending, T-1254)
+Tasks: T-1253, T-1254
+
 ## Date function argument modes
 Rule: DATE, DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, ISOWEEKNUM, TIME, TIMEVALUE and WEEKDAY lift
 over a multi-cell range and over an array in every probed argument (`ROWS(HOUR(A1:A3))` = 3,
@@ -327,7 +341,9 @@ counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 fo
 ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for the seven probed functions other
 than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells are all 0 and cannot tell coercion from
 a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
-the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237).
+the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237). A huge *day* is not `#NUM!`:
+`DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
+excel-graph 2026-10-09; ours `#NUM!`), as if the day were capped at 32767 (one cell; the bound is unprobed, T-1237).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`); WORKDAY.INTL and NETWORKDAYS.INTL
 are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
