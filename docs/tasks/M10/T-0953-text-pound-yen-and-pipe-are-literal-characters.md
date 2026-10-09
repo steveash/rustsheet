@@ -3,7 +3,7 @@ id: T-0953
 title: "TEXT: £, ¥ and | are literal characters in number formats (13 poi known failures)"
 milestone: M10
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
