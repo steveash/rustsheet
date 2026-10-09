@@ -312,3 +312,24 @@ so the oracle kept the formulas legacy (T-1053, Excel for the web, 2026-10-07).
 Status: VERIFIED (Excel-cached; Excel oracle for WORKDAY.INTL and NETWORKDAYS.INTL)
 Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983, T-1053
+
+## Date function argument modes
+Rule: DATE, DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, ISOWEEKNUM, TIME, TIMEVALUE and WEEKDAY lift
+over a multi-cell range and over an array in every probed argument (`ROWS(HOUR(A1:A3))` = 3,
+`INDEX(DAYS(46000,A1:A3),2)` = 969). The Analysis ToolPak-era functions do not take a range: EDATE, EOMONTH,
+WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC are `#VALUE!` (the whole result, not
+per element) when a date, month count, day count, return type or basis argument is a multi-cell range, yet lift over
+an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE({45000.25;45031.5;45100.75},1),2)`
+= 45061). The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
+(`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007); `holidays` is read whole (see "WORKDAY holidays take the whole
+range"). Typed coercion differs the same way: a boolean date is `#VALUE!` for EDATE, WORKDAY and YEARFRAC, but
+counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 for `(TRUE,46000,"d")`) and
+ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for the seven probed functions other
+than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells are all 0 and cannot tell coercion from
+a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
+the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237).
+Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
+Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`); WORKDAY.INTL and NETWORKDAYS.INTL
+are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
+Status: VERIFIED
+Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
