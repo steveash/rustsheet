@@ -275,3 +275,24 @@ XLOOKUP.xlsx Errors!N1 (Excel-authored) for binary.
 Status: VERIFIED (web)
 Implemented in: `Ord for CalcResult` (calc_result.rs), used by `binary_search`; `is_blank` / `linear_scan` (xmatch.rs) read `EmptyArg` as a blank in the linear modes (T-1188).
 Tasks: T-1153, T-1157, T-1188
+
+## Lookup and reference function argument modes
+Rule: every scalar argument of the M6 lookup and reference functions lifts over a multi-cell range and over an array:
+ADDRESS's row_num, column_num and abs_num (`ROWS(ADDRESS(A1:A3,1))` = 3), CHOOSE's index_num, CHOOSECOLS/CHOOSEROWS
+indexes (`CHOOSECOLS(A1:B3,A1:A2)` is 3x2), HYPERLINK's link_location and friendly_name, INDIRECT's ref_text
+(`INDIRECT(C1:C3)` with C1:C3 = "A1", "B2", "A3" is 3x1, first value 1), the lookup_value of LOOKUP, XLOOKUP and XMATCH
+(`XLOOKUP(A1:A3,A1:A3,B1:B3)` is 3x1, first 10), XLOOKUP/XMATCH match_mode (`XMATCH(2,A1:A3,{0;1})` is 2x1), OFFSET's
+rows (`OFFSET(A1,A1:A2,0)` is 2x1, first 2), and TRIMRANGE's trim_rows (each element is its own trimmed range, so
+`TRIMRANGE(A1:B5,{0;1})` is a 2x1 array of `#SPILL!`). FORMULATEXT and ROW lift over a range of cells
+(`FORMULATEXT(A1:A3)` is 3x1 of `#N/A` for constant cells; COLUMN(A1:B3) is 1x2). The vector and array arguments take an
+array literal whole: `LOOKUP(2,{1,2,3},{4,5,6})` = 5, `LOOKUP(2,{1,2,3})` = 2, `XLOOKUP(2,{1,2,3},{4,5,6})` = 5,
+`XMATCH(2,{1,2,3})` = 2, `ROWS({1;2;3})` = 3, `COLUMNS({1,2})` = 2, `CHOOSEROWS({1;2;3},{1;3})` is 2x1,
+`TRANSPOSE({1,2,3})` is 3x1. INDEX of a single value is that value (`INDEX(LOOKUP(2,{1,2,3},{4,5,6}),1,1)` = 5,
+`INDEX(AREAS(A1:B3),1,1)` = 1).
+Evidence: probes/lookup-argument-modes (117 cells, excel-graph, 2026-10-09, T-1238).
+Ours: none of the scalar arguments above lifts except CHOOSE's (a range gives `#VALUE!` or an implicit intersection,
+an array `#N/IMPL!`); LOOKUP/XLOOKUP/XMATCH give `#N/A` for a range lookup_value; CHOOSECOLS, CHOOSEROWS, HYPERLINK and
+INDIRECT over an array literal are `#N/IMPL!`; FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is
+`#VALUE!`. 34 of 117 cells pass.
+Status: VERIFIED
+Tasks: T-1238 (generator modes), follow-ups below
