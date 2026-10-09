@@ -866,8 +866,9 @@ Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` op
 only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
 (`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) until T-1134 (`ImplicitIntersection::lead`). Excel keeps the group for every shape where it is
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
-print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches the last two and
-prints the first three without the group (`=@A1 B1 C1` for both of the first two, `=@A1:B1 C1`): T-1200. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches all five
+(`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
+UNVERIFIED: a group that is the left corner of a range with nothing after it (`=@(A1):B1`), and `=@(A1 B1):C1`, which the engine prints without the group. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
@@ -876,7 +877,7 @@ parentheses is UNVERIFIED (T-1167, T-1178); the likely answer is yes, as Excel k
 (probes/union-cut-precedence F6 prints `=SUM(((A1,B1) B1))`, kept for a cut of a parenthesized union since T-1176).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134
+Tasks: T-1132, T-1134, T-1200
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;

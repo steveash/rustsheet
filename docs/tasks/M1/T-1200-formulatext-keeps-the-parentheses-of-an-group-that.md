@@ -3,7 +3,7 @@ id: T-1200
 title: "FORMULATEXT keeps the parentheses of an @ group that is not the whole operand"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/at-group-not-whole-operand (T-1147, excel-graph): `=@(A1 B1) C1`, `=@((A1
 
 ## Out of scope
 -
+
+## Outcome
+`ImplicitIntersection::lead` is now a `LeadGroup` (levels, operands of the intersection inside the group, whether a `:` follows it); `lead_group_text` prints a group that covers the first operands of the chain or the left corner of the leftmost range. probes/at-group-not-whole-operand E30:E32 pass (3 known failures removed); the unit test uses the oracle values.

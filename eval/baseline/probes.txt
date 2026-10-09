@@ -379,9 +379,6 @@ F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S10
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
-F	probes/at-group-not-whole-operand.case.json	Sheet1!E30
-F	probes/at-group-not-whole-operand.case.json	Sheet1!E31
-F	probes/at-group-not-whole-operand.case.json	Sheet1!E32
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-10.case.json	Sheet1!A4
 F	probes/catalog/availability-14.case.json	Sheet1!A7
