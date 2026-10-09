@@ -280,9 +280,9 @@ fn at_operand_group_shapes_no_probe_covers_are_characterized() {
 #[test]
 fn at_operand_adds_no_level_for_a_nested_inner_group() {
     // T-1167: an inner group that only ends right before the outer `)` adds no level to the `@`
-    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41 and E43 are
-    // hand-written current engine output that characterizes the engine, not Excel: it drops the
-    // inner groups, while Excel tends to keep written parentheses elsewhere (UNVERIFIED, T-1178).
+    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41, E43 and E44
+    // characterize the engine, not Excel: it drops the inner groups, while Excel prints every
+    // written parenthesis back (probes/at-operand-nested-groups, T-1178; engine: T-1244).
     let mut model = model();
     model._set("A1", "1");
     model._set("B1", "2");

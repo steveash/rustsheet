@@ -877,12 +877,12 @@ The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
-level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; whether Excel keeps those inner
-parentheses is UNVERIFIED (T-1167, T-1178); the likely answer is yes, as Excel keeps written parentheses elsewhere
-(probes/union-cut-precedence F6 prints `=SUM(((A1,B1) B1))`, kept for a cut of a parenthesized union since T-1176).
+level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
+written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
+excel-graph 2026-10-09, T-1178; engine: T-1244).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134, T-1200
+Tasks: T-1132, T-1134, T-1178, T-1200, T-1244
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;
