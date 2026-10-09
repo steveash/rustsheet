@@ -303,3 +303,23 @@ fn test_german_locale() {
     let locale = get_locale("de").expect("");
     assert_eq!(format_number(1234.56, "General", locale).text, "1234,56");
 }
+
+#[test]
+fn general_fixed_versus_scientific() {
+    // T-0938: probes/number-text-exponent-digits D8, poi/GeneralFormatTests (A13, A17, A18, A26-A28,
+    // A61) and probes/text-general-exponent-boundary A9, A10 (excel-graph).
+    let locale = get_default_locale();
+    let general = |value: f64| format_number(value, "General", locale).text;
+    assert_eq!(general(1.234_567_890_123_45E-5), "1.23457E-05");
+    assert_eq!(general(1E-9), "0.000000001");
+    assert_eq!(general(-1E-9), "-0.000000001");
+    assert_eq!(general(1E-10), "1E-10");
+    assert_eq!(general(9.999_999_6E-10), "1E-09");
+    assert_eq!(general(0.01), "0.01");
+    assert_eq!(general(1.234_567_891_2), "1.234567891");
+    assert_eq!(general(1E10), "10000000000");
+    assert_eq!(general(-1E10), "-10000000000");
+    assert_eq!(general(9.999_999_6E10), "99999996000");
+    assert_eq!(general(1E11), "1E+11");
+    assert_eq!(general(1.123_456_789E-10), "1.12346E-10");
+}

@@ -3,7 +3,7 @@ id: T-0938
 title: "TEXT General: 11-character fixed-versus-scientific choice for small numbers (2 known failures)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: opus
@@ -46,15 +46,25 @@ This is the General *format*. It differs from number-to-text coercion (15 signif
 `docs/excel-semantics/numbers.md`, T-0107). Do not merge the two routines.
 
 ## Acceptance criteria
-- [ ] The F line for `probes/number-text-exponent-digits.case.json Calc!D8` leaves
+- [x] The F line for `probes/number-text-exponent-digits.case.json Calc!D8` leaves
       eval/baseline/probes.txt. The 2 lines for A27 and A61 leave eval/baseline/poi.txt. No new F
       lines appear in any suite.
-- [ ] The rule is recorded in `docs/excel-semantics/number-formats.md` ("`TEXT(x,"General")` uses an
+- [x] The rule is recorded in `docs/excel-semantics/number-formats.md` ("`TEXT(x,"General")` uses an
       11-character fixed-notation limit"), citing these cells. The open D8 sentence in numbers.md
       ("Exponent width") is updated.
-- [ ] Unit tests in the formatter cover D8, A27, A61 and the passing boundary cells listed above.
-- [ ] `make check` green; reviewers approve.
+- [x] Unit tests in the formatter cover D8, A27, A61 and the passing boundary cells listed above.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Number-to-text coercion (T-0107). Booleans in TEXT (T-0935). Width-dependent cell display
 (`formatted()` with column widths, M10).
+
+## Outcome
+The General branch of `format_number` now calls `format_general`: fixed notation rounded to 11
+characters (sign not counted) when `|x| >= 1E-09`, the fixed form fits, and it shows at least as
+many significant digits as E notation; otherwise E notation. The `1E-09` floor comes from
+probes/text-general-exponent-boundary A10 (`9.9999996E-10` → "1E-09"), which the digit rule alone
+would print fixed. Ties go to fixed and are unprobed, as are fixed values wider than 11
+characters (`123456.123456789` → "123456.1235"): probe task T-1225 (M2). Unit test
+`general_fixed_versus_scientific`. Eval: poi known failures 570 -> 568 (GeneralFormatTests A27,
+A61), probes 413 -> 412 (number-text-exponent-digits D8), no regressions.

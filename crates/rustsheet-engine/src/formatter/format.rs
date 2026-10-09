@@ -240,60 +240,14 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             error: Some("Problem parsing format string".to_owned()),
         },
         ParsePart::General(..) => {
-            // FIXME: This is "General formatting"
-            // We should have different codepaths for general formatting and errors
-            let value_abs = value.abs();
-            if (1.0e-8..1.0e+11).contains(&value_abs) {
-                let mut text = format!("{value:.9}");
-                text = text.trim_end_matches('0').trim_end_matches('.').to_string();
-                if locale.numbers.symbols.decimal != "." {
-                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-                }
-                Formatted {
-                    text,
-                    color: None,
-                    error: None,
-                }
-            } else {
-                if value_abs == 0.0 {
-                    return Formatted {
-                        text: "0".to_string(),
-                        color: None,
-                        error: None,
-                    };
-                }
-                let mut exponent = value_abs.log10().floor();
-                value /= 10.0_f64.powf(exponent);
-                // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
-                // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
-                // "Exponent width").
-                let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
-                let mut decimals = decimals_for(exponent);
-                let mut s = format!("{value:.decimals$}");
-                // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa
-                // carries into the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
-                // (probes/text-general-exponent-boundary A5-A8, A10).
-                if s.trim_start_matches('-').starts_with("10.") {
-                    exponent += 1.0;
-                    value = value.signum();
-                    decimals = decimals_for(exponent);
-                    s = format!("{value:.decimals$}");
-                }
-                let sign = if exponent < 0.0 { '-' } else { '+' };
-                let mut text = format!(
-                    "{}E{}{:02}",
-                    s.trim_end_matches('0').trim_end_matches('.'),
-                    sign,
-                    exponent.abs()
-                );
-                if locale.numbers.symbols.decimal != "." {
-                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-                }
-                Formatted {
-                    text,
-                    color: None,
-                    error: None,
-                }
+            let mut text = format_general(value);
+            if locale.numbers.symbols.decimal != "." {
+                text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+            }
+            Formatted {
+                text,
+                color: None,
+                error: None,
             }
         }
         ParsePart::Date(p) => {
@@ -980,4 +934,85 @@ fn parse_number(
             },
         )),
     }
+}
+
+/// Characters the General format may use for the digits and decimal point (the minus sign does
+/// not count): poi/GeneralFormatTests A17 `1E10` → "10000000000", A61 `-1E-09` → "-0.000000001".
+const GENERAL_WIDTH: usize = 11;
+
+/// `value` under the General format, with "." as the decimal point.
+///
+/// General prints fixed notation, rounded to fit [`GENERAL_WIDTH`] characters, when
+/// `|value| >= 1E-09`, the fixed form fits and it shows at least as many significant digits as E
+/// notation would; otherwise it prints E notation. So `1E-09` is "0.000000001" but `1E-10` is
+/// "1E-10", and `1.23456789012345E-05` is "1.23457E-05" because the fixed "0.000012346" keeps 5
+/// digits against 6 (probes/number-text-exponent-digits D8,
+/// poi/GeneralFormatTests A13-A33; `docs/excel-semantics/number-formats.md`).
+fn format_general(value: f64) -> String {
+    if value == 0.0 {
+        return "0".to_string();
+    }
+    let scientific = format_general_scientific(value);
+    if let Some(fixed) = format_general_fixed(value) {
+        let mantissa = scientific.split('E').next().unwrap_or_default();
+        if significant_digits(&fixed) >= significant_digits(mantissa) {
+            return fixed;
+        }
+    }
+    scientific
+}
+
+/// `value` in fixed notation rounded to [`GENERAL_WIDTH`] characters (trailing fractional zeros
+/// trimmed), or `None` when General never prints it fixed.
+fn format_general_fixed(value: f64) -> Option<String> {
+    // Below 1E-09 General is always E notation, even when rounding would make the fixed form
+    // show the same digits: `9.9999996E-10` is "1E-09", not "0.000000001"
+    // (probes/text-general-exponent-boundary A10). From 1e11 on the integer part needs 12
+    // characters; checking first also bounds the strings formatted below.
+    if !(1e-9..1e11).contains(&value.abs()) {
+        return None;
+    }
+    // The integer digits ("0" below 1) and the decimal point take their share of the width.
+    let integer_digits = format!("{:.0}", value.abs().trunc()).len();
+    let decimals = GENERAL_WIDTH.saturating_sub(integer_digits + 1);
+    let mut text = format!("{value:.decimals$}");
+    if text.contains('.') {
+        text = text.trim_end_matches('0').trim_end_matches('.').to_string();
+    }
+    (text.trim_start_matches('-').len() <= GENERAL_WIDTH).then_some(text)
+}
+
+/// `value` (non-zero) in General's E notation: "1.23457E-05", "1.2346E+100".
+fn format_general_scientific(mut value: f64) -> String {
+    let mut exponent = value.abs().log10().floor();
+    value /= 10.0_f64.powf(exponent);
+    // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100" against
+    // "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md "Exponent width").
+    let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
+    let mut decimals = decimals_for(exponent);
+    let mut s = format!("{value:.decimals$}");
+    // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa carries into
+    // the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
+    // (probes/text-general-exponent-boundary A5-A8, A10).
+    if s.trim_start_matches('-').starts_with("10.") {
+        exponent += 1.0;
+        value = value.signum();
+        decimals = decimals_for(exponent);
+        s = format!("{value:.decimals$}");
+    }
+    let sign = if exponent < 0.0 { '-' } else { '+' };
+    format!(
+        "{}E{}{:02}",
+        s.trim_end_matches('0').trim_end_matches('.'),
+        sign,
+        exponent.abs()
+    )
+}
+
+/// The number of significant digits in a plain decimal string: "-0.000012346" → 5, "1200" → 4.
+fn significant_digits(text: &str) -> usize {
+    text.chars()
+        .filter(char::is_ascii_digit)
+        .skip_while(|c| *c == '0')
+        .count()
 }
