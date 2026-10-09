@@ -124,6 +124,7 @@ C	probes/error-operand-broadcast-cmp.case.json	15
 C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-constants.case.json	24
+C	probes/fact-large-arguments.case.json	18
 C	probes/filter-if-empty-array.case.json	12
 C	probes/format-doubled-quotes.case.json	11
 C	probes/gcd-lcm-bounds.case.json	38
@@ -519,6 +520,11 @@ F	probes/error-stored-constants.case.json	S!B1
 F	probes/error-stored-constants.case.json	S!D1
 F	probes/error-stored-constants.case.json	S!H1
 F	probes/error-stored-constants.case.json	S!I1
+F	probes/fact-large-arguments.case.json	Sheet1!A1
+F	probes/fact-large-arguments.case.json	Sheet1!A11
+F	probes/fact-large-arguments.case.json	Sheet1!A12
+F	probes/fact-large-arguments.case.json	Sheet1!A6
+F	probes/fact-large-arguments.case.json	Sheet1!A9
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C24
 F	probes/geomean-exponent-sum-2.case.json	Sheet1!C28
 F	probes/geomean-exponent-sum.case.json	Sheet1!C2
