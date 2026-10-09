@@ -21,7 +21,13 @@
     "ename": "=nosuchname1",
     "evalue": "=\"a\"+1",
     "ediv2": "=0/0",
-    "bool": "=TRUE"
+    "bool": "=TRUE",
+    "nmcell": "=Sheet1!$C$1",
+    "nmgrpblank": "=(Sheet1!$C$2)",
+    "nmgrpnum": "=(Sheet1!$C$3)",
+    "nmgrperr": "=(Sheet1!$C$1)",
+    "nmixblank": "=INDEX(Sheet1!$C$1:$C$3,2)",
+    "nmixnum": "=INDEX(Sheet1!$C$1:$C$3,3)"
   },
   "sheets": [
     {
@@ -43,7 +49,15 @@
         "A12": "=COUNTBLANK(ename)",
         "A13": "=COUNTBLANK(evalue)",
         "A14": "=COUNTBLANK(ediv2)",
-        "A15": "=COUNTBLANK(bool)"
+        "A15": "=COUNTBLANK(bool)",
+        "C1": "=NA()",
+        "C3": 5,
+        "A16": "=COUNTBLANK(nmcell)",
+        "A17": "=COUNTBLANK(nmgrpblank)",
+        "A18": "=COUNTBLANK(nmgrpnum)",
+        "A19": "=COUNTBLANK(nmgrperr)",
+        "A20": "=COUNTBLANK(nmixblank)",
+        "A21": "=COUNTBLANK(nmixnum)"
       }
     }
   ],
@@ -63,6 +77,12 @@
     "Sheet1!A12",
     "Sheet1!A13",
     "Sheet1!A14",
-    "Sheet1!A15"
+    "Sheet1!A15",
+    "Sheet1!A16",
+    "Sheet1!A17",
+    "Sheet1!A18",
+    "Sheet1!A19",
+    "Sheet1!A20",
+    "Sheet1!A21"
   ]
 }

@@ -28,4 +28,4 @@ path in `fn_countblank` (functions/statistical/count.rs). Record the rule in ref
 - COUNTBLANK of ranges and unions (already verified).
 
 ## Outcome
-probes/countblank-formula-names (15 cells, excel-graph): a name that is not a reference gives its own error when the body is an error and `#VALUE!` for any other value (`=5`, `="x"`, `=""`, `=TRUE`); reference bodies count blanks. `fn_countblank` now returns those errors for a defined-name argument. Eval delta: probes/union-defined-name-uses H12 fixed, +15 new passing cells, 0 regressions. Literal expression arguments are refused by Excel (recorded, no case). No follow-up.
+probes/countblank-formula-names (21 cells, excel-graph): a name that is not a reference gives its own error when the body is an error and `#VALUE!` for any other value (`=5`, `="x"`, `=""`, `=TRUE`); reference names and bodies (a single cell, INDEX included) count blanks, decided in reference context. `fn_countblank` now returns those errors for a defined-name argument. Eval delta: probes/union-defined-name-uses H12 fixed, +21 new passing cells, 0 regressions. Literal expression arguments are refused by Excel (recorded, no case). No follow-up.

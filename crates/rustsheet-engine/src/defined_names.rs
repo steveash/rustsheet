@@ -141,6 +141,22 @@ impl Model {
         }
     }
 
+    /// The error a defined-name `node` is by itself: an error literal (`=Sheet1!#REF!`) or a body
+    /// that does not parse (`#NAME?`), else `None`.
+    pub(crate) fn defined_name_error_literal(&self, node: &Node) -> Option<Error> {
+        let Node::DefinedNameKind((name, scope, _)) = node else {
+            return None;
+        };
+        match self
+            .parsed_defined_names
+            .get(&(*scope, name.to_lowercase()))
+        {
+            Some(ParsedDefinedName::ErrorLiteral(error)) => Some(error.clone()),
+            Some(ParsedDefinedName::InvalidDefinedNameFormula) => Some(Error::NAME),
+            _ => None,
+        }
+    }
+
     /// The formula-bodied defined name `node` as an operand of `:`: its body read as a `:`
     /// operand, under the same depth and budget as its value read.
     pub(crate) fn defined_name_range_operand(

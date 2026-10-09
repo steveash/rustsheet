@@ -30,9 +30,33 @@
     "t": "e",
     "v": "#VALUE!"
    },
+   "A16": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A17": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A18": {
+    "t": "n",
+    "v": 0.0
+   },
+   "A19": {
+    "t": "n",
+    "v": 0.0
+   },
    "A2": {
     "t": "e",
     "v": "#DIV/0!"
+   },
+   "A20": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A21": {
+    "t": "n",
+    "v": 0.0
    },
    "A3": {
     "t": "e",
@@ -61,14 +85,18 @@
    "A9": {
     "t": "e",
     "v": "#NUM!"
+   },
+   "C1": {
+    "t": "e",
+    "v": "#N/A"
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "958b5e2b786df84753efd962a23498f9ac7a7829fcaf7e00792439380e635182",
+  "input_sha256": "d8dc28414224b6c746e8541fbd127c5fee28ee6fd3caacc51e81548e59656b5f",
   "kind": "excel-graph",
-  "produced_at": "2026-10-09T02:57:16+00:00",
+  "produced_at": "2026-10-09T03:09:39+00:00",
   "version": null
  }
 }
