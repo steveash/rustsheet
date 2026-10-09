@@ -93,7 +93,7 @@ while generating, not committed: a refused workbook has no oracle file); both ar
 unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
-Ours: matches except CODE and VALUETOTEXT over a range and `VALUETOTEXT(A3,1)` (T-1212), DBCS and PHONETIC (T-1213) and
-BAHTTEXT (T-1214), which are not implemented.
+Ours: matches except DBCS and PHONETIC (T-1213) and BAHTTEXT (T-1214), which are not implemented. CODE and VALUETOTEXT
+lift over ranges (T-1212). Unprobed (T-1229): VALUETOTEXT format 1 on text (Microsoft documents quotes plus doubled embedded quotes), invalid format values, and a lifted format (`VALUETOTEXT(A1,{0,1})`); we ignore the format and never lift it.
 Status: VERIFIED (excel-graph)
-Tasks: T-1087, T-1212, T-1213, T-1214
+Tasks: T-1087, T-1212, T-1213, T-1214, T-1229
