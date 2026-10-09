@@ -65,3 +65,33 @@ fn test_multinomial_overflow_num_error() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "#NUM!");
 }
+
+#[test]
+fn multinomial_past_170_is_num_at_once() {
+    // probes/multinomial-large-arguments (excel-graph, 2026-10-09, T-1197): `#NUM!` once the
+    // arguments add up to more than 170. Huge arguments used to loop once per unit (directive 5),
+    // and `2^64` and above saturate instead of overflowing the sum.
+    let mut model = new_empty_model();
+    let cases = [
+        ("A1", "=MULTINOMIAL(171)"),
+        ("A2", "=MULTINOMIAL(170,1)"),
+        ("A3", "=MULTINOMIAL(86,86)"),
+        ("A4", "=MULTINOMIAL(1E+15)"),
+        ("A5", "=MULTINOMIAL(1E+300)"),
+        ("A6", "=MULTINOMIAL(2^64,2^64)"),
+        ("A7", "=MULTINOMIAL(3,1E+15)"),
+    ];
+    for (cell, formula) in cases {
+        model._set(cell, formula);
+    }
+    model._set("B1", "=MULTINOMIAL(85,85)");
+    model._set("B2", "=MULTINOMIAL(169,1)");
+    let start = std::time::Instant::now();
+    model.evaluate();
+    assert!(start.elapsed() < std::time::Duration::from_secs(5));
+    for (cell, formula) in cases {
+        assert_eq!(model._get_text(cell), "#NUM!", "{formula}");
+    }
+    assert_eq!(model._get_text("B2"), "170");
+    assert!(model._get_text("B1").starts_with("9.1448"), "{}", model._get_text("B1"));
+}
