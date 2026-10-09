@@ -166,6 +166,9 @@ rules. This is the most important subtlety to encode:
 | `criteria` | criteria-string mini-language (`">=5"`, `"a*"`, `"<>"`, `"=" `) | `COUNTIF`, `SUMIFS`, `D*` functions |
 | `lambda` | expects a LAMBDA | `MAP`, `REDUCE`, `BYROW` |
 
+The v0 catalog (eval/catalog/functions.yaml) spells these `aggregate`, `aggregate_a`, `range` and
+`array` (for `values_agg`, `values_agg_a`, `ref_only` and `array_ok`); its header is the reference.
+
 ### 3.2 Catalog schema (YAML)
 
 > Current state (T-0040): one file, `eval/catalog/functions.yaml`, lists every Excel function;

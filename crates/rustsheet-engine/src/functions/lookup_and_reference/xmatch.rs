@@ -43,7 +43,9 @@ impl MatchMode {
 }
 
 fn is_blank(v: &CalcResult) -> bool {
-    matches!(v, CalcResult::EmptyCell)
+    // An omitted lookup_value is a blank in every match and search mode
+    // (probes/xlookup-omitted-lookup-value, docs/excel-semantics/lookup.md, T-1188).
+    matches!(v, CalcResult::EmptyCell | CalcResult::EmptyArg)
 }
 
 /// Orders a candidate against the lookup value in an ordered match mode. A blank is larger than
@@ -70,7 +72,7 @@ pub(crate) fn linear_scan<'a>(
     get: impl Fn(usize) -> &'a CalcResult,
     match_mode: MatchMode,
 ) -> Option<usize> {
-    let blank_lookup = matches!(lookup_value, CalcResult::EmptyCell);
+    let blank_lookup = is_blank(lookup_value);
     match match_mode {
         MatchMode::Exact => indices.into_iter().find(|&idx| {
             let v = get(idx);
