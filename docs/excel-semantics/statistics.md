@@ -234,7 +234,7 @@ Tasks: T-1152, T-1203, T-1208, T-1215
 
 ## Statistical function argument modes
 Rule: every scalar argument of the M9 statistical functions lifts elementwise over an array literal and over a multi-cell
-range (all 254 `ROWS(F(..{v;v}..))` and `ROWS(F(..G1:G2..))` cells are 2): distribution parameters including
+range (all 302 lift cells are 2: 210 `ROWS(F(..{v;v}..))` and 92 `ROWS(F(..G1:G2..))`): distribution parameters including
 `cumulative`, LARGE/SMALL `k`, PERCENTILE `k`, QUARTILE `quart`, PERCENTRANK and Z.TEST `x`, RANK `number`, T.TEST
 `tails`/`type`, TRIMMEAN `percent`, FORECAST `x`, PROB `lower_limit`, FORECAST.ETS `target_date` and FORECAST.ETS.STAT
 `statistic_type`. The data arguments of AVEDEV, DEVSQ, GEOMEAN, HARMEAN, KURT, SKEW, SKEW.P, MEDIAN, STDEV*, VAR* skip
@@ -245,7 +245,7 @@ and MODE.MULT are `#N/A` for `(1,"2",4,TRUE)`, so they do not coerce the typed T
 argument is dropped, T-1291). Array arguments (CORREL, COVAR, F.TEST, T.TEST, LARGE, PERCENTILE, QUARTILE, TRIMMEAN,
 Z.TEST, LINEST, ...) take array literals whole with the range's value; LARGE, SMALL, PERCENTILE*, QUARTILE*,
 PERCENTRANK*, TRIMMEAN, Z.TEST, F.TEST and T.TEST skip text and booleans in a range, GROWTH, TREND, LINEST and LOGEST are
-`#VALUE!` for them, and the pairing functions are `#N/A` when the sizes differ. The FORECAST.ETS family is `#N/A` for a
+`#VALUE!` for them, and the pairing functions are `#N/A` for unequal sizes with text (size-only and text-only unprobed, T-1292). The FORECAST.ETS family is `#N/A` for a
 plain 8-point series on the timeline 1..8 (T-1293). These decide the generator modes in eval/catalog/functions.yaml
 (`value`, `aggregate`, `aggregate_a`, `array`; RANK `ref`, COUNTBLANK and the *IFS ranges are `range`).
 Evidence: probes/stat-argument-modes (573 cells, excel-graph, 2026-10-09, T-1080).

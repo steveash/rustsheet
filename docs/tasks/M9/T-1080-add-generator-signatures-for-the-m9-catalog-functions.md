@@ -44,6 +44,6 @@ COUNTBLANK and the *IFS ranges are `range`. Integer arguments (degrees of freedo
 significance, ETS options) carry soft `int` domains. A seeded sample (`rustsheet-gen --milestone M9 --count 20 --seed 17`,
 not committed; 232 calls to 107 of the 142 functions) was all accepted by excel-graph (0 failures), and the engine passed
 746/800 cells with no abort.
-Eval delta: probes +1 case, 573 cells, 170 pass, 403 new known failures (T-1290 lifting 296 cells; T-1291, T-1292,
+Eval delta: probes +1 case, 573 cells, 170 pass, 403 new known failures (T-1290 lifting 302 cells; T-1291, T-1292,
 T-1293; the rest are ulp-level distribution values already described in statistics.md). Regressions 0.
 Follow-ups: T-1289 (commit gen-m9), T-1290, T-1291, T-1292, T-1293.

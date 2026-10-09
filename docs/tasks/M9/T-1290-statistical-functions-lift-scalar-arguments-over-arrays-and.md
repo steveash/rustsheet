@@ -14,10 +14,10 @@ depends_on: []
 Every scalar argument of the M9 statistical functions lifts elementwise over an array and over a multi-cell range, as in Excel.
 
 ## Context
-probes/stat-argument-modes (excel-graph, 2026-10-09, T-1080; legend in docs/excel-semantics/statistics.md "Statistical function argument modes"): every one of the 254 `ROWS(F(..{v;v}..))` and `ROWS(F(..G1:G2..))` cells is 2 in Excel (distribution
+probes/stat-argument-modes (excel-graph, 2026-10-09, T-1080; legend in docs/excel-semantics/statistics.md "Statistical function argument modes"): all 302 lift cells are 2 (210 `ROWS(F(..{v;v}..))`, 92 `ROWS(F(..G1:G2..))`) in Excel (distribution
 parameters, LARGE/SMALL k, PERCENTILE/QUARTILE k, PERCENTRANK and Z.TEST x, RANK number, T.TEST tails/type, TRIMMEAN
-percent, FORECAST x, PROB lower_limit, the FORECAST.ETS target_date and statistic_type). The engine is `#N/IMPL!` for an
-array (207 cells) and `#VALUE!` for a range (89 cells). Reuse the lifting the math and date functions already use (search
+percent, FORECAST x, PROB lower_limit, the FORECAST.ETS target_date and statistic_type). The engine fails all 302: `#N/IMPL!`
+for an array (207 cells) and `#VALUE!` for a range (89 cells), plus 6 FORECAST.ETS and BETA.DIST/Z.TEST cells. Reuse the lifting the math and date functions already use (search
 before adding a helper); BETA.DIST, Z.TEST and ZTEST are `#VALUE!` even for an array. Split by family if larger than M.
 
 ## Acceptance criteria
