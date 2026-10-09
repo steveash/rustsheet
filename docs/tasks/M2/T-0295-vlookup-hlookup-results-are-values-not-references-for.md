@@ -3,7 +3,7 @@ id: T-0295
 title: "VLOOKUP/HLOOKUP picks reach aggregates as references only when the index argument is a cell reference (follow-up of T-0292)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
