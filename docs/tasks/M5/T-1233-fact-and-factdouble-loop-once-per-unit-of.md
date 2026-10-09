@@ -3,7 +3,7 @@ id: T-1233
 title: "FACT and FACTDOUBLE loop once per unit of the argument: bound the work"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: sonnet
