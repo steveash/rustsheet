@@ -1703,7 +1703,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Sheet => StaticResult::Scalar,
         Function::Type => not_implemented(args),
         Function::Address => not_implemented(args),
-        Function::Areas => StaticResult::Scalar,
+        Function::Areas => aggregate::areas_static_result(args),
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,

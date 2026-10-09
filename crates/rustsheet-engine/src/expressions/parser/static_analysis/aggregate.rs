@@ -1,3 +1,5 @@
+use crate::functions::Function;
+
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
 
 /// AGGREGATE spills over an array function_num, options or fourth argument, broadcast against
@@ -22,16 +24,31 @@ pub(super) fn aggregate_static_result(args: &[Node]) -> StaticResult {
 /// a range, since CHOOSE gives a range's shape to its array arms (`CHOOSE(1,{1,2})`). Not
 /// `is_reference_operand`: that one accepts calls, which can evaluate to arrays.
 pub(super) fn subtotal_static_result(args: &[Node]) -> StaticResult {
-    broadcast_static_result(args.iter().skip(1).filter(|arg| {
-        !matches!(
-            arg,
-            Node::ReferenceKind { .. }
-                | Node::RangeKind { .. }
-                | Node::OpRangeKind { .. }
-                | Node::OpIntersectKind { .. }
-                | Node::OpUnionKind { .. }
-                | Node::SheetSpanKind { .. }
-                | Node::TableNameKind(_)
-        )
-    }))
+    broadcast_static_result(args.iter().skip(1).filter(|arg| !is_read_reference(arg)))
+}
+
+/// AREAS spills the same way over its one argument (`AREAS(IF(TRUE,{1,2}))` is two `#VALUE!`,
+/// probes/subtotal-reference-operands-b H4, T-1175).
+pub(super) fn areas_static_result(args: &[Node]) -> StaticResult {
+    broadcast_static_result(args.iter().filter(|arg| !is_read_reference(arg)))
+}
+
+/// An argument that SUBTOTAL and AREAS read as a reference instead of lifting over: a written
+/// reference, or XLOOKUP, TAKE, DROP and TRIMRANGE, which evaluate to the cells they pick
+/// (`Model::evaluate_picked_reference_arg`, probes/subtotal-reference-operands-b H12, H15:H17).
+fn is_read_reference(arg: &Node) -> bool {
+    matches!(
+        arg,
+        Node::ReferenceKind { .. }
+            | Node::RangeKind { .. }
+            | Node::OpRangeKind { .. }
+            | Node::OpIntersectKind { .. }
+            | Node::OpUnionKind { .. }
+            | Node::SheetSpanKind { .. }
+            | Node::TableNameKind(_)
+            | Node::FunctionKind {
+                kind: Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange,
+                ..
+            }
+    )
 }

@@ -1,0 +1,45 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1175: SUBTOTAL/AREAS rows left UNVERIFIED by T-1163: two non-reference arguments (which wins), AREAS of an array, an invalid function number next to a non-reference argument, and the intersection-rule reference operands (OFFSET, XLOOKUP, IFS, SWITCH, TAKE, DROP, TRIMRANGE, INDIRECT, a defined name). Sheet1 A1=1, A2=2; names rng = Sheet1!$A$1:$A$2, cst = 5.",
+  "tags": [
+    "M1",
+    "references",
+    "subtotal",
+    "probe"
+  ],
+  "names": {
+    "rng": "=Sheet1!$A$1:$A$2",
+    "cst": "=5"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "C1": "=1/0",
+        "H1": "=SUBTOTAL(9,IF(TRUE,\"a\"),IF(TRUE,1/0))",
+        "H2": "=SUBTOTAL(9,IF(TRUE,1/0),IF(TRUE,\"a\"))",
+        "H3": "=SUBTOTAL(9,IF(TRUE,\"a\"),IF(TRUE,5))",
+        "H4": "=AREAS(IF(TRUE,{1,2}))",
+        "H5": "=SUBTOTAL(12,IF(TRUE,{1,2}))",
+        "H6": "=SUBTOTAL(99,#REF!)",
+        "H7": "=SUBTOTAL(12,IF(TRUE,5))",
+        "H8": "=SUBTOTAL(12,A1:A2)",
+        "H9": "=SUBTOTAL(0,IF(TRUE,5))",
+        "H10": "=SUBTOTAL(12,IF(TRUE,1/0))",
+        "H11": "=SUBTOTAL(9,OFFSET(A1,0,0,2,1))",
+        "H12": "=SUBTOTAL(9,XLOOKUP(1,A1:A2,A1:A2))",
+        "H13": "=SUBTOTAL(9,IFS(TRUE,A1:A2))",
+        "H14": "=SUBTOTAL(9,SWITCH(1,1,A1:A2))",
+        "H15": "=SUBTOTAL(9,TAKE(A1:A2,1))",
+        "H16": "=SUBTOTAL(9,DROP(A1:A2,1))",
+        "H17": "=SUBTOTAL(9,TRIMRANGE(A1:A2))",
+        "H18": "=SUBTOTAL(9,INDIRECT(\"A1:A2\"))",
+        "H19": "=SUBTOTAL(9,rng)",
+        "H20": "=SUBTOTAL(9,cst)"
+      }
+    }
+  ],
+  "expected": {}
+}

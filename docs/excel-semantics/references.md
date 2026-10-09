@@ -646,15 +646,25 @@ reference operand that evaluates to something else loads and gives:
   `SUBTOTAL(9,C1,IF(TRUE,5))` and `SUBTOTAL(9,IF(TRUE,5),C1)` are `#VALUE!` with C1 = `#DIV/0!`;
 - an array spills, `#VALUE!` per element and an error element kept: `SUBTOTAL(9,IF(TRUE,{1,#N/A}))`
   spills `#VALUE!`, `#N/A`; `SUBTOTAL(9,A1:A2,IF(TRUE,{1,2}))` spills two `#VALUE!`.
-Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) for the loading forms.
+- two non-reference arguments: the first one wins, whatever it holds: `SUBTOTAL(9,IF(TRUE,"a"),IF(TRUE,1/0))` is
+  `#VALUE!`, `SUBTOTAL(9,IF(TRUE,1/0),IF(TRUE,"a"))` is `#DIV/0!`;
+- AREAS of an array spills `#VALUE!` per element: `AREAS(IF(TRUE,{1,2}))` fills two cells;
+- an invalid function number is `#VALUE!` next to arguments that resolve to references or values
+  (`SUBTOTAL(12,A1:A2)`, `SUBTOTAL(12,IF(TRUE,5))`, `SUBTOTAL(0,IF(TRUE,5))`), but an error in the arguments
+  beats it: `SUBTOTAL(99,#REF!)` is `#REF!`, `SUBTOTAL(12,IF(TRUE,1/0))` is `#DIV/0!`, and an array argument still
+  spills (`SUBTOTAL(12,IF(TRUE,{1,2}))` is two `#VALUE!`);
+- operands taken over from the intersection rule load and are the cells they pick: OFFSET, XLOOKUP, IFS, SWITCH,
+  TAKE, DROP, TRIMRANGE, INDIRECT and a name holding a range (`SUBTOTAL(9,DROP(A1:A2,1))` = 2); a name holding a
+  constant (`=5`) is `#VALUE!`.
+Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) and probes/subtotal-reference-operands-b
+(excel-graph, 2026-10-09, T-1175).
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
-`Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, spill shape in
-`subtotal_static_result`. UNVERIFIED: which of two non-reference arguments wins (the engine takes the
-first), AREAS of an array (the engine gives `#VALUE!`), a function number that is itself invalid
-next to a non-reference argument (the engine gives `#VALUE!` for the function number first), and
-the SUBTOTAL operands taken over from the intersection rule without a SUBTOTAL probe: OFFSET,
-XLOOKUP, IFS, SWITCH, TAKE, DROP, TRIMRANGE, INDIRECT and defined names (T-1175). Typed entry is a desktop
-question (M14).
+`Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
+`subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
+`Model::evaluate_picked_reference_arg` (SUBTOTAL and AREAS only; SUM and the other aggregates still evaluate those calls
+to values, UNVERIFIED for them, so `SUM(XLOOKUP(2,A1:A2,B1:B2))` over a boolean cell is not settled). UNVERIFIED: the
+same calls over an array (`SUBTOTAL(9,TAKE({1,2;3,4},1))` is one `#VALUE!` in the engine, Excel may spill) and an error
+element kept by AREAS (`AREAS(IF(TRUE,{1,#N/A}))`). Typed entry is a desktop question (M14).
 Tasks: T-1063, T-1163, T-1174, T-1175 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
@@ -780,6 +790,13 @@ Status: VERIFIED. Corner order: see "Sheet-qualified range corners" above.
 Implemented in: `Model::get_range`, `range_operand` and `defined_name_range_operand`
 (reference_operators.rs, defined_names.rs); the lexer keeps a column-spelled name before `:` an identifier (lexer/mod.rs).
 Tasks: T-1173, T-1205
+
+## COUNTBLANK of a name that is not a reference is an error
+Rule: `COUNTBLANK(name)` where `name` is not a reference is an error, never a count. A name whose body (or error literal) evaluates to an error gives that error: `=1+"a"` `#VALUE!`, `=1/0` and `=0/0` `#DIV/0!`, `=NA()` `#N/A`, `=SQRT(-1)` `#NUM!`, `=Sheet1!#REF!` `#REF!`, `=Sheet1!B1 Sheet1!B3` (empty intersection) `#NULL!`, an undefined name in the body `#NAME?`. Any other value is `#VALUE!`: `=5`, `="x"`, `=""` (not a blank), `=TRUE`. Names that are references count blanks as for a range, whatever the body spelling: `=Sheet1!$B$1:$B$3` and `=(Sheet1!$B$1:$B$3)` give 1 with B2 empty, a single-cell name or body (`=Sheet1!$C$1`, `=(Sheet1!$C$2)`) counts that one cell (an error cell is 0, an empty cell 1), and `=INDEX(Sheet1!$C$1:$C$3,2)` is a reference too (A16:A21). The error rule covers only names that are not references. A name spelled like a cell address (`bad2` is column BAD, row 2) is that cell, not a name: pick other names in probes.
+A literal expression argument (`COUNTBLANK(1/0)`, `COUNTBLANK(1+"a")`) is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1199), so no value exists. A first draft of the single-cell probe, using the names `c1n`, `cpb`, `cpn`, `cpe`, `ixb` and `ixn`, was refused the same way; longer names worked (cause unknown, UNVERIFIED).
+Evidence: probes/countblank-formula-names A1:A21 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
+Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
+Tasks: T-1199
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
