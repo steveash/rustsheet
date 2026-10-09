@@ -804,9 +804,18 @@ Tasks: T-1173, T-1205
 ## COUNTBLANK of a name that is not a reference is an error
 Rule: `COUNTBLANK(name)` where `name` is not a reference is an error, never a count. A name whose body (or error literal) evaluates to an error gives that error: `=1+"a"` `#VALUE!`, `=1/0` and `=0/0` `#DIV/0!`, `=NA()` `#N/A`, `=SQRT(-1)` `#NUM!`, `=Sheet1!#REF!` `#REF!`, `=Sheet1!B1 Sheet1!B3` (empty intersection) `#NULL!`, an undefined name in the body `#NAME?`. Any other value is `#VALUE!`: `=5`, `="x"`, `=""` (not a blank), `=TRUE`. Names that are references count blanks as for a range, whatever the body spelling: `=Sheet1!$B$1:$B$3` and `=(Sheet1!$B$1:$B$3)` give 1 with B2 empty, a single-cell name or body (`=Sheet1!$C$1`, `=(Sheet1!$C$2)`) counts that one cell (an error cell is 0, an empty cell 1), and `=INDEX(Sheet1!$C$1:$C$3,2)` is a reference too (A16:A21). The error rule covers only names that are not references. A name spelled like a cell address (`bad2` is column BAD, row 2) is that cell, not a name: pick other names in probes.
 A literal expression argument (`COUNTBLANK(1/0)`, `COUNTBLANK(1+"a")`) is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1199), so no value exists. A first draft of the single-cell probe, using the names `c1n`, `cpb`, `cpn`, `cpe`, `ixb` and `ixn`, was refused the same way; longer names worked (cause unknown, UNVERIFIED).
-Evidence: probes/countblank-formula-names A1:A21 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
-Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
-Tasks: T-1199
+A body that is an IF or CHOOSE follows the same rule: one that picks a scalar is `#VALUE!` (`=IF(TRUE,5,6)`, `=CHOOSE(1,5,6)`,
+`=IF(TRUE,"x",1)`, `=IF(TRUE,"",1)`), one that picks an error is that error (`=IF(TRUE,1/0,1)` `#DIV/0!`,
+`=CHOOSE(1,NA(),1)` `#N/A`), and one that picks a range or a single cell counts it as a reference (`=IF(TRUE,Sheet1!$B$1:$B$3)`,
+`=IF(FALSE,5,Sheet1!$B$1:$B$3)` and `=CHOOSE(1,Sheet1!$B$1:$B$3,5)` give 1; `=IF(TRUE,Sheet1!$C$2)` and
+`=CHOOSE(1,Sheet1!$C$2)` give 1 for an empty cell; `=IF(TRUE,Sheet1!$C$3)` and `=IF(TRUE,Sheet1!$C$1)` give 0 for a
+number and an error cell; CHOOSE was probed with the empty cell only) (probes/countblank-formula-names-b, excel-graph,
+2026-10-09, T-1207). UNVERIFIED: LET bodies. The case builder does not write `_xlpm.` in defined-name bodies, so Excel
+read the LET variable as an undefined name (`#NAME?`) and no value exists (T-1209); a name whose body is another
+formula name is unprobed too.
+Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-names-b A1:A13 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
+Status: VERIFIED for non-LET bodies. Implemented in: `fn_countblank` (functions/statistical/count.rs).
+Tasks: T-1199, T-1207
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
@@ -836,6 +845,6 @@ overlapping areas count twice (`LARGE((A1:B2,B2),2)` = 9 with A1:B2 = 7,1,3,9 an
 in an area ("#DIV/0!" in F1) is ignored (`LARGE((A1,F1),1)` = 7, `RANK(7,(A1,F1))` = 1). SMALL reads `IF(..)`, `INDEX(..)` and a 3-D reference like LARGE
 (`SMALL(IF(A1:C1>0,A1:C1),2)` = 5, `SMALL(INDEX(A1:C2,0,2),1)` = 1, `SMALL(Sheet1:Data!A1,1)` = 7). RANK with an array (not a
 reference) as the ref argument, `RANK(5,IF(A1:C1>0,A1:C1))`, is `#VALUE!` spilled over the array's shape (1x3).
-Evidence: probes/multiarea-order-stats (excel-graph, 2026-10-09, T-1152). Ours: matches except the RANK-of-array row (engine returns 2; T-1203).
+Evidence: probes/multiarea-order-stats (excel-graph, 2026-10-09, T-1152). Ours: matches (the RANK-of-array row since T-1203; see statistics.md "RANK of a non-reference array").
 Status: VERIFIED (excel-graph)
 Tasks: T-1068, T-1152, T-1203

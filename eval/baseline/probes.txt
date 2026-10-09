@@ -18,6 +18,7 @@ C	probes/and-or-xor-error-order.case.json	37
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
+C	probes/array-context-legacy-sumproduct.case.json	31
 C	probes/at-group-not-whole-operand.case.json	10
 C	probes/at-operand-formulatext.case.json	14
 C	probes/at-paren-operands-levels.case.json	20
@@ -83,6 +84,7 @@ C	probes/clock-text-oddities6.case.json	35
 C	probes/clock-text-oddities7.case.json	12
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
+C	probes/countblank-formula-names-b.case.json	13
 C	probes/countblank-formula-names.case.json	21
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
@@ -258,6 +260,12 @@ C	probes/range-operator-column-letter-before-colon.case.json	1
 C	probes/range-operator-unnamed-operands.case.json	10
 C	probes/range-right-operand-errors.case.json	4
 C	probes/rank-absent-number.case.json	15
+C	probes/rank-nonref-06.case.json	1
+C	probes/rank-nonref-07.case.json	1
+C	probes/rank-nonref-08.case.json	1
+C	probes/rank-nonref-12.case.json	3
+C	probes/rank-nonref-13.case.json	3
+C	probes/rank-nonref-14.case.json	4
 C	probes/rate-empty-arguments.case.json	10
 C	probes/resource-limits.case.json	14
 C	probes/rich-errors-arg-kinds.case.json	70
@@ -342,6 +350,18 @@ C	probes/xnpv-argument-count.case.json	3
 F	probes/3d-ref-choose-let.case.json	Calc!C3
 F	probes/3d-ref-choose-let.case.json	Calc!C4
 F	probes/3d-ref-let-values.case.json	Calc!C7
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!F1
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!F10
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!G1
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!G10
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!H1
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!H10
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!R1
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!R10
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S1
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S10
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1
+F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
 F	probes/at-group-not-whole-operand.case.json	Sheet1!E30
 F	probes/at-group-not-whole-operand.case.json	Sheet1!E31
 F	probes/at-group-not-whole-operand.case.json	Sheet1!E32
@@ -623,9 +643,6 @@ F	probes/math-argument-modes.case.json	Sheet1!C51
 F	probes/math-argument-modes.case.json	Sheet1!C52
 F	probes/math-argument-modes.case.json	Sheet1!C53
 F	probes/math-argument-modes.case.json	Sheet1!C9
-F	probes/multiarea-order-stats.case.json	Sheet1!H14
-F	probes/multiarea-order-stats.case.json	Sheet1!I14
-F	probes/multiarea-order-stats.case.json	Sheet1!J14
 F	probes/multiarea-printarea.case.json	!EngineError
 F	probes/number-text-exponent-digits.case.json	Calc!D8
 F	probes/paren-number-text-forms.case.json	Sheet1!A1
