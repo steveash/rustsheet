@@ -74,7 +74,7 @@ The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and
 - `{"t":"n","v":1.5}` number
 - `{"t":"s","v":"x"}` text
 - `{"t":"b","v":true}` boolean
-- `{"t":"e","v":"#DIV/0!"}` error (add `"stored":true` for a stored `t="e"` constant instead of a formula, T-0999)
+- `{"t":"e","v":"#DIV/0!"}` error (add `"stored":true` for a stored `t="e"` constant instead of typed input: spec2xlsx writes it so, T-0999, and the engine adapter enters it as `Input::Value` with the stored-name kind, `#ERROR!` if unknown, as xlsx import does, T-1221)
 - `{"t":"empty"}` blank
 
 JSON numbers are written shortest-round-trip, so they are exact.

@@ -17,8 +17,8 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 /// JSON numbers are numbers, JSON booleans are booleans, strings starting with
 /// `=` are formulas, other strings are literal text. Use the tagged form
 /// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
-/// carry `"stored":true`, which only changes how spec2xlsx writes it (a stored constant, T-0999);
-/// the engine adapter ignores it. `{"entered":"(1)"}` is text entered as a user types it, so
+/// carry `"stored":true`: spec2xlsx writes it as a stored `t="e"` constant (T-0999) and the engine
+/// adapter enters it as one, as xlsx import does (T-1221), not as typed input. `{"entered":"(1)"}` is text entered as a user types it, so
 /// Excel picks the value and number format (T-0280).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -27,12 +27,62 @@ pub enum CellInput {
     Bool(bool),
     /// Formula (leading `=`) or literal text.
     Str(String),
+    /// `{"t":"e","v":"#X","stored":true}`: an error constant. Must precede `Typed`, which would
+    /// otherwise match it and drop `stored`.
+    StoredError(StoredError),
     Typed(Value),
     /// Typed entry: spec2xlsx leaves the cell blank and records it for the oracle backend, which
     /// writes it into the cell through Excel's own input parser.
     Entered {
         entered: String,
     },
+}
+
+/// A stored error constant (`{"t":"e","v":"#N/A","stored":true}`); only that exact shape matches.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StoredError {
+    t: ErrorTag,
+    /// The error name as written, e.g. `#N/A`.
+    pub v: String,
+    stored: StoredTrue,
+}
+
+impl StoredError {
+    /// A stored error constant named `name`.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            t: ErrorTag::E,
+            v: name.into(),
+            stored: StoredTrue,
+        }
+    }
+}
+
+/// The constant `"e"` of an error cell's `t` key.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+enum ErrorTag {
+    #[serde(rename = "e")]
+    E,
+}
+
+/// The constant `true`: `stored: false` is not a stored error.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "bool", into = "bool")]
+struct StoredTrue;
+
+impl TryFrom<bool> for StoredTrue {
+    type Error = &'static str;
+
+    fn try_from(stored: bool) -> Result<Self, Self::Error> {
+        stored.then_some(Self).ok_or("expected stored = true")
+    }
+}
+
+impl From<StoredTrue> for bool {
+    fn from(_: StoredTrue) -> Self {
+        true
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -173,6 +223,23 @@ mod tests {
                 entered: "(1)".into()
             }
         );
+    }
+
+    #[test]
+    fn stored_errors_are_told_apart_from_typed_ones() {
+        let parse = |json: &str| -> CellInput {
+            serde_json::from_str(json).unwrap_or_else(|e| panic!("{e}"))
+        };
+        assert_eq!(
+            parse(r##"{"t":"e","v":"#N/A","stored":true}"##),
+            CellInput::StoredError(StoredError::new("#N/A"))
+        );
+        for json in [
+            r##"{"t":"e","v":"#N/A"}"##,
+            r##"{"t":"e","v":"#N/A","stored":false}"##,
+        ] {
+            assert_eq!(parse(json), CellInput::Typed(Value::Error("#N/A".into())));
+        }
     }
 
     #[test]

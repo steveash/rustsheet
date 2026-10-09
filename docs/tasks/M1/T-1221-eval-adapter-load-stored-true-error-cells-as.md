@@ -3,7 +3,7 @@ id: T-1221
 title: "Eval adapter: load stored:true error cells as stored constants, as xlsx import does"
 milestone: M1
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -36,22 +36,25 @@ after the engine has a `#BUSY!` kind (T-1222).
   Excel see.
 
 ## Acceptance criteria
-- [ ] A spec error cell with `"stored": true` deserializes into a form the adapter can tell apart
+- [x] A spec error cell with `"stored": true` deserializes into a form the adapter can tell apart
       from a non-stored `{"t":"e"}` cell (for example a new `CellInput` variant placed before
       `Typed`). Non-stored error cells still load through `Input::Parse`, unchanged.
-- [ ] The adapter enters a stored error through `Input::Value` with the kind
+- [x] The adapter enters a stored error through `Input::Value` with the kind
       `ErrorKind::from_literal(v)`. An unknown name falls back to `ErrorKind::Unknown` (`#ERROR!`),
       the same as the xlsx importer's `unwrap_or(Error::ERROR)`.
-- [ ] Unit tests in `crates/rustsheet-eval` cover four cases. Stored `#N/A` loads as error `#N/A`.
+- [x] Unit tests in `crates/rustsheet-eval` cover four cases. Stored `#N/A` loads as error `#N/A`.
       Stored `#GETTING_DATA` loads as `GettingData`. Stored `#BUSY!` loads as an error, not text
       (`#ERROR!` until T-1222 adds the kind). Non-stored `{"t":"e","v":"#N/A"}` is unchanged.
-- [ ] The doc comment on `CellInput` and the "Cell inputs" description in
+- [x] The doc comment on `CellInput` and the "Cell inputs" description in
       `docs/architecture/eval-harness.md` (if it has one) say what `stored` now does.
-- [ ] `make eval` shows no new F lines. Any `probes/error-stored-constants` cells that now pass
+- [x] `make eval` shows no new F lines. Any `probes/error-stored-constants` cells that now pass
       (for example S!C1, E1, G1, which only need "an error that is not `#N/A`") are recorded with
       `make eval-baseline`.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Adding a `#BUSY!` error kind (T-1222) and the SPEC-0003 decision on it (T-1020).
 - spec2xlsx changes. It already writes stored constants.
+
+## Outcome
+New `CellInput::StoredError` (strict `t:"e"` + `stored:true` shape, before `Typed`); the adapter enters it as `Input::Value(Error)` via `ErrorKind::from_literal`, `Unknown` (#ERROR!) for unknown names. Unit tests in case.rs and engine.rs; eval-harness.md updated. Eval: probes known failures 407 -> 404 (fixed S!C1, E1, G1 of error-stored-constants), no regressions. Remaining cells wait on T-1222 (#BUSY!).
