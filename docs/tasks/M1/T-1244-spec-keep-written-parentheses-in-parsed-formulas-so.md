@@ -27,8 +27,10 @@ intersections already depend on them, references.md), structural edits and xlsx 
 keeps the parentheses (Excel writes them; check an Excel-authored file), and which existing special cases fold into it.
 T-1200 (an `@` group that is not the whole operand) becomes one case of it.
 It also covers probes/at-group-leftmost-shapes E34 (`=@((A1 B1) C1) D1`, a group nested in the leading `@` group) and E35
-(`=@(A1):(B1) C1`, a group around a range's right corner), which the engine prints without those groups (T-1251 left them here:
+(`=@(A1):(B1) C1`, a group around a range's right corner; also probes/at-group-range-corner-whole E34, `=@(A1):(B1)`), which the engine prints without those groups (T-1251 left them here:
 `LeadGroup` records one group only, and extending it would add another special case this spec should fold away).
+Special cases to fold in also include `LeadGroup` itself (`of_range`: a group that is a range's left corner, `@(A1):B1 C1`
+and the whole-operand `@(A1):B1`, T-1200, T-1251).
 
 ## Acceptance criteria
 - [ ] docs/specs/SPEC-XXXX (template docs/specs/TEMPLATE.md) is written and approved by the architecture and performance reviewers.

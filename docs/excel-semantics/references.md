@@ -874,7 +874,9 @@ More shapes (probes/at-group-leftmost-shapes, excel-graph, 2026-10-09, T-1245): 
 (`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches the first six, `=@(A1):B1` (T-1251: a
 group that is the left corner of a range is `lead` even when the range is the whole operand) and the last; it prints `=@((A1 B1) C1) D1` as
 `=@(A1 B1 C1) D1` and `=@(A1):(B1) C1` as `=@(A1):B1 C1`, dropping a group nested in or right of the leading one: the general
-written-parentheses gap (T-1244).
+written-parentheses gap (T-1244). With the range as the whole operand (probes/at-group-range-corner-whole, excel-graph, 2026-10-09,
+T-1251) Excel prints `=@(A1:B1):C1`, `=@((A1)):B1:C1`, `=@((A1)):B1`, `=@(A1):B1:C1` and `=@(A1):(B1)` as written (all `#VALUE!`);
+the engine matches the first four and prints the last as `=@(A1):B1` (T-1244).
 The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
@@ -882,7 +884,7 @@ Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1)
 level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
 written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
 excel-graph 2026-10-09, T-1178; engine: T-1244).
-Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245).
+Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245); probes/at-group-range-corner-whole (excel-graph, T-1251).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251
 

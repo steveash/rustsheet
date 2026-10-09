@@ -264,16 +264,19 @@ fn at_operand_group_leftmost_shapes_match_the_probe() {
         "=@(A1 B1):C1",
         "=@(A1 B1 C1) D1",
         "=@(A1):OFFSET(B1,0,0) C1",
-        // E36: the group is the left corner of a range that is the whole operand (T-1251).
+        // E36: the group is the left corner of a range that is the whole operand (T-1251); the
+        // next three are probes/at-group-range-corner-whole E30, E31 and E33 (excel-graph).
         "=@(A1):B1",
         "=@(A1:B1):C1",
         "=@((A1)):B1:C1",
+        "=@(A1):B1:C1",
     ];
     for (i, formula) in forms.iter().enumerate() {
         model._set(&format!("E{}", 50 + i), formula);
     }
     model._set("F50", "=@((A1 B1) C1) D1");
     model._set("F51", "=@(A1):(B1) C1");
+    model._set("F52", "=@(A1):(B1)");
     model.evaluate();
     for (i, formula) in forms.iter().enumerate() {
         assert_eq!(model._get_formula(&format!("E{}", 50 + i)), *formula);
@@ -282,6 +285,8 @@ fn at_operand_group_leftmost_shapes_match_the_probe() {
     // nested inside or right of the leading one, the general written-parentheses gap (T-1244).
     assert_eq!(model._get_formula("F50"), "=@(A1 B1 C1) D1");
     assert_eq!(model._get_formula("F51"), "=@(A1):B1 C1");
+    // probes/at-group-range-corner-whole E34.
+    assert_eq!(model._get_formula("F52"), "=@(A1):B1");
 }
 
 #[test]
