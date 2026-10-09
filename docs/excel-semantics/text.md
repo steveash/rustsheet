@@ -93,7 +93,7 @@ while generating, not committed: a refused workbook has no oracle file); both ar
 unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
-Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms) is UNVERIFIED. CODE and VALUETOTEXT
+Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
 lift over ranges (T-1212). Unprobed (T-1229): VALUETOTEXT format 1 on text (Microsoft documents quotes plus doubled embedded quotes), invalid format values, and a lifted format (`VALUETOTEXT(A1,{0,1})`); we ignore the format and never lift it.
 Status: VERIFIED (excel-graph)
-Tasks: T-1087, T-1212, T-1213, T-1214, T-1229
+Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248
