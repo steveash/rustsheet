@@ -826,17 +826,7 @@ impl Model {
                 {
                     error
                 }
-                // `=ANCHORARRAY(@1)`: the `@` of a value is not an anchor, `#VALUE!` (T-1226).
-                _ if matches!(**child, ImplicitIntersection { .. }) => CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "The spill range operator needs a reference".to_string(),
-                ),
-                _ => CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    format!("Error with Spill Range Operator in cell {cell:?}"),
-                ),
+                _ => Self::spill_anchor_error(child, cell),
             },
             ImplicitIntersection { child, .. } => {
                 let result = self.evaluate_implicit_intersection_operand(child, cell);

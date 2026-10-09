@@ -554,6 +554,16 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
     }
 }
 
+/// `text` (the printed `node`) as the operand of `#`: like [`tight_operand`], but the `@` of a
+/// value prints bare, `=@1#` (probes/colon-hash-value-operands E3, T-1226); the `@` of a
+/// reference keeps its parentheses (`(@A1:B2)#`).
+pub(crate) fn spill_operand(text: String, node: &Node) -> String {
+    match node {
+        Node::ImplicitIntersection { child, .. } if !is_reference_operand(child) => text,
+        _ => tight_operand(text, node),
+    }
+}
+
 /// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
 /// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and any operand
 /// keeps the `written` levels it had, `@(A1 B1)`, `@(A1)`, `@((A1 B1))` (T-1109, T-1116).

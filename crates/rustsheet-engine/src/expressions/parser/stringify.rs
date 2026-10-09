@@ -1,6 +1,6 @@
 mod bound_variables;
 use super::reference_operators::{
-    at_text, callee_operand, intersection_operand, is_reference_operand, tight_operand, union_text,
+    at_text, callee_operand, intersection_operand, spill_operand, tight_operand, union_text,
 };
 use super::{
     super::utils::{name_needs_quoting, quote_name},
@@ -796,13 +796,7 @@ fn stringify(
                     )
                 );
             };
-            // The `@` of a value prints bare, `=@1#` (probes/colon-hash-value-operands E3, T-1226).
-            if let ImplicitIntersection { child: inner, .. } = &**child {
-                if !is_reference_operand(inner) {
-                    return format!("{}#", sub(child));
-                }
-            }
-            format!("{}#", tight_operand(sub(child), child))
+            format!("{}#", spill_operand(sub(child), child))
         }
         LambdaDefKind { parameters, body } => {
             let lambda_name = if export_to_excel {
