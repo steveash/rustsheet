@@ -854,6 +854,14 @@ Implemented in: `fn_multinomial` (functions/math_and_trigonometry/multinomial.rs
 before any factorial, so the work is bounded (directive 5).
 Tasks: T-1197
 
+## FACT and FACTDOUBLE of a huge argument
+Rule: FACT is `#NUM!` once n! overflows a double and FACTDOUBLE once n!! does: `FACT(170)` 7.257415615308004e+306 (`FACT(170.9)` the same, the argument is floored), `FACT(171)`, `(2^53)`, `(1E+15)`, `(1E+300)` `#NUM!`. `FACTDOUBLE(297)` 1.2552756225993057e+304, `(298)` 2.718138023126864e+305, `(300)` 8.154414069380598e+307, `(301)`, `(2^53)`, `(1E+15)`, `(1E+300)` `#NUM!`. Negative: `FACT(-0.5)` and `FACT(-1)` `#NUM!`; `FACTDOUBLE(-1)` is 1, `FACTDOUBLE(-1.5)` and `(-2)` `#NUM!`.
+Evidence: probes/fact-large-arguments A1:A18 (excel-graph, 2026-10-09, T-1233).
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_fact`, `fn_factdouble` (functions/math_and_trigonometry/mathematical.rs) stop at the first infinite product, so the work is bounded (directive 5).
+Ours: the overflow boundary and the `#NUM!` results match; the last digits of `FACT(170)`, `FACT(170.9)` and `FACTDOUBLE(297, 298, 300)` do not yet (T-1249).
+Tasks: T-1233, T-1249
+
 ## BASE min_length is at most 255
 Rule: BASE's `min_length` truncates and may be at most 255: `BASE(1,2,255.9)` pads to 255 characters, `BASE(1,2,254.5)`
 to 254, and `BASE(1,2,256)`, `(1,2,1E+15)` and `(1,2,"300")` (numeric text) are `#NUM!`, as is a negative one

@@ -769,6 +769,10 @@ impl Model {
         let mut k = 2.0;
         while k <= x {
             acc *= k;
+            // Excel: #NUM! at overflow, which also bounds the loop (numbers.md "FACT and FACTDOUBLE").
+            if !acc.is_finite() {
+                return Err(Error::NUM);
+            }
             k += 1.0;
         }
         Ok(acc)
@@ -785,6 +789,9 @@ impl Model {
         let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
         while k <= x {
             acc *= k;
+            if !acc.is_finite() {
+                return Err(Error::NUM);
+            }
             k += 2.0;
         }
         Ok(acc)
