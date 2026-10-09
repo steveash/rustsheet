@@ -959,16 +959,15 @@ impl Model {
         // text (`C4`) unless the format is invalid.
         let operands: Vec<&TextArg> = std::iter::once(&text).chain(format.as_ref()).collect();
         let element = |i: usize, j: usize| {
-            let strict = match &format {
-                Some(f) => self.valuetotext_format(f.elem(i, j))?,
-                None => false,
-            };
+            let strict = format
+                .as_ref()
+                .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
             Ok(ArrayNode::String(value_to_text(text.elem(i, j), strict)))
         };
         // A scalar error text prints as text, which `broadcast_text` would return as the error.
-        match (&text, &format) {
-            (TextArg::Error(..), None) => CalcResult::String(value_to_text(text.elem(0, 0), false)),
-            (TextArg::Error(..), Some(f)) if f.dims() == (1, 1) => match element(0, 0) {
+        let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));
+        match &text {
+            TextArg::Error(..) if scalar_format => match element(0, 0) {
                 Ok(node) => array_node_to_calc_result(&node, cell),
                 Err(e) => CalcResult::new_error(e, cell, String::new()),
             },
