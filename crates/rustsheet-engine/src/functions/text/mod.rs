@@ -1,4 +1,5 @@
 mod arraytotext;
+mod bahttext;
 mod byte_functions;
 mod char_code;
 mod common;

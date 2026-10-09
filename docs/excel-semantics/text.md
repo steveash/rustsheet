@@ -93,7 +93,25 @@ while generating, not committed: a refused workbook has no oracle file); both ar
 unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
-Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
+Ours: matches. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
 lift over ranges (T-1212). Unprobed (T-1229): VALUETOTEXT format 1 on text (Microsoft documents quotes plus doubled embedded quotes), invalid format values, and a lifted format (`VALUETOTEXT(A1,{0,1})`); we ignore the format and never lift it.
 Status: VERIFIED (excel-graph)
 Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248
+
+## BAHTTEXT
+Rule: the number is cut to 15 significant digits (as ROUND does), then rounded half away from zero to two decimals
+(satang): `BAHTTEXT(0.995)` = "หนึ่งบาทถ้วน", `BAHTTEXT(2.675)` = "สองบาทหกสิบแปดสตางค์" and 1.005 gives one satang, so the
+rounding is decimal, not binary. Digits past the 15th are zeros: 123456789012345.67 reads ...สี่สิบหกบาทถ้วน, 1e15+0.5 is
+หนึ่งพันล้านล้านบาทถ้วน and 1.797e308 reads in full. Zero baht prints "ศูนย์บาทถ้วน", whole baht end in "บาทถ้วน", satang alone
+print no baht ("ห้าสิบสตางค์" for 0.5) and both print "…บาท…สตางค์". The sign is a "ลบ" prefix and prints even when the amount
+rounds to zero (-0.001 is "ลบศูนย์บาทถ้วน"; -0.005 is "ลบหนึ่งสตางค์"). Reading: 10 is สิบ, 20 ยี่สิบ, 21 ยี่สิบเอ็ด, a units
+1 after anything is เอ็ด (101, 1001, 1000001), and the digits go in groups of six joined by ล้าน, even over an all-zero
+group (10^12 is หนึ่งล้านล้าน, 1e100 is หนึ่งหมื่น plus sixteen ล้าน). The argument coerces like a number: "5", " 5 " and
+"1e2" work, TRUE is 1, an empty cell is 0, "abc", "" and "1,5" are `#VALUE!`, an error
+passes through; a range or array argument lifts (`BAHTTEXT({1,2.5})` spills "หนึ่งบาทถ้วน", "สองบาทห้าสิบสตางค์").
+Unprobed: the argument count (0 or 2 arguments).
+Evidence: probes/text-modes-bahttext, text-bahttext-wide, -wide2, -form1 to -form8, -text1 to -text3 (excel-graph,
+2026-10-09, T-1214).
+Ours: matches (`fn_bahttext`, functions/text/bahttext.rs).
+Status: VERIFIED (excel-graph)
+Tasks: T-1214
