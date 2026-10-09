@@ -3,7 +3,7 @@ id: T-1247
 title: "ANCHORARRAY(@-1) parses, and ANCHORARRAY(@INDEX(..)) spills the reference (follow-up of T-1240)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
