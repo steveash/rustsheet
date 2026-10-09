@@ -826,8 +826,7 @@ as a syntax error, so the four refused forms are no longer evaluated (they used 
 printed as `=A1:1/0`, which does not re-parse to the same formula). T-1216 (excel-graph, 2026-10-09; one scratch workbook per formula, a control `=SUM(A1:B1)` in the same shape loaded) verified the inferred refusals: Excel refuses (`FileCorruptTryRepair`)
 `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`, `=ANCHORARRAY(A1+0)` and the negated
 references `=(-A1):B1`, `=A1:(-B1)` and `=(-A1)#` (unlike the union, which accepts `(-A1,B1)`). It loads, as `#VALUE!`, `=A1:LAMBDA(x,x)`, `=A1:(@1)` and
-`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these except `=ANCHORARRAY(@1)`, which the
-parser refuses although Excel loads it (T-1226); so the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (other `@`-of-value forms are inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
+`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these (`=ANCHORARRAY(@1)` evaluates to `#VALUE!` and prints bare as `=@1#`, while the `@` of a reference keeps its parentheses, `(@A1:B2)#`; T-1226); so the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (other `@`-of-value forms are inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117, T-1216, T-1226
 
 ## `:` joins multi-cell operands and names into their bounding box

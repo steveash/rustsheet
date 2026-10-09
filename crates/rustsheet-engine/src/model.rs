@@ -826,6 +826,12 @@ impl Model {
                 {
                     error
                 }
+                // `=ANCHORARRAY(@1)`: the `@` of a value is not an anchor, `#VALUE!` (T-1226).
+                _ if matches!(**child, ImplicitIntersection { .. }) => CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    "The spill range operator needs a reference".to_string(),
+                ),
                 _ => CalcResult::new_error(
                     Error::ERROR,
                     cell,
