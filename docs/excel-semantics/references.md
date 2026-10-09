@@ -661,10 +661,11 @@ Evidence: probes/subtotal-reference-operands (excel-graph, T-1163), probes/subto
 Further rules (-c): TAKE over a literal array is an array, not a reference, so `SUBTOTAL(9,TAKE({1,2;3,4},1))` and
 `AREAS(TAKE({1,2},1))` spill two `#VALUE!` (H1:I2); `AREAS(IF(TRUE,{1,#N/A}))` spills `#VALUE!`, `#N/A`: the error
 element is kept (H3:I3). SUM, COUNT and AVERAGE treat a single-cell XLOOKUP/TAKE/DROP/TRIMRANGE result as a
-reference: SUM ignores a text (H4) and a boolean (H5, H6, H11) picked cell and gives 0, COUNT ignores a boolean
-(H7) and a blank (H8, H12), COUNTA does not count a blank (H13), AVERAGE of a boolean picked cell is `#DIV/0!`
-(H9). The SUM blank cases (H10, H14) do not tell a reference from a value, since a blank value sums to 0 too.
-AVERAGE is probed with a boolean only.
+reference. Through XLOOKUP: SUM ignores a text (H4) and a boolean (H5, H6) picked cell and gives 0, COUNT ignores a
+boolean (H7) and a blank (H8), AVERAGE of a boolean picked cell is `#DIV/0!` (H9). The TAKE cells (H10 text, H11 and
+H12 boolean, H13 COUNTA of a blank gives 0) and the SUM blank case H14 give the same values but cannot tell a
+reference from a 1x1 array or a blank value, so they are not evidence for the rule (T-1211). AVERAGE is probed with
+a boolean only.
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
 `subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
