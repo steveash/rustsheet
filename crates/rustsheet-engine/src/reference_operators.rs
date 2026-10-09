@@ -361,7 +361,8 @@ impl Model {
             } => self.index_impl(args, cell, true),
             // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
             // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
-            // D3, D7, D10, D11, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed).
+            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed,
+            // T-1227).
             Node::FunctionKind {
                 kind: Function::If, ..
             } => self

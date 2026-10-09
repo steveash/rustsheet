@@ -96,7 +96,7 @@ fn wrong_number_of_arguments() {
     assert_eq!(model._get_text("A2"), *"#ERROR!");
 }
 
-// A range corner may be an error, a value or an IF that picks a reference
+// A range corner may be an error, a value, or an IF or CHOOSE that picks a reference
 // (probes/isref-range-operands, excel-graph; T-1177).
 #[test]
 fn range_operand_errors_values_and_if() {
@@ -116,6 +116,7 @@ fn range_operand_errors_values_and_if() {
     model._set("E2", "=A1:IF(TRUE,A1)");
     model._set("E3", "=ROWS(A1:IF(TRUE,B3))");
     model._set("E4", "=ERROR.TYPE(A1:IF(TRUE,1))");
+    model._set("E5", "=SUM(A1:CHOOSE(1,B2))");
     model.evaluate();
 
     assert_eq!(model._get_text("D1"), *"FALSE");
@@ -127,4 +128,5 @@ fn range_operand_errors_values_and_if() {
     assert_eq!(model._get_text("E2"), *"1");
     assert_eq!(model._get_text("E3"), *"3");
     assert_eq!(model._get_text("E4"), *"3");
+    assert_eq!(model._get_text("E5"), *"33");
 }
