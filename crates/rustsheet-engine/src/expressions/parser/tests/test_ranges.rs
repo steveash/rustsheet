@@ -165,7 +165,7 @@ fn range_keeps_reference_operands() {
 }
 
 /// Excel loads `ANCHORARRAY(@1)` and prints it `=@1#` (probes/colon-hash-value-operands E3,
-/// T-1226); the `@` of a reference keeps its parentheses.
+/// T-1226); every other `@` operand keeps its parentheses (UNVERIFIED, T-1240).
 #[test]
 fn anchorarray_of_at_value_prints_bare() {
     let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
