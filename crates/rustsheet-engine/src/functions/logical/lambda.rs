@@ -34,6 +34,29 @@ impl Model {
         self.call_lambda(callee, call_args, cell)
     }
 
+    /// What a called LET variable or LAMBDA parameter holds. A union is a reference, so calling
+    /// it is `#REF!` like any reference (probes/let-name-call-forms H1, H2, H13, T-1231).
+    pub(crate) fn variable_callee(
+        &self,
+        var_id: u32,
+        name: &str,
+        cell: CellReferenceIndex,
+    ) -> Result<CalcResult, CalcResult> {
+        match self.variable_stack.get(var_id as usize) {
+            Some(Binding::Areas(_)) => Err(CalcResult::new_error(
+                Error::REF,
+                cell,
+                "A reference cannot be called".to_string(),
+            )),
+            Some(binding) => Ok(binding.value(cell)),
+            None => Err(CalcResult::new_error(
+                Error::NAME,
+                cell,
+                format!("Variable \"{name}\" not found in scope."),
+            )),
+        }
+    }
+
     /// A LET variable or LAMBDA parameter called like a function, `f(2)` in `LET(f,..,f(2))` or
     /// `LAMBDA(f,f(2))`.
     /// A LAMBDA is called and a reference is `#REF!` (`call_callee`); a value gives Excel's odd

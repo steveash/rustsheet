@@ -669,15 +669,9 @@ impl Model {
             NamedFunctionKind { name, args, id } => {
                 let lambda_result = if let Some(var_id) = id {
                     // Bound by LET or LAMBDA: what it holds is called, a value too.
-                    match self.variable_stack.get(*var_id as usize) {
-                        Some(binding) => binding.value(cell),
-                        None => {
-                            return CalcResult::new_error(
-                                Error::NAME,
-                                cell,
-                                format!("Variable \"{name}\" not found in scope."),
-                            )
-                        }
+                    match self.variable_callee(*var_id, name, cell) {
+                        Ok(callee) => callee,
+                        Err(error) => return error,
                     }
                 } else {
                     // Not bound by LET — look up as a defined-name Lambda.
