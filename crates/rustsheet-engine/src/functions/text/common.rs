@@ -13,7 +13,10 @@ use crate::{
     formatter::format::{format_text, format_text_value, Formatted},
     functions::{
         criteria::from_wildcard_to_regex,
-        text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        text::util::{
+            one_char_per_utf16_unit, substitute, substitute_exceeds_limit, text_after, text_before,
+            utf16_slice, Case,
+        },
     },
     locale::Locale,
     model::Model,
@@ -21,6 +24,9 @@ use crate::{
 };
 
 /// Computes a single LEFT result from one element of each argument.
+// Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
+// count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
+// positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
     let num = num?;
@@ -58,26 +64,18 @@ fn mid_element(
     if length < 0.0 {
         return Err(Error::VALUE);
     }
-    let start_num = start.floor() as usize;
-    let num_chars = length.floor() as usize;
-    let mut result = String::new();
-    let mut count: usize = 0;
-    for (index, ch) in s.chars().enumerate() {
-        if count >= num_chars {
-            break;
-        }
-        if index + 1 >= start_num {
-            result.push(ch);
-            count += 1;
-        }
-    }
-    Ok(ArrayNode::String(result))
+    // Excel: MID positions count UTF-16 code units, so `MID("a😀b",2,2)` is the emoji
+    // (probes/text-surrogate-positions A9-A13).
+    let first = start.floor() as usize - 1;
+    let end = first.saturating_add(length.floor() as usize);
+    Ok(ArrayNode::String(utf16_slice(&s, first, end)))
 }
 
 /// Computes a single LEN result.
 fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    Ok(ArrayNode::Number(s.chars().count() as f64))
+    // Excel: LEN counts UTF-16 code units, so an emoji counts two (probes/text-surrogate-positions A1).
+    Ok(ArrayNode::Number(s.encode_utf16().count() as f64))
 }
 
 /// Computes a single FIND or SEARCH result from one element of each argument.
@@ -95,16 +93,27 @@ fn find_element(
         return Err(Error::VALUE);
     }
     let start_num = start_num as usize;
-    if start_num > within_text.len() {
+    // Excel: positions count UTF-16 code units, and `?` matches one unit
+    // (probes/text-surrogate-positions A14-A26, B11-B15).
+    let (find_text, within_text) = if is_search {
+        // SEARCH is case insensitive
+        (find_text.to_lowercase(), within_text.to_lowercase())
+    } else {
+        (find_text, within_text)
+    };
+    let find_text = one_char_per_utf16_unit(&find_text);
+    let within_text = one_char_per_utf16_unit(&within_text);
+    let length = within_text.chars().count();
+    // Excel: FIND accepts a start one past the end, where only "" is found (`FIND("","abc",4)` is
+    // 4); SEARCH does not (`SEARCH("","abc",4)` is #VALUE!; probes/text-surrogate-positions C1-C9).
+    let last_start = if is_search { length } else { length + 1 };
+    if start_num > last_start {
         return Err(Error::VALUE);
     }
     let position = if is_search {
-        // SEARCH is case insensitive
-        search(
-            &find_text.to_lowercase(),
-            &within_text.to_lowercase(),
-            start_num,
-        )
+        search(&find_text, &within_text, start_num)
+    } else if find_text.is_empty() {
+        Some(start_num as i32)
     } else {
         find(&find_text, &within_text, start_num)
     };

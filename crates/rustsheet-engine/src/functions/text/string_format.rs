@@ -14,6 +14,7 @@ use crate::{
 };
 
 use super::text_arg::broadcast_text;
+use super::util::utf16_slice;
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -263,17 +264,15 @@ fn replace_element(
         return Err(Error::VALUE);
     }
 
-    let chars: Vec<char> = old_text.chars().collect();
-    let len = chars.len();
+    // Excel: positions count UTF-16 code units, so `REPLACE("a😀b",2,2,"x")` is "axb"
+    // (probes/text-surrogate-positions A27-A31).
+    let len = old_text.encode_utf16().count();
     // start_num is 1-indexed; clamp to valid range
     let start = (start_num as usize - 1).min(len);
     let end = start.saturating_add(num_chars as usize).min(len);
-    let result: String = chars[..start]
-        .iter()
-        .copied()
-        .chain(new_text.chars())
-        .chain(chars[end..].iter().copied())
-        .collect();
+    let mut result = utf16_slice(&old_text, 0, start);
+    result.push_str(&new_text);
+    result.push_str(&utf16_slice(&old_text, end, len));
     Ok(ArrayNode::String(result))
 }
 

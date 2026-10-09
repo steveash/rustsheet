@@ -119,8 +119,8 @@ longer result is `#VALUE!` (`REPT("a",32768)`). The limit counts UTF-16 code uni
 `LEN(CONCATENATE(REPT("😀",16383),"ab"))` is 32767. Truncation applies per element of a spilled
 CONCATENATE (`LEN(CONCATENATE({"a";"bb"},REPT("c",32767)))` is {32767;32767}).
 Evidence: probes/resource-limits C9–C11; probes/concatenate-limit-spill E1–E7, E12, G85–G104
-(excel-graph, 2026-10-06, T-0233). LEN and the other position-based text functions still count
-chars, not UTF-16 units (T-0249; E7, E13, G97 are known failures until then).
+(excel-graph, 2026-10-06, T-0233). LEN counts UTF-16 units too (text.md "Text positions count
+UTF-16 code units", T-0249).
 Backend: excel-graph only; excel-desktop not used.
 Status: VERIFIED
 Implemented in: `truncate_text`/`concat_text` in cast.rs, shared by CONCATENATE and `&` (T-0240);
