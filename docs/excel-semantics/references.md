@@ -268,7 +268,11 @@ workbook, T-0149), so the engine reads it as a syntax error. A space makes it th
 A LET name called like a function is `#REF!` when bound to a reference, whatever the reference:
 `=LET(f,A1,f(2))`, `=LET(f,A1:A3,f(2))`, `=LET(f,C9,f(2))` (C9 empty), `=LET(f,A1,f())`,
 `=LET(f,INDEX(A1:A3,2),f(2))` and `=LET(f,IF(TRUE,A1),f(2))`, an ordinary error again
-(`IFERROR` catches it, `ERROR.TYPE` is 4). So LET binds what INDEX selects as a reference. Bound to a
+(`IFERROR` catches it, `ERROR.TYPE` is 4). So LET binds what INDEX, CHOOSE and IF select as a
+reference (`=LET(x,INDEX(A1:A3,2),ISREF(x))` and `=LET(x,CHOOSE(2,A1,A2),ISREF(x))` are TRUE,
+`=LET(x,INDEX(A1:A3,2),ROW(x))` is 2, and COUNT through an INDEX-bound text cell is 0), but VLOOKUP
+and HLOOKUP bind their value: `=LET(x,VLOOKUP(2,A1:B3,2,FALSE),ISREF(x))` is FALSE, COUNT through it
+counts the text "5" (1), calling it gives 0 as for text, and a LAMBDA argument behaves the same. Bound to a
 value, the call gives odd results, without the arguments mattering: a number or boolean is `#NAME?`
 (`=LET(f,1,f(2))`, `=LET(f,A1+0,f(2))`, `=LET(f,TRUE,f(2))`), text is the number 0 (`=LET(f,"a",f(2))`,
 `"abc"`, `"1"`, `f()` too; `TYPE` of it is 1 and `+5` gives 5), an error is itself
@@ -285,7 +289,7 @@ Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probe
 probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
 probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149);
 called LET names: probes/let-name-call, let-name-call-refs, let-name-call-arrays, let-name-call-bool and
-let-name-call-text-*, called LAMBDA parameters: probes/lambda-param-call (oracle: excel-graph,
+let-name-call-text-*, let-bind-reference-forms, called LAMBDA parameters: probes/lambda-param-call (oracle: excel-graph,
 2026-10-09, T-1092).
 Callee forms (probes/paren-call-callee-offset and -indirect H1, oracle: excel-graph, 2026-10-07, T-1094):
 `=(OFFSET(A1,0,0))(2)` and `=(INDIRECT("A1"))(2)` load and are `#REF!`, calls of a reference. Excel for the

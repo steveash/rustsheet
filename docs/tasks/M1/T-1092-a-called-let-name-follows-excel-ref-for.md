@@ -38,6 +38,6 @@ Probed (excel-graph, 2026-10-09): a called LET name or LAMBDA parameter bound to
 `#REF!` (INDEX's reference included), a number or boolean is `#NAME?`, text is the number 0, an
 error is itself and an array is called per element. Excel stores the call as `_xlpm.f(2)` and reads
 it back as `f(2)`, so the builder's naming is Excel's own. `Model::call_variable` implements the
-value rule; LET/LAMBDA bindings are now read in reference context (`bind_argument`), so INDEX keeps
-its reference. `=LET(f,"",f(2))` makes Excel for the web refuse the workbook (not a case).
-Eval delta: +10 probe cases (let-name-call*, lambda-param-call), 38 cells, all pass; no regressions.
+value rule; a LET/LAMBDA binding of INDEX is now read in reference context (`bind_argument`), so
+it keeps its reference, while VLOOKUP/HLOOKUP bind their value (probes/let-bind-reference-forms). `=LET(f,"",f(2))` makes Excel for the web refuse the workbook (not a case).
+Eval delta: +11 probe cases (let-name-call*, lambda-param-call, let-bind-reference-forms), 49 cells, all pass; no regressions.

@@ -235,6 +235,8 @@ fn called_value(value: &ArrayNode) -> ArrayNode {
     match value {
         ArrayNode::String(_) => ArrayNode::Number(0.0),
         ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+        // An empty element is taken as a number (not probed: `LET(f,"",f(2))` makes Excel refuse
+        // the workbook).
         ArrayNode::Number(_) | ArrayNode::Boolean(_) | ArrayNode::Empty => {
             ArrayNode::Error(Error::NAME)
         }
