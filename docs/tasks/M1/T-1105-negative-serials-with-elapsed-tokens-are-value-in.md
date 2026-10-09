@@ -3,7 +3,7 @@ id: T-1105
 title: "Negative serials with elapsed tokens are #VALUE! in the 1900 system; 1904 workbooks keep the minus"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
