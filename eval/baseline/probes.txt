@@ -623,9 +623,6 @@ F	probes/round-huge-digits-wrap.case.json	Sheet1!A16
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A35
 F	probes/round-huge-digits-wrap.case.json	Sheet1!A38
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
-F	probes/subtotal-hidden-filtered.case.json	Hide!C10
-F	probes/subtotal-hidden-filtered.case.json	Hide!D10
-F	probes/subtotal-hidden-filtered.case.json	Hide!D11
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/union-defined-name-uses.case.json	Sheet1!H12
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
