@@ -228,6 +228,6 @@ number `1` is `#VALUE!` in every element (the array ref decides the shape and it
 `number` therefore takes precedence over the ref's own `#VALUE!` and the result still spills. Not probed: an error `number` together
 with an error `order` (which wins).
 RANK.EQ shares the RANK implementation and was not probed separately.
-Ours: a single cell for the error and text `number` cases (no spill), which differs; fix filed as T-1212. The `order` cases match.
+Ours: a single cell for the error and text `number` cases (no spill), which differs; fix filed as T-1215. The `order` cases match.
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
 Tasks: T-1152, T-1203, T-1208

@@ -1,5 +1,5 @@
 ---
-id: T-1212
+id: T-1215
 title: "RANK/RANK.AVG with an error or text number and a non-reference array ref spill the error over the ref's shape (follow-up of T-1208)"
 milestone: M1
 lane: functions-stat
