@@ -333,5 +333,8 @@ Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE a
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
 a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC;
 `DATE(2024,45031.5,1)` is a number (1415864).
+Unprobed (inferred from the leftmost-error rule in arrays.md, T-1235): `DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are
+`#DIV/0!`, a unit/method error counts after the dates' own, `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and
+a single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below

@@ -1090,9 +1090,9 @@ impl Model {
             cell,
             "Out of range parameters for date",
             |[start, end]| {
+                let method = method.as_ref().map_err(error_kind)?;
                 let start = excel_serial_to_ymd(days360_serial(start)).ok_or(Error::NUM)?;
                 let end = excel_serial_to_ymd(days360_serial(end)).ok_or(Error::NUM)?;
-                let method = method.as_ref().map_err(error_kind)?;
                 Ok(if *method {
                     days360_eu(start, end)
                 } else {
