@@ -23,7 +23,6 @@ whether MODE skips typed text and booleans (e.g. `MODE(1,"1",TRUE,1)`) before im
 - [ ] The H24, H27, H30, H69, H72, H75 and H78 cells of probes/stat-argument-modes pass.
 - [ ] Any new rule is recorded in docs/excel-semantics/statistics.md with probe evidence.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

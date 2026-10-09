@@ -26,7 +26,6 @@ order (size check before or after the text check) with equal sizes too before im
 - [ ] The eight `#N/A` cells and the F.TEST/FTEST cells (H248, H251) of probes/stat-argument-modes pass.
 - [ ] The rule is in docs/excel-semantics/statistics.md.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

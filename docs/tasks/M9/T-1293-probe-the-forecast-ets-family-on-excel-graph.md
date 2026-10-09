@@ -22,7 +22,6 @@ is `#N/IMPL!`). If excel-graph never computes it, mark the catalog entries `orac
 ## Acceptance criteria
 - [ ] A probe case with excel-graph values answers the question; the finding is in statistics.md.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -

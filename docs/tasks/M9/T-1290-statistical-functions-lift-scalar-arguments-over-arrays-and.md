@@ -23,7 +23,6 @@ before adding a helper); BETA.DIST, Z.TEST and ZTEST are `#VALUE!` even for an a
 ## Acceptance criteria
 - [ ] The lift cells of probes/stat-argument-modes pass (their baseline lines removed).
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
