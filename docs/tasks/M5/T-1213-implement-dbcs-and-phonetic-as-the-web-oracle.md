@@ -3,7 +3,7 @@ id: T-1213
 title: "Implement DBCS and PHONETIC as the web oracle evaluates them"
 milestone: M5
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
