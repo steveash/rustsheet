@@ -125,6 +125,38 @@ def test_generator_emits_every_m5_text_function() -> None:
     assert not sorted(m5_text - seen)
 
 
+def test_generator_emits_every_m5_logical_information_and_web_function() -> None:
+    # T-1088: every in-scope M5 logical, information and web entry but INFO and SHEETS (`oracle: none`)
+    # is generator-ready.
+    m5 = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M5" and f["category"] in {"logical", "information", "web"}
+    }
+    assert len(m5) == 26
+    seen: set[str] = set()
+    for seed in range(40):
+        seen.update(generate_case(catalog(), seed, milestone="M5", formulas=80)["tags"])
+    assert not sorted(m5 - seen)
+
+
+def test_reference_params_get_one_cell_and_cell_always_gets_one() -> None:
+    # T-1088: a literal ISFORMULA or CELL reference makes excel-graph refuse the workbook, a range
+    # would spill ISFORMULA into the next formula, and CELL without a reference reads the cell last
+    # changed. info_type mostly comes from CELL's enum.
+    cell = r"Data!\$?[A-Z]\$?\d+"
+    isformula: list[str] = []
+    cells: list[str] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M5", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            isformula += re.findall(r"ISFORMULA\(([^()]*)\)", formula)
+            cells += re.findall(r"(?<![A-Z.])CELL\(([^()]*)\)", formula)
+    assert isformula and all(re.fullmatch(cell, a) for a in isformula), isformula
+    assert cells and all(re.fullmatch(r".*," + cell, a) for a in cells), cells
+    assert any(a.startswith(('"row"', '"col"', '"contents"', '"type"')) for a in cells)
+
+
 def test_hard_domains_are_never_violated() -> None:
     # MUNIT of a large dimension makes excel-graph refuse the whole workbook (T-1087), so its
     # `hard` domain always gets an in-domain integer.

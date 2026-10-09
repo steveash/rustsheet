@@ -294,6 +294,11 @@ Key schema elements:
   errors are themselves test targets.
   A domain marked `hard: true` is never violated: outside it Excel refuses the whole workbook
   (MUNIT's dimension, T-1087), so a violation would cost every other formula of the case.
+  `enum` lists the usual text values of a parameter (CELL's info_type; T-1088), soft like `int`.
+- `cell: true` (a `range` parameter): the generator passes one cell. ISFORMULA lifts over a range, which would spill into
+  the next formula, and Excel refuses a literal (T-1088).
+- `always: true` (an optional parameter): the generator never omits it. CELL without a reference reads the cell last
+  changed, which no oracle value can match.
 - `edge_classes`: named, function-specific value or structure generators. They join the
   global type pools (§6) and become coverage-matrix columns (§13).
 - `introduced`, `xlfn_prefix`, `volatile`, `dynamic_array`, `locale_sensitive`.

@@ -1,0 +1,20 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1088: =ISREF(A1:A2+0) alone (one workbook; excel-graph may refuse it). A1 = 1, A2 = 2.",
+ "tags": [
+  "M5",
+  "probe",
+  "information"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "C1": "=ISREF(A1:A2+0)"
+   }
+  }
+ ],
+ "expected": {}
+}

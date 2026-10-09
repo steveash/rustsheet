@@ -1,0 +1,70 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1088 argument-mode probe for the M5 logical, information and web functions: how each takes a range, an array and a direct value. Data row 1 = 1, \"x\", TRUE, blank, #DIV/0!, #N/A; row 2 = 2, 3, \"y\"; row 3 = formula 1+1, constant 2; row 4 = \"a b&c\", \"é/?\". Results spill right, one formula per row.",
+ "tags": [
+  "M5",
+  "probe",
+  "information",
+  "logical",
+  "web"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "B1": "x",
+    "C1": true,
+    "E1": "=1/0",
+    "F1": "=NA()",
+    "A2": 2,
+    "B2": 3,
+    "C2": "y",
+    "A3": "=1+1",
+    "B3": 2,
+    "A4": "a b&c",
+    "B4": "é/?"
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=XOR(Data!A1:D1)",
+    "A2": "=XOR(Data!B1)",
+    "A3": "=XOR(\"TRUE\")",
+    "A4": "=XOR({1,\"x\",TRUE})",
+    "A5": "=XOR(Data!A1:A2)",
+    "A6": "=N(Data!A2:C2)",
+    "A7": "=TYPE(Data!A2:C2)",
+    "A8": "=ERROR.TYPE(Data!E1:F1)",
+    "A9": "=ISREF(Data!A2:C2)",
+    "A10": "=ISREF(1)",
+    "A11": "=ISFORMULA(Data!A3:B3)",
+    "A12": "=SHEET(Data!A2:C2)",
+    "A13": "=SHEET(\"Data\")",
+    "A14": "=SHEET()",
+    "A15": "=ENCODEURL(Data!A4:B4)",
+    "A16": "=IFNA(Data!E1:F1,0)",
+    "A17": "=CELL(\"row\",Data!B2)",
+    "A18": "=CELL(\"contents\",Data!A2:C2)",
+    "A19": "=CELL(\"address\",Data!B2)",
+    "A20": "=CELL(\"bogus\",Data!B2)",
+    "A21": "=N(\"5\")",
+    "A22": "=N(TRUE)",
+    "A23": "=TYPE({1,2})",
+    "A24": "=ISEVEN(TRUE)",
+    "A25": "=ERROR.TYPE(1)",
+    "A26": "=SHEET(1)",
+    "A27": "=CELL({\"row\",\"col\"},Data!B2)",
+    "A28": "=TYPE(Data!B2)",
+    "A29": "=N(Data!A4)",
+    "A30": "=IFS(Data!C1,1)",
+    "A31": "=SWITCH(Data!A1,1,\"a\",\"b\")",
+    "A32": "=TRUE()",
+    "A33": "=FALSE()",
+    "A34": "=ISNA(NA())"
+   }
+  }
+ ],
+ "expected": {}
+}
