@@ -6,7 +6,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{
+        statistical::variance::{variance_result, VarianceKind},
+        Function,
+    },
     model::Model,
     reference_operators::{Ranges, RefArg},
 };
@@ -290,8 +293,8 @@ impl Model {
             107 => self.subtotal_stdevs(args, cell, SubTotalMode::SkipHidden),
             108 => self.subtotal_stdevp(args, cell, SubTotalMode::SkipHidden),
             109 => self.subtotal_sum(args, cell, SubTotalMode::SkipHidden),
-            110 => self.subtotal_vars(args, cell, SubTotalMode::Full),
-            111 => self.subtotal_varp(args, cell, SubTotalMode::Full),
+            110 => self.subtotal_vars(args, cell, SubTotalMode::SkipHidden),
+            111 => self.subtotal_varp(args, cell, SubTotalMode::SkipHidden),
             _ => invalid(),
         }
     }
@@ -302,30 +305,10 @@ impl Model {
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
-        let values = match self.subtotal_get_values(args, cell, mode) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let mut result = 0.0;
-        let l = values.len();
-        for value in &values {
-            result += value;
+        match self.subtotal_get_values(args, cell, mode) {
+            Ok(values) => variance_result(&values, VarianceKind::Sample, false, "SUBTOTAL", cell),
+            Err(error) => error,
         }
-        if l < 2 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0!".to_string(),
-            };
-        }
-        // average
-        let average = result / (l as f64);
-        let mut result = 0.0;
-        for value in &values {
-            result += (value - average).powi(2) / (l as f64 - 1.0)
-        }
-
-        CalcResult::Number(result)
     }
 
     fn subtotal_varp(
@@ -334,29 +317,12 @@ impl Model {
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
-        let values = match self.subtotal_get_values(args, cell, mode) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let mut result = 0.0;
-        let l = values.len();
-        for value in &values {
-            result += value;
+        match self.subtotal_get_values(args, cell, mode) {
+            Ok(values) => {
+                variance_result(&values, VarianceKind::Population, false, "SUBTOTAL", cell)
+            }
+            Err(error) => error,
         }
-        if l == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0!".to_string(),
-            };
-        }
-        // average
-        let average = result / (l as f64);
-        let mut result = 0.0;
-        for value in &values {
-            result += (value - average).powi(2) / (l as f64)
-        }
-        CalcResult::Number(result)
     }
 
     fn subtotal_stdevs(
@@ -365,30 +331,10 @@ impl Model {
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
-        let values = match self.subtotal_get_values(args, cell, mode) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let mut result = 0.0;
-        let l = values.len();
-        for value in &values {
-            result += value;
+        match self.subtotal_get_values(args, cell, mode) {
+            Ok(values) => variance_result(&values, VarianceKind::Sample, true, "SUBTOTAL", cell),
+            Err(error) => error,
         }
-        if l < 2 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0!".to_string(),
-            };
-        }
-        // average
-        let average = result / (l as f64);
-        let mut result = 0.0;
-        for value in &values {
-            result += (value - average).powi(2) / (l as f64 - 1.0)
-        }
-
-        CalcResult::Number(result.sqrt())
     }
 
     fn subtotal_stdevp(
@@ -397,29 +343,12 @@ impl Model {
         cell: CellReferenceIndex,
         mode: SubTotalMode,
     ) -> CalcResult {
-        let values = match self.subtotal_get_values(args, cell, mode) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let mut result = 0.0;
-        let l = values.len();
-        for value in &values {
-            result += value;
+        match self.subtotal_get_values(args, cell, mode) {
+            Ok(values) => {
+                variance_result(&values, VarianceKind::Population, true, "SUBTOTAL", cell)
+            }
+            Err(error) => error,
         }
-        if l == 0 {
-            return CalcResult::Error {
-                error: Error::DIV,
-                origin: cell,
-                message: "Division by 0!".to_string(),
-            };
-        }
-        // average
-        let average = result / (l as f64);
-        let mut result = 0.0;
-        for value in &values {
-            result += (value - average).powi(2) / (l as f64)
-        }
-        CalcResult::Number(result.sqrt())
     }
 
     fn subtotal_counta(
