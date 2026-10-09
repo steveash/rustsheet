@@ -820,11 +820,11 @@ A body that is an IF or CHOOSE follows the same rule: one that picks a scalar is
 `=IF(FALSE,5,Sheet1!$B$1:$B$3)` and `=CHOOSE(1,Sheet1!$B$1:$B$3,5)` give 1; `=IF(TRUE,Sheet1!$C$2)` and
 `=CHOOSE(1,Sheet1!$C$2)` give 1 for an empty cell; `=IF(TRUE,Sheet1!$C$3)` and `=IF(TRUE,Sheet1!$C$1)` give 0 for a
 number and an error cell; CHOOSE was probed with the empty cell only) (probes/countblank-formula-names-b, excel-graph,
-2026-10-09, T-1207). UNVERIFIED: LET bodies. The case builder does not write `_xlpm.` in defined-name bodies, so Excel
-read the LET variable as an undefined name (`#NAME?`) and no value exists (T-1209); a name whose body is another
-formula name is unprobed too.
-Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-names-b A1:A13 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
-Status: VERIFIED for non-LET bodies. Implemented in: `fn_countblank` (functions/statistical/count.rs).
+2026-10-09, T-1207). LET bodies behave like the other bodies once stored with `_xlpm.` variables (T-1209): `=LET(x,5,x)` is `#VALUE!`,
+`=LET(x,1/0,x)` is `#DIV/0!`, `=LET(x,Sheet1!$B$1:$B$3,x)` and `=LET(x,Sheet1!$C$2,x)` (empty cell) give 1
+(probes/countblank-formula-names-b A14:A17, excel-graph, 2026-10-09). A name whose body is another formula name is unprobed.
+Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-names-b A1:A17 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
+Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
 Tasks: T-1199, T-1207
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too

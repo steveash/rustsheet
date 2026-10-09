@@ -84,7 +84,7 @@ C	probes/clock-text-oddities6.case.json	35
 C	probes/clock-text-oddities7.case.json	12
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
-C	probes/countblank-formula-names-b.case.json	13
+C	probes/countblank-formula-names-b.case.json	17
 C	probes/countblank-formula-names.case.json	21
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
