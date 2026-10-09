@@ -18,6 +18,7 @@ T-0292 probe `probes/lookup-pick-aggregates` (excel-graph) shows the picked cell
 
 ## Acceptance criteria
 - [ ] Cells D1-D3 and D13-D15 of `probes/lookup-pick-aggregates` pass; the gen-m2 cases touching VLOOKUP/HLOOKUP do not regress.
+- [ ] Comments citing gen-m2 A200 as reference evidence (lookup_and_reference/mod.rs, lookup_table.rs) and the test at test/test_intersection_operator.rs:379 are rewritten to the probe evidence.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
