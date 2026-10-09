@@ -753,6 +753,21 @@ Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (ora
 Status: VERIFIED (web)
 Tasks: T-0139, T-0145
 
+## A sheet-qualified cell off the grid is a name
+Rule: column letters with a row of 0 or past row 1048576 are not a cell reference after a sheet
+prefix either, but a sheet-scoped name, as they are without one: `=Data!H0`, `=Data!H00` and
+`=Data!A1048577` are `#NAME?`, `ISREF(Data!H0)` is FALSE, and `Data!H0:I1` is that name joined
+to I1 by `:`, so `ROWS(Data!H0:I1)`, `SUM(Data!G0:H2)` and `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`
+are one `#NAME?` (no spill). A leading zero is still a row: `Data!H01` is H1.
+Implemented: the lexer reads such a corner as an identifier (sheet prefix kept); before T-0296
+`Data!H0` lexed as a row-0 reference, found by the formula_eval fuzz target. Unprobed and still
+`#ERROR!`: an off-grid second corner after a cell (`Data!A1:B0`) and an absolute off-grid cell
+(`Data!$H$0`).
+Evidence: probes/aggregate-range-function-num-grid Calc!A16, A21:A29 (oracle: excel-graph,
+2026-10-09, T-0296).
+Status: VERIFIED (web)
+Tasks: T-0296
+
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
 is the reference's height or width, as if the argument were left out; it is not 0.
