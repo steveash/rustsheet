@@ -4,7 +4,7 @@ title: "Sheet-local Print_Area: sheet-scoped names in the case loader and _xlnm.
 milestone: M1
 lane: engine
 status: todo
-priority: P2
+priority: P1
 size: S
 tier: opus
 depends_on: []
