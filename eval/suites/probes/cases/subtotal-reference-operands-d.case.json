@@ -49,7 +49,15 @@
         "J7": "=AREAS(TAKE(SEQUENCE(4),1))",
         "J10": "=SUBTOTAL(9,DROP(SEQUENCE(4),3))",
         "J13": "=AREAS(DROP(SEQUENCE(4),3))",
-        "J16": "=SUBTOTAL(9,TAKE(A1:A4,1))"
+        "J16": "=SUBTOTAL(9,TAKE(A1:A4,1))",
+        "H28": "=GEOMEAN(5,7)",
+        "L1": "=MIN(TAKE(B1:B2,1),5,7)",
+        "L2": "=MAX(TAKE(B1:B2,1),5,7)",
+        "L3": "=MIN(TAKE(B2:B3,-1),5,7)",
+        "L4": "=AVERAGEA(TAKE(B1:B3,1),5,7)",
+        "L5": "=AVERAGEA(TAKE(B1:B3,-2),5,7)",
+        "L6": "=MIN(DROP(B1:B3,2),5,7)",
+        "L7": "=AVERAGEA(DROP(B1:B3,1),5,7)"
       }
     }
   ],

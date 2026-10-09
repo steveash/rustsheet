@@ -702,8 +702,9 @@ COUNT is 2 and COUNTA 3, 3, 2 (the blank is not counted). AVERAGEA counts the ce
 through `evaluate_picked_reference_arg`. A computed array source is an array, not a reference:
 `SUBTOTAL(9,TAKE(SEQUENCE(4),1))` and `AREAS(TAKE(SEQUENCE(4),1))`, and the DROP forms, are `#VALUE!`, and
 `SUBTOTAL(9,TAKE(SEQUENCE(4),2))` spills two `#VALUE!` (J4:J5); `SUBTOTAL(9,TAKE(A1:A4,1))` is 1. Sized by
-`is_read_reference` (static_analysis/aggregate.rs). Unrelated finding: `GEOMEAN(5,7)` is 5.916079783099616 in Excel and
-the engine gives ...615 (1 ulp, `NumericUlp`; the probe uses 2, 8 to stay out of it).
+`is_read_reference` (static_analysis/aggregate.rs). Unrelated finding: `GEOMEAN(5,7)` is 5.916079783099616 in Excel (H28)
+and the engine gives ...615 (1 ulp, `NumericUlp`, a known failure for T-1284; the other GEOMEAN cells use 2, 8 to stay out
+of it). MIN, MAX and AVERAGEA over a single-cell TAKE/DROP result behave like the XLOOKUP cells (L1:L7).
 Typed entry is a desktop
 question (M14).
 Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211 (decision 0045)
