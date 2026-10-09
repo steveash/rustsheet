@@ -42,10 +42,10 @@ never generated); the required-argument counts match excel-functions.tsv (test_c
 called at once), `full` and `mask` (same-height arrays for GROUPBY, SORTBY and FILTER's include), `vector` on `array`
 params (WRAPROWS/WRAPCOLS) and `spelled` (`_xlfn.GROUPBY`/`_xlfn.PIVOTBY`, which the case builder leaves bare).
 Older milestones generate exactly as before (no new RNG draws without a bound name). Modes come from the new probe
-probes/m7-argument-modes (53 questions, excel-graph 2026-10-09; arrays.md "Dynamic-array and LAMBDA function argument
+probes/m7-argument-modes (68 questions, excel-graph 2026-10-09; arrays.md "Dynamic-array and LAMBDA function argument
 modes"): scalar arguments lift, delimiters, SORT's sort_index/sort_order and FILTER's if_empty are taken whole, and
 eta names work wherever a LAMBDA does. A seeded sample (`rustsheet-gen --milestone M7 --count 25 --seed 17`, not
 committed) was all accepted by excel-graph (6 cells it could not decode left pending); the engine passed 924/994 cells
 with no crash. A LAMBDA optional parameter (`[y]`) could not be probed: the case builder's file form is refused (T-1274).
-Eval delta: probes +1 case, 158 scored cells, 57 pass, 101 new-coverage known failures. Follow-ups: T-1271, T-1272,
+Eval delta: probes +1 case, 174 scored cells, 60 pass, 114 new-coverage known failures. Follow-ups: T-1271, T-1272,
 T-1273, T-1274, T-1275, T-1276.

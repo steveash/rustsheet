@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "M7 dynamic-array and LAMBDA functions: which arguments lift over a range or an array, which take one whole, and which LAMBDA forms (eta-reduced names, invocation, ISOMITTED) Excel accepts (T-1083)",
+  "description": "M7 dynamic-array and LAMBDA functions: which arguments lift over a range or an array, which take one whole, and which LAMBDA forms (eta-reduced names, invocation, ISOMITTED) Excel accepts (T-1083); column K re-asks the lifted cases without spill collisions",
   "tags": [
     "M7",
     "probe",
@@ -206,7 +206,23 @@
         "H55": "=INDEX(REGEXTEST(A1,1),1,1)",
         "F56": "=ROWS(SORTBY(A1:A3,B1:B2))",
         "G56": "=COLUMNS(SORTBY(A1:A3,B1:B2))",
-        "H56": "=INDEX(SORTBY(A1:A3,B1:B2),1,1)"
+        "H56": "=INDEX(SORTBY(A1:A3,B1:B2),1,1)",
+        "K1": "=ROWS(INDEX(TAKE(A1:B3,{1;2}),1,1))",
+        "K2": "=COLUMNS(INDEX(TAKE(A1:B3,{1;2}),1,1))",
+        "K3": "=ROWS(INDEX(DROP(A1:B3,{1;2}),1,1))",
+        "K4": "=COLUMNS(INDEX(DROP(A1:B3,{1;2}),1,1))",
+        "K5": "=ROWS(INDEX(EXPAND(A1:A2,{3;4}),1,1))",
+        "K6": "=ROWS(INDEX(WRAPROWS(A1:A3,{1;2}),1,1))",
+        "K7": "=COLUMNS(INDEX(WRAPROWS(A1:A3,{1;2}),2,1))",
+        "K8": "=ROWS(INDEX(TOCOL(A1:B3,{0;1}),1,1))",
+        "K9": "=ROWS(INDEX(SEQUENCE({1;2;3}),3,1))",
+        "K10": "=ROWS(INDEX(MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c)),2,1))",
+        "K11": "=INDEX(TEXTAFTER(C1:C3,{\",\";\"-\"}),3,1)",
+        "K12": "=INDEX(TEXTBEFORE(C1:C3,{\",\";\"-\"}),2,1)",
+        "K13": "=INDEX(TEXTBEFORE(C1:C3,{\",\";\"-\"}),3,1)",
+        "K14": "=ROWS(TOCOL(A1:E1,\"1\"))",
+        "K15": "=ROWS(TOCOL(A1:E1,0))",
+        "K16": "=ROWS(TOCOL(A1:E1,1))"
       }
     }
   ],
