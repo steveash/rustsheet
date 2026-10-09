@@ -3,7 +3,7 @@ id: T-1250
 title: "Probe an Excel-saved workbook's _xlnm. built-in names (Print_Area, Print_Titles, _FilterDatabase, Criteria) on load and save"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
