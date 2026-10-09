@@ -1,7 +1,7 @@
+use crate::arithmetic::array_of_errors;
 use crate::expressions::types::CellReferenceIndex;
 use crate::{
-    calc_result::CalcResult, expressions::parser::ArrayNode, expressions::parser::Node,
-    expressions::token::Error, model::Model,
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
 
 impl Model {
@@ -14,22 +14,12 @@ impl Model {
         ref_arg: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        let CalcResult::Error { error: kind, .. } = &error else {
-            return error;
-        };
         match self.numbers_from_rank_ref_arg(ref_arg, cell) {
-            Err(CalcResult::Array(shape)) => CalcResult::Array(
-                shape
-                    .iter()
-                    .map(|row| row.iter().map(|_| ArrayNode::Error(kind.clone())).collect())
-                    .collect(),
-            ),
+            Err(CalcResult::Array(shape)) => array_of_errors(&shape, error, |_| None),
             _ => error,
         }
     }
-}
 
-impl Model {
     // Helper to collect numeric values from the 2nd argument of RANK.*
     fn collect_rank_values(
         &mut self,
