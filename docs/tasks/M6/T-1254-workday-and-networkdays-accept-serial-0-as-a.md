@@ -27,7 +27,7 @@ and the .INTL forms. Serial 0 is Saturday 0 January 1900 (dates.md). Code: crate
 Record the result in docs/excel-semantics/dates.md (a note was added by T-1239's triage under "WEEKDAY of serial 0 and return_type 0").
 
 ## Acceptance criteria
-- [ ] An excel-graph probe case with the cells above passes; dates.md records the rule (VERIFIED).
+- [ ] An excel-graph probe case with the cells above, plus `XLOOKUP(NA(),A1:A4,B1:B5)` (does an error lookup_value beat the size mismatch?), passes; dates.md records the rule (VERIFIED).
 - [ ] gen-m6/63012866a9d8b7db A39 and gen-m6/6b2aa08e3b916da5 A35 pass in `./target/release/rustsheet-eval show <case>`,
       with no new failing gen-m6 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.

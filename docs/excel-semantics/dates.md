@@ -315,11 +315,13 @@ Tasks: T-0983, T-1053
 
 ## WEEKDAY of serial 0 and return_type 0
 Rule: WEEKDAY of a serial in [0, 1) is 7 (serial 0 is Saturday 0 January 1900, as in `TEXT(0,"dddd")`):
-`WEEKDAY(SIN(SECH(2.5)))` (0.1623) = 7. A return_type that truncates to 0 is `#NUM!`: `WEEKDAY(31330,-0.0001)` is
-`#NUM!`, seen as the column index of a VLOOKUP whose lookup value is found
-(`VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))&REPLACE(NA(),..)` is `#NUM!`).
+`WEEKDAY(SIN(SECH(2.5)))` (0.1623) = 7. A return_type of -0.0001 (0 or -1 after conversion) is `#NUM!`:
+`WEEKDAY(31330,-0.0001)` is the column index of `VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))&REPLACE(NA(),..)`,
+whose lookup value is *not* in the table and whose range_lookup is `#REF!`; the cell is `#NUM!`, and nothing else in
+the formula can give `#NUM!` (a value index's error wins over not-found and over range_lookup, lookup.md).
 WORKDAY and NETWORKDAYS take serial 0 too (inferred, values unprobed): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
-is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number) and
+is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number, assuming an error lookup_value would beat
+the size-mismatch `#VALUE!`, which is unprobed) and
 `VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
 Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
 gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
