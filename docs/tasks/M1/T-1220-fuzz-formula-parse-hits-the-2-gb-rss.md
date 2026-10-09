@@ -3,7 +3,7 @@ id: T-1220
 title: "Fuzz: formula_parse hits the 2 GB RSS limit after 2.5M runs with a 46 MB live heap"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
