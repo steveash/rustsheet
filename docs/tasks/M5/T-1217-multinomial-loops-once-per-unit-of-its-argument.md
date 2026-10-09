@@ -3,7 +3,7 @@ id: T-1217
 title: "MULTINOMIAL loops once per unit of its argument: bound the work"
 milestone: M5
 lane: functions-math
-status: in-progress
+status: done
 priority: P0
 size: S
 tier: opus
@@ -23,9 +23,18 @@ Excel's result is probably 1 or `#NUM!` from an overflow check, but cite the evi
 exit, or `ln Γ`, which the engine has for GAMMALN), keeping the current results for small arguments.
 
 ## Acceptance criteria
-- [ ] A unit test evaluates `MULTINOMIAL(1e15)`, `MULTINOMIAL(1e300)` and `MULTINOMIAL(2^63,2^63)` within a time bound and with no panic (debug build).
-- [ ] The probe values are recorded in docs/excel-semantics/numbers.md (or math) and match the engine.
-- [ ] `make check` green; reviewers approve.
+- [x] A unit test evaluates `MULTINOMIAL(1e15)`, `MULTINOMIAL(1e300)` and `MULTINOMIAL(2^63,2^63)` within a time bound and with no panic (debug build).
+- [x] The probe values are recorded in docs/excel-semantics/numbers.md (or math) and match the engine.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Probe probes/multinomial-huge (30 cells, excel-graph, 2026-10-09): MULTINOMIAL is `#NUM!` once the truncated
+arguments sum past 170 (`(170)` is a number; `(171)`, `(170,1)`, `(100,71)`, `(1E+15)`, `(2^63,2^63)` are `#NUM!`), and a
+text argument still wins with `#VALUE!`. `fn_multinomial` now checks that sum (with `checked_add`) before the
+factorial loops, so the work is at most 170 steps. Excel refused the workbook with a `1E+300` literal, so that form
+is unprobed (the engine gives `#NUM!` by the same rule). Eval: probes +1 case, 21/30 cells pass; the 9 known failures
+are the inexact values of T-1190 (baseline from `make eval-baseline`), no regressions. gen-m5/21b9ae9affd6b38c now
+completes (T-1197, superseded). Follow-up: T-1233 (FACT/FACTDOUBLE have the same unbounded loop).
