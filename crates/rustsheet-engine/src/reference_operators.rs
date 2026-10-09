@@ -329,8 +329,8 @@ impl Model {
     }
 
     /// `left:right`, the range operator between two operands that are not a plain `A1:B2`
-    /// token (the lexer builds those): two references on one sheet are joined into their bounding box, so
-    /// `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
+    /// token (the lexer builds those): two references on one sheet are joined into their
+    /// bounding box, so `Data!A1:Other!B2` is `#VALUE!` (UNVERIFIED, references.md) and a `Range` across sheets
     /// is only ever a 3-D reference.
     pub(crate) fn get_range(
         &mut self,
@@ -358,7 +358,7 @@ impl Model {
                 // are written in (`Data!B2:Data!A1` is `Data!A1:B2`). Multi-cell operands join
                 // too: with `rg` = `(Sheet1!$B$1:$B$2)`, `rg:B3` is B1:B3 and `ig:B3` (ig =
                 // `(INDEX(Sheet1!$B$1:$B$2,2))`) is B2:B3 (probes/defined-name-grouped-reference
-                // A10, A11, T-1173). Corner order is UNVERIFIED against the oracle (references.md).
+                // A10, A11, T-1173). Corner order: see references.md "Sheet-qualified range corners".
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: left1.sheet,

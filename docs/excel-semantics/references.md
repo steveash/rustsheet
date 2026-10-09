@@ -755,10 +755,10 @@ A name spelled like a column (`ig`, `rg`) before `:` is still a name when the ri
 column range (`ig:B3`). Other reference-position uses of a grouped name agree with the bare
 reference: `OFFSET(rg,1,0,1,1)` is 2, `AREAS(rg)` 1, `INDEX(rg,2)` 2, `CELL("address",rg)` `$B$1`.
 Evidence: probes/defined-name-grouped-reference A8:A13 (excel-graph, 2026-10-09).
-Status: VERIFIED for these cells; corner order and cross-sheet operands of multi-cell references stay as in the entry above (UNVERIFIED).
+Status: VERIFIED for these cells (operands from names). UNVERIFIED: unnamed multi-cell operands (`OFFSET(B1,0,0,2,1):B3`), and an undefined column-spelled identifier before `:` (`=SUM(A:B3)`), which the engine now reads as an undefined name (`#NAME?`) instead of a parse error (T-1205). Corner order: see "Sheet-qualified range corners" above.
 Implemented in: `Model::get_range`, `range_operand` and `defined_name_range_operand`
 (reference_operators.rs, defined_names.rs); the lexer keeps a column-spelled name before `:` an identifier (lexer/mod.rs).
-Tasks: T-1173
+Tasks: T-1173, T-1205
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
