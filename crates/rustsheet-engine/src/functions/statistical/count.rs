@@ -115,6 +115,35 @@ impl Model {
             } else {
                 self.evaluate_single_sheet_arg(arg, cell)
             };
+            // A name that is not a reference is an error, never a count: an error literal or a
+            // formula body gives its own error, any other formula value `#VALUE!`, `=""`
+            // included. A body is a reference when it reads as one in reference context, a
+            // single cell and INDEX too (probes/countblank-formula-names, excel-graph
+            // 2026-10-09, T-1199); cell and range names are references as before.
+            if let Some(error) = self.defined_name_error_literal(arg) {
+                return CalcResult::new_error(error, cell, "Defined name is an error".to_string());
+            }
+            let value = if self.defined_name_formula(arg).is_none() {
+                value
+            } else if self.is_multi_area(arg) {
+                // A body that may stand for a union keeps the union path; its error is the result.
+                if let error @ CalcResult::Error { .. } = value {
+                    return error;
+                }
+                value
+            } else {
+                match self.defined_name_range_operand(arg, cell) {
+                    range @ CalcResult::Range { .. } => range,
+                    error @ CalcResult::Error { .. } => return error,
+                    _ => {
+                        return CalcResult::new_error(
+                            Error::VALUE,
+                            cell,
+                            "COUNTBLANK needs a reference".to_string(),
+                        )
+                    }
+                }
+            };
             match value {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s) if s.is_empty() => result += 1.0,

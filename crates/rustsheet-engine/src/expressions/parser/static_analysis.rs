@@ -444,25 +444,15 @@ fn static_analysis_offset(args: &[Node]) -> StaticResult {
     if arg_count == 3 {
         return StaticResult::Scalar;
     }
-    match args[3] {
-        Node::NumberKind(f) => {
-            if f != 1.0 {
-                return StaticResult::Unknown;
-            }
-        }
-        _ => return StaticResult::Unknown,
-    };
+    if !matches!(args[3], Node::NumberKind(f) if f == 1.0) {
+        return StaticResult::Unknown;
+    }
     if arg_count == 4 {
         return StaticResult::Scalar;
     }
-    match args[4] {
-        Node::NumberKind(f) => {
-            if f != 1.0 {
-                return StaticResult::Unknown;
-            }
-        }
-        _ => return StaticResult::Unknown,
-    };
+    if !matches!(args[4], Node::NumberKind(f) if f == 1.0) {
+        return StaticResult::Unknown;
+    }
     // Both height and width are explicitly 1, so OFFSET will return a single cell
     StaticResult::Scalar
 }
@@ -475,6 +465,17 @@ fn static_analysis_indirect(_args: &[Node]) -> StaticResult {
 fn static_analysis_index(_args: &[Node]) -> StaticResult {
     // INDEX has two forms, but they are indistinguishable at parse time.
     StaticResult::Unknown
+}
+
+/// RANK's `ref` must be a reference: an array that is not one (`IF(A1:C1>0,A1:C1)`) makes the
+/// result a `#VALUE!` array of that array's shape, which spills (docs/excel-semantics/statistics.md,
+/// "RANK of a non-reference array"). References, including those INDEX, CHOOSE and OFFSET return
+/// (static `Unknown`), rank to a scalar.
+fn static_analysis_rank(args: &[Node]) -> StaticResult {
+    match args.get(1).map(run_static_analysis_on_node) {
+        Some(array @ StaticResult::Array(..)) => array,
+        _ => StaticResult::Scalar,
+    }
 }
 
 #[derive(Clone)]
@@ -2097,7 +2098,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::PercentrankCompat => StaticResult::Scalar,
         Function::PoissonCompat => StaticResult::Scalar,
         Function::QuartileCompat => StaticResult::Scalar,
-        Function::RankCompat => StaticResult::Scalar,
+        Function::RankCompat => static_analysis_rank(args),
         Function::StDevPCompat => StaticResult::Scalar,
         Function::TInvCompat => StaticResult::Scalar,
         Function::TTestCompat => StaticResult::Scalar,
@@ -2145,8 +2146,8 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::MaxA => StaticResult::Scalar,
         Function::Median => StaticResult::Scalar,
         Function::MinA => StaticResult::Scalar,
-        Function::RankAvg => StaticResult::Scalar,
-        Function::RankEq => StaticResult::Scalar,
+        Function::RankAvg => static_analysis_rank(args),
+        Function::RankEq => static_analysis_rank(args),
         Function::Skew => StaticResult::Scalar,
         Function::SkewP => StaticResult::Scalar,
         Function::Small => StaticResult::Scalar,
