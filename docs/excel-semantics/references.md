@@ -480,7 +480,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   `LET(x,mu,SUM(x))` 6, `SUM(FREQUENCY(mu,2))` 2 and `COUNTBLANK(mu)` `#VALUE!`. A name whose body is not a union keeps
   its path: `FREQUENCY(arr,2)` with `arr` = `{1,2,3}` is {2;1}. So is an array behind another name (`aa` = `=arr`), a LET variable or IF (H19:H22). `COUNTBLANK(bad)` with `bad` = `=1+"a"` is `#VALUE!` in
   Excel (engine 0, T-1199). The self-referential case is an engine extension of probes/defined-name-formula-bodies H11
-  bounded per decision 0014, not probed. A sheet-local `Print_Area` is T-1193.
+  bounded per decision 0014, not probed. A sheet-local `Print_Area` works the same (probes/multiarea-printarea, T-1193; storage in xlsx-storage.md "Built-in defined names").
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.

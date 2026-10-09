@@ -220,6 +220,44 @@ fn defined_names_apply_and_roll_back() {
 }
 
 #[test]
+fn sheet_names_are_local_and_roll_back() {
+    let mut wb = book();
+    let (data, _) = wb
+        .edit(|tx| {
+            let data = tx.add_sheet("Data")?;
+            let first = tx.first_sheet()?;
+            tx.set("A1", 2.0)?;
+            tx.define_sheet_name(first, "Print_Area", "=Sheet1!$A$1")?;
+            tx.set("B1", Input::Formula("=Print_Area*3".into()))?;
+            tx.set("Data!A1", Input::Formula("=ISERROR(Print_Area)".into()))?;
+            Ok(data)
+        })
+        .unwrap();
+    assert_eq!(wb.value("B1").unwrap(), Value::Number(6.0));
+    assert_eq!(wb.value("Data!A1").unwrap(), Value::Bool(true));
+
+    let before = dump(&wb);
+    let result: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.define_sheet_name(data, "Print_Area", "=Data!$B$2")?;
+        Err(EditError::Engine("abort".into()))
+    });
+    assert!(result.is_err());
+    assert_eq!(dump(&wb), before);
+    // The rolled-back name is gone: defining it again succeeds, and the same name is free on
+    // another sheet but taken on its own.
+    wb.edit(|tx| tx.define_sheet_name(data, "Print_Area", "=Data!$B$2"))
+        .unwrap();
+    assert!(matches!(
+        wb.edit(|tx| tx.define_sheet_name(data, "print_area", "=1")),
+        Err(EditError::DefinedName(_))
+    ));
+    assert!(matches!(
+        wb.edit(|tx| tx.define_sheet_name(SheetId::new(999), "x", "=1")),
+        Err(EditError::Ref(_))
+    ));
+}
+
+#[test]
 fn defined_name_errors_are_typed() {
     let mut wb = book();
     wb.edit(|tx| tx.define_name("rate", "=1")).unwrap();
