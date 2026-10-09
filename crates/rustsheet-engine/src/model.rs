@@ -826,11 +826,7 @@ impl Model {
                 {
                     error
                 }
-                _ => CalcResult::new_error(
-                    Error::ERROR,
-                    cell,
-                    format!("Error with Spill Range Operator in cell {cell:?}"),
-                ),
+                _ => Self::spill_anchor_error(child, cell),
             },
             ImplicitIntersection { child, .. } => {
                 let result = self.evaluate_implicit_intersection_operand(child, cell);
