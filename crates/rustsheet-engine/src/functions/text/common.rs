@@ -66,7 +66,7 @@ fn mid_element(
     }
     // Excel: MID positions count UTF-16 code units, so `MID("a😀b",2,2)` is the emoji
     // (probes/text-surrogate-positions A9-A13).
-    let first = start.floor() as usize - 1;
+    let first = (start.floor() as usize).saturating_sub(1);
     let end = first.saturating_add(length.floor() as usize);
     Ok(ArrayNode::String(utf16_slice(&s, first, end)))
 }

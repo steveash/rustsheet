@@ -268,7 +268,7 @@ fn replace_element(
     // (probes/text-surrogate-positions A27-A31).
     let len = old_text.encode_utf16().count();
     // start_num is 1-indexed; clamp to valid range
-    let start = (start_num as usize - 1).min(len);
+    let start = (start_num as usize).saturating_sub(1).min(len);
     let end = start.saturating_add(num_chars as usize).min(len);
     let mut result = utf16_slice(&old_text, 0, start);
     result.push_str(&new_text);
