@@ -89,8 +89,8 @@ fn branching_names_are_bounded_in_time() {
 }
 
 // Every name in a chain nests its body: the depth and stack budgets stop the chain before the
-// native stack runs out (directive 5). The nesting stays shallow because a single cell nested
-// about 120 deep already overflows a debug test thread with no names involved (T-1110).
+// native stack runs out (directive 5). The nesting stays shallow so that the chain, not one
+// cell's nesting, is what runs into the budgets (a cell alone: test_nested_formula_stack.rs).
 #[test]
 fn deeply_nested_name_chains_stay_on_the_stack() {
     let mut model = new_empty_model();
