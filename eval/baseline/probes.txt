@@ -654,17 +654,10 @@ F	probes/info-logic-argument-modes-2.case.json	Calc!A3
 F	probes/info-logic-argument-modes-2.case.json	Calc!A4
 F	probes/info-logic-argument-modes-2.case.json	Calc!A5
 F	probes/info-logic-argument-modes-2.case.json	Calc!A6
-F	probes/info-logic-argument-modes-2.case.json	Calc!A7
 F	probes/info-logic-argument-modes-2.case.json	Calc!B5
-F	probes/info-logic-argument-modes.case.json	Calc!A12
 F	probes/info-logic-argument-modes.case.json	Calc!A15
-F	probes/info-logic-argument-modes.case.json	Calc!A18
 F	probes/info-logic-argument-modes.case.json	Calc!A19
-F	probes/info-logic-argument-modes.case.json	Calc!A27
-F	probes/info-logic-argument-modes.case.json	Calc!A6
-F	probes/info-logic-argument-modes.case.json	Calc!B11
 F	probes/info-logic-argument-modes.case.json	Calc!B15
-F	probes/info-logic-argument-modes.case.json	Calc!B27
 F	probes/math-argument-modes.case.json	Sheet1!C35
 F	probes/math-argument-modes.case.json	Sheet1!C44
 F	probes/math-argument-modes.case.json	Sheet1!C47
