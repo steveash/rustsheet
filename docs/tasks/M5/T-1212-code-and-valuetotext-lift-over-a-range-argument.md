@@ -24,4 +24,4 @@ From T-1087's probe probes/text-argument-modes: `CODE(B1:B2)` (F5:F6) is 97, 120
 -
 
 ## Outcome
-CODE and VALUETOTEXT now broadcast over ranges (text_arg/broadcast_text) and VALUETOTEXT takes the format argument; static analysis treats both as element-wise. probes/text-argument-modes C31, F5:F6, F17:F19 pass (probes known failures 389 -> 383). Text-quoting in format 1 is unprobed (see text.md).
+CODE and VALUETOTEXT now broadcast over ranges (text_arg/broadcast_text) and VALUETOTEXT accepts the format argument (its effect on text is unprobed, T-1229); static analysis treats both as element-wise. probes/text-argument-modes C31, F5:F6, F17:F19 pass (probes known failures 389 -> 383).

@@ -942,26 +942,19 @@ impl Model {
         if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let strict = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) if f.trunc() == 0.0 => false,
-                Ok(f) if f.trunc() == 1.0 => true,
-                Ok(_) => {
-                    return CalcResult::new_error(Error::VALUE, cell, "Invalid format".to_string())
-                }
-                Err(e) => return e,
+        // The format only changes the result for text and invalid values, which are unprobed
+        // (TODO(T-1229)); the argument is evaluated so its errors propagate.
+        if args.len() == 2 {
+            if let Err(e) = self.get_number(&args[1], cell) {
+                return e;
             }
-        } else {
-            false
-        };
+        }
         let text = match self.text_arg(&args[0], cell) {
             Ok(t) => t,
             Err(e) => return e,
         };
         let value_to_text = |node: &ArrayNode| match node {
             ArrayNode::Error(e) => e.to_string(),
-            // Strict format quotes text; TRUE stays TRUE (probes/text-argument-modes C31).
-            ArrayNode::String(s) if strict => format!("\"{s}\""),
             other => array_node_to_string(other).unwrap_or_default(),
         };
         match text {
