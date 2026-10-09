@@ -83,6 +83,7 @@ C	probes/clock-text-oddities6.case.json	35
 C	probes/clock-text-oddities7.case.json	12
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
+C	probes/countblank-formula-names.case.json	21
 C	probes/criteria-gaps.case.json	22
 C	probes/criteria-grammar.case.json	12
 C	probes/criteria-ifs-bare-equals.case.json	12
@@ -647,7 +648,6 @@ F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A3
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A5
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A6
 F	probes/text-result-limit.case.json	Sheet1!C24
-F	probes/union-defined-name-uses.case.json	Sheet1!H12
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
 F	probes/weeknum-stale-return-type.case.json	Type1!A1
