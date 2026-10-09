@@ -46,5 +46,5 @@ updated). Unit tests: names in SUM/COUNT/AREAS/INDEX/AGGREGATE/LET/intersection,
 a cross-sheet body, the area cap through a name, self-referential union names, and an xlsx
 round-trip of a union body. New probe probes/union-defined-name-uses (22 cells, excel-graph) backs
 AREAS, INDEX, AGGREGATE, name-of-name, CHOOSE and LET uses and FREQUENCY over names, LET and IF arrays (T-1196, fixed here); 21 pass, COUNTBLANK(bad) is a
-pre-existing gap (T-1195). Eval delta: probes 360 -> 358 known failures (union-defined-name H1, H4,
-H5 fixed; one new-coverage failure), 0 regressions. Follow-ups: T-1193, T-1194, T-1195 (T-1196 filed and fixed in this PR). Probe row 14 (sheet-local Print_Area) split to T-1193.
+pre-existing gap (T-1199). Eval delta: probes 360 -> 358 known failures (union-defined-name H1, H4,
+H5 fixed; one new-coverage failure), 0 regressions. Follow-ups: T-1193, T-1194, T-1199 (T-1196 filed and fixed in this PR). Probe row 14 (sheet-local Print_Area) split to T-1193.
