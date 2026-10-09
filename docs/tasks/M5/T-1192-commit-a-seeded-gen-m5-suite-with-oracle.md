@@ -3,7 +3,7 @@ id: T-1192
 title: "Commit a seeded gen-m5 suite with oracle values and file its gaps"
 milestone: M5
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
