@@ -1,0 +1,72 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "HLOOKUP/VLOOKUP pick as an aggregate operand when the index argument is INDEX/IF/CHOOSE/OFFSET/a name/a range (T-0299)",
+  "tags": [
+    "M2",
+    "references",
+    "lookup",
+    "probe"
+  ],
+  "names": {
+    "idxn": "=Calc!$G$5"
+  },
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "F5": 3.14159,
+        "G5": 2,
+        "F6": 5,
+        "G6": false,
+        "G7": 1,
+        "A1": "=COUNT(HLOOKUP(42,F5:G6,INDEX(G5:G5,1)))",
+        "B1": "=ISREF(HLOOKUP(42,F5:G6,INDEX(G5:G5,1)))",
+        "C1": "=HLOOKUP(42,F5:G6,INDEX(G5:G5,1))",
+        "A2": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,G5)))",
+        "B2": "=ISREF(HLOOKUP(42,F5:G6,IF(TRUE,G5)))",
+        "C2": "=HLOOKUP(42,F5:G6,IF(TRUE,G5))",
+        "A3": "=COUNT(HLOOKUP(42,F5:G6,CHOOSE(1,G5)))",
+        "B3": "=ISREF(HLOOKUP(42,F5:G6,CHOOSE(1,G5)))",
+        "C3": "=HLOOKUP(42,F5:G6,CHOOSE(1,G5))",
+        "A4": "=COUNT(HLOOKUP(42,F5:G6,OFFSET(G5,0,0)))",
+        "B4": "=ISREF(HLOOKUP(42,F5:G6,OFFSET(G5,0,0)))",
+        "C4": "=HLOOKUP(42,F5:G6,OFFSET(G5,0,0))",
+        "A5": "=COUNT(HLOOKUP(42,F5:G6,idxn))",
+        "B5": "=ISREF(HLOOKUP(42,F5:G6,idxn))",
+        "C5": "=HLOOKUP(42,F5:G6,idxn)",
+        "A6": "=COUNT(HLOOKUP(42,F5:G6,G5:G5))",
+        "B6": "=ISREF(HLOOKUP(42,F5:G6,G5:G5))",
+        "C6": "=HLOOKUP(42,F5:G6,G5:G5)",
+        "A7": "=COUNT(HLOOKUP(42,F5:G6,G5:G6))",
+        "B7": "=ISREF(HLOOKUP(42,F5:G6,G5:G6))",
+        "C7": "=HLOOKUP(42,F5:G6,G5:G6)",
+        "A8": "=COUNT(HLOOKUP(42,F5:G6,INDEX(G5:G6,1)))",
+        "B8": "=ISREF(HLOOKUP(42,F5:G6,INDEX(G5:G6,1)))",
+        "C8": "=HLOOKUP(42,F5:G6,INDEX(G5:G6,1))",
+        "A9": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,G5:G5)))",
+        "B9": "=ISREF(HLOOKUP(42,F5:G6,IF(TRUE,G5:G5)))",
+        "C9": "=HLOOKUP(42,F5:G6,IF(TRUE,G5:G5))",
+        "A10": "=COUNT(HLOOKUP(42,F5:G6,SUM(G5)))",
+        "B10": "=ISREF(HLOOKUP(42,F5:G6,SUM(G5)))",
+        "C10": "=HLOOKUP(42,F5:G6,SUM(G5))",
+        "A11": "=COUNT(HLOOKUP(42,F5:G6,G5+0))",
+        "B11": "=ISREF(HLOOKUP(42,F5:G6,G5+0))",
+        "C11": "=HLOOKUP(42,F5:G6,G5+0)",
+        "A12": "=COUNT(HLOOKUP(42,F5:G6,INDEX(G5:G6,2,1)))",
+        "B12": "=ISREF(HLOOKUP(42,F5:G6,INDEX(G5:G6,2,1)))",
+        "C12": "=HLOOKUP(42,F5:G6,INDEX(G5:G6,2,1))",
+        "D1": "=COUNT(VLOOKUP(1,I5:J7,INDEX(G5:G5,1)))",
+        "I5": 1,
+        "J5": false,
+        "I6": 2,
+        "J6": "5",
+        "I7": 3,
+        "J7": "x",
+        "D2": "=SUM(VLOOKUP(2,I5:J7,IF(TRUE,G5)))",
+        "D3": "=MAX(VLOOKUP(3,I5:J7,CHOOSE(1,G5)))",
+        "D4": "=SUM(VLOOKUP(2,I5:J7,idxn))"
+      }
+    }
+  ],
+  "expected": {}
+}

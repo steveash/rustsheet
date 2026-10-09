@@ -199,6 +199,7 @@ C	probes/lookup-index-hlookup.case.json	11
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-pick-aggregates.case.json	64
+C	probes/lookup-pick-index-shapes.case.json	40
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/math-argument-modes.case.json	56
@@ -868,6 +869,9 @@ F	probes/lookup-argument-modes.case.json	Sheet1!H4
 F	probes/lookup-argument-modes.case.json	Sheet1!H7
 F	probes/lookup-argument-modes.case.json	Sheet1!H8
 F	probes/lookup-argument-modes.case.json	Sheet1!H9
+F	probes/lookup-pick-index-shapes.case.json	Calc!A2
+F	probes/lookup-pick-index-shapes.case.json	Calc!C7
+F	probes/lookup-pick-index-shapes.case.json	Calc!D2
 F	probes/math-argument-modes.case.json	Sheet1!C35
 F	probes/math-argument-modes.case.json	Sheet1!C44
 F	probes/math-argument-modes.case.json	Sheet1!C47

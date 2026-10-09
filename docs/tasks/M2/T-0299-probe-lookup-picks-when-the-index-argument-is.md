@@ -3,7 +3,7 @@ id: T-0299
 title: "Probe lookup picks when the index argument is INDEX/IF/CHOOSE/OFFSET/a name (follow-up of T-0295)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0295 gates the reference pick on `LookupIndexArg::Reference`, i.e. any index t
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/lookup-pick-index-shapes (40 cells, 37 match the engine); results in references.md. Mismatches filed as T-1286. Eval delta: three new failing cells in a new probe case.
