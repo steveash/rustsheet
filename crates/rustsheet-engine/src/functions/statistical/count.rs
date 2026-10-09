@@ -115,6 +115,23 @@ impl Model {
             } else {
                 self.evaluate_single_sheet_arg(arg, cell)
             };
+            // A name that is not a reference is an error, never a count: its own error when it is
+            // one (an error literal or a formula body), `#VALUE!` for any other formula value,
+            // `=""` included (probes/countblank-formula-names, excel-graph 2026-10-09, T-1199).
+            if matches!(arg, Node::DefinedNameKind(..)) {
+                if let error @ CalcResult::Error { .. } = value {
+                    return error;
+                }
+                if self.defined_name_formula(arg).is_some()
+                    && !matches!(value, CalcResult::Range { .. })
+                {
+                    return CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "COUNTBLANK needs a reference".to_string(),
+                    );
+                }
+            }
             match value {
                 CalcResult::EmptyCell | CalcResult::EmptyArg => result += 1.0,
                 CalcResult::String(s) if s.is_empty() => result += 1.0,

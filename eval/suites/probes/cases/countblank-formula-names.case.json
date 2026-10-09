@@ -1,0 +1,68 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "COUNTBLANK of formula-bodied names: error, number and text bodies (T-1199)",
+  "tags": [
+    "M1",
+    "statistical",
+    "probe"
+  ],
+  "names": {
+    "bad": "=1+\"a\"",
+    "divz": "=1/0",
+    "num": "=5",
+    "txt": "=\"x\"",
+    "emp": "=\"\"",
+    "rg": "=Sheet1!$B$1:$B$3",
+    "rgp": "=(Sheet1!$B$1:$B$3)",
+    "na": "=NA()",
+    "enum": "=SQRT(-1)",
+    "eref": "=Sheet1!#REF!",
+    "enull": "=Sheet1!B1 Sheet1!B3",
+    "ename": "=nosuchname1",
+    "evalue": "=\"a\"+1",
+    "ediv2": "=0/0",
+    "bool": "=TRUE"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 1,
+        "B3": 3,
+        "A1": "=COUNTBLANK(bad)",
+        "A2": "=COUNTBLANK(divz)",
+        "A3": "=COUNTBLANK(num)",
+        "A4": "=COUNTBLANK(txt)",
+        "A5": "=COUNTBLANK(emp)",
+        "A6": "=COUNTBLANK(rg)",
+        "A7": "=COUNTBLANK(rgp)",
+        "A8": "=COUNTBLANK(na)",
+        "A9": "=COUNTBLANK(enum)",
+        "A10": "=COUNTBLANK(eref)",
+        "A11": "=COUNTBLANK(enull)",
+        "A12": "=COUNTBLANK(ename)",
+        "A13": "=COUNTBLANK(evalue)",
+        "A14": "=COUNTBLANK(ediv2)",
+        "A15": "=COUNTBLANK(bool)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13",
+    "Sheet1!A14",
+    "Sheet1!A15"
+  ]
+}

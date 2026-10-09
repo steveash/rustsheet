@@ -761,6 +761,13 @@ Implemented in: `Model::get_range`, `range_operand` and `defined_name_range_oper
 (reference_operators.rs, defined_names.rs); the lexer keeps a column-spelled name before `:` an identifier (lexer/mod.rs).
 Tasks: T-1173, T-1205
 
+## COUNTBLANK of a name that is not a reference is an error
+Rule: `COUNTBLANK(name)` where `name` is not a reference is an error, never a count. A name whose body (or error literal) evaluates to an error gives that error: `=1+"a"` `#VALUE!`, `=1/0` and `=0/0` `#DIV/0!`, `=NA()` `#N/A`, `=SQRT(-1)` `#NUM!`, `=Sheet1!#REF!` `#REF!`, `=Sheet1!B1 Sheet1!B3` (empty intersection) `#NULL!`, an undefined name in the body `#NAME?`. Any other value is `#VALUE!`: `=5`, `="x"`, `=""` (not a blank), `=TRUE`. A reference body, parenthesized or not, counts blanks as for a range (`=Sheet1!$B$1:$B$3` and `=(Sheet1!$B$1:$B$3)` give 1 with B2 empty). A name spelled like a cell address (`bad2` is column BAD, row 2) is that cell, not a name: pick other names in probes.
+A literal expression argument (`COUNTBLANK(1/0)`, `COUNTBLANK(1+"a")`) is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1199), so no value exists.
+Evidence: probes/countblank-formula-names A1:A15 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
+Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
+Tasks: T-1199
+
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
 `=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value
