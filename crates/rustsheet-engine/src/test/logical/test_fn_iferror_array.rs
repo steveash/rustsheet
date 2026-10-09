@@ -322,3 +322,21 @@ fn ifna_wrong_number_of_args() {
     assert_eq!(model._get_text("A1"), "#ERROR!");
     assert_eq!(model._get_text("A2"), "#ERROR!");
 }
+
+#[test]
+fn iferror_of_a_blank_cell_is_an_empty_value() {
+    // T-0291 (excel-graph gen-m2): OR reads it as FALSE (7469c3e920e1ade4 A351), a lookup as 0
+    // (ef5c55a81783b7d5 A291) and `&` as "" (dd99be1f2454159f A110).
+    let mut model = new_empty_model();
+    model._set("C1", "-1");
+    model._set("C2", "1");
+    model._set("A1", "=OR(IFERROR(B1,1))");
+    model._set("A2", "=IFNA(B1,1)&\"x\"");
+    model._set("A3", "=VLOOKUP(IFERROR(B1,1),C1:C2,1,TRUE)");
+    model._set("A4", "=OR(IFNA(B1,1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "FALSE");
+    assert_eq!(model._get_text("A2"), "x");
+    assert_eq!(model._get_text("A3"), "-1");
+    assert_eq!(model._get_text("A4"), "FALSE");
+}
