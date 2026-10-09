@@ -646,15 +646,25 @@ reference operand that evaluates to something else loads and gives:
   `SUBTOTAL(9,C1,IF(TRUE,5))` and `SUBTOTAL(9,IF(TRUE,5),C1)` are `#VALUE!` with C1 = `#DIV/0!`;
 - an array spills, `#VALUE!` per element and an error element kept: `SUBTOTAL(9,IF(TRUE,{1,#N/A}))`
   spills `#VALUE!`, `#N/A`; `SUBTOTAL(9,A1:A2,IF(TRUE,{1,2}))` spills two `#VALUE!`.
-Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) for the loading forms.
+- two non-reference arguments: the first one wins, whatever it holds: `SUBTOTAL(9,IF(TRUE,"a"),IF(TRUE,1/0))` is
+  `#VALUE!`, `SUBTOTAL(9,IF(TRUE,1/0),IF(TRUE,"a"))` is `#DIV/0!`;
+- AREAS of an array spills `#VALUE!` per element: `AREAS(IF(TRUE,{1,2}))` fills two cells;
+- an invalid function number is `#VALUE!` next to arguments that resolve to references or values
+  (`SUBTOTAL(12,A1:A2)`, `SUBTOTAL(12,IF(TRUE,5))`, `SUBTOTAL(0,IF(TRUE,5))`), but an error in the arguments
+  beats it: `SUBTOTAL(99,#REF!)` is `#REF!`, `SUBTOTAL(12,IF(TRUE,1/0))` is `#DIV/0!`, and an array argument still
+  spills (`SUBTOTAL(12,IF(TRUE,{1,2}))` is two `#VALUE!`);
+- operands taken over from the intersection rule load and are the cells they pick: OFFSET, XLOOKUP, IFS, SWITCH,
+  TAKE, DROP, TRIMRANGE, INDIRECT and a name holding a range (`SUBTOTAL(9,DROP(A1:A2,1))` = 2); a name holding a
+  constant (`=5`) is `#VALUE!`.
+Evidence: probes/subtotal-reference-operands (excel-graph, T-1163) and probes/subtotal-reference-operands-b
+(excel-graph, 2026-10-09, T-1175).
 Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parser/reference_operators.rs),
-`Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, spill shape in
-`subtotal_static_result`. UNVERIFIED: which of two non-reference arguments wins (the engine takes the
-first), AREAS of an array (the engine gives `#VALUE!`), a function number that is itself invalid
-next to a non-reference argument (the engine gives `#VALUE!` for the function number first), and
-the SUBTOTAL operands taken over from the intersection rule without a SUBTOTAL probe: OFFSET,
-XLOOKUP, IFS, SWITCH, TAKE, DROP, TRIMRANGE, INDIRECT and defined names (T-1175). Typed entry is a desktop
-question (M14).
+`Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
+`subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
+`Model::evaluate_picked_reference_arg` (SUBTOTAL and AREAS only; SUM and the other aggregates still evaluate those calls
+to values, UNVERIFIED for them, so `SUM(XLOOKUP(2,A1:A2,B1:B2))` over a boolean cell is not settled). UNVERIFIED: the
+same calls over an array (`SUBTOTAL(9,TAKE({1,2;3,4},1))` is one `#VALUE!` in the engine, Excel may spill) and an error
+element kept by AREAS (`AREAS(IF(TRUE,{1,#N/A}))`). Typed entry is a desktop question (M14).
 Tasks: T-1063, T-1163, T-1174, T-1175 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
