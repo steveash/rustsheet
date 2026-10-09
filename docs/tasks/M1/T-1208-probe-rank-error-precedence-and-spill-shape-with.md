@@ -3,7 +3,7 @@ id: T-1208
 title: "Probe RANK error precedence and spill shape with a non-reference array ref"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ From T-1203 review: since T-1203 such formulas spill a `#VALUE!` array (docs/exc
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/rank-nonref-errors` (excel-graph, RANK and RANK.AVG) recorded in statistics.md. Excel spills an error or text `number` over the array ref's shape; an `order` error/text gives a `#VALUE!` spill. The engine matches the `order` cases only; fix filed as T-1212.
