@@ -203,6 +203,9 @@ class Gen:
         if mode == "range" and p.get("cell"):
             # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
             return self.cell_ref()
+        if mode == "range" and p.get("vector"):
+            # LOOKUP/XLOOKUP/XMATCH search one column here; a 2-D lookup vector only gives an error.
+            return self.range_ref(width=1)
         if mode == "range" or (mode == "array" and self.rng.random() < 0.5):
             return self.range_ref(width=self.rng.randint(1, min(4, self.data_cols)))
         if mode == "criteria":
