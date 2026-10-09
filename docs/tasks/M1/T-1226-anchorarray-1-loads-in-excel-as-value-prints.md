@@ -28,4 +28,4 @@ Code: `is_reference_operand` in crates/rustsheet-engine/src/expressions/parser/r
 -
 
 ## Outcome
-`SpillRangeOperator` over an `@` of a value now evaluates to `#VALUE!` (was `#ERROR!`) and prints `=@1#`; the refused forms stay refused. probes/colon-hash-value-operands D3 and E3 pass (2 known failures removed from eval/baseline/probes.txt).
+`SpillRangeOperator` over an `@` of a non-reference now evaluates to `#VALUE!` (was `#ERROR!`) and `@<number>` prints bare, `=@1#`; the refused forms stay refused. probes/colon-hash-value-operands D3 and E3 pass (2 known failures removed from eval/baseline/probes.txt). The wider print rule is UNVERIFIED; follow-up T-1240.

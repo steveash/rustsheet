@@ -555,11 +555,12 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
 }
 
 /// `text` (the printed `node`) as the operand of `#`: like [`tight_operand`], but the `@` of a
-/// value prints bare, `=@1#` (probes/colon-hash-value-operands E3, T-1226); the `@` of a
-/// reference keeps its parentheses (`(@A1:B2)#`).
+/// number prints bare, `=@1#` (probes/colon-hash-value-operands E3, T-1226). Every other `@`
+/// operand keeps its parentheses; whether Excel prints the written parentheses or the operand
+/// kind decides is UNVERIFIED (docs/excel-semantics/references.md, T-1226).
 pub(crate) fn spill_operand(text: String, node: &Node) -> String {
     match node {
-        Node::ImplicitIntersection { child, .. } if !is_reference_operand(child) => text,
+        Node::ImplicitIntersection { child, .. } if matches!(**child, Node::NumberKind(_)) => text,
         _ => tight_operand(text, node),
     }
 }
