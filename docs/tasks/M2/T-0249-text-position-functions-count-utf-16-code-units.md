@@ -3,7 +3,7 @@ id: T-0249
 title: "Text position functions count UTF-16 code units (LEN, LEFT, MID, RIGHT, FIND, SEARCH, REPLACE)"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
