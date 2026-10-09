@@ -3,7 +3,7 @@ id: T-1246
 title: "ANCHORARRAY of an @ operand prints bare unless parentheses were written (follow-up of T-1240)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
