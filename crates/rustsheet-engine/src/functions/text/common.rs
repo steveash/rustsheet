@@ -14,6 +14,7 @@ use crate::{
     functions::{
         criteria::from_wildcard_to_regex,
         text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        util::array_node_to_calc_result,
     },
     locale::Locale,
     model::Model,
@@ -942,26 +943,58 @@ impl Model {
         if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // The format only changes the result for text and invalid values, which are unprobed
-        // (TODO(T-1229)); the argument is evaluated so its errors propagate.
-        if args.len() == 2 {
-            if let Err(e) = self.get_number(&args[1], cell) {
-                return e;
-            }
-        }
         let text = match self.text_arg(&args[0], cell) {
             Ok(t) => t,
             Err(e) => return e,
         };
-        let value_to_text = |node: &ArrayNode| match node {
-            ArrayNode::Error(e) => e.to_string(),
-            other => array_node_to_string(other).unwrap_or_default(),
+        let format = match args.get(1) {
+            Some(node) => match self.text_arg(node, cell) {
+                Ok(TextArg::Error(_, error)) => return error,
+                Ok(f) => Some(f),
+                Err(e) => return e,
+            },
+            None => None,
         };
-        match text {
-            TextArg::Error(node, _) => CalcResult::String(value_to_text(&node)),
-            _ => broadcast_text(cell, &[&text], |i, j| {
-                Ok(ArrayNode::String(value_to_text(text.elem(i, j))))
-            }),
+        // The format is lifted over arrays like the text; a scalar error text still prints as
+        // text (`C4`) unless the format is invalid.
+        let operands: Vec<&TextArg> = std::iter::once(&text).chain(format.as_ref()).collect();
+        let element = |i: usize, j: usize| {
+            let strict = format
+                .as_ref()
+                .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
+            Ok(ArrayNode::String(value_to_text(text.elem(i, j), strict)))
+        };
+        // A scalar error text prints as text, which `broadcast_text` would return as the error.
+        let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));
+        match &text {
+            TextArg::Error(..) if scalar_format => match element(0, 0) {
+                Ok(node) => array_node_to_calc_result(&node, cell),
+                Err(e) => CalcResult::new_error(e, cell, String::new()),
+            },
+            _ => broadcast_text(cell, &operands, element),
         }
+    }
+
+    /// Whether VALUETOTEXT's `format` element selects the strict form (1, text quoted). Excel
+    /// accepts a number in `[0, 2)` truncated (`1.9` is 1, `1E-20` is 0, `-0.5` and `2.5` are
+    /// `#VALUE!`), a boolean, a number text and a blank (0); other text is `#VALUE!`
+    /// (probes/valuetotext-format C9:C23, T-1229).
+    fn valuetotext_format(&self, node: &ArrayNode) -> Result<bool, Error> {
+        let f = self.array_node_to_number(node)?;
+        if (0.0..2.0).contains(&f) {
+            Ok(f >= 1.0)
+        } else {
+            Err(Error::VALUE)
+        }
+    }
+}
+
+/// The text VALUETOTEXT gives one element: an error spells out its code, and `strict` (format 1)
+/// quotes text with its embedded quotes doubled, `"a""b"` (probes/valuetotext-format C1:C7).
+fn value_to_text(node: &ArrayNode, strict: bool) -> String {
+    match node {
+        ArrayNode::Error(e) => e.to_string(),
+        ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
+        other => array_node_to_string(other).unwrap_or_default(),
     }
 }
