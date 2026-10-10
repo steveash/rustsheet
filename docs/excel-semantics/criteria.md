@@ -56,12 +56,13 @@ ignored: `"1"&CHAR(160)` and `CHAR(160)&"1"` (and `"="&CHAR(160)&"1"`) are text 
 only the cell with exactly that text, and CHAR(160)-padded text cells never match a numeric
 criterion. `"<> 1"` / `"<>1 "` count every cell except number 1 (text "1" still counts, 5 of 6).
 `">= 1"`, `"> 0 "` match number cells only (→ 1). `"<>"&CHAR(160)&"1"` → 5 (all but the exact text).
-Open: `">"&CHAR(160)&"0"` (a text comparison) matched 4 of the 5 text cells; the string ordering
-Excel uses around CHAR(160)/space is not implemented (engine gives 1), see the follow-up task.
+`">"&CHAR(160)&"0"` (a text comparison) matches 4 of the 5 text cells, all but " 1": text order puts
+CHAR(160) right after the space and before digits (coercion.md "Text comparison uses Excel's
+collation", T-0244).
 Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
 "1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
-Status: VERIFIED (C13 string ordering unimplemented)
-Implemented in: functions::criteria::result_is_equal_to_number
+Status: VERIFIED
+Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::cmp_text_excel (T-0244)
 Tasks: T-0242
 
 ## "=" matches blank cells, not an empty-string cell
