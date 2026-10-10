@@ -3,7 +3,7 @@ id: T-0922
 title: "CONVERT: full-precision unit constants (67 known failures)"
 milestone: M9
 lane: functions-engineering
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,9 +31,17 @@ and cite the workbook cell in a comment. Also sanity-check the Celsius branch of
 (`from_t_kelvin - 273.5`) against any temperature cells in the workbook.
 
 ## Acceptance criteria
-- [ ] The 67 `F` lines for `ironcalc-calc/ENGINEERING/CONVERT.xlsx` disappear from `eval/baseline/ironcalc-calc.txt` (via `make eval-baseline`), with no new ones.
-- [ ] Unit tests for at least three unit families (mass, distance, time/area) assert exact bits.
-- [ ] `make check` green.
+- [x] The 67 `F` lines for `ironcalc-calc/ENGINEERING/CONVERT.xlsx` disappear from `eval/baseline/ironcalc-calc.txt` (via `make eval-baseline`), with no new ones.
+- [x] Unit tests for at least three unit families (mass, distance, time/area) assert exact bits.
+- [x] `make check` green.
+
+## Outcome
+CONVERT.xlsx passes 509/509 (the 67 known failures are gone; 0 regressions in any suite). Fitting the cached cells showed
+that Excel computes `value * F_from / F_to`, then applies the prefixes, with factors in class-internal bases: dynes for
+force, ergs for energy, litres for volume and square angstroms for area. Every unit's factor is the double fitted to its
+cells. `CONVERT(…,"F","K")` uses `(v-32)*5/9+273.15`. Bit-exact unit tests cover mass, distance, volume, energy, force,
+area, speed and temperature. Rule, rejected models and open questions: engineering.md "CONVERT constants and evaluation
+order". Follow-up: T-1297 (to-Celsius 273.5, prefixed and non-base targets).
 
 ## Out of scope
 New units, prefix-handling changes, units not covered by cached evidence (use the oracle task for those).
