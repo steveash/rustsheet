@@ -1,5 +1,5 @@
 ---
-id: T-1311
+id: T-1315
 title: "RANDBETWEEN and RANDARRAY argument checks match Excel (bottom>top on raw values, booleans, omitted args, fractional bounds with whole_number)"
 milestone: M5
 lane: functions-math
@@ -24,7 +24,7 @@ docs/excel-semantics/numbers.md "RANDBETWEEN and RANDARRAY argument checks". Fai
   (5.5,6.2) are always 6, (-5.5,-5.2) always -5). The engine draws from
   `[FLOOR(bottom), CEILING(top)]`, so it gives 5 or 6 at random; A6 is therefore listed in the
   case's `invariant` but left out of `check` so the gate cannot flake. Add `Calc!A6` to `check`
-  with the fix. F1:F9 also need RANDBETWEEN to lift over arrays (T-1312).
+  with the fix. F1:F9 also need RANDBETWEEN to lift over arrays (T-1316).
 - A8 `RANDBETWEEN(TRUE,TRUE)` → `#VALUE!` (engine 1): booleans are rejected.
 - A12 `RANDBETWEEN(,)` → `#N/A` (engine 0).
 - B9 `RANDARRAY(1,1,1.5,1.5,TRUE)`, B10 `RANDARRAY(1,1,1.5,2.5,TRUE)`, B18
