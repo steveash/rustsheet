@@ -3,7 +3,7 @@ id: T-0270
 title: "VLOOKUP/HLOOKUP lift over an array lookup_value (unblocks T-0222)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -36,14 +36,24 @@ helpers (`functions/text/text_arg.rs`, the IS* `check_range_size` bound in
 `math_and_trigonometry/array_size.rs`); do not add a new lifting primitive (directive 3).
 
 ## Acceptance criteria
-- [ ] Oracle-backed probe case (excel-graph sidecar) covering the cases above; semantics entry in
+- [x] Oracle-backed probe case (excel-graph sidecar) covering the cases above; semantics entry in
       `docs/excel-semantics/lookup.md`.
-- [ ] VLOOKUP/HLOOKUP lift per the probe. A lifted range above the shared size bound gives the
+- [x] VLOOKUP/HLOOKUP lift per the probe. A lifted range above the shared size bound gives the
       DEVIATION error (decision 0014).
-- [ ] No new gen-m2 / probes known failures. With T-0222's ROUND lift applied, `caa981b0753f455c`
+- [x] No new gen-m2 / probes known failures. With T-0222's ROUND lift applied, `caa981b0753f455c`
       Calc!A26 still passes.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - XLOOKUP, MATCH and LOOKUP over array lookup values (file follow-ups if they differ).
 - T-0222 itself.
+
+## Outcome
+Probed (probes/vlookup-array-lookup-value, 35 cells, excel-graph): an array or multi-cell
+lookup_value lifts element by element, each searching before validating the index; error elements
+pass through; a whole column builds 1048576 rows. `Model::lookup_each` (lookup_each.rs) serves
+VLOOKUP and HLOOKUP through `lift_with_cost`, charged the evaluated search-vector length per element
+(so a computed array table is bounded too; DEVIATION past the cap), and static analysis gives both
+the lookup_value's shape. Eval: gen-m2 known failures 46 -> 43 (3 fixed); new case 35/35. Array
+col_index / range_lookup cells moved to T-1269. Not checked here: T-0222's ROUND lift is not on
+main, so `caa981b0753f455c` A26 is verified by T-0222 when it lands (it still passes today).
