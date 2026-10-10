@@ -24,4 +24,4 @@ probes/anchorarray-at-operand-kinds (excel-graph, T-1240): H101 `=ANCHORARRAY(@-
 -
 
 ## Outcome
-`@` now accepts a signed operand (`ANCHORARRAY(@-1)` is `#VALUE!`), and `eval_ref_or_index` keeps the one-cell reference of `@INDEX(..)` so it spills. Eval delta: probes 561 -> 557 known failures (H81:H83, H101 fixed).
+`@` now accepts a signed operand (`ANCHORARRAY(@-1)` is `#VALUE!`), and `eval_ref_or_index` keeps the one-cell reference of `@INDEX(..)` so it spills. Eval delta: probes 561 -> 557 known failures (H81:H83, H101 fixed); after merging T-1246, I101 (the print of H101) also matches.
