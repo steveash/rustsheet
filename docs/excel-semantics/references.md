@@ -736,10 +736,16 @@ reference, `ISREF(A1:INDEX(A1:A3,2))` and `ISREF(A1:(A1:B2 B1:B3))` are TRUE (`S
 An IF corner is the reference it picks, on either side: `ISREF(A1:IF(TRUE,B2))`, `ISREF(IF(TRUE,B2):A1)` and
 `ISREF(A1:IF(FALSE,B2,B3))` are TRUE, `SUM(A1:IF(TRUE,B2))` is 33, `ROWS(A1:IF(TRUE,B3))` 3 and `=A1:IF(TRUE,A1)`
 1. CHOOSE likewise (`SUM(A1:CHOOSE(1,B2))` = 33), which the engine already matched; the IF arm was added to
-`range_operand` (T-1177). UNVERIFIED (T-1227): an IF corner that picks a union (the engine gives `#VALUE!`),
-an error, or a 3-D span, and an IF with an array condition. `=A1:(1/0)` is refused
+`range_operand` (T-1177). T-1227 (probes/isref-if-range-corners, excel-graph 2026-10-10): an IF corner that picks a
+union is the union's bounding box (`SUM(A1:IF(TRUE,(B1,B2)))` 33, `ROWS` 2, `COLUMNS` 2, `ISREF` TRUE; `SUM(A1:IF(TRUE,(B3,B1)))`
+and `SUM(A1:IF(TRUE,(B1,B3)))` both 66, `ROWS` 3, so neither first nor last area decides); an error is passed on
+(`ERROR.TYPE(A1:IF(TRUE,#N/A))` 7, `...INDEX(B1:B3,9)` 4, `ISREF` FALSE); an IF with an array condition is `#VALUE!`
+(`SUM(A1:IF({TRUE,FALSE},B2,B3))`, `SUM(A1:IF({TRUE},B2))`; `ISREF` FALSE, `ERROR.TYPE` 3); a 3-D span pick is `#VALUE!`
+(`SUM(A1:IF(TRUE,Data1:Data3!B2))`, ISREF FALSE). Only the union differed from the engine (`#VALUE!`); fixed in `range_operand`. A union on the left corner (`IF(TRUE,(B1,B2)):A1`) is inferred symmetric, not probed.
+Note for probes: `ERROR.TYPE(` of a multi-cell range spills, so a #SPILL! over an occupied cell is a probe artifact; read such
+corners with ROWS/COLUMNS. `=A1:(1/0)` is refused
 by the Graph workbook builder (`unsupportedWorkbook`, as T-1111 found below), so it is not in the probe.
-Tasks: T-1138, T-1166, T-1177
+Tasks: T-1138, T-1166, T-1177, T-1227
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
