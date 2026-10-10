@@ -25,4 +25,4 @@ T-1206 made SUM, COUNT and `for_each_value` read these results as references (`e
 -
 
 ## Outcome
-Probed (probes/subtotal-reference-operands-d, excel-graph): MEDIAN, STDEV.S, GEOMEAN, SUMSQ and COUNT/COUNTA already matched; MIN, MAX and AVERAGEA now read a single-cell XLOOKUP/TAKE result as a reference, and SUBTOTAL/AREAS over `TAKE(SEQUENCE(..))` size as arrays (spill). Rules in references.md. 34 new probe cells, all pass; 0 known failures added. Follow-up: T-1284 (GEOMEAN 1 ulp).
+Probed (probes/subtotal-reference-operands-d, excel-graph): MEDIAN, STDEV.S, GEOMEAN, SUMSQ and COUNT/COUNTA already matched; MIN, MAX and AVERAGEA now read a single-cell XLOOKUP/TAKE result as a reference, and SUBTOTAL/AREAS over `TAKE(SEQUENCE(..))` size as arrays (spill). Rules in references.md. 42 probe cells, 41 pass; 1 known failure (H28, T-1284). Follow-up: T-1284 (GEOMEAN 1 ulp).
