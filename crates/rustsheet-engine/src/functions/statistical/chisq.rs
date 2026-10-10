@@ -335,9 +335,9 @@ impl Model {
     }
 
     /// [`Self::numbers_from_reference_arg`] for the RANK family, whose `ref` must be a reference:
-    /// an array that is not a reference (`IF(..)`, arithmetic) is `#VALUE!` in every element of
-    /// its own shape (docs/excel-semantics/statistics.md, "RANK of a non-reference array";
-    /// probes/rank-nonref-12..14). LARGE and SMALL accept such arrays.
+    /// an array that is not a reference (`IF(..)`, arithmetic) is an array of its own shape holding
+    /// `#VALUE!`, or the element's error where the element is one (docs/excel-semantics/statistics.md,
+    /// "RANK of a non-reference array"; probes/rank-nonref-12..14). LARGE and SMALL accept such arrays.
     pub(crate) fn numbers_from_rank_ref_arg(
         &mut self,
         node: &Node,
@@ -367,10 +367,19 @@ impl Model {
             single => single.into_single_area(cell),
         };
         match single {
+            // Excel keeps an error element's own error and makes every other element #VALUE!
+            // (probes/rank-nonref-error-elements).
             CalcResult::Array(array) if arrays_are_value_errors => Err(CalcResult::Array(
                 array
                     .iter()
-                    .map(|row| row.iter().map(|_| ArrayNode::Error(Error::VALUE)).collect())
+                    .map(|row| {
+                        row.iter()
+                            .map(|node| match node {
+                                ArrayNode::Error(error) => ArrayNode::Error(error.clone()),
+                                _ => ArrayNode::Error(Error::VALUE),
+                            })
+                            .collect()
+                    })
                     .collect(),
             )),
             CalcResult::Array(array) => {
