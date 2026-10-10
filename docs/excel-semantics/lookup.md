@@ -298,3 +298,10 @@ for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over 
 FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
 Status: VERIFIED (web)
 Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+
+## XLOOKUP with an array lookup_value looks up each element
+`SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
+Evidence: probes/let-name-uncalled-picked-refs H21 (excel-graph, 2026-10-09, T-1252). Other shapes (row, 2-D, with if_not_found) are not probed.
+Ours: `#N/A` (a known failure, T-1264).
+Status: VERIFIED (web)
+Tasks: T-1252, T-1264
