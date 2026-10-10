@@ -41,5 +41,5 @@ crates/rustsheet-engine/src/test/test_nan_inf.rs).
 Typed-input probe `probes/typed-number-tiny` (excel-graph) shows cell entry follows the T-0154 rule; the
 engine already matched (24/24 cells pass), recorded in numbers.md. `value_needs_quoting` now uses
 `parse_excel_number`. Conditional-format rule values are not observable through the oracle, so that part
-stays UNVERIFIED pending desktop Excel (M14, Phase 4). Eval: new case passes, no regressions.
+stays UNVERIFIED pending desktop Excel (M14, Phase 4): acceptance criterion 1 is met for typed entry only, the conditional-format half moved to T-1299 (which should also probe typed `-1e-309`, whose stored sign is unverified). Eval: new case passes, no regressions.
 Follow-up: T-1299 (conditional-format rule values, other `parse_finite_number` sites).
