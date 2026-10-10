@@ -3,7 +3,7 @@ id: T-1302
 title: "Power operator and POWER: integer exponents by right-to-left square-and-multiply (6 gen-m1 cells)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
