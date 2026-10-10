@@ -62,8 +62,11 @@ CHOOSE-wrapped spans in COUNTBLANK act like IF-wrapped ones: `COUNTBLANK(CHOOSE(
 end in CHOOSE is `#NAME?`. A reversed span (`SUM(Data3:Data1!A1)`) is the same sheets: 111.
 COUNTBLANK of an error (probes/countblank-choose-errors, excel-graph, 2026-10-10, T-1181): an argument that evaluates to an error,
 not a reference, gives that error: `COUNTBLANK(Data1:Nope!A1:B3)` and its IF and CHOOSE forms `#NAME?`, `COUNTBLANK(CHOOSE(1,#N/A))`,
-`CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`. A reference to one cell holding an error still
-counts 0 (ironcalc-calc COUNT.xlsx E18). A reference to one missing sheet (`Nope!A1:B3`) is left out: the web oracle resolves it to
+`CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`; also (probes/countblank-error-forms-b,
+same date) a direct empty intersection `COUNTBLANK(A5:A6 B5:B6)` `#NULL!`, `COUNTBLANK(INDIRECT("Q0"))` and
+`COUNTBLANK(OFFSET(A1,-5,0))` `#REF!`. A reference to one cell holding an error still counts 0, however it is handed on
+(ironcalc-calc COUNT.xlsx E18; probes/countblank-error-cell-refs and countblank-error-forms-b E1, E7): `A1`, `A1:A1`, a cell name,
+`CHOOSE(1,A1)`, `INDEX(A1:A2,1)`, `OFFSET(A1,0,0)`, `IF(TRUE,A1)`, `XLOOKUP(1,{1,2,3},A1:C1)` and `TAKE(A1:C1,1,1)` with A1 an error. A reference to one missing sheet (`Nope!A1:B3`) is left out: the web oracle resolves it to
 an empty cell (lookup.md).
 Status: VERIFIED (web).
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
@@ -73,7 +76,8 @@ the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their
 CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET or LAMBDA is a `Binding::Span`
 (`Model::bind_argument`, functions/logical/let.rs). Only `Model::variable_reference` hands it out as a range, so it reaches the aggregates;
 every value read is `three_d_needs_one_sheet`, and ROWS/COLUMNS and COUNTBLANK refuse it through `RefArg::into_single_sheet_area` (T-1158).
-COUNTBLANK of an error argument: `fn_countblank` (functions/statistical/count.rs, T-1181).
+COUNTBLANK of an error argument: `fn_countblank` (functions/statistical/count.rs, T-1181) reads its argument once
+through `evaluate_picked_reference_arg`, so a reference stays a range and only an error value is returned.
 Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170, T-1181
 
 ## 3-D references when sheets or cells change (unprobed)

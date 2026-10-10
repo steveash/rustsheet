@@ -27,10 +27,12 @@ T-1170 maps a span whose prefix has an unresolved end to `#NAME?` (`Model::wrong
 - New probe `3d-ref-span-missing-ends` (excel-graph, 12 cells): `Nope1:Nope2!A1` is `#NAME?` like a span with one missing
   end, and CHOOSE-wrapped spans in COUNTBLANK act like IF-wrapped ones. The engine already matched every cell except
   `COUNTBLANK(CHOOSE(1,Data1:Nope!A1:B3))`, where it gave 0 for Excel's `#NAME?`.
-- New probe `countblank-choose-errors` (excel-graph, 8 cells): COUNTBLANK of any error argument that is not a reference
-  gives that error (`#NAME?`, `#N/A`, `#NULL!`). The engine counted 0. Fixed in `fn_countblank`. A one-cell reference to an
-  error cell still counts 0.
+- New probes `countblank-choose-errors`, `countblank-error-cell-refs` and `countblank-error-forms-b` (excel-graph, 25 cells):
+  COUNTBLANK of an error argument that is not a reference gives that error (`#NAME?`, `#N/A`, `#NULL!`, `#REF!`); the engine
+  counted 0. A one-cell reference to an error cell counts 0, through CHOOSE, INDEX, OFFSET, IF, XLOOKUP and TAKE too. Fixed in
+  `fn_countblank`, which now reads the argument once through `evaluate_picked_reference_arg` (review round 1: a second
+  evaluation made nested COUNTBLANK exponential; unit test `nested_countblank_of_an_error_reads_each_argument_once`).
 - Not probed: a span that lost an end sheet. excel-graph cannot delete a sheet, so this is filed as T-1309 (M14, blocked
   on the desktop oracle, decision 0039). A one-missing-sheet reference was left out of the probe, because the web oracle
   resolves it to an empty cell (lookup.md).
-- Eval delta: probes +2 cases, 20 cells, all pass. Known failures 914 → 914. Regressions 0.
+- Eval delta: probes +4 cases, 37 cells, all pass. Known failures 914 → 914. Regressions 0.

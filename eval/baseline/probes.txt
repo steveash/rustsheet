@@ -95,6 +95,8 @@ C	probes/colon-hash-value-operands.case.json	6
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
 C	probes/countblank-choose-errors.case.json	8
+C	probes/countblank-error-cell-refs.case.json	9
+C	probes/countblank-error-forms-b.case.json	8
 C	probes/countblank-formula-names-b.case.json	17
 C	probes/countblank-formula-names.case.json	21
 C	probes/criteria-gaps.case.json	22
