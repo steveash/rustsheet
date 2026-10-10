@@ -59,7 +59,10 @@
         "F6": "=MIN(RANDBETWEEN(SEQUENCE(1000,1,-5.5,0),-5.2))",
         "F7": "=MAX(RANDBETWEEN(SEQUENCE(1000,1,-5.5,0),-5.2))",
         "G1": "=RANDARRAY(1,1.9,3,3)",
-        "H1": 5
+        "H1": 5,
+        "F8": "=MIN(RANDBETWEEN(SEQUENCE(1000,1,5.2,0),7.9))",
+        "F9": "=MAX(RANDBETWEEN(SEQUENCE(1000,1,5.2,0),7.9))",
+        "B18": "=RANDARRAY(1,1,1,2.5,TRUE)"
       }
     }
   ],
@@ -116,7 +119,10 @@
     "Calc!F5",
     "Calc!F6",
     "Calc!F7",
-    "Calc!G1"
+    "Calc!G1",
+    "Calc!F8",
+    "Calc!F9",
+    "Calc!B18"
   ],
   "invariant": [
     "Calc!A1",
@@ -167,6 +173,9 @@
     "Calc!F5",
     "Calc!F6",
     "Calc!F7",
-    "Calc!G1"
+    "Calc!G1",
+    "Calc!F8",
+    "Calc!F9",
+    "Calc!B18"
   ]
 }

@@ -94,6 +94,10 @@
     "t": "n",
     "v": 64.0
    },
+   "B18": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "B2": {
     "t": "n",
     "v": 2.0
@@ -210,6 +214,14 @@
     "t": "n",
     "v": -5.0
    },
+   "F8": {
+    "t": "n",
+    "v": 6.0
+   },
+   "F9": {
+    "t": "n",
+    "v": 7.0
+   },
    "G1": {
     "t": "n",
     "v": 3.0
@@ -218,9 +230,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "6371a7d40e76bdaaa4eae21013f2a85db1995a518398877efa692a3da10515bc",
+  "input_sha256": "d99028287dc9f98df6f0658e85e8be9e657228ea1ea290e8a75666c0d7edd46a",
   "kind": "excel-graph",
-  "produced_at": "2026-10-10T09:51:30+00:00",
+  "produced_at": "2026-10-10T10:21:47+00:00",
   "version": null
  }
 }
