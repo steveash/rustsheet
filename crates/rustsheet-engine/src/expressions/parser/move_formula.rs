@@ -505,6 +505,7 @@ fn to_string_moved(
             child,
             written,
             lead,
+            grouped: _,
         } => {
             let sub = |n: &Node| to_string_moved(n, move_context, locale, language);
             // Same text as `stringify`: the space binds tighter than `@` (T-1098).
