@@ -343,13 +343,16 @@ impl Parser {
                 return error;
             }
             // Whole-operand parentheses (`@(A1)`) are `written`; a group that is only the leftmost
-            // operand of an intersection (`@(A1) B1`) is `lead`.
+            // operand of an intersection (`@(A1) B1`) or the left corner of a range (`@(A1):B1`,
+            // T-1251) is `lead`.
             let group = self.at_group.take();
             let whole = group.filter(|&(_, end)| end == self.lexer.get_position_index());
             let written = whole.map_or(0, |(group, _)| group.levels);
             let lead = match group {
                 Some((group, _))
-                    if whole.is_none() && matches!(t, Node::OpIntersectKind { .. }) =>
+                    if whole.is_none()
+                        && (matches!(t, Node::OpIntersectKind { .. })
+                            || (group.of_range && matches!(t, Node::OpRangeKind { .. }))) =>
                 {
                     group
                 }
@@ -618,8 +621,9 @@ pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
 }
 
 /// The text of the intersection chain `child` that begins with a group written in `lead`
-/// (`(A1) B1`, `(A1 B1) C1`, `(A1):B1 C1`; `@(A1) B1`, T-1134, T-1200); `None` when there is none
-/// to print. `sub` prints an operand.
+/// (`(A1) B1`, `(A1 B1) C1`, `(A1):B1 C1`; `@(A1) B1`, T-1134, T-1200), or of the range `child`
+/// whose left corner is that group (`(A1):B1`, T-1251); `None` when there is none to print. `sub`
+/// prints an operand.
 pub(crate) fn lead_group_text(
     child: &Node,
     lead: LeadGroup,
@@ -636,7 +640,7 @@ pub(crate) fn lead_group_text(
     let covered = usize::from(lead.operands);
     if lead.levels == 0
         || covered == 0
-        || operands.len() < 2
+        || (operands.len() < 2 && !lead.of_range)
         || covered > operands.len()
         || (!lead.of_range && covered == operands.len())
     {
