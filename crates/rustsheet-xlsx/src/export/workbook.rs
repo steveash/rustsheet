@@ -1,5 +1,3 @@
-#![allow(clippy::unwrap_used)]
-
 //! A workbook is composed of workbook-level properties and a collection of 1 or more sheets.
 //! The workbook part and corresponding properties comprise data
 //! used to set application and workbook-level operational state. The workbook also serves to bind all the sheets
@@ -37,9 +35,13 @@ use rustsheet_engine::types::{SheetState, Workbook};
 
 use super::escape::escape_xml;
 use super::xml_constants::XML_DECLARATION;
+use crate::error::XlsxError;
 use crate::util::name_to_xlsx;
 
-pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> String {
+pub(crate) fn get_workbook_xml(
+    workbook: &Workbook,
+    selected_sheet: u32,
+) -> Result<String, XlsxError> {
     // sheets
     // <sheet name="Sheet1" sheetId="1" r:id="rId1"/>
     let mut sheets_str: Vec<String> = vec![];
@@ -88,7 +90,12 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
         let name = escape_xml(&name);
         let local_sheet_id = if let Some(sheet_id) = defined_name.sheet_id {
             // In Excel the localSheetId is actually the index of the sheet.
-            let excel_local_sheet_id = sheet_id_to_sheet_index.get(&sheet_id).unwrap();
+            let excel_local_sheet_id = sheet_id_to_sheet_index.get(&sheet_id).ok_or_else(|| {
+                XlsxError::Workbook(format!(
+                    "defined name `{}` is scoped to sheet id {sheet_id}, which is not in the workbook",
+                    defined_name.name
+                ))
+            })?;
             format!(" localSheetId=\"{excel_local_sheet_id}\"")
         } else {
             "".to_string()
@@ -108,7 +115,7 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
 
     let sheets = sheets_str.join("");
     let defined_names = defined_names_str.join("");
-    format!("{XML_DECLARATION}\n\
+    Ok(format!("{XML_DECLARATION}\n\
     <workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
     <bookViews>
     <workbookView activeTab=\"{selected_sheet}\"/>\
@@ -120,5 +127,5 @@ pub(crate) fn get_workbook_xml(workbook: &Workbook, selected_sheet: u32) -> Stri
         {defined_names}\
       </definedNames>\
       <calcPr/>\
-    </workbook>")
+    </workbook>"))
 }

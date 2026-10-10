@@ -8,10 +8,10 @@ from collections import Counter
 from pathlib import Path
 
 from rustsheet_tools import repo_root
-from rustsheet_tools.gen.generator import Catalog, generate_case
+from rustsheet_tools.gen.generator import NAME_POOL, Catalog, generate_case
 from rustsheet_tools.gen.numeric_rules import generate_numeric_rules
 from rustsheet_tools.gen.operators_refs import CATEGORIES, generate_operators_refs
-from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1
+from rustsheet_tools.spec2xlsx import build_xlsx, parse_a1, prefix_bound_names
 
 
 def catalog() -> Catalog:
@@ -68,7 +68,7 @@ M2_ADDED = [
     "HLOOKUP", "INDEX", "MATCH", "SUMIFS", "COUNTIFS", "ROUNDUP", "ROUNDDOWN", "NOT", "LEFT",
     "RIGHT", "MID", "TRIM", "UPPER", "LOWER", "CONCAT", "YEAR", "MONTH", "DAY",
 ]  # fmt: skip
-VALID_MODES = {"value", "aggregate", "aggregate_a", "range", "criteria", "array", "any"}
+VALID_MODES = {"value", "aggregate", "aggregate_a", "range", "criteria", "array", "any", "lambda", "name"}
 
 
 def test_catalog_schema() -> None:
@@ -174,6 +174,67 @@ def test_generator_emits_every_m9_statistical_function() -> None:
     }
     assert len(m9_stat) == 142
     assert not sorted(m9_stat - emitted("M9"))
+
+
+def m7_formulas() -> list[str]:
+    return [
+        f
+        for seed in range(40)
+        for f in generate_case(catalog(), seed, milestone="M7", formulas=80)["sheets"][1]["cells"].values()
+    ]
+
+
+def test_generator_emits_every_m7_function_but_randarray() -> None:
+    # T-1083: every in-scope M7 entry is generator-ready; RANDARRAY is volatile.
+    m7 = {f["name"]: f for f in catalog().functions if "params" in f and f["milestone"] == "M7"}
+    assert len(m7) == 32
+    assert {n for n, f in m7.items() if f.get("volatile")} == {"RANDARRAY"}
+    seen = emitted("M7")
+    assert "RANDARRAY" not in seen
+    assert not sorted(set(m7) - {"RANDARRAY"} - seen)
+
+
+def test_bound_names_are_used_only_in_their_scope() -> None:
+    # T-1083: a LET variable or LAMBDA parameter outside its LET/LAMBDA is #NAME?. The case builder
+    # prefixes exactly the in-scope uses with `_xlpm.`, so no bare pool name may be left.
+    bare = re.compile(r"(?<![\w.$!])(" + "|".join(NAME_POOL) + r")(?![\w(!])")
+    formulas = m7_formulas()
+    assert any("LET(" in f for f in formulas) and any(")(" in f for f in formulas)
+    for f in formulas:
+        stored = re.sub(r'"(?:[^"]|"")*"', '""', prefix_bound_names(f))
+        assert not bare.search(stored), f
+
+
+def test_lambdas_get_as_many_parameters_as_values() -> None:
+    # T-1083: an invoked LAMBDA gets one value per parameter, MAP's LAMBDA one parameter per array,
+    # MAKEARRAY's two; a mismatch is #VALUE!.
+    formulas = m7_formulas()
+    invoked = [m for f in formulas for m in re.findall(r"LAMBDA\(([^()]*)\)\(([^()]*)\)", f)]
+    assert invoked and all(a.count(",") == b.count(",") + 1 for a, b in invoked)
+    mapped = [
+        m
+        for f in formulas
+        # Names are lower case; a body that starts with one is left out (it would read as a parameter).
+        for m in re.findall(
+            r"(?<![A-Z])MAP\(((?:Data![A-Z]\d+:[A-Z]\d+,)+)LAMBDA\(((?:[a-z_]+,)+)(?![a-z_])", f
+        )
+    ]
+    assert mapped and all(a.count(",") == b.count(",") for a, b in mapped)
+    made = re.findall(r"MAKEARRAY\([^,()]*,[^,()]*,LAMBDA\(((?:[a-z_]+,)+)", " ".join(formulas))
+    assert made and all(names.count(",") == 2 for names in made), made
+
+
+def test_full_arrays_span_every_row_and_masks_compare_one_column() -> None:
+    # T-1083: GROUPBY's and SORTBY's arrays and FILTER's include must be the same height.
+    formulas = " ".join(m7_formulas())
+    filters = re.findall(r"FILTER\((Data![A-Z]\d+:[A-Z]\d+),\((Data!([A-Z])\d+:([A-Z])\d+)[<>=]", formulas)
+    assert filters
+    for array, mask, c0, c1 in filters:
+        assert array.startswith("Data!") and array.split(":")[0][-1] == "1" and array.endswith("12")
+        assert c0 == c1 and mask.endswith("12")
+    groupby = re.findall(r"_xlfn\.GROUPBY\((Data![A-Z]1:[A-Z]\d+),(Data![A-Z]1:[A-Z]\d+)", formulas)
+    assert groupby and all(a.endswith("12") and b.endswith("12") for a, b in groupby)
+    assert "GROUPBY(" not in formulas.replace("_xlfn.GROUPBY(", "")
 
 
 def test_vector_params_get_one_column() -> None:

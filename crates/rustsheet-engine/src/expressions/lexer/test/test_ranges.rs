@@ -538,11 +538,56 @@ fn test_sheet_qualified_malformed_corner_pairs_are_names() {
 }
 
 #[test]
+fn test_sheet_qualified_off_grid_cells_are_names() {
+    // A row of 0 or past the last row is not a cell: Excel reads a name, `#NAME?`
+    // (probes/aggregate-range-function-num-grid A22, A24, A25, T-0296).
+    for formula in ["Data!H0", "Data!H00", "Data!A1048577", "'My Data'!H0"] {
+        let mut lx = new_lexer(formula);
+        assert_eq!(lx.next_token(), Ident(formula.to_string()), "{formula}");
+        assert_eq!(lx.next_token(), EOF, "{formula}");
+    }
+    // `Data!H0:I1` is that name, then the range operator (A16, A29).
+    let mut lx = new_lexer("Data!H0:I1");
+    assert_eq!(lx.next_token(), Ident("Data!H0".to_string()));
+    assert_eq!(lx.next_token(), Colon);
+    assert!(matches!(lx.next_token(), Reference { row: 1, .. }));
+    assert_eq!(lx.next_token(), EOF);
+    // An off-grid second corner ends the token at the first cell; the corner is then a name
+    // (probes/off-grid-corners A1:A6).
+    for formula in ["Data!A1:B0", "A1:B0", "Data!A1:B1048577"] {
+        let mut lx = new_lexer(formula);
+        assert!(
+            matches!(
+                lx.next_token(),
+                Reference {
+                    row: 1,
+                    column: 1,
+                    ..
+                }
+            ),
+            "{formula}"
+        );
+        assert_eq!(lx.next_token(), Colon, "{formula}");
+        assert!(matches!(lx.next_token(), Ident(_)), "{formula}");
+        assert_eq!(lx.next_token(), EOF, "{formula}");
+    }
+    // A leading zero is still a cell: `Data!H01` is H1 (A27).
+    let mut lx = new_lexer("Data!H01");
+    assert!(matches!(
+        lx.next_token(),
+        Reference {
+            row: 1,
+            column: 8,
+            ..
+        }
+    ));
+}
+
+#[test]
 fn test_sheet_qualified_valid_corner_pairs_stay_ranges() {
     // Unprobed shapes keep their original parse error.
     for formula in [
         "Data!A1:INDEX(Data!B:B,2)",
-        "Data!A1:B1048577",
         "Data!A1:Data!$B",
         "Data!A1:Data!XFE1",
     ] {
