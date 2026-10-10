@@ -143,6 +143,12 @@ impl SearchVector {
         self.len
     }
 
+    /// The cells a search actually tests: the evaluated prefix, plus one for an empty tail
+    /// (it is all one value, tested once). The cost of one lifted lookup (T-0270).
+    pub(super) fn search_cost(&self) -> usize {
+        self.values.len() + usize::from(self.len > self.values.len())
+    }
+
     /// The value at `index`, which must be below `len`.
     pub(super) fn get(&self, index: usize) -> &CalcResult {
         self.values.get(index).unwrap_or(&EMPTY_CELL)
