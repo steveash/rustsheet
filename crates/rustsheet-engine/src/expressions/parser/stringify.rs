@@ -853,6 +853,7 @@ fn stringify(
             child,
             written,
             lead,
+            grouped: _,
         } => {
             if export_to_excel {
                 // Redundant operators have already been stripped by
