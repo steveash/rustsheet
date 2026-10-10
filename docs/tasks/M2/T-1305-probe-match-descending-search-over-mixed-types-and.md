@@ -3,7 +3,7 @@ id: T-1305
 title: "Probe MATCH descending search over mixed types and a non-numeric match_type with a 2-D or out-of-range lookup (3 gen-m2 known failures)"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
