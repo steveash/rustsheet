@@ -1,0 +1,46 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "VALUETOTEXT format argument: format 1 on text, quotes inside text, blank and error cells, lifted formats, other format values (T-1229). Sheet1 A1=\"ab\", A2=\"a\"\"b\" (a\"b), A3 blank, A4=#N/A, A5=5, A6=TRUE, A7=\"\" (empty text).",
+  "tags": ["M5", "probe", "text", "valuetotext"],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "ab",
+        "A2": "a\"b",
+        "A4": "=NA()",
+        "A5": 5,
+        "A6": true,
+        "A7": "",
+        "C1": "=VALUETOTEXT(A1,1)",
+        "C2": "=VALUETOTEXT(A2,1)",
+        "C3": "=VALUETOTEXT(A3,1)",
+        "C4": "=VALUETOTEXT(A4,1)",
+        "C5": "=VALUETOTEXT(A5,1)",
+        "C6": "=VALUETOTEXT(A6,1)",
+        "C7": "=VALUETOTEXT(A7,1)",
+        "C8": "=VALUETOTEXT(A1,0)",
+        "C9": "=VALUETOTEXT(A1,2)",
+        "C10": "=VALUETOTEXT(A1,1.5)",
+        "C11": "=VALUETOTEXT(A1,-1)",
+        "C12": "=VALUETOTEXT(A1,#N/A)",
+        "C13": "=VALUETOTEXT(\"ab\",1)",
+        "C14": "=VALUETOTEXT(\"a\"\"b\",1)",
+        "C15": "=VALUETOTEXT(A1,\"1\")",
+        "C16": "=VALUETOTEXT(A1,TRUE)",
+        "C17": "=VALUETOTEXT(A1,A3)",
+        "C18": "=VALUETOTEXT(A1,\"x\")",
+        "C19": "=VALUETOTEXT(A1,0.9)",
+        "C20": "=VALUETOTEXT(A1,1.9)",
+        "C21": "=VALUETOTEXT(A1,-0.5)",
+        "C22": "=VALUETOTEXT(A1,2.5)",
+        "C23": "=VALUETOTEXT(A1,1E-20)",
+        "E1": "=VALUETOTEXT(A1:A3,{0,1})",
+        "E5": "=VALUETOTEXT(A1:A2,1)",
+        "E8": "=VALUETOTEXT(A1,{0,1})",
+        "E10": "=VALUETOTEXT(A1:A2,{0;1})"
+      }
+    }
+  ],
+  "expected": {}
+}
