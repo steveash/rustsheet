@@ -25,4 +25,4 @@ From T-1192's gen-m5 run: Excel gives `#NUM!` for `DECIMAL(0.5,13)` (hypothesis 
 -
 
 ## Outcome
-Probed 68 DECIMAL cells (probes/decimal-unreadable) and rewrote the text reader (`decimal_from_text`): `#NUM!` for unreadable text, leading blanks skipped, empty text 0, radix-16 `0x`/`x` prefix, float sum, 255-character limit. The rules are in docs/excel-semantics/engineering.md.
+Probed 76 DECIMAL cells (probes/decimal-unreadable) and rewrote the text reader (`decimal_from_text`): `#NUM!` for unreadable text, leading blanks skipped, empty text 0, radix-16 `0x`/`x` prefix, float sum (`#NUM!` on overflow), 255-character limit. The rules are in docs/excel-semantics/engineering.md.

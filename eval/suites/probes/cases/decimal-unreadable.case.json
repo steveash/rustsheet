@@ -77,7 +77,15 @@
         "A65": "=DECIMAL(\"000x\",16)",
         "A66": "=DECIMAL(\"10x1F\",16)",
         "A67": "=DECIMAL(\"0x 1\",16)",
-        "A68": "=DECIMAL(\"x 1\",16)"
+        "A68": "=DECIMAL(\"x 1\",16)",
+        "A69": "=DECIMAL(REPT(\"Z\",197),36)",
+        "A70": "=DECIMAL(REPT(\"Z\",198),36)",
+        "A71": "=DECIMAL(REPT(\"Z\",199),36)",
+        "A72": "=DECIMAL(REPT(\"Z\",200),36)",
+        "A73": "=DECIMAL(REPT(\"Z\",255),36)",
+        "A74": "=DECIMAL(REPT(\"F\",255),16)",
+        "A75": "=DECIMAL(REPT(\"9\",309),10)",
+        "A76": "=DECIMAL(REPT(\"9\",255),10)+1"
       }
     }
   ],

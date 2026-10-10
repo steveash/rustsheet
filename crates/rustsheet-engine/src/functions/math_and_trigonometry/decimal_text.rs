@@ -11,7 +11,8 @@ const DECIMAL_MAX_TEXT_LEN: usize = 255;
 
 /// Reads `text` in `radix` the way Excel's DECIMAL does: leading spaces and tabs are skipped,
 /// radix 16 also skips leading zeros and one `x`/`X`, empty text is 0, any other character
-/// (sign, point, trailing space) is unreadable. The sum is a float, so it never overflows.
+/// (sign, point, trailing space) is unreadable. The sum is a float with no 2^53 limit; one past
+/// `f64::MAX` (199 `Z`s in radix 36, probes/decimal-unreadable) is `None` too, as Excel gives `#NUM!`.
 fn decimal_from_text(text: &str, radix: u32) -> Option<f64> {
     let mut rest = text.trim_start_matches([' ', '\t']);
     if radix == 16 {
@@ -22,7 +23,7 @@ fn decimal_from_text(text: &str, radix: u32) -> Option<f64> {
     for c in rest.chars() {
         value = value * f64::from(radix) + f64::from(c.to_digit(radix)?);
     }
-    Some(value)
+    value.is_finite().then_some(value)
 }
 
 impl Model {
@@ -39,23 +40,24 @@ impl Model {
             Err(s) => return s,
         };
         if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
-            };
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "Radix must be between 2 and 36".to_string(),
+            );
         }
         // Excel: see docs/excel-semantics/engineering.md#decimal-of-unreadable-text
         if text.chars().count() > DECIMAL_MAX_TEXT_LEN {
             return CalcResult::new_error(Error::VALUE, cell, "Text is too long".to_string());
         }
+        // The range check above makes the cast to u32 lossless.
         match decimal_from_text(&text, radix as u32) {
             Some(n) => CalcResult::Number(n),
-            None => CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: format!("'{}' is not a valid number in base {}", text, radix),
-            },
+            None => CalcResult::new_error(
+                Error::NUM,
+                cell,
+                format!("'{text}' is not a valid number in base {radix}"),
+            ),
         }
     }
 }
