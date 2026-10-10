@@ -3,7 +3,7 @@ id: T-1283
 title: "Score run-invariant probe cells that call NOW, TODAY, RAND, RANDBETWEEN or RANDARRAY (no scorable Excel evidence today)"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
