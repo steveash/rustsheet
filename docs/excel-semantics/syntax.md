@@ -181,16 +181,22 @@ Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
 
 ## SUM and MAX: an error in a direct argument beats an error in a referenced cell
-Rule: in `SUM` and `MAX` an error produced by a direct argument (the literal `#DIV/0!` or a computed `1/0`) wins over any error held in a
-referenced cell, whichever argument comes first; among referenced cells the leftmost wins. This is for aggregate functions: the
-operators `+`, `=`, `*` take the leftmost error whatever its source (`A3+1/0` is #VALUE!, `1/0+A3` is #DIV/0!). It holds for a stored
-`#BUSY!`, `#N/A` and `#VALUE!` cell alike (so `#BUSY!` has no special rank). With A3 = stored `#VALUE!`, A4 = stored `#REF!`, A6 = stored `#NUM!`
-(ERROR.TYPE of each result): `SUM(A3,1/0)` and `SUM(1/0,A3)` 2 (C11, C12); `SUM(A3,#DIV/0!)` 2 (C9); `SUM(A3,A6,1/0)`,
-`SUM(1/0,A3,A6)` and `SUM(A3,1/0,A6)` 2 (C17-C19); `MAX(A3,1/0)` and `MAX(1/0,A3)` 2 (C20, C21); `SUM(A3,A4)` 3 but `SUM(A4,A3)` 4
-(C13, C14, leftmost reference); `SUM(A3:A4)` and `SUM(A4:A3)` both 3 (C15, C16, a range is read top to bottom whichever way it is written).
+Rule: in `SUM` and `MAX` an error produced by a direct argument (a literal such as `#DIV/0!` or `#N/A`, or a computed `1/0`, `NA()`, `SQRT(-1)`)
+wins over any error held in a referenced cell, whichever argument comes first; among referenced cells the leftmost wins. The kind of error
+does not matter (the direct error and the cell error were varied over #DIV/0!, #N/A, #VALUE!, #NUM!, #BUSY!), and neither does how the cell
+got its error (a stored constant, `=NA()` or `=1/0`). The operators `+`, `=`, `*` take the leftmost error whatever its source
+(`A3+1/0` is #VALUE!, `1/0+A3` is #DIV/0!, C22, C23). `#BUSY!` has no special rank. With A1 = stored `#BUSY!`, A2 = stored `#N/A`, A3 = stored
+`#VALUE!`, A4 = stored `#REF!`, A6 = stored `#NUM!`, A7 = stored `#DIV/0!`, A8 = `=NA()`, A9 = `=1/0` (ERROR.TYPE of each result: 2 = #DIV/0!, 3 = #VALUE!,
+4 = #REF!, 6 = #NUM!, 7 = #N/A):
+- direct `#DIV/0!` or `1/0` against a stored `#BUSY!`, `#N/A` or `#VALUE!` cell, both orders: 2 (C1-C12; `SUM(A3,A6,1/0)`, `SUM(1/0,A3,A6)`, `SUM(A3,1/0,A6)` 2, C17-C19; `MAX(A3,1/0)`, `MAX(1/0,A3)` 2, C20, C21).
+- other direct errors: `SUM(A3,#N/A)`, `SUM(#N/A,A3)` and `SUM(A3,NA())` 7 (C24-C26); `SUM(A2,#VALUE!)` 3 (C27); `SUM(A3,SQRT(-1))` and the reverse 6 (C28, C29);
+  a stored `#DIV/0!` cell loses to a direct `#N/A` in both orders, 7 (C30, C31, `MAX(A7,#N/A)` 7, C39); `SUM(A9,#N/A)` 7 (C36).
+- formula cells holding errors lose too: `SUM(A8,1/0)` and the reverse 2 (C32, C33); `SUM(A8,#VALUE!)` and the reverse 3 (C34, C35).
+- between cells the leftmost reference wins: `SUM(A3,A4)` 3 but `SUM(A4,A3)` 4 (C13, C14); `SUM(A3,A8)` 3 and `SUM(A8,A3)` 7 (C37, C38); `SUM(A3:A4)` and `SUM(A4:A3)` both 3
+  (C15, C16: a range is read top to bottom whichever way it is written).
 The "leftmost error operand wins ... `SUM(a,b)`" sentence in "Newer error literals" above rests on direct-versus-direct pairs, so both hold. Not probed: AVERAGE, MIN, PRODUCT and the
-other aggregates, and an error inside an array constant or a nested function result.
-Evidence: eval/suites/probes/cases/sum-error-precedence.case.json C1-C23 (oracle: excel-graph, 2026-10-10, T-1315).
+other aggregates, two direct errors of different kinds mixed with a cell error, and an error inside an array constant or a nested function result.
+Evidence: eval/suites/probes/cases/sum-error-precedence.case.json C1-C39 (oracle: excel-graph, 2026-10-10, T-1315).
 Status: VERIFIED
 Tasks: T-1315, T-1317
 

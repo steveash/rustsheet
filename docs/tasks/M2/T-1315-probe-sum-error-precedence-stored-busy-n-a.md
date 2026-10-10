@@ -25,7 +25,7 @@ probes/error-stored-busy-behaviors C11/C12: `SUM(A1,1/0)` and `SUM(1/0,A1)` with
 -
 
 ## Outcome
-Probe `probes/sum-error-precedence` (23 cells, excel-graph). In SUM and MAX an error in a direct argument beats
+Probe `probes/sum-error-precedence` (39 cells, excel-graph). In SUM and MAX an error in a direct argument beats
 an error held in a referenced cell in either order; among cells the leftmost wins; the operators stay leftmost.
 `#BUSY!` has no special rank. Recorded in syntax.md; engine task T-1317. Eval delta: probes known failures
-931 -> 940 (9 cells, owned by T-1317). The conflicting syntax.md sentence turned out to rest on direct-versus-direct pairs, so it stays.
+931 -> 949 (18 cells, owned by T-1317). The conflicting syntax.md sentence turned out to rest on direct-versus-direct pairs, so it stays.

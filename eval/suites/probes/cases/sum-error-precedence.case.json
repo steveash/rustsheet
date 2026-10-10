@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "SUM/MAX error precedence: a cell holding an error (stored #BUSY!/#N/A/#VALUE!/#REF!/#NUM!) against a literal #DIV/0! or computed 1/0 argument, both orders (T-1315). All formulas are ERROR.TYPE so the winner is visible.",
+ "description": "SUM/MAX error precedence: a cell holding an error (stored #BUSY!/#N/A/#VALUE!/#REF!/#NUM!) against a literal #DIV/0! or computed 1/0 argument, both orders (T-1315). All formulas are ERROR.TYPE so the winner is visible. C24-C39: direct errors other than #DIV/0!, a stored #DIV/0! and formula-cell errors (A8 =NA(), A9 =1/0) in cells.",
  "tags": [
   "M2",
   "errors",
@@ -58,7 +58,30 @@
     "C20": "=ERROR.TYPE(MAX(A3,1/0))",
     "C21": "=ERROR.TYPE(MAX(1/0,A3))",
     "C22": "=ERROR.TYPE(A3+1/0)",
-    "C23": "=ERROR.TYPE(1/0+A3)"
+    "C23": "=ERROR.TYPE(1/0+A3)",
+    "A7": {
+     "t": "e",
+     "v": "#DIV/0!",
+     "stored": true
+    },
+    "A8": "=NA()",
+    "A9": "=1/0",
+    "C24": "=ERROR.TYPE(SUM(A3,#N/A))",
+    "C25": "=ERROR.TYPE(SUM(#N/A,A3))",
+    "C26": "=ERROR.TYPE(SUM(A3,NA()))",
+    "C27": "=ERROR.TYPE(SUM(A2,#VALUE!))",
+    "C28": "=ERROR.TYPE(SUM(A3,SQRT(-1)))",
+    "C29": "=ERROR.TYPE(SUM(SQRT(-1),A3))",
+    "C30": "=ERROR.TYPE(SUM(A7,#N/A))",
+    "C31": "=ERROR.TYPE(SUM(#N/A,A7))",
+    "C32": "=ERROR.TYPE(SUM(A8,1/0))",
+    "C33": "=ERROR.TYPE(SUM(1/0,A8))",
+    "C34": "=ERROR.TYPE(SUM(A8,#VALUE!))",
+    "C35": "=ERROR.TYPE(SUM(#VALUE!,A8))",
+    "C36": "=ERROR.TYPE(SUM(A9,#N/A))",
+    "C37": "=ERROR.TYPE(SUM(A3,A8))",
+    "C38": "=ERROR.TYPE(SUM(A8,A3))",
+    "C39": "=ERROR.TYPE(MAX(A7,#N/A))"
    }
   }
  ],
