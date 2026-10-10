@@ -917,3 +917,22 @@ Ours: the same; the bound is checked before padding, which also bounds the alloc
 Status: VERIFIED
 Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
 Tasks: T-1243
+
+## RANDBETWEEN and RANDARRAY argument checks
+Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
+`RANDBETWEEN(5,4.5)`) and then draws from `CEILING(bottom)` upward, so `RANDBETWEEN(5.5,5.7)` is 6;
+it rejects booleans (`RANDBETWEEN(TRUE,TRUE)` is `#VALUE!`), reads number text (`"5"`), and both
+arguments omitted (`RANDBETWEEN(,)`) is `#N/A`, not 0. RANDARRAY truncates `rows`/`columns`
+(`1.9` → 1), gives `#CALC!` for 0 rows and `#VALUE!` for a negative count, `min > max` or a
+non-boolean `whole_number` text; with `whole_number` TRUE a fractional `min` or `max` is `#VALUE!`
+(`RANDARRAY(1,1,1.5,2.5,TRUE)`), while without it `min = max` returns that value
+(`RANDARRAY(1,1,0.5,0.5)` = 0.5). Number text is read for every argument, including
+`whole_number` (`"TRUE"`) and the boolean-as-number `1`. `TYPE(RANDARRAY(2,2))` is 64,
+`ROWS(RANDARRAY())` is 1, and RAND, NOW and TODAY return numbers with TODAY a whole number and NOW
+within that day.
+Evidence: probes/volatile-invariant Calc!A1:A6, A8:A15, B1:B17, C1:C9, D1:E2, D4:D5 (excel-graph, 2026-10-10;
+filled twice, every cell identical on both fills, T-1283).
+Whether `top` is then truncated (`RANDBETWEEN(5.5,6.2)` gave 6 on two fills, but 7 may be possible)
+is UNVERIFIED and must not be probed as run-invariant.
+Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10: T-1311 (A6 is unchecked until then,
+because the engine's draw for it is random).

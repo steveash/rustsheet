@@ -145,6 +145,8 @@ def cmd_fill(args: argparse.Namespace) -> int:
             values, info, sha = _recalc_cached(backend, xlsx)
             if not spec:
                 conflicts += _drop_desktop_conflicts(case, values)
+            elif spec.get("invariant"):
+                _drop_varying_invariants(case, spec["invariant"], values, _recalc_fresh(backend, xlsx))
         except OracleError as e:
             failed += 1
             print(f"FAIL {case}: {e}", file=sys.stderr)
@@ -202,6 +204,33 @@ def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[st
         got = values.get(sheet, {}).get(a1)
         if got is not None and got != hand:
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
+
+
+def _recalc_fresh(backend: Any, xlsx: bytes) -> dict[str, dict[str, Any]]:
+    """Formula values of a second, uncached recalculation of `xlsx`, canary-verified."""
+    data, _ = backend.recalc(embed_canary(xlsx))
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "again.xlsx"
+        out.write_bytes(data)
+        return checked_values(out)
+
+
+def _drop_varying_invariants(
+    case: Path, invariant: list[str], values: dict[str, dict[str, Any]], again: dict[str, dict[str, Any]]
+) -> None:
+    """Leaves pending every `invariant` cell (T-1283) whose value differs between two recalculations:
+    it calls a volatile function, so a single fill cannot show that its value never changes."""
+    for key in invariant:
+        sheet, _, a1 = key.rpartition("!")
+        sheet = sheet.strip("'").replace("''", "'")
+        a1 = a1.replace("$", "")
+        first = values.get(sheet, {}).get(a1)
+        if first is not None and first != again.get(sheet, {}).get(a1):
+            print(
+                f"VARIES {case.name} {key}: listed as invariant but changed between fills (left pending)",
+                file=sys.stderr,
+            )
+            del values[sheet][a1]
 
 
 # Same string as UNDECODED_RICH_ERROR in crates/rustsheet-eval/src/xlsx_snapshot.rs.
