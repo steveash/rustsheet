@@ -44,10 +44,10 @@ fn erfc_cf(x: f64) -> f64 {
     for k in (1..=depth).rev() {
         t = x + (k as f64 / 2.0) / t;
     }
-    // exp(-x^2) with x^2 split exactly into hi + lo so the rounding of x*x is not amplified.
-    let hi = x * x;
-    let lo = x.mul_add(x, -hi);
-    (-hi).exp() * (1.0 - lo) / (PI.sqrt() * t)
+    // exp of the rounded x*x, uncorrected: Excel's ERFC(26.4) carries that rounding error
+    // (2.27E-15 of its 2.40E-15 offset from the true value; probes/subnormal-function-boundaries
+    // A5, excel-graph, T-1186). On 1/8 grids x*x is exact.
+    (-(x * x)).exp() / (PI.sqrt() * t)
 }
 
 /// The error function erf(x).

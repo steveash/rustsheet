@@ -296,7 +296,7 @@ exactly where it would be subnormal, a normal result is kept. `CSCH(709.3)`, `CS
 0 (companion TRUE), `ERFC(26.5)` and `ERFC.PRECISE(26.5)` are 2.2109076642637346E-307 (kept), `ERFC(26.6)` is 0,
 `NORM.S.DIST(-37.61,FALSE)` is 2.776580428767599E-308 (kept; the density is 1.9E-308 at -37.62) and `-37.62` to `-37.65`
 are 0. This is a flush of the subnormal result, not a cutoff in the algorithm. `ERFC(26.4)` is 4.4017768588035533E-305
-and the engine is a few ulp off (T-1186). Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
+and the engine is 1 ulp off (T-1186; see the ERFC sweep in statistics.md). Swapping `normal_pdf`'s constant for `(2*pi).sqrt()` regresses NORM_DIST.xlsx NORM.INV!E13 and E17, so NORM.DIST keeps its order.
 Subnormal flush edges (T-1007, VERIFIED, probes/subnormal-flush-edges, excel-graph 2026-10-07): a subnormal literal argument
 reads as 0 (`PRODUCT(1E-308,1E+300)` is a true 0, `SUM(1E-308,1E-308)*1E+300` is 0). PRODUCT and SUMPRODUCT flush every running
 product, not just the total: `PRODUCT(1E-200,1E-110,1E+300)` is 0 (1E-310 is flushed before the 1E+300 factor scales it back up;
