@@ -12,8 +12,12 @@ use crate::{
     },
     formatter::format::{format_text, format_text_value, Formatted},
     functions::{
-        criteria::from_wildcard_to_regex,
-        text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        text::{
+            position::find_element,
+            util::{
+                substitute, substitute_exceeds_limit, text_after, text_before, utf16_slice, Case,
+            },
+        },
         util::array_node_to_calc_result,
     },
     locale::Locale,
@@ -22,6 +26,9 @@ use crate::{
 };
 
 /// Computes a single LEFT result from one element of each argument.
+// Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
+// count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
+// positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
     let num = num?;
@@ -59,61 +66,18 @@ fn mid_element(
     if length < 0.0 {
         return Err(Error::VALUE);
     }
-    let start_num = start.floor() as usize;
-    let num_chars = length.floor() as usize;
-    let mut result = String::new();
-    let mut count: usize = 0;
-    for (index, ch) in s.chars().enumerate() {
-        if count >= num_chars {
-            break;
-        }
-        if index + 1 >= start_num {
-            result.push(ch);
-            count += 1;
-        }
-    }
-    Ok(ArrayNode::String(result))
+    // Excel: MID positions count UTF-16 code units, so `MID("a😀b",2,2)` is the emoji
+    // (probes/text-surrogate-positions A9-A13).
+    let first = (start.floor() as usize).saturating_sub(1);
+    let end = first.saturating_add(length.floor() as usize);
+    Ok(ArrayNode::String(utf16_slice(&s, first, end)))
 }
 
 /// Computes a single LEN result.
 fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    Ok(ArrayNode::Number(s.chars().count() as f64))
-}
-
-/// Computes a single FIND or SEARCH result from one element of each argument.
-/// SEARCH is the one that is not case sensitive and understands wildcards.
-fn find_element(
-    find_text: &ArrayNode,
-    within_text: &ArrayNode,
-    start_num: Result<f64, Error>,
-    is_search: bool,
-) -> Result<ArrayNode, Error> {
-    let find_text = array_node_to_string(find_text)?;
-    let within_text = array_node_to_string(within_text)?;
-    let start_num = start_num?.floor();
-    if start_num < 1.0 {
-        return Err(Error::VALUE);
-    }
-    let start_num = start_num as usize;
-    if start_num > within_text.len() {
-        return Err(Error::VALUE);
-    }
-    let position = if is_search {
-        // SEARCH is case insensitive
-        search(
-            &find_text.to_lowercase(),
-            &within_text.to_lowercase(),
-            start_num,
-        )
-    } else {
-        find(&find_text, &within_text, start_num)
-    };
-    match position {
-        Some(p) => Ok(ArrayNode::Number(p as f64)),
-        // Text not found
-        None => Err(Error::VALUE),
-    }
+    // Excel: LEN counts UTF-16 code units, so an emoji counts two (probes/text-surrogate-positions A1).
+    Ok(ArrayNode::Number(s.encode_utf16().count() as f64))
 }
 
 /// Computes a single REPT result from one element of each argument.
@@ -173,43 +137,6 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
     let string1 = array_node_to_string(text1)?;
     let string2 = array_node_to_string(text2)?;
     Ok(ArrayNode::Boolean(string1 == string2))
-}
-
-/// Finds the first instance of 'search_for' in text starting at char index start
-fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
-    let ch = text.chars();
-    let mut byte_index = 0;
-    for (char_index, c) in ch.enumerate() {
-        if char_index + 1 >= start && text[byte_index..].starts_with(search_for) {
-            return Some((char_index + 1) as i32);
-        }
-        byte_index += c.len_utf8();
-    }
-    None
-}
-
-/// You can use the wildcard characters — the question mark (?) and asterisk (*) — in the find_text argument.
-/// * A question mark matches any single character.
-/// * An asterisk matches any sequence of characters.
-/// * If you want to find an actual question mark or asterisk, type a tilde (~) before the character.
-fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
-    let re = match from_wildcard_to_regex(search_for, false) {
-        Ok(r) => r,
-        Err(_) => return None,
-    };
-
-    let ch = text.chars();
-    let mut byte_index = 0;
-    for (char_index, c) in ch.enumerate() {
-        if char_index + 1 >= start {
-            {
-                let m = re.find(&text[byte_index..])?;
-                return Some((text[0..(m.start() + byte_index)].chars().count() as i32) + 1);
-            }
-        }
-        byte_index += c.len_utf8();
-    }
-    None
 }
 
 /// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
