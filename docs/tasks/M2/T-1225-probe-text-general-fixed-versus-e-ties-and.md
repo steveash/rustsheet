@@ -3,7 +3,7 @@ id: T-1225
 title: "Probe TEXT General fixed-versus-E ties and wide fixed values"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
