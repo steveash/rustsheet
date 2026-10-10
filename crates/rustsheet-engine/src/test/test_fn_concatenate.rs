@@ -79,8 +79,7 @@ fn fn_concatenate_and_ampersand_truncate_at_32767_chars() {
 #[test]
 fn fn_concatenate_limit_counts_utf16_units() {
     // probes/concatenate-limit-spill E7–E9 (excel-graph): the 32,767 limit is in UTF-16 code
-    // units, so an emoji (a surrogate pair) counts two. LEN still counts chars here (T-0249),
-    // so the assertions read lengths in UTF-16 units directly.
+    // units, so an emoji (a surrogate pair) counts two.
     let mut model = new_empty_model();
     model._set("A1", "=CONCATENATE(REPT(\"😀\",16383),\"ab\")");
     model._set("A2", "=REPT(\"😀\",16383)&\"😀\"");

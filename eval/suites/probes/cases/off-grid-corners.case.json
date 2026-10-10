@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "An off-grid second corner, with and without a sheet prefix, is a name (T-0296). Absolute or mixed off-grid cells ($H$0, H$0, $H0, Data!$H$0, Data!H$0, SUM(Data!$H0:I1)) cannot be stored: Excel for the web refuses the workbook (createSession 501 FileCorruptTryRepair, 2026-10-09), each tried alone.",
+  "tags": ["M2", "probe", "references", "T-0296"],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=ISREF(Data!A1:B0)",
+        "A2": "=SUM(Data!A1:B1048577)",
+        "A3": "=SUM(H0:I1)",
+        "A4": "=SUM(A1:B0)",
+        "A5": "=Data!A1:B0",
+        "A6": "=ISREF(A1:B0)"
+      }
+    },
+    {
+      "name": "Data",
+      "cells": {"A1": 1, "B1": 2, "H1": 4}
+    }
+  ],
+  "expected": {}
+}

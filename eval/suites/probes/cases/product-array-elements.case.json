@@ -1,0 +1,22 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1165: PRODUCT of an array argument holding text, booleans, errors, no numbers, or computed from IF(SEQUENCE).",
+ "tags": ["M5", "product", "probe"],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=PRODUCT({2,\"a\",TRUE,3})",
+    "A2": "=PRODUCT({\"a\"})",
+    "A3": "=PRODUCT({TRUE,FALSE})",
+    "A4": "=PRODUCT({2,#N/A,#DIV/0!})",
+    "A5": "=PRODUCT({#DIV/0!,#N/A})",
+    "A6": "=PRODUCT(IF(SEQUENCE(3),\"x\"))",
+    "A7": "=PRODUCT(IF(SEQUENCE(3),TRUE))",
+    "A8": "=PRODUCT({2,3})",
+    "A9": "=PRODUCT({2,3},4)"
+  }
+  }
+ ],
+ "expected": {}
+}
