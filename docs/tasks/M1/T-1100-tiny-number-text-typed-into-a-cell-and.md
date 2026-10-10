@@ -42,3 +42,4 @@ Typed-input probe `probes/typed-number-tiny` (excel-graph) shows cell entry foll
 engine already matched (24/24 cells pass), recorded in numbers.md. `value_needs_quoting` now uses
 `parse_excel_number`. Conditional-format rule values are not observable through the oracle, so that part
 stays UNVERIFIED pending desktop Excel (M14, Phase 4). Eval: new case passes, no regressions.
+Follow-up: T-1299 (conditional-format rule values, other `parse_finite_number` sites).

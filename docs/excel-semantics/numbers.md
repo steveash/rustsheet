@@ -376,7 +376,7 @@ Typed into a cell (probes/typed-number-tiny, excel-graph 2026-10-10, T-1100): `1
 stored as the number 0 (`=A1=0` TRUE). Cell entry follows the same rule as `VALUE` and number text.
 Evidence: probes/text-number-words (A1-A10, B1-B5, C1-C4, D1-D3, E1-E6, H1-H10, J1, K1-K10, L1-L8); probes/text-number-tiny (Data!B1:D20); probes/text-number-tiny-zero (Data!B1:E22); probes/literal-number-tiny (Lit!A1:C8); probes/text-number-tiny-paths (Paths!C1:D23); probes/typed-number-tiny (Sheet1!A1:D8).
 Oracle: excel-graph, 2026-10-05, 2026-10-06 and 2026-10-07.
-Status: VERIFIED
+Status: VERIFIED (conditional-format rule values: UNVERIFIED, T-1299)
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
 lexer, criteria operands, AVERAGE text, NUMBERVALUE) and `parse_finite_number` (format
 conditions, conditional formats, the criteria date guard, `value_needs_quoting`),
