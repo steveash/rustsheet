@@ -181,14 +181,46 @@
    "E2": {
     "t": "n",
     "v": 1.0
+   },
+   "F1": {
+    "t": "n",
+    "v": 6.0
+   },
+   "F2": {
+    "t": "n",
+    "v": 6.0
+   },
+   "F3": {
+    "t": "n",
+    "v": 6.0
+   },
+   "F4": {
+    "t": "n",
+    "v": 6.0
+   },
+   "F5": {
+    "t": "n",
+    "v": 1000.0
+   },
+   "F6": {
+    "t": "n",
+    "v": -5.0
+   },
+   "F7": {
+    "t": "n",
+    "v": -5.0
+   },
+   "G1": {
+    "t": "n",
+    "v": 3.0
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "5cc39095c58ed6eb7c4eebce8eaa44b21b53228f7705e076475b3794b8892855",
+  "input_sha256": "6371a7d40e76bdaaa4eae21013f2a85db1995a518398877efa692a3da10515bc",
   "kind": "excel-graph",
-  "produced_at": "2026-10-10T09:28:04+00:00",
+  "produced_at": "2026-10-10T09:51:30+00:00",
   "version": null
  }
 }

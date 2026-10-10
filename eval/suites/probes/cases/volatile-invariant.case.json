@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "Run-invariant results of the volatile functions RAND, RANDBETWEEN, RANDARRAY, NOW and TODAY: argument checks, coercion, error kinds, result types and shapes (T-1283).",
+  "description": "Run-invariant results of the volatile functions RAND, RANDBETWEEN, RANDARRAY, NOW and TODAY: argument checks, coercion, error kinds, result types and shapes (T-1283). Column F draws 1000 times in one cell, so a range of more than one value would show in MIN/MAX.",
   "tags": [
     "M2",
     "volatile",
@@ -50,7 +50,16 @@
         "C8": "=ISNUMBER(RAND()*0+1)",
         "C9": "=INT(RAND())",
         "D1": "=RANDARRAY(2,2,1,1)",
-        "D4": "=RANDARRAY(2,1,4,4,TRUE)"
+        "D4": "=RANDARRAY(2,1,4,4,TRUE)",
+        "F1": "=MIN(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),5.7))",
+        "F2": "=MAX(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),5.7))",
+        "F3": "=MIN(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),6.2))",
+        "F4": "=MAX(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),6.2))",
+        "F5": "=ROWS(RANDBETWEEN(SEQUENCE(1000,1,5.5,0),5.7))",
+        "F6": "=MIN(RANDBETWEEN(SEQUENCE(1000,1,-5.5,0),-5.2))",
+        "F7": "=MAX(RANDBETWEEN(SEQUENCE(1000,1,-5.5,0),-5.2))",
+        "G1": "=RANDARRAY(1,1.9,3,3)",
+        "H1": 5
       }
     }
   ],
@@ -99,7 +108,15 @@
     "Calc!E1",
     "Calc!D2",
     "Calc!E2",
-    "Calc!D5"
+    "Calc!D5",
+    "Calc!F1",
+    "Calc!F2",
+    "Calc!F3",
+    "Calc!F4",
+    "Calc!F5",
+    "Calc!F6",
+    "Calc!F7",
+    "Calc!G1"
   ],
   "invariant": [
     "Calc!A1",
@@ -142,6 +159,14 @@
     "Calc!C8",
     "Calc!C9",
     "Calc!D1",
-    "Calc!D4"
+    "Calc!D4",
+    "Calc!F1",
+    "Calc!F2",
+    "Calc!F3",
+    "Calc!F4",
+    "Calc!F5",
+    "Calc!F6",
+    "Calc!F7",
+    "Calc!G1"
   ]
 }

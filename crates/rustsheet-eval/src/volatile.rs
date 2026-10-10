@@ -207,11 +207,11 @@ fn unquote(name: &str) -> String {
 /// between runs (`RANDBETWEEN(5,5)`, `ISNUMBER(NOW())`). They are never tainted, so they are scored,
 /// and taint does not flow through them to their dependents.
 #[must_use]
-pub fn volatile_cells(
+pub fn volatile_cells<S: std::hash::BuildHasher>(
     cells: &[FormulaCell],
     names: &[DefinedName],
     clock_pinned: bool,
-    invariant: &HashSet<(String, Addr)>,
+    invariant: &HashSet<(String, Addr), S>,
 ) -> HashSet<(String, Addr)> {
     let expanded: Vec<Cow<'_, str>> = cells
         .iter()
@@ -407,7 +407,12 @@ mod tests {
         ];
         let invariant: HashSet<(String, Addr)> = ["A1", "B2", "C1"]
             .iter()
-            .map(|a1| ("s".to_string(), Addr::parse(a1).expect("valid test address")))
+            .map(|a1| {
+                (
+                    "s".to_string(),
+                    Addr::parse(a1).expect("valid test address"),
+                )
+            })
             .collect();
         let set = volatile_cells(&cells, &[], false, &invariant);
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();

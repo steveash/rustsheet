@@ -197,10 +197,15 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _split_cell_key(key: str) -> tuple[str, str]:
+    """(sheet, A1) of a case cell key written `Sheet!A1`, `'My Sheet'!$A$1` or similar."""
+    sheet, _, a1 = key.rpartition("!")
+    return sheet.strip("'").replace("''", "'"), a1.replace("$", "")
+
+
 def _report_hand_disagreements(case: Path, spec: dict[str, Any], values: dict[str, dict[str, Any]]) -> None:
     for key, hand in spec.get("expected", {}).items():
-        sheet, _, a1 = key.rpartition("!")
-        sheet = sheet.strip("'").replace("''", "'")
+        sheet, a1 = _split_cell_key(key)
         got = values.get(sheet, {}).get(a1)
         if got is not None and got != hand:
             print(f"NOTE {case.name} {key}: hand={hand} excel={got} (oracle wins)", file=sys.stderr)
@@ -221,9 +226,7 @@ def _drop_varying_invariants(
     """Leaves pending every `invariant` cell (T-1283) whose value differs between two recalculations:
     it calls a volatile function, so a single fill cannot show that its value never changes."""
     for key in invariant:
-        sheet, _, a1 = key.rpartition("!")
-        sheet = sheet.strip("'").replace("''", "'")
-        a1 = a1.replace("$", "")
+        sheet, a1 = _split_cell_key(key)
         first = values.get(sheet, {}).get(a1)
         if first is not None and first != again.get(sheet, {}).get(a1):
             print(

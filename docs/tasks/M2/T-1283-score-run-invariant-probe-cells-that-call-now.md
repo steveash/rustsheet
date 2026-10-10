@@ -32,9 +32,11 @@ Design to decide (opus): a per-case opt-in list of invariant cells in `rustsheet
   cell that is not a volatile formula cell makes the case fail to load.
 - `rustsheet-oracle fill` recalculates a case with `invariant` cells a second time, uncached, and
   leaves pending (`VARIES ...`) every listed cell whose two values differ.
-- probes/volatile-invariant: 44 RAND/RANDBETWEEN/RANDARRAY/NOW/TODAY cells, filled twice on
-  excel-graph with identical values. Findings in numbers.md "RANDBETWEEN and RANDARRAY argument
+- probes/volatile-invariant: 51 RAND/RANDBETWEEN/RANDARRAY/NOW/TODAY formula cells, filled twice
+  on excel-graph with identical values. F1:F7 take MIN/MAX/ROWS over 1000 RANDBETWEEN draws in one
+  cell, which is what proves a draw range of one value (two fills alone could not). Findings in numbers.md "RANDBETWEEN and RANDARRAY argument
   checks". `NOW()>45000` was dropped: the engine adapter's clock is a fixed mock, so a cell that
   reads the actual time is never invariant here (eval-harness.md says so).
-- Eval delta: probes +1 case, 46 cells checked, 40 pass, 6 new-coverage failures, 0 regressions.
-  The 6 failures and the unchecked A6 (the engine's draw is random there) are T-1311 (sonnet).
+- Eval delta: probes +1 case, 52 cells checked, 39 pass, 13 new-coverage failures, 0 regressions.
+  Six failures and the unchecked A6 (the engine's draw is random there) are T-1311; F1:F7 (the
+  engine does not lift RANDBETWEEN over arrays) are T-1312. Both sonnet.
