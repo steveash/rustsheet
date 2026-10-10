@@ -3,7 +3,7 @@ id: T-1198
 title: "DECIMAL of unreadable text gives #NUM! in Excel, engine gives #VALUE!"
 milestone: M5
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
