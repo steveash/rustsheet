@@ -139,7 +139,7 @@ formula grammar there (they only arise as results, arrays.md).
 fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
 "#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
 Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and `#N/A` is 7, and
-**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` (the general rule is in arrays.md), whichever error it is:
+**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` of direct arguments (the general rule is in arrays.md; cell errors in SUM: see "SUM and MAX" below), whichever error it is:
 `#N/A=#GETTING_DATA` is 7 but `#GETTING_DATA=#N/A` is 8; `#GETTING_DATA+#DIV/0!` is 8 but
 `#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
 `#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
@@ -168,8 +168,8 @@ the stored error, A2 = 1): `VALUETOTEXT(A1)` and `VALUETOTEXT(A1,1)` are the tex
 only propagates the error, see arrays.md), while `ARRAYTOTEXT(A1:A2,1)` is "{#BUSY!;1}" (C4).
 For the operators the leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2 (C5, C6),
 likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7). In SUM an error in a direct argument beats an error in a
-referenced cell whichever comes first (`SUM(A1,1/0)` and `SUM(1/0,A1)` are both ERROR.TYPE 2, C11, C12), see "SUM and MAX:
-direct-argument errors beat cell errors" below. COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
+referenced cell whichever comes first (`SUM(A1,1/0)` and `SUM(1/0,A1)` are both ERROR.TYPE 2, C11, C12), see "SUM and MAX: an error in a direct argument beats an error in a referenced cell" below.
+COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
 cells (C13-C15). `IFERROR(A1,"y")` is "y" (C16). `ERROR.TYPE(A1:A2)` spills 0 then `#N/A` (E1:E2).
 `UNIQUE` keeps a stored `#BUSY!` and a stored `#NULL!` as distinct rows and merges equal `#BUSY!`s
 (C18-C20: 2, 3, 3 rows).
