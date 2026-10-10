@@ -12,6 +12,13 @@
 #              a boolean is #VALUE!; SUMPRODUCT: it is 0). docs/excel-semantics/arrays.md,
 #              probes/math-argument-modes.
 #   any        any value
+#   lambda     a LAMBDA with `arity` parameters (`arity: repeat` = as many as the repeating param before it got: MAP),
+#              or a function passed by name, written `_xleta.SUM` as Excel stores it (BYROW, GROUPBY, REDUCE)
+#   name       a LET variable or LAMBDA parameter the call declares. A LET variable is visible to the arguments
+#              after its value, and `body: true` (LAMBDA's and LET's calculation) sees every name; `invoke: true`
+#              calls the LAMBDA at once (`LAMBDA(x,x+1)(3)`), since an uncalled one is #CALC!.
+#              probes/m7-argument-modes: scalar arguments of the M7 functions lift over a range or an array;
+#              delimiters, SORT's sort_index/sort_order and FILTER's if_empty take one whole (arrays.md).
 # `repeat: true` marks the trailing repeating param; `repeat: {group: [a, b], min, max}` on the first
 # member marks a repeating group of params (SUMIFS criteria_range/criteria pairs). Types: number | text | bool | any.
 # `domain: {enum: [...]}` lists the usual text values (CELL's info_type); like an `int` domain it is soft unless
@@ -19,7 +26,11 @@
 # a range, so a range would spill into the next formula). `always: true` on an optional param means the generator
 # never omits it (CELL without a reference reads the last changed cell, which no oracle value can match).
 # `vector: true` on a `range` param makes the generator pass a one-column range (LOOKUP and XLOOKUP/XMATCH lookup
-# vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself).
+# vectors: a 2-D one is #N/A or #VALUE!, so random widths would hide the search itself; WRAPROWS/WRAPCOLS on an
+# `array` param). `full: true` makes every range span all data rows, so the arrays of one call are the same height
+# (GROUPBY, SORTBY, FILTER); `mask: true` makes an `array` param a comparison of a full one-column range
+# (FILTER's include). `spelled` is the name as a formula writes it when the case builder does not add the
+# prefix itself (`_xlfn.GROUPBY`: a bare GROUPBY in a file is #NAME?, docs/excel-semantics/xlsx-storage.md).
 #
 # milestone: the first milestone in which the function is in scope for the gate.
 # prior: relative real-world frequency (Enron/EUSES/FUSE-derived, see research report). Most
@@ -34,7 +45,8 @@
 # The eval harness reads names, milestones, scope and oracle from the generated eval/catalog/scope.json
 # (decision 0040): after editing, run `cd tools && uv run rustsheet-catalog-view`.
 # Entries with `params` are generator-ready signatures (the M2 block, then the M5 math (T-1082), text (T-1087),
-# logical, information and web (T-1088) ones and the M6 date and time (T-1090) and lookup (T-1238) ones in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
+# logical, information and web (T-1088) ones, the M6 date and time (T-1090) and lookup (T-1238) ones and the M7
+# dynamic-array and LAMBDA ones (T-1083) in alphabetical place). The rest (one line each) carry only these fields until a milestone needs their signature:
 #   category   functional family: math, logical, text, information, web, addin (M5); lookup, date (M6);
 #              statistical, financial, engineering, database, cube (M9). Compatibility functions take
 #              their family (CEILING/FLOOR math, the rest statistical).
@@ -489,8 +501,24 @@ functions:
   - { name: BITOR, category: engineering, milestone: M9, scope: in }
   - { name: BITRSHIFT, category: engineering, milestone: M9, scope: in }
   - { name: BITXOR, category: engineering, milestone: M9, scope: in }
-  - { name: BYCOL, category: logical, milestone: M7, scope: in }
-  - { name: BYROW, category: logical, milestone: M7, scope: in }
+  - name: BYCOL
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: function, mode: lambda, arity: 1, type: any }
+  - name: BYROW
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: function, mode: lambda, arity: 1, type: any }
   - { name: CALL, category: addin, milestone: M5, scope: out, reason: "calls a DLL or code resource (decision 0027)" }
   - name: CEILING
     category: math
@@ -790,7 +818,16 @@ functions:
   - { name: DOLLARDE, category: financial, milestone: M9, scope: in }
   - { name: DOLLARFR, category: financial, milestone: M9, scope: in }
   - { name: DPRODUCT, category: database, milestone: M9, scope: in }
-  - { name: DROP, category: lookup, milestone: M7, scope: in }
+  - name: DROP
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
+      - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: -3, max: 3 } }
   - { name: DSTDEV, category: database, milestone: M9, scope: in }
   - { name: DSTDEVP, category: database, milestone: M9, scope: in }
   - { name: DSUM, category: database, milestone: M9, scope: in }
@@ -862,7 +899,17 @@ functions:
     prior: 0.5
     returns: number
     params: [{ name: number, mode: value, type: number }]
-  - { name: EXPAND, category: lookup, milestone: M7, scope: in }
+  - name: EXPAND
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 5 } }
+      - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 5 } }
+      - { name: pad_with, mode: value, type: any, optional: true }
   - { name: EXPON.DIST, category: statistical, milestone: M9, scope: in }
   - { name: EXPONDIST, category: statistical, milestone: M9, scope: in }
   - { name: F.DIST, category: statistical, milestone: M9, scope: in }
@@ -893,7 +940,16 @@ functions:
     params: []
   - { name: FDIST, category: statistical, milestone: M9, scope: in }
   - { name: FIELDVALUE, category: lookup, milestone: M6, scope: out, reason: "reads linked data types (decision 0027)" }
-  - { name: FILTER, category: lookup, milestone: M7, scope: in }
+  - name: FILTER
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 2
+    returns: any
+    params:
+      - { name: array, mode: array, type: any, full: true }
+      - { name: include, mode: array, type: bool, full: true, mask: true }
+      - { name: if_empty, mode: array, type: any, optional: true }
   # #VALUE! on the web for valid input (function-name-forms A7); desktop confirmation T-1081
   - name: FILTERXML
     category: web
@@ -1002,7 +1058,22 @@ functions:
   - { name: GESTEP, category: engineering, milestone: M9, scope: in }
   # No signature: GETPIVOTDATA reads a pivot table, which generated workbooks do not have (T-1238).
   - { name: GETPIVOTDATA, category: lookup, milestone: M6, scope: in }
-  - { name: GROUPBY, category: lookup, milestone: M7, scope: in }
+  - name: GROUPBY
+    category: lookup
+    milestone: M7
+    scope: in
+    spelled: _xlfn.GROUPBY
+    prior: 0.3
+    returns: any
+    params:
+      - { name: row_fields, mode: array, type: any, full: true }
+      - { name: values, mode: array, type: any, full: true }
+      - { name: function, mode: lambda, arity: 1, type: any }
+      - { name: field_headers, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
+      - { name: total_depth, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: sort_order, mode: array, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: filter_array, mode: array, type: bool, optional: true, full: true, mask: true }
+      - { name: field_relationship, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
   - { name: GROWTH, category: statistical, milestone: M9, scope: in }
   - { name: HARMEAN, category: statistical, milestone: M9, scope: in }
   - { name: HEX2BIN, category: engineering, milestone: M9, scope: in }
@@ -1016,7 +1087,14 @@ functions:
     returns: number
     params:
       - { name: serial_number, mode: value, type: number }
-  - { name: HSTACK, category: lookup, milestone: M7, scope: in }
+  - name: HSTACK
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.5
+    returns: any
+    params:
+      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254 }
   - name: HYPERLINK
     category: lookup
     milestone: M6
@@ -1180,7 +1258,14 @@ functions:
     prior: 0.1
     returns: bool
     params: [{ name: number, mode: value, type: number }]
-  - { name: ISOMITTED, category: information, milestone: M7, scope: in }
+  - name: ISOMITTED
+    category: information
+    milestone: M7
+    scope: in
+    prior: 0.1
+    returns: bool
+    params:
+      - { name: argument, mode: value, type: any }
   - name: ISOWEEKNUM
     category: date
     milestone: M6
@@ -1215,7 +1300,16 @@ functions:
     params:
       - { name: text, mode: value, type: text }
   - { name: KURT, category: statistical, milestone: M9, scope: in }
-  - { name: LAMBDA, category: logical, milestone: M7, scope: in }
+  - name: LAMBDA
+    category: logical
+    milestone: M7
+    scope: in
+    invoke: true
+    prior: 0.3
+    returns: any
+    params:
+      - { name: parameter, mode: name, type: any, repeat: true, min: 0, max: 253 }
+      - { name: calculation, mode: value, type: any, body: true }
   - { name: LARGE, category: statistical, milestone: M9, scope: in }
   - name: LCM
     category: math
@@ -1241,7 +1335,16 @@ functions:
     returns: number
     params:
       - { name: text, mode: value, type: text }
-  - { name: LET, category: logical, milestone: M7, scope: in }
+  - name: LET
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 1.5
+    returns: any
+    params:
+      - { name: name, mode: name, type: any, repeat: { group: [name, name_value], min: 1, max: 126 } }
+      - { name: name_value, mode: value, type: any }
+      - { name: calculation, mode: value, type: any, body: true }
   - { name: LINEST, category: statistical, milestone: M9, scope: in }
   - name: LN
     category: math
@@ -1281,8 +1384,25 @@ functions:
       - { name: lookup_value, mode: value, type: any }
       - { name: lookup_vector, mode: range, type: any, vector: true }
       - { name: result_vector, mode: range, type: any, optional: true, vector: true }
-  - { name: MAKEARRAY, category: logical, milestone: M7, scope: in }
-  - { name: MAP, category: logical, milestone: M7, scope: in }
+  - name: MAKEARRAY
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: rows, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
+      - { name: columns, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
+      - { name: function, mode: lambda, arity: 2, type: any }
+  - name: MAP
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 253 }
+      - { name: function, mode: lambda, arity: repeat, type: any }
   - { name: MAXA, category: statistical, milestone: M9, scope: in }
   - { name: MAXIFS, category: statistical, milestone: M9, scope: in }
   - name: MDETERM
@@ -1489,7 +1609,25 @@ functions:
     prior: 0.3
     returns: number
     params: []
-  - { name: PIVOTBY, category: lookup, milestone: M7, scope: in }
+  - name: PIVOTBY
+    category: lookup
+    milestone: M7
+    scope: in
+    spelled: _xlfn.PIVOTBY
+    prior: 0.2
+    returns: any
+    params:
+      - { name: row_fields, mode: array, type: any, full: true }
+      - { name: col_fields, mode: array, type: any, full: true }
+      - { name: values, mode: array, type: any, full: true }
+      - { name: function, mode: lambda, arity: 1, type: any }
+      - { name: field_headers, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
+      - { name: row_total_depth, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: row_sort_order, mode: array, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: col_total_depth, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: col_sort_order, mode: array, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: filter_array, mode: array, type: bool, optional: true, full: true, mask: true }
+      - { name: relative_to, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
   - { name: PMT, category: financial, milestone: M9, scope: in }
   - { name: POISSON, category: statistical, milestone: M9, scope: in }
   - { name: POISSON.DIST, category: statistical, milestone: M9, scope: in }
@@ -1551,7 +1689,19 @@ functions:
     prior: 1
     returns: number
     params: []
-  - { name: RANDARRAY, category: math, milestone: M7, scope: in }
+  - name: RANDARRAY
+    category: math
+    milestone: M7
+    scope: in
+    volatile: true
+    prior: 0.3
+    returns: number
+    params:
+      - { name: rows, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 4 } }
+      - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 4 } }
+      - { name: min, mode: value, type: number, optional: true }
+      - { name: max, mode: value, type: number, optional: true }
+      - { name: whole_number, mode: value, type: bool, optional: true }
   - name: RANDBETWEEN
     category: math
     milestone: M5
@@ -1567,10 +1717,49 @@ functions:
   - { name: RANK.EQ, category: statistical, milestone: M9, scope: in }
   - { name: RATE, category: financial, milestone: M9, scope: in }
   - { name: RECEIVED, category: financial, milestone: M9, scope: in }
-  - { name: REDUCE, category: logical, milestone: M7, scope: in }
-  - { name: REGEXEXTRACT, category: text, milestone: M7, scope: in }
-  - { name: REGEXREPLACE, category: text, milestone: M7, scope: in }
-  - { name: REGEXTEST, category: text, milestone: M7, scope: in }
+  - name: REDUCE
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: initial_value, mode: value, type: any }
+      - { name: array, mode: array, type: any }
+      - { name: function, mode: lambda, arity: 2, type: any }
+  - name: REGEXEXTRACT
+    category: text
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
+      - { name: return_mode, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 2 } }
+      - { name: case_sensitivity, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+  - name: REGEXREPLACE
+    category: text
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: text
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
+      - { name: replacement, mode: value, type: text, domain: { enum: ["", "-", "$1", "<$0>"] } }
+      - { name: occurrence, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: case_sensitivity, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+  - name: REGEXTEST
+    category: text
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: bool
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: pattern, mode: value, type: text, domain: { enum: ["[a-z]+", "[0-9]", "^.", "a|b", "(\\w)(\\w)", "x*"] } }
+      - { name: case_sensitivity, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
   - { name: REGISTER.ID, category: addin, milestone: M5, scope: out, reason: "registers a DLL or code resource (decision 0027)" }
   - name: REPLACE
     category: text
@@ -1640,7 +1829,16 @@ functions:
   - { name: RRI, category: financial, milestone: M9, scope: in }
   - { name: RSQ, category: statistical, milestone: M9, scope: in }
   - { name: RTD, category: lookup, milestone: M6, scope: out, reason: "real-time data server (decision 0027)" }
-  - { name: SCAN, category: logical, milestone: M7, scope: in }
+  - name: SCAN
+    category: logical
+    milestone: M7
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: initial_value, mode: value, type: any }
+      - { name: array, mode: array, type: any }
+      - { name: function, mode: lambda, arity: 2, type: any }
   - name: SEARCH
     category: text
     milestone: M5
@@ -1683,7 +1881,17 @@ functions:
     returns: number
     params:
       - { name: serial_number, mode: value, type: number }
-  - { name: SEQUENCE, category: math, milestone: M7, scope: in }
+  - name: SEQUENCE
+    category: math
+    milestone: M7
+    scope: in
+    prior: 1
+    returns: number
+    params:
+      - { name: rows, mode: value, type: number, domain: { int: true, min: 0, max: 4 } }
+      - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 4 } }
+      - { name: start, mode: value, type: number, optional: true }
+      - { name: step, mode: value, type: number, optional: true }
   - name: SERIESSUM
     category: math
     milestone: M5
@@ -1730,8 +1938,27 @@ functions:
   - { name: SLN, category: financial, milestone: M9, scope: in }
   - { name: SLOPE, category: statistical, milestone: M9, scope: in }
   - { name: SMALL, category: statistical, milestone: M9, scope: in }
-  - { name: SORT, category: lookup, milestone: M7, scope: in }
-  - { name: SORTBY, category: lookup, milestone: M7, scope: in }
+  - name: SORT
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 1.5
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: sort_index, mode: array, type: number, optional: true, domain: { int: true, min: 1, max: 3 } }
+      - { name: sort_order, mode: array, type: number, optional: true, domain: { int: true, min: -1, max: 1 } }
+      - { name: by_col, mode: value, type: bool, optional: true }
+  - name: SORTBY
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.5
+    returns: any
+    params:
+      - { name: array, mode: array, type: any, full: true }
+      - { name: by_array, mode: array, type: any, full: true, vector: true, repeat: { group: [by_array, sort_order], min: 1, max: 126 } }
+      - { name: sort_order, mode: value, type: number, optional: true, domain: { int: true, min: -1, max: 1 } }
   - name: SQRT
     category: math
     milestone: M5
@@ -1843,7 +2070,16 @@ functions:
   - { name: T.INV, category: statistical, milestone: M9, scope: in }
   - { name: T.INV.2T, category: statistical, milestone: M9, scope: in }
   - { name: T.TEST, category: statistical, milestone: M9, scope: in }
-  - { name: TAKE, category: lookup, milestone: M7, scope: in }
+  - name: TAKE
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: rows, mode: value, type: number, domain: { int: true, min: -3, max: 3 } }
+      - { name: columns, mode: value, type: number, optional: true, domain: { int: true, min: -3, max: 3 } }
   - name: TAN
     category: math
     milestone: M5
@@ -1871,8 +2107,32 @@ functions:
     params:
       - { name: value, mode: value, type: any }
       - { name: format_text, mode: value, type: text }
-  - { name: TEXTAFTER, category: text, milestone: M7, scope: in }
-  - { name: TEXTBEFORE, category: text, milestone: M7, scope: in }
+  - name: TEXTAFTER
+    category: text
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: delimiter, mode: array, type: text, domain: { enum: [",", "-", " ", "a", ""] } }
+      - { name: instance_num, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: match_mode, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: match_end, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: if_not_found, mode: value, type: any, optional: true }
+  - name: TEXTBEFORE
+    category: text
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: delimiter, mode: array, type: text, domain: { enum: [",", "-", " ", "a", ""] } }
+      - { name: instance_num, mode: value, type: number, optional: true, domain: { int: true, min: -2, max: 2 } }
+      - { name: match_mode, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: match_end, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: if_not_found, mode: value, type: any, optional: true }
   - name: TEXTJOIN
     category: text
     milestone: M5
@@ -1883,7 +2143,19 @@ functions:
       - { name: delimiter, mode: value, type: text }
       - { name: ignore_empty, mode: value, type: bool }
       - { name: text, mode: array, type: any, repeat: true, min: 1, max: 252 }
-  - { name: TEXTSPLIT, category: text, milestone: M7, scope: in }
+  - name: TEXTSPLIT
+    category: text
+    milestone: M7
+    scope: in
+    prior: 0.5
+    returns: any
+    params:
+      - { name: text, mode: value, type: text }
+      - { name: col_delimiter, mode: array, type: text, domain: { enum: [",", "-", " ", "a", ""] } }
+      - { name: row_delimiter, mode: array, type: text, optional: true, domain: { enum: [",", "-", " ", "a", ""] } }
+      - { name: ignore_empty, mode: value, type: bool, optional: true }
+      - { name: match_mode, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 1 } }
+      - { name: pad_with, mode: value, type: any, optional: true }
   - name: TIME
     category: date
     milestone: M6
@@ -1903,9 +2175,27 @@ functions:
     params:
       - { name: time_text, mode: value, type: text, domain: { enum: ["1:30 PM", "13:45:10", "6:00", "12:00:00 AM", "1/15/2024 18:30"] } }
   - { name: TINV, category: statistical, milestone: M9, scope: in }
-  - { name: TOCOL, category: lookup, milestone: M7, scope: in }
+  - name: TOCOL
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: ignore, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
+      - { name: scan_by_column, mode: value, type: bool, optional: true }
   - { name: TODAY, category: date, milestone: M2, scope: in }
-  - { name: TOROW, category: lookup, milestone: M7, scope: in }
+  - name: TOROW
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.3
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: ignore, mode: value, type: number, optional: true, domain: { int: true, min: 0, max: 3 } }
+      - { name: scan_by_column, mode: value, type: bool, optional: true }
   - { name: TRANSLATE, category: text, milestone: M5, scope: out, reason: "Microsoft Translation Services (decision 0027)" }
   - name: TRANSPOSE
     category: lookup
@@ -1968,7 +2258,16 @@ functions:
     returns: number
     params:
       - { name: text, mode: value, type: text }
-  - { name: UNIQUE, category: lookup, milestone: M7, scope: in }
+  - name: UNIQUE
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 1.5
+    returns: any
+    params:
+      - { name: array, mode: array, type: any }
+      - { name: by_col, mode: value, type: bool, optional: true }
+      - { name: exactly_once, mode: value, type: bool, optional: true }
   - name: VALUE
     category: text
     milestone: M5
@@ -1993,7 +2292,14 @@ functions:
   - { name: VARP, category: statistical, milestone: M9, scope: in }
   - { name: VARPA, category: statistical, milestone: M9, scope: in }
   - { name: VDB, category: financial, milestone: M9, scope: in }
-  - { name: VSTACK, category: lookup, milestone: M7, scope: in }
+  - name: VSTACK
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.5
+    returns: any
+    params:
+      - { name: array, mode: array, type: any, repeat: true, min: 1, max: 254 }
   - { name: WEBSERVICE, category: web, milestone: M5, scope: out, reason: "calls a web service (decision 0027)" }
   - name: WEEKDAY
     category: date
@@ -2039,8 +2345,26 @@ functions:
       - { name: days, mode: value, type: number, domain: { int: true, min: -30, max: 30 } }
       - { name: weekend, mode: value, type: number, optional: true, domain: { int: true, min: 1, max: 17 } }
       - { name: holidays, mode: array, type: number, optional: true }
-  - { name: WRAPCOLS, category: lookup, milestone: M7, scope: in }
-  - { name: WRAPROWS, category: lookup, milestone: M7, scope: in }
+  - name: WRAPCOLS
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: vector, mode: array, type: any, vector: true }
+      - { name: wrap_count, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
+      - { name: pad_with, mode: value, type: any, optional: true }
+  - name: WRAPROWS
+    category: lookup
+    milestone: M7
+    scope: in
+    prior: 0.2
+    returns: any
+    params:
+      - { name: vector, mode: array, type: any, vector: true }
+      - { name: wrap_count, mode: value, type: number, domain: { int: true, min: 1, max: 4 } }
+      - { name: pad_with, mode: value, type: any, optional: true }
   - { name: XIRR, category: financial, milestone: M9, scope: in }
   - name: XLOOKUP
     category: lookup
