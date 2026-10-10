@@ -61,7 +61,17 @@ Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE
 (code-point order says otherwise for both: "x" < "ü" and "1" < "?").
 Evidence: gen-m2/2cfe279fe77a000d Calc!A318, 96a0952412cefa6c Calc!A284. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED (two cells; the full collation table needs probes, T-0220)
-Tasks: T-0220
+CHAR(160) and spaces (T-0244, VERIFIED, probes/text-order-nbsp-space, 333 cells, excel-graph
+2026-10-09): texts compare character by character, with the space first, CHAR(160) right after it,
+then digits and letters: `" 1" < CHAR(160)&"1" < "0" < "1" < "1"&CHAR(160)`, `" " < CHAR(160)`,
+`"a b" < "a"&CHAR(160)&"b" < "ab"`, `CHAR(160)&CHAR(160)&"1" < CHAR(160)&"0"`; CHAR(160) is never
+equal to a space or ignored (`CHAR(160)&"1"="1"` is FALSE). `>` and COUNTIF's `">"` agree on every
+pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria.md). In passing:
+a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3, still FALSE in the engine; T-0220).
+Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (operators, sort,
+lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
+place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
+Tasks: T-0220, T-0244
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
@@ -213,7 +223,7 @@ Tasks: T-0252
 
 ## Parenthesised number text is negative
 Rule: `"(1)"` is read as -1 wherever text is coerced to a number: `0+"(1)"` = -1, `SUM("(1)")` = -1,
-`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine reads it in `parse_formatted_number` (formatter/format.rs), after the currency and date forms, so VALUE and typed cell input inherit it. Probed variants (all through `0+`, `VALUE` and `ISNUMBER` of a text cell; `ISNUMBER` is FALSE for all): padding inside the parentheses is accepted (`( 1 )` = -1), currency and percent inside are accepted (`($1)` = -1, `(1%)` = -0.01), decimals are accepted (`(1.5)` = -1.5); a sign inside (`(-1)`), nested parentheses (`((1))`) and trailing text (`(1)x`) are #VALUE!. The engine matches (T-0279) except for the forms below (T-0282). More forms (probes/paren-number-text-forms, excel-graph, T-0281): e-notation is accepted (`(1e3)` = -1000, `(1E-3)` = -0.001, `(1.5e2)` = -150), `(0)` and `($0)` are 0 (the sign of zero is not observable), `($1)` is accepted but a sign after the currency (`($-1)`, `($ -1)`), a sign before it (`(-$1)`), a plus sign (`(+1)`), a minus before e-notation (`(-1e3)`, `(-0)`) and currency after the digits (`(1$)`) are #VALUE!. The engine wrongly accepts `($-1)` and `($ -1)` (as 1) and `(1$)` (as -1). Typed into a cell (probes/typed-paren-number-input, excel-graph 2026-10-07, typed entry through a Graph range `values` write, T-0280): `(1)` and `( 1 )` are -1 with format General, `(1,000)` is -1000 with `#,##0`, `($1)` is -1 and `($1,000)` -1000 with `$#,##0_);[Red]($#,##0)`, `(1%)` is -0.01 with `0%`, and `(-1)` stays text. The unparenthesised controls get the same formats: `1`, `-1` General, `1,000` `#,##0`, `$1` `$#,##0_);[Red]($#,##0)`, `1%` `0%`. So the parentheses only negate; the format comes from the inner text, and typed currency gets the red-negative accounting-style format, not `$#,##0`. The engine's values all match; its formats for currency (`$#,##0`) and percent (`#,##0%`) differ (T-0283). Formats are VERIFIED by the oracle's `ENTERED` log, committed in docs/research/typed-input-formats-2026-10-07.md (not scored: `CELL("format")` is `#VALUE!` on excel-graph).
+`0+"(1,000)"` = -1000, `COUNT("(1)","x")` = 1; but `0+"-(1)"` is #VALUE!. The engine reads it in `parse_formatted_number` (formatter/format.rs), after the currency and date forms, so VALUE and typed cell input inherit it. Probed variants (all through `0+`, `VALUE` and `ISNUMBER` of a text cell; `ISNUMBER` is FALSE for all): padding inside the parentheses is accepted (`( 1 )` = -1), currency and percent inside are accepted (`($1)` = -1, `(1%)` = -0.01), decimals are accepted (`(1.5)` = -1.5); a sign inside (`(-1)`), nested parentheses (`((1))`) and trailing text (`(1)x`) are #VALUE!. The engine matches (T-0279, T-0282). More forms (probes/paren-number-text-forms, excel-graph, T-0281): e-notation is accepted (`(1e3)` = -1000, `(1E-3)` = -0.001, `(1.5e2)` = -150), `(0)` and `($0)` are 0 (the sign of zero is not observable), `($1)` is accepted but a sign after the currency (`($-1)`, `($ -1)`), a sign before it (`(-$1)`), a plus sign (`(+1)`), a minus before e-notation (`(-1e3)`, `(-0)`) and currency after the digits (`(1$)`) are #VALUE!. The engine rejects these as Excel does (T-0282). The engine also rejects, by inference and not yet probed, `($+1)`, `(1 $)` and the `€` variants `(€-1)`, `(1€)`. Typed into a cell (probes/typed-paren-number-input, excel-graph 2026-10-07, typed entry through a Graph range `values` write, T-0280): `(1)` and `( 1 )` are -1 with format General, `(1,000)` is -1000 with `#,##0`, `($1)` is -1 and `($1,000)` -1000 with `$#,##0_);[Red]($#,##0)`, `(1%)` is -0.01 with `0%`, and `(-1)` stays text. The unparenthesised controls get the same formats: `1`, `-1` General, `1,000` `#,##0`, `$1` `$#,##0_);[Red]($#,##0)`, `1%` `0%`. So the parentheses only negate; the format comes from the inner text, and typed currency gets the red-negative accounting-style format, not `$#,##0`. The engine's values all match; its formats for currency (`$#,##0`) and percent (`#,##0%`) differ (T-0283). Formats are VERIFIED by the oracle's `ENTERED` log, committed in docs/research/typed-input-formats-2026-10-07.md (not scored: `CELL("format")` is `#VALUE!` on excel-graph).
 Evidence: probes/paren-negative-text, probes/paren-negative-variants, probes/paren-number-text-forms, probes/typed-paren-number-input (excel-graph, 2026-10-07; formats: docs/research/typed-input-formats-2026-10-07.md).
 Status: VERIFIED
 Tasks: T-0259, T-0277, T-0280, T-0281, T-0282, T-0283
@@ -243,6 +253,10 @@ boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a t
 number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
 `SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
 PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).
+PRODUCT of an array argument (`PRODUCT(IF(SEQUENCE(5),7))`) multiplies its numbers left to right
+(probes/geomean-single-and-copies Copies!B1:B35). Text and booleans inside the array are skipped, an array with no
+numbers gives 0 (`PRODUCT({"a"})`, `PRODUCT({TRUE,FALSE})`), and the first error element wins
+(`PRODUCT({2,#N/A,#DIV/0!})` = #N/A) (probes/product-array-elements, excel-graph).
 MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and

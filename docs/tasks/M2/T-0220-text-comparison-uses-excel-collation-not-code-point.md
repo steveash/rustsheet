@@ -27,6 +27,10 @@ gen-m2 (T-0203) evidence (excel-graph):
   over a column whose only text is "ü"; Excel ranks "ü" below "x") and `gen-m2/ef5c55a81783b7d5`
   Calc!A151 (`VLOOKUP("1",...)` over {blank, FALSE, "?b", 1}; Excel ranks "?b" below "1").
 
+- Added by T-0244: `functions::util::cmp_text_excel` is the one text-order function (CHAR(160) right
+  after the space); extend it rather than adding another. It leaves `probes/text-order-nbsp-space`
+  Calc!D17 failing: a hyphen is skipped, `"-1" > "0"` is TRUE in Excel.
+
 This is cross-cutting (comparison operators, MATCH/VLOOKUP/HLOOKUP, criteria `<`/`>`, SORT). It needs a
 probe workbook first. Use the excel-probe skill: ASCII punctuation, digits, letters, accented letters
 and case, pairwise. Then write a short spec if the table is non-trivial (CLAUDE.md directive 4).

@@ -1,0 +1,60 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "IF as a range corner when it picks a union, an error, a 3-D span or has an array condition (T-1227). D3/D15-D18 added after the first fill: ERROR.TYPE of a multi-cell range spills (#SPILL! over the occupied D4), so rows/columns/sums are used instead.",
+  "tags": [
+    "M2",
+    "references",
+    "isref",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "D1": "=SUM(A1:IF(TRUE,(B1,B2)))",
+        "D2": "=ISREF(A1:IF(TRUE,(B1,B2)))",
+        "D3": "=ROWS(A1:IF(TRUE,(B1,B2)))",
+        "D4": "=ERROR.TYPE(A1:IF(TRUE,#N/A))",
+        "D5": "=ERROR.TYPE(A1:IF(TRUE,INDEX(B1:B3,9)))",
+        "D6": "=ISREF(A1:IF(TRUE,#N/A))",
+        "D7": "=SUM(A1:IF({TRUE,FALSE},B2,B3))",
+        "D8": "=ISREF(A1:IF({TRUE},B2))",
+        "D9": "=SUM(A1:IF({TRUE},B2))",
+        "D10": "=ERROR.TYPE(A1:IF({TRUE,FALSE},B2,B3))",
+        "D11": "=SUM(A1:IF(TRUE,Data1:Data3!B2))",
+        "D12": "=ISREF(A1:IF(TRUE,Data1:Data3!B2))",
+        "D13": "=ERROR.TYPE(A1:IF(TRUE,Data1:Data3!B2))",
+        "D14": "=SUM(A1:IF(TRUE,B2))",
+        "D15": "=COLUMNS(A1:IF(TRUE,(B1,B2)))",
+        "D16": "=SUM(A1:IF(TRUE,(B3,B1)))",
+        "D17": "=SUM(A1:IF(TRUE,(B1,B3)))",
+        "D18": "=ROWS(A1:IF(TRUE,(B1,B3)))"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "B2": 100
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "B2": 200
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "B2": 300
+      }
+    }
+  ],
+  "expected": {}
+}

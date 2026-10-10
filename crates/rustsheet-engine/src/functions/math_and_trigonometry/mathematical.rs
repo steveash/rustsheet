@@ -168,35 +168,6 @@ impl Model {
         CalcResult::String(buf)
     }
 
-    pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
-            };
-        }
-        match i64::from_str_radix(&text, radix as u32) {
-            Ok(n) => CalcResult::Number(n as f64),
-            Err(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: format!("'{}' is not a valid number in base {}", text, radix),
-            },
-        }
-    }
-
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
@@ -207,76 +178,6 @@ impl Model {
             result += flush_subnormal(value * value);
         }) {
             return error;
-        }
-        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
-    }
-
-    /// PRODUCT(number1, [number2], ...)
-    ///
-    /// The PRODUCT function multiplies values. You can add individual values, cell references or ranges or a mix of all
-    /// three.
-    ///
-    /// # Details
-    /// Generally each argument is evaluated and the result is converted to a number. However there are some special
-    /// cases:
-    /// - **Args evaluating to CalcResult::Range**: The product of all the numbers in the range is calculated. No
-    ///   conversions are performed, non-numeric values are ignored and errors are propagated.
-    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
-    ///   referenced cell and errors are propagated.
-    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
-    pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let mut result = 1.0;
-        let mut seen_value = false;
-
-        for arg in args {
-            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
-            let arg = match arg {
-                Node::ReferenceKind {
-                    column,
-                    absolute_column,
-                    row,
-                    absolute_row,
-                    sheet_index,
-                    sheet_name,
-                } => &Node::RangeKind {
-                    sheet_name: sheet_name.clone(),
-                    sheet_index: *sheet_index,
-                    absolute_row1: *absolute_row,
-                    absolute_column1: *absolute_column,
-                    row1: *row,
-                    column1: *column,
-                    absolute_row2: *absolute_row,
-                    absolute_column2: *absolute_column,
-                    row2: *row,
-                    column2: *column,
-                },
-                _ => arg,
-            };
-            match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                        seen_value = true;
-                        result = flush_subnormal(result * value);
-                    }) {
-                        return error;
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                RefArg::Value(calc_result) => {
-                    seen_value = true;
-                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
-                    match cast_result {
-                        Ok(f) => result = flush_subnormal(result * f),
-                        Err(s) => return s,
-                    }
-                }
-            };
-        }
-        if !seen_value {
-            return CalcResult::Number(0.0);
         }
         CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
