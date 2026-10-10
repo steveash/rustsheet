@@ -163,6 +163,26 @@ Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_posi
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
 Tasks: T-0212, T-0220
 
+## MATCH descending search skips backward; a text match_type read from a cell is #REF!
+Rule 1: in a descending search (negative match_type) the probe step that lands on a cell of another
+type moves *backward* to the nearest cell of the key's type, not forward as in the ascending
+pseudo-code above. `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (backward skip reaches 0.1, which is
+below the key, so nothing qualifies; a forward skip would reach 3.14159 and give 3), while
+`MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3 and `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
+(the range forms agree). One backward-skip reading fits all four; the evidence does not exclude
+other rules for a skip that passes the low bound.
+Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
+`MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
+lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
+`#N/A` rule above still holds for numeric match_type (`MATCH(1,A5:B7,0)` and `,1` are `#N/A`).
+`INDEX` returns that `#REF!` (`INDEX(A5:B7,MATCH(1,A5:A6,D1),3)` and `,1`), while a literal-text
+match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
+out-of-range column, which alone is `#REF!`).
+Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
+2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
+Status: VERIFIED
+Tasks: T-1305, T-1312, T-1313
+
 ## INDEX with one index into a 2-D range is #REF!
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:
 `=INDEX(Data!A1:B2,0)`, `=INDEX(Data!A1:D8,1e-15)` (85 of 90 calls; the rest are argument errors).
