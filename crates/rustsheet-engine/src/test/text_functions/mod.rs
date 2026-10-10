@@ -12,6 +12,7 @@ mod fn_textbefore;
 mod fn_textjoin;
 mod fn_textsplit;
 mod fn_unicode;
+mod fn_utf16_positions;
 mod fn_valuetotext;
 
 use crate::test::util::new_empty_model;
