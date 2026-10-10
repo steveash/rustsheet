@@ -358,4 +358,8 @@ fn parenthesised_number_with_padding_currency_percent() {
     assert!(parse("(+1)", &["$"]).is_err());
     assert!(parse("((1))", &["$"]).is_err());
     assert!(parse("(1)x", &["$"]).is_err());
+    // probes/paren-number-text-forms: a sign after the currency and a trailing currency.
+    assert!(parse("($-1)", &["$"]).is_err());
+    assert!(parse("($ -1)", &["$"]).is_err());
+    assert!(parse("(1$)", &["$"]).is_err());
 }
