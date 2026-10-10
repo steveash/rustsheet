@@ -1,5 +1,5 @@
 ---
-id: T-1309
+id: T-1310
 title: "Probe 3-D spans after deleting or moving an end sheet (desktop oracle)"
 milestone: M14
 lane: research

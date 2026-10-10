@@ -87,7 +87,7 @@ Rule (engine, not Excel evidence): renaming an end sheet renames it in the formu
 sheet re-resolves the span by name. Deleting an end sheet makes the reference `#REF!`, and inserting
 or deleting rows or columns does not shift the span. Excel's own rules for these edits are not probed.
 The excel-graph oracle only recalculates an uploaded workbook and cannot delete a sheet, so a span that lost an end sheet
-cannot be probed there (T-1181); the M14 desktop oracle question is T-1309.
+cannot be probed there (T-1181); the M14 desktop oracle question is T-1310.
 Status: UNVERIFIED
 Tasks: T-0198
 

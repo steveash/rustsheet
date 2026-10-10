@@ -32,7 +32,7 @@ T-1170 maps a span whose prefix has an unresolved end to `#NAME?` (`Model::wrong
   counted 0. A one-cell reference to an error cell counts 0, through CHOOSE, INDEX, OFFSET, IF, XLOOKUP and TAKE too. Fixed in
   `fn_countblank`, which now reads the argument once through `evaluate_picked_reference_arg` (review round 1: a second
   evaluation made nested COUNTBLANK exponential; unit test `nested_countblank_of_an_error_reads_each_argument_once`).
-- Not probed: a span that lost an end sheet. excel-graph cannot delete a sheet, so this is filed as T-1309 (M14, blocked
+- Not probed: a span that lost an end sheet. excel-graph cannot delete a sheet, so this is filed as T-1310 (M14, blocked
   on the desktop oracle, decision 0039). A one-missing-sheet reference was left out of the probe, because the web oracle
   resolves it to an empty cell (lookup.md).
 - Eval delta: probes +4 cases, 37 cells, all pass. Known failures 914 → 914. Regressions 0.
