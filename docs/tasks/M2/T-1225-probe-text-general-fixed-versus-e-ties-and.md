@@ -3,7 +3,7 @@ id: T-1225
 title: "Probe TEXT General fixed-versus-E ties and wide fixed values"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -40,3 +40,6 @@ fixed-notation limit"). If Excel disagrees, file an engine task with the failing
 
 ## Out of scope
 - Number-to-text coercion (`&""`, 15 digits; numbers.md).
+
+## Outcome
+Probe `text-general-ties-wide` oracle-filled (excel-graph). Multi-digit ties and `1.5E-09` match the engine; wide fixed values do not (Excel limits to 11 characters). Recorded in number-formats.md; engine mismatch filed as T-1298. Eval delta: probe cells added, new known failures B4:B9 (baseline).

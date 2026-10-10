@@ -1,0 +1,35 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "TEXT General fixed-versus-E ties and wide fixed values (T-1225)",
+  "tags": [
+    "M2",
+    "number-formats",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=0.000123456789",
+        "B1": "=TEXT(A1,\"General\")",
+        "A2": "=1.2345E-05",
+        "B2": "=TEXT(A2,\"General\")",
+        "A3": "=1.5E-09",
+        "B3": "=TEXT(A3,\"General\")",
+        "A4": "=123456.123456789",
+        "B4": "=TEXT(A4,\"General\")",
+        "A5": "=-123456.123456789",
+        "B5": "=TEXT(A5,\"General\")",
+        "A6": "=22.712470704",
+        "B6": "=TEXT(A6,\"General\")",
+        "A7": "=9999999999.5",
+        "B7": "=TEXT(A7,\"General\")",
+        "A8": "=99999999999.6",
+        "B8": "=TEXT(A8,\"General\")",
+        "A9": "=12345678901.5",
+        "B9": "=TEXT(A9,\"General\")"
+      }
+    }
+  ],
+  "expected": {}
+}
