@@ -1,5 +1,5 @@
 ---
-id: T-1315
+id: T-1318
 title: "RANDBETWEEN and RANDARRAY argument checks match Excel (bottom>top on raw values, booleans, omitted args, fractional bounds with whole_number)"
 milestone: M5
 lane: functions-math

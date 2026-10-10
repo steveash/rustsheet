@@ -38,5 +38,5 @@ Design to decide (opus): a per-case opt-in list of invariant cells in `rustsheet
   checks". `NOW()>45000` was dropped: the engine adapter's clock is a fixed mock, so a cell that
   reads the actual time is never invariant here (eval-harness.md says so).
 - Eval delta: probes +1 case, 55 cells checked, 39 pass, 16 new-coverage failures, 0 regressions.
-  Seven failures and the unchecked A6 (the engine's draw is random there) are T-1315; F1:F9 (the
+  Seven failures and the unchecked A6 (the engine's draw is random there) are T-1318; F1:F9 (the
   engine does not lift RANDBETWEEN over arrays) are T-1316. Both sonnet.
