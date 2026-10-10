@@ -643,7 +643,7 @@ Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196 (oracle: 
 2026-10-04, T-0203); gen-m1/6462bf910ef9f28f Calc!A33, A41, A48, A57, A86, A207 (oracle:
 excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
-Tasks: T-0221
+Tasks: T-0221, T-1302
 
 ### Integer exponents: right-to-left square-and-multiply
 Rule: for an integer exponent n, `x^n` and `POWER(x,n)` equal binary exponentiation in doubles,
@@ -656,8 +656,12 @@ integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)
 1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
 Non-integer exponents are not explained by this rule.
 Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06, T-0942).
+Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
+exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
+oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
+`powf` path (and its #NUM! / #DIV/0! handling) unchanged.
 Status: VERIFIED (integer exponents)
-Tasks: T-0221, T-0901
+Tasks: T-0221, T-0901, T-1302
 
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
