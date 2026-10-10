@@ -909,7 +909,10 @@ impl Lexer {
             if malformed {
                 let end = self.position;
                 self.position = start;
-                if let Some(name) = self.consume_corner_pair_as_name() {
+                if let Some(name) = self
+                    .consume_corner_pair_as_name()
+                    .or_else(|| self.consume_off_grid_cell_as_name())
+                {
                     // Keep the sheet prefix so the formula text round-trips as typed.
                     let prefix = sheet.as_deref().map(utils::quote_name).unwrap_or_default();
                     return TokenType::Ident(format!("{prefix}!{name}"));
