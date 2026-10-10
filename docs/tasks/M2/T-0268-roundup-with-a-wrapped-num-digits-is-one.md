@@ -3,7 +3,7 @@ id: T-0268
 title: "ROUNDUP with a wrapped num_digits is one ulp above the decimal result (3 probes known failures)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,8 +25,16 @@ probes/round-huge-digits-wrap Sheet1!A16, A35, A38 (NumericUlp). Code:
 `effective_digits` / `round_decimal` in functions/math_and_trigonometry/decimal_round.rs.
 
 ## Acceptance criteria
-- [ ] The three cells pass, with the rule recorded in numbers.md (VERIFIED by new probe cells).
-- [ ] `make check` green; reviewers approve.
+- [x] The three cells pass, with the rule recorded in numbers.md (VERIFIED by new probe cells).
+- [x] `make check` green; reviewers approve.
+
+## Outcome
+The wrap was a red herring: Excel's ROUNDUP always rounds down in decimal, converts that to a double
+and adds `10^-num_digits` as a double, so plain `ROUNDUP(123.456,2)` is 123.46000000000001 too.
+New probe probes/roundup-wrapped-scaling (480 cells, excel-graph) fits the rule on 80/80 values with
+wrapped and plain digits alike; rejected models are in numbers.md "ROUNDUP adds the unit in
+binary". `round_decimal` implements it for ROUNDUP only. Eval: probes fixed 3 (round-huge-digits-wrap
+A16, A35, A38) + new case all passing; ironcalc-calc fixed 1 (ROUND.xlsx D6); 0 regressions.
 
 ## Out of scope
 - Last-digit differences of ROUND with ordinary num_digits (T-0106).

@@ -226,3 +226,40 @@ J17:L17 (spilled 1,2,3).
 Status: VERIFIED (web)
 Implemented in: `fn_filter` (crates/rustsheet-engine/src/functions/spill_functions.rs)
 Tasks: T-0964
+
+## Dynamic-array and LAMBDA function argument modes
+Rule: the scalar arguments of the M7 functions lift over a multi-cell range and over an array, one call per element:
+SEQUENCE's rows (`SEQUENCE(A1:A3)` and `SEQUENCE({1;2;3})` are 3x1, first element 1) and start
+(`SEQUENCE(2,2,{1;10})` is 2x1), the rows of TAKE (`TAKE(A1:B3,A1:A2)` and `TAKE(A1:B3,{1;2})` are 2x1), DROP (2x1),
+EXPAND (`EXPAND(A1:A2,{3;4})` 2x1, first 1) and MAKEARRAY
+(`MAKEARRAY(A1:A2,2,LAMBDA(r,c,r+c))` 2x1, first 2), WRAPROWS's wrap_count, WRAPCOLS's pad_with, TOCOL's ignore,
+UNIQUE's by_col, SORTBY's sort_order (`SORTBY(A1:A3,B1:B3,{1;-1})` is 2x1), TEXTBEFORE's instance_num, the text of
+TEXTSPLIT, TEXTBEFORE, TEXTAFTER, REGEXTEST, REGEXEXTRACT and REGEXREPLACE over a range (`TEXTSPLIT(C1:C3,",")` with
+C1:C3 = "a,b", "c-d", "e,f" is 3x1, first "a") and REGEX patterns over an array (`REGEXTEST("abc",{"a";"z"})` is 2x1).
+A lifted TAKE or DROP keeps each call's whole result as the element: `INDEX(TAKE(A1:B3,{1;2}),1,1)` is the 1x2 row
+{1,10} (it spills; ROWS 1, COLUMNS 2) and `INDEX(DROP(A1:B3,{1;2}),1,1)` the 2x2 block {2,20;3,30}. The other lifts
+keep one value per element: INDEX of a lifted EXPAND, WRAPROWS, TOCOL, SEQUENCE or MAKEARRAY element has 1 row and 1
+column, although `EXPAND(A1:A2,3)` and `WRAPROWS(A1:A3,1)` alone are 3x1.
+These take an array whole: the delimiters of TEXTSPLIT, TEXTBEFORE and TEXTAFTER are a list of delimiters
+(`TEXTSPLIT("a,b-c",{",";"-"})` is 1x3; `TEXTAFTER(C1:C3,{",";"-"})` is 3x1 "b", "d", "f" and
+`TEXTBEFORE(C1:C3,{",";"-"})` "a", "c", "e", not broadcast against the text), SORT's sort_index is a
+list of sort keys (`SORT(A1:B3,{1;2})` is 3x2) and its sort_order must have as many entries
+(`SORT(A1:B3,1,{1;-1})` is `#VALUE!`), and FILTER's if_empty (2x1, first 9; see "FILTER: an array `if_empty`").
+A function passed by name (eta-reduced, stored `_xleta.SUM`) works wherever a LAMBDA does and gets as many
+arguments as the LAMBDA would: `BYROW(A1:B3,SUM)` = `BYROW(A1:B3,LAMBDA(r,SUM(r)))` (3x1, first 11),
+`GROUPBY(D1:D3,A1:A3,SUM)` (3x2, first "x": two groups and a total row), `BYCOL(A1:B3,MAX)` 1x2, first 3,
+`SCAN(0,A1:A3,MAX)` 3x1, `MAKEARRAY(2,2,SUM)` 2x2, first 2 (SUM(row,col)). REDUCE's initial_value may be left
+empty (`REDUCE(,A1:A3,LAMBDA(a,v,a+v))` = 6). An uncalled `LAMBDA(x,x)` is one value (`ROWS` 1, `INDEX(..,1,1)`
+`#CALC!`); a BYROW LAMBDA that returns a row is `#CALC!`; `ISOMITTED(A1)` outside a LAMBDA is FALSE;
+`REGEXTEST(A1,1)` with A1 = 1 is TRUE (both numbers read as text); `TOCOL(A1:E1,"1")` reads "1" as ignore = 1 (4 rows past the blank E1, ignore 0 gives 5);
+`SEQUENCE(0)` and the mismatched `SORTBY(A1:A3,B1:B2)` are `#CALC!` and `#VALUE!`.
+Evidence: probes/m7-argument-modes (68 questions, excel-graph, 2026-10-09, T-1083). Three questions are left out because
+excel-graph returns an error it cannot decode: `GROUPBY(D1:D3,A1:A2,SUM)` (heights differ), `MAP(A1:A3,LAMBDA(x,y,x))`
+(too many parameters) and `GROUPBY(D1:D3,A1:A3,{1;2;3})` (an array as the function). A LAMBDA with an optional
+parameter (`LAMBDA(x,[y],ISOMITTED(y))(1)`) cannot be probed yet: the case builder writes `[_xlpm.y]`, which Excel
+refuses as a corrupt file.
+Ours: none of the lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
+`_xleta.` names, GROUPBY and PIVOTBY are `#NAME?`; INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
+is `#VALUE!`; a BYROW row result is not `#CALC!`; `REGEXTEST(A1,1)` is `#VALUE!`. 60 of the 174 scored cells pass.
+Status: VERIFIED (web)
+Tasks: T-1083 (generator modes)

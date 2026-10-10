@@ -24,6 +24,44 @@ Evidence: eval/suites/probes/cases/text-b-functions-broadcast.case.json A3:A13 (
 Status: VERIFIED (Excel for the web only)
 Implemented in: `byte_functions.rs` delegates to the twins; `static_analysis.rs` gives them `scalar_arguments` (before T-0271 they were `not_implemented`, so no spill was planned and a fuzz input hit the scalar-context debug_assert).
 
+## Text positions count UTF-16 code units, except in LEFT and RIGHT
+Rule: LEN, MID, FIND, SEARCH, REPLACE and their *B twins count UTF-16 code units, so an emoji
+(a surrogate pair) counts two: `LEN("a😀b")` is 4, `MID("a😀b",2,2)` is "😀", `FIND("b","a😀b")` is
+4, `REPLACE("a😀b",2,2,"x")` is "axb", and a SEARCH `?` matches one unit (`SEARCH("?b","😀b")` is 2,
+`SEARCH("a?b","a😀b")` is `#VALUE!`, `SEARCH("a??b","a😀b")` is 1). LEFT and RIGHT (and LEFTB,
+RIGHTB) instead count characters (code points, not graphemes): `LEFT("a😀b",3)` is "a😀b",
+`LEN(LEFT("a😀b",2))` is 3, `RIGHT("a😀b",2)` is "😀b", `LEFT("e"&UNICHAR(769)&"x",1)` is "e" and
+`LEFT("👍🏽x",1)` is "👍" without its skin-tone modifier. FIND and SEARCH may start inside a pair
+(`FIND("b","😀b",2)` is 3). FIND takes a start one past the end, where only "" is found
+(`FIND("","abc",4)` is 4, `FIND("","",1)` is 1, `FIND("","abc",5)` and `FIND("c","abc",4)` are
+`#VALUE!`), while SEARCH does not (`SEARCH("","abc",4)` and `SEARCH("*","abc",4)` are `#VALUE!`).
+Evidence: probes/text-surrogate-positions A1-A44, B1-B15, C1-C9 (excel-graph, 2026-10-09, T-0249);
+probes/concatenate-limit-spill E7, E13, G97.
+Backend: excel-graph only; excel-desktop not used.
+Status: VERIFIED
+Implemented in: `len_element`, `mid_element`, `find_element` in functions/text/common.rs and
+`replace_element` in functions/text/string_format.rs, through `utf16_slice` and
+`one_char_per_utf16_unit` in functions/text/util.rs; `left_element`/`right_element` count chars.
+Tasks: T-0249
+
+## MID and REPLACE positions inside a surrogate pair keep the lone half
+Rule: a MID or REPLACE position that splits a surrogate pair keeps the lone surrogate:
+`LEN(MID("a😀b",3,2))` is 2 (low surrogate and "b"), `LEN(MID("a😀b",2,1))` is 1,
+`LEN(MID("😀",2,5))` is 1, `LEN(REPLACE("a😀b",3,1,"x"))` is 4, and
+`LEFT("a😀b",2)&MID("a😀b",3,2)` is "a😀", a lone U+DE00, then "b" (LEFT already took the whole
+emoji). `UNICODE` of a lone low surrogate is its code
+(`UNICODE(MID("a😀b",3,1))` is 56832), unlike a lone high one (`#VALUE!`, coercion.md
+"Truncation inside a surrogate pair keeps a lone high surrogate"). LEFT and RIGHT treat a lone
+surrogate as one character and do not pair a lone high surrogate with a following character
+(`LEN(RIGHT(MID("a😀b",2,1)&"x",1))` is 1).
+Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
+2026-10-09, T-0249).
+Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
+a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures).
+Status: DEVIATION (decision 0033)
+Implemented in: `utf16_slice` in functions/text/util.rs
+Tasks: T-0249
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the

@@ -763,6 +763,26 @@ Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (ora
 Status: VERIFIED (web)
 Tasks: T-0139, T-0145
 
+## A sheet-qualified cell off the grid is a name
+Rule: column letters with a row of 0 or past row 1048576 are not a cell reference after a sheet
+prefix either, but a sheet-scoped name, as they are without one: `=Data!H0`, `=Data!H00` and
+`=Data!A1048577` are `#NAME?`, `ISREF(Data!H0)` is FALSE, and `Data!H0:I1` is that name joined
+to I1 by `:`, so `ROWS(Data!H0:I1)`, `SUM(Data!G0:H2)` and `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`
+are one `#NAME?` (no spill). A leading zero is still a row: `Data!H01` is H1. An off-grid second
+corner is a name too, joined to the first cell by `:`: `ISREF(Data!A1:B0)` and `ISREF(A1:B0)` are
+FALSE, `=Data!A1:B0`, `SUM(A1:B0)`, `SUM(H0:I1)` and `SUM(Data!A1:B1048577)` are `#NAME?`.
+An off-grid row next to a `$` (`$H$0`, `H$0`, `$H0`, `Data!$H$0`, `Data!H$0`, `SUM(Data!$H0:I1)`)
+cannot be stored: Excel for the web refuses the workbook (createSession 501 FileCorruptTryRepair,
+each formula tried alone, 2026-10-09), so there is no value to match; the engine keeps a parse
+error (`#ERROR!`) for them, where before T-0296 it read row 0 (`=$H$0` was 0).
+Implemented: the lexer reads such a corner as an identifier (sheet prefix kept), and ends a range
+token at the first cell when the second corner is off the grid; before T-0296 a row-0 corner lexed
+as a reference, found by the formula_eval fuzz target.
+Evidence: probes/aggregate-range-function-num-grid Calc!A16, A21:A29 and probes/off-grid-corners
+(oracle: excel-graph, 2026-10-09, T-0296).
+Status: VERIFIED (web)
+Tasks: T-0296
+
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
 is the reference's height or width, as if the argument were left out; it is not 0.
@@ -837,7 +857,7 @@ printed as `=A1:1/0`, which does not re-parse to the same formula). T-1216 (exce
 `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`, `=ANCHORARRAY(A1+0)` and the negated
 references `=(-A1):B1`, `=A1:(-B1)` and `=(-A1)#` (unlike the union, which accepts `(-A1,B1)`). It loads, as `#VALUE!`, `=A1:LAMBDA(x,x)`, `=A1:(@1)` and
 `=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these (`=ANCHORARRAY(@1)` evaluates to `#VALUE!` and prints bare as `=@1#`; T-1226). Resolved by T-1240 (below): the print follows the written parentheses. Since T-1246 the engine prints the parentheses that were written around the `@` (`ImplicitIntersection::grouped`, set for a group ending at `#` or `)`) and no others. The `#VALUE!` for the `@` of a non-number value is probed for `@"a"` and `@SUM(A1)` (T-1240); `@TRUE` is still inferred. The printed `=@1#` re-parses as `@(1#)`, which the engine refuses; move and paste print `(@1)#`, which round-trips. So the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (`@TRUE` is inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
-Stored `ANCHORARRAY` of an `@` operand (probes/anchorarray-at-operand-kinds, excel-graph, T-1240): FORMULATEXT follows the **written parentheses**, not the operand kind. Written without parentheses, every operand prints bare: `=@A1:B2#`, `=@"a"#`, `=@SUM(A1)#`, `=@INDEX(D1:D2,1)#`, `=@LAMBDA(x,x)#`, `=@-1#`; `ANCHORARRAY((@1))` prints `=(@1)#`. Values: `@A1:B2`, `@1`-in-parentheses, `@"a"`, `@SUM(A1)`, `@LAMBDA(x,x)` and `@-1` are `#VALUE!`; `ANCHORARRAY(@INDEX(D1:D2,1))` spills the spill range of D1 (the `@` of a reference keeps the reference). `ANCHORARRAY(@1/0)` is refused by Excel for the web (`FileCorruptTryRepair`, one scratch workbook). The engine matches the prints since T-1246 (`spill_operand`, parser/reference_operators.rs); move and paste still print `(@1)#`, which round-trips (the bare `@1#` re-parses as `@(1#)`). `@-1` and `@INDEX` are T-1247. UNVERIFIED (extends the written-parentheses rule): an `@` of a space intersection (`ANCHORARRAY(@(A1:B2 B1))` prints `=@A1:B2 B1#`) and more than one written level (`ANCHORARRAY(((@1)))` prints `=((@1))#`).
+Stored `ANCHORARRAY` of an `@` operand (probes/anchorarray-at-operand-kinds, excel-graph, T-1240): FORMULATEXT follows the **written parentheses**, not the operand kind. Written without parentheses, every operand prints bare: `=@A1:B2#`, `=@"a"#`, `=@SUM(A1)#`, `=@INDEX(D1:D2,1)#`, `=@LAMBDA(x,x)#`, `=@-1#`; `ANCHORARRAY((@1))` prints `=(@1)#`. Values: `@A1:B2`, `@1`-in-parentheses, `@"a"`, `@SUM(A1)`, `@LAMBDA(x,x)` and `@-1` are `#VALUE!`; `ANCHORARRAY(@INDEX(D1:D2,1))` spills the spill range of D1 (the `@` of a reference keeps the reference). `ANCHORARRAY(@1/0)` is refused by Excel for the web (`FileCorruptTryRepair`, one scratch workbook). The engine matches the prints since T-1246 (`spill_operand`, parser/reference_operators.rs); move and paste still print `(@1)#`, which round-trips (the bare `@1#` re-parses as `@(1#)`). The engine matches the values of `@-1` (parsed as the `@` of a negation, a value) and `@INDEX(..)` (kept as the reference) since T-1247. UNVERIFIED (T-1285): the signed operand now also parses at top level (`=@-1`, previously a parse error); the engine takes the sign, a bare union/intersection and `%` inside the `@` but not `^` (`@-2^2` is `(@-2)^2`), and `@-B1:B3` off-row gives the top-left element of the negated array. UNVERIFIED (extends the written-parentheses rule): an `@` of a space intersection (`ANCHORARRAY(@(A1:B2 B1))` prints `=@A1:B2 B1#`) and more than one written level (`ANCHORARRAY(((@1)))` prints `=((@1))#`).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117, T-1216, T-1226, T-1240, T-1246, T-1247
 
 ## `:` joins multi-cell operands and names into their bounding box
