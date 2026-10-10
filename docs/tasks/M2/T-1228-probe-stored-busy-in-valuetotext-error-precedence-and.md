@@ -3,7 +3,7 @@ id: T-1228
 title: "Probe stored #BUSY! in VALUETOTEXT, ARRAYTOTEXT, IFERROR, error precedence and COUNTIF criteria"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
