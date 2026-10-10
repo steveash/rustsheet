@@ -50,6 +50,27 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
+
+## ROUNDUP adds the unit in binary
+Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.
+It takes the rounded-down decimal (stages 1 and 2 above, as ROUNDDOWN), converts it to the nearest
+double, and adds the unit `10^-num_digits` as a double. So the result can be one ulp off the
+decimal one, in either direction: `ROUNDUP(123.456,2)` = 123.45 + 0.01 = 123.46000000000001,
+`ROUNDUP(0.29,1)` = 0.30000000000000004, `ROUNDUP(2.675,2)` = 2.6799999999999997,
+`ROUNDUP(8.255,1)` = 8.299999999999999, `ROUNDUP(7.123,1)` = 7.199999999999999. When nothing is
+dropped there is no add (`ROUNDUP(0.29,2)` = 0.29). Negative values round the magnitude and keep the
+sign (`ROUNDUP(-123.456,2)` = -123.46000000000001). ROUND and ROUNDDOWN return the decimal-correct
+double. A wrapped `num_digits` behaves the same as its wrapped value: `ROUNDUP(x,65536+k)`,
+`ROUNDUP(x,2^31+k)` and `ROUNDUP(x,k)` agree on every probed cell.
+Evidence: probes/roundup-wrapped-scaling (480 cells: 20 values × k = 1..4, plain, 65536+k, 2^31+k
+and -(65536+k), ROUNDUP and ROUNDDOWN); probes/round-huge-digits-wrap A16, A35, A38 (excel-graph,
+2026-10-09, T-0268); ironcalc-calc MATH_AND_TRIGONOMETRY/ROUND.xlsx D6 (desktop Excel cached value).
+Rejected: multiplying the rounded-up digits by `10^-k` (52/80 cells) and binary scaling
+`ceil(x*10^k)` (37/80); the add model matches 80/80.
+Status: VERIFIED
+Implemented in: `round_decimal` in functions/math_and_trigonometry/decimal_round.rs (T-0268)
+Tasks: T-0268
 
 ## ROUND family: huge num_digits wrap
 Rule: a `num_digits` of huge magnitude is narrowed to an integer, and ROUND narrows it differently
@@ -68,9 +89,9 @@ from ROUNDUP and ROUNDDOWN (after truncation toward zero; Excel is right, howeve
   `ROUND(1E+15,1E+15)` = 0, `ROUND(0.5,1E+15)` = 0.5, `ROUND(42,123456789.123)` = 42,
   `ROUND(123.456,65536)` = 123.456; `ROUND(5E-10,-2147483640)` = 5E-10 but `…,-2147483639)` = 0,
   `ROUND(5E-300,-2147483350)` = 5E-300 but `…,-2147483349)` = 0.
-- Where ROUNDUP uses a wrapped digit count, its result can be one ulp above the decimal-correct one:
-  `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, while `ROUNDDOWN` there is 123.45.
-  The engine gives 123.46 (3 cells, follow-up T-0268).
+- `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, one ulp above the decimal result.
+  That comes from ROUNDUP's binary add, not from the wrap: `ROUNDUP(123.456,2)` gives the same
+  (see "ROUNDUP adds the unit in binary", T-0268).
 - e is taken from the value after its 15-digit cut: `ROUND(10-1E-15,2147483646)` = 0 and
   `…,2147483645)` = 10 (the cut carries 9.99999999999999… to 10, e = 1), `ROUND(1-1E-16,2147483647)` = 0.
 Evidence: probes/round-huge-digits (216 cells), probes/round-huge-digits-wrap (A:C by d, E:O ROUND by
