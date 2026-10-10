@@ -334,6 +334,7 @@ C	probes/text-number-tiny-paths.case.json	46
 C	probes/text-number-tiny-zero.case.json	88
 C	probes/text-number-tiny.case.json	60
 C	probes/text-number-words.case.json	62
+C	probes/text-order-nbsp-space.case.json	333
 C	probes/text-result-limit-errors-refs.case.json	24
 C	probes/text-result-limit-errors.case.json	11
 C	probes/text-result-limit.case.json	24
@@ -421,7 +422,6 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E7
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
 F	probes/concatenate-limit-spill.case.json	Sheet1!G97
-F	probes/criteria-padded-text.case.json	Sheet1!C13
 F	probes/date-argument-modes.case.json	Sheet1!F10
 F	probes/date-argument-modes.case.json	Sheet1!F11
 F	probes/date-argument-modes.case.json	Sheet1!F12
@@ -902,6 +902,7 @@ F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A1
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A3
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A5
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A6
+F	probes/text-order-nbsp-space.case.json	Calc!D17
 F	probes/text-result-limit.case.json	Sheet1!C24
 F	probes/weeknum-stale-return-type.case.json	Mixed!A3
 F	probes/weeknum-stale-return-type.case.json	Mixed!A4
