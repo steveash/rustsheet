@@ -3,7 +3,7 @@ id: T-1309
 title: "Probe euro suffix variants inside parenthesised number text"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
