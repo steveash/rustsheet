@@ -729,7 +729,15 @@ pub(crate) fn parse_formatted_number(
     // negative", probes/paren-negative-variants).
     if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
         let inner = inner.trim();
-        if inner.starts_with(['-', '+', '(']) {
+        // Inside parentheses a currency symbol is only valid directly before unsigned digits:
+        // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms).
+        let bad_currency = currencies.iter().any(|c| {
+            inner.strip_suffix(c).is_some()
+                || inner
+                    .strip_prefix(c)
+                    .is_some_and(|rest| rest.trim_start().starts_with(['-', '+']))
+        });
+        if inner.starts_with(['-', '+', '(']) || bad_currency {
             return Err("Cannot parse number".to_string());
         }
         let (f, format) =
