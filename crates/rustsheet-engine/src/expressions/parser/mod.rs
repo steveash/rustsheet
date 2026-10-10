@@ -299,6 +299,10 @@ pub enum Node {
         /// T-1116); the automatic `@` of an xlsx import has none.
         written: u8,
         lead: LeadGroup,
+        /// Levels of parentheses written around the whole `@` expression, `(@1)` is 1. Only
+        /// the operand of `#` or `ANCHORARRAY` prints them back (`=(@1)#`, but `=@A1:B2#` when
+        /// none were written; probes/anchorarray-at-operand-kinds, T-1246).
+        grouped: u8,
     },
     SpillRangeOperator {
         child: Box<Node>,
@@ -340,6 +344,7 @@ impl Node {
             child: Box::new(child),
             written: 0,
             lead: LeadGroup::default(),
+            grouped: 0,
         }
     }
 }
