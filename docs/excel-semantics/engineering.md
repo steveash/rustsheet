@@ -78,4 +78,3 @@ Backend: excel-desktop cached values only.
 Status: VERIFIED (for the evidenced conversions)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
 Tasks: T-0922, T-1297
-
