@@ -3,7 +3,7 @@ id: T-1181
 title: "Probe 3-D span with both ends missing, CHOOSE-wrapped span in COUNTBLANK, deleted span end"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
