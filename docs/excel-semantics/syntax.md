@@ -167,9 +167,9 @@ the stored error, A2 = 1): `VALUETOTEXT(A1)` and `VALUETOTEXT(A1,1)` are the tex
 `ARRAYTOTEXT(A1)` is the *error* `#BUSY!`, not text (C2; the same for stored `#N/A`, C17: a single cell that
 only propagates the error, see arrays.md), while `ARRAYTOTEXT(A1:A2,1)` is "{#BUSY!;1}" (C4).
 For the operators the leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2 (C5, C6),
-likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7). SUM differs: `SUM(A1,1/0)` and `SUM(1/0,A1)` are both
-ERROR.TYPE 2 (C11, C12), so `#DIV/0!` wins whichever comes first. That conflicts with the SUM claim in "the leftmost error operand wins" above
-for `#GETTING_DATA`; either the computed `1/0` beats an error in a referenced cell or `#BUSY!` ranks below `#DIV/0!` in SUM, and one pair cannot tell (UNVERIFIED, T-1315). COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
+likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7). In SUM an error in a direct argument beats an error in a
+referenced cell whichever comes first (`SUM(A1,1/0)` and `SUM(1/0,A1)` are both ERROR.TYPE 2, C11, C12), see "SUM and MAX:
+direct-argument errors beat cell errors" below. COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
 cells (C13-C15). `IFERROR(A1,"y")` is "y" (C16). `ERROR.TYPE(A1:A2)` spills 0 then `#N/A` (E1:E2).
 `UNIQUE` keeps a stored `#BUSY!` and a stored `#NULL!` as distinct rows and merges equal `#BUSY!`s
 (C18-C20: 2, 3, 3 rows).
@@ -179,6 +179,20 @@ probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading 
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
 Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
+
+## SUM and MAX: an error in a direct argument beats an error in a referenced cell
+Rule: in `SUM` and `MAX` an error produced by a direct argument (the literal `#DIV/0!` or a computed `1/0`) wins over any error held in a
+referenced cell, whichever argument comes first; among referenced cells the leftmost wins. This is for aggregate functions: the
+operators `+`, `=`, `*` take the leftmost error whatever its source (`A3+1/0` is #VALUE!, `1/0+A3` is #DIV/0!). It holds for a stored
+`#BUSY!`, `#N/A` and `#VALUE!` cell alike (so `#BUSY!` has no special rank). With A3 = stored `#VALUE!`, A4 = stored `#REF!`, A6 = stored `#NUM!`
+(ERROR.TYPE of each result): `SUM(A3,1/0)` and `SUM(1/0,A3)` 2 (C11, C12); `SUM(A3,#DIV/0!)` 2 (C9); `SUM(A3,A6,1/0)`,
+`SUM(1/0,A3,A6)` and `SUM(A3,1/0,A6)` 2 (C17-C19); `MAX(A3,1/0)` and `MAX(1/0,A3)` 2 (C20, C21); `SUM(A3,A4)` 3 but `SUM(A4,A3)` 4
+(C13, C14, leftmost reference); `SUM(A3:A4)` and `SUM(A4:A3)` both 3 (C15, C16, a range is read top to bottom whichever way it is written).
+The "leftmost error operand wins ... `SUM(a,b)`" sentence in "Newer error literals" above rests on direct-versus-direct pairs, so both hold. Not probed: AVERAGE, MIN, PRODUCT and the
+other aggregates, and an error inside an array constant or a nested function result.
+Evidence: eval/suites/probes/cases/sum-error-precedence.case.json C1-C23 (oracle: excel-graph, 2026-10-10, T-1315).
+Status: VERIFIED
+Tasks: T-1315, T-1317
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

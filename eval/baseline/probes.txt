@@ -335,6 +335,7 @@ C	probes/subtotal-hidden-filtered.case.json	150
 C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17
 C	probes/subtotal-reference-operands.case.json	40
+C	probes/sum-error-precedence.case.json	23
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-argument-modes.case.json	47
@@ -1291,6 +1292,15 @@ F	probes/stat-argument-modes.case.json	Sheet1!H97
 F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
+F	probes/sum-error-precedence.case.json	S!C1
+F	probes/sum-error-precedence.case.json	S!C11
+F	probes/sum-error-precedence.case.json	S!C17
+F	probes/sum-error-precedence.case.json	S!C19
+F	probes/sum-error-precedence.case.json	S!C20
+F	probes/sum-error-precedence.case.json	S!C3
+F	probes/sum-error-precedence.case.json	S!C5
+F	probes/sum-error-precedence.case.json	S!C7
+F	probes/sum-error-precedence.case.json	S!C9
 F	probes/text-modes-bahttext.case.json	Sheet1!C1
 F	probes/text-modes-bahttext.case.json	Sheet1!C2
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A1
