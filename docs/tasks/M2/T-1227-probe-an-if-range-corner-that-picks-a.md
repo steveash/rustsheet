@@ -3,7 +3,7 @@ id: T-1227
 title: "Probe an IF range corner that picks a union, an error or uses an array condition"
 milestone: M2
 lane: research
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -26,9 +26,14 @@ evidence yet:
 See docs/excel-semantics/references.md, "Sheet-qualified range corners: order and unprobed forms".
 
 ## Acceptance criteria
-- [ ] A probe case with the cells above, oracle-filled (excel-graph, excel-probe skill).
-- [ ] The engine matches, or each mismatch has its own engine task; references.md records the result.
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with the cells above, oracle-filled (excel-graph, excel-probe skill).
+- [x] The engine matches, or each mismatch has its own engine task; references.md records the result.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - CHOOSE corners (already verified in probes/isref-range-operands D8, D9, E8, E9).
+
+## Outcome
+Probe `probes/isref-if-range-corners` (18 cells, excel-graph 2026-10-10). Only the union pick differed: Excel joins it as its
+bounding box, so `range_operand` now does (`bounding_area`). Error, array-condition and 3-D picks already matched. Recorded in
+references.md. Eval: +18 probe cells passing, no regressions.

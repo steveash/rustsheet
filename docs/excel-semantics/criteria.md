@@ -164,7 +164,9 @@ so those cases are unprobed.
 DEVIATION (directive 5, decision 0014): a lifted call whose walks would visit more than 2^27 cells
 (used cells of the walked range x criteria count x distinct consecutive criteria elements) is
 `#ERROR!` before any walk; Excel computes it. Example: `SUM(COUNTIF(A1:A3000,SEQUENCE(50000)))`
-over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`).
+over 3,000 used cells (unit test `too_many_cell_visits_is_an_error_without_walking`). VLOOKUP/HLOOKUP over an array lookup_value
+use the same cap, at elements x evaluated cells of the searched column or row (lookup.md, T-0270; unit test
+`lifted_lookup_over_an_array_table_hits_the_visit_cap`).
 AGGREGATE's array function_num, options and k lift through the same code and cap (numbers.md "AGGREGATE", T-1038).
 Implemented in: `Model::lift_criteria` / `lift_ifs` (crates/rustsheet-engine/src/functions/statistical/if_ifs.rs),
 `criteria_static_result` (expressions/parser/static_analysis.rs)

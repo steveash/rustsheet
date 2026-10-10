@@ -736,10 +736,16 @@ reference, `ISREF(A1:INDEX(A1:A3,2))` and `ISREF(A1:(A1:B2 B1:B3))` are TRUE (`S
 An IF corner is the reference it picks, on either side: `ISREF(A1:IF(TRUE,B2))`, `ISREF(IF(TRUE,B2):A1)` and
 `ISREF(A1:IF(FALSE,B2,B3))` are TRUE, `SUM(A1:IF(TRUE,B2))` is 33, `ROWS(A1:IF(TRUE,B3))` 3 and `=A1:IF(TRUE,A1)`
 1. CHOOSE likewise (`SUM(A1:CHOOSE(1,B2))` = 33), which the engine already matched; the IF arm was added to
-`range_operand` (T-1177). UNVERIFIED (T-1227): an IF corner that picks a union (the engine gives `#VALUE!`),
-an error, or a 3-D span, and an IF with an array condition. `=A1:(1/0)` is refused
+`range_operand` (T-1177). T-1227 (probes/isref-if-range-corners, excel-graph 2026-10-10): an IF corner that picks a
+union is the union's bounding box (`SUM(A1:IF(TRUE,(B1,B2)))` 33, `ROWS` 2, `COLUMNS` 2, `ISREF` TRUE; `SUM(A1:IF(TRUE,(B3,B1)))`
+and `SUM(A1:IF(TRUE,(B1,B3)))` both 66, `ROWS` 3, so neither first nor last area decides); an error is passed on
+(`ERROR.TYPE(A1:IF(TRUE,#N/A))` 7, `...INDEX(B1:B3,9)` 4, `ISREF` FALSE); an IF with an array condition is `#VALUE!`
+(`SUM(A1:IF({TRUE,FALSE},B2,B3))`, `SUM(A1:IF({TRUE},B2))`; `ISREF` FALSE, `ERROR.TYPE` 3); a 3-D span pick is `#VALUE!`
+(`SUM(A1:IF(TRUE,Data1:Data3!B2))`, ISREF FALSE). Only the union differed from the engine (`#VALUE!`); fixed in `range_operand`. A union on the left corner (`IF(TRUE,(B1,B2)):A1`) is inferred symmetric, not probed.
+Note for probes: `ERROR.TYPE(` of a multi-cell range spills, so a #SPILL! over an occupied cell is a probe artifact; read such
+corners with ROWS/COLUMNS. `=A1:(1/0)` is refused
 by the Graph workbook builder (`unsupportedWorkbook`, as T-1111 found below), so it is not in the probe.
-Tasks: T-1138, T-1166, T-1177
+Tasks: T-1138, T-1166, T-1177, T-1227
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
@@ -756,6 +762,26 @@ Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (ora
 2026-10-05, T-0139); A2 and A4 are the single-prefix forms.
 Status: VERIFIED (web)
 Tasks: T-0139, T-0145
+
+## A sheet-qualified cell off the grid is a name
+Rule: column letters with a row of 0 or past row 1048576 are not a cell reference after a sheet
+prefix either, but a sheet-scoped name, as they are without one: `=Data!H0`, `=Data!H00` and
+`=Data!A1048577` are `#NAME?`, `ISREF(Data!H0)` is FALSE, and `Data!H0:I1` is that name joined
+to I1 by `:`, so `ROWS(Data!H0:I1)`, `SUM(Data!G0:H2)` and `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`
+are one `#NAME?` (no spill). A leading zero is still a row: `Data!H01` is H1. An off-grid second
+corner is a name too, joined to the first cell by `:`: `ISREF(Data!A1:B0)` and `ISREF(A1:B0)` are
+FALSE, `=Data!A1:B0`, `SUM(A1:B0)`, `SUM(H0:I1)` and `SUM(Data!A1:B1048577)` are `#NAME?`.
+An off-grid row next to a `$` (`$H$0`, `H$0`, `$H0`, `Data!$H$0`, `Data!H$0`, `SUM(Data!$H0:I1)`)
+cannot be stored: Excel for the web refuses the workbook (createSession 501 FileCorruptTryRepair,
+each formula tried alone, 2026-10-09), so there is no value to match; the engine keeps a parse
+error (`#ERROR!`) for them, where before T-0296 it read row 0 (`=$H$0` was 0).
+Implemented: the lexer reads such a corner as an identifier (sheet prefix kept), and ends a range
+token at the first cell when the second corner is off the grid; before T-0296 a row-0 corner lexed
+as a reference, found by the formula_eval fuzz target.
+Evidence: probes/aggregate-range-function-num-grid Calc!A16, A21:A29 and probes/off-grid-corners
+(oracle: excel-graph, 2026-10-09, T-0296).
+Status: VERIFIED (web)
+Tasks: T-0296
 
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
