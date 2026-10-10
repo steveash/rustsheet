@@ -3,7 +3,7 @@ id: T-1222
 title: "Stored #BUSY! error kind (ERROR.TYPE 0): engine, facade and xlsx per the SPEC-0003 amendment"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -44,20 +44,29 @@ kinds:
 - UPSTREAM.md, for the divergence from IronCalc's `Error` enum.
 
 ## Acceptance criteria
-- [ ] probes/error-stored-constants passes in full (24/24 cells). Its F lines leave
+- [x] probes/error-stored-constants passes in full (24/24 cells). Its F lines leave
       eval/baseline/probes.txt via `make eval-baseline`, with no new F lines in any suite.
-- [ ] The kind follows SPEC-0003 as amended by T-1020. No `_` match arm is added. Unit tests show
+- [x] The kind follows SPEC-0003 as amended by T-1020. No `_` match arm is added. Unit tests show
       that `=#BUSY!` still fails to parse, and that typed `#BUSY!` cell input and
       `is_english_error_string("#BUSY!")` are unchanged, unless the amended spec says otherwise.
-- [ ] A unit test loads an xlsx with a stored `<c t="e"><v>#BUSY!</v></c>` and gets the new kind
+- [x] A unit test loads an xlsx with a stored `<c t="e"><v>#BUSY!</v></c>` and gets the new kind
       (`ERROR.TYPE` 0). Export writes what the spec decides, with a test.
-- [ ] The facade `ErrorKind` round-trips the kind through `from_literal`/`literal`, and a Python test
+- [x] The facade `ErrorKind` round-trips the kind through `from_literal`/`literal`, and a Python test
       covers `XlError("#BUSY!")`.
-- [ ] A unit test runs UNIQUE over cells holding `#BUSY!` and `#NULL!` (code 0 is its own
+- [x] A unit test runs UNIQUE over cells holding `#BUSY!` and `#NULL!` (code 0 is its own
       `CellKey::Error` key; SPEC-0003 "Stored `#BUSY!`"). This pins the engine; Excel is T-1228.
-- [ ] syntax.md "Newer error literals" gets an `Implemented in:` line naming the code.
-- [ ] `make check` green; reviewers approve.
+- [x] syntax.md "Newer error literals" gets an `Implemented in:` line naming the code.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Any formula that produces `#BUSY!` (none is known).
 - `#UNKNOWN!`, `#PYTHON!` and `#EXTERNAL!`.
+
+## Outcome
+`Error::BUSY` (appended after `FIELD`, ERROR.TYPE 0) and `ErrorKind::Busy` (`code() == Some(0)`)
+per SPEC-0003 "Stored `#BUSY!`". Only the stored-name table (`get_error_by_english_name`) gains
+`#BUSY!`: `=#BUSY!` still fails to parse, typed `#BUSY!` stays text, and `"#BUSY!"` stays a text
+criterion. xlsx export writes the plain `<v>#BUSY!</v>` (no `vm`) and import reads it back as the
+kind. Tests: token/lexer units, engine probe-cell and UNIQUE (`#BUSY!` vs `#NULL!` stay apart)
+tests, xlsx round trip, facade and Python `XlError("#BUSY!").code == 0`, eval adapter.
+Eval delta: probes 561 → 557 known failures (probes/error-stored-constants 24/24), 0 regressions.
