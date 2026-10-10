@@ -9,6 +9,7 @@ use crate::{
     calc_result::CalcResult,
     expressions::token::is_english_error_string,
     formatter::date_text::{parse_date, CurrentYear},
+    functions::util::cmp_text_excel,
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
 };
@@ -184,7 +185,7 @@ fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool
 
 fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => target.cmp(&s.to_lowercase()) == std::cmp::Ordering::Greater,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_lt(),
         _ => false,
     }
 }
@@ -193,21 +194,21 @@ fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
 // E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
 fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => s.to_lowercase().as_str() <= target,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_le(),
         _ => false,
     }
 }
 
 fn result_is_greater_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => target.cmp(&s.to_lowercase()) == std::cmp::Ordering::Less,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_gt(),
         _ => false,
     }
 }
 
 fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => s.to_lowercase().as_str() >= target,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_ge(),
         _ => false,
     }
 }
