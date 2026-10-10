@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1303 probe: RANK/RANK.EQ/RANK.AVG whose ref is a non-reference array holding error or text elements (which element wins, per element or one value for the whole spill). Sheet1 A1=7,B1=1,C1=5. Formulas in column F every third row so spills do not collide.",
+ "tags": [
+  "M2",
+  "statistics",
+  "rank",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 7,
+    "B1": 1,
+    "C1": 5,
+    "F1": "=RANK(5,IF(A1:C1>1,A1:CWWWW1))",
+    "F4": "=RANK(5,IF(A1:C1>6,NA(),1/0))",
+    "F7": "=RANK(5,IF(A1:C1>1,1/0,A1:C1))",
+    "F10": "=RANK(5,IF(A1:C1>6,\"x\",A1:C1))",
+    "F13": "=RANK(#N/A,IF(A1:C1>6,1/0,A1:C1))",
+    "F16": "=RANK(5,IF(A1:C1>6,A1:C1,1/0),1)",
+    "F19": "=RANK(5,IF(A1:C1>6,A1:C1,1/0),\"x\")",
+    "F22": "=RANK.AVG(5,IF(A1:C1>6,NA(),1/0))",
+    "F25": "=RANK.EQ(5,IF(A1:C1>6,NA(),1/0))",
+    "F28": "=RANK(5,IF(A1:B2>6,NA(),A1:B2))"
+   }
+  }
+ ],
+ "expected": {}
+}

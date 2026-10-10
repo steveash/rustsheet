@@ -1,0 +1,82 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "F1": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "F10": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "F13": {
+    "t": "n",
+    "v": 2.0
+   },
+   "F16": {
+    "t": "n",
+    "v": 2.0
+   },
+   "F19": {
+    "t": "n",
+    "v": 2.0
+   },
+   "F22": {
+    "t": "n",
+    "v": 2.0
+   },
+   "F25": {
+    "t": "e",
+    "v": "#SPILL!"
+   },
+   "F4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "F7": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "G1": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "G10": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "G4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "G7": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H1": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H10": {
+    "t": "e",
+    "v": "#NAME?"
+   },
+   "H4": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "H7": {
+    "t": "e",
+    "v": "#NAME?"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "d5f238b59fa9e4a1129d0a7a5a559e6ef2b96b11c9fdc9425af12965c7ff52f9",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-10T07:59:03+00:00",
+  "version": null
+ }
+}

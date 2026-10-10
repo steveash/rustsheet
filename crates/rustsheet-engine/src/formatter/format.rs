@@ -730,9 +730,11 @@ pub(crate) fn parse_formatted_number(
     if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
         let inner = inner.trim();
         // Inside parentheses a currency symbol is only valid directly before unsigned digits:
-        // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms).
+        // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms), as are `($+1)`,
+        // `(1 $)` and `(€-1)`; only a trailing euro sign is valid: `(1€)` = -1
+        // (probes/paren-number-text-currency-variants).
         let bad_currency = currencies.iter().any(|c| {
-            (!c.is_empty() && inner.strip_suffix(c).is_some())
+            (!c.is_empty() && *c != "€" && inner.strip_suffix(c).is_some())
                 || inner
                     .strip_prefix(c)
                     .is_some_and(|rest| rest.trim_start().starts_with(['-', '+']))
