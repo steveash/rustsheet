@@ -469,11 +469,12 @@ fn static_analysis_index(_args: &[Node]) -> StaticResult {
 
 /// RANK's `ref` must be a reference: an array that is not one (`IF(A1:C1>0,A1:C1)`) makes the
 /// result a `#VALUE!` array of that array's shape, which spills (docs/excel-semantics/statistics.md,
-/// "RANK of a non-reference array"). References, including those INDEX, CHOOSE and OFFSET return
-/// (static `Unknown`), rank to a scalar.
+/// "RANK of a non-reference array"). A `ref` whose shape is `Unknown` (INDEX, CHOOSE, OFFSET, a
+/// defined name, `A1:<name>`) may still evaluate to such an array, so the result is `Unknown` too:
+/// a reference ranks to a 1x1 result, an array spills (probes/rank-unknown-shape-ref).
 fn static_analysis_rank(args: &[Node]) -> StaticResult {
     match args.get(1).map(run_static_analysis_on_node) {
-        Some(array @ StaticResult::Array(..)) => array,
+        Some(shape @ (StaticResult::Array(..) | StaticResult::Unknown)) => shape,
         _ => StaticResult::Scalar,
     }
 }

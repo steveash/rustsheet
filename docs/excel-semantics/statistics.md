@@ -210,7 +210,7 @@ Status: VERIFIED (values); the formulation that reproduces the tail error is ope
 
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
-(`IF(A1:C1>0,A1:C1)`, 1x3; `IF(A1:B2>0,A1:B2)`, 2x2) gives `#VALUE!` in every element of the array's own shape (a spill), so
+(`IF(A1:C1>0,A1:C1)`, 1x3; `IF(A1:B2>0,A1:B2)`, 2x2) gives `#VALUE!` in every element of the array's own shape that is not an error (a spill), so
 `RANK(5,IF(A1:C1>0,A1:C1))` fills F1:H1 with `#VALUE!`. References produced by INDEX, CHOOSE and OFFSET rank normally
 (`RANK(5,INDEX(A1:C2,1,0))`, `RANK(5,CHOOSE(1,A1:C1))`, `RANK(5,OFFSET(A1,0,0,1,3))` = 2 with A1:C1 = 7,1,5). A literal second argument
 (`{7,1,5}`, `5`, `"5"`, `TRUE`) is not usable in a workbook at all: excel-graph refuses to open a file containing
@@ -229,8 +229,20 @@ number `1` is `#VALUE!` in every element (the array ref decides the shape and it
 with an error `order` (which wins).
 RANK.EQ shares the RANK implementation and was not probed separately.
 Ours: matches since T-1215 (the error or text `number` spills over the ref's shape); the `order` cases matched already.
+Error elements inside such a ref (probes/rank-nonref-error-elements, excel-graph, 2026-10-10, T-1303; RANK, RANK.EQ and RANK.AVG
+agree): each element that is an error keeps its own error and every other element is `#VALUE!`, so
+`RANK(5,IF(A1:C1>6,NA(),1/0))` with A1:C1 = 7,1,5 fills `#N/A`, `#DIV/0!`, `#DIV/0!`, and `RANK(5,IF(A1:C1>1,1/0,A1:C1))` fills
+`#DIV/0!`, `#VALUE!`, `#DIV/0!`. A text element is `#VALUE!` like a number. An error `number` still fills every element with
+its error (`RANK(#N/A,IF(A1:C1>6,1/0,A1:C1))` is `#N/A` x3). An error element also wins over an `order` of `1` or `"x"`
+(`RANK(5,IF(A1:C1>6,A1:C1,1/0),"x")` is `#VALUE!`, `#DIV/0!`, `#DIV/0!`).
+Refs whose shape a formula does not show (probes/rank-unknown-shape-ref, excel-graph, 2026-10-10, T-1303): `A1:<undefined name>`
+(`A1:CWWWW1`) is `#NAME?`, so `RANK(5,IF(A1:C1>0,A1:CWWWW1))` spills `#NAME?` x3, and with A1:C1 empty (every test FALSE) it
+spills `#VALUE!` x3. A defined name for A1:C1, `A1:B1:C1`, `A1:C1 A1:C1` and `(A1,B1:C1)` are references and rank to 2.
+`RANK(5,IF(A1:C1>0,A1:XFD1))` is `#SPILL!`.
+Ours: matches since T-1303. Static analysis makes a RANK call whose `ref` has an unknown shape a dynamic-array formula, so a
+reference result is 1x1 and an array result spills (before T-1303 such an array reached a scalar cell, a fuzz crash).
 Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
-Tasks: T-1152, T-1203, T-1208, T-1215
+Tasks: T-1152, T-1203, T-1208, T-1215, T-1303
 
 ## Statistical function argument modes
 Rule: every scalar argument of the M9 statistical functions lifts elementwise over an array literal and over a multi-cell

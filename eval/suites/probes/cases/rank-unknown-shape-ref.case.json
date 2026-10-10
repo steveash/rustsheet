@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1303 probe: RANK/RANK.EQ/RANK.AVG whose ref argument has a shape static analysis cannot know (A1:<undefined name> inside IF, a defined name, a chained range, an intersection, a union). Sheet1 A1=7,B1=1,C1=5; row 2 empty. Formulas in column F every third row so spills do not collide.",
+ "tags": [
+  "M2",
+  "statistics",
+  "rank",
+  "probe"
+ ],
+ "names": {
+  "rk": "=Sheet1!$A$1:$C$1"
+ },
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 7,
+    "B1": 1,
+    "C1": 5,
+    "F1": "=RANK(5,IF(A1:C1>0,A1:CWWWW1))",
+    "F4": "=RANK(5,IF(A2:C2>0,A2:CWWWW2))",
+    "F7": "=RANK.EQ(5,IF(A1:C1>0,A1:CWWWW1))",
+    "F10": "=RANK.AVG(5,IF(A1:C1>0,A1:CWWWW1))",
+    "F13": "=RANK(5,rk)",
+    "F16": "=RANK(5,A1:B1:C1)",
+    "F19": "=RANK(5,A1:C1 A1:C1)",
+    "F22": "=RANK(5,(A1,B1:C1))",
+    "F25": "=RANK(5,IF(A1:C1>0,A1:XFD1))"
+   }
+  }
+ ],
+ "expected": {}
+}
