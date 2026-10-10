@@ -47,14 +47,10 @@ fn is_read_reference(arg: &Node) -> bool {
         | Node::TableNameKind(_) => true,
         // Over a literal array they pick values, not cells, and spill like any array
         // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206).
-        Node::FunctionKind {
-            kind: Function::Take | Function::Drop | Function::Trimrange,
-            args,
-        } => !matches!(args.first(), Some(Node::ArrayKind(_))),
-        Node::FunctionKind {
-            kind: Function::Xlookup,
-            args,
-        } => !matches!(args.get(2), Some(Node::ArrayKind(_))),
+        Node::FunctionKind { kind, args } if kind.picks_reference() => {
+            let picked = if *kind == Function::Xlookup { 2 } else { 0 };
+            !matches!(args.get(picked), Some(Node::ArrayKind(_)))
+        }
         _ => false,
     }
 }
