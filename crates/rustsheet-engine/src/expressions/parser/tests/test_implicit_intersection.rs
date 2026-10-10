@@ -36,7 +36,8 @@ fn simple() {
             automatic: false,
             child: Box::new(child),
             written: 0,
-            lead: LeadGroup::default()
+            lead: LeadGroup::default(),
+            grouped: 0
         }
     )
 }
@@ -73,7 +74,8 @@ fn simple_add() {
                 automatic: false,
                 child: Box::new(child),
                 written: 0,
-                lead: LeadGroup::default()
+                lead: LeadGroup::default(),
+                grouped: 0
             }),
             right: Box::new(Node::NumberKind(12.0))
         }
