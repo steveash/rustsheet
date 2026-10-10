@@ -7,7 +7,10 @@
 //!    toward zero for ROUND (`ROUND(999999999999957.5,0)` = 999999999999957) but away from zero
 //!    for ROUNDUP and ROUNDDOWN (`ROUNDDOWN(999999999999957.5,0)` = 999999999999958);
 //! 2. that 15-digit decimal is rounded at `num_digits` (half away from zero, up or down), and the
-//!    decimal result is converted to the nearest double.
+//!    decimal result is converted to the nearest double. ROUNDUP alone does this in binary: it
+//!    converts the rounded-down decimal and then adds the unit `10^-num_digits` as doubles, so
+//!    `ROUNDUP(123.456,2)` is 123.45 + 0.01 = 123.46000000000001 (docs/excel-semantics/numbers.md
+//!    "ROUNDUP adds the unit in binary"; probes/roundup-wrapped-scaling, oracle excel-graph).
 //!
 //! So `ROUND(1.005,2)` is 1.01 (1.00499999999999989… becomes 1.00500000000000 first) and
 //! `ROUNDDOWN(123456789.123,-5)` is exactly 123400000.
@@ -75,12 +78,20 @@ pub(crate) fn round_decimal(value: f64, num_digits: f64, mode: RoundMode) -> Opt
     // `mantissa` has 15 digits; its last digit has place value 10^(exponent - 14).
     let last_place = exponent - (SIGNIFICANT_DIGITS - 1);
     let dropped = -num_digits - last_place;
-    let (digits, place) = if dropped <= 0 {
-        (mantissa, last_place)
+    let (digits, place, add_unit) = if dropped <= 0 {
+        (mantissa, last_place, false)
     } else {
-        (round_off(mantissa, dropped, mode), -num_digits)
+        let (kept, round_up) = round_off(mantissa, dropped, mode);
+        if mode == RoundMode::Up {
+            (kept, -num_digits, round_up)
+        } else {
+            (kept + u64::from(round_up), -num_digits, false)
+        }
     };
-    let magnitude = decimal_to_f64(digits, place)?;
+    let mut magnitude = decimal_to_f64(digits, place)?;
+    if add_unit {
+        magnitude += decimal_to_f64(1, place)?;
+    }
     if magnitude.is_infinite() {
         return None;
     }
@@ -109,14 +120,15 @@ fn decimal_to_f64(digits: u64, place: i64) -> Option<f64> {
     format!("{digits}e{place}").parse().ok()
 }
 
-/// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`, rounding per `mode`.
-fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> u64 {
+/// Drops the last `dropped` (> 0) digits of the 15-digit `mantissa`: the digits kept, and whether
+/// `mode` rounds them up by one unit.
+fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> (u64, bool) {
     let Ok(dropped) = u32::try_from(dropped) else {
-        return u64::from(mode == RoundMode::Up);
+        return (0, mode == RoundMode::Up);
     };
     let Some(unit) = 10_u64.checked_pow(dropped) else {
         // Everything is dropped and the value is below half a unit.
-        return u64::from(mode == RoundMode::Up);
+        return (0, mode == RoundMode::Up);
     };
     let (kept, rest) = (mantissa / unit, mantissa % unit);
     let round_up = match mode {
@@ -124,7 +136,7 @@ fn round_off(mantissa: u64, dropped: i64, mode: RoundMode) -> u64 {
         RoundMode::Up => rest > 0,
         RoundMode::Down => false,
     };
-    kept + u64::from(round_up)
+    (kept, round_up)
 }
 
 #[cfg(test)]
@@ -214,6 +226,20 @@ mod tests {
         assert_eq!(round(5e-300, -2_147_483_349.0), Some(0.0));
         assert_eq!(round(0.5, f64::from(i32::MIN)), Some(0.0));
         assert_eq!(round(123.456, 65_536.0), Some(123.456));
+    }
+
+    #[test]
+    fn roundup_adds_the_unit_in_binary() {
+        // probes/roundup-wrapped-scaling C column; ROUNDDOWN stays decimal-correct (D column).
+        let up = |value, digits| round_decimal(value, digits, RoundMode::Up);
+        assert_eq!(up(123.456, 2.0), Some(123.460_000_000_000_01));
+        assert_eq!(up(0.29, 1.0), Some(0.300_000_000_000_000_04));
+        assert_eq!(up(2.675, 2.0), Some(2.679_999_999_999_999_7));
+        assert_eq!(up(8.255, 1.0), Some(8.299_999_999_999_999));
+        assert_eq!(up(-123.456, 2.0), Some(-123.460_000_000_000_01));
+        assert_eq!(up(0.29, 2.0), Some(0.29));
+        assert_eq!(up(123.456, 4_294_901_762.0), Some(123.460_000_000_000_01));
+        assert_eq!(round_decimal(0.29, 1.0, RoundMode::Down), Some(0.2));
     }
 
     #[test]
