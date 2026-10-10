@@ -144,6 +144,7 @@ C	probes/geomean-pow2-count.case.json	117
 C	probes/geomean-product-order.case.json	17
 C	probes/geomean-root-models.case.json	112
 C	probes/geomean-root-refinement.case.json	48
+C	probes/geomean-same-product.case.json	23
 C	probes/geomean-single-and-copies.case.json	260
 C	probes/geomean-stored-3ulps-low.case.json	9
 C	probes/if-index-ref-args-aggregates.case.json	54
@@ -598,6 +599,14 @@ F	probes/geomean-root-refinement.case.json	Sheet1!A47
 F	probes/geomean-root-refinement.case.json	Sheet1!A48
 F	probes/geomean-root-refinement.case.json	Sheet1!A7
 F	probes/geomean-root-refinement.case.json	Sheet1!A8
+F	probes/geomean-same-product.case.json	Sheet1!A10
+F	probes/geomean-same-product.case.json	Sheet1!A11
+F	probes/geomean-same-product.case.json	Sheet1!A12
+F	probes/geomean-same-product.case.json	Sheet1!A13
+F	probes/geomean-same-product.case.json	Sheet1!A14
+F	probes/geomean-same-product.case.json	Sheet1!A15
+F	probes/geomean-same-product.case.json	Sheet1!A21
+F	probes/geomean-same-product.case.json	Sheet1!A9
 F	probes/geomean-single-and-copies.case.json	Copies!A35
 F	probes/geomean-single-and-copies.case.json	Copies!E15
 F	probes/geomean-single-and-copies.case.json	Copies!E16
