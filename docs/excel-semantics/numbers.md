@@ -659,7 +659,7 @@ Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06
 Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
 exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
 oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
-`powf` path (and its #NUM! / #DIV/0! handling) unchanged.
+`powf` path (and its #NUM! / #DIV/0! handling) unchanged. The rule also runs, unverified, for finite results with |n| > 360 (the oracle covers 1..360; squaring amplifies error, so huge n near x=1 may differ from Excel) and for a negative n whose intermediate result is subnormal (T-1311).
 Status: VERIFIED (integer exponents)
 Tasks: T-0221, T-0901, T-1302
 
