@@ -3,7 +3,7 @@ id: T-1305
 title: "Probe MATCH descending search over mixed types and a non-numeric match_type with a 2-D or out-of-range lookup (3 gen-m2 known failures)"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -56,3 +56,10 @@ Probe with the excel-probe skill. Suggested cells:
 ## Out of scope
 - Fractional match_type (T-1304).
 - Text collation order (T-0220).
+
+## Outcome
+Probe `probes/match-descending-argcheck` (20 cells, excel-graph) settles both questions; findings in
+docs/excel-semantics/lookup.md. A descending search skips backward over cells of another type
+(T-1312). A text match_type read from a cell is `#REF!` for MATCH and INDEX, a literal one `#VALUE!`
+(T-1313). Eval delta: probes known failures 914 -> 921 (7 new engine gaps, covered by T-1312/T-1313);
+no other change.
