@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Euro suffix variants inside parenthesised number text, with unparenthesised controls, as text coercion via 0+ (T-1309).",
+ "tags": [
+  "M2",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=0+\"(1 €)\"",
+    "A2": "=0+\"(1,000€)\"",
+    "A3": "=0+\"(1.5€)\"",
+    "A4": "=0+\"(1e3€)\"",
+    "A5": "=0+\"1€\"",
+    "A6": "=0+\"1 €\"",
+    "A7": "=0+\"(1€ )\""
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7"
+ ]
+}
