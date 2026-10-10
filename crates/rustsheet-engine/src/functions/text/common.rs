@@ -936,18 +936,32 @@ impl Model {
         }
     }
 
-    // VALUETOTEXT(value)
+    // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
+    // (probes/text-argument-modes F17:F19); an error element is spelled out.
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
+        if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => match error {
-                CalcResult::Error { error, .. } => error.to_string(),
-                _ => "".to_string(),
-            },
+        // The format only changes the result for text and invalid values, which are unprobed
+        // (TODO(T-1229)); the argument is evaluated so its errors propagate.
+        if args.len() == 2 {
+            if let Err(e) = self.get_number(&args[1], cell) {
+                return e;
+            }
+        }
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
         };
-        CalcResult::String(text)
+        let value_to_text = |node: &ArrayNode| match node {
+            ArrayNode::Error(e) => e.to_string(),
+            other => array_node_to_string(other).unwrap_or_default(),
+        };
+        match text {
+            TextArg::Error(node, _) => CalcResult::String(value_to_text(&node)),
+            _ => broadcast_text(cell, &[&text], |i, j| {
+                Ok(ArrayNode::String(value_to_text(text.elem(i, j))))
+            }),
+        }
     }
 }

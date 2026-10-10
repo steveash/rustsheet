@@ -160,9 +160,26 @@ Also unprobed: what typing `#BLOCKED!` or `#GETTING_DATA` as cell input gives. S
 today's input table plus `#GETTING_DATA` (implemented in T-1010: typed `#GETTING_DATA` is the error,
 typed `#BLOCKED!` is text); T-1016 probes it on desktop; UNVERIFIED. The COUNTIF criterion question
 is settled by T-1012 (information.md): `"#BLOCKED!"` does not match the error.
+Stored `#BUSY!` design: SPEC-0003 "Stored `#BUSY!`" (T-1020). It gets its own kind with ERROR.TYPE 0,
+stays out of the formula, input and criteria tables, and is exported as is (T-1222). Its VALUETOTEXT,
+precedence and COUNTIF criteria are UNVERIFIED (T-1228).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
+
+## FORMULATEXT keeps every written parenthesis
+Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every
+probed shape (plain operators, unary minus, intersection, function arguments and `@` operands): `=A1+(B1)`, `=SUM((A1)+(B1))`, `=(A1) (B1)`, `=-(A1)`, `=(A1)*((B1))`, `=A1+(B1*C1)`,
+`=((A1))`, `=IF((A1>0),(B1),C1)`, `=@(A1+(B1))`, `=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`,
+`=@(A1+((B1)))`, `=@((A1+B1))`, `=@(A1 B1) C1` and `=@(A1):B1 C1` all print as stored. Whether typed input is
+kept the same way is UNVERIFIED (excel-graph loads file text; an M14 desktop question, decision 0039). The values are unaffected
+(`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
+Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
+Ours: the parsed formula keeps no groups except the levels around a whole `@` operand, a whole parenthesized formula
+(`GroupedRootKind`) and a few cut/union shapes, so the printer re-derives parentheses from precedence: `=A1+(B1)` prints
+`=A1+B1`, `=-(A1)` prints `=-A1`, `=@(A1+(B1))` prints `=@(A1+B1)`. All 18 values match; 14 FORMULATEXT cells differ.
+Status: VERIFIED
+Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand)

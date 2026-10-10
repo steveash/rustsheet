@@ -238,23 +238,55 @@ fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
     model._set("E34", "=@(A1) B1");
     model._set("E35", "=@((A1)) B1");
     model._set("E36", "=@(A1) B1 C1");
-    // E36..E38 are hand-written: current engine output for shapes no probe covers yet (T-1134 follow-up).
+    // E37 and E38 are probes/at-group-not-whole-operand E30 and E32 (T-1200); E39 is E31.
     model._set("E37", "=@(A1 B1) C1");
     model._set("E38", "=@(A1):B1 C1");
+    model._set("E39", "=@((A1 B1)) C1");
     model.evaluate();
-    assert_eq!(model._get_formula("E37"), "=@A1 B1 C1");
-    assert_eq!(model._get_formula("E38"), "=@A1:B1 C1");
+    assert_eq!(model._get_formula("E37"), "=@(A1 B1) C1");
+    assert_eq!(model._get_formula("E38"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("E39"), "=@((A1 B1)) C1");
     assert_eq!(model._get_formula("E34"), "=@(A1) B1");
     assert_eq!(model._get_formula("E35"), "=@((A1)) B1");
     assert_eq!(model._get_formula("E36"), "=@(A1) B1 C1");
 }
 
 #[test]
+fn at_operand_group_leftmost_shapes_match_the_probe() {
+    // probes/at-group-leftmost-shapes E30:E39 (excel-graph, T-1245): Excel prints every form as
+    // written. The engine matches all but E34, E35 and E36, asserted separately below.
+    let mut model = model();
+    let forms = [
+        "=@((A1)):B1 C1",
+        "=@(A1):B1:C1 D1",
+        "=@(A1:B1):C1 D1",
+        "=@(A1 B1) C1 D1",
+        "=@(A1 B1):C1",
+        "=@(A1 B1 C1) D1",
+        "=@(A1):OFFSET(B1,0,0) C1",
+    ];
+    for (i, formula) in forms.iter().enumerate() {
+        model._set(&format!("E{}", 50 + i), formula);
+    }
+    model._set("F50", "=@((A1 B1) C1) D1");
+    model._set("F51", "=@(A1):(B1) C1");
+    model._set("F52", "=@(A1):B1");
+    model.evaluate();
+    for (i, formula) in forms.iter().enumerate() {
+        assert_eq!(model._get_formula(&format!("E{}", 50 + i)), *formula);
+    }
+    // Engine output that differs from Excel, which prints each as written (T-1251).
+    assert_eq!(model._get_formula("F50"), "=@(A1 B1 C1) D1");
+    assert_eq!(model._get_formula("F51"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("F52"), "=@A1:B1");
+}
+
+#[test]
 fn at_operand_adds_no_level_for_a_nested_inner_group() {
     // T-1167: an inner group that only ends right before the outer `)` adds no level to the `@`
-    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41 and E43 are
-    // hand-written current engine output that characterizes the engine, not Excel: it drops the
-    // inner groups, while Excel tends to keep written parentheses elsewhere (UNVERIFIED, T-1178).
+    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41, E43 and E44
+    // characterize the engine, not Excel: it drops the inner groups, while Excel prints every
+    // written parenthesis back (probes/at-operand-nested-groups, T-1178; engine: T-1244).
     let mut model = model();
     model._set("A1", "1");
     model._set("B1", "2");
@@ -375,20 +407,28 @@ fn index_operand_intersects_the_picked_cell() {
     assert_eq!(model._get_text("C4"), *"#REF!");
 }
 
-/// An aggregate sees the cell HLOOKUP picks as a reference, so COUNT skips a picked FALSE
-/// (gen-m2 60a543744fc4a8f7 A200, excel-graph; T-0235); a direct FALSE is counted.
+/// An aggregate sees the cell HLOOKUP picks as a reference only when the row index is itself a
+/// cell reference: COUNT skips a picked FALSE then (gen-m2 60a543744fc4a8f7 A200; probes/
+/// lookup-pick-aggregates P1, E1, excel-graph; T-0295); a literal index gives the plain value.
 #[test]
-fn hlookup_aggregate_argument_is_the_picked_cell() {
+fn hlookup_aggregate_argument_is_a_reference_only_for_a_cell_index() {
     let mut model = new_empty_model();
     model._set("A1", "1");
     model._set("B1", "2");
     model._set("A2", "FALSE");
     model._set("B2", "5");
-    model._set("C1", "=COUNT(HLOOKUP(1,A1:B2,2))");
-    model._set("C2", "=COUNT(HLOOKUP(2,A1:B2,2))");
+    model._set("D1", "2");
+    model._set("C1", "=COUNT(HLOOKUP(1,A1:B2,D1))");
+    model._set("C2", "=COUNT(HLOOKUP(2,A1:B2,D1))");
     model._set("C3", "=COUNT(FALSE)");
+    model._set("C4", "=COUNT(HLOOKUP(1,A1:B2,2))");
+    model._set("C5", "=COUNT(HLOOKUP(1,A1:B2,(D1)))");
+    model._set("C6", "=COUNT(HLOOKUP(1,A1:B2,INT(D1)))");
     model.evaluate();
     assert_eq!(model._get_text("C1"), *"0");
     assert_eq!(model._get_text("C2"), *"1");
     assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"1");
+    assert_eq!(model._get_text("C5"), *"0");
+    assert_eq!(model._get_text("C6"), *"1");
 }

@@ -26,6 +26,10 @@ product of COMBIN-like ratios, exp(gammaln), division order) against every cell.
 Code: `fn_multinomial` in crates/rustsheet-engine/src/functions/math_and_trigonometry/multinomial.rs.
 Semantics: docs/excel-semantics/numbers.md "MULTINOMIAL is inexact"; coercion.md "GCD / LCM / MULTINOMIAL range cells".
 
+More inexact values (T-1197, probes/multinomial-large-arguments, excel-graph 2026-10-09): `MULTINOMIAL(170)` is
+1.0000000000001974 (exact 1, so it is not the plain ratio even for one argument). Also A13 `(169,1)` 170.0000000000337,
+A14 ten 1s 3628800.0000000084, and A7, A11, A20; these are its six known failures.
+
 ## Acceptance criteria
 - [ ] probes/math-argument-modes C9, C35, C47, C49:C53 pass, plus a new probe of 20+ argument sets.
 - [ ] `make check` green; reviewers approve.

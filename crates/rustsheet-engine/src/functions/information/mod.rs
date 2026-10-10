@@ -2,7 +2,7 @@ mod isomitted;
 mod offline_errors;
 
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     cast::calc_result_to_array_node,
     defined_names::ParsedDefinedName,
     expressions::{
@@ -11,6 +11,7 @@ use crate::{
         types::CellReferenceIndex,
         utils::number_to_column,
     },
+    functions::math_and_trigonometry::array_size::check_range_size,
     functions::util::array_node_to_calc_result,
     get_all_timezones,
     model::Model,
@@ -271,20 +272,47 @@ impl Model {
                 message: "3D ranges not supported".to_string(),
             };
         }
-        if left.row != right.row && left.column != right.column {
-            // FIXME: Implicit intersection or dynamic arrays
-            return CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "argument must be a reference to a single cell".to_string(),
-            };
+        if left == right {
+            return CalcResult::Boolean(self.cell_has_formula(left));
         }
-        let is_formula = if let Ok(f) = self.get_cell_formula(left.sheet, left.row, left.column) {
-            f.is_some()
-        } else {
-            false
+        // A multi-cell reference lifts, one flag per cell (probes/info-logic-argument-modes A11:B11,
+        // excel-graph); cells outside the used area hold no formula.
+        if let Some((error, message)) = check_range_size(&left, &right) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let (last_row, last_column) = match self.clip_to_used_area(
+            left.sheet,
+            left.row,
+            left.column,
+            right.row,
+            right.column,
+        ) {
+            Ok(last) => last,
+            Err(message) => return CalcResult::new_error(Error::ERROR, cell, message),
         };
-        CalcResult::Boolean(is_formula)
+        let flags = (left.row..=right.row)
+            .map(|row| {
+                (left.column..=right.column)
+                    .map(|column| {
+                        let inside = row <= last_row && column <= last_column;
+                        let at = CellReferenceIndex {
+                            sheet: left.sheet,
+                            row,
+                            column,
+                        };
+                        ArrayNode::Boolean(inside && self.cell_has_formula(at))
+                    })
+                    .collect()
+            })
+            .collect();
+        CalcResult::Array(flags)
+    }
+
+    fn cell_has_formula(&self, at: CellReferenceIndex) -> bool {
+        matches!(
+            self.get_cell_formula(at.sheet, at.row, at.column),
+            Ok(Some(_))
+        )
     }
 
     pub(crate) fn fn_errortype(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -409,6 +437,11 @@ impl Model {
                 }
             }
             arg => {
+                // A reference (a range included) gives its sheet's number, with no spill
+                // (probes/info-logic-argument-modes A12, excel-graph).
+                if let Ok(range) = self.get_reference(arg, cell) {
+                    return CalcResult::Number(range.left.sheet as f64 + 1.0);
+                }
                 // Now it should be the name of a sheet
                 let sheet_name = match self.get_string(arg, cell) {
                     Ok(s) => s,
@@ -431,7 +464,13 @@ impl Model {
         if arg_count != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.evaluate_node_in_context(&args[0], cell) {
+        let argument = match self.evaluate_node_in_context(&args[0], cell) {
+            // The top-left cell, with no lift and no implicit intersection
+            // (probes/info-logic-argument-modes A6:A7, excel-graph).
+            CalcResult::Range { left, .. } => self.evaluate_cell(left),
+            other => other,
+        };
+        let value = match argument {
             CalcResult::Number(n) => n,
             CalcResult::String(_) => 0.0,
             CalcResult::Boolean(f) => {
@@ -443,14 +482,7 @@ impl Model {
             }
             CalcResult::EmptyCell | CalcResult::EmptyArg => 0.0,
             error @ CalcResult::Error { .. } => return error,
-            CalcResult::Range { .. } => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Arrays not supported yet".to_string(),
-                }
-            }
-            CalcResult::Array(_) | CalcResult::Lambda(_) => {
+            CalcResult::Range { .. } | CalcResult::Array(_) | CalcResult::Lambda(_) => {
                 return CalcResult::Error {
                     error: Error::NIMPL,
                     origin: cell,
@@ -500,11 +532,43 @@ impl Model {
             Some(range) => range.left,
             None => cell,
         };
-        let info_type = match self.get_string(&args[0], cell) {
-            Ok(s) => s.to_uppercase(),
-            Err(e) => return e,
+        // An array info_type lifts: one result per element (CELL({"row","col"},B2) spills 2, 2;
+        // probes/info-logic-argument-modes A27:B27, excel-graph).
+        let info_type = match self.evaluate_node_in_context(&args[0], cell) {
+            CalcResult::String(s) => s,
+            CalcResult::Array(types) => {
+                let lifted = types
+                    .iter()
+                    .map(|row| {
+                        row.iter()
+                            .map(|item| match item {
+                                ArrayNode::String(name) => calc_result_to_array_node(
+                                    self.cell_info(name, ranges.as_deref(), reference, cell),
+                                ),
+                                _ => ArrayNode::Error(Error::VALUE),
+                            })
+                            .collect()
+                    })
+                    .collect();
+                return CalcResult::Array(lifted);
+            }
+            _ => match self.get_string(&args[0], cell) {
+                Ok(s) => s,
+                Err(e) => return e,
+            },
         };
-        match info_type.as_str() {
+        self.cell_info(&info_type, ranges.as_deref(), reference, cell)
+    }
+
+    /// The value of one CELL info_type for `reference`; `ranges` holds every area of a union.
+    fn cell_info(
+        &mut self,
+        info_type: &str,
+        ranges: Option<&[Range]>,
+        reference: CellReferenceIndex,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match info_type.to_uppercase().as_str() {
             "ADDRESS" => {
                 if reference.sheet != cell.sheet {
                     return CalcResult::Error {
@@ -513,7 +577,7 @@ impl Model {
                         message: "References to other sheets not implemented".to_string(),
                     };
                 }
-                let lefts: Vec<CellReferenceIndex> = match ranges.as_deref() {
+                let lefts: Vec<CellReferenceIndex> = match ranges {
                     Some(areas) => areas.iter().map(|range| range.left).collect(),
                     None => vec![reference],
                 };
@@ -536,6 +600,21 @@ impl Model {
                     error: Error::VALUE,
                     origin: cell,
                     message: "info_type not implemented".to_string(),
+                }
+            }
+            // A multi-cell range on the formula's own sheet reads its top-left cell
+            // (ironcalc-calc CELL.xlsx B14, excel-cached); on another sheet it is #VALUE!
+            // (probes/info-logic-argument-modes A18, excel-graph). Which of the two facts decides
+            // is not separated by the evidence (docs/excel-semantics/information.md, T-1218).
+            "CONTENTS"
+                if ranges
+                    .and_then(<[_]>::first)
+                    .is_some_and(|r| r.left != r.right && r.left.sheet != cell.sheet) =>
+            {
+                CalcResult::Error {
+                    error: Error::VALUE,
+                    origin: cell,
+                    message: "contents needs a single cell".to_string(),
                 }
             }
             "CONTENTS" => self.evaluate_cell(reference),

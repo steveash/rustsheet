@@ -1,8 +1,14 @@
 // CHAR, CODE, UNICHAR, CLEAN, ASC
 
+use super::text_arg::broadcast_text;
 use crate::{
     calc_result::CalcResult,
-    expressions::{parser::Node, token::Error, types::CellReferenceIndex},
+    cast::array_node_to_string,
+    expressions::{
+        parser::{ArrayNode, Node},
+        token::Error,
+        types::CellReferenceIndex,
+    },
     model::Model,
 };
 
@@ -95,25 +101,21 @@ impl Model {
     }
 
     /// CODE(text) — Returns the Windows-1252 numeric code for the first character of text.
+    /// Lifts over a range or array argument (probes/text-argument-modes F5:F6).
     pub(crate) fn fn_code(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
         }
-        let s = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
             Err(e) => return e,
         };
-        match s.chars().next() {
-            None => CalcResult::new_error(Error::VALUE, cell, "Empty string".to_string()),
-            Some(c) => match char_to_win1252(c) {
-                Some(n) => CalcResult::Number(n as f64),
-                None => CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "Character has no Windows-1252 code".to_string(),
-                ),
-            },
-        }
+        broadcast_text(cell, &[&text], |i, j| {
+            let s = array_node_to_string(text.elem(i, j))?;
+            let c = s.chars().next().ok_or(Error::VALUE)?;
+            let n = char_to_win1252(c).ok_or(Error::VALUE)?;
+            Ok(ArrayNode::Number(f64::from(n)))
+        })
     }
 
     /// UNICHAR(number) — Returns the Unicode character for the given code point.
@@ -151,6 +153,33 @@ impl Model {
             Err(e) => return e,
         };
         CalcResult::String(asc_convert(&s))
+    }
+
+    /// DBCS(text) — text unchanged: en-US Excel for the web does not widen it
+    /// (probes/text-modes-dbcs C3, `DBCS("abc")` = "abc"; T-1213). Only ASCII is probed, and
+    /// so is only a scalar argument: like ASC it does not lift over a range until a probe shows how.
+    pub(crate) fn fn_dbcs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        match self.get_string(&args[0], cell) {
+            Ok(s) => CalcResult::String(s),
+            Err(e) => e,
+        }
+    }
+
+    /// PHONETIC(reference) — `#N/A` for a text cell, a number cell and a range alike, as
+    /// excel-graph evaluates it (probes/text-modes-phonetic, -range, -number; T-1213). A
+    /// literal argument is refused by the oracle, so it is unobservable.
+    pub(crate) fn fn_phonetic(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        if args.len() != 1 {
+            return CalcResult::new_args_number_error(cell);
+        }
+        CalcResult::new_error(
+            Error::NA,
+            cell,
+            "PHONETIC has no phonetic text to return".to_string(),
+        )
     }
 }
 

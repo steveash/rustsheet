@@ -7,7 +7,7 @@
 //! T-0105) and "Union (comma) reference in a value context is #VALUE!" (gen-m1, T-0134).
 
 use crate::expressions::parser::depth::{MAX_FORMULA_DEPTH, PRIMARY_DEPTH};
-use crate::expressions::parser::{ExpectedTokens, Node, Parser};
+use crate::expressions::parser::{ExpectedTokens, LeadGroup, Node, Parser};
 use crate::expressions::token::{Error, OpUnary, TokenType};
 use crate::expressions::types::CellReferenceRC;
 use crate::functions::Function;
@@ -93,11 +93,28 @@ impl Parser {
                 *written = written.saturating_add(1);
             }
         }
+        // A parenthesized `@` expression that can be the operand of `#` or `ANCHORARRAY` (it
+        // ends at a `#` or a `)`) remembers the levels (`ImplicitIntersection::grouped`).
+        if !after_at
+            && matches!(
+                self.lexer.peek_token(),
+                TokenType::Spill | TokenType::RightParenthesis
+            )
+        {
+            if let Node::ImplicitIntersection { grouped, .. } = &mut t {
+                *grouped = grouped.saturating_add(1);
+            }
+        }
         // An `@` operand prints its written levels back (`ImplicitIntersection::written`).
         if after_at {
             let inner = self.at_group.take().filter(|&(_, end)| end == close);
-            let levels = inner.map_or(0, |(levels, _)| levels).saturating_add(1);
-            self.at_group = Some((levels, self.lexer.get_position_index()));
+            let levels = inner.map_or(0, |(group, _)| group.levels).saturating_add(1);
+            let group = LeadGroup {
+                levels,
+                operands: chain_operands(&t),
+                of_range: self.lexer.peek_token() == TokenType::Colon,
+            };
+            self.at_group = Some((group, self.lexer.get_position_index()));
         }
         t
     }
@@ -173,13 +190,18 @@ impl Parser {
         if let Node::ParseErrorKind { .. } = t {
             return t;
         }
-        // An `@` group is the leftmost operand of an intersection only if it closes exactly there
-        // and holds a single operand: `@(A1):B1 C1` and `@(A1 B1) C1` would print parentheses
-        // the user did not write around that node (T-1134).
-        let mut stray_group = matches!(t, Node::OpIntersectKind { .. } | Node::OpUnionKind { .. })
-            || self
-                .at_group
-                .is_some_and(|(_, end)| end != self.lexer.get_position_index());
+        // An `@` group leads an intersection only if it closes exactly at the end of the first
+        // operand (`@(A1) B1`, `@(A1 B1) C1`, T-1134) or is the left corner of a range
+        // (`@(A1):B1 C1`, T-1200); any other would print parentheses the user did not write
+        // around that node.
+        let mut stray_group = matches!(t, Node::OpUnionKind { .. })
+            || self.at_group.is_some_and(|(group, end)| {
+                if group.of_range {
+                    group.operands != 1
+                } else {
+                    end != self.lexer.get_position_index()
+                }
+            });
         let mut depth = self.depth;
         let mut as_name = false;
         while !is_constant(&t)
@@ -241,6 +263,21 @@ impl Parser {
         }
     }
 
+    /// The error for a `:` or ANCHORARRAY operand that is not a reference expression
+    /// ([`is_reference_operand`]). Excel for the web refuses a workbook holding `=A1:(1/0)`,
+    /// `=(1/0):(A1 B1)`, `=(1/0):(A1 A2)` or `=ANCHORARRAY(1)` (`FileCorruptTryRepair`, one
+    /// scratch workbook per formula, T-1111), as it does a value operand of an intersection or
+    /// a union (docs/excel-semantics/references.md, T-1117).
+    pub(super) fn range_operand_error(&self) -> Node {
+        Node::ParseErrorKind {
+            formula: self.lexer.get_formula(),
+            expecting: vec![ExpectedTokens::Range],
+            position: self.lexer.get_position() as usize,
+            message: "The operands of a range must be references".to_string(),
+        }
+    }
+
+    /// `implicit [':' primary]`; both operands must be references (`range_operand_error`).
     pub(super) fn parse_range(&mut self) -> Node {
         let t = self.parse_implicit();
         if let Node::ParseErrorKind { .. } = t {
@@ -253,6 +290,9 @@ impl Parser {
             let p = self.parse_primary();
             if let Node::ParseErrorKind { .. } = p {
                 return p;
+            }
+            if !is_reference_operand(&t) || !is_reference_operand(&p) {
+                return self.range_operand_error();
             }
             if let Err(error) = self.grow(depth, self.depth) {
                 return error;
@@ -298,14 +338,14 @@ impl Parser {
             // operand of an intersection (`@(A1) B1`) is `lead`.
             let group = self.at_group.take();
             let whole = group.filter(|&(_, end)| end == self.lexer.get_position_index());
-            let written = whole.map_or(0, |(levels, _)| levels);
+            let written = whole.map_or(0, |(group, _)| group.levels);
             let lead = match group {
-                Some((levels, _))
+                Some((group, _))
                     if whole.is_none() && matches!(t, Node::OpIntersectKind { .. }) =>
                 {
-                    levels
+                    group
                 }
-                _ => 0,
+                _ => LeadGroup::default(),
             };
             self.at_paren = false;
             return Node::ImplicitIntersection {
@@ -313,6 +353,7 @@ impl Parser {
                 child: Box::new(t),
                 written,
                 lead,
+                grouped: 0,
             };
         }
         let primary = self.parse_primary();
@@ -322,6 +363,10 @@ impl Parser {
         let next_token = self.lexer.peek_token();
         if next_token == TokenType::Spill {
             self.lexer.advance_token();
+            // `x#` is stored as `_xlfn.ANCHORARRAY(x)`, so it takes the same operands.
+            if !is_reference_operand(&primary) {
+                return self.range_operand_error();
+            }
             if let Err(error) = self.grow(self.depth, 0) {
                 return error;
             }
@@ -420,7 +465,8 @@ fn has_negated_operand(node: &Node) -> bool {
 }
 
 /// Whether `node` is a reference expression, the only kind of operand Excel accepts for an
-/// intersection and for SUBTOTAL and AREAS arguments ([`Parser::function_call`])
+/// intersection, for the operands of `:`, `#` and ANCHORARRAY (T-1117) and for SUBTOTAL and AREAS
+/// arguments ([`Parser::function_call`])
 /// (docs/excel-semantics/references.md "Intersection operands must be
 /// references"): values, value operators, error literals other than `#REF!` and value
 /// functions make Excel refuse the formula. The accepted calls are the reference-returning
@@ -531,6 +577,18 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
     }
 }
 
+/// `text` (the printed `node`) as the operand of `#`: like [`tight_operand`], but an `@` operand
+/// prints the parentheses that were written and no others, `=@1#`, `=@A1:B2#`, `=(@1)#`
+/// (probes/colon-hash-value-operands E3, anchorarray-at-operand-kinds; T-1226, T-1246).
+pub(crate) fn spill_operand(text: String, node: &Node) -> String {
+    match node {
+        Node::ImplicitIntersection { grouped, .. } => {
+            (0..*grouped).fold(text, |text, _| format!("({text})"))
+        }
+        _ => tight_operand(text, node),
+    }
+}
+
 /// `text` (the printed `node`) as the operand of `@`. An intersection prints bare, as Excel does
 /// (`@A1:B2 B1`, T-1098), but a nested `@` needs parentheses, `@(@(A1 B1))` (T-1102), and any operand
 /// keeps the `written` levels it had, `@(A1 B1)`, `@(A1)`, `@((A1 B1))` (T-1109, T-1116).
@@ -551,28 +609,65 @@ pub(crate) fn at_operand(text: String, node: &Node, written: u8) -> String {
     (0..levels).fold(text, |text, _| format!("({text})"))
 }
 
-/// The text of the intersection chain `child` whose leftmost operand was written in `lead` levels
-/// of parentheses, `(A1) B1` (`@(A1) B1`, T-1134); `None` when there are none to print. `sub`
-/// prints an operand.
+/// The text of the intersection chain `child` that begins with a group written in `lead`
+/// (`(A1) B1`, `(A1 B1) C1`, `(A1):B1 C1`; `@(A1) B1`, T-1134, T-1200); `None` when there is none
+/// to print. `sub` prints an operand.
 pub(crate) fn lead_group_text(
     child: &Node,
-    lead: u8,
+    lead: LeadGroup,
     sub: &dyn Fn(&Node) -> String,
 ) -> Option<String> {
-    let mut rights = Vec::new();
+    let mut operands = Vec::new();
     let mut leftmost = child;
     while let Node::OpIntersectKind { left, right, .. } = leftmost {
-        rights.push(&**right);
+        operands.push(&**right);
         leftmost = left;
     }
-    if lead == 0 || rights.is_empty() {
+    operands.push(leftmost);
+    operands.reverse();
+    let covered = usize::from(lead.operands);
+    if lead.levels == 0
+        || covered == 0
+        || operands.len() < 2
+        || covered > operands.len()
+        || (!lead.of_range && covered == operands.len())
+    {
         return None;
     }
-    let mut text = (0..lead).fold(sub(leftmost), |text, _| format!("({text})"));
-    for right in rights.into_iter().rev() {
-        text = format!("{text} {}", intersection_operand(sub(right), right, false));
+    let wrap = |text: String| (0..lead.levels).fold(text, |text, _| format!("({text})"));
+    let operand = |n: &Node| intersection_operand(sub(n), n, false);
+    let (mut text, next) = if lead.of_range {
+        // `(A1):B1`: the group is the left corner of the leftmost operand, a range.
+        let mut corner = operands[0];
+        while let Node::OpRangeKind { left, .. } = corner {
+            corner = left;
+        }
+        let range_text = sub(operands[0]);
+        let corner_text = sub(corner);
+        let rest = range_text.strip_prefix(&corner_text)?;
+        (format!("{}{rest}", wrap(corner_text)), 1)
+    } else {
+        let mut group = sub(operands[0]);
+        for n in &operands[1..covered] {
+            group = format!("{group} {}", operand(n));
+        }
+        (wrap(group), covered)
+    };
+    for n in &operands[next..] {
+        text = format!("{text} {}", operand(n));
     }
     Some(text)
+}
+
+/// The number of operands of the intersection chain `node`: 1 for any other node.
+fn chain_operands(node: &Node) -> u8 {
+    let mut count: u8 = 1;
+    let mut leftmost = node;
+    while let Node::OpIntersectKind { left, .. } = leftmost {
+        count = count.saturating_add(1);
+        leftmost = left;
+    }
+    count
 }
 
 /// The printed `@` operand `child` with the parentheses it was written in: `written` around the
@@ -580,7 +675,7 @@ pub(crate) fn lead_group_text(
 pub(crate) fn at_text(
     child: &Node,
     written: u8,
-    lead: u8,
+    lead: LeadGroup,
     sub: &dyn Fn(&Node) -> String,
 ) -> String {
     let operand =

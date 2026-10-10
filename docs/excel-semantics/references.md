@@ -35,7 +35,15 @@ CHOOSE hands a span to an aggregate the same way: `SUM(CHOOSE(1,Data1:Data3!A1:A
 `=CHOOSE(1,Data1:Data3!A1)` is `#VALUE!`, not the `#REF!` of the bare span. A span bound by LET or LAMBDA,
 written out or from IF or CHOOSE, is `#VALUE!` to every value reader: `=x`, `x+1`, `ROWS(..)`, `INDEX(..,2)`
 (`LET(x,CHOOSE(1,Data1:Data3!A1),x)`, `LAMBDA(x,x)(CHOOSE(1,..))`); only an aggregate reads it
-(`LET(x,CHOOSE(1,Data1:Data3!A1),SUM(x))` = 111). `IF(TRUE,Data1:Data3!A1) A1` is `#VALUE!`. MAX skips text
+(`LET(x,CHOOSE(1,Data1:Data3!A1),SUM(x))` = 111). A span bound directly behaves the same way, like the bare
+span (probes/3d-ref-let-bound-span, excel-graph, 2026-10-09, T-1158). Aggregates read it, including through a second
+variable or a LAMBDA: `LET(x,Data1:Data3!A1,y,x,SUM(y))`, `LAMBDA(x,SUM(x))(Data1:Data3!A1)` and
+`LET(x,..,SUM(IF(TRUE,x)))` are 111, `COUNT(x)` is 3, `SUM(x,x)` is 222 and `MAX(x)+0` is 100. `INDEX(x,1)`, `ROWS(x)`,
+`x+1` and `LAMBDA(x,x)(..)` are `#VALUE!`, as `INDEX(Data1:Data3!A1,1)` and `ROWS(Data1:Data3!A1)` are, and `ISREF(x)` is
+FALSE, as `ISREF(Data1:Data3!A1)` is. More readers (probes/3d-ref-let-bound-span-readers, same date) also treat it
+like the bare span. CONCAT and TEXTJOIN walk it (`"110100"`, `"1,10,100"`). AGGREGATE(9,0,..), AREAS and
+COUNTBLANK are `#VALUE!`, and `SUM((x,Data1!B1))` is `#VALUE!`. The bare union `SUM((Data1:Data3!A1,Data1!B1))` is
+`#NAME?`, not `#VALUE!` (the engine matches). `IF(TRUE,Data1:Data3!A1) A1` is `#VALUE!`. MAX skips text
 behind IF bound by LET or LAMBDA (`LET(x,IF(TRUE,K1),MAX(x))` = 0 with K1 text) as it does for IF written
 in place.
 Evidence: probes/3d-ref-values, probes/3d-ref-functions incl. C15:C22 (excel-graph, 2026-10-06),
@@ -52,10 +60,10 @@ Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` 
 crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
 the `#VALUE!` through `evaluate_single_sheet_arg` (functions/util.rs), which passes IF's chosen branch through
 the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their argument with `evaluate_reference_arg` and refuse a 3-D result with `three_d_needs_one_sheet` (T-1063); IF-wrapped spans inside AREAS and VLOOKUP go through that path, HLOOKUP and COUNTBLANK read it through `evaluate_single_sheet_arg` (T-1170). A span whose end is not a sheet is `#NAME?` (`Model::wrong_sheet_error`, reference_operators.rs); `@` of a multi-sheet span is `#REF!` (`evaluate_at_operand_reference`).
-CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET is still `#VALUE!` in the
-engine, also to an aggregate (probes/3d-ref-choose-let C3:C4, 3d-ref-let-values C7, known failures, T-1158;
-`Model::bind_argument` binds `#VALUE!` for a span so no value reader sees a range across sheets).
-Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1170
+CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET or LAMBDA is a `Binding::Span`
+(`Model::bind_argument`, functions/logical/let.rs). Only `Model::variable_reference` hands it out as a range, so it reaches the aggregates;
+every value read is `three_d_needs_one_sheet`, and ROWS/COLUMNS and COUNTBLANK refuse it through `RefArg::into_single_sheet_area` (T-1158).
+Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
@@ -100,11 +108,17 @@ Outside aggregate arguments the reference-ness is invisible: `VLOOKUP(IF(TRUE,Da
 today and regress if IF returns a reference everywhere).
 Evidence: gen-m2/96a0952412cefa6c A88, 942bdade381b7537 A212, dd99be1f2454159f A264,
 04cfd82f54dbc2b2 A182, dd99be1f2454159f A110, d0c29dd5c530e28c A112 (Calc sheet). Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
-HLOOKUP's result is a reference too: `COUNT(…,HLOOKUP(…))` skips a FALSE it picks (gen-m2/60a543744fc4a8f7 A200).
-Status: VERIFIED
-The engine passes the cell HLOOKUP or VLOOKUP picks from a range table to an aggregate as a reference
-(T-0235), and an INDEX intersection operand (`INDEX(A1:A2,2) A1:A2`) is the cell it picks.
-Status: UNVERIFIED for VLOOKUP (by analogy with HLOOKUP) and for INDEX past its range as an operand (`#REF!`); probe task T-0292.
+VLOOKUP's and HLOOKUP's picked cell is a reference to an aggregate only when the row/column index argument is itself a
+cell reference: `COUNT(HLOOKUP(42,F5:G6,G5))` (G5 holds 2, picking FALSE) is 0, `SUM(VLOOKUP(2,I5:J7,A2))` picking text "5" is 0,
+`MAX(VLOOKUP(3,I5:J7,A2))` picking text "x" is 0 (probes/lookup-pick-aggregates P1-P3, P5, P6, Q1, Q2, Q4, Q6; a parenthesized
+reference counts as one). With a literal or computed index (`INT(Data!A10)`) the pick is a plain value: `COUNT(VLOOKUP(1,A1:B3,2,FALSE))`
+picking FALSE is 1, `SUM` of a picked "5" is 5, `MAX` of a picked "x" is `#VALUE!` (D1-D3, D13, E1-E14, P4, Q3). That holds for exact and
+approximate match, a fractional literal index, a table on another sheet, and array tables (D4, D5, D8, D9); a reference
+lookup value changes nothing (P8). `ISREF` of the lookup result is FALSE either way (D12, E6, E12, P7), so the reference-ness is
+visible only to aggregates. This explains gen-m2/60a543744fc4a8f7 A200 (index `Data!C9` is a cell, the picked FALSE is skipped: -2;
+replicated in L1-L7). A bare `=HLOOKUP(..)` is the picked value (N1-N7).
+`INDEX(A1:A2,3) A1:A2` is `#REF!`, and so is `SUM` of it (D10, D11); `INDEX(A1:A3,2) A1:A3` is the picked cell (E16, E17).
+Status: VERIFIED (excel-graph 2026-10-09, T-0292). The engine matches: `hlookup_impl`/`vlookup_impl` give the pick as a reference only when `lookup_index_arg` returned a reference (T-0295). Index shapes other than a plain/parenthesized cell reference or INT(ref) (INDEX, IF, CHOOSE, OFFSET, names, multi-cell ranges) are unprobed; the engine treats any range-valued index as a reference (T-0299).
 ISREF sees the same references: `ISREF(INDEX(A1:A2,2))`, `ISREF(IF(TRUE,A1))` and `ISREF(CHOOSE(1,A1))` are TRUE,
 while `ISREF(INDEX(A1:A2,3))` (an error), `ISREF(IF(TRUE,1))` and `ISREF(CHOOSE(1,5))` are FALSE (probes/isref-function-results,
 excel-graph 2026-10-05; ironcalc ISREF_ISFORMULA!F9 `ISREF(INDEX(A1,1,2,2))` = FALSE). The engine matches all six (T-0235).
@@ -116,7 +130,7 @@ TRUE, and so is `ISREF(XLOOKUP(2,{1;2;3},B1:B3))` (an array lookup vector, a ran
 A defined name that stands for a cell or range is a reference to ISREF, a single cell included
 (`ISREF(TextCell)` and `ISREF(Cells)` TRUE; a LAMBDA name, a constant name `=7` and an undefined name are FALSE), and FILTER's `if_empty` range is its
 values, never a reference (`FILTER(A1:A1,B1:B1,D1:D2)` spills D1:D2, `ISREF(FILTER(..))` FALSE, `SUM(..)` = 30).
-Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; to be added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
+Evidence: probe isref-names-filter-if-empty (oracle: excel-graph, 2026-10-06, T-0940; re-confirmed 2026-10-09 with the LAMBDA name body stored as `_xlpm.x`, T-1209), matching upstream IronCalc ISREF.xlsx (ironcalc 9add6b67; Excel 16.03 cached values; to be added to calc_tests by T-0965) Sheet1!A14-A18, D11, D12, D14, D17, D20. ISREF of a LET/LAMBDA variable
 bound to a reference is TRUE (A19-A26; implemented by T-0223, see "Names, LET/LAMBDA variables and @ are
 references" below; T-0963 checks the ISREF.xlsx cells once T-0965 adds the workbook).
 Implemented in: `evaluate_aggregate_arg` in `crates/rustsheet-engine/src/functions/util.rs` (IF, INDEX; used by SUM,
@@ -251,8 +265,8 @@ call's own error passes through (`DROP(A1:B3,5)` and `TAKE(A1:B3,0)` are `#CALC!
 and a not-found XLOOKUP with a range `if_not_found` is that reference (`=C1:C3 XLOOKUP(9,A1:A3,B1:B3,C1)` is
 C1, and ISREF of it TRUE) (probes/intersection-lookup-operand-errors, excel-graph 2026-10-07).
 - FORMULATEXT of an `@` operand of `:` or `@` keeps the written parentheses: `=A1:(@B1)` stays `=A1:(@B1)` (spills `1, 2` across H10:I10), `=(@(A1 B1)):C3` stays `=(@(A1 B1)):C3` and `=@(@(A1 B1))` stays `=@(@(A1 B1))` (both `#NULL!`). The engine drops the inner parentheses on the last two (probes/at-operand-formulatext, T-1104; T-1116).
-- `=ANCHORARRAY(D1)` prints `=D1#` and `=ANCHORARRAY(INDEX(D1:D2,1))` prints `=INDEX(D1:D2,1)#`, `ANCHORARRAY(D1)` and `D1#` are the same stored file text (`_xlfn.ANCHORARRAY(D1)`), so this is how Excel prints that stored form; how a typed `ANCHORARRAY(D1)` prints is not probed. Engine requirement for T-1109: xlsx import must not print the automatic `@` it adds inside `#`. Stored as `_xlfn.ANCHORARRAY((@A1:B2))`, `=(@A1:B2)#` loads, prints as `=(@A1:B2)#` and is `#VALUE!` from D20 (no intersecting cell) (probes/anchorarray-at-operand, T-1111; the engine matches since T-1115). UNVERIFIED: the engine passes any `@` error through `#` (`=(@(A1 B1))#` gives `#NULL!`), and gives the left error when both operands of `:` are errors; only the `#VALUE!` and right-operand cases are probed. `=ANCHORARRAY(1)` is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1111; engine in T-1117). `=@D1#` prints as `=@D1#` and evaluates to `#VALUE!` (probes/at-operand-formulatext, T-1104).
-Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098, T-1103, T-1104, T-1109, T-1111, T-1115, T-1117
+- `=ANCHORARRAY(D1)` prints `=D1#` and `=ANCHORARRAY(INDEX(D1:D2,1))` prints `=INDEX(D1:D2,1)#`, `ANCHORARRAY(D1)` and `D1#` are the same stored file text (`_xlfn.ANCHORARRAY(D1)`), so this is how Excel prints that stored form; how a typed `ANCHORARRAY(D1)` prints is not probed. Engine requirement for T-1109: xlsx import must not print the automatic `@` it adds inside `#`. Stored as `_xlfn.ANCHORARRAY((@A1:B2))`, `=(@A1:B2)#` loads, prints as `=(@A1:B2)#` and is `#VALUE!` from D20 (no intersecting cell) (probes/anchorarray-at-operand, T-1111; the engine matches since T-1115). UNVERIFIED: the engine passes any `@` error through `#` (`=(@(A1 B1))#` gives `#NULL!`), and gives the left error when both operands of `:` are errors; only the `#VALUE!` and right-operand cases are probed. `=ANCHORARRAY(1)` is refused: Excel for the web will not open a workbook holding it (`FileCorruptTryRepair`, T-1111); the engine reads it as a syntax error since T-1117. `=@D1#` prints as `=@D1#` and evaluates to `#VALUE!` (probes/at-operand-formulatext, T-1104). Value operands of `:` and `#` that T-1111 did not probe (T-1216): see the entry "FORMULATEXT keeps the parentheses of an `@` operand" below.
+Tasks: T-0138, T-0148, T-0149, T-0042, T-0161, T-0165, T-1094, T-1098, T-1103, T-1104, T-1109, T-1111, T-1115, T-1117, T-1216
 
 ## Calling a parenthesized operand
 Rule: a parenthesized operand written directly before `(`, with no space, is called like a LAMBDA
@@ -281,6 +295,15 @@ value, the call gives odd results, without the arguments mattering: a number or 
 `#NAME?`;0 and `ROWS(LET(f,{1,2;3,4},f(2)))` is 2. Bound to a LAMBDA it is called
 (`=LET(f,LAMBDA(x,x+1),f(2))` is 3). The case builder writes the called name as `_xlpm.f(2)`, and
 Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
+Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name bound to a union is `#REF!` too (`=LET(f,(A1,A2),f(2))`,
+`=LET(f,(A1,A2),f())`, `=LAMBDA(f,f(2))((A1,A2))`), as is one bound to `XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,1)`, `DROP(A1:A3,1)`,
+`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; `bind_argument` (functions/logical/let.rs) binds XLOOKUP, TAKE, DROP and TRIMRANGE as the reference they pick (T-1232; whether the bound name is ISREF is not probed); erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
+(H5:I5), `=LET(f,LAMBDA(x,x+1),f(1/0))` is `#DIV/0!`). `=LAMBDA(f,f(2))()` is a call with too few arguments, not an empty element: it is
+an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it, H15:H17); the bare cell returns an error type the oracle client cannot
+decode (probes/let-name-call-forms description). UNVERIFIED: the engine's mapping of an empty element to `#NAME?` (`called_value` in
+lambda.rs). A workbook holding `=LAMBDA([f],f(2))()` (an omitted optional parameter) is refused by Excel for the web (`FileCorruptTryRepair`,
+`unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the union forms (H1, H2, H13) are `#REF!` as in Excel since T-1231; the engine gives `#NAME?`/`#SPILL!` for the
+XLOOKUP/TAKE/DROP/TRIMRANGE forms (T-1232); the rest match.
 A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
 `#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
 Excel for the web refuses a workbook holding `=LET(f,"",f(2))` (`createSession` fails, three scratch
@@ -289,7 +312,7 @@ Evidence: probes/paren-call-operands H1:H10, probes/paren-call-empty-args, probe
 probes/paren-call-if-lambda, probes/paren-call-intersection, probes/paren-call-function-ref and
 probes/intersection-operands H13 (oracle: excel-graph, 2026-10-05 and 2026-10-07, T-0138, T-0149);
 called LET names: probes/let-name-call, let-name-call-refs, let-name-call-arrays, let-name-call-bool and
-let-name-call-text-*, let-bind-reference-forms, called LAMBDA parameters: probes/lambda-param-call (oracle: excel-graph,
+let-name-call-text-*, let-name-call-forms (T-1224), let-bind-reference-forms, called LAMBDA parameters: probes/lambda-param-call (oracle: excel-graph,
 2026-10-09, T-1092).
 Callee forms (probes/paren-call-callee-offset and -indirect H1, oracle: excel-graph, 2026-10-07, T-1094):
 `=(OFFSET(A1,0,0))(2)` and `=(INDIRECT("A1"))(2)` load and are `#REF!`, calls of a reference. Excel for the
@@ -305,7 +328,7 @@ functions/logical/lambda.rs (`Model::call_callee`, `Model::call_variable` for a 
 or LAMBDA parameter);
 functions/logical/let.rs (`Model::bind_argument`, which binds in reference context); model.rs (the
 callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
-Tasks: T-0149, T-1092
+Tasks: T-0149, T-1092, T-1224, T-1231, T-1232
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
@@ -457,7 +480,7 @@ Rule: how Excel parses and evaluates unions beyond the forms gen-m1 measured.
   `LET(x,mu,SUM(x))` 6, `SUM(FREQUENCY(mu,2))` 2 and `COUNTBLANK(mu)` `#VALUE!`. A name whose body is not a union keeps
   its path: `FREQUENCY(arr,2)` with `arr` = `{1,2,3}` is {2;1}. So is an array behind another name (`aa` = `=arr`), a LET variable or IF (H19:H22). `COUNTBLANK(bad)` with `bad` = `=1+"a"` is `#VALUE!` in
   Excel (engine 0, T-1199). The self-referential case is an engine extension of probes/defined-name-formula-bodies H11
-  bounded per decision 0014, not probed. A sheet-local `Print_Area` is T-1193.
+  bounded per decision 0014, not probed. A sheet-local `Print_Area` works the same (probes/multiarea-printarea, T-1193; storage in xlsx-storage.md "Built-in defined names").
 Evidence: probes/union-accepted H1:H9, probes/union-neg-operand H1:H2, probes/union-defined-name
 H1:H5 (oracle: excel-graph, 2026-10-06, T-0187). The refusals come from scratch workbooks, one per
 formula, which were not kept as cases.
@@ -701,8 +724,17 @@ A11/B11 (control) (oracle: excel-graph, 2026-10-08, T-1138).
 Status: VERIFIED (web)
 Implemented in: `get_range` (crates/rustsheet-engine/src/reference_operators.rs) and `is_reference`
 (crates/rustsheet-engine/src/functions/information/mod.rs), which is TRUE for `a:b` only when `get_range` gives
-a range (T-1166). UNVERIFIED: the same rule makes ISREF FALSE when an operand errors (`A1:INDEX(A1:A3,5)`) or is
-not a reference (`A1:IF(TRUE,1)`); only the two-sheet form has oracle evidence (T-1177 probes the rest).
+a range (T-1166).
+The same holds when an operand errors or is not a reference (probes/isref-range-operands, excel-graph
+2026-10-09, T-1177): `ISREF(A1:INDEX(A1:A3,5))` (`#REF!`, E1), `ISREF(INDEX(A1:A3,5):A1)`, `ISREF(A1:(A1 B2))`
+(`#NULL!`), `ISREF(A1:IF(TRUE,1))` and `ISREF(A1:CHOOSE(1,5))` (`#VALUE!`) are FALSE, ISERROR TRUE; with a
+reference, `ISREF(A1:INDEX(A1:A3,2))` and `ISREF(A1:(A1:B2 B1:B3))` are TRUE (`SUM` 3 and 33).
+An IF corner is the reference it picks, on either side: `ISREF(A1:IF(TRUE,B2))`, `ISREF(IF(TRUE,B2):A1)` and
+`ISREF(A1:IF(FALSE,B2,B3))` are TRUE, `SUM(A1:IF(TRUE,B2))` is 33, `ROWS(A1:IF(TRUE,B3))` 3 and `=A1:IF(TRUE,A1)`
+1. CHOOSE likewise (`SUM(A1:CHOOSE(1,B2))` = 33), which the engine already matched; the IF arm was added to
+`range_operand` (T-1177). UNVERIFIED (T-1227): an IF corner that picks a union (the engine gives `#VALUE!`),
+an error, or a 3-D span, and an IF with an array condition. `=A1:(1/0)` is refused
+by the Graph workbook builder (`unsupportedWorkbook`, as T-1111 found below), so it is not in the probe.
 Tasks: T-1138, T-1166, T-1177
 
 ## Sheet-qualified column or row corners on both sides are not a range
@@ -763,7 +795,9 @@ J1352 is text, and `T(H12:J12)` from column M (no intersection) is "", not `#VAL
 Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!M1352, N1352,
 O1352 (all top-left cells are non-text: 545, 1.001, blank).
 Status: VERIFIED for these cells; UNVERIFIED (probe pending, T-0985): whether T reads the top-left
-cell or is always "" for a multi-cell range, N's behaviour, and dynamic-array formulas.
+cell or is always "" for a multi-cell range, and N's behaviour. In a dynamic-array formula T does not lift
+over the range either: `T(A1:A3)` with A1 = 5, A2 = "ab", A3 = TRUE is a single "", no spill (probes/text-argument-modes
+F9, excel-graph, 2026-10-09, T-1087).
 Tasks: T-0985
 
 ## FORMULATEXT keeps the parentheses of an `@` operand; ANCHORARRAY is `#`; `:` passes an error operand on
@@ -782,10 +816,19 @@ Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/
 D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
 question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), printed by `at_operand`
-(parser/reference_operators.rs; T-1116).
+(parser/reference_operators.rs; T-1116); the refusals in `Parser::parse_range`, `Parser::parse_implicit`
+and the ANCHORARRAY call in parser/operands.rs (T-1117).
 Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand parentheses: every level is kept" below (T-1132).
-Engine gap: the refused forms, which the engine evaluates (T-1117).
-Tasks: T-1109, T-1111, T-1115, T-1116, T-1117
+Engine rule (T-1117): the parser takes for each operand of `:`, for the argument of ANCHORARRAY and for
+the operand of `#` (stored as `_xlfn.ANCHORARRAY`) exactly the reference operands of the intersection
+(`is_reference_operand`, entry "Intersection operands must be references") and reads every other operand
+as a syntax error, so the four refused forms are no longer evaluated (they used to be, and `=A1:(1/0)`
+printed as `=A1:1/0`, which does not re-parse to the same formula). T-1216 (excel-graph, 2026-10-09; one scratch workbook per formula, a control `=SUM(A1:B1)` in the same shape loaded) verified the inferred refusals: Excel refuses (`FileCorruptTryRepair`)
+`=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`, `=ANCHORARRAY(A1+0)` and the negated
+references `=(-A1):B1`, `=A1:(-B1)` and `=(-A1)#` (unlike the union, which accepts `(-A1,B1)`). It loads, as `#VALUE!`, `=A1:LAMBDA(x,x)`, `=A1:(@1)` and
+`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these (`=ANCHORARRAY(@1)` evaluates to `#VALUE!` and prints bare as `=@1#`; T-1226). Resolved by T-1240 (below): the print follows the written parentheses. Since T-1246 the engine prints the parentheses that were written around the `@` (`ImplicitIntersection::grouped`, set for a group ending at `#` or `)`) and no others. The `#VALUE!` for the `@` of a non-number value is probed for `@"a"` and `@SUM(A1)` (T-1240); `@TRUE` is still inferred. The printed `=@1#` re-parses as `@(1#)`, which the engine refuses; move and paste print `(@1)#`, which round-trips. So the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (`@TRUE` is inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
+Stored `ANCHORARRAY` of an `@` operand (probes/anchorarray-at-operand-kinds, excel-graph, T-1240): FORMULATEXT follows the **written parentheses**, not the operand kind. Written without parentheses, every operand prints bare: `=@A1:B2#`, `=@"a"#`, `=@SUM(A1)#`, `=@INDEX(D1:D2,1)#`, `=@LAMBDA(x,x)#`, `=@-1#`; `ANCHORARRAY((@1))` prints `=(@1)#`. Values: `@A1:B2`, `@1`-in-parentheses, `@"a"`, `@SUM(A1)`, `@LAMBDA(x,x)` and `@-1` are `#VALUE!`; `ANCHORARRAY(@INDEX(D1:D2,1))` spills the spill range of D1 (the `@` of a reference keeps the reference). `ANCHORARRAY(@1/0)` is refused by Excel for the web (`FileCorruptTryRepair`, one scratch workbook). The engine matches the prints since T-1246 (`spill_operand`, parser/reference_operators.rs); move and paste still print `(@1)#`, which round-trips (the bare `@1#` re-parses as `@(1#)`). `@-1` and `@INDEX` are T-1247. UNVERIFIED (extends the written-parentheses rule): an `@` of a space intersection (`ANCHORARRAY(@(A1:B2 B1))` prints `=@A1:B2 B1#`) and more than one written level (`ANCHORARRAY(((@1)))` prints `=((@1))#`).
+Tasks: T-1109, T-1111, T-1115, T-1116, T-1117, T-1216, T-1226, T-1240, T-1246, T-1247
 
 ## `:` joins multi-cell operands and names into their bounding box
 Rule: the operands of `:` may be multi-cell references or defined names (a parenthesized body
@@ -810,12 +853,12 @@ A body that is an IF or CHOOSE follows the same rule: one that picks a scalar is
 `=IF(FALSE,5,Sheet1!$B$1:$B$3)` and `=CHOOSE(1,Sheet1!$B$1:$B$3,5)` give 1; `=IF(TRUE,Sheet1!$C$2)` and
 `=CHOOSE(1,Sheet1!$C$2)` give 1 for an empty cell; `=IF(TRUE,Sheet1!$C$3)` and `=IF(TRUE,Sheet1!$C$1)` give 0 for a
 number and an error cell; CHOOSE was probed with the empty cell only) (probes/countblank-formula-names-b, excel-graph,
-2026-10-09, T-1207). UNVERIFIED: LET bodies. The case builder does not write `_xlpm.` in defined-name bodies, so Excel
-read the LET variable as an undefined name (`#NAME?`) and no value exists (T-1209); a name whose body is another
-formula name is unprobed too.
-Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-names-b A1:A13 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
-Status: VERIFIED for non-LET bodies. Implemented in: `fn_countblank` (functions/statistical/count.rs).
-Tasks: T-1199, T-1207
+2026-10-09, T-1207). LET bodies behave like the other bodies once stored with `_xlpm.` variables (T-1209): `=LET(x,5,x)` is `#VALUE!`,
+`=LET(x,1/0,x)` is `#DIV/0!`, `=LET(x,Sheet1!$B$1:$B$3,x)` and `=LET(x,Sheet1!$C$2,x)` (empty cell) give 1
+(probes/countblank-formula-names-b A14:A17, excel-graph, 2026-10-09). A name whose body is another formula name is unprobed.
+Evidence: probes/countblank-formula-names A1:A21 and probes/countblank-formula-names-b A1:A17 (excel-graph, 2026-10-09); probes/union-defined-name-uses H12.
+Status: VERIFIED. Implemented in: `fn_countblank` (functions/statistical/count.rs).
+Tasks: T-1199, T-1207, T-1209
 
 ## `@` operand parentheses: every level is kept; a group that is only part of the operand is kept too
 Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` operand: `=@((A1))` and
@@ -824,17 +867,22 @@ Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` op
 only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
 (`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) until T-1134 (`ImplicitIntersection::lead`). Excel keeps the group for every shape where it is
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
-print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches the last two and
-prints the first three without the group (`=@A1 B1 C1` for both of the first two, `=@A1:B1 C1`): T-1200. The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
+print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches all five
+(`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
+More shapes (probes/at-group-leftmost-shapes, excel-graph, 2026-10-09, T-1245): Excel prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`,
+`=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1`, `=@(A1):OFFSET(B1,0,0) C1`, `=@((A1 B1) C1) D1`, `=@(A1):(B1) C1`, `=@(A1):B1`
+(`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches the first six and the last; it prints `=@((A1 B1) C1) D1` as
+`=@(A1 B1 C1) D1`, `=@(A1):(B1) C1` as `=@(A1):B1 C1` and `=@(A1):B1` as `=@A1:B1` (T-1251).
+The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
-level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; whether Excel keeps those inner
-parentheses is UNVERIFIED (T-1167, T-1178); the likely answer is yes, as Excel keeps written parentheses elsewhere
-(probes/union-cut-precedence F6 prints `=SUM(((A1,B1) B1))`, kept for a cut of a parenthesized union since T-1176).
-Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147).
+level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
+written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
+excel-graph 2026-10-09, T-1178; engine: T-1244).
+Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134
+Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;
@@ -848,3 +896,16 @@ reference) as the ref argument, `RANK(5,IF(A1:C1>0,A1:C1))`, is `#VALUE!` spille
 Evidence: probes/multiarea-order-stats (excel-graph, 2026-10-09, T-1152). Ours: matches (the RANK-of-array row since T-1203; see statistics.md "RANK of a non-reference array").
 Status: VERIFIED (excel-graph)
 Tasks: T-1068, T-1152, T-1203
+
+## A structured reference to a table whose stored range does not parse is `#REF!`
+Rule: when a table's stored `ref` is not a valid range (an untrusted or corrupt xlsx), every structured
+reference to that table evaluates to `#REF!`. This is the choice made when the engine's `expect` on the parse
+was removed (a panic on untrusted input is forbidden); the neighbouring cases of a missing table or a missing
+table sheet are parse errors, so the two differ. Excel never writes such a `ref` and its handling of a file that
+has one is unknown (likely repair or refusal). The same holds for a stored header or totals row count that
+does not fit the row arithmetic (a count above `i32::MAX`, or one that overflows `i32` with the range's rows): `#REF!`, not a
+wrap or a panic (T-1234).
+Evidence: none for Excel; input hardening (CLAUDE.md directive 5).
+Status: DEVIATION (decision 0014)
+Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
+Tasks: T-1210, T-1234

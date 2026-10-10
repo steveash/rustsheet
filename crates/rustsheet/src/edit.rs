@@ -149,8 +149,11 @@ enum Undo {
         index: u32,
         sheet: Box<Worksheet>,
     },
-    /// A workbook-scoped defined name added by `define_name`.
-    DefinedName(String),
+    /// A defined name added by `define_name` (`sheet_id: None`) or `define_sheet_name`.
+    DefinedName {
+        name: String,
+        sheet_id: Option<u32>,
+    },
     /// A table added by `add_table`.
     Table(String),
     /// A row's hidden flag as it was before `set_row_hidden`.
@@ -413,14 +416,42 @@ impl Txn<'_> {
     /// [`EditError::DefinedName`] when the name is not a valid identifier, already exists, or the
     /// formula does not parse.
     pub fn define_name(&mut self, name: &str, formula: &str) -> Result<(), EditError> {
+        self.add_defined_name(name, None, formula)
+    }
+
+    /// Adds a sheet-scoped defined name, as Excel's `Sheet1!Print_Area` or a name whose scope is
+    /// one sheet: formulas on that sheet see it, and it shadows a workbook name of the same name
+    /// there. Otherwise as [`Txn::define_name`].
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet; otherwise as [`Txn::define_name`].
+    pub fn define_sheet_name(
+        &mut self,
+        sheet: SheetId,
+        name: &str,
+        formula: &str,
+    ) -> Result<(), EditError> {
+        self.add_defined_name(name, Some(sheet), formula)
+    }
+
+    fn add_defined_name(
+        &mut self,
+        name: &str,
+        sheet: Option<SheetId>,
+        formula: &str,
+    ) -> Result<(), EditError> {
+        let scope = sheet.map(|id| sheet_index(self.model, id)).transpose()?;
         // Stored without the `=`, as xlsx `definedName` text is: the engine reads a name body as
         // a reference only in that form.
         let body = formula.trim();
         self.model
-            .define_name(name, None, body.strip_prefix('=').unwrap_or(body))
+            .define_name(name, scope, body.strip_prefix('=').unwrap_or(body))
             .map_err(EditError::DefinedName)?;
         self.sheet_op = true;
-        self.undo.push(Undo::DefinedName(name.to_string()));
+        self.undo.push(Undo::DefinedName {
+            name: name.to_string(),
+            sheet_id: sheet.map(SheetId::get),
+        });
         Ok(())
     }
 
@@ -556,8 +587,14 @@ fn roll_back(model: &mut Model, undo: Vec<Undo>, re_evaluate: bool) {
                 let undone = model.restore_sheet(index, *sheet);
                 debug_assert!(undone.is_ok(), "undo of delete_sheet failed: {undone:?}");
             }
-            Undo::DefinedName(name) => {
-                let undone = model.delete_defined_name(&name, None);
+            Undo::DefinedName { name, sheet_id } => {
+                // Undo runs in reverse, so the name's sheet still exists here.
+                let scope = sheet_id
+                    .map(|id| sheet_index(model, SheetId::new(id)))
+                    .transpose();
+                let undone = scope
+                    .map_err(|e| e.to_string())
+                    .and_then(|scope| model.delete_defined_name(&name, scope));
                 debug_assert!(undone.is_ok(), "undo of define_name failed: {undone:?}");
             }
             Undo::Table(name) => {

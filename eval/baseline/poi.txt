@@ -314,8 +314,6 @@ F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!H8
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!I18
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O3
 F	poi/FormulaEvalTestData_Copy.xlsx	FinanceLibTests!O5
-F	poi/GeneralFormatTests.xlsx	Tests!A27
-F	poi/GeneralFormatTests.xlsx	Tests!A61
 F	poi/HsGetVal.xlsx	Sheet1!B5
 F	poi/HsGetVal.xlsx	Sheet1!C5
 F	poi/LIBRE_OFFICE-128382-0.xlsx	!EngineError

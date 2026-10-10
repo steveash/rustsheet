@@ -21,3 +21,15 @@ def test_build_xlsx_without_names_has_none() -> None:
     xlsx = build_xlsx({"sheets": [{"name": "Sheet1", "cells": {"A1": 1}}]})
     workbook = zipfile.ZipFile(io.BytesIO(xlsx)).read("xl/workbook.xml").decode()
     assert "definedName" not in workbook
+
+
+def test_build_xlsx_prefixes_let_variables_and_future_functions_in_names() -> None:
+    xlsx = build_xlsx(
+        {
+            "sheets": [{"name": "Sheet1", "cells": {"A1": 1}}],
+            "names": {"letn": "=LET(x,5,x)", "fut": "=DAYS(2,1)"},
+        }
+    )
+    workbook = zipfile.ZipFile(io.BytesIO(xlsx)).read("xl/workbook.xml").decode()
+    assert '<definedName name="letn">_xlfn.LET(_xlpm.x,5,_xlpm.x)</definedName>' in workbook
+    assert '<definedName name="fut">_xlfn.DAYS(2,1)</definedName>' in workbook

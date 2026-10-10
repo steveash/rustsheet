@@ -155,6 +155,20 @@ impl RefArg {
         }
     }
 
+    /// [`RefArg::into_single_area`] where the area must sit on one sheet: a 3-D range (a span
+    /// bound by LET, from IF or CHOOSE) is `#VALUE!`, as the written span is there
+    /// (`ROWS(x)`, `COUNTBLANK(x)` for `x` = `Data1:Data3!A1`: probes/3d-ref-let-bound-span C7,
+    /// 3d-ref-let-bound-span-readers C11, 3d-ref-let-values C5; T-1158). Not every caller of
+    /// `into_single_area` may refuse one: making that refuse 3-D ranges regressed probe cells.
+    pub(crate) fn into_single_sheet_area(self, cell: CellReferenceIndex) -> CalcResult {
+        match self {
+            RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
+                three_d_needs_one_sheet(cell)
+            }
+            other => other.into_single_area(cell),
+        }
+    }
+
     /// The argument where only one area is taken: a reference of several areas is `#VALUE!`,
     /// as in a value context, and one range is a `CalcResult::Range`.
     pub(crate) fn into_single_area(self, cell: CellReferenceIndex) -> CalcResult {
@@ -167,13 +181,17 @@ impl RefArg {
 }
 
 /// What a LET variable or a LAMBDA parameter is bound to: a value (a single reference
-/// included), or the areas of a union, which only reference context reads as such
-/// ([`Model::variable_reference`]); everywhere else it is `#VALUE!`, as `LET(x,(A1,B2),x)` is
-/// (probes/multiarea-let H3).
+/// included), the areas of a union, or a 3-D span. Only reference context reads the last two as
+/// such ([`Model::variable_reference`]); everywhere else they are `#VALUE!`, as `LET(x,(A1,B2),x)`
+/// is (probes/multiarea-let H3) and as the bare span is (`LET(x,Data1:Data3!A1,x)`,
+/// `INDEX(x,1)`, `ROWS(x)`: probes/3d-ref-let-bound-span, T-1158).
 #[derive(Clone)]
 pub(crate) enum Binding {
     Value(CalcResult),
     Areas(Areas),
+    /// A range whose corners sit on two sheets: an aggregate reads it like the written span
+    /// (`LET(x,Data1:Data3!A1,SUM(x))` is 111, probes/3d-ref-let-bound-span C1:C3).
+    Span(Range),
 }
 
 impl Binding {
@@ -182,13 +200,14 @@ impl Binding {
         match self {
             Binding::Value(value) => value.clone(),
             Binding::Areas(_) => several_areas(cell),
+            Binding::Span(_) => three_d_needs_one_sheet(cell),
         }
     }
 
-    /// How many areas the binding holds: those of a union, none for a value.
+    /// How many areas the binding holds: those of a union, none for a value or a span.
     pub(crate) fn held_areas(&self) -> usize {
         match self {
-            Binding::Value(_) => 0,
+            Binding::Value(_) | Binding::Span(_) => 0,
             Binding::Areas(Areas(areas)) => areas.len(),
         }
     }
@@ -299,6 +318,22 @@ fn empty_intersection(cell: CellReferenceIndex) -> CalcResult {
 }
 
 impl Model {
+    /// The error of a spill range operator whose anchor is not a single reference. The `@` of a
+    /// value (`=ANCHORARRAY(@1)`) is `#VALUE!` in Excel (probes/colon-hash-value-operands D3,
+    /// T-1226).
+    pub(crate) fn spill_anchor_error(child: &Node, cell: CellReferenceIndex) -> CalcResult {
+        let error = if matches!(child, Node::ImplicitIntersection { .. }) {
+            Error::VALUE
+        } else {
+            Error::ERROR
+        };
+        CalcResult::new_error(
+            error,
+            cell,
+            format!("Error with Spill Range Operator in cell {cell:?}"),
+        )
+    }
+
     /// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
     /// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
     /// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).
@@ -340,6 +375,15 @@ impl Model {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
+            // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
+            // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
+            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed,
+            // T-1227).
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
             // A name whose body is a formula, parenthesized or not, joins as what the body is
             // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
             Node::GroupedRootKind { child } => self.range_operand(child, cell),

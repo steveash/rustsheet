@@ -95,6 +95,14 @@ def test_generator_emits_every_m2_function() -> None:
     assert not [n for n in M2_ADDED if n not in seen]
 
 
+def emitted(milestone: str) -> set[str]:
+    """Every tag (function name) the generator emits over 40 seeds at `milestone`."""
+    seen: set[str] = set()
+    for seed in range(40):
+        seen.update(generate_case(catalog(), seed, milestone=milestone, formulas=80)["tags"])
+    return seen
+
+
 def test_generator_emits_every_m5_math_function_but_the_volatile_ones() -> None:
     # T-1082: every M5 math signature is generator-ready; RAND/RANDBETWEEN never match an oracle.
     m5_math = {
@@ -104,11 +112,96 @@ def test_generator_emits_every_m5_math_function_but_the_volatile_ones() -> None:
     }
     volatile = {n for n, f in m5_math.items() if f.get("volatile")}
     assert volatile == {"RAND", "RANDBETWEEN"}
-    seen: set[str] = set()
-    for seed in range(40):
-        seen.update(generate_case(catalog(), seed, milestone="M5", formulas=80)["tags"])
+    seen = emitted("M5")
     assert not seen & volatile
     assert not sorted(set(m5_math) - volatile - seen)
+
+
+def test_generator_emits_every_m5_text_function() -> None:
+    # T-1087: every M5 text signature is generator-ready.
+    m5_text = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M5" and f["category"] == "text"
+    }
+    assert len(m5_text) == 33
+    seen = emitted("M5")
+    assert not sorted(m5_text - seen)
+
+
+def test_generator_emits_every_m5_logical_information_and_web_function() -> None:
+    # T-1088: every in-scope M5 logical, information and web entry but INFO and SHEETS (`oracle: none`)
+    # is generator-ready.
+    m5 = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M5" and f["category"] in {"logical", "information", "web"}
+    }
+    assert len(m5) == 26
+    seen = emitted("M5")
+    assert not sorted(m5 - seen)
+
+
+def test_generator_emits_every_m6_date_function() -> None:
+    # T-1090: every in-scope M6 date and time entry is generator-ready.
+    m6_date = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M6" and f["category"] == "date"
+    }
+    assert len(m6_date) == 20
+    assert not sorted(m6_date - emitted("M6"))
+
+
+def test_generator_emits_every_m6_lookup_function_but_getpivotdata() -> None:
+    # T-1238: every in-scope M6 lookup entry is generator-ready but GETPIVOTDATA (no pivot table to read).
+    m6_lookup = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M6" and f["category"] == "lookup"
+    }
+    assert len(m6_lookup) == 18
+    assert "GETPIVOTDATA" not in m6_lookup
+    assert not sorted(m6_lookup - emitted("M6"))
+
+
+def test_vector_params_get_one_column() -> None:
+    # T-1238: XMATCH's lookup_array is `vector: true`; a 2-D lookup vector only gives an error.
+    arrays: list[str] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M6", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            arrays += re.findall(r"XMATCH\([^,()]*,(Data![A-Z]\d+:[A-Z]\d+)", formula)
+    assert arrays
+    assert all(a[5] == a.split(":")[1][0] for a in arrays), arrays
+
+
+def test_reference_params_get_one_cell_and_cell_always_gets_one() -> None:
+    # T-1088: a literal ISFORMULA or CELL reference makes excel-graph refuse the workbook, a range
+    # would spill ISFORMULA into the next formula, and CELL without a reference reads the cell last
+    # changed. info_type mostly comes from CELL's enum.
+    cell = r"Data!\$?[A-Z]\$?\d+"
+    isformula: list[str] = []
+    cells: list[str] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M5", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            isformula += re.findall(r"ISFORMULA\(([^()]*)\)", formula)
+            cells += re.findall(r"(?<![A-Z.])CELL\(([^()]*)\)", formula)
+    assert isformula and all(re.fullmatch(cell, a) for a in isformula), isformula
+    assert cells and all(re.fullmatch(r".*," + cell, a) for a in cells), cells
+    assert any(a.startswith(('"row"', '"col"', '"contents"', '"type"')) for a in cells)
+
+
+def test_hard_domains_are_never_violated() -> None:
+    # MUNIT of a large dimension makes excel-graph refuse the whole workbook (T-1087), so its
+    # `hard` domain always gets an in-domain integer.
+    calls: list[str] = []
+    for seed in range(40):
+        spec = generate_case(catalog(), seed, milestone="M5", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            calls += re.findall(r"MUNIT\(([^()]*)\)", formula)
+    assert calls and all(c in {"1", "2", "3", "4"} for c in calls), calls
 
 
 def test_array_params_are_sometimes_ranges() -> None:

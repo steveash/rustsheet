@@ -1,0 +1,38 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1208 probe: RANK/RANK.AVG with a non-reference array ref (IF(A1:C1>0,A1:C1)) and an error or text number, or an error/text order. Sheet1 A1:C1=7,1,5; K1=#N/A, K2=\"x\", K3=#DIV/0!. One formula per row from F1, every second row; each spills 1x3 (F:H).",
+ "tags": [
+  "M1",
+  "statistics",
+  "rank",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 7,
+    "B1": 1,
+    "C1": 5,
+    "K1": "=NA()",
+    "K2": "x",
+    "K3": "=1/0",
+    "F1": "=RANK(K1,IF(A1:C1>0,A1:C1))",
+    "F3": "=RANK(K2,IF(A1:C1>0,A1:C1))",
+    "F5": "=RANK(K3,IF(A1:C1>0,A1:C1))",
+    "F7": "=RANK(5,IF(A1:C1>0,A1:C1),K3)",
+    "F9": "=RANK(5,IF(A1:C1>0,A1:C1),K2)",
+    "F11": "=RANK(5,IF(A1:C1>0,A1:C1),K1)",
+    "F13": "=RANK(5,IF(A1:C1>0,A1:C1),1)",
+    "F15": "=RANK.AVG(K1,IF(A1:C1>0,A1:C1))",
+    "F17": "=RANK.AVG(K2,IF(A1:C1>0,A1:C1))",
+    "F19": "=RANK.AVG(K3,IF(A1:C1>0,A1:C1))",
+    "F21": "=RANK.AVG(5,IF(A1:C1>0,A1:C1),K3)",
+    "F23": "=RANK.AVG(5,IF(A1:C1>0,A1:C1),K2)",
+    "F25": "=RANK.AVG(5,IF(A1:C1>0,A1:C1),K1)",
+    "F27": "=RANK.AVG(5,IF(A1:C1>0,A1:C1),1)"
+   }
+  }
+ ],
+ "expected": {}
+}

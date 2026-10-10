@@ -144,8 +144,8 @@ is "1.23457E+98", `E+99` "1.2346E+99", `E-98` "1.23457E-98", `9.87654321098765E-
 up to 10 carries into the exponent: `9.9999996E+98` → "1E+99", `E+99` → "1E+100", `E-98` → "1E-97", `E-99` → "1E-98",
 `E-10` → "1E-09" (never "10E+98"); `9.9999996E+10` stays fixed "99999996000". Evidence:
 probes/text-general-exponent-boundary (excel-graph, 2026-10-07). It is implemented in the formatter's General branch (T-0986, carry T-1001). D8
-(`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) needs the 11-character
-fixed-versus-E rule, T-0938, and still fails.
+(`1.23456789012345E-5` → "1.23457E-05", E notation although the exponent is small) follows the 11-character
+fixed-versus-E rule (number-formats.md, T-0938) and passes.
 Evidence: probes/number-to-text-notation A1–A52 (excel-graph, 2026-10-05, T-0107);
 probes/precision-and-rounding.case.json A9, A16; probes-numeric/4f413cc257ce15c4
 `number-to-text/*`. Oracle: excel-graph, 2026-10-04. gen-m1/f91603cd8616521f Calc!A50, A186, A27,
@@ -843,7 +843,32 @@ Status: VERIFIED for the observed cells; the threshold and SIN/TAN siblings are 
 Tasks: T-1192, T-1201, T-1202
 
 ## MULTINOMIAL of a huge argument
-Rule: Excel returns an answer for `MULTINOMIAL(1E+15)` at once (value not yet probed); the engine loops proportionally to the argument and hangs.
-Evidence: gen-m5/21b9ae9affd6b38c Calc!A25 (the case times out here; its oracle `#NUM!` comes from a base-0 LOG, so it says nothing about MULTINOMIAL's value).
-Status: UNVERIFIED (Excel's value)
+Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
+even when the ratio is small: `MULTINOMIAL(171)`, `(170,1)`, `(86,86)`, `(100,100)`, `(1000)`, `(2^31)`, `(2^53)`,
+`(1E+15)`, `(1E+15,0)`, `(1E+15,1)`, `(3,1E+15)` and `(1E+300)` are all `#NUM!`. Sums up to 170 have values:
+`(170)` 1.0000000000001974, `(169,1)` 170.0000000000337, `(85,85)` 9.144841845133712e+49, `(150,20)` 5.221123511166111e+25, `(100,70)` 6.491922168402309e+48. `(100,100)` is `#NUM!` though its exact value (about 9e58) fits a double, so the limit is on the sum. `(0)` and `(0,0)` are 1.
+The non-integer values are the inexactness in "MULTINOMIAL is inexact" (T-1190).
+Evidence: probes/multinomial-large-arguments A1:A20 (excel-graph, 2026-10-09, T-1197); gen-m5/21b9ae9affd6b38c Calc!A25.
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_multinomial` (functions/math_and_trigonometry/multinomial.rs) checks the saturating sum against 170
+before any factorial, so the work is bounded (directive 5).
 Tasks: T-1197
+
+## FACT and FACTDOUBLE of a huge argument
+Rule: FACT is `#NUM!` once n! overflows a double and FACTDOUBLE once n!! does: `FACT(170)` 7.257415615308004e+306 (`FACT(170.9)` the same, the argument is floored), `FACT(171)`, `(2^53)`, `(1E+15)`, `(1E+300)` `#NUM!`. `FACTDOUBLE(297)` 1.2552756225993057e+304, `(298)` 2.718138023126864e+305, `(300)` 8.154414069380598e+307, `(301)`, `(2^53)`, `(1E+15)`, `(1E+300)` `#NUM!`. Negative: `FACT(-0.5)` and `FACT(-1)` `#NUM!`; `FACTDOUBLE(-1)` is 1, `FACTDOUBLE(-1.5)` and `(-2)` `#NUM!`.
+Evidence: probes/fact-large-arguments A1:A18 (excel-graph, 2026-10-09, T-1233).
+Status: VERIFIED (excel-graph)
+Implemented in: `fn_fact`, `fn_factdouble` (functions/math_and_trigonometry/mathematical.rs) stop at the first infinite product, so the work is bounded (directive 5).
+Ours: the overflow boundary and the `#NUM!` results match; the last digits of `FACT(170)`, `FACT(170.9)` and `FACTDOUBLE(297, 298, 300)` do not yet (T-1249).
+Tasks: T-1233, T-1249
+
+## BASE min_length is at most 255
+Rule: BASE's `min_length` truncates and may be at most 255: `BASE(1,2,255.9)` pads to 255 characters, `BASE(1,2,254.5)`
+to 254, and `BASE(1,2,256)`, `(1,2,1E+15)` and `(1,2,"300")` (numeric text) are `#NUM!`, as is a negative one
+(`-0.5`, `-1`). A non-numeric number is `#VALUE!` first (`BASE("x",2,1E+15)`); `BASE(-1,2,1E+15)` and `BASE(1,37,1E+15)`
+are `#NUM!`.
+Evidence: probes/base-min-length (excel-graph, 2026-10-09, T-1243); gen-m6 sample seed 17 `BASE(245,30,1E+15)` = `#NUM!`.
+Ours: the same; the bound is checked before padding, which also bounds the allocation (it used to abort the process).
+Status: VERIFIED
+Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
+Tasks: T-1243

@@ -45,10 +45,8 @@ use crate::types::Table;
 use super::lexer;
 use super::token;
 use super::token::OpUnary;
-use super::token::TableReference;
 use super::token::TokenType;
 use super::types::*;
-use super::utils::number_to_column;
 
 use sheet_span::with_sheet_span;
 use token::OpCompare;
@@ -59,6 +57,7 @@ mod depth;
 mod lambda;
 mod lists;
 pub mod move_formula;
+mod operands;
 mod reference_operators;
 mod sheet_span;
 pub mod static_analysis;
@@ -155,6 +154,19 @@ pub struct CompletionContext {
     /// in `A1+F`. Equals the cursor when there is nothing to replace (right
     /// after `SUM(`).
     pub replace_from: usize,
+}
+
+/// The parenthesized group an `@` operand begins with when the group is only its leftmost part
+/// (`@(A1) B1`, `@(A1 B1) C1`, `@(A1):B1 C1`): Excel's FORMULATEXT prints it back (T-1134,
+/// T-1200). `levels == 0` means none.
+#[derive(PartialEq, Clone, Copy, Debug, Default)]
+pub struct LeadGroup {
+    /// Levels of parentheses written around the group.
+    pub levels: u8,
+    /// Operands of the intersection chain inside the group, `(A1 B1)` is 2.
+    pub operands: u8,
+    /// The group is the left operand of a `:` range, `(A1):B1`, not a chain operand itself.
+    pub of_range: bool,
 }
 
 /// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
@@ -286,7 +298,11 @@ pub enum Node {
         /// FORMULATEXT prints them back (`@(A1)`, `@(A1:B1)`, `@((A1 B1))`; probes/at-paren-operands,
         /// T-1116); the automatic `@` of an xlsx import has none.
         written: u8,
-        lead: u8,
+        lead: LeadGroup,
+        /// Levels of parentheses written around the whole `@` expression, `(@1)` is 1. Only
+        /// the operand of `#` or `ANCHORARRAY` prints them back (`=(@1)#`, but `=@A1:B2#` when
+        /// none were written; probes/anchorarray-at-operand-kinds, T-1246).
+        grouped: u8,
     },
     SpillRangeOperator {
         child: Box<Node>,
@@ -327,7 +343,8 @@ impl Node {
             automatic,
             child: Box::new(child),
             written: 0,
-            lead: 0,
+            lead: LeadGroup::default(),
+            grouped: 0,
         }
     }
 }
@@ -352,10 +369,10 @@ pub struct Parser {
     trailing_name: Option<(String, usize)>,
     /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
     at_paren: bool,
-    /// The parenthesized group an `@` operand was just parsed from: its levels and the lexer
+    /// The parenthesized group an `@` operand was just parsed from: its shape and the lexer
     /// position after its last `)`, so `@(A1) B1` (whose group is only part of the operand) is not
     /// counted.
-    at_group: Option<(u8, usize)>,
+    at_group: Option<(LeadGroup, usize)>,
     /// The formula starts with `(` and that group has not been parsed yet.
     leading_paren: bool,
     /// The group opened by the formula's first `(` closes at the end of the formula: the whole
@@ -609,282 +626,16 @@ impl Parser {
             TokenType::LeftParenthesis => self.parse_parenthesized_call(),
             TokenType::Number(s) => Node::NumberKind(s),
             TokenType::String(s) => Node::StringKind(s),
-            TokenType::LeftBrace => {
-                // It's an array. It's a collection of rows all of the same dimension
-                let column_separator_token = self.get_column_separator_token();
-
-                let first_row = match self.parse_array_row() {
-                    Ok(s) => s,
-                    Err(error) => return error,
-                };
-                let length = first_row.len();
-
-                let mut matrix = Vec::new();
-                matrix.push(first_row);
-                let mut next_token = self.lexer.peek_token();
-                while next_token == column_separator_token {
-                    self.lexer.advance_token();
-                    let row = match self.parse_array_row() {
-                        Ok(s) => s,
-                        Err(error) => return error,
-                    };
-                    next_token = self.lexer.peek_token();
-                    if row.len() != length {
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: self.lexer.get_position() as usize,
-                            message: "All rows in an array should be the same length".to_string(),
-                        };
-                    }
-                    matrix.push(row);
-                }
-
-                if let Err(err) = self.lexer.expect(TokenType::RightBrace) {
-                    return Node::ParseErrorKind {
-                        formula: self.lexer.get_formula(),
-                        expecting: vec![ExpectedTokens::Other],
-                        position: err.position,
-                        message: err.message,
-                    };
-                }
-                Node::ArrayKind(matrix)
-            }
+            TokenType::LeftBrace => self.parse_array_operand(),
             TokenType::Reference {
                 sheet,
                 row,
                 column,
                 absolute_column,
                 absolute_row,
-            } => {
-                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
-                let context = &self.context;
-                let a1_mode = self.lexer.is_a1_mode();
-                let row = if absolute_row || !a1_mode {
-                    row
-                } else {
-                    row - context.row
-                };
-                let column = if absolute_column || !a1_mode {
-                    column
-                } else {
-                    column - context.column
-                };
-                let node = match sheet_index {
-                    Some(index) => Node::ReferenceKind {
-                        sheet_name: sheet,
-                        sheet_index: index,
-                        row,
-                        column,
-                        absolute_row,
-                        absolute_column,
-                    },
-                    None => Node::WrongReferenceKind {
-                        sheet_name: sheet,
-                        row,
-                        column,
-                        absolute_row,
-                        absolute_column,
-                    },
-                };
-                with_sheet_span(span, node)
-            }
-            TokenType::Range { sheet, left, right } => {
-                let (span, sheet, sheet_index) = self.resolve_sheet_prefix(sheet);
-                let context = &self.context;
-                let mut row1 = left.row;
-                let mut column1 = left.column;
-                let mut row2 = right.row;
-                let mut column2 = right.column;
-
-                let mut absolute_column1 = left.absolute_column;
-                let mut absolute_column2 = right.absolute_column;
-                let mut absolute_row1 = left.absolute_row;
-                let mut absolute_row2 = right.absolute_row;
-
-                if self.lexer.is_a1_mode() {
-                    if row1 > row2 {
-                        (row2, row1) = (row1, row2);
-                        (absolute_row2, absolute_row1) = (absolute_row1, absolute_row2);
-                    }
-                    if column1 > column2 {
-                        (column2, column1) = (column1, column2);
-                        (absolute_column2, absolute_column1) = (absolute_column1, absolute_column2);
-                    }
-                }
-
-                if self.lexer.is_a1_mode() {
-                    if !absolute_row1 {
-                        row1 -= context.row
-                    };
-                    if !absolute_column1 {
-                        column1 -= context.column
-                    };
-                    if !absolute_row2 {
-                        row2 -= context.row
-                    };
-                    if !absolute_column2 {
-                        column2 -= context.column
-                    };
-                }
-
-                let node = match sheet_index {
-                    Some(index) => Node::RangeKind {
-                        sheet_name: sheet,
-                        sheet_index: index,
-                        row1,
-                        column1,
-                        row2,
-                        column2,
-                        absolute_column1,
-                        absolute_column2,
-                        absolute_row1,
-                        absolute_row2,
-                    },
-                    None => Node::WrongRangeKind {
-                        sheet_name: sheet,
-                        row1,
-                        column1,
-                        row2,
-                        column2,
-                        absolute_column1,
-                        absolute_column2,
-                        absolute_row1,
-                        absolute_row2,
-                    },
-                };
-                with_sheet_span(span, node)
-            }
-            TokenType::Ident(name) => {
-                let next_token = self.lexer.peek_token();
-                // If this identifier is the last token before the cursor (its
-                // peek is EOF), the user is mid-typing a name here. Record it so
-                // `parse_at_cursor` can offer function/name completion. We are in
-                // a name/operand position by construction, so this never fires
-                // for an identifier glued to a completed operand: the `m` in
-                // `1m` is leftover input, never reached as a primary.
-                if next_token == TokenType::EOF {
-                    let end = self.lexer.get_position() as usize;
-                    let start = end.saturating_sub(name.chars().count());
-                    self.trailing_name = Some((name.clone(), start));
-                }
-                if next_token == TokenType::LeftParenthesis {
-                    self.lexer.advance_token();
-                    // It's a function call "SUM(.."
-                    // _xlfn.LAMBDA(_xlpm.a,_xlpm.b, SQRT(_xlpm.a*_xlpm.a+_xlpm.b*_xlpm.b))(3,4)
-                    if &name == "_xlfn.LAMBDA" || &name.to_uppercase() == "LAMBDA" {
-                        return self.parse_lambda();
-                    }
-                    // The user-facing name, without the xlsx import prefixes.
-                    let display_name = name
-                        .trim_start_matches("_xlfn._xlws.")
-                        .trim_start_matches("_xlfn.")
-                        .trim_start_matches("_xlpm.")
-                        .to_string();
-                    let args = match self.parse_function_args(&display_name) {
-                        Ok(s) => s,
-                        Err(e) => return e,
-                    };
-                    if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
-                        // `SUM(A1` parses a complete argument and then fails to
-                        // find the `)`. If we ran out of input we are still
-                        // inside the call, sitting right after a complete
-                        // argument: report the (correct) argument index so the
-                        // signature tooltip works, but NOT `Range` — a fresh
-                        // reference cannot begin after a complete operand. (A
-                        // separator or `)` is what is expected here.)
-                        let at_eof = err.position >= self.lexer.get_formula().chars().count();
-                        let expecting = if at_eof {
-                            let index = (args.len() as u32).max(1);
-                            vec![ExpectedTokens::Argument(display_name.clone(), index)]
-                        } else {
-                            vec![ExpectedTokens::Other]
-                        };
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting,
-                            position: err.position,
-                            message: err.message,
-                        };
-                    }
-                    // We should do this *only* importing functions from xlsx: Implicit Intersection
-                    if &name == "_xlfn.SINGLE" {
-                        if args.len() != 1 {
-                            return Node::ParseErrorKind {
-                                formula: self.lexer.get_formula(),
-                                expecting: vec![ExpectedTokens::Other],
-                                position: self.lexer.get_position() as usize,
-                                message: "Implicit Intersection requires just one argument"
-                                    .to_string(),
-                            };
-                        }
-                        return Node::at(args[0].clone(), false);
-                    }
-                    // The spill range operator; typed `ANCHORARRAY(D1)` is `D1#` for Excel too
-                    // (probes/at-operand-formulatext J1, T-1109).
-                    if display_name.eq_ignore_ascii_case("ANCHORARRAY") {
-                        if args.len() != 1 {
-                            return Node::ParseErrorKind {
-                                formula: self.lexer.get_formula(),
-                                expecting: vec![ExpectedTokens::Other],
-                                position: self.lexer.get_position() as usize,
-                                message: "ANCHORARRAY requires one argument".to_string(),
-                            };
-                        }
-                        return Node::SpillRangeOperator {
-                            child: Box::new(args[0].clone()),
-                        };
-                    }
-                    // We should do this *only* importing functions from xlsx
-                    if let Some(function_kind) = self
-                        .language
-                        .functions
-                        .lookup(name.trim_start_matches("_xlfn._xlws."))
-                    {
-                        return self.function_call(function_kind, args);
-                    }
-
-                    if let Some(function_kind) = self
-                        .language
-                        .functions
-                        .lookup(name.trim_start_matches("_xlfn."))
-                    {
-                        return self.function_call(function_kind, args);
-                    }
-                    return Node::NamedFunctionKind {
-                        name: name.trim_start_matches("_xlpm.").to_string(),
-                        args,
-                        id: None,
-                    };
-                }
-                let context = &self.context;
-
-                let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
-                    Some(i) => i,
-                    None => {
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: 0,
-                            message: format!("sheet not found: {}", context.sheet),
-                        };
-                    }
-                };
-
-                // Could be a defined name or a table
-                if let Some((scope, formula)) = self.get_defined_name(&name, context_sheet_index) {
-                    return Node::DefinedNameKind((name, scope, formula));
-                }
-                let name_lower = name.to_lowercase();
-                for table_name in self.tables.keys() {
-                    if table_name.to_lowercase() == name_lower {
-                        return Node::TableNameKind(name);
-                    }
-                }
-                // xlpm: Excel Lambda Parameter
-                let name = name.trim_start_matches("_xlpm.").to_string();
-                Node::NamedVariableKind { name, id: None }
-            }
+            } => self.reference_operand(sheet, row, column, absolute_column, absolute_row),
+            TokenType::Range { sheet, left, right } => self.range_operand(sheet, left, right),
+            TokenType::Ident(name) => self.parse_identifier(name),
             TokenType::Error(kind) => Node::ErrorKind(kind),
             TokenType::Illegal(error) => Node::ParseErrorKind {
                 formula: self.lexer.get_formula(),
@@ -899,85 +650,18 @@ impl Parser {
                 position: self.lexer.get_position() as usize,
                 message: "Unexpected end of input.".to_string(),
             },
-            TokenType::Boolean(value) => {
-                // Could be a function call "TRUE()"
-                let next_token = self.lexer.peek_token();
-                if next_token == TokenType::LeftParenthesis {
-                    self.lexer.advance_token();
-                    // We parse all the arguments, although technically this is moot
-                    // But is has the upside of transforming `=TRUE( 4 )` into `=TRUE(4)`
-                    let fn_name = if value { "TRUE" } else { "FALSE" };
-                    let args = match self.parse_function_args(fn_name) {
-                        Ok(s) => s,
-                        Err(e) => return e,
-                    };
-                    if let Err(err) = self.lexer.expect(TokenType::RightParenthesis) {
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: err.position,
-                            message: err.message,
-                        };
-                    }
-                    if value {
-                        return Node::FunctionKind {
-                            kind: Function::True,
-                            args,
-                        };
-                    } else {
-                        return Node::FunctionKind {
-                            kind: Function::False,
-                            args,
-                        };
-                    }
-                }
-                Node::BooleanKind(value)
-            }
+            TokenType::Boolean(value) => self.parse_boolean_operand(value),
             TokenType::Compare(_) => {
-                // A primary Node cannot start with an operator
-                Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: 0,
-                    message: "Unexpected token: 'COMPARE'".to_string(),
-                }
+                self.unexpected_operand("Unexpected token: 'COMPARE'".to_string())
             }
             TokenType::Addition(_) => {
-                // A primary Node cannot start with an operator
-                Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: 0,
-                    message: "Unexpected token: 'SUM'".to_string(),
-                }
+                self.unexpected_operand("Unexpected token: 'SUM'".to_string())
             }
             TokenType::Product(_) => {
-                // A primary Node cannot start with an operator
-                Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: 0,
-                    message: "Unexpected token: 'PRODUCT'".to_string(),
-                }
+                self.unexpected_operand("Unexpected token: 'PRODUCT'".to_string())
             }
-            TokenType::Power => {
-                // A primary Node cannot start with an operator
-                Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: 0,
-                    message: "Unexpected token: 'POWER'".to_string(),
-                }
-            }
-            TokenType::At => {
-                // A primary Node cannot start with an operator
-                Node::ParseErrorKind {
-                    formula: self.lexer.get_formula(),
-                    expecting: vec![ExpectedTokens::Other],
-                    position: 0,
-                    message: "Unexpected token: '@'".to_string(),
-                }
-            }
+            TokenType::Power => self.unexpected_operand("Unexpected token: 'POWER'".to_string()),
+            TokenType::At => self.unexpected_operand("Unexpected token: '@'".to_string()),
             TokenType::RightParenthesis
             | TokenType::RightBracket
             | TokenType::Colon
@@ -988,205 +672,15 @@ impl Parser {
             | TokenType::Bang
             | TokenType::And
             | TokenType::Spill
-            | TokenType::Percent => Node::ParseErrorKind {
-                formula: self.lexer.get_formula(),
-                expecting: vec![ExpectedTokens::Other],
-                position: 0,
-                message: format!("Unexpected token: '{next_token:?}'"),
-            },
-            TokenType::LeftBracket => Node::ParseErrorKind {
-                formula: self.lexer.get_formula(),
-                expecting: vec![ExpectedTokens::Other],
-                position: 0,
-                message: "Unexpected token: '['".to_string(),
-            },
+            | TokenType::Percent => {
+                self.unexpected_operand(format!("Unexpected token: '{next_token:?}'"))
+            }
+            TokenType::LeftBracket => self.unexpected_operand("Unexpected token: '['".to_string()),
             TokenType::StructuredReference {
                 table_name,
                 specifier,
                 table_reference,
-            } => {
-                // We will try to convert to a normal reference
-                // table_name[column_name] => cell1:cell2
-                // table_name[[#This Row], [column_name]:[column_name]] => cell1:cell2
-                let context = &self.context;
-                let context_sheet_index = match self.get_sheet_index_by_name(&context.sheet) {
-                    Some(i) => i,
-                    None => {
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: 0,
-                            message: format!("sheet not found: {}", context.sheet),
-                        };
-                    }
-                };
-                // table-name => table
-                let table = match self.tables.get(&table_name) {
-                    Some(t) => t,
-                    None => {
-                        let message = format!(
-                            "Table not found: '{table_name}' at '{}!{}{}'",
-                            context.sheet,
-                            number_to_column(context.column)
-                                .unwrap_or(format!("{}", context.column)),
-                            context.row
-                        );
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: 0,
-                            message,
-                        };
-                    }
-                };
-                let table_sheet_index = match self.get_sheet_index_by_name(&table.sheet_name) {
-                    Some(i) => i,
-                    None => {
-                        return Node::ParseErrorKind {
-                            formula: self.lexer.get_formula(),
-                            expecting: vec![ExpectedTokens::Other],
-                            position: 0,
-                            message: format!("table sheet not found: {}", table.sheet_name),
-                        };
-                    }
-                };
-
-                let sheet_name = if table_sheet_index == context_sheet_index {
-                    None
-                } else {
-                    Some(table.sheet_name.clone())
-                };
-
-                // context must be with tables.reference
-                #[allow(clippy::expect_used)]
-                let (column_start, mut row_start, column_end, mut row_end) =
-                    parse_range(&table.reference).expect("Failed parsing range");
-
-                let totals_row_count = table.totals_row_count as i32;
-                let header_row_count = table.header_row_count as i32;
-                row_end -= totals_row_count;
-
-                match specifier {
-                    Some(token::TableSpecifier::ThisRow) => {
-                        row_start = context.row;
-                        row_end = context.row;
-                    }
-                    Some(token::TableSpecifier::Totals) => {
-                        if totals_row_count != 0 {
-                            row_start = row_end + 1;
-                            row_end = row_start;
-                        } else {
-                            // Table1[#Totals] is #REF! if Table1 does not have totals
-                            return Node::ErrorKind(token::Error::REF);
-                        }
-                    }
-                    Some(token::TableSpecifier::Headers) => {
-                        row_end = row_start;
-                    }
-                    Some(token::TableSpecifier::Data) => {
-                        row_start += header_row_count;
-                    }
-                    Some(token::TableSpecifier::All) => {
-                        if totals_row_count != 0 {
-                            row_end += 1;
-                        }
-                    }
-                    None => {
-                        // skip the headers
-                        row_start += header_row_count;
-                    }
-                }
-                match table_reference {
-                    None => Node::RangeKind {
-                        sheet_name,
-                        sheet_index: table_sheet_index,
-                        absolute_row1: true,
-                        absolute_column1: true,
-                        row1: row_start,
-                        column1: column_start,
-                        absolute_row2: true,
-                        absolute_column2: true,
-                        row2: row_end,
-                        column2: column_end,
-                    },
-                    Some(TableReference::ColumnReference(s)) => {
-                        let column_index = match get_table_column_by_name(&s, table) {
-                            Some(s) => s + column_start,
-                            None => {
-                                return Node::ParseErrorKind {
-                                    formula: self.lexer.get_formula(),
-                                    expecting: vec![ExpectedTokens::Other],
-                                    position: self.lexer.get_position() as usize,
-                                    message: format!("Expecting column: {s} in table {table_name}"),
-                                };
-                            }
-                        };
-                        if row_start == row_end {
-                            return Node::ReferenceKind {
-                                sheet_name,
-                                sheet_index: table_sheet_index,
-                                absolute_row: true,
-                                absolute_column: true,
-                                row: row_start,
-                                column: column_index,
-                            };
-                        }
-                        Node::RangeKind {
-                            sheet_name,
-                            sheet_index: table_sheet_index,
-                            absolute_row1: true,
-                            absolute_column1: true,
-                            row1: row_start,
-                            column1: column_index,
-                            absolute_row2: true,
-                            absolute_column2: true,
-                            row2: row_end,
-                            column2: column_index,
-                        }
-                    }
-                    Some(TableReference::RangeReference((left, right))) => {
-                        let left_column_index = match get_table_column_by_name(&left, table) {
-                            Some(f) => f + column_start,
-                            None => {
-                                return Node::ParseErrorKind {
-                                    formula: self.lexer.get_formula(),
-                                    expecting: vec![ExpectedTokens::Other],
-                                    position: self.lexer.get_position() as usize,
-                                    message: format!(
-                                        "Expecting column: {left} in table {table_name}"
-                                    ),
-                                };
-                            }
-                        };
-
-                        let right_column_index = match get_table_column_by_name(&right, table) {
-                            Some(f) => f + column_start,
-                            None => {
-                                return Node::ParseErrorKind {
-                                    formula: self.lexer.get_formula(),
-                                    expecting: vec![ExpectedTokens::Other],
-                                    position: self.lexer.get_position() as usize,
-                                    message: format!(
-                                        "Expecting column: {right} in table {table_name}"
-                                    ),
-                                };
-                            }
-                        };
-                        Node::RangeKind {
-                            sheet_name,
-                            sheet_index: table_sheet_index,
-                            absolute_row1: true,
-                            absolute_column1: true,
-                            row1: row_start,
-                            column1: left_column_index,
-                            absolute_row2: true,
-                            absolute_column2: true,
-                            row2: row_end,
-                            column2: right_column_index,
-                        }
-                    }
-                }
-            }
+            } => self.structured_reference_operand(table_name, specifier, table_reference),
         }
     }
 }

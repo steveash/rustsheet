@@ -16,6 +16,9 @@ use std::f64::consts::PI;
 /// power of two (probes/mod-quotient-threshold5).
 const MOD_MAX_QUOTIENT: f64 = 1.1259E+12;
 
+/// The largest `min_length` BASE accepts (probes/base-min-length).
+const BASE_MAX_MIN_LENGTH: f64 = 255.0;
+
 impl Model {
     /// MIN and MAX: folds every number of `args` with `pick`; 0 when there is none.
     ///
@@ -98,7 +101,18 @@ impl Model {
                             message: "Minimum length must be non-negative".to_string(),
                         };
                     }
-                    f.trunc() as usize
+                    // Excel: min_length truncates and may be at most 255 (`BASE(1,2,255.9)` pads to 255,
+                    // `BASE(1,2,256)` is #NUM!; probes/base-min-length). Checking before padding also
+                    // bounds the allocation (CLAUDE.md directive 5).
+                    let min_length = f.trunc();
+                    if min_length > BASE_MAX_MIN_LENGTH {
+                        return CalcResult::Error {
+                            error: Error::NUM,
+                            origin: cell,
+                            message: "Minimum length must be at most 255".to_string(),
+                        };
+                    }
+                    min_length as usize
                 }
                 Err(s) => return s,
             }
@@ -152,35 +166,6 @@ impl Model {
         }
 
         CalcResult::String(buf)
-    }
-
-    pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
-            };
-        }
-        match i64::from_str_radix(&text, radix as u32) {
-            Ok(n) => CalcResult::Number(n as f64),
-            Err(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: format!("'{}' is not a valid number in base {}", text, radix),
-            },
-        }
     }
 
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -755,6 +740,10 @@ impl Model {
         let mut k = 2.0;
         while k <= x {
             acc *= k;
+            // Excel: #NUM! at overflow, which also bounds the loop (numbers.md "FACT and FACTDOUBLE").
+            if !acc.is_finite() {
+                return Err(Error::NUM);
+            }
             k += 1.0;
         }
         Ok(acc)
@@ -771,6 +760,9 @@ impl Model {
         let mut k = if x % 2.0 == 0.0 { 2.0 } else { 1.0 };
         while k <= x {
             acc *= k;
+            if !acc.is_finite() {
+                return Err(Error::NUM);
+            }
             k += 2.0;
         }
         Ok(acc)

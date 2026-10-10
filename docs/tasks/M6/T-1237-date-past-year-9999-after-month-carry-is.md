@@ -1,0 +1,29 @@
+---
+id: T-1237
+title: "DATE with a huge month argument is #NUM!; DATEDIF reads numeric text"
+milestone: M6
+lane: functions-date
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+DATE is `#NUM!` for the month (and day) arguments Excel rejects, and DATEDIF reads numeric text dates, as Excel does.
+
+## Context
+probes/date-argument-modes (excel-graph, 2026-10-09, T-1090): `INDEX(DATE(2024,A1:A3,1),2)` (month 45031.5) is
+`#NUM!` in Excel, while the engine returns 1415864 (G3, G4). That date would be about year 5776, inside the 9999
+limit, so the cause is not the year range: find it with the excel-probe skill before implementing (bisect the month
+bound, e.g. `DATE(2024,32767,1)`, `(2024,32768,1)`, `(2024,40000,1)`, negative months, and the day equivalent
+`DATE(2024,1,32768)` / `(2024,1,2958466)`). `DATEDIF("45000",46000,"d")` is 1000 in Excel, `#VALUE!` here (F89).
+Semantics: docs/excel-semantics/dates.md "Date function argument modes".
+
+## Acceptance criteria
+- [ ] probes/date-argument-modes G3 (once T-1235 lifts DATE, G4) and F89 pass; baseline updated.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-

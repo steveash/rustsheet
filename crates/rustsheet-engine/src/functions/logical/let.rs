@@ -186,8 +186,8 @@ impl Model {
     }
 
     /// What a LET value or a LAMBDA argument binds. A reference stays a reference, a single
-    /// cell too (upstream MIN_MAX_extras.xlsx A16, MAX_MIN.xlsx H54), and so does one INDEX
-    /// selects, but VLOOKUP and HLOOKUP bind their value (probes/let-bind-reference-forms; a
+    /// cell too (upstream MIN_MAX_extras.xlsx A16, MAX_MIN.xlsx H54), and so does one INDEX,
+    /// XLOOKUP, TAKE, DROP or TRIMRANGE picks (T-1232), but VLOOKUP and HLOOKUP bind their value (probes/let-bind-reference-forms; a
     /// called `LET(f,INDEX(A1:A3,2),f(2))` is `#REF!`, let-name-call-refs H5). An argument that
     /// may stand for several areas is read in reference context, so a union stays its areas
     /// wherever it comes from: written out, another variable, IF, CHOOSE or LET
@@ -200,21 +200,26 @@ impl Model {
                 ..
             }
         );
-        if !is_index && !self.is_multi_area(node) {
+        let is_span = matches!(node, Node::SheetSpanKind { .. });
+        // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
+        // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
+        let is_picked = matches!(
+            node,
+            Node::FunctionKind {
+                kind: Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange,
+                ..
+            }
+        );
+        if !is_index && !is_span && !is_picked && !self.is_multi_area(node) {
             return Binding::Value(self.evaluate_node_with_reference(node, cell));
         }
-        match self.evaluate_reference_arg(node, cell) {
+        match self.evaluate_picked_reference_arg(node, cell) {
             RefArg::Ranges(Ranges::Areas(areas)) => Binding::Areas(areas),
-            // A 3-D span from IF or CHOOSE: every value read of the binding is `#VALUE!`
-            // (probes/3d-ref-let-values C1:C6). Only `evaluate_reference_arg` may hold a range
-            // across sheets, so the binding does not keep it; an aggregate reading the span
-            // through the variable (C7, 111) is T-1158.
+            // A 3-D span, written or from IF or CHOOSE: an aggregate reads it through the
+            // variable (probes/3d-ref-let-values C7, 3d-ref-let-bound-span C1:C3, 111), every
+            // value read is `#VALUE!` (3d-ref-let-values C1:C6, 3d-ref-let-bound-span C4, C7).
             RefArg::Ranges(Ranges::One(range)) if range.left.sheet != range.right.sheet => {
-                Binding::Value(CalcResult::new_error(
-                    Error::VALUE,
-                    cell,
-                    "3-D reference bound to a variable".to_string(),
-                ))
+                Binding::Span(range)
             }
             other => Binding::Value(other.into_single_area(cell)),
         }
@@ -243,12 +248,14 @@ impl Model {
         }
     }
 
-    /// A LET variable or LAMBDA parameter in reference context: a union binding is its areas,
-    /// anything else what [`Model::variable_value`] gives.
+    /// A LET variable or LAMBDA parameter in reference context: a union binding is its areas, a
+    /// 3-D span its range, anything else what [`Model::variable_value`] gives.
     pub(crate) fn variable_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> RefArg {
         if let Node::NamedVariableKind { id: Some(id), .. } = node {
-            if let Some(Binding::Areas(areas)) = self.variable_stack.get(*id as usize) {
-                return RefArg::Ranges(Ranges::Areas(areas.clone()));
+            match self.variable_stack.get(*id as usize) {
+                Some(Binding::Areas(areas)) => return RefArg::Ranges(Ranges::Areas(areas.clone())),
+                Some(Binding::Span(range)) => return RefArg::Ranges(Ranges::One(range.clone())),
+                _ => {}
             }
         }
         RefArg::from(self.variable_value(node, cell))

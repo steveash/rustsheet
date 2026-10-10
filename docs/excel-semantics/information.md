@@ -108,3 +108,27 @@ Evidence: probes/rich-errors-field A1, probes/rich-errors-args A60:A61, A20:A28 
 Status: VERIFIED (excel-graph)
 Implemented in: functions/information/offline_errors.rs
 Tasks: T-1013
+
+## Information function argument modes (range, array, literal)
+Rule: how the other M5 information functions take a range, an array and a direct value (T-1088):
+- ERROR.TYPE and ISFORMULA lift over a multi-cell range: `ERROR.TYPE(E1:F1)` over `#DIV/0!`, `#N/A` spills 2, 7, and
+  `ISFORMULA(A3:B3)` over a formula and a constant spills TRUE, FALSE. `ERROR.TYPE(1)` is `#N/A`.
+- TYPE takes a range or an array whole: `TYPE(A2:C2)` and `TYPE({1,2})` are 64, with no spill. `TYPE` of one number cell is 1.
+- N gives the top-left cell of a range, with no lift and no implicit intersection: `N(A2:C2)` is 2 (A2) and
+  `N(B2:C2)` from a row and column outside the range is 3 (B2). `N("5")` and `N` of a text cell are 0, and `N(TRUE)` is 1.
+- ISREF takes any value: a range is TRUE (no spill), while `ISREF(1)` and `ISREF(A1:A2+0)` are FALSE.
+- SHEET: a range gives its sheet's number (no spill), `SHEET("Data")` that sheet's number, `SHEET()` the formula's
+  sheet, and `SHEET(1)` and `SHEET("Nope")` are `#N/A`.
+- CELL: `CELL("row",B2)` is 2, and info_type lifts over an array (`CELL({"row","col"},B2)` spills 2, 2). An unknown
+  info_type (`"bogus"`) is `#VALUE!`, and so is `CELL("contents",A2:C2)` (a multi-cell range). `CELL("address",ref)` for a
+  reference on another sheet names the workbook file: `[<file>.xlsx]Data!$B$2`.
+- A reference argument must be a reference. Excel for the web refuses a workbook (`FileCorruptTryRepair`) holding
+  `=ISFORMULA(1)`, `=ISFORMULA("A1")`, `=CELL("row",1)` or `=CELL("row",{1,2})`, one scratch workbook per formula.
+  The generator therefore passes those parameters a cell reference only (`cell: true` in eval/catalog/functions.yaml).
+Evidence: probes/info-logic-argument-modes A6:A29, info-logic-argument-modes-2 A7:A8, info-modes-sheet-text,
+info-modes-isref-value-op (oracle: excel-graph, 2026-10-09, T-1088). The refusals come from scratch fills that failed and were not kept.
+Status: VERIFIED (excel-graph)
+Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMULA's lift, `CELL("contents")` of a multi-cell range on another sheet = `#VALUE!`).
+UNVERIFIED: ironcalc-calc CELL.xlsx B14 (excel-cached, a legacy CSE array formula) shows `CELL("contents",A10:A14)` on the formula's own sheet giving the top-left cell (3.4, not the intersection with row 14), while probes/info-logic-argument-modes A18 (a dynamic-array formula) is `#VALUE!` for an other-sheet row range. We key on the sheet, but the evidence does not separate that from "the formula cell is not inside the range" or "CSE reads the top-left, dynamic arrays give `#VALUE!`". Also unprobed: a non-string element in an array `info_type` (we give `#VALUE!`) and `N(range)` whose top-left cell is an error (we pass the error through).
+`CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
+Tasks: T-1088, T-1218

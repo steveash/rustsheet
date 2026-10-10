@@ -1,0 +1,59 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Called LET names and LAMBDA parameters bound to unions, erroring arguments, an empty element and other reference-returning functions (T-1224, follow-up of T-1092). Sheet1 A1:B3 = 1,2,3 / 10,20,30. H6 (the bare `=LAMBDA(f,f(2))()`) returns an error type the oracle client cannot decode, so H15:H17 wrap it (a call with too few arguments, which fails LAMBDA's arity check, not an empty element). I5 is the second element of H5's spill.",
+ "tags": [
+  "M1",
+  "references",
+  "let",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "B1": 10,
+    "B2": 20,
+    "B3": 30,
+    "H1": "=LET(f,(A1,A2),f(2))",
+    "H2": "=LAMBDA(f,f(2))((A1,A2))",
+    "H3": "=LET(f,\"a\",f(1/0))",
+    "H4": "=LET(f,1,f(NA()))",
+    "H5": "=LET(f,{1,2},f(1/0))",
+    "H7": "=LET(f,XLOOKUP(2,A1:A3,B1:B3),f(2))",
+    "H8": "=LET(f,TAKE(A1:A3,1),f(2))",
+    "H9": "=LET(f,DROP(A1:A3,1),f(2))",
+    "H10": "=LET(f,OFFSET(A1,0,0),f(2))",
+    "H11": "=LET(f,TRIMRANGE(A1:A3),f(2))",
+    "H12": "=LET(f,A1,f(1/0))",
+    "H13": "=LET(f,(A1,A2),f())",
+    "H14": "=LET(f,LAMBDA(x,x+1),f(1/0))",
+    "H15": "=ERROR.TYPE(LAMBDA(f,f(2))())",
+    "H16": "=IFERROR(LAMBDA(f,f(2))(),\"e\")",
+    "H17": "=ISERROR(LAMBDA(f,f(2))())"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!H1",
+  "Sheet1!H2",
+  "Sheet1!H3",
+  "Sheet1!H4",
+  "Sheet1!H5",
+  "Sheet1!H7",
+  "Sheet1!H8",
+  "Sheet1!H9",
+  "Sheet1!H10",
+  "Sheet1!H11",
+  "Sheet1!H12",
+  "Sheet1!H13",
+  "Sheet1!H14",
+  "Sheet1!I5",
+  "Sheet1!H15",
+  "Sheet1!H16",
+  "Sheet1!H17"
+ ]
+}

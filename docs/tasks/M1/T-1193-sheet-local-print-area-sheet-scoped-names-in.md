@@ -3,8 +3,8 @@ id: T-1193
 title: "Sheet-local Print_Area: sheet-scoped names in the case loader and _xlnm. names (SPEC-0004 probe row 14)"
 milestone: M1
 lane: engine
-status: todo
-priority: P2
+status: done
+priority: P1
 size: S
 tier: opus
 depends_on: []
@@ -27,9 +27,18 @@ probe still fails with `EngineError: invalid defined name`, for two reasons outs
 Evidence: probes/multiarea-printarea.oracle.json (excel-graph, 2026-10-07).
 
 ## Acceptance criteria
-- [ ] probes/multiarea-printarea H1:H2 pass; baseline updated.
-- [ ] An xlsx with a sheet-local `_xlnm.Print_Area` loads, `=SUM(Print_Area)` evaluates, and export keeps the name (unit test).
-- [ ] `make check` green; reviewers approve.
+- [x] probes/multiarea-printarea H1:H2 pass; baseline updated.
+- [x] An xlsx with a sheet-local `_xlnm.Print_Area` loads, `=SUM(Print_Area)` evaluates, and export keeps the name (unit test).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other `_xlnm.` names (Print_Titles, _FilterDatabase) beyond loading without error.
+
+## Outcome
+`Txn::define_sheet_name` (SPEC-0001) adds a sheet-scoped name with undo; the eval spec loader reads
+`Sheet1!Print_Area` as a name local to Sheet1. xlsx import drops the `_xlnm.` prefix of Print_Area,
+Print_Titles and _FilterDatabase, and export restores it with `localSheetId`. An out-of-range
+`localSheetId` is now an import error instead of a panic. Finding: spec2xlsx (xlsxwriter) writes the
+name without `_xlnm.`, and Excel for the web computes it anyway (xlsx-storage.md). Eval delta: probes
++2 cells (multiarea-printarea H1:H2, which had been an EngineError), 0 regressions. Follow-up: T-1250
+(Excel-saved `_xlnm.` names, export unwrap).

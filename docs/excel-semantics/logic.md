@@ -18,3 +18,12 @@ Implemented in: parser/static_analysis.rs (`Function::Ifs`, `Function::Switch` a
 `fn_ifs` (functions/logical/mod.rs) lifts from the first array or range condition and `fn_switch`
 (functions/logical/switch.rs) over an array or range expression, both through `lift_with_cost`
 (T-0276). Tests: test/test_ifs_switch_lift.rs.
+
+## XOR argument modes
+Rule: XOR takes its arguments like AND (catalog mode `aggregate`). Text and blank cells in a range are skipped:
+`XOR(A1:D1)` over 1, "x", TRUE, blank is FALSE. So is text inside an array: `XOR({1,"x",TRUE})` is FALSE. Direct text is
+coerced: `XOR("TRUE")` is TRUE. A range with no logical value is `#VALUE!` (`XOR` of one text cell), while one number
+cell (5) is TRUE. `=XOR()` makes Excel for the web refuse the workbook (`FileCorruptTryRepair`, scratch fill, not kept).
+Evidence: probes/info-logic-argument-modes A1:A5, info-logic-argument-modes-2 A10:A11 (oracle: excel-graph, 2026-10-09, T-1088).
+Status: VERIFIED (excel-graph); the engine matches.
+Tasks: T-1088
