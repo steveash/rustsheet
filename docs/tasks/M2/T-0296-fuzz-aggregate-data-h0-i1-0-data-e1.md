@@ -3,7 +3,7 @@ id: T-0296
 title: "Fuzz: AGGREGATE(Data!H0:I1,0,Data!E1:E6) reaches a scalar-context cell with a 2x2 array (debug_assert panic)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P0
 size: S
 tier: opus
@@ -33,9 +33,21 @@ Excel's value for the formula needs the oracle (excel-probe skill) if it is not 
 an existing probe.
 
 ## Acceptance criteria
-- [ ] The reproducer is a unit test (decision 0035) that passes in a debug build.
-- [ ] Static analysis and evaluation agree on the result shape of AGGREGATE with a multi-cell first argument; the value matches excel-graph evidence, or the case is left pending and the task blocked.
-- [ ] `make check` green; reviewers approve.
+- [x] The reproducer is a unit test (decision 0035) that passes in a debug build.
+- [x] Static analysis and evaluation agree on the result shape of AGGREGATE with a multi-cell first argument; the value matches excel-graph evidence, or the case is left pending and the task blocked.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Other functions that may reach the same assert (file them as found).
+
+## Outcome
+Two causes. Static analysis compared AGGREGATE's range function_num against `Range(1, 1)` as if
+`Range` held counts; it holds extents minus one, so a 2x2 range passed for a single cell and its 2x2
+result reached a scalar cell. Separately, `Data!H0` lexed as a row-0 reference. Excel
+(probes/aggregate-range-function-num-grid, 22 cells, excel-graph 2026-10-09) reads a
+sheet-qualified cell off the grid (row 0 or past 1048576) as a name, so the fuzz formula is one
+`#NAME?`, and a 2x2 function_num spills a 2x2 grid. An off-grid second corner (`A1:B0`) is a name
+too (probes/off-grid-corners, 6 cells); `$`-qualified off-grid rows cannot be stored in Excel for
+the web and now stay a parse error (they read row 0 before). Unit tests: `range_function_num_grid_spills_and_off_grid_names`,
+`test_sheet_qualified_off_grid_cells_are_names`. Eval: +2 probe cases, 28/28 cells passing; no other change.
+Follow-up: T-1265 (CHOOSE `Range` convention).
