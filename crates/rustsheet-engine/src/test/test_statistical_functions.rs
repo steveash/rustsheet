@@ -424,3 +424,22 @@ fn rank_of_an_unknown_shape_ref_spills_or_ranks() {
     assert_eq!(model._get_text("G10"), *"#VALUE!");
     assert_eq!(model._get_text("H10"), *"#VALUE!");
 }
+
+// ── COUNTBLANK of an error ──────────────────────────────────────────────────
+
+#[test]
+fn nested_countblank_of_an_error_reads_each_argument_once() {
+    // T-1181: an error argument is the result, and deciding that must not evaluate the argument
+    // a second time, or 40 nested calls cost 2^40 evaluations (directive 5).
+    let mut model = new_empty_model();
+    let mut formula = "NA()".to_string();
+    for _ in 0..40 {
+        formula = format!("COUNTBLANK(IF(TRUE,{formula}))");
+    }
+    model._set("A1", &format!("={formula}"));
+    model._set("B1", "=NA()");
+    model._set("B2", "=COUNTBLANK(CHOOSE(1,B1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("B2"), *"0");
+}
