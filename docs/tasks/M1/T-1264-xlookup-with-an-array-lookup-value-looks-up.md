@@ -22,3 +22,6 @@ probes/let-name-uncalled-picked-refs Sheet1!H21: Excel gives 30, the engine `#N/
 
 ## Out of scope
 -
+
+## Outcome
+XLOOKUP lifts an array or multi-cell `lookup_value` per element through `lift_with_cost` (functions/xlookup.rs); a wide return row keeps its first cell per element. New probe probes/xlookup-array-lookup-value (27 cells, all pass); let-name-uncalled-picked-refs H21 now passes. Shapes recorded in docs/excel-semantics/lookup.md.

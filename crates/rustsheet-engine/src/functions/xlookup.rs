@@ -298,6 +298,58 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
+        // An array or multi-cell lookup_value looks up each element into a same-shaped array,
+        // each element by the scalar rules (probes/let-name-uncalled-picked-refs H21:
+        // `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30; T-1264). An element is a value, never a reference.
+        if matches!(
+            lookup_value,
+            CalcResult::Range { .. } | CalcResult::Array(_)
+        ) {
+            return self.lift_with_cost(
+                vec![lookup_value],
+                |model| model.xlookup_walk_cost(&args[1], cell),
+                cell,
+                |model, values| match model.xlookup_scalar(&values[0], args, cell, false) {
+                    // A wide return row keeps only its first cell per element: a lifted
+                    // `XLOOKUP({2;3},A1:A4,C1:E4)` is the column C picks, 12 and 13
+                    // (probes/xlookup-array-lookup-value A15).
+                    CalcResult::Array(rows) => {
+                        rows.first().and_then(|row| row.first()).map_or_else(
+                            || CalcResult::new_error(Error::VALUE, cell, "Empty array".to_string()),
+                            |node| array_node_to_calc_result(node, cell),
+                        )
+                    }
+                    other => other,
+                },
+            );
+        }
+        self.xlookup_scalar(&lookup_value, args, cell, as_reference)
+    }
+
+    /// Cells one lifted XLOOKUP element may visit: the size of the lookup_array range (an
+    /// array or error argument costs one).
+    fn xlookup_walk_cost(&mut self, lookup_array: &Node, cell: CellReferenceIndex) -> u64 {
+        match self.evaluate_node_in_context(lookup_array, cell) {
+            CalcResult::Range { left, right } => {
+                let rows = i64::from(right.row - left.row) + 1;
+                let columns = i64::from(right.column - left.column) + 1;
+                u64::try_from(rows * columns).unwrap_or(u64::MAX).max(1)
+            }
+            _ => 1,
+        }
+    }
+
+    /// XLOOKUP for one scalar `lookup_value`.
+    fn xlookup_scalar(
+        &mut self,
+        lookup_value: &CalcResult,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        if lookup_value.is_error() {
+            return lookup_value.clone();
+        }
         // Get optional arguments
         let if_not_found = if args.len() >= 4 {
             // A range `if_not_found` stays a reference in the reference form:
@@ -430,7 +482,7 @@ impl Model {
                         match search_mode {
                             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
                                 let array = &self.prepare_array(&left, &right, is_row_vector);
-                                match linear_search(&lookup_value, array, search_mode, match_mode) {
+                                match linear_search(lookup_value, array, search_mode, match_mode) {
                                     Some(index) => {
                                         let row_index =
                                             if is_row_vector { index as i32 } else { 0 };
@@ -452,8 +504,7 @@ impl Model {
                             | SearchMode::BinarySearchDescending => {
                                 let values =
                                     self.range_search_vector(&left, &full_right, is_row_vector);
-                                match binary_hit(&lookup_value, &values, &search_mode, &match_mode)
-                                {
+                                match binary_hit(lookup_value, &values, &search_mode, &match_mode) {
                                     BinaryHit::NotFound => if_not_found,
                                     BinaryHit::Wildcard => CalcResult::Error {
                                         error: Error::VALUE,
@@ -484,7 +535,7 @@ impl Model {
                 }
             }
             CalcResult::Array(array) => self.xlookup_array_lookup(
-                &lookup_value,
+                lookup_value,
                 &array,
                 &args[2],
                 (search_mode, match_mode, if_not_found),

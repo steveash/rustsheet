@@ -320,7 +320,8 @@ Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX o
 
 ## XLOOKUP with an array lookup_value looks up each element
 `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
-Evidence: probes/let-name-uncalled-picked-refs H21 (excel-graph, 2026-10-09, T-1252). Other shapes (row, 2-D, with if_not_found) are not probed.
-Ours: `#N/A` (a known failure, T-1264).
+The result has the shape of `lookup_value` (column, row or 2-D array, or a multi-cell range such as `Data!D1:D3`; a whole column gives a 1048576-row result), each element looked up by the scalar rules: an element not found is `#N/A` (or `if_not_found`), an error element is itself (`{2;#DIV/0!;"x"}` is two, `#DIV/0!`, `#N/A`), and `match_mode` applies per element. An element is a value, never a reference (`ISREF` is FALSE). With a return range wider than the lookup column, each element keeps only the first cell of its matched row: `XLOOKUP({2;3},A1:A4,C1:E4)` is 12, 13 in one column.
+Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252) and probes/xlookup-array-lookup-value (excel-graph, 2026-10-10, T-1264).
+Ours: implemented through the shared lift (`xlookup_impl`).
 Status: VERIFIED (web)
 Tasks: T-1252, T-1264
