@@ -163,7 +163,7 @@ Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_posi
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
 Tasks: T-0212, T-0220
 
-## MATCH descending search skips backward; match_type read from a cell is checked as a reference
+## MATCH descending search skips backward; a text match_type read from a cell is #REF!
 Rule 1: in a descending search (negative match_type) the probe step that lands on a cell of another
 type moves *backward* to the nearest cell of the key's type, not forward as in the ascending
 pseudo-code above. `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (backward skip reaches 0.1, which is

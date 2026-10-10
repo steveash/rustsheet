@@ -14,7 +14,7 @@ depends_on: []
 MATCH/INDEX return #REF! when match_type is a text value read from a cell (a literal text one stays #VALUE!).
 
 ## Context
-Rule and evidence: docs/excel-semantics/lookup.md "MATCH descending search skips backward ... match_type read from a cell" (probes/match-descending-argcheck J9-J20). Fixes gen-m2/04cfd82f54dbc2b2 Calc!A81 and f9d4df4efdfbcbd5 Calc!A14. Check how fn_match sees whether the argument was a reference.
+Rule and evidence: docs/excel-semantics/lookup.md "MATCH descending search skips backward; a text match_type read from a cell is #REF!" (probes/match-descending-argcheck J9-J20). Fixes gen-m2/04cfd82f54dbc2b2 Calc!A81 and f9d4df4efdfbcbd5 Calc!A14. Check how fn_match sees whether the argument was a reference. Untested kinds (numeric text, boolean, blank or number in the cell): probe them first.
 
 ## Acceptance criteria
 - [ ] probes/match-descending-argcheck J9-J20, A81 and A14 pass; baseline updated.
