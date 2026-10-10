@@ -50,5 +50,5 @@ Rule: DECIMAL reads its first argument as text (a number or TRUE goes through it
 Evidence: probes/decimal-unreadable (84 cells, excel-graph, 2026-10-10); gen-m5/98ed0b6354e3394a Calc!A9.
 Ours: matches.
 Status: VERIFIED.
-Not probed: form feed and other control characters at the start.
+Not probed: form feed and other control characters at the start; an error radix with over-long text; an empty-cell reference or an array as the text; blanks after radix-16 leading zeros.
 Tasks: T-1198
