@@ -254,10 +254,11 @@ impl SearchVector {
     }
 }
 
-/// The value a lookup searches for: a blank lookup value is the number 0.
+/// The value a lookup searches for: a blank lookup value, or an empty value such as
+/// `IFERROR(<blank>,..)` (T-0291), is the number 0.
 fn lookup_key(target: &CalcResult) -> &CalcResult {
     static ZERO: CalcResult = CalcResult::Number(0.0);
-    if matches!(target, CalcResult::EmptyCell) {
+    if matches!(target, CalcResult::EmptyCell | CalcResult::EmptyArg) {
         &ZERO
     } else {
         target
