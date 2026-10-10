@@ -15,6 +15,7 @@ C	probes/aggregate-array-args.case.json	48
 C	probes/aggregate-grid.case.json	217
 C	probes/aggregate-overflow.case.json	178
 C	probes/aggregate-range-args.case.json	38
+C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2
 C	probes/and-or-xor-error-order.case.json	37
@@ -264,6 +265,7 @@ C	probes/near-zero-snap-name-bodies.case.json	7
 C	probes/number-text-exponent-carry.case.json	9
 C	probes/number-text-exponent-digits.case.json	126
 C	probes/number-to-text-notation.case.json	52
+C	probes/off-grid-corners.case.json	6
 C	probes/offset-negative-height-width.case.json	80
 C	probes/operator-chain-limit.case.json	6
 C	probes/paren-call-callee-indirect.case.json	1
