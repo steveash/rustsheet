@@ -3,7 +3,7 @@ id: T-0282
 title: "Parenthesised number text: reject currency-then-sign and trailing currency"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: S
 tier: sonnet
