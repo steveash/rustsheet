@@ -269,6 +269,23 @@ pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// The smallest range holding every area of a union (all on one sheet, corners in order).
+fn bounding_area(areas: &[Range]) -> CalcResult {
+    let mut bounds = areas.iter();
+    // Callers pass at least one area (a union has two or more); the empty arm is never taken.
+    let Some(first) = bounds.next() else {
+        return CalcResult::EmptyCell;
+    };
+    let (mut left, mut right) = (first.left, first.right);
+    for area in bounds {
+        left.row = left.row.min(area.left.row);
+        left.column = left.column.min(area.left.column);
+        right.row = right.row.max(area.right.row);
+        right.column = right.column.max(area.right.column);
+    }
+    CalcResult::Range { left, right }
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
 fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
@@ -377,13 +394,15 @@ impl Model {
             } => self.index_impl(args, cell, true),
             // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
             // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
-            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed,
+            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is its bounding box
+            // (`SUM(A1:IF(TRUE,(B3,B1)))` = A1:B3, probes/isref-if-range-corners D1, D2, D15-D18;
             // T-1227).
             Node::FunctionKind {
                 kind: Function::If, ..
-            } => self
-                .evaluate_reference_arg(node, cell)
-                .into_single_area(cell),
+            } => match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(ranges @ Ranges::Areas(_)) => bounding_area(&ranges),
+                other => other.into_single_area(cell),
+            },
             // A name whose body is a formula, parenthesized or not, joins as what the body is
             // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
             Node::GroupedRootKind { child } => self.range_operand(child, cell),
@@ -425,26 +444,16 @@ impl Model {
                 // too: with `rg` = `(Sheet1!$B$1:$B$2)`, `rg:B3` is B1:B3 and `ig:B3` (ig =
                 // `(INDEX(Sheet1!$B$1:$B$2,2))`) is B2:B3 (probes/defined-name-grouped-reference
                 // A10, A11, T-1173). Corner order: see references.md "Sheet-qualified range corners".
-                CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: left1.sheet,
-                        row: left1.row.min(right1.row).min(left2.row).min(right2.row),
-                        column: left1
-                            .column
-                            .min(right1.column)
-                            .min(left2.column)
-                            .min(right2.column),
+                bounding_area(&[
+                    Range {
+                        left: left1,
+                        right: right1,
                     },
-                    right: CellReferenceIndex {
-                        sheet: right2.sheet,
-                        row: left1.row.max(right1.row).max(left2.row).max(right2.row),
-                        column: left1
-                            .column
-                            .max(right1.column)
-                            .max(left2.column)
-                            .max(right2.column),
+                    Range {
+                        left: left2,
+                        right: right2,
                     },
-                }
+                ])
             }
             // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
             // `#NULL!` (probes/at-operand-formulatext H12, T-1109). Excel passes the right

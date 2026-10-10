@@ -203,13 +203,7 @@ impl Model {
         let is_span = matches!(node, Node::SheetSpanKind { .. });
         // XLOOKUP, TAKE, DROP and TRIMRANGE bind the reference they pick, so calling the name is
         // `#REF!` as for OFFSET (probes/let-name-call-forms H7:H9, H11; T-1232).
-        let is_picked = matches!(
-            node,
-            Node::FunctionKind {
-                kind: Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange,
-                ..
-            }
-        );
+        let is_picked = matches!(node, Node::FunctionKind { kind, .. } if kind.picks_reference());
         if !is_index && !is_span && !is_picked && !self.is_multi_area(node) {
             return Binding::Value(self.evaluate_node_with_reference(node, cell));
         }
