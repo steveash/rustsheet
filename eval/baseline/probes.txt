@@ -131,6 +131,7 @@ C	probes/error-literals-new2.case.json	15
 C	probes/error-operand-broadcast-cmp.case.json	15
 C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
+C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
 C	probes/fact-large-arguments.case.json	18
 C	probes/filter-if-empty-array.case.json	12
@@ -533,6 +534,16 @@ F	probes/date-argument-modes.case.json	Sheet1!G68
 F	probes/date-argument-modes.case.json	Sheet1!G7
 F	probes/date-argument-modes.case.json	Sheet1!G8
 F	probes/date-argument-modes.case.json	Sheet1!G9
+F	probes/error-stored-busy-behaviors.case.json	S!C1
+F	probes/error-stored-busy-behaviors.case.json	S!C11
+F	probes/error-stored-busy-behaviors.case.json	S!C15
+F	probes/error-stored-busy-behaviors.case.json	S!C2
+F	probes/error-stored-busy-behaviors.case.json	S!C3
+F	probes/error-stored-busy-behaviors.case.json	S!C4
+F	probes/error-stored-busy-behaviors.case.json	S!C5
+F	probes/error-stored-busy-behaviors.case.json	S!C7
+F	probes/error-stored-busy-behaviors.case.json	S!C9
+F	probes/error-stored-busy-behaviors.case.json	S!E1
 F	probes/error-stored-constants.case.json	S!B1
 F	probes/error-stored-constants.case.json	S!D1
 F	probes/error-stored-constants.case.json	S!H1
