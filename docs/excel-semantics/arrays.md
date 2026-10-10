@@ -88,8 +88,13 @@ An error element stays in its position (`CONCATENATE({1;2},{#N/A;"x"})` is {#N/A
 booleans in arrays become text as in `&` ({1;TRUE;FALSE;1.5} gives "1-","TRUE-","FALSE-","1.5-";
 1E+20 gives "1E+20", 0.000001 gives "0.000001"); blank cells are "". A 1×1 array argument gives a single-cell result.
 Status: VERIFIED (CONCATENATE array shape, #SPILL! and element values)
-NOT status: VERIFIED for the array shape and #SPILL! (NOT returns an array). ASSUMED (UNVERIFIED), pending probe T-0260: the per-element cast
-(text, empty and error elements follow the scalar `cast_to_bool` rules); the oracle cells never showed an element value.
+NOT status: VERIFIED for the array shape and #SPILL! (NOT returns an array), and VERIFIED for the per-element cast:
+each element is cast exactly like a scalar argument. Text "TRUE" and "false" are booleans (other casings not probed), so NOT gives
+FALSE/TRUE; other text ("abc", "1", " TRUE", "" and a formula's "") is `#VALUE!`; a number is FALSE when non-zero;
+an error stays; an empty cell in a range is FALSE, so NOT gives TRUE. A range and an array literal give the same
+element values (`NOT({"TRUE","abc","1",#N/A,0,2,"false"," TRUE",""})` is FALSE, `#VALUE!`, `#VALUE!`, `#N/A`, TRUE,
+FALSE, TRUE, `#VALUE!`, `#VALUE!`), and `NOT({""})` is `#VALUE!`. Evidence: probes/not-array-cast (38 cells, the scalar
+`NOT(cell)` and `NOT("text")` forms alongside; excel-graph, 2026-10-09, T-0260); the engine already matched every cell.
 Tasks: T-0225 (NOT), T-0226 (CONCATENATE), T-0233 (element values), T-0260 (NOT per-element cast probe)
 Implemented in: `fn_concatenate` (crates/rustsheet-engine/src/functions/text/concatenate.rs) via `text_arg` + `broadcast_text` (T-0226); `fn_not` (`functions/logical/and_or_xor_not.rs`) and its `scalar_arguments` static-analysis entry (T-0225).
 
