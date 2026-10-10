@@ -3,7 +3,7 @@ id: T-1303
 title: "Fuzz: RANK(5,IF(A1:C1>0,A1:XFE1)) reaches a scalar-context cell with a 3x1 array (debug_assert panic)"
 milestone: M2
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P0
 size: S
 tier: opus
