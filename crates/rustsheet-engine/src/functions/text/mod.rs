@@ -4,6 +4,7 @@ mod char_code;
 mod common;
 mod concatenate;
 mod encodeurl;
+mod position;
 mod regex_functions;
 mod string_format;
 mod text_arg;
