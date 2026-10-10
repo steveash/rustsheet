@@ -351,11 +351,8 @@ impl Model {
             CalcResult::Boolean(_) => CalcResult::Number(4.0),
             CalcResult::Error { .. } => CalcResult::Number(16.0),
             CalcResult::Range { .. } => CalcResult::Number(64.0),
-            CalcResult::EmptyCell => CalcResult::Number(1.0),
-            CalcResult::EmptyArg => {
-                // This cannot happen
-                CalcResult::Number(1.0)
-            }
+            // `TYPE(IFERROR(<blank>,1))` is 1 (probes/iferror-blank-value D14, T-0291).
+            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(1.0),
             CalcResult::Array(_) => CalcResult::Number(64.0),
             CalcResult::Lambda(_) => CalcResult::Error {
                 error: Error::NIMPL,
