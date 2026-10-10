@@ -50,6 +50,27 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
+
+## ROUNDUP adds the unit in binary
+Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.
+It takes the rounded-down decimal (stages 1 and 2 above, as ROUNDDOWN), converts it to the nearest
+double, and adds the unit `10^-num_digits` as a double. So the result can be one ulp off the
+decimal one, in either direction: `ROUNDUP(123.456,2)` = 123.45 + 0.01 = 123.46000000000001,
+`ROUNDUP(0.29,1)` = 0.30000000000000004, `ROUNDUP(2.675,2)` = 2.6799999999999997,
+`ROUNDUP(8.255,1)` = 8.299999999999999, `ROUNDUP(7.123,1)` = 7.199999999999999. When nothing is
+dropped there is no add (`ROUNDUP(0.29,2)` = 0.29). Negative values round the magnitude and keep the
+sign (`ROUNDUP(-123.456,2)` = -123.46000000000001). ROUND and ROUNDDOWN return the decimal-correct
+double. A wrapped `num_digits` behaves the same as its wrapped value: `ROUNDUP(x,65536+k)`,
+`ROUNDUP(x,2^31+k)` and `ROUNDUP(x,k)` agree on every probed cell.
+Evidence: probes/roundup-wrapped-scaling (480 cells: 20 values × k = 1..4, plain, 65536+k, 2^31+k
+and -(65536+k), ROUNDUP and ROUNDDOWN); probes/round-huge-digits-wrap A16, A35, A38 (excel-graph,
+2026-10-09, T-0268); ironcalc-calc MATH_AND_TRIGONOMETRY/ROUND.xlsx D6 (desktop Excel cached value).
+Rejected: multiplying the rounded-up digits by `10^-k` (52/80 cells) and binary scaling
+`ceil(x*10^k)` (37/80); the add model matches 80/80.
+Status: VERIFIED
+Implemented in: `round_decimal` in functions/math_and_trigonometry/decimal_round.rs (T-0268)
+Tasks: T-0268
 
 ## ROUND family: huge num_digits wrap
 Rule: a `num_digits` of huge magnitude is narrowed to an integer, and ROUND narrows it differently
@@ -68,9 +89,9 @@ from ROUNDUP and ROUNDDOWN (after truncation toward zero; Excel is right, howeve
   `ROUND(1E+15,1E+15)` = 0, `ROUND(0.5,1E+15)` = 0.5, `ROUND(42,123456789.123)` = 42,
   `ROUND(123.456,65536)` = 123.456; `ROUND(5E-10,-2147483640)` = 5E-10 but `…,-2147483639)` = 0,
   `ROUND(5E-300,-2147483350)` = 5E-300 but `…,-2147483349)` = 0.
-- Where ROUNDUP uses a wrapped digit count, its result can be one ulp above the decimal-correct one:
-  `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, while `ROUNDDOWN` there is 123.45.
-  The engine gives 123.46 (3 cells, follow-up T-0268).
+- `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, one ulp above the decimal result.
+  That comes from ROUNDUP's binary add, not from the wrap: `ROUNDUP(123.456,2)` gives the same
+  (see "ROUNDUP adds the unit in binary", T-0268).
 - e is taken from the value after its 15-digit cut: `ROUND(10-1E-15,2147483646)` = 0 and
   `…,2147483645)` = 10 (the cut carries 9.99999999999999… to 10, e = 1), `ROUND(1-1E-16,2147483647)` = 0.
 Evidence: probes/round-huge-digits (216 cells), probes/round-huge-digits-wrap (A:C by d, E:O ROUND by
@@ -806,7 +827,7 @@ computed array, which is evaluated once per call), times the lifted argument cou
 A multi-cell range function_num or options lifts like an array (probes/aggregate-range-args, excel-graph, 2026-10-07, T-1058):
 `AGGREGATE(G1:G2,0,E1:E6)` with G1:G2 = 9, 4 spills 23, 9 down, a row range spills across, `AGGREGATE(9,G1:G2,E1:E6)` spills
 `#VALUE!` (option 9), 23, and a column against a row of options makes a 2x2 grid. A single-cell range is a scalar
-(`AGGREGATE(G1,0,E1:E6)` is 23). A range fourth argument is not lifted; a multi-cell range k reads its top-left cell: `AGGREGATE(14,0,E1:E6,G1:G2)` is one `#NUM!` (k = 9), and k = J1:J2 (1, 99) gives 9 while K1:K2 (99, 1) gives `#NUM!`, L1:M1 (2, 99) gives 5. In the reference form the range is just another reference (`AGGREGATE(9,0,E1:E6,J1:J2)` is 123). Unprobed (range k): an empty, text or error top-left cell, a range k in the array form, and a k that is a name or `OFFSET` result.
+(`AGGREGATE(G1,0,E1:E6)` is 23). A 2x2 function_num range spills a 2x2 grid (G1:H2 = 9, 4; 1, 14 gives 23, 9; 3.83, `#VALUE!`), and a 2x2 function_num against a 2x2 options range pairs them element-wise (probes/aggregate-range-function-num-grid A1, A11, excel-graph, 2026-10-09, T-0296). A range fourth argument is not lifted; a multi-cell range k reads its top-left cell: `AGGREGATE(14,0,E1:E6,G1:G2)` is one `#NUM!` (k = 9), and k = J1:J2 (1, 99) gives 9 while K1:K2 (99, 1) gives `#NUM!`, L1:M1 (2, 99) gives 5. In the reference form the range is just another reference (`AGGREGATE(9,0,E1:E6,J1:J2)` is 123). Unprobed (range k): an empty, text or error top-left cell, a range k in the array form, and a k that is a name or `OFFSET` result.
 Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
 Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.

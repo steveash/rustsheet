@@ -93,6 +93,18 @@ impl Parser {
                 *written = written.saturating_add(1);
             }
         }
+        // A parenthesized `@` expression that can be the operand of `#` or `ANCHORARRAY` (it
+        // ends at a `#` or a `)`) remembers the levels (`ImplicitIntersection::grouped`).
+        if !after_at
+            && matches!(
+                self.lexer.peek_token(),
+                TokenType::Spill | TokenType::RightParenthesis
+            )
+        {
+            if let Node::ImplicitIntersection { grouped, .. } = &mut t {
+                *grouped = grouped.saturating_add(1);
+            }
+        }
         // An `@` operand prints its written levels back (`ImplicitIntersection::written`).
         if after_at {
             let inner = self.at_group.take().filter(|&(_, end)| end == close);
@@ -310,6 +322,14 @@ impl Parser {
             let t = if self.lexer.peek_token() == TokenType::At {
                 // `@@A1`: an operand cannot start with `@`.
                 self.parse_primary()
+            } else if matches!(self.lexer.peek_token(), TokenType::Addition(_)) {
+                // `@-1` loads (probes/anchorarray-at-operand-kinds H101, T-1247): the sign is
+                // the operand's, a value, so the `@` of it is a value too. The precedence against
+                // `%`, `^` and ranges is inferred (UNVERIFIED, T-1285).
+                self.nesting += PRIMARY_DEPTH;
+                let t = self.parse_power();
+                self.nesting -= PRIMARY_DEPTH;
+                t
             } else {
                 self.nesting += PRIMARY_DEPTH;
                 let t = self.parse_intersection();
@@ -341,6 +361,7 @@ impl Parser {
                 child: Box::new(t),
                 written,
                 lead,
+                grouped: 0,
             };
         }
         let primary = self.parse_primary();
@@ -564,13 +585,14 @@ pub(crate) fn tight_operand(text: String, node: &Node) -> String {
     }
 }
 
-/// `text` (the printed `node`) as the operand of `#`: like [`tight_operand`], but the `@` of a
-/// number prints bare, `=@1#` (probes/colon-hash-value-operands E3, T-1226). Every other `@`
-/// operand keeps its parentheses; whether Excel prints the written parentheses or the operand
-/// kind decides is UNVERIFIED (docs/excel-semantics/references.md, T-1226).
+/// `text` (the printed `node`) as the operand of `#`: like [`tight_operand`], but an `@` operand
+/// prints the parentheses that were written and no others, `=@1#`, `=@A1:B2#`, `=(@1)#`
+/// (probes/colon-hash-value-operands E3, anchorarray-at-operand-kinds; T-1226, T-1246).
 pub(crate) fn spill_operand(text: String, node: &Node) -> String {
     match node {
-        Node::ImplicitIntersection { child, .. } if matches!(**child, Node::NumberKind(_)) => text,
+        Node::ImplicitIntersection { grouped, .. } => {
+            (0..*grouped).fold(text, |text, _| format!("({text})"))
+        }
         _ => tight_operand(text, node),
     }
 }
