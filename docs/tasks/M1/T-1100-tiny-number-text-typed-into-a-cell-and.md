@@ -3,7 +3,7 @@ id: T-1100
 title: "Tiny number text typed into a cell and in conditional-format rule values"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -36,3 +36,9 @@ crates/rustsheet-engine/src/test/test_nan_inf.rs).
 
 ## Out of scope
 -
+
+## Outcome
+Typed-input probe `probes/typed-number-tiny` (excel-graph) shows cell entry follows the T-0154 rule; the
+engine already matched (24/24 cells pass), recorded in numbers.md. `value_needs_quoting` now uses
+`parse_excel_number`. Conditional-format rule values are not observable through the oracle, so that part
+stays UNVERIFIED pending desktop Excel (M14, Phase 4). Eval: new case passes, no regressions.
