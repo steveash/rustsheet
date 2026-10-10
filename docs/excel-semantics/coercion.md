@@ -61,7 +61,17 @@ Rule: `<`, `>`, `>=` between texts follow Excel's collation: "x" >= "ü" is TRUE
 (code-point order says otherwise for both: "x" < "ü" and "1" < "?").
 Evidence: gen-m2/2cfe279fe77a000d Calc!A318, 96a0952412cefa6c Calc!A284. Oracle: excel-graph, 2026-10-04 (gen-m2 sidecars, T-0203).
 Status: VERIFIED (two cells; the full collation table needs probes, T-0220)
-Tasks: T-0220
+CHAR(160) and spaces (T-0244, VERIFIED, probes/text-order-nbsp-space, 333 cells, excel-graph
+2026-10-09): texts compare character by character, with the space first, CHAR(160) right after it,
+then digits and letters: `" 1" < CHAR(160)&"1" < "0" < "1" < "1"&CHAR(160)`, `" " < CHAR(160)`,
+`"a b" < "a"&CHAR(160)&"b" < "ab"`, `CHAR(160)&CHAR(160)&"1" < CHAR(160)&"0"`; CHAR(160) is never
+equal to a space or ignored (`CHAR(160)&"1"="1"` is FALSE). `>` and COUNTIF's `">"` agree on every
+pair whose operand is text (a criterion operand like `" 0"` is numeric, criteria.md). In passing:
+a hyphen is skipped, `"-1" > "0"` is TRUE (Data!A17 vs C3, still FALSE in the engine; T-0220).
+Implemented in: `functions::util::cmp_text_excel`, used by `compare_values` (operators, sort,
+lookups) and the text criteria in functions/criteria.rs. Inferred, not probed: SORT and approximate lookups
+place CHAR(160) the same way (they share `compare_values`), and control characters below the space.
+Tasks: T-0220, T-0244
 
 ## Double unary minus coerces to a number
 Rule: `--x` is not a no-op. Each unary minus coerces its operand to a number: `--FALSE` = 0,
@@ -243,6 +253,10 @@ boolean and numeric-text cells are all `#VALUE!` (a blank reads as 0), while a t
 number counts as 0, a typed scalar too (`SUMPRODUCT("2")` = 0, `SUMPRODUCT(TRUE)` = 0,
 `SUMPRODUCT("2",3)` = 0, `SUMPRODUCT(3)` = 3), and text in a range is 0 (`SUMPRODUCT(A1:A6)` = 10).
 PRODUCT and SUMSQ skip text and booleans in ranges and coerce typed ones (`PRODUCT(TRUE,3)` = 3).
+PRODUCT of an array argument (`PRODUCT(IF(SEQUENCE(5),7))`) multiplies its numbers left to right
+(probes/geomean-single-and-copies Copies!B1:B35). Text and booleans inside the array are skipped, an array with no
+numbers gives 0 (`PRODUCT({"a"})`, `PRODUCT({TRUE,FALSE})`), and the first error element wins
+(`PRODUCT({2,#N/A,#DIV/0!})` = #N/A) (probes/product-array-elements, excel-graph).
 MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md has blanks).
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
