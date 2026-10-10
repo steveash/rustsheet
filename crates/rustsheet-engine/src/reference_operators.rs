@@ -269,6 +269,22 @@ pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// The smallest range holding every area of a union (all on one sheet, corners in order).
+fn bounding_area(areas: &[Range]) -> CalcResult {
+    let mut bounds = areas.iter();
+    let Some(first) = bounds.next() else {
+        return CalcResult::EmptyCell;
+    };
+    let (mut left, mut right) = (first.left, first.right);
+    for area in bounds {
+        left.row = left.row.min(area.left.row);
+        left.column = left.column.min(area.left.column);
+        right.row = right.row.max(area.right.row);
+        right.column = right.column.max(area.right.column);
+    }
+    CalcResult::Range { left, right }
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
 fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
@@ -377,13 +393,15 @@ impl Model {
             } => self.index_impl(args, cell, true),
             // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
             // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
-            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed,
+            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is its bounding box
+            // (`SUM(A1:IF(TRUE,(B3,B1)))` = A1:B3, probes/isref-if-range-corners D1, D2, D15-D18;
             // T-1227).
             Node::FunctionKind {
                 kind: Function::If, ..
-            } => self
-                .evaluate_reference_arg(node, cell)
-                .into_single_area(cell),
+            } => match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(ranges @ Ranges::Areas(_)) => bounding_area(&ranges),
+                other => other.into_single_area(cell),
+            },
             // A name whose body is a formula, parenthesized or not, joins as what the body is
             // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
             Node::GroupedRootKind { child } => self.range_operand(child, cell),
