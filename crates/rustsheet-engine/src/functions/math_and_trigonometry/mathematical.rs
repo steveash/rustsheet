@@ -168,35 +168,6 @@ impl Model {
         CalcResult::String(buf)
     }
 
-    pub(crate) fn fn_decimal(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 2 {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(s) => return s,
-        };
-        let radix = match self.get_number(&args[1], cell) {
-            Ok(f) => f.trunc() as i32,
-            Err(s) => return s,
-        };
-        if !(2..=36).contains(&radix) {
-            return CalcResult::Error {
-                error: Error::NUM,
-                origin: cell,
-                message: "Radix must be between 2 and 36".to_string(),
-            };
-        }
-        match i64::from_str_radix(&text, radix as u32) {
-            Ok(n) => CalcResult::Number(n as f64),
-            Err(_) => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: format!("'{}' is not a valid number in base {}", text, radix),
-            },
-        }
-    }
-
     pub(crate) fn fn_sumsq(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.is_empty() {
             return CalcResult::new_args_number_error(cell);
