@@ -12,7 +12,7 @@ merged since its last run.
 | ironcalc-calc | 217 | 72,203 | 97.86% | 1,547 |
 | poi | 336 | 27,290 | 97.97% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 568 |
 | gen-m2 | 30 | 12,000 | 99.62% | 46 |
-| gen-m1 | 15 | 3,750 | 99.79% (M1 exit needs 100%; 8 cells left, all power-operator last-digit, T-0221) | 8 |
+| gen-m1 | 15 | 3,750 | 99.79% (M1 exit needs 100%; 8 cells left, all power-operator last-digit: 6 in T-1302, 2 in T-0221) | 8 |
 | probes | 372 | 11,225 | 95.08% (4 accepted deviations, 11 cells passed by decision 0042) | 552 |
 | smoke | 6 | 46 | 100% | 0 |
 | fixtures | 6 | 67 | 100% | 0 |
