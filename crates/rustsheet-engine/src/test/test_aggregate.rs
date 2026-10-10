@@ -54,3 +54,37 @@ fn lifted_calls_over_large_arrays_hit_the_visit_cap() {
     assert_eq!(model._get_text("A2"), *"1000");
     assert_eq!(model._get_text("C2"), *"998");
 }
+
+#[test]
+fn range_function_num_grid_spills_and_off_grid_names() {
+    // The formula_eval fuzz reproducer (T-0296): static analysis took a 2x2 range function_num
+    // for a single cell, so the 2x2 result reached a scalar cell (a debug assertion), and
+    // `Data!H0` lexed as a row-0 reference. Excel: probes/aggregate-range-function-num-grid.
+    let mut model = new_empty_model();
+    model.add_sheet("Data").unwrap();
+    let data = [
+        ("E1", "3"),
+        ("E2", "1"),
+        ("E3", "4"),
+        ("E4", "1"),
+        ("E5", "5"),
+        ("E6", "9"),
+        ("G1", "9"),
+        ("H1", "4"),
+        ("G2", "1"),
+        ("H2", "14"),
+    ];
+    for (cell, value) in data {
+        model._set(&format!("Data!{cell}"), value);
+    }
+    model._set("C3", "=AGGREGATE(Data!H0:I1,0,Data!E1:E6)");
+    model._set("A5", "=AGGREGATE(Data!G1:H2,0,Data!E1:E6)");
+    model.evaluate();
+
+    assert_eq!(model._get_text("C3"), *"#NAME?");
+    assert_eq!(model._get_text("C4"), *"");
+    assert_eq!(model._get_text("A5"), *"23");
+    assert_eq!(model._get_text("B5"), *"9");
+    assert_eq!(model._get_text("A6"), *"3.833333333");
+    assert_eq!(model._get_text("B6"), *"#VALUE!");
+}

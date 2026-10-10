@@ -297,13 +297,17 @@ value, the call gives odd results, without the arguments mattering: a number or 
 Excel reads that back as `f(2)` (FORMULATEXT gives `=LET(f,A1,f(2))`), so it is Excel's own form.
 Probed in T-1224 (probes/let-name-call-forms, excel-graph, 2026-10-09): a name bound to a union is `#REF!` too (`=LET(f,(A1,A2),f(2))`,
 `=LET(f,(A1,A2),f())`, `=LAMBDA(f,f(2))((A1,A2))`), as is one bound to `XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,1)`, `DROP(A1:A3,1)`,
-`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; `bind_argument` (functions/logical/let.rs) binds XLOOKUP, TAKE, DROP and TRIMRANGE as the reference they pick (T-1232; whether the bound name is ISREF is not probed); erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
+`OFFSET(A1,0,0)` or `TRIMRANGE(A1:A3)`; `bind_argument` (functions/logical/let.rs) binds XLOOKUP, TAKE, DROP and TRIMRANGE as the reference they pick (T-1232); erroring arguments do not matter (`=LET(f,A1,f(1/0))` is `#REF!`, `=LET(f,"a",f(1/0))` is 0, `=LET(f,1,f(NA()))` is `#NAME?`, `=LET(f,{1,2},f(1/0))` spills `#NAME?`,`#NAME?`
 (H5:I5), `=LET(f,LAMBDA(x,x+1),f(1/0))` is `#DIV/0!`). `=LAMBDA(f,f(2))()` is a call with too few arguments, not an empty element: it is
 an error whose type is `#VALUE!` (`ERROR.TYPE` 3, `IFERROR` catches it, H15:H17); the bare cell returns an error type the oracle client cannot
 decode (probes/let-name-call-forms description). UNVERIFIED: the engine's mapping of an empty element to `#NAME?` (`called_value` in
 lambda.rs). A workbook holding `=LAMBDA([f],f(2))()` (an omitted optional parameter) is refused by Excel for the web (`FileCorruptTryRepair`,
 `unsupportedWorkbook`, one scratch workbook, T-1224), so that form cannot be a case. Ours: the union forms (H1, H2, H13) are `#REF!` as in Excel since T-1231; the engine gives `#NAME?`/`#SPILL!` for the
 XLOOKUP/TAKE/DROP/TRIMRANGE forms (T-1232); the rest match.
+Uncalled (probes/let-name-uncalled-picked-refs, excel-graph, 2026-10-09, T-1252): a LET name or LAMBDA parameter bound to
+`XLOOKUP(2,A1:A3,B1:B3)`, `TAKE(A1:A3,2)`, `DROP(A1:A3,1)` or `TRIMRANGE(A1:A3)` is the reference it picks: `ISREF`, `CELL("address",f)`, `ROWS`, `SUM` and
+`COUNTIF` through the name all read the cells, as they do for the written call; the engine matches on all 40 cells. Not a quirk of the binding:
+`SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 in Excel (an array `lookup_value` looks up each element), and the engine gives `#N/A` (H21, a known failure).
 A LAMBDA parameter called like a function follows the same rule: `=LAMBDA(f,f(2))(1)` and `(TRUE)` are
 `#NAME?`, `("a")` is 0, `(1/0)` is `#DIV/0!`, `(A1)` is `#REF!` and `(LAMBDA(x,x*3))` is 6.
 Excel for the web refuses a workbook holding `=LET(f,"",f(2))` (`createSession` fails, three scratch
@@ -328,7 +332,7 @@ functions/logical/lambda.rs (`Model::call_callee`, `Model::call_variable` for a 
 or LAMBDA parameter);
 functions/logical/let.rs (`Model::bind_argument`, which binds in reference context); model.rs (the
 callee is evaluated with `evaluate_aggregate_arg`, so a cell and a selecting INDEX or IF stay references)
-Tasks: T-0149, T-1092, T-1224, T-1231, T-1232
+Tasks: T-0149, T-1092, T-1224, T-1231, T-1232, T-1252
 
 ## A defined name may be an intersection
 Rule: a defined name whose formula is an intersection is a reference. With `isect` =
@@ -732,10 +736,16 @@ reference, `ISREF(A1:INDEX(A1:A3,2))` and `ISREF(A1:(A1:B2 B1:B3))` are TRUE (`S
 An IF corner is the reference it picks, on either side: `ISREF(A1:IF(TRUE,B2))`, `ISREF(IF(TRUE,B2):A1)` and
 `ISREF(A1:IF(FALSE,B2,B3))` are TRUE, `SUM(A1:IF(TRUE,B2))` is 33, `ROWS(A1:IF(TRUE,B3))` 3 and `=A1:IF(TRUE,A1)`
 1. CHOOSE likewise (`SUM(A1:CHOOSE(1,B2))` = 33), which the engine already matched; the IF arm was added to
-`range_operand` (T-1177). UNVERIFIED (T-1227): an IF corner that picks a union (the engine gives `#VALUE!`),
-an error, or a 3-D span, and an IF with an array condition. `=A1:(1/0)` is refused
+`range_operand` (T-1177). T-1227 (probes/isref-if-range-corners, excel-graph 2026-10-10): an IF corner that picks a
+union is the union's bounding box (`SUM(A1:IF(TRUE,(B1,B2)))` 33, `ROWS` 2, `COLUMNS` 2, `ISREF` TRUE; `SUM(A1:IF(TRUE,(B3,B1)))`
+and `SUM(A1:IF(TRUE,(B1,B3)))` both 66, `ROWS` 3, so neither first nor last area decides); an error is passed on
+(`ERROR.TYPE(A1:IF(TRUE,#N/A))` 7, `...INDEX(B1:B3,9)` 4, `ISREF` FALSE); an IF with an array condition is `#VALUE!`
+(`SUM(A1:IF({TRUE,FALSE},B2,B3))`, `SUM(A1:IF({TRUE},B2))`; `ISREF` FALSE, `ERROR.TYPE` 3); a 3-D span pick is `#VALUE!`
+(`SUM(A1:IF(TRUE,Data1:Data3!B2))`, ISREF FALSE). Only the union differed from the engine (`#VALUE!`); fixed in `range_operand`. A union on the left corner (`IF(TRUE,(B1,B2)):A1`) is inferred symmetric, not probed.
+Note for probes: `ERROR.TYPE(` of a multi-cell range spills, so a #SPILL! over an occupied cell is a probe artifact; read such
+corners with ROWS/COLUMNS. `=A1:(1/0)` is refused
 by the Graph workbook builder (`unsupportedWorkbook`, as T-1111 found below), so it is not in the probe.
-Tasks: T-1138, T-1166, T-1177
+Tasks: T-1138, T-1166, T-1177, T-1227
 
 ## Sheet-qualified column or row corners on both sides are not a range
 Rule: only two cell corners may both carry the sheet prefix (`Data!A1:Data!B2` = `Data!A1:B2`,
@@ -752,6 +762,26 @@ Evidence: probes/sheet-qualified-both-corners Calc!A1, A5, A6, A7, A11, A12 (ora
 2026-10-05, T-0139); A2 and A4 are the single-prefix forms.
 Status: VERIFIED (web)
 Tasks: T-0139, T-0145
+
+## A sheet-qualified cell off the grid is a name
+Rule: column letters with a row of 0 or past row 1048576 are not a cell reference after a sheet
+prefix either, but a sheet-scoped name, as they are without one: `=Data!H0`, `=Data!H00` and
+`=Data!A1048577` are `#NAME?`, `ISREF(Data!H0)` is FALSE, and `Data!H0:I1` is that name joined
+to I1 by `:`, so `ROWS(Data!H0:I1)`, `SUM(Data!G0:H2)` and `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`
+are one `#NAME?` (no spill). A leading zero is still a row: `Data!H01` is H1. An off-grid second
+corner is a name too, joined to the first cell by `:`: `ISREF(Data!A1:B0)` and `ISREF(A1:B0)` are
+FALSE, `=Data!A1:B0`, `SUM(A1:B0)`, `SUM(H0:I1)` and `SUM(Data!A1:B1048577)` are `#NAME?`.
+An off-grid row next to a `$` (`$H$0`, `H$0`, `$H0`, `Data!$H$0`, `Data!H$0`, `SUM(Data!$H0:I1)`)
+cannot be stored: Excel for the web refuses the workbook (createSession 501 FileCorruptTryRepair,
+each formula tried alone, 2026-10-09), so there is no value to match; the engine keeps a parse
+error (`#ERROR!`) for them, where before T-0296 it read row 0 (`=$H$0` was 0).
+Implemented: the lexer reads such a corner as an identifier (sheet prefix kept), and ends a range
+token at the first cell when the second corner is off the grid; before T-0296 a row-0 corner lexed
+as a reference, found by the formula_eval fuzz target.
+Evidence: probes/aggregate-range-function-num-grid Calc!A16, A21:A29 and probes/off-grid-corners
+(oracle: excel-graph, 2026-10-09, T-0296).
+Status: VERIFIED (web)
+Tasks: T-0296
 
 ## OFFSET: an empty height or width argument means the reference's size
 Rule: in `OFFSET(reference, rows, cols, [height], [width])` a present-but-empty height or width
