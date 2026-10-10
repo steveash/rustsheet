@@ -74,6 +74,9 @@ prefix first fits 150.
 Open: conversions to a non-base unit are evidenced only for time (to `yr`), and conversions to a
 prefixed unit not at all. The Celsius output branch subtracts 273.5, not 273.15, and no cached
 cell converts to C (T-1297).
+The internal bases make `value * F_from` overflow sooner than the SI result would:
+`CONVERT(1E290,"m2","m2")` and `CONVERT(1E300,"ha","m2")` are now `#NUM!` (previously the value).
+Excel likely does the same, but this is unprobed (T-1297).
 Backend: excel-desktop cached values only.
 Status: VERIFIED (for the evidenced conversions)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)

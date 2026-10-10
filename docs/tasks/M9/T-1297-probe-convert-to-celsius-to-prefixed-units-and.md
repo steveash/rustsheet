@@ -22,7 +22,7 @@ the order for a prefixed target (`CONVERT(1,"m","km")`, `CONVERT(5,"cal","kJ")`)
 (`CONVERT(5,"cal","eV")`, `CONVERT(1,"uk_pt","gal")`, `CONVERT(1,"lbf","dyn")`).
 
 ## Acceptance criteria
-- [ ] Probe case (excel-probe) covering every temperature pair (including to C, Reau, Rank, F), prefixed targets and non-base pairs in force, energy, volume and area; oracle values recorded.
+- [ ] Probe case (excel-probe) covering every temperature pair (including to C, Reau, Rank, F), prefixed targets and non-base pairs in force, energy, volume and area, plus extreme magnitudes (`CONVERT(1E290,"m2","m2")`, `CONVERT(1E300,"ha","m2")`, `CONVERT(1E302,"J","J")`); oracle values recorded.
 - [ ] The engine matches them (fix the 273.5 constant and the unit test if Excel says so); findings in engineering.md.
 - [ ] `make check` green; reviewers approve.
 
