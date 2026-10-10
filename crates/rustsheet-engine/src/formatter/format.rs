@@ -732,7 +732,7 @@ pub(crate) fn parse_formatted_number(
         // Inside parentheses a currency symbol is only valid directly before unsigned digits:
         // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms).
         let bad_currency = currencies.iter().any(|c| {
-            inner.strip_suffix(c).is_some()
+            (!c.is_empty() && inner.strip_suffix(c).is_some())
                 || inner
                     .strip_prefix(c)
                     .is_some_and(|rest| rest.trim_start().starts_with(['-', '+']))
