@@ -883,9 +883,6 @@ F	probes/multinomial-large-arguments.case.json	Sheet1!A13
 F	probes/multinomial-large-arguments.case.json	Sheet1!A14
 F	probes/multinomial-large-arguments.case.json	Sheet1!A20
 F	probes/multinomial-large-arguments.case.json	Sheet1!A7
-F	probes/paren-number-text-forms.case.json	Sheet1!A1
-F	probes/paren-number-text-forms.case.json	Sheet1!A2
-F	probes/paren-number-text-forms.case.json	Sheet1!A6
 F	probes/rate-empty-arguments.case.json	Sheet1!A1
 F	probes/rate-empty-arguments.case.json	Sheet1!A10
 F	probes/rate-empty-arguments.case.json	Sheet1!A2
