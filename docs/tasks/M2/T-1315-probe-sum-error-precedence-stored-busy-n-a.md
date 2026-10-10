@@ -3,7 +3,7 @@ id: T-1315
 title: "Probe SUM error precedence: stored #BUSY!/#N/A cell vs literal or computed error, both orders"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
