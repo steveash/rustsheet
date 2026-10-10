@@ -3,7 +3,7 @@ id: T-1222
 title: "Stored #BUSY! error kind (ERROR.TYPE 0): engine, facade and xlsx per the SPEC-0003 amendment"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P1
 size: M
 tier: opus
