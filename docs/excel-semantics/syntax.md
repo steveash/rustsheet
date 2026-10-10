@@ -166,7 +166,7 @@ Stored `#BUSY!` behaviors (probes/error-stored-busy-behaviors, excel-graph 2026-
 the stored error, A2 = 1): `VALUETOTEXT(A1)` and `VALUETOTEXT(A1,1)` are the text "#BUSY!" (C1, C3);
 `ARRAYTOTEXT(A1)` is the *error* `#BUSY!`, not text (C2; the same for stored `#N/A`, C17: a single cell that
 only propagates the error, see arrays.md), while `ARRAYTOTEXT(A1:A2,1)` is "{#BUSY!;1}" (C4).
-Leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2,
+Leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2 (C5, C6),
 likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7); `SUM(A1,1/0)` and `SUM(1/0,A1)` are both
 ERROR.TYPE 2 (C11, C12: the error computed in an argument (`1/0`) wins over the stored `#BUSY!` in a
 referenced cell whichever comes first; one cell pair, so the general rule is not established here). COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0, `"<>#BUSY!"` counts both

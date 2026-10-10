@@ -37,7 +37,7 @@ Use stored constants (`{"t":"e","v":"#BUSY!","stored":true}`, see syntax.md "New
 - Typed `#BUSY!` cell input (desktop-only, like T-1016).
 
 ## Outcome
-Probe `probes/error-stored-busy-behaviors` (24 cells, excel-graph) answers every listed question; results in
+Probe `probes/error-stored-busy-behaviors` (23 cells, excel-graph) answers every listed question; results in
 syntax.md "Stored `#BUSY!` behaviors" and SPEC-0003. One assumption was wrong: `ARRAYTOTEXT(A1)` of the
 stored cell is the error `#BUSY!`, not text. Eval delta: probes known failures 921 -> 931 (10 cells, all
 waiting on T-1222's stored-`#BUSY!` kind; T-1314 re-checks them). No other change.
