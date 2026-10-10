@@ -483,3 +483,18 @@ fn range_operator_passes_a_right_operand_error_on() {
     assert_eq!(model._get_text("D11"), "#REF!");
     assert_eq!(model._get_text("D14"), "#NULL!");
 }
+
+#[test]
+fn anchorarray_of_at_negation_is_value_and_of_at_index_spills() {
+    // probes/anchorarray-at-operand-kinds H101, H81 (T-1240, T-1247): `@-1` is a value, so
+    // `#VALUE!`, not a parse failure; `@` of a reference-returning call keeps the reference.
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("H81", "=ANCHORARRAY(@INDEX(D1:D2,1))");
+    model._set("H101", "=ANCHORARRAY(@-1)");
+    model.evaluate();
+    assert_eq!(model._get_text("H101"), "#VALUE!");
+    assert_eq!(model._get_text("H81"), "1");
+    assert_eq!(model._get_text("H82"), "2");
+    assert_eq!(model._get_text("H83"), "3");
+}
