@@ -881,7 +881,6 @@ F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	Sheet1!D3
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	Sheet1!F9
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	inside_a_lambda!C3
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/POWER.xlsx	inside_a_lambda!C4
-F	ironcalc-calc/MATH_AND_TRIGONOMETRY/ROUND.xlsx	Sheet1!D6
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/SEQUENCE.xlsx	Sheet1!I10
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/SEQUENCE.xlsx	Sheet1!I11
 F	ironcalc-calc/MATH_AND_TRIGONOMETRY/SEQUENCE.xlsx	Sheet1!I9
