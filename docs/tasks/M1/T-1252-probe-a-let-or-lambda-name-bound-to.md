@@ -3,7 +3,7 @@ id: T-1252
 title: "Probe a LET or LAMBDA name bound to XLOOKUP, TAKE, DROP or TRIMRANGE when not called (ISREF, CELL, ROWS, SUM)"
 milestone: M1
 lane: functions-logic
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1232 binds these four as the reference they pick (`bind_argument`, functions/l
 
 ## Out of scope
 -
+
+## Outcome
+Probe `probes/let-name-uncalled-picked-refs` (41 cells, excel-graph): an uncalled LET name or LAMBDA parameter bound to XLOOKUP, TAKE, DROP or TRIMRANGE is the reference it picks, and the engine matches on all 40 such cells. The call list is now one predicate, `Function::picks_reference`, used by `evaluate_picked_reference_arg`, `bind_argument` and `is_read_reference`. `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 in Excel and `#N/A` here (one new known failure in the probes baseline); filed T-1264. Recorded in docs/excel-semantics/references.md. Eval delta: probes +1 case, +1 known failure (new coverage), no regressions.
