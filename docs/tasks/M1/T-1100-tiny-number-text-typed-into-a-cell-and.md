@@ -3,7 +3,7 @@ id: T-1100
 title: "Tiny number text typed into a cell and in conditional-format rule values"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
