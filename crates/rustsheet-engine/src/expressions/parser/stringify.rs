@@ -1,6 +1,6 @@
 mod bound_variables;
 use super::reference_operators::{
-    at_operand, callee_operand, intersection_operand, tight_operand, union_text,
+    at_text, callee_operand, intersection_operand, spill_operand, tight_operand, union_text,
 };
 use super::{
     super::utils::{name_needs_quoting, quote_name},
@@ -623,9 +623,14 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind { left, right, .. } => {
+        OpIntersectKind {
+            left,
+            right,
+            written,
+        } => {
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            format!("{} {}", operand(left, true), operand(right, false))
+            let cut = format!("{} {}", operand(left, true), operand(right, false));
+            format!("{}{cut}{}", "(".repeat(*written), ")".repeat(*written))
         }
         OpUnionKind { left, right, .. } => union_text(node, &sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
@@ -724,6 +729,7 @@ fn stringify(
                     | NamedVariableKind { .. }
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
+                    | GroupedRootKind { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
@@ -775,6 +781,7 @@ fn stringify(
         ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
+        GroupedRootKind { child } => format!("({})", sub(child)),
         SpillRangeOperator { child } => {
             if export_to_excel {
                 return format!(
@@ -789,7 +796,7 @@ fn stringify(
                     )
                 );
             };
-            format!("{}#", tight_operand(sub(child), child))
+            format!("{}#", spill_operand(sub(child), child))
         }
         LambdaDefKind { parameters, body } => {
             let lambda_name = if export_to_excel {
@@ -844,6 +851,9 @@ fn stringify(
         ImplicitIntersection {
             automatic: _,
             child,
+            written,
+            lead,
+            grouped: _,
         } => {
             if export_to_excel {
                 // Redundant operators have already been stripped by
@@ -863,7 +873,7 @@ fn stringify(
             }
             // The space binds tighter than `@`, so `@A1:A3 A2:B2` is `@(A1:A3 A2:B2)`; Excel's
             // FORMULATEXT prints it without parentheses (T-1098).
-            format!("@{}", at_operand(sub(child), child))
+            at_text(child, *written, *lead, &sub)
         }
     }
 }
@@ -1027,13 +1037,10 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::UnaryKind { kind: _, right } => {
             rename_sheet_in_node(right, sheet_index, new_name);
         }
-        Node::ImplicitIntersection {
-            automatic: _,
-            child,
-        } => {
+        Node::ImplicitIntersection { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
-        Node::SpillRangeOperator { child } => {
+        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
 
@@ -1109,13 +1116,10 @@ pub(crate) fn rename_defined_name_in_node(
         Node::UnaryKind { kind: _, right } => {
             rename_defined_name_in_node(right, name, scope, new_name);
         }
-        Node::ImplicitIntersection {
-            automatic: _,
-            child,
-        } => {
+        Node::ImplicitIntersection { child, .. } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-        Node::SpillRangeOperator { child } => {
+        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
         // Do nothing

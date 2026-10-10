@@ -1,3 +1,4 @@
+use crate::reference_operators::RefArg;
 use std::cmp::Ordering;
 
 use crate::arithmetic::flush_subnormal;
@@ -21,28 +22,24 @@ impl Model {
         for arg in args {
             // References (also via IF/INDEX) arrive as a Range; the scalar
             // arms below only see values.
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Number(value) => {
+            match self.evaluate_picked_reference_arg(arg, cell) {
+                RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
                 // An empty argument (`AVERAGE(5,)`) counts as 0
                 // (probes/average-value-args F2, F6, F9, F15, F17).
-                CalcResult::EmptyArg => f(0.0),
-                CalcResult::Boolean(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
+                RefArg::Value(CalcResult::EmptyArg) => f(0.0),
+                RefArg::Value(CalcResult::Boolean(value))
+                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(value) if !matches!(arg, Node::ReferenceKind { .. }) => {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        f(parsed);
-                    } else {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Argument cannot be cast into number".to_string(),
-                        ));
-                    }
+                RefArg::Value(CalcResult::String(value))
+                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                {
+                    f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
                 }
-                CalcResult::Array(array) => {
+                RefArg::Value(CalcResult::Array(array)) => {
                     for row in array {
                         for value in row {
                             match value {
@@ -65,12 +62,12 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Range { left, right } => {
-                    self.for_each_number_in_range(left, right, cell, &mut f)?;
+                RefArg::Ranges(areas) => {
+                    self.for_each_number_in_areas(&areas, cell, &mut f)?;
                 }
-                error @ CalcResult::Error { .. } => return Err(error),
+                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 // Everything else is ignored
-                _ => {}
+                RefArg::Value(_) => {}
             }
         }
 
@@ -107,19 +104,24 @@ impl Model {
         F: FnMut(f64),
     {
         for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Number(value) => {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Value(CalcResult::Number(value)) => {
                     f(value);
                 }
                 // A single-cell reference reads like a one-cell range: text counts as 0 and
                 // a boolean as 1/0 (coercion.md "MAXA / MINA", poi EverythingTests J888, F912).
-                CalcResult::Boolean(value) => {
+                RefArg::Value(CalcResult::Boolean(value)) => {
                     f(if value { 1.0 } else { 0.0 });
                 }
-                CalcResult::String(_) if matches!(arg, Node::ReferenceKind { .. }) => {
+                RefArg::Value(CalcResult::String(_))
+                    if matches!(arg, Node::ReferenceKind { .. }) =>
+                {
                     f(0.0);
                 }
-                CalcResult::String(value) => {
+                RefArg::Value(CalcResult::String(value)) => {
+                    if let Some(error) = Self::aggregate_text_too_long(&value, cell) {
+                        return Err(error);
+                    }
                     if let Some(parsed) = self.cast_number(&value) {
                         f(parsed);
                     } else {
@@ -130,7 +132,7 @@ impl Model {
                         ));
                     }
                 }
-                CalcResult::Array(array) => {
+                RefArg::Value(CalcResult::Array(array)) => {
                     for row in array {
                         for value in row {
                             match value {
@@ -155,8 +157,8 @@ impl Model {
                         }
                     }
                 }
-                CalcResult::Range { left, right } => {
-                    self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                RefArg::Ranges(areas) => {
+                    self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
                         CalcResult::Number(value) => {
                             f(value);
                             Ok(())
@@ -177,9 +179,9 @@ impl Model {
                         _ => Ok(()),
                     })?;
                 }
-                error @ CalcResult::Error { .. } => return Err(error),
+                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
                 // Everything else is ignored
-                _ => {}
+                RefArg::Value(_) => {}
             }
         }
 
@@ -216,10 +218,10 @@ impl Model {
         let mut count = 0.0;
         let mut sum = 0.0;
         for arg in args {
-            match self.evaluate_aggregate_arg(arg, cell) {
-                CalcResult::Range { left, right } => {
+            match self.evaluate_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
                     if let Err(error) =
-                        self.for_each_cell_in_range(left, right, cell, |_, value| match value {
+                        self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
                             CalcResult::String(_) => {
                                 count += 1.0;
                                 Ok(())
@@ -252,14 +254,16 @@ impl Model {
                         return error;
                     }
                 }
-                CalcResult::Number(value) => {
+                RefArg::Value(CalcResult::Number(value)) => {
                     count += 1.0;
                     sum += value;
                 }
-                CalcResult::String(s) => {
+                RefArg::Value(CalcResult::String(s)) => {
                     if let Node::ReferenceKind { .. } = arg {
                         // Do nothing
                         count += 1.0;
+                    } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {
+                        return error;
                     } else if let Some(t) = parse_excel_number(&s) {
                         sum += t;
                         count += 1.0;
@@ -271,15 +275,18 @@ impl Model {
                         };
                     }
                 }
-                CalcResult::Boolean(b) => {
+                RefArg::Value(CalcResult::Boolean(b)) => {
                     count += 1.0;
                     if b {
                         sum += 1.0;
                     }
                 }
-                error @ CalcResult::Error { .. } => return error,
-                CalcResult::EmptyCell | CalcResult::EmptyArg => {}
-                CalcResult::Array(_) | CalcResult::Lambda(_) => {
+                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
+                RefArg::Value(CalcResult::EmptyCell | CalcResult::EmptyArg) => {}
+                // A reference is never a `RefArg::Value` (`RefArg::from`).
+                RefArg::Value(
+                    CalcResult::Array(_) | CalcResult::Lambda(_) | CalcResult::Range { .. },
+                ) => {
                     return CalcResult::Error {
                         error: Error::NIMPL,
                         origin: cell,
@@ -641,69 +648,9 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let values = match self.evaluate_aggregate_arg(&args[0], cell) {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
+        let values = match self.numbers_from_reference_arg(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
         let k = match self.large_small_k(&args[1], cell) {
             Ok(k) => k,
@@ -734,71 +681,10 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let values = match self.evaluate_node_in_context(&args[0], cell) {
-            CalcResult::Array(array) => match self.values_from_array(array) {
-                Ok(v) => v,
-                Err(e) => {
-                    return CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
-                    }
-                }
-            },
-            CalcResult::Range { left, right } => match self.values_from_range(left, right) {
-                Ok(v) => v,
-                Err(e) => return e,
-            },
-            CalcResult::Boolean(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(if value { 1.0 } else { 0.0 })]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::Number(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    vec![Some(value)]
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            CalcResult::String(value) => {
-                if !matches!(args[0], Node::ReferenceKind { .. }) {
-                    if let Some(parsed) = self.cast_number(&value) {
-                        vec![Some(parsed)]
-                    } else {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unsupported argument type".to_string(),
-                        };
-                    }
-                } else {
-                    return CalcResult::Error {
-                        error: Error::NUM,
-                        origin: cell,
-                        message: "Unsupported argument type".to_string(),
-                    };
-                }
-            }
-            _ => {
-                return CalcResult::Error {
-                    error: Error::NIMPL,
-                    origin: cell,
-                    message: "Unsupported argument type".to_string(),
-                }
-            }
+        let values = match self.numbers_from_reference_arg(&args[0], cell) {
+            Ok(v) => v,
+            Err(e) => return e,
         };
-
         let k = match self.large_small_k(&args[1], cell) {
             Ok(k) => k,
             Err(e) => return e,

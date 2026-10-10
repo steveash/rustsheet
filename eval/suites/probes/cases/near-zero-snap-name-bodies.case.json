@@ -1,0 +1,38 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Near-zero snapping of defined-name bodies written as a group or a SUM (T-1164)",
+  "tags": [
+    "M1",
+    "numbers",
+    "probe"
+  ],
+  "names": {
+    "nzg": "=(0.1+0.2-0.3)",
+    "nzgg": "=((0.1+0.2-0.3))",
+    "nzs": "=SUM(0.1,0.2,-0.3)"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=nzg",
+        "A2": "=nzgg",
+        "A3": "=nzs",
+        "A4": "=nzg+0",
+        "A5": "=nzs+0",
+        "A6": "=SUM(nzg)",
+        "A7": "=0.1+0.2-0.3"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7"
+  ]
+}

@@ -1,7 +1,12 @@
 use crate::expressions::types::CellReferenceIndex;
+use crate::reference_operators::RefArg;
 
 use crate::{
-    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
+    arithmetic::snap_near_zero,
+    calc_result::CalcResult,
+    expressions::parser::{ArrayNode, Node},
+    expressions::token::Error,
+    model::Model,
 };
 
 type TwoMatricesResult = (i32, i32, Vec<Option<f64>>, Vec<Option<f64>>);
@@ -241,5 +246,100 @@ impl Model {
             }
         };
         Ok(result)
+    }
+}
+
+/// A running SUM: the total and the two addends of the latest addition, which
+/// [`snap_near_zero`] needs when SUM is a formula's outermost operation.
+#[derive(Default)]
+struct SumParts {
+    total: f64,
+    before_last: f64,
+    last: f64,
+}
+
+impl SumParts {
+    fn add(&mut self, value: f64) {
+        self.before_last = self.total;
+        self.last = value;
+        self.total += value;
+    }
+}
+
+impl Model {
+    /// SUM(number1, [number2], ...)
+    ///
+    /// The SUM function adds values. You can add individual values, cell references or ranges or a mix of all three.
+    ///
+    /// # Details
+    /// Generally each argument is evaluated and the result is converted to a number. However there are some special
+    /// cases:
+    /// - **Args evaluating to CalcResult::Range**: The sum of all the numbers in the range is calculated. No
+    ///   conversions are performed, non-numeric values are ignored and errors are propagated.
+    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
+    ///   referenced cell and errors are propagated.
+    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
+    pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        match self.sum_with_last_addition(args, cell) {
+            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
+            Err(error) => error,
+        }
+    }
+
+    /// SUM as a formula's outermost operation: its final addition snaps to 0 like `+`/`-` do
+    /// (`=SUM(0.1,0.2,-0.3)` is 0; docs/excel-semantics/numbers.md "Near-zero snapping").
+    pub(crate) fn fn_sum_outermost(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.sum_with_last_addition(args, cell) {
+            Ok(sum) => CalcResult::finite_number_or_num(
+                snap_near_zero(sum.before_last, sum.last, sum.total),
+                cell,
+            ),
+            Err(error) => error,
+        }
+    }
+
+    /// The sum of SUM's arguments, with the two addends of its final addition.
+    fn sum_with_last_addition(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> Result<SumParts, CalcResult> {
+        if args.is_empty() {
+            return Err(CalcResult::new_args_number_error(cell));
+        }
+        let mut sum = SumParts::default();
+        for arg in args {
+            // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
+            match self.evaluate_picked_reference_arg(arg, cell) {
+                RefArg::Ranges(areas) => {
+                    self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))?;
+                }
+                RefArg::Value(CalcResult::Array(array)) => {
+                    for value in array.into_iter().flatten() {
+                        match value {
+                            ArrayNode::Number(value) => sum.add(value),
+                            ArrayNode::Error(error) => {
+                                return Err(CalcResult::Error {
+                                    error,
+                                    origin: cell,
+                                    message: "Error in array".to_string(),
+                                })
+                            }
+                            // Booleans and text in an array are ignored.
+                            _ => {}
+                        }
+                    }
+                }
+                RefArg::Value(error @ CalcResult::Error { .. }) => return Err(error),
+                RefArg::Value(calc_result) => {
+                    sum.add(self.cast_aggregate_arg_to_number(calc_result, cell)?)
+                }
+            };
+        }
+        Ok(sum)
     }
 }

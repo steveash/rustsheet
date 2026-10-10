@@ -12,6 +12,8 @@ rust-version.workspace = true
 rustsheet_engine = { path = "../rustsheet-engine" }
 rustsheet_xlsx = { path = "../rustsheet-xlsx" }
 thiserror = "1"
+
+[dev-dependencies]
 zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
 
 [features]

@@ -1,4 +1,5 @@
 use crate::expressions::types::CellReferenceIndex;
+use crate::number_format::to_excel_precision;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -30,16 +31,43 @@ impl Model {
             );
         }
 
+        // Excel multiplies the values' binary significands in [1, 2) into one double, keeping their
+        // powers of two apart, and is #NUM! when that product overflows: n * log2(significand)
+        // reaching 1024. 1028 copies of 5E+204 are finite and 1029 are #NUM!, and so are 1752
+        // alternating 1.5 and 0.75 although their plain product is in range (numbers.md, "GEOMEAN
+        // is #NUM! when the product of significands overflows"; probes/geomean-overflow-cut*).
+        let significands: f64 = values.iter().map(|&v| split_pow2(v).0).product();
+        if significands.is_infinite() {
+            return CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "GEOMEAN product of significands overflows".to_string(),
+            );
+        }
+
         // Excel gives exactly 9E+307 for two 9E+307 values (numbers.md, "Aggregate overflow"), which
         // a log-sum evaluation misses by ulps. When the plain product leaves the double range, take
         // the n-th root of a product kept in range by moving powers of two into a separate
-        // exponent. In range the log-sum is kept: it matches the oracle on the existing cases
-        // (ironcalc-calc GEOMEAN C23) where the n-th root of the product does not.
+        // exponent. In range the root is `exp(ln(product) / n)`, and one value is returned as is:
+        // that matches 67 of 72 many-value sets (probes/geomean-in-range-many) and all of
+        // ironcalc-calc GEOMEAN, where a log-sum `exp(mean(ln v))` misses `GEOMEAN("47")` and 1101
+        // x 1.5 (probes/geomean-overflow-count H1) and `powf` rounds sqrt(3) down (C23). An
+        // exact root is returned exactly: GEOMEAN(3,3), GEOMEAN(1,9) and 50 copies of 7 are 3, 3 and
+        // 7, where `exp(ln/n)` is one ulp off, so a root whose 15-digit value, raised to the n-th
+        // power by the same left-to-right product, gives the product back is that value
+        // (numbers.md, "GEOMEAN in-range root"; probes/geomean-single-and-copies,
+        // probes/geomean-root-refinement; T-1123).
         let n = values.len() as f64;
         let plain: f64 = values.iter().product();
         if plain.is_normal() {
-            let log_sum: f64 = values.iter().map(|v| v.ln()).sum();
-            return CalcResult::Number((log_sum / n).exp());
+            if values.len() == 1 {
+                return CalcResult::Number(plain);
+            }
+            let root = (plain.ln() / n).exp();
+            let short = to_excel_precision(root, 15);
+            // `short^n` as n left-to-right multiplications, the way `plain` was formed.
+            let exact = short != root && values.iter().fold(1.0, |p, _| p * short) == plain;
+            return CalcResult::Number(if exact { short } else { root });
         }
         // Keep the product as a significand in [1, 2) and a separate power of two: every factor and
         // every partial product is split, so no step can overflow or underflow whatever the
@@ -62,6 +90,7 @@ impl Model {
         // `product * 2^r` stays finite up to r = 1000; past that (over 1000 values) the remainder
         // gets its own root (unprobed).
         let count = i64::try_from(values.len()).unwrap_or(i64::MAX);
+        exp2 += exponent_wrap_excess(significands, count, exp2);
         let (q, r) = (exp2.div_euclid(count), exp2.rem_euclid(count));
         let root = match i32::try_from(r) {
             Ok(r) if r <= 1000 => (product * 2f64.powi(r)).powf(1.0 / n),
@@ -78,6 +107,33 @@ impl Model {
         } else {
             CalcResult::new_error(Error::NUM, cell, "GEOMEAN overflow".to_string())
         }
+    }
+}
+
+/// Span of the 11-bit double exponent field: Excel's power-of-two sum gains one of these per wrap.
+const EXPONENT_FIELD_SPAN: i64 = 2048;
+
+/// The amount Excel's power-of-two sum `exp2` is too high for `count` values whose [1, 2)
+/// significand product is `significands` (finite, at least 1).
+///
+/// It is `2048 * k`, where k counts the wraps of the exponent field below the double range by the
+/// [0.5, 1) significand product `significands * 2^-count`, as if Excel formed that product by
+/// exponent-field arithmetic modulo 2048. It matches all 41 probed cells of T-1120: 2400 copies of
+/// 1E-300 give 1E-300 * 2^(2048/2400), 1700 copies give 1E-300, and 1E-307 steps to k = 2 between
+/// 3500 and 3900 copies. Only a product below the double range (negative `exp2`) whose significand
+/// product has reached 2 wraps: 2^-1000 * 1.001 (significand product exponent 1) gains k = 1 from
+/// 1100 copies, while 2^-1000 * 1.0001 (product below 2), powers of two (product 1) and 2^1000 times
+/// 1.001 or 1.1 (positive sum) never gain, up to 3000 or 8200 copies (numbers.md, "GEOMEAN is #NUM!
+/// when the product of significands overflows"; probes/geomean-exponent-sum, -sum-2,
+/// geomean-overflow-cut-3 C7, geomean-pow2-count; T-1120, T-1156).
+fn exponent_wrap_excess(significands: f64, count: i64, exp2: i64) -> i64 {
+    // `significands >= 1` puts its exponent in [0, 1023], and `count` is a vector length, so this
+    // cannot overflow.
+    let below = count - i64::from(split_pow2(significands).1) - 1022;
+    if below > 0 && exp2 < 0 && significands >= 2.0 {
+        EXPONENT_FIELD_SPAN * ((below + EXPONENT_FIELD_SPAN - 1) / EXPONENT_FIELD_SPAN)
+    } else {
+        0
     }
 }
 

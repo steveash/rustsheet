@@ -4,7 +4,7 @@ title: "Power operator and POWER: match Excel last-digit results (15 gen-m2 know
 milestone: M2
 lane: engine
 status: todo
-priority: P3
+priority: P1
 size: M
 tier: opus
 depends_on: []

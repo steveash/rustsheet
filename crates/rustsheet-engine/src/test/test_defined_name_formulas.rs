@@ -89,8 +89,8 @@ fn branching_names_are_bounded_in_time() {
 }
 
 // Every name in a chain nests its body: the depth and stack budgets stop the chain before the
-// native stack runs out (directive 5). The nesting stays shallow because a single cell nested
-// about 120 deep already overflows a debug test thread with no names involved (T-1110).
+// native stack runs out (directive 5). The nesting stays shallow so that the chain, not one
+// cell's nesting, is what runs into the budgets (a cell alone: test_nested_formula_stack.rs).
 #[test]
 fn deeply_nested_name_chains_stay_on_the_stack() {
     let mut model = new_empty_model();
@@ -141,4 +141,17 @@ fn uses_outside_a_cell_do_not_share_a_budget() {
             "a use outside a cell ran out of budget"
         );
     }
+}
+
+// A range whose corners are on two sheets is `#VALUE!`, not a reference (T-1166;
+// probes/sheet-qualified-corner-order Calc!A7, excel-graph).
+#[test]
+fn isref_false_for_cross_sheet_corner_range() {
+    let mut model = new_empty_model();
+    model.add_sheet("Other").unwrap();
+    model._set("A1", "=ISREF(Sheet1!A1:Other!B2)");
+    model._set("A2", "=ISREF(Sheet1!A1:B2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"FALSE");
+    assert_eq!(model._get_text("A2"), *"TRUE");
 }

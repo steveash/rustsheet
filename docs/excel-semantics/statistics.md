@@ -69,8 +69,28 @@ workbook, but not every NORM.DIST (sigma != 1) or LOGNORM.DIST density cell, so 
 formulation is open.
 Evidence: `ironcalc-calc/STATISTICAL/NORM_DIST.xlsx` `NORM.S.DIST NORM.S.INV`!C3, C5, C7, C16, C17,
 C24, C25, C26, C32 (checked during T-0903).
-Status: UNVERIFIED (fits the NORM.S.DIST cells; NORM.DIST/LOGNORM.DIST open, T-0975)
+Update: refuted as a general rule by the T-1041 sweep, see "Normal density oracle sweep (T-1041)" below.
+Status: UNVERIFIED (refuted as a general rule; fits the 9 cached cells only; 272/369 on the T-1041 sweep)
 Tasks: T-0975
+
+## Normal density oracle sweep (T-1041)
+Rule: on the 369-point grid z = -38..8 step 0.125, `PHI(z)` equals `NORM.S.DIST(z,FALSE)` bit for
+bit (one kernel). The hypothesis above (`exp(-z*z/2) / sqrt(2*pi)`, divisor 2.5066282746310002) matches 272 of the
+369 values (97 differ in the last digit), so it is refuted as a general rule; the correctly rounded
+divisor 2.5066282746310007 (the engine's `SQRT_2PI` for NORM.S.DIST/NORM.DIST/LOGNORM.DIST; PHI
+currently computes the ...0002 form) matches only 64. The best lead is
+`exp(-z*z/2) * 0.3989422804014327`, which matches 350 of 369 (12 misses are 1 ulp, 3 are 2 ulp at z = -34.625,
+-25.875, -23.25, 4 are the flushed zeros below). T-0975 must fit against the sweep, not the 9 cached cells. For the NORM.DIST grids,
+`exp(-((x-m)/s)^2/2) / sqrt(2*pi) / s` matches 106/122 (s=0.5), 88/122 (1.2), 73/122 (3) and
+75/122 (10): the NORM.DIST kernel is not that form; these grids and LOGNORM.DIST are otherwise left
+to T-0975's fit (all cells are numbers, no errors). Results below the normal double range flush to 0:
+z = -38 .. -37.625 give exactly 0 (the quotient would be subnormal, e.g. 1.25e-312), while
+z = -37.5 gives the normal 1.7282337322841054e-306. All 369 cells are numbers (no errors).
+Evidence: probes-numeric cases `m9-normpdf-norm-s-dist`, `m9-normpdf-phi`; companion grids
+`m9-normpdf-norm-dist-s0p5`, `-s1p2`, `-s3`, `-s10` (NORM.DIST density, m in {0, 2.5}) and
+`m9-normpdf-lognorm-dist` (three (m,s) pairs).
+Status: VERIFIED (observation)
+Tasks: T-0975, T-1041
 
 ## HYPGEOM.DIST is not exact for small integer arguments
 Rule: HYPGEOM.DIST misses the exact rational result by a few ulp even for tiny populations, so it is
@@ -164,3 +184,50 @@ With A1:A2 = {5, 7}, A3:A4 = {"x", TRUE}: `RANK(3,A1:A2)`, `RANK(3,A3:A4)`, `RAN
 An error-valued `order` wins over the absent-number result: `RANK(3,A6:A7,1/0)`, `RANK(3,A3:A4,1/0)` and `RANK(5,A1:A2,1/0)` are all `#DIV/0!`.
 Status: VERIFIED (probes `rank-absent-number`, T-1055, and `if-index-ref-args-aggregates` A46-A51, T-1003; oracle excel-graph, 2026-10-07).
 Implemented in: `fn_rank_eq` and `fn_rank_avg` (crates/rustsheet-engine/src/functions/statistical/rank_eq_avg.rs).
+
+## Normal CDF and ERFC sweep (T-1040)
+Rule: on a dense grid, `ERFC(x)` and `ERFC.PRECISE(x)` are bit-identical (265 points, x in -6..27
+step 0.125) and match the correctly rounded `erfc` to within 1e-15 relative wherever the result is
+a normal double; they return 0 from x = 26.625 on, where the true value is subnormal (< 2.2E-308)
+(last non-zero: `ERFC(26.5)` = 2.2109076642637346E-307). The grid cannot tell a final-result
+subnormal flush from an underflow in an intermediate `exp`; it is consistent with the flush above.
+`NORM.S.DIST(z,TRUE)` is within 7.8E-15 relative of the correctly rounded Phi(z) for z > -8, but its
+lower-tail error grows: up to about 1.15E-13 (max 1.144E-13 at z = -27.25), clustering near
+1.137E-13 and 5.68E-14 (2^-43, 2^-44) at many integer z (-37, -36, -34, -32 versus -30, -27, -24).
+It returns 0 from z = -37.625 down (last non-zero: `NORM.S.DIST(-37.5,TRUE)` = 4.605353009581954E-308).
+`NORM.S.DIST(0,TRUE)` = 0.5, `NORM.S.DIST(8,TRUE)` = 0.9999999999999993,
+`NORM.S.DIST(-8,TRUE)` = 6.220960574271738E-16.
+`LOGNORM.DIST(x,m,s,TRUE)` shows the same deep-lower-tail error: `LOGNORM.DIST(2,1,0.01,TRUE)`
+(z = -30.7) = 4.473044928315258E-207 against a true 4.473044928316143E-207 (1.98E-13), and
+`LOGNORM.DIST(0.1,0,0.1,TRUE)` (z = -23.0) = 1.2841756306435775E-117 against 1.2841756306435298E-117
+(3.7E-14); its other cells are within 2E-15. `NORM.DIST(x,m,s,TRUE)` with s != 1 is within 2.1E-15
+on all 20 probes (none is deeper than z = -5), and `GAUSS(z)` (z in -38..8 step 0.5) is within 3.3E-16.
+No error edges appeared in these grids.
+Evidence: probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf-b`, `t1040-erfc`,
+`t1040-erfc-precise`, `t1040-gauss`, `t1040-norm-dist-cdf`, `t1040-lognorm-dist-cdf` (oracle
+excel-graph, 2026-10-08; errors measured against 60-digit mpmath).
+Status: VERIFIED (values); the formulation that reproduces the tail error is open in T-0968.
+
+## RANK of a non-reference array
+Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
+(`IF(A1:C1>0,A1:C1)`, 1x3; `IF(A1:B2>0,A1:B2)`, 2x2) gives `#VALUE!` in every element of the array's own shape (a spill), so
+`RANK(5,IF(A1:C1>0,A1:C1))` fills F1:H1 with `#VALUE!`. References produced by INDEX, CHOOSE and OFFSET rank normally
+(`RANK(5,INDEX(A1:C2,1,0))`, `RANK(5,CHOOSE(1,A1:C1))`, `RANK(5,OFFSET(A1,0,0,1,3))` = 2 with A1:C1 = 7,1,5). A literal second argument
+(`{7,1,5}`, `5`, `"5"`, `TRUE`) is not usable in a workbook at all: excel-graph refuses to open a file containing
+`RANK(5,{7,1,5})`, `RANK.AVG(5,{7,1,5})`, `RANK.EQ(5,{7,1,5})`, `RANK(5,5)`, `RANK(5,"5")` or `RANK(5,TRUE)` (HTTP 501
+`unsupportedWorkbook`; `RANK(5,SORT(A1:C1))` as well), so their values are not observable through the web oracle (M14 desktop question, decision 0039).
+Evidence: probes/rank-nonref-06..08 (references), rank-nonref-12..14 (arrays), probes/multiarea-order-stats H14:J14 (excel-graph, 2026-10-09, T-1203).
+Ours: matches since T-1203: the RANK family returns a `#VALUE!` array of the argument's shape, and static analysis
+(`static_analysis_rank`) makes such a formula a dynamic-array anchor so it spills. For a literal array (`{7,1,5}`) we also spill `#VALUE!` 1x3; that is
+UNVERIFIED (the oracle refuses the workbook). Scalar literals (`RANK(5,5)`, `"5"`, `TRUE`) still rank as a
+one-element list, also UNVERIFIED (decision 0039).
+Error and text arguments next to such a ref (probes/rank-nonref-errors, excel-graph, 2026-10-09, T-1208; RANK and RANK.AVG
+agree): an error `number` is that error in every element of the ref's shape (`RANK(#N/A,IF(A1:C1>0,A1:C1))` fills F1:H1 with
+`#N/A`, a `#DIV/0!` number fills `#DIV/0!`), a text `number` is `#VALUE!` in every element, and an `order` of an error, text or a
+number `1` is `#VALUE!` in every element (the array ref decides the shape and its `#VALUE!` wins over an `order` error). An error
+`number` therefore takes precedence over the ref's own `#VALUE!` and the result still spills. Not probed: an error `number` together
+with an error `order` (which wins).
+RANK.EQ shares the RANK implementation and was not probed separately.
+Ours: matches since T-1215 (the error or text `number` spills over the ref's shape); the `order` cases matched already.
+Status: VERIFIED (excel-graph); literal arguments UNVERIFIED
+Tasks: T-1152, T-1203, T-1208, T-1215

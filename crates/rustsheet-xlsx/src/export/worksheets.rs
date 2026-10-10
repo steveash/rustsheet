@@ -31,6 +31,7 @@ use rustsheet_engine::{
             stringify::{to_excel_array_formula_string, to_excel_string},
             Node,
         },
+        token::Error,
         types::CellReferenceRC,
         utils::number_to_column,
     },
@@ -39,7 +40,28 @@ use rustsheet_engine::{
 
 use crate::export::conditional_formatting::get_conditional_formatting_xml;
 
-use super::{escape::escape_xml, xml_constants::XML_DECLARATION};
+use super::{escape::escape_xml, rich_errors::vm_attribute, xml_constants::XML_DECLARATION};
+
+/// The literal an error cell is written with. Excel's stored form ([`Error::stored_literal`]),
+/// except the kinds Excel rejects as stored literals, which are saved as `#VALUE!`:
+/// - `#SPILL!`, `#CALC!`, `#CONNECT!`, `#BLOCKED!` and `#FIELD!` (T-0999). Excel keeps the kind in
+///   `vm` rich-value metadata, which the cell also gets ([`vm_attribute`], T-1014).
+/// - The engine-only `#CIRC!`, `#ERROR!` and `#N/IMPL` (T-1133, docs/excel-semantics/syntax.md).
+///
+/// The eval harness must not use this fallback: it scores through `Error::stored_literal`.
+pub(crate) fn exported_error_literal(error: &Error) -> &'static str {
+    match error {
+        Error::SPILL
+        | Error::CALC
+        | Error::CONNECT
+        | Error::BLOCKED
+        | Error::FIELD
+        | Error::CIRC
+        | Error::ERROR
+        | Error::NIMPL => Error::VALUE.stored_literal(),
+        _ => error.stored_literal(),
+    }
+}
 
 fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<String> {
     let column1 = number_to_column(column)?;
@@ -262,7 +284,9 @@ pub(crate) fn get_worksheet_xml(
                 } => {
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}><v>{ei}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"e\"{style}{vm}><v>{ei}</v></c>",
+                        ei = exported_error_literal(ei),
+                        vm = vm_attribute(ei)
                     ));
                 }
                 Cell::SharedString { si, s } => {
@@ -352,7 +376,9 @@ pub(crate) fn get_worksheet_xml(
                         formula_attribute(&parsed_formulas[*f as usize].0, to_excel_string);
                     let style = get_cell_style_attribute(*s);
                     row_data_str.push(format!(
-                        "<c r=\"{cell_name}\" t=\"e\"{style}><f>{formula}</f><v>{ei}</v></c>"
+                        "<c r=\"{cell_name}\" t=\"e\"{style}{vm}><f>{formula}</f><v>{ei}</v></c>",
+                        ei = exported_error_literal(ei),
+                        vm = vm_attribute(ei)
                     ));
                 }
                 Cell::SpillCell {
@@ -506,7 +532,9 @@ pub(crate) fn get_worksheet_xml(
                         ""
                     };
                     row_data_str.push(format!(
-                        r#"<c r="{cell_name}"{style} t="e"{cm}><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#
+                        r#"<c r="{cell_name}"{style} t="e"{cm}{vm}><f t="array" ref="{range}">{formula}</f><v>{ei}</v></c>"#,
+                        ei = exported_error_literal(ei),
+                        vm = vm_attribute(ei)
                     ));
                 }
             }
@@ -660,4 +688,27 @@ pub(crate) fn get_worksheet_xml(
   {cf_ext_lst}\
 </worksheet>"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exported_error_literal_falls_back_for_kinds_excel_rejects() {
+        for error in [
+            Error::SPILL,
+            Error::CALC,
+            Error::CONNECT,
+            Error::BLOCKED,
+            Error::FIELD,
+            Error::CIRC,
+            Error::ERROR,
+            Error::NIMPL,
+        ] {
+            assert_eq!(exported_error_literal(&error), "#VALUE!", "{error}");
+        }
+        assert_eq!(exported_error_literal(&Error::GETTINGDATA), "#N/A");
+        assert_eq!(exported_error_literal(&Error::DIV), "#DIV/0!");
+    }
 }

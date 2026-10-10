@@ -166,7 +166,7 @@ macro_rules! time_part_fn {
     };
 }
 
-use crate::arithmetic::{array_of_errors, bcast_idx, own_error};
+use crate::arithmetic::{array_of_errors, own_error};
 use crate::cast::NumberOrArray;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
@@ -175,7 +175,7 @@ use crate::formatter::date_text::parse_date;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
     constants::EXCEL_DATE_BASE,
     expressions::parser::{ArrayNode, Node},
     expressions::token::Error,
@@ -379,117 +379,24 @@ impl Model {
         if args.len() != 3 {
             return CalcResult::new_args_number_error(cell);
         }
-        let year_na = self.get_number_or_array(&args[0], cell);
-        let month_na = self.get_number_or_array(&args[1], cell);
-        let day_na = self.get_number_or_array(&args[2], cell);
-        // An argument that is an error is the result (the leftmost one), unless another one is
-        // an array: then it is broadcast and every element is an error.
-        let any_array = [&year_na, &month_na, &day_na]
-            .iter()
-            .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
-        let broadcast_error = |na: Result<NumberOrArray, CalcResult>| match na {
-            Err(CalcResult::Error { error, .. }) if any_array => {
-                Ok(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
-            }
-            other => other,
-        };
-        let (year_na, month_na, day_na) = match (
-            broadcast_error(year_na),
-            broadcast_error(month_na),
-            broadcast_error(day_na),
-        ) {
-            (Ok(year), Ok(month), Ok(day)) => (year, month, day),
-            (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => return e,
-        };
-
-        fn date_node(year_f: f64, month_f: f64, day_f: f64) -> ArrayNode {
-            let mut year = year_f.floor() as i32;
-            if year < 0 {
-                return ArrayNode::Error(Error::NUM);
-            }
-            // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
-            if year < 1900 {
-                year += 1900;
-            }
-            match permissive_date_to_serial_number(
-                day_f.floor() as i32,
-                month_f.floor() as i32,
-                year,
-            ) {
-                Ok(n) => ArrayNode::Number(n as f64),
-                Err(_) => ArrayNode::Error(Error::NUM),
-            }
-        }
-
-        match (&year_na, &month_na, &day_na) {
-            (NumberOrArray::Number(yr), NumberOrArray::Number(mo), NumberOrArray::Number(dy)) => {
-                match date_node(*yr, *mo, *dy) {
-                    ArrayNode::Number(n) => CalcResult::Number(n),
-                    ArrayNode::Error(e) => CalcResult::Error {
-                        error: e,
-                        origin: cell,
-                        message: DATE_OUT_OF_RANGE_MESSAGE.to_string(),
-                    },
-                    _ => unreachable!(),
+        self.lift_numbers(
+            args,
+            cell,
+            DATE_OUT_OF_RANGE_MESSAGE,
+            |[year, month, day]| {
+                let mut year = year.floor() as i32;
+                if year < 0 {
+                    return Err(Error::NUM);
                 }
-            }
-            _ => {
-                let dims = |na: &NumberOrArray| -> (usize, usize) {
-                    match na {
-                        NumberOrArray::Number(_) => (1, 1),
-                        NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, |r| r.len())),
-                    }
-                };
-                let max_rows = dims(&year_na).0.max(dims(&month_na).0).max(dims(&day_na).0);
-                let max_cols = dims(&year_na).1.max(dims(&month_na).1).max(dims(&day_na).1);
-
-                // The f64 of a NumberOrArray at (row, col); a size-1 dimension repeats
-                // (row/col are metavariables because of macro hygiene).
-                macro_rules! elem {
-                    ($na:expr, $row:expr, $col:expr) => {
-                        match &$na {
-                            NumberOrArray::Number(f) => Ok(*f),
-                            NumberOrArray::Array(a) => {
-                                let n = a.len();
-                                let m = a.first().map_or(0, |r| r.len());
-                                let value = bcast_idx(n, $row)
-                                    .and_then(|ri| a.get(ri))
-                                    .and_then(|r| bcast_idx(m, $col).and_then(|cj| r.get(cj)));
-                                match value {
-                                    None => Err(Error::NA),
-                                    Some(ArrayNode::Number(f)) => Ok(*f),
-                                    Some(ArrayNode::Boolean(b)) => Ok(if *b { 1.0 } else { 0.0 }),
-                                    Some(ArrayNode::Empty) => Ok(0.0),
-                                    Some(ArrayNode::String(s)) => {
-                                        self.cast_number(&s).ok_or(Error::VALUE)
-                                    }
-                                    Some(ArrayNode::Error(e)) => Err(e.clone()),
-                                }
-                            }
-                        }
-                    };
+                // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
+                if year < 1900 {
+                    year += 1900;
                 }
-
-                let mut output = Vec::with_capacity(max_rows);
-                for r in 0..max_rows {
-                    let mut row = Vec::with_capacity(max_cols);
-                    for c in 0..max_cols {
-                        let yr_f: Result<f64, Error> = elem!(year_na, r, c);
-                        let mo_f: Result<f64, Error> = elem!(month_na, r, c);
-                        let dy_f: Result<f64, Error> = elem!(day_na, r, c);
-                        let node = match (yr_f, mo_f, dy_f) {
-                            (Ok(yr), Ok(mo), Ok(dy)) => date_node(yr, mo, dy),
-                            (Err(e), _, _) => ArrayNode::Error(e),
-                            (_, Err(e), _) => ArrayNode::Error(e),
-                            (_, _, Err(e)) => ArrayNode::Error(e),
-                        };
-                        row.push(node);
-                    }
-                    output.push(row);
-                }
-                CalcResult::Array(output)
-            }
-        }
+                permissive_date_to_serial_number(day.floor() as i32, month.floor() as i32, year)
+                    .map(f64::from)
+                    .map_err(|_| Error::NUM)
+            },
+        )
     }
 
     // date, months
@@ -549,13 +456,13 @@ impl Model {
                 handle(serial)?;
             }
             CalcResult::Range { left, right } => {
-                self.for_each_cell_in_range(left, right, cell, |model, value| match value {
+                let areas = [Range { left, right }];
+                self.for_each_cell_in_areas(&areas, cell, |model, value| match value {
                     CalcResult::Number(v) => {
                         let serial = v.floor() as i64;
                         model.excel_date(serial, cell)?;
                         handle(serial)
                     }
-                    // ignore empty cells
                     CalcResult::EmptyCell => Ok(()),
                     _ => Err(CalcResult::new_error(
                         Error::VALUE,

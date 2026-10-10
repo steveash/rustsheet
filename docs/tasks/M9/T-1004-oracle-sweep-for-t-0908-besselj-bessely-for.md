@@ -3,7 +3,7 @@ id: T-1004
 title: "Oracle sweep for T-0908: BESSELJ/BESSELY for x in [8,100], orders 0-10"
 milestone: M9
 lane: research
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -28,3 +28,6 @@ Grid: x in {8, 8.5, 9, 10, 12.5, 15, 20, 25, 30, 40, 50, 64, 75, 100} by orders 
 
 ## Out of scope
 - Fitting or implementing the formulation (T-0908 does that).
+
+## Outcome
+Added `probes-numeric/m9-bessel` (364 cells) and its excel-graph oracle sidecar, no pending cells. Findings (fractional-order truncation, BESSELJ = 0 for huge n, Excel's error for x >= 8 depends on x and order, up to 7e-5 for BESSELJ near x = 8..10 when order < x; see engineering.md) recorded in docs/excel-semantics/engineering.md; T-0908 links the case. The `probes-numeric` suite is ungated (`gate = false`), so no baseline changed.

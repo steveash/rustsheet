@@ -1,0 +1,50 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1124 second round: which dates before the first XIRR accepts (second vs later position, equal dates), date 0 and negative dates, and a zero first value.",
+  "tags": [
+    "M1",
+    "financial",
+    "xirr",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=XIRR({-1000,1100,1100},{45000,44000,45365})",
+        "B1": "2nd date before 1st, 3rd after",
+        "A2": "=XIRR({-1000,1100,1100},{45000,45365,44000})",
+        "B2": "3rd before 1st (control, positive)",
+        "A3": "=XIRR({-1000,1100},{45000,45000})",
+        "B3": "all dates equal",
+        "A4": "=XIRR({-1000,1100,5},{45000,45365,45000})",
+        "B4": "3rd equals 1st",
+        "A5": "=XIRR({-1000,5,1100},{45000,45000,45365})",
+        "B5": "2nd equals 1st",
+        "A6": "=XIRR({-1000,1100,5},{45000,45365,-1})",
+        "B6": "negative date later",
+        "A7": "=XIRR({-1000,1100},{-1,45365})",
+        "B7": "negative first date",
+        "A8": "=XIRR({-1000,1100},{0,45365})",
+        "B8": "date 0 first (array)",
+        "A9": "=XIRR({-1000,1100,5},{45000,45365,0})",
+        "B9": "date 0 later",
+        "A10": "=XIRR({0,-1000,1100},{45000,45000,45365})",
+        "B10": "first value 0",
+        "A11": "=XIRR({0,-1000,1100},{44000,45000,45365})",
+        "B11": "first value 0, earlier date",
+        "A12": "=XIRR({-1000,0,1100},{45000,44000,45365})",
+        "B12": "zero value on an earlier 2nd date",
+        "A13": "=XIRR({1100,-1000},{45000,45365})",
+        "B13": "positive first, sign change",
+        "A14": "=XIRR({-1000,1100,1100},{45000,44999,45365})",
+        "B14": "2nd one day before 1st",
+        "A15": "=XIRR({-1000,1100,1100,1100},{45000,45365,44000,44500})",
+        "B15": "two later dates before first",
+        "A16": "=XIRR({-1000,1100},{45000,2958466})",
+        "B16": "date past 9999-12-31"
+      }
+    }
+  ],
+  "expected": {}
+}

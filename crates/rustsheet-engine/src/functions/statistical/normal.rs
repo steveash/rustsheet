@@ -1,7 +1,8 @@
 use statrs::distribution::{ContinuousCDF, Normal, StudentsT};
 
+use crate::arithmetic::flush_subnormal;
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::statistical::special::{normal_cdf, normal_pdf};
+use crate::functions::statistical::special::{normal_cdf, normal_pdf, standard_normal_pdf};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -53,7 +54,7 @@ impl Model {
             };
         }
 
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 
     // NORM.INV(probability, mean, standard_dev)
@@ -125,7 +126,7 @@ impl Model {
         let result = if cumulative {
             normal_cdf(z, 0.0, 1.0)
         } else {
-            normal_pdf(z, 0.0, 1.0)
+            standard_normal_pdf(z)
         };
 
         if !result.is_finite() {
@@ -136,7 +137,7 @@ impl Model {
             };
         }
 
-        CalcResult::Number(result)
+        CalcResult::Number(flush_subnormal(result))
     }
 
     // NORM.S.INV(probability)

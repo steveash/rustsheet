@@ -56,12 +56,13 @@ ignored: `"1"&CHAR(160)` and `CHAR(160)&"1"` (and `"="&CHAR(160)&"1"`) are text 
 only the cell with exactly that text, and CHAR(160)-padded text cells never match a numeric
 criterion. `"<> 1"` / `"<>1 "` count every cell except number 1 (text "1" still counts, 5 of 6).
 `">= 1"`, `"> 0 "` match number cells only (→ 1). `"<>"&CHAR(160)&"1"` → 5 (all but the exact text).
-Open: `">"&CHAR(160)&"0"` (a text comparison) matched 4 of the 5 text cells; the string ordering
-Excel uses around CHAR(160)/space is not implemented (engine gives 1), see the follow-up task.
+`">"&CHAR(160)&"0"` (a text comparison) matches 4 of the 5 text cells, all but " 1": text order puts
+CHAR(160) right after the space and before digits (coercion.md "Text comparison uses Excel's
+collation", T-0244).
 Evidence: probes/criteria-padded-text C1–C14 over A1:A6 = "1", "1 ", " 1", CHAR(160)&"1",
 "1"&CHAR(160), 1 → 4,4,4,4,4,5,5,1,1,1,1,1,4,5. Oracle: excel-graph, 2026-10-05 (T-0242).
-Status: VERIFIED (C13 string ordering unimplemented)
-Implemented in: functions::criteria::result_is_equal_to_number
+Status: VERIFIED
+Implemented in: functions::criteria::result_is_equal_to_number; C13 ordering in functions::util::cmp_text_excel (T-0244)
 Tasks: T-0242
 
 ## "=" matches blank cells, not an empty-string cell
@@ -130,7 +131,27 @@ formula intersects a multi-cell range criterion for every *IF(S) function, not o
 D2 = "c" over A1:A6 = a,b,a,c,b,a and B1:B6 = 1,2,3,1,2,3, a formula in row 1 uses D1 and in row 2 uses D2:
 COUNTIF/COUNTIFS 3 and 1, SUMIF/SUMIFS 7 and 1 (SUMIF with a one-cell sum range B1 too), AVERAGEIF(S) 2.333.. and 1,
 MAXIFS 3 and 1, MINIFS 1 and 1. The fixture writes MAXIFS/MINIFS with the `_xlfn.` prefix Excel itself
-stores. COUNTIF and AVERAGEIF already intersect; the rest return `#VALUE!` (T-0278).
+stores. All of them intersect through the criterion arguments' scalar signatures (T-0278).
+A failed intersection is not an error result: the criterion becomes the error value `#VALUE!`, which then
+matches `#VALUE!` cells (poi/FormulaEvalTestData_Copy.xlsx EverythingTests!E1324, `SUMIF(AA7:AA13,C10:D10,C7)` = 1.1
+in row 1324: AA9 is `#VALUE!` and the resized sum range gives C9); with no such cell the count is 0 and AVERAGEIF(S)
+is `#DIV/0!`. Inside SUMPRODUCT there is no intersection at all: SUMPRODUCT evaluates its arguments as arrays, so
+`SUMPRODUCT(COUNTIF(A1:A6,D1:D2))` is 4, SUMIF/SUMIFS 8, AVERAGEIF(S) 3.33.., MAXIFS 4, MINIFS 2 in any row,
+while `SUM(COUNTIF(A1:A6,D1:D2))` intersects (0 off-row) (probes/ifs-legacy-sumproduct, oracle excel-graph
+2026-10-08, T-0278).
+Beyond *IF(S): which legacy arguments get an array context under SUMPRODUCT (probes/array-context-legacy-sumproduct,
+excel-graph 2026-10-09, T-0286; A1:A6 = a,b,a,c,b,a, B1:B6 = 1,2,3,1,2,3, each formula on row 1 and off-row on row 10,
+`=B1:B6*1` off-row is `#VALUE!` as the control). Array context, same value on and off the row: arithmetic and wrapped
+functions nested in SUMPRODUCT (`ABS(B1:B6)` 12, `ABS(B1:B6-2)` 4, `LEN(A1:A6)` 6, `--(A1:A6="a")` 3,
+`--(COUNTIF(A1:A6,D1:D2)>0)` 2), `CHOOSE({1,2},B1:B6,B1:B6)` (24), and the value branches of IF
+with a scalar condition (`SUMPRODUCT(IF(TRUE,B1:B6))` 12; a condition that intersects to TRUE with an array branch is not probed). Not array context: the condition of IF still intersects, even directly under
+SUMPRODUCT: `SUMPRODUCT(IF(B1:B6>1,B1:B6,0))` is 0 on row 1 and `#VALUE!` on row 10, `SUMPRODUCT(IF(A1:A6="a",1,0))` 1 and
+`#VALUE!`, exactly like `SUM(IF(A1:A6="a",1,0))` (presumably it needs CSE; an inference, not probed). LOOKUP's vector and MMULT/INDEX arguments evaluate
+their arithmetic as arrays without SUMPRODUCT: `LOOKUP(2,1/(B1:B6>1),B1:B6)` 3, `SUM(MMULT(B1:B6*1,{1}))` 12,
+`INDEX(B1:B6*1,2)` 2, on and off the row. An array `row_num` in legacy INDEX gives its first element only:
+`SUMPRODUCT(INDEX(B1:B6,{1;2;3}))` and `SUMPRODUCT(INDEX(B1:B6*1,{1;2;3}))` are 1. The engine differs on the IF condition (it lifts it, in `SUM(IF(..))` too, so `is_array_context` is not the only cause:
+F, R and S cells give 10, 3 and 3), on INDEX with an array row (`#N/IMPL!`) and on CHOOSE with an array index
+(2 on row 1, `#VALUE!` on row 10): filed as T-0293 and T-0294.
 Dynamic edge cases (probes/ifs-array-criteria-edges, oracle excel-graph 2026-10-07): a SUMIFS or COUNTIFS whose ranges
 differ in shape with an array criterion is an array of `#VALUE!` (1x2 for `{"a","b"}`), not one scalar `#VALUE!`;
 a blank cell in a range criterion (D3, criteria range D1:D3) matched none of the non-empty text cells A1:A6: COUNTIF/COUNTIFS/SUMIFS/SUMIF/MAXIFS

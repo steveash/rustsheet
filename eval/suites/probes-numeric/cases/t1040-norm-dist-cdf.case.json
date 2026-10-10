@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1040 sweep for T-0968: NORM.DIST(x,m,s,TRUE) with s != 1",
+ "tags": [
+  "M9",
+  "probe",
+  "statistics",
+  "T-0968",
+  "T-1040",
+  "sweep"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=NORM.DIST(0,1,2,TRUE)",
+    "A2": "=NORM.DIST(1,0,0.5,TRUE)",
+    "A3": "=NORM.DIST(-3,2,3,TRUE)",
+    "A4": "=NORM.DIST(5,5,0.1,TRUE)",
+    "A5": "=NORM.DIST(5.2,5,0.1,TRUE)",
+    "A6": "=NORM.DIST(4.5,5,0.1,TRUE)",
+    "A7": "=NORM.DIST(10,0,3,TRUE)",
+    "A8": "=NORM.DIST(-10,0,3,TRUE)",
+    "A9": "=NORM.DIST(0.5,0.25,0.125,TRUE)",
+    "A10": "=NORM.DIST(100,50,10,TRUE)",
+    "A11": "=NORM.DIST(40,50,10,TRUE)",
+    "A12": "=NORM.DIST(0.001,0,0.001,TRUE)",
+    "A13": "=NORM.DIST(7,3,0.7,TRUE)",
+    "A14": "=NORM.DIST(-20,0,4,TRUE)",
+    "A15": "=NORM.DIST(30,10,2,TRUE)",
+    "A16": "=NORM.DIST(2,1,0.01,TRUE)",
+    "A17": "=NORM.DIST(1,1,0.3,TRUE)",
+    "A18": "=NORM.DIST(0,5,1.5,TRUE)",
+    "A19": "=NORM.DIST(12,10,0.25,TRUE)",
+    "A20": "=NORM.DIST(-1,-1,0.2,TRUE)"
+   }
+  }
+ ],
+ "check": [
+  "Calc!A1",
+  "Calc!A2",
+  "Calc!A3",
+  "Calc!A4",
+  "Calc!A5",
+  "Calc!A6",
+  "Calc!A7",
+  "Calc!A8",
+  "Calc!A9",
+  "Calc!A10",
+  "Calc!A11",
+  "Calc!A12",
+  "Calc!A13",
+  "Calc!A14",
+  "Calc!A15",
+  "Calc!A16",
+  "Calc!A17",
+  "Calc!A18",
+  "Calc!A19",
+  "Calc!A20"
+ ],
+ "expected": {}
+}

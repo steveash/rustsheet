@@ -4,6 +4,8 @@
 CARGO ?= cargo
 UV ?= uv
 EVAL := target/release/rustsheet-eval
+# Long eval runs go through the crash-evidence wrapper (decision 0041, T-1118).
+EVAL_GUARDED := scripts/eval_guard.sh $(EVAL)
 PY := python3
 
 .PHONY: help
@@ -31,13 +33,13 @@ build: ## Release build of the eval harness
 # ---------------------------------------------------------------- Eval (Excel compatibility)
 .PHONY: eval eval-check eval-baseline eval-show
 eval: build ## Run all suites; writes eval/runs/latest/report.{md,json}
-	$(EVAL) run
+	$(EVAL_GUARDED) run
 
 eval-check: build ## Gate: fail on any regression vs eval/baseline (CI)
-	$(EVAL) check
+	$(EVAL_GUARDED) check
 
 eval-baseline: build ## Ratchet eval/baseline after fixes (refuses regressions)
-	$(EVAL) update-baseline
+	$(EVAL_GUARDED) update-baseline
 
 eval-show: build ## Show one case: make eval-show CASE=ironcalc-calc/FINANCIAL/IRR.xlsx
 	$(EVAL) show $(CASE)

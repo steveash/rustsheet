@@ -2,10 +2,13 @@
 //! directly, so other engines (e.g. upstream IronCalc, a future rewritten core)
 //! can be plugged in and compared side by side.
 
-use rustsheet::{CellRef, Input, LoadOptions, Value as ApiValue, Workbook, WorkbookOptions};
+use rustsheet::{
+    CellRef, ErrorKind, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue, Workbook,
+    WorkbookOptions, XlError,
+};
 
-use crate::case::{CaseSpec, CellInput};
-use crate::cellref::Addr;
+use crate::case::{split_qualified, CaseSpec, CellInput};
+use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 
 /// A workbook after recalculation, ready to be queried.
@@ -49,7 +52,7 @@ impl Evaluated for RustSheetEvaluated {
             ApiValue::Number(n) => Value::Number(n),
             ApiValue::Text(s) => Value::Text(s.to_string()),
             ApiValue::Bool(b) => Value::Bool(b),
-            ApiValue::Error(e) => Value::Error(e.kind.literal().to_string()),
+            ApiValue::Error(e) => Value::Error(e.kind.stored_literal().to_string()),
             // `ApiValue` is non-exhaustive; `Empty` and future variants score as empty.
             _ => Value::Empty,
         })
@@ -97,18 +100,65 @@ impl Engine for RustSheetEngine {
                 }
                 // Names need their sheets; each reparses the workbook, so define them before
                 // any cell is set.
+                // `Sheet1!Print_Area` is a name scoped to Sheet1, as xlsxwriter (spec2xlsx)
+                // reads it.
                 for (name, formula) in &spec.names {
-                    tx.define_name(name, formula)?;
+                    match split_qualified(name) {
+                        Some((sheet, local)) => {
+                            let id = spec
+                                .sheets
+                                .iter()
+                                .position(|s| s.name.eq_ignore_ascii_case(&sheet))
+                                .and_then(|i| ids.get(i).copied())
+                                .ok_or_else(|| {
+                                    rustsheet::EditError::Engine(format!(
+                                        "name {name}: no sheet {sheet}"
+                                    ))
+                                })?;
+                            tx.define_sheet_name(id, &local, formula)?;
+                        }
+                        None => tx.define_name(name, formula)?,
+                    }
+                }
+                // Values first, then tables (they read their headers), then formulas (a
+                // structured reference parses only once its table exists).
+                for formulas in [false, true] {
+                    for (sheet, &id) in spec.sheets.iter().zip(&ids) {
+                        if formulas {
+                            for table in &sheet.tables {
+                                tx.add_table(
+                                    table_range(id, &table.range)?,
+                                    &table.name,
+                                    table.filter,
+                                )?;
+                            }
+                        }
+                        for (a1, input) in &sheet.cells {
+                            let Some(mut input) = spec_input(input) else {
+                                continue;
+                            };
+                            // spec2xlsx writes these as plain `<f>` formulas (T-1077).
+                            if let Input::Formula(text) = &input {
+                                if sheet.legacy_formulas.contains(a1) {
+                                    input = Input::LegacyFormula(text.clone());
+                                }
+                            }
+                            let is_formula =
+                                matches!(input, Input::Formula(_) | Input::LegacyFormula(_));
+                            if is_formula != formulas {
+                                continue;
+                            }
+                            let addr = Addr::parse(a1).ok_or_else(|| {
+                                rustsheet::EditError::Engine(format!("bad address {a1}"))
+                            })?;
+                            tx.set(CellRef::new(id, addr.row - 1, addr.col - 1)?, input)?;
+                        }
+                    }
                 }
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
-                    for (a1, input) in &sheet.cells {
-                        let addr = Addr::parse(a1).ok_or_else(|| {
-                            rustsheet::EditError::Engine(format!("bad address {a1}"))
-                        })?;
-                        let cell = CellRef::new(id, addr.row - 1, addr.col - 1)?;
-                        if let Some(input) = spec_input(input) {
-                            tx.set(cell, input)?;
-                        }
+                    for &row in &sheet.hidden_rows {
+                        let row = row.checked_sub(1).ok_or(rustsheet::RefError::OutOfBounds)?;
+                        tx.set_row_hidden(id, row, true)?;
                     }
                 }
                 Ok(())
@@ -116,6 +166,19 @@ impl Engine for RustSheetEngine {
             .map_err(|e| e.to_string())?;
         Ok(Box::new(RustSheetEvaluated { workbook }))
     }
+}
+
+/// A spec table's `A1:B9` range on sheet `id`.
+fn table_range(id: SheetId, a1: &str) -> Result<RangeRef, rustsheet::EditError> {
+    let (first, last) = parse_range(a1)
+        .ok_or_else(|| rustsheet::EditError::Engine(format!("bad table ref {a1}")))?;
+    Ok(RangeRef::new(
+        id,
+        first.row - 1,
+        first.col - 1,
+        last.row - 1,
+        last.col - 1,
+    )?)
 }
 
 /// The facade input for a spec cell; `None` leaves the cell empty.
@@ -131,7 +194,14 @@ fn spec_input(input: &CellInput) -> Option<Input> {
         CellInput::Str(s) | CellInput::Typed(Value::Text(s)) => {
             Input::Value(ApiValue::Text(s.as_str().into()))
         }
-        CellInput::Typed(Value::Error(e)) => Input::Parse(e.clone()),
+        // As xlsx import reads `<c t="e">`: the stored-name table, `#ERROR!` for an unknown name (the one
+        // difference: `from_literal` folds case, the importer does not; no case stores a lowercase name).
+        CellInput::StoredError(e) => Input::Value(ApiValue::Error(XlError::new(
+            ErrorKind::from_literal(&e.v).unwrap_or(ErrorKind::Unknown),
+        ))),
+        CellInput::Typed(Value::Error(e)) | CellInput::Entered { entered: e } => {
+            Input::Parse(e.clone())
+        }
         CellInput::Typed(Value::Empty) => return None,
     })
 }
@@ -199,10 +269,100 @@ mod tests {
     }
 
     #[test]
+    fn sheet_qualified_spec_names_are_sheet_scoped() {
+        // probes/multiarea-printarea's spelling (T-1193): the name is local to Sheet1.
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","names":{"Sheet1!Print_Area":"=Sheet1!$A$1,Sheet1!$B$2"},
+                "sheets":[{"name":"Sheet1","cells":{"A1":1,"B2":5,"H1":"=SUM(Print_Area)"}},
+                          {"name":"Other","cells":{"A1":"=SUM(Print_Area)"}}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        assert_eq!(
+            evaluated.value("Sheet1", Addr { row: 1, col: 8 }),
+            Some(Value::Number(6.0))
+        );
+        assert_eq!(
+            evaluated.value("Other", Addr { row: 1, col: 1 }),
+            Some(Value::Error("#NAME?".into()))
+        );
+    }
+
+    #[test]
+    fn a_spec_name_on_an_unknown_sheet_fails_the_case() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","names":{"Nope!x":"=1"},
+                "sheets":[{"name":"Sheet1","cells":{}}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+    }
+
+    #[test]
+    fn stored_error_cells_load_as_constants_not_text() {
+        let spec = spec(
+            r##"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":{"t":"e","v":"#N/A","stored":true},
+                "A2":{"t":"e","v":"#GETTING_DATA","stored":true},
+                "A3":{"t":"e","v":"#BUSY!","stored":true},
+                "A4":{"t":"e","v":"#N/A"},
+                "B2":"=ERROR.TYPE(A2)"}}]}"##,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let at = |row| evaluated.value("S", Addr { row, col: 1 });
+        assert_eq!(at(1), Some(Value::Error("#N/A".into())));
+        assert_eq!(at(2), Some(Value::Error("#N/A".into())));
+        assert_eq!(
+            evaluated.value("S", Addr { row: 2, col: 2 }),
+            Some(Value::Number(8.0))
+        );
+        // Unknown to the stored-name table: `#ERROR!` (xlsx import's fallback), not the text "#BUSY!".
+        assert_eq!(at(3), Some(Value::Error("#ERROR!".into())));
+        assert_eq!(at(4), Some(Value::Error("#N/A".into())));
+    }
+
+    #[test]
     fn a_bad_spec_name_fails_the_case() {
         let spec = spec(
             r#"{"format":"rustsheet-case/v1","names":{"A1":"=1"},
                 "sheets":[{"name":"Sheet1","cells":{}}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+    }
+
+    #[test]
+    fn spec_hidden_rows_and_tables_reach_the_engine() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":"Key","B1":"Val","A2":"a","B2":1,"A3":"b","B3":2,"A4":"c","B4":4,
+                "D1":"=SUBTOTAL(109,B2:B4)","D2":"=SUBTOTAL(9,B2:B4)","D3":"=SUM(Data[Val])"},
+                "hidden_rows":[3],"tables":[{"name":"Data","ref":"A1:B4","filter":true}]}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let at = |row| evaluated.value("S", Addr { row, col: 4 });
+        // Row 3 is filtered out of the table: both SUBTOTAL forms skip it.
+        assert_eq!(at(1), Some(Value::Number(5.0)));
+        assert_eq!(at(2), Some(Value::Number(5.0)));
+        assert_eq!(at(3), Some(Value::Number(7.0)));
+    }
+
+    #[test]
+    fn spec_legacy_formulas_are_implicitly_intersected() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
+                "A1":1,"A2":2,"H7":"=A1:A2","H8":"=FORMULATEXT(H7)","H9":"=A1:A2"},
+                "legacy_formulas":["H7"]}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
+        let at = |row| evaluated.value("S", Addr { row, col: 8 });
+        assert_eq!(at(7), Some(Value::Error("#VALUE!".into())));
+        assert_eq!(at(8), Some(Value::Text("=@A1:A2".into())));
+        // H9 is not listed: a dynamic-array formula that spills.
+        assert_eq!(at(9), Some(Value::Number(1.0)));
+    }
+
+    #[test]
+    fn a_zero_hidden_row_fails_the_case() {
+        let spec = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{},"hidden_rows":[0]}]}"#,
         );
         assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
     }

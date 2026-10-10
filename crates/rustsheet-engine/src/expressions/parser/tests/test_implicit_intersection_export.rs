@@ -127,9 +127,12 @@ fn same_range_depends_on_context() {
     ]);
 }
 
+// SUMIF's criterion is a scalar argument: a legacy formula intersects a multi-cell
+// criterion (T-0278, fixtures/ifs-legacy-range-criteria), so the import adds the automatic
+// `@`. It is redundant there, so the export drops it again.
 #[test]
 fn sumif_unique() {
-    let test_str = r#"LARGE(SUMIF(E2:E7,UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
+    let test_str = r#"LARGE(SUMIF(E2:E7,@UNIQUE(FILTER(E2:E7,E2:E7<>""))),B27)"#;
     let test_excel = r#"LARGE(SUMIF(E2:E7,_xlfn.UNIQUE(_xlfn._xlws.FILTER(E2:E7,E2:E7<>""))),B27)"#;
     check(&[(test_excel, test_str, test_excel)]);
 }
@@ -218,4 +221,28 @@ fn too_many_arguments_for_a_fixed_signature_do_not_panic() {
     ] {
         check(&[(formula, formula, formula)]);
     }
+}
+
+// SUMPRODUCT's arguments are an array context in a legacy formula: the import adds no `@` inside
+// (a range criterion lifts, probes/ifs-legacy-sumproduct, T-0278), and an explicit one there is
+// never redundant, however deep.
+#[test]
+fn sumproduct_is_an_array_context() {
+    check(&[
+        (
+            "SUMPRODUCT(COUNTIF(A1:A6,D1:D2))",
+            "SUMPRODUCT(COUNTIF(A1:A6,D1:D2))",
+            "SUMPRODUCT(COUNTIF(A1:A6,D1:D2))",
+        ),
+        (
+            "SUMPRODUCT(ABS(_xlfn.SINGLE(A1:A2)))",
+            "SUMPRODUCT(ABS(@A1:A2))",
+            "SUMPRODUCT(ABS(_xlfn.SINGLE(A1:A2)))",
+        ),
+        (
+            "SUM(COUNTIF(A1:A6,D1:D2))",
+            "SUM(COUNTIF(A1:A6,@D1:D2))",
+            "SUM(COUNTIF(A1:A6,D1:D2))",
+        ),
+    ]);
 }

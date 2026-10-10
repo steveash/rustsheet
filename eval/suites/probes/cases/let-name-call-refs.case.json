@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "A LET name bound to a reference (a range, an empty cell, INDEX, IF), called like a function (T-1092). Sheet1 A1:B3 = 1,2,3 / 10,20,30; C9 empty.",
+  "tags": [
+    "M1",
+    "references",
+    "let",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "B2": 20,
+        "B3": 30,
+        "H1": "=LET(f,A1:A3,f(2))",
+        "H2": "=LET(f,C9,f(2))",
+        "H3": "=LET(f,A1,f())",
+        "H4": "=IFERROR(LET(f,A1,f(2)),\"e\")",
+        "H5": "=LET(f,INDEX(A1:A3,2),f(2))",
+        "H6": "=LET(f,IF(TRUE,A1),f(2))",
+        "H7": "=ERROR.TYPE(LET(f,A1,f(2)))"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!H4",
+    "Sheet1!H5",
+    "Sheet1!H6",
+    "Sheet1!H7"
+  ]
+}

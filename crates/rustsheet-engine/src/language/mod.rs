@@ -121,6 +121,8 @@ pub struct Functions {
     pub clean: String,
     pub code: String,
     pub asc: String,
+    pub dbcs: String,
+    pub phonetic: String,
     pub arraytotext: String,
     pub dollar: String,
     pub findb: String,
@@ -523,6 +525,9 @@ pub struct Functions {
     pub sumproduct: String,
     pub percentof: String,
     pub encodeurl: String,
+    pub image: String,
+    pub stockhistory: String,
+    pub fieldvalue: String,
 }
 
 #[derive(Encode, Decode)]

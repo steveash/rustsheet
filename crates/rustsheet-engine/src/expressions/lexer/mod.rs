@@ -52,7 +52,7 @@ use crate::number_format::parse_excel_number;
 use crate::language::Language;
 use crate::locale::Locale;
 
-use super::token::{Error, TokenType};
+use super::token::{starts_with_getting_data, Error, TokenType};
 use super::types::*;
 use super::utils;
 
@@ -439,6 +439,16 @@ impl Lexer {
                                                     };
                                                 }
                                             }
+                                            // A name spelled like a column before a `:` that is
+                                            // not a column range (`ig:B3`) is a name, the left
+                                            // operand of the range operator (probes/defined-name-
+                                            // grouped-reference A10, A11, T-1173).
+                                            if error.message == "Error parsing Range"
+                                                && utils::is_valid_a1_identifier(&name)
+                                            {
+                                                self.position = position_indent;
+                                                return TokenType::Ident(name);
+                                            }
                                             self.position = self.len;
                                             return TokenType::Illegal(error);
                                         }
@@ -802,6 +812,11 @@ impl Lexer {
         } else if rest_of_formula.starts_with(&errors.circ) {
             self.position += errors.circ.chars().count() - 1;
             return TokenType::Error(Error::CIRC);
+        } else if starts_with_getting_data(&rest_of_formula) {
+            // An en-US constant, matched in any case (SPEC-0003). `#BLOCKED!`, `#CONNECT!` and
+            // `#FIELD!` stay unparseable, as Excel refuses them (T-0175).
+            self.position += "#GETTING_DATA".len() - 1;
+            return TokenType::Error(Error::GETTINGDATA);
         }
         // If it is not an error it _might_ be a spill operator.
         TokenType::Spill

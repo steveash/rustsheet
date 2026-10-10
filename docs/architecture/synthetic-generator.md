@@ -166,6 +166,9 @@ rules. This is the most important subtlety to encode:
 | `criteria` | criteria-string mini-language (`">=5"`, `"a*"`, `"<>"`, `"=" `) | `COUNTIF`, `SUMIFS`, `D*` functions |
 | `lambda` | expects a LAMBDA | `MAP`, `REDUCE`, `BYROW` |
 
+The v0 catalog (eval/catalog/functions.yaml) spells these `aggregate`, `aggregate_a`, `range` and
+`array` (for `values_agg`, `values_agg_a`, `ref_only` and `array_ok`); its header is the reference.
+
 ### 3.2 Catalog schema (YAML)
 
 > Current state (T-0040): one file, `eval/catalog/functions.yaml`, lists every Excel function;
@@ -289,6 +292,15 @@ Key schema elements:
   The generator treats domains as **soft**: in-domain with probability `1 − p_violate`
   (default 0.15), otherwise a deliberate violation drawn from the edge pool. The resulting
   errors are themselves test targets.
+  A domain marked `hard: true` is never violated: outside it Excel refuses the whole workbook
+  (MUNIT's dimension, T-1087), so a violation would cost every other formula of the case.
+  `enum` lists the usual text values of a parameter (CELL's info_type; T-1088), soft like `int`.
+- `cell: true` (a `range` parameter): the generator passes one cell. ISFORMULA lifts over a range, which would spill into
+  the next formula, and Excel refuses a literal (T-1088).
+- `vector: true` (a `range` parameter): the generator passes a one-column range. LOOKUP and the XLOOKUP/XMATCH lookup
+  vectors give only `#N/A` or `#VALUE!` for a 2-D range, which would hide the search itself (T-1238).
+- `always: true` (an optional parameter): the generator never omits it. CELL without a reference reads the cell last
+  changed, which no oracle value can match.
 - `edge_classes`: named, function-specific value or structure generators. They join the
   global type pools (§6) and become coverage-matrix columns (§13).
 - `introduced`, `xlfn_prefix`, `volatile`, `dynamic_array`, `locale_sensitive`.
@@ -769,6 +781,12 @@ evaluates both and compares. MRs are typed by **exactness**:
 | MR-DATE | `DATE(YEAR(d),MONTH(d),DAY(d)) = INT(d)` for d ∈ [61, 2958465]; `EDATE(d,12)=DATE(YEAR(d)+1,…)` except Feb 29; `DATEVALUE(TEXT(d,"yyyy-mm-dd"))=INT(d)` | 1900 bug: d ∈ [1,60] treated separately |
 | MR-TEXT | `LEN(a&b)=LEN(a)+LEN(b)`; `LEFT(s,n)&MID(s,n+1,LEN(s))=s`; `UPPER(LOWER(s))=UPPER(s)`; `SUBSTITUTE(s,x,x)=s` | unicode pools |
 | MR-BOOL | `AND(a,b)=NOT(OR(NOT(a),NOT(b)))`; `IF(c,x,y)=IF(NOT(c),y,x)` | |
+
+MR-UNION is implemented (T-1149) as a seeded Rust unit test in the engine
+(`crates/rustsheet-engine/src/test/test_union_sum_metamorphic.rs`), not as a gen-m1 policy: it
+needs no oracle and no xlsx (gen-m1 policies emit xlsx cases scored through the eval pipeline against Excel values), so it runs in `make check` (`cargo test`) with 120 pairs
+`SUM((r1,r2[,r3]))` / `SUM(r1,r2[,r3])` over single cells, ranges, whole columns and duplicated
+(overlapping) operands. Skipping an area in `for_each_position_in_areas` fails it.
 
 ### 10.2 NoREC-style "two implementations" MRs
 These compare an optimized or specialized function with a naive formulation that probably

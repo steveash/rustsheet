@@ -4,6 +4,7 @@ use crate::expressions::lexer::LexerMode;
 
 use crate::expressions::parser::stringify::to_rc_format;
 use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_string};
+use crate::expressions::parser::Node;
 use crate::expressions::types::CellReferenceRC;
 
 struct Formula<'a> {
@@ -105,4 +106,82 @@ fn test_range_inverse_order() {
         to_english_localized_string(&t, &cell_reference),
         "SUM(C2:D4)*SUM(Sheet2!C4:D20)*SUM($C4:D$20)".to_string()
     );
+}
+
+/// Excel for the web refuses a workbook holding any of these (`FileCorruptTryRepair`, one scratch
+/// workbook per formula, T-1111): the operands of `:` and ANCHORARRAY must be references, as for
+/// the intersection and the union (docs/excel-semantics/references.md, T-1117).
+#[test]
+fn range_and_anchorarray_refuse_value_operands() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for formula in [
+        "A1:(1/0)",
+        "(1/0):(A1 B1)",
+        "(1/0):(A1 A2)",
+        "ANCHORARRAY(1)",
+        "_xlfn.ANCHORARRAY(1)",
+        "(1/0)#",
+        "A1:\"a\"",
+        "A1:#N/A",
+        "A1:SUM(B1)",
+    ] {
+        let node = parser.parse(formula, &context);
+        assert!(
+            matches!(node, Node::ParseErrorKind { .. }),
+            "{formula}: {node:?}"
+        );
+    }
+}
+
+/// The `:` operands that load in Excel (probes/at-operand-formulatext,
+/// probes/range-right-operand-errors, probes/at-paren-operands) still parse and print as typed.
+#[test]
+fn range_keeps_reference_operands() {
+    let worksheets = vec!["Sheet1".to_string()];
+    let mut parser = new_parser(worksheets, vec![], HashMap::new());
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for formula in [
+        "(@(A1 B1)):C3",
+        "A1:INDEX(A1:A3,5)",
+        "A1:(A1 B2)",
+        "#REF!:A1",
+        "D1#",
+        "INDEX(D1:D2,1)#",
+        "(@A1:B2)#",
+    ] {
+        let node = parser.parse(formula, &context);
+        assert_eq!(to_english_localized_string(&node, &context), formula);
+    }
+}
+
+/// Excel loads `ANCHORARRAY(@1)` and prints it `=@1#` (probes/colon-hash-value-operands E3,
+/// T-1226); every `@` operand prints bare and only written parentheses are kept, `(@1)#`
+/// (probes/anchorarray-at-operand-kinds, T-1246).
+#[test]
+fn anchorarray_of_at_value_prints_bare() {
+    let mut parser = new_parser(vec!["Sheet1".to_string()], vec![], HashMap::new());
+    let context = CellReferenceRC {
+        sheet: "Sheet1".to_string(),
+        row: 1,
+        column: 1,
+    };
+    for (formula, printed) in [
+        ("ANCHORARRAY(@1)", "@1#"),
+        ("ANCHORARRAY(@A1:B2)", "@A1:B2#"),
+        ("ANCHORARRAY((@1))", "(@1)#"),
+        ("ANCHORARRAY(@SUM(A1))", "@SUM(A1)#"),
+    ] {
+        let node = parser.parse(formula, &context);
+        assert_eq!(to_english_localized_string(&node, &context), printed);
+    }
 }

@@ -94,27 +94,58 @@ pub enum Error {
     CALC,
     CIRC,
     NULL,
+    // Excel's newer error kinds (SPEC-0003). Appended after `NULL` so the existing variant
+    // indices, and with them every serialized model, stay valid.
+    /// `#GETTING_DATA` (ERROR.TYPE 8). Excel saves it to xlsx as `#N/A` (`stored_literal`).
+    GETTINGDATA,
+    /// `#CONNECT!` (ERROR.TYPE 10).
+    CONNECT,
+    /// `#BLOCKED!` (ERROR.TYPE 11).
+    BLOCKED,
+    /// `#FIELD!` (ERROR.TYPE 13).
+    FIELD,
+}
+
+/// The en-US formula literal for [`Error::GETTINGDATA`]. Of Excel's newer errors only this one
+/// parses in a formula (probes/error-literals-new A1, A11; T-0175). It is a constant rather than a
+/// `Language` field because `language.bin` is a bitcode blob (SPEC-0003).
+const GETTING_DATA_LITERAL: &str = "#GETTING_DATA";
+
+/// Whether `text` starts with the `#GETTING_DATA` literal, ignoring ASCII case
+/// (`=#getting_data` parses in Excel; probes/error-literals-new A11).
+pub(crate) fn starts_with_getting_data(text: &str) -> bool {
+    text.get(..GETTING_DATA_LITERAL.len())
+        .is_some_and(|head| head.eq_ignore_ascii_case(GETTING_DATA_LITERAL))
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::NULL => write!(fmt, "#NULL!"),
-            Error::REF => write!(fmt, "#REF!"),
-            Error::NAME => write!(fmt, "#NAME?"),
-            Error::VALUE => write!(fmt, "#VALUE!"),
-            Error::DIV => write!(fmt, "#DIV/0!"),
-            Error::NA => write!(fmt, "#N/A"),
-            Error::NUM => write!(fmt, "#NUM!"),
-            Error::ERROR => write!(fmt, "#ERROR!"),
-            Error::NIMPL => write!(fmt, "#N/IMPL"),
-            Error::SPILL => write!(fmt, "#SPILL!"),
-            Error::CALC => write!(fmt, "#CALC!"),
-            Error::CIRC => write!(fmt, "#CIRC!"),
-        }
+        fmt.write_str(self.english_literal())
     }
 }
 impl Error {
+    /// The en-US literal of this error, as `Display` writes it.
+    fn english_literal(&self) -> &'static str {
+        match self {
+            Error::NULL => "#NULL!",
+            Error::REF => "#REF!",
+            Error::NAME => "#NAME?",
+            Error::VALUE => "#VALUE!",
+            Error::DIV => "#DIV/0!",
+            Error::NA => "#N/A",
+            Error::NUM => "#NUM!",
+            Error::ERROR => "#ERROR!",
+            Error::NIMPL => "#N/IMPL",
+            Error::SPILL => "#SPILL!",
+            Error::CALC => "#CALC!",
+            Error::CIRC => "#CIRC!",
+            Error::GETTINGDATA => GETTING_DATA_LITERAL,
+            Error::CONNECT => "#CONNECT!",
+            Error::BLOCKED => "#BLOCKED!",
+            Error::FIELD => "#FIELD!",
+        }
+    }
+
     /// The number `ERROR.TYPE` returns for this error. The single source for that table; the
     /// `rustsheet` facade's `ErrorKind::code` is built on it.
     pub fn error_type_code(&self) -> u8 {
@@ -127,9 +158,13 @@ impl Error {
             Error::NUM => 6,
             Error::NA => 7,
             Error::SPILL => 9,
+            Error::GETTINGDATA => 8,
+            Error::CONNECT => 10,
+            Error::BLOCKED => 11,
+            Error::FIELD => 13,
             Error::CALC => 14,
-            // RustSheet/IronCalc specific. Excel's #GETTING_DATA (8), #CONNECT (10),
-            // #BLOCKED (11), #UNKNOWN (12), #FIELD (13) and #EXTERNAL (19) are not produced.
+            // Excel's #UNKNOWN! (12) and #EXTERNAL! (19) have no kind here: there is no evidence
+            // of a producer. The rest are RustSheet/IronCalc specific.
             Error::ERROR => 101,
             Error::NIMPL => 102,
             Error::CIRC => 104,
@@ -150,6 +185,32 @@ impl Error {
             Error::SPILL => language.errors.spill.to_string(),
             Error::CALC => language.errors.calc.to_string(),
             Error::CIRC => language.errors.circ.to_string(),
+            // Not in `Language` (SPEC-0003): the en-US names in every language.
+            Error::GETTINGDATA | Error::CONNECT | Error::BLOCKED | Error::FIELD => self.to_string(),
+        }
+    }
+
+    /// The literal Excel saves for this error in a workbook's cell value: `#N/A` for
+    /// `#GETTING_DATA` (SPEC-0003, "Stored form"), the `Display` text otherwise. A storage rule
+    /// only; in memory the value keeps its kind, so ERROR.TYPE stays 8 and ISNA FALSE.
+    pub fn stored_literal(&self) -> &'static str {
+        match self {
+            Error::GETTINGDATA => Error::NA.english_literal(),
+            Error::REF
+            | Error::NAME
+            | Error::VALUE
+            | Error::DIV
+            | Error::NA
+            | Error::NUM
+            | Error::ERROR
+            | Error::NIMPL
+            | Error::SPILL
+            | Error::CALC
+            | Error::CIRC
+            | Error::NULL
+            | Error::CONNECT
+            | Error::BLOCKED
+            | Error::FIELD => self.english_literal(),
         }
     }
 }
@@ -180,6 +241,9 @@ pub fn get_error_by_name(name: &str, language: &Language) -> Option<Error> {
         return Some(Error::CIRC);
     } else if name == errors.null {
         return Some(Error::NULL);
+    } else if name.eq_ignore_ascii_case(GETTING_DATA_LITERAL) {
+        // Only #GETTING_DATA of the newer errors is a formula/input literal (SPEC-0003).
+        return Some(Error::GETTINGDATA);
     }
     None
 }
@@ -209,10 +273,21 @@ pub fn get_error_by_english_name(name: &str) -> Option<Error> {
         return Some(Error::CIRC);
     } else if name == "#NULL!" {
         return Some(Error::NULL);
+    } else if name == GETTING_DATA_LITERAL {
+        return Some(Error::GETTINGDATA);
+    } else if name == "#CONNECT!" {
+        return Some(Error::CONNECT);
+    } else if name == "#BLOCKED!" {
+        return Some(Error::BLOCKED);
+    } else if name == "#FIELD!" {
+        return Some(Error::FIELD);
     }
     None
 }
 
+/// Whether a COUNTIF-family criterion names an error. Deliberately only the twelve older names:
+/// COUNTIF with `"#BLOCKED!"`, `"#CONNECT!"` or `"#FIELD!"` counts 0 even over a cell holding
+/// that error (T-1012, information.md), so they stay text criteria.
 pub fn is_english_error_string(name: &str) -> bool {
     let names = [
         "#REF!", "#NAME?", "#VALUE!", "#DIV/0!", "#N/A", "#NUM!", "#ERROR!", "#N/IMPL!", "#SPILL!",
@@ -281,4 +356,61 @@ pub enum TokenType {
         specifier: Option<TableSpecifier>,
         table_reference: Option<TableReference>,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::language::get_default_language;
+
+    /// The four newer kinds (SPEC-0003) with their literal and ERROR.TYPE code.
+    const NEWER: [(Error, &str, u8); 4] = [
+        (Error::GETTINGDATA, "#GETTING_DATA", 8),
+        (Error::CONNECT, "#CONNECT!", 10),
+        (Error::BLOCKED, "#BLOCKED!", 11),
+        (Error::FIELD, "#FIELD!", 13),
+    ];
+
+    #[test]
+    fn newer_kinds_display_code_and_stored_name() {
+        for (error, literal, code) in NEWER {
+            assert_eq!(error.to_string(), literal);
+            assert_eq!(error.error_type_code(), code);
+            assert_eq!(get_error_by_english_name(literal), Some(error));
+        }
+    }
+
+    #[test]
+    fn stored_literal_saves_getting_data_as_na() {
+        assert_eq!(Error::GETTINGDATA.stored_literal(), "#N/A");
+        for error in [
+            Error::CONNECT,
+            Error::BLOCKED,
+            Error::FIELD,
+            Error::NA,
+            Error::DIV,
+        ] {
+            assert_eq!(error.stored_literal(), error.to_string());
+        }
+    }
+
+    #[test]
+    fn only_getting_data_is_a_formula_name() {
+        let language = get_default_language();
+        for name in ["#GETTING_DATA", "#getting_data", "#Getting_Data"] {
+            assert_eq!(get_error_by_name(name, language), Some(Error::GETTINGDATA));
+        }
+        for name in ["#CONNECT!", "#BLOCKED!", "#FIELD!", "#BUSY!", "#UNKNOWN!"] {
+            assert_eq!(get_error_by_name(name, language), None, "{name}");
+        }
+    }
+
+    #[test]
+    fn criteria_error_names_are_unchanged() {
+        // COUNTIF with "#BLOCKED!" counts 0 over a #BLOCKED! cell (T-1012, information.md).
+        for (_, literal, _) in NEWER {
+            assert!(!is_english_error_string(literal), "{literal}");
+        }
+        assert!(is_english_error_string("#N/A"));
+    }
 }

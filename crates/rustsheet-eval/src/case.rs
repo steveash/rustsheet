@@ -17,8 +17,9 @@ pub const ORACLE_FORMAT: &str = "rustsheet-oracle/v1";
 /// JSON numbers are numbers, JSON booleans are booleans, strings starting with
 /// `=` are formulas, other strings are literal text. Use the tagged form
 /// (`{"t":"s","v":"=not a formula"}`, `{"t":"e","v":"#N/A"}`) for anything else. An error may
-/// carry `"stored":true`, which only changes how spec2xlsx writes it (a stored constant, T-0999);
-/// the engine adapter ignores it.
+/// carry `"stored":true`: spec2xlsx writes it as a stored `t="e"` constant (T-0999) and the engine
+/// adapter enters it as one, as xlsx import does (T-1221), not as typed input. `{"entered":"(1)"}`
+/// is text entered as a user types it, so Excel picks the value and number format (T-0280).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellInput {
@@ -26,7 +27,62 @@ pub enum CellInput {
     Bool(bool),
     /// Formula (leading `=`) or literal text.
     Str(String),
+    /// `{"t":"e","v":"#X","stored":true}`: an error constant. Must precede `Typed`, which would
+    /// otherwise match it and drop `stored`.
+    StoredError(StoredError),
     Typed(Value),
+    /// Typed entry: spec2xlsx leaves the cell blank and records it for the oracle backend, which
+    /// writes it into the cell through Excel's own input parser.
+    Entered {
+        entered: String,
+    },
+}
+
+/// A stored error constant (`{"t":"e","v":"#N/A","stored":true}`); only that exact shape matches.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StoredError {
+    t: ErrorTag,
+    /// The error name as written, e.g. `#N/A`.
+    pub v: String,
+    stored: StoredTrue,
+}
+
+impl StoredError {
+    /// A stored error constant named `name`.
+    #[must_use]
+    pub fn new(name: impl Into<String>) -> Self {
+        Self {
+            t: ErrorTag::E,
+            v: name.into(),
+            stored: StoredTrue,
+        }
+    }
+}
+
+/// The constant `"e"` of an error cell's `t` key.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+enum ErrorTag {
+    #[serde(rename = "e")]
+    E,
+}
+
+/// The constant `true`: `stored: false` is not a stored error.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(try_from = "bool", into = "bool")]
+struct StoredTrue;
+
+impl TryFrom<bool> for StoredTrue {
+    type Error = &'static str;
+
+    fn try_from(stored: bool) -> Result<Self, Self::Error> {
+        stored.then_some(Self).ok_or("expected stored = true")
+    }
+}
+
+impl From<StoredTrue> for bool {
+    fn from(_: StoredTrue) -> Self {
+        true
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -35,9 +91,29 @@ pub struct SheetSpec {
     /// A1 address → input.
     pub cells: BTreeMap<String, CellInput>,
     /// Formula cells (A1 addresses in `cells`) that spec2xlsx writes as legacy, non-array formulas
-    /// (no dynamic-array metadata; T-1077). The engine adapter ignores them.
+    /// (no dynamic-array metadata; T-1077). The engine adapter enters them as
+    /// `Input::LegacyFormula`, with the implicit intersections xlsx import adds (T-1096).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub legacy_formulas: Vec<String>,
+    /// 1-based rows written hidden (T-1036). On a sheet with a filtered table every hidden row
+    /// counts as filtered, as Excel reads such a file.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hidden_rows: Vec<u32>,
+    /// Tables (`ListObject`s) on the sheet, header row first (T-1036).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tables: Vec<TableSpec>,
+}
+
+/// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
+/// its visible data rows, so the sheet's `hidden_rows` inside it are the rows the filter hides.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TableSpec {
+    pub name: String,
+    /// A1 range, header row included (`A1:B9`).
+    #[serde(rename = "ref")]
+    pub range: String,
+    #[serde(default)]
+    pub filter: bool,
 }
 
 /// A self-contained workbook test case.
@@ -80,6 +156,9 @@ pub struct OracleSource {
     #[serde(default)]
     pub input_sha256: Option<String>,
 }
+
+/// The oracle kind of the Microsoft Graph backend.
+pub(crate) const GRAPH_ORACLE: &str = "excel-graph";
 
 /// Whether an oracle `source.kind` string (see [`OracleSource::kind`]) is Excel evidence rather
 /// than hand-written or engine-derived values.
@@ -129,7 +208,7 @@ mod tests {
     #[test]
     fn parses_case_inputs() {
         let json = r##"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{
-            "A1":1,"A2":"x","A3":"=A1+1","A4":true,"A5":{"t":"e","v":"#N/A"}}}],
+            "A1":1,"A2":"x","A3":"=A1+1","A4":true,"A5":{"t":"e","v":"#N/A"},"A6":{"entered":"(1)"}}}],
             "expected":{"S!A3":{"t":"n","v":2}}}"##;
         let spec: Result<CaseSpec, _> = serde_json::from_str(json);
         let spec = spec.unwrap_or_else(|e| panic!("{e}"));
@@ -138,6 +217,29 @@ mod tests {
         assert_eq!(cells["A3"], CellInput::Str("=A1+1".into()));
         assert_eq!(cells["A4"], CellInput::Bool(true));
         assert_eq!(cells["A5"], CellInput::Typed(Value::Error("#N/A".into())));
+        assert_eq!(
+            cells["A6"],
+            CellInput::Entered {
+                entered: "(1)".into()
+            }
+        );
+    }
+
+    #[test]
+    fn stored_errors_are_told_apart_from_typed_ones() {
+        let parse = |json: &str| -> CellInput {
+            serde_json::from_str(json).unwrap_or_else(|e| panic!("{e}"))
+        };
+        assert_eq!(
+            parse(r##"{"t":"e","v":"#N/A","stored":true}"##),
+            CellInput::StoredError(StoredError::new("#N/A"))
+        );
+        for json in [
+            r##"{"t":"e","v":"#N/A"}"##,
+            r##"{"t":"e","v":"#N/A","stored":false}"##,
+        ] {
+            assert_eq!(parse(json), CellInput::Typed(Value::Error("#N/A".into())));
+        }
     }
 
     #[test]

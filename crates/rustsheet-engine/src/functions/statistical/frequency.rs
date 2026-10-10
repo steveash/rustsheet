@@ -1,5 +1,6 @@
 use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
+use crate::reference_operators::RefArg;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -10,7 +11,17 @@ impl Model {
         arg: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Vec<f64>, CalcResult> {
-        match self.evaluate_node_in_context(arg, cell) {
+        let value = self.evaluate_node_in_context(arg, cell);
+        self.freq_values_of(value, cell)
+    }
+
+    /// The numbers FREQUENCY counts in the evaluated argument `value`.
+    fn freq_values_of(
+        &mut self,
+        value: CalcResult,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<f64>, CalcResult> {
+        match value {
             CalcResult::Range { left, right } => match self.values_from_range(left, right) {
                 Ok(v) => Ok(v.into_iter().flatten().collect()),
                 Err(e) => Err(e),
@@ -41,7 +52,22 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.collect_freq_values(&args[0], cell) {
+        // Only data_array is probed with a union (probes/multiarea-cond); bins_array keeps its
+        // single-reference path.
+        let data = if self.is_multi_area(&args[0]) {
+            match self.evaluate_reference_arg(&args[0], cell) {
+                RefArg::Ranges(areas) => self
+                    .values_from_areas(&areas, cell)
+                    .map(|v| v.into_iter().flatten().collect()),
+                // A LET variable, IF or name that holds an array or a number is counted like
+                // any other data_array; only an error is the result (T-1065 fidelity review).
+                RefArg::Value(error @ CalcResult::Error { .. }) => Err(error),
+                RefArg::Value(value) => self.freq_values_of(value, cell),
+            }
+        } else {
+            self.collect_freq_values(&args[0], cell)
+        };
+        let data = match data {
             Ok(v) => v,
             Err(e) => return e,
         };

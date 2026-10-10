@@ -1,0 +1,39 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Doubled double quotes inside number-format literals: are they an escaped quote or two adjacent literals? (T-0935)",
+  "tags": [
+    "M10",
+    "text",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": "0 \"\"\"Millions\"\"\"",
+        "C1": "=TEXT(42,B1)",
+        "B2": "0 \"a\"\"b\"",
+        "C2": "=TEXT(42,B2)",
+        "B3": "\"h\"\"I\"",
+        "C3": "=TEXT(42,B3)",
+        "B4": "0 \"\"",
+        "C4": "=TEXT(42,B4)",
+        "B5": "0 \"\"\"\"",
+        "C5": "=TEXT(42,B5)",
+        "B6": "0 \"a\"\"\"",
+        "C6": "=TEXT(42,B6)",
+        "B7": "0\" \"\"x\"\" \"0",
+        "C7": "=TEXT(42,B7)",
+        "B8": ";;;\"h\"\"I\"",
+        "C8": "=TEXT(\"x\",B8)",
+        "B9": ";;;\"\"\"x\"\"\"",
+        "C9": "=TEXT(\"x\",B9)",
+        "B10": ";;;\"a\"\"\"@",
+        "C10": "=TEXT(\"x\",B10)",
+        "B11": "@\" \"\"q\"\"\"",
+        "C11": "=TEXT(\"x\",B11)"
+      }
+    }
+  ],
+  "expected": {}
+}

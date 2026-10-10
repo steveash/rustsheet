@@ -1,5 +1,6 @@
 use crate::{
-    calc_result::CalcResult,
+    calc_result::{CalcResult, Range},
+    constants::{LAST_COLUMN, LAST_ROW},
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -8,6 +9,7 @@ use crate::{
     functions::{logical::IfBranchMode, Function},
     model::Model,
     number_format::cmp_excel_precision,
+    reference_operators::{RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS},
 };
 
 /// Converts a single array element into a scalar [`CalcResult`].
@@ -43,6 +45,26 @@ fn error_sort_rank(e: &Error) -> u8 {
     }
 }
 
+/// Orders two (already case-folded) texts the way Excel's `<`/`>` and `">"` criteria do: by
+/// character, with CHAR(160) right after the space and before every printable character, where code
+/// points would put it after the letters. `" 1" < CHAR(160)&"1" < "0"`, `"1"&CHAR(160) > "1"`
+/// (probes/text-order-nbsp-space, excel-graph, T-0244). Equal texts stay equal: only CHAR(160)
+/// moves. The rest of Excel's collation (`"-1" > "0"`, `"x" >= "ü"`) is T-0220.
+pub(crate) fn cmp_text_excel(left: &str, right: &str) -> std::cmp::Ordering {
+    left.chars()
+        .map(text_order_key)
+        .cmp(right.chars().map(text_order_key))
+}
+
+fn text_order_key(c: char) -> u64 {
+    const SPACE_KEY: u64 = 0x20 * 2;
+    if c == '\u{a0}' {
+        SPACE_KEY + 1
+    } else {
+        u64::from(u32::from(c)) * 2
+    }
+}
+
 // In Excel there are two ways of comparing cell values.
 // The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
 // For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
@@ -65,7 +87,7 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::String(value1), CalcResult::String(value2)) => {
             let value1 = value1.to_uppercase();
             let value2 = value2.to_uppercase();
-            match value1.cmp(&value2) {
+            match cmp_text_excel(&value1, &value2) {
                 std::cmp::Ordering::Less => -1,
                 std::cmp::Ordering::Equal => 0,
                 std::cmp::Ordering::Greater => 1,
@@ -118,6 +140,23 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     }
 }
 
+/// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
+/// as a reference). Recursion is bounded by the parser's depth cap.
+pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
+    match node {
+        Node::SheetSpanKind {
+            first_index,
+            last_index,
+            ..
+        } => first_index != last_index,
+        Node::FunctionKind {
+            kind: Function::If,
+            args,
+        } => args.iter().skip(1).any(is_span_or_if_of_span),
+        _ => false,
+    }
+}
+
 impl Model {
     /// Evaluates an argument that must be a single-sheet reference (INDEX, AREAS, VLOOKUP,
     /// MATCH, COUNTBLANK): a 3-D reference is `#VALUE!` there, not the `#REF!` it is as a
@@ -141,136 +180,257 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::If,
                 args,
-            } => self.if_impl(args, cell, IfBranchMode::SingleSheet),
+            } => self
+                .if_impl(args, cell, IfBranchMode::SingleSheet)
+                .into_single_area(cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
 
     /// Evaluates one argument of an aggregate (SUM, COUNT, AVERAGE, MIN, ...).
     /// A cell reference, and an IF or INDEX that selects one, comes back as a
-    /// `Range`, so the caller skips its text, booleans and blanks like any range
+    /// range, so the caller skips its text, booleans and blanks like any range
     /// cell; everything else is a value (T-0216; docs/excel-semantics/references.md).
-    pub(crate) fn evaluate_aggregate_arg(
+    /// A union, and an intersection that leaves several areas, is its areas, walked one after
+    /// the other with each one counted as written (probes/multiarea-agg, multiarea-intersect;
+    /// SPEC-0004). A function that takes only one area turns those into `#VALUE!` with
+    /// [`RefArg::into_single_area`].
+    pub(crate) fn evaluate_reference_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
-    ) -> CalcResult {
-        match node {
+    ) -> RefArg {
+        let result = match node {
+            Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
+                return match self.reference_ranges(node, cell) {
+                    Ok(ranges) => RefArg::Ranges(ranges),
+                    Err(error) => RefArg::Value(error),
+                };
+            }
             // `@A1:A3` is the intersected cell's reference, so text there is ignored
             // (probes/min-max-reference-forms C1-C4).
             Node::ReferenceKind { .. }
             | Node::ImplicitIntersection { .. }
-            | Node::DefinedNameKind(_)
-            | Node::NamedVariableKind { .. } => self.evaluate_node_with_reference(node, cell),
+            | Node::OpRangeKind { .. } => self.evaluate_node_with_reference(node, cell),
+            // A name whose body is a formula, a union included, stands for what the body does
+            // in reference context: `SUM(mu)` with `mu` = `Sheet1!$A$1,Sheet1!$B$2` is 6
+            // (probes/union-defined-name H1).
+            Node::DefinedNameKind(_) => return self.defined_name_reference(node, cell),
             Node::SheetSpanKind {
                 first_index,
                 last_index,
                 reference,
                 ..
             } => self.get_sheet_span_range(*first_index, *last_index, reference, cell),
+            // IF and CHOOSE hand back the chosen branch, LET its body, in reference context,
+            // a union included (probes/multiarea-ifchoose H2:H3, multiarea-letbind H8).
             Node::FunctionKind {
                 kind: Function::If,
                 args,
-            } => self.if_impl(args, cell, IfBranchMode::Aggregate),
+            } => return self.if_impl(args, cell, IfBranchMode::Aggregate),
+            Node::FunctionKind {
+                kind: Function::Choose,
+                args,
+            } => return self.choose_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Let,
+                args,
+            } => return self.let_impl(args, cell, true),
+            // A LET variable bound to a union is its areas (probes/multiarea-let H1).
+            Node::NamedVariableKind { .. } => return self.variable_reference(node, cell),
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Hlookup,
+                args,
+            } => self.hlookup_impl(args, cell, true),
+            Node::FunctionKind {
+                kind: Function::Vlookup,
+                args,
+            } => self.vlookup_impl(args, cell, true),
             _ => self.evaluate_node_in_context(node, cell),
-        }
+        };
+        RefArg::from(result)
     }
 
-    /// Calls `f` with the value of every cell of the range `left..=right`, in
-    /// row-major order.
+    /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT and AVERAGE
+    /// take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a range are also the cells they pick
+    /// (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206). The other
+    /// aggregates sharing `for_each_value` follow the same rule unprobed; MIN, MAX, COUNTA and
+    /// AVERAGEA still evaluate those calls to values. The call list is
+    /// repeated in `is_read_reference` (static_analysis/aggregate.rs).
+    pub(crate) fn evaluate_picked_reference_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> RefArg {
+        if let Node::FunctionKind {
+            kind: kind @ (Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange),
+            args,
+        } = node
+        {
+            if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
+                return RefArg::from(result);
+            }
+        }
+        self.evaluate_reference_arg(node, cell)
+    }
+
+    /// The bottom-right corner of the range `row1:column1..=row2:column2` once a whole-column
+    /// or whole-row range is clipped to the sheet's used area; any other range is unchanged.
+    /// Reads nothing and records nothing (see [`Self::clip_to_used_area`]).
+    pub(crate) fn used_area_corner(
+        &self,
+        sheet: u32,
+        row1: i32,
+        column1: i32,
+        row2: i32,
+        column2: i32,
+    ) -> Result<(i32, i32), String> {
+        let whole_rows = row1 == 1 && row2 == LAST_ROW;
+        let whole_columns = column1 == 1 && column2 == LAST_COLUMN;
+        if !whole_rows && !whole_columns {
+            return Ok((row2, column2));
+        }
+        let (max_row, max_column) = self
+            .workbook
+            .worksheet(sheet)
+            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
+            .used_area_end();
+        let last_row = if whole_rows { max_row } else { row2 };
+        let last_column = if whole_columns { max_column } else { column2 };
+        Ok((last_row, last_column))
+    }
+
+    /// Checks that walking `areas` stays within [`MAX_AREA_CELLS`] cells once each area is
+    /// clipped to its sheet's used area: arithmetic only, before any cell is read, so
+    /// `MAX_AREAS` whole columns over a populated sheet are `#VALUE!` without a walk.
+    pub(crate) fn check_area_cells(
+        &self,
+        areas: &[Range],
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        let mut total: u64 = 0;
+        for area in areas {
+            let (row2, column2) = self
+                .used_area_corner(
+                    area.left.sheet,
+                    area.left.row,
+                    area.left.column,
+                    area.right.row,
+                    area.right.column,
+                )
+                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+            let rows = u64::try_from(row2 - area.left.row + 1).unwrap_or(0);
+            let columns = u64::try_from(column2 - area.left.column + 1).unwrap_or(0);
+            total = total.saturating_add(rows.saturating_mul(columns));
+            if total > MAX_AREA_CELLS {
+                return Err(CalcResult::new_error(
+                    Error::VALUE,
+                    cell,
+                    TOO_MANY_AREA_CELLS.to_string(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// Calls `f` with the value of every cell of `areas`, area by area in formula
+    /// order, each in row-major order.
     ///
     /// The one range walk behind every aggregate function. A range whose corners
-    /// sit on two sheets is a 3-D reference (only [`Self::evaluate_aggregate_arg`]
+    /// sit on two sheets is a 3-D reference (only [`Self::evaluate_reference_arg`]
     /// builds one) and is walked sheet by sheet in tab order; whole-row and
     /// whole-column ranges are clipped to each sheet's used area so the walk
     /// stays proportional to the data. The first
     /// error cell aborts the walk and is returned as `Err`, as does an `Err`
     /// from `f`. `f` never sees `CalcResult::Error`.
-    pub(crate) fn for_each_cell_in_range<F>(
+    pub(crate) fn for_each_cell_in_areas<F>(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
+        areas: &[Range],
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
-        self.for_each_cell_or_error_in_range(left, right, cell, |model, value| match value {
+        self.for_each_cell_or_error_in_areas(areas, cell, |model, value| match value {
             error @ CalcResult::Error { .. } => Err(error),
             value => f(model, value),
         })
     }
 
-    /// [`Self::for_each_cell_in_range`] that also hands `f` the error cells
+    /// [`Self::for_each_cell_in_areas`] that also hands `f` the error cells
     /// (COUNTA counts them, COUNT and COUNTBLANK skip them).
-    pub(crate) fn for_each_cell_or_error_in_range<F>(
+    pub(crate) fn for_each_cell_or_error_in_areas<F>(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
+        areas: &[Range],
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(&mut Self, CalcResult) -> Result<(), CalcResult>,
     {
-        self.for_each_position_in_range(left, right, cell, |model, position| {
+        self.for_each_position_in_areas(areas, cell, |model, position| {
             let value = model.evaluate_cell(position);
             f(model, value)
         })
     }
 
-    /// Calls `f` with the position of every cell of the range `left..=right`, in row-major
-    /// order, without evaluating it: for walks that skip cells by position (AGGREGATE's hidden
-    /// rows and nested SUBTOTAL/AGGREGATE cells). An `Err` from `f` stops the walk.
-    pub(crate) fn for_each_position_in_range<F>(
+    /// Calls `f` with the position of every cell of `areas`, as
+    /// [`Self::for_each_cell_in_areas`] orders them, without evaluating it: for walks that
+    /// skip cells by position (AGGREGATE's hidden rows and nested SUBTOTAL/AGGREGATE cells).
+    /// Several areas are first held to [`MAX_AREA_CELLS`]; one range is not, as before.
+    /// An `Err` from `f` stops the walk.
+    pub(crate) fn for_each_position_in_areas<F>(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
+        areas: &[Range],
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(&mut Self, CellReferenceIndex) -> Result<(), CalcResult>,
     {
-        // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one is
-        // clipped to its own used area, so a span of whole columns walks only data.
-        debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
-        for sheet in left.sheet..=right.sheet {
-            let (row2, column2) = self
-                .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
-                .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
-            for row in left.row..=row2 {
-                for column in left.column..=column2 {
-                    f(self, CellReferenceIndex { sheet, row, column })?;
+        if areas.len() > 1 {
+            self.check_area_cells(areas, cell)?;
+        }
+        for Range { left, right } in areas {
+            // A 3-D reference spans the sheets `left.sheet..=right.sheet` (tab order); each one
+            // is clipped to its own used area, so a span of whole columns walks only data.
+            debug_assert!(left.sheet <= right.sheet, "3-D span corners out of order");
+            for sheet in left.sheet..=right.sheet {
+                let (row2, column2) = self
+                    .clip_to_used_area(sheet, left.row, left.column, right.row, right.column)
+                    .map_err(|message| CalcResult::new_error(Error::ERROR, cell, message))?;
+                for row in left.row..=row2 {
+                    for column in left.column..=column2 {
+                        f(self, CellReferenceIndex { sheet, row, column })?;
+                    }
                 }
             }
         }
         Ok(())
     }
 
-    /// Calls `f` with every number held by the cells of the range
-    /// `left..=right`, in row-major order.
+    /// Calls `f` with every number held by the cells of `areas`, in the order of
+    /// [`Self::for_each_cell_in_areas`].
     ///
     /// This is how aggregate functions (SUM, NPV, VAR, ...) read a
     /// *reference*: numbers count, booleans, text and empty cells are skipped
     /// (unlike direct arguments, which the callers coerce themselves). See
-    /// [`Self::for_each_cell_in_range`] for errors and range clipping.
-    pub(crate) fn for_each_number_in_range<F>(
+    /// [`Self::for_each_cell_in_areas`] for errors and range clipping.
+    pub(crate) fn for_each_number_in_areas<F>(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
+        areas: &[Range],
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        self.for_each_cell_in_range(left, right, cell, |_, value| {
+        self.for_each_cell_in_areas(areas, cell, |_, value| {
             // Booleans, text and empty cells in a reference are ignored.
             if let CalcResult::Number(value) = value {
                 f(value);
@@ -279,20 +439,19 @@ impl Model {
         })
     }
 
-    /// Like [`Self::for_each_number_in_range`] but with the coercion of the
+    /// Like [`Self::for_each_number_in_areas`] but with the coercion of the
     /// *A functions (VARA, STDEVA, ...): text counts as 0, TRUE/FALSE as 1/0,
     /// empty cells are skipped.
-    pub(crate) fn for_each_coerced_number_in_range<F>(
+    pub(crate) fn for_each_coerced_number_in_areas<F>(
         &mut self,
-        left: CellReferenceIndex,
-        right: CellReferenceIndex,
+        areas: &[Range],
         cell: CellReferenceIndex,
         mut f: F,
     ) -> Result<(), CalcResult>
     where
         F: FnMut(f64),
     {
-        self.for_each_cell_in_range(left, right, cell, |_, value| {
+        self.for_each_cell_in_areas(areas, cell, |_, value| {
             match value {
                 CalcResult::Number(value) => f(value),
                 CalcResult::String(_) => f(0.0),

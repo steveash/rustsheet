@@ -1,0 +1,39 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1088 argument-mode probe, part 2: ENCODEURL on scalars and an array; N and TYPE of a range that shares no row or column with the formula; XOR of one text or number cell. Split: XOR() and ISREF(range+0) are their own cases. Data A1 = \"a b&c\", B1 = \"é/?\", C1 = 5, B2 = 3, C2 = \"y\".",
+ "tags": [
+  "M5",
+  "probe",
+  "information",
+  "logical",
+  "web"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": "a b&c",
+    "B1": "é/?",
+    "C1": 5,
+    "B2": 3,
+    "C2": "y"
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=ENCODEURL(\"a b&c\")",
+    "A2": "=ENCODEURL(Data!A1)",
+    "A3": "=ENCODEURL(1)",
+    "A4": "=ENCODEURL(TRUE)",
+    "A5": "=ENCODEURL({\"a b\",\"c\"})",
+    "A6": "=ENCODEURL(\"abc\")",
+    "A7": "=N(Data!B2:C2)",
+    "A8": "=TYPE(Data!B2:C2)",
+    "A10": "=XOR(Data!C2)",
+    "A11": "=XOR(Data!C1)"
+   }
+  }
+ ],
+ "expected": {}
+}

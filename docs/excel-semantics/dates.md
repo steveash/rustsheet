@@ -35,7 +35,7 @@ anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKN
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
 type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
-Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections (`[h]`, `[mm]`, `[ss]`) are exempt and print a leading "-" (number-formats.md "Elapsed-time tokens"). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
+Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). The engine still prints a leading "-" for A1, A3, A5 and A6 (A2 and A4 already give #VALUE! through their `yyyy`/`d` tokens) because the poi ElapsedFormatTests workbook (A40-A47, "-It was 2 [yes, 2] hours...") is a 1904-date-system workbook, where negative serials are valid, and the engine has no date-system awareness (TODO(T-1105)). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
 `(serial - 1) mod 7` from Sunday, one formula for every non-negative serial; negatives are #VALUE!, see above). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED for months 0, 1, 2, 3, 12, 13, 14, 24 and 25, T-1052: `EDATE(0,2)` = 60, the fictitious 1900-02-29, `EDATE(0,3)` = 91, `EDATE(0,13)` = 397, `EDATE(0,14)` = 425, `EDATE(0,24)` = 731, `EDATE(0,25)` = 762, `EOMONTH(0,2)` = 91; negative months are #NUM! (tested: -1 and -12): `EDATE(0,-1)`, `EDATE(0,-12)`, `EOMONTH(0,-1)`; evidence probes/edate-serial-0-months A1-A12, excel-graph 2026-10-07).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
@@ -119,7 +119,7 @@ timevalue-component-limits and timevalue-ampm-limits (oracle: excel-graph, 2026-
   value-clock-text C14, C34-C37). Only the space character U+0020 counts, for trimming and before
   an AM/PM suffix: a tab, a no-break space (U+00A0) or an ideographic space (U+3000) is #VALUE! in
   all three (`"10:00\t"`, `"10:00\u00a0"`, `"10:00\u00a0AM"`, `"\u300010:00"`, and
-  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters between
+  `VALUE("1/2/2020\u00a0")`; value-clock-text rows 38, 42-45). Unprobed: such characters inside the fraction of `H:M.f:S` text (inferred from this rule) and between
   the date and the clock of date-clock text.
 - **VALUE of clock text** is the coercion serial of the trimmed text, unwrapped like coercion
   (`VALUE("25:00")` = 1.0416666666666667, `VALUE("24:00")` = 1, `VALUE("10:11.5")` =
@@ -183,8 +183,8 @@ Implemented for VALUE in `fn_value` (T-0162). Verified since T-0153 was filed: h
 coercion, `"1/2/2020 6 PM"` and date-clock text with a month name (`"Jan 2, 2020 10:00"` =
 43832.416666666664, value-clock-text row 27; the engine already matched).
 `H:M.f:S`, the one-out-of-range limit and the trailing `:` implemented in `parse_clock_text` (T-0153).
-Out of the oracle's reach: `+10:00` typed into a cell (the oracle uploads xlsx files, so it
-cannot type; the engine stores it as text).
+Unprobed: `+10:00` typed into a cell (the engine stores it as text). The oracle can now type
+cell input through `{"entered": ...}` spec cells (T-0280).
 
 ## TIME divides by 86400 first, then drops whole days
 Rule: `TIME(h,m,s)` = `((h*3600+m*60+s)/86400) % 1.0` in floating point, not
@@ -233,6 +233,27 @@ DATEVALUE and column C VALUE of the text in column A; 63 forms):
 - **Spaces**: VALUE and DATEVALUE trim surrounding spaces and treat a run of inner spaces as one
   (`"  July 1, 2026  "`, `"July  1, 2026"`); number coercion does not trim
   (`MROUND(" 2024-01-10 ",7)` is #VALUE!; ironcalc-calc MROUND_TRUNC_INT.xlsx MROUND!C32).
+  Spaces around a `-` or `/` separator are ignored by VALUE and DATEVALUE (`"2026 - 01 - 01"` =
+  46023, `"1 / 2 / 2026"` = 46024, `"4 - Feb - 2026"` = 46057, `"2026- 01-01"`, `"2026 -01-01"`,
+  `"Jul - 2026"`, `"1 / Jul / 2026"`; a clock may follow: `"2026 - 01 - 01 12:00"`; probes/
+  datevalue-separator-spaces rows 1-4, 7-10, 13-14, 16-18, excel-graph, 2026-10-08, and
+  ironcalc-calc DATEVALUE_issue_1380.xlsx, Excel 16.03). Year-less `"1 - Jul"` and `"7 - 1"` are
+  accepted too (rows 11-12, 46204 on the 2026 oracle clock; in the sidecar but unscored). The same
+  holds on the other paths that read date text (probes/datevalue-separator-spaces-paths): text
+  coercion (`0+"2026 - 01 - 01"` = 46023, B1), a `COUNTIF` criterion (`"2026 - 01 - 01"` matches
+  the serial 46023, G1) and typed cell input (`"2026 - 01 - 01"` and `"4 - Feb - 2026"` become
+  numbers, 46023 and 46057 (the number format is UNVERIFIED); year-less `"1 - 2"` and
+  `"10 / 20"` become dates too, 2 Jan and 20 Oct of the oracle year; B3/B4 are scored, C3/C4 unscored: clock). The
+  ISO `T` separator is not accepted: `"2026-01-01T24:00:00"` and `"2026-01-01T12:00:00"` are
+  #VALUE! in DATEVALUE and VALUE (rows 5-6), so IronCalc's `T24:00:00` rollover test (upstream
+  issue 1379, whose DATEVALUE_issue_1379.xlsx only evidences the space-separated
+  `"2026-01-01 24:00:00"` = 46024) is not ported. In month-day-year text the comma may be a word of its own
+  after the day or the month (`"July 1 , 2026"`, `"July 1  ,  2026"`, `"July 1 ,  2026"`,
+  `"July , 1, 2026"`, `"July , 1 , 2026"`, `"July 1 , 26"` = 46204; probes/datevalue-separator-spaces row 15 and
+  probes/datevalue-comma-spaces rows 2-5, 8, 9, 15), but it still needs a space after it: `"July 1 ,2026"`,
+  `"Jul 1 ,2026"`, `"1 July , 2026"` and `"1 July, 2026"` are #VALUE!, as are `"July , 1 2026"` and
+  `"July 1, , 2026"`. A clock suffix works as for `"July 1, 2026 10:00"` (`"July 1 , 2026 10:00"`: DATEVALUE
+  46204, VALUE 46204.41666…); any other fifth word is #VALUE! (`"July 1 , 2026 foo"`; probes/datevalue-comma-spaces rows 11-16; row 12 is `"July , 1, 2026 10:00"`, same values).
 - **Clock suffix**: date text may end in a clock time (`"July 1, 2026 10:00"`,
   `"Jul 1, 2026 4:35 PM"`, `"July 1, 2026 6 PM"`): VALUE adds it, DATEVALUE returns the day the
   sum falls on (`DATEVALUE("1/2/2020 25:00")` = 43833, 3 Jan), and TIMEVALUE takes the time
@@ -275,7 +296,7 @@ classifies typed sign-prefixed input is unprobed. UNVERIFIED (hand-derived from 
 oracle-observed, since the oracle clock is 2026): in a leap year `"2/29"`, `"Feb-29"`, `"29-Feb"`
 and `"Feb 29"` are 29 February; in a non-leap year `"29-Feb"` is #VALUE!.
 Implemented in: `formatter::date_text::parse_date`, `Model::parse_datevalue_text`, `Model::parse_number_text`,
-`functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159)
+`functions::date_and_time::time_text::parse_date_clock_serial` (T-0024), `functions::text::common::fn_value` (clock suffix, T-0159); `remove_separator_spaces` in `parse_date` (spaces around `-` and `/`, T-1136, Ported-From: ironcalc@753da658)
 
 ## WORKDAY holidays take the whole range
 Rule: in a legacy (non-dynamic-array) formula, WORKDAY's `holidays` range is read whole, with no
@@ -291,3 +312,24 @@ so the oracle kept the formulas legacy (T-1053, Excel for the web, 2026-10-07).
 Status: VERIFIED (Excel-cached; Excel oracle for WORKDAY.INTL and NETWORKDAYS.INTL)
 Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983, T-1053
+
+## Date function argument modes
+Rule: DATE, DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, ISOWEEKNUM, TIME, TIMEVALUE and WEEKDAY lift
+over a multi-cell range and over an array in every probed argument (`ROWS(HOUR(A1:A3))` = 3,
+`INDEX(DAYS(46000,A1:A3),2)` = 969). The Analysis ToolPak-era functions do not take a range: EDATE, EOMONTH,
+WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL and YEARFRAC are `#VALUE!` (the whole result, not
+per element) when a date, month count, day count, return type or basis argument is a multi-cell range, yet lift over
+an array literal in the same place (`EDATE(A1:A3,1)` is `#VALUE!`, `INDEX(EDATE({45000.25;45031.5;45100.75},1),2)`
+= 45061). The `weekend` argument of WORKDAY.INTL and NETWORKDAYS.INTL is the exception: it lifts over a range too
+(`INDEX(WORKDAY.INTL(45000,5,B1:B3),2)` = 45007); `holidays` is read whole (see "WORKDAY holidays take the whole
+range"). Typed coercion differs the same way: a boolean date is `#VALUE!` for EDATE, WORKDAY and YEARFRAC, but
+counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 for `(TRUE,46000,"d")`) and
+ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for the seven probed functions other
+than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells are all 0 and cannot tell coercion from
+a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
+the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237).
+Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
+Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`); WORKDAY.INTL and NETWORKDAYS.INTL
+are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
+Status: VERIFIED
+Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below

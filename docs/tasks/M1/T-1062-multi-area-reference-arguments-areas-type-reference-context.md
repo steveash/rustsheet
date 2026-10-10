@@ -3,7 +3,7 @@ id: T-1062
 title: "Multi-area reference arguments: Areas type, reference-context evaluator, aggregates (SPEC-0004 step 2)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: M
 tier: opus
@@ -27,3 +27,10 @@ SPEC-0004 step 2: add `Areas` and `RefArg` (reference_operators.rs) and `Model::
 
 ## Out of scope
 - AREAS, INDEX area_num (T-1063); intersection operands, LET/IF/CHOOSE (T-1064); names (T-1065); functions T-1061 files.
+
+## Outcome
+- `RefArg` (`Ranges` | `Value`), `Ranges` (`One` | `Areas`, derefs to `&[Range]`) and `Areas` (`Rc<[Range]>`, 2..=`MAX_AREAS` areas on one sheet) in reference_operators.rs; `Model::evaluate_reference_arg` (functions/util.rs) replaces `evaluate_aggregate_arg`, and `union_is_reference` is gone (ISREF of a union or intersection asks the evaluator). The range walkers take `&[Range]` (`for_each_*_in_areas`), so one range and several areas share one arm in every caller; a walk of several areas first checks `MAX_AREA_CELLS` (2^24 clipped cells, saturating `u64`) with `Model::used_area_corner`, which reads and records nothing (DEVIATION added to references.md "Union area cap").
+- Opted in: SUM, COUNT, COUNTA, AVERAGE, AVERAGEA, MIN, MAX, PRODUCT and every `for_each_value`/`for_each_value_a` user (STDEV/VAR families, MEDIAN, GEOMEAN, ...). LARGE and RANK (T-1068), CONCAT, TEXTJOIN, a union inside IF (T-1064) and a called reference read a union as `#VALUE!` through `RefArg::into_single_area` (LARGE and RANK then answer `#N/IMPL!` as before).
+- Differences from the spec's plan, recorded in SPEC-0004: a single range is `RefArg::Ranges(Ranges::One)` (no allocation) rather than `RefArg::Value(Range)`, so no caller needs two walk arms; the used area is looked up per area since `used_area_end` is O(1). Cross-sheet area lists are refused by `Ranges::from_list` (probes/multiarea-xsheet), so `ISREF((Data!A1,A1))` is now FALSE, as Excel gives (new probes/multiarea-more H1, which also verifies error cells in union areas and SUMSQ, AVERAGEA, MAXA, GEOMEAN, VAR.S, DEVSQ of a union). AGGREGATE's array-form union match moves to the evaluator in T-1064, where a LET variable can first hide a union from it.
+- The gen-m1 metamorphic family is T-1149 (the generator has no metamorphic phase and gen-m1 allows no function names).
+- Eval: probes +15 cells (multiarea-agg H1:H9, multiarea-intersect H1, multiarea-rank H4:H5, multiarea-3d-ref H1, multiarea-at H5, multiarea-at-legacy H5); no regressions.

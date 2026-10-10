@@ -1,3 +1,4 @@
+use super::general::format_general;
 use crate::{
     locale::Locale,
     number_format::{parse_excel_number, to_precision},
@@ -87,6 +88,93 @@ pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatt
     format_number(value.unwrap_or(0.0), format, locale)
 }
 
+/// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
+/// 4th section applies, `@` stands for the text and the section's other tokens print as literals
+/// (poi TextFormatTests A3:A10, A12:A29; docs/excel-semantics/number-formats.md "Text and
+/// booleans use the format's text section"). A single section with `@` is a text section too
+/// (`@" ""q"""` on "x" is "x q", probes/format-doubled-quotes C11). Any other format with fewer
+/// than four sections returns the text unchanged; that case is unprobed. A result over 255
+/// characters is `#VALUE!` ([`MAX_TEXT_FORMAT_CHARS`]).
+pub fn format_text_value(text: &str, format: &str) -> Formatted {
+    let mut parser = Parser::new(format);
+    parser.parse();
+    let section = match parser.parts.as_slice() {
+        [only]
+            if section_tokens(only)
+                .is_some_and(|t| t.iter().any(|t| matches!(t, TextToken::Raw))) =>
+        {
+            0
+        }
+        parts if parts.len() < 4 => return capped_text(text.to_string()),
+        _ => 3,
+    };
+    let tokens = match parser.parts.get(section) {
+        Some(ParsePart::Error(_)) => {
+            return Formatted {
+                text: "#VALUE!".to_owned(),
+                color: None,
+                error: Some("Problem parsing format string".to_owned()),
+            }
+        }
+        Some(part) => match section_tokens(part) {
+            Some(tokens) => tokens,
+            None => return capped_text(text.to_string()),
+        },
+        None => return capped_text(text.to_string()),
+    };
+    let mut out = String::new();
+    let mut chars = 0;
+    for token in tokens {
+        let start = out.len();
+        match token {
+            TextToken::Literal(c) => out.push(*c),
+            TextToken::Text(t) => out.push_str(t),
+            TextToken::Ghost(_) | TextToken::Spacer(_) => out.push(' '),
+            TextToken::Raw => out.push_str(text),
+            _ => {}
+        }
+        // Checked as it grows, so a format of many `@` cannot build a huge string.
+        chars += out[start..].chars().count();
+        if chars > MAX_TEXT_FORMAT_CHARS {
+            return text_too_long();
+        }
+    }
+    capped_text(out)
+}
+
+/// Excel: TEXT of a text value is `#VALUE!` once the result is over 255 characters, also when the
+/// format leaves the text unchanged (probes/text-format-text-limit A10, A11, A19-A21, A24, A25).
+const MAX_TEXT_FORMAT_CHARS: usize = 255;
+
+fn text_too_long() -> Formatted {
+    Formatted {
+        text: "#VALUE!".to_owned(),
+        color: None,
+        error: Some("TEXT result over 255 characters".to_owned()),
+    }
+}
+
+/// `text` as a TEXT result, or `#VALUE!` when it is over [`MAX_TEXT_FORMAT_CHARS`].
+fn capped_text(text: String) -> Formatted {
+    if text.chars().count() > MAX_TEXT_FORMAT_CHARS {
+        return text_too_long();
+    }
+    Formatted {
+        color: None,
+        text,
+        error: None,
+    }
+}
+
+/// The tokens of a number or date section; `None` for General or an unparsable section.
+fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
+    match part {
+        ParsePart::Number(p) => Some(&p.tokens),
+        ParsePart::Date(p) => Some(&p.tokens),
+        ParsePart::General(_) | ParsePart::Error(_) => None,
+    }
+}
+
 pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
     let mut parser = Parser::new(format);
     parser.parse();
@@ -153,60 +241,14 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             error: Some("Problem parsing format string".to_owned()),
         },
         ParsePart::General(..) => {
-            // FIXME: This is "General formatting"
-            // We should have different codepaths for general formatting and errors
-            let value_abs = value.abs();
-            if (1.0e-8..1.0e+11).contains(&value_abs) {
-                let mut text = format!("{value:.9}");
-                text = text.trim_end_matches('0').trim_end_matches('.').to_string();
-                if locale.numbers.symbols.decimal != "." {
-                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-                }
-                Formatted {
-                    text,
-                    color: None,
-                    error: None,
-                }
-            } else {
-                if value_abs == 0.0 {
-                    return Formatted {
-                        text: "0".to_string(),
-                        color: None,
-                        error: None,
-                    };
-                }
-                let mut exponent = value_abs.log10().floor();
-                value /= 10.0_f64.powf(exponent);
-                // One digit fewer from a decimal exponent magnitude of 99 on: "1.2346E+100"
-                // against "1.23457E-05" (probes/number-text-exponent-digits D1:D15, numbers.md
-                // "Exponent width").
-                let decimals_for = |exponent: f64| if exponent.abs() >= 99.0 { 4 } else { 5 };
-                let mut decimals = decimals_for(exponent);
-                let mut s = format!("{value:.decimals$}");
-                // The mantissa is in [1, 10), so only rounding can print "10.". Such a mantissa
-                // carries into the exponent: 9.9999996E+98 prints "1E+99", not "10E+98"
-                // (probes/text-general-exponent-boundary A5-A8, A10).
-                if s.trim_start_matches('-').starts_with("10.") {
-                    exponent += 1.0;
-                    value = value.signum();
-                    decimals = decimals_for(exponent);
-                    s = format!("{value:.decimals$}");
-                }
-                let sign = if exponent < 0.0 { '-' } else { '+' };
-                let mut text = format!(
-                    "{}E{}{:02}",
-                    s.trim_end_matches('0').trim_end_matches('.'),
-                    sign,
-                    exponent.abs()
-                );
-                if locale.numbers.symbols.decimal != "." {
-                    text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
-                }
-                Formatted {
-                    text,
-                    color: None,
-                    error: None,
-                }
+            let mut text = format_general(value);
+            if locale.numbers.symbols.decimal != "." {
+                text = text.replace('.', &locale.numbers.symbols.decimal.to_string());
+            }
+            Formatted {
+                text,
+                color: None,
+                error: None,
             }
         }
         ParsePart::Date(p) => {
@@ -214,6 +256,8 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035). Elapsed
             // sections ([h], [mm], ...) keep their own sign handling (poi ElapsedFormatTests
             // A40-A47, docs/excel-semantics/number-formats.md "Elapsed-time tokens").
+            // TODO(T-1105): that workbook is 1904-system; in the 1900 system Excel gives #VALUE!
+            // here too (probes/text-negative-serial-elapsed-mixed A1, A3, A5, A6).
             let has_elapsed = p.tokens.iter().any(|t| {
                 matches!(
                     t,
@@ -463,7 +507,9 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             let group_separator = symbols.group.to_owned();
             let decimal_separator = symbols.decimal.to_owned();
             // There probably are better ways to check if a number at a given precision is negative :/
-            let is_negative = value < -(10.0_f64.powf(-(p.precision as f64)));
+            // `<=`: a value exactly one unit at the last shown place (-1 for `0`, -1 after a `#,,`
+            // scaling) keeps its sign (poi/NumberFormatTests.xlsx Tests!A95).
+            let is_negative = value <= -(10.0_f64.powf(-(p.precision as f64)));
             let mut needs_period = false;
 
             for token in tokens {
@@ -515,12 +561,20 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                                     } else {
                                         int_part[number_index as usize]
                                     };
+                                    // The group positions count from the format's last digit
+                                    // placeholder, so padding is grouped too (a padded `?`
+                                    // separator is a space; docs/excel-semantics/number-formats.md,
+                                    // "A comma between digit placeholders turns on thousands grouping").
                                     let sep = if use_group_separator(
                                         p.use_thousands,
-                                        ln - digit_index,
+                                        digit_count - digit_index,
                                         &group_sizes,
                                     ) {
-                                        &group_separator
+                                        if number_index < 0 && digit.kind == '?' {
+                                            " "
+                                        } else {
+                                            &group_separator
+                                        }
                                     } else {
                                         ""
                                     };
@@ -675,7 +729,15 @@ pub(crate) fn parse_formatted_number(
     // negative", probes/paren-negative-variants).
     if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
         let inner = inner.trim();
-        if inner.starts_with(['-', '+', '(']) {
+        // Inside parentheses a currency symbol is only valid directly before unsigned digits:
+        // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms).
+        let bad_currency = currencies.iter().any(|c| {
+            (!c.is_empty() && inner.strip_suffix(c).is_some())
+                || inner
+                    .strip_prefix(c)
+                    .is_some_and(|rest| rest.trim_start().starts_with(['-', '+']))
+        });
+        if inner.starts_with(['-', '+', '(']) || bad_currency {
             return Err("Cannot parse number".to_string());
         }
         let (f, format) =

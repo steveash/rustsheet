@@ -41,13 +41,29 @@ Current suites:
  "expected":{"Sheet1!A3":{"t":"n","v":2}}, "expected_source":"hand", "check":["Sheet1!A3"]}
 ```
 Input conventions:
-- JSON number is a number and JSON bool is a boolean.
+- JSON number is a number and JSON bool is a boolean. A number reaches Excel and the engine as the exact
+  double the case holds: spec2xlsx writes a number that needs 17 significant digits with the shortest
+  text that parses back to it (XlsxWriter alone would round to `{x:.16G}`; T-0289).
 - A string starting with `=` is a formula, written with **dynamic-array (M365) semantics**.
 - Any other string is text. Use the tagged form for text that starts with `=` or for errors.
 - The empty string `""` is materialized as `=""`.
+- `{"entered":"(1,000)"}` is text entered *as a user types it* (T-0280): Excel's input parser picks
+  the value and number format. spec2xlsx leaves the cell blank and lists it in docProps custom
+  properties `rustsheet.entered.<n>`; the excel-graph backend writes it with a range `values`
+  PATCH before calculating (and logs the `numberFormat` Excel chose as `ENTERED ...` on stderr),
+  excel-desktop sets `Range.Value` (that this parses exactly like typing is UNVERIFIED: no desktop run yet), libreoffice refuses. The engine adapter enters it as
+  `Input::Parse`. Formulas can only observe the value: `CELL("format")` is `#VALUE!` on excel-graph.
 - Optional per-sheet `"legacy_formulas": ["H1"]` lists formula cells that spec2xlsx writes as plain
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
-  (T-1077). The engine adapter ignores it.
+  (T-1077). The engine adapter enters them as `Input::LegacyFormula`, which adds the implicit
+  intersections xlsx import adds to a plain `<f>` (`=A1:A2` reads as `=@A1:A2`; T-1096).
+- Optional per-sheet `"hidden_rows": [2, 5]` (1-based rows written `hidden="1"`) and
+  `"tables": [{"name": "Data", "ref": "A1:B9", "filter": true}]` (T-1036). A table's header row is
+  the first row of `ref` and must hold literal text. With `"filter": true` spec2xlsx gives the table's
+  autoFilter a values filter on its first column that keeps exactly the visible data rows (those
+  cells must be literal text or whole numbers, and no value may be both kept and hidden), so Excel
+  reads the hidden rows as filtered. The engine adapter loads both through `Txn::add_table` and
+  `Txn::set_row_hidden`.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 
@@ -58,7 +74,7 @@ The same conventions are implemented by `tools/.../spec2xlsx.py` (for Excel) and
 - `{"t":"n","v":1.5}` number
 - `{"t":"s","v":"x"}` text
 - `{"t":"b","v":true}` boolean
-- `{"t":"e","v":"#DIV/0!"}` error (add `"stored":true` for a stored `t="e"` constant instead of a formula, T-0999)
+- `{"t":"e","v":"#DIV/0!"}` error (add `"stored":true` for a stored `t="e"` constant instead of typed input: spec2xlsx writes it so, T-0999, and the engine adapter enters it as `Input::Value` with the stored-name kind, `#ERROR!` if unknown, as xlsx import does, T-1221)
 - `{"t":"empty"}` blank
 
 JSON numbers are written shortest-round-trip, so they are exact.
@@ -100,6 +116,18 @@ Only `pass` counts as passing. Case statuses:
   need another evidence source. Suite cell counts and baselines still cover every checked cell.
 - `report.json`: the same data, machine-readable.
 - `eval/baseline/<suite>.txt`: known failures (see `docs/process/quality-gates.md`).
+
+## Milestone probe lists
+`eval/milestones/<name>.txt` (decisions 0043, 0044) freezes the cases a milestone's probe criterion
+counts: `#` comment lines, then one case id per line in the form of the baseline files
+(`probes/<path>.case.json`); `m1-probes.txt` is the only list today. `run` and `check` parse every
+list (`crates/rustsheet-eval/src/milestone_lists.rs`) and fail, naming the file and line, on a
+duplicate or on a case that no suite discovers. report.md has a "Milestone probe lists" section
+(report.json: `milestone_lists`) with one row per list: cases, scored cells, bit-exact,
+deviations, known failures (cells), and the failing case ids. Known failures are counted as the
+baseline counts its F lines, so they equal the list's F lines in `eval/baseline/`. The lists are
+an exit measure, not a gate on their pass rate; editing one needs a decision record
+(`scripts/check_governance.py`).
 
 ## CLI
 ```

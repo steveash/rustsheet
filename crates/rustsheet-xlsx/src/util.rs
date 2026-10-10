@@ -1,4 +1,38 @@
+use std::borrow::Cow;
+
 use rustsheet_engine::Model;
+
+/// workbook.xml spells Excel's built-in defined names with this prefix (`_xlnm.Print_Area`), while
+/// formulas and the engine use the bare name (`=SUM(Print_Area)`); ECMA-376 Part 1, `definedName`.
+const BUILT_IN_NAME_PREFIX: &str = "_xlnm.";
+
+/// The built-in names whose prefix import drops and export restores. ECMA-376 lists more
+/// (`Criteria`, `Database`, `Extract`, ...), but those are also plausible user names, and a user's
+/// `Criteria` exported as `_xlnm.Criteria` would turn into Excel's built-in; they stay as written
+/// until an Excel-saved workbook shows how Excel treats them (T-1250).
+const BUILT_IN_NAMES: [&str; 3] = ["Print_Area", "Print_Titles", "_FilterDatabase"];
+
+fn is_built_in_name(name: &str) -> bool {
+    BUILT_IN_NAMES.iter().any(|b| b.eq_ignore_ascii_case(name))
+}
+
+/// A workbook.xml `definedName` name as the engine stores it: `_xlnm.Print_Area` -> `Print_Area`.
+/// Other names, including an `_xlnm.` name outside the built-in list, are kept as written.
+pub(crate) fn name_from_xlsx(name: &str) -> &str {
+    match name.strip_prefix(BUILT_IN_NAME_PREFIX) {
+        Some(bare) if is_built_in_name(bare) => bare,
+        _ => name,
+    }
+}
+
+/// The inverse of [`name_from_xlsx`]: a built-in name gets its `_xlnm.` prefix back.
+pub(crate) fn name_to_xlsx(name: &str) -> Cow<'_, str> {
+    if is_built_in_name(name) {
+        Cow::Owned(format!("{BUILT_IN_NAME_PREFIX}{name}"))
+    } else {
+        Cow::Borrowed(name)
+    }
+}
 
 pub fn get_metadata_sheet_index(model: &Model) -> Option<u32> {
     for (index, ws) in model.workbook.worksheets.iter().enumerate() {

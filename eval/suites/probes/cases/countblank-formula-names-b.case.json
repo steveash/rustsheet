@@ -1,0 +1,76 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1207: COUNTBLANK of names whose body is an IF or CHOOSE returning a scalar, an error, a range or a single cell (follow-up of T-1199). B1=1, B3=3 (B2 empty); C1=#N/A, C2 empty, C3=5. LET-bodied names (T-1209) are stored with `_xlpm.` variables.",
+  "tags": [
+    "M1",
+    "statistical",
+    "probe"
+  ],
+  "names": {
+    "nmifnum": "=IF(TRUE,5,6)",
+    "nmchoosenum": "=CHOOSE(1,5,6)",
+    "nmiftext": "=IF(TRUE,\"x\",1)",
+    "nmifempty": "=IF(TRUE,\"\",1)",
+    "nmiferr": "=IF(TRUE,1/0,1)",
+    "nmchooseerr": "=CHOOSE(1,NA(),1)",
+    "nmifrange": "=IF(TRUE,Sheet1!$B$1:$B$3)",
+    "nmifelserange": "=IF(FALSE,5,Sheet1!$B$1:$B$3)",
+    "nmchooserange": "=CHOOSE(1,Sheet1!$B$1:$B$3,5)",
+    "nmifblankcell": "=IF(TRUE,Sheet1!$C$2)",
+    "nmifnumcell": "=IF(TRUE,Sheet1!$C$3)",
+    "nmiferrcell": "=IF(TRUE,Sheet1!$C$1)",
+    "nmchooseblankcell": "=CHOOSE(1,Sheet1!$C$2)",
+    "nmletnum": "=LET(x,5,x)",
+    "nmleterr": "=LET(x,1/0,x)",
+    "nmletrange": "=LET(x,Sheet1!$B$1:$B$3,x)",
+    "nmletblankcell": "=LET(x,Sheet1!$C$2,x)"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "B1": 1,
+        "B3": 3,
+        "C1": "=NA()",
+        "C3": 5,
+        "A1": "=COUNTBLANK(nmifnum)",
+        "A2": "=COUNTBLANK(nmchoosenum)",
+        "A3": "=COUNTBLANK(nmiftext)",
+        "A4": "=COUNTBLANK(nmifempty)",
+        "A5": "=COUNTBLANK(nmiferr)",
+        "A6": "=COUNTBLANK(nmchooseerr)",
+        "A7": "=COUNTBLANK(nmifrange)",
+        "A8": "=COUNTBLANK(nmifelserange)",
+        "A9": "=COUNTBLANK(nmchooserange)",
+        "A10": "=COUNTBLANK(nmifblankcell)",
+        "A11": "=COUNTBLANK(nmifnumcell)",
+        "A12": "=COUNTBLANK(nmiferrcell)",
+        "A13": "=COUNTBLANK(nmchooseblankcell)",
+        "A14": "=COUNTBLANK(nmletnum)",
+        "A15": "=COUNTBLANK(nmleterr)",
+        "A16": "=COUNTBLANK(nmletrange)",
+        "A17": "=COUNTBLANK(nmletblankcell)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!A9",
+    "Sheet1!A10",
+    "Sheet1!A11",
+    "Sheet1!A12",
+    "Sheet1!A13",
+    "Sheet1!A14",
+    "Sheet1!A15",
+    "Sheet1!A16",
+    "Sheet1!A17"
+  ]
+}

@@ -232,6 +232,78 @@ fn at_operand_binds_looser_than_the_space() {
 }
 
 #[test]
+fn at_operand_keeps_a_group_that_is_only_its_leftmost_operand() {
+    // probes/at-paren-operands-levels E34:E35 (T-1134).
+    let mut model = model();
+    model._set("E34", "=@(A1) B1");
+    model._set("E35", "=@((A1)) B1");
+    model._set("E36", "=@(A1) B1 C1");
+    // E37 and E38 are probes/at-group-not-whole-operand E30 and E32 (T-1200); E39 is E31.
+    model._set("E37", "=@(A1 B1) C1");
+    model._set("E38", "=@(A1):B1 C1");
+    model._set("E39", "=@((A1 B1)) C1");
+    model.evaluate();
+    assert_eq!(model._get_formula("E37"), "=@(A1 B1) C1");
+    assert_eq!(model._get_formula("E38"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("E39"), "=@((A1 B1)) C1");
+    assert_eq!(model._get_formula("E34"), "=@(A1) B1");
+    assert_eq!(model._get_formula("E35"), "=@((A1)) B1");
+    assert_eq!(model._get_formula("E36"), "=@(A1) B1 C1");
+}
+
+#[test]
+fn at_operand_group_leftmost_shapes_match_the_probe() {
+    // probes/at-group-leftmost-shapes E30:E39 (excel-graph, T-1245): Excel prints every form as
+    // written. The engine matches all but E34, E35 and E36, asserted separately below.
+    let mut model = model();
+    let forms = [
+        "=@((A1)):B1 C1",
+        "=@(A1):B1:C1 D1",
+        "=@(A1:B1):C1 D1",
+        "=@(A1 B1) C1 D1",
+        "=@(A1 B1):C1",
+        "=@(A1 B1 C1) D1",
+        "=@(A1):OFFSET(B1,0,0) C1",
+    ];
+    for (i, formula) in forms.iter().enumerate() {
+        model._set(&format!("E{}", 50 + i), formula);
+    }
+    model._set("F50", "=@((A1 B1) C1) D1");
+    model._set("F51", "=@(A1):(B1) C1");
+    model._set("F52", "=@(A1):B1");
+    model.evaluate();
+    for (i, formula) in forms.iter().enumerate() {
+        assert_eq!(model._get_formula(&format!("E{}", 50 + i)), *formula);
+    }
+    // Engine output that differs from Excel, which prints each as written (T-1251).
+    assert_eq!(model._get_formula("F50"), "=@(A1 B1 C1) D1");
+    assert_eq!(model._get_formula("F51"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("F52"), "=@A1:B1");
+}
+
+#[test]
+fn at_operand_adds_no_level_for_a_nested_inner_group() {
+    // T-1167: an inner group that only ends right before the outer `)` adds no level to the `@`
+    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41, E43 and E44
+    // characterize the engine, not Excel: it drops the inner groups, while Excel prints every
+    // written parenthesis back (probes/at-operand-nested-groups, T-1178; engine: T-1244).
+    let mut model = model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("E40", "=@(A1+(B1))");
+    model._set("E41", "=@((A1) (B1))");
+    model._set("E42", "=@((A1))");
+    model._set("E43", "=@(((A1)) B1)");
+    model._set("E44", "=@((A1)+(B1))");
+    model.evaluate();
+    assert_eq!(model._get_formula("E40"), "=@(A1+B1)");
+    assert_eq!(model._get_formula("E41"), "=@(A1 B1)");
+    assert_eq!(model._get_formula("E42"), "=@((A1))");
+    assert_eq!(model._get_formula("E43"), "=@(A1 B1)");
+    assert_eq!(model._get_formula("E44"), "=@(A1+B1)");
+}
+
+#[test]
 fn called_parenthesized_reference_is_ref_error() {
     // probes/paren-call-operands, probes/paren-call-value (Excel refuses `(1)(2)`), T-0149.
     let mut model = model();
@@ -250,4 +322,113 @@ fn called_parenthesized_reference_is_ref_error() {
     assert_eq!(model._get_text("H5"), "6");
     assert_eq!(model._get_formula("H1"), "=(A1)(A2)");
     assert_eq!(model._get_formula("H5"), "=(IF(TRUE,LAMBDA(x,x*2)))(3)");
+}
+
+#[test]
+fn reference_returning_lookups_are_intersection_operands() {
+    // XLOOKUP, TAKE, DROP and TRIMRANGE over a range are references
+    // (probes/intersection-function-operands H8, H11, H12, H14; T-0165).
+    let mut model = model();
+    for (cell, value) in [
+        ("A1", "1"),
+        ("A2", "2"),
+        ("A3", "3"),
+        ("B1", "10"),
+        ("B2", "20"),
+        ("B3", "30"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=A1:A3 XLOOKUP(2,A1:A3,A1:B3)");
+    model._set("H2", "=A1:A3 TAKE(A2:B3,1)");
+    model._set("H3", "=A1:A3 DROP(A1:B2,1)");
+    model._set("H4", "=A1:A3 TRIMRANGE(A2:B2)");
+    // Counts from the end, and the cells a TRIMRANGE keeps, sit where the range has them.
+    model._set("H5", "=A1:A3 TAKE(A1:B3,-1)");
+    model._set("H6", "=B1:B3 XLOOKUP(3,A1:A3,A1:B3)");
+    model._set("H7", "=A1:A3 DROP(A1:B3,-2,1)");
+    model._set("H8", "=A3:A9 TRIMRANGE(A1:B9)");
+    // The function's own errors pass through the intersection.
+    model._set("H9", "=A1:A3 DROP(A1:B3,5)");
+    model._set("H10", "=A1:A3 XLOOKUP(9,A1:A3,A1:B3)");
+    model._set("H11", "=A1:A3 TAKE(A1:B3,0)");
+    // A count beyond any i64 takes everything and must not overflow.
+    model._set("H12", "=A1 TAKE(A1:B3,-1E300)");
+    // An array source gives an array, which is not an intersection operand.
+    model._set("H13", "=A1:A3 TAKE({1,2},1)");
+    model.evaluate();
+    for cell in ["H1", "H2", "H3", "H4"] {
+        assert_eq!(model._get_text(cell), "2", "{cell}");
+    }
+    assert_eq!(model._get_text("H5"), "3");
+    assert_eq!(model._get_text("H6"), "30");
+    assert_eq!(model._get_text("H7"), "#NULL!");
+    assert_eq!(model._get_text("H8"), "3");
+    assert_eq!(model._get_text("H9"), "#CALC!");
+    assert_eq!(model._get_text("H10"), "#N/A");
+    assert_eq!(model._get_text("H11"), "#CALC!");
+    assert_eq!(model._get_text("H12"), "1");
+    assert_eq!(model._get_text("H13"), "#VALUE!");
+}
+
+#[test]
+fn reference_returning_lookups_keep_their_values_elsewhere() {
+    // Outside an intersection the calls still give their values (T-0165).
+    let mut model = model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("B1", "10");
+    model._set("B2", "20");
+    model._set("D1", "=TAKE(A1:B2,-1)");
+    model._set("D3", "=SUM(DROP(A1:B2,1))");
+    model._set("D4", "=XLOOKUP(2,A1:A2,B1:B2)");
+    model._set("D5", "=TAKE(A1:B2,-1E300,1)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "2");
+    assert_eq!(model._get_text("E1"), "20");
+    assert_eq!(model._get_text("D3"), "22");
+    assert_eq!(model._get_text("D4"), "20");
+    assert_eq!(model._get_text("D5"), "1");
+    assert_eq!(model._get_text("D6"), "2");
+}
+
+/// INDEX as an intersection operand is the cell it picks (T-0235).
+#[test]
+fn index_operand_intersects_the_picked_cell() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "2");
+    model._set("C2", "=INDEX(A1:A2,2) A1:A2");
+    model._set("C3", "=INDEX(A1:A2,1) A1:A2");
+    model._set("C4", "=INDEX(A1:A2,3) A1:A2");
+    model.evaluate();
+    assert_eq!(model._get_text("C2"), *"2");
+    assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"#REF!");
+}
+
+/// An aggregate sees the cell HLOOKUP picks as a reference only when the row index is itself a
+/// cell reference: COUNT skips a picked FALSE then (gen-m2 60a543744fc4a8f7 A200; probes/
+/// lookup-pick-aggregates P1, E1, excel-graph; T-0295); a literal index gives the plain value.
+#[test]
+fn hlookup_aggregate_argument_is_a_reference_only_for_a_cell_index() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    model._set("B1", "2");
+    model._set("A2", "FALSE");
+    model._set("B2", "5");
+    model._set("D1", "2");
+    model._set("C1", "=COUNT(HLOOKUP(1,A1:B2,D1))");
+    model._set("C2", "=COUNT(HLOOKUP(2,A1:B2,D1))");
+    model._set("C3", "=COUNT(FALSE)");
+    model._set("C4", "=COUNT(HLOOKUP(1,A1:B2,2))");
+    model._set("C5", "=COUNT(HLOOKUP(1,A1:B2,(D1)))");
+    model._set("C6", "=COUNT(HLOOKUP(1,A1:B2,INT(D1)))");
+    model.evaluate();
+    assert_eq!(model._get_text("C1"), *"0");
+    assert_eq!(model._get_text("C2"), *"1");
+    assert_eq!(model._get_text("C3"), *"1");
+    assert_eq!(model._get_text("C4"), *"1");
+    assert_eq!(model._get_text("C5"), *"0");
+    assert_eq!(model._get_text("C6"), *"1");
 }

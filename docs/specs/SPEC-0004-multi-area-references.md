@@ -118,7 +118,7 @@ agrees; a different oracle answer changes the implementation task, not this desi
 /// 2..=MAX_AREAS entries, each a range on ONE sheet with its corners in order.
 /// Shared, so a LET binding or a defined name is never copied on read.
 #[derive(Clone)]
-pub(crate) struct Areas(Rc<[Range]>);
+pub(crate) struct Areas(Arc<[Range]>);
 
 impl Areas {
     /// The only constructor: refuses fewer than 2 or more than MAX_AREAS areas, and any area
@@ -126,12 +126,16 @@ impl Areas {
     pub(crate) fn new(areas: Vec<Range>, cell: CellReferenceIndex) -> Result<Areas, CalcResult>;
 }
 
+/// The ranges of a reference argument: one range (a 3-D one included) or several areas.
+/// Derefs to `&[Range]`; a single range is borrowed, never copied.
+pub(crate) enum Ranges { One(Range), Areas(Areas) }
+
 /// What a reference-accepting argument evaluates to.
 pub(crate) enum RefArg {
-    /// A union (or a name, LET variable, IF/CHOOSE branch or intersection that stands for one).
-    Areas(Areas),
-    /// Anything else, exactly what `evaluate_aggregate_arg` returns today (a `Range` for a
-    /// single area or a 3-D reference, a value, an array or an error).
+    /// A reference: a plain range, or a union (or a name, LET variable, IF/CHOOSE branch or
+    /// intersection that stands for one).
+    Ranges(Ranges),
+    /// Anything else (a value, an array or an error), never a `CalcResult::Range`.
     Value(CalcResult),
 }
 ```
@@ -145,11 +149,14 @@ pub(crate) enum RefArg {
   this argument is revisited before T-1062.
 - `evaluate_node_in_context` (value context) keeps returning `#VALUE!` for a union, through
   `get_union`, unchanged. It never returns `Areas`, so no existing caller changes.
-- A single area stays `RefArg::Value(CalcResult::Range { .. })`, so existing single-area code is
-  untouched and allocates nothing: `RefArg::Value` passes straight through.
+- A single area is `RefArg::Ranges(Ranges::One(..))`, built from the `CalcResult::Range` with no
+  allocation, so every caller walks one range and several areas through the same arm
+  (`for_each_cell_in_areas` takes `&[Range]`). As implemented by T-1062; the first draft of this
+  spec kept a single range in `RefArg::Value`, which would have given every caller two walk arms.
 - **3-D references are not areas.** A `Range` whose corners sit on two sheets stays
-  `RefArg::Value` and is never put into `Areas`. `Areas::new` refuses it, and so does
-  `union_areas` today, through `evaluate_intersection_operand`. For one, the aggregates keep their
+  `Ranges::One` and is never put into `Areas`. The area-list conversion (`Ranges::from_list`)
+  refuses it and any list on two sheets, and so does `union_areas` today, through
+  `evaluate_intersection_operand`. For one, the aggregates keep their
   3-D walk, while AREAS, INDEX and ISREF keep their VERIFIED `#VALUE!`/FALSE through
   `evaluate_single_sheet_arg` (references.md "3-D references outside the aggregates",
   probes/3d-ref-functions). `RefArg::single_sheet_areas()` gives `&[Range]`, a borrowed
@@ -183,23 +190,27 @@ code that builds area lists. The new evaluator calls them and does not walk unio
 intersection whose operand is a name, a variable or a function result standing for several areas.
 Today `is_multi_area` decides by syntax alone, and `evaluate_intersection_operand` yields one
 range. The change is in T-1064, with LET and IF/CHOOSE; T-1065 adds names as operands:
-- Intersection operands are evaluated through `evaluate_reference_arg`, and the code branches on
-  the result rather than on syntax. If both come back as `Value(Range)` on one sheet, the
-  allocation-free pair path is used, as today, so `name A1` and `Name1 Name2` allocate nothing.
-  Only an `Areas` operand builds a list. `is_multi_area` is deleted.
+- As built (T-1064, amending the first plan): `is_multi_area` stays as a syntactic gate and is
+  widened to every node that *may* stand for several areas: a union, a LET variable, `IF`,
+  `CHOOSE` and `LET` (T-1065 adds defined names whose body is `Areas`). An intersection with no such
+  operand keeps the allocation-free pair path, so `A1:B2 B1:B3` and `name A1` allocate nothing;
+  `evaluate_areas` evaluates a widened operand through `evaluate_reference_arg` and builds a list
+  from the result (an `Areas`, or one single-sheet range). The first plan, branching on evaluated
+  results and deleting `is_multi_area`, would evaluate every operand into a `RefArg` before
+  knowing whether a list is needed; the gate keeps that cost off the common plain-reference chain
+  for the same results.
 - `get_intersection`/`intersect_areas` keep taking `&Node` and evaluate their operands
-  themselves. The `MAX_AREA_PAIRS` budget is threaded through `evaluate_reference_arg`, so one
-  top-level expression shares one budget. Re-intersecting a LET variable (`x x x …`) spends it and
-  does not restart it.
+  themselves. Re-intersecting a LET variable (`x x x …`) spends the caller's `MAX_AREA_PAIRS`
+  budget and does not restart it; an IF, CHOOSE or LET operand starts its own, as INDEX and
+  OFFSET already do, so total work stays linear in formula length.
 
 ### Work bound for walking areas (DEVIATION)
 The area cap bounds list length, not work. Nested cuts of `U = (A:A,A:A,A:A,A:A)` reach
 `MAX_AREAS` copies of `A:A` in about 180 characters, and an aggregate over them would walk the
 column 65,536 times (directive 5). So:
-- One walker, `Model::for_each_cell_in_areas` (util.rs), walks an `Areas` through the existing
-  per-range walkers. It is the only way an `Areas` is walked. It looks up each sheet's used area once
-  per walk, not once per area: `clip_to_used_area` calls `Worksheet::dimension()`, which scans the
-  sheet (T-0049 tracks making that O(1)).
+- One walker, `Model::for_each_cell_in_areas` (util.rs, with its position, number and error
+  variants), walks one range or an `Areas`. It is the only way an `Areas` is walked. The used
+  area is looked up per area, which is O(1) since `Worksheet::used_area_end` (T-0049).
 - Before walking, it sums the clipped sizes of all areas, which is arithmetic only. The sum is
   computed in `u64` with saturating arithmetic and stops as soon as it passes `MAX_AREA_CELLS`,
   because one whole-sheet area alone is about 1.7e10 cells. The bound is per argument on purpose:
@@ -235,14 +246,25 @@ getting `#VALUE!` for a union, with no code change. Concretely:
 
 ### LET, IF, CHOOSE
 `variable_stack` (shared by LET and LAMBDA) changes from `CalcResult` to a `Binding` enum:
-`Value(CalcResult)` or `Areas(Areas)`. `fn_let` evaluates each binding with
-`evaluate_reference_arg`. Every reader of `variable_stack` except `evaluate_reference_arg` sees
-`#VALUE!` for an `Areas` binding: the value read of `NamedVariableKind` and LAMBDA parameters.
-LAMBDA arguments stay value-evaluated, so they never bind `Areas`. So
-`LET(x,(A1,B2),SUM(x))` is 6 and `LET(x,(A1,B2),x)` is `#VALUE!` (probe row 9). The ids are
+`Value(CalcResult)` or `Areas(Areas)`. LET values and LAMBDA arguments are bound by one helper,
+`Model::bind_argument`: a node `is_multi_area` admits is evaluated with `evaluate_reference_arg`,
+anything else as before. Every reader of `variable_stack` except `evaluate_reference_arg` sees
+`#VALUE!` for an `Areas` binding. So `LET(x,(A1,B2),SUM(x))` is 6, `LET(x,(A1,B2),x)` is
+`#VALUE!` (probe row 9), and `LET(x,(A1,B2),y,x,SUM(y))`, `LET(x,IF(TRUE,(A1,B2)),SUM(x))` and
+`LAMBDA(x,SUM(x))((A1,B2))` are 6 (probes/multiarea-letbind, which overturned the first plan's
+value-evaluated LAMBDA arguments). LET in reference context evaluates its body there too
+(`SUM(LET(x,(A1,B2),x))` = 6). `variable_stack` is a `VariableStack` (next to `Binding`) that caps the areas all
+bindings in scope hold at `4 * MAX_AREAS` (DEVIATION, references.md "Union area cap"). The ids are
 unchanged.
 
 ### Defined names
+- As built (T-1065, amending the plan below): no `ParsedDefinedName::Areas` and no per-workbook cap.
+  A union body stays T-0158's `Formula` body and is evaluated at each use in reference context
+  (`Model::defined_name_reference`) under the name depth and budget limits, so the one builder
+  (`union_areas`) and its caps apply unchanged and names store no area list. `is_multi_area` became
+  a `Model` method that is true for a name with a `Formula` body (a cell or range name keeps the
+  pair path). A sheet-local Print_Area needs sheet-scoped names in the case loader and `_xlnm.`
+  name mapping on import, which are not multi-area work: T-1193.
 - `parse_name_body` returns a `Node`. A body that is a union of absolute single-sheet references
   only (the Print_Area shape) becomes `ParsedDefinedName::Areas(Areas)`, resolved once at load by
   evaluating the node through `reference_areas`, the same builder, not a second walker. Reads are
@@ -250,7 +272,7 @@ unchanged.
 - Any other multi-area body (relative references, intersections, functions) goes through T-0158's
   general-formula body, evaluated per use, and reaches `Areas` through `evaluate_reference_arg`.
   Names are not resolved recursively here: a body naming another name is T-0158's bounded path.
-- A body that fails to parse, holds a cross-sheet or 3-D operand (`Areas::new` refuses it; probe
+- A body that fails to parse, holds a cross-sheet or 3-D operand (`Ranges::from_list` refuses it; probe
   rows 12, 13, 14b; T-1065 matches the error Excel gives there), or has more than `MAX_AREAS` areas becomes `InvalidDefinedNameFormula`. That is the
   name's error value, never a load failure, as for any bad body today. The total areas over all
   names of a workbook are capped at `MAX_AREAS`. Past it, further multi-area names are refused the

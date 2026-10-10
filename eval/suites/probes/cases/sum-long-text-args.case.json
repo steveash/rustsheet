@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SUM/AVERAGE direct text args at LEN 255/256: non-numeric text, padded and digit text, and sibling aggregates (T-1107).",
+ "tags": [
+  "M1",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=SUM(REPT(\"a\",256),1)",
+    "A2": "=SUM(REPT(\"a\",255),1)",
+    "A3": "=AVERAGE(REPT(\"a\",256),2)",
+    "A4": "=AVERAGE(REPT(\"a\",255),2)",
+    "A5": "=SUM(REPT(\" \",100)&\"1\"&REPT(\" \",155),1)",
+    "A6": "=SUM(REPT(\" \",100)&\"1\"&REPT(\" \",156),1)",
+    "A7": "=SUM(REPT(\"1\",256),1)",
+    "A8": "=SUMSQ(\"0.\"&REPT(\"0\",253)&\"1\",1)",
+    "A9": "=PRODUCT(\"0.\"&REPT(\"0\",253)&\"1\",1)",
+    "A10": "=MAX(\"0.\"&REPT(\"0\",253)&\"1\",1)",
+    "A11": "=SUM(REPT(\"a\",256))"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4",
+  "Sheet1!A5",
+  "Sheet1!A6",
+  "Sheet1!A7",
+  "Sheet1!A8",
+  "Sheet1!A9",
+  "Sheet1!A10",
+  "Sheet1!A11"
+ ]
+}

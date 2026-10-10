@@ -1,3 +1,4 @@
+use super::drop_take::sub_range;
 use crate::{
     calc_result::CalcResult,
     expressions::{parser::ArrayNode, parser::Node, token::Error, types::CellReferenceIndex},
@@ -32,11 +33,30 @@ impl Model {
     ///
     /// Returns `#REF!` if every cell in the range is blank.
     pub(crate) fn fn_trimrange(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.trimrange_impl(args, cell, false)
+    }
+
+    /// TRIMRANGE; `as_reference` gives the trimmed part of a single-sheet range argument as a
+    /// reference, as an intersection operand sees it: `=A1:A3 TRIMRANGE(A2:B2)` is 2
+    /// (probes/intersection-function-operands H14; T-0165).
+    pub(crate) fn trimrange_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         if args.is_empty() || args.len() > 3 {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let data = match self.eval_to_array(&args[0], cell) {
+        let source = self.evaluate_node_in_context(&args[0], cell);
+        let reference_corner = match source {
+            CalcResult::Range { left, right } if as_reference && left.sheet == right.sheet => {
+                Some(left)
+            }
+            _ => None,
+        };
+        let data = match self.result_to_array(source, cell) {
             Ok(d) => d,
             Err(e) => return e,
         };
@@ -123,6 +143,10 @@ impl Model {
                 cell,
                 "TRIMRANGE result is empty".to_string(),
             );
+        }
+
+        if let Some(left) = reference_corner {
+            return sub_range(left, &(row_start..row_end), &(col_start..col_end));
         }
 
         let result: Vec<Vec<ArrayNode>> = data[row_start..row_end]

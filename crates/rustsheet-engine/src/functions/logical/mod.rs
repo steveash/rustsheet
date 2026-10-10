@@ -15,6 +15,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     model::Model,
+    reference_operators::RefArg,
 };
 
 /// How IF hands back the branch a scalar condition chose.
@@ -79,6 +80,20 @@ fn calc_result_to_array_node(result: CalcResult) -> ArrayNode {
     }
 }
 
+/// Whether an argument value makes IFS or SWITCH run element by element: an array or a range.
+fn is_lifted(value: &CalcResult) -> bool {
+    matches!(value, CalcResult::Range { .. } | CalcResult::Array(_))
+}
+
+/// IFS's and SWITCH's `#N/A` when nothing matches.
+fn no_match(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::Error {
+        error: Error::NA,
+        origin: cell,
+        message: "Did not find a match".to_string(),
+    }
+}
+
 /// Cast one element of a cond array to bool. Returns Err with the error node to
 /// place in the output when the element is itself an error or unparseable string.
 fn array_node_to_bool(node: &ArrayNode) -> Result<bool, ArrayNode> {
@@ -121,28 +136,30 @@ impl Model {
 
     pub(crate) fn fn_if(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.if_impl(args, cell, IfBranchMode::Value)
+            .into_single_area(cell)
     }
 
     /// IF; with a scalar condition the chosen branch comes back as `mode` says
-    /// (T-0216, T-1026; docs/excel-semantics/references.md).
+    /// (T-0216, T-1026; docs/excel-semantics/references.md). In reference context a union in
+    /// the chosen branch stays its areas: `SUM(IF(TRUE,(A1,B2)))` is 6 and
+    /// `IF(TRUE,(A1,B2)) A1` is 1 (probes/multiarea-ifchoose H1:H2).
     pub(crate) fn if_impl(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         mode: IfBranchMode,
-    ) -> CalcResult {
+    ) -> RefArg {
         if args.len() != 2 && args.len() != 3 {
-            return CalcResult::new_args_number_error(cell);
+            return RefArg::Value(CalcResult::new_args_number_error(cell));
         }
-        let has_else = args.len() == 3;
         let cond_result = self.evaluate_node_in_context(&args[0], cell);
 
         // Normalize cond to a 2-D array, or take the scalar early-return path.
         let cond_array: Vec<Vec<ArrayNode>> = match cond_result {
-            error @ CalcResult::Error { .. } => return error,
+            error @ CalcResult::Error { .. } => return RefArg::Value(error),
             CalcResult::Range { left, right } => match self.evaluate_range(left, right, cell) {
                 Ok(array) => array,
-                Err(error) => return error,
+                Err(error) => return RefArg::Value(error),
             },
             CalcResult::Array(a) => a,
             other => {
@@ -150,20 +167,32 @@ impl Model {
                 // The branch result may itself be an array (it will spill).
                 let b = match self.cast_to_bool(other, cell) {
                     Ok(b) => b,
-                    Err(e) => return e,
+                    Err(e) => return RefArg::Value(e),
                 };
                 let branch = if b { args.get(1) } else { args.get(2) };
                 return match branch {
                     Some(node) => match mode {
-                        IfBranchMode::Aggregate => self.evaluate_aggregate_arg(node, cell),
-                        IfBranchMode::SingleSheet => self.evaluate_single_sheet_arg(node, cell),
-                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell),
+                        IfBranchMode::Aggregate => self.evaluate_reference_arg(node, cell),
+                        IfBranchMode::SingleSheet => {
+                            self.evaluate_single_sheet_arg(node, cell).into()
+                        }
+                        IfBranchMode::Value => self.evaluate_node_in_context(node, cell).into(),
                     },
-                    None => CalcResult::Boolean(false),
+                    None => RefArg::Value(CalcResult::Boolean(false)),
                 };
             }
         };
+        RefArg::Value(self.if_array(args, cond_array, cell))
+    }
 
+    /// IF over an array condition: one result per position, the branches broadcast.
+    fn if_array(
+        &mut self,
+        args: &[Node],
+        cond_array: Vec<Vec<ArrayNode>>,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let has_else = args.len() == 3;
         // Evaluate branches once and normalise each to a scalar or 2-D array.
         let true_result = self.evaluate_node_in_context(&args[1], cell);
         let true_arg = match true_result {
@@ -317,7 +346,11 @@ impl Model {
         CalcResult::Array(output)
     }
 
-    /// =IFS(condition1, value, [condition, value]*)
+    /// =IFS(condition1, value, [condition, value]*). An array or range condition lifts
+    /// IFS element by element over it and the arguments after it, broadcast as the element-wise
+    /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
+    /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
+    /// `SUM(IFS(TRUE,A1:B2))` is 10.
     pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let args_count = args.len();
         if args_count < 2 {
@@ -329,20 +362,41 @@ impl Model {
         }
         let case_count = args_count / 2;
         for case_index in 0..case_count {
-            let value = self.get_boolean(&args[2 * case_index], cell);
-            match value {
-                Ok(b) => {
-                    if b {
-                        return self.evaluate_node_in_context(&args[2 * case_index + 1], cell);
-                    }
+            let condition = self.evaluate_node_in_context(&args[2 * case_index], cell);
+            if is_lifted(&condition) {
+                // The earlier conditions were all FALSE, so the result is decided element by
+                // element from here (`IFS({TRUE,FALSE},1,TRUE,2)` is {1,2}).
+                let mut lifted = vec![condition];
+                lifted.push(self.evaluate_node_in_context(&args[2 * case_index + 1], cell));
+                for node in &args[2 * case_index + 2..] {
+                    lifted.push(self.evaluate_node_in_context(node, cell));
                 }
-                Err(s) => return s,
+                return self.lift_with_cost(
+                    lifted,
+                    |_| 1,
+                    cell,
+                    |model, pairs| model.ifs_element(pairs, cell),
+                );
+            }
+            match self.cast_to_bool(condition, cell) {
+                Ok(true) => return self.evaluate_node_in_context(&args[2 * case_index + 1], cell),
+                Ok(false) => {}
+                Err(error) => return error,
             }
         }
-        CalcResult::Error {
-            error: Error::NA,
-            origin: cell,
-            message: "Did not find a match".to_string(),
+        no_match(cell)
+    }
+
+    /// IFS on one element of lifted (condition, value) pairs: the value of the first TRUE
+    /// condition, an error condition's error, or `#N/A`.
+    fn ifs_element(&mut self, pairs: &[CalcResult], cell: CellReferenceIndex) -> CalcResult {
+        for pair in pairs.chunks_exact(2) {
+            match self.cast_to_bool(pair[0].clone(), cell) {
+                Ok(true) => return pair[1].clone(),
+                Ok(false) => {}
+                Err(error) => return error,
+            }
         }
+        no_match(cell)
     }
 }

@@ -75,6 +75,10 @@ pub struct SuiteManifest {
     /// that are not en-US evidence (`overrides.rs`, decision 0032).
     #[serde(default)]
     pub cached_overrides: Option<String>,
+    /// File (relative to the manifest) of cells that differ from Excel by design, scored apart
+    /// from bit-exact (`deviations.rs`, decision 0036).
+    #[serde(default)]
+    pub deviations: Option<String>,
     /// Pinned external source; when present the cases live in `eval/.cache/suites/<name>`
     /// (populated by `rustsheet-eval fetch`) instead of next to the manifest.
     #[serde(default)]

@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1163: SUBTOTAL and AREAS arguments written as reference operands (INDEX, LET, IF, CHOOSE, LAMBDA, @, intersection) that load in Excel: a value is #VALUE!, an error is itself even after an error cell (C1 = #DIV/0!), an array spills #VALUE! per element (error elements kept). Non-reference arguments written in place ({1,2}, 1, A1:A2*1, SUM(..), an empty or nested SUBTOTAL argument, AREAS(1)) make Excel refuse the workbook and cannot be cases. Sheet1 A1=1, A2=2.",
+  "tags": [
+    "M1",
+    "references",
+    "subtotal",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "C1": "=1/0",
+        "J1": "=SUBTOTAL(9,@A1:A2)",
+        "H1": "=SUBTOTAL(9,INDEX(A1:A2,0))",
+        "H2": "=SUBTOTAL(9,LET(x,A1:A2,x))",
+        "H3": "=SUBTOTAL(9,(A1))",
+        "H4": "=SUBTOTAL(9,#REF!)",
+        "H5": "=SUBTOTAL(9,IF(TRUE,A1:A2))",
+        "H6": "=SUBTOTAL(9,A1:A2 A1)",
+        "H7": "=SUBTOTAL(9,IF(TRUE,A1:A2,5))",
+        "H8": "=SUBTOTAL(9,LAMBDA(x,x))",
+        "H9": "=SUBTOTAL(2,LAMBDA(x,x))",
+        "H10": "=SUBTOTAL(3,LAMBDA(x,x))",
+        "H11": "=SUBTOTAL(109,LAMBDA(x,x))",
+        "H12": "=SUBTOTAL(9,LET(f,LAMBDA(x,x),f))",
+        "H13": "=SUBTOTAL(9,IF(TRUE,5))",
+        "H14": "=SUBTOTAL(2,IF(TRUE,5))",
+        "H15": "=SUBTOTAL(2,IF(TRUE,\"a\"))",
+        "H16": "=SUBTOTAL(3,IF(TRUE,\"a\"))",
+        "H17": "=SUBTOTAL(9,IF(TRUE,\"\"))",
+        "H18": "=SUBTOTAL(9,IF(TRUE,1/0))",
+        "H19": "=SUBTOTAL(2,IF(TRUE,1/0))",
+        "H20": "=SUBTOTAL(3,IF(TRUE,1/0))",
+        "H21": "=SUBTOTAL(9,C1,IF(TRUE,5))",
+        "H22": "=SUBTOTAL(9,IF(TRUE,5),C1)",
+        "H23": "=AREAS(IF(TRUE,5))",
+        "H24": "=AREAS(LAMBDA(x,x))",
+        "L1": "=SUBTOTAL(9,IF(TRUE,{1,2}))",
+        "L4": "=SUBTOTAL(9,LET(x,{1,2},x))",
+        "L7": "=SUBTOTAL(9,CHOOSE(1,{1,2}))",
+        "L10": "=SUBTOTAL(3,IF(TRUE,{1,2}))",
+        "L13": "=SUBTOTAL(9,IF(TRUE,{1,#N/A}))",
+        "L16": "=SUBTOTAL(9,A1:A2,IF(TRUE,{1,2}))",
+        "L19": "=SUBTOTAL(9,IF(TRUE,{1;2}))"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -1029,18 +1029,10 @@ impl Model {
         row2: i32,
         column2: i32,
     ) -> Result<(i32, i32), String> {
-        let whole_rows = row1 == 1 && row2 == LAST_ROW;
-        let whole_columns = column1 == 1 && column2 == LAST_COLUMN;
-        if !whole_rows && !whole_columns {
+        let (last_row, last_column) = self.used_area_corner(sheet, row1, column1, row2, column2)?;
+        if (last_row, last_column) == (row2, column2) {
             return Ok((row2, column2));
         }
-        let (max_row, max_column) = self
-            .workbook
-            .worksheet(sheet)
-            .map_err(|_| format!("Invalid worksheet index: '{sheet}'"))?
-            .used_area_end();
-        let last_row = if whole_rows { max_row } else { row2 };
-        let last_column = if whole_columns { max_column } else { column2 };
         // The remainder: the rows below the used area over the whole width,
         // and the columns beyond it within the rows that are walked.
         self.record_seen_empty_range(sheet, last_row + 1, column1, row2, column2);

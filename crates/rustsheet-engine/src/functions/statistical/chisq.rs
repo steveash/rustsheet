@@ -1,3 +1,5 @@
+use crate::calc_result::Range;
+use crate::reference_operators::{Ranges, RefArg};
 use statrs::distribution::{ChiSquared, Continuous, ContinuousCDF};
 
 use crate::expressions::parser::ArrayNode;
@@ -278,7 +280,9 @@ impl Model {
             // 3-D reference (T-0196): the shared walk goes sheet by sheet. It clips to each
             // sheet's used area, so it is only used here, where no two-input caller pairs
             // the list by position.
-            self.for_each_cell_or_error_in_range(left, right, left, |_, value| push(value))?;
+            self.for_each_cell_or_error_in_areas(&[Range { left, right }], left, |_, value| {
+                push(value)
+            })?;
             return Ok(values);
         }
         // Single sheet: one entry per cell of the range, unclipped, because CHISQ.TEST, SUMXMY2,
@@ -293,6 +297,106 @@ impl Model {
             }
         }
         Ok(values)
+    }
+
+    /// One entry per cell of every area of a multi-area reference, in formula order, as
+    /// [`Self::values_from_range`] gives them for one range: a number is `Some`, text, booleans
+    /// and blanks are `None`, and the first error cell is the `Err`. Areas are counted as
+    /// written, so an overlap counts twice (docs/excel-semantics/references.md "Multi-area
+    /// references in functions"; probes/multiarea-rank, multiarea-cond).
+    pub(crate) fn values_from_areas(
+        &mut self,
+        areas: &Ranges,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let mut values = Vec::new();
+        self.for_each_cell_or_error_in_areas(areas, cell, |_, value| match value {
+            CalcResult::Number(v) => {
+                values.push(Some(v));
+                Ok(())
+            }
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => {
+                values.push(None);
+                Ok(())
+            }
+        })?;
+        Ok(values)
+    }
+
+    /// The numbers LARGE, SMALL and RANK rank: a reference (one range, or the areas of a union, each
+    /// counted as written; probes/multiarea-rank), an array, or a scalar typed in place.
+    pub(crate) fn numbers_from_reference_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        self.numbers_from_ranked_arg(node, cell, false)
+    }
+
+    /// [`Self::numbers_from_reference_arg`] for the RANK family, whose `ref` must be a reference:
+    /// an array that is not a reference (`IF(..)`, arithmetic) is `#VALUE!` in every element of
+    /// its own shape (docs/excel-semantics/statistics.md, "RANK of a non-reference array";
+    /// probes/rank-nonref-12..14). LARGE and SMALL accept such arrays.
+    pub(crate) fn numbers_from_rank_ref_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        self.numbers_from_ranked_arg(node, cell, true)
+    }
+
+    fn numbers_from_ranked_arg(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        arrays_are_value_errors: bool,
+    ) -> Result<Vec<Option<f64>>, CalcResult> {
+        let by_reference = matches!(node, Node::ReferenceKind { .. });
+        let unsupported = |error: Error| {
+            Err(CalcResult::Error {
+                error,
+                origin: cell,
+                message: "Unsupported argument type".to_string(),
+            })
+        };
+        let single = match self.evaluate_reference_arg(node, cell) {
+            RefArg::Ranges(areas @ Ranges::Areas(_)) => {
+                return self.values_from_areas(&areas, cell)
+            }
+            single => single.into_single_area(cell),
+        };
+        match single {
+            CalcResult::Array(array) if arrays_are_value_errors => Err(CalcResult::Array(
+                array
+                    .iter()
+                    .map(|row| row.iter().map(|_| ArrayNode::Error(Error::VALUE)).collect())
+                    .collect(),
+            )),
+            CalcResult::Array(array) => {
+                self.values_from_array(array)
+                    .map_err(|e| CalcResult::Error {
+                        error: Error::VALUE,
+                        origin: cell,
+                        message: format!("Unsupported array argument: {}", e),
+                    })
+            }
+            CalcResult::Range { left, right } => self.values_from_range(left, right),
+            // A cell holding a scalar is a reference the function cannot rank (#NUM!); the same
+            // scalar typed in place is a one-element list.
+            CalcResult::Boolean(_) | CalcResult::Number(_) | CalcResult::String(_)
+                if by_reference =>
+            {
+                unsupported(Error::NUM)
+            }
+            CalcResult::Boolean(value) => Ok(vec![Some(if value { 1.0 } else { 0.0 })]),
+            CalcResult::Number(value) => Ok(vec![Some(value)]),
+            CalcResult::String(value) => match self.cast_number(&value) {
+                Some(parsed) => Ok(vec![Some(parsed)]),
+                None => unsupported(Error::VALUE),
+            },
+            _ => unsupported(Error::NIMPL),
+        }
     }
 
     pub(crate) fn values_from_array(

@@ -3,7 +3,7 @@ id: T-0180
 title: "Comparison operators: fit Excel's near-equality rule (2^-10 base distinguishes k>=3 ulps; 24 probes-numeric failures)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -40,12 +40,21 @@ If the 648 cells do not pin the rule down, write a probe sweep (more bases and k
 probes-numeric is not gated (no baseline file): progress is read from `make eval`.
 
 ## Acceptance criteria
-- [ ] In `make eval`, probes-numeric/99bc3137b5869417 has 0 failing cells (24 today).
-- [ ] No new F lines in any gated baseline (gen-m1, gen-m2 comparisons and lookups are sensitive).
-- [ ] numbers.md "Comparison tolerance" states the fitted rule with evidence and an
+- [x] In `make eval`, probes-numeric/99bc3137b5869417 has 0 failing cells (24 today).
+- [x] No new F lines in any gated baseline (gen-m1, gen-m2 comparisons and lookups are sensitive).
+- [x] numbers.md "Comparison tolerance" states the fitted rule with evidence and an
       `Implemented in:` line.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Near-zero snapping of `+`/`-` (T-0110).
 - Text collation (T-0220).
+
+## Outcome
+Already delivered by T-0989: `compare_values` (functions/util.rs) orders numbers with
+`cmp_excel_precision` (number_format.rs), i.e. both sides rounded to 15 significant digits and compared
+exactly, with no absolute tolerance. `rustsheet-eval show probes-numeric/99bc3137b5869417.case.json` gives
+648 of 648 cells passing on main (2026-10-08). numbers.md "Comparison tolerance" states the rule with
+evidence and an `Implemented in:` line. `CalcResult::cmp` (calc_result.rs) uses the same
+`cmp_excel_precision`, and `values_are_equal` no longer exists, so no follow-up is needed. No code
+change; eval delta: none.

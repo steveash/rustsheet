@@ -1,3 +1,4 @@
+use crate::arithmetic::flush_subnormal;
 use crate::functions::statistical::special::{erf, erfc};
 
 use crate::{
@@ -162,7 +163,7 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        CalcResult::Number(erfc(x))
+        CalcResult::Number(flush_subnormal(erfc(x)))
     }
 
     pub(crate) fn fn_erfcprecise(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -173,6 +174,6 @@ impl Model {
             Ok(f) => f,
             Err(s) => return s,
         };
-        CalcResult::Number(erfc(x))
+        CalcResult::Number(flush_subnormal(erfc(x)))
     }
 }

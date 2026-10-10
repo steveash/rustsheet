@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "BASE min_length bound and error precedence (T-1243)",
+  "tags": [
+    "M5",
+    "probe",
+    "base"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=BASE(1,2,255)",
+        "A2": "=BASE(1,2,256)",
+        "A3": "=BASE(1,2,255.9)",
+        "A4": "=BASE(1,2,-1)",
+        "A5": "=BASE(1,2,1E+15)",
+        "A6": "=BASE(245,30,1E+15)",
+        "A7": "=LEN(BASE(1,2,255))",
+        "A8": "=BASE(1,2,254.5)",
+        "A9": "=BASE(1,2,0)",
+        "A10": "=BASE(1,2,-0.5)",
+        "A11": "=BASE(-1,2,1E+15)",
+        "A12": "=BASE(1,37,1E+15)",
+        "A13": "=BASE(\"x\",2,1E+15)",
+        "A14": "=BASE(1,2,\"300\")"
+      }
+    }
+  ],
+  "expected": {}
+}

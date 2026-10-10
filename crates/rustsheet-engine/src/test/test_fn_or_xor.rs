@@ -317,3 +317,45 @@ fn test_not_lifts_over_arrays_and_ranges() {
     assert_eq!(model._get_text("E1"), *"FALSE");
     assert_eq!(model._get_text("G1"), *"#ERROR!");
 }
+
+/// Nightly fuzz OOM (T-0230): `IFERROR` hands `OR` the reference `F:LSE` (8,606 whole
+/// columns). The walk is clipped to the used area, so this is quick and bounded, and the
+/// result is that of an empty range: no logical values, `#VALUE!`.
+#[test]
+fn fuzz_oom_or_over_whole_columns() {
+    let mut model = new_empty_model();
+    model._set("A1", "=OR(IFERROR(ERROR.TYPE(TRUNC($Z$1))=5,F:LSE))");
+    model._set("A2", "=OR(F:LSE)");
+    let start = std::time::Instant::now();
+    model.evaluate();
+    assert!(start.elapsed() < std::time::Duration::from_secs(10));
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+}
+
+/// Several errors: the first one, arguments left to right and ranges row by row, wins for
+/// AND, OR and XOR (probes/and-or-xor-error-order, excel-graph, T-0229).
+#[test]
+fn first_error_wins_row_by_row() {
+    let mut model = new_empty_model();
+    // D1:F2 = TRUE, #DIV/0!, FALSE / #N/A, TRUE, #NUM!
+    model._set("D1", "TRUE");
+    model._set("E1", "=1/0");
+    model._set("F1", "FALSE");
+    model._set("D2", "=NA()");
+    model._set("E2", "TRUE");
+    model._set("F2", "=SQRT(-1)");
+    model._set("A1", "=OR(TRUE,NA(),1/0)");
+    model._set("A2", "=AND(FALSE,1/0,NA())");
+    model._set("A3", "=XOR(D1:F2)");
+    model._set("A4", "=OR(TRANSPOSE(D1:F2))");
+    model._set("A5", "=AND(D1:F2,NA())");
+    model._set("A6", "=OR({TRUE,#DIV/0!,#N/A})");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("A4"), *"#N/A");
+    assert_eq!(model._get_text("A5"), *"#DIV/0!");
+    assert_eq!(model._get_text("A6"), *"#DIV/0!");
+}

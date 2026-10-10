@@ -21,6 +21,8 @@ use quick_xml::{Reader, XmlVersion};
 
 use std::io::{Read, Seek};
 
+use rustsheet_engine::expressions::token::get_error_by_english_name;
+
 use crate::error::XlsxError;
 
 use super::package::Package;
@@ -288,6 +290,22 @@ fn rich_value_errors(
     Ok(out)
 }
 
+/// The error a cell caches, `cell_value`. Excel caches the errors older readers do not know
+/// (`#CALC!`, `#SPILL!`, ...) as `#VALUE!` and keeps the real one in its value metadata,
+/// `rich_error` (see [`value_metadata_errors`]); an unmapped errorType stays `#VALUE!`.
+pub(super) fn cached_error_name<'a>(
+    cell_value: Option<&'a str>,
+    rich_error: Option<&'a str>,
+) -> &'a str {
+    match (
+        cell_value,
+        rich_error.map(|real| (real, get_error_by_english_name(real))),
+    ) {
+        (Some("#VALUE!"), Some((real, Some(_)))) => real,
+        _ => cell_value.unwrap_or("#ERROR!"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -371,5 +389,23 @@ mod tests {
     #[test]
     fn malformed_xml_is_an_error_not_a_panic() {
         assert!(value_metadata_errors("<metadata><a></b>", "<rvData/>", None).is_err());
+    }
+
+    #[test]
+    fn cached_error_name_keeps_mapped_rich_kinds_only() {
+        assert_eq!(cached_error_name(Some("#VALUE!"), Some("#CALC!")), "#CALC!");
+        assert_eq!(
+            cached_error_name(Some("#VALUE!"), Some("#SPILL!")),
+            "#SPILL!"
+        );
+        for rich in ["#CONNECT!", "#BLOCKED!", "#FIELD!"] {
+            assert_eq!(cached_error_name(Some("#VALUE!"), Some(rich)), rich);
+        }
+        assert_eq!(
+            cached_error_name(Some("#VALUE!"), Some("#UNKNOWN!")),
+            "#VALUE!"
+        );
+        assert_eq!(cached_error_name(Some("#N/A"), Some("#CALC!")), "#N/A");
+        assert_eq!(cached_error_name(None, None), "#ERROR!");
     }
 }

@@ -5,6 +5,15 @@ use crate::expressions::parser::{ArrayNode, ExpectedTokens, Node, Parser};
 use crate::expressions::token::{OpSum, TokenType};
 
 impl Parser {
+    /// An expression inside parentheses or an argument list, where the comma is not the bare
+    /// union operator.
+    pub(super) fn parse_enclosed_expr(&mut self) -> Node {
+        let top_level = std::mem::take(&mut self.top_level);
+        let t = self.parse_expr();
+        self.top_level = top_level;
+        t
+    }
+
     /// One row of an array constant `{1,2;3,4}`. Items may only be numbers,
     /// strings, booleans or errors (a number may carry a minus sign);
     /// anything else is a syntax error.
@@ -32,7 +41,7 @@ impl Parser {
                 _ => Err(self.invalid_array_value()),
             };
         }
-        match self.parse_expr() {
+        match self.parse_enclosed_expr() {
             Node::BooleanKind(s) => Ok(ArrayNode::Boolean(s)),
             Node::NumberKind(s) => Ok(ArrayNode::Number(s)),
             Node::StringKind(s) => Ok(ArrayNode::String(s)),
@@ -65,7 +74,7 @@ impl Parser {
         if &self.lexer.peek_token() == arg_separator_token {
             args.push(Node::EmptyArgKind);
         } else {
-            let t = self.parse_expr();
+            let t = self.parse_enclosed_expr();
             if let Node::ParseErrorKind { .. } = t {
                 return Err(t);
             }
@@ -84,7 +93,7 @@ impl Parser {
                 args.push(Node::EmptyArgKind);
                 return Ok(args);
             } else {
-                let p = self.parse_expr();
+                let p = self.parse_enclosed_expr();
                 if let Node::ParseErrorKind { .. } = p {
                     return Err(p);
                 }

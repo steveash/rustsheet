@@ -21,7 +21,39 @@ value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@
 (A6), `;;;-@-@-` → "-jello-jello-" (A10), `TRUE` with `;;;-@-` → "-TRUE-" (A17), and
 `TEXT(TRUE,"General")` = "TRUE".
 Evidence: poi/TextFormatTests.xlsx A3:A10, A12:A29; poi/GeneralFormatTests.xlsx A72, A73.
+A doubled quote inside a quoted literal: `;;;"h""I"` gives "hI" in Excel (A4, A14, A23), not `h"I`, so
+it is not an escape there: see "A doubled quote in a format literal is not an escape" below.
 Status: VERIFIED
+Implemented in: `format_text_value` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), scalars and array elements; a text value with a format of fewer than four sections is unprobed and returns the text unchanged.
+Tasks: T-0935
+
+## TEXT of a text value is `#VALUE!` over 255 characters
+Rule: `TEXT` of a text value (a boolean's "TRUE"/"FALSE" included) is `#VALUE!` once its result is over
+255 characters, whatever the format: `LEN(TEXT(REPT("a",255),";;;@"))` = 255 (A10) but 256 characters
+is `#VALUE!` with `;;;@`, `@`, `General` and `0` alike (A11, A19-A21); `;;;@@` on 128 characters
+(256) is `#VALUE!` (A24) while `;;;@@"x"` on 127 (255) is fine (A25); longer texts up to 32,767 are
+`#VALUE!` (A1-A8, A12-A15). Whether the cap is on the result or also on the input cannot be told
+apart from these cells (every input over 255 also gives a result over 255). Characters vs UTF-16
+units is unprobed. Compare the other 255-character rules in numbers.md and dates.md.
+Evidence: probes/text-format-text-limit A1-A25 (excel-graph, 2026-10-08, T-0935).
+Status: VERIFIED
+Implemented in: `format_text_value` (formatter/format.rs), `MAX_TEXT_FORMAT_CHARS`, checked as the
+result grows so a format of many `@` cannot allocate a huge string (CLAUDE.md directive 5).
+Unprobed (T-0935 follow-up): a text value with a 1-3 section format and no lone `@` section (the
+engine returns the text unchanged), `0;@`-style formats, `_x`/`*x` in the text section (one space
+here), digit or date tokens in the text section (dropped here), and a General 4th section.
+Tasks: T-0935
+
+## A doubled quote in a format literal is not an escape
+Rule: inside a number-format string, `""` within a quoted literal ends that literal and starts the
+next, so it shows nothing (it is not an escaped quote). In every section probed:
+`TEXT(42, B1)` with B1 = `0 """Millions"""` is "42 Millions" (C1; the value is 42 in C1-C7, "x" in C8-C11), `0 "a""b"` = "42 ab" (C2),
+`"h""I"` = "hI" (C3), `0 ""` and `0 """"` = "42 " (C4, C5), `0 "a"""` = "42 a" (C6),
+`0" ""x"" "0` = "4 x 2" (C7); on text, `;;;"h""I"` = "hI" (C8), `;;;"""x"""` = "x" (C9),
+`;;;"a"""@` = "ax" (C10), `@" ""q"""` = "x q" (C11).
+Evidence: probes/format-doubled-quotes C1-C11 (excel-graph, 2026-10-08, T-0935); poi/TextFormatTests.xlsx A4, A14, A23.
+Status: VERIFIED
+Implemented in: `consume_string` (formatter/lexer.rs) ends the literal at every `"`.
 Tasks: T-0935
 
 ## Elapsed-time tokens
@@ -31,6 +63,7 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
+In the 1900 date system TEXT of a negative under any format containing an elapsed token is #VALUE! instead (dates.md, probes/text-negative-serial-elapsed-mixed, T-1079/T-1105); the minus above is the 1904-workbook behavior.
 Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
 workbook agree).
 Status: VERIFIED
@@ -87,12 +120,28 @@ Status: VERIFIED
 Tasks: T-0937
 
 ## `TEXT(x,"General")` uses an 11-character fixed-notation limit
-Rule: General keeps fixed notation while the digits fit in 11 characters, sign not counted:
-1E-09 → "0.000000001" (A27), -1E-09 → "-0.000000001" (A61), but 1E-10 → "1E-10" (A28) and
-1E11 → "1E+11" (A18). This differs from number→text conversion (`numbers.md`, 15 digits).
-Evidence: poi/GeneralFormatTests.xlsx A18, A27, A28, A61.
-Status: VERIFIED
-Tasks: T-0938
+Rule: General prints fixed notation, with at most 9 decimals ("0." plus 9 decimals is 11
+characters; the sign does not count), when `1E-09 <= |x| < 1E+11` and the fixed form shows at least
+as many significant digits as the E form (6 significant digits; 5 from `|exp| >= 99`, `numbers.md`
+"Exponent width"). Otherwise it prints E notation.
+- Fixed: 1E-09 → "0.000000001" (A27), -1E-09 → "-0.000000001" (A61), 1E10 → "10000000000"
+  (A17), 1.2345678912 → "1.234567891" (A13, 10 digits against 6), 9.9999996E+10 →
+  "99999996000" (boundary A9).
+- E notation: 1E-10 → "1E-10" (A28; below 1E-09), 1E11 → "1E+11" (A18; 12 characters),
+  `1.23456789012345E-05` → "1.23457E-05" (D8: the fixed "0.000012346" fits but keeps 5 digits
+  against 6), and 9.9999996E-10 → "1E-09" (boundary A10: below 1E-09, although the fixed
+  "0.000000001" would show the same digit).
+This differs from number→text conversion (`numbers.md`, 15 digits).
+Single-digit ties go to fixed (A27: "0.000000001" against "1E-09"). Unprobed (T-1225): multi-digit
+ties (`0.000123456789`, `1.2345E-05`: the engine prints fixed)
+and fixed values from 1 on whose integer digits plus 9 decimals exceed 11 characters (the engine
+keeps 9 decimals, `123456.123456789` → "123456.123456789"; if the 11-character limit holds there
+too it would be "123456.1235").
+Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
+Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07).
+Status: VERIFIED (multi-digit ties and wide fixed values: INFERRED)
+Implemented in: `format_general` (formatter/format.rs).
+Tasks: T-0938, T-1225
 
 ## A comma between digit placeholders turns on thousands grouping
 Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
@@ -109,6 +158,7 @@ and keeps the sign.
 Evidence: poi/NumberFormatTests.xlsx Tests!A44:A46, A67:A69, A80:A82, A95, A112, A118, A335
 (desktop Excel cached values, Microsoft Macintosh Excel 16.0; no web sidecar).
 Status: VERIFIED
+Implemented in: crates/rustsheet-engine/src/formatter/format.rs (group positions count from the format's last digit placeholder; `?` padding separator is a space; a value exactly one unit at the last shown place keeps its sign)
 Tasks: T-0952
 
 ## `£`, `¥` and `|` print as literals without quotes

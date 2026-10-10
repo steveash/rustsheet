@@ -10,10 +10,11 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::format_text,
+    formatter::format::{format_text, format_text_value, Formatted},
     functions::{
         criteria::from_wildcard_to_regex,
         text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        util::array_node_to_calc_result,
     },
     locale::Locale,
     model::Model,
@@ -211,12 +212,37 @@ fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-/// The TEXT array element for a number (`None`: a blank): its text, or `#VALUE!` for a bad format.
-fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
-    let d = format_text(value, format, locale);
+/// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
+fn formatted_node(d: Formatted) -> ArrayNode {
     d.error.map_or(ArrayNode::String(d.text), |_| {
         ArrayNode::Error(Error::VALUE)
     })
+}
+
+/// The TEXT array element for a number (`None`: a blank).
+fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
+    formatted_node(format_text(value, format, locale))
+}
+
+/// The TEXT array element for a text or boolean value: the format's text section applied to its
+/// text ("TRUE"/"FALSE" for a boolean).
+fn text_value_node(value: &ArrayNode, format: &str) -> ArrayNode {
+    match array_node_to_string(value) {
+        Ok(text) => formatted_node(format_text_value(&text, format)),
+        Err(error) => ArrayNode::Error(error),
+    }
+}
+
+/// TEXT of a scalar text or boolean value.
+fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) -> CalcResult {
+    match text_value_node(value, format) {
+        ArrayNode::String(s) => CalcResult::String(s),
+        _ => CalcResult::Error {
+            error: Error::VALUE,
+            origin: cell,
+            message: "Invalid format code".to_string(),
+        },
+    }
 }
 
 impl Model {
@@ -248,8 +274,9 @@ impl Model {
                         let out = match node {
                             ArrayNode::Number(f) => text_node(Some(f), &format_code, locale),
                             ArrayNode::Empty => text_node(None, &format_code, locale),
-                            ArrayNode::Boolean(b) => ArrayNode::Boolean(b),
-                            ArrayNode::String(s) => ArrayNode::String(s),
+                            text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
+                                text_value_node(&text, &format_code)
+                            }
                             e @ ArrayNode::Error(_) => e,
                         };
                         data_row.push(out);
@@ -268,8 +295,12 @@ impl Model {
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
-                    CalcResult::String(s) => return CalcResult::String(s),
-                    CalcResult::Boolean(b) => return CalcResult::Boolean(b),
+                    CalcResult::String(s) => {
+                        return text_value_result(&ArrayNode::String(s), &format_code, cell)
+                    }
+                    CalcResult::Boolean(b) => {
+                        return text_value_result(&ArrayNode::Boolean(b), &format_code, cell)
+                    }
                     CalcResult::Range { .. } => {
                         return CalcResult::Error {
                             error: Error::NIMPL,
@@ -906,18 +937,64 @@ impl Model {
         }
     }
 
-    // VALUETOTEXT(value)
+    // VALUETOTEXT(value, [format]) lifts over a range or array like LEN
+    // (probes/text-argument-modes F17:F19); an error element is spelled out.
     pub(crate) fn fn_valuetotext(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.len() != 1 {
+        if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let text = match self.get_string(&args[0], cell) {
-            Ok(s) => s,
-            Err(error) => match error {
-                CalcResult::Error { error, .. } => error.to_string(),
-                _ => "".to_string(),
-            },
+        let text = match self.text_arg(&args[0], cell) {
+            Ok(t) => t,
+            Err(e) => return e,
         };
-        CalcResult::String(text)
+        let format = match args.get(1) {
+            Some(node) => match self.text_arg(node, cell) {
+                Ok(TextArg::Error(_, error)) => return error,
+                Ok(f) => Some(f),
+                Err(e) => return e,
+            },
+            None => None,
+        };
+        // The format is lifted over arrays like the text; a scalar error text still prints as
+        // text (`C4`) unless the format is invalid.
+        let operands: Vec<&TextArg> = std::iter::once(&text).chain(format.as_ref()).collect();
+        let element = |i: usize, j: usize| {
+            let strict = format
+                .as_ref()
+                .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
+            Ok(ArrayNode::String(value_to_text(text.elem(i, j), strict)))
+        };
+        // A scalar error text prints as text, which `broadcast_text` would return as the error.
+        let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));
+        match &text {
+            TextArg::Error(..) if scalar_format => match element(0, 0) {
+                Ok(node) => array_node_to_calc_result(&node, cell),
+                Err(e) => CalcResult::new_error(e, cell, String::new()),
+            },
+            _ => broadcast_text(cell, &operands, element),
+        }
+    }
+
+    /// Whether VALUETOTEXT's `format` element selects the strict form (1, text quoted). Excel
+    /// accepts a number in `[0, 2)` truncated (`1.9` is 1, `1E-20` is 0, `-0.5` and `2.5` are
+    /// `#VALUE!`), a boolean, a number text and a blank (0); other text is `#VALUE!`
+    /// (probes/valuetotext-format C9:C23, T-1229).
+    fn valuetotext_format(&self, node: &ArrayNode) -> Result<bool, Error> {
+        let f = self.array_node_to_number(node)?;
+        if (0.0..2.0).contains(&f) {
+            Ok(f >= 1.0)
+        } else {
+            Err(Error::VALUE)
+        }
+    }
+}
+
+/// The text VALUETOTEXT gives one element: an error spells out its code, and `strict` (format 1)
+/// quotes text with its embedded quotes doubled, `"a""b"` (probes/valuetotext-format C1:C7).
+fn value_to_text(node: &ArrayNode, strict: bool) -> String {
+    match node {
+        ArrayNode::Error(e) => e.to_string(),
+        ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
+        other => array_node_to_string(other).unwrap_or_default(),
     }
 }
