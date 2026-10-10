@@ -295,6 +295,9 @@ impl Model {
                 // The branch result may itself be an array (it will spill).
                 return self.evaluate_node_in_context(&args[1], cell);
             }
+            // A blank cell gives its value, not the reference: an empty value that OR reads as
+            // FALSE and a lookup as 0 (T-0291; gen-m2 7469c3e920e1ade4 A351, ef5c55a81783b7d5 A291).
+            CalcResult::EmptyCell => return CalcResult::EmptyArg,
             // A non-error scalar (or an error this function does not handle)
             // passes through unchanged.
             other => return other,
