@@ -1,0 +1,56 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1181 probe: COUNTBLANK of an error that reaches it through CHOOSE or IF (a span with a missing end, an error literal, NA(), an empty intersection). A reference to one missing sheet is left out: Excel for the web resolves it to an empty cell (docs/excel-semantics/lookup.md). Data sheets as in 3d-ref-span-edges.",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=COUNTBLANK(Data1:Nope!A1:B3)",
+        "A2": "=COUNTBLANK(IF(TRUE,Data1:Nope!A1:B3))",
+        "A5": "=COUNTBLANK(CHOOSE(1,#N/A))",
+        "A6": "=COUNTBLANK(CHOOSE(1,NA()))",
+        "A7": "=COUNTBLANK(IF(TRUE,NA()))",
+        "A8": "=COUNTBLANK(CHOOSE(1,Data1!A1:B3 Data1!C5:C6))",
+        "A9": "=COUNTBLANK(CHOOSE(1,Nope1:Nope2!A1:B3))"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": "5",
+        "A3": true,
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10,
+        "B1": "=1/0",
+        "C1": "x"
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 100,
+        "A2": 2,
+        "A3": -4,
+        "B1": 7
+      }
+    },
+    {
+      "name": "Q 4",
+      "cells": {
+        "A1": 1000
+      }
+    }
+  ],
+  "expected": {}
+}

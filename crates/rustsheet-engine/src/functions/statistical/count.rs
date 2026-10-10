@@ -179,13 +179,16 @@ impl Model {
                     let side = |first: i32, last: i32| f64::from(last - first + 1);
                     result += side(left.row, right.row) * side(left.column, right.column) - filled;
                 }
-                // Only the 3-D reference and union errors; other errors count nothing, as before.
-                error @ CalcResult::Error {
-                    error: Error::VALUE,
-                    ..
-                } if is_span_or_if_of_span(arg)
-                    || matches!(arg, Node::SheetSpanKind { .. })
-                    || self.is_multi_area(arg) =>
+                // An argument that is an error gives that error: a span with a missing end
+                // (`#NAME?`), `CHOOSE(1,NA())`, an empty intersection (`#NULL!`), a 3-D or union
+                // `#VALUE!` (probes/countblank-choose-errors, excel-graph 2026-10-10, T-1181).
+                // A reference to one cell holding an error is a range, which counts nothing.
+                error @ CalcResult::Error { .. }
+                    if !matches!(
+                        self.evaluate_reference_arg(arg, cell)
+                            .into_single_sheet_area(cell),
+                        CalcResult::Range { .. }
+                    ) =>
                 {
                     return error;
                 }

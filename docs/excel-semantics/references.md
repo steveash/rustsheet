@@ -55,6 +55,16 @@ while `ISREF(Data1:Nope!A1)` is FALSE (A3). The explicit implicit intersection o
 a one-sheet span is an ordinary reference: `=@Data1:Data1!A1` = 1 (B2). IF-wrapped spans: `AREAS(IF(TRUE,Data1:Data3!A1:A2))`,
 `VLOOKUP(1,IF(TRUE,Data1:Data3!A1:B2),2,FALSE)`, `HLOOKUP(...)` and `COUNTBLANK(IF(TRUE,Data1:Data3!A1:B3))` are `#VALUE!`
 (C1, C3, C4, C5); the one-sheet span `Data1:Data1` works: AREAS 1 (C2), COUNTBLANK 2 (C6).
+Both ends missing (probes/3d-ref-span-missing-ends, excel-graph, 2026-10-10, T-1181): `Nope1:Nope2!A1` is `#NAME?` like a span
+with one missing end (`=SUM(Nope1:Nope2!A1)`, `=Nope1:Nope2!A1`; `ISREF` FALSE, `ISERROR` TRUE), and `=COUNT(Nope1:Nope2!A1:B3)` is 0.
+CHOOSE-wrapped spans in COUNTBLANK act like IF-wrapped ones: `COUNTBLANK(CHOOSE(1,Data1:Data3!A1:B3))` and
+`COUNTBLANK(CHOOSE(2,1,Data1:Data3!A1:B3))` are `#VALUE!`, `COUNTBLANK(CHOOSE(1,Data1:Data1!A1:B3))` is 2, and a span with a missing
+end in CHOOSE is `#NAME?`. A reversed span (`SUM(Data3:Data1!A1)`) is the same sheets: 111.
+COUNTBLANK of an error (probes/countblank-choose-errors, excel-graph, 2026-10-10, T-1181): an argument that evaluates to an error,
+not a reference, gives that error: `COUNTBLANK(Data1:Nope!A1:B3)` and its IF and CHOOSE forms `#NAME?`, `COUNTBLANK(CHOOSE(1,#N/A))`,
+`CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`. A reference to one cell holding an error still
+counts 0 (ironcalc-calc COUNT.xlsx E18). A reference to one missing sheet (`Nope!A1:B3`) is left out: the web oracle resolves it to
+an empty cell (lookup.md).
 Status: VERIFIED (web).
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
 crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
@@ -63,12 +73,15 @@ the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their
 CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET or LAMBDA is a `Binding::Span`
 (`Model::bind_argument`, functions/logical/let.rs). Only `Model::variable_reference` hands it out as a range, so it reaches the aggregates;
 every value read is `three_d_needs_one_sheet`, and ROWS/COLUMNS and COUNTBLANK refuse it through `RefArg::into_single_sheet_area` (T-1158).
-Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170
+COUNTBLANK of an error argument: `fn_countblank` (functions/statistical/count.rs, T-1181).
+Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170, T-1181
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
 sheet re-resolves the span by name. Deleting an end sheet makes the reference `#REF!`, and inserting
 or deleting rows or columns does not shift the span. Excel's own rules for these edits are not probed.
+The excel-graph oracle only recalculates an uploaded workbook and cannot delete a sheet, so a span that lost an end sheet
+cannot be probed there (T-1181); the M14 desktop oracle question is T-1309.
 Status: UNVERIFIED
 Tasks: T-0198
 
