@@ -22,4 +22,4 @@ Probe probes/text-general-ties-wide (T-1225) B4:B9: `123456.123456789` → "1234
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- None.

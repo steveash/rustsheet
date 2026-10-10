@@ -145,7 +145,7 @@ Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number
 Calc!D8 (excel-graph); probes/text-general-ties-wide B1:B9 (excel-graph, 2026-10-10); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07).
 Status: VERIFIED (engine mismatch on wide fixed values)
 Implemented in: `format_general` (formatter/format.rs).
-Tasks: T-0938, T-1225
+Tasks: T-0938, T-1225, T-1298
 
 ## A comma between digit placeholders turns on thousands grouping
 Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
