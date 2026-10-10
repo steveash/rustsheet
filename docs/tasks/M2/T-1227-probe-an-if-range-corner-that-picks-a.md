@@ -3,7 +3,7 @@ id: T-1227
 title: "Probe an IF range corner that picks a union, an error or uses an array condition"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
