@@ -3,7 +3,7 @@ id: T-1302
 title: "Power operator and POWER: integer exponents by right-to-left square-and-multiply (6 gen-m1 cells)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -51,19 +51,22 @@ of exponents (1..360) are not verified. Leave them on the existing behavior and 
 numbers.md.
 
 ## Acceptance criteria
-- [ ] The 6 cells above (6462bf910ef9f28f A33, A48, A57, A86; 57fe331cb7611dbf A54, A104) leave
+- [x] The 6 cells above (6462bf910ef9f28f A33, A48, A57, A86; 57fe331cb7611dbf A54, A104) leave
       eval/baseline/gen-m1.txt via `make eval-baseline`. No new F lines appear in any suite. Any
       gen-m2 cells that clear also leave eval/baseline/gen-m2.txt.
-- [ ] `make eval-show CASE=probes-numeric/m9-fin-power.case.json` reports 616/616 passed. If any
+- [x] `make eval-show CASE=probes-numeric/m9-fin-power.case.json` reports 616/616 passed. If any
       cell still fails, the PR lists it and explains why.
-- [ ] Unit tests in arithmetic.rs pin `power(1e-15, 3.0)`, `power(3.25, 100.0)`,
+- [x] Unit tests in arithmetic.rs pin `power(1e-15, 3.0)`, `power(3.25, 100.0)`,
       `power(100.0, 100.0)` and one negative integer exponent to the oracle doubles above. They
       also show that `power(0.0, -1.0)` is still #DIV/0!, `power(0.0, 0.0)` is still #NUM!, and
       `power(-8.0, 1.0/3.0)` is still -2.
-- [ ] numbers.md "Integer exponents" gets an `Implemented in:` line and states the overflow and
+- [x] numbers.md "Integer exponents" gets an `Implemented in:` line and states the overflow and
       underflow fallback. In "POWER and `^`", `Tasks:` lists T-1302 next to T-0221.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Non-integer exponents (`3^-0.5`, `0.5^-0.5`, `100^0.3`), which need numeric fitting: T-0221.
 - Financial functions that raise `(1+rate)` to a power internally: T-0901.
+
+## Outcome
+`power` now uses right-to-left square-and-multiply for finite integer exponents (|n| <= 2^53) when the result is finite and non-zero; everything else keeps the libm path. Eval: gen-m1 known failures 8 -> 2 (the 6 target cells), gen-m2 42 -> 39, ironcalc-calc 1479 -> 1478, probes-numeric/m9-fin-power 616/616, no regressions.
