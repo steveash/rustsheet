@@ -45,9 +45,40 @@ Evidence: probes-numeric/m9-bessel (T-1004) shows Excel's behavior for huge orde
 Status: DEVIATION (decision 0014)
 Implemented in: functions/engineering/transcendental/bessel_excel.rs (`MAX_ORDER`)
 
-## DECIMAL of a number with a decimal point is #NUM!
-Rule: `DECIMAL(0.5,13)` is `#NUM!` in Excel, not `#VALUE!`: hypothesis (unprobed, T-1198): the number is read as the text "0.5" and "." is an invalid digit.
-Evidence: gen-m5/98ed0b6354e3394a Calc!A9 (Data!C12=0.5; excel-graph, 2026-10-09).
-Ours: `#VALUE!`.
-Status: VERIFIED for this cell; other unreadable inputs UNVERIFIED.
+## DECIMAL of unreadable text
+Rule: DECIMAL reads its first argument as text (a number or TRUE goes through its text form, so `DECIMAL(0.5,13)`, `DECIMAL(1E+20,10)` and `DECIMAL(TRUE,10)` read "0.5", "1E+20", "TRUE"). Leading spaces and tabs are skipped; empty or all-blank text is 0. Any other unreadable character is `#NUM!` (not `#VALUE!`): a sign (`"-1"`, `"+1"`), a point, trailing space, a non-breaking space, a digit not below the radix. Text over 255 UTF-16 units (200 emoji is too long) is `#VALUE!`, checked before the radix (`DECIMAL(REPT("1",256),37)` is `#VALUE!`), as is a non-numeric radix. Newline and fullwidth digits are unreadable (`#NUM!`); the overflow is `#NUM!` inside a larger formula too (`ERROR.TYPE` 6, `IFERROR` falls through). Error arguments: the text argument's error wins (`DECIMAL(#N/A,#DIV/0!)` is `#N/A`). Radix 16 only also skips leading zeros and one `x`/`X` (`"0x1F"`, `"x1F"`, `"00x1F"` are 31; `"0x0x1"`, `"1x1F"`, `"0x 1F"` are `#NUM!`; in radix 10 or 15 `"0x1F"` is `#NUM!`, in radix 36 the x is a digit). The sum is a float with no 2^53 limit (255 ones in radix 2 is 5.78960446186581E+76; 198 `Z`s in radix 36 is 1.4057081148316923E+308), but a result past the largest double is `#NUM!` (199 `Z`s in radix 36, 255 `Z`s).
+Evidence: probes/decimal-unreadable (84 cells, excel-graph, 2026-10-10); gen-m5/98ed0b6354e3394a Calc!A9.
+Ours: matches.
+Status: VERIFIED.
+Not probed: form feed and other control characters at the start; an error radix with over-long text; an empty-cell reference or an array as the text; blanks after radix-16 leading zeros.
 Tasks: T-1198
+
+## CONVERT constants and evaluation order
+Rule: CONVERT computes `value * F_from / F_to` and only then applies the prefixes
+(`* P_from / P_to`). Each unit's factor `F` is a full-precision double in its class's internal
+base unit, which is not always the SI unit: force is in dynes (N = 1e5), energy in ergs
+(J = 1e7), volume in litres (m3 = 1000), area in square angstroms (m2 = 1e20). Everything else is
+in the SI unit (g, m, Pa, W, s, m/s, T, bit, K). The base and the order are visible in the last
+digit: `CONVERT(5,"cal","J")` is 20.934, but 5 × 4.1868 is 20.933999999999997;
+`CONVERT(5,"eV","J")` is 8.010882434999999E-19 (5 × 1.602176487E-12 / 1E7);
+`CONVERT(0.0002,"Mang3","m3")` is 2.0000000000000002E-16 (prefix last; prefix first gives 2E-16);
+`CONVERT(0.05,"Mdyn","N")` is 0.5. The factors are not the rounded 15-digit decimals published in
+Excel's help: `CONVERT(1,"sg","g")` is 14593.902937206363 (not 14593.9029372064),
+`CONVERT(1,"parsec","m")` is 3.0856775812815532E+16. `CONVERT(1,"F","K")` is
+255.92777777777775, which is `(1-32)*5/9+273.15` (`5/9*(1+459.67)` is …778).
+Evidence: ironcalc-calc ENGINEERING/CONVERT.xlsx, 509 cells (Microsoft Macintosh Excel cached
+values, T-0922). Each unit has 2–3 cells (1 → base unit, n → base unit, prefixed), so each factor
+is the double that fits all of that unit's cells under the rule. No other base per class (powers
+of ten from 1E-32 to 1E+32) and no other order fits every class: reciprocal tables
+(`value / K_from * K_to`, ATP/LibreOffice style) fit 143–156 of 159 units, and the SI base with
+prefix first fits 150.
+Open: conversions to a non-base unit are evidenced only for time (to `yr`), and conversions to a
+prefixed unit not at all. The Celsius output branch subtracts 273.5, not 273.15, and no cached
+cell converts to C (T-1297).
+The internal bases make `value * F_from` overflow sooner than the SI result would:
+`CONVERT(1E290,"m2","m2")` and `CONVERT(1E300,"ha","m2")` are now `#NUM!` (previously the value).
+Excel likely does the same, but this is unprobed (T-1297).
+Backend: excel-desktop cached values only.
+Status: VERIFIED (for the evidenced conversions)
+Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
+Tasks: T-0922, T-1297
