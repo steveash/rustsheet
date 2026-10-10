@@ -1,0 +1,60 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1181 probe: 3-D span with both ends missing (Nope1:Nope2!A1), CHOOSE-wrapped spans in COUNTBLANK, reversed span. Data sheets as in 3d-ref-span-edges.",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM(Nope1:Nope2!A1)",
+        "A2": "=ISREF(Nope1:Nope2!A1)",
+        "A3": "=Nope1:Nope2!A1",
+        "A4": "=COUNT(Nope1:Nope2!A1:B3)",
+        "A5": "=ISERROR(Nope1:Nope2!A1)",
+        "B1": "=COUNTBLANK(CHOOSE(1,Data1:Data3!A1:B3))",
+        "B2": "=COUNTBLANK(CHOOSE(1,Data1:Data1!A1:B3))",
+        "B3": "=COUNTBLANK(CHOOSE(2,1,Data1:Data3!A1:B3))",
+        "B4": "=COUNTBLANK(IF(TRUE,CHOOSE(1,Data1:Data3!A1:B3)))",
+        "B5": "=COUNTBLANK(CHOOSE(1,Data1:Nope!A1:B3))",
+        "C1": "=SUM(Data3:Data1!A1)"
+      }
+    },
+    {
+      "name": "Data1",
+      "cells": {
+        "A1": 1,
+        "A2": "5",
+        "A3": true,
+        "B1": 3
+      }
+    },
+    {
+      "name": "Data2",
+      "cells": {
+        "A1": 10,
+        "B1": "=1/0",
+        "C1": "x"
+      }
+    },
+    {
+      "name": "Data3",
+      "cells": {
+        "A1": 100,
+        "A2": 2,
+        "A3": -4,
+        "B1": 7
+      }
+    },
+    {
+      "name": "Q 4",
+      "cells": {
+        "A1": 1000
+      }
+    }
+  ],
+  "expected": {}
+}
