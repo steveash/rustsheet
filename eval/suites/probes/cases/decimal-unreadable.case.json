@@ -85,7 +85,15 @@
         "A73": "=DECIMAL(REPT(\"Z\",255),36)",
         "A74": "=DECIMAL(REPT(\"F\",255),16)",
         "A75": "=DECIMAL(REPT(\"9\",309),10)",
-        "A76": "=DECIMAL(REPT(\"9\",255),10)+1"
+        "A76": "=DECIMAL(REPT(\"9\",255),10)+1",
+        "A77": "=ERROR.TYPE(DECIMAL(REPT(\"Z\",199),36))",
+        "A78": "=IFERROR(DECIMAL(REPT(\"Z\",199),36),\"x\")",
+        "A79": "=DECIMAL(#N/A,#DIV/0!)",
+        "A80": "=DECIMAL(REPT(\"1\",256),37)",
+        "A81": "=DECIMAL(REPT(\"1\",256),\"x\")",
+        "A82": "=DECIMAL(REPT(UNICHAR(128512),200),10)",
+        "A83": "=DECIMAL(UNICHAR(65297),10)",
+        "A84": "=DECIMAL(CHAR(10)&\"1\",10)"
       }
     }
   ],
