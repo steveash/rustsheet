@@ -3,7 +3,7 @@ id: T-1300
 title: "Probe parenthesised number text: plus after currency, spaced trailing currency, euro variants"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
