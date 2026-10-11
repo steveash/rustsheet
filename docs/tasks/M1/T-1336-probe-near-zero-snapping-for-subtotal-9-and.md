@@ -3,7 +3,7 @@ id: T-1336
 title: "Probe near-zero snapping for AGGREGATE(9), SUBTOTAL(9/109) and PERCENTOF"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
