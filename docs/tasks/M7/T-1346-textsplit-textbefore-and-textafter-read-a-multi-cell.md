@@ -15,7 +15,7 @@ A multi-cell range (any shape) passed as the delimiter of TEXTSPLIT (col and row
 
 ## Context
 T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11); docs/excel-semantics/text.md "TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges":
-- gen-m7/0e40208f51c2454c Calc!A17 `=IF(INDIRECT(TEXTAFTER(Data!$A5,Data!A5:D6)),..)`, A5 = "TRUE": Excel `#REF!` (TEXTAFTER gives "",
+- gen-m7/0e40208f51c2454c Calc!A17 `=IF(INDIRECT(TEXTAFTER(Data!$A5,Data!A5:D6)),..)`, A5 = "TRUE": Excel `#REF!` (TEXTAFTER gives text, inferred "";
   INDIRECT("") is `#REF!`), engine `#VALUE!`.
 - gen-m7/8ed8a680e9794b77 Calc!A17 `=TEXTBEFORE("a*",Data!C1:D11)` (C1:D11 has blank cells): Excel "" (the "a" in C5 matches at the start, so this cell does not show the blank rule), engine `#VALUE!`.
 - gen-m7/8ed8a680e9794b77 Calc!A26 `=(TEXTBEFORE("",Data!C3:D3)+LN(INDEX(Data!C4:E5,1)))`, C3:D3 = TRUE, 1E+15: Excel `#N/A`
