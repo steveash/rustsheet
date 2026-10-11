@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 //! Written parentheses are transparent to evaluation (SPEC-0007, T-1340): a group around an
 //! argument or operand gives the value the bare form gives, reference-only shape tests included
