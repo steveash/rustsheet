@@ -3,7 +3,7 @@ id: T-0962
 title: "Probe XLOOKUP row lookup vector with multi-row return range and array return arguments"
 milestone: M9
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
