@@ -307,12 +307,6 @@ pub enum Node {
     SpillRangeOperator {
         child: Box<Node>,
     },
-    /// A whole formula written in parentheses, `=(A1-1)`: only ever the root. Excel tells it
-    /// apart from `=A1-1` (it skips near-zero snapping, docs/excel-semantics/numbers.md) and keeps
-    /// the parentheses in the formula text, so it prints them back. It evaluates as `child`.
-    GroupedRootKind {
-        child: Box<Node>,
-    },
     /// Parentheses written around `child`: `levels` directly nested pairs, `((x))` is 2.
     /// Transparent to evaluation (see [`Node::ungrouped`]); printed back as written, as Excel's
     /// FORMULATEXT and stored formula text keep every written parenthesis

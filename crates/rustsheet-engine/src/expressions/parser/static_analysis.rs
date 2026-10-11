@@ -126,9 +126,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         }
 
         // operations
-        Node::UnaryKind { right: child, .. }
-        | Node::GroupedRootKind { child }
-        | Node::Group { child, .. } => add_implicit_intersection(child, add),
+        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+            add_implicit_intersection(child, add)
+        }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
@@ -250,9 +250,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             // Meaningful operator: keep it, but still clean any nested ones.
             remove_redundant_implicit_intersection(child, false);
         }
-        Node::SpillRangeOperator { child }
-        | Node::GroupedRootKind { child }
-        | Node::Group { child, .. } => {
+        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
             remove_redundant_implicit_intersection(child, add);
         }
         Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
@@ -347,9 +345,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         | Node::WrongReferenceKind { .. }
         | Node::WrongRangeKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
-        Node::UnaryKind { right: child, .. }
-        | Node::GroupedRootKind { child }
-        | Node::Group { child, .. } => run_static_analysis_on_node(child),
+        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+            run_static_analysis_on_node(child)
+        }
         Node::NamedFunctionKind { .. } => {
             // A named-function call invokes a LAMBDA (defined-name or LET-bound) whose
             // result shape is unknown at parse time — it may well be an array that needs
