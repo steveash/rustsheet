@@ -1,5 +1,5 @@
 ---
-id: T-1345
+id: T-1365
 title: "SUBTOTAL/AREAS over TAKE/DROP of IF or LET holding a computed array: spill like any array (follow-up of T-1332)"
 milestone: M1
 lane: functions-math
