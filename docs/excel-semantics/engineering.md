@@ -82,3 +82,45 @@ Backend: excel-desktop cached values only.
 Status: VERIFIED (for the evidenced conversions)
 Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
 Tasks: T-0922, T-1297
+
+## Engineering function argument modes
+Rule: every argument of the M9 engineering functions lifts elementwise over an array literal. All
+`ROWS(F(..{v;v}..))` cells are 2, including the `places`, `suffix`, unit, order and shift arguments.
+IMSUM and IMPRODUCT are the exception.
+
+Over a two-cell range only BITAND, BITOR, BITXOR, BITLSHIFT and BITRSHIFT lift
+(`ROWS(BITAND(K15:K16,25))` is 2). Every other function is `#VALUE!` when its first argument is a
+multi-cell range. That covers the Bessel functions, the base conversions, COMPLEX, CONVERT, DELTA,
+GESTEP, ERF, ERFC and their .PRECISE forms, and IM* (`ROWS(BESSELI(K1:K2,1))`). This is the Analysis
+ToolPak split seen in the financial functions. Only the first argument was probed over a range.
+
+IMSUM and IMPRODUCT take their arguments whole:
+- A range or array literal is folded into the result, not lifted: `IMSUM({"1+2i","3"})` and
+  `IMSUM(M1:M2)` are "4+2i", and `ROWS(IMSUM({"1+2i";"3"}))` is 1.
+- A blank cell is 0. `IMPRODUCT(M1:M3)` with M3 blank is "0".
+- A boolean cell or a typed TRUE is `#VALUE!`.
+- Non-complex text is `#NUM!`.
+- A range holding both a boolean and text is `#VALUE!`.
+
+Typed coercion follows the ToolPak rule:
+- Numeric text is read: `BIN2DEC("101")` is 5, `DEC2BIN("9")` is "1001", and `BITAND("13",25)`,
+  `CONVERT("2.5","m","ft")`, `ERF("0.5")` and `BESSELJ("2.5",1)` all work.
+- A boolean is `#VALUE!`: `BIN2DEC(TRUE)`, `DEC2BIN(TRUE)`, `IMABS(TRUE)` and `DELTA(TRUE,1)`.
+- A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
+- COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
+
+These set the generator modes in eval/catalog/functions.yaml. The scalars are `value`, and IMSUM's and
+IMPRODUCT's inumbers are `array`.
+
+Evidence: probes/eng-argument-modes (231 cells, excel-graph, 2026-10-11, T-1085). The test data is
+M1 "1+2i", M2 3, M3 blank, M4 TRUE, M5 "x" and M6 "2-i".
+
+Ours:
+- No scalar argument lifts over an array (`#N/IMPL!`), and BIT* is `#VALUE!` over a range (T-1383).
+- BESSELI intersects a range instead of giving `#VALUE!` (T-1383).
+- IMSUM and IMPRODUCT are `#ERROR!` on any range or array. Booleans give `#NUM!`, and some text cases
+  that should be `#NUM!` give `#VALUE!` (T-1384).
+- IMCOT, IMSECH and IMTAN of "3+4i" are off in the last printed digit (T-0907).
+
+Status: VERIFIED (excel-graph)
+Tasks: T-1085, T-1383, T-1384, T-0907
