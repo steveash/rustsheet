@@ -3,7 +3,7 @@ id: T-1346
 title: "Probe positive fractional elapsed tokens and near-integer negatives"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
