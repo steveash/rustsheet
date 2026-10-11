@@ -28,4 +28,4 @@ Four probe cases (`probes-numeric/power-large-integer-exponents{,-2,-3,-4}`, abo
 showed Excel differs from the T-1302 rule in three places, now implemented: subnormal results
 flush to 0, a negative base with |n| >= 2^32 - 1 is `#NUM!`, and base 10 with |n| >= 23 is the
 correctly rounded `1En` (or its reciprocal). See numbers.md "Integer exponents beyond 360".
-All cells pass except the three non-integer `10^x` cells, which stay as known failures (follow-up T-1319).
+All cells pass except the three non-integer `10^x` cells, which still fail (the suite is ungated, no baseline) (follow-up T-1319).

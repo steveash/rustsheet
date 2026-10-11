@@ -202,6 +202,14 @@
     "t": "n",
     "v": 1.0000002302585496e+40
    },
+   "A57": {
+    "t": "n",
+    "v": 9.999999999999965e+32
+   },
+   "A58": {
+    "t": "n",
+    "v": 9.999999999999891e+99
+   },
    "A6": {
     "t": "n",
     "v": 1.0
@@ -234,9 +242,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "25efa587c5c3b88a23d6a8d0cf93a95d00725f5c4edf192bc1abf0cc74b34885",
+  "input_sha256": "8d89d34e8810a9ad9ad2141c16eb4557b0a9d668b79a0cae6545e71f8396e21c",
   "kind": "excel-graph",
-  "produced_at": "2026-10-11T08:15:13+00:00",
+  "produced_at": "2026-10-11T08:26:45+00:00",
   "version": null
  }
 }
