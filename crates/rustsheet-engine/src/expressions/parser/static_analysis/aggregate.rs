@@ -1,3 +1,4 @@
+use crate::expressions::parser::reference_operators::is_reference_operand;
 use crate::functions::Function;
 
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
@@ -47,11 +48,16 @@ fn is_read_reference(arg: &Node) -> bool {
         | Node::OpUnionKind { .. }
         | Node::SheetSpanKind { .. }
         | Node::TableNameKind(_) => true,
-        // Over a literal array they pick values, not cells, and spill like any array
-        // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206).
+        // Over a literal or computed array they pick values, not cells, and spill like any array
+        // (`SUBTOTAL(9,TAKE({1,2;3,4},1))`, probes/subtotal-reference-operands-c H1, T-1206;
+        // `SUBTOTAL(9,TAKE(SEQUENCE(4),2))` is two `#VALUE!`, probes/subtotal-reference-operands-d
+        // J4:J5, T-1211).
         Node::FunctionKind { kind, args } if kind.picks_reference() => {
-            let picked = if *kind == Function::Xlookup { 2 } else { 0 };
-            !matches!(args.get(picked), Some(Node::ArrayKind(_)))
+            if *kind == Function::Xlookup {
+                !matches!(args.get(2), Some(Node::ArrayKind(_)))
+            } else {
+                args.first().is_some_and(is_reference_operand)
+            }
         }
         _ => false,
     }

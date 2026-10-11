@@ -268,3 +268,26 @@ Ours: none of the lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array; `
 is `#VALUE!`; a BYROW row result is not `#CALC!`; `REGEXTEST(A1,1)` is `#VALUE!`. 60 of the 174 scored cells pass.
 Status: VERIFIED (web)
 Tasks: T-1083 (generator modes)
+
+## GROUPBY and PIVOTBY
+Rule: groups are keyed like UNIQUE (case-insensitive text, first spelling shown) and always sorted ascending:
+numbers < text < FALSE < TRUE < blank, with the blank-key group shown as the number 0 and kept last even
+when sorting descending. Function inputs keep source order, and the total row applies the function to all
+(filtered) values, not to the group results (AVERAGE total 13.05 = 130.5/10). Filler cells of total rows, the
+corner and PIVOTBY combinations without records are empty text `""`, not blanks (a combination summing to 0
+shows 0). Labels: "Total"; with subtotals (depth 2), the grand total is "Grand Total".
+field_headers: omitted auto-detects headers without showing them; 0 none, 1 yes/hidden, 2 generated
+("Row Field 1", "Value 1"), 3 yes/shown (over data without a header row it consumes the first record);
+4 is `#VALUE!`. A LAMBDA returning an array gives `#VALUE!` per cell. `HSTACK(SUM,AVERAGE)` adds columns
+and a header row of function names; `VSTACK(SUM,MAX)` repeats each group row per function with a
+name column. PIVOTBY relative_to: 0 column total, 1 row total, 2 grand total; with one field per axis 3
+equals 1 and 4 equals 0. Out-of-range sort_order, a filter of another height, an all-FALSE filter and
+field_relationship 2 are `#VALUE!`.
+Surprising (re-probe before implementing, T-1328): PIVOTBY with two value columns leaves its Total
+columns `""` (P!Y97); field_relationship 1 with total_depth 2 returned nothing (G!J169); values one row
+short and total_depth 3 with one key are errors excel-graph cannot decode (G!AB193, G!J217).
+Evidence: probes/groupby-pivotby (61 formulas over sheets G and P, excel-graph, 2026-10-11, T-1276);
+every anchor is listed in docs/specs/SPEC-0006-groupby-pivotby.md.
+Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1328).
+Status: VERIFIED (web)
+Tasks: T-1276
