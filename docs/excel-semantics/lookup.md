@@ -272,12 +272,19 @@ returns the whole matched row: `XLOOKUP(8389,B5:B14,C5:D14)` is the 1x2 array
 {"Dianne Pugh","Finance"}.
 The row-vector analog holds: a row lookup vector over a taller return range returns the matched
 column (`XLOOKUP("b",F1:H1,F2:H3)` spills 20; 200, probes/xlookup-array-lookup-value-args C33).
-Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2. Unprobed: array (non-range) return arguments.
+Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2; probes/xlookup-row-column-picks (T-0962).
 Status: VERIFIED (Excel-cached)
-Open (unprobed, T-0962): reference-vs-array result (ISREF, implicit intersection by column, a blank matched cell
-spilling as 0), `@`/nesting such as `UPPER(XLOOKUP(2,A1:A3,B1:C3))`, a one-cell lookup vector with a wide
-return range, and a wide return range with a different row count (`#VALUE!` is a guess).
-Implemented in: `Model::xlookup_pick` (functions/xlookup.rs); XLOOKUP's static-analysis result is `Unknown` since it can return an array.
+Probed (probes/xlookup-row-column-picks, excel-graph, 2026-10-11, T-0962): the picked row or column is a
+reference (`ISREF` TRUE, E3, F15); `@` intersects it with the formula cell, so `@XLOOKUP(2,A1:A3,B1:C3)` in E4 is
+`#VALUE!` (E4, G15), not its first value; a blank cell in it spills as 0 (F1, E16); `UPPER(...)` of it spills
+element-wise with a blank as "" (E7, E19). A one-cell lookup vector takes either orientation from the return:
+`XLOOKUP(1,A1:A1,B1:C1)` is the row (E9), `XLOOKUP("a",F1:F1,F2:F4)` the column (E23). A return range of
+another row count (column lookup) or column count (row lookup) is `#VALUE!` (E11, E27), as is a scalar
+return_array (E35, E36). Array return arguments follow the same rules over a range lookup vector
+(`XLOOKUP(2,A1:A3,{"p","q";"r","s";"t","u"})` is "r", "s", E13; a row lookup over a 2x3 array gives the
+matched column, E31), and an array row lookup accepts a taller array return (`XLOOKUP("b",{"a","b"},{1,2;3,4})`
+is 2; 4, E28). Reverse search, `if_not_found` and `SUM` over the picked column work as for one cell (E34, E37, E41).
+Implemented in: `Model::xlookup_table`, `xlookup_orientation`, `Model::xlookup_pick` and `xlookup_pick_array` (functions/xlookup.rs); `@` through `evaluate_at_operand_reference`. XLOOKUP's static-analysis result is `Unknown` since it can return an array.
 Array lookup_array (T-1126, T-1127): `XLOOKUP(2,{1;2;3},B1:B3)` looks the value up in the array and picks the return range's cell, a
 reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). All of the following are from
 probes/xlookup-array-return (excel-graph): an array return_array gives its element (`XLOOKUP(2,{1;2;3},{4;5;6})` is 5, E1; row arrays E4),
