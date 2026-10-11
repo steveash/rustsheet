@@ -498,3 +498,52 @@ fn anchorarray_of_at_negation_is_value_and_of_at_index_spills() {
     assert_eq!(model._get_text("H82"), "2");
     assert_eq!(model._get_text("H83"), "3");
 }
+
+// The `@` of an IF that picks one cell keeps the reference, so ANCHORARRAY spills it
+// (probes/at-signed-operand H71:H73, T-1321).
+#[test]
+fn anchorarray_of_at_if_spills_the_picked_cell() {
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("H1", "=ANCHORARRAY(@IF(TRUE,D1))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("H2"), "2");
+    assert_eq!(model._get_text("H3"), "3");
+}
+
+// An IF that picks a value is not a spill anchor: `@IF(FALSE,D1,5)` is `#VALUE!` like
+// `ANCHORARRAY(@1)` (probes/colon-hash-value-operands D3, T-1226; T-1321).
+#[test]
+fn anchorarray_of_at_if_picking_a_value_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("H1", "=ANCHORARRAY(@IF(FALSE,D1,5))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("H1"), "#VALUE!");
+}
+
+// The `@` operand of a spill anchor is evaluated once, so nesting ANCHORARRAY(@IF(...)) and
+// ANCHORARRAY(@INDEX(...,0)) whose inner pick is a multi-cell range stays linear instead of
+// doubling per level (T-1321).
+#[test]
+fn nested_anchorarray_of_at_if_and_at_index_is_linear() {
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    let mut if_formula = "D1".to_string();
+    let mut index_formula = "D1".to_string();
+    for _ in 0..40 {
+        if_formula = format!("ANCHORARRAY(@IF(TRUE,{if_formula}))");
+        index_formula = format!("ANCHORARRAY(@INDEX({index_formula},0))");
+    }
+    model._set("H1", &format!("={if_formula}"));
+    model._set("J1", &format!("={index_formula}"));
+    model.evaluate();
+
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("H3"), "3");
+    assert_eq!(model._get_text("J1"), "1");
+    assert_eq!(model._get_text("J3"), "3");
+}

@@ -340,20 +340,8 @@ impl Model {
                 }
             }
             Node::ImplicitIntersection { child, .. } => {
-                match self.evaluate_at_operand_reference(child, cell) {
-                    CalcResult::Range { left, right } => {
-                        match implicit_intersection(&cell, &Range { left, right }) {
-                            Some(r) => CalcResult::Range { left: r, right: r },
-                            None => CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                format!("Error with Implicit Intersection in cell {cell:?}"),
-                            ),
-                        }
-                    }
-                    // The implicit intersection of a scalar is the scalar itself.
-                    other => other,
-                }
+                let operand = self.evaluate_at_operand_reference(child, cell);
+                Self::intersect_reference(operand, cell)
             }
             Node::SheetSpanKind {
                 first_index,
@@ -383,6 +371,25 @@ impl Model {
                 }
             }
             _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// The `@` of a reference-context result, kept as a reference: a range is the one cell it
+    /// implicitly intersects at `cell` (`#VALUE!` if none); a scalar is itself.
+    pub(crate) fn intersect_reference(result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+        match result {
+            CalcResult::Range { left, right } => {
+                match implicit_intersection(&cell, &Range { left, right }) {
+                    Some(r) => CalcResult::Range { left: r, right: r },
+                    None => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        format!("Error with Implicit Intersection in cell {cell:?}"),
+                    ),
+                }
+            }
+            // The implicit intersection of a scalar is the scalar itself.
+            other => other,
         }
     }
 
@@ -762,7 +769,7 @@ impl Model {
             ),
             EmptyArgKind => CalcResult::EmptyArg,
             GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
-            SpillRangeOperator { child } => match self.eval_ref_or_index(child, cell) {
+            SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
                         return CalcResult::new_error(
