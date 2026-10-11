@@ -19,7 +19,6 @@ Evidence: probes/typed-currency-percent-input B23:C26 (excel-graph 2026-10-11), 
 ## Acceptance criteria
 - [ ] B23:C26 of probes/typed-currency-percent-input pass; baseline updated.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
