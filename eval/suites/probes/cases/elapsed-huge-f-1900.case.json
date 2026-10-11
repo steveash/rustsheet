@@ -1,0 +1,28 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1375: elapsed tokens at huge serials, 1900 date system (find the #VALUE! threshold and digit rendering).",
+  "tags": [
+    "M1",
+    "probe",
+    "dates",
+    "T-1375"
+  ],
+  "date_system": 1900,
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=TEXT(1.234567890123456E16,\"[s]\")",
+        "A2": "=TEXT(1.234567890123456E16,\"[m]\")",
+        "A3": "=TEXT(1.234567890123456E16,\"[h]\")",
+        "A4": "=TEXT(9.87654321098765E20,\"[s]\")",
+        "A5": "=TEXT(9.87654321098765E20,\"[m]\")",
+        "A6": "=TEXT(9.87654321098765E20,\"[h]\")",
+        "A7": "=TEXT(12345678901234567890,\"[s]\")",
+        "A8": "=TEXT(12345678901234567890,\"[m]\")",
+        "A9": "=TEXT(12345678901234567890,\"[h]\")"
+      }
+    }
+  ],
+  "expected": {}
+}
