@@ -730,7 +730,13 @@ and the engine gives ...615 (1 ulp, `NumericUlp`, a known failure for T-1284; th
 of it). MIN, MAX and AVERAGEA over a TAKE/DROP result of one or two cells behave like the XLOOKUP cells (L1:L7).
 Typed entry is a desktop
 question (M14).
-Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211 (decision 0045)
+VERIFIED by T-1332 (probes/subtotal-reference-operands-e, excel-graph, 2026-10-11): reference-ness follows the value
+through IF and LET. `XLOOKUP(1,A1:A4,SEQUENCE(4))` is an array: `SUBTOTAL(9,..)` and `AREAS(..)` are `#VALUE!`, `ISREF` FALSE;
+`XLOOKUP(1,A1:A4,LET(x,A1:A4,x))` and `XLOOKUP(1,A1:A4,IF(TRUE,A1:A4))` are references (SUBTOTAL 1, AREAS 1, ISREF TRUE;
+the ISREF of the LET-SEQUENCE form is FALSE). `TAKE(IF(TRUE,A1:A4),2)` and `TAKE(LET(x,A1:A4,x),2)` are references
+(SUBTOTAL 3, AREAS 1), while `TAKE`/`DROP` of `IF(TRUE,SEQUENCE(4))` or `LET(x,SEQUENCE(4),x)` are arrays: SUBTOTAL and
+AREAS spill two `#VALUE!`, ISREF FALSE. The engine returns a scalar for those TAKE/DROP cells (T-1365).
+Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211, T-1332 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
@@ -995,3 +1001,20 @@ Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_in
 implicit intersection.
 Status: VERIFIED (web)
 Tasks: T-0962, T-1333
+
+## Written parentheses are transparent in reference context
+Excel for the web (excel-graph, 2026-10-11, probes/written-parens-reference-context, T-1339; plain formula
+against the same formula with written groups, each with FORMULATEXT): `ISREF(A1)` and `ISREF((A1))` are TRUE;
+`ROWS(A1:A3)` and `ROWS(((A1:A3)))` are 3; `SUM(A1,B1)` and `SUM(((A1,B1)))` are 11 (the union survives the
+group); `LET(x,A1:A3,ROWS(x))` and `LET(x,(A1:A3),ROWS(x))` are 3; `ANCHORARRAY(IF(TRUE,D1))` and
+`ANCHORARRAY(@(IF(TRUE,D1)))` spill the same values (D1 = SEQUENCE(3)). FORMULATEXT prints every written group
+back (`=ISREF((A1))`, `=ROWS(((A1:A3)))`, `=SUM(((A1,B1)))`, `=LET(x,(A1:A3),ROWS(x))`), and prints ANCHORARRAY(x) as
+`x#`: `=IF(TRUE,D1)#` and `=@(IF(TRUE,D1))#`. The one value a group changes is the root snap:
+`=0.1+0.2-0.3` is 0 but `=(0.1+0.2-0.3)` and `=((0.1+0.2-0.3))` are 5.551115123125783e-17 (already implemented,
+`GroupedRootKind`). Not probeable through excel-graph: `=(INDEX(D1:D3,1))#` (the Graph workbook is rejected as
+unsupported, `FileCorruptTryRepair`), so a group directly before `#` stays unevidenced.
+Ours: the values and the root snap match; FORMULATEXT drops the redundant groups (H10, H11, H14) and plain
+`ANCHORARRAY(IF(TRUE,D1))` gives TypeMismatch (E20:E22) while the grouped form passes.
+Evidence strength: `ISREF((A1))` and the union in `SUM(((A1,B1)))` show a reference survives a group; `ROWS` and `LET(..., ROWS(x))` return 3 for a range and for an array alike, so they do not (reference-only checks such as `ISREF((A1:A3))` and `OFFSET((A1:A3),1,0)` are unprobed, T-1364). The ANCHORARRAY pair compares the form with and without `@(...)`; `ANCHORARRAY(@IF(TRUE,D1))` is unprobed.
+Status: VERIFIED (web), except the `)#` shape and the range/LET reference checks.
+Tasks: T-1339, T-1340, T-1363, T-1364

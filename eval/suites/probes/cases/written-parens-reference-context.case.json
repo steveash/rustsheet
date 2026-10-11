@@ -1,0 +1,51 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "Do written parentheses change reference-context results? Plain (E) vs grouped (G) formulas with FORMULATEXT (SPEC-0007 step 0, T-1339). `(INDEX(D1:D3,1))#` cannot be built through excel-graph: the workbook is rejected as unsupported.",
+  "tags": [
+    "M1",
+    "references",
+    "probe",
+    "T-1339"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 10,
+        "D1": "=SEQUENCE(3)",
+        "E10": "=ISREF(A1)",
+        "F10": "=FORMULATEXT(E10)",
+        "G10": "=ISREF((A1))",
+        "H10": "=FORMULATEXT(G10)",
+        "E11": "=ROWS(A1:A3)",
+        "F11": "=FORMULATEXT(E11)",
+        "G11": "=ROWS(((A1:A3)))",
+        "H11": "=FORMULATEXT(G11)",
+        "E13": "=SUM(A1,B1)",
+        "F13": "=FORMULATEXT(E13)",
+        "G13": "=SUM(((A1,B1)))",
+        "H13": "=FORMULATEXT(G13)",
+        "E14": "=LET(x,A1:A3,ROWS(x))",
+        "F14": "=FORMULATEXT(E14)",
+        "G14": "=LET(x,(A1:A3),ROWS(x))",
+        "H14": "=FORMULATEXT(G14)",
+        "E15": "=0.1+0.2-0.3",
+        "F15": "=FORMULATEXT(E15)",
+        "G15": "=(0.1+0.2-0.3)",
+        "H15": "=FORMULATEXT(G15)",
+        "E16": "=0.1+0.2-0.3",
+        "F16": "=FORMULATEXT(E16)",
+        "G16": "=((0.1+0.2-0.3))",
+        "H16": "=FORMULATEXT(G16)",
+        "E20": "=ANCHORARRAY(IF(TRUE,D1))",
+        "F20": "=FORMULATEXT(E20)",
+        "G20": "=ANCHORARRAY(@(IF(TRUE,D1)))",
+        "H20": "=FORMULATEXT(G20)"
+      }
+    }
+  ],
+  "expected": {}
+}

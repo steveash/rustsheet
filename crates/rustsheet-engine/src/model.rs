@@ -2272,8 +2272,10 @@ impl Model {
                     self.set_cell_style(sheet, row, column, &style)?;
                 }
             } else {
-                // The list of currencies is '$', '€' and the local currency
-                let mut currencies = vec!["$", "€"];
+                // The list of currencies is '$' and the local currency. A euro sign is not
+                // one in en-US: typed `1€` stays text (probes/typed-currency-percent-input
+                // B23:C26, T-1335); VALUE() still reads it (cast.rs).
+                let mut currencies = vec!["$"];
                 let currency = &self.locale.currency.symbol;
                 if !currencies.iter().any(|e| e == currency) {
                     currencies.push(currency);
