@@ -105,12 +105,12 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   `sizing` 0, 1, 2, 1.5 (truncated) and TRUE reach the fetch; -1, 4, 9, text, `""` and an omitted `IMAGE(url,"alt",)` are
   `#VALUE!`. `sizing` 3 alone, or `IMAGE(url,,3)`, is `#VALUE!`; with a `height` (`3,10`), or `3,0,10`, `3,10,0` and `3,1.5,10.5`, it reaches the
   fetch; `3,0,0`, a negative `height` or `width` and a text `height` are `#VALUE!`. `sizing` 0 or 1 with a `height` (`0,10`, `1,10,10`) is
-  `#VALUE!`. UNVERIFIED: `sizing` 2 with a `height`, `3,0` (height 0, no width), a fractional `sizing` near the limits (-0.5, 3.5), an
+  `#VALUE!`. UNVERIFIED: a `width` without a `height` (`0,,10`, `3,,10`; the engine is `#VALUE!` for both), a negative `height` under `sizing` 2, `sizing` 2 with a `height`, `3,0` (height 0, no width), a fractional `sizing` near the limits (-0.5, 3.5), an
   empty cell or numeric text as `sizing`/`height`, and an array-valued `sizing` (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`,
   `#VALUE!` in Excel, the options lift with the source; the engine does not lift them, T-1370).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
-  `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!` (probes/rich-errors-image-sizing). A
+  `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A
   shorter `value` is not padded (above).
 The engine matches all of these (A16 since T-1345) except the array-valued `sizing`.
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
