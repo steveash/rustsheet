@@ -55,6 +55,21 @@ while `ISREF(Data1:Nope!A1)` is FALSE (A3). The explicit implicit intersection o
 a one-sheet span is an ordinary reference: `=@Data1:Data1!A1` = 1 (B2). IF-wrapped spans: `AREAS(IF(TRUE,Data1:Data3!A1:A2))`,
 `VLOOKUP(1,IF(TRUE,Data1:Data3!A1:B2),2,FALSE)`, `HLOOKUP(...)` and `COUNTBLANK(IF(TRUE,Data1:Data3!A1:B3))` are `#VALUE!`
 (C1, C3, C4, C5); the one-sheet span `Data1:Data1` works: AREAS 1 (C2), COUNTBLANK 2 (C6).
+Both ends missing (probes/3d-ref-span-missing-ends, excel-graph, 2026-10-10, T-1181): `Nope1:Nope2!A1` is `#NAME?` like a span
+with one missing end (`=SUM(Nope1:Nope2!A1)`, `=Nope1:Nope2!A1`; `ISREF` FALSE, `ISERROR` TRUE), and `=COUNT(Nope1:Nope2!A1:B3)` is 0.
+CHOOSE-wrapped spans in COUNTBLANK act like IF-wrapped ones: `COUNTBLANK(CHOOSE(1,Data1:Data3!A1:B3))` and
+`COUNTBLANK(CHOOSE(2,1,Data1:Data3!A1:B3))` are `#VALUE!`, `COUNTBLANK(CHOOSE(1,Data1:Data1!A1:B3))` is 2, and a span with a missing
+end in CHOOSE is `#NAME?`. A reversed span (`SUM(Data3:Data1!A1)`) is the same sheets: 111.
+COUNTBLANK of an error (probes/countblank-choose-errors, excel-graph, 2026-10-10, T-1181): an argument that evaluates to an error,
+not a reference, gives that error: `COUNTBLANK(Data1:Nope!A1:B3)` and its IF and CHOOSE forms `#NAME?`, `COUNTBLANK(CHOOSE(1,#N/A))`,
+`CHOOSE(1,NA())` and `IF(TRUE,NA())` `#N/A`, an empty intersection in CHOOSE `#NULL!`; also (probes/countblank-error-forms-b,
+same date) a direct empty intersection `COUNTBLANK(A5:A6 B5:B6)` `#NULL!`, `COUNTBLANK(INDIRECT("Q0"))` and
+`COUNTBLANK(OFFSET(A1,-5,0))` `#REF!`. A reference to one cell holding an error still counts 0, however it is handed on
+(ironcalc-calc COUNT.xlsx E18; probes/countblank-error-cell-refs and countblank-error-forms-b E1, E7): `A1`, `A1:A1`, a cell name,
+`CHOOSE(1,A1)`, `INDEX(A1:A2,1)`, `OFFSET(A1,0,0)`, `IF(TRUE,A1)`, `XLOOKUP(1,{1,2,3},A1:C1)` and `TAKE(A1:C1,1,1)` with A1 an error. A reference to one missing sheet (`Nope!A1:B3`) is left out: the web oracle resolves it to
+an empty cell (lookup.md); the engine gives `#REF!` there, following the desktop evidence in lookup.md. Not probed: an error
+kind other than those above reaching COUNTBLANK as a value (`#DIV/0!`, `#NUM!`, `#SPILL!`, `#CALC!`, e.g. `COUNTBLANK(CHOOSE(1,1/0))`);
+the engine returns it like the others.
 Status: VERIFIED (web).
 Implemented in: `get_sheet_span_value` (`#REF!`) and `get_sheet_span_reference` (`#VALUE!`) in
 crates/rustsheet-engine/src/reference_operators.rs; VLOOKUP, MATCH and COUNTBLANK reach
@@ -63,12 +78,16 @@ the same check (`IfBranchMode::SingleSheet`, T-1026); INDEX and AREAS read their
 CHOOSE in an aggregate argument: `Model::choose_impl` (T-1064). A span bound by LET or LAMBDA is a `Binding::Span`
 (`Model::bind_argument`, functions/logical/let.rs). Only `Model::variable_reference` hands it out as a range, so it reaches the aggregates;
 every value read is `three_d_needs_one_sheet`, and ROWS/COLUMNS and COUNTBLANK refuse it through `RefArg::into_single_sheet_area` (T-1158).
-Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170
+COUNTBLANK of an error argument: `fn_countblank` (functions/statistical/count.rs, T-1181) reads its argument once
+through `evaluate_picked_reference_arg`, so a reference stays a range and only an error value is returned.
+Tasks: T-0122, T-0197, T-1026, T-1064, T-1139, T-1158, T-1170, T-1181
 
 ## 3-D references when sheets or cells change (unprobed)
 Rule (engine, not Excel evidence): renaming an end sheet renames it in the formula, and moving a
 sheet re-resolves the span by name. Deleting an end sheet makes the reference `#REF!`, and inserting
 or deleting rows or columns does not shift the span. Excel's own rules for these edits are not probed.
+The excel-graph oracle only recalculates an uploaded workbook and cannot delete a sheet, so a span that lost an end sheet
+cannot be probed there (T-1181); the M14 desktop oracle question is T-1310.
 Status: UNVERIFIED
 Tasks: T-0198
 
@@ -901,8 +920,12 @@ print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-grap
 (`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
 More shapes (probes/at-group-leftmost-shapes, excel-graph, 2026-10-09, T-1245): Excel prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`,
 `=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1`, `=@(A1):OFFSET(B1,0,0) C1`, `=@((A1 B1) C1) D1`, `=@(A1):(B1) C1`, `=@(A1):B1`
-(`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches the first six and the last; it prints `=@((A1 B1) C1) D1` as
-`=@(A1 B1 C1) D1`, `=@(A1):(B1) C1` as `=@(A1):B1 C1` and `=@(A1):B1` as `=@A1:B1` (T-1251).
+(`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches the first six, `=@(A1):B1` (T-1251: a
+group that is the left corner of a range is `lead` even when the range is the whole operand) and the last; it prints `=@((A1 B1) C1) D1` as
+`=@(A1 B1 C1) D1` and `=@(A1):(B1) C1` as `=@(A1):B1 C1`, dropping a group nested in or right of the leading one: the general
+written-parentheses gap (T-1244). With the range as the whole operand (probes/at-group-range-corner-whole, excel-graph, 2026-10-09,
+T-1251) Excel prints `=@(A1:B1):C1`, `=@((A1)):B1:C1`, `=@((A1)):B1`, `=@(A1):B1:C1` and `=@(A1):(B1)` as written (all `#VALUE!`);
+the engine matches the first four and prints the last as `=@(A1):B1` (T-1244).
 The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
@@ -910,7 +933,7 @@ Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1)
 level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
 written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
 excel-graph 2026-10-09, T-1178; engine: T-1244).
-Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245).
+Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245); probes/at-group-range-corner-whole (excel-graph, T-1251).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251
 

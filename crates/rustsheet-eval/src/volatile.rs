@@ -67,7 +67,7 @@ pub fn scorable_cells<'a>(
     names: &[DefinedName],
     clock_pinned: bool,
 ) -> (Vec<(&'a str, Addr, &'a CellSnapshot)>, usize) {
-    let volatile = volatile_cells(&formula_cells(sheets), names, clock_pinned);
+    let volatile = volatile_cells(&formula_cells(sheets), names, clock_pinned, &HashSet::new());
     let mut cells = Vec::new();
     let mut skipped = 0;
     for sheet in sheets {
@@ -201,11 +201,17 @@ fn unquote(name: &str) -> String {
 
 /// Returns every formula cell (as `(sheet, addr)`) that is volatile or transitively reads a
 /// volatile cell through static references.
+///
+/// `invariant` lists cells, as `(lowercased sheet, addr)`, that a case declares run-invariant
+/// (T-1283): they call a volatile function or read a volatile cell, but their value cannot change
+/// between runs (`RANDBETWEEN(5,5)`, `ISNUMBER(NOW())`). They are never tainted, so they are scored,
+/// and taint does not flow through them to their dependents.
 #[must_use]
-pub fn volatile_cells(
+pub fn volatile_cells<S: std::hash::BuildHasher>(
     cells: &[FormulaCell],
     names: &[DefinedName],
     clock_pinned: bool,
+    invariant: &HashSet<(String, Addr), S>,
 ) -> HashSet<(String, Addr)> {
     let expanded: Vec<Cow<'_, str>> = cells
         .iter()
@@ -222,10 +228,14 @@ pub fn volatile_cells(
             }
         }
     }
+    let listed: Vec<bool> = cells
+        .iter()
+        .map(|(sheet, addr, _)| invariant.contains(&(sheet.to_lowercase(), *addr)))
+        .collect();
     let mut tainted = vec![false; cells.len()];
     let mut queue: Vec<usize> = Vec::new();
     for (idx, formula) in expanded.iter().enumerate() {
-        if is_volatile(formula, clock_pinned) {
+        if !listed[idx] && is_volatile(formula, clock_pinned) {
             tainted[idx] = true;
             queue.push(idx);
         }
@@ -243,7 +253,7 @@ pub fn volatile_cells(
             })
             .map(|(.., dependent)| dependent);
         for &dependent in by_cell.chain(by_range) {
-            if !tainted[dependent] {
+            if !tainted[dependent] && !listed[dependent] {
                 tainted[dependent] = true;
                 queue.push(dependent);
             }
@@ -270,7 +280,7 @@ mod tests {
     }
 
     fn tainted(cells: &[FormulaCell], pinned: bool) -> Vec<String> {
-        let set = volatile_cells(cells, &[], pinned);
+        let set = volatile_cells(cells, &[], pinned, &HashSet::new());
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         keys
@@ -338,7 +348,7 @@ mod tests {
     }
 
     fn tainted_with(cells: &[FormulaCell], names: &[DefinedName]) -> Vec<String> {
-        let set = volatile_cells(cells, names, false);
+        let set = volatile_cells(cells, names, false, &HashSet::new());
         let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
         keys.sort();
         keys
@@ -381,5 +391,36 @@ mod tests {
         let cells = vec![cell("S", "A1", "X"), cell("S", "A2", "Y")];
         let names = [name("X", None, "Y+1"), name("Y", None, "X+RAND()")];
         assert_eq!(tainted_with(&cells, &names), ["S!A1", "S!A2"]);
+    }
+
+    #[test]
+    fn invariant_cells_are_scored_and_stop_the_taint() {
+        let cells = vec![
+            cell("S", "A1", "RANDBETWEEN(5,5)"),
+            cell("S", "A2", "A1*2"),
+            cell("S", "B1", "RAND()"),
+            cell("S", "B2", "ISNUMBER(B1)"),
+            cell("S", "B3", "B2+B1"),
+            cell("S", "B4", "B2+1"),
+            cell("S", "C1", "ISNUMBER(NOW())"),
+            cell("S", "C2", "NOW()"),
+        ];
+        let invariant: HashSet<(String, Addr)> = ["A1", "B2", "C1"]
+            .iter()
+            .map(|a1| {
+                (
+                    "s".to_string(),
+                    Addr::parse(a1).expect("valid test address"),
+                )
+            })
+            .collect();
+        let set = volatile_cells(&cells, &[], false, &invariant);
+        let mut keys: Vec<String> = set.iter().map(|(s, a)| format!("{s}!{a}")).collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            ["S!B1", "S!B3", "S!C2"],
+            "a listed cell is scored; its dependents are tainted only through unlisted cells"
+        );
     }
 }

@@ -104,6 +104,9 @@ pub enum Error {
     BLOCKED,
     /// `#FIELD!` (ERROR.TYPE 13).
     FIELD,
+    /// `#BUSY!` (ERROR.TYPE 0). Only a stored constant: Excel loads `<c t="e"><v>#BUSY!</v></c>`
+    /// but rejects `=#BUSY!`, and no formula is known to produce it (SPEC-0003, "Stored `#BUSY!`").
+    BUSY,
 }
 
 /// The en-US formula literal for [`Error::GETTINGDATA`]. Of Excel's newer errors only this one
@@ -143,6 +146,7 @@ impl Error {
             Error::CONNECT => "#CONNECT!",
             Error::BLOCKED => "#BLOCKED!",
             Error::FIELD => "#FIELD!",
+            Error::BUSY => "#BUSY!",
         }
     }
 
@@ -163,6 +167,9 @@ impl Error {
             Error::BLOCKED => 11,
             Error::FIELD => 13,
             Error::CALC => 14,
+            // A real code, not "no code": ERROR.TYPE of a stored #BUSY! is 0, and
+            // ERROR.TYPE(A1)+100 is 100 (probes/error-stored-constants S!B1, H1).
+            Error::BUSY => 0,
             // Excel's #UNKNOWN! (12) and #EXTERNAL! (19) have no kind here: there is no evidence
             // of a producer. The rest are RustSheet/IronCalc specific.
             Error::ERROR => 101,
@@ -186,7 +193,9 @@ impl Error {
             Error::CALC => language.errors.calc.to_string(),
             Error::CIRC => language.errors.circ.to_string(),
             // Not in `Language` (SPEC-0003): the en-US names in every language.
-            Error::GETTINGDATA | Error::CONNECT | Error::BLOCKED | Error::FIELD => self.to_string(),
+            Error::GETTINGDATA | Error::CONNECT | Error::BLOCKED | Error::FIELD | Error::BUSY => {
+                self.to_string()
+            }
         }
     }
 
@@ -210,7 +219,8 @@ impl Error {
             | Error::NULL
             | Error::CONNECT
             | Error::BLOCKED
-            | Error::FIELD => self.english_literal(),
+            | Error::FIELD
+            | Error::BUSY => self.english_literal(),
         }
     }
 }
@@ -281,13 +291,16 @@ pub fn get_error_by_english_name(name: &str) -> Option<Error> {
         return Some(Error::BLOCKED);
     } else if name == "#FIELD!" {
         return Some(Error::FIELD);
+    } else if name == "#BUSY!" {
+        return Some(Error::BUSY);
     }
     None
 }
 
 /// Whether a COUNTIF-family criterion names an error. Deliberately only the twelve older names:
 /// COUNTIF with `"#BLOCKED!"`, `"#CONNECT!"` or `"#FIELD!"` counts 0 even over a cell holding
-/// that error (T-1012, information.md), so they stay text criteria.
+/// that error (T-1012, information.md), so they stay text criteria. `"#BUSY!"` is assumed to
+/// behave the same (UNVERIFIED, T-1228).
 pub fn is_english_error_string(name: &str) -> bool {
     let names = [
         "#REF!", "#NAME?", "#VALUE!", "#DIV/0!", "#N/A", "#NUM!", "#ERROR!", "#N/IMPL!", "#SPILL!",
@@ -363,12 +376,13 @@ mod tests {
     use super::*;
     use crate::language::get_default_language;
 
-    /// The four newer kinds (SPEC-0003) with their literal and ERROR.TYPE code.
-    const NEWER: [(Error, &str, u8); 4] = [
+    /// The five newer kinds (SPEC-0003) with their literal and ERROR.TYPE code.
+    const NEWER: [(Error, &str, u8); 5] = [
         (Error::GETTINGDATA, "#GETTING_DATA", 8),
         (Error::CONNECT, "#CONNECT!", 10),
         (Error::BLOCKED, "#BLOCKED!", 11),
         (Error::FIELD, "#FIELD!", 13),
+        (Error::BUSY, "#BUSY!", 0),
     ];
 
     #[test]
@@ -387,6 +401,7 @@ mod tests {
             Error::CONNECT,
             Error::BLOCKED,
             Error::FIELD,
+            Error::BUSY,
             Error::NA,
             Error::DIV,
         ] {

@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, reason = "tests")]
 
+use rustsheet_engine::expressions::token::Error;
 use rustsheet_engine::Model;
 use rustsheet_xlsx::export::save_to_xlsx;
 use rustsheet_xlsx::import::load_from_xlsx;
@@ -45,6 +46,37 @@ fn error_cells_are_saved_in_excels_stored_form() {
         stored,
         ["#N/A", "#VALUE!", "#VALUE!", "#DIV/0!", "#N/A", "#DIV/0!"]
     );
+}
+
+/// SPEC-0003 "Stored `#BUSY!`" (T-1222): a `#BUSY!` constant is saved as the plain
+/// `<c t="e"><v>#BUSY!</v></c>` Excel loads (T-0999), and importing that cell gives the kind back,
+/// with ERROR.TYPE 0 (probes/error-stored-constants S!B1).
+#[test]
+fn stored_busy_round_trips_with_error_type_zero() {
+    let mut model = Model::new_empty("m", "en", "UTC", "en").unwrap();
+    model.update_cell_with_error(0, 1, 1, Error::BUSY).unwrap();
+    model.evaluate();
+    let path = "temp_stored_busy_round_trip.xlsx";
+    save_to_xlsx(&model, path).unwrap();
+    let stored = stored_errors(path);
+    let has_vm = part(path, "xl/worksheets/sheet1.xml")
+        .unwrap()
+        .contains(" vm=");
+    let mut reloaded = load_from_xlsx(path, "en", "UTC", "en").unwrap();
+    std::fs::remove_file(path).unwrap();
+    assert_eq!(stored, ["#BUSY!"]);
+    assert!(!has_vm, "#BUSY! needs no rich value");
+    reloaded
+        .set_user_input(0, 1, 2, "=ERROR.TYPE(A1)".to_string())
+        .unwrap();
+    reloaded
+        .set_user_input(0, 1, 3, "=ISNA(A1)".to_string())
+        .unwrap();
+    reloaded.evaluate();
+    let text = |column| reloaded.get_formatted_cell_value(0, 1, column).unwrap();
+    assert_eq!(text(1), "#BUSY!");
+    assert_eq!(text(2), "0");
+    assert_eq!(text(3), "FALSE");
 }
 
 /// SPEC-0003 X2 (T-1014): every rich kind, as a formula result and as a constant, is saved in

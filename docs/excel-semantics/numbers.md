@@ -643,7 +643,7 @@ Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196 (oracle: 
 2026-10-04, T-0203); gen-m1/6462bf910ef9f28f Calc!A33, A41, A48, A57, A86, A207 (oracle:
 excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
-Tasks: T-0221
+Tasks: T-0221, T-1302
 
 ### Integer exponents: right-to-left square-and-multiply
 Rule: for an integer exponent n, `x^n` and `POWER(x,n)` equal binary exponentiation in doubles,
@@ -656,8 +656,12 @@ integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)
 1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
 Non-integer exponents are not explained by this rule.
 Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06, T-0942).
+Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
+exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
+oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
+`powf` path (and its #NUM! / #DIV/0! handling) unchanged. The rule also runs, unverified, for finite results with |n| > 360 (the oracle covers 1..360; squaring amplifies error, so huge n near x=1 may differ from Excel) and for a negative n whose intermediate result is subnormal (T-1311).
 Status: VERIFIED (integer exponents)
-Tasks: T-0221, T-0901
+Tasks: T-0221, T-0901, T-1302
 
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
@@ -882,10 +886,20 @@ Tasks: T-1082, T-1190
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
 later operand's: in `(x-COS(1E+15))=INDEX(B11:D11,6,2)` the result is `#NUM!`, not INDEX's `#REF!`. An
 out-of-domain `ACOS(1E+15)` is `#NUM!` and stays an error when nested (`SERIESSUM(ACOS(1E+15),0,n,m)` is `#NUM!`).
-Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09).
-Ours: COS computes a number; ACOS yields a NaN number that `powf(0)` turns into 1.
-Status: VERIFIED for the observed cells; the threshold and SIN/TAN siblings are UNVERIFIED.
+`SIN(1E+15)` and `SEC(1E+13)` are `#NUM!` too, so the threshold is at most 1E+13.
+Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09);
+gen-m6/9bd0bd18636e5f9b Calc!A4 (`SECH(CHOOSE(SIN(1E+15),..))`), gen-m6/3ee7ffc8d6ab061f Calc!A2 (`..-SEC(1E+13)`) (excel-graph, 2026-10-09, T-1239).
+Ours: COS, SIN and SEC compute a number; ACOS yields a NaN number that `powf(0)` turns into 1.
+Status: VERIFIED for the observed cells; the exact threshold and TAN are UNVERIFIED.
 Tasks: T-1192, T-1201, T-1202
+
+## ASIN of a small argument
+Rule: `ASIN(-0.0001)` is -0.00010000000016666668 in Excel; libm `asin` gives -0.00010000000016666667 (one ulp off),
+while `atan(x/sqrt(1-x*x))` reproduces Excel. Which formulation Excel uses over the whole domain is unknown.
+Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239).
+Ours: libm `asin`, one ulp off.
+Status: VERIFIED for the cell; formulation UNVERIFIED
+Tasks: T-1259
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
@@ -917,3 +931,25 @@ Ours: the same; the bound is checked before padding, which also bounds the alloc
 Status: VERIFIED
 Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
 Tasks: T-1243
+
+## RANDBETWEEN and RANDARRAY argument checks
+Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
+`RANDBETWEEN(5,4.5)`), then draws a whole number from `CEILING(bottom)` to `FLOOR(top)`, and gives
+`CEILING(bottom)` when `FLOOR(top)` is below it: `RANDBETWEEN(5.5,5.7)` and `RANDBETWEEN(5.5,6.2)`
+are always 6, `RANDBETWEEN(-5.5,-5.2)` always -5. It rejects booleans (`RANDBETWEEN(TRUE,TRUE)` is
+`#VALUE!`), reads number text (`"5"`), lifts over an array argument (one draw per element), and
+both arguments omitted (`RANDBETWEEN(,)`) is `#N/A`, not 0. RANDARRAY truncates `rows` and
+`columns` (`1.9` → 1), gives `#CALC!` for 0 rows and `#VALUE!` for a negative count, `min > max`
+or a non-boolean `whole_number` text; with `whole_number` TRUE a fractional `min` or `max` is
+`#VALUE!` (`RANDARRAY(1,1,1.5,2.5,TRUE)`, `RANDARRAY(1,1,1,2.5,TRUE)`), while without it `min = max` returns that value
+(`RANDARRAY(1,1,0.5,0.5)` = 0.5). Number text is read for every argument, including
+`whole_number` (`"TRUE"`) and the boolean-as-number `1`. `TYPE(RANDARRAY(2,2))` is 64,
+`ROWS(RANDARRAY())` is 1, and RAND, NOW and TODAY return numbers with TODAY a whole number and NOW
+within that day.
+Evidence: probes/volatile-invariant Calc!A1:A6, A8:A15, B1:B18, C1:C6, C8:C9, D1:E2, D4:D5,
+F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical values (T-1283);
+F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
+rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
+E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
+Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10 (T-1318; A6 is unchecked until
+then, because the engine's draw for it is random), B18, and the array lift F1:F9 (T-1316).
