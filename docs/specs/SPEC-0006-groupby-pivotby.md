@@ -35,7 +35,7 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 
 ### Grouping and ordering
 - Keys compare like UNIQUE: text is case-insensitive, and the group shows the first spelling met
-  (`East`, `east` → `East`, G!A1). Numbers compare exactly.
+  (`East`, `east` → `East`, G!A1). Numbers presumably compare exactly (`cell_key` uses `to_bits`), but that is unprobed: near-equal floats, -0 against 0, and a numeric 0 key against the blank key (both show 0) go to T-1328.
 - Groups are sorted ascending by key, with no option to keep source order. Mixed key types sort
   numbers < text < FALSE < TRUE < blank (G!A193). That is `sort_key_cmp` in
   `functions/spill_functions.rs`. Errors as keys are unprobed.
@@ -96,7 +96,8 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
   row group, and the bottom-right cell to everything.
 - **field_headers 3** adds, above the column keys, a row with the column field name, and below
   them a row with the row field name followed by the value field name under every column
-  (P!M1).
+  (P!M1). The column field name ("Year") sits only above the first column key; the rest of
+  that row is `""`.
 - **row_total_depth / col_total_depth**: `0` drops the total row / column (P!Y1, P!A25).
   `2` adds subtotals, labeled as in GROUPBY with "Grand Total" (P!A97 rows; P!M97 columns, where
   a subtotal column has the first-level key in the first header row and `""` in the second).
@@ -105,7 +106,8 @@ docs/excel-semantics/arrays.md "GROUPBY and PIVOTBY".
 - **filter_array**: as in GROUPBY. Filtering out 2025 drops that column (P!Y73).
 - **Several value columns** interleave per column key (2023/Sales, 2023/Units, ...). The two
   Total columns came back as `""` in every row (P!Y97). That is surprising; the probe task
-  re-checks it before anyone implements it.
+  re-checks it before anyone implements it. Unlike several functions, several value columns get
+  no header row naming them (no "Sales"/"Units" row).
 - **Several functions** (`HSTACK(SUM,MAX)`) interleave the same way. A second header row names
   the functions, and the Total columns are filled (P!A121).
 - **relative_to** (PERCENTOF and other two-argument functions get the cell's values and a
@@ -149,8 +151,8 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
    that order, so the subtotal rows are inserted in one linear pass, not by any quadratic search.
 3. **Aggregation**: for each (group, value column, function) build a column array of the
    group's values in source order and call the function value: `call_lambda_with_values` for a
-   LAMBDA, or the T-1273 eta-call path for a name. A non-scalar result becomes `#VALUE!`
-   (G!J121). A function array (`HSTACK`/`VSTACK` of function values) is a list of functions plus
+   LAMBDA, or the T-1273 eta-call path for a name. Any array result becomes `#VALUE!`, a 1x1 array included: never unwrap it
+   (G!J121 is `#VALUE!` for the one-record groups too). A function array (`HSTACK`/`VSTACK` of function values) is a list of functions plus
    an orientation. Two-parameter functions (PERCENTOF) also get the relative set's values:
    - Each distinct relative set is built once and shared, never rebuilt per call. GROUPBY has one
      (all rows). PIVOTBY has one per row total, one per column total and one grand total
@@ -163,7 +165,9 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
      directive-5 DEVIATION, which the implementing task (T-1325 / T-1327) records in arrays.md
      with a test.
 4. **Sorting by values** (sort_order 2.. / row_sort_order) sorts groups by their aggregate in
-   that column, with the totals pinned.
+   that column, with the totals pinned. The blank-key group is not pinned there: it sorts by its
+   value like any group (South, North, 0, East, West in G!J145 and P!M121). Blank-last applies
+   only to key sorts.
 5. **Layout**: assemble `Vec<Vec<ArrayNode>>` with `ArrayNode::String("")` fillers and the
    labels "Total" / "Grand Total" (en-US; the engine is en-US only, CLAUDE.md).
 6. **Limits** (directive 5):
