@@ -351,12 +351,19 @@ Status: VERIFIED (web)
 Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
 
 ## A reference-valued lookup_value is looked up by its cell's value
-Rule: when lookup_value is a reference returned by a function (`CHOOSE(1,Data!D7)`), the lookup uses the referenced
-cell's value: `HLOOKUP(CHOOSE(1,Data!D7),Data!A8:A10,AVERAGE(..),..)` finds it and fails on the row index with
-`#VALUE!`. Other shapes (OFFSET, INDIRECT, `A8:A8`) and the other lookup functions are unprobed.
-Evidence: gen-m6/963a217976538d5d Calc!A32 (excel-graph, 2026-10-09, T-1239).
-Ours: never matched, so `#N/A` (also in VLOOKUP, MATCH, XMATCH, XLOOKUP and LOOKUP).
-Status: VERIFIED for the CHOOSE shape in HLOOKUP; UNVERIFIED otherwise
+Rule: when lookup_value is a one-cell reference returned by a function or written as a range (`CHOOSE(1,J1)`,
+`OFFSET(J1,0,0)`, `INDIRECT("J1")`, `J1:J1`), VLOOKUP, HLOOKUP, MATCH, XMATCH, XLOOKUP and LOOKUP use the
+referenced cell's value, exactly as for `IF(TRUE,J1)`: found, between-values, above-all and not-found text all give
+the same results across the five shapes, in exact and approximate modes. `HLOOKUP(CHOOSE(1,Data!D7),Data!A8:A10,
+AVERAGE(..),..)` finds it and fails on the row index with `#VALUE!`. Side finding: `XMATCH("x",{10..50},-1)`
+(exact or next smaller) is 5 and the XLOOKUP equivalent returns the last row, because text sorts above every
+number, while `MATCH("x",..,1)` and LOOKUP give `#N/A`.
+Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x 11 lookups; excel-graph,
+2026-10-11, T-1256); gen-m6/963a217976538d5d Calc!A32 (excel-graph, 2026-10-09, T-1239).
+Status: VERIFIED
+Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
+(`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
+(functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
 Tasks: T-1256
 
 ## INDEX with an array row_num into a 2-D range
