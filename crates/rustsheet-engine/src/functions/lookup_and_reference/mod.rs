@@ -108,7 +108,9 @@ impl Model {
         }
         let match_type = if args.len() == 3 {
             match self.get_number(&args[2], cell) {
-                Ok(v) => v as i32,
+                // floor, not truncation: -0.5 searches descending (docs/excel-semantics/lookup.md,
+                // gen-m2/f7e6d351c8538ef5 A160, gen-m2/96a0952412cefa6c A241).
+                Ok(v) => v.floor() as i32,
                 Err(s) => return s,
             }
         } else {
