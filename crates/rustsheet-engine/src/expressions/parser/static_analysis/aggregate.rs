@@ -1,5 +1,5 @@
 use crate::expressions::parser::reference_operators::is_reference_operand;
-use crate::functions::same_variable;
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};

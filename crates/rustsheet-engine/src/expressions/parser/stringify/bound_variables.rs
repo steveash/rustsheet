@@ -1,7 +1,7 @@
 //! Export-time renaming of LAMBDA/LET bound names to Excel's `_xlpm.` form.
 
 use super::super::{for_each_chain_operand_mut, Node};
-use crate::functions::same_variable;
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 /// Excel stores LAMBDA parameters and LET variables with an `_xlpm.` prefix,
