@@ -3,7 +3,7 @@ id: T-1264
 title: "XLOOKUP with an array lookup_value looks up each element"
 milestone: M1
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -17,14 +17,14 @@ XLOOKUP with an array `lookup_value` (`SUM(XLOOKUP({1;2},A1:A3,B1:B3))`) returns
 probes/let-name-uncalled-picked-refs Sheet1!H21: Excel gives 30, the engine `#N/A` (`xlookup_impl`, functions/xlookup.rs, evaluates lookup_value to a single value). Probe the shapes first (row/column/2-D lookup_value, with if_not_found and the reference form) with the excel-probe skill, and record them in docs/excel-semantics/lookup.md.
 
 ## Acceptance criteria
-- [ ] H21 passes and its baseline entry is removed; probed shapes are recorded in docs/excel-semantics/lookup.md.
-- [ ] `make check` green; reviewers approve.
+- [x] H21 passes and its baseline entry is removed; probed shapes are recorded in docs/excel-semantics/lookup.md.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
 
 ## Outcome
-XLOOKUP lifts an array or multi-cell `lookup_value` per element through `lift_with_cost` (functions/xlookup.rs); a wide return row keeps its first cell per element. New probe probes/xlookup-array-lookup-value (27 cells, all pass); let-name-uncalled-picked-refs H21 now passes. Shapes recorded in docs/excel-semantics/lookup.md.
+XLOOKUP lifts an array or multi-cell `lookup_value`, `match_mode` or `search_mode` per element (functions/xlookup.rs). The lookup and return arrays are evaluated and shape-checked once (`xlookup_table`, a `SearchVector` for ranges and arrays alike); each element runs only the search and the pick, costed by `SearchVector::search_cost()` against the shared visit cap (DEVIATION recorded). A lifted element keeps the first cell of its match; an array `if_not_found` gives its first element and a reference one `#VALUE!`. Also from the new probe: a bad search_mode and a 2-D range lookup_array are `#VALUE!` (were `#ERROR!`), and a row lookup over a taller return range returns the matched column. Probes probes/xlookup-array-lookup-value (27 cells) and probes/xlookup-array-lookup-value-args (47 cells) all pass; let-name-uncalled-picked-refs H21 and lookup-argument-modes F25, G25, H25 newly pass (probes known failures 928 -> 925 after H21).
 
 ## Handoff (resumed)
 Branch has a working implementation (XLOOKUP lifts an array/multi-cell `lookup_value` through `lift_with_cost`, wrapping the scalar path as `xlookup_scalar`), probe `probes/xlookup-array-lookup-value` (27 oracle cells) and the lookup.md entry; `make check` was green with the baseline updated. Reviews: architecture APPROVE; security, quality, performance REQUEST_CHANGES.
