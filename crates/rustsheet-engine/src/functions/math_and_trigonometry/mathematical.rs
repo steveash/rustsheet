@@ -210,8 +210,9 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
         mode: RoundMode,
-        min_args: usize,
+        num_digits_optional: bool,
     ) -> CalcResult {
+        let min_args = if num_digits_optional { 1 } else { 2 };
         if !(min_args..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
@@ -233,22 +234,22 @@ impl Model {
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::HalfAwayFromZero, 2)
+        self.round_family(args, cell, RoundMode::HalfAwayFromZero, false)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Up, 2)
+        self.round_family(args, cell, RoundMode::Up, false)
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Down, 2)
+        self.round_family(args, cell, RoundMode::Down, false)
     }
 
     /// TRUNC is ROUNDDOWN with an optional `num_digits`: Excel cuts to 15 digits
     /// first and wraps huge digit counts the same way (docs/excel-semantics/numbers.md
     /// "TRUNC is ROUNDDOWN", probes/trunc-decimal-stages).
     pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Down, 1)
+        self.round_family(args, cell, RoundMode::Down, true)
     }
 
     // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)

@@ -53,7 +53,7 @@ Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_an
 ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
 
 ## TRUNC is ROUNDDOWN
-Rule: `TRUNC(number, num_digits)` behaves exactly like `ROUNDDOWN`, with `num_digits` optional (0).
+Rule: `TRUNC(number, num_digits)` behaves like `ROUNDDOWN` on every probed cell, with `num_digits` optional (0).
 It cuts the binary value to 15 significant digits first, so binary noise below the 15th digit never
 drops a unit: `TRUNC(-(0.1+0.7),1)` = -0.8, `TRUNC(1-2^-53,0)` = 1, `TRUNC(0.29,2)` = 0.29 and
 `TRUNC(123456789.123,-5)` = 123400000 exactly. A 16th-digit tie goes away from zero:
@@ -61,7 +61,8 @@ drops a unit: `TRUNC(-(0.1+0.7),1)` = -0.8, `TRUNC(1-2^-53,0)` = 1, `TRUNC(0.29,
 `num_digits` wraps like ROUNDDOWN's, as the magnitude modulo 65,536 with the sign kept:
 `TRUNC(123.456,65537)` = 123.4, `TRUNC(123.456,-65537)` = 120, `TRUNC(5,2147483647)` = 5,
 `TRUNC(123.456,-16)` = `TRUNC(123.456,-400)` = 0. The cut overflows at the largest double, so
-`TRUNC(2^1023*(2-2^-52),0)` is `#NUM!`. A zero result has no sign (`TRUNC(-0.5)&""` = "0").
+`TRUNC(2^1023*(2-2^-52),0)` is `#NUM!`, while
+`TRUNC(…,-300)` = 1.79769313E+308 stays finite. A zero result has no sign (`TRUNC(-0.5)&""` = "0").
 The upstream IronCalc examples from b93d4224 also hold:
 - `ROUND`, `ROUNDUP` and `ROUNDDOWN` of `1E+307*10` with 10 digits keep 1E+308.
 - `ROUND(123.456,-400)` = `ROUNDDOWN(…)` = 0 and `ROUNDUP(…)` = `#NUM!`.
