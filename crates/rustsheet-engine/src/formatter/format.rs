@@ -99,14 +99,14 @@ enum ElapsedUnit {
 /// elapsed-fractions-1900, T-1338, T-1346). Noise is absorbed first: `[s]` snaps the seconds at
 /// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
 /// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
-/// the probes, not documented.
+/// the probes, not documented. The count is i64: Excel has no 32-bit limit (T-1362).
 fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
     let secs = value * 86400.0;
     let n = match unit {
         ElapsedUnit::Second => ((secs * 1e12).round() / 1e12).round(),
         ElapsedUnit::Minute => ((secs * 1e3).round() / 1e3 / 60.0).floor(),
         ElapsedUnit::Hour => ((secs * 1e3).round() / 1e3 / 3600.0).floor(),
-    } as i32;
+    } as i64;
     if padded {
         format!("{n:02}")
     } else {
