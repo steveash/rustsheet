@@ -3,7 +3,7 @@ id: T-1337
 title: "Probe ANCHORARRAY(@IF(TRUE,D1:D3)) and @IF picking a union as a spill anchor"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1321 made `ANCHORARRAY(@IF(TRUE,D1))` spill D1# (`spill_anchor_operand`, refer
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/at-if-spill-anchor-operand (oracle-filled, excel-graph) and recorded the findings in docs/excel-semantics/references.md. One engine mismatch (LOOKUP result_vector `@IF`) filed as T-1368. Eval: probes +19 passing cells, 1 new failing cell (H50) pending T-1368.
