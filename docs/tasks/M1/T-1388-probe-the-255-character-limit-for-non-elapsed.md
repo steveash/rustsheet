@@ -3,7 +3,7 @@ id: T-1388
 title: "Probe the 255-character limit for non-elapsed date/time TEXT and cell display"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
