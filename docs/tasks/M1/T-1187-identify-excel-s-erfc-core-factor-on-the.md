@@ -3,7 +3,7 @@ id: T-1187
 title: "Identify Excel's erfc core factor on the t1040 grid"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
