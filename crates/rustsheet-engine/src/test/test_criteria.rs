@@ -427,3 +427,31 @@ fn cmp_excel_precision_total_order_on_nan_and_signed_zero() {
     assert_eq!(cmp_excel_precision(-f64::NAN, 1.0), Ordering::Greater);
     assert_eq!(cmp_excel_precision(-0.0, 0.0), Ordering::Equal);
 }
+
+#[test]
+fn text_order_puts_nbsp_right_after_space() {
+    // probes/text-order-nbsp-space (excel-graph, T-0244): CHAR(160) sorts after the space and
+    // before digits and letters, in `>` and in COUNTIF's `">"` alike.
+    let mut model = crate::test::util::new_empty_model();
+    model._set("A1", "1");
+    model._set("A2", "=\"1 \"");
+    model._set("A3", "=\" 1\"");
+    model._set("A4", "=CHAR(160)&\"1\"");
+    model._set("A5", "=\"1\"&CHAR(160)");
+    model._set("A6", "=\"1\"");
+    model._set("C1", "=COUNTIF(A1:A6,\">\"&CHAR(160)&\"0\")");
+    model._set("C2", "=CHAR(160)&\"1\"<\"1\"");
+    model._set("C3", "=\" 1\"<CHAR(160)&\"1\"");
+    model._set("C4", "=CHAR(160)&\"1\"<\"0\"");
+    model._set("C5", "=\"a b\"<\"a\"&CHAR(160)&\"b\"");
+    model._set("C6", "=CHAR(160)&\"1\"=\"1\"");
+    model.evaluate();
+
+    // probes/criteria-padded-text C13: every text cell but " 1".
+    assert_eq!(model._get_text("C1"), *"4");
+    assert_eq!(model._get_text("C2"), *"TRUE");
+    assert_eq!(model._get_text("C3"), *"TRUE");
+    assert_eq!(model._get_text("C4"), *"TRUE");
+    assert_eq!(model._get_text("C5"), *"TRUE");
+    assert_eq!(model._get_text("C6"), *"FALSE");
+}

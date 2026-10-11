@@ -1,0 +1,106 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "D1": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D10": {
+    "t": "b",
+    "v": false
+   },
+   "D11": {
+    "t": "b",
+    "v": false
+   },
+   "D12": {
+    "t": "s",
+    "v": "x"
+   },
+   "D13": {
+    "t": "b",
+    "v": true
+   },
+   "D14": {
+    "t": "n",
+    "v": 1.0
+   },
+   "D15": {
+    "t": "n",
+    "v": 1.0
+   },
+   "D16": {
+    "t": "n",
+    "v": 2.0
+   },
+   "D17": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D18": {
+    "t": "b",
+    "v": true
+   },
+   "D19": {
+    "t": "b",
+    "v": true
+   },
+   "D2": {
+    "t": "b",
+    "v": true
+   },
+   "D20": {
+    "t": "b",
+    "v": false
+   },
+   "D21": {
+    "t": "b",
+    "v": false
+   },
+   "D22": {
+    "t": "n",
+    "v": 0.0
+   },
+   "D23": {
+    "t": "n",
+    "v": 2.0
+   },
+   "D3": {
+    "t": "b",
+    "v": true
+   },
+   "D4": {
+    "t": "b",
+    "v": true
+   },
+   "D5": {
+    "t": "s",
+    "v": "zero"
+   },
+   "D6": {
+    "t": "s",
+    "v": "zero"
+   },
+   "D7": {
+    "t": "n",
+    "v": 1.0
+   },
+   "D8": {
+    "t": "n",
+    "v": 1.0
+   },
+   "D9": {
+    "t": "b",
+    "v": false
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "423e4bed2c763b7697292ed78508cbe24b9bc22e4cc928ee750faaca55f20f10",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-09T22:27:08+00:00",
+  "version": null
+ }
+}

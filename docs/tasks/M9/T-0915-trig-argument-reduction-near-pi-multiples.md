@@ -20,6 +20,9 @@ Suspected cause: x87-style reduction using a pi approximated to ~66 bits (the ra
 **Needs an oracle sweep (T-0018):** fitting this formulation needs more Excel points than the
 cached workbooks give. Fit against the T-1008 sweep (`probes-numeric/m9-trig-reduction`), never blind.
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/0e40208f51c2454c Calc!A3 `=TAN((Data!D6/(Data!C7*Data!A$9)))` = TAN(28000): Excel -1.611178907173344, engine (libm) -1.6111789071733424 (NumericClose). Not near a multiple of pi; libm `tan`, `sin/cos` and reduction by `fmod(x, 2*pi)` (-1.6111789071694178) all miss, so the reduction constant matters for ordinary large arguments too.
+
 ## Acceptance criteria
 - [ ] The 11 NumericMismatch SIN/COS/TAN cells above plus SEC/CSC cells on the same inputs leave eval/baseline/ironcalc-calc.txt, with no new F lines (NumericClose cells may remain; list them in Outcome).
 - [ ] The 12 poi/47813.xlsx lines (Numbers!C92, B182, C272, B362, C452, B542, C632 at multiples of 90°, and the few-ulp

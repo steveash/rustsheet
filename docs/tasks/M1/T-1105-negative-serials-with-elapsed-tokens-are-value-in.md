@@ -7,7 +7,8 @@ status: in-progress
 priority: P3
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1267, T-1268]
+spec: docs/specs/SPEC-0005-workbook-date-system.md
 ---
 
 ## Goal
@@ -15,6 +16,8 @@ TEXT and cell display of a negative serial under a format with an elapsed token 
 
 ## Context
 probes/text-negative-serial-elapsed-mixed A1, A3, A5, A6 expect #VALUE! (dates.md, T-1079); the engine exempts elapsed sections in `ParsePart::Date` (formatter/format.rs) because poi ElapsedFormatTests A40-A47 is a 1904 workbook. The engine has no date-system awareness, so the fix needs the importer's date1904 flag plumbed to the formatter (design question, hence opus). Cell display (#####) under a date format is still unprobed: the case format cannot set a cell number format, so that needs a harness extension first.
+
+Design: SPEC-0005 (rollout step 3), split out by T-1266.
 
 ## Acceptance criteria
 - [ ] probes/text-negative-serial-elapsed-mixed passes without regressing poi ElapsedFormatTests A40-A47.

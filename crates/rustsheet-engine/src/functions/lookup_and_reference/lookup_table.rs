@@ -133,7 +133,7 @@ pub(crate) struct SearchVector {
 
 impl SearchVector {
     /// A vector with no virtual tail.
-    pub(super) fn new(values: Vec<CalcResult>) -> SearchVector {
+    pub(crate) fn new(values: Vec<CalcResult>) -> SearchVector {
         let len = values.len();
         SearchVector { values, len }
     }
@@ -143,8 +143,14 @@ impl SearchVector {
         self.len
     }
 
+    /// The cells a search actually tests: the evaluated prefix, plus one for an empty tail
+    /// (it is all one value, tested once). The cost of one lifted lookup (T-0270).
+    pub(crate) fn search_cost(&self) -> usize {
+        self.values.len() + usize::from(self.len > self.values.len())
+    }
+
     /// The value at `index`, which must be below `len`.
-    pub(super) fn get(&self, index: usize) -> &CalcResult {
+    pub(crate) fn get(&self, index: usize) -> &CalcResult {
         self.values.get(index).unwrap_or(&EMPTY_CELL)
     }
 
@@ -159,7 +165,7 @@ impl SearchVector {
     /// The indices a linear search must test, in search order. The empty tail
     /// is all one value, so only its first cell in that order is a candidate
     /// (T-0127): its first cell when walking forward, its last when backward.
-    pub(super) fn linear_candidates(&self, forward: bool) -> Vec<usize> {
+    pub(crate) fn linear_candidates(&self, forward: bool) -> Vec<usize> {
         let evaluated = self.values.len();
         let tail = (self.len > evaluated).then_some(if forward { evaluated } else { self.len - 1 });
         if forward {
@@ -248,10 +254,11 @@ impl SearchVector {
     }
 }
 
-/// The value a lookup searches for: a blank lookup value is the number 0.
+/// The value a lookup searches for: a blank lookup value, or an empty value such as
+/// `IFERROR(<blank>,..)` (T-0291), is the number 0.
 fn lookup_key(target: &CalcResult) -> &CalcResult {
     static ZERO: CalcResult = CalcResult::Number(0.0);
-    if matches!(target, CalcResult::EmptyCell) {
+    if matches!(target, CalcResult::EmptyCell | CalcResult::EmptyArg) {
         &ZERO
     } else {
         target

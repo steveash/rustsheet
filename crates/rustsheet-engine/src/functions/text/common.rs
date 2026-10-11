@@ -12,8 +12,14 @@ use crate::{
     },
     formatter::format::{format_text, format_text_value, Formatted},
     functions::{
-        criteria::from_wildcard_to_regex,
-        text::util::{substitute, substitute_exceeds_limit, text_after, text_before, Case},
+        text::{
+            position::find_element,
+            util::{
+                near_integer_count, substitute, substitute_exceeds_limit, text_after, text_before,
+                utf16_slice, Case,
+            },
+        },
+        util::array_node_to_calc_result,
     },
     locale::Locale,
     model::Model,
@@ -21,13 +27,18 @@ use crate::{
 };
 
 /// Computes a single LEFT result from one element of each argument.
+// Excel: LEFT and RIGHT count characters (code points), unlike LEN, MID, FIND and REPLACE, which
+// count UTF-16 code units: `LEFT("a😀b",3)` is "a😀b" (docs/excel-semantics/text.md "Text
+// positions count UTF-16 code units", probes/text-surrogate-positions A3, B1-B5).
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
     let num = num?;
+    // Excel: any non-negative count works, however large (`LEFT("abc",1E+100)` is "abc"), and
+    // -1E-300 is already #VALUE! (probes/text-count-argument-bounds F14, N18).
     if num < 0.0 {
         return Err(Error::VALUE);
     }
-    let num_chars = num.floor() as usize;
+    let num_chars = near_integer_count(num) as usize;
     Ok(ArrayNode::String(s.chars().take(num_chars).collect()))
 }
 
@@ -38,10 +49,13 @@ fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode,
     if num < 0.0 {
         return Err(Error::VALUE);
     }
-    let num_chars = num.floor() as usize;
+    let num_chars = near_integer_count(num) as usize;
     let skip = s.chars().count().saturating_sub(num_chars);
     Ok(ArrayNode::String(s.chars().skip(skip).collect()))
 }
+
+/// MID's start_num and num_chars must be below 2^31 (they are read as 32-bit integers).
+const MID_ARGUMENT_LIMIT: f64 = 2_147_483_648.0;
 
 /// Computes a single MID result from one element of each argument.
 fn mid_element(
@@ -52,67 +66,26 @@ fn mid_element(
     let s = array_node_to_string(text)?;
     let start = start?;
     let length = length?;
-    if start < 1.0 {
+    // Excel: MID truncates both numbers exactly (`MID(t,1,1-1E-15)` is "") and either one
+    // from 2^31 up is #VALUE!, while 2^31-1 is fine (probes/text-count-argument-bounds C, D, H, I).
+    if !(1.0..MID_ARGUMENT_LIMIT).contains(&start.floor()) {
         return Err(Error::VALUE);
     }
-    if length < 0.0 {
+    if !(0.0..MID_ARGUMENT_LIMIT).contains(&length.floor()) {
         return Err(Error::VALUE);
     }
-    let start_num = start.floor() as usize;
-    let num_chars = length.floor() as usize;
-    let mut result = String::new();
-    let mut count: usize = 0;
-    for (index, ch) in s.chars().enumerate() {
-        if count >= num_chars {
-            break;
-        }
-        if index + 1 >= start_num {
-            result.push(ch);
-            count += 1;
-        }
-    }
-    Ok(ArrayNode::String(result))
+    // Excel: MID positions count UTF-16 code units, so `MID("a😀b",2,2)` is the emoji
+    // (probes/text-surrogate-positions A9-A13).
+    let first = (start.floor() as usize).saturating_sub(1);
+    let end = first.saturating_add(length.floor() as usize);
+    Ok(ArrayNode::String(utf16_slice(&s, first, end)))
 }
 
 /// Computes a single LEN result.
 fn len_element(text: &ArrayNode) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
-    Ok(ArrayNode::Number(s.chars().count() as f64))
-}
-
-/// Computes a single FIND or SEARCH result from one element of each argument.
-/// SEARCH is the one that is not case sensitive and understands wildcards.
-fn find_element(
-    find_text: &ArrayNode,
-    within_text: &ArrayNode,
-    start_num: Result<f64, Error>,
-    is_search: bool,
-) -> Result<ArrayNode, Error> {
-    let find_text = array_node_to_string(find_text)?;
-    let within_text = array_node_to_string(within_text)?;
-    let start_num = start_num?.floor();
-    if start_num < 1.0 {
-        return Err(Error::VALUE);
-    }
-    let start_num = start_num as usize;
-    if start_num > within_text.len() {
-        return Err(Error::VALUE);
-    }
-    let position = if is_search {
-        // SEARCH is case insensitive
-        search(
-            &find_text.to_lowercase(),
-            &within_text.to_lowercase(),
-            start_num,
-        )
-    } else {
-        find(&find_text, &within_text, start_num)
-    };
-    match position {
-        Some(p) => Ok(ArrayNode::Number(p as f64)),
-        // Text not found
-        None => Err(Error::VALUE),
-    }
+    // Excel: LEN counts UTF-16 code units, so an emoji counts two (probes/text-surrogate-positions A1).
+    Ok(ArrayNode::Number(s.encode_utf16().count() as f64))
 }
 
 /// Computes a single REPT result from one element of each argument.
@@ -172,43 +145,6 @@ fn exact_element(text1: &ArrayNode, text2: &ArrayNode) -> Result<ArrayNode, Erro
     let string1 = array_node_to_string(text1)?;
     let string2 = array_node_to_string(text2)?;
     Ok(ArrayNode::Boolean(string1 == string2))
-}
-
-/// Finds the first instance of 'search_for' in text starting at char index start
-fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
-    let ch = text.chars();
-    let mut byte_index = 0;
-    for (char_index, c) in ch.enumerate() {
-        if char_index + 1 >= start && text[byte_index..].starts_with(search_for) {
-            return Some((char_index + 1) as i32);
-        }
-        byte_index += c.len_utf8();
-    }
-    None
-}
-
-/// You can use the wildcard characters — the question mark (?) and asterisk (*) — in the find_text argument.
-/// * A question mark matches any single character.
-/// * An asterisk matches any sequence of characters.
-/// * If you want to find an actual question mark or asterisk, type a tilde (~) before the character.
-fn search(search_for: &str, text: &str, start: usize) -> Option<i32> {
-    let re = match from_wildcard_to_regex(search_for, false) {
-        Ok(r) => r,
-        Err(_) => return None,
-    };
-
-    let ch = text.chars();
-    let mut byte_index = 0;
-    for (char_index, c) in ch.enumerate() {
-        if char_index + 1 >= start {
-            {
-                let m = re.find(&text[byte_index..])?;
-                return Some((text[0..(m.start() + byte_index)].chars().count() as i32) + 1);
-            }
-        }
-        byte_index += c.len_utf8();
-    }
-    None
 }
 
 /// A formatted TEXT result as an array element: its text, or `#VALUE!` for a bad format.
@@ -942,26 +878,58 @@ impl Model {
         if args.is_empty() || args.len() > 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        // The format only changes the result for text and invalid values, which are unprobed
-        // (TODO(T-1229)); the argument is evaluated so its errors propagate.
-        if args.len() == 2 {
-            if let Err(e) = self.get_number(&args[1], cell) {
-                return e;
-            }
-        }
         let text = match self.text_arg(&args[0], cell) {
             Ok(t) => t,
             Err(e) => return e,
         };
-        let value_to_text = |node: &ArrayNode| match node {
-            ArrayNode::Error(e) => e.to_string(),
-            other => array_node_to_string(other).unwrap_or_default(),
+        let format = match args.get(1) {
+            Some(node) => match self.text_arg(node, cell) {
+                Ok(TextArg::Error(_, error)) => return error,
+                Ok(f) => Some(f),
+                Err(e) => return e,
+            },
+            None => None,
         };
-        match text {
-            TextArg::Error(node, _) => CalcResult::String(value_to_text(&node)),
-            _ => broadcast_text(cell, &[&text], |i, j| {
-                Ok(ArrayNode::String(value_to_text(text.elem(i, j))))
-            }),
+        // The format is lifted over arrays like the text; a scalar error text still prints as
+        // text (`C4`) unless the format is invalid.
+        let operands: Vec<&TextArg> = std::iter::once(&text).chain(format.as_ref()).collect();
+        let element = |i: usize, j: usize| {
+            let strict = format
+                .as_ref()
+                .map_or(Ok(false), |f| self.valuetotext_format(f.elem(i, j)))?;
+            Ok(ArrayNode::String(value_to_text(text.elem(i, j), strict)))
+        };
+        // A scalar error text prints as text, which `broadcast_text` would return as the error.
+        let scalar_format = format.as_ref().is_none_or(|f| f.dims() == (1, 1));
+        match &text {
+            TextArg::Error(..) if scalar_format => match element(0, 0) {
+                Ok(node) => array_node_to_calc_result(&node, cell),
+                Err(e) => CalcResult::new_error(e, cell, String::new()),
+            },
+            _ => broadcast_text(cell, &operands, element),
         }
+    }
+
+    /// Whether VALUETOTEXT's `format` element selects the strict form (1, text quoted). Excel
+    /// accepts a number in `[0, 2)` truncated (`1.9` is 1, `1E-20` is 0, `-0.5` and `2.5` are
+    /// `#VALUE!`), a boolean, a number text and a blank (0); other text is `#VALUE!`
+    /// (probes/valuetotext-format C9:C23, T-1229).
+    fn valuetotext_format(&self, node: &ArrayNode) -> Result<bool, Error> {
+        let f = self.array_node_to_number(node)?;
+        if (0.0..2.0).contains(&f) {
+            Ok(f >= 1.0)
+        } else {
+            Err(Error::VALUE)
+        }
+    }
+}
+
+/// The text VALUETOTEXT gives one element: an error spells out its code, and `strict` (format 1)
+/// quotes text with its embedded quotes doubled, `"a""b"` (probes/valuetotext-format C1:C7).
+fn value_to_text(node: &ArrayNode, strict: bool) -> String {
+    match node {
+        ArrayNode::Error(e) => e.to_string(),
+        ArrayNode::String(s) if strict => format!("\"{}\"", s.replace('"', "\"\"")),
+        other => array_node_to_string(other).unwrap_or_default(),
     }
 }

@@ -5,78 +5,75 @@ still add or remove "Needs owner" entries. PRs no longer append log lines (decis
 of merged work is `git log --first-parent main` plus each task's Outcome, and the steward lists what
 merged since its last run.
 
-## Snapshot — 2026-10-09 (M1 in progress)
+## Snapshot — 2026-10-10 (M1 in progress)
 
 | Suite | Cases | Cells | Bit-exact | Known failures |
 |---|---|---|---|---|
 | ironcalc-calc | 217 | 72,203 | 97.86% | 1,547 |
-| poi | 336 | 27,290 | 97.97% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 570 |
+| poi | 336 | 27,290 | 97.97% (204 cases pending: no formulas, unreadable, or web-vs-desktop conflicts) | 568 |
 | gen-m2 | 30 | 12,000 | 99.62% | 46 |
-| gen-m1 | 15 | 3,750 | 99.79% (M1 exit needs 100%; 8 cells left, all power-operator last-digit, T-0221) | 8 |
-| probes | 353 | 10,527 | 96.48% (4 accepted deviations, 11 cells passed by decision 0042) | 371 |
+| gen-m1 | 15 | 3,750 | 99.79% (M1 exit needs 100%; 8 cells left, all power-operator last-digit: 6 in T-1302, 2 in T-0221) | 8 |
+| probes | 372 | 11,225 | 95.08% (4 accepted deviations, 11 cells passed by decision 0042) | 552 |
 | smoke | 6 | 46 | 100% | 0 |
 | fixtures | 6 | 67 | 100% | 0 |
-| gen-m5 | 10 | 360 | 97.50% (not gated; 1 case times out, T-1197) | not gated |
+| gen-m5 | 10 | 400 | 97.75% (not gated; the T-1197 timeout is fixed, so all 10 cases now run) | not gated |
 | probes-numeric | 27 | 10,129 | 53.82% | not gated |
 
-`make eval` on `main` (2da0c8c). `eval-check` shows 0 regressions in every suite. CI on `main` is green (last completed run, 71bc356; the run on 2da0c8c was still in progress).
-Probes known failures rose 252 → 371 with 86 new probe cases (new coverage, not regressions).
-Frozen M1 probe list (`eval/milestones/m1-probes.txt`): 89 cases, 1,856 cells, 1,845 bit-exact, 12 known failures in 4 cases: error-stored-constants (7 cells: T-1020 spec, T-1221, T-1222), number-text-exponent-digits D8 (T-0938, moved to M1), paren-number-text-forms (3 cells: T-0282, now P1) and multiarea-printarea (load error: T-1193, now P1).
+`make eval-check` on `main` (32dec3cb) shows 0 regressions and 0 baseline fixes in every suite. CI on `main` is green (last completed run, 74a6f3b; the run on 32dec3cb was still in progress).
+Probes known failures went 558 → 552 with 19 new probe cases since the last snapshot (new coverage, not regressions).
+Frozen M1 probe list (`eval/milestones/m1-probes.txt`): 89 cases, 1,858 cells, 1,854 bit-exact, 4 known failures, all in error-stored-constants (the stored #BUSY! kind, T-1222, open as #528). number-text-exponent-digits (T-0938), paren-number-text-forms (T-0282) and multiarea-printarea (T-1193) are fixed.
 
-Hygiene: lint-debt 99 allow entries · duplicated lines 6,835 (ratchet file still 7,158) · oversized files 15 (ratchet file still lists 16; `expressions/parser/mod.rs` is now under the limit).
+Hygiene: lint-debt 99 allow entries · duplicated lines 6,829 (ratchet file still 7,158) · oversized files 15 (ratchet file still lists 16).
 `quality/` is protected, so the next PR that touches it records the drops.
 
-Since the 2026-10-08 snapshot (da9d5d9), 89 PRs merged to `main` through 2da0c8c. 86 were tasks and 3 were task or decision filings (#376, #383, #385). None was reverted.
-- T-0163, T-0229, T-0230, T-0235, T-0276, T-0278, T-0285–T-0287, T-0289
-- T-1013, T-1014, T-1027, T-1036, T-1062–T-1065, T-1068–T-1073, T-1079, T-1082, T-1087, T-1092, T-1096
-- T-1110, T-1117, T-1120, T-1123, T-1124, T-1133–T-1157 (except T-1155)
-- T-1159–T-1161, T-1163, T-1164, T-1166–T-1168, T-1170–T-1173, T-1175, T-1176
-- T-1179, T-1180, T-1182–T-1185, T-1188, T-1192, T-1199, T-1203, T-1205–T-1208
+Since the 2026-10-09 snapshot (89cb400), 33 PRs merged to `main` through 32dec3cb, all tasks. None was reverted.
+- T-0282, T-0292, T-0295, T-0938
+- T-1020, T-1090, T-1158, T-1177, T-1178, T-1193, T-1197, T-1198
+- T-1200, T-1209, T-1210, T-1212, T-1213, T-1215, T-1216, T-1218, T-1220, T-1221, T-1224, T-1226
+- T-1231–T-1234, T-1238, T-1240, T-1243, T-1245, T-1246
 
-Blocked (13): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp);
+Blocked (13, unchanged): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp);
 the M14 desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081, T-1174 (decision 0039).
+T-1099's dependency T-1108 is done, but it found no reproducible model of Excel's root, so the task stays blocked; T-0288 (#508) owns the remaining one-ulp GEOMEAN misses.
 
-**Nightly fuzz is red again, with two new findings.** Run 37881397477 (2026-10-09, b5dd7cd): `xlsx_import` passed (the T-0278 fix holds), and two targets failed.
-- `formula_eval` panicked on `AGGREGATE(Data!H0:I1,0,Data!E1:E6)`. This is the same debug_assert as T-0278 ("Larger-than-1x1 array reached scalar-context cell", now `model.rs:998`), reached through AGGREGATE. I reproduced it locally on 2da0c8c. Filed as T-0296 (P0, functions-math), with the reproducer.
-- `formula_parse` stopped at libFuzzer's 2 GB RSS limit after 2.5M runs. The artifact is the empty input, and the live heap was only 46.6 MB (33.7 MB in ASan quarantine). This looks like RSS growth rather than one bad input, but no leak in our code has been ruled out. Filed as T-1220 (P0, harness).
+**Nightly fuzz is red, with one new finding.**
+- Run 38022063246 (2026-10-10, 3d755e8) first failed on all three targets within 2 s. No runner was ever assigned (runner id 0, no steps, no logs). I re-ran the failed jobs once.
+- On the re-run, `formula_parse` and `xlsx_import` passed, so the T-1220 RSS fix holds.
+- `formula_eval` panicked after 94k runs on `RANK(5,IF(A1:C1>0,A1:CWWW…W1))`. This is the same "Larger-than-1x1 array reached scalar-context cell" debug_assert as T-0278 and T-0296 (now `model.rs:988`), reached through RANK with a non-reference array `ref`.
+- I reproduced it on 32dec3cb and narrowed it to `=RANK(5,IF(A1:C1>0,A1:XFE1))`. Filed as T-1303 (P0, functions-stat). T-0296's AGGREGATE fix (#501) does not cover it.
 
-Open PRs: 5.
-- #330 (T-0411, about 34 h old) is green and approved but about 100 commits behind `main`. I test-merged `main`; `make check` then fails the oversized-file ratchet (`functions/mod.rs` 2388 → 2393). I commented the blocker on the PR and pushed nothing.
-- #314 (T-1100, draft, about 39 h old) is blocked, and its task is blocked on its branch. No action.
-- #409 (T-1155, draft, blocked on T-0916) is about 14 h old, #436 (T-1186, draft, blocked) about 8 h and #461 (T-0953) about 1 h.
+Open PRs: 32. Five are over 24 h old:
+- #330 (T-0411, about 58 h old) is green and approved. Yesterday's blocker, the oversized-file ratchet on `functions/mod.rs`, is gone after `main` moved a test out of that file. I merged `main` into the branch (9dc3c83e) and `make check` passed locally. I commented on the PR and did not merge it, since it belongs to another session.
+- #461 (T-0953, about 26 h old) is green and approved, but it was about 70 commits behind. I merged `main` into the branch (9884daf) and kept both sides of a conflict in a formatter test. `make check` passed locally. I commented on the PR and did not merge it.
+- #314 (T-1100), #409 (T-1155) and #436 (T-1186) are drafts whose tasks are blocked on their branches, with reasons recorded. T-1186 waits on T-1187 (research). No action.
+- The other 27 PRs are less than 24 h old. #528 (T-1222) carries the last 4 cells of the frozen M1 probe list.
 
 Queues at the start of the run:
-- functions: 41 ready. The sonnet buffer is 21.
-- engine: 19 ready. quality 6, perf 7.
-- harness, research and api: 0 ready. research has 7 unclaimed M1 todo tasks, but its lane is busy. harness had 1 M1 todo task.
-- The planner ran for M1. It filed T-1221 (harness, eval adapter loads stored error cells) and T-1222 (engine, the stored #BUSY! kind), cut T-1020 down to its SPEC-0003 amendment (now P1), moved T-0938 into M1 (engine, P1, for number-text-exponent-digits D8), and raised T-1193 and T-0282 to P1. It filed no api tasks: no M1 api scope is left.
-- The gap-triager did not run: functions has 41 ready, and the sonnet buffer is at least 10.
+- functions: 21 ready (18 later in the run, after workers claimed tasks). The sonnet buffer was 13 and fell to 9 during the run.
+- engine, harness, research and api: 0 ready. engine and research still have unclaimed M1 todo tasks, but their lanes are busy. quality 7, perf 7.
+- The planner ran for M1. It filed T-1302 (engine, sonnet, P1): `^` and POWER with integer exponents use right-to-left square-and-multiply. That rule is already VERIFIED in numbers.md, and it clears 6 of the 8 gen-m1 cells. The planner also narrowed T-0221 to non-integer exponents, whose last 2 gen-m1 cells are A41 and A207, and confirmed T-1222 as the owner of the last 4 probe-list cells. It found no M1 scope left for harness, research or api.
+- The gap-triager ran because the sonnet buffer fell below 10 (decision 0021). It filed five sonnet tasks, and the buffer is back to 12 ready:
+  - T-1304 (functions-lookup): MATCH with a fractional match_type between -1 and 0 (2 gen-m2 cells).
+  - T-1305 (research): MATCH cells that the documented search rule does not explain.
+  - Three evidence-gap probes under decision 0031: T-1306 (CODE/UNICHAR edge code points), T-1307 (CLEAN/PROPER) and T-1308 (ISOWEEKNUM/WEEKNUM at year boundaries).
+  - Every other M1/M2 failing-cell group already has a task.
 
-Upstream IronCalc: 9 new commits past 106c587d, now triaged through 6a1d35a6. Three became tasks:
-- 4d38ff0e (quote doubling in conditional-format text rules) became T-0413 (engine, sonnet).
-- 31b0c731 (shared-string index, which removes a quadratic import) became T-0414 (engine, sonnet, P1).
-- b93d4224 (ROUND/TRUNC at 15 significant digits and huge digit counts) became T-0297 (functions-math, probe first).
-- Skipped: 6a1d35a6 (test-only), and the storage refactors 65608f71, c7b71f00, a9975baa, dff5eec8 and fc767b35 (Phase 2 storage and MMULT on number ranges).
+Upstream IronCalc: 1 new commit past 6a1d35a6, now triaged through 8a82396a. 8a82396a (ECMA.CEILING evaluated like CEILING) became T-1301 (functions-math, sonnet, P3, probe first: the function is not in our catalog).
 
 Oracle: excel-graph OK. The fill on ironcalc-calc wrote 0 sidecars (214 skipped). The fill on poi wrote 0 (292 skipped, the same 4 workbook failures as T-0019).
 
-Spot-audit: 2026-10-09, the first weekly audit. I re-reviewed #464 (T-1117), #448 (T-1185) and #453 (T-1092) with every reviewer on opus.
-- Opus approved #464 and #448. On #453, reviewer-quality returned REQUEST_CHANGES.
-- Misses (each finding was missed by the reviewer of the same role at merge time, which runs on the model set in decision 0015):
-  - #453, reviewer-quality (merge-time sonnet): `bind_argument` repeats the INDEX-as-reference rule that `Model::eval_ref_or_index` already owns (directive 3). This is a real defect, now T-1223.
-  - #453, reviewer-excel-fidelity (merge-time opus) and reviewer-architecture (merge-time sonnet): references.md claims more than the probes show (union bindings, erroring arguments, empty elements, other reference-returning functions). Now T-1224.
-  - #464, reviewer-excel-fidelity (merge-time opus) and reviewer-architecture (merge-time sonnet): the parser refuses negated `:`/`#` operands on inference only, while Excel loads negated union operands. T-1216 is raised to P2, with the negated forms first.
-  - #448, reviewer-excel-fidelity (merge-time opus): moving SUBTOTAL's variance codes onto `excel_variance` applies the two-pass switch and overflow `#NUM!` without a SUBTOTAL probe. Now T-0298.
-  - Minor findings that were not filed: #448's four SUBTOTAL variance wrappers could share one function; #464's four parser refusal-error builders could share one helper.
-- The next audit is due 2026-10-16.
+Spot-audit: none this run (not yet due). The last audit, 2026-10-09 (steward PR #466), re-reviewed #464, #448 and #453 on opus; its misses were filed as T-1223, T-1224, T-0298 and the T-1216 priority raise. The next audit is due 2026-10-16.
 
-**Critical lane:** engine, harness, research
+**Critical lane:** engine, research, harness
 
 (Ordered list read by both tier workers, which then fall back to `functions`.
-- M1 exit needs gen-m1 at 100% (8 last-digit cells, T-0221) and the frozen M1 probe list at 100% (12 cells, owned by T-1020/T-1221/T-1222, T-0938, T-0282 and T-1193).
-- engine holds most of that work. harness holds T-1221 (and the T-1220 fuzz P0). research holds the probes that settle open questions.
+- M1 exit needs gen-m1 at 100% and the frozen M1 probe list at 100%.
+  - gen-m1 has 8 last-digit cells left: 6 in T-1302 and 2 in T-0221.
+  - The probe list has 4 cells left, in T-1222 (#528).
+- All of that work is in engine. research holds the remaining M1 probes (T-1131, T-1181, T-1187, T-1250).
+- harness has no M1 exit scope left (T-1096 is in progress), so it now comes after research.
 - api is off the line: no M1 api scope is left.
-- The new fuzz P0 T-0296 is in `functions-math`, which workers reach through `functions` (P0 first). perf stays out: Phase 2.)
+- The fuzz P0s T-0296 (functions-math) and T-1303 (functions-stat) are reached through `functions`, P0 first. perf stays out: Phase 2.)
 
 ## Needs owner
 

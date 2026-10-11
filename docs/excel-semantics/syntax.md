@@ -67,7 +67,8 @@ Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` 
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
-one, so up to 127 nested parentheses or function calls are accepted; union operand lists too
+one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
+`0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
@@ -139,7 +140,7 @@ formula grammar there (they only arise as results, arrays.md).
 fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
 "#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
 Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and `#N/A` is 7, and
-**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` (the general rule is in arrays.md), whichever error it is:
+**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` of direct arguments (SUM ranks a referenced cell's error below a direct argument's error, see "Stored `#BUSY!` behaviors"; the general rule is in arrays.md), whichever error it is:
 `#N/A=#GETTING_DATA` is 7 but `#GETTING_DATA=#N/A` is 8; `#GETTING_DATA+#DIV/0!` is 8 but
 `#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
 `#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
@@ -161,14 +162,28 @@ today's input table plus `#GETTING_DATA` (implemented in T-1010: typed `#GETTING
 typed `#BLOCKED!` is text); T-1016 probes it on desktop; UNVERIFIED. The COUNTIF criterion question
 is settled by T-1012 (information.md): `"#BLOCKED!"` does not match the error.
 Stored `#BUSY!` design: SPEC-0003 "Stored `#BUSY!`" (T-1020). It gets its own kind with ERROR.TYPE 0,
-stays out of the formula, input and criteria tables, and is exported as is (T-1222). Its VALUETOTEXT,
-precedence and COUNTIF criteria are UNVERIFIED (T-1228).
+stays out of the formula, input and criteria tables, and is exported as is (T-1222).
+Stored `#BUSY!` behaviors (probes/error-stored-busy-behaviors, excel-graph 2026-10-10, T-1228; A1 and A4 are
+the stored error, A2 = 1): `VALUETOTEXT(A1)` and `VALUETOTEXT(A1,1)` are the text "#BUSY!" (C1, C3);
+`ARRAYTOTEXT(A1)` is the *error* `#BUSY!`, not text (C2; the same for stored `#N/A`, C17: a single cell that
+only propagates the error, see arrays.md), while `ARRAYTOTEXT(A1:A2,1)` is "{#BUSY!;1}" (C4).
+For the operators the leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2 (C5, C6),
+likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7). SUM differs: `SUM(A1,1/0)` and `SUM(1/0,A1)` are both
+ERROR.TYPE 2 (C11, C12). Rule (probes/sum-error-precedence, excel-graph 2026-10-11, T-1315/T-1314): in SUM an error in a
+*direct* argument (literal `#DIV/0!` or computed `1/0`; `SUM(#N/A,A1)` and `SUM(A1,#N/A)` are both 7) beats an error in a
+referenced cell whichever comes first, for any referenced error kind (`#BUSY!`, `#N/A`, `#VALUE!`), and among referenced
+cells the leftmost wins (`SUM(A1,A2)` 0, `SUM(A2,A1)` 7, `SUM(A3,A4)` 3, `SUM(A4,A3)` 5; `SUM(A1:A2)` is the same as `SUM(A1,A2)`),
+so `#BUSY!` has no special rank. COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
+cells (C13-C15). `IFERROR(A1,"y")` is "y" (C16). `ERROR.TYPE(A1:A2)` spills 0 then `#N/A` (E1:E2).
+`UNIQUE` keeps a stored `#BUSY!` and a stored `#NULL!` as distinct rows and merges equal `#BUSY!`s
+(C18-C20: 2, 3, 3 rows).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315
+Implemented in: math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference errors held back), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every
@@ -182,4 +197,6 @@ Ours: the parsed formula keeps no groups except the levels around a whole `@` op
 (`GroupedRootKind`) and a few cut/union shapes, so the printer re-derives parentheses from precedence: `=A1+(B1)` prints
 `=A1+B1`, `=-(A1)` prints `=-A1`, `=@(A1+(B1))` prints `=@(A1+B1)`. All 18 values match; 14 FORMULATEXT cells differ.
 Status: VERIFIED
+The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
+Design: SPEC-0007 (a `Group` node).
 Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand)

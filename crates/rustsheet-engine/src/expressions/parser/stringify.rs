@@ -853,6 +853,7 @@ fn stringify(
             child,
             written,
             lead,
+            grouped: _,
         } => {
             if export_to_excel {
                 // Redundant operators have already been stripped by
@@ -925,8 +926,7 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
             format!("{x}{kind}{}", paren_if(right, right_wrap))
         }
         OpPowerKind { right, .. } => {
-            // Only these operands print bare; everything else gets parentheses. A unary operand
-            // is bare on the left and parenthesised on the right (unchanged by the T-0190 fold).
+            // Only these print bare, else parenthesised; unary: bare left, wrapped right (T-0190).
             let is_atom = |n: &Node| {
                 matches!(
                     n,
@@ -942,6 +942,7 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
                         | TableNameKind(_)
                         | NamedVariableKind { .. }
                         | WrongRangeKind { .. }
+                        | ImplicitIntersection { .. } // never wrapped (probes/at-power-text)
                 )
             };
             let x = wrap(

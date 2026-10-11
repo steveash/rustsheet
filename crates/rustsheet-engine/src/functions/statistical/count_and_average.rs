@@ -218,7 +218,7 @@ impl Model {
         let mut count = 0.0;
         let mut sum = 0.0;
         for arg in args {
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if let Err(error) =
                         self.for_each_cell_in_areas(&areas, cell, |_, value| match value {

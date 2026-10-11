@@ -103,3 +103,11 @@ def test_undecoded_marker_matches_the_harness_constant() -> None:
     rust = Path(__file__).resolve().parents[2] / "crates/rustsheet-eval/src/xlsx_snapshot.rs"
     m = re.search(r'pub const UNDECODED_RICH_ERROR: &str = "([^"]+)";', rust.read_text())
     assert m and m.group(1) == cli.UNDECODED["v"]
+
+
+def test_invariant_cells_that_vary_between_fills_stay_pending() -> None:
+    values = {"S": {"A1": {"t": "n", "v": 5.0}, "A2": {"t": "n", "v": 0.25}, "A3": {"t": "n", "v": 0.5}}}
+    again = {"S": {"A1": {"t": "n", "v": 5.0}, "A2": {"t": "n", "v": 0.75}, "A3": {"t": "n", "v": 0.9}}}
+    cli._drop_varying_invariants(Path("c.case.json"), ["S!A1", "'S'!$A$2"], values, again)
+    # A3 varies too but is not listed: the harness skips it as volatile whatever the sidecar holds.
+    assert values == {"S": {"A1": {"t": "n", "v": 5.0}, "A3": {"t": "n", "v": 0.5}}}

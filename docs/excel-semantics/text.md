@@ -24,6 +24,44 @@ Evidence: eval/suites/probes/cases/text-b-functions-broadcast.case.json A3:A13 (
 Status: VERIFIED (Excel for the web only)
 Implemented in: `byte_functions.rs` delegates to the twins; `static_analysis.rs` gives them `scalar_arguments` (before T-0271 they were `not_implemented`, so no spill was planned and a fuzz input hit the scalar-context debug_assert).
 
+## Text positions count UTF-16 code units, except in LEFT and RIGHT
+Rule: LEN, MID, FIND, SEARCH, REPLACE and their *B twins count UTF-16 code units, so an emoji
+(a surrogate pair) counts two: `LEN("a😀b")` is 4, `MID("a😀b",2,2)` is "😀", `FIND("b","a😀b")` is
+4, `REPLACE("a😀b",2,2,"x")` is "axb", and a SEARCH `?` matches one unit (`SEARCH("?b","😀b")` is 2,
+`SEARCH("a?b","a😀b")` is `#VALUE!`, `SEARCH("a??b","a😀b")` is 1). LEFT and RIGHT (and LEFTB,
+RIGHTB) instead count characters (code points, not graphemes): `LEFT("a😀b",3)` is "a😀b",
+`LEN(LEFT("a😀b",2))` is 3, `RIGHT("a😀b",2)` is "😀b", `LEFT("e"&UNICHAR(769)&"x",1)` is "e" and
+`LEFT("👍🏽x",1)` is "👍" without its skin-tone modifier. FIND and SEARCH may start inside a pair
+(`FIND("b","😀b",2)` is 3). FIND takes a start one past the end, where only "" is found
+(`FIND("","abc",4)` is 4, `FIND("","",1)` is 1, `FIND("","abc",5)` and `FIND("c","abc",4)` are
+`#VALUE!`), while SEARCH does not (`SEARCH("","abc",4)` and `SEARCH("*","abc",4)` are `#VALUE!`).
+Evidence: probes/text-surrogate-positions A1-A44, B1-B15, C1-C9 (excel-graph, 2026-10-09, T-0249);
+probes/concatenate-limit-spill E7, E13, G97.
+Backend: excel-graph only; excel-desktop not used.
+Status: VERIFIED
+Implemented in: `len_element`, `mid_element`, `find_element` in functions/text/common.rs and
+`replace_element` in functions/text/string_format.rs, through `utf16_slice` and
+`one_char_per_utf16_unit` in functions/text/util.rs; `left_element`/`right_element` count chars.
+Tasks: T-0249
+
+## MID and REPLACE positions inside a surrogate pair keep the lone half
+Rule: a MID or REPLACE position that splits a surrogate pair keeps the lone surrogate:
+`LEN(MID("a😀b",3,2))` is 2 (low surrogate and "b"), `LEN(MID("a😀b",2,1))` is 1,
+`LEN(MID("😀",2,5))` is 1, `LEN(REPLACE("a😀b",3,1,"x"))` is 4, and
+`LEFT("a😀b",2)&MID("a😀b",3,2)` is "a😀", a lone U+DE00, then "b" (LEFT already took the whole
+emoji). `UNICODE` of a lone low surrogate is its code
+(`UNICODE(MID("a😀b",3,1))` is 56832), unlike a lone high one (`#VALUE!`, coercion.md
+"Truncation inside a surrogate pair keeps a lone high surrogate"). LEFT and RIGHT treat a lone
+surrogate as one character and do not pair a lone high surrogate with a following character
+(`LEN(RIGHT(MID("a😀b",2,1)&"x",1))` is 1).
+Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
+2026-10-09, T-0249).
+Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
+a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures).
+Status: DEVIATION (decision 0033)
+Implemented in: `utf16_slice` in functions/text/util.rs
+Tasks: T-0249
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the
@@ -73,6 +111,46 @@ T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
 
+## FIXED drops the sign of a value that rounds to zero
+Rule: FIXED prints no minus sign when the number rounds to zero at the requested decimals: `FIXED(-2,-1,TRUE)` = "0"
+(`EVEN(-0.0001)` is -2).
+Evidence: gen-m6/f94b5b8236742618 Calc!A24 (excel-graph, 2026-10-09, T-1239).
+Ours: "-0" (the sign is taken from the unrounded value). Other shapes (`FIXED(-0.4,0)`) are UNVERIFIED.
+Status: VERIFIED (one cell)
+Tasks: T-1257
+
+## Count and position bounds of LEFT, RIGHT, MID and REPLACE
+Rule: LEFT and RIGHT (and LEFTB) accept any non-negative num_chars, however large: `LEFT("abc",1E+100)` is "abc".
+MID (and MIDB) is `#VALUE!` once start_num or num_chars reaches 2^31 (2^31-1 is fine: `MID("abc",2^31-1,1)` is
+""). REPLACE is `#VALUE!` once start_num or num_chars exceeds 32,767, even past the end of a short text
+(`REPLACE("abc",32768,1,"z")`, `REPLACE(REPT("a",10),11,32768,"z")`; 32,767 is fine and appends).
+A negative count is `#VALUE!`: -1E-300 for LEFT (N18), -1E-15 for RIGHT and MID (B24-D24); 1E-300 counts as 0.
+Evidence: probes/text-count-argument-bounds F-M rows 1-14, F20-F24, N17-N19 (excel-graph, 2026-10-11, T-0219);
+gen-m6/a62335e72e44cb4e Calc!A9 (`REPLACE(-0.0001,123456789.123,3,"a*")` is `#VALUE!`, T-1239).
+Status: VERIFIED. REPLACEB and RIGHTB delegate to REPLACE and RIGHT (unprobed themselves).
+Implemented in: functions/text/common.rs (`mid_element`, `MID_ARGUMENT_LIMIT`), functions/text/string_format.rs
+(`replace_element`, bounded by `MAX_TEXT_UNITS`).
+Tasks: T-0219, T-1258
+
+## LEFT, RIGHT and REPLACE round counts up near an integer
+Rule: LEFT, RIGHT, LEFTB and REPLACE (start_num and num_chars) truncate their numbers, except that a value
+within 2^-22 + 2^-33 (about 2.3842E-7) below an integer counts as that integer: `LEFT(t,1-2^-22-2^-33)`
+is one character, `LEFT(t,1-2^-22-9*2^-36)` none; `REPLACE("abcdef",2.99999999,1,"z")` replaces the 3rd
+character. The bound is absolute, identical below 1, 10, 1000 and 30000, and it is not round-to-nearest
+(0.5 is 0, 2.5 is 2, 0.999999 is 0). MID and MIDB do **not** do this: they truncate exactly, so
+`MID(t,1,1-1E-15)` is "" and `MID(t,1-1E-15,5)` is `#VALUE!` (start below 1). The negative check sees the
+raw value (`LEFT(t,-1E-300)` is `#VALUE!`); REPLACE's start_num < 1 check comes after the rounding
+(`REPLACE(t,1-2E-7,1,"z")` starts at 1, `1-1E-5` is `#VALUE!`). A computed `TRUE-1E-15` count is 1 for LEFT
+(gen-m2/b4392a6514a36ade Calc!A14). Whether other functions (REPT, FIND/SEARCH start_num, CHAR, INDEX)
+share this rounding is UNVERIFIED. The cutoff is known to 2^-36: 2^-22 + 8·2^-36 (= 2^-22 + 2^-33) rounds up, 2^-22 + 9·2^-36 does not;
+the engine takes the bound as exactly 2^-22 + 2^-33, inclusive. Unprobed: REPLACE start_num 32767.9999999 (rounds
+up to 32,768, so the engine gives `#VALUE!`).
+Evidence: probes/text-count-argument-bounds A-D, N-S, T-V, X-Y, Z, AA (excel-graph, 2026-10-11, T-0219).
+Status: VERIFIED
+Implemented in: functions/text/util.rs (`near_integer_count`), used by `left_element`, `right_element`
+(common.rs) and `replace_element` (string_format.rs).
+Tasks: T-0219
+
 ## Text function argument modes
 Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill;
 probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text
@@ -94,6 +172,36 @@ unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
 Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
-lift over ranges (T-1212). Unprobed (T-1229): VALUETOTEXT format 1 on text (Microsoft documents quotes plus doubled embedded quotes), invalid format values, and a lifted format (`VALUETOTEXT(A1,{0,1})`); we ignore the format and never lift it.
+lift over ranges (T-1212). VALUETOTEXT's format (probes/valuetotext-format, excel-graph, T-1229): 1 quotes text and doubles embedded quotes (`"a""b"`; empty text is `""`), while a blank cell is empty, numbers, booleans and errors print as in format 0 (an error spells out, `#N/A`). The format is coerced to a number like any argument (`"1"`, TRUE and a blank cell work; other text is `#VALUE!`); a value in `[0, 2)` is truncated (`1.9` is 1, `1E-20` is 0), and anything else, `2`, `2.5`, `-0.5`, `-1`, is `#VALUE!`; an error format is returned as it is when the value is plain text; which error wins when the value is an error or the format is invalid as well, and a format given as a range reference, are UNVERIFIED (T-1288). The format lifts over arrays like the value (`VALUETOTEXT(A1:A2,{0,1})` is 2x2, `VALUETOTEXT(A1,{0,1})` 1x2). Ours: matches.
 Status: VERIFIED (excel-graph)
 Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248
+
+## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
+Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
+function argument modes"), and numbers and booleans in it raise no error. VERIFIED: a 2-row range is accepted
+(`TEXTBEFORE("",C3:D3)` with C3:D3 = TRUE, 1E+15 is `#N/A`, nothing found; `TEXTSPLIT("#N/A",B4,B11:B12)` with row
+delimiters 1E+15, TRUE is not an error); `TEXTAFTER("TRUE",A5:D6)` (A5 = "TRUE") is text that is not a reference
+(`INDIRECT` of it is `#REF!`), inferred to be "" since "TRUE" matches at the start; `TEXTBEFORE("a*",C1:D11)` is "".
+UNVERIFIED: whether a blank cell in the range is an empty delimiter (in `TEXTBEFORE("a*",C1:D11)` the "a" in C5 matches at
+the start anyway) and whether numbers and booleans match as their text; T-1361 probes both first.
+Evidence: gen-m7/8ed8a680e9794b77 Calc!A17, A26; gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, 2026-10-11, T-1275).
+Ours: a one-row range of text delimiters works; a multi-row range, or one holding a blank or a boolean, is `#VALUE!`.
+Status: VERIFIED (web) for the listed cells; blank and number/boolean matching UNVERIFIED
+Tasks: T-1361
+
+## TEXTSPLIT of empty text is #VALUE!
+Rule: `TEXTSPLIT("","a","TRUE")` is `#VALUE!`: in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the result is `#VALUE!`, which
+the comparison cannot produce from a blank and text. (TEXTBEFORE("",x) is `#N/A` instead, see the entry above.)
+Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275).
+Ours: "" (so the comparison is FALSE).
+Status: VERIFIED (web) for this form; a blank cell as the text and `TEXTSPLIT("",",")` alone are UNVERIFIED
+Tasks: T-1347
+
+## ARRAYTOTEXT number text
+Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
+`ARRAYTOTEXT(YEARFRAC(1911,31142))` is "80.0277777777778".
+Evidence: gen-m7/d38b52bfa1a9f9e6 Calc!A2 (excel-graph, 2026-10-11, T-1275).
+Ours: Rust's shortest round-trip text ("80.02777777777777"; `ARRAYTOTEXT(1/3)` "0.3333333333333333", `ARRAYTOTEXT({1E+20})`
+"100000000000000000000").
+Status: VERIFIED (web)
+Tasks: T-1356

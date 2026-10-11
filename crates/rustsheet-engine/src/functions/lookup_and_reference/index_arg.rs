@@ -9,6 +9,7 @@ use crate::{
 /// The row/column index argument of VLOOKUP/HLOOKUP, read before the search but validated only
 /// after a match (docs/excel-semantics/lookup.md "VLOOKUP/HLOOKUP search before validating the
 /// index").
+#[derive(Clone)]
 pub(super) enum LookupIndexArg {
     /// A value argument, already coerced to a number (a failed coercion fails at once).
     Number(f64),

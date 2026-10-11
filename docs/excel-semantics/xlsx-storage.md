@@ -10,7 +10,8 @@ Evidence: probes/multiarea-printarea H1:H2 (excel-graph, 2026-10-07; its spec2xl
 the unprefixed form). The prefixed spelling is ECMA-376 Part 1 (`definedName`); no oracle case
 stores it yet.
 Status: VERIFIED (unprefixed); prefixed form per ECMA-376
-Implemented in: crates/rustsheet-xlsx/src/util.rs (`name_from_xlsx`, `name_to_xlsx`), T-1193; only Print_Area, Print_Titles and _FilterDatabase are mapped, the other ECMA built-ins load as written (T-1250).
+Implemented in: crates/rustsheet-xlsx/src/util.rs (`name_from_xlsx`, `name_to_xlsx`), T-1193; only Print_Area, Print_Titles and _FilterDatabase are mapped, the other ECMA built-ins load as written.
+Open (T-1250 found no evidence): no Excel-saved workbook in the repo or the oracle holds an `_xlnm.` name (checked all 264 tracked/untracked `.xlsx`), and excel-graph cannot save a workbook, so whether a user-defined `Criteria`/`Database`/`Extract` saves with the prefix, whether `ROWS(_FilterDatabase)` resolves under an AutoFilter, and what Excel writes for both `_xlnm.Print_Area` and plain `Print_Area` in one scope are unanswered. The mapping stays narrow on purpose; a desktop-Excel save is needed (M14, Phase 4, decision 0039).
 
 ## Control characters in text are stored as `_xHHHH_`
 Characters invalid in XML 1.0 (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F) are written as
@@ -107,6 +108,46 @@ Status: VERIFIED
 Implemented in: not yet. The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
 Tasks: T-0040, T-1089
+
+## Written parentheses are stored as written; `@(x)` is `_xlfn.SINGLE((x))`
+Rule: the stored `<f>` text keeps every redundant parenthesis as written. A group directly after `@`
+stays inside SINGLE's own parentheses:
+
+| Entered | Stored `<f>` |
+|---|---|
+| `=Z1+(Z2)` | `Z1+(Z2)` |
+| `=((Z1))` | `((Z1))` |
+| `=-(Z1)` | `-(Z1)` |
+| `=IF((Z1>0),(Z2),Z3)` | `IF((Z1&gt;0),(Z2),Z3)` |
+| `=(Z1^2)^3` | `(Z1^2)^3` |
+| `=SUM((Z1:Z2))` | `SUM((Z1:Z2))` |
+| `=(1)+((2))` | `(1)+((2))` |
+| `=@(Z1+(Z2))` | `_xlfn.SINGLE((Z1+(Z2)))` |
+
+The Graph range API reads the formulas back exactly as entered.
+Evidence: formulas entered through the Graph range API and the file Excel for the web saved
+(excel-graph, 2026-10-11, T-1244).
+Ours: export prints from the parse tree, which drops most groups (syntax.md "FORMULATEXT keeps every
+written parenthesis"), so `=Z1+(Z2)` is stored `Z1+Z2` and `=@(Z1+(Z2))` is stored `_xlfn.SINGLE(Z1+Z2)`.
+Status: VERIFIED (web)
+Implemented in: not yet (SPEC-0007).
+Tasks: T-1244
+
+## LAMBDA optional parameters are stored `_xlop.`
+Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
+it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
+`_xlfn.LAMBDA(_xlpm.x,_xlop.y,_xlfn.ISOMITTED(_xlpm.y))(1)` (as an array formula, `t="array"`).
+A file that stores `[_xlpm.y]` instead is refused by Excel for the web as corrupt
+(`FileCorruptTryRepair`, T-1083). FORMULATEXT shows the typed form `=LAMBDA(x,[y],ISOMITTED(y))(1)`.
+Evidence: formulas entered through the Graph range API and the file Excel for the web saved
+(excel-graph, 2026-10-11, T-1274), sheet1.xml:
+`<f t="array" ref="A1">_xlfn.LAMBDA(_xlpm.x,_xlop.y,_xlfn.ISOMITTED(_xlpm.y))(1)</f>` and
+`<f t="array" ref="A3">_xlfn.LAMBDA(_xlpm.x,_xlop.y,IF(_xlfn.ISOMITTED(_xlpm.y),_xlpm.x,_xlpm.x+_xlpm.y))(1)</f>`;
+probes/lambda-optional-params B1 (FORMULATEXT).
+Status: VERIFIED (web)
+Implemented in: engine import (expressions/parser/lambda.rs) and export (stringify.rs) already use
+`_xlop.`; the case builder writes it since T-1274 (spec2xlsx.py `prefix_bound_names`).
+Tasks: T-1083, T-1274
 
 ## Cells and rows without r are positional
 Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
