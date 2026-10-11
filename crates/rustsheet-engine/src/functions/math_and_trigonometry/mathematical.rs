@@ -202,24 +202,29 @@ impl Model {
         self.sum_ifs(args, cell, true)
     }
 
-    /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
-    /// (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
+    /// ROUND, ROUNDUP, ROUNDDOWN and TRUNC: `(number, num_digits)`, rounded in
+    /// decimal (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
+    /// TRUNC alone may omit `num_digits` (0).
     fn round_family(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         mode: RoundMode,
+        min_args: usize,
     ) -> CalcResult {
-        if args.len() != 2 {
+        if !(min_args..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
         let value = match self.get_number(&args[0], cell) {
             Ok(f) => f,
             Err(s) => return s,
         };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
+        let number_of_digits = match args.get(1) {
+            Some(arg) => match self.get_number(arg, cell) {
+                Ok(f) => f,
+                Err(s) => return s,
+            },
+            None => 0.0,
         };
         match round_decimal(value, number_of_digits, mode) {
             Some(result) => CalcResult::Number(result),
@@ -228,15 +233,22 @@ impl Model {
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::HalfAwayFromZero)
+        self.round_family(args, cell, RoundMode::HalfAwayFromZero, 2)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Up)
+        self.round_family(args, cell, RoundMode::Up, 2)
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Down)
+        self.round_family(args, cell, RoundMode::Down, 2)
+    }
+
+    /// TRUNC is ROUNDDOWN with an optional `num_digits`: Excel cuts to 15 digits
+    /// first and wraps huge digit counts the same way (docs/excel-semantics/numbers.md
+    /// "TRUNC is ROUNDDOWN", probes/trunc-decimal-stages).
+    pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_family(args, cell, RoundMode::Down, 1)
     }
 
     // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
@@ -547,42 +559,6 @@ impl Model {
         }
         let result = (value / multiple).round() * multiple;
         CalcResult::Number(result)
-    }
-
-    pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let num_digits = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => {
-                    if f > 0.0 {
-                        f.floor()
-                    } else {
-                        f.ceil()
-                    }
-                }
-                Err(s) => return s,
-            }
-        } else {
-            0.0
-        };
-        if !(-15.0..=15.0).contains(&num_digits) {
-            return CalcResult::Number(value);
-        }
-        let v = if value >= 0.0 {
-            f64::floor(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        } else {
-            f64::ceil(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        };
-        if value.is_finite() && v.is_infinite() {
-            return CalcResult::Number(value);
-        }
-        CalcResult::Number(v)
     }
 
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
