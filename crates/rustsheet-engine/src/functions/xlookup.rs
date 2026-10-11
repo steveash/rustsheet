@@ -157,7 +157,8 @@ fn xlookup_pick_array(
     pick: XlookupPick,
     cell: CellReferenceIndex,
 ) -> CalcResult {
-    let out_of_range = || CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string());
+    let out_of_range =
+        || CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string());
     let node = if vertical {
         match returns.get(index) {
             Some(row) if row.len() > 1 && matches!(pick, XlookupPick::Whole { .. }) => {
@@ -243,8 +244,13 @@ impl Model {
         return_node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<XlookupTable, CalcResult> {
-        let same_size =
-            || CalcResult::new_error(Error::VALUE, cell, "Arrays must be of the same size".to_string());
+        let same_size = || {
+            CalcResult::new_error(
+                Error::VALUE,
+                cell,
+                "Arrays must be of the same size".to_string(),
+            )
+        };
         match self.evaluate_node_in_context(lookup_node, cell) {
             CalcResult::Range { left, right } => {
                 let vertical = if left.row == right.row {
@@ -259,19 +265,18 @@ impl Model {
                         "Second argument must be a vector".to_string(),
                     ));
                 };
-                let (result_left, result_right) = match self
-                    .evaluate_node_in_context(return_node, cell)
-                {
-                    CalcResult::Range { left, right } => (left, right),
-                    error @ CalcResult::Error { .. } => return Err(error),
-                    _ => {
-                        return Err(CalcResult::new_error(
-                            Error::VALUE,
-                            cell,
-                            "Range expected".to_string(),
-                        ))
-                    }
-                };
+                let (result_left, result_right) =
+                    match self.evaluate_node_in_context(return_node, cell) {
+                        CalcResult::Range { left, right } => (left, right),
+                        error @ CalcResult::Error { .. } => return Err(error),
+                        _ => {
+                            return Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Range expected".to_string(),
+                            ))
+                        }
+                    };
                 // A column lookup vector accepts a return range with any number of columns
                 // (poi/xlookup.xlsx Sheet1!C2), a row vector one with any number of rows
                 // (probes/xlookup-array-lookup-value-args C33).
@@ -485,9 +490,12 @@ impl Model {
                 .unwrap_or(u64::MAX)
                 .max(1)
         });
-        self.lift_with_cost(criteria, |_| cost, cell, |model, values| {
-            model.xlookup_one(values, &table, &if_not_found, pick, cell)
-        })
+        self.lift_with_cost(
+            criteria,
+            |_| cost,
+            cell,
+            |model, values| model.xlookup_one(values, &table, &if_not_found, pick, cell),
+        )
     }
 
     /// XLOOKUP's if_not_found (`#N/A` when omitted or empty). A range stays a reference in the
@@ -508,21 +516,18 @@ impl Model {
             None => CalcResult::EmptyArg,
         };
         match value {
-            CalcResult::EmptyArg => {
-                CalcResult::new_error(Error::NA, cell, "Not found".to_string())
-            }
+            CalcResult::EmptyArg => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
             CalcResult::Range { .. } if lifts => CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Reference if_not_found with an array lookup_value".to_string(),
             ),
-            CalcResult::Array(rows) if lifts => rows
-                .first()
-                .and_then(|row| row.first())
-                .map_or_else(
+            CalcResult::Array(rows) if lifts => {
+                rows.first().and_then(|row| row.first()).map_or_else(
                     || CalcResult::new_error(Error::VALUE, cell, "Empty array".to_string()),
                     |node| array_node_to_calc_result(node, cell),
-                ),
+                )
+            }
             other => other,
         }
     }
