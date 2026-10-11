@@ -24,9 +24,8 @@ T-1302 applies right-to-left square-and-multiply to every finite integer exponen
 -
 
 ## Outcome
-Four probe cases (`probes-numeric/power-large-integer-exponents{,-2,-3,-4}`, 397 oracle cells)
+Four probe cases (`probes-numeric/power-large-integer-exponents{,-2,-3,-4}`, about 450 oracle cells)
 showed Excel differs from the T-1302 rule in three places, now implemented: subnormal results
 flush to 0, a negative base with |n| >= 2^32 - 1 is `#NUM!`, and base 10 with |n| >= 23 is the
 correctly rounded `1En` (or its reciprocal). See numbers.md "Integer exponents beyond 360".
-All 397 cells pass; three cells with non-integer exponents of 10 were left out of the probe
-(unexplained last-digit differences, recorded in numbers.md).
+All cells pass except the three non-integer `10^x` cells, which stay as known failures (follow-up T-1319).

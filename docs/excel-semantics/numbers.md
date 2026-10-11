@@ -668,10 +668,11 @@ Rule: the square-and-multiply rule above holds for every integer exponent tried 
 every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2`, `3`, `5`, `7`,
 `13`, `20`, `50`, `100`, `1000`, `1E5`, `1E15`, `-10`, `-1.5`, negative n by `1/`). Four additions:
 1. A result below 2.2250738585072014E-308 (subnormal) is 0, not the subnormal: `0.1^310`,
-   `0.5^1074`, `(-0.5)^1073`, `2^-1074`, `10^-308`, `10^-4294967296` are all 0.
+   `0.5^1074`, `(-0.5)^1073`, `2^-1074`, `10^-308`, `10^-4294967296` are all 0 (`=(x)=0` companion
+   cells are TRUE, so it is a flush and not a kept subnormal; decision 0042).
 2. A negative base with |n| >= 2^32 - 1 = 4294967295 is `#NUM!` for every such n, whatever the
    result would be: `(-1)^4294967295`, `(-0.5)^4294967296` (an underflow), `(-1)^-4294967296`;
-   `(-1)^4294967294` is 1 and `(-0.9999999999)^3000000000` is 0.7408182005096358. A positive
+   `(-1)^4294967294` is 1 and `(-0.9999999999)^3000000000` is 0.7408182005096358. The limit is probed up to 2^53; larger exponents are treated the same, unverified. A positive
    base has no such limit (`0.5^9007199254740992` = 0, `1^9007199254740992` = 1).
 3. Base exactly 10 with |n| >= 23 is the nearest double to the decimal `1En` (`10^33` = 1E+33,
    `10^100`, `10^300`, `10^275` = 1E+275 where square-and-multiply drifts), and a negative n is
@@ -679,12 +680,13 @@ every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2
    `10^-300` = 1E-300). `10^23` equals both. Bases `100`, `1000`, `-10`, `0.1` and `20`
    are plain square-and-multiply: `(-10)^33` = -1.0000000000000001E+33, `100^100` = 1.0000000000000005E+200.
 4. Overflow is `#NUM!` as before (`100^200`, `1E15^23`, `10^309`).
-Not explained: non-integer exponents of 10 differ from libm in the last digits (`10^33.5` =
+Not explained (T-1319): non-integer exponents of 10 differ from libm in the last digits (`10^33.5` =
 3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` = 3.1622776601683576E-34).
 Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
-2026-10-11, T-1311).
+2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
 Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
-Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly)
+Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly; the base-10
+rule is sampled at about 20 exponents in 23..=308 and inferred between them)
 Tasks: T-1311
 
 ## ROUND family with huge num_digits

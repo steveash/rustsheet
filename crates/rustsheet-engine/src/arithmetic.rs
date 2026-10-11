@@ -152,22 +152,8 @@ fn integer_power(x: f64, y: f64) -> Option<f64> {
     if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
         return None;
     }
-    let mut result = match decimal_power_of_ten(x, y.abs()) {
-        Some(power) => power,
-        None => {
-            let mut remaining = y.abs();
-            let mut base = x;
-            let mut result = 1.0_f64;
-            while remaining >= 1.0 {
-                if remaining % 2.0 == 1.0 {
-                    result *= base;
-                }
-                base *= base;
-                remaining = (remaining / 2.0).floor();
-            }
-            result
-        }
-    };
+    let mut result =
+        decimal_power_of_ten(x, y.abs()).unwrap_or_else(|| square_and_multiply(x, y.abs()));
     if y < 0.0 {
         result = 1.0 / result;
     }
@@ -180,6 +166,21 @@ fn integer_power(x: f64, y: f64) -> Option<f64> {
     } else {
         result
     })
+}
+
+/// `x^n` for a non-negative integer `n` <= 2^53 by scanning the bits of `n` from the low end.
+fn square_and_multiply(x: f64, n: f64) -> f64 {
+    let mut remaining = n;
+    let mut base = x;
+    let mut result = 1.0_f64;
+    while remaining >= 1.0 {
+        if remaining % 2.0 == 1.0 {
+            result *= base;
+        }
+        base *= base;
+        remaining = (remaining / 2.0).floor();
+    }
+    result
 }
 
 /// `10^n` for an integer `n` in 23..=308 as the nearest double to the decimal `1En`, which is what

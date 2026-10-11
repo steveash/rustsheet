@@ -333,3 +333,13 @@ fn huge_integer_exponents_and_subnormal_results() {
         );
     }
 }
+
+#[test]
+fn powers_of_minus_ten_keep_the_square_and_multiply_digits() {
+    // The 15-digit display of `(-10)^33` hides that it is -1.0000000000000001E+33, not -1E+33.
+    assert_eq!(
+        crate::arithmetic::power(-10.0, 33.0),
+        Ok(-1.000_000_000_000_000_1e33)
+    );
+    assert_eq!(crate::arithmetic::power(10.0, 33.0), Ok(1e33));
+}
