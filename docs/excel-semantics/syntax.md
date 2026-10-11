@@ -209,7 +209,7 @@ More shapes (probes/formulatext-written-groups-shapes, excel-graph 2026-10-11, T
 Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, so the
 plain-operator cells match. The groups the `@` fields still track (an inner group that starts an `@` operand,
 `=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`, and a group around a whole `@`) print as before until T-1343.
-All 18 values match; 3 FORMULATEXT cells differ (F11, F13, F14).
+All 18 values of the T-1178 probe match; 3 of its FORMULATEXT cells differ (F11, F13, F14). The T-1380 shapes above are separate from that count.
 Status: VERIFIED
 The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
 Design: SPEC-0007 (a `Group` node).
