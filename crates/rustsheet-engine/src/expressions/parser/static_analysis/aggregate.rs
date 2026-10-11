@@ -53,8 +53,11 @@ fn is_read_reference(arg: &Node) -> bool {
         // `SUBTOTAL(9,TAKE(SEQUENCE(4),2))` is two `#VALUE!`, probes/subtotal-reference-operands-d
         // J4:J5, T-1211).
         Node::FunctionKind { kind, args } if kind.picks_reference() => {
-            let picked = if *kind == Function::Xlookup { 2 } else { 0 };
-            !matches!(args.get(picked), Some(Node::ArrayKind(_)))
+            if *kind == Function::Xlookup {
+                !matches!(args.get(2), Some(Node::ArrayKind(_)))
+            } else {
+                args.first().is_some_and(is_reference_operand)
+            }
         }
         _ => false,
     }
