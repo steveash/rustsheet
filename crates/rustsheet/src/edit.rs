@@ -508,8 +508,13 @@ impl Txn<'_> {
             col: range.left,
         };
         self.log_cell(sheet, (range.sheet.get(), row, col), cell)?;
+        let mut style = self
+            .model
+            .get_style_for_cell(sheet, row, col)
+            .map_err(EditError::Engine)?;
+        style.num_fmt = format.to_string();
         self.model
-            .set_cell_number_format(sheet, row, col, format)
+            .set_cell_style(sheet, row, col, &style)
             .map_err(EditError::Engine)
     }
 

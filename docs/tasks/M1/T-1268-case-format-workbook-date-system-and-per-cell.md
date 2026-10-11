@@ -29,7 +29,7 @@ the engine side reads the flag through T-1267.
 - Engine behavior changes (T-1105).
 
 ## Outcome
-- Case format (rustsheet-case/v1) gains top-level `date_system` (1900/1904) and per-sheet `number_formats`. spec2xlsx writes them (`date_1904`, cell `numFmt`); the engine adapter applies them through `WorkbookOptions::date_system` and a new facade `Txn::set_number_format` (engine `Model::set_cell_number_format`). Documented in docs/architecture/eval-harness.md, with builder, adapter and facade tests.
+- Case format (rustsheet-case/v1) gains top-level `date_system` (1900/1904) and per-sheet `number_formats`. spec2xlsx writes them (`date_1904`, cell `numFmt`); the engine adapter applies them through `WorkbookOptions::date_system` and a new facade `Txn::set_number_format` (over the engine's existing `set_cell_style`). Documented in docs/architecture/eval-harness.md, with builder, adapter and facade tests.
 - The oracle canary's date cell (A5) assumed 1900 serials and refused every 1904 workbook. It is now `DATEVALUE("1/2/2001")-DATEVALUE("1/1/2001")` = 1 (31 when day-first), which passed live in both systems.
 - New probes probes/date-system-1900-negatives and probes/date-system-1904-negatives (18 questions each, excel-graph). Findings are in dates.md "The 1904 date system": negatives keep a minus in 1904 for all tokens; `[s]`-only formats print negatives in 1900 too. Cell display cannot be probed through excel-graph.
 - Eval delta: +2 cases, 17 new-coverage known failures (1900: 6, 1904: 11), no regressions. Follow-ups: T-1329 (`[s]` "-0"), T-1330 (1904 epoch in date functions and TEXT tokens; SPEC-0005 step 4).
