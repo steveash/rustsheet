@@ -1,0 +1,37 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "LAMBDA optional parameters ([y]) and ISOMITTED: omitted, passed, empty argument, value of an omitted parameter (T-1274)",
+  "tags": [
+    "M7",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LAMBDA(x,[y],ISOMITTED(y))(1)",
+        "A2": "=LAMBDA(x,[y],ISOMITTED(y))(1,2)",
+        "A3": "=LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))(1)",
+        "A4": "=LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))(1,2)",
+        "A5": "=LAMBDA(x,[y],ISOMITTED(y))(1,)",
+        "A6": "=LAMBDA(x,[y],y)(1)",
+        "A7": "=LAMBDA(x,[y],y&\"|\")(1)",
+        "A8": "=LAMBDA([x],[y],ISOMITTED(x)+ISOMITTED(y))()",
+        "B1": "=FORMULATEXT(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A2",
+    "Sheet1!A3",
+    "Sheet1!A4",
+    "Sheet1!A5",
+    "Sheet1!A6",
+    "Sheet1!A7",
+    "Sheet1!A8",
+    "Sheet1!B1"
+  ]
+}
