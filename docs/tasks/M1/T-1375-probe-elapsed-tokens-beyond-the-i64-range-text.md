@@ -3,7 +3,7 @@ id: T-1375
 title: "Probe elapsed tokens beyond the i64 range (TEXT(1E15,'[s]'), TEXT(1E300,'[s]'))"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
