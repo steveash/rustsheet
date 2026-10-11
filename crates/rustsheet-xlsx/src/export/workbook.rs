@@ -31,7 +31,7 @@ use std::collections::HashMap;
 
 use rustsheet_engine::expressions::parser::{new_parser_english, stringify::to_excel_string};
 use rustsheet_engine::expressions::types::CellReferenceRC;
-use rustsheet_engine::types::{SheetState, Workbook};
+use rustsheet_engine::types::{DateSystem, SheetState, Workbook};
 
 use super::escape::escape_xml;
 use super::xml_constants::XML_DECLARATION;
@@ -113,10 +113,16 @@ pub(crate) fn get_workbook_xml(
         ))
     }
 
+    // Only the 1904 system is written; a 1900 export stays byte-identical (SPEC-0005).
+    let workbook_pr = match workbook.settings.date_system {
+        DateSystem::Excel1904 => "<workbookPr date1904=\"1\"/>",
+        DateSystem::Excel1900 => "",
+    };
     let sheets = sheets_str.join("");
     let defined_names = defined_names_str.join("");
     Ok(format!("{XML_DECLARATION}\n\
     <workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">\
+    {workbook_pr}\
     <bookViews>
     <workbookView activeTab=\"{selected_sheet}\"/>\
     </bookViews>

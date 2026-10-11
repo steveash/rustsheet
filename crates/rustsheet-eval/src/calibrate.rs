@@ -76,6 +76,7 @@ mod tests {
     use super::*;
     use crate::cellref::Addr;
     use crate::xlsx_snapshot::{CellSnapshot, FormulaKind, SheetSnapshot};
+    use rustsheet_engine::types::DateSystem;
     use std::collections::BTreeMap;
 
     fn workbook(cells: &[(&str, Option<&str>, Value)]) -> WorkbookSnapshot {
@@ -93,7 +94,7 @@ mod tests {
         WorkbookSnapshot {
             application: None,
             app_version: None,
-            date1904: false,
+            date1904: DateSystem::default() == DateSystem::Excel1904,
             sheets: vec![SheetSnapshot {
                 name: "S".into(),
                 cells: map,
