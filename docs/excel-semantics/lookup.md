@@ -270,8 +270,9 @@ from the evaluated length on is blank), not walk it.
 Rule: with a column lookup vector, a return range with the same number of rows and several columns
 returns the whole matched row: `XLOOKUP(8389,B5:B14,C5:D14)` is the 1x2 array
 {"Dianne Pugh","Finance"}.
-Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2. Unprobed: the row-vector
-analog and array (non-range) return arguments.
+The row-vector analog holds: a row lookup vector over a taller return range returns the matched
+column (`XLOOKUP("b",F1:H1,F2:H3)` spills 20; 200, probes/xlookup-array-lookup-value-args C33).
+Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2. Unprobed: array (non-range) return arguments.
 Status: VERIFIED (Excel-cached)
 Open (unprobed, T-0962): reference-vs-array result (ISREF, implicit intersection by column, a blank matched cell
 spilling as 0), `@`/nesting such as `UPPER(XLOOKUP(2,A1:A3,B1:C3))`, a one-cell lookup vector with a wide
@@ -284,7 +285,7 @@ probes/xlookup-array-return (excel-graph): an array return_array gives its eleme
 array return_array, including match modes -1/1 (E9-E15); search modes 1 and -1 explicit (E22-E24). Shape rules: a 2-D lookup array is
 `#VALUE!` (E8); the return_array needs the lookup array's row count, so a column lookup array with a row return (E16), a row lookup array
 with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider return_array and gives the
-matched row (E7, E19, E20). Still unprobed: an error or scalar return_array, wildcard match mode with a binary search mode, and a 2-D *range* lookup_array (the engine answers `#ERROR!` there, `#VALUE!` for an array).
+matched row (E7, E19, E20). Still unprobed: an error or scalar return_array, and wildcard match mode with a binary search mode. A 2-D *range* lookup_array is `#VALUE!` as well (probes/xlookup-array-lookup-value-args A15, per element).
 Tasks: T-0948
 
 ## XMATCH / XLOOKUP binary search over runs of equal values
@@ -360,8 +361,12 @@ Tasks: T-1260
 
 ## XLOOKUP with an array lookup_value looks up each element
 `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
-The result has the shape of `lookup_value` (column, row or 2-D array, or a multi-cell range such as `Data!D1:D3`; a whole column gives a 1048576-row result), each element looked up by the scalar rules: an element not found is `#N/A` (or `if_not_found`), an error element is itself (`{2;#DIV/0!;"x"}` is two, `#DIV/0!`, `#N/A`), and `match_mode` applies per element. An element is a value, never a reference (`ISREF` is FALSE). With a return range wider than the lookup column, each element keeps only the first cell of its matched row: `XLOOKUP({2;3},A1:A4,C1:E4)` is 12, 13 in one column.
-Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252) and probes/xlookup-array-lookup-value (excel-graph, 2026-10-10, T-1264).
-Ours: implemented through the shared lift (`xlookup_impl`).
+The result has the shape of `lookup_value` (column, row or 2-D array, or a multi-cell range such as `Data!D1:D3`; a whole column gives a 1048576-row result), each element looked up by the scalar rules: an element not found is `#N/A` (or `if_not_found`), an error element is itself (`{2;#DIV/0!;"x"}` is two, `#DIV/0!`, `#N/A`), and `match_mode` applies per element. An element is a value, never a reference (`ISREF` is FALSE). With a return range wider than the lookup column, each element keeps only the first cell of its matched row: `XLOOKUP({2;3},A1:A4,C1:E4)` is 12, 13 in one column (`COLUMNS` is 1, against 3 for the scalar `XLOOKUP(2,...)`); likewise a row lookup over a taller return range keeps the first row (`XLOOKUP({"b";"c"},F1:H1,F2:H3)` is 20, 30).
+`match_mode` and `search_mode` lift too, pairwise with `lookup_value`: `XLOOKUP({2.5;2.5},A1:A4,B1:B4,,{0;-1})` is `#N/A`, "two" and `XLOOKUP({1;1},{1;1},{"f";"l"},,0,{1;-1})` is "f", "l". Search modes 2 and -2, reverse search, wildcards and an array lookup_array all work per element.
+Argument errors do not collapse the result: every element gets the error, in the scalar order. A lookup_value error element comes first (`XLOOKUP({2;#N/A},..,,5)` is `#VALUE!`, `#N/A`), then a bad match_mode or search_mode (`5`, `1/0`, search_mode `3` are `#VALUE!`, `#DIV/0!`, `#VALUE!` per element), then a lookup_array or return_array error or shape mismatch (`1/0` either way is `#DIV/0!` per element; a return range of another length or a 2-D *range* lookup_array is `#VALUE!` per element). An error `if_not_found` shows only where nothing matches (`XLOOKUP({2;9},..,1/0)` is "two", `#DIV/0!`; with a bad match_mode as well the match_mode error wins).
+Quirk: under a lifted lookup_value an array `if_not_found` is not lifted but gives its first element (`XLOOKUP({2;9},A1:A4,B1:B4,{"x";"y"})` is "two", "x"), and a reference `if_not_found`, even one cell, is `#VALUE!` where it applies (`XLOOKUP({9;2},..,Data!C1)` and `..,Data!C1:C2)` are `#VALUE!`, "two"), while the scalar `XLOOKUP(9,..,Data!C1:C2)` spills 11, 12.
+DEVIATION (decision 0014, CLAUDE.md directive 5): each element is charged one search of the lookup vector (its evaluated cells, so a whole column costs its used area) against the shared cell-visit cap of criteria.md; `ROWS(XLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576),SEQUENCE(1048576)))` is `#ERROR!` where Excel computes it.
+Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252), probes/xlookup-array-lookup-value and probes/xlookup-array-lookup-value-args (excel-graph, 2026-10-10 and 2026-10-11, T-1264).
+Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_with_cost`, evaluating the table once (`xlookup_table`).
 Status: VERIFIED (web)
 Tasks: T-1252, T-1264

@@ -1,0 +1,77 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "XLOOKUP with an array lookup_value: argument errors, array if_not_found, 2-D return with a row lookup_array, binary and reverse search, array lookup_array, whole-column ranges (T-1264).",
+ "tags": [
+  "M1",
+  "probe",
+  "lookup",
+  "T-1264"
+ ],
+ "sheets": [
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=COLUMNS(XLOOKUP({2;3},Data!A1:A4,Data!C1:E4))",
+    "B1": "=COLUMNS(XLOOKUP(2,Data!A1:A4,Data!C1:E4))",
+    "A3": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,,5)",
+    "A6": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,,1/0)",
+    "A9": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,,0,3)",
+    "A12": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B3)",
+    "A15": "=XLOOKUP({2;3},Data!A1:B4,Data!B1:B4)",
+    "A18": "=XLOOKUP({2;9},Data!A1:A4,Data!B1:B4,1/0)",
+    "A21": "=XLOOKUP({2;3},1/0,Data!B1:B4)",
+    "A24": "=XLOOKUP({2;3},Data!A1:A4,1/0)",
+    "A27": "=XLOOKUP({2;9},Data!A1:A4,Data!B1:B4,{\"x\";\"y\"})",
+    "A30": "=XLOOKUP({9;2},Data!A1:A4,Data!B1:B4,Data!C1:C2)",
+    "A33": "=XLOOKUP({\"b\";\"c\"},Data!F1:H1,Data!F2:H3)",
+    "C33": "=XLOOKUP(\"b\",Data!F1:H1,Data!F2:H3)",
+    "A36": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,,0,2)",
+    "A39": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,,0,-1)",
+    "A42": "=XLOOKUP({2;3},{1;2;3},{\"a\";\"b\";\"c\"})",
+    "A45": "=XLOOKUP({\"t*\";\"z*\"},Data!B1:B4,Data!A1:A4,\"nf\",2)",
+    "A48": "=SUM(XLOOKUP(Data!A1:A4,Data!A:A,Data!E:E))",
+    "A49": "=XLOOKUP({2.5;2.5},Data!A1:A4,Data!B1:B4,,{0;-1})",
+    "A52": "=XLOOKUP({1;1},{1;1},{\"f\";\"l\"},,0,{1;-1})",
+    "A55": "=XLOOKUP(9,Data!A1:A4,Data!B1:B4,Data!C1:C2)",
+    "A58": "=XLOOKUP({9;2},Data!A1:A4,Data!B1:B4,Data!C1)",
+    "A61": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,1/0,5)",
+    "A64": "=XLOOKUP({2;#N/A},Data!A1:A4,Data!B1:B4,,5)"
+   }
+  },
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": 2,
+    "A3": 3,
+    "A4": 4,
+    "B1": "one",
+    "B2": "two",
+    "B3": "three",
+    "B4": "four",
+    "C1": 11,
+    "C2": 12,
+    "C3": 13,
+    "C4": 14,
+    "D1": 3,
+    "D2": 1,
+    "D3": 7,
+    "D4": 2,
+    "E1": 10,
+    "E2": 20,
+    "E3": 30,
+    "E4": 40,
+    "F1": "a",
+    "G1": "b",
+    "H1": "c",
+    "F2": 10,
+    "G2": 20,
+    "H2": 30,
+    "F3": 100,
+    "G3": 200,
+    "H3": 300
+   }
+  }
+ ],
+ "expected": {}
+}
