@@ -379,7 +379,11 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(args, cell, true),
+            } => self.index_impl(
+                args,
+                cell,
+                crate::functions::lookup_and_reference::IndexForm::Reference,
+            ),
             // `ANCHORARRAY(@INDEX(D1:D2,1))` spills D1#: the `@` of a one-cell reference keeps
             // the reference (probes/anchorarray-at-operand-kinds H81, T-1247). The operand is
             // evaluated once and intersected, so nested `@INDEX` stays linear (T-1321).
@@ -435,7 +439,11 @@ impl Model {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(args, cell, true),
+            } => self.index_impl(
+                args,
+                cell,
+                crate::functions::lookup_and_reference::IndexForm::Reference,
+            ),
             // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
             // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
             // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is its bounding box

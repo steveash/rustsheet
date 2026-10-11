@@ -20,6 +20,7 @@ C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2
 C	probes/and-or-xor-error-order.case.json	37
+C	probes/and-or-xor-text-arguments.case.json	84
 C	probes/arith-overflow.case.json	72
 C	probes/arith-range-error-precedence.case.json	12
 C	probes/array-constant-signs.case.json	4
@@ -132,6 +133,8 @@ C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
 C	probes/elapsed-fractions-1900.case.json	14
 C	probes/elapsed-fractions-1904.case.json	14
+C	probes/elapsed-positive-large-1900.case.json	17
+C	probes/elapsed-positive-large-1904.case.json	17
 C	probes/elapsed-tiny-negatives-1900.case.json	11
 C	probes/elapsed-tiny-negatives-1904.case.json	11
 C	probes/error-arg-vs-range-check.case.json	10
@@ -173,6 +176,7 @@ C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
+C	probes/index-array-indices.case.json	60
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/info-logic-argument-modes-2.case.json	11
