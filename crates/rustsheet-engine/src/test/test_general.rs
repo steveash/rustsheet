@@ -40,8 +40,8 @@ fn test_model_simple_evaluation_order() {
     assert_eq!(model._get_text("A1"), *"0.166666667");
     assert_eq!(model._get_text("A2"), *"0.166666667");
     assert_eq!(model._get_text("A3"), *"1.5");
-    // Unnecessary parenthesis are lost
-    assert_eq!(model._get_formula("A2"), *"=1/2/3");
+    // Redundant parentheses are kept, as Excel does (SPEC-0007)
+    assert_eq!(model._get_formula("A2"), *"=(1/2)/3");
     assert_eq!(model._get_formula("A3"), *"=1/(2/3)");
 }
 

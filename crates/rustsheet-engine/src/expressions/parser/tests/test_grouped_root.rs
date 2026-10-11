@@ -91,12 +91,13 @@ fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
 fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
     let mut parser = parser();
     for (formula, printed) in [
-        ("(A1)-(B1)", "A1-B1"),
+        // Every other group is printed back as written (SPEC-0007).
+        ("(A1)-(B1)", "(A1)-(B1)"),
         ("(A1-1)*2", "(A1-1)*2"),
-        ("(A1)%", "A1%"),
+        ("(A1)%", "(A1)%"),
         ("-(A1-1)", "-(A1-1)"),
-        ("SUM((A1-1))", "SUM(A1-1)"),
-        ("(LAMBDA(x,x))(1)", "LAMBDA(x,x)(1)"),
+        ("SUM((A1-1))", "SUM((A1-1))"),
+        ("(LAMBDA(x,x))(1)", "(LAMBDA(x,x))(1)"),
     ] {
         let node = parser.parse_cell_formula(formula, &context());
         assert!(!is_grouped(&node), "{formula}");

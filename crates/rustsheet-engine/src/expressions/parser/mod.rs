@@ -313,6 +313,14 @@ pub enum Node {
     GroupedRootKind {
         child: Box<Node>,
     },
+    /// Parentheses written around `child`: `levels` directly nested pairs, `((x))` is 2.
+    /// Transparent to evaluation (see [`Node::ungrouped`]); printed back as written, as Excel's
+    /// FORMULATEXT and stored formula text keep every written parenthesis
+    /// (docs/excel-semantics/syntax.md, SPEC-0007).
+    Group {
+        levels: u8,
+        child: Box<Node>,
+    },
     CompareKind {
         kind: OpCompare,
         left: ChainLeft,
@@ -333,7 +341,32 @@ pub enum Node {
     EmptyArgKind,
 }
 
+// A `Group` must not grow the node: `Box<Node>` + `u8` fits in the largest variant (SPEC-0007).
+const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
+
+/// `size_of::<Node>()` before the `Group` variant; pinned so later variants cannot grow it unnoticed.
+const NODE_SIZE: usize = 80;
+
 impl Node {
+    /// The node under any written parentheses: `((A1))` is `A1`. Loops, never recurses, so a
+    /// group adds no evaluator frame (SPEC-0007 "Seeing through groups").
+    pub(crate) fn ungrouped(&self) -> &Node {
+        let mut node = self;
+        while let Node::Group { child, .. } = node {
+            node = child;
+        }
+        node
+    }
+
+    /// [`Node::ungrouped`], by value.
+    pub(super) fn into_ungrouped(self) -> Node {
+        let mut node = self;
+        while let Node::Group { child, .. } = node {
+            node = *child;
+        }
+        node
+    }
+
     /// The `@` an xlsx import adds around a range-valued operand.
     pub(crate) fn automatic_at(child: Node) -> Node {
         Node::at(child, true)

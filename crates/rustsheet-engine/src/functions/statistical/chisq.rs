@@ -352,7 +352,7 @@ impl Model {
         cell: CellReferenceIndex,
         arrays_are_value_errors: bool,
     ) -> Result<Vec<Option<f64>>, CalcResult> {
-        let by_reference = matches!(node, Node::ReferenceKind { .. });
+        let by_reference = matches!(node.ungrouped(), Node::ReferenceKind { .. });
         let unsupported = |error: Error| {
             Err(CalcResult::Error {
                 error,

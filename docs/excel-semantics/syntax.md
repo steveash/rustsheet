@@ -205,10 +205,11 @@ probed shape (plain operators, unary minus, intersection, function arguments and
 kept the same way is UNVERIFIED (excel-graph loads file text; an M14 desktop question, decision 0039). The values are unaffected
 (`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
 Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
-Ours: the parsed formula keeps no groups except the levels around a whole `@` operand, a whole parenthesized formula
-(`GroupedRootKind`) and a few cut/union shapes, so the printer re-derives parentheses from precedence: `=A1+(B1)` prints
-`=A1+B1`, `=-(A1)` prints `=-A1`, `=@(A1+(B1))` prints `=@(A1+B1)`. All 18 values match; 14 FORMULATEXT cells differ.
+Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, so the
+plain-operator cells match. The groups the `@` fields still track (an inner group that starts an `@` operand,
+`=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`, and a group around a whole `@`) print as before until T-1343.
+All 18 values match; 3 FORMULATEXT cells differ (F11, F13, F14).
 Status: VERIFIED
 The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
 Design: SPEC-0007 (a `Group` node).
-Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand)
+Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand), T-1340 (the `Group` node), T-1343 (the `@` groups)
