@@ -730,7 +730,13 @@ and the engine gives ...615 (1 ulp, `NumericUlp`, a known failure for T-1284; th
 of it). MIN, MAX and AVERAGEA over a TAKE/DROP result of one or two cells behave like the XLOOKUP cells (L1:L7).
 Typed entry is a desktop
 question (M14).
-Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211 (decision 0045)
+VERIFIED by T-1332 (probes/subtotal-reference-operands-e, excel-graph, 2026-10-11): reference-ness follows the value
+through IF and LET. `XLOOKUP(1,A1:A4,SEQUENCE(4))` is an array: `SUBTOTAL(9,..)` and `AREAS(..)` are `#VALUE!`, `ISREF` FALSE;
+`XLOOKUP(1,A1:A4,LET(x,A1:A4,x))` and `XLOOKUP(1,A1:A4,IF(TRUE,A1:A4))` are references (SUBTOTAL 1, AREAS 1, ISREF TRUE;
+the ISREF of the LET-SEQUENCE form is FALSE). `TAKE(IF(TRUE,A1:A4),2)` and `TAKE(LET(x,A1:A4,x),2)` are references
+(SUBTOTAL 3, AREAS 1), while `TAKE`/`DROP` of `IF(TRUE,SEQUENCE(4))` or `LET(x,SEQUENCE(4),x)` are arrays: SUBTOTAL and
+AREAS spill two `#VALUE!`, ISREF FALSE. The engine returns a scalar for those TAKE/DROP cells (T-1365).
+Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211, T-1332 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
