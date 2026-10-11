@@ -3,7 +3,7 @@ id: T-0219
 title: "LEFT/RIGHT/MID numeric arguments: booleans, huge values and near-integers (9 gen-m2 known failures)"
 milestone: M2
 lane: functions-text
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -35,9 +35,16 @@ Code: `crates/rustsheet-engine/src/functions/text/` (LEFT/RIGHT/MID argument par
 "text-function count argument".
 
 ## Acceptance criteria
-- [ ] Probe case(s) pin the huge-value threshold and the near-integer rule. docs/excel-semantics/ entry added.
-- [ ] The 7 huge-value and near-integer cells above disappear from eval/baseline/gen-m2.txt with no new F lines (the 2 boolean cells are T-0257's).
-- [ ] `make check` green; reviewers approve.
+- [x] Probe case(s) pin the huge-value threshold and the near-integer rule. docs/excel-semantics/ entry added.
+- [x] The 7 huge-value and near-integer cells above disappear from eval/baseline/gen-m2.txt with no new F lines (the 2 boolean cells are T-0257's).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Number-to-text of the first argument (T-0107).
+
+## Outcome
+probes/text-count-argument-bounds (excel-graph, 2026-10-11, 623 cells) pins the bounds: LEFT/RIGHT/LEFTB take any
+non-negative count; MID/MIDB are #VALUE! from 2^31; REPLACE from 32,768; LEFT, RIGHT and REPLACE round a count
+within 2^-22 + 2^-33 below an integer up to it, MID truncates exactly (text.md, two entries). One helper,
+`near_integer_count` (functions/text/util.rs). Eval: gen-m2 known failures 39 -> 32 (the 7 cells of this task),
+gen-m6 971 -> 972 passing (T-1258's cell), probes +1 case all passing, no regressions.

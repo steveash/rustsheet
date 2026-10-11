@@ -3,7 +3,7 @@ id: T-1258
 title: "REPLACE with a huge start_num is #VALUE!: probe the bound"
 milestone: M5
 lane: functions-text
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -23,10 +23,15 @@ The bound is unprobed: probe it first (excel-probe skill) with `REPLACE("abc",32
 Record the rule in docs/excel-semantics/text.md.
 
 ## Acceptance criteria
-- [ ] An excel-graph probe case with the cells above passes; text.md records the rule (VERIFIED).
-- [ ] gen-m6/a62335e72e44cb4e A9 passes in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell
+- [x] An excel-graph probe case with the cells above passes; text.md records the rule (VERIFIED).
+- [x] gen-m6/a62335e72e44cb4e A9 passes in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell
       and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - UTF-16 counting of positions (T-0249).
+
+## Outcome
+Done in the T-0219 PR: the same probe (probes/text-count-argument-bounds J, K, L, F20-F24) shows REPLACE is
+#VALUE! above 32,767 for start_num and num_chars, MID/MIDB from 2^31, LEFT/RIGHT never; `replace_element` bounds
+both by `MAX_TEXT_UNITS`. gen-m6/a62335e72e44cb4e A9 passes, no new gen-m6 failure (971 -> 972 passing).

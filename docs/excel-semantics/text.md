@@ -119,12 +119,35 @@ Ours: "-0" (the sign is taken from the unrounded value). Other shapes (`FIXED(-0
 Status: VERIFIED (one cell)
 Tasks: T-1257
 
-## REPLACE with a huge start_num is `#VALUE!`
-Rule: `REPLACE(-0.0001,123456789.123,3,"a*")` is `#VALUE!` in Excel; there is an upper bound on start_num (the engine
-appends past the end of the text instead). Where the bound lies (32767?) and whether MID/num_chars share it is unprobed.
-Evidence: gen-m6/a62335e72e44cb4e Calc!A9 (excel-graph, 2026-10-09, T-1239).
-Status: UNVERIFIED (probe pending: the bound)
-Tasks: T-1258
+## Count and position bounds of LEFT, RIGHT, MID and REPLACE
+Rule: LEFT and RIGHT (and LEFTB) accept any non-negative num_chars, however large: `LEFT("abc",1E+100)` is "abc".
+MID (and MIDB) is `#VALUE!` once start_num or num_chars reaches 2^31 (2^31-1 is fine: `MID("abc",2^31-1,1)` is
+""). REPLACE is `#VALUE!` once start_num or num_chars exceeds 32,767, even past the end of a short text
+(`REPLACE("abc",32768,1,"z")`, `REPLACE(REPT("a",10),11,32768,"z")`; 32,767 is fine and appends).
+A negative count is `#VALUE!` from -1E-300 down (LEFT, RIGHT, MID); 1E-300 counts as 0.
+Evidence: probes/text-count-argument-bounds F-M rows 1-14, F20-F24, N17-N19 (excel-graph, 2026-10-11, T-0219);
+gen-m6/a62335e72e44cb4e Calc!A9 (`REPLACE(-0.0001,123456789.123,3,"a*")` is `#VALUE!`, T-1239).
+Status: VERIFIED. REPLACEB and RIGHTB delegate to REPLACE and RIGHT (unprobed themselves).
+Implemented in: functions/text/common.rs (`mid_element`, `MID_ARGUMENT_LIMIT`), functions/text/string_format.rs
+(`replace_element`, bounded by `MAX_TEXT_UNITS`).
+Tasks: T-0219, T-1258
+
+## LEFT, RIGHT and REPLACE round counts up near an integer
+Rule: LEFT, RIGHT, LEFTB and REPLACE (start_num and num_chars) truncate their numbers, except that a value
+within 2^-22 + 2^-33 (about 2.3842E-7) below an integer counts as that integer: `LEFT(t,1-2^-22-2^-33)`
+is one character, `LEFT(t,1-2^-22-9*2^-36)` none; `REPLACE("abcdef",2.99999999,1,"z")` replaces the 3rd
+character. The bound is absolute, identical below 1, 10, 1000 and 30000, and it is not round-to-nearest
+(0.5 is 0, 2.5 is 2, 0.999999 is 0). MID and MIDB do **not** do this: they truncate exactly, so
+`MID(t,1,1-1E-15)` is "" and `MID(t,1-1E-15,5)` is `#VALUE!` (start below 1). The negative check sees the
+raw value (`LEFT(t,-1E-300)` is `#VALUE!`); REPLACE's start_num < 1 check comes after the rounding
+(`REPLACE(t,1-2E-7,1,"z")` starts at 1, `1-1E-5` is `#VALUE!`). A computed `TRUE-1E-15` count is 1 for LEFT
+(gen-m2/b4392a6514a36ade Calc!A14). Whether other functions (REPT, FIND/SEARCH start_num, CHAR, INDEX)
+share this rounding is UNVERIFIED.
+Evidence: probes/text-count-argument-bounds A-D, N-S, T-V, X-Y, Z, AA (excel-graph, 2026-10-11, T-0219).
+Status: VERIFIED
+Implemented in: functions/text/util.rs (`near_integer_count`), used by `left_element`, `right_element`
+(common.rs) and `replace_element` (string_format.rs).
+Tasks: T-0219
 
 ## Text function argument modes
 Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill;
