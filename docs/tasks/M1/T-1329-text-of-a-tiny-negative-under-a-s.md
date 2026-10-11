@@ -3,7 +3,7 @@ id: T-1329
 title: "TEXT of a tiny negative under a [s]-only format is '-0', not '-1'"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
