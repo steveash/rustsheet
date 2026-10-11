@@ -3,7 +3,7 @@ id: T-1339
 title: "Probe whether written parentheses change reference-context results (SPEC-0007 step 0)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
