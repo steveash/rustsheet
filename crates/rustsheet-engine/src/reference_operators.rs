@@ -428,7 +428,9 @@ impl Model {
             // nested IFs stay linear.
             Node::FunctionKind {
                 kind: Function::If, ..
-            } => self.evaluate_reference_arg(node, cell).into_single_area(cell),
+            } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
             _ => self.eval_ref_or_index(node, cell),
         }
     }
