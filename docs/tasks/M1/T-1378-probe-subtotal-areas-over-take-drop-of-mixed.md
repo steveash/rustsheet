@@ -3,7 +3,7 @@ id: T-1378
 title: "Probe SUBTOTAL/AREAS over TAKE/DROP of mixed-kind IF, nested or shadowed LET, and CHOOSE/SWITCH/IFS (follow-up of T-1365)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
@@ -24,7 +24,7 @@ T-1365 added `yields_cells` (static_analysis/aggregate.rs) with unprobed rules: 
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 Done and pushed: probe `subtotal-reference-operands-f` (97 oracle cells, all passing); `yields_cells` CHOOSE/SWITCH/IFS arms (aggregate.rs) fix the debug_assert; LET names case-insensitive (`same_variable`, `assign_variable_ids(.., ci)` in functions/logical/let.rs; `ci` true for LET, false for LAMBDA binding in lambda.rs:118/173); docs entry in references.md; follow-up T-1387. `make check` was green on the last commit.
 
 Open (reviewer-excel-fidelity, REQUEST_CHANGES twice): LET case folding interacts badly with LAMBDA parameters of a different case. With `ci` true the LambdaDefKind arm treats a param `X` as shadowing LET name `x` and stops, while LAMBDA binding (exact match) does not bind a lowercase `x` in the body, so `=LET(x,1,LAMBDA(X,x*10)(2))` gives `#NAME?` (main: 10). `LET(x,1,LAMBDA(X,X*10)(2))` is 20 (covered by `test_lambda_parameter_case_is_unchanged_by_let_case_folding`).
