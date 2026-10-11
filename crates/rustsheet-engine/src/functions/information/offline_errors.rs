@@ -73,6 +73,7 @@ impl Model {
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> Result<Lifted, CalcResult> {
+        // The callers check arity first; an empty list is an argument-count error, not a panic.
         let Some((head, rest)) = args.split_first() else {
             return Err(CalcResult::new_args_number_error(cell));
         };
