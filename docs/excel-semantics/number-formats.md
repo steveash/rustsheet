@@ -20,10 +20,11 @@ Rule: on a number, unquoted letters and the digits 1-9 in a format print as lite
 format invalid: `TEXT(PI(),"ü")` = "ü". With a decimal point but no digit placeholder the integer part seems to print
 right before the point: `TEXT(1.005, TEXT(-1,"2.5"))` = "-211.5", consistent with `TEXT(-1,"2.5")` = "-21.5" and
 `TEXT(1.005,"-21.5")` = "-2" & "1" & "1.5" (inferred from the one composite cell). An empty format on a number is not an
-error: `INDIRECT(TEXT(-0.0001,""),..)` is `#REF!`, not `#VALUE!`.
+error: `INDIRECT(TEXT(-0.0001,""),..)` is `#REF!`, not `#VALUE!`. Not every letter is a literal: `TEXT(100,"ABC")` =
+"A43C", so `B` prints "43", which fits a two-digit Buddhist-era year (serial 100 is 1900-04-09; 1900 + 543 = 2443).
 Evidence: gen-m6/2c1a6e93a1974f48 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3, gen-m6/17223361bef5b5cb Calc!A12
-(excel-graph, 2026-10-09, T-1239).
-Ours: `#VALUE!` for all three (the lexer rejects these formats).
+(excel-graph, 2026-10-09, T-1239); gen-m7/6db767d720c5b55a Calc!A30 `TEXT(Data!A3,"ABC")` with A3 = 100 (excel-graph, 2026-10-11, T-1275).
+Ours: `#VALUE!` for all four (the lexer rejects these formats).
 Status: UNVERIFIED (probe pending: which letters are tokens, the integer-before-point rule, the value of `TEXT(x,"")`)
 Tasks: T-1262
 
@@ -75,7 +76,8 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
-In the 1900 date system TEXT of a negative under any format containing an elapsed token is #VALUE! instead (dates.md, probes/text-negative-serial-elapsed-mixed, T-1079/T-1105); the minus above is the 1904-workbook behavior.
+In the 1900 date system TEXT of a negative under a format that mixes an elapsed token with a date/time token (`[h]:mm`, `[s] yy`, `[s].00`) is #VALUE! instead; a format whose only date/time token is one elapsed token still prints a minus, with any literals (below; dates.md "Negative serials under an explicit negative section", probes/text-negative-serial-elapsed-mixed, probes/negative-date-sections-1900, T-1079/T-1105); the minus above is the 1904-workbook behavior. Two elapsed tokens in one section (`[h]:[mm]`) are #VALUE! in both systems, for positive values too (same evidence).
+An elapsed token works on the magnitude of the value and keeps a minus for a negative one, in both date systems (VERIFIED, probes/elapsed-tiny-negatives-1900/-1904 and elapsed-fractions-1900/-1904, excel-graph, T-1338, T-1346): `[s]`/`[ss]` round it to nearest (1.7 s = "2", 1.2 s = "1", 1.5 s = "2", -0.9 s = "-1", -1.7 s = "-2", `TEXT(-1E-10,"[s]")` = "-0"); `[m]`/`[mm]`/`[h]`/`[hh]` truncate it (1.7 min = "1", 1.7 h = "1", -1.7 min = "-1", -0.3 h = "-0"). Padding follows the sign (`[ss]` of -1E-10 = "-00", of -1.7 s = "-02", of 1.7 s = "02"). Binary noise is absorbed: -1.5/86400 days is "-2", `TEXT(-(3-1E-7)/24,"[h]")` = "-3", `TEXT(-(2-1E-9)/1440,"[m]")` = "-2", yet `TEXT(-0.49999999999/86400,"[s]")` = "-0" and `TEXT(-(5-1E-6)/86400,"[s]")` = "-5". The engine models that as a 1e-12 snap of the seconds for `[s]` and a millisecond snap for `[h]`/`[m]`: fitted to these cells, not known (the true threshold is unprobed, and every near-integer cell is negative: the engine applies the same snaps to positives by symmetry, an extrapolation). `TEXT(-1.5,"[s]")` = "-129600".
 Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
 workbook agree).
 Status: VERIFIED

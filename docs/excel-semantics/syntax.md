@@ -197,4 +197,6 @@ Ours: the parsed formula keeps no groups except the levels around a whole `@` op
 (`GroupedRootKind`) and a few cut/union shapes, so the printer re-derives parentheses from precedence: `=A1+(B1)` prints
 `=A1+B1`, `=-(A1)` prints `=-A1`, `=@(A1+(B1))` prints `=@(A1+B1)`. All 18 values match; 14 FORMULATEXT cells differ.
 Status: VERIFIED
+The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
+Design: SPEC-0007 (a `Group` node).
 Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand)

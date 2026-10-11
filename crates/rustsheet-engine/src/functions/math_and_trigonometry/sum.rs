@@ -250,19 +250,24 @@ impl Model {
 }
 
 /// A running SUM: the total and the two addends of the latest addition, which
-/// [`snap_near_zero`] needs when SUM is a formula's outermost operation.
+/// [`snap_near_zero`] needs.
 #[derive(Default)]
-struct SumParts {
+pub(crate) struct SumParts {
     total: f64,
     before_last: f64,
     last: f64,
 }
 
 impl SumParts {
-    fn add(&mut self, value: f64) {
+    pub(crate) fn add(&mut self, value: f64) {
         self.before_last = self.total;
         self.last = value;
         self.total += value;
+    }
+
+    /// The total with its final addition snapped by [`snap_near_zero`].
+    pub(crate) fn snapped(&self) -> f64 {
+        snap_near_zero(self.before_last, self.last, self.total)
     }
 }
 
@@ -279,25 +284,26 @@ impl Model {
     /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
     /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
+    ///
+    /// SUM's final addition snaps a near-zero result to 0 like `+`/`-` do, wherever the call sits
+    /// (`=SUM(0.1,0.2,-0.3)`, `=(SUM(...))`, `=SUM(...)+0` and `=SUM(...)*1` all give 0:
+    /// probes/near-zero-sum-forms; docs/excel-semantics/numbers.md "Near-zero snapping").
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
+            Ok(sum) => CalcResult::finite_number_or_num(sum.snapped(), cell),
             Err(error) => error,
         }
     }
 
-    /// SUM as a formula's outermost operation: its final addition snaps to 0 like `+`/`-` do
-    /// (`=SUM(0.1,0.2,-0.3)` is 0; docs/excel-semantics/numbers.md "Near-zero snapping").
-    pub(crate) fn fn_sum_outermost(
+    /// SUM without the near-zero snap, for PERCENTOF, whose Excel behavior is not observable
+    /// (`#NAME?` on excel-graph; docs/excel-semantics/numbers.md "Near-zero snapping").
+    pub(crate) fn fn_sum_unsnapped(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(
-                snap_near_zero(sum.before_last, sum.last, sum.total),
-                cell,
-            ),
+            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
             Err(error) => error,
         }
     }

@@ -203,7 +203,10 @@ Implemented in: crates/rustsheet/src/edit.rs (`MAX_FOOTPRINT_CELLS`)
 
 ## MDETERM / MINVERSE: a blank cell in the matrix is #VALUE!
 Rule: MDETERM and MINVERSE return `#VALUE!` when any cell of the matrix range is blank (MMULT
-does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number.
+does the same); a blank does not count as 0. `MDETERM` of a single numeric cell is that number. A boolean is not a
+number either: `MINVERSE(E1)` with E1 = FALSE is `#VALUE!` (gen-m7/7c48e2456500644f Calc!A19
+`MAX(MOD(MINVERSE(Data!E1),(0.1/42)))` (excel-graph, 2026-10-11, T-1275); ours `#NUM!`, reading FALSE as a singular 0, and `MDETERM(E1)` 0;
+MDETERM of a boolean and a boolean inside a larger matrix are UNVERIFIED, T-1358).
 Evidence: poi/MatrixFormulaEvalTestData.xlsx (Excel-cached, Excel 16) Sheet1!H10 `MDETERM(B10:D12)`
 and H30 `MDETERM(B30:D32)` (all blank / only B30 = 1) are `#VALUE!`; H14:J16 `MINVERSE(B14:D16)` and
 H34:J36 `MINVERSE(B34:D36)` are `#VALUE!` in every cell; H50 `MDETERM(B50)` = 1.
@@ -261,8 +264,11 @@ empty (`REDUCE(,A1:A3,LAMBDA(a,v,a+v))` = 6). An uncalled `LAMBDA(x,x)` is one v
 Evidence: probes/m7-argument-modes (68 questions, excel-graph, 2026-10-09, T-1083). Three questions are left out because
 excel-graph returns an error it cannot decode: `GROUPBY(D1:D3,A1:A2,SUM)` (heights differ), `MAP(A1:A3,LAMBDA(x,y,x))`
 (too many parameters) and `GROUPBY(D1:D3,A1:A3,{1;2;3})` (an array as the function). A LAMBDA with an optional
-parameter (`LAMBDA(x,[y],ISOMITTED(y))(1)`) cannot be probed yet: the case builder writes `[_xlpm.y]`, which Excel
-refuses as a corrupt file.
+parameter: `LAMBDA(x,[y],ISOMITTED(y))(1)` is TRUE, `(1,2)` FALSE, and an empty argument `(1,)` is omitted too (TRUE);
+an omitted parameter's value is 0 (`LAMBDA(x,[y],y)(1)` = 0) and "" as text (`y&"|"` = "|");
+`LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))` gives 1 for `(1)` and 3 for `(1,2)`; `LAMBDA([x],[y],ISOMITTED(x)+ISOMITTED(y))()`
+is 2 (probes/lambda-optional-params A1-A8, excel-graph, 2026-10-11, T-1274; the engine matches all of them). The
+case builder stores `[y]` as `_xlop.y` (xlsx-storage.md).
 Ours: none of the lifts above (`#VALUE!` for a range, `#N/IMPL!` for an array; `SEQUENCE(A1:A3)` is one row);
 `_xleta.` names, GROUPBY and PIVOTBY are `#NAME?`; INDEX of a scalar result is `#VALUE!` (T-1242); `ROWS(LAMBDA(x,x))`
 is `#VALUE!`; a BYROW row result is not `#CALC!`; `REGEXTEST(A1,1)` is `#VALUE!`. 60 of the 174 scored cells pass.
@@ -291,3 +297,38 @@ every anchor is listed in docs/specs/SPEC-0006-groupby-pivotby.md.
 Ours: `#NAME?` (not implemented; SPEC-0006 rollout T-1322..T-1328).
 Status: VERIFIED (web)
 Tasks: T-1276
+
+## WRAPCOLS of a single value is not padded; wrap_count below 1 is #NUM!
+Rule: `WRAPCOLS` of a single value returns that value as a 1x1 result, not a column padded with `#N/A` to wrap_count:
+`WRAPCOLS(FALSE,4)` is FALSE in one cell and `WRAPCOLS("1.5",4)&DROP(C10,0,3)` is one `#CALC!` (neither spills over the
+occupied cells below). A wrap_count of 0.5 is `#NUM!` (`HYPERLINK(WRAPCOLS(C12,0.5,..),..)`).
+Evidence: gen-m7/bb4617644fee40c9 Calc!A30, gen-m7/d38b52bfa1a9f9e6 Calc!A26, gen-m7/f68fafa0ca2eba26 Calc!A39 (excel-graph, 2026-10-11, T-1275).
+Ours: pads to wrap_count (`ROWS(WRAPCOLS(1,4))` = 4, so both cells are `#SPILL!`), and wrap_count 0.5 is `#VALUE!`.
+Status: VERIFIED for single values (web); a multi-element vector shorter than wrap_count (`WRAPCOLS({1,2},4)`), WRAPROWS,
+and wrap_count 0 or negative are UNVERIFIED
+Tasks: T-1348
+
+## MAP over arrays of different sizes, or a single value and an array
+Rule: MAP does not reject arrays of different sizes: `MAP(B4:E8,A4:D11,B5:E7,LAMBDA(z,x,acc,A3))` (5x4, 8x4, 3x4) and
+`MAP(WEEKDAY(7538),B4:E11,LAMBDA(acc,y,acc))` (a number and 8x4) both return arrays (`#SPILL!` in a cell with occupied
+neighbours). The element values (broadcast and `#N/A` padding as in array arithmetic?) are not evidenced.
+Evidence: gen-m7/a0cbc75358b429b6 Calc!A31, gen-m7/b5186d194fec0fdc Calc!A13 (excel-graph, 2026-10-11, T-1275).
+Ours: `#VALUE!` ("all arrays must have the same dimensions").
+Status: VERIFIED that the result is an array (web); its size and values are UNVERIFIED
+Tasks: T-1349
+
+## BYROW and BYCOL of a single value
+Rule: BYROW and BYCOL take a single value as a 1x1 array and call the LAMBDA once: `"ü"&BYROW(COUNT(..),LAMBDA(z,z))` with
+the COUNT 7 is "ü7", and `BYROW("",_xleta.PRODUCT)` is 0 (PRODUCT of the row {""}).
+Evidence: gen-m7/93976dd9a3578ed9 Calc!A31, gen-m7/59cc50701f4937c9 Calc!A4 (excel-graph, 2026-10-11, T-1275).
+Ours: `#VALUE!` for BYROW and BYCOL of a number or text (`BYROW(7,LAMBDA(z,z))`; MAP, SCAN and REDUCE of 7 work).
+Status: VERIFIED (web)
+Tasks: T-1350
+
+## SORT argument errors come before validation
+Rule: an error-valued argument of SORT wins over an invalid other argument: `SORT(B11:E12,ROUND(0,7),A3:C5,<#N/A>)`
+(sort_index 0, a 9-cell sort_order range and a by_col that is `#N/A`) is `#N/A`.
+Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!C8:C12,3)`) (excel-graph, 2026-10-11, T-1275).
+Ours: `#VALUE!` (sort_index 0 is rejected before by_col is looked at).
+Status: VERIFIED (web) for this cell; SORTBY and the order among several error arguments are UNVERIFIED
+Tasks: T-1351

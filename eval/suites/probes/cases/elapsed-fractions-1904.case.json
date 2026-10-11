@@ -1,0 +1,33 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1346: positive fractional and near-integer negative elapsed tokens, 1904 date system.",
+  "tags": [
+    "M1",
+    "probe",
+    "dates",
+    "T-1346"
+  ],
+  "date_system": 1904,
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=TEXT(1.7/86400,\"[s]\")",
+        "A2": "=TEXT(1.7/86400,\"[ss]\")",
+        "A3": "=TEXT(1.2/86400,\"[s]\")",
+        "A4": "=TEXT(1.7/1440,\"[m]\")",
+        "A5": "=TEXT(1.7/24,\"[h]\")",
+        "A6": "=TEXT(1.7/1440,\"[mm]\")",
+        "A7": "=TEXT(1.7/24,\"[hh]\")",
+        "A8": "=TEXT(1.5/86400,\"[s]\")",
+        "A9": "=TEXT(-(3-1E-11)/24,\"[h]\")",
+        "A10": "=TEXT(-(2-1E-9)/1440,\"[m]\")",
+        "A11": "=TEXT(-0.49999999999/86400,\"[s]\")",
+        "A12": "=TEXT(-(3-1E-7)/24,\"[h]\")",
+        "A13": "=TEXT(-(5-1E-6)/86400,\"[s]\")",
+        "A14": "=TEXT(-0.4/86400,\"[s]\")"
+      }
+    }
+  ],
+  "expected": {}
+}

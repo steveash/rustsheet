@@ -1,0 +1,158 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "Sheet1": {
+   "AA1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "AB1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "AC1": {
+    "t": "b",
+    "v": false
+   },
+   "AD1": {
+    "t": "b",
+    "v": false
+   },
+   "C1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "D1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "E1": {
+    "t": "b",
+    "v": false
+   },
+   "F1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "G1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "H1": {
+    "t": "b",
+    "v": true
+   },
+   "I1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "I2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "J1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "J2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "K1": {
+    "t": "b",
+    "v": false
+   },
+   "L1": {
+    "t": "n",
+    "v": 3.0
+   },
+   "M1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "N1": {
+    "t": "b",
+    "v": true
+   },
+   "O1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "O2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "P1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "P2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "Q1": {
+    "t": "b",
+    "v": false
+   },
+   "R1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "R2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "S1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "S2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "T1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "T2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "U1": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "U2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "V1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "W1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "X1": {
+    "t": "b",
+    "v": false
+   },
+   "Y1": {
+    "t": "b",
+    "v": true
+   },
+   "Z1": {
+    "t": "b",
+    "v": true
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "0e3780dda382b21b8d6c1dc804e66565297ba74c1beefbff0ae35393636194a4",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-11T14:38:37+00:00",
+  "version": null
+ }
+}

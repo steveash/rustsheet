@@ -3,6 +3,7 @@ use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::{
+        math_and_trigonometry::SumParts,
         statistical::variance::{variance_result, VarianceKind},
         Function,
     },
@@ -419,11 +420,13 @@ impl Model {
             Ok(s) => s,
             Err(s) => return s,
         };
-        let mut result = 0.0;
+        // SUBTOTAL(9/109) snaps a near-zero final addition like SUM does
+        // (probes/near-zero-aggregate-forms B3-B5).
+        let mut sum = SumParts::default();
         for value in values {
-            result += value;
+            sum.add(value);
         }
-        CalcResult::finite_number_or_num(result, cell)
+        CalcResult::finite_number_or_num(sum.snapped(), cell)
     }
 
     fn subtotal_product(

@@ -9,7 +9,8 @@ Every rule below that cites oracle-sidecar values was re-checked with exact floa
 2026-10-05 and still holds (T-0026, docs/research/numeric-reaudit-2026-10-05.md).
 
 ## Near-zero snapping in addition and subtraction
-Rule: when the formula's **outermost** operation is `+`/`-`, or the formula is `SUM(...)`, and the
+Rule: when the formula's **outermost** operation is `+`/`-` (a SUM call snaps wherever it sits, see
+"SUM forms" below), and the
 result is within a few ULP of zero relative to the operands, Excel returns exactly 0.
 `=0.1+0.2-0.3`, `=(0.1+0.2)-0.3`, `=SUM(0.1,0.2,-0.3)` and `=1-0.9-0.1` all give 0. Snapping does
 **not** happen when the whole formula is parenthesized (`=(X-b)`) or another operation follows
@@ -21,13 +22,15 @@ its binary exponent). The opposite-sign condition is implied, not observed: ever
 subtracts, and with equal signs |result| is at least the smaller addend. Snapped results are at most 7 ULP and kept ones at least 8. The larger
 addend or a relative bound (|r|/max < 2^-k) does not separate them: for b = 1 the `+` side snaps
 up to k = 7 but the `-` side, whose smaller addend 1-k·2^-52 has half the ULP, only up to k = 3.
-The earlier hypothesis (no snapping with parentheses or in SUM) was wrong.
+The earlier hypothesis (no snapping with parentheses or in SUM) was wrong for SUM; it holds for `+`/`-`.
 Evidence: probes/precision-and-rounding.case.json A2–A4, A15; probes-numeric/30bc5f8fab02d0a2
 `snap-addsub/*` (1,296 cells). Oracle: excel-graph, 2026-10-04.
 Status: VERIFIED
-Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum_outermost` (an outermost SUM, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017) and is not snapped. Array operands are not snapped (unprobed).
-Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_cell_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through `GroupedRootKind`. The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one `GroupedRootKind` per level, T-1161). SUM forms other than `SUM(X,-b)` and `SUM(0.1,0.2,-0.3)` are unprobed too (T-1131): SUM over a range (the engine snaps on the last two numbers it adds, in range order, skipping blanks and text), a trailing zero argument (never snapped: a zero addend), array arguments, and `=(SUM(...))` (a grouped root, not snapped). 
-Tasks: T-0110 (implementation), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
+Implemented in: `snap_near_zero` (arithmetic.rs), applied at the cell formula's root by `Model::evaluate_formula_root` (an outermost `+`/`-`) and `fn_sum` (every SUM call, functions/math_and_trigonometry/sum.rs); a wholly parenthesized formula is a `Node::GroupedRootKind` root (`Parser::parse_cell_formula`, T-1017) and is not snapped. Array operands of `+`/`-` are not snapped (unprobed); SUM over array arguments does snap (below).
+Groups and names (T-1137, probes/near-zero-snap-groups, excel-graph 2026-10-08): `=((0.1+0.2-0.3))`, `=(((0.1+0.2-0.3)))` and `=((1-0.9-0.1))` are not snapped (5.551115123125783e-17, 5.551115123125783e-17, -2.7755575615628914e-17), like the single-level `=(0.1+0.2-0.3)`; a group that is an operand of an outer `+` (`=(0.1+0.2-0.3)+0`, `=0+(0.1+0.2-0.3)`) is not snapped either. A defined-name body **is** snapped at its own root: `nz` = `=0.1+0.2-0.3` and `nzb` = `=Sheet1!$A$1-0.3` (A1 = `=0.1+0.2`) give 0 for `=nz`, `=nzb`, `=nz+0`, `=nz*1` and `=SUM(nz)`; the engine snaps a name body at its root through `evaluate_formula_root` (T-1160). Name bodies written as a group or a SUM (T-1164, probes/near-zero-snap-name-bodies, excel-graph 2026-10-08): `nzg` = `=(0.1+0.2-0.3)` and `nzgg` = `=((0.1+0.2-0.3))` are not snapped (`=nzg`, `=nzgg`, `=nzg+0` and `=SUM(nzg)` give 5.551115123125783e-17, like the cell forms), while `nzs` = `=SUM(0.1,0.2,-0.3)` is snapped (`=nzs` and `=nzs+0` give 0). The engine keeps a grouped root on a name body (`Model::parse_internal_cell_formula`, `user_formula_to_internal`, the xlsx import re-parse, sheet copy and rename, name display); a parenthesized reference body stays a reference (`rg` = `=(Sheet1!$B$1:$B$2)`, `ig` = `=(INDEX(...))` and `og` = `=(OFFSET(...))` give ISREF TRUE, ROWS/SUM as without the parentheses: probes/defined-name-grouped-reference, excel-graph 2026-10-08), so `is_reference` looks through `GroupedRootKind`. The same parse also keeps the grouped root of a conditional-formatting formula written wholly in parentheses (`user_formula_to_internal` serves both); whether Excel snaps inside CF formulas is UNVERIFIED and not observable through the oracle (T-1171: excel-graph reads cell values only, the case format and the Graph workbook API carry no conditional-formatting rules or their rendered fill; see docs/architecture/oracle.md, Unobservable features), so it needs desktop Excel (M14, Phase 4, decision 0039, T-1204). Unprobed: a formula typed as `=(X-b` that Excel completes with `)`. FORMULATEXT of `=((0.1+0.2-0.3))` is `=((0.1+0.2-0.3))`: the engine keeps every written level around a whole formula (one `GroupedRootKind` per level, T-1161).
+
+SUM forms (T-1131, probes/near-zero-sum-forms, excel-graph 2026-10-11): a SUM call snaps its final addition **wherever it sits**, unlike `+`/`-`: `=(SUM(0.1,0.2,-0.3))`, `=SUM(A1:A3)+0` and `=SUM(A1:A3)*1` (A1:A3 = 0.1, 0.2, -0.3) all give 0, as do `=SUM({0.1,0.2,-0.3})`, `=SUM({0.1,0.2},-0.3)`, `=SUM(0.1,{0.2,-0.3})`, `=SUM(A1:A2,A3)` and a range with a blank or text between the addends. A trailing zero addend stops the snap: `=SUM(0.1,0.2,-0.3,0)` and `=SUM(A1:A3,0)` give 5.551115123125783e-17 (the last two addends are -0.3 and 0). 2-D ranges add in row-major order, so `=SUM(D1:E2)` (0.1, 0.2 / -0.3, 0) is 5.551115123125783e-17 (last addend 0) and `=SUM(J1:K2)` (0.1, -0.3 / 0.2, -0.1) is -0.09999999999999998. The engine snaps in `Model::fn_sum` for every SUM call. AGGREGATE(9, ...) and SUBTOTAL(9/109, ...) snap the same way (T-1336, probes/near-zero-aggregate-forms B1-B6, B10-B12, excel-graph 2026-10-11: `=AGGREGATE(9,4,A1:A3)`, `=AGGREGATE(9,6,A1:A3)`, `=SUBTOTAL(9,A1:A3)`, `=SUBTOTAL(109,A1:A3)` and `+0` of each give 0 over 0.1, 0.2, -0.3; `=AGGREGATE(9,4,{0.1,0.2,-0.3})` is #VALUE!); the engine snaps in `subtotal_sum` and the AGGREGATE dispatch. PERCENTOF is `#NAME?` on excel-graph (a probe of `=PERCENTOF(A1:A3,A5)` and `=PERCENTOF(A1:A3,A1:A3)` returned it 2026-10-11; the oracle cannot evaluate it, so the probe has no PERCENTOF cell; so whether it snaps is UNVERIFIED, needs desktop Excel, M14 Phase 4); the engine keeps it unsnapped through `fn_sum_unsnapped`. 
+Tasks: T-0110 (implementation), T-1131 (SUM forms), T-1336 (AGGREGATE/SUBTOTAL), T-1017 (grouped root), T-1137 (probe), T-1160 (name bodies), T-1164 (grouped and SUM name bodies)
 
 ## ROUND family rounds in two decimal stages
 Rule: ROUND, ROUNDUP and ROUNDDOWN never scale by a binary power of ten. They (1) cut the exact
@@ -226,7 +229,7 @@ SERIESSUM, MMULT, SUMX2PY2, SUMXMY2, DEVSQ, STDEV and VAR, and `SUM(F1:F2)+0`, `
 `MAX(F1:F2)+F1` propagate it. Not an overflow: `COUNT` (3), `SUMX2MY2({9E+153},{0})` (8.1E+307, a finite near-limit result: SUMX2MY2 overflow itself is unprobed),
 `MEDIAN(F1:F2)` (9E+307) and `GEOMEAN(F1:F2)` (9E+307, exactly), F1:F2 holding 9E+307 twice (direct arguments not probed). `PERCENTOF` is `#NAME?` in
 excel-graph (the oracle does not know it), so its overflow stays UNVERIFIED and the probe has no PERCENTOF cell
-(the engine's PERCENTOF sums through `fn_sum`, so it overflows to `#NUM!` like SUM; unverified).
+(the engine's PERCENTOF sums through `fn_sum_unsnapped`, so it overflows to `#NUM!` like SUM; unverified).
 Implementation: `+ - * /` (T-0173), `SUM` (T-0185), and SUMPRODUCT, SUMSQ, PRODUCT, AVERAGE and SUBTOTAL 1, 6, 9
 (T-0990, `CalcResult::finite_number_or_num` on the final result, which covers a later 0 or 1E-200 factor
 since an infinity stays infinite or turns NaN; SUBTOTAL 101/106/109 share the code but are unprobed), and
@@ -941,14 +944,20 @@ out-of-domain `ACOS(1E+15)` is `#NUM!` and stays an error when nested (`SERIESSU
 `SIN(1E+15)` and `SEC(1E+13)` are `#NUM!` too, so the threshold is at most 1E+13.
 Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09);
 gen-m6/9bd0bd18636e5f9b Calc!A4 (`SECH(CHOOSE(SIN(1E+15),..))`), gen-m6/3ee7ffc8d6ab061f Calc!A2 (`..-SEC(1E+13)`) (excel-graph, 2026-10-09, T-1239).
-Ours: COS, SIN and SEC compute a number; ACOS yields a NaN number that `powf(0)` turns into 1.
+More: `SIN(-2.5E+15)` and `CSC(1E+15)` are `#NUM!`, and a nested `ASIN(PI())` or `ASIN(100)` stays `#NUM!`
+(`A10<ASIN(PI())`, `CHOOSECOLS(0,ASIN(100))`): gen-m7/9ff3afcacd3bd0fc Calc!A24, gen-m7/f68fafa0ca2eba26 Calc!A37,
+gen-m7/93976dd9a3578ed9 Calc!A13, gen-m7/2bb922eef72e785e Calc!A30 (excel-graph, 2026-10-11, T-1275).
+Ours: COS, SIN, SEC and CSC compute a number; ACOS and ASIN yield a NaN number that `powf(0)` turns into 1 (and that
+comparisons read as FALSE).
 Status: VERIFIED for the observed cells; the exact threshold and TAN are UNVERIFIED.
 Tasks: T-1192, T-1201, T-1202
 
 ## ASIN of a small argument
 Rule: `ASIN(-0.0001)` is -0.00010000000016666668 in Excel; libm `asin` gives -0.00010000000016666667 (one ulp off),
 while `atan(x/sqrt(1-x*x))` reproduces Excel. Which formulation Excel uses over the whole domain is unknown.
-Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239).
+Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c Calc!A27 (same value)
+and gen-m7/cb748b6a9b81fbb7 Calc!A38 `ASIN(0.42)` = 0.4334453200698859 (excel-graph, 2026-10-11, T-1275), where libm `asin` and both `atan2(x,sqrt(1-x*x))`
+forms give 0.43344532006988595 and `atan(x/sqrt(1-x*x))` 0.433445320069886: no candidate fits both cells.
 Ours: libm `asin`, one ulp off.
 Status: VERIFIED for the cell; formulation UNVERIFIED
 Tasks: T-1259
@@ -1005,3 +1014,12 @@ rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
 Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10 (T-1318; A6 is unchecked until
 then, because the engine's draw for it is random), B18, and the array lift F1:F9 (T-1316).
+
+## SERIESSUM with x = 0
+Rule (hypothesis): SERIESSUM with x = 0 is `#NUM!` only when a term has power 0 (0^0): `SERIESSUM(0,0,2,{1,2,3})` is `#NUM!`,
+but `SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` (one term, a positive power) is not `#NUM!` (the IFS around
+it in gen-m7 gives `#VALUE!`, so SERIESSUM was a number or `#VALUE!`).
+Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached); gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
+Ours: `#NUM!` for every x = 0.
+Status: UNVERIFIED (probe pending: negative powers, a blank x)
+Tasks: T-1359

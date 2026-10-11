@@ -13,4 +13,5 @@ mod random;
 mod sequence;
 mod seriessum;
 mod sum;
+pub(crate) use sum::SumParts;
 mod sumproduct;
