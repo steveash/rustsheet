@@ -23,7 +23,7 @@ Excel spills 1,2,3 (D1 = SEQUENCE(3)) and prints `=@IF(TRUE,D1)#`; the engine gi
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 What I tried: in `eval_ref_or_index` (reference_operators.rs) I merged the `@INDEX` arm with a new `@IF` arm (an `@` whose operand is an IF that picks one cell keeps the reference), so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#. Unit tests for the spilling case and for `@IF(FALSE,D1,5)` (#VALUE!), probes/at-signed-operand H71:H73 pass, `make check` is green, and the baseline lost exactly H71:H73 (930 -> 927).
 
 Review findings (security and excel-fidelity reviewers REQUEST_CHANGES; architecture approved; quality's duplicate-arm finding is fixed):
