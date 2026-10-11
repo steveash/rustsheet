@@ -27,6 +27,7 @@ C	probes/array-context-legacy-sumproduct.case.json	31
 C	probes/at-group-leftmost-shapes.case.json	20
 C	probes/at-group-not-whole-operand.case.json	10
 C	probes/at-group-range-corner-whole.case.json	10
+C	probes/at-if-spill-anchor-operand.case.json	20
 C	probes/at-operand-formulatext.case.json	14
 C	probes/at-operand-nested-groups.case.json	36
 C	probes/at-paren-operands-levels.case.json	20
@@ -443,6 +444,7 @@ F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
 F	probes/at-group-leftmost-shapes.case.json	Sheet1!E34
 F	probes/at-group-leftmost-shapes.case.json	Sheet1!E35
 F	probes/at-group-range-corner-whole.case.json	Sheet1!E34
+F	probes/at-if-spill-anchor-operand.case.json	Sheet1!H50
 F	probes/at-operand-nested-groups.case.json	Sheet1!F10
 F	probes/at-operand-nested-groups.case.json	Sheet1!F11
 F	probes/at-operand-nested-groups.case.json	Sheet1!F13

@@ -1,0 +1,73 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ANCHORARRAY(@IF(...)) over multi-cell and union picks, and @IF as a lookup index/result argument (T-1337)",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": "2",
+        "B2": "x",
+        "B3": "y",
+        "C1": "c1",
+        "C2": "c2",
+        "C3": "c3",
+        "D1": "=SEQUENCE(3)",
+        "F1": 77,
+        "H1": "=ANCHORARRAY(@IF(TRUE,D1:D3))",
+        "I1": "=FORMULATEXT(H1)",
+        "J2": "=ANCHORARRAY(@IF(TRUE,D1:D3))",
+        "K2": "=FORMULATEXT(J2)",
+        "L5": "=ANCHORARRAY(@IF(TRUE,D1:D3))",
+        "M5": "=FORMULATEXT(L5)",
+        "H20": "=ANCHORARRAY(@IF(TRUE,(D1,E1)))",
+        "I20": "=FORMULATEXT(H20)",
+        "H30": "=ANCHORARRAY(@IF(FALSE,D1,5))",
+        "I30": "=FORMULATEXT(H30)",
+        "H40": "=VLOOKUP(1,A1:C3,@IF(TRUE,B1))",
+        "I40": "=FORMULATEXT(H40)",
+        "H50": "=LOOKUP(99,A1:A3,@IF(TRUE,F1))",
+        "I50": "=FORMULATEXT(H50)",
+        "H60": "=LOOKUP(99,A1:A3,F1)",
+        "I60": "=FORMULATEXT(H60)",
+        "H70": "=LOOKUP(99,A1:A3,77)",
+        "I70": "=FORMULATEXT(H70)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H1",
+    "Sheet1!H2",
+    "Sheet1!H3",
+    "Sheet1!I1",
+    "Sheet1!J2",
+    "Sheet1!J3",
+    "Sheet1!J4",
+    "Sheet1!K2",
+    "Sheet1!L5",
+    "Sheet1!L6",
+    "Sheet1!L7",
+    "Sheet1!M5",
+    "Sheet1!H20",
+    "Sheet1!I20",
+    "Sheet1!H30",
+    "Sheet1!I30",
+    "Sheet1!H40",
+    "Sheet1!I40",
+    "Sheet1!H50",
+    "Sheet1!I50",
+    "Sheet1!H60",
+    "Sheet1!I60",
+    "Sheet1!H70",
+    "Sheet1!I70"
+  ]
+}
