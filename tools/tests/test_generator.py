@@ -180,6 +180,31 @@ def test_generator_emits_every_m9_statistical_function() -> None:
     assert not sorted(m9_stat - seen)
 
 
+def test_generator_emits_every_m9_financial_function() -> None:
+    # T-1084: every in-scope M9 financial entry is generator-ready; modes from probes/fin-argument-modes.
+    m9_fin = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M9" and f["category"] == "financial"
+    }
+    assert len(m9_fin) == 55
+    seen: set[str] = set()
+    for seed in range(120):
+        seen.update(generate_case(catalog(), seed, milestone="M9", formulas=80)["tags"])
+    assert not sorted(m9_fin - seen)
+
+
+def test_number_enums_are_number_literals() -> None:
+    # T-1084: a bond's frequency enum is 1, 2 or 4 written as a number; "2" would be a coerced text argument.
+    freqs: list[str] = []
+    for seed in range(60):
+        spec = generate_case(catalog(), seed, milestone="M9", formulas=80)
+        for formula in spec["sheets"][1]["cells"].values():
+            freqs += re.findall(r"COUP(?:DAYBS|DAYS|DAYSNC|NCD|NUM|PCD)\(\d+,\d+,([^,()]*)", formula)
+    assert freqs and {"1", "2", "4"} & set(freqs), freqs
+    assert not any(f.startswith('"') for f in freqs), freqs
+
+
 def m7_formulas() -> list[str]:
     return [
         f
