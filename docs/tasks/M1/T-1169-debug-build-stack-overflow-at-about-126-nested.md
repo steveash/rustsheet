@@ -3,7 +3,7 @@ id: T-1169
 title: "Debug-build stack overflow at about 126 nested parentheses in a cell formula"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
