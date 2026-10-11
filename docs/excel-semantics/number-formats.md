@@ -15,6 +15,18 @@ Status: VERIFIED
 Implemented in: `format_text` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), blank value only; other values with `""` stay unprobed.
 Tasks: T-0933
 
+## Bare letters and digits in a number format
+Rule: on a number, unquoted letters and the digits 1-9 in a format print as literal characters instead of making the
+format invalid: `TEXT(PI(),"ü")` = "ü". With a decimal point but no digit placeholder the integer part seems to print
+right before the point: `TEXT(1.005, TEXT(-1,"2.5"))` = "-211.5", consistent with `TEXT(-1,"2.5")` = "-21.5" and
+`TEXT(1.005,"-21.5")` = "-2" & "1" & "1.5" (inferred from the one composite cell). An empty format on a number is not an
+error: `INDIRECT(TEXT(-0.0001,""),..)` is `#REF!`, not `#VALUE!`.
+Evidence: gen-m6/2c1a6e93a1974f48 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3, gen-m6/17223361bef5b5cb Calc!A12
+(excel-graph, 2026-10-09, T-1239).
+Ours: `#VALUE!` for all three (the lexer rejects these formats).
+Status: UNVERIFIED (probe pending: which letters are tokens, the integer-before-point rule, the value of `TEXT(x,"")`)
+Tasks: T-1262
+
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
 value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@@\@` → "@jello@"
