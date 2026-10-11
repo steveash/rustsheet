@@ -3,7 +3,7 @@ id: T-1320
 title: "FORMULATEXT prints a signed @ operand before ^ as written: =@-2^2 (engine prints =(@-2)^2; T-1285)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
