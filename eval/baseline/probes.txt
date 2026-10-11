@@ -277,6 +277,7 @@ C	probes/multiarea-sum-types.case.json	24
 C	probes/multiarea-xname.case.json	3
 C	probes/multiarea-xsheet.case.json	2
 C	probes/multinomial-large-arguments.case.json	20
+C	probes/near-zero-aggregate-forms.case.json	10
 C	probes/near-zero-snap-groups.case.json	14
 C	probes/near-zero-snap-name-bodies.case.json	7
 C	probes/near-zero-sum-forms.case.json	17
