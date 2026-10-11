@@ -311,3 +311,12 @@ def test_reads_do_not_deadlock_with_concurrent_recalc_and_save(wb, tmp_path):
 def test_huge_int_is_type_error(wb):
     with pytest.raises(TypeError):
         wb.set("A1", 10**400)
+
+
+def test_date_system_defaults_to_1900_and_round_trips_1904():
+    assert rs.Workbook().date_system == "1900"
+    wb = rs.Workbook(date_system="1904")
+    assert wb.date_system == "1904"
+    assert rs.Workbook.from_bytes(wb.to_xlsx_bytes()).date_system == "1904"
+    with pytest.raises(TypeError):
+        rs.Workbook(date_system="1999")

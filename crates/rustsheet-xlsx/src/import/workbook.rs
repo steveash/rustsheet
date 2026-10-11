@@ -3,7 +3,7 @@ use std::io::Read;
 use super::package::Package;
 
 use super::xml::XmlNode;
-use rustsheet_engine::types::{DefinedName, SheetState};
+use rustsheet_engine::types::{DateSystem, DefinedName, SheetState};
 
 use crate::error::XlsxError;
 use crate::util::name_from_xlsx;
@@ -13,13 +13,29 @@ use super::{
     worksheets::{Sheet, WorkbookXML},
 };
 
+/// The date system a `workbookPr@date1904` attribute selects: `1` and `true` are 1904; absent,
+/// `0`, `false` and anything else are 1900, never an error (workbooks are untrusted).
+#[must_use]
+pub fn date_system_from_attribute(value: Option<&str>) -> DateSystem {
+    if matches!(value, Some("1" | "true")) {
+        DateSystem::Excel1904
+    } else {
+        DateSystem::Excel1900
+    }
+}
+
 pub(super) fn load_workbook<R: Read + std::io::Seek>(
     archive: &mut Package<R>,
-) -> Result<WorkbookXML, XlsxError> {
+) -> Result<(WorkbookXML, DateSystem), XlsxError> {
     let file = archive.open("xl/workbook.xml")?;
     let doc = XmlNode::parse(file)?;
     let mut defined_names = Vec::new();
     let mut sheets = Vec::new();
+    let date_system = date_system_from_attribute(
+        doc.descendants()
+            .find(|n| n.has_tag_name("workbookPr"))
+            .and_then(|n| n.attribute("date1904")),
+    );
     // Get the sheets
     let sheet_nodes: Vec<&XmlNode> = doc
         .descendants()
@@ -74,8 +90,11 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
         })
     }
     // read the relationships file
-    Ok(WorkbookXML {
-        worksheets: sheets,
-        defined_names,
-    })
+    Ok((
+        WorkbookXML {
+            worksheets: sheets,
+            defined_names,
+        },
+        date_system,
+    ))
 }

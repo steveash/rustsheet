@@ -6,7 +6,7 @@ IronCalc wasm bindings. The TypedDicts below describe the most common ones.
 """
 
 from enum import Enum
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 __version__: str
 
@@ -45,7 +45,9 @@ class Transaction:
     def delete_sheet(self, name: str) -> None: ...
 
 class Workbook:
-    def __init__(self) -> None: ...
+    def __init__(self, date_system: Literal["1900", "1904"] = "1900") -> None: ...
+    @property
+    def date_system(self) -> Literal["1900", "1904"]: ...
     @staticmethod
     def open(path: str, recalc: bool = True) -> Workbook: ...
     @staticmethod
