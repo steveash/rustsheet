@@ -20,6 +20,7 @@ C	probes/aggregate-range-args.case.json	38
 C	probes/aggregate-range-function-num-grid.case.json	22
 C	probes/anchorarray-at-operand-kinds.case.json	16
 C	probes/anchorarray-at-operand.case.json	2
+C	probes/anchorarray-if-operands.case.json	21
 C	probes/and-or-xor-error-order.case.json	37
 C	probes/and-or-xor-text-arguments.case.json	84
 C	probes/arith-overflow.case.json	72
@@ -157,6 +158,7 @@ C	probes/error-operand-broadcast.case.json	15
 C	probes/error-precedence-text.case.json	30
 C	probes/error-stored-busy-behaviors.case.json	23
 C	probes/error-stored-constants.case.json	24
+C	probes/external-ref-no-link.case.json	10
 C	probes/fact-large-arguments.case.json	18
 C	probes/filter-if-empty-array.case.json	12
 C	probes/fin-argument-modes.case.json	386
@@ -598,6 +600,9 @@ F	probes/date-system-1904-negatives.case.json	S!A14
 F	probes/date-system-1904-negatives.case.json	S!A6
 F	probes/date-system-1904-negatives.case.json	S!A8
 F	probes/date-system-1904-negatives.case.json	S!A9
+F	probes/external-ref-no-link.case.json	Calc!A10
+F	probes/external-ref-no-link.case.json	Calc!A4
+F	probes/external-ref-no-link.case.json	Calc!A7
 F	probes/fact-large-arguments.case.json	Sheet1!A1
 F	probes/fact-large-arguments.case.json	Sheet1!A11
 F	probes/fact-large-arguments.case.json	Sheet1!A12
