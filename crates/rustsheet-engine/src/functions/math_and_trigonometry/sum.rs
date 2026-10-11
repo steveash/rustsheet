@@ -252,14 +252,14 @@ impl Model {
 /// A running SUM: the total and the two addends of the latest addition, which
 /// [`snap_near_zero`] needs.
 #[derive(Default)]
-struct SumParts {
-    total: f64,
-    before_last: f64,
-    last: f64,
+pub(crate) struct SumParts {
+    pub(crate) total: f64,
+    pub(crate) before_last: f64,
+    pub(crate) last: f64,
 }
 
 impl SumParts {
-    fn add(&mut self, value: f64) {
+    pub(crate) fn add(&mut self, value: f64) {
         self.before_last = self.total;
         self.last = value;
         self.total += value;
@@ -293,8 +293,8 @@ impl Model {
         }
     }
 
-    /// SUM without the near-zero snap, for callers whose Excel behavior is not probed
-    /// (AGGREGATE(9, ...) and PERCENTOF; TODO(T-1336)).
+    /// SUM without the near-zero snap, for PERCENTOF, whose Excel behavior is not observable
+    /// (`#NAME?` on excel-graph; docs/excel-semantics/numbers.md "Near-zero snapping").
     pub(crate) fn fn_sum_unsnapped(
         &mut self,
         args: &[Node],

@@ -12,5 +12,5 @@ mod product;
 mod random;
 mod sequence;
 mod seriessum;
-mod sum;
+pub(crate) mod sum;
 mod sumproduct;
