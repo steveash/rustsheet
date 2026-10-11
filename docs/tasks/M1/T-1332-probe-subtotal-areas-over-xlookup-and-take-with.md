@@ -3,7 +3,7 @@ id: T-1332
 title: "Probe SUBTOTAL/AREAS over XLOOKUP and TAKE with computed-array sources (IF, LET, names) (follow-up of T-1211)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
