@@ -127,3 +127,60 @@ fn fieldvalue_broadcast_over_huge_ranges_is_bounded() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), *"#ERROR!");
 }
+
+// probes/rich-errors-shapes-urls (excel-graph, T-1189).
+#[test]
+fn image_url_shapes_match_the_probe() {
+    let mut model = new_empty_model();
+    let sources = [
+        ("A1", "HTTPS://EXAMPLE.INVALID/A.PNG", "#BLOCKED!"),
+        ("A2", "https:example.invalid/a.png", "#BLOCKED!"),
+        ("A3", " https://example.invalid/a.png", "#BLOCKED!"),
+        ("A4", "https://example.invalid", "#BLOCKED!"),
+        ("A5", "https://", "#VALUE!"),
+        ("A6", "ftp://example.invalid/a.png", "#VALUE!"),
+        ("A7", "www.example.invalid/a.png", "#VALUE!"),
+        ("A8", "file:///c:/a.png", "#VALUE!"),
+    ];
+    for (cell, source, _) in sources {
+        model._set(cell, &format!(r#"=IMAGE("{source}")"#));
+    }
+    model.evaluate();
+    for (cell, source, expected) in sources {
+        assert_eq!(model._get_text(cell), *expected, "{source}");
+    }
+}
+
+#[test]
+fn a_later_argument_error_lifts_over_an_array_first_argument() {
+    let mut model = new_empty_model();
+    model._set(
+        "A1",
+        r#"=IMAGE({"https://x.invalid/a.png","https://x.invalid/b.png"},1/0)"#,
+    );
+    model._set("A2", r#"=STOCKHISTORY({"A";"B"},1/0)"#);
+    model._set("C2", r#"=STOCKHISTORY("A",1/0)"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#DIV/0!");
+    assert_eq!(model._get_text("B1"), *"#DIV/0!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#DIV/0!");
+    assert_eq!(model._get_text("C2"), *"#DIV/0!");
+}
+
+#[test]
+fn fieldvalue_keeps_error_elements_of_an_array_field_name() {
+    let mut model = new_empty_model();
+    model._set("A1", r#"=_xlfn.FIELDVALUE(5,{"a",#DIV/0!,#N/A})"#);
+    model._set("A2", r#"=_xlfn.FIELDVALUE({1;2},{"a",#N/A})"#);
+    model._set("A4", r#"=_xlfn.FIELDVALUE({1,#N/A},"Price")"#);
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#FIELD!");
+    assert_eq!(model._get_text("B1"), *"#DIV/0!");
+    assert_eq!(model._get_text("C1"), *"#N/A");
+    // A 1-row `field_name` repeats down a column `value`.
+    assert_eq!(model._get_text("B2"), *"#N/A");
+    assert_eq!(model._get_text("B3"), *"#N/A");
+    assert_eq!(model._get_text("A3"), *"#FIELD!");
+    assert_eq!(model._get_text("B4"), *"#FIELD!");
+}
