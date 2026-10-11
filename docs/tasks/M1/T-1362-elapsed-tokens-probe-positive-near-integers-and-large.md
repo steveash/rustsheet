@@ -3,7 +3,7 @@ id: T-1362
 title: "Elapsed tokens: probe positive near-integers and large serials ([s] overflows i32)"
 milestone: M1
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ Elapsed tokens give Excel's text for positive near-integers and for serials beyo
 
 ## Out of scope
 -
+
+## Outcome
+Probed positive near-integers and large serials (probes/elapsed-positive-large-1900/-1904, 17 cells each, excel-graph): the snaps match Excel for positives; the count overflowed i32. `elapsed_text` now counts in i64. Both cases pass (34 cells newly checked, 0 known failures); number-formats.md updated.

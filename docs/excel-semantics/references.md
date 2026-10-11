@@ -980,9 +980,10 @@ Tasks: T-1210, T-1234
 
 ## Signed and function operands of @
 Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a signed operand and the sign binds inside it. `=@-1` = -1; `=@+1` = 1 and prints `=@1` (unary plus dropped); `=@-B1:B3` = top-left of the negated range, -5 (formula on row 31, off the range rows, and not #VALUE!); `=@-B1 B1:C1` = -5; `=@-B1` = -5; `=@-B1:B3*2` = -10; `=@-1%` = -0.01; `=@-2^2` = 4, `(-2)^2`, and FORMULATEXT prints it as written `=@-2^2` (fixed in T-1320). `=ANCHORARRAY(@IF(TRUE,D1))` spills D1's array (`@` of an IF that picks one cell keeps the reference, like `@INDEX`; the engine gave #VALUE! until T-1321). `=@OFFSET(B1,0,0,3,1)` and `=@INDIRECT("B1:B3")` placed off-row are #VALUE! and print as written.
+Rule (probes/at-if-spill-anchor-operand, excel-graph, 2026-10-11, T-1337): `ANCHORARRAY(@IF(TRUE,D1:D3))` implicitly intersects the picked range at the formula cell, then takes that cell as the anchor: in H1 it spills D1# (1,2,3); in J2 the pick is D2, which is not a spill anchor, so #REF!; in L5 (off the range rows) #VALUE!. `ANCHORARRAY(@IF(TRUE,(D1,E1)))` (a picked union) and `ANCHORARRAY(@IF(FALSE,D1,5))` (a non-reference) are #VALUE!. Outside spill anchors `@IF(TRUE,B1)` stays a reference: `VLOOKUP(1,A1:C3,@IF(TRUE,B1))` with B1 text "2" gives "2" (column index "2" coerced), and `LOOKUP(99,A1:A3,@IF(TRUE,F1))` = 1, equal to the plain `LOOKUP(99,A1:A3,F1)` (1, although F1 is 77; unexplained), while a scalar result_vector `LOOKUP(99,A1:A3,77)` is #N/A. The engine gives #N/A for the `@IF` LOOKUP (T-1368).
 Status: VERIFIED (excel-graph)
-Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` fixed (T-1320); `ANCHORARRAY(@IF(...))` in `spill_anchor_operand` (reference_operators.rs, T-1321; spill anchors only, the lookup callers of `eval_ref_or_index` are unprobed for `@IF`)
-Tasks: T-1285, T-1320, T-1321
+Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` fixed (T-1320); `ANCHORARRAY(@IF(...))` in `spill_anchor_operand` (reference_operators.rs, T-1321; spill anchors only, the lookup callers of `eval_ref_or_index` are probed for `@IF` by T-1337: VLOOKUP matches, LOOKUP result_vector is T-1368)
+Tasks: T-1285, T-1320, T-1321, T-1337, T-1368
 
 ## FORMULATEXT of @ next to ^
 Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never parenthesised as an operand of `^`; written parentheses are kept. `=@A1^2`, `=2^@A1`, `=@-A1^2`, `=@2^2`, `=@(A1)^2`, `=@A1:A2^2` (#VALUE!), `=@-2^2+1`, `=2^@-2` (0.25), `=@SUM(A1)^2` and `=@-2%^2` (0.0004) print as written; `=@A1^2^3` (729, left-associative) prints bare; `=(@-2)^2` keeps its parentheses.
@@ -1014,7 +1015,15 @@ back (`=ISREF((A1))`, `=ROWS(((A1:A3)))`, `=SUM(((A1,B1)))`, `=LET(x,(A1:A3),ROW
 `GroupedRootKind`). Not probeable through excel-graph: `=(INDEX(D1:D3,1))#` (the Graph workbook is rejected as
 unsupported, `FileCorruptTryRepair`), so a group directly before `#` stays unevidenced.
 Ours: the values and the root snap match; FORMULATEXT drops the redundant groups (H10, H11, H14) and plain
-`ANCHORARRAY(IF(TRUE,D1))` gives TypeMismatch (E20:E22) while the grouped form passes.
-Evidence strength: `ISREF((A1))` and the union in `SUM(((A1,B1)))` show a reference survives a group; `ROWS` and `LET(..., ROWS(x))` return 3 for a range and for an array alike, so they do not (reference-only checks such as `ISREF((A1:A3))` and `OFFSET((A1:A3),1,0)` are unprobed, T-1364). The ANCHORARRAY pair compares the form with and without `@(...)`; `ANCHORARRAY(@IF(TRUE,D1))` is unprobed.
-Status: VERIFIED (web), except the `)#` shape and the range/LET reference checks.
+`ANCHORARRAY(IF(TRUE,D1))` now spills like the grouped form (T-1363: an IF that picks one cell is the reference).
+Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-only, T-1364): `ISREF((A1:A3))`,
+`ISREF(LET(x,(A1:A3),x))` are TRUE like the plain forms; `OFFSET((A1:A3),1,0)` spills 2, 3, 0 like `OFFSET(A1:A3,1,0)`;
+`CELL("address",(A1))` is `$A$1` like `CELL("address",A1)`; `ANCHORARRAY(@IF(TRUE,D1))` and
+`ANCHORARRAY((INDEX(D1:D3,1)))` both spill 1, 2, 3 like `ANCHORARRAY(INDEX(D1:D3,1))`. Built as
+`ANCHORARRAY((INDEX(D1:D3,1)))`, Graph accepts the `)#` shape and FORMULATEXT prints `=(INDEX(D1:D3,1))#`
+(`ANCHORARRAY(@IF(TRUE,D1))` prints `=@IF(TRUE,D1)#`). So a written group is transparent for references in every probed cell; no
+non-transparent cell exists for SPEC-0007 (T-1340).
+Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups in the reference-only cells too (T-1340).
+Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
+Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364

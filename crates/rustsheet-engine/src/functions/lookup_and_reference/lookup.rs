@@ -68,7 +68,7 @@ impl Model {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let target = self.evaluate_node_in_context(&args[0], cell);
+        let target = self.lookup_value_arg(&args[0], cell);
         if target.is_error() {
             return target;
         }

@@ -3,7 +3,7 @@ id: T-1256
 title: "Lookup functions read a reference-valued lookup_value (CHOOSE, OFFSET, INDIRECT, a 1-cell range) as its cell value"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: done
 priority: P2
 size: S
 tier: opus
@@ -28,10 +28,16 @@ Only the CHOOSE shape has Excel evidence; add an excel-probe case for the OFFSET
 and not found, exact and approximate) before relying on them. A multi-cell range lookup_value is T-0270's (lifting).
 
 ## Acceptance criteria
-- [ ] gen-m6/963a217976538d5d A32 passes in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell
+- [x] gen-m6/963a217976538d5d A32 passes in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell
       and no new known failures in eval/baseline/.
-- [ ] An excel-graph probe case covers the six functions with CHOOSE, OFFSET, INDIRECT and 1-cell-range lookup values and passes.
-- [ ] `make check` green; reviewers approve.
+- [x] An excel-graph probe case covers the six functions with CHOOSE, OFFSET, INDIRECT and 1-cell-range lookup values and passes.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Multi-cell range or array lookup values (T-0270).
+
+## Outcome
+gen-m6/963a217976538d5d A32 already passed on main (VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value). The new probe probes/lookup-reference-lookup-value (excel-graph, 220 cells) showed MATCH,
+XMATCH and LOOKUP still gave #N/A for all four reference shapes (48 cells). They now read the value
+through one helper, `Model::lookup_value_arg`, and the probe passes 220/220. lookup.md entry rewritten
+(VERIFIED). Eval: probes +1 case, all passing; no other suite changes; 0 regressions.

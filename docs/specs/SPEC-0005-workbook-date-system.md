@@ -88,6 +88,8 @@ The current call sites (`rg 'format_number\(|format_text\(' crates`, about 12, i
 `self.workbook.settings`; locale-only helpers (`number_format.rs`, which builds its own `Locale` from a `&str`, and
 the examples in `model.rs`) stay 1900 and use `DateSystem::default()`. The `ParsePart::Date` arm becomes:
 `if value < 0.0 && !(has_elapsed && date_system == Excel1904) { return invalid_date(value) }`.
+(Superseded by the T-1105 probes: the implemented rule, decided on the original sign, is in dates.md
+"Negative serials under an explicit negative section".)
 The rule lives in one function, `formatter::dates::negative_serial_allowed(tokens, date_system)`,
 cited by dates.md. It is called only for `value < 0.0` and checks `date_system` before scanning the
 tokens, so a 1900 workbook never scans (today `has_elapsed` is computed for every value).
