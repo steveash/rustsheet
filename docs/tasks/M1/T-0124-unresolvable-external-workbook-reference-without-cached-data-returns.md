@@ -3,7 +3,7 @@ id: T-0124
 title: "Unresolvable external-workbook reference without cached data returns #VALUE! (1 known failure)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
