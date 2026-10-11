@@ -124,7 +124,7 @@ Rule: LEFT and RIGHT (and LEFTB) accept any non-negative num_chars, however larg
 MID (and MIDB) is `#VALUE!` once start_num or num_chars reaches 2^31 (2^31-1 is fine: `MID("abc",2^31-1,1)` is
 ""). REPLACE is `#VALUE!` once start_num or num_chars exceeds 32,767, even past the end of a short text
 (`REPLACE("abc",32768,1,"z")`, `REPLACE(REPT("a",10),11,32768,"z")`; 32,767 is fine and appends).
-A negative count is `#VALUE!` from -1E-300 down (LEFT, RIGHT, MID); 1E-300 counts as 0.
+A negative count is `#VALUE!`: -1E-300 for LEFT (N18), -1E-15 for RIGHT and MID (B24-D24); 1E-300 counts as 0.
 Evidence: probes/text-count-argument-bounds F-M rows 1-14, F20-F24, N17-N19 (excel-graph, 2026-10-11, T-0219);
 gen-m6/a62335e72e44cb4e Calc!A9 (`REPLACE(-0.0001,123456789.123,3,"a*")` is `#VALUE!`, T-1239).
 Status: VERIFIED. REPLACEB and RIGHTB delegate to REPLACE and RIGHT (unprobed themselves).
@@ -142,7 +142,9 @@ character. The bound is absolute, identical below 1, 10, 1000 and 30000, and it 
 raw value (`LEFT(t,-1E-300)` is `#VALUE!`); REPLACE's start_num < 1 check comes after the rounding
 (`REPLACE(t,1-2E-7,1,"z")` starts at 1, `1-1E-5` is `#VALUE!`). A computed `TRUE-1E-15` count is 1 for LEFT
 (gen-m2/b4392a6514a36ade Calc!A14). Whether other functions (REPT, FIND/SEARCH start_num, CHAR, INDEX)
-share this rounding is UNVERIFIED.
+share this rounding is UNVERIFIED. The cutoff is known to 2^-36: 2^-22 + 8·2^-36 (= 2^-22 + 2^-33) rounds up, 2^-22 + 9·2^-36 does not;
+the engine takes the bound as exactly 2^-22 + 2^-33, inclusive. Unprobed: REPLACE start_num 32767.9999999 (rounds
+up to 32,768, so the engine gives `#VALUE!`).
 Evidence: probes/text-count-argument-bounds A-D, N-S, T-V, X-Y, Z, AA (excel-graph, 2026-10-11, T-0219).
 Status: VERIFIED
 Implemented in: functions/text/util.rs (`near_integer_count`), used by `left_element`, `right_element`
