@@ -3,7 +3,7 @@ id: T-1329
 title: "TEXT of a tiny negative under a [s]-only format is '-0', not '-1'"
 milestone: M1
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/date-system-1900-negatives A18 and probes/date-system-1904-negatives A18 
 
 ## Out of scope
 -
+
+## Outcome
+`elapsed_text` in formatter/format.rs keeps the minus on a negative that rounds to 0 in the token unit. probes baseline 2385 -> 2383 (A18 in both date-system cases); no regressions.
