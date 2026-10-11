@@ -423,6 +423,14 @@ impl Model {
                     .into_single_area(cell);
                 Self::intersect_reference(picked, cell)
             }
+            // A plain IF is the reference it picks: `IF(TRUE,D1)#` spills D1#
+            // (probes/written-parens-reference-context E20:E22, T-1363). Evaluated once, so
+            // nested IFs stay linear.
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
             _ => self.eval_ref_or_index(node, cell),
         }
     }
