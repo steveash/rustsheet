@@ -519,12 +519,6 @@ fn to_string_moved(
             *levels,
             &to_string_moved(child, move_context, locale, language),
         ),
-        GroupedRootKind { child } => {
-            format!(
-                "({})",
-                to_string_moved(child, move_context, locale, language)
-            )
-        }
         LambdaDefKind { parameters, body } => {
             let mut parts: Vec<String> = parameters.iter().map(|p| p.name.clone()).collect();
             parts.push(to_string_moved(body, move_context, locale, language));

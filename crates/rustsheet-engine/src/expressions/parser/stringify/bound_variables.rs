@@ -80,7 +80,6 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
-        | Node::GroupedRootKind { child }
         | Node::Group { child, .. } => prefix_bound_variables(child, bound),
         Node::BooleanKind(_)
         | Node::NumberKind(_)
