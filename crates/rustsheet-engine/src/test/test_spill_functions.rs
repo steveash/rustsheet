@@ -512,3 +512,15 @@ fn anchorarray_of_at_if_spills_the_picked_cell() {
     assert_eq!(model._get_text("H2"), "2");
     assert_eq!(model._get_text("H3"), "3");
 }
+
+// An IF that picks a value is not a spill anchor: `@IF(FALSE,D1,5)` is `#VALUE!` like
+// `ANCHORARRAY(@1)` (probes/colon-hash-value-operands D3, T-1226; T-1321).
+#[test]
+fn anchorarray_of_at_if_picking_a_value_is_value_error() {
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("H1", "=ANCHORARRAY(@IF(FALSE,D1,5))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("H1"), "#VALUE!");
+}

@@ -380,37 +380,31 @@ impl Model {
                 kind: Function::Index,
                 args,
             } => self.index_impl(args, cell, true),
-            // `ANCHORARRAY(@INDEX(D1:D2,1))` spills D1#: the `@` of a one-cell reference keeps
-            // the reference (probes/anchorarray-at-operand-kinds H81, T-1247).
+            // `ANCHORARRAY(@INDEX(D1:D2,1))` and `ANCHORARRAY(@IF(TRUE,D1))` spill D1#: the `@` of
+            // an INDEX or IF that selects one cell keeps the reference (probes/anchorarray-at-
+            // operand-kinds H81, probes/at-signed-operand H71:H73; T-1247, T-1321).
             Node::ImplicitIntersection { child, .. }
                 if matches!(
                     **child,
                     Node::FunctionKind {
-                        kind: Function::Index,
+                        kind: Function::Index | Function::If,
                         ..
                     }
                 ) =>
             {
-                match self.eval_ref_or_index(child, cell) {
-                    reference @ CalcResult::Range { left, right } if left == right => reference,
-                    _ => self.evaluate_node_with_reference(node, cell),
-                }
-            }
-            // `ANCHORARRAY(@IF(TRUE,D1))` spills D1# too: the `@` of an IF that picks one cell
-            // keeps the reference (probes/at-signed-operand H71:H73, T-1321).
-            Node::ImplicitIntersection { child, .. }
-                if matches!(
+                let picked = if matches!(
                     **child,
                     Node::FunctionKind {
                         kind: Function::If,
                         ..
                     }
-                ) =>
-            {
-                match self
-                    .evaluate_reference_arg(child, cell)
-                    .into_single_area(cell)
-                {
+                ) {
+                    self.evaluate_reference_arg(child, cell)
+                        .into_single_area(cell)
+                } else {
+                    self.eval_ref_or_index(child, cell)
+                };
+                match picked {
                     reference @ CalcResult::Range { left, right } if left == right => reference,
                     _ => self.evaluate_node_with_reference(node, cell),
                 }
