@@ -41,12 +41,14 @@ Modes come from the new probe probes/fin-argument-modes (386 cells, excel-graph 
 function argument modes"). Every scalar is `value`: all of them lift over an array literal, and the core functions also
 lift over a range, while the Analysis ToolPak ones are `#VALUE!` over a range. NPV's values are `aggregate`. IRR, MIRR,
 XNPV, XIRR and FVSCHEDULE take their cash flows, dates and schedule as `array`.
-Soft integer domains keep dates in their required order with disjoint serial windows: issue < first_interest or
-first_coupon < settlement < maturity, and last_interest < settlement < maturity for ODDL*. They also cover periods,
+Soft integer domains keep dates in their required order with disjoint serial windows: issue < first_interest <
+settlement < maturity for ACCRINT, issue < settlement < first_coupon < maturity for ODDF*, and last_interest <
+settlement < maturity for ODDL*. They also cover periods,
 lives, basis and type. The generator now writes a number `enum` unquoted, so frequency is 1, 2 or 4 and not the text
 "2" (test_number_enums_are_number_literals).
 A seeded sample (`rustsheet-gen --milestone M9 --count 20 --seed 17`, from a scratch catalog holding only the financial
-signatures, not committed) made 800 formulas calling all 55 functions. excel-graph accepted all 20 workbooks
+signatures, not committed; the catalog was
+functions.yaml filtered to the entries with `category: financial` and `params`, passed with `--catalog`) made 800 formulas calling all 55 functions. excel-graph accepted all 20 workbooks
 (0 failures), and the engine passed 700/800 cells with no abort.
 Eval delta: probes +1 case, 386 cells, 80 pass, 306 new known failures (T-1372 lifting 274 cells; T-1373 NPV and
 FVSCHEDULE 6; T-1374 bond and depreciation values; the annuity and solver ulps belong to T-0901 and T-0916).

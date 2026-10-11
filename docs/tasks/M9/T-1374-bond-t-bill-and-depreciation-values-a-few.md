@@ -15,8 +15,9 @@ The bond, T-bill, depreciation and cumulative-payment functions return Excel's b
 
 ## Context
 probes/fin-argument-modes (excel-graph, 2026-10-11, T-1084). Base rows that miss:
-- 1 to a few ulps off: CUMIPMT H72, CUMPRINC H80, DB H88, DDB H95, DURATION H117, EFFECT H125, INTRATE H139, MDURATION H163,
-  ODDFPRICE H189, PRICE H251, YIELDDISC H352.
+- 1 to a few ulps off: CUMIPMT H72, DB H88, DDB H95, DURATION H117, INTRATE H139, MDURATION H163, ODDFPRICE H189,
+  PRICE H251, YIELDDISC H352.
+- Tens of ulps off: CUMPRINC H80 (about 37) and EFFECT H125 (about 32).
 - Off at about 1e-10 to 1e-12 relative, so probably an iteration stopping point rather than an evaluation order: ODDFYIELD H200,
   TBILLEQ H313 (closed-form, so a formulation difference), YIELD H343.
 The annuity family (FV, PMT, PPMT, NPV) and the solvers (IRR, RATE, XIRR) are T-0901's and T-0916's, not this task's.

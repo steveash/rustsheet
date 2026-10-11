@@ -135,8 +135,8 @@ PPMT, PV, RATE, RRI, SLN, SYD, VDB and IRR's guess: `ROWS(F(G1:G2,..))` is 2). T
 ACCRINT, ACCRINTM, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DISC, DOLLARDE, DOLLARFR, DURATION,
 EFFECT, FVSCHEDULE's principal, INTRATE, MDURATION, NOMINAL, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE,
 PRICEDISC, PRICEMAT, RECEIVED, TBILLEQ, TBILLPRICE, TBILLYIELD, XIRR's guess, XNPV's rate, YIELD, YIELDDISC and YIELDMAT
-are `#VALUE!` when their first scalar argument is a multi-cell range. (Only the first scalar was probed over a range,
-XIRR's guess and XNPV's rate being the first scalars there; the others are assumed to behave the same.)
+are `#VALUE!` when their first scalar argument is a multi-cell range. Only the first scalar was probed over a range (XIRR's guess
+and XNPV's rate are the first scalars there). How the later scalars behave over a range is unverified.
 NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
 -10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
 Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
@@ -155,8 +155,8 @@ dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a b
 schedule containing text.
 Ours: no scalar argument lifts (`#N/IMPL!` for an array literal, `#VALUE!` for a range; T-1372). NPV of an array
 literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
-The base values of CUMIPMT, CUMPRINC, DB, DDB, DURATION, EFFECT, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are
-1 to a few ulps off, and those of ODDFYIELD, TBILLEQ and YIELD are off at 1e-10 to 1e-12 relative (T-1374). The
+The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
+ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD, TBILLEQ and YIELD are off at 1e-10 to 1e-12 relative (T-1374). The
 annuity, NPV and solver misses are T-0901's and T-0916's.
 Status: VERIFIED (excel-graph)
 Tasks: T-1084, T-1372, T-1373, T-1374
