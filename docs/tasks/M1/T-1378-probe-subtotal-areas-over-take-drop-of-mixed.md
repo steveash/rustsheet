@@ -25,4 +25,4 @@ T-1365 added `yields_cells` (static_analysis/aggregate.rs) with unprobed rules: 
 -
 
 ## Outcome
-Probe `subtotal-reference-operands-f` (97 oracle cells, excel-graph): TAKE/DROP over CHOOSE, SWITCH and IFS now follow the same cells-or-values rule as IF in `yields_cells`, so a computed array spills `#VALUE!` instead of tripping the debug_assert; LET/LAMBDA variable names are case-insensitive. The probes suite gained 97 passing cells (known failures unchanged; the baseline records the new case). Quirk recorded in `docs/excel-semantics/references.md`. Follow-up: LAMBDA parameter lookup elsewhere may still be case-sensitive.
+Probe `subtotal-reference-operands-f` (97 oracle cells, excel-graph): TAKE/DROP over CHOOSE, SWITCH and IFS now follow the same cells-or-values rule as IF in `yields_cells`, so a computed array spills `#VALUE!` instead of tripping the debug_assert; LET/LET variable names are case-insensitive. The probes suite gained 97 passing cells (known failures unchanged; the baseline records the new case). Quirk recorded in `docs/excel-semantics/references.md`. Follow-up: T-1387 (LAMBDA parameters and duplicate LET names).

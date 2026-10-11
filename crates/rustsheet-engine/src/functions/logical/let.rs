@@ -15,7 +15,11 @@ use crate::{
 /// Whether two LET or LAMBDA variable names are the same variable: names are case-insensitive
 /// (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41).
 pub(crate) fn same_variable(a: &str, b: &str) -> bool {
-    a == b || a.to_lowercase() == b.to_lowercase()
+    // No allocation: this runs per node on every LAMBDA call and LET evaluation.
+    a == b
+        || a.chars()
+            .flat_map(char::to_lowercase)
+            .eq(b.chars().flat_map(char::to_lowercase))
 }
 
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
@@ -26,7 +30,7 @@ pub(crate) fn same_variable(a: &str, b: &str) -> bool {
 pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
     match node {
         Node::NamedVariableKind { name, id: var_id }
-            if same_variable(name, target) && var_id.is_none() =>
+            if var_id.is_none() && same_variable(name, target) =>
         {
             *var_id = Some(id);
         }
@@ -35,7 +39,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
             id: var_id,
             args,
         } => {
-            if same_variable(name, target) && var_id.is_none() {
+            if var_id.is_none() && same_variable(name, target) {
                 *var_id = Some(id);
             }
             for arg in args.iter_mut() {

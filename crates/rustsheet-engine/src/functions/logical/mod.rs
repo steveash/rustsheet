@@ -2,10 +2,11 @@ mod and_or_xor_not;
 mod bycol_byrow;
 mod lambda;
 mod r#let;
-pub(crate) use r#let::same_variable;
 mod map_reduce;
 mod scan;
 mod switch;
+
+pub(crate) use r#let::same_variable;
 
 use crate::{
     arithmetic::bcast_idx,
