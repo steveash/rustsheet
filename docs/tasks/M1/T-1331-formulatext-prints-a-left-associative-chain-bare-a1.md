@@ -3,7 +3,7 @@ id: T-1331
 title: "FORMULATEXT prints a left-associative ^ chain bare: =@A1^2^3 and =A1^2^3 (engine wraps =(@A1^2)^3; T-1320)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
