@@ -3,7 +3,7 @@ id: T-1340
 title: "Group node for written parentheses around value expressions (SPEC-0007 step 1)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
