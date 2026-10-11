@@ -3,7 +3,7 @@ id: T-1346
 title: "Probe positive fractional elapsed tokens and near-integer negatives"
 milestone: M1
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,7 @@ T-1338 probed tiny negatives: [s] rounds the magnitude, [h]/[m] truncate it (ela
 
 ## Out of scope
 -
+
+## Outcome
+Probed 14 cells in both date systems (probes/elapsed-fractions-1900/-1904). Positive `[s]` rounds and `[h]`/`[m]` truncate, like negatives (the engine floored positive `[s]`), and Excel snaps much wider noise than the 1e-10 guess. `elapsed_text` now takes an `ElapsedUnit` and fits the snaps to the probes. No regressions; 28 new passing cells.
+Follow-up: T-1362 probes positive near-integers and large serials.
