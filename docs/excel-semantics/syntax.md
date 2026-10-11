@@ -67,7 +67,8 @@ Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` 
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
-one, so up to 127 nested parentheses or function calls are accepted; union operand lists too
+one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
+`0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
