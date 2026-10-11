@@ -1,6 +1,7 @@
 mod bound_variables;
 use super::reference_operators::{
-    at_text, callee_operand, intersection_operand, spill_operand, tight_operand, union_text,
+    at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
+    union_text,
 };
 use super::{
     super::utils::{name_needs_quoting, quote_name},
@@ -432,12 +433,6 @@ fn format_function(
 // * =A1+B2
 // * =RC+R1C1
 // * =A1+B1
-
-/// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
-pub(crate) fn group_text(levels: u8, text: &str) -> String {
-    let levels = usize::from(levels);
-    format!("{}{text}{}", "(".repeat(levels), ")".repeat(levels))
-}
 
 fn stringify(
     node: &Node,

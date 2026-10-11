@@ -1,9 +1,7 @@
 use super::{
     left_chain,
-    reference_operators::{at_text, intersection_operand, tight_operand, union_text},
-    stringify::{
-        group_text, sheet_span_text, stringify_reference, to_localized_string, DisplaceData,
-    },
+    reference_operators::{at_text, group_text, intersection_operand, tight_operand, union_text},
+    stringify::{sheet_span_text, stringify_reference, to_localized_string, DisplaceData},
     value_operands, ArrayNode, Node, Reference,
 };
 use crate::{

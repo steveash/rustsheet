@@ -694,6 +694,16 @@ pub(crate) fn lead_group_text(
     Some(text)
 }
 
+/// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
+pub(crate) fn group_text(levels: u8, text: &str) -> String {
+    let levels = usize::from(levels);
+    let mut grouped = String::with_capacity(text.len() + 2 * levels);
+    grouped.extend(std::iter::repeat_n('(', levels));
+    grouped.push_str(text);
+    grouped.extend(std::iter::repeat_n(')', levels));
+    grouped
+}
+
 /// The number of operands of the intersection chain `node`: 1 for any other node.
 fn chain_operands(node: &Node) -> u8 {
     let mut count: u8 = 1;

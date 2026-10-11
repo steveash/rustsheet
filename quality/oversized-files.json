@@ -4,7 +4,7 @@
   "crates/rustsheet-engine/src/conditional_formatting.rs": 1757,
   "crates/rustsheet-engine/src/evaluation.rs": 1101,
   "crates/rustsheet-engine/src/expressions/parser/static_analysis.rs": 2156,
-  "crates/rustsheet-engine/src/expressions/parser/stringify.rs": 1109,
+  "crates/rustsheet-engine/src/expressions/parser/stringify.rs": 1104,
   "crates/rustsheet-engine/src/functions/date_and_time.rs": 1439,
   "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1405,
   "crates/rustsheet-engine/src/functions/financial/mod.rs": 2323,

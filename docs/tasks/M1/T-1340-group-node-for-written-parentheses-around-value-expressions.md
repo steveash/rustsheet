@@ -42,5 +42,11 @@ at-group-range-corner-whole E34; at-power-text I26; written-parens-reference-con
 written-parens-reference-only F30, F40, F50, F60, F75. Still failing, T-1343's: at-operand-nested-groups F11, F13,
 F14 and at-group-leftmost-shapes E34 (a group that starts an `@` operand).
 
+Choices against the spec text: the unreachable `Group` arm of `evaluate_node_in_context` (and `compute_node_units`)
+answers an error (`None`) rather than re-peeling, since a re-peel there can only recurse; argument shape tests call
+`Node::ungrouped()` itself rather than an `arg_shape` alias, one name per concept (CLAUDE.md directive 3). The
+`stringify` calls collapsed to `sub(..)`, the offset arithmetic in `model.rs` and the merged static-analysis arms are
+behavior-neutral cuts that keep the oversized-file ratchet from growing.
+
 Timing: the T-1110/T-1169 stack tests (now with `SUM((SUM((…))))`) take 0.20-0.27 s in a debug build (main
 0.20-0.28 s); `rustsheet-eval run` 1.4-2.1 s (main 1.7-2.1 s), within noise.
