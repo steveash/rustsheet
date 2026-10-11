@@ -62,6 +62,17 @@ T-0147) for the accepted forms; each rejected form was sent as a single-cell wor
 RustSheet today: all of these forms are rejected (`parse_array_item` takes one sign directly attached to a number token; T-0156).
 Status: VERIFIED
 
+## Formulas over 8,192 characters refuse the workbook
+Rule: Excel for the web refuses a whole workbook holding a formula of more than 8,192 stored characters (the
+`<f>` text without the leading `=`; createSession 501 `FileCorruptTryRepair`). A formula of 8,192 characters loads.
+RustSheet's xlsx importer refuses the same workbooks with `XlsxError::Workbook` (decision 0047).
+Evidence: T-1091 and probe `operator-chain-limit` (T-1060), both excel-graph; see "Formula nesting depth cap" below.
+Unprobed: the limit for typed (API) formulas, for defined names and for desktop Excel, and whether Excel counts
+UTF-16 code units (the importer counts Unicode scalar values, which is never stricter) (T-1386).
+Status: VERIFIED (excel-graph, file load)
+Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
+Tasks: T-1091, T-1093
+
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
@@ -95,10 +106,10 @@ the leading `=`, so the file text was 8,192 characters for the longest formula t
 8,193 including `=`) and 8,193 for the first refused: Excel enforces exactly the published 8,192
 characters on file load. At
 most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
-chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
-chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
-cap, where Excel refuses the workbook (an engine extension; follow-up task to decide whether to
-refuse formulas over 8,192 stored characters on load).
+chain Excel accepts. The engine itself has no formula text length limit: through the API it accepts
+and evaluates chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the
+operator cap. The xlsx importer refuses a workbook holding one, as Excel does (see "Formulas over
+8,192 characters refuse the workbook" above).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
