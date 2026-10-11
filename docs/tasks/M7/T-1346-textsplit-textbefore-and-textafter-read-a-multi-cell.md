@@ -31,7 +31,7 @@ duplicate the list reader.
 
 ## Acceptance criteria
 - [ ] gen-m7/0e40208f51c2454c A17, gen-m7/8ed8a680e9794b77 A17 and A26 and gen-m7/4629e931955aa4b8 A19 pass in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
-- [ ] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("xTRUEy",A1:B1)` with A1 = TRUE; text.md updated.
+- [ ] An excel-probe case settles the UNVERIFIED parts first: `TEXTBEFORE("xyz",A1:B1)` with A1 blank and B1 "q", `TEXTBEFORE("a1b",A1:B1)` with A1 = 1, `TEXTAFTER("a TRUE b",A1:B1)` with A1 = TRUE; text.md updated.
 - [ ] Unit tests: a 2x2 delimiter range, a range with a blank cell, a range with a number and a boolean, per the probe.
 - [ ] `make check` green; reviewers approve.
 
