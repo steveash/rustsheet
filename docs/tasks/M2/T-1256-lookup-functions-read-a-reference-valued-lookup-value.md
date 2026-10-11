@@ -3,7 +3,7 @@ id: T-1256
 title: "Lookup functions read a reference-valued lookup_value (CHOOSE, OFFSET, INDIRECT, a 1-cell range) as its cell value"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
