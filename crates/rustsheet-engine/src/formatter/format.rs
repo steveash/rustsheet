@@ -100,17 +100,51 @@ enum ElapsedUnit {
 /// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
 /// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
 /// the probes, not documented. The count is i64: Excel has no 32-bit limit (T-1362).
+/// `x` rounded to `1/scale`; a magnitude whose scaled value overflows is already integral, and
+/// Excel does not turn it into 0 (probes/elapsed-huge-h-1900: 2.08E303 days in `[s]` is #VALUE!).
+fn snap(x: f64, scale: f64) -> f64 {
+    let scaled = x * scale;
+    if scaled.is_finite() {
+        scaled.round() / scale
+    } else {
+        x
+    }
+}
+
 fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
     let secs = value * 86400.0;
     let n = match unit {
-        ElapsedUnit::Second => ((secs * 1e12).round() / 1e12).round(),
-        ElapsedUnit::Minute => ((secs * 1e3).round() / 1e3 / 60.0).floor(),
-        ElapsedUnit::Hour => ((secs * 1e3).round() / 1e3 / 3600.0).floor(),
-    } as i64;
-    if padded {
-        format!("{n:02}")
+        ElapsedUnit::Second => snap(secs, 1e12).round(),
+        // Excel counts minutes and hours from the serial itself once the seconds overflow.
+        ElapsedUnit::Minute if secs.is_infinite() => (value * 1440.0).floor(),
+        ElapsedUnit::Hour if secs.is_infinite() => (value * 24.0).floor(),
+        ElapsedUnit::Minute => (snap(secs, 1e3) / 60.0).floor(),
+        ElapsedUnit::Hour => (snap(secs, 1e3) / 3600.0).floor(),
+    };
+    // Excel: a count that overflows f64 prints as 0, and from 1e15 up the digits are the first 15
+    // significant ones followed by zeros (docs/excel-semantics/number-formats.md, "Elapsed tokens
+    // beyond the i64 range"; probes/elapsed-huge-*).
+    let (sign, mag) = if n.is_sign_negative() {
+        ("-", -n)
     } else {
-        format!("{n}")
+        ("", n)
+    };
+    let digits = if !mag.is_finite() {
+        "0".to_owned()
+    } else if mag < 1e15 {
+        format!("{mag:.0}")
+    } else {
+        let sci = format!("{mag:.14e}");
+        let (mantissa, exp) = sci.split_once('e').unwrap_or((&sci, "0"));
+        let exp: usize = exp.parse().unwrap_or(0);
+        let mut d: String = mantissa.chars().filter(char::is_ascii_digit).collect();
+        d.extend(std::iter::repeat_n('0', exp.saturating_sub(14)));
+        d
+    };
+    if padded {
+        format!("{sign}{digits:0>2}")
+    } else {
+        format!("{sign}{digits}")
     }
 }
 
@@ -490,6 +524,11 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                         text = format!("{text}{second}");
                     }
                 }
+            }
+            // Excel: a date/time result over 255 characters is #VALUE! (only reachable through the
+            // elapsed tokens, probes/elapsed-huge-g-1900).
+            if text.chars().count() > MAX_TEXT_FORMAT_CHARS {
+                return text_too_long();
             }
             Formatted {
                 text,

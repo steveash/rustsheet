@@ -134,6 +134,17 @@ C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
 C	probes/elapsed-fractions-1900.case.json	14
 C	probes/elapsed-fractions-1904.case.json	14
+C	probes/elapsed-huge-a-1900.case.json	12
+C	probes/elapsed-huge-b0-1900.case.json	3
+C	probes/elapsed-huge-b1-1900.case.json	3
+C	probes/elapsed-huge-b2-1900.case.json	3
+C	probes/elapsed-huge-c-1900.case.json	3
+C	probes/elapsed-huge-d-1900.case.json	9
+C	probes/elapsed-huge-e-1900.case.json	9
+C	probes/elapsed-huge-f-1900.case.json	9
+C	probes/elapsed-huge-g-1900.case.json	25
+C	probes/elapsed-huge-h-1900.case.json	21
+C	probes/elapsed-huge-i-1900.case.json	12
 C	probes/elapsed-positive-large-1900.case.json	17
 C	probes/elapsed-positive-large-1904.case.json	17
 C	probes/elapsed-tiny-negatives-1900.case.json	11

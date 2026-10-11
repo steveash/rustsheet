@@ -1,0 +1,22 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1375: elapsed tokens past the i64 range (serials whose second count exceeds 9.2e18), 1900 date system. (part)",
+  "tags": [
+    "M1",
+    "probe",
+    "dates",
+    "T-1375"
+  ],
+  "date_system": 1900,
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A16": "=TEXT(1E20,\"[s]\")",
+        "A17": "=TEXT(1E20,\"[m]\")",
+        "A18": "=TEXT(1E20,\"[h]\")"
+      }
+    }
+  ],
+  "expected": {}
+}

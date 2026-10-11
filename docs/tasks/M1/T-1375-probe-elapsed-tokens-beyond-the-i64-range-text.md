@@ -3,7 +3,7 @@ id: T-1375
 title: "Probe elapsed tokens beyond the i64 range (TEXT(1E15,'[s]'), TEXT(1E300,'[s]'))"
 milestone: M1
 lane: functions-date
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1362 widened `elapsed_text` (formatter/format.rs) to i64, which saturates abov
 
 ## Out of scope
 -
+
+## Outcome
+Probes elapsed-huge-{a,b0,b1,b2,c,d,e,f,g,h,i}-1900 (oracle-filled, excel-graph) record the behavior in number-formats.md. `elapsed_text` now prints 15 significant digits then zeros from 1e15, treats overflowed counts as 0, and a date/time result over 255 characters is #VALUE!. Eval: all new cells pass.
