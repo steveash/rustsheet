@@ -33,7 +33,8 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
 /// 1900 system only a section whose one date/time token is a single elapsed token (`[h]`, `[mm]`,
 /// `[s]`, ...) is, whatever literals surround it (`TEXT(-1.5,"[h]"" h""")` is "-36 h"), while
 /// `[h]:mm`, `[h] d` or `[s].00` are `#VALUE!`. Evidence: docs/excel-semantics/dates.md "The 1904
-/// date system" and "Negative serials under an explicit negative section".
+/// date system" and "Negative serials under an explicit negative section". `_x` and `*x` count as
+/// literals by extrapolation (unprobed, T-1366).
 pub fn negative_serial_allowed(tokens: &[TextToken], date_system: DateSystem) -> bool {
     if date_system == DateSystem::Excel1904 {
         return true;
