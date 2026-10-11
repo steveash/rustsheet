@@ -3,7 +3,7 @@ id: T-1368
 title: "LOOKUP result_vector @IF(TRUE,F1) keeps the reference (engine gives #N/A)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
