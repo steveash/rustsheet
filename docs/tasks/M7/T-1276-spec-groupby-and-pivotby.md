@@ -3,7 +3,7 @@ id: T-1276
 title: "Spec: GROUPBY and PIVOTBY"
 milestone: M7
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
