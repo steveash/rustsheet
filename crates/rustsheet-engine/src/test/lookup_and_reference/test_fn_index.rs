@@ -271,7 +271,10 @@ fn lifted_index_broadcast_is_bounded() {
     let mut model = new_empty_model();
     model._set("A1", "1");
     // 1048576 rows against 16384 columns would be 1.7e10 elements: past the shared array bound.
-    model._set("B1", "=INDEX(A1:A5,SEQUENCE(1048576)*0+1,SEQUENCE(1,16384)*0+1)");
+    model._set(
+        "B1",
+        "=INDEX(A1:A5,SEQUENCE(1048576)*0+1,SEQUENCE(1,16384)*0+1)",
+    );
     model.evaluate();
     assert_eq!(model._get_text("B1"), "#ERROR!");
 }
