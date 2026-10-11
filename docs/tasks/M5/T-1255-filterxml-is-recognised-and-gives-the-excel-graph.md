@@ -27,10 +27,16 @@ Follow ENCODEURL's handling (T-1219, functions/text/encodeurl.rs) for where the 
 (eval/catalog/functions.yaml) already lists FILTERXML in scope. Whether FILTERXML lifts over an array argument is unprobed:
 do not lift; give `#VALUE!` for the whole call. Cite decision 0039 and web.md in a code comment.
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/4629e931955aa4b8 Calc!A34 `=FILTERXML((Data!A7&DROP(Data!B8,1.005,Data!$B$12)),Data!D11)`: Excel `#CALC!` (DROP's error propagates first), engine `#NAME?`.
+- gen-m7/7c48e2456500644f Calc!A35 `=IF(FILTERXML(EXPAND(Data!$A$1,1,2,Data!B8),INDEX(Data!C8:C10,2,Data!B4)),..)`: Excel `#VALUE!`, engine `#NAME?`.
+- gen-m7/c5d278a8662ef4b2 Calc!A2 `=FILTERXML("1.5",((Data!D3&"ABC")&LEFT(" x ",2)))`: Excel `#VALUE!`, engine `#NAME?`.
+
 ## Acceptance criteria
 - [ ] gen-m6/3ee7ffc8d6ab061f A11, gen-m6/42b001dc2803fe24 A19, gen-m6/abcfd9979f316267 A9 and gen-m6/f94b5b8236742618 A13, A21
       pass in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell and no new known failures in eval/baseline/.
 - [ ] probes/catalog/function-name-forms A7 still passes (or now passes); web.md's entry gets an `Implemented in:` line.
+- [ ] gen-m7/4629e931955aa4b8 A34, gen-m7/7c48e2456500644f A35 and gen-m7/c5d278a8662ef4b2 A2 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

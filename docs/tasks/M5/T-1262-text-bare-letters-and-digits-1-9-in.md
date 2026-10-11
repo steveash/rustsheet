@@ -31,10 +31,16 @@ Probe first (excel-probe skill): `TEXT(PI(),"ü")`, `TEXT(PI(),"x")`, `TEXT(-PI(
 `TEXT(1.005,"-21.5")`, `TEXT(12.3,".")`, `TEXT(12.3,"a.b")`, `TEXT(0,"")`, `TEXT(-0.0001,"")`, `TEXT(5,"")`, and which
 letters are not literals (date/time tokens such as `d`, `m`, `y`, `h`, `s`, `e`, `g` (General), `b`).
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/6db767d720c5b55a Calc!A30 `=TEXT(Data!A3,"ABC")` with A3 = 100: Excel "A43C", engine `#VALUE!`. "A" and "C" are literals but "B" is not:
+  it prints "43", which fits a two-digit Buddhist-era year (100 is 1900-04-09, year 1900 + 543 = 2443). Include `B`, `BB`, `BBBB`,
+  `b` and `B1`/`B2` in the probe (number-formats.md "Bare letters and digits in a number format").
+
 ## Acceptance criteria
 - [ ] An excel-graph probe case covers the formats above and passes; number-formats.md records the rule (VERIFIED).
 - [ ] gen-m6/2c1a6e93a1974f48 A15, gen-m6/63012866a9d8b7db A3 and gen-m6/17223361bef5b5cb A12 pass in
       `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell and no new known failures in eval/baseline/.
+- [ ] gen-m7/6db767d720c5b55a A30 passes. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

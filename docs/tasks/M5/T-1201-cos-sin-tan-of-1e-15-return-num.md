@@ -21,11 +21,16 @@ More cells (T-1239's gen-m6 suite, excel-graph, 2026-10-09): gen-m6/3ee7ffc8d6ab
 gen-m6/9bd0bd18636e5f9b Calc!A4 `=SECH(CHOOSE(SIN(1000000000000000.0),Data!A$10))` is `#NUM!`, so `SIN(1E+15)` is `#NUM!`
 (engine `#VALUE!`: SIN returns 0.858 and CHOOSE rejects the index).
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/9ff3afcacd3bd0fc Calc!A24 `=((Data!E7-((-0.0001)*123456789.123))+SIN((Data!$A8*Data!B4)))` (SIN(-2.5E+15)): Excel `#NUM!`, engine 12346.33.
+- gen-m7/f68fafa0ca2eba26 Calc!A37 `=OFFSET(Data!B4:E7,1,-1,(Data!D10*CSC(1000000000000000.0)))`: Excel `#NUM!` (so `CSC(1E+15)` is `#NUM!`), engine TRUE (`CSC(1E+15)` = 1.165).
+
 ## Acceptance criteria
 - [ ] A probe case with oracle values for the threshold and the sibling trig functions.
 - [ ] gen-m5 c2ce66769f6cc566 A32 and 065c0542a4ce3d1c A26 pass; baseline updated if the suite gains one.
 - [ ] In `(A-COS(1E+15))=INDEX(B11:D11,6,2)` the left operand's `#NUM!` wins over INDEX's `#REF!` (error precedence).
 - [ ] gen-m6/3ee7ffc8d6ab061f A2 and gen-m6/9bd0bd18636e5f9b A4 pass.
+- [ ] gen-m7/9ff3afcacd3bd0fc A24 and gen-m7/f68fafa0ca2eba26 A37 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
