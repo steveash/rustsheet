@@ -3,7 +3,7 @@ id: T-1311
 title: "Probe integer exponents beyond 360 and subnormal intermediates for the power operator"
 milestone: M2
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
