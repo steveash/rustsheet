@@ -3,7 +3,7 @@ id: T-1084
 title: "Add generator signatures for the M9 financial catalog functions"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
