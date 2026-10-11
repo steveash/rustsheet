@@ -358,3 +358,30 @@ fn defined_name_with_out_of_range_local_sheet_id_is_an_error() -> TestResult {
     assert_import_error(&bytes, "localSheetId 9");
     Ok(())
 }
+
+/// A sheet whose A100 holds the formula `1+1+...` stored with exactly `chars` characters.
+fn sheet_with_formula_chars(chars: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+    // 4,095 `1+` links, then a last term padded to the length.
+    let head = "1+".repeat(4_095);
+    let formula = format!("{head}{}", "1".repeat(chars - head.len()));
+    let cell = format!("<sheetData><row r=\"100\"><c r=\"A100\"><f>{formula}</f></c></row>");
+    rewrite(|name, content| {
+        if name == "xl/worksheets/sheet1.xml" {
+            content.replacen("<sheetData>", &cell, 1)
+        } else {
+            content
+        }
+    })
+}
+
+// Excel for the web loads a formula of 8,192 stored characters and refuses the workbook at
+// 8,193 (T-1060, T-1091; docs/excel-semantics/syntax.md; T-1093).
+#[test]
+fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
+    assert_imports(&sheet_with_formula_chars(8_192)?)?;
+    assert_import_error(
+        &sheet_with_formula_chars(8_193)?,
+        "Formula in Sheet1!A100 is longer than 8192 characters",
+    );
+    Ok(())
+}
