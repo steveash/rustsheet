@@ -25,4 +25,4 @@ Follow-up of T-1314 reviews. Probe PRODUCT, MIN, MAX, AVERAGE, COUNT-family agai
 -
 
 ## Outcome
-Added probes/aggregate-error-precedence (92 cells, excel-graph). Rules recorded in syntax.md and criteria.md; 16 cells mismatch the engine, filed as T-1379. The criteria functions (SUMIF/SUMIFS/COUNTIFS/AVERAGEIF/DCOUNTA) already match for a stored #BUSY! criterion. Reviewers pending at PR time.
+Added probes/aggregate-error-precedence (92 cells, excel-graph). Rules recorded in syntax.md and criteria.md; 16 cells mismatch the engine, filed as T-1379. The criteria functions (SUMIF/SUMIFS/COUNTIFS/AVERAGEIF/DCOUNTA) already match for a stored #BUSY! criterion. Reviews: see the PR.

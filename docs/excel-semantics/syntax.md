@@ -187,7 +187,7 @@ but against a referenced error the leftmost wins (`SUM({1,#N/A},A3)` 7, `SUM(A3,
 (C54, C55); a scalar computed from a reference (`A2*1`) is a direct error (`SUM(A3,A2*1)` 7). Uncoercible direct text `"x"` is `#VALUE!`
 in the argument's position among the direct arguments (`SUM("x",#DIV/0!)` 3, `SUM(#DIV/0!,"x")` 2) and, being direct, beats a referenced
 error (`SUM(A2,"x")` 3); text in a referenced cell is ignored (`SUM(A5)` 0, `SUM(A5:A6)` 2). A direct `#REF!` behaves like any scalar direct
-error: it beats referenced errors and `{1,#N/A}` (`SUM(A2,#REF!)` 4, `SUM(#REF!,{1,#N/A})` 4) and ties by position (`SUM(#REF!,#DIV/0!)` 4,
+error: it beats referenced errors and `{1,#N/A}` (`SUM(A2,#REF!)` 4, `SUM(#REF!,{1,#N/A})` 4, `SUM({1,#N/A},#REF!)` 4, C77) and ties by position (`SUM(#REF!,#DIV/0!)` 4,
 `SUM(#DIV/0!,#REF!)` 2).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
