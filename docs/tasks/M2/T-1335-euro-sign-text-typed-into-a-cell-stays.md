@@ -3,7 +3,7 @@ id: T-1335
 title: "Euro-sign text typed into a cell stays text in en-US (1€, €1, -1€ are General text)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
