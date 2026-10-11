@@ -3,7 +3,7 @@ id: T-1369
 title: "probe ANCHORARRAY(IF(TRUE,A1)) over a non-spill cell and ANCHORARRAY(@IF(TRUE,D1))"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
