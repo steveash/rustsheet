@@ -2766,14 +2766,6 @@ F	probes/text-surrogate-positions.case.json	Sheet1!A29
 F	probes/text-surrogate-positions.case.json	Sheet1!A38
 F	probes/text-surrogate-positions.case.json	Sheet1!A6
 F	probes/text-surrogate-positions.case.json	Sheet1!B10
-F	probes/typed-currency-percent-input.case.json	Sheet1!B23
-F	probes/typed-currency-percent-input.case.json	Sheet1!B24
-F	probes/typed-currency-percent-input.case.json	Sheet1!B25
-F	probes/typed-currency-percent-input.case.json	Sheet1!B26
-F	probes/typed-currency-percent-input.case.json	Sheet1!C23
-F	probes/typed-currency-percent-input.case.json	Sheet1!C24
-F	probes/typed-currency-percent-input.case.json	Sheet1!C25
-F	probes/typed-currency-percent-input.case.json	Sheet1!C26
 F	probes/volatile-invariant.case.json	Calc!A12
 F	probes/volatile-invariant.case.json	Calc!A13
 F	probes/volatile-invariant.case.json	Calc!A2
