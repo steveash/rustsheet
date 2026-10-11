@@ -1,6 +1,9 @@
 use crate::{
     arithmetic::flush_subnormal,
-    formatter::{self, format::Formatted},
+    formatter::{
+        self,
+        format::{FormatContext, Formatted},
+    },
     locale::get_locale,
     types::NumFmt,
 };
@@ -439,7 +442,7 @@ pub fn format_number(value: f64, format_code: &str, locale: &str) -> Formatted {
             }
         }
     };
-    formatter::format::format_number(value, format_code, locale)
+    formatter::format::format_number(value, format_code, &FormatContext::new(locale))
 }
 
 #[cfg(test)]

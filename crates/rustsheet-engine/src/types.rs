@@ -103,7 +103,8 @@ pub struct Metadata {
 }
 
 /// The workbook's date system (`<workbookPr date1904>` in xlsx): serial 0 is 1900-01-00 or
-/// 1904-01-01. SPEC-0005. Only the flag is modelled so far; no function or formatter reads it yet.
+/// 1904-01-01. SPEC-0005. The formatter reads it for negative serials (T-1105); date functions
+/// and TEXT date tokens do not yet (T-1330).
 #[derive(Encode, Decode, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DateSystem {
     /// The 1900 system, the project's target and the default.

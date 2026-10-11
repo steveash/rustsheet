@@ -6,6 +6,9 @@ use chrono::NaiveDate;
 use crate::constants::EXCEL_DATE_BASE;
 use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
+use crate::types::DateSystem;
+
+use super::parser::TextToken;
 
 pub const DATE_OUT_OF_RANGE_MESSAGE: &str = "Out of range parameters for date";
 
@@ -23,6 +26,35 @@ fn convert_to_serial_number(date: NaiveDate) -> i32 {
     } else {
         serial
     }
+}
+
+/// Whether a negative serial is formatted under a date/time section with these tokens rather than
+/// being `#VALUE!` (SPEC-0005). In a 1904 workbook it always is (`TEXT(-1,"d")` is "-2"). In the
+/// 1900 system only a section whose one date/time token is a single elapsed token (`[h]`, `[mm]`,
+/// `[s]`, ...) is, whatever literals surround it (`TEXT(-1.5,"[h]"" h""")` is "-36 h"), while
+/// `[h]:mm`, `[h] d` or `[s].00` are `#VALUE!`. Evidence: docs/excel-semantics/dates.md "The 1904
+/// date system" and "Negative serials under an explicit negative section".
+pub fn negative_serial_allowed(tokens: &[TextToken], date_system: DateSystem) -> bool {
+    if date_system == DateSystem::Excel1904 {
+        return true;
+    }
+    let mut elapsed = 0;
+    for token in tokens {
+        match token {
+            TextToken::Literal(_)
+            | TextToken::Text(_)
+            | TextToken::Ghost(_)
+            | TextToken::Spacer(_) => {}
+            TextToken::ElapsedHour
+            | TextToken::ElapsedHourPadded
+            | TextToken::ElapsedMinute
+            | TextToken::ElapsedMinutePadded
+            | TextToken::ElapsedSecond
+            | TextToken::ElapsedSecondPadded => elapsed += 1,
+            _ => return false,
+        }
+    }
+    elapsed == 1
 }
 
 /// Maps an Excel date serial (date part) to the `(year, month, day)` Excel shows for it,

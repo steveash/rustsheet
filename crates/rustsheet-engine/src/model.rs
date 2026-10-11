@@ -23,7 +23,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number},
+        format::{format_number, parse_formatted_number, FormatContext},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -2740,7 +2740,7 @@ impl Model {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, self.locale).text
+                        format_number(value, &format, &self.format_context()).text
                     });
                 Ok(formatted_value)
             }
@@ -2803,7 +2803,8 @@ impl Model {
                     if is_likely_date_number_format(&style.num_fmt) {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let formatted =
+                                format_number(n, &style.num_fmt, &self.format_context());
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }
@@ -3391,6 +3392,14 @@ impl Model {
         self.workbook.settings.tz.clone()
     }
 
+    /// The workbook's number-formatting inputs: its locale and date system (SPEC-0005).
+    pub(crate) fn format_context(&self) -> FormatContext<'static> {
+        FormatContext {
+            locale: self.locale,
+            date_system: self.workbook.settings.date_system,
+        }
+    }
+
     /// Gets the locale of the model
     pub fn get_locale(&self) -> String {
         self.workbook.settings.locale.clone()
@@ -3405,8 +3414,10 @@ impl Model {
         let short_date = &self.locale.dates.date_formats.short;
         // "M/d/yyyy"
         let long_date = &self.locale.dates.date_formats.long;
-        let short_date_example = format_number(day_example, short_date, self.locale).text;
-        let long_date_example = format_number(day_example, long_date, self.locale).text;
+        // The examples describe the locale, not this workbook: always the 1900 date system.
+        let ctx = FormatContext::new(self.locale);
+        let short_date_example = format_number(day_example, short_date, &ctx).text;
+        let long_date_example = format_number(day_example, long_date, &ctx).text;
         // Number format ("#,##0.###")
         // The CLDR formats are a bit different than Excel's
         // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
@@ -3417,7 +3428,7 @@ impl Model {
             .replace(" ", " ");
 
         let number_fmt = "#,##0.00".to_string();
-        let number_example = format_number(1234.567, &number_fmt, self.locale).text;
+        let number_example = format_number(1234.567, &number_fmt, &ctx).text;
         FmtSettings {
             currency,
             currency_format,

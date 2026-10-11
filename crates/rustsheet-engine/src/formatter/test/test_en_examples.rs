@@ -2,7 +2,7 @@
 #![allow(clippy::expect_used)]
 
 use crate::{
-    formatter::format::format_number,
+    formatter::format::{format_number, FormatContext},
     locale::{get_locale, Locale},
 };
 
@@ -12,10 +12,10 @@ fn get_default_locale() -> &'static Locale {
 
 #[test]
 fn format_0() {
-    let locale = get_default_locale();
-    let r1 = format_number(5.6, "0", locale);
-    let r2 = format_number(0.2, "0", locale);
-    let r3 = format_number(123.0, "0", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(5.6, "0", &ctx);
+    let r2 = format_number(0.2, "0", &ctx);
+    let r3 = format_number(123.0, "0", &ctx);
 
     assert_eq!(r1.text, "6");
     assert_eq!(r2.text, "0");
@@ -24,10 +24,10 @@ fn format_0() {
 
 #[test]
 fn format_0_00() {
-    let locale = get_default_locale();
-    let r1 = format_number(5.6, "0.00", locale);
-    let r2 = format_number(0.2, "0.00", locale);
-    let r3 = format_number(123.456, "0.00", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(5.6, "0.00", &ctx);
+    let r2 = format_number(0.2, "0.00", &ctx);
+    let r3 = format_number(123.456, "0.00", &ctx);
 
     assert_eq!(r1.text, "5.60");
     assert_eq!(r2.text, "0.20");
@@ -36,10 +36,10 @@ fn format_0_00() {
 
 #[test]
 fn format_hash_group_0() {
-    let locale = get_default_locale();
-    let r1 = format_number(1234.0, "#,##0", locale);
-    let r2 = format_number(12.0, "#,##0", locale);
-    let r3 = format_number(0.4, "#,##0", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1234.0, "#,##0", &ctx);
+    let r2 = format_number(12.0, "#,##0", &ctx);
+    let r3 = format_number(0.4, "#,##0", &ctx);
 
     assert_eq!(r1.text, "1,234");
     assert_eq!(r2.text, "12");
@@ -48,10 +48,10 @@ fn format_hash_group_0() {
 
 #[test]
 fn format_hash_group_0_00() {
-    let locale = get_default_locale();
-    let r1 = format_number(1234.5, "#,##0.00", locale);
-    let r2 = format_number(12.0, "#,##0.00", locale);
-    let r3 = format_number(0.456, "#,##0.00", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1234.5, "#,##0.00", &ctx);
+    let r2 = format_number(12.0, "#,##0.00", &ctx);
+    let r3 = format_number(0.456, "#,##0.00", &ctx);
 
     assert_eq!(r1.text, "1,234.50");
     assert_eq!(r2.text, "12.00");
@@ -60,10 +60,10 @@ fn format_hash_group_0_00() {
 
 #[test]
 fn format_hash_group_0_hashhashhash() {
-    let locale = get_default_locale();
-    let r1 = format_number(1234.5678, "#,##0.###", locale);
-    let r2 = format_number(12.3, "#,##0.###", locale);
-    let r3 = format_number(0.5, "#,##0.###", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1234.5678, "#,##0.###", &ctx);
+    let r2 = format_number(12.3, "#,##0.###", &ctx);
+    let r3 = format_number(0.5, "#,##0.###", &ctx);
 
     assert_eq!(r1.text, "1,234.568");
     assert_eq!(r2.text, "12.3");
@@ -72,10 +72,10 @@ fn format_hash_group_0_hashhashhash() {
 
 #[test]
 fn format_0_percent() {
-    let locale = get_default_locale();
-    let r1 = format_number(0.256, "0%", locale);
-    let r2 = format_number(1.0, "0%", locale);
-    let r3 = format_number(0.004, "0%", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(0.256, "0%", &ctx);
+    let r2 = format_number(1.0, "0%", &ctx);
+    let r3 = format_number(0.004, "0%", &ctx);
 
     assert_eq!(r1.text, "26%");
     assert_eq!(r2.text, "100%");
@@ -84,10 +84,10 @@ fn format_0_percent() {
 
 #[test]
 fn format_0_00_percent() {
-    let locale = get_default_locale();
-    let r1 = format_number(0.256, "0.00%", locale);
-    let r2 = format_number(1.0, "0.00%", locale);
-    let r3 = format_number(0.004, "0.00%", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(0.256, "0.00%", &ctx);
+    let r2 = format_number(1.0, "0.00%", &ctx);
+    let r3 = format_number(0.004, "0.00%", &ctx);
 
     assert_eq!(r1.text, "25.60%");
     assert_eq!(r2.text, "100.00%");
@@ -96,10 +96,10 @@ fn format_0_00_percent() {
 
 #[test]
 fn format_thousands_scale() {
-    let locale = get_default_locale();
-    let r1 = format_number(1_234_567.0, "#,##0,", locale);
-    let r2 = format_number(1_500.0, "#,##0,", locale);
-    let r3 = format_number(999.0, "#,##0,", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1_234_567.0, "#,##0,", &ctx);
+    let r2 = format_number(1_500.0, "#,##0,", &ctx);
+    let r3 = format_number(999.0, "#,##0,", &ctx);
 
     assert_eq!(r1.text, "1,235");
     assert_eq!(r2.text, "2");
@@ -108,10 +108,10 @@ fn format_thousands_scale() {
 
 #[test]
 fn format_millions_scale_integer() {
-    let locale = get_default_locale();
-    let r1 = format_number(1_234_567.0, "#,##0,,", locale);
-    let r2 = format_number(2_510_000.0, "#,##0,,", locale);
-    let r3 = format_number(12_345_678.0, "#,##0,,", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1_234_567.0, "#,##0,,", &ctx);
+    let r2 = format_number(2_510_000.0, "#,##0,,", &ctx);
+    let r3 = format_number(12_345_678.0, "#,##0,,", &ctx);
 
     assert_eq!(r1.text, "1");
     assert_eq!(r2.text, "3");
@@ -122,10 +122,10 @@ fn format_millions_scale_integer() {
 #[test]
 #[ignore]
 fn format_fraction_simple() {
-    let locale = get_default_locale();
-    let r1 = format_number(1.25, "# ?/?", locale);
-    let r2 = format_number(2.5, "# ?/?", locale);
-    let r3 = format_number(0.5, "# ?/?", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1.25, "# ?/?", &ctx);
+    let r2 = format_number(2.5, "# ?/?", &ctx);
+    let r3 = format_number(0.5, "# ?/?", &ctx);
 
     assert_eq!(r1.text, "1 1/4");
     assert_eq!(r2.text, "2 1/2");
@@ -134,10 +134,10 @@ fn format_fraction_simple() {
 
 #[test]
 fn format_hash_only() {
-    let locale = get_default_locale();
-    let r1 = format_number(0.0, "#", locale);
-    let r2 = format_number(12.0, "#", locale);
-    let r3 = format_number(0.6, "#", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(0.0, "#", &ctx);
+    let r2 = format_number(12.0, "#", &ctx);
+    let r3 = format_number(0.6, "#", &ctx);
 
     assert_eq!(r1.text, ""); // blank for zero
     assert_eq!(r2.text, "12");
@@ -146,10 +146,10 @@ fn format_hash_only() {
 
 #[test]
 fn format_aaa0() {
-    let locale = get_default_locale();
-    let r1 = format_number(7.0, "###0", locale);
-    let r2 = format_number(0.4, "###0", locale);
-    let r3 = format_number(1234.0, "###0", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(7.0, "###0", &ctx);
+    let r2 = format_number(0.4, "###0", &ctx);
+    let r3 = format_number(1234.0, "###0", &ctx);
 
     assert_eq!(r1.text, "7");
     assert_eq!(r2.text, "0");
@@ -158,10 +158,10 @@ fn format_aaa0() {
 
 #[test]
 fn format_0_hashhashhash() {
-    let locale = get_default_locale();
-    let r1 = format_number(1.2346, "0.###", locale);
-    let r2 = format_number(1.2, "0.###", locale);
-    let r3 = format_number(0.05, "0.###", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1.2346, "0.###", &ctx);
+    let r2 = format_number(1.2, "0.###", &ctx);
+    let r3 = format_number(0.05, "0.###", &ctx);
 
     assert_eq!(r1.text, "1.235");
     assert_eq!(r2.text, "1.2");
@@ -170,10 +170,10 @@ fn format_0_hashhashhash() {
 
 #[test]
 fn format_hash_group_0_0hash() {
-    let locale = get_default_locale();
-    let r1 = format_number(1234.567, "#,##0.0#", locale);
-    let r2 = format_number(1234.5, "#,##0.0#", locale);
-    let r3 = format_number(12.0, "#,##0.0#", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1234.567, "#,##0.0#", &ctx);
+    let r2 = format_number(1234.5, "#,##0.0#", &ctx);
+    let r3 = format_number(12.0, "#,##0.0#", &ctx);
 
     assert_eq!(r1.text, "1,234.57");
     assert_eq!(r2.text, "1,234.5");
@@ -184,10 +184,10 @@ fn format_hash_group_0_0hash() {
 #[ignore]
 #[test]
 fn format_group_with_leading_hashes() {
-    let locale = get_default_locale();
-    let r1 = format_number(1234.5, "###,##0.00", locale);
-    let r2 = format_number(12.0, "###,##0.00", locale);
-    let r3 = format_number(0.2, "###,##0.00", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1234.5, "###,##0.00", &ctx);
+    let r2 = format_number(12.0, "###,##0.00", &ctx);
+    let r3 = format_number(0.2, "###,##0.00", &ctx);
 
     assert_eq!(r1.text, "1,234.50");
     assert_eq!(r2.text, "12.00");
@@ -196,10 +196,10 @@ fn format_group_with_leading_hashes() {
 
 #[test]
 fn format_scientific() {
-    let locale = get_default_locale();
-    let r1 = format_number(12_345.1, "0.###E+00", locale);
-    let r2 = format_number(0.0123, "0.###E+00", locale);
-    let r3 = format_number(1_000.0, "0.###E+00", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(12_345.1, "0.###E+00", &ctx);
+    let r2 = format_number(0.0123, "0.###E+00", &ctx);
+    let r3 = format_number(1_000.0, "0.###E+00", &ctx);
 
     assert_eq!(r1.text, "1.235E+04");
     assert_eq!(r2.text, "1.23E-02");
@@ -210,8 +210,8 @@ fn format_scientific() {
 #[test]
 #[ignore]
 fn format_scientific_failing() {
-    let locale = get_default_locale();
-    let r1 = format_number(12_345.0, "0.###E+00", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(12_345.0, "0.###E+00", &ctx);
 
     assert_eq!(r1.text, "1.235E+04");
 }
@@ -220,10 +220,10 @@ fn format_scientific_failing() {
 #[test]
 #[ignore]
 fn format_fraction_two_digit_den() {
-    let locale = get_default_locale();
-    let r1 = format_number(1.333, "# ?/??", locale);
-    let r2 = format_number(1.2, "# ?/??", locale);
-    let r3 = format_number(0.75, "# ?/??", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1.333, "# ?/??", &ctx);
+    let r2 = format_number(1.2, "# ?/??", &ctx);
+    let r3 = format_number(0.75, "# ?/??", &ctx);
 
     assert_eq!(r1.text, "1 1/3");
     assert_eq!(r2.text, "1 1/5");
@@ -234,10 +234,10 @@ fn format_fraction_two_digit_den() {
 #[test]
 #[ignore]
 fn format_fraction_eighths() {
-    let locale = get_default_locale();
-    let r1 = format_number(1.25, "# ?/8", locale);
-    let r2 = format_number(0.5, "# ?/8", locale);
-    let r3 = format_number(2.75, "# ?/8", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1.25, "# ?/8", &ctx);
+    let r2 = format_number(0.5, "# ?/8", &ctx);
+    let r3 = format_number(2.75, "# ?/8", &ctx);
 
     assert_eq!(r1.text, "1 2/8");
     assert_eq!(r2.text, " 4/8");
@@ -246,10 +246,10 @@ fn format_fraction_eighths() {
 
 #[test]
 fn format_0_hashhash_percent() {
-    let locale = get_default_locale();
-    let r1 = format_number(0.256, "0.##%", locale);
-    let r2 = format_number(1.0, "0.##%", locale);
-    let r3 = format_number(0.0043, "0.##%", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(0.256, "0.##%", &ctx);
+    let r2 = format_number(1.0, "0.##%", &ctx);
+    let r3 = format_number(0.0043, "0.##%", &ctx);
 
     assert_eq!(r1.text, "25.6%");
     assert_eq!(r2.text, "100.%");
@@ -258,10 +258,10 @@ fn format_0_hashhash_percent() {
 
 #[test]
 fn format_millions_scale_decimal() {
-    let locale = get_default_locale();
-    let r1 = format_number(1_234_567.0, "#,##0,,.0#", locale);
-    let r2 = format_number(12_000_000.0, "#,##0,,.0#", locale);
-    let r3 = format_number(987_654_321.0, "#,##0,,.0#", locale);
+    let ctx = FormatContext::new(get_default_locale());
+    let r1 = format_number(1_234_567.0, "#,##0,,.0#", &ctx);
+    let r2 = format_number(12_000_000.0, "#,##0,,.0#", &ctx);
+    let r3 = format_number(987_654_321.0, "#,##0,,.0#", &ctx);
 
     assert_eq!(r1.text, "1.23");
     assert_eq!(r2.text, "12.0");
@@ -273,7 +273,7 @@ fn format_millions_scale_decimal() {
 // (docs/excel-semantics/number-formats.md, T-0952; poi/NumberFormatTests.xlsx Tests!A44-A118, A335).
 #[test]
 fn comma_between_placeholders_groups_the_padded_digits() {
-    let locale = get_locale("en").unwrap();
+    let ctx = FormatContext::new(get_locale("en").unwrap());
     for (value, format, expected) in [
         (1234567.0, "0,0000000", "01,234,567"),
         (1234567.0, "0,00000000", "001,234,567"),
@@ -287,7 +287,7 @@ fn comma_between_placeholders_groups_the_padded_digits() {
         (12.0, "0,000", "0,012"),
     ] {
         assert_eq!(
-            format_number(value, format, locale).text,
+            format_number(value, format, &ctx).text,
             expected,
             "{format}"
         );
@@ -297,7 +297,7 @@ fn comma_between_placeholders_groups_the_padded_digits() {
 // A trailing `,` scales by 1000 and keeps the sign (poi/NumberFormatTests.xlsx Tests!A95).
 #[test]
 fn trailing_commas_keep_the_sign() {
-    let locale = get_locale("en").unwrap();
-    assert_eq!(format_number(-1234567.0, "#,,", locale).text, "-1");
-    assert_eq!(format_number(1234567.0, "#,,", locale).text, "1");
+    let ctx = FormatContext::new(get_locale("en").unwrap());
+    assert_eq!(format_number(-1234567.0, "#,,", &ctx).text, "-1");
+    assert_eq!(format_number(1234567.0, "#,,", &ctx).text, "1");
 }

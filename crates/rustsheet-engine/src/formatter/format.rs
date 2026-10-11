@@ -2,11 +2,12 @@ use super::general::format_general;
 use crate::{
     locale::Locale,
     number_format::{parse_excel_number, to_precision},
+    types::DateSystem,
 };
 
 use super::{
     date_text::{parse_date, CurrentYear},
-    dates::excel_serial_to_ymd,
+    dates::{excel_serial_to_ymd, negative_serial_allowed},
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -14,6 +15,23 @@ pub struct Formatted {
     pub color: Option<i32>,
     pub text: String,
     pub error: Option<String>,
+}
+
+/// The workbook inputs of number formatting: the locale and the date system (SPEC-0005).
+#[derive(Clone, Copy)]
+pub struct FormatContext<'a> {
+    pub locale: &'a Locale,
+    pub date_system: DateSystem,
+}
+
+impl<'a> FormatContext<'a> {
+    /// A context in the default (1900) date system, for formatting outside any workbook.
+    pub fn new(locale: &'a Locale) -> Self {
+        FormatContext {
+            locale,
+            date_system: DateSystem::default(),
+        }
+    }
 }
 
 /// Returns the vector of chars of the fractional part of a *positive* number:
@@ -74,25 +92,25 @@ enum ElapsedUnit {
     Second,
 }
 
-/// Elapsed `[h]`/`[m]`/`[s]` count for a serial `value`. Excel works on the magnitude and keeps
-/// a minus for a negative value: `[s]` rounds it to nearest (1.7 s is "2", -0.9 s is "-1") and
-/// `[h]`/`[m]` truncate it (-1.7 min is "-1", -0.3 h is "-0"), in both date systems
-/// (probes/elapsed-tiny-negatives-1900, elapsed-fractions-1900, T-1338, T-1346). Noise is
-/// absorbed first: `[s]` snaps the seconds at 1e-12 (-1.5/86400 days is "-2" although it is
-/// 1.4999999999999998 s, yet -0.49999999999 s stays "-0"), `[h]`/`[m]` snap them to the
-/// millisecond (-(3-1E-7) h is "-3"). Those snaps are fitted to the probes, not documented.
+/// Elapsed `[h]`/`[m]`/`[s]` count for a non-negative serial `value` (a negative one is formatted
+/// as its magnitude after a leading minus, see the `ParsePart::Date` arm). `[s]` rounds to nearest
+/// (1.7 s is "2", 0.9 s of a negative is "-1") and `[h]`/`[m]` truncate (1.7 min is "1", 0.3 h of
+/// a negative is "-0"), in both date systems (probes/elapsed-tiny-negatives-1900,
+/// elapsed-fractions-1900, T-1338, T-1346). Noise is absorbed first: `[s]` snaps the seconds at
+/// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
+/// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
+/// the probes, not documented.
 fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
-    let secs = value.abs() * 86400.0;
+    let secs = value * 86400.0;
     let n = match unit {
         ElapsedUnit::Second => ((secs * 1e12).round() / 1e12).round(),
         ElapsedUnit::Minute => ((secs * 1e3).round() / 1e3 / 60.0).floor(),
         ElapsedUnit::Hour => ((secs * 1e3).round() / 1e3 / 3600.0).floor(),
     } as i32;
-    let sign = if value < 0.0 { "-" } else { "" };
     if padded {
-        format!("{sign}{n:02}")
+        format!("{n:02}")
     } else {
-        format!("{sign}{n}")
+        format!("{n}")
     }
 }
 
@@ -107,7 +125,7 @@ fn invalid_date(value: f64) -> Formatted {
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
 /// blank formats as 0 (see "An empty format string returns empty text" in
 /// docs/excel-semantics/number-formats.md).
-pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatted {
+pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> Formatted {
     if value.is_none() && format.is_empty() {
         return Formatted {
             color: None,
@@ -115,7 +133,7 @@ pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatt
             error: None,
         };
     }
-    format_number(value.unwrap_or(0.0), format, locale)
+    format_number(value.unwrap_or(0.0), format, ctx)
 }
 
 /// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
@@ -205,7 +223,8 @@ fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
     }
 }
 
-pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
+pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> Formatted {
+    let locale = ctx.locale;
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts;
@@ -282,28 +301,20 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
         }
         ParsePart::Date(p) => {
-            // Excel: a negative serial is #VALUE! under a date/time format, even a fraction that
-            // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035). Elapsed
-            // sections ([h], [mm], ...) keep their own sign handling (poi ElapsedFormatTests
-            // A40-A47, docs/excel-semantics/number-formats.md "Elapsed-time tokens").
-            // TODO(T-1105): that workbook is 1904-system; in the 1900 system Excel gives #VALUE!
-            // here too (probes/text-negative-serial-elapsed-mixed A1, A3, A5, A6).
-            let has_elapsed = p.tokens.iter().any(|t| {
-                matches!(
-                    t,
-                    TextToken::ElapsedHour
-                        | TextToken::ElapsedHourPadded
-                        | TextToken::ElapsedMinute
-                        | TextToken::ElapsedMinutePadded
-                        | TextToken::ElapsedSecond
-                        | TextToken::ElapsedSecondPadded
-                )
-            });
-            if value < 0.0 && !has_elapsed {
-                return invalid_date(value);
+            // Excel: whether a negative serial formats or is #VALUE! depends on the value's own
+            // sign, also when a negative section already dropped it (`TEXT(-1,"d;d")` is #VALUE!
+            // in the 1900 system), and on the date system (`negative_serial_allowed`;
+            // docs/excel-semantics/dates.md "The 1904 date system" and "Negative serials under
+            // an explicit negative section").
+            if value_original < 0.0 && !negative_serial_allowed(&p.tokens, ctx.date_system) {
+                return invalid_date(value_original);
             }
+            // A negative that gets here (a one-section format) is formatted as its magnitude after
+            // one leading minus, in front of any literal (`TEXT(-1.5,"""x""[h]")` is "-x36",
+            // probes/negative-date-sections-1900 A18; poi ElapsedFormatTests A40).
+            let mut text = if value < 0.0 { "-" } else { "" }.to_string();
+            let value = value.abs();
             let tokens = &p.tokens;
-            let mut text = "".to_string();
             let time_fract = value.fract();
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
