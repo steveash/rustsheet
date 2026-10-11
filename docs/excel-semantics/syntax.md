@@ -177,12 +177,24 @@ so `#BUSY!` has no special rank. COUNTIF: `"#BUSY!"` and the cell itself as crit
 cells (C13-C15). `IFERROR(A1,"y")` is "y" (C16). `ERROR.TYPE(A1:A2)` spills 0 then `#N/A` (E1:E2).
 `UNIQUE` keeps a stored `#BUSY!` and a stored `#NULL!` as distinct rows and merges equal `#BUSY!`s
 (C18-C20: 2, 3, 3 rows).
+Aggregate error precedence (probes/aggregate-error-precedence, excel-graph 2026-10-11, T-1334; A1 #BUSY!, A2 #N/A, A3 #VALUE!):
+PRODUCT, MIN, MAX and AVERAGE share SUM's rule: a *scalar* direct error (literal `#DIV/0!` or computed `1/0`) beats a
+referenced-cell error whichever comes first (`PRODUCT(A2,#DIV/0!)`, `MIN(A2,1/0)`, `AVERAGE(A1,#DIV/0!)`, `MAX(A2,#DIV/0!)` all
+ERROR.TYPE 2, C1-C32), and between two referenced errors the leftmost wins (`MIN(A2,A3)` 7, `MIN(A3,A2)` 3). COUNT ignores errors
+(0) and COUNTA counts them (the argument count). SUM only: an error *inside an array* (`{1,#N/A}` or `A2:A3*1`) is not a scalar direct
+error: a scalar direct error beats it either way (`SUM({1,#N/A},#DIV/0!)` 2, `SUM(#DIV/0!,{1,#N/A})` 2, `SUM(A2:A3*1,#DIV/0!)` 2),
+but against a referenced error the leftmost wins (`SUM({1,#N/A},A3)` 7, `SUM(A3,{1,#N/A})` 3), and between arrays the leftmost wins
+(C54, C55); a scalar computed from a reference (`A2*1`) is a direct error (`SUM(A3,A2*1)` 7). Uncoercible direct text `"x"` is `#VALUE!`
+in the argument's position among the direct arguments (`SUM("x",#DIV/0!)` 3, `SUM(#DIV/0!,"x")` 2) and, being direct, beats a referenced
+error (`SUM(A2,"x")` 3); text in a referenced cell is ignored (`SUM(A5)` 0, `SUM(A5:A6)` 2). A direct `#REF!` behaves like any scalar direct
+error: it beats referenced errors and `{1,#N/A}` (`SUM(A2,#REF!)` 4, `SUM(#REF!,{1,#N/A})` 4) and ties by position (`SUM(#REF!,#DIV/0!)` 4,
+`SUM(#DIV/0!,#REF!)` 2).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315, T-1334
 Implemented in: math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference errors held back), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
 
 ## FORMULATEXT keeps every written parenthesis

@@ -215,4 +215,4 @@ Status: UNVERIFIED (probe pending: T-1051)
 Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/src/conditional_formatting.rs`, `cmp_excel_precision` in `number_format.rs`
 Tasks: T-1033
 
-Exception: an error-valued criterion that is a stored `#BUSY!` (e.g. `COUNTIF(A1:A2,A1)`) matches nothing, not even `#BUSY!` cells, unlike a `#N/A` criterion (probes/error-stored-busy-behaviors C15, T-1314). Only COUNTIF is probed; the code applies it to every criteria function.
+Exception: an error-valued criterion that is a stored `#BUSY!` (e.g. `COUNTIF(A1:A2,A1)`) matches nothing, not even `#BUSY!` cells, unlike a `#N/A` criterion (probes/error-stored-busy-behaviors C15, T-1314). COUNTIFS, SUMIF, SUMIFS, AVERAGEIF and DCOUNTA agree (probes/aggregate-error-precedence C79-C92, T-1334): a stored `#BUSY!` criterion matches nothing (`COUNTIFS(A1:A2,A1)` 0, `COUNTIFS(A1:A2,"<>"&A1)` 0, `DCOUNTA(...,J1:J2)` 0) while a stored `#N/A` criterion matches the `#N/A` cell (`COUNTIFS(A1:A2,A2)` 1, `DCOUNTA(...,K1:K2)` 1); `AVERAGEIF` with nothing matched is `#DIV/0!` (C86).
