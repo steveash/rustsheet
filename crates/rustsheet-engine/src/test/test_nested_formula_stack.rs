@@ -50,3 +50,40 @@ fn formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack() {
         assert_eq!(text.as_deref(), Some("1"), "{open}");
     }
 }
+
+/// T-1169: the reported shape, `=` + N `(` + `0.1+0.2-0.3+B1` + N `)`, on the default test thread
+/// (2 MiB) in whatever build runs the tests. Up to the limit it parses, evaluates, prints, and
+/// survives the edits that rewrite every formula (row insert, sheet rename); past it, it is
+/// refused as too deep. Either way the process does not abort.
+#[test]
+fn parenthesised_chain_nested_to_the_limit_and_past_it_never_overflows() {
+    // The innermost operator chain costs one level more than a lone operand.
+    let limit = MAX_NESTING - 1;
+    for levels in [limit - 1, limit, limit + 1, MAX_FORMULA_DEPTH, 300] {
+        let formula = format!(
+            "={}0.1+0.2-0.3+B1{}",
+            "(".repeat(levels),
+            ")".repeat(levels)
+        );
+        let mut model = new_empty_model();
+        let result = model.set_user_input(0, 1, 1, formula.clone());
+        if levels > limit {
+            assert!(result.is_err(), "{levels} levels were accepted");
+            continue;
+        }
+        assert!(result.is_ok(), "{levels} levels were refused: {result:?}");
+        model.evaluate();
+        assert_eq!(model._get_text("A1"), "5.55112E-17", "{levels}");
+        assert_eq!(model._get_formula("A1"), formula, "{levels}");
+        assert_eq!(model.insert_rows(0, 1, 1), Ok(()), "{levels}");
+        assert_eq!(model.rename_sheet("Sheet1", "Renamed"), Ok(()), "{levels}");
+        model.evaluate();
+        let moved = format!(
+            "={}0.1+0.2-0.3+B2{}",
+            "(".repeat(levels),
+            ")".repeat(levels)
+        );
+        assert_eq!(model._get_formula("A2"), moved, "{levels}");
+        assert_eq!(model._get_text("A2"), "5.55112E-17", "{levels}");
+    }
+}
