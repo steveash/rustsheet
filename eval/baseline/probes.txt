@@ -31,6 +31,7 @@ C	probes/at-operand-formulatext.case.json	14
 C	probes/at-operand-nested-groups.case.json	36
 C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
+C	probes/at-signed-operand.case.json	24
 C	probes/average-value-args.case.json	32
 C	probes/base-min-length.case.json	14
 C	probes/catalog/availability-01.case.json	12
@@ -432,6 +433,10 @@ F	probes/at-operand-nested-groups.case.json	Sheet1!F33
 F	probes/at-operand-nested-groups.case.json	Sheet1!F34
 F	probes/at-operand-nested-groups.case.json	Sheet1!F35
 F	probes/at-operand-nested-groups.case.json	Sheet1!F37
+F	probes/at-signed-operand.case.json	Sheet1!H71
+F	probes/at-signed-operand.case.json	Sheet1!H72
+F	probes/at-signed-operand.case.json	Sheet1!H73
+F	probes/at-signed-operand.case.json	Sheet1!I61
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
