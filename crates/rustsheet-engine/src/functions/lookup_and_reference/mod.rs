@@ -289,6 +289,20 @@ impl Model {
         }
     }
 
+    /// The lookup_value of MATCH, XMATCH or LOOKUP. A function that returns a one-cell reference
+    /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
+    /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
+    /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
+    /// A multi-cell lookup_value is left as it is (T-0270).
+    pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match self.evaluate_node_in_context(node, cell) {
+            range @ CalcResult::Range { left, right } if left == right => {
+                self.dereference(range, cell)
+            }
+            other => other,
+        }
+    }
+
     //     MATCH(lookup_value, lookup_array, [match_type])
     // The MATCH function syntax has the following arguments:
     //   * lookup_value    Required. The value that you want to match in lookup_array.
@@ -303,7 +317,7 @@ impl Model {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let target = self.evaluate_node_in_context(&args[0], cell);
+        let target = self.lookup_value_arg(&args[0], cell);
         if target.is_error() {
             return target;
         }
