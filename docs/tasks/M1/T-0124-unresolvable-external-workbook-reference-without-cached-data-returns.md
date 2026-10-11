@@ -1,6 +1,6 @@
 ---
 id: T-0124
-title: "Unresolvable external-workbook reference without cached data returns #VALUE! (1 known failure)"
+title: "Unresolvable external-workbook reference without cached data returns #BLOCKED! (1 known failure)"
 milestone: M1
 lane: engine
 status: done

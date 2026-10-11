@@ -27,7 +27,8 @@ probes/external-ref-no-link (excel-graph, no externalLink part in the workbook):
 COUNT over it is 0 and ERROR.TYPE 11 (A9, A3 pass). Rule: docs/excel-semantics/references.md
 "External reference with no cached data is `#BLOCKED!`". Likely shape: a dedicated node (or a
 sheet-less reference) that ISREF/ROWS/COLUMNS/AREAS accept and that evaluates as an all-`#BLOCKED!`
-area; probe COLUMNS, AREAS, INDEX, OFFSET on it first (excel-probe).
+area; probe COLUMNS, AREAS, INDEX, OFFSET on it first, and a 3-D prefix naming another workbook
+(`'[b.xlsx]S1:S2'!A1`, `#BLOCKED!` today, UNVERIFIED) (excel-probe).
 
 ## Acceptance criteria
 - [ ] probes/external-ref-no-link A4, A7, A10 leave eval/baseline/probes.txt with no new F lines.
