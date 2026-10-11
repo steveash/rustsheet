@@ -447,7 +447,6 @@ F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
 F	probes/at-group-leftmost-shapes.case.json	Sheet1!E34
 F	probes/at-group-leftmost-shapes.case.json	Sheet1!E35
 F	probes/at-group-range-corner-whole.case.json	Sheet1!E34
-F	probes/at-if-spill-anchor-operand.case.json	Sheet1!H50
 F	probes/at-operand-nested-groups.case.json	Sheet1!F10
 F	probes/at-operand-nested-groups.case.json	Sheet1!F11
 F	probes/at-operand-nested-groups.case.json	Sheet1!F13

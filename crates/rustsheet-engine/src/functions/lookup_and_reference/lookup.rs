@@ -4,6 +4,7 @@ use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
+use crate::functions::Function;
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -135,7 +136,20 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         // A single cell is read as a reference, so that it can be read past (`LOOKUP(99,A1:B2,F1)`).
-        let value = match self.eval_ref_or_index(node, cell) {
+        // The `@` of an IF that picks one cell keeps the reference
+        // (`LOOKUP(99,A1:A3,@IF(TRUE,F1))` = `LOOKUP(99,A1:A3,F1)`;
+        // probes/at-if-spill-anchor-operand H50, T-1368).
+        let at_if = matches!(
+            node,
+            Node::ImplicitIntersection { child, .. }
+                if matches!(**child, Node::FunctionKind { kind: Function::If, .. })
+        );
+        let picked = if at_if {
+            self.spill_anchor_operand(node, cell)
+        } else {
+            self.eval_ref_or_index(node, cell)
+        };
+        let value = match picked {
             // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
             // (probes/lookup-vector-edges A5-A8).
             scalar @ (CalcResult::Number(_)
