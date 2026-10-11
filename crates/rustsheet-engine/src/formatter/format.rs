@@ -67,7 +67,8 @@ fn excel_weekday_index(serial: i64) -> usize {
 }
 
 /// Elapsed `[h]`/`[m]`/`[s]` count for `units` (the value scaled to the token's unit): the floor,
-/// except that a negative amount that rounds to zero keeps its minus ("-0"; probes/date-system-1900-negatives A18).
+/// except that a negative amount of magnitude below one unit keeps its minus ("-0";
+/// probes/date-system-1900-negatives A18).
 fn elapsed_text(units: f64, padded: bool) -> String {
     if units < 0.0 && units > -1.0 {
         return if padded { "-00" } else { "-0" }.to_owned();
