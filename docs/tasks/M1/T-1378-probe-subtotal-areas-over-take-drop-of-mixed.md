@@ -3,7 +3,7 @@ id: T-1378
 title: "Probe SUBTOTAL/AREAS over TAKE/DROP of mixed-kind IF, nested or shadowed LET, and CHOOSE/SWITCH/IFS (follow-up of T-1365)"
 milestone: M1
 lane: functions-math
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
