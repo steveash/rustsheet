@@ -15,7 +15,8 @@ use crate::{
         text::{
             position::find_element,
             util::{
-                substitute, substitute_exceeds_limit, text_after, text_before, utf16_slice, Case,
+                near_integer_count, substitute, substitute_exceeds_limit, text_after, text_before,
+                utf16_slice, Case,
             },
         },
         util::array_node_to_calc_result,
@@ -32,10 +33,12 @@ use crate::{
 fn left_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode, Error> {
     let s = array_node_to_string(text)?;
     let num = num?;
+    // Excel: any non-negative count works, however large (`LEFT("abc",1E+100)` is "abc"), and
+    // -1E-300 is already #VALUE! (probes/text-count-argument-bounds F14, N18).
     if num < 0.0 {
         return Err(Error::VALUE);
     }
-    let num_chars = num.floor() as usize;
+    let num_chars = near_integer_count(num) as usize;
     Ok(ArrayNode::String(s.chars().take(num_chars).collect()))
 }
 
@@ -46,10 +49,13 @@ fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode,
     if num < 0.0 {
         return Err(Error::VALUE);
     }
-    let num_chars = num.floor() as usize;
+    let num_chars = near_integer_count(num) as usize;
     let skip = s.chars().count().saturating_sub(num_chars);
     Ok(ArrayNode::String(s.chars().skip(skip).collect()))
 }
+
+/// MID's start_num and num_chars must be below 2^31 (they are read as 32-bit integers).
+const MID_ARGUMENT_LIMIT: f64 = 2_147_483_648.0;
 
 /// Computes a single MID result from one element of each argument.
 fn mid_element(
@@ -60,10 +66,12 @@ fn mid_element(
     let s = array_node_to_string(text)?;
     let start = start?;
     let length = length?;
-    if start < 1.0 {
+    // Excel: MID truncates both numbers exactly (`MID(t,1,1-1E-15)` is "") and either one
+    // from 2^31 up is #VALUE!, while 2^31-1 is fine (probes/text-count-argument-bounds C, D, H, I).
+    if !(1.0..MID_ARGUMENT_LIMIT).contains(&start.floor()) {
         return Err(Error::VALUE);
     }
-    if length < 0.0 {
+    if !(0.0..MID_ARGUMENT_LIMIT).contains(&length.floor()) {
         return Err(Error::VALUE);
     }
     // Excel: MID positions count UTF-16 code units, so `MID("a😀b",2,2)` is the emoji
