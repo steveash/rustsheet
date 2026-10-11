@@ -401,7 +401,8 @@ impl Model {
 
     /// The operand of `#` and ANCHORARRAY: [`Model::eval_ref_or_index`], and the `@` of an IF
     /// that picks one cell keeps the reference, so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#
-    /// (probes/at-signed-operand H71:H73, T-1321). Only here: the lookup callers of
+    /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's result_vector, for `@IF`
+    /// only (probes/at-if-spill-anchor-operand H50, T-1368); the other lookup callers of
     /// `eval_ref_or_index` have no evidence for `@IF`.
     pub(crate) fn spill_anchor_operand(
         &mut self,
