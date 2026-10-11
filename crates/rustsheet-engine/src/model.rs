@@ -766,11 +766,7 @@ impl Model {
             SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
-                        return CalcResult::new_error(
-                            Error::ERROR,
-                            cell,
-                            format!("Error with Spill Range Operator in cell {cell:?}"),
-                        );
+                        return Self::spill_anchor_range_error(cell);
                     }
                     // The spill range depends on the *shape* of the anchor, which is
                     // only known once the anchor has been evaluated. Evaluating it here
