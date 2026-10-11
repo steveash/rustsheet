@@ -38,6 +38,9 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    Excel 2008 (12.0).
 6. **`CELL("width")`** (decision 0019; docs/architecture/oracle.md). poi/47804.xlsx: desktop cached
    10 and 11; Excel for the web returns `#VALUE!`, so the fill refuses the workbook.
+7. **AND/OR/XOR text next to a logical value** (T-0258; coercion.md "AND/OR/XOR text arguments").
+   poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J136 `AND("1",1)`: Excel 15 cached `#VALUE!`, excel-graph gives TRUE
+   (probes/and-or-xor-text-arguments). The engine follows the web; J136 stays a known failure.
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

@@ -235,15 +235,21 @@ Status: VERIFIED
 Tasks: T-0283, T-1335
 
 ## AND/OR/XOR text arguments
-Rule: an empty text literal is skipped (`AND("",TRUE)` = TRUE) and a text literal that is not
-"TRUE"/"FALSE" alone is `#VALUE!` (`AND("1")`, `OR("0")`). Next to a logical value, the literal "1"
-is `#VALUE!` in Excel 15 (`AND("1",1)`), yet text "1" returned by IFERROR is skipped in Microsoft 365
-(`AND(1E+15, IFERROR("1",…), FALSE)` is FALSE, not `#VALUE!`). Text in referenced cells is skipped.
-Evidence: poi/FormulaEvalTestData_Copy.xlsx (Excel-cached, Excel 15) EverythingTests!J136, I136;
-ironcalc-calc LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53;
-gen-m2/893302d6c5b99e2e Calc!A108 (oracle: excel-graph).
-Status: UNVERIFIED (probe pending, T-0258): whether literal vs computed text, empty vs non-empty, or
-Excel version decides is not isolated.
+Rule: in Microsoft 365, AND, OR and XOR skip every text argument that is not "TRUE" or "FALSE",
+whether it is literal or computed, empty or not: `AND("1",TRUE)`, `AND("abc",TRUE)`, `AND(" ",TRUE)`,
+`AND("",TRUE)`, `AND(""&"1",TRUE)`, `AND(IFERROR("1",0),TRUE)`, `AND(T("1"),TRUE)`, `AND(("1"),TRUE)`
+and `AND("1",1)` are TRUE, and `AND("1",FALSE)` is FALSE. Text in an array literal (`{"1",TRUE}`) and in
+referenced cells (A1 = "x", A2 = "1") is skipped as well. Text "TRUE"/"FALSE" counts as the logical value,
+in any case (`OR("true",FALSE)` = TRUE), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+When nothing but skipped text is left, the result is `#VALUE!` (`AND("1")`, `AND("")`, `OR("","")`). An
+error argument wins (`AND("1",#N/A)` = `#N/A`). OR and XOR behave the same.
+CONFLICTING (decision 0030 2, Excel 15 is below AppVersion 16): poi/FormulaEvalTestData_Copy.xlsx
+EverythingTests!J136 caches `#VALUE!` for `AND("1",1)`, and I136 does the same for `AND(E14,E17,"1")`. Current
+Excel for the web gives TRUE. The engine follows the web, and J136 stays a known failure until a 16.x
+desktop value decides (M14).
+Evidence: probes/and-or-xor-text-arguments (84 cells, excel-graph, 2026-10-11, T-0258); ironcalc-calc
+LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53; gen-m2/893302d6c5b99e2e Calc!A108 (excel-graph).
+Status: VERIFIED (web); the engine passes every probe cell.
 Tasks: T-0258
 
 ## GCD / LCM / MULTINOMIAL range cells
