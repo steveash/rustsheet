@@ -1042,3 +1042,16 @@ Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT dr
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
+
+## ANCHORARRAY / `#` over IF and non-anchor operands
+
+VERIFIED by T-1369 (probes/anchorarray-if-operands, excel-graph, 2026-10-11): `ANCHORARRAY(IF(TRUE,D1))`,
+`ANCHORARRAY(@IF(TRUE,D1))` and `ANCHORARRAY(IF(FALSE,A1,D1))` over a spill anchor D1 (`=SEQUENCE(3)`) spill D1#.
+`ANCHORARRAY(IF(TRUE,A1))` and `ANCHORARRAY(A1)` with a plain-value A1 are `#REF!`. Any multi-cell range anchor is
+`#REF!`, not `#ERROR!`: `ANCHORARRAY(D1:D3)`, `ANCHORARRAY(A1:B2)`, `ANCHORARRAY(IF(TRUE,D1:D3))` and
+`ANCHORARRAY(IF(TRUE,A1:B2))`; a one-cell range `ANCHORARRAY(D1:D1)` spills like `D1#`. Excel for the web refuses
+the workbook (`FileCorruptTryRepair`) for the written `IF(TRUE,D1)#`, `@IF(TRUE,D1)#`, `ROWS(IF(TRUE,D1)#)` and
+`ISREF(IF(TRUE,D1)#)`, so those stay a desktop question (M14). The ANCHORARRAY function form is what was probed;
+the engine gives the written `(range)#` form the same `#REF!` by inference (both are one `SpillRangeOperator`).
+Evidence strength: excel-graph oracle, 21 cells. Status: VERIFIED (web).
+Tasks: T-1369

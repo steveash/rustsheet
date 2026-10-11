@@ -1,0 +1,33 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1369: ANCHORARRAY over IF(TRUE,A1) with a plain-value A1, IF over a multi-cell range, @IF over a spill anchor and IF with a false condition. D1 spills SEQUENCE(3). Each formula sits in row 1 with empty cells below so a spill can show. The `IF(TRUE,D1)#`, `@IF(TRUE,D1)#`, `ROWS(IF(TRUE,D1)#)` and `ISREF(IF(TRUE,D1)#)` forms cannot be built through excel-graph: the workbook is rejected as unsupported (FileCorruptTryRepair on createSession).",
+ "tags": [
+  "M1",
+  "references",
+  "spill",
+  "probe",
+  "T-1369"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": 5,
+    "A2": 6,
+    "A3": 7,
+    "D1": "=SEQUENCE(3)",
+    "F1": "=ANCHORARRAY(IF(TRUE,A1))",
+    "G1": "=ANCHORARRAY(IF(TRUE,D1:D3))",
+    "H1": "=ANCHORARRAY(IF(TRUE,D1))",
+    "I1": "=ANCHORARRAY(@IF(TRUE,D1))",
+    "O1": "=ANCHORARRAY(IF(FALSE,A1,D1))",
+    "P1": "=ANCHORARRAY(D1:D3)",
+    "Q1": "=ANCHORARRAY(A1)",
+    "R1": "=ANCHORARRAY(D1:D1)",
+    "S1": "=ANCHORARRAY(A1:B2)",
+    "T1": "=ANCHORARRAY(IF(TRUE,A1:B2))"
+   }
+  }
+ ],
+ "expected": {}
+}

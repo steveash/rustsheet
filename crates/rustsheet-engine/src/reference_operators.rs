@@ -351,6 +351,17 @@ impl Model {
         )
     }
 
+    /// The error of a spill range operator whose anchor is a multi-cell range: `#REF!`, plain or
+    /// picked by an IF (`ANCHORARRAY(D1:D3)`, `ANCHORARRAY(IF(TRUE,A1:B2))`,
+    /// probes/anchorarray-if-operands G1, P1, S1, T1; T-1369).
+    pub(crate) fn spill_anchor_range_error(cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::new_error(
+            Error::REF,
+            cell,
+            format!("Error with Spill Range Operator in cell {cell:?}"),
+        )
+    }
+
     /// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
     /// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
     /// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).
