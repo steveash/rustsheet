@@ -207,7 +207,6 @@ impl Model {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
-            Node::GroupedRootKind { child } => self.compute_node_units(child, cell),
             // Unreachable: peeled above.
             Node::Group { .. } => None,
             Node::LambdaDefKind { .. } => None,

@@ -24,3 +24,6 @@ SPEC-0007 Rollout step 2. Pin the root near-zero snap first (`=(0.1+0.2-0.3)` sk
 
 ## Out of scope
 -
+
+## Outcome
+`Node::GroupedRootKind` is gone: `parse_cell_formula` wraps a wholly parenthesized formula in one root `Node::Group` holding its levels, and every walker's `GroupedRootKind` arm is deleted. `evaluate_formula_root` needed no change (a `Group` root is not an `OpSumKind`, so the near-zero snap is skipped as before; pinned by test_near_zero_snapping and probes/near-zero-snap-groups). The parser's `grouped_root` state stays: plain `parse` (defined-name bodies) still strips the root group, which the spec's later parser clean-up does not cover. Eval: 0 changes, 0 regressions.
