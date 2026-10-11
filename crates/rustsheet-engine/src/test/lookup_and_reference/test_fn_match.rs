@@ -198,3 +198,19 @@ fn whole_column_blank_tail_matches_excel() {
         );
     }
 }
+
+#[test]
+fn test_match_fractional_match_type() {
+    let mut model = new_empty_model();
+    // -0.5 floors to -1: descending search (gen-m2 A160/A241).
+    model._set("A1", "=MATCH(5,{9,7,5,3},-0.5)");
+    model._set("A2", "=MATCH(4,{9,7,5,3},-0.0001)");
+    // 0.5 is still exact, 1E+15 still ascending without overflow.
+    model._set("A3", "=MATCH(4,{1,3,5},0.5)");
+    model._set("A4", "=MATCH(4,{1,3,5},1E+15)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    assert_eq!(model._get_text("A2"), "3");
+    assert_eq!(model._get_text("A3"), "#N/A");
+    assert_eq!(model._get_text("A4"), "2");
+}

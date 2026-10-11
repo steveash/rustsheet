@@ -3,7 +3,7 @@ id: T-1304
 title: "MATCH: a match_type between -1 and 0 searches descending (floor, not truncation; 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -56,3 +56,6 @@ counts by its floor (or its sign) and cites these cells.
   skips TRUE forward to 3.14159 and returns 3. Skipping backward would fit, but one cell is not
   enough evidence. These cells need their own probe.
 - XMATCH and VLOOKUP/HLOOKUP range_lookup.
+
+## Outcome
+`fn_match` floors match_type (`v.floor()`), so -0.5 and -0.0001 search descending. Fixes gen-m2 A160 and A241; unit test added; lookup.md cites both cells.
