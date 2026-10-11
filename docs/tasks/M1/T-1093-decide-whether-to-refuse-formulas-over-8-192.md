@@ -3,7 +3,7 @@ id: T-1093
 title: "Decide whether to refuse formulas over 8,192 characters on load (Excel refuses the workbook)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
