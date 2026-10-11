@@ -710,5 +710,7 @@ mod tests {
         }
         assert_eq!(exported_error_literal(&Error::GETTINGDATA), "#N/A");
         assert_eq!(exported_error_literal(&Error::DIV), "#DIV/0!");
+        // Excel loads a stored #BUSY! constant (T-0999), so it is written as is (SPEC-0003).
+        assert_eq!(exported_error_literal(&Error::BUSY), "#BUSY!");
     }
 }

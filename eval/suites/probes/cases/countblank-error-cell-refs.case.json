@@ -1,0 +1,29 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1181 probe: COUNTBLANK of a one-cell reference to an error cell, handed on by CHOOSE, INDEX, OFFSET, IF, a name or @. A1=#N/A, A2 empty.",
+  "tags": [
+    "M1",
+    "references",
+    "probe"
+  ],
+  "names": {
+    "nmerr": "=Sheet1!$A$1"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=NA()",
+        "C1": "=COUNTBLANK(A1)",
+        "C2": "=COUNTBLANK(CHOOSE(1,A1))",
+        "C3": "=COUNTBLANK(INDEX(A1:A2,1))",
+        "C4": "=COUNTBLANK(OFFSET(A1,0,0))",
+        "C5": "=COUNTBLANK(IF(TRUE,A1))",
+        "C6": "=COUNTBLANK(nmerr)",
+        "C7": "=COUNTBLANK(A1:A1)",
+        "C8": "=COUNTBLANK(CHOOSE(1,A1:A2))"
+      }
+    }
+  ],
+  "expected": {}
+}

@@ -338,6 +338,7 @@ fn typed_error_values_store_every_kind() {
         ErrorKind::Connect,
         ErrorKind::Blocked,
         ErrorKind::Field,
+        ErrorKind::Busy,
     ];
     let mut wb = book();
     for (i, kind) in kinds.into_iter().enumerate() {

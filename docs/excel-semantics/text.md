@@ -24,6 +24,44 @@ Evidence: eval/suites/probes/cases/text-b-functions-broadcast.case.json A3:A13 (
 Status: VERIFIED (Excel for the web only)
 Implemented in: `byte_functions.rs` delegates to the twins; `static_analysis.rs` gives them `scalar_arguments` (before T-0271 they were `not_implemented`, so no spill was planned and a fuzz input hit the scalar-context debug_assert).
 
+## Text positions count UTF-16 code units, except in LEFT and RIGHT
+Rule: LEN, MID, FIND, SEARCH, REPLACE and their *B twins count UTF-16 code units, so an emoji
+(a surrogate pair) counts two: `LEN("a😀b")` is 4, `MID("a😀b",2,2)` is "😀", `FIND("b","a😀b")` is
+4, `REPLACE("a😀b",2,2,"x")` is "axb", and a SEARCH `?` matches one unit (`SEARCH("?b","😀b")` is 2,
+`SEARCH("a?b","a😀b")` is `#VALUE!`, `SEARCH("a??b","a😀b")` is 1). LEFT and RIGHT (and LEFTB,
+RIGHTB) instead count characters (code points, not graphemes): `LEFT("a😀b",3)` is "a😀b",
+`LEN(LEFT("a😀b",2))` is 3, `RIGHT("a😀b",2)` is "😀b", `LEFT("e"&UNICHAR(769)&"x",1)` is "e" and
+`LEFT("👍🏽x",1)` is "👍" without its skin-tone modifier. FIND and SEARCH may start inside a pair
+(`FIND("b","😀b",2)` is 3). FIND takes a start one past the end, where only "" is found
+(`FIND("","abc",4)` is 4, `FIND("","",1)` is 1, `FIND("","abc",5)` and `FIND("c","abc",4)` are
+`#VALUE!`), while SEARCH does not (`SEARCH("","abc",4)` and `SEARCH("*","abc",4)` are `#VALUE!`).
+Evidence: probes/text-surrogate-positions A1-A44, B1-B15, C1-C9 (excel-graph, 2026-10-09, T-0249);
+probes/concatenate-limit-spill E7, E13, G97.
+Backend: excel-graph only; excel-desktop not used.
+Status: VERIFIED
+Implemented in: `len_element`, `mid_element`, `find_element` in functions/text/common.rs and
+`replace_element` in functions/text/string_format.rs, through `utf16_slice` and
+`one_char_per_utf16_unit` in functions/text/util.rs; `left_element`/`right_element` count chars.
+Tasks: T-0249
+
+## MID and REPLACE positions inside a surrogate pair keep the lone half
+Rule: a MID or REPLACE position that splits a surrogate pair keeps the lone surrogate:
+`LEN(MID("a😀b",3,2))` is 2 (low surrogate and "b"), `LEN(MID("a😀b",2,1))` is 1,
+`LEN(MID("😀",2,5))` is 1, `LEN(REPLACE("a😀b",3,1,"x"))` is 4, and
+`LEFT("a😀b",2)&MID("a😀b",3,2)` is "a😀", a lone U+DE00, then "b" (LEFT already took the whole
+emoji). `UNICODE` of a lone low surrogate is its code
+(`UNICODE(MID("a😀b",3,1))` is 56832), unlike a lone high one (`#VALUE!`, coercion.md
+"Truncation inside a surrogate pair keeps a lone high surrogate"). LEFT and RIGHT treat a lone
+surrogate as one character and do not pair a lone high surrogate with a following character
+(`LEN(RIGHT(MID("a😀b",2,1)&"x",1))` is 1).
+Evidence: probes/text-surrogate-positions A6, A11, A12, A29, A38, B6, B7, B10 (excel-graph,
+2026-10-09, T-0249).
+Ours: a Rust `String` cannot hold a lone surrogate, so `utf16_slice` drops a pair that straddles
+a cut whole (A6, A11, A12, A29, A38 and B10 stay known failures).
+Status: DEVIATION (decision 0033)
+Implemented in: `utf16_slice` in functions/text/util.rs
+Tasks: T-0249
+
 ## SUBSTITUTE result longer than 32,767 characters
 Rule: a SUBSTITUTE result over 32,767 characters is `#VALUE!` (unlike CONCATENATE and `&`, which truncate), for
 replace-all and for a given instance number alike; exactly 32,767 is fine. The limit applies to the result, not the
@@ -73,6 +111,21 @@ T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
 
+## FIXED drops the sign of a value that rounds to zero
+Rule: FIXED prints no minus sign when the number rounds to zero at the requested decimals: `FIXED(-2,-1,TRUE)` = "0"
+(`EVEN(-0.0001)` is -2).
+Evidence: gen-m6/f94b5b8236742618 Calc!A24 (excel-graph, 2026-10-09, T-1239).
+Ours: "-0" (the sign is taken from the unrounded value). Other shapes (`FIXED(-0.4,0)`) are UNVERIFIED.
+Status: VERIFIED (one cell)
+Tasks: T-1257
+
+## REPLACE with a huge start_num is `#VALUE!`
+Rule: `REPLACE(-0.0001,123456789.123,3,"a*")` is `#VALUE!` in Excel; there is an upper bound on start_num (the engine
+appends past the end of the text instead). Where the bound lies (32767?) and whether MID/num_chars share it is unprobed.
+Evidence: gen-m6/a62335e72e44cb4e Calc!A9 (excel-graph, 2026-10-09, T-1239).
+Status: UNVERIFIED (probe pending: the bound)
+Tasks: T-1258
+
 ## Text function argument modes
 Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill;
 probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text
@@ -94,6 +147,6 @@ unconfirmed (decision 0039).
 Evidence: probes/text-argument-modes, text-modes-bytes, text-modes-dbcs, text-modes-bahttext, text-modes-phonetic,
 -phonetic-range, -phonetic-number (excel-graph, 2026-10-09, T-1087).
 Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns its text unchanged and PHONETIC of any reference is `#N/A` (T-1213); DBCS widening of non-ASCII text (katakana, full-width forms), DBCS of a number cell or range, and PHONETIC of an error or empty cell are UNVERIFIED (T-1248). CODE and VALUETOTEXT
-lift over ranges (T-1212). Unprobed (T-1229): VALUETOTEXT format 1 on text (Microsoft documents quotes plus doubled embedded quotes), invalid format values, and a lifted format (`VALUETOTEXT(A1,{0,1})`); we ignore the format and never lift it.
+lift over ranges (T-1212). VALUETOTEXT's format (probes/valuetotext-format, excel-graph, T-1229): 1 quotes text and doubles embedded quotes (`"a""b"`; empty text is `""`), while a blank cell is empty, numbers, booleans and errors print as in format 0 (an error spells out, `#N/A`). The format is coerced to a number like any argument (`"1"`, TRUE and a blank cell work; other text is `#VALUE!`); a value in `[0, 2)` is truncated (`1.9` is 1, `1E-20` is 0), and anything else, `2`, `2.5`, `-0.5`, `-1`, is `#VALUE!`; an error format is returned as it is when the value is plain text; which error wins when the value is an error or the format is invalid as well, and a format given as a range reference, are UNVERIFIED (T-1288). The format lifts over arrays like the value (`VALUETOTEXT(A1:A2,{0,1})` is 2x2, `VALUETOTEXT(A1,{0,1})` 1x2). Ours: matches.
 Status: VERIFIED (excel-graph)
 Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248

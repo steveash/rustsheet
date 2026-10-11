@@ -288,7 +288,7 @@ pub enum StaticResult {
     Scalar,
     // The result of the evaluation is an array with dimensions (rows, columns)
     Array(i32, i32),
-    // The result of the evaluation is a range with dimensions (rows, columns)
+    // The result is a range of (rows - 1, columns - 1): a single cell is Range(0, 0) (Array holds counts)
     Range(i32, i32),
     // The result of the evaluation is unknown, we cannot guaranty it is a scalar, an array or a range
     Unknown,
@@ -469,11 +469,12 @@ fn static_analysis_index(_args: &[Node]) -> StaticResult {
 
 /// RANK's `ref` must be a reference: an array that is not one (`IF(A1:C1>0,A1:C1)`) makes the
 /// result a `#VALUE!` array of that array's shape, which spills (docs/excel-semantics/statistics.md,
-/// "RANK of a non-reference array"). References, including those INDEX, CHOOSE and OFFSET return
-/// (static `Unknown`), rank to a scalar.
+/// "RANK of a non-reference array"). A `ref` whose shape is `Unknown` (INDEX, CHOOSE, OFFSET, a
+/// defined name, `A1:<name>`) may still evaluate to such an array, so the result is `Unknown` too:
+/// a reference ranks to a 1x1 result, an array spills (probes/rank-unknown-shape-ref).
 fn static_analysis_rank(args: &[Node]) -> StaticResult {
     match args.get(1).map(run_static_analysis_on_node) {
-        Some(array @ StaticResult::Array(..)) => array,
+        Some(shape @ (StaticResult::Array(..) | StaticResult::Unknown)) => shape,
         _ => StaticResult::Scalar,
     }
 }
@@ -1707,7 +1708,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,
-        Function::Hlookup => not_implemented(args),
+        Function::Hlookup => broadcast_static_result(args.first()), // lifts over lookup_value (T-0270)
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
         Function::Index => static_analysis_index(args),
@@ -1717,7 +1718,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Offset => static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
-        Function::Vlookup => not_implemented(args),
+        Function::Vlookup => broadcast_static_result(args.first()), // lifts over lookup_value (T-0270)
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
@@ -1798,8 +1799,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Searchb => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
         Function::Value => not_implemented(args),
-        // Only the value lifts; the format is read as a scalar.
-        Function::Valuetotext => scalar_arguments(&args[..args.len().min(1)]),
+        Function::Valuetotext => scalar_arguments(args),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),

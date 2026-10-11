@@ -10,7 +10,8 @@ Evidence: probes/multiarea-printarea H1:H2 (excel-graph, 2026-10-07; its spec2xl
 the unprefixed form). The prefixed spelling is ECMA-376 Part 1 (`definedName`); no oracle case
 stores it yet.
 Status: VERIFIED (unprefixed); prefixed form per ECMA-376
-Implemented in: crates/rustsheet-xlsx/src/util.rs (`name_from_xlsx`, `name_to_xlsx`), T-1193; only Print_Area, Print_Titles and _FilterDatabase are mapped, the other ECMA built-ins load as written (T-1250).
+Implemented in: crates/rustsheet-xlsx/src/util.rs (`name_from_xlsx`, `name_to_xlsx`), T-1193; only Print_Area, Print_Titles and _FilterDatabase are mapped, the other ECMA built-ins load as written.
+Open (T-1250 found no evidence): no Excel-saved workbook in the repo or the oracle holds an `_xlnm.` name (checked all 264 tracked/untracked `.xlsx`), and excel-graph cannot save a workbook, so whether a user-defined `Criteria`/`Database`/`Extract` saves with the prefix, whether `ROWS(_FilterDatabase)` resolves under an AutoFilter, and what Excel writes for both `_xlnm.Print_Area` and plain `Print_Area` in one scope are unanswered. The mapping stays narrow on purpose; a desktop-Excel save is needed (M14, Phase 4, decision 0039).
 
 ## Control characters in text are stored as `_xHHHH_`
 Characters invalid in XML 1.0 (U+0000–U+0008, U+000B, U+000C, U+000E–U+001F) are written as

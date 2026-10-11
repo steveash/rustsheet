@@ -45,12 +45,44 @@ fn error_sort_rank(e: &Error) -> u8 {
     }
 }
 
+/// Orders two (already case-folded) texts the way Excel's `<`/`>` and `">"` criteria do: by
+/// character, with CHAR(160) right after the space and before every printable character, where code
+/// points would put it after the letters. `" 1" < CHAR(160)&"1" < "0"`, `"1"&CHAR(160) > "1"`
+/// (probes/text-order-nbsp-space, excel-graph, T-0244). Equal texts stay equal: only CHAR(160)
+/// moves. The rest of Excel's collation (`"-1" > "0"`, `"x" >= "ü"`) is T-0220.
+pub(crate) fn cmp_text_excel(left: &str, right: &str) -> std::cmp::Ordering {
+    left.chars()
+        .map(text_order_key)
+        .cmp(right.chars().map(text_order_key))
+}
+
+fn text_order_key(c: char) -> u64 {
+    const SPACE_KEY: u64 = 0x20 * 2;
+    if c == '\u{a0}' {
+        SPACE_KEY + 1
+    } else {
+        u64::from(u32::from(c)) * 2
+    }
+}
+
 // In Excel there are two ways of comparing cell values.
 // The old school comparison valid in formulas like D3 < D4 or HLOOKUP,... cast empty cells into empty strings or 0
 // For the new formulas like XLOOKUP or SORT an empty cell is always larger than anything else.
 
 // ..., -2, -1, 0, 1, 2, ..., A-Z, FALSE, TRUE;
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
+    // An empty value (`IFERROR(<blank>,1)`, `CalcResult::EmptyArg`) compares as a blank cell:
+    // `IFERROR(B1,1)=0`, `=""` and `=FALSE` are TRUE and SWITCH matches it to 0
+    // (probes/iferror-blank-value D2:D5, D18, D19; T-0291).
+    fn as_blank(value: &CalcResult) -> &CalcResult {
+        static BLANK: CalcResult = CalcResult::EmptyCell;
+        if matches!(value, CalcResult::EmptyArg) {
+            &BLANK
+        } else {
+            value
+        }
+    }
+    let (left, right) = (as_blank(left), as_blank(right));
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
             // Equality is decided on the 15-digit values alone: an absolute tolerance would equate
@@ -67,7 +99,7 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
         (CalcResult::String(value1), CalcResult::String(value2)) => {
             let value1 = value1.to_uppercase();
             let value2 = value2.to_uppercase();
-            match value1.cmp(&value2) {
+            match cmp_text_excel(&value1, &value2) {
                 std::cmp::Ordering::Less => -1,
                 std::cmp::Ordering::Equal => 0,
                 std::cmp::Ordering::Greater => 1,
@@ -236,23 +268,21 @@ impl Model {
     }
 
     /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT and AVERAGE
-    /// take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a range are also the cells they pick
+    /// take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a range
+    /// are also the cells they pick
     /// (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206). The other
     /// aggregates sharing `for_each_value` follow the same rule unprobed; MIN, MAX, COUNTA and
-    /// AVERAGEA still evaluate those calls to values. The call list is
-    /// repeated in `is_read_reference` (static_analysis/aggregate.rs).
+    /// AVERAGEA still evaluate those calls to values. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        if let Node::FunctionKind {
-            kind: kind @ (Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange),
-            args,
-        } = node
-        {
-            if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
-                return RefArg::from(result);
+        if let Node::FunctionKind { kind, args } = node {
+            if kind.picks_reference() {
+                if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
+                    return RefArg::from(result);
+                }
             }
         }
         self.evaluate_reference_arg(node, cell)

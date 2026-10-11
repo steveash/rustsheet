@@ -70,6 +70,25 @@ Status: VERIFIED
 Implemented in: `fn_lookup`, `lookup_result` in `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup.rs`
 Tasks: T-0224, T-0269
 
+## VLOOKUP / HLOOKUP lift over an array lookup_value
+Rule: an array or multi-cell range lookup_value is looked up element by element into a same-shaped
+spilled array (`VLOOKUP({2;3},A1:B4,2,FALSE)` → "two"; "three", a row lifts across, `INDEX(A1:B2,1,0)`
+too). Each element follows the scalar rules, searching before validating the index: with index 0,
+`{2;99}` gives `#VALUE!`, `#N/A`; with an index past the table `#REF!`, `#N/A`. An error element is
+itself (`{2;#DIV/0!;"x"}` → "two", `#DIV/0!`, `#N/A`). Approximate match lifts the same way. A whole
+column lifts too (`ROWS(VLOOKUP(D:D,A1:B4,2,FALSE))` is 1048576) and the engine bounds it by the
+shared cell-visit cap (criteria.md): elements times the evaluated cells of the searched column or row,
+whatever the table is (DEVIATION, decision 0014: `VLOOKUP(SEQUENCE(1048576),SEQUENCE(1048576,2),2,FALSE)`
+is `#ERROR!`). UNVERIFIED: an array col_index or range_lookup looks unlifted (a first oracle fill showed
+`VLOOKUP({2;3},A1:B4,{1,2},FALSE)` spilling only 2; 3); the cells were moved to T-1269, which re-probes
+them (the engine gives `#N/IMPL!`).
+Unprobed: blank elements of a multi-cell lookup_value, and an error or bad-text index or range_lookup with an
+array lookup_value (the engine gives one scalar error before lifting; T-1269 probes it).
+Evidence: probes/vlookup-array-lookup-value (35 cells, excel-graph, 2026-10-09, T-0270).
+Implemented in: `Model::lookup_each` (functions/lookup_and_reference/lookup_each.rs) through
+`Model::lift_with_cost`; the spill shape follows lookup_value in static analysis.
+Status: VERIFIED (web)
+
 ## VLOOKUP / HLOOKUP search before validating the index
 Rule: the value is looked up first. Not found is `#N/A` whatever the column/row index
 (`=VLOOKUP("a",Data!E2:E6,3)` → `#N/A`; indexes -1, 0, -2.5 and past the table too). Only a found
@@ -82,6 +101,8 @@ value goes on to index validation:
   (`"a"`, `""`) is `#VALUE!` and an error (`1/0`, `NA()`) is that error even when nothing is found.
   Arguments fail left to right: lookup_value, then the index, then range_lookup (`VLOOKUP(2,A1:C3,"a",1/0)`
   is `#VALUE!`).
+  A value index's error also beats a not-found lookup and a range_lookup error: `VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))`
+  (FALSE not in the table, range_lookup `#REF!`) is `#NUM!` (gen-m6/5cc04d6f42b23b51 Calc!A27, excel-graph, 2026-10-09, T-1239).
 Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); gen-m2/1b6ceed7489e0800 A24,
 2cfe279fe77a000d A85, 61cacc22c4244179 A310, caa981b0753f455c A182, 629e6e8b76fab8b9 A53,
 cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
@@ -143,6 +164,26 @@ Status: VERIFIED
 Implemented in: `SearchVector::approximate_search` and `SearchVector::exact_position` in
 `crates/rustsheet-engine/src/functions/lookup_and_reference/lookup_table.rs`
 Tasks: T-0212, T-0220
+
+## MATCH descending search skips backward; a text match_type read from a cell is #REF!
+Rule 1: in a descending search (negative match_type) the probe step that lands on a cell of another
+type moves *backward* to the nearest cell of the key's type, not forward as in the ascending
+pseudo-code above. `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (backward skip reaches 0.1, which is
+below the key, so nothing qualifies; a forward skip would reach 3.14159 and give 3), while
+`MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3 and `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
+(the range forms agree). One backward-skip reading fits all four; the evidence does not exclude
+other rules for a skip that passes the low bound.
+Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
+`MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
+lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
+`#N/A` rule above still holds for numeric match_type (`MATCH(1,A5:B7,0)` and `,1` are `#N/A`).
+`INDEX` returns that `#REF!` (`INDEX(A5:B7,MATCH(1,A5:A6,D1),3)` and `,1`), while a literal-text
+match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
+out-of-range column, which alone is `#REF!`).
+Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
+2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
+Status: VERIFIED
+Tasks: T-1305, T-1312, T-1313
 
 ## INDEX with one index into a 2-D range is #REF!
 Rule: `INDEX(range2d, n)` with only a row index (including 0 and 1E-15) is `#REF!`:
@@ -298,3 +339,28 @@ for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over 
 FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
 Status: VERIFIED (web)
 Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+
+## A reference-valued lookup_value is looked up by its cell's value
+Rule: when lookup_value is a reference returned by a function (`CHOOSE(1,Data!D7)`), the lookup uses the referenced
+cell's value: `HLOOKUP(CHOOSE(1,Data!D7),Data!A8:A10,AVERAGE(..),..)` finds it and fails on the row index with
+`#VALUE!`. Other shapes (OFFSET, INDIRECT, `A8:A8`) and the other lookup functions are unprobed.
+Evidence: gen-m6/963a217976538d5d Calc!A32 (excel-graph, 2026-10-09, T-1239).
+Ours: never matched, so `#N/A` (also in VLOOKUP, MATCH, XMATCH, XLOOKUP and LOOKUP).
+Status: VERIFIED for the CHOOSE shape in HLOOKUP; UNVERIFIED otherwise
+Tasks: T-1256
+
+## INDEX with an array row_num into a 2-D range
+Rule: `INDEX(Data!C2:D9,CHOOSEROWS(Data!D7:E11,4))` (a 1x2 array as row_num, no column_num) is `#REF!` in Excel
+(concatenated with text, still `#REF!`). Whether INDEX lifts over the array and each element is the one-index-into-2-D
+`#REF!` above, or the array itself is refused, is unprobed.
+Evidence: gen-m6/2c1a6e93a1974f48 Calc!A25 (excel-graph, 2026-10-09, T-1239).
+Ours: `#N/IMPL!`.
+Status: UNVERIFIED (one cell)
+Tasks: T-1260
+
+## XLOOKUP with an array lookup_value looks up each element
+`SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
+Evidence: probes/let-name-uncalled-picked-refs H21 (excel-graph, 2026-10-09, T-1252). Other shapes (row, 2-D, with if_not_found) are not probed.
+Ours: `#N/A` (a known failure, T-1264).
+Status: VERIFIED (web)
+Tasks: T-1252, T-1264

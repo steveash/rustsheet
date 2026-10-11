@@ -78,7 +78,8 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - `smoke`, `gen-m1` (≥ 3,000 oracle cells, operators and references only) and the frozen M1
   probe list at 100% bit-exact, excluding cells listed as accepted deviations (decision 0036).
   Measured for gen-m1 by eval/baseline/gen-m1.txt reaching zero failing cells (T-0109: 978 left,
-  in T-0105, T-0107, T-0130–T-0132, T-0134 and T-0221; T-0221 is an M2 task that also blocks M1).
+  in T-0105, T-0107, T-0130–T-0132, T-0134 and T-0221; 8 left on 2026-10-10: 6 in T-1302, the
+  integer-exponent power rule, and 2 in T-0221, an M2 task that also blocks M1).
 - The frozen M1 probe list is `eval/milestones/m1-probes.txt` (decision 0043): 89 `probes` cases
   in M1 scope, fixed at commit e5c7ae9. Its cases have no F line left in
   eval/baseline/probes.txt (61 at the freeze; `make eval` reports it once T-1146 lands). Probe

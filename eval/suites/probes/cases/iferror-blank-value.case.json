@@ -1,0 +1,68 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0291: the empty value IFERROR/IFNA give for a blank cell (B1) in comparisons, SWITCH, COUNT, AND, OR, &, IS* and lookups.",
+ "tags": [
+  "M2",
+  "logic",
+  "iferror",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "C1": -1,
+    "C2": 0,
+    "D1": "=IFERROR(B1,1)",
+    "D2": "=IFERROR(B1,1)=0",
+    "D3": "=IFERROR(B1,1)=\"\"",
+    "D4": "=IFERROR(B1,1)=FALSE",
+    "D5": "=SWITCH(IFERROR(B1,1),0,\"zero\",\"other\")",
+    "D6": "=SWITCH(B1,0,\"zero\",\"other\")",
+    "D7": "=COUNT(IFERROR(B1,1))",
+    "D8": "=COUNTA(IFERROR(B1,1))",
+    "D9": "=AND(IFERROR(B1,1))",
+    "D10": "=OR(IFERROR(B1,1))",
+    "D11": "=OR(IFNA(B1,1))",
+    "D12": "=IFNA(B1,1)&\"x\"",
+    "D13": "=ISBLANK(IFERROR(B1,1))",
+    "D14": "=TYPE(IFERROR(B1,1))",
+    "D15": "=IFERROR(B1,1)+1",
+    "D16": "=MATCH(IFERROR(B1,1),C1:C2,0)",
+    "D17": "=VLOOKUP(IFNA(B1,1),C1:C2,1,TRUE)",
+    "D18": "=IFERROR(B1,1)<1",
+    "D19": "=IFERROR(B1,1)<\"a\"",
+    "D20": "=ISNUMBER(IFERROR(B1,1))",
+    "D21": "=ISTEXT(IFERROR(B1,1))",
+    "D22": "=N(IFERROR(B1,1))",
+    "D23": "=COUNTBLANK(B1)+COUNT(IFNA(B1,1))"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!D1",
+  "Sheet1!D2",
+  "Sheet1!D3",
+  "Sheet1!D4",
+  "Sheet1!D5",
+  "Sheet1!D6",
+  "Sheet1!D7",
+  "Sheet1!D8",
+  "Sheet1!D9",
+  "Sheet1!D10",
+  "Sheet1!D11",
+  "Sheet1!D12",
+  "Sheet1!D13",
+  "Sheet1!D14",
+  "Sheet1!D15",
+  "Sheet1!D16",
+  "Sheet1!D17",
+  "Sheet1!D18",
+  "Sheet1!D19",
+  "Sheet1!D20",
+  "Sheet1!D21",
+  "Sheet1!D22",
+  "Sheet1!D23"
+ ]
+}
