@@ -968,3 +968,15 @@ Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a si
 Status: VERIFIED (excel-graph)
 Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` and `ANCHORARRAY(@IF(...))` not yet (T-1320, T-1321)
 Tasks: T-1285, T-1320, T-1321
+
+## Implicit intersection of a one-row range by a cell in that row
+Rule: `@` (or a scalar context) over a one-row range intersects by column whenever the formula cell's column lies
+inside the range, including when the cell is also in the range's row number and on another sheet:
+`@XLOOKUP(2,Data!A1:A3,Data!B1:C3)` (the reference Data!B2:C2) is Data!B2 entered in another sheet's B2 and
+Data!C2 in C2. Column ranges intersect by row; a 2-D range never intersects (`#VALUE!`).
+Evidence: probes/xlookup-row-column-picks B2, C2, G3, E4, G15 (excel-graph, 2026-10-11, T-0962), through `@XLOOKUP`
+only; a plain `@Data!B2:C2` is unprobed (T-1333).
+Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_intersection.rs), shared by every
+implicit intersection.
+Status: VERIFIED (web)
+Tasks: T-0962, T-1333
