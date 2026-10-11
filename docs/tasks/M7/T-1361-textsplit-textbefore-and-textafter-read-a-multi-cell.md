@@ -1,5 +1,5 @@
 ---
-id: T-1346
+id: T-1361
 title: "TEXTSPLIT, TEXTBEFORE and TEXTAFTER read a multi-cell delimiter range as a delimiter list (blank cell, number and boolean delimiters)"
 milestone: M7
 lane: functions-text

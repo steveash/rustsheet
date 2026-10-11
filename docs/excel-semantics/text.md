@@ -183,11 +183,11 @@ function argument modes"), and numbers and booleans in it raise no error. VERIFI
 delimiters 1E+15, TRUE is not an error); `TEXTAFTER("TRUE",A5:D6)` (A5 = "TRUE") is text that is not a reference
 (`INDIRECT` of it is `#REF!`), inferred to be "" since "TRUE" matches at the start; `TEXTBEFORE("a*",C1:D11)` is "".
 UNVERIFIED: whether a blank cell in the range is an empty delimiter (in `TEXTBEFORE("a*",C1:D11)` the "a" in C5 matches at
-the start anyway) and whether numbers and booleans match as their text; T-1346 probes both first.
+the start anyway) and whether numbers and booleans match as their text; T-1361 probes both first.
 Evidence: gen-m7/8ed8a680e9794b77 Calc!A17, A26; gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, 2026-10-11, T-1275).
 Ours: a one-row range of text delimiters works; a multi-row range, or one holding a blank or a boolean, is `#VALUE!`.
 Status: VERIFIED (web) for the listed cells; blank and number/boolean matching UNVERIFIED
-Tasks: T-1346
+Tasks: T-1361
 
 ## TEXTSPLIT of empty text is #VALUE!
 Rule: `TEXTSPLIT("","a","TRUE")` is `#VALUE!`: in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the result is `#VALUE!`, which

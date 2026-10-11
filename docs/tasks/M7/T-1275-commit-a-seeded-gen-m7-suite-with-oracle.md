@@ -32,8 +32,8 @@ The gap-triager sorted all 68 failing cells:
 - 46 went to existing tasks, whose Context now cites the gen-m7 cells: T-1271, T-1272, T-1273, T-1241,
   T-1269, T-1313, T-1322, T-1326, T-1255, T-1214, T-1202, T-1201, T-1259, T-0915, T-0905, T-1249,
   T-1319, T-1261, T-1262.
-- 21 went to 15 new tasks: T-1346 to T-1360. T-1360 holds the REGEX optional arguments; T-1345 was
-  taken by T-1189.
+- 21 went to 15 new tasks: T-1347 to T-1361. T-1360 holds the REGEX optional arguments (T-1345 was
+  taken by T-1189) and T-1361 the delimiter ranges (T-1346 was taken on main).
 - 1 has no task: bare PERCENTOF is `#NAME?`, the gen-m6 precedent.
 
 New quirks are recorded in arrays.md, text.md, dates.md, lookup.md, numbers.md and number-formats.md.
