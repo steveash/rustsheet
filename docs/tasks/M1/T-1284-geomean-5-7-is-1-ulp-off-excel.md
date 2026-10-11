@@ -3,7 +3,7 @@ id: T-1284
 title: "GEOMEAN(5,7) is 1 ulp off Excel (5.916079783099616, engine ...615)"
 milestone: M1
 lane: functions-stat
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
