@@ -109,6 +109,30 @@ Implemented in: not yet. The engine parser resolves a bare newer name read from 
 exporter never writes `_xleta.` (T-1089).
 Tasks: T-0040, T-1089
 
+## Written parentheses are stored as written; `@(x)` is `_xlfn.SINGLE((x))`
+Rule: the stored `<f>` text keeps every redundant parenthesis as written. A group directly after `@`
+stays inside SINGLE's own parentheses:
+
+| Entered | Stored `<f>` |
+|---|---|
+| `=Z1+(Z2)` | `Z1+(Z2)` |
+| `=((Z1))` | `((Z1))` |
+| `=-(Z1)` | `-(Z1)` |
+| `=IF((Z1>0),(Z2),Z3)` | `IF((Z1&gt;0),(Z2),Z3)` |
+| `=(Z1^2)^3` | `(Z1^2)^3` |
+| `=SUM((Z1:Z2))` | `SUM((Z1:Z2))` |
+| `=(1)+((2))` | `(1)+((2))` |
+| `=@(Z1+(Z2))` | `_xlfn.SINGLE((Z1+(Z2)))` |
+
+The Graph range API reads the formulas back exactly as entered.
+Evidence: formulas entered through the Graph range API and the file Excel for the web saved
+(excel-graph, 2026-10-11, T-1244).
+Ours: export prints from the parse tree, which drops most groups (syntax.md "FORMULATEXT keeps every
+written parenthesis"), so `=Z1+(Z2)` is stored `Z1+Z2` and `=@(Z1+(Z2))` is stored `_xlfn.SINGLE(Z1+Z2)`.
+Status: VERIFIED (web)
+Implemented in: not yet (SPEC-0007).
+Tasks: T-1244
+
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
 it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
