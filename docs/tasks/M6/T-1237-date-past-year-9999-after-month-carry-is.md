@@ -21,8 +21,15 @@ bound, e.g. `DATE(2024,32767,1)`, `(2024,32768,1)`, `(2024,40000,1)`, negative m
 `DATE(2024,1,32768)` / `(2024,1,2958466)`). `DATEDIF("45000",46000,"d")` is 1000 in Excel, `#VALUE!` here (F89).
 Semantics: docs/excel-semantics/dates.md "Date function argument modes".
 
+More evidence (T-1239's gen-m6 suite, excel-graph, 2026-10-09): gen-m6/5cc04d6f42b23b51 Calc!A4
+`=(DATE(2042,8,1E+15)%*(100-CELL("row",Data!B12)))` is 74663.6 in Excel, so `DATE(2042,8,1E+15)` = 84845 =
+`DATE(2042,8,32767)`: a huge *day* is not `#NUM!` but acts like 32767 (the engine gives `#NUM!`). Make sure the month/day
+bounds found by the probe keep this cell; add `DATE(2042,8,32768)`, `(2042,8,1E+6)`, `(2042,8,-1E+15)` to the probe
+(dates.md "Date function argument modes").
+
 ## Acceptance criteria
 - [ ] probes/date-argument-modes G3 (once T-1235 lifts DATE, G4) and F89 pass; baseline updated.
+- [ ] gen-m6/5cc04d6f42b23b51 A4 passes (`./target/release/rustsheet-eval show gen-m6/5cc04d6f42b23b51.case.json`).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -111,6 +111,21 @@ T-0040). Desktop Excel not yet checked: T-1081 (M14, decision 0039).
 Status: VERIFIED (excel-graph); desktop confirmation pending (T-1081)
 
 
+## FIXED drops the sign of a value that rounds to zero
+Rule: FIXED prints no minus sign when the number rounds to zero at the requested decimals: `FIXED(-2,-1,TRUE)` = "0"
+(`EVEN(-0.0001)` is -2).
+Evidence: gen-m6/f94b5b8236742618 Calc!A24 (excel-graph, 2026-10-09, T-1239).
+Ours: "-0" (the sign is taken from the unrounded value). Other shapes (`FIXED(-0.4,0)`) are UNVERIFIED.
+Status: VERIFIED (one cell)
+Tasks: T-1257
+
+## REPLACE with a huge start_num is `#VALUE!`
+Rule: `REPLACE(-0.0001,123456789.123,3,"a*")` is `#VALUE!` in Excel; there is an upper bound on start_num (the engine
+appends past the end of the text instead). Where the bound lies (32767?) and whether MID/num_chars share it is unprobed.
+Evidence: gen-m6/a62335e72e44cb4e Calc!A9 (excel-graph, 2026-10-09, T-1239).
+Status: UNVERIFIED (probe pending: the bound)
+Tasks: T-1258
+
 ## Text function argument modes
 Rule: the M5 text functions take scalar arguments that lift over a range or array (one result per cell, a spill;
 probes/text-argument-modes F1:F26: LEN, CODE, EXACT, VALUETOTEXT, REPT, FIND), with four exceptions: TEXTJOIN's text

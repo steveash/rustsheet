@@ -261,8 +261,12 @@ MDETERM, MINVERSE and MMULT are `#VALUE!` for a text cell in a matrix (arrays.md
 These decide the generator's argument modes (eval/catalog/functions.yaml `array`, T-1082); the
 SUMX2MY2 family's `array` mode rests on "SUMX2MY2 / SUMX2PY2 / SUMXMY2 pairing" above, and
 PERCENTOF's `aggregate` on Microsoft's page only (it is `#NAME?` on excel-graph).
+The type check wins over a negative argument whatever the order: `GCD(-1,B1:B11)` with the text "TRUE" in B1 is
+`#VALUE!`, and `MULTINOMIAL(A6:D9)` whose first cell is -2.5 and later cells hold FALSE and text is `#VALUE!`
+(gen-m6/5cc04d6f42b23b51 Calc!A11, gen-m6/2c1a6e93a1974f48 Calc!A35, excel-graph 2026-10-09; the engine gives `#NUM!`,
+T-1261). Typed text after a typed negative (`GCD(-1,"a")`) and LCM are unprobed.
 Evidence: probes/math-argument-modes Sheet1!C1:C56 (excel-graph, 2026-10-08).
 Implemented in: the engine matches every cell except MULTINOMIAL numeric text (C9, C47, C52; T-1190)
 and SERIESSUM with a boolean coefficient cell (C44, engine 11; T-1191).
 Status: VERIFIED
-Tasks: T-1082, T-1190, T-1191
+Tasks: T-1082, T-1190, T-1191, T-1261
