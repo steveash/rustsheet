@@ -3,7 +3,7 @@ id: T-1378
 title: "Probe SUBTOTAL/AREAS over TAKE/DROP of mixed-kind IF, nested or shadowed LET, and CHOOSE/SWITCH/IFS (follow-up of T-1365)"
 milestone: M1
 lane: functions-math
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,6 @@ T-1365 added `yields_cells` (static_analysis/aggregate.rs) with unprobed rules: 
 
 ## Out of scope
 -
+
+## Outcome
+Probe `subtotal-reference-operands-f` (97 oracle cells, excel-graph): TAKE/DROP over CHOOSE, SWITCH and IFS now follow the same cells-or-values rule as IF in `yields_cells`, so a computed array spills `#VALUE!` instead of tripping the debug_assert; LET/LAMBDA variable names are case-insensitive. The probes suite gained 97 passing cells (known failures unchanged; the baseline records the new case). Quirk recorded in `docs/excel-semantics/references.md`. Follow-up: LAMBDA parameter lookup elsewhere may still be case-sensitive.

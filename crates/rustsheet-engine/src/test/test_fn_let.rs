@@ -77,3 +77,15 @@ fn test_lambda_r_and_c_parameters() {
     model.evaluate();
     assert_eq!(model._get_text("A1"), "7");
 }
+
+#[test]
+fn test_let_names_are_case_insensitive() {
+    let mut model = new_empty_model();
+    model._set("A1", "=LET(x,2,X+1)");
+    model._set("A2", "=SUBTOTAL(9,TAKE(CHOOSE(1,SEQUENCE(4)),2))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "3");
+    // A computed array under CHOOSE spills two #VALUE! (probes/subtotal-reference-operands-f).
+    assert_eq!(model._get_text("A2"), "#VALUE!");
+    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
