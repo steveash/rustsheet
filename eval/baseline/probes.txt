@@ -408,6 +408,7 @@ C	probes/xlookup-array-lookup-value-args.case.json	57
 C	probes/xlookup-array-lookup-value.case.json	27
 C	probes/xlookup-array-return.case.json	27
 C	probes/xlookup-omitted-lookup-value.case.json	41
+C	probes/xlookup-row-column-picks.case.json	45
 C	probes/xmatch-blank-extensions.case.json	43
 C	probes/xmatch-text-bool-equal-runs.case.json	134
 C	probes/xmatch-xlookup-blanks.case.json	69
