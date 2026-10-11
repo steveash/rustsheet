@@ -129,6 +129,8 @@ C	probes/defined-name-grouped-reference.case.json	13
 C	probes/defined-name-intersection.case.json	10
 C	probes/dvar-one-vs-two-pass.case.json	32
 C	probes/edate-serial-0-months.case.json	12
+C	probes/elapsed-tiny-negatives-1900.case.json	11
+C	probes/elapsed-tiny-negatives-1904.case.json	11
 C	probes/error-arg-vs-range-check.case.json	10
 C	probes/error-literals-new.case.json	18
 C	probes/error-literals-new2.case.json	15

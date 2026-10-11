@@ -3,7 +3,7 @@ id: T-1338
 title: "Probe TEXT of tiny negatives under padded and h/m elapsed tokens"
 milestone: M1
 lane: functions-date
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -23,3 +23,7 @@ T-1329 made `elapsed_text` (formatter/format.rs) give "-0" for any negative of m
 
 ## Out of scope
 -
+
+## Outcome
+Probed both date systems (probes/elapsed-tiny-negatives-1900/-1904, 22 cells). Excel rounds the magnitude for [s] and truncates it for [h]/[m]; engine floored, so -1.7 min gave -2. `elapsed_text` now takes a round flag. No eval cell moved (new cases all pass), no regressions.
+Follow-up: T-1346 probes positive fractions and the 10-decimal noise snap (reviewer notes).
