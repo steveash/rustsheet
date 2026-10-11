@@ -53,7 +53,8 @@ fn image_number(value: &CalcResult) -> Option<f64> {
 /// image-sizing, excel-graph, 2026-10-11, T-1345): `sizing` is 0 to 3 (a fraction truncates;
 /// -1, 4, 9, text, "" and an omitted `IMAGE(url,"alt",)` are `#VALUE!`); sizing 3 needs a
 /// `height`, `height` and `width` are not negative, and not both 0; sizing 0 and 1 refuse
-/// a `height`. Array-valued options are not validated (UNVERIFIED lifting).
+/// a `height`. An array-valued `sizing` is not validated, and an array `height` or `width` counts as
+/// present for those two rules (UNVERIFIED lifting, T-1370).
 fn image_options_valid(options: &[CalcResult]) -> bool {
     let Some(sizing) = options.first() else {
         return true;
