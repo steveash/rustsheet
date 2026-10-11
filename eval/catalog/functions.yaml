@@ -1397,7 +1397,7 @@ functions:
     milestone: M9
     scope: in
     prior: 0.1
-    returns: number
+    returns: any
     params:
       - { name: database, mode: range, type: any }
       - { name: field, mode: value, type: any, domain: { int: true, min: 1, max: 4 } }
