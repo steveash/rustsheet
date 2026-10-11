@@ -24,9 +24,9 @@ T-1083 gave all 32 in-scope M7 entries signatures. Its seeded sample (`rustsheet
 -
 
 ## Outcome
-eval/suites/gen-m7 (25 cases, `rustsheet-gen --milestone M7 --count 25 --seed 17`, not gated like
-gen-m5/gen-m6) has excel-graph sidecars. 6 cells stay pending because excel-graph returns an error it
-cannot decode. The engine passes 926 of 994 cells (93.16%) with no crash.
+eval/suites/gen-m7 (25 cases, `rustsheet-gen --milestone M7 --count 25 --seed 17`, `gate = false` with no
+baseline file, like gen-m5/gen-m6) has excel-graph sidecars. 6 cells stay pending because excel-graph returns an error it
+cannot decode. The engine now passes 926 of 994 cells (93.16%; T-1083's sample run gave 924) with no crash.
 
 The gap-triager sorted all 68 failing cells:
 - 46 went to existing tasks, whose Context now cites the gen-m7 cells: T-1271, T-1272, T-1273, T-1241,
