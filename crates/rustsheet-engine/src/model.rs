@@ -23,7 +23,7 @@ use crate::{
         utils::{self, is_valid_column_number, is_valid_row},
     },
     formatter::{
-        format::{format_number, parse_formatted_number, FormatContext},
+        format::{format_number, parse_formatted_number},
         lexer::is_likely_date_number_format,
     },
     implicit_intersection::implicit_intersection,
@@ -3392,53 +3392,9 @@ impl Model {
         self.workbook.settings.tz.clone()
     }
 
-    /// The workbook's number-formatting inputs: its locale and date system (SPEC-0005).
-    pub(crate) fn format_context(&self) -> FormatContext<'static> {
-        FormatContext {
-            locale: self.locale,
-            date_system: self.workbook.settings.date_system,
-        }
-    }
-
     /// Gets the locale of the model
     pub fn get_locale(&self) -> String {
         self.workbook.settings.locale.clone()
-    }
-
-    /// Gets the formatting settings based on the locale
-    pub fn get_fmt_settings(&self) -> FmtSettings {
-        let day_example = 46006.0; // December 15, 2025
-        let currency = self.locale.currency.iso.clone();
-        let currency_symbol = &self.locale.currency.symbol;
-        // "M/d/yy"
-        let short_date = &self.locale.dates.date_formats.short;
-        // "M/d/yyyy"
-        let long_date = &self.locale.dates.date_formats.long;
-        // The examples describe the locale, not this workbook: always the 1900 date system.
-        let ctx = FormatContext::new(self.locale);
-        let short_date_example = format_number(day_example, short_date, &ctx).text;
-        let long_date_example = format_number(day_example, long_date, &ctx).text;
-        // Number format ("#,##0.###")
-        // The CLDR formats are a bit different than Excel's
-        // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
-        // "#,##0.00 ¤" Currency format might have weird spaces
-        let currency_format_template = &self.locale.numbers.currency_formats.standard;
-        let currency_format = currency_format_template
-            .replace("¤", &format!("\"{}\"", currency_symbol))
-            .replace(" ", " ");
-
-        let number_fmt = "#,##0.00".to_string();
-        let number_example = format_number(1234.567, &number_fmt, &ctx).text;
-        FmtSettings {
-            currency,
-            currency_format,
-            short_date: short_date.clone(),
-            long_date: long_date.clone(),
-            short_date_example,
-            long_date_example,
-            number_fmt,
-            number_example,
-        }
     }
 
     /// Cycles the references touched by the cursor through the four
