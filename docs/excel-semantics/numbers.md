@@ -1017,8 +1017,8 @@ then, because the engine's draw for it is random), B18, and the array lift F1:F9
 
 ## SERIESSUM with x = 0
 Rule (hypothesis): SERIESSUM with x = 0 is `#NUM!` only when a term has power 0 (0^0): `SERIESSUM(0,0,2,{1,2,3})` is `#NUM!`,
-but `SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` (one term, a positive power) is not, since the IFS around it in
-gen-m7 moves on to its next condition (`#VALUE!`) instead of returning `#NUM!`.
+but `SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` (one term, a positive power) is not `#NUM!` (the IFS around
+it in gen-m7 gives `#VALUE!`, so SERIESSUM was a number or `#VALUE!`).
 Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached); gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
 Ours: `#NUM!` for every x = 0.
 Status: UNVERIFIED (probe pending: negative powers, a blank x)
