@@ -106,10 +106,10 @@ the leading `=`, so the file text was 8,192 characters for the longest formula t
 8,193 including `=`) and 8,193 for the first refused: Excel enforces exactly the published 8,192
 characters on file load. At
 most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
-chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
-chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
-cap, where Excel refuses the workbook. The xlsx importer now refuses such a workbook too (see
-"Formulas over 8,192 characters refuse the workbook" above); the API still accepts them.
+chain Excel accepts. The engine itself has no formula text length limit: through the API it accepts
+and evaluates chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the
+operator cap. The xlsx importer refuses a workbook holding one, as Excel does (see "Formulas over
+8,192 characters refuse the workbook" above).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
