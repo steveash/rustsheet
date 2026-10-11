@@ -361,15 +361,14 @@ too: `TEXT(-1,"d")` = "-2", `TEXT(-1.5,"yyyy")` = "-1904", `TEXT(-0.5,"h:mm")` =
 `TEXT(-1E-10,"[h]:mm")` = "-0:00". In the 1900 system each of these is `#VALUE!`, an explicit negative section
 included (`TEXT(-1.5,"[h]:mm;-[h]:mm")`), and so is `TEXT(B1,"[h]:mm")` for a cell B1 = -1.5 formatted
 `[h]:mm`, whose value stays -1.5 (`=B1`). `-0` is 0 in both systems (`TEXT(-0,"[h]:mm")` = "0:00").
-Quirk: a format whose only token is `[s]` prints negatives in the 1900 system too: `TEXT(-1.5,"[s]")` =
-"-129600" and `TEXT(-1E-10,"[s]")` = "-0" (a minus on a value that rounds to 0) in both systems, while
+Quirk: a format whose only token is one elapsed token (`[h]`, `[hh]`, `[m]`, `[mm]`, `[s]`, `[ss]`; probes/elapsed-tiny-negatives-1900, T-1338) prints negatives in the 1900 system too: `TEXT(-1.5,"[s]")` =
+"-129600" and `TEXT(-1E-10,"[s]")` = "-0" (the minus stays on a magnitude that rounds or truncates to 0; see number-formats.md "Elapsed-time tokens") in both systems, while
 `[s] yy` is `#VALUE!` (probes/text-negative-serial-elapsed-mixed A6).
 Not probeable through excel-graph: cell display (`#####` or text) of a negative under a date format; the oracle
 reads cached values, not displayed text.
 Evidence: probes/date-system-1900-negatives and probes/date-system-1904-negatives (same 18 questions, excel-graph,
 2026-10-11, T-1268).
-Ours: the 1900 case passes 12 of 18 (the elapsed-token negatives print a minus: T-1105; `TEXT(-1E-10,"[s]")` gives
-"-1": T-1329); the 1904 case passes 7 of 18 (no date-system awareness in the formatter or date functions yet:
+Ours: the 1900 case passes 12 of 18 (the elapsed-token negatives print a minus: T-1105); the 1904 case passes 7 of 18 (no date-system awareness in the formatter or date functions yet:
 SPEC-0005 steps 3-4, T-1105 and T-1330).
 Status: VERIFIED (web)
 Tasks: T-1268, T-1105

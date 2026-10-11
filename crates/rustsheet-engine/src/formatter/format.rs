@@ -66,18 +66,23 @@ fn excel_weekday_index(serial: i64) -> usize {
     (serial - 1).rem_euclid(7) as usize
 }
 
-/// Elapsed `[h]`/`[m]`/`[s]` count for `units` (the value scaled to the token's unit): the floor,
-/// except that a negative amount of magnitude below one unit keeps its minus ("-0";
-/// probes/date-system-1900-negatives A18).
-fn elapsed_text(units: f64, padded: bool) -> String {
-    if units < 0.0 && units > -1.0 {
-        return if padded { "-00" } else { "-0" }.to_owned();
-    }
-    let n = units.floor() as i32;
-    if padded {
-        format!("{n:02}")
+/// Elapsed `[h]`/`[m]`/`[s]` count for `units` (the value scaled to the token's unit). A
+/// non-negative amount floors. A negative amount keeps its minus on the magnitude, which `[s]`
+/// rounds to nearest and `[h]`/`[m]` truncate, so a magnitude below one unit gives "-0"
+/// (probes/elapsed-tiny-negatives-1900 and -1904, T-1338; date-system-1900-negatives A18).
+fn elapsed_text(units: f64, padded: bool, round: bool) -> String {
+    let (sign, n) = if units < 0.0 {
+        // Snap off binary noise first: -1.5/86400 days is 1.4999999999999998 s but Excel shows "-2"
+        // (probes/elapsed-tiny-negatives-1900 A9).
+        let mag = (-units * 1e10).round() / 1e10;
+        ("-", if round { mag.round() } else { mag.floor() } as i32)
     } else {
-        n.to_string()
+        ("", units.floor() as i32)
+    };
+    if padded {
+        format!("{sign}{n:02}")
+    } else {
+        format!("{sign}{n}")
     }
 }
 
@@ -440,27 +445,27 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value * 24.0, false);
+                        let hour = elapsed_text(value * 24.0, false, false);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value * 24.0, true);
+                        let hour = elapsed_text(value * 24.0, true, false);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = elapsed_text(value * 24.0 * 60.0, false);
+                        let minute = elapsed_text(value * 24.0 * 60.0, false, false);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = elapsed_text(value * 24.0 * 60.0, true);
+                        let minute = elapsed_text(value * 24.0 * 60.0, true, false);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, false);
+                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, false, true);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, true);
+                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, true, true);
                         text = format!("{text}{second}");
                     }
                 }
