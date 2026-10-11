@@ -1,0 +1,70 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT and value of @ operands next to ^ (T-1320, follow-up of T-1285)",
+  "tags": [
+    "M1",
+    "references",
+    "at",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 3,
+        "A2": 4,
+        "H11": "=@A1^2",
+        "I11": "=FORMULATEXT(H11)",
+        "H16": "=2^@A1",
+        "I16": "=FORMULATEXT(H16)",
+        "H21": "=@-A1^2",
+        "I21": "=FORMULATEXT(H21)",
+        "H26": "=@A1^2^3",
+        "I26": "=FORMULATEXT(H26)",
+        "H31": "=@(A1)^2",
+        "I31": "=FORMULATEXT(H31)",
+        "H36": "=@A1:A2^2",
+        "I36": "=FORMULATEXT(H36)",
+        "H41": "=@2^2",
+        "I41": "=FORMULATEXT(H41)",
+        "H46": "=(@-2)^2",
+        "I46": "=FORMULATEXT(H46)",
+        "H51": "=@-2^2+1",
+        "I51": "=FORMULATEXT(H51)",
+        "H56": "=2^@-2",
+        "I56": "=FORMULATEXT(H56)",
+        "H61": "=@SUM(A1)^2",
+        "I61": "=FORMULATEXT(H61)",
+        "H66": "=@-2%^2",
+        "I66": "=FORMULATEXT(H66)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H11",
+    "Sheet1!I11",
+    "Sheet1!H16",
+    "Sheet1!I16",
+    "Sheet1!H21",
+    "Sheet1!I21",
+    "Sheet1!H26",
+    "Sheet1!I26",
+    "Sheet1!H31",
+    "Sheet1!I31",
+    "Sheet1!H36",
+    "Sheet1!I36",
+    "Sheet1!H41",
+    "Sheet1!I41",
+    "Sheet1!H46",
+    "Sheet1!I46",
+    "Sheet1!H51",
+    "Sheet1!I51",
+    "Sheet1!H56",
+    "Sheet1!I56",
+    "Sheet1!H61",
+    "Sheet1!I61",
+    "Sheet1!H66",
+    "Sheet1!I66"
+  ]
+}
