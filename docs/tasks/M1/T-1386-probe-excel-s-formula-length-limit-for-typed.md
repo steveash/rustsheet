@@ -21,6 +21,7 @@ xlsx importer now refuses the same workbooks. Nothing is probed yet for these ca
   character `=1+1+...` gives either an error or a value. The leading `=` may or may not count.
 - A defined name whose body is longer than 8,192 characters, in a file and through the API.
 - Characters outside the BMP. Excel may count UTF-16 code units, where the importer counts scalars.
+- `_xHHHH_` escapes inside `<f>` text. The importer counts them raw, not decoded.
 
 Use the excel-probe skill. The oracle builds workbooks from files, so typed entry may need a manual Graph
 call or desktop Excel. If only desktop Excel can answer, file the question in M14 (decision 0039).
