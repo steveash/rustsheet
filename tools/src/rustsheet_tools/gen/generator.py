@@ -302,7 +302,9 @@ class Gen:
             return None
         if dom.get("int"):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
-        return '"' + str(self.rng.choice(dom["enum"])) + '"'
+        v = self.rng.choice(dom["enum"])
+        # A number enum (a bond's frequency 1, 2 or 4) is a number literal; text would be coerced, not the same call.
+        return str(v) if isinstance(v, int | float) and not isinstance(v, bool) else '"' + str(v) + '"'
 
     def weighted(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         # sqrt-tempered prior so rare functions still get coverage
