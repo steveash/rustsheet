@@ -234,7 +234,7 @@ impl Model {
             6 => self.fn_product(&values, cell),
             7 => self.fn_stdev_s(&values, cell),
             8 => self.fn_stdev_p(&values, cell),
-            9 => self.fn_sum_unsnapped(&values, cell),
+            9 => self.fn_sum(&values, cell),
             10 => self.fn_var_s(&values, cell),
             11 => self.fn_var_p(&values, cell),
             12 => self.fn_median(&values, cell),
