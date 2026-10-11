@@ -50,6 +50,27 @@ and `ROUNDDOWN(…,0)` are `#NUM!`. A result of zero has no sign (`ROUNDDOWN(-0.
 Evidence: probes/round-family A1–A53 (except A20); probes/precision-and-rounding A6 (1.01),
 A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-10-05 (T-0106).
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
+ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
+
+## ROUNDUP adds the unit in binary
+Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.
+It takes the rounded-down decimal (stages 1 and 2 above, as ROUNDDOWN), converts it to the nearest
+double, and adds the unit `10^-num_digits` as a double. So the result can be one ulp off the
+decimal one, in either direction: `ROUNDUP(123.456,2)` = 123.45 + 0.01 = 123.46000000000001,
+`ROUNDUP(0.29,1)` = 0.30000000000000004, `ROUNDUP(2.675,2)` = 2.6799999999999997,
+`ROUNDUP(8.255,1)` = 8.299999999999999, `ROUNDUP(7.123,1)` = 7.199999999999999. When nothing is
+dropped there is no add (`ROUNDUP(0.29,2)` = 0.29). Negative values round the magnitude and keep the
+sign (`ROUNDUP(-123.456,2)` = -123.46000000000001). ROUND and ROUNDDOWN return the decimal-correct
+double. A wrapped `num_digits` behaves the same as its wrapped value: `ROUNDUP(x,65536+k)`,
+`ROUNDUP(x,2^31+k)` and `ROUNDUP(x,k)` agree on every probed cell.
+Evidence: probes/roundup-wrapped-scaling (480 cells: 20 values × k = 1..4, plain, 65536+k, 2^31+k
+and -(65536+k), ROUNDUP and ROUNDDOWN); probes/round-huge-digits-wrap A16, A35, A38 (excel-graph,
+2026-10-09, T-0268); ironcalc-calc MATH_AND_TRIGONOMETRY/ROUND.xlsx D6 (desktop Excel cached value).
+Rejected: multiplying the rounded-up digits by `10^-k` (52/80 cells) and binary scaling
+`ceil(x*10^k)` (37/80); the add model matches 80/80.
+Status: VERIFIED
+Implemented in: `round_decimal` in functions/math_and_trigonometry/decimal_round.rs (T-0268)
+Tasks: T-0268
 
 ## ROUND family: huge num_digits wrap
 Rule: a `num_digits` of huge magnitude is narrowed to an integer, and ROUND narrows it differently
@@ -68,9 +89,9 @@ from ROUNDUP and ROUNDDOWN (after truncation toward zero; Excel is right, howeve
   `ROUND(1E+15,1E+15)` = 0, `ROUND(0.5,1E+15)` = 0.5, `ROUND(42,123456789.123)` = 42,
   `ROUND(123.456,65536)` = 123.456; `ROUND(5E-10,-2147483640)` = 5E-10 but `…,-2147483639)` = 0,
   `ROUND(5E-300,-2147483350)` = 5E-300 but `…,-2147483349)` = 0.
-- Where ROUNDUP uses a wrapped digit count, its result can be one ulp above the decimal-correct one:
-  `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, while `ROUNDDOWN` there is 123.45.
-  The engine gives 123.46 (3 cells, follow-up T-0268).
+- `ROUNDUP(123.456,4294901762)` (digits 2) = 123.46000000000001, one ulp above the decimal result.
+  That comes from ROUNDUP's binary add, not from the wrap: `ROUNDUP(123.456,2)` gives the same
+  (see "ROUNDUP adds the unit in binary", T-0268).
 - e is taken from the value after its 15-digit cut: `ROUND(10-1E-15,2147483646)` = 0 and
   `…,2147483645)` = 10 (the cut carries 9.99999999999999… to 10, e = 1), `ROUND(1-1E-16,2147483647)` = 0.
 Evidence: probes/round-huge-digits (216 cells), probes/round-huge-digits-wrap (A:C by d, E:O ROUND by
@@ -622,7 +643,7 @@ Evidence: gen-m2/1b6ceed7489e0800 Calc!A62, f0d1bacec5de8146 Calc!A196 (oracle: 
 2026-10-04, T-0203); gen-m1/6462bf910ef9f28f Calc!A33, A41, A48, A57, A86, A207 (oracle:
 excel-graph, 2026-10-05, T-0109).
 Status: VERIFIED
-Tasks: T-0221
+Tasks: T-0221, T-1302
 
 ### Integer exponents: right-to-left square-and-multiply
 Rule: for an integer exponent n, `x^n` and `POWER(x,n)` equal binary exponentiation in doubles,
@@ -635,8 +656,12 @@ integer-exponent cells above: `(1E-15)^3` = 1.0000000000000001E-45, `((1E-15)^3)
 1.0000000000000002E-90, `100^100` = 1.0000000000000005E+200. `EXP(n*LN(x))` is plain libm (154/154).
 Non-integer exponents are not explained by this rule.
 Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06, T-0942).
+Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
+exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
+oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
+`powf` path (and its #NUM! / #DIV/0! handling) unchanged. The rule also runs, unverified, for finite results with |n| > 360 (the oracle covers 1..360; squaring amplifies error, so huge n near x=1 may differ from Excel) and for a negative n whose intermediate result is subnormal (T-1311).
 Status: VERIFIED (integer exponents)
-Tasks: T-0221, T-0901
+Tasks: T-0221, T-0901, T-1302
 
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number
@@ -711,6 +736,29 @@ geomean-root-refinement, geomean-overflow-count H1, ironcalc-calc GEOMEAN C23, G
 - From T-1113: glibc `pow(P, 1/n)` (71/72, but it breaks C23 and G27), `exp2(log2(P)/n)` (69), a
   log-sum (36), the overflow path's power-of-two-split root (64 or 53), and an extended-precision
   ln/exp (always misses C23 and G27).
+- From T-0288, scored on 167 cells (the 159 plus the Copies duplicates): glibc `pow(P, 1/n)` with the
+  snap above is the best fit so far, 157 of 167 (the current r with the snap: 140), but it breaks C23,
+  G27 and geomean-root-refinement A20, which r matches, so it is not taken. Searching r and its
+  neighbours (1 or 2 ulps) for the one whose left-to-right n-th power is nearest P: 152 and 155 (it
+  breaks A20 and A33); with binary-exponentiation or `pow` powers 143 to 155. `exp(ln(P) * (1/n))`
+  104, `10^(log10(P)/n)` 141, `2^(log2(P)/n)` 138 (149 each with the snap).
+
+Excel's in-range root is a function of the double product P and n alone: every probed way of writing
+the same P gives the same result (probes/geomean-same-product: P = 3 as (1,3), (3,1), (0.5,6), (1.5,2),
+(0.75,4), (6,0.5) all 1.7320508075688774; P = 10.704 as (6.69,1.6), (1.6,6.69), (10.704,1), (2,5.352),
+(0.5,21.408) all 3.271696807468565; P = 10 as four values in five orders all 1.778279410038923). One ulp
+of P does matter: GEOMEAN(8.2,1.71) (P = 14.021999999999998) is 3.7445961063911817 and GEOMEAN(14.022,1)
+one ulp higher. So the order or precision of the product is not the cause. Its rounding is not decided by the residual or by
+the distance from the exact root either: GEOMEAN(1,3) (C23) and GEOMEAN(6.69,1.6) (geomean-root-refinement
+A36) are both n = 2, r is 0.55 and 0.59 ulp above the exact root, and r squared misses P by +1 ulp and
+the correctly rounded root squared by -1 ulp in both, yet Excel keeps r for the first and gives the
+correctly rounded root for the second. The engine gives r for both, so geomean-same-product A9-A15
+(P = 10.704) and A21 (GEOMEAN(8.2,1.71)) are one ulp off: the A36 and A29 misses again. That points to a library root (Excel's own power, not glibc's)
+whose own error of up to about 0.8 ulp decides the last bit, which no formula in doubles reproduces.
+Side finding for `^`: on geomean-single-and-copies Copies!E (Excel's `P^(1/n)`), `exp((1/n)*ln(P))` in
+doubles matches 32 of 35 cells and glibc `pow` 19; the three misses are n = 2 (9, 49 and 0.1*0.1 to the
+power 0.5), where Excel gives the correctly rounded square root (3, 7, 0.1). It matches only 2 of the 4 non-integer `^` cells of
+T-0221, so it is a lead, not a rule.
 Single values (probes/geomean-single-and-copies Single!A1-A15): GEOMEAN of 3, 0.1, 1E-300, 1E+300,
 7, 0.3, 1.1, PI(), 2^-1022 and 1E+307, of a cell, a one-cell range and a range with text beside one
 number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for 3,
@@ -718,11 +766,12 @@ number, is the value unchanged, where `exp(ln v)` is not (3.0000000000000004 for
 Evidence: probes/geomean-in-range-many (column A: 0.5+MOD(k*i,d)/d over 20-900 values; column B: n
 copies of one value, 50-1100; T-1113), probes/geomean-single-and-copies (Single: one value; Copies:
 n copies with Excel's PRODUCT, EXP(LN(P)/n), P^(1/n), LN(P); T-1123), probes/geomean-root-refinement
-(T-1123), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
+(T-1123), probes/geomean-same-product (T-0288), ironcalc-calc GEOMEAN C23, B27, G27, probes/geomean-overflow-count H1,
 probes/geomean-overflow-cut-3 C1, C5, C11, E1. Oracle: excel-graph, 2026-10-07 and 2026-10-08.
-Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in 159).
+Status: VERIFIED for the probed cells; the formulation is a best fit (26 one-ulp misses in the 159 cells
+scored above, plus 8 in geomean-same-product).
 Implemented in: functions/statistical/geomean.rs
-Tasks: T-1113, T-1108, T-1123
+Tasks: T-1113, T-1108, T-1123, T-0288
 
 ## GCD / LCM argument bound
 Rule: GCD and LCM accept arguments up to and including 2^53 (as doubles) and `#NUM!` above:
@@ -782,7 +831,7 @@ computed array, which is evaluated once per call), times the lifted argument cou
 A multi-cell range function_num or options lifts like an array (probes/aggregate-range-args, excel-graph, 2026-10-07, T-1058):
 `AGGREGATE(G1:G2,0,E1:E6)` with G1:G2 = 9, 4 spills 23, 9 down, a row range spills across, `AGGREGATE(9,G1:G2,E1:E6)` spills
 `#VALUE!` (option 9), 23, and a column against a row of options makes a 2x2 grid. A single-cell range is a scalar
-(`AGGREGATE(G1,0,E1:E6)` is 23). A range fourth argument is not lifted; a multi-cell range k reads its top-left cell: `AGGREGATE(14,0,E1:E6,G1:G2)` is one `#NUM!` (k = 9), and k = J1:J2 (1, 99) gives 9 while K1:K2 (99, 1) gives `#NUM!`, L1:M1 (2, 99) gives 5. In the reference form the range is just another reference (`AGGREGATE(9,0,E1:E6,J1:J2)` is 123). Unprobed (range k): an empty, text or error top-left cell, a range k in the array form, and a k that is a name or `OFFSET` result.
+(`AGGREGATE(G1,0,E1:E6)` is 23). A 2x2 function_num range spills a 2x2 grid (G1:H2 = 9, 4; 1, 14 gives 23, 9; 3.83, `#VALUE!`), and a 2x2 function_num against a 2x2 options range pairs them element-wise (probes/aggregate-range-function-num-grid A1, A11, excel-graph, 2026-10-09, T-0296). A range fourth argument is not lifted; a multi-cell range k reads its top-left cell: `AGGREGATE(14,0,E1:E6,G1:G2)` is one `#NUM!` (k = 9), and k = J1:J2 (1, 99) gives 9 while K1:K2 (99, 1) gives `#NUM!`, L1:M1 (2, 99) gives 5. In the reference form the range is just another reference (`AGGREGATE(9,0,E1:E6,J1:J2)` is 123). Unprobed (range k): an empty, text or error top-left cell, a range k in the array form, and a k that is a name or `OFFSET` result.
 Evidence: probes/aggregate-array-args (48 cells; oracle: excel-graph, 2026-10-07, T-1038) and probes/aggregate-args
 Misc!A36:B38 (oracle: excel-graph, 2026-10-06, T-0993).
 Evidence: probes/aggregate-grid (217 cells), probes/aggregate-args (53 cells), probes/aggregate-overflow A27:C29.
@@ -882,3 +931,25 @@ Ours: the same; the bound is checked before padding, which also bounds the alloc
 Status: VERIFIED
 Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
 Tasks: T-1243
+
+## RANDBETWEEN and RANDARRAY argument checks
+Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
+`RANDBETWEEN(5,4.5)`), then draws a whole number from `CEILING(bottom)` to `FLOOR(top)`, and gives
+`CEILING(bottom)` when `FLOOR(top)` is below it: `RANDBETWEEN(5.5,5.7)` and `RANDBETWEEN(5.5,6.2)`
+are always 6, `RANDBETWEEN(-5.5,-5.2)` always -5. It rejects booleans (`RANDBETWEEN(TRUE,TRUE)` is
+`#VALUE!`), reads number text (`"5"`), lifts over an array argument (one draw per element), and
+both arguments omitted (`RANDBETWEEN(,)`) is `#N/A`, not 0. RANDARRAY truncates `rows` and
+`columns` (`1.9` → 1), gives `#CALC!` for 0 rows and `#VALUE!` for a negative count, `min > max`
+or a non-boolean `whole_number` text; with `whole_number` TRUE a fractional `min` or `max` is
+`#VALUE!` (`RANDARRAY(1,1,1.5,2.5,TRUE)`, `RANDARRAY(1,1,1,2.5,TRUE)`), while without it `min = max` returns that value
+(`RANDARRAY(1,1,0.5,0.5)` = 0.5). Number text is read for every argument, including
+`whole_number` (`"TRUE"`) and the boolean-as-number `1`. `TYPE(RANDARRAY(2,2))` is 64,
+`ROWS(RANDARRAY())` is 1, and RAND, NOW and TODAY return numbers with TODAY a whole number and NOW
+within that day.
+Evidence: probes/volatile-invariant Calc!A1:A6, A8:A15, B1:B18, C1:C6, C8:C9, D1:E2, D4:D5,
+F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical values (T-1283);
+F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
+rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
+E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
+Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10 (T-1318; A6 is unchecked until
+then, because the engine's draw for it is random), B18, and the array lift F1:F9 (T-1316).

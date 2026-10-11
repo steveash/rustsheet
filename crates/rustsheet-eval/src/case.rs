@@ -138,6 +138,11 @@ pub struct CaseSpec {
     /// If set, only these cells are scored (otherwise every key in `expected`).
     #[serde(default)]
     pub check: Vec<String>,
+    /// Cells (`Sheet!A1`) that call a volatile function, or read a volatile cell, yet cannot
+    /// change value between runs (`RANDBETWEEN(5,5)`, `ISNUMBER(NOW())`). They are scored instead
+    /// of skipped as volatile (T-1283); every listed cell must be a volatile formula cell.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub invariant: Vec<String>,
 }
 
 /// Provenance of oracle values.

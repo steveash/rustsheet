@@ -1,0 +1,60 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Stored #BUSY! in VALUETOTEXT/ARRAYTOTEXT, error precedence, COUNTIF criteria, IFERROR, ERROR.TYPE spill and UNIQUE (T-1228). A1/A4 = stored #BUSY!, A3 = stored #NULL!. E1 = ERROR.TYPE spill; A5 = stored #N/A (ARRAYTOTEXT/VALUETOTEXT comparison).",
+ "tags": [
+  "M2",
+  "errors",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "t": "e",
+     "v": "#BUSY!",
+     "stored": true
+    },
+    "A2": 1,
+    "A3": {
+     "t": "e",
+     "v": "#NULL!",
+     "stored": true
+    },
+    "A4": {
+     "t": "e",
+     "v": "#BUSY!",
+     "stored": true
+    },
+    "C1": "=VALUETOTEXT(A1)",
+    "C2": "=ARRAYTOTEXT(A1)",
+    "C3": "=VALUETOTEXT(A1,1)",
+    "C4": "=ARRAYTOTEXT(A1:A2,1)",
+    "C5": "=ERROR.TYPE(A1+#DIV/0!)",
+    "C6": "=ERROR.TYPE(#DIV/0!+A1)",
+    "C7": "=ERROR.TYPE(A1=#DIV/0!)",
+    "C8": "=ERROR.TYPE(#DIV/0!=A1)",
+    "C9": "=ERROR.TYPE(A1*#N/A)",
+    "C10": "=ERROR.TYPE(#N/A*A1)",
+    "C11": "=ERROR.TYPE(SUM(A1,1/0))",
+    "C12": "=ERROR.TYPE(SUM(1/0,A1))",
+    "C13": "=COUNTIF(A1:A2,\"#BUSY!\")",
+    "C14": "=COUNTIF(A1:A2,\"<>#BUSY!\")",
+    "C15": "=COUNTIF(A1:A2,A1)",
+    "C16": "=IFERROR(A1,\"y\")",
+    "C18": "=ROWS(UNIQUE(A3:A4))",
+    "C19": "=ROWS(UNIQUE(A1:A4))",
+    "C20": "=ROWS(UNIQUE(A1:A3))",
+    "E1": "=ERROR.TYPE(A1:A2)",
+    "A5": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "C17": "=ARRAYTOTEXT(A5)",
+    "C21": "=VALUETOTEXT(A5)"
+   }
+  }
+ ],
+ "expected": {}
+}

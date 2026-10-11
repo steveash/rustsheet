@@ -109,6 +109,9 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     if y == 0.0 {
         return Ok(1.0);
     }
+    if let Some(result) = integer_power(x, y) {
+        return Ok(result);
+    }
     let result = if x < 0.0 && is_one_over_an_odd_integer(y) {
         // An odd root of a negative number is a real number: the cube root of
         // -8 is -2 (POWER.xlsx Sheet1!D3, F9; tolerance UNVERIFIED, see
@@ -127,6 +130,32 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
         return Err(Error::NUM);
     }
     finite_or_num(result)
+}
+
+/// `x^y` for an integer `y`, by binary exponentiation scanning the bits of `|y|` from the low end,
+/// as Excel computes it (docs/excel-semantics/numbers.md "Integer exponents: right-to-left
+/// square-and-multiply"; libm `pow` and `powi` round differently). A negative `y` is one over
+/// the result. `None` leaves the case to the general path: a non-integer or huge `y` (bounding the
+/// loop to 54 iterations), and any result that is zero or not finite, whose overflow and
+/// underflow behavior is unverified beyond the oracle's exponents 1..360.
+fn integer_power(x: f64, y: f64) -> Option<f64> {
+    // 2^53: beyond it every float is an integer, and the loop would need more than 54 iterations
+    const MAX_EXPONENT: f64 = 9_007_199_254_740_992.0;
+    if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
+        return None;
+    }
+    let mut remaining = y.abs();
+    let mut base = x;
+    let mut result = 1.0_f64;
+    while remaining >= 1.0 {
+        if remaining % 2.0 == 1.0 {
+            result *= base;
+        }
+        base *= base;
+        remaining = (remaining / 2.0).floor();
+    }
+    let result = if y < 0.0 { 1.0 / result } else { result };
+    (result.is_finite() && result != 0.0).then_some(result)
 }
 
 /// Whether `y` is 1/3, 1/5, -1/7 and so on. A float cannot hold a third, so
@@ -610,5 +639,30 @@ impl Model {
                 CalcResult::Array(array)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod power_tests {
+    use super::power;
+    use crate::expressions::token::Error;
+
+    // Oracle doubles: gen-m1/6462bf910ef9f28f A33, gen-m1/57fe331cb7611dbf A104, gen-m2
+    // f0d1bacec5de8146 A196 (docs/excel-semantics/numbers.md "Integer exponents").
+    #[test]
+    fn integer_exponents_use_square_and_multiply() {
+        assert_eq!(power(1e-15, 3.0), Ok(1.000_000_000_000_000_1e-45));
+        assert_eq!(power(3.25, 100.0), Ok(1.54289402744788e+51));
+        assert_eq!(power(100.0, 100.0), Ok(1.000_000_000_000_000_5e200));
+        assert_eq!(power(2.0, -2.0), Ok(0.25));
+        assert_eq!(power(-2.0, 3.0), Ok(-8.0));
+    }
+
+    #[test]
+    fn special_cases_keep_the_general_path() {
+        assert_eq!(power(0.0, -1.0), Err(Error::DIV));
+        assert_eq!(power(0.0, 0.0), Err(Error::NUM));
+        assert_eq!(power(-8.0, 1.0 / 3.0), Ok(-2.0));
+        assert_eq!(power(10.0, 400.0), Err(Error::NUM));
     }
 }
