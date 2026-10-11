@@ -31,14 +31,14 @@ fn test_currencies() {
     model.evaluate();
 
     // two decimal rounded up
-    assert_eq!(model._get_text("A1"), "$100.35");
+    assert_eq!(model._get_text("A1"), "$100.35 ");
     assert_eq!(model._get_text("B1"), *"TRUE");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(100.348))
     );
     // No space
-    assert_eq!(model._get_text("A2"), "$100.35");
+    assert_eq!(model._get_text("A2"), "$100.35 ");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A2"),
         Ok(CellValue::Number(100.348))
@@ -188,9 +188,9 @@ fn test_negative_currencies() {
         model.get_cell_value_by_ref("Sheet1!A1"),
         Ok(CellValue::Number(-100.0))
     );
-    assert_eq!(model._get_text("A1"), *"-$100");
-    assert_eq!(model._get_text("A2"), *"-$99.12");
-    assert_eq!(model._get_text("A3"), *"-$345");
+    assert_eq!(model._get_text("A1"), *"($100)");
+    assert_eq!(model._get_text("A2"), *"($99.12)");
+    assert_eq!(model._get_text("A3"), *"($345)");
 
     assert_eq!(model._get_text("B1"), *"-200$");
     assert_eq!(model._get_text("B2"), *"-92.69$");
@@ -209,12 +209,12 @@ fn test_formulas() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A3"), *"$300");
+    assert_eq!(model._get_text("A3"), *"$300 ");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A3"),
         Ok(CellValue::Number(300.0))
     );
-    assert_eq!(model._get_text("A4"), *"$600");
+    assert_eq!(model._get_text("A4"), *"$600 ");
     assert_eq!(
         model.get_cell_value_by_ref("Sheet1!A4"),
         Ok(CellValue::Number(600.0))
@@ -235,8 +235,8 @@ fn test_product() {
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"500");
-    assert_eq!(model._get_text("B2"), *"$400");
-    assert_eq!(model._get_text("B3"), *"$300");
+    assert_eq!(model._get_text("B2"), *"$400 ");
+    assert_eq!(model._get_text("B3"), *"$300 ");
 }
 
 #[test]
@@ -256,8 +256,8 @@ fn test_division() {
     model.evaluate();
 
     assert_eq!(model._get_text("B1"), *"20");
-    assert_eq!(model._get_text("B2"), *"$25");
-    assert_eq!(model._get_text("B3"), *"$50");
+    assert_eq!(model._get_text("B2"), *"$25 ");
+    assert_eq!(model._get_text("B3"), *"$50 ");
     assert_eq!(model._get_text("B4"), *"20");
 }
 
@@ -318,27 +318,27 @@ fn test_some_complex_examples() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("A3"), *"$1.50");
+    assert_eq!(model._get_text("A3"), *"$1.50 ");
 
-    assert_eq!(model._get_text("B3"), *"$2");
+    assert_eq!(model._get_text("B3"), *"$2 ");
 
-    assert_eq!(model._get_text("C3"), *"$1.25");
-    assert_eq!(model._get_text("C4"), *"$1.25");
+    assert_eq!(model._get_text("C3"), *"$1.25 ");
+    assert_eq!(model._get_text("C4"), *"$1.25 ");
 
     assert_eq!(model._get_text("D3"), *"$3.75");
     assert_eq!(model._get_text("D4"), *"$3.75");
 
-    assert_eq!(model._get_text("E3"), *"$19.99");
-    assert_eq!(model._get_text("E4"), *"$19.99");
+    assert_eq!(model._get_text("E3"), *"$19.99 ");
+    assert_eq!(model._get_text("E4"), *"$19.99 ");
 
-    assert_eq!(model._get_text("F3"), *"$4");
-    assert_eq!(model._get_text("F4"), *"$4");
+    assert_eq!(model._get_text("F3"), *"$4 ");
+    assert_eq!(model._get_text("F4"), *"$4 ");
 
-    assert_eq!(model._get_text("G3"), *"$5.00");
-    assert_eq!(model._get_text("G4"), *"$5.00");
+    assert_eq!(model._get_text("G3"), *"$5.00 ");
+    assert_eq!(model._get_text("G4"), *"$5.00 ");
 
-    assert_eq!(model._get_text("H3"), *"$5");
-    assert_eq!(model._get_text("H4"), *"$5");
+    assert_eq!(model._get_text("H3"), *"$5 ");
+    assert_eq!(model._get_text("H4"), *"$5 ");
 
     assert_eq!(model._get_text("I3"), *"100");
     assert_eq!(model._get_text("I4"), *"100");
@@ -389,9 +389,9 @@ fn test_sum_function() {
 
     model.evaluate();
 
-    assert_eq!(model._get_text("B1"), *"$400");
-    assert_eq!(model._get_text("B2"), *"$400");
-    assert_eq!(model._get_text("B3"), *"$400");
+    assert_eq!(model._get_text("B1"), *"$400 ");
+    assert_eq!(model._get_text("B2"), *"$400 ");
+    assert_eq!(model._get_text("B3"), *"$400 ");
 }
 
 #[test]

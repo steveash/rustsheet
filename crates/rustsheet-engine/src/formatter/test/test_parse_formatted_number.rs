@@ -67,7 +67,7 @@ fn numbers() {
 #[test]
 fn percentage() {
     // whole numbers
-    assert_eq!(parse("400%", &["$"]), Ok((4.0, Some("#,##0%".to_string()))));
+    assert_eq!(parse("400%", &["$"]), Ok((4.0, Some("0%".to_string()))));
     // decimal numbers
     assert_eq!(
         parse("4.456$", &["$"]),
@@ -113,11 +113,11 @@ fn currency() {
     // switch side of currencies
     assert_eq!(
         parse("$400", &["$"]),
-        Ok((400.0, Some("$#,##0".to_string())))
+        Ok((400.0, Some("$#,##0_);[Red]($#,##0)".to_string())))
     );
     assert_eq!(
         parse("$4.456", &["$"]),
-        Ok((4.456, Some("$#,##0.00".to_string())))
+        Ok((4.456, Some("$#,##0.00_);[Red]($#,##0.00)".to_string())))
     );
     assert_eq!(
         parse("$23e-12", &["$"]),
@@ -141,11 +141,11 @@ fn negative_currencies() {
     );
     assert_eq!(
         parse("-$400", &["$"]),
-        Ok((-400.0, Some("$#,##0".to_string())))
+        Ok((-400.0, Some("$#,##0_);[Red]($#,##0)".to_string())))
     );
     assert_eq!(
         parse("$-400", &["$"]),
-        Ok((-400.0, Some("$#,##0".to_string())))
+        Ok((-400.0, Some("$#,##0_);[Red]($#,##0)".to_string())))
     );
 }
 
@@ -189,7 +189,7 @@ fn numbers_de() {
 fn percentage_and_currency_de() {
     assert_eq!(
         parse_de("12,5%", &["$"]),
-        Ok((0.125, Some("#,##0.00%".to_string())))
+        Ok((0.125, Some("0.00%".to_string())))
     );
     assert_eq!(
         parse_de("1.234,50€", &["€"]),
@@ -233,7 +233,7 @@ fn numbers_fr() {
 fn percentage_and_currency_fr() {
     assert_eq!(
         parse_fr("12,5%", &["$"]),
-        Ok((0.125, Some("#,##0.00%".to_string())))
+        Ok((0.125, Some("0.00%".to_string())))
     );
     assert_eq!(
         parse_fr("1\u{202f}234,50€", &["€"]),
@@ -348,12 +348,9 @@ fn parenthesised_number_with_padding_currency_percent() {
     assert_eq!(parse("(1.5)", &["$"]), Ok((-1.5, None)));
     assert_eq!(
         parse("($1)", &["$"]),
-        Ok((-1.0, Some("$#,##0".to_string())))
+        Ok((-1.0, Some("$#,##0_);[Red]($#,##0)".to_string())))
     );
-    assert_eq!(
-        parse("(1%)", &["$"]),
-        Ok((-0.01, Some("#,##0%".to_string())))
-    );
+    assert_eq!(parse("(1%)", &["$"]), Ok((-0.01, Some("0%".to_string()))));
     assert!(parse("(-1)", &["$"]).is_err());
     assert!(parse("(+1)", &["$"]).is_err());
     assert!(parse("((1))", &["$"]).is_err());
@@ -370,4 +367,33 @@ fn parenthesised_number_with_padding_currency_percent() {
         parse("(1€)", &["$", "€"]),
         Ok((-1.0, Some("#,##0€".to_string())))
     );
+}
+
+/// Formats Excel picks for typed text (probes/typed-currency-percent-input, excel-graph).
+#[test]
+fn typed_currency_and_percent_formats() {
+    let usd = |n: f64, decimals: bool| {
+        let digits = if decimals { "#,##0.00" } else { "#,##0" };
+        Ok((n, Some(format!("${digits}_);[Red](${digits})"))))
+    };
+    assert_eq!(parse("$1.50", &["$"]), usd(1.5, true));
+    assert_eq!(parse("($1.50)", &["$"]), usd(-1.5, true));
+    assert_eq!(parse("-$1", &["$"]), usd(-1.0, false));
+    assert_eq!(parse("-$1.50", &["$"]), usd(-1.5, true));
+    assert_eq!(parse("$1,234.5", &["$"]), usd(1234.5, true));
+    // `-$1e3` is negative like `$-1e3`.
+    assert_eq!(
+        parse("-$1e3", &["$"]),
+        Ok((-1000.0, Some("0.00E+00".to_string())))
+    );
+    assert_eq!(
+        parse("1.5%", &["$"]),
+        Ok((0.015, Some("0.00%".to_string())))
+    );
+    assert_eq!(
+        parse("(1.5%)", &["$"]),
+        Ok((-0.015, Some("0.00%".to_string())))
+    );
+    assert_eq!(parse("1,000%", &["$"]), Ok((10.0, Some("0%".to_string()))));
+    assert_eq!(parse("-1%", &["$"]), Ok((-0.01, Some("0%".to_string()))));
 }

@@ -22,6 +22,6 @@ fn test_sheet_markup() {
 
     assert_eq!(
         model.get_sheet_markup(0),
-        Ok("**Item**|**Cost**\nRent|$600\nElectricity|$200\n**Total**|=SUM(B2:B3)".to_string()),
+        Ok("**Item**|**Cost**\nRent|$600 \nElectricity|$200 \n**Total**|=SUM(B2:B3)".to_string()),
     )
 }
