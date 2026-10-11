@@ -3,7 +3,7 @@ id: T-1244
 title: "Spec: keep written parentheses in parsed formulas so FORMULATEXT prints them back"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P2
 size: M
 tier: opus
@@ -33,9 +33,18 @@ Special cases to fold in also include `LeadGroup` itself (`of_range`: a group th
 and the whole-operand `@(A1):B1`, T-1200, T-1251).
 
 ## Acceptance criteria
-- [ ] docs/specs/SPEC-XXXX (template docs/specs/TEMPLATE.md) is written and approved by the architecture and performance reviewers.
-- [ ] Implementation tasks are filed from it; the end state makes probes/at-operand-nested-groups pass and flips the T-1167 test `at_operand_adds_no_level_for_a_nested_inner_group` (E40, E41, E43, E44) and the F50, F51 asserts of `at_operand_group_leftmost_shapes_match_the_probe` (probes/at-group-leftmost-shapes E34, E35) to Excel's text.
-- [ ] `make check` green; reviewers approve.
+- [x] docs/specs/SPEC-XXXX (template docs/specs/TEMPLATE.md) is written and approved by the architecture and performance reviewers.
+- [x] Implementation tasks are filed from it; the end state makes probes/at-operand-nested-groups pass and flips the T-1167 test `at_operand_adds_no_level_for_a_nested_inner_group` (E40, E41, E43, E44) and the F50, F51 asserts of `at_operand_group_leftmost_shapes_match_the_probe` (probes/at-group-leftmost-shapes E34, E35) to Excel's text.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+SPEC-0007 (docs/specs/SPEC-0007-written-parentheses.md) proposes a `Node::Group { levels, child }`.
+It is transparent to evaluation through `Node::ungrouped()` and printed back as written, and it
+replaces `GroupedRootKind`, the union and cut `written` counts, and the `@` `written`/`LeadGroup`/
+`grouped` fields along with their parser state. New evidence (excel-graph, 2026-10-11): the stored
+xlsx text keeps every written parenthesis, and `=@(Z1+(Z2))` is stored `_xlfn.SINGLE((Z1+(Z2)))`
+(xlsx-storage.md). Implementation tasks filed: T-1339 (probe group transparency), T-1340 (Group
+node, unblocks T-1331), T-1341, T-1342, T-1343 (fold the special cases) and T-1344 (one printer).
