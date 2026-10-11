@@ -3,7 +3,7 @@ id: T-1304
 title: "MATCH: a match_type between -1 and 0 searches descending (floor, not truncation; 2 gen-m2 known failures)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
