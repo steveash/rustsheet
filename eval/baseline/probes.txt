@@ -2795,9 +2795,6 @@ F	probes/whole-column-empty-walkers.case.json	Sheet1!E7
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F3
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F6
 F	probes/whole-column-empty-walkers.case.json	Sheet1!F9
-F	probes/written-parens-reference-context.case.json	Sheet1!E20
-F	probes/written-parens-reference-context.case.json	Sheet1!E21
-F	probes/written-parens-reference-context.case.json	Sheet1!E22
 F	probes/written-parens-reference-context.case.json	Sheet1!H10
 F	probes/written-parens-reference-context.case.json	Sheet1!H11
 F	probes/written-parens-reference-context.case.json	Sheet1!H14
