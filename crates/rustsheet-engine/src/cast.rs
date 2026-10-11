@@ -21,7 +21,7 @@ pub(crate) enum NumberOrArray {
 
 impl NumberOrArray {
     /// Rows and columns; a number is 1x1.
-    fn dims(&self) -> (usize, usize) {
+    pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             NumberOrArray::Number(_) => (1, 1),
             NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, Vec::len)),
@@ -303,7 +303,7 @@ impl Model {
 
     /// The number at (`i`, `j`) of `na`, a size-1 dimension repeating; text is cast like a scalar
     /// argument, a position past a shorter array is `#N/A`.
-    fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
+    pub(crate) fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
         match na {
             NumberOrArray::Number(f) => Ok(*f),
             NumberOrArray::Array(a) => {

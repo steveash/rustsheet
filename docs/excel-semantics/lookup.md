@@ -366,13 +366,29 @@ Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 ran
 (functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
 Tasks: T-1256
 
-## INDEX with an array row_num into a 2-D range
-Rule: `INDEX(Data!C2:D9,CHOOSEROWS(Data!D7:E11,4))` (a 1x2 array as row_num, no column_num) is `#REF!` in Excel
-(concatenated with text, still `#REF!`). Whether INDEX lifts over the array and each element is the one-index-into-2-D
-`#REF!` above, or the array itself is refused, is unprobed.
-Evidence: gen-m6/2c1a6e93a1974f48 Calc!A25 (excel-graph, 2026-10-09, T-1239).
-Ours: `#N/IMPL!`.
-Status: UNVERIFIED (one cell)
+## INDEX lifts over array and range indices
+Rule: in a dynamic-array formula, a multi-cell range or array as row_num, column_num or area_num lifts INDEX
+element-wise. The indices broadcast like arithmetic operands, and each element is the scalar INDEX of its indices:
+- `INDEX(A1:A5,{1,3})` spills A1 and A3, and so do `INDEX(A1:A5,SEQUENCE(2))` and `INDEX(A1:A5,J1:J2)`.
+- `INDEX(A1:B5,{1;2;3},{1,2})` is 3x2, every row-column pair; `{1,2}` against `{1;2}` is 2x2.
+- `INDEX((A1:A5,B1:B5),{1,2},1,{1,2})` lifts area_num.
+- Each element follows the scalar rules: an error element stays itself (`{1,#N/A}`); out of range is `#REF!`
+  (`{1,9}`); "2" is 2 and "x" is `#VALUE!`; 1.9 floors to 1; one index into a 2-D range is `#REF!` per element
+  (`INDEX(A1:B5,{1,2})`, `INDEX(A1:B5,{0,FALSE})`, gen-m6 A25's `INDEX(Data!C2:D9,CHOOSEROWS(..))`, also under `&`).
+- An element that would select a whole row, column or array keeps only its top-left value: `INDEX(A1:A5,{0,2})` is
+  A1, A2; `SUM(INDEX(A1:B5,0,{1,2}))` = A1 + B1; `INDEX({1,2;3,4},{1,2})` is 1, 3 (the first value of each row).
+- The elements are values, not references: `ROWS(INDEX(A1:A5,{1,3}))` is 1, `COLUMNS` 2, and `ISREF` of it is a single
+  FALSE. `SUM` of it is the sum of the values.
+Unprobed (T-1376): index arrays of mismatched lengths (the engine gives `#N/A` past the shorter, as the arithmetic
+broadcast does), negative and boolean elements other than `{0,FALSE}`, a scalar error index next to an array index
+(the engine broadcasts the error), and whether an empty selected cell spills as 0 or blank. The legacy, implicitly
+intersected form is T-0294.
+DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
+array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
+Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); gen-m6/2c1a6e93a1974f48 Calc!A25
+(excel-graph, 2026-10-09, T-1239).
+Status: VERIFIED (excel-graph)
+Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260
 
 ## XLOOKUP with an array lookup_value looks up each element
