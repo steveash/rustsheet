@@ -3,7 +3,7 @@ id: T-1362
 title: "Elapsed tokens: probe positive near-integers and large serials ([s] overflows i32)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
