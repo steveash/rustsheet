@@ -3,8 +3,7 @@
 use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::array_node_to_calc_result;
-use crate::functions::Function;
+use crate::functions::util::{array_node_to_calc_result, is_at_if};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -138,13 +137,9 @@ impl Model {
         // A single cell is read as a reference, so that it can be read past (`LOOKUP(99,A1:B2,F1)`).
         // The `@` of an IF that picks one cell keeps the reference
         // (`LOOKUP(99,A1:A3,@IF(TRUE,F1))` = `LOOKUP(99,A1:A3,F1)`;
-        // probes/at-if-spill-anchor-operand H50, T-1368).
-        let at_if = matches!(
-            node,
-            Node::ImplicitIntersection { child, .. }
-                if matches!(**child, Node::FunctionKind { kind: Function::If, .. })
-        );
-        let picked = if at_if {
+        // probes/at-if-spill-anchor-operand H50, T-1368). Gated to `@IF`: a plain `IF` has no
+        // evidence here, and a scalar result_vector stays `#N/A` (H70).
+        let picked = if is_at_if(node) {
             self.spill_anchor_operand(node, cell)
         } else {
             self.eval_ref_or_index(node, cell)

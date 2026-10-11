@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{util::is_at_if, Function},
     model::Model,
 };
 
@@ -410,15 +410,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         match node {
-            Node::ImplicitIntersection { child, .. }
-                if matches!(
-                    **child,
-                    Node::FunctionKind {
-                        kind: Function::If,
-                        ..
-                    }
-                ) =>
-            {
+            Node::ImplicitIntersection { child, .. } if is_at_if(node) => {
                 let picked = self
                     .evaluate_reference_arg(child, cell)
                     .into_single_area(cell);
