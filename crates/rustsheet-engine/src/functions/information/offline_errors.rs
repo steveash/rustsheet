@@ -18,12 +18,14 @@ use super::{map_elements, Lifted};
 use crate::functions::math_and_trigonometry::array_size::check_array_size;
 
 /// Whether IMAGE `source` text is URL-shaped and so reaches the (never performed) fetch (narrower
-/// than `links.rs`, which also accepts ftp and mailto): after leading spaces, an `http:` or
-/// `https:` scheme in any case followed by something other than slashes. `HTTPS://X/A.PNG`,
-/// `https:example.invalid/a.png` and ` https://...` are `#BLOCKED!`; `https://`, ftp, `www.`,
-/// `data:` and `file:` sources are `#VALUE!` (probes/rich-errors-shapes-urls A25:A35, T-1189).
+/// than `links.rs`, which also accepts ftp and mailto): after leading spaces, tabs and
+/// no-break spaces, an `http:` or `https:` scheme in any case followed by something other than
+/// slashes. `HTTPS://X/A.PNG`, `https:example.invalid/a.png` and ` https://...` are `#BLOCKED!`;
+/// `https://`, ftp, `www.`, `data:` and `file:` sources are `#VALUE!`
+/// (probes/rich-errors-shapes-urls A25:A35, T-1189; a leading tab or no-break space is skipped like
+/// a space, probes/rich-errors-image-sizing, T-1345).
 fn is_url(text: &str) -> bool {
-    let text = text.trim_start_matches(' ');
+    let text = text.trim_start_matches([' ', '\t', '\u{a0}']);
     let rest_after = |scheme: &str| {
         text.get(..scheme.len())
             .filter(|head| head.eq_ignore_ascii_case(scheme))
@@ -34,13 +36,60 @@ fn is_url(text: &str) -> bool {
         .is_some_and(|rest| !rest.trim_start_matches('/').is_empty())
 }
 
+/// The number IMAGE reads from a `sizing`, `height` or `width` argument: a number, or a boolean
+/// (TRUE is 1: `IMAGE(url,"alt",TRUE)` is not `#VALUE!`), or an empty cell as 0 (UNVERIFIED).
+/// Text and an omitted argument have none.
+fn image_number(value: &CalcResult) -> Option<f64> {
+    match value {
+        CalcResult::Number(n) => Some(*n),
+        CalcResult::Boolean(b) => Some(f64::from(u8::from(*b))),
+        CalcResult::EmptyCell => Some(0.0),
+        _ => None,
+    }
+}
+
+/// Whether IMAGE's `[alt_text]`-onward options (`options` is `sizing`, `height`, `width`) are
+/// valid; an invalid set makes IMAGE `#VALUE!` even for a URL source. Excel (probes/rich-errors-
+/// image-sizing, excel-graph, 2026-10-11, T-1345): `sizing` is 0 to 3 (a fraction truncates;
+/// -1, 4, 9, text, "" and an omitted `IMAGE(url,"alt",)` are `#VALUE!`); sizing 3 needs a
+/// `height`, `height` and `width` are not negative, and not both 0; sizing 0 and 1 refuse
+/// a `height`. An array-valued `sizing` is not validated, and an array `height` or `width` counts as
+/// present for those two rules (UNVERIFIED lifting, T-1370).
+fn image_options_valid(options: &[CalcResult]) -> bool {
+    let Some(sizing) = options.first() else {
+        return true;
+    };
+    if matches!(sizing, CalcResult::Array(_)) {
+        return true;
+    }
+    let Some(sizing) = image_number(sizing).filter(|s| (0.0..4.0).contains(s)) else {
+        return false;
+    };
+    let size = |value: Option<&CalcResult>| match value {
+        None | Some(CalcResult::EmptyArg) => Ok(None),
+        Some(CalcResult::Array(_)) => Ok(Some(f64::NAN)),
+        Some(other) => image_number(other)
+            .filter(|n| *n >= 0.0)
+            .map(Some)
+            .ok_or(()),
+    };
+    let (Ok(height), Ok(width)) = (size(options.get(1)), size(options.get(2))) else {
+        return false;
+    };
+    match sizing.trunc() as u8 {
+        3 => height.is_some() && (height != Some(0.0) || width.is_some_and(|w| w != 0.0)),
+        0 | 1 => height.is_none() && width.is_none(),
+        _ => true,
+    }
+}
+
 /// The error IMAGE gives for one `source` value: an error stays, a URL is `#BLOCKED!` (no fetch)
-/// and everything else (empty, number, boolean, non-URL text) is `#VALUE!`
-/// (probes/rich-errors-arg-kinds).
-fn image_error(source: &ArrayNode) -> Error {
+/// unless the options are invalid (`valid`), and everything else (empty, number, boolean,
+/// non-URL text) is `#VALUE!` (probes/rich-errors-arg-kinds).
+fn image_error(source: &ArrayNode, valid: bool) -> Error {
     match source {
         ArrayNode::Error(error) => error.clone(),
-        ArrayNode::String(text) if is_url(text) => Error::BLOCKED,
+        ArrayNode::String(text) if valid && is_url(text) => Error::BLOCKED,
         _ => Error::VALUE,
     }
 }
@@ -72,7 +121,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-    ) -> Result<Lifted, CalcResult> {
+    ) -> Result<(Lifted, Vec<CalcResult>), CalcResult> {
         // The callers check arity first; an empty list is an argument-count error, not a panic.
         let Some((head, rest)) = args.split_first() else {
             return Err(CalcResult::new_args_number_error(cell));
@@ -83,6 +132,7 @@ impl Model {
                 return Err(value.clone());
             }
         }
+        let mut rest_values = Vec::with_capacity(rest.len());
         for arg in rest {
             let value = self.offline_arg(arg, cell);
             if let CalcResult::Error { error, .. } = &value {
@@ -93,8 +143,9 @@ impl Model {
                     Lifted::Scalar(_) => value,
                 });
             }
+            rest_values.push(value);
         }
-        Ok(first)
+        Ok((first, rest_values))
     }
 
     /// IMAGE(source, [alt_text], [sizing], [height], [width]) is `#BLOCKED!` for a URL: no fetch
@@ -106,11 +157,15 @@ impl Model {
         }
         match self.offline_args(args, cell) {
             Err(error) => error,
-            Ok(Lifted::Array(values)) => {
-                CalcResult::Array(map_elements(&values, |v| ArrayNode::Error(image_error(v))))
+            Ok((Lifted::Array(values), options)) => {
+                let valid = image_options_valid(options.get(1..).unwrap_or_default());
+                CalcResult::Array(map_elements(&values, |v| {
+                    ArrayNode::Error(image_error(v, valid))
+                }))
             }
-            Ok(Lifted::Scalar(source)) => {
-                let error = image_error(&calc_result_to_array_node(source));
+            Ok((Lifted::Scalar(source), options)) => {
+                let valid = image_options_valid(options.get(1..).unwrap_or_default());
+                let error = image_error(&calc_result_to_array_node(source), valid);
                 let message = if error == Error::BLOCKED {
                     "Images are never fetched"
                 } else {
@@ -134,8 +189,8 @@ impl Model {
         }
         match self.offline_args(args, cell) {
             Err(error) => error,
-            Ok(Lifted::Array(values)) => error_array(&values, &Error::CONNECT),
-            Ok(Lifted::Scalar(_)) => CalcResult::new_error(
+            Ok((Lifted::Array(values), _)) => error_array(&values, &Error::CONNECT),
+            Ok((Lifted::Scalar(_), _)) => CalcResult::new_error(
                 Error::CONNECT,
                 cell,
                 "Stock data is never fetched".to_string(),
@@ -176,14 +231,18 @@ impl Model {
         }
         // An error element of an array `field_name` stays itself (`FIELDVALUE(5,{"a",#DIV/0!})` is
         // `#FIELD!`, `#DIV/0!`); an error in `value` does not (probes/rich-errors-shapes-urls A9:C10,
-        // T-1189). A 1-wide `field_name` repeats along that axis, and both shapes broadcast without
-        // `#N/A` padding (A2:C7).
+        // T-1189). A 1-wide `field_name` repeats along that axis, and a `value` shorter than the result is
+        // not padded (A2:C7).
         let field_error = |row: usize, col: usize| match &field_name {
             Lifted::Array(values) => {
                 let r = if field_rows == 1 { 0 } else { row };
                 let c = if field_cols == 1 { 0 } else { col };
                 match values.get(r).and_then(|line| line.get(c)) {
                     Some(ArrayNode::Error(error)) => error.clone(),
+                    // A `field_name` shorter than the result along an axis wider than 1 is `#N/A`
+                    // there: `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`
+                    // (probes/rich-errors-image-sizing, T-1345).
+                    None => Error::NA,
                     _ => Error::FIELD,
                 }
             }
