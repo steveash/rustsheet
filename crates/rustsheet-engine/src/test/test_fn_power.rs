@@ -305,3 +305,41 @@ fn operator_errors() {
     assert_eq!(model._get_text("A7"), *"#DIV/0!");
     assert_eq!(model._get_text("B7"), *"0.5");
 }
+
+// Oracle: probes-numeric/power-large-integer-exponents*.case.json (excel-graph, T-1311).
+#[test]
+fn huge_integer_exponents_and_subnormal_results() {
+    let mut model = new_empty_model();
+    let cases = [
+        ("=(-1)^4294967294", "1"),
+        ("=(-1)^4294967295", "#NUM!"),
+        ("=POWER(-0.5, -4294967296)", "#NUM!"),
+        ("=0.1^310", "0"),
+        ("=(-0.5)^1073", "0"),
+        ("=10^-308", "0"),
+        ("=10^33", "1E+33"),
+        ("=10^-300", "1E-300"),
+        ("=(-10)^33", "-1E+33"),
+    ];
+    for (i, (formula, _)) in cases.iter().enumerate() {
+        model._set(&format!("A{}", i + 1), formula);
+    }
+    model.evaluate();
+    for (i, (formula, expected)) in cases.iter().enumerate() {
+        assert_eq!(
+            model._get_text(&format!("A{}", i + 1)),
+            *expected,
+            "{formula}"
+        );
+    }
+}
+
+#[test]
+fn powers_of_minus_ten_keep_the_square_and_multiply_digits() {
+    // The 15-digit display of `(-10)^33` hides that it is -1.0000000000000001E+33, not -1E+33.
+    assert_eq!(
+        crate::arithmetic::power(-10.0, 33.0),
+        Ok(-1.000_000_000_000_000_1e33)
+    );
+    assert_eq!(crate::arithmetic::power(10.0, 33.0), Ok(1e33));
+}
