@@ -111,8 +111,20 @@ IMAGE).
 Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (excel-graph, refilled 2026-10-05, T-0030).
 The workbook was written by Apache POI, so there is no desktop evidence (decision 0030: web-only
 values are goldens).
-Status: VERIFIED (Excel for the web; error name inferred from errorType 10)
-Tasks: T-0124
+The same holds with no externalLink part in the workbook at all, and the result is still a
+reference of the written shape whose cells read `#BLOCKED!`: `='[other.xlsx]Sheet1'!A1` and
+`=SUM(…!A1:B1)` are `#BLOCKED!`, ERROR.TYPE of either is 11, `ISREF(…!A1)` is TRUE, ISERROR TRUE,
+IFERROR takes the fallback, `COUNT(…!A1:B1)` is 0 and `ROWS(…!A1:B3)` is 3. The unquoted prefix
+`=SUM([other.xlsx]Sheet1!A1:B1)` parses and is `#BLOCKED!` too.
+Evidence: probes/external-ref-no-link Calc!A1:A10 (excel-graph, 2026-10-11, T-0124).
+With a cache (`[1]Sheet!ref` and an externalBook `sheetDataSet`), Excel reads the cached value:
+`=[1]Uses!$A$1` → "Hello!", `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx Refs!E3, I3, Excel-cached).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`.
+ISREF/ROWS on it, the unquoted prefix (T-1381) and cached `[n]` values (T-1382) are not yet
+implemented. Unprobed: a 3-D prefix naming another workbook (`'[b.xlsx]S1:S2'!A1`; the engine gives
+`#BLOCKED!`, UNVERIFIED), and a `[n]` index with no externalLink part.
+Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
+Tasks: T-0124, T-1381, T-1382
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
@@ -1030,3 +1042,16 @@ Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT dr
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
+
+## ANCHORARRAY / `#` over IF and non-anchor operands
+
+VERIFIED by T-1369 (probes/anchorarray-if-operands, excel-graph, 2026-10-11): `ANCHORARRAY(IF(TRUE,D1))`,
+`ANCHORARRAY(@IF(TRUE,D1))` and `ANCHORARRAY(IF(FALSE,A1,D1))` over a spill anchor D1 (`=SEQUENCE(3)`) spill D1#.
+`ANCHORARRAY(IF(TRUE,A1))` and `ANCHORARRAY(A1)` with a plain-value A1 are `#REF!`. Any multi-cell range anchor is
+`#REF!`, not `#ERROR!`: `ANCHORARRAY(D1:D3)`, `ANCHORARRAY(A1:B2)`, `ANCHORARRAY(IF(TRUE,D1:D3))` and
+`ANCHORARRAY(IF(TRUE,A1:B2))`; a one-cell range `ANCHORARRAY(D1:D1)` spills like `D1#`. Excel for the web refuses
+the workbook (`FileCorruptTryRepair`) for the written `IF(TRUE,D1)#`, `@IF(TRUE,D1)#`, `ROWS(IF(TRUE,D1)#)` and
+`ISREF(IF(TRUE,D1)#)`, so those stay a desktop question (M14). The ANCHORARRAY function form is what was probed;
+the engine gives the written `(range)#` form the same `#REF!` by inference (both are one `SpillRangeOperator`).
+Evidence strength: excel-graph oracle, 21 cells. Status: VERIFIED (web).
+Tasks: T-1369

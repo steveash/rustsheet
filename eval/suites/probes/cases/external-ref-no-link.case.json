@@ -1,0 +1,27 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "External-workbook references written as [book]Sheet!ref in a workbook with no externalLink part at all: which error each shape gives, and how IS*/ERROR.TYPE/IFERROR see it (T-0124).",
+  "tags": [
+    "M1",
+    "references",
+    "external-reference",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Calc",
+      "cells": {
+        "A1": "=SUM('[other.xlsx]Sheet1'!A1:B1)",
+        "A2": "='[other.xlsx]Sheet1'!A1",
+        "A3": "=ERROR.TYPE('[other.xlsx]Sheet1'!A1)",
+        "A4": "=ISREF('[other.xlsx]Sheet1'!A1)",
+        "A5": "=ISERROR('[other.xlsx]Sheet1'!A1)",
+        "A6": "=IFERROR('[other.xlsx]Sheet1'!A1,\"e\")",
+        "A7": "=SUM([other.xlsx]Sheet1!A1:B1)",
+        "A8": "=ERROR.TYPE(SUM('[other.xlsx]Sheet1'!A1:B1))",
+        "A9": "=COUNT('[other.xlsx]Sheet1'!A1:B1)",
+        "A10": "=ROWS('[other.xlsx]Sheet1'!A1:B3)"
+      }
+    }
+  ]
+}
