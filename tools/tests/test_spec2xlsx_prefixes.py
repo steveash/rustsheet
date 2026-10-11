@@ -28,6 +28,15 @@ def test_lambda_parameters_and_calls_are_prefixed() -> None:
     )
 
 
+def test_lambda_optional_parameters_are_stored_as_xlop() -> None:
+    # Excel for the web stores `[y]` as `_xlop.y` and its uses as `_xlpm.y` (T-1274).
+    assert prefix_bound_names("=LAMBDA(x,[y],ISOMITTED(y))(1)") == (
+        "=LAMBDA(_xlpm.x,_xlop.y,ISOMITTED(_xlpm.y))(1)"
+    )
+    assert prefix_bound_names("=LAMBDA([a], [ b ],a+b)()") == "=LAMBDA(_xlop.a,_xlop.b,_xlpm.a+_xlpm.b)()"
+    assert prefix_bound_names('=LAMBDA(x,x&"[y]")(1)') == '=LAMBDA(_xlpm.x,_xlpm.x&"[y]")(1)'
+
+
 def test_unbound_names_strings_and_sheets_are_left_alone() -> None:
     assert prefix_bound_names('=LET(x,"x",x&y)') == '=LET(_xlpm.x,"x",_xlpm.x&y)'
     assert prefix_bound_names("=LET(x,1,x+x!A1)") == "=LET(_xlpm.x,1,_xlpm.x+x!A1)"
@@ -52,6 +61,12 @@ def test_build_xlsx_writes_the_file_form() -> None:
     assert "_xlfn.TRIMRANGE(A2:B2)" in sheet
     assert "_xlfn._xlfn" not in sheet
     assert "_xlpm._xlpm" not in sheet
+
+
+def test_build_xlsx_writes_optional_parameters_as_excel_does() -> None:
+    spec = {"sheets": [{"name": "Sheet1", "cells": {"A1": "=LAMBDA(x,[y],IF(ISOMITTED(y),x,x+y))(1)"}}]}
+    sheet = zipfile.ZipFile(io.BytesIO(build_xlsx(spec))).read("xl/worksheets/sheet1.xml").decode()
+    assert "_xlfn.LAMBDA(_xlpm.x,_xlop.y,IF(_xlfn.ISOMITTED(_xlpm.y),_xlpm.x,_xlpm.x+_xlpm.y))(1)" in sheet
 
 
 def test_engine_prefix_list_is_not_empty() -> None:
