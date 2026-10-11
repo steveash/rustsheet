@@ -3,7 +3,7 @@ id: T-1363
 title: "ANCHORARRAY of IF(TRUE,D1) over a spill anchor gives TypeMismatch"
 milestone: M1
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
