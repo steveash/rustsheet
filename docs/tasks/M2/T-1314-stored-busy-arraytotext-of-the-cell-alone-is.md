@@ -3,7 +3,7 @@ id: T-1314
 title: "Stored #BUSY!: ARRAYTOTEXT of the cell alone is the error, plus the T-1228 probe cells (after T-1222)"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
