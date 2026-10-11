@@ -3,7 +3,7 @@ id: T-0258
 title: "AND/OR/XOR: a non-empty text literal argument is #VALUE! (poi J136); probe computed text"
 milestone: M2
 lane: functions-logic
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
