@@ -101,6 +101,9 @@ pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
     }
 }
 
+/// 2^32 - 1: from this exponent on a negative base is `#NUM!` (docs/excel-semantics/numbers.md).
+const NEGATIVE_BASE_EXPONENT_LIMIT: f64 = 4_294_967_295.0;
+
 /// `x` to the power of `y`, as POWER and the operator `^` compute it.
 pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     if x == 0.0 && y == 0.0 {
@@ -108,6 +111,11 @@ pub(crate) fn power(x: f64, y: f64) -> Result<f64, Error> {
     }
     if y == 0.0 {
         return Ok(1.0);
+    }
+    // Excel: a negative base with |y| >= 2^32 - 1 is #NUM!, even for (-1)^y and for results that
+    // underflow (docs/excel-semantics/numbers.md "Integer exponents beyond 360").
+    if x < 0.0 && y.abs() >= NEGATIVE_BASE_EXPONENT_LIMIT {
+        return Err(Error::NUM);
     }
     if let Some(result) = integer_power(x, y) {
         return Ok(result);
@@ -144,18 +152,44 @@ fn integer_power(x: f64, y: f64) -> Option<f64> {
     if !x.is_finite() || !y.is_finite() || y.fract() != 0.0 || y.abs() > MAX_EXPONENT {
         return None;
     }
-    let mut remaining = y.abs();
-    let mut base = x;
-    let mut result = 1.0_f64;
-    while remaining >= 1.0 {
-        if remaining % 2.0 == 1.0 {
-            result *= base;
+    let mut result = match decimal_power_of_ten(x, y.abs()) {
+        Some(power) => power,
+        None => {
+            let mut remaining = y.abs();
+            let mut base = x;
+            let mut result = 1.0_f64;
+            while remaining >= 1.0 {
+                if remaining % 2.0 == 1.0 {
+                    result *= base;
+                }
+                base *= base;
+                remaining = (remaining / 2.0).floor();
+            }
+            result
         }
-        base *= base;
-        remaining = (remaining / 2.0).floor();
+    };
+    if y < 0.0 {
+        result = 1.0 / result;
     }
-    let result = if y < 0.0 { 1.0 / result } else { result };
-    (result.is_finite() && result != 0.0).then_some(result)
+    if !result.is_finite() || result == 0.0 {
+        return None;
+    }
+    // Excel flushes a subnormal result to zero (T-1311 oracle: 0.1^310, 2^-1074, (-0.5)^1073).
+    Some(if result.abs() < f64::MIN_POSITIVE {
+        0.0
+    } else {
+        result
+    })
+}
+
+/// `10^n` for an integer `n` in 23..=308 as the nearest double to the decimal `1En`, which is what
+/// Excel returns for base 10 there (square-and-multiply drifts from it: `10^33` is exactly 1E+33
+/// in Excel). Smaller exponents are exact either way, and `10^23` is the square-and-multiply
+/// value. Other bases, even `100` and `-10`, follow the square-and-multiply rule.
+fn decimal_power_of_ten(x: f64, n: f64) -> Option<f64> {
+    (x == 10.0 && (23.0..=308.0).contains(&n))
+        .then(|| format!("1e{n}").parse::<f64>().ok())
+        .flatten()
 }
 
 /// Whether `y` is 1/3, 1/5, -1/7 and so on. A float cannot hold a third, so
