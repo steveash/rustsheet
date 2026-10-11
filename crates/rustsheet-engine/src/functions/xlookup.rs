@@ -137,8 +137,10 @@ fn xlookup_modes(
     Ok((match_mode, search_mode))
 }
 
-/// The XLOOKUP result at `index` of an array `return_array`: the element, or for a column lookup
-/// vector over a wide array the whole matched row as a 1xN array (the range path's shape).
+/// The XLOOKUP result at `index` of an array `return_array`: the element, or, for the whole
+/// pick, the matched row of a wider array (column lookup vector) as a 1xN array or the matched
+/// column of a taller array (row lookup vector) as an Nx1 array, as for ranges
+/// (probes/xlookup-row-column-picks E13, E28, E31).
 fn xlookup_pick_array(
     returns: &[Vec<ArrayNode>],
     vertical: bool,
@@ -148,18 +150,49 @@ fn xlookup_pick_array(
 ) -> CalcResult {
     let out_of_range =
         || CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string());
+    let whole = matches!(pick, XlookupPick::Whole { .. });
     let node = if vertical {
         match returns.get(index) {
-            Some(row) if row.len() > 1 && matches!(pick, XlookupPick::Whole { .. }) => {
-                return CalcResult::Array(vec![row.clone()])
-            }
+            Some(row) if row.len() > 1 && whole => return CalcResult::Array(vec![row.clone()]),
             Some(row) => row.first(),
             None => None,
         }
+    } else if returns.len() > 1 && whole {
+        let column: Option<Vec<Vec<ArrayNode>>> = returns
+            .iter()
+            .map(|row| row.get(index).map(|node| vec![node.clone()]))
+            .collect();
+        return column.map_or_else(out_of_range, CalcResult::Array);
     } else {
         returns.first().and_then(|row| row.get(index))
     };
     node.map_or_else(out_of_range, |node| array_node_to_calc_result(node, cell))
+}
+
+/// Rows and columns of a range or array result (1x1 for anything else).
+fn shape(result: &CalcResult) -> (usize, usize) {
+    match result {
+        CalcResult::Range { left, right } => (
+            usize::try_from(right.row - left.row + 1).unwrap_or(0),
+            usize::try_from(right.column - left.column + 1).unwrap_or(0),
+        ),
+        CalcResult::Array(array) => (array.len(), array.first().map_or(0, Vec::len)),
+        _ => (1, 1),
+    }
+}
+
+/// Whether an XLOOKUP lookup vector of `rows` x `columns` runs down a column, given the return
+/// array's row count: a column is vertical and a row is not; a single cell is vertical when the
+/// return has one row (`XLOOKUP(1,A1:A1,B1:C1)` is the row) and a row otherwise
+/// (`XLOOKUP("a",F1:F1,F2:F4)` is the column; probes/xlookup-row-column-picks E9, E23). `None`
+/// for a 2-D lookup array, which is `#VALUE!` (probes/xlookup-array-lookup-value-args A68).
+fn xlookup_orientation(rows: usize, columns: usize, return_rows: usize) -> Option<bool> {
+    match (rows, columns) {
+        (1, 1) => Some(return_rows == 1),
+        (_, 1) => Some(true),
+        (1, _) => Some(false),
+        _ => None,
+    }
 }
 
 impl Model {
@@ -220,123 +253,65 @@ impl Model {
         CalcResult::Array(rows)
     }
 
-    /// XLOOKUP's lookup_array and return_array. A range lookup_array must be a row or a column
-    /// (a 2-D range is `#VALUE!`); a column accepts a wider return range and a row a taller one.
-    /// Over an array lookup_array (`XLOOKUP(2,{1;2;3},B1:B3)`, probes/isref-reference-lookups
-    /// H10) a 2-D lookup array, and a return_array with a different row count (or, for a row
-    /// lookup array, column count), are `#VALUE!`; a wide return_array is accepted for a column
-    /// lookup array only (probes/xlookup-array-return E1-E24, docs/excel-semantics/lookup.md
-    /// "Array lookup_array").
+    /// XLOOKUP's lookup_array and return_array. The lookup array, a range or an array, must be a
+    /// row or a column ([`xlookup_orientation`]). The return array, a range or an array, needs
+    /// the lookup column's row count (any width: the matched row is returned) or the lookup
+    /// row's column count (any height: the matched column); otherwise it is `#VALUE!`
+    /// (poi/xlookup.xlsx Sheet1!C2; probes/xlookup-array-return E1-E24,
+    /// probes/xlookup-row-column-picks; docs/excel-semantics/lookup.md "Array lookup_array").
     fn xlookup_table(
         &mut self,
         lookup_node: &Node,
         return_node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<XlookupTable, CalcResult> {
-        let same_size = || {
-            CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Arrays must be of the same size".to_string(),
-            )
-        };
-        match self.evaluate_node_in_context(lookup_node, cell) {
-            CalcResult::Range { left, right } => {
-                let vertical = if left.row == right.row {
-                    false
-                } else if left.column == right.column {
-                    true
-                } else {
-                    // probes/xlookup-array-lookup-value-args A15, A68.
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Second argument must be a vector".to_string(),
-                    ));
-                };
-                let (result_left, result_right) =
-                    match self.evaluate_node_in_context(return_node, cell) {
-                        CalcResult::Range { left, right } => (left, right),
-                        error @ CalcResult::Error { .. } => return Err(error),
-                        _ => {
-                            return Err(CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "Range expected".to_string(),
-                            ))
-                        }
-                    };
-                // A column lookup vector accepts a return range with any number of columns
-                // (poi/xlookup.xlsx Sheet1!C2), a row vector one with any number of rows
-                // (probes/xlookup-array-lookup-value-args C33).
-                let mismatch = if vertical {
-                    result_right.row - result_left.row != right.row - left.row
-                } else {
-                    result_right.column - result_left.column != right.column - left.column
-                };
-                if mismatch {
-                    return Err(same_size());
-                }
-                // Both searches walk the whole vector, blanks past the used area included (they
-                // are probed like any cell; T-1019), but only the used area is evaluated.
-                Ok(XlookupTable {
-                    values: self.range_search_vector(&left, &right, vertical),
-                    vertical,
-                    returns: XlookupReturns::Range(result_left, result_right),
-                })
+        let value_error =
+            |message: &str| CalcResult::new_error(Error::VALUE, cell, message.to_string());
+        let lookup = match self.evaluate_node_in_context(lookup_node, cell) {
+            lookup @ (CalcResult::Range { .. } | CalcResult::Array(_)) => lookup,
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => {
+                return Err(CalcResult::new_error(
+                    Error::NA,
+                    cell,
+                    "Range expected".to_string(),
+                ))
             }
-            CalcResult::Array(array) => {
-                let rows = array.len();
-                let columns = array.first().map_or(0, Vec::len);
-                let vertical = columns == 1;
-                if rows != 1 && !vertical {
-                    return Err(CalcResult::new_error(
-                        Error::VALUE,
-                        cell,
-                        "Second argument must be a vector".to_string(),
-                    ));
-                }
-                let values = array
+        };
+        let (rows, columns) = shape(&lookup);
+        if xlookup_orientation(rows, columns, 1).is_none() {
+            return Err(value_error("Second argument must be a vector"));
+        }
+        let returned = self.evaluate_node_in_context(return_node, cell);
+        let (return_rows, return_columns) = shape(&returned);
+        let returns = match returned {
+            CalcResult::Range { left, right } => XlookupReturns::Range(left, right),
+            CalcResult::Array(returns) => XlookupReturns::Array(returns),
+            error @ CalcResult::Error { .. } => return Err(error),
+            _ => return Err(value_error("Range expected")),
+        };
+        let vertical = xlookup_orientation(rows, columns, return_rows) == Some(true);
+        if (vertical && return_rows != rows) || (!vertical && return_columns != columns) {
+            return Err(value_error("Arrays must be of the same size"));
+        }
+        let values = match lookup {
+            // Both searches walk the whole vector, blanks past the used area included (they
+            // are probed like any cell; T-1019), but only the used area is evaluated.
+            CalcResult::Range { left, right } => self.range_search_vector(&left, &right, vertical),
+            CalcResult::Array(array) => SearchVector::new(
+                array
                     .iter()
                     .flatten()
                     .map(|node| array_node_to_calc_result(node, cell))
-                    .collect();
-                let (returns, return_rows, return_columns) =
-                    match self.evaluate_node_in_context(return_node, cell) {
-                        CalcResult::Range { left, right } => (
-                            XlookupReturns::Range(left, right),
-                            usize::try_from(right.row - left.row + 1).ok(),
-                            usize::try_from(right.column - left.column + 1).ok(),
-                        ),
-                        CalcResult::Array(returns) => {
-                            let shape = (Some(returns.len()), returns.first().map(Vec::len));
-                            (XlookupReturns::Array(returns), shape.0, shape.1)
-                        }
-                        error @ CalcResult::Error { .. } => return Err(error),
-                        _ => {
-                            return Err(CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                "Range expected".to_string(),
-                            ))
-                        }
-                    };
-                if return_rows != Some(rows) || (!vertical && return_columns != Some(columns)) {
-                    return Err(same_size());
-                }
-                Ok(XlookupTable {
-                    values: SearchVector::new(values),
-                    vertical,
-                    returns,
-                })
-            }
-            error @ CalcResult::Error { .. } => Err(error),
-            _ => Err(CalcResult::new_error(
-                Error::NA,
-                cell,
-                "Range expected".to_string(),
-            )),
-        }
+                    .collect(),
+            ),
+            _ => return Err(value_error("Range expected")),
+        };
+        Ok(XlookupTable {
+            values,
+            vertical,
+            returns,
+        })
     }
 
     /// One XLOOKUP search: `values` are the lookup value, match_mode and search_mode. A lookup
