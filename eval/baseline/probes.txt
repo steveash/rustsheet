@@ -222,6 +222,7 @@ C	probes/lookup-index-hlookup.case.json	11
 C	probes/lookup-index-order.case.json	50
 C	probes/lookup-index-shapes.case.json	43
 C	probes/lookup-pick-aggregates.case.json	64
+C	probes/lookup-reference-lookup-value.case.json	220
 C	probes/lookup-vector-edges.case.json	21
 C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/m7-argument-modes.case.json	174
