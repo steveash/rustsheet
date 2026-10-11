@@ -267,12 +267,11 @@ impl Model {
         RefArg::from(result)
     }
 
-    /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT and AVERAGE
-    /// take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a range
-    /// are also the cells they pick
-    /// (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c H4:H14, T-1206). The other
-    /// aggregates sharing `for_each_value` follow the same rule unprobed; MIN, MAX, COUNTA and
-    /// AVERAGEA still evaluate those calls to values. The call list is [`Function::picks_reference`].
+    /// [`Self::evaluate_reference_arg`] for the arguments SUBTOTAL, AREAS, SUM, COUNT, AVERAGE, MIN, MAX
+    /// and AVERAGEA take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a
+    /// range are also the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c
+    /// H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
+    /// same rule. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
         node: &Node,
