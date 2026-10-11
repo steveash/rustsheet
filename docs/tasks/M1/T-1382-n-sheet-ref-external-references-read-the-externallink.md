@@ -20,7 +20,7 @@ Excel-cached evidence (desktop-written workbooks, poi suite): poi/ref-56737.xlsx
 poi/ref2-56737.xlsx Refs!E3 `=[1]Uses!$A$1` → "Hello!", G3 `=[1]Defines!NR_To_A1` → "Test A1",
 I3 `=[1]!NR_Global_B2` → 142. Today all give `#ERROR!` (the `[1]` prefix does not parse).
 Add-in calls through an external name (`=[1]!HsGetValue(...)` in poi/HsGetVal.xlsx,
-`=[1]!LUCANET("Ist")` in poi/56502.xlsx) keep their cached results in the cell, not in the link
+`=[1]!LUCANET(...)` in poi/56502.xlsx) keep their cached results in the cell, not in the link
 part; decide from evidence what they give (likely the uncached rule, docs/excel-semantics/
 references.md) and record it. Needs the xlsx importer to keep externalLink caches in the model
 (rustsheet-xlsx) and the evaluator to read them (no I/O, directive 5). Size it against the
