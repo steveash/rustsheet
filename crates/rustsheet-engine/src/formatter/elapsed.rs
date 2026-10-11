@@ -45,7 +45,18 @@ pub(super) fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> Strin
     } else {
         ("", n)
     };
-    let digits = if !mag.is_finite() {
+    let digits = count_digits(mag);
+    if padded {
+        format!("{sign}{digits:0>2}")
+    } else {
+        format!("{sign}{digits}")
+    }
+}
+
+/// Digits of a non-negative integral count: exact below 1e15, from there the first 15 significant
+/// digits then zeros, and "0" for a count that overflowed f64 (probes/elapsed-huge-*).
+fn count_digits(mag: f64) -> String {
+    if !mag.is_finite() {
         "0".to_owned()
     } else if mag < 1e15 {
         format!("{mag:.0}")
@@ -56,10 +67,36 @@ pub(super) fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> Strin
         let mut d: String = mantissa.chars().filter(char::is_ascii_digit).collect();
         d.extend(std::iter::repeat_n('0', exp.saturating_sub(14)));
         d
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        elapsed_text,
+        ElapsedUnit::{Hour, Minute, Second},
     };
-    if padded {
-        format!("{sign}{digits:0>2}")
-    } else {
-        format!("{sign}{digits}")
+
+    #[test]
+    fn huge_counts_keep_fifteen_significant_digits() {
+        assert_eq!(elapsed_text(1e15, false, Second), "86400000000000000000");
+        assert_eq!(
+            elapsed_text(1e100, false, Hour),
+            format!("24{}", "0".repeat(100))
+        );
+        assert_eq!(elapsed_text(1e10, false, Second), "864000000000000");
+    }
+
+    #[test]
+    fn overflowed_counts_are_zero() {
+        assert_eq!(elapsed_text(2.0807e303, false, Second), "0");
+        assert_eq!(elapsed_text(1.5e307, false, Hour), "0");
+        assert_eq!(elapsed_text(1.5e307, false, Minute), "0");
+    }
+
+    #[test]
+    fn finite_huge_counts_do_not_collapse_to_zero() {
+        assert!(elapsed_text(2.08e303, false, Second).len() > 300);
+        assert!(elapsed_text(1e305, false, Minute).len() > 300);
     }
 }
