@@ -1,0 +1,61 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SUM error precedence: stored error cells vs literal/computed errors, both orders, two referenced cells (T-1315/T-1314). A1 #BUSY!, A2 #N/A, A3 #VALUE!, A4 #NAME?.",
+ "tags": [
+  "M2",
+  "errors",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": {
+     "t": "e",
+     "v": "#BUSY!",
+     "stored": true
+    },
+    "A2": {
+     "t": "e",
+     "v": "#N/A",
+     "stored": true
+    },
+    "A3": {
+     "t": "e",
+     "v": "#VALUE!",
+     "stored": true
+    },
+    "A4": {
+     "t": "e",
+     "v": "#NAME?",
+     "stored": true
+    },
+    "C1": "=ERROR.TYPE(SUM(A1,#DIV/0!))",
+    "C2": "=ERROR.TYPE(SUM(#DIV/0!,A1))",
+    "C3": "=ERROR.TYPE(SUM(A1,1/0))",
+    "C4": "=ERROR.TYPE(SUM(1/0,A1))",
+    "C5": "=ERROR.TYPE(SUM(A2,#DIV/0!))",
+    "C6": "=ERROR.TYPE(SUM(#DIV/0!,A2))",
+    "C7": "=ERROR.TYPE(SUM(A2,1/0))",
+    "C8": "=ERROR.TYPE(SUM(1/0,A2))",
+    "C9": "=ERROR.TYPE(SUM(A3,#DIV/0!))",
+    "C10": "=ERROR.TYPE(SUM(#DIV/0!,A3))",
+    "C11": "=ERROR.TYPE(SUM(A3,1/0))",
+    "C12": "=ERROR.TYPE(SUM(1/0,A3))",
+    "C13": "=ERROR.TYPE(SUM(A1,A2))",
+    "C14": "=ERROR.TYPE(SUM(A2,A1))",
+    "C15": "=ERROR.TYPE(SUM(A3,A2))",
+    "C16": "=ERROR.TYPE(SUM(A2,A3))",
+    "C17": "=ERROR.TYPE(SUM(A4,A3))",
+    "C18": "=ERROR.TYPE(SUM(A3,A4))",
+    "C19": "=ERROR.TYPE(SUM(A1,A3))",
+    "C20": "=ERROR.TYPE(SUM(A3,A1))",
+    "C21": "=ERROR.TYPE(SUM(A1:A2))",
+    "C22": "=ERROR.TYPE(SUM(A2:A3))",
+    "C23": "=ERROR.TYPE(SUM(A1,#N/A))",
+    "C24": "=ERROR.TYPE(SUM(#N/A,A1))"
+   }
+  }
+ ],
+ "expected": {}
+}

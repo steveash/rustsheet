@@ -312,11 +312,22 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
+        // Excel: an error in a referenced cell ranks below an error in a direct argument, whichever
+        // comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md,
+        // "Stored #BUSY! behaviors", probes/sum-error-precedence). So a reference error is held
+        // back until the direct arguments are known to be clean.
+        let mut reference_error = None;
         for arg in args {
             // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
             match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
-                    self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))?;
+                    if reference_error.is_none() {
+                        if let Err(error) =
+                            self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))
+                        {
+                            reference_error = Some(error);
+                        }
+                    }
                 }
                 RefArg::Value(CalcResult::Array(array)) => {
                     for value in array.into_iter().flatten() {
@@ -340,6 +351,9 @@ impl Model {
                 }
             };
         }
-        Ok(sum)
+        match reference_error {
+            Some(error) => Err(error),
+            None => Ok(sum),
+        }
     }
 }

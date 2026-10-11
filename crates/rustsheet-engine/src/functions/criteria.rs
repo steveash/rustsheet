@@ -7,7 +7,7 @@ use regex_lite as regex;
 
 use crate::{
     calc_result::CalcResult,
-    expressions::token::is_english_error_string,
+    expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
     functions::util::cmp_text_excel,
     locale::Locale,
@@ -422,7 +422,12 @@ pub(crate) fn build_criteria_with<'a>(
         CalcResult::Number(target) => Box::new(move |x| result_is_equal_to_number(x, *target)),
         CalcResult::Boolean(b) => Box::new(move |x| result_is_equal_to_bool(x, *b)),
         CalcResult::Error { error, .. } => {
-            // An error will match an error (never a string that is an error)
+            // An error will match an error (never a string that is an error). Excel: except a stored
+            // #BUSY!, which matches nothing, not even its own cell (probes/error-stored-busy-behaviors
+            // C15; a #N/A criterion does match #N/A cells).
+            if *error == Error::BUSY {
+                return Box::new(|_| false);
+            }
             Box::new(move |x| result_is_equal_to_error(x, &error.to_string()))
         }
         CalcResult::Range { left: _, right: _ } => Box::new(move |_x| false),
