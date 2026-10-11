@@ -1009,5 +1009,6 @@ back (`=ISREF((A1))`, `=ROWS(((A1:A3)))`, `=SUM(((A1,B1)))`, `=LET(x,(A1:A3),ROW
 unsupported, `FileCorruptTryRepair`), so a group directly before `#` stays unevidenced.
 Ours: the values and the root snap match; FORMULATEXT drops the redundant groups (H10, H11, H14) and plain
 `ANCHORARRAY(IF(TRUE,D1))` gives TypeMismatch (E20:E22) while the grouped form passes.
-Status: VERIFIED (web), except the `)#` shape.
-Tasks: T-1339, T-1340
+Evidence strength: `ISREF((A1))` and the union in `SUM(((A1,B1)))` show a reference survives a group; `ROWS` and `LET(..., ROWS(x))` return 3 for a range and for an array alike, so they do not (reference-only checks such as `ISREF((A1:A3))` and `OFFSET((A1:A3),1,0)` are unprobed, T-1364). The ANCHORARRAY pair compares the form with and without `@(...)`; `ANCHORARRAY(@IF(TRUE,D1))` is unprobed.
+Status: VERIFIED (web), except the `)#` shape and the range/LET reference checks.
+Tasks: T-1339, T-1340, T-1363, T-1364

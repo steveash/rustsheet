@@ -86,7 +86,7 @@ Non-goals:
   - the root snap (`GroupedRootKind`, arithmetic.rs).
 - Reference context (probes/written-parens-reference-context, excel-graph, 2026-10-11, T-1339):
   groups are transparent in every probed cell. `ISREF((A1))`, `ROWS(((A1:A3)))`, `SUM(((A1,B1)))`,
-  `LET(x,(A1:A3),ROWS(x))` and `ANCHORARRAY(@(IF(TRUE,D1)))` equal their ungrouped forms, and
+  `LET(x,(A1:A3),ROWS(x))` and `ANCHORARRAY(@(IF(TRUE,D1)))` equal the forms without the group (the last without `@(...)`; `ROWS` cannot tell a range from an array, so reference-only checks are follow-up T-1364), and
   FORMULATEXT prints the groups. The only value a group changes is the root snap (`=(0.1+0.2-0.3)` and
   `=((0.1+0.2-0.3))` are 5.55e-17, `=0.1+0.2-0.3` is 0), which is the parse-time effect listed above. No
   design amendment is needed. Not evidenced: `(INDEX(D1:D3,1))#` (excel-graph rejects the workbook);
