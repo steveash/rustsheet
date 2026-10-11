@@ -106,7 +106,7 @@ fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
         ElapsedUnit::Second => ((secs * 1e12).round() / 1e12).round(),
         ElapsedUnit::Minute => ((secs * 1e3).round() / 1e3 / 60.0).floor(),
         ElapsedUnit::Hour => ((secs * 1e3).round() / 1e3 / 3600.0).floor(),
-    } as i32;
+    } as i64;
     if padded {
         format!("{n:02}")
     } else {
