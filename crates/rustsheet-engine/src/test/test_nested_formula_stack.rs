@@ -60,11 +60,14 @@ fn parenthesised_chain_nested_to_the_limit_and_past_it_never_overflows() {
     // The innermost operator chain costs one level more than a lone operand.
     let limit = MAX_NESTING - 1;
     for levels in [limit - 1, limit, limit + 1, MAX_FORMULA_DEPTH, 300] {
-        let formula = format!(
-            "={}0.1+0.2-0.3+B1{}",
-            "(".repeat(levels),
-            ")".repeat(levels)
-        );
+        let nested_over = |cell: &str| {
+            format!(
+                "={}0.1+0.2-0.3+{cell}{}",
+                "(".repeat(levels),
+                ")".repeat(levels)
+            )
+        };
+        let formula = nested_over("B1");
         let mut model = new_empty_model();
         let result = model.set_user_input(0, 1, 1, formula.clone());
         if levels > limit {
@@ -78,12 +81,7 @@ fn parenthesised_chain_nested_to_the_limit_and_past_it_never_overflows() {
         assert_eq!(model.insert_rows(0, 1, 1), Ok(()), "{levels}");
         assert_eq!(model.rename_sheet("Sheet1", "Renamed"), Ok(()), "{levels}");
         model.evaluate();
-        let moved = format!(
-            "={}0.1+0.2-0.3+B2{}",
-            "(".repeat(levels),
-            ")".repeat(levels)
-        );
-        assert_eq!(model._get_formula("A2"), moved, "{levels}");
+        assert_eq!(model._get_formula("A2"), nested_over("B2"), "{levels}");
         assert_eq!(model._get_text("A2"), "5.55112E-17", "{levels}");
     }
 }
