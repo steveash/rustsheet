@@ -462,8 +462,8 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
                     }
                 }
             }
-            // Excel: a date/time result over 255 characters is #VALUE! (only reachable through the
-            // elapsed tokens, probes/elapsed-huge-g-1900).
+            // Excel: an elapsed-token result over 255 characters is #VALUE! (probes/elapsed-huge-g-1900);
+            // applying it to every date/time section is an assumption, unprobed for other tokens.
             if text.chars().count() > MAX_TEXT_FORMAT_CHARS {
                 return text_too_long();
             }
