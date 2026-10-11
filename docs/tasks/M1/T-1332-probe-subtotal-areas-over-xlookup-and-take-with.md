@@ -28,3 +28,4 @@ Added probes/subtotal-reference-operands-e (31 Excel cells, excel-graph). The en
 computed return array is an array (`#VALUE!`, ISREF FALSE); XLOOKUP/TAKE over `IF(TRUE,A1:A4)` or `LET(x,A1:A4,x)` stays
 a reference. TAKE/DROP of an IF/LET holding `SEQUENCE(4)` is an array that spills two `#VALUE!`; the engine returns a
 scalar there (8 cells, known failures). Filed T-1345 for the fix. Rules recorded in references.md.
+Defined names holding an array were not probed (no name form in the case); a name is not a reference-returning call, so file a probe if one is wanted.

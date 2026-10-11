@@ -1,6 +1,6 @@
 {
   "format": "rustsheet-case/v1",
-  "description": "T-1332: SUBTOTAL/AREAS over XLOOKUP with a computed return array, and over TAKE/DROP of IF, LET and a defined-name-free array source. Sheet1 A1:A4=1..4. Each formula sits in row 1 with empty cells below so that a lifted array result can spill.",
+  "description": "T-1332: SUBTOTAL/AREAS over XLOOKUP with a computed return array, and over TAKE/DROP of IF, LET. Sheet1 A1:A4=1..4. Each formula sits in row 1 with empty cells below so that a lifted array result can spill.",
   "tags": [
     "M1",
     "references",
