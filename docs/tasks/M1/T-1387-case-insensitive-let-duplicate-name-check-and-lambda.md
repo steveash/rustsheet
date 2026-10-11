@@ -14,7 +14,7 @@ depends_on: []
 Probe, then make the engine match, how case-insensitive names behave in `LET(x,1,X,2,x)` (duplicate binding), LAMBDA parameters (`LAMBDA(x,X+1)(2)`) and nested shadowing with different case.
 
 ## Context
-T-1378 made `same_variable` (functions/logical/let.rs) case-insensitive for LET id patching only. `seen_names` in let.rs (~140), lambda.rs:206 and parser/lambda.rs:64 still compare case-sensitively; Excel's behavior is unprobed.
+T-1378 made LET names case-insensitive (`same_variable`, functions/logical/let.rs; `assign_variable_ids` takes `ci`, true for LET only, false for LAMBDA binding). `seen_names` in let.rs (~140), lambda.rs:206 and parser/lambda.rs:64 still compare case-sensitively; Excel's behavior is unprobed.
 
 ## Acceptance criteria
 - [ ] A probe case with oracle values for the forms above; the engine matches it. Docs entry in references.md updated.

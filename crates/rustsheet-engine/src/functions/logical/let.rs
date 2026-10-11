@@ -13,8 +13,8 @@ use crate::{
 };
 
 /// Whether two LET variable names are the same variable: LET names are case-insensitive
-/// (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41). LAMBDA parameter case
-/// handling is unprobed and stays case-sensitive (TODO(T-1387)).
+/// (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41). LAMBDA parameter binding
+/// is unprobed and stays case-sensitive (`ci` false; TODO(T-1387)).
 pub(crate) fn same_variable(a: &str, b: &str) -> bool {
     // No allocation: this runs per node on every LAMBDA call and LET evaluation.
     a == b
@@ -28,11 +28,10 @@ pub(crate) fn same_variable(a: &str, b: &str) -> bool {
 ///
 /// When a nested LET is encountered that binds the same name, the walk stops past that
 /// pair's value expression — the inner LET will assign its own id for subsequent uses.
-pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
+pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32, ci: bool) {
+    let same = |a: &str, b: &str| if ci { same_variable(a, b) } else { a == b };
     match node {
-        Node::NamedVariableKind { name, id: var_id }
-            if var_id.is_none() && same_variable(name, target) =>
-        {
+        Node::NamedVariableKind { name, id: var_id } if var_id.is_none() && same(name, target) => {
             *var_id = Some(id);
         }
         Node::NamedFunctionKind {
@@ -40,11 +39,11 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
             id: var_id,
             args,
         } => {
-            if var_id.is_none() && same_variable(name, target) {
+            if var_id.is_none() && same(name, target) {
                 *var_id = Some(id);
             }
             for arg in args.iter_mut() {
-                assign_variable_ids(arg, target, id);
+                assign_variable_ids(arg, target, id, ci);
             }
         }
         Node::FunctionKind { kind, args } => {
@@ -52,7 +51,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
                 let n_pairs = (args.len().saturating_sub(1)) / 2;
                 // Find the first pair index where the inner LET shadows `target`.
                 let shadow_pair = (0..n_pairs).find(|&k| {
-                    matches!(&args[2 * k], Node::NamedVariableKind { name, .. } if same_variable(name, target))
+                    matches!(&args[2 * k], Node::NamedVariableKind { name, .. } if same(name, target))
                 });
                 for i in 0..args.len() {
                     // Odd indices are value expressions; the last (even) index is the body.
@@ -67,11 +66,11 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
                             continue;
                         }
                     }
-                    assign_variable_ids(&mut args[i], target, id);
+                    assign_variable_ids(&mut args[i], target, id, ci);
                 }
             } else {
                 for arg in args.iter_mut() {
-                    assign_variable_ids(arg, target, id);
+                    assign_variable_ids(arg, target, id, ci);
                 }
             }
         }
@@ -81,33 +80,33 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         | Node::CompareKind { .. }
         | Node::OpConcatenateKind { .. } => {
             for_each_chain_operand_mut(node, |operand| {
-                assign_variable_ids(operand, target, id);
+                assign_variable_ids(operand, target, id, ci);
             });
         }
-        Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id),
+        Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id, ci),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
         | Node::GroupedRootKind { child }
         | Node::Group { child, .. } => {
-            assign_variable_ids(child, target, id);
+            assign_variable_ids(child, target, id, ci);
         }
         Node::OpRangeKind { left, right }
         | Node::OpIntersectKind { left, right, .. }
         | Node::OpUnionKind { left, right, .. } => {
-            assign_variable_ids(left, target, id);
-            assign_variable_ids(right, target, id);
+            assign_variable_ids(left, target, id, ci);
+            assign_variable_ids(right, target, id, ci);
         }
         Node::LambdaDefKind { parameters, body } => {
             // If a LAMBDA parameter shadows `target`, don't recurse into the body.
-            let shadowed = parameters.iter().any(|p| p.name == target);
+            let shadowed = parameters.iter().any(|p| same(&p.name, target));
             if !shadowed {
-                assign_variable_ids(body, target, id);
+                assign_variable_ids(body, target, id, ci);
             }
         }
         Node::LambdaCallKind { lambda, args } => {
-            assign_variable_ids(lambda, target, id);
+            assign_variable_ids(lambda, target, id, ci);
             for arg in args.iter_mut() {
-                assign_variable_ids(arg, target, id);
+                assign_variable_ids(arg, target, id, ci);
             }
         }
         _ => {}
@@ -173,7 +172,7 @@ impl Model {
 
             // Patch the variable's id into all subsequent nodes (value expr + body and later pairs).
             for item in cloned.iter_mut().skip(2 * i + 1) {
-                assign_variable_ids(item, &name, id);
+                assign_variable_ids(item, &name, id, true);
             }
 
             // Eagerly evaluate the binding value and cache it.

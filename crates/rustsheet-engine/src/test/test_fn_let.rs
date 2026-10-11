@@ -89,3 +89,15 @@ fn test_let_names_are_case_insensitive() {
     assert_eq!(model._get_text("A2"), "#VALUE!");
     assert_eq!(model._get_text("A3"), "#VALUE!");
 }
+
+#[test]
+fn test_lambda_parameter_case_is_unchanged_by_let_case_folding() {
+    let mut model = new_empty_model();
+    // A LAMBDA parameter shadows a LET name of any case, and its own uses bind to it.
+    model._set("A1", "=LET(x,1,LAMBDA(X,X*10)(2))");
+    // LAMBDA parameter lookup stays case-sensitive until T-1387 probes it.
+    model._set("A2", "=LAMBDA(x,X+1)(2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "20");
+    assert_eq!(model._get_text("A2"), "#NAME?");
+}
