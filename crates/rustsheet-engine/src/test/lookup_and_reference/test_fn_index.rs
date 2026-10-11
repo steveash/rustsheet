@@ -176,3 +176,82 @@ fn test_index_single_index_into_2d_range_is_ref_error() {
     assert_eq!(model._get_text("D6"), *"3");
     assert_eq!(model._get_text("D7"), *"2");
 }
+
+// ── INDEX lifted over array indices (T-1260, probes/index-array-indices) ──────
+
+fn index_column_model() -> crate::Model {
+    let mut model = new_empty_model();
+    for (i, v) in [10, 20, 30, 40, 50].iter().enumerate() {
+        model._set(&format!("A{}", i + 1), &v.to_string());
+        model._set(&format!("B{}", i + 1), &(i + 1).to_string());
+    }
+    model
+}
+
+#[test]
+fn index_lifts_over_an_array_or_range_index() {
+    let mut model = index_column_model();
+    model._set("D1", "=INDEX(A1:A5,{1,3})");
+    model._set("D3", "=SUM(INDEX(A1:A5,{1,3}))");
+    model._set("D4", "=ROWS(INDEX(A1:A5,{1,3}))");
+    model._set("D5", "=INDEX(A1:A5,SEQUENCE(2))");
+    model._set("J1", "1");
+    model._set("J2", "3");
+    model._set("F1", "=INDEX(A1:A5,J1:J2)");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "10");
+    assert_eq!(model._get_text("E1"), "30");
+    assert_eq!(model._get_text("D3"), "40");
+    assert_eq!(model._get_text("D4"), "1");
+    assert_eq!(model._get_text("D5"), "10");
+    assert_eq!(model._get_text("D6"), "20");
+    assert_eq!(model._get_text("F1"), "10");
+    assert_eq!(model._get_text("F2"), "30");
+}
+
+#[test]
+fn index_indices_broadcast_and_whole_selections_keep_their_top_left() {
+    let mut model = index_column_model();
+    // A column of rows against a row of columns gives every pair.
+    model._set("D1", "=INDEX(A1:B5,{1;2;3},{1,2})");
+    // Row 0 selects the whole column; a lifted element keeps its first cell.
+    model._set("D5", "=INDEX(A1:A5,{0,2})");
+    model._set("D6", "=SUM(INDEX(A1:B5,0,{1,2}))");
+    // One index into an array literal picks the row, whose first value is the element.
+    model._set("D7", "=INDEX({1,2;3,4},{1,2})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "10");
+    assert_eq!(model._get_text("E1"), "1");
+    assert_eq!(model._get_text("D3"), "30");
+    assert_eq!(model._get_text("E3"), "3");
+    assert_eq!(model._get_text("D5"), "10");
+    assert_eq!(model._get_text("E5"), "20");
+    assert_eq!(model._get_text("D6"), "11");
+    assert_eq!(model._get_text("D7"), "1");
+    assert_eq!(model._get_text("E7"), "3");
+}
+
+#[test]
+fn lifted_index_elements_fail_on_their_own() {
+    let mut model = index_column_model();
+    model._set("D1", "=INDEX(A1:A5,{1,#N/A})");
+    model._set("D2", "=INDEX(A1:A5,{1,9})");
+    model._set("D3", "=INDEX(A1:A5,{\"2\",\"x\"})");
+    // One index into a 2-D range is #REF!, element by element.
+    model._set("D4", "=INDEX(A1:B5,{1,2})");
+    model._set("D5", "=INDEX(A1:A5,{1.9,2.5})");
+    // An area_num array lifts too.
+    model._set("D6", "=INDEX((A1:A5,B1:B5),{1,2},1,{1,2})");
+    model.evaluate();
+    assert_eq!(model._get_text("D1"), "10");
+    assert_eq!(model._get_text("E1"), "#N/A");
+    assert_eq!(model._get_text("E2"), "#REF!");
+    assert_eq!(model._get_text("D3"), "20");
+    assert_eq!(model._get_text("E3"), "#VALUE!");
+    assert_eq!(model._get_text("D4"), "#REF!");
+    assert_eq!(model._get_text("E4"), "#REF!");
+    assert_eq!(model._get_text("D5"), "10");
+    assert_eq!(model._get_text("E5"), "20");
+    assert_eq!(model._get_text("D6"), "10");
+    assert_eq!(model._get_text("E6"), "2");
+}

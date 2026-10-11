@@ -3,7 +3,7 @@ id: T-1260
 title: "INDEX lifts over an array row_num or column_num in a dynamic-array formula (#N/IMPL! today)"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -25,10 +25,24 @@ references (`ROWS`, `ISREF`). Reuse the existing lift helpers, as T-1212/T-1218 
 (crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs).
 
 ## Acceptance criteria
-- [ ] An excel-graph probe case with the cells above passes; lookup.md records the rule.
-- [ ] gen-m6/2c1a6e93a1974f48 A25 passes in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell and
+- [x] An excel-graph probe case with the cells above passes; lookup.md records the rule.
+- [x] gen-m6/2c1a6e93a1974f48 A25 passes in `./target/release/rustsheet-eval show <case>`, with no new failing gen-m6 cell and
       no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - The legacy first-element form (T-0294); INDEX of a scalar (T-1242).
+
+## Outcome
+INDEX now lifts element-wise over a multi-cell range or array in row_num, column_num or area_num, with the
+indices broadcast like arithmetic operands. Each element is the scalar INDEX, read as a value, and an element that
+selects a whole row, column or array keeps its top-left value.
+The INDEX code moved out of lookup_and_reference/mod.rs, which was 979 lines against the 1000-line limit, into
+lookup_and_reference/index.rs. That file has a shared `index_select` that borrows the reference evaluated once, so a
+lifted call never re-evaluates or clones its first argument per element. A single cell or a 1x1 array still takes
+the scalar path, so reference-returning INDEX is unchanged.
+The new probe probes/index-array-indices (60 cells, excel-graph) passes in full. gen-m6/2c1a6e93a1974f48 Calc!A25
+passes, with no new failing gen-m6 cell (972 to 973 of 1000). lookup.md "INDEX lifts over array and range indices"
+records the rule.
+Eval delta: gen-m2 fixed 1 (a6d4377c7b1b92cd Calc!A169); probes +1 case, all passing; regressions 0.
+Follow-ups: none.
