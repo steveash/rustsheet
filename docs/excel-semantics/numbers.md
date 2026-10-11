@@ -886,10 +886,20 @@ Tasks: T-1082, T-1190
 Rule: `COS(1E+15)` is `#NUM!` in Excel (the argument is too large to reduce). Errors from a left operand win over a
 later operand's: in `(x-COS(1E+15))=INDEX(B11:D11,6,2)` the result is `#NUM!`, not INDEX's `#REF!`. An
 out-of-domain `ACOS(1E+15)` is `#NUM!` and stays an error when nested (`SERIESSUM(ACOS(1E+15),0,n,m)` is `#NUM!`).
-Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09).
-Ours: COS computes a number; ACOS yields a NaN number that `powf(0)` turns into 1.
-Status: VERIFIED for the observed cells; the threshold and SIN/TAN siblings are UNVERIFIED.
+`SIN(1E+15)` and `SEC(1E+13)` are `#NUM!` too, so the threshold is at most 1E+13.
+Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09);
+gen-m6/9bd0bd18636e5f9b Calc!A4 (`SECH(CHOOSE(SIN(1E+15),..))`), gen-m6/3ee7ffc8d6ab061f Calc!A2 (`..-SEC(1E+13)`) (excel-graph, 2026-10-09, T-1239).
+Ours: COS, SIN and SEC compute a number; ACOS yields a NaN number that `powf(0)` turns into 1.
+Status: VERIFIED for the observed cells; the exact threshold and TAN are UNVERIFIED.
 Tasks: T-1192, T-1201, T-1202
+
+## ASIN of a small argument
+Rule: `ASIN(-0.0001)` is -0.00010000000016666668 in Excel; libm `asin` gives -0.00010000000016666667 (one ulp off),
+while `atan(x/sqrt(1-x*x))` reproduces Excel. Which formulation Excel uses over the whole domain is unknown.
+Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239).
+Ours: libm `asin`, one ulp off.
+Status: VERIFIED for the cell; formulation UNVERIFIED
+Tasks: T-1259
 
 ## MULTINOMIAL of a huge argument
 Rule: MULTINOMIAL is `#NUM!` once its arguments add up to more than 170, where `sum!` overflows a double. That holds
