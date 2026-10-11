@@ -1,9 +1,9 @@
 ---
 id: T-0124
-title: "Unresolvable external-workbook reference without cached data returns #VALUE! (1 known failure)"
+title: "Unresolvable external-workbook reference without cached data returns #BLOCKED! (1 known failure)"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -29,9 +29,18 @@ an unresolved external reference gives: (a) bracketed file name with no external
 `excel-probe` for (b) and (c) if no case covers them, and record the rules in `docs/excel-semantics/`.
 
 ## Acceptance criteria
-- [ ] poi/link-external-workbook-b.xlsx Sheet0!A1 disappears from eval/baseline/poi.txt with no new F lines.
-- [ ] Rule (with the cases that are not evidenced marked UNVERIFIED) in `docs/excel-semantics/`.
-- [ ] `make check` green; reviewers approve.
+- [x] poi/link-external-workbook-b.xlsx Sheet0!A1 disappears from eval/baseline/poi.txt with no new F lines.
+- [x] Rule (with the cases that are not evidenced marked UNVERIFIED) in `docs/excel-semantics/`.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Reading external workbooks (forbidden by directive 5). Import panics (T-0118, done).
+
+## Outcome
+A reference whose sheet prefix holds `[` (another workbook; a sheet name cannot hold `[`) now gives
+`#BLOCKED!` instead of `#REF!` (`wrong_sheet_error`). New probe probes/external-ref-no-link
+(excel-graph) settles case (c): no externalLink part still gives `#BLOCKED!`, and the result is a
+reference (ISREF TRUE, ROWS 3). Case (b) has Excel-cached evidence in poi/ref-56737 (`[1]` uses the
+cache). Rules in docs/excel-semantics/references.md. Eval: poi known failures 567 → 566
+(link-external-workbook-b A1 fixed); probes +1 case (10 cells, 7 pass, 3 new-coverage failures
+handed to T-1381). Follow-ups: T-1381 (reference-ness, unquoted prefix), T-1382 (`[n]` cached values).

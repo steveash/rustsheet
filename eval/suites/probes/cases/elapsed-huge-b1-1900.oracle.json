@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A16": {
+    "t": "s",
+    "v": "8640000000000000000000000"
+   },
+   "A17": {
+    "t": "s",
+    "v": "144000000000000000000000"
+   },
+   "A18": {
+    "t": "s",
+    "v": "2400000000000000000000"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "73de2d6201b281d58fe7fda5f07f9e89beeb7af409b3f2918782f9720dd4c542",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-11T21:49:44+00:00",
+  "version": null
+ }
+}

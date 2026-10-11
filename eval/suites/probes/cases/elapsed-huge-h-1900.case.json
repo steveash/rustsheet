@@ -1,0 +1,40 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1375: elapsed tokens at huge serials, 1900 date system (find the #VALUE! threshold and digit rendering).",
+  "tags": [
+    "M1",
+    "probe",
+    "dates",
+    "T-1375"
+  ],
+  "date_system": 1900,
+  "sheets": [
+    {
+      "name": "S",
+      "cells": {
+        "A1": "=TEXT(2.08E303,\"[s]\")",
+        "A2": "=TEXT(2.08E303,\"[m]\")",
+        "A3": "=TEXT(2.08E303,\"[h]\")",
+        "A4": "=TEXT(2.0806E303,\"[s]\")",
+        "A5": "=TEXT(2.0806E303,\"[m]\")",
+        "A6": "=TEXT(2.0806E303,\"[h]\")",
+        "A7": "=TEXT(2.0807E303,\"[s]\")",
+        "A8": "=TEXT(2.0807E303,\"[m]\")",
+        "A9": "=TEXT(2.0807E303,\"[h]\")",
+        "A10": "=TEXT(2.09E303,\"[s]\")",
+        "A11": "=TEXT(2.09E303,\"[m]\")",
+        "A12": "=TEXT(2.09E303,\"[h]\")",
+        "A13": "=TEXT(1E304,\"[s]\")",
+        "A14": "=TEXT(1E304,\"[m]\")",
+        "A15": "=TEXT(1E304,\"[h]\")",
+        "A16": "=TEXT(1E305,\"[s]\")",
+        "A17": "=TEXT(1E305,\"[m]\")",
+        "A18": "=TEXT(1E305,\"[h]\")",
+        "A22": "=TEXT(-1.5E307,\"[s]\")",
+        "A23": "=TEXT(-1.5E307,\"[m]\")",
+        "A24": "=TEXT(-1.5E307,\"[h]\")"
+      }
+    }
+  ],
+  "expected": {}
+}
