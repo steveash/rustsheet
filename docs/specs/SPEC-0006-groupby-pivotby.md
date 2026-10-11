@@ -138,22 +138,46 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
    row text in keys and values, with numbers below?) is pinned by the probe task. Until then, use
    "the first value cell is text and the second is a number".
 2. **Grouping**: a hash map from `Vec<CellKey>` (`cell_key` in spill_functions.rs, case-folded
-   text) to the group index, recording each group's first spelling. Then sort the groups with
-   `sort_key_cmp` field by field, with blank last in both directions. Make these two helpers
-   `pub(crate)`; never copy them. Hierarchical totals (depth 2) need groups ordered by their
-   key prefix, which the lexicographic sort already gives.
+   text) to the group index. The key is built once per source row, never once per function or
+   value column, and the map records each group's first spelling. Then sort the groups with
+   `sort_key_cmp` field by field, with blank last in both directions. `cell_key` and
+   `sort_key_cmp` are private today; widen them to `pub(crate)` and never copy them. Each call of
+   `sort_key_cmp` converts both nodes and clones their text. If the group sort shows up in a
+   benchmark, change it to compare borrowed values, or convert each group's keys once before
+   sorting; that is a refactor of the shared helper, not a second comparator. Hierarchical
+   totals (depth 2) need groups ordered by their key prefix. The lexicographic sort already gives
+   that order, so the subtotal rows are inserted in one linear pass, not by any quadratic search.
 3. **Aggregation**: for each (group, value column, function) build a column array of the
    group's values in source order and call the function value: `call_lambda_with_values` for a
-   LAMBDA, or the T-1273 eta-call path for a name. Two-parameter functions (PERCENTOF) also get
-   the relative set's values. A non-scalar result becomes `#VALUE!` (G!J121). A function array
-   (`HSTACK`/`VSTACK` of function values) is a list of functions plus an orientation.
+   LAMBDA, or the T-1273 eta-call path for a name. A non-scalar result becomes `#VALUE!`
+   (G!J121). A function array (`HSTACK`/`VSTACK` of function values) is a list of functions plus
+   an orientation. Two-parameter functions (PERCENTOF) also get the relative set's values:
+   - Each distinct relative set is built once and shared, never rebuilt per call. GROUPBY has one
+     (all rows). PIVOTBY has one per row total, one per column total and one grand total
+     (`Rc<[ArrayNode]>` or one array node).
+   - The built-in PERCENTOF (eta name) gets a fast path: compute each relative set's denominator
+     once and divide, so its total work is O(N).
+   - A user LAMBDA with two parameters must receive the whole relative array on every call, so
+     its work is O(G x N) (G output cells, N relative rows). It is charged against the shared
+     cell-visit cap (`MAX_LIFTED_CELL_VISITS`, if_ifs.rs) before any call. A refusal is a
+     directive-5 DEVIATION, which the implementing task (T-1325 / T-1327) records in arrays.md
+     with a test.
 4. **Sorting by values** (sort_order 2.. / row_sort_order) sorts groups by their aggregate in
    that column, with the totals pinned.
 5. **Layout**: assemble `Vec<Vec<ArrayNode>>` with `ArrayNode::String("")` fillers and the
    labels "Total" / "Grand Total" (en-US; the engine is en-US only, CLAUDE.md).
-6. **Limits** (directive 5): work is O(rows × value columns × functions) plus the grouping sort.
-   The output is bounded by `check_array_size`. A LAMBDA is called once per output cell, which
-   counts against the existing evaluation budget the way BYROW's calls do. No new cap.
+6. **Limits** (directive 5):
+   - Grouping is O(N x K) for N rows and K key fields, plus the O(G log G x K) group sort.
+   - One-argument aggregation is O(N x value columns x functions) per axis of totals.
+   - Two-argument functions are bounded as in step 3: O(N) for built-in PERCENTOF; a
+     two-parameter LAMBDA is charged against the cell-visit cap.
+   - The output size (groups x columns, and PIVOTBY's row groups x column groups) is checked with
+     `check_array_size` before the output, or any per-cell function call, is allocated.
+   - The number of LAMBDA calls is bounded by that output size and nothing else; BYROW has no
+     separate call budget either.
+   - Each implementation task adds an adversarial test: about 1e6 distinct keys in GROUPBY, and a
+     PIVOTBY cross-product of two high-cardinality fields that must be refused or computed within
+     the size check, not allocated first.
 7. **Static analysis**: the result is `StaticResult::Unknown` (it spills), and the argument
    signatures are vectors except the integer options.
 

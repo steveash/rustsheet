@@ -19,6 +19,7 @@ SPEC-0006 function forms; anchors G!A1 (and every eta anchor), G!S97, G!AB97, G!
 
 ## Acceptance criteria
 - [ ] The eta-form anchors of probes/groupby-pivotby sheet G and probes/m7-argument-modes F33-H33 pass and leave the baseline.
+- [ ] Relative sets are built once and shared; built-in PERCENTOF is O(N); a two-parameter LAMBDA is charged against the cell-visit cap, with a DEVIATION entry and test (SPEC-0006 Design step 3).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

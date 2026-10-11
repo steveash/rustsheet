@@ -19,6 +19,7 @@ SPEC-0006 relative_to bullet; anchors P!Y25, P!A49, P!M49, P!Y49, P!A73. With se
 
 ## Acceptance criteria
 - [ ] Those anchors pass and leave the baseline; the two-level parent totals are probed and recorded in arrays.md.
+- [ ] Relative sets are built once and shared; built-in PERCENTOF is O(N); a two-parameter LAMBDA is charged against the cell-visit cap, with a DEVIATION entry and test (SPEC-0006 Design step 3).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

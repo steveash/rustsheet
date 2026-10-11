@@ -19,6 +19,7 @@ SPEC-0006 PIVOTBY section; anchors P!A1, P!M1, P!Y1, P!A25, P!M25, P!M73, P!Y73,
 
 ## Acceptance criteria
 - [ ] Those anchors pass (LAMBDA forms until T-1325) and leave the baseline; probes/m7-argument-modes F35-H35 pass once eta names exist.
+- [ ] A PIVOTBY cross-product of two high-cardinality fields is size-checked before allocation (SPEC-0006 Design step 6).
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
