@@ -62,6 +62,17 @@ T-0147) for the accepted forms; each rejected form was sent as a single-cell wor
 RustSheet today: all of these forms are rejected (`parse_array_item` takes one sign directly attached to a number token; T-0156).
 Status: VERIFIED
 
+## Formulas over 8,192 characters load
+Rule: Excel for the web refuses a whole workbook that holds a formula of more than 8,192 stored characters
+(the text without the leading `=`; createSession 501 `FileCorruptTryRepair`). RustSheet loads it and evaluates
+the formula, as long as it stays within `MAX_VALUE_OPERATORS` and `MAX_FORMULA_DEPTH`.
+Why we diverge: no Excel value can exist for such a cell. Also, a length refusal would not survive the
+importer's A1 to R1C1 storage, which parses each formula again in R1C1 mode, where the text is longer.
+Evidence: T-1091 and probe `operator-chain-limit` (T-1060), both excel-graph; see "Formula nesting depth cap" below.
+Unprobed: the limit for typed (API) formulas and for desktop Excel, and whether `_xlfn.` prefixes count toward it.
+Status: DEVIATION (decision 0047)
+Tasks: T-1091, T-1093
+
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
@@ -97,8 +108,8 @@ characters on file load. At
 most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
 chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
 chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
-cap, where Excel refuses the workbook (an engine extension; follow-up task to decide whether to
-refuse formulas over 8,192 stored characters on load).
+cap, where Excel refuses the workbook (decision 0047 keeps this; see "Formulas over 8,192
+characters load" above).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed

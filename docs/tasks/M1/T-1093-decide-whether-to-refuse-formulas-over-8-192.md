@@ -3,7 +3,7 @@ id: T-1093
 title: "Decide whether to refuse formulas over 8,192 characters on load (Excel refuses the workbook)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: opus
@@ -21,9 +21,20 @@ text length limit; it only caps value operators at `MAX_VALUE_OPERATORS` (4,096)
 docs/excel-semantics/syntax.md ("Formula nesting depth cap"); code: crates/rustsheet-engine/src/expressions/parser/depth.rs.
 
 ## Acceptance criteria
-- [ ] A recorded decision (implement the refusal, or accept the divergence with a DEVIATION entry).
-- [ ] If implemented: a unit test at 8,192 and 8,193 stored characters; `syntax.md` updated.
-- [ ] `make check` green; reviewers approve.
+- [x] A recorded decision (implement the refusal, or accept the divergence with a DEVIATION entry).
+- [x] (n/a, not implemented) If implemented: a unit test at 8,192 and 8,193 stored characters; `syntax.md` updated.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Typing a long formula through the API (not probed).
+
+## Outcome
+Decided not to refuse, in decision 0047. RustSheet keeps loading formulas over 8,192 stored characters,
+which Excel for the web refuses at the workbook level.
+- **Why not refuse.** No Excel value can exist for such a cell, so there is nothing to score against.
+  Directive 5 is already met by the operator and depth caps and by `ImportLimits`. A length refusal would
+  also not survive the importer's A1 to R1C1 storage: the stored text is parsed again in R1C1 mode, where
+  a long chain parses cleanly and the text is longer than the A1 form.
+- **Where it is recorded.** The rule is in docs/excel-semantics/syntax.md as "Formulas over 8,192
+  characters load", with `Status: DEVIATION (decision 0047)`.
+- **Code and eval.** No code change. Eval delta: none.
