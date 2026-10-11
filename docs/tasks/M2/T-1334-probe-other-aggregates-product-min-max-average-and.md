@@ -3,7 +3,7 @@ id: T-1334
 title: "Probe other aggregates (PRODUCT, MIN, MAX, AVERAGE) and SUM array/text args for direct-vs-reference error precedence; #BUSY! criterion in SUMIF/COUNTIFS/DCOUNT"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
