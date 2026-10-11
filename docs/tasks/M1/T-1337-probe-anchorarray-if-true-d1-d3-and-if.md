@@ -3,7 +3,7 @@ id: T-1337
 title: "Probe ANCHORARRAY(@IF(TRUE,D1:D3)) and @IF picking a union as a spill anchor"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
