@@ -8,14 +8,6 @@ pub(super) enum ElapsedUnit {
     Second,
 }
 
-/// Elapsed `[h]`/`[m]`/`[s]` count for a non-negative serial `value` (a negative one is formatted
-/// as its magnitude after a leading minus, see the `ParsePart::Date` arm). `[s]` rounds to nearest
-/// (1.7 s is "2", 0.9 s of a negative is "-1") and `[h]`/`[m]` truncate (1.7 min is "1", 0.3 h of
-/// a negative is "-0"), in both date systems (probes/elapsed-tiny-negatives-1900,
-/// elapsed-fractions-1900, T-1338, T-1346). Noise is absorbed first: `[s]` snaps the seconds at
-/// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
-/// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
-/// the probes, not documented. Excel has no 32-bit limit (T-1362) and no i64 one (T-1375).
 /// `x` rounded to `1/scale`; a magnitude whose scaled value overflows is already integral, and
 /// Excel does not turn it into 0 (probes/elapsed-huge-h-1900: 2.08E303 days in `[s]` is #VALUE!).
 fn snap(x: f64, scale: f64) -> f64 {
@@ -27,6 +19,14 @@ fn snap(x: f64, scale: f64) -> f64 {
     }
 }
 
+/// Elapsed `[h]`/`[m]`/`[s]` count for a non-negative serial `value` (a negative one is formatted
+/// as its magnitude after a leading minus, see the `ParsePart::Date` arm). `[s]` rounds to nearest
+/// (1.7 s is "2", 0.9 s of a negative is "-1") and `[h]`/`[m]` truncate (1.7 min is "1", 0.3 h of
+/// a negative is "-0"), in both date systems (probes/elapsed-tiny-negatives-1900,
+/// elapsed-fractions-1900, T-1338, T-1346). Noise is absorbed first: `[s]` snaps the seconds at
+/// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
+/// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
+/// the probes, not documented. Excel has no 32-bit limit (T-1362) and no i64 one (T-1375).
 pub(super) fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
     let secs = value * 86400.0;
     let n = match unit {
