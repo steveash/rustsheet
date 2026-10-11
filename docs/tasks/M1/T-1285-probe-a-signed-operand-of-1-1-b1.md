@@ -3,7 +3,7 @@ id: T-1285
 title: "Probe a signed operand of @: =@-1, =@+1, =@-B1:B3, =@-B1 B1:C1, =@-1%, =@-2^2 and their FORMULATEXT (follow-up of T-1247)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
