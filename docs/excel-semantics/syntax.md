@@ -140,7 +140,7 @@ formula grammar there (they only arise as results, arrays.md).
 fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
 "#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
 Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and `#N/A` is 7, and
-**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` (the general rule is in arrays.md), whichever error it is:
+**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` of direct arguments (SUM ranks a referenced cell's error below a direct argument's error, see "Stored `#BUSY!` behaviors"; the general rule is in arrays.md), whichever error it is:
 `#N/A=#GETTING_DATA` is 7 but `#GETTING_DATA=#N/A` is 8; `#GETTING_DATA+#DIV/0!` is 8 but
 `#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
 `#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
@@ -169,8 +169,11 @@ the stored error, A2 = 1): `VALUETOTEXT(A1)` and `VALUETOTEXT(A1,1)` are the tex
 only propagates the error, see arrays.md), while `ARRAYTOTEXT(A1:A2,1)` is "{#BUSY!;1}" (C4).
 For the operators the leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2 (C5, C6),
 likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7). SUM differs: `SUM(A1,1/0)` and `SUM(1/0,A1)` are both
-ERROR.TYPE 2 (C11, C12), so `#DIV/0!` wins whichever comes first. That conflicts with the SUM claim in "the leftmost error operand wins" above
-for `#GETTING_DATA`; either the computed `1/0` beats an error in a referenced cell or `#BUSY!` ranks below `#DIV/0!` in SUM, and one pair cannot tell (UNVERIFIED, T-1315). COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
+ERROR.TYPE 2 (C11, C12). Rule (probes/sum-error-precedence, excel-graph 2026-10-11, T-1315/T-1314): in SUM an error in a
+*direct* argument (literal `#DIV/0!` or computed `1/0`; `SUM(#N/A,A1)` and `SUM(A1,#N/A)` are both 7) beats an error in a
+referenced cell whichever comes first, for any referenced error kind (`#BUSY!`, `#N/A`, `#VALUE!`), and among referenced
+cells the leftmost wins (`SUM(A1,A2)` 0, `SUM(A2,A1)` 7, `SUM(A3,A4)` 3, `SUM(A4,A3)` 5; `SUM(A1:A2)` is the same as `SUM(A1,A2)`),
+so `#BUSY!` has no special rank. COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
 cells (C13-C15). `IFERROR(A1,"y")` is "y" (C16). `ERROR.TYPE(A1:A2)` spills 0 then `#N/A` (E1:E2).
 `UNIQUE` keeps a stored `#BUSY!` and a stored `#NULL!` as distinct rows and merges equal `#BUSY!`s
 (C18-C20: 2, 3, 3 rows).
@@ -179,8 +182,8 @@ rejections were run as throw-away one-cell cases (not committed; no value to rec
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
-Implemented in: expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315
+Implemented in: math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference errors held back), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every

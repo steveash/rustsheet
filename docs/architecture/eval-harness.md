@@ -65,6 +65,12 @@ Input conventions:
   cells must be literal text or whole numbers, and no value may be both kept and hidden), so Excel
   reads the hidden rows as filtered. The engine adapter loads both through `Txn::add_table` and
   `Txn::set_row_hidden`.
+- Optional top-level `"date_system": 1904` (default 1900) writes `<workbookPr date1904="1"/>`, and
+  optional per-sheet `"number_formats": {"B1": "[h]:mm"}` gives cells (blank ones included) a number
+  format (T-1268; an `entered` cell cannot have one, Excel picks its format). The engine adapter
+  creates the workbook with `WorkbookOptions::date_system` and applies formats with
+  `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
+  cannot report (it reads cached values), so they are for cases that formulas read through.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 
