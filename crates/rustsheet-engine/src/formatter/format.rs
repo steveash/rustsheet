@@ -100,6 +100,7 @@ enum ElapsedUnit {
 /// 1e-12 (1.5/86400 days is "2" although it is 1.4999999999999998 s, yet 0.49999999999 s stays
 /// "0"), `[h]`/`[m]` snap them to the millisecond ((3-1E-7) h is "3"). Those snaps are fitted to
 /// the probes, not documented.
+/// The count is held in i64: Excel has no 32-bit limit (probes/elapsed-positive-large-1900, T-1362).
 fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
     let secs = value * 86400.0;
     let n = match unit {
