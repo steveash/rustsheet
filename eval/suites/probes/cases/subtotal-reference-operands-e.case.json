@@ -37,7 +37,12 @@
         "V1": "=SUBTOTAL(9,XLOOKUP(1,A1:A4,LET(x,A1:A4,x)))",
         "W1": "=AREAS(XLOOKUP(1,A1:A4,LET(x,A1:A4,x)))",
         "X1": "=ISREF(XLOOKUP(1,A1:A4,LET(x,SEQUENCE(4),x)))",
-        "Y1": "=ISREF(XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))"
+        "Y1": "=ISREF(XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))",
+        "Z1": "=ISREF(XLOOKUP(1,A1:A4,LET(x,A1:A4,x)))",
+        "AA1": "=SUBTOTAL(9,XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))",
+        "AB1": "=AREAS(XLOOKUP(1,A1:A4,IF(TRUE,A1:A4)))",
+        "AC1": "=ISREF(DROP(IF(TRUE,SEQUENCE(4)),2))",
+        "AD1": "=ISREF(DROP(LET(x,SEQUENCE(4),x),2))"
       }
     }
   ]

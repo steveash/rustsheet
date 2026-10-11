@@ -2,6 +2,22 @@
  "format": "rustsheet-oracle/v1",
  "sheets": {
   "Sheet1": {
+   "AA1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "AB1": {
+    "t": "n",
+    "v": 1.0
+   },
+   "AC1": {
+    "t": "b",
+    "v": false
+   },
+   "AD1": {
+    "t": "b",
+    "v": false
+   },
    "C1": {
     "t": "e",
     "v": "#VALUE!"
@@ -125,14 +141,18 @@
    "Y1": {
     "t": "b",
     "v": true
+   },
+   "Z1": {
+    "t": "b",
+    "v": true
    }
   }
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "5eea82adcd3805f60460ba161823bd7174c007ef5606e8e002d7b8ebefe4e6f8",
+  "input_sha256": "0e3780dda382b21b8d6c1dc804e66565297ba74c1beefbff0ae35393636194a4",
   "kind": "excel-graph",
-  "produced_at": "2026-10-11T14:21:27+00:00",
+  "produced_at": "2026-10-11T14:38:37+00:00",
   "version": null
  }
 }
