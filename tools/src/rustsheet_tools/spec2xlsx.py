@@ -140,19 +140,44 @@ def _words(formula: str) -> Iterator[tuple[bool, str, int]]:
         i = m.end()
 
 
+_OPTIONAL_PARAM = re.compile(r"\s*(\[)\s*([A-Za-z_][\w.]*)\s*(\])\s*")
+
+
 def prefix_bound_names(formula: str) -> str:
-    """Writes LET variables and LAMBDA parameters as `_xlpm.x`, as Excel stores them (T-0166)."""
+    """Writes LET variables and LAMBDA parameters as `_xlpm.x`, as Excel stores them (T-0166).
+
+    An optional LAMBDA parameter `[y]` is declared as `_xlop.y`, brackets dropped, and used as
+    `_xlpm.y`: Excel for the web stores `=LAMBDA(x,[y],ISOMITTED(y))(1)` as
+    `_xlfn.LAMBDA(_xlpm.x,_xlop.y,_xlfn.ISOMITTED(_xlpm.y))(1)`, and refuses `[_xlpm.y]` as a
+    corrupt file (T-1274; docs/excel-semantics/xlsx-storage.md).
+    """
     out: list[str] = []
     scopes: list[tuple[int, set[str]]] = []  # (end index of the call, lower-cased names)
+    optional: set[int] = set()  # start of each optional parameter's name
+    dropped: set[int] = set()  # its brackets and the spaces around the name
     for is_name, word, i in _words(formula):
         end = i + len(word)
         scopes = [sc for sc in scopes if sc[0] > i]
         upper = word.upper()
+        if i in dropped:
+            continue
+        if is_name and i in optional:
+            out.append(f"_xlop.{word}")
+            continue
         if is_name and formula[end : end + 1] == "(" and upper in ("LET", "LAMBDA"):
             args, close = _call_args(formula, end)
             decl = args[0:-1:2] if upper == "LET" else args[:-1]
-            names = {a.strip().strip("[]").lower() for a in decl}
+            names = {a.strip().strip("[]").strip().lower() for a in decl}
             scopes.append((close, {n for n in names if _IDENT.fullmatch(n)}))
+            if upper == "LAMBDA":
+                start = end + 1
+                for arg in args[:-1]:
+                    m = _OPTIONAL_PARAM.fullmatch(arg)
+                    if m:
+                        optional.add(start + m.start(2))
+                        dropped.update(range(start + m.end(2), start + len(arg)))
+                        dropped.update(range(start, start + m.start(2)))
+                    start += len(arg) + 1
         elif is_name and formula[end : end + 1] != "!" and any(word.lower() in names for _, names in scopes):
             out.append(f"_xlpm.{word}")
             continue

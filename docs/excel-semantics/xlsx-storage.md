@@ -109,6 +109,19 @@ Implemented in: not yet. The engine parser resolves a bare newer name read from 
 exporter never writes `_xleta.` (T-1089).
 Tasks: T-0040, T-1089
 
+## LAMBDA optional parameters are stored `_xlop.`
+Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of
+it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is saved as
+`_xlfn.LAMBDA(_xlpm.x,_xlop.y,_xlfn.ISOMITTED(_xlpm.y))(1)` (as an array formula, `t="array"`).
+A file that stores `[_xlpm.y]` instead is refused by Excel for the web as corrupt
+(`FileCorruptTryRepair`, T-1083). FORMULATEXT shows the typed form `=LAMBDA(x,[y],ISOMITTED(y))(1)`.
+Evidence: formulas entered through the Graph range API and the file Excel for the web saved
+(excel-graph, 2026-10-11, T-1274); probes/lambda-optional-params B1 (FORMULATEXT).
+Status: VERIFIED (web)
+Implemented in: engine import (expressions/parser/lambda.rs) and export (stringify.rs) already use
+`_xlop.`; the case builder writes it since T-1274 (spec2xlsx.py `prefix_bound_names`).
+Tasks: T-1083, T-1274
+
 ## Cells and rows without r are positional
 Rule: `r` is optional on `<row>` and `<c>`. A row without `r` is the row after the previous one (row
 1 if first); a cell without `r` is the column after the previous cell in its row (column A if first).
