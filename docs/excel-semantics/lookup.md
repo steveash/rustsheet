@@ -101,6 +101,8 @@ value goes on to index validation:
   (`"a"`, `""`) is `#VALUE!` and an error (`1/0`, `NA()`) is that error even when nothing is found.
   Arguments fail left to right: lookup_value, then the index, then range_lookup (`VLOOKUP(2,A1:C3,"a",1/0)`
   is `#VALUE!`).
+  A value index's error also beats a not-found lookup and a range_lookup error: `VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))`
+  (FALSE not in the table, range_lookup `#REF!`) is `#NUM!` (gen-m6/5cc04d6f42b23b51 Calc!A27, excel-graph, 2026-10-09, T-1239).
 Evidence: probes/lookup-index-order H1–H50 (excel-graph, 2026-10-06, T-0211); gen-m2/1b6ceed7489e0800 A24,
 2cfe279fe77a000d A85, 61cacc22c4244179 A310, caa981b0753f455c A182, 629e6e8b76fab8b9 A53,
 cbdabe32a32a4012 A87 (Calc sheet; excel-graph, 2026-10-04, gen-m2 sidecars, T-0203).
@@ -337,6 +339,24 @@ for a range of indexes and `#N/IMPL!` for an array; HYPERLINK and INDIRECT over 
 FORMULATEXT over a range is `#N/IMPL!`; INDEX of a single value is `#VALUE!`. 34 of 117 cells pass.
 Status: VERIFIED (web)
 Tasks: T-1238 (generator modes), T-1241 (lifts and index lists), T-1242 (INDEX of a single value)
+
+## A reference-valued lookup_value is looked up by its cell's value
+Rule: when lookup_value is a reference returned by a function (`CHOOSE(1,Data!D7)`), the lookup uses the referenced
+cell's value: `HLOOKUP(CHOOSE(1,Data!D7),Data!A8:A10,AVERAGE(..),..)` finds it and fails on the row index with
+`#VALUE!`. Other shapes (OFFSET, INDIRECT, `A8:A8`) and the other lookup functions are unprobed.
+Evidence: gen-m6/963a217976538d5d Calc!A32 (excel-graph, 2026-10-09, T-1239).
+Ours: never matched, so `#N/A` (also in VLOOKUP, MATCH, XMATCH, XLOOKUP and LOOKUP).
+Status: VERIFIED for the CHOOSE shape in HLOOKUP; UNVERIFIED otherwise
+Tasks: T-1256
+
+## INDEX with an array row_num into a 2-D range
+Rule: `INDEX(Data!C2:D9,CHOOSEROWS(Data!D7:E11,4))` (a 1x2 array as row_num, no column_num) is `#REF!` in Excel
+(concatenated with text, still `#REF!`). Whether INDEX lifts over the array and each element is the one-index-into-2-D
+`#REF!` above, or the array itself is refused, is unprobed.
+Evidence: gen-m6/2c1a6e93a1974f48 Calc!A25 (excel-graph, 2026-10-09, T-1239).
+Ours: `#N/IMPL!`.
+Status: UNVERIFIED (one cell)
+Tasks: T-1260
 
 ## XLOOKUP with an array lookup_value looks up each element
 `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
