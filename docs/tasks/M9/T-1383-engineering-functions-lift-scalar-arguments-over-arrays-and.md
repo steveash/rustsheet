@@ -28,6 +28,9 @@ Evidence: probes/eng-argument-modes (excel-graph, 2026-10-11, T-1085), docs/exce
 Reuse the lifting helper that the financial (T-1372) and statistical (T-1290) lifting work uses, if one
 exists by then (`rg -n "lift" crates/rustsheet-engine/src/functions`). Do not add a per-function copy.
 
+Only the first argument was probed over a range. Probe the later arguments (BIT* `shift_amount` and
+`number2`, `places`, Bessel `n`) before range lifting is extended to them.
+
 ## Acceptance criteria
 - [ ] probes/eng-argument-modes columns B:E leave eval/baseline/probes.txt, except the IMSUM and IMPRODUCT
       cells (T-1384), with no new F lines.
