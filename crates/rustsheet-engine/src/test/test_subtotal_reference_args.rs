@@ -105,3 +105,22 @@ fn arrays_from_reference_operands_spill_value_errors() {
     }
     assert_eq!(model._get_text("I9"), "#N/A");
 }
+
+#[test]
+fn take_of_let_chain_and_malformed_let_is_linear_and_total() {
+    let mut model = new_empty_model();
+    // A flat chain of 60 variables, each an IF over the previous one twice: exponential if the
+    // answer for a variable were recomputed at each use (T-1365).
+    let mut formula = String::from("=SUBTOTAL(9,TAKE(LET(v0,A1:A4");
+    for i in 1..60 {
+        formula.push_str(&format!(",v{i},IF(TRUE,v{},v{})", i - 1, i - 1));
+    }
+    formula.push_str(",v59),2))");
+    model._set("B1", &formula);
+    model._set("B2", "=SUBTOTAL(9,TAKE(LET(),1))");
+    model._set("B3", "=SUBTOTAL(9,TAKE(LET(x,A1:A4),1))");
+    model.evaluate();
+    // Only termination without a panic is asserted for the chain; the cells are errors here.
+    assert_eq!(model._get_text("B2"), model._get_text("B3"));
+    assert!(model._get_text("B1").starts_with('#') || model._get_text("B1") == "0");
+}
