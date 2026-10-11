@@ -86,7 +86,8 @@ URL-shaped source reaches the fetch (which strings count as a URL: the T-1189 bu
 error wins over an `alt_text` error; other orders are not probed). The raw IMAGE cells (A10, B10, A13, A14, A16, A19) and the `ROWS`/`COLUMNS` of `IMAGE("")` and `IMAGE(TRUE)` came back with an undecodable rich error type and stay pending; the wrapped `ERROR.TYPE` cells carry the evidence. The VERIFIED rules above cover argument kinds; the DEVIATION status below covers only the missing fetch.
 The engine lifts over array and range `source`/`stock`/`value`/`field_name` and gives `#VALUE!` for non-URL IMAGE sources (the URL rule is in the T-1189 bullets below); `ERROR.TYPE` lifts over arrays too (probes/rich-errors-arg-kinds F10:G10, F13:G14, F40:G41; over a direct multi-cell range it follows the IS* lifting evidence). Shapes, error elements and URLs (probes/rich-errors-shapes-urls, excel-graph, 2026-10-11, T-1189):
 - FIELDVALUE with two array arguments of different shapes broadcasts to the larger shape, all `#FIELD!` (no `#N/A`
-  padding): `{1,2}` with `{"a","b","c"}` is 1x3, `{1;2}` with `{"a","b","c"}` 2x3, `{1,2,3}` with `{"a";"b"}` 2x3 (A2:C7).
+  padding): `{1,2}` with `{"a","b","c"}` is 1x3, `{1;2}` with `{"a","b","c"}` 2x3, `{1,2,3}` with `{"a";"b"}` 2x3 (A2:C7). A `field_name`
+  shorter than the result along an axis wider than 1 (`FIELDVALUE({1,2,3},{"a","b"})`) is UNVERIFIED; the engine gives `#FIELD!` there.
 - An error element of an array `field_name` stays itself: `FIELDVALUE(5,{"a",#DIV/0!,#N/A})` is `#FIELD!`, `#DIV/0!`,
   `#N/A`. An error element of an array `value` is `#FIELD!` like a scalar error `value` (A9:C10).
 - A later argument's error lifts over an array first argument: `IMAGE({url,url},1/0)` and `STOCKHISTORY({"A","B"},1/0)`
@@ -97,8 +98,9 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
 - An IMAGE source is a URL (`#BLOCKED!`) when, after leading spaces, it starts with `http:` or `https:` in any case and has
   something after the scheme other than slashes: `HTTPS://EXAMPLE.INVALID/A.PNG`, `https:example.invalid/a.png`,
   ` https://example.invalid/a.png` and `https://example.invalid` are `#BLOCKED!`; `https://`, `ftp://...`, `www....`,
-  `data:image/png;base64,...`, `file:///c:/a.png` and `example.invalid/a.png` are `#VALUE!` (A25:A35). Other leading
-  whitespace than a space is not probed.
+  `data:image/png;base64,...`, `file:///c:/a.png` and `example.invalid/a.png` are `#VALUE!` (A25:A35). UNVERIFIED (the
+  engine's inference between `https://` and `https://example.invalid`): bare `http:`/`https:`, `https:/`, `https:///x`,
+  trailing whitespace, and leading whitespace other than a space (T-1345).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16); the engine does not validate
   `sizing`, `height` or `width` yet (T-1345).
 The engine matches all of these except A16 since T-1189.

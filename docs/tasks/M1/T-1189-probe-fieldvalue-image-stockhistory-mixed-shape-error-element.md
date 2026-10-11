@@ -31,5 +31,5 @@ offline_errors.rs:
 - an error element of an array `field_name` stays itself;
 - a later argument's error lifts over an array source/stock;
 - the IMAGE URL rule is any-case `http:`/`https:` after leading spaces with something after the scheme.
-50 of 51 cells pass. A16:B16 (IMAGE `sizing` 9 is `#VALUE!`) concern argument validation outside this
+49 of 51 cells pass. A16:B16 (IMAGE `sizing` 9 is `#VALUE!`) concern argument validation outside this
 task's four behaviors and stay in the baseline for T-1345. Recorded in information.md.
