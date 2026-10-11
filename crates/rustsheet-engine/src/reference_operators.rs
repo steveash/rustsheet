@@ -354,12 +354,17 @@ impl Model {
     /// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
     /// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
     /// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).
+    /// A prefix with a `[` (which a sheet name cannot hold) names another workbook, which is never
+    /// opened (directive 5): `#BLOCKED!`, as Excel gives one it holds no cached data for
+    /// (docs/excel-semantics/references.md "External reference with no cached data"; T-0124).
     pub(crate) fn wrong_sheet_error(
         sheet_name: Option<&str>,
         cell: CellReferenceIndex,
         message: &str,
     ) -> CalcResult {
-        let error = if sheet_name.is_some_and(|name| name.contains(':')) {
+        let error = if sheet_name.is_some_and(|name| name.contains('[')) {
+            Error::BLOCKED
+        } else if sheet_name.is_some_and(|name| name.contains(':')) {
             Error::NAME
         } else {
             Error::REF

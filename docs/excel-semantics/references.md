@@ -111,8 +111,20 @@ IMAGE).
 Evidence: poi/link-external-workbook-b.xlsx Sheet0!A1 (excel-graph, refilled 2026-10-05, T-0030).
 The workbook was written by Apache POI, so there is no desktop evidence (decision 0030: web-only
 values are goldens).
-Status: VERIFIED (Excel for the web; error name inferred from errorType 10)
-Tasks: T-0124
+The same holds with no externalLink part in the workbook at all, and the result is still a
+reference of the written shape whose cells read `#BLOCKED!`: `='[other.xlsx]Sheet1'!A1` and
+`=SUM(…!A1:B1)` are `#BLOCKED!`, ERROR.TYPE of either is 11, `ISREF(…!A1)` is TRUE, ISERROR TRUE,
+IFERROR takes the fallback, `COUNT(…!A1:B1)` is 0 and `ROWS(…!A1:B3)` is 3. The unquoted prefix
+`=SUM([other.xlsx]Sheet1!A1:B1)` parses and is `#BLOCKED!` too.
+Evidence: probes/external-ref-no-link Calc!A1:A10 (excel-graph, 2026-10-11, T-0124).
+With a cache (`[1]Sheet!ref` and an externalBook `sheetDataSet`), Excel reads the cached value:
+`=[1]Uses!$A$1` → "Hello!", `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx Refs!E3, I3, Excel-cached).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`.
+ISREF/ROWS on it, the unquoted prefix (T-1381) and cached `[n]` values (T-1382) are not yet
+implemented. Unprobed: a 3-D prefix naming another workbook (`'[b.xlsx]S1:S2'!A1`; the engine gives
+`#BLOCKED!`, UNVERIFIED), and a `[n]` index with no externalLink part.
+Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
+Tasks: T-0124, T-1381, T-1382
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
