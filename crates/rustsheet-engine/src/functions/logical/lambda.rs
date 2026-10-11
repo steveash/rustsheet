@@ -115,7 +115,7 @@ impl Model {
 
         for param in &parameters {
             let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32, false);
+            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
             bound_ids.push(raw_id);
         }
 
@@ -170,7 +170,7 @@ impl Model {
 
         for param in &parameters {
             let raw_id = self.get_next_variable_id();
-            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32, false);
+            assign_variable_ids(&mut patched_body, &param.name, raw_id as u32);
             bound_ids.push(raw_id);
         }
 

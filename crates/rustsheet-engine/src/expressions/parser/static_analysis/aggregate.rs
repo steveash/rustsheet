@@ -97,7 +97,7 @@ fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
             .enumerate()
             // After the value, results sit at the odd positions of the (case, result) pairs; a
             // trailing unpaired argument is the default.
-            .filter(|(index, _)| index % 2 == 1 || *index == args.len() - 2)
+            .filter(|(index, _)| index % 2 == 1 || *index == args.len().saturating_sub(2))
             .all(|(_, arm)| yields_cells(arm, bound)),
         Node::FunctionKind {
             kind: Function::Ifs,

@@ -1,0 +1,31 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1378: case of LET names and LAMBDA parameters - a LAMBDA parameter of another case under a LET, LAMBDA body lookup of another case, nested LET rebinding in another case, duplicate LET/LAMBDA names differing only in case, non-ASCII names.",
+  "tags": [
+    "M1",
+    "let",
+    "lambda",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(x,1,LAMBDA(X,x*10)(2))",
+        "A2": "=LAMBDA(x,X+1)(2)",
+        "A3": "=LET(x,1,LET(X,5,x))",
+        "A6": "=LET(X,1,LAMBDA(x,X*10)(2))",
+        "A7": "=LET(x,1,LET(X,5,X))",
+        "A8": "=LET(x,1,LAMBDA(y,x+y)(2))",
+        "A9": "=LET(Ab,3,aB*2)",
+        "A10": "=LAMBDA(Ab,aB*2)(4)",
+        "A11": "=LET(f,LAMBDA(x,x+1),F(2))",
+        "A12": "=LET(x,1,y,X+1,y)",
+        "A14": "=LET(x,1,LAMBDA(X,X*10)(2))",
+        "A15": "=LET(x,1,LAMBDA(X,x)(2))",
+        "C1": "=MAP({1,2},LAMBDA(v,V*2))"
+      }
+    }
+  ],
+  "expected": {}
+}
