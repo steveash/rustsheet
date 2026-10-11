@@ -175,6 +175,7 @@ C	probes/ifs-long-criterion-precedence.case.json	7
 C	probes/ifs-shape-mismatch.case.json	11
 C	probes/ifs-switch-array-values.case.json	41
 C	probes/ifs-switch-lift-edges.case.json	26
+C	probes/index-array-indices.case.json	60
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
 C	probes/info-logic-argument-modes-2.case.json	11
