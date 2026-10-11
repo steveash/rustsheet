@@ -692,6 +692,25 @@ pub(super) fn read_sheet_data<R: BufRead>(
     })
 }
 
+/// Most characters a stored formula (the `<f>` text, without the leading `=`) may hold. Excel for
+/// the web refuses a workbook with a longer one (createSession 501 `FileCorruptTryRepair`): 8,192
+/// stored characters load and 8,193 do not (docs/excel-semantics/syntax.md "Formulas over 8,192
+/// characters refuse the workbook"; T-1060, T-1091, T-1093).
+pub(super) const MAX_FORMULA_CHARS: usize = 8_192;
+
+/// Refuses the workbook, as Excel does, when the formula stored at `context` is longer than
+/// [`MAX_FORMULA_CHARS`]. Characters are Unicode scalar values; whether Excel counts UTF-16 code
+/// units is not probed, and counting scalars is never stricter.
+fn check_formula_length(formula: &str, context: &str) -> Result<(), XlsxError> {
+    // Counting characters is only needed once the byte length could exceed the limit.
+    if formula.len() > MAX_FORMULA_CHARS && formula.chars().count() > MAX_FORMULA_CHARS {
+        return Err(XlsxError::Workbook(format!(
+            "Formula in {context} is longer than {MAX_FORMULA_CHARS} characters"
+        )));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -775,23 +794,4 @@ mod tests {
             read_positions(r#"<row r="1048576"><c><v>1</v></c></row><row><c><v>2</v></c></row>"#);
         assert!(positions.is_err());
     }
-}
-
-/// Most characters a stored formula (the `<f>` text, without the leading `=`) may hold. Excel for
-/// the web refuses a workbook with a longer one (createSession 501 `FileCorruptTryRepair`): 8,192
-/// stored characters load and 8,193 do not (docs/excel-semantics/syntax.md "Formulas over 8,192
-/// characters refuse the workbook"; T-1060, T-1091, T-1093).
-pub(super) const MAX_FORMULA_CHARS: usize = 8_192;
-
-/// Refuses the workbook, as Excel does, when the formula stored at `context` is longer than
-/// [`MAX_FORMULA_CHARS`]. Characters are Unicode scalar values; whether Excel counts UTF-16 code
-/// units is not probed, and counting scalars is never stricter.
-fn check_formula_length(formula: &str, context: &str) -> Result<(), XlsxError> {
-    // Counting characters is only needed once the byte length could exceed the limit.
-    if formula.len() > MAX_FORMULA_CHARS && formula.chars().count() > MAX_FORMULA_CHARS {
-        return Err(XlsxError::Workbook(format!(
-            "Formula in {context} is longer than {MAX_FORMULA_CHARS} characters"
-        )));
-    }
-    Ok(())
 }
