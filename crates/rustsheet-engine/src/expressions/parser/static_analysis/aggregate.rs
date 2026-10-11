@@ -56,9 +56,52 @@ fn is_read_reference(arg: &Node) -> bool {
             if *kind == Function::Xlookup {
                 !matches!(args.get(2), Some(Node::ArrayKind(_)))
             } else {
-                args.first().is_some_and(is_reference_operand)
+                args.first()
+                    .is_some_and(|first| yields_cells(first, &mut Vec::new()))
             }
         }
         _ => false,
+    }
+}
+
+/// Whether `node`, the first argument of TAKE, DROP or TRIMRANGE, evaluates to cells rather than
+/// a computed array. IF and LET pass on what their branch or body is, so `TAKE(IF(TRUE,A1:A4),2)`
+/// and `TAKE(LET(x,A1:A4,x),2)` pick cells while `TAKE(IF(TRUE,SEQUENCE(4)),2)` and
+/// `TAKE(LET(x,SEQUENCE(4),x),2)` pick values and spill like any array
+/// (probes/subtotal-reference-operands-e I2:J2, O2:P2, R2:U2, T-1365). `bound` holds the LET
+/// variables in scope; a name not in it (a LAMBDA parameter) counts as cells, as before.
+fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, &'a Node)>) -> bool {
+    match node {
+        Node::FunctionKind {
+            kind: Function::If,
+            args,
+        } => args
+            .iter()
+            .skip(1)
+            .all(|branch| yields_cells(branch, bound)),
+        Node::FunctionKind {
+            kind: Function::Let,
+            args,
+        } => {
+            let scope = bound.len();
+            for pair in args.chunks_exact(2).take((args.len() - 1) / 2) {
+                if let Node::NamedVariableKind { name, .. } = &pair[0] {
+                    bound.push((name, &pair[1]));
+                }
+            }
+            let result = args.last().is_some_and(|body| yields_cells(body, bound));
+            bound.truncate(scope);
+            result
+        }
+        Node::NamedVariableKind { name, .. } => bound
+            .iter()
+            .rposition(|(bound_name, _)| bound_name == name)
+            .is_none_or(|index| {
+                let (_, value) = bound[index];
+                // A variable sees only the variables bound before it.
+                let mut earlier = bound[..index].to_vec();
+                yields_cells(value, &mut earlier)
+            }),
+        _ => is_reference_operand(node),
     }
 }
