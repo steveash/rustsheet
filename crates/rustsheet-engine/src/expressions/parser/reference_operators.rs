@@ -17,8 +17,9 @@ use super::stringify::argument_separator;
 
 impl Parser {
     /// Parses a cell formula like [`Parser::parse`], but a formula written wholly in parentheses
-    /// (`=(A1-1)`, `=((A1-1))`) gets one root [`Node::Group`] holding its written levels, so it prints back with
-    /// them and evaluation can tell it from `=A1-1` (Excel skips near-zero snapping for it,
+    /// (`=(A1-1)`, `=((A1-1))`) gets one root [`Node::Group`] holding its written levels, so it
+    /// prints back with them and evaluation can tell it from `=A1-1` (Excel skips near-zero
+    /// snapping for it,
     /// probes-numeric/30bc5f8fab02d0a2 `parenthesized-sub`; docs/excel-semantics/numbers.md).
     /// A union keeps its own written parentheses (`OpUnionKind::written`), so it is not wrapped.
     pub fn parse_cell_formula(&mut self, formula: &str, context: &CellReferenceRC) -> Node {

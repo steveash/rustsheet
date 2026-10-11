@@ -3,7 +3,7 @@ id: T-1341
 title: "Fold GroupedRootKind into a root Group node (SPEC-0007 step 2)"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
