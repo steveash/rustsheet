@@ -31,6 +31,7 @@ C	probes/at-operand-formulatext.case.json	14
 C	probes/at-operand-nested-groups.case.json	36
 C	probes/at-paren-operands-levels.case.json	20
 C	probes/at-paren-operands.case.json	6
+C	probes/at-power-text.case.json	24
 C	probes/at-signed-operand.case.json	24
 C	probes/average-value-args.case.json	32
 C	probes/base-min-length.case.json	14
@@ -335,6 +336,7 @@ C	probes/subnormal-text-and-tail-companions.case.json	30
 C	probes/subtotal-hidden-filtered.case.json	150
 C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17
+C	probes/subtotal-reference-operands-d.case.json	42
 C	probes/subtotal-reference-operands.case.json	40
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
@@ -435,10 +437,11 @@ F	probes/at-operand-nested-groups.case.json	Sheet1!F33
 F	probes/at-operand-nested-groups.case.json	Sheet1!F34
 F	probes/at-operand-nested-groups.case.json	Sheet1!F35
 F	probes/at-operand-nested-groups.case.json	Sheet1!F37
+F	probes/at-power-text.case.json	Sheet1!I26
+F	probes/at-power-text.case.json	Sheet1!I46
 F	probes/at-signed-operand.case.json	Sheet1!H71
 F	probes/at-signed-operand.case.json	Sheet1!H72
 F	probes/at-signed-operand.case.json	Sheet1!H73
-F	probes/at-signed-operand.case.json	Sheet1!I61
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
@@ -1280,6 +1283,7 @@ F	probes/stat-argument-modes.case.json	Sheet1!H97
 F	probes/stat-argument-modes.case.json	Sheet1!H98
 F	probes/stat-argument-modes.case.json	Sheet1!H99
 F	probes/subnormal-function-boundaries.case.json	Sheet1!A5
+F	probes/subtotal-reference-operands-d.case.json	Sheet1!H28
 F	probes/text-modes-bahttext.case.json	Sheet1!C1
 F	probes/text-modes-bahttext.case.json	Sheet1!C2
 F	probes/text-negative-serial-elapsed-mixed.case.json	Sheet1!A1

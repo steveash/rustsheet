@@ -716,12 +716,21 @@ Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parse
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
 `subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
 `Model::evaluate_picked_reference_arg` (SUBTOTAL, AREAS, SUM, COUNT and `for_each_value`). `for_each_value` is shared,
-so MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, VAR*/STDEV*, AVEDEV, DEVSQ and SUMSQ also read these results as references:
-implemented by the same rule, UNVERIFIED. MIN, MAX, COUNTA and AVERAGEA still evaluate those calls to values,
-UNVERIFIED. A computed array source (`TAKE(SEQUENCE(4),1)`) is sized as a scalar for SUBTOTAL/AREAS spill:
-UNVERIFIED. Typed entry is a desktop
+so MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, VAR*/STDEV*, AVEDEV, DEVSQ and SUMSQ also read these results as references.
+VERIFIED by T-1211 (probes/subtotal-reference-operands-d, excel-graph, 2026-10-09): with B1 = "x", B2 = TRUE, B3 blank
+and the numbers 5, 7 next to the picked cell, `XLOOKUP` of the text, boolean and blank cell all leave MEDIAN (6),
+STDEV.S, SUMSQ (74) and GEOMEAN (with 2, 8: 4) as if the cell were absent, and MIN (5) and MAX (7) ignore it too;
+COUNT is 2 and COUNTA 3, 3, 2 (the blank is not counted). AVERAGEA counts the cell as a reference does: text is 0
+(`AVERAGEA(XLOOKUP(1,..),5,7)` = 4), TRUE is 1 (13/3), a blank is skipped (6). MIN, MAX and AVERAGEA now read the call
+through `evaluate_picked_reference_arg`. A computed array source is an array, not a reference:
+`SUBTOTAL(9,TAKE(SEQUENCE(4),1))` and `AREAS(TAKE(SEQUENCE(4),1))`, and the DROP forms, are `#VALUE!`, and
+`SUBTOTAL(9,TAKE(SEQUENCE(4),2))` spills two `#VALUE!` (J4:J5); `SUBTOTAL(9,TAKE(A1:A4,1))` is 1. Sized by
+`is_read_reference` (static_analysis/aggregate.rs). Unrelated finding: `GEOMEAN(5,7)` is 5.916079783099616 in Excel (H28)
+and the engine gives ...615 (1 ulp, `NumericUlp`, a known failure for T-1284; the other GEOMEAN cells use 2, 8 to stay out
+of it). MIN, MAX and AVERAGEA over a TAKE/DROP result of one or two cells behave like the XLOOKUP cells (L1:L7).
+Typed entry is a desktop
 question (M14).
-Tasks: T-1063, T-1163, T-1174, T-1175, T-1206 (decision 0045)
+Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
@@ -964,10 +973,16 @@ Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
 Tasks: T-1210, T-1234
 
 ## Signed and function operands of @
-Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a signed operand and the sign binds inside it. `=@-1` = -1; `=@+1` = 1 and prints `=@1` (unary plus dropped); `=@-B1:B3` = top-left of the negated range, -5 (formula on row 31, off the range rows, and not #VALUE!); `=@-B1 B1:C1` = -5; `=@-B1` = -5; `=@-B1:B3*2` = -10; `=@-1%` = -0.01; `=@-2^2` = 4, `(-2)^2`, and FORMULATEXT prints it as written `=@-2^2` (the engine prints `=(@-2)^2`: T-1320). `=ANCHORARRAY(@IF(TRUE,D1))` spills D1's array (engine #VALUE!: T-1321). `=@OFFSET(B1,0,0,3,1)` and `=@INDIRECT("B1:B3")` placed off-row are #VALUE! and print as written.
+Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a signed operand and the sign binds inside it. `=@-1` = -1; `=@+1` = 1 and prints `=@1` (unary plus dropped); `=@-B1:B3` = top-left of the negated range, -5 (formula on row 31, off the range rows, and not #VALUE!); `=@-B1 B1:C1` = -5; `=@-B1` = -5; `=@-B1:B3*2` = -10; `=@-1%` = -0.01; `=@-2^2` = 4, `(-2)^2`, and FORMULATEXT prints it as written `=@-2^2` (fixed in T-1320). `=ANCHORARRAY(@IF(TRUE,D1))` spills D1's array (engine #VALUE!: T-1321). `=@OFFSET(B1,0,0,3,1)` and `=@INDIRECT("B1:B3")` placed off-row are #VALUE! and print as written.
 Status: VERIFIED (excel-graph)
-Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` and `ANCHORARRAY(@IF(...))` not yet (T-1320, T-1321)
+Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` fixed (T-1320); `ANCHORARRAY(@IF(...))` not yet (T-1321)
 Tasks: T-1285, T-1320, T-1321
+
+## FORMULATEXT of @ next to ^
+Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never parenthesised as an operand of `^`; written parentheses are kept. `=@A1^2`, `=2^@A1`, `=@-A1^2`, `=@2^2`, `=@(A1)^2`, `=@A1:A2^2` (#VALUE!), `=@-2^2+1`, `=2^@-2` (0.25), `=@SUM(A1)^2` and `=@-2%^2` (0.0004) print as written; `=@A1^2^3` (729, left-associative) prints bare; `=(@-2)^2` keeps its parentheses.
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) except `=@A1^2^3` (T-1331) and the written group of `=(@-2)^2` (T-1244).
+Status: VERIFIED (excel-graph)
+Tasks: T-1320, T-1331
 
 ## Implicit intersection of a one-row range by a cell in that row
 Rule: `@` (or a scalar context) over a one-row range intersects by column whenever the formula cell's column lies
