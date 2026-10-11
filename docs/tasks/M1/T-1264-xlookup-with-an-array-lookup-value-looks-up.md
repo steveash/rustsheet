@@ -3,7 +3,7 @@ id: T-1264
 title: "XLOOKUP with an array lookup_value looks up each element"
 milestone: M1
 lane: functions-logic
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
