@@ -3,7 +3,7 @@ id: T-0298
 title: "Probe SUBTOTAL 7/8/10/11 and 107-111 one-pass vs two-pass variance and overflow"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
