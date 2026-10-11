@@ -1,5 +1,5 @@
 ---
-id: T-1378
+id: T-1380
 title: "Probe FORMULATEXT of written groups around a % operand and a LAMBDA callee: =(A1)%, =(LAMBDA(x,x))(1)"
 milestone: M1
 lane: research
