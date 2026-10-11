@@ -1016,6 +1016,14 @@ back (`=ISREF((A1))`, `=ROWS(((A1:A3)))`, `=SUM(((A1,B1)))`, `=LET(x,(A1:A3),ROW
 unsupported, `FileCorruptTryRepair`), so a group directly before `#` stays unevidenced.
 Ours: the values and the root snap match; FORMULATEXT drops the redundant groups (H10, H11, H14) and plain
 `ANCHORARRAY(IF(TRUE,D1))` now spills like the grouped form (T-1363: an IF that picks one cell is the reference).
-Evidence strength: `ISREF((A1))` and the union in `SUM(((A1,B1)))` show a reference survives a group; `ROWS` and `LET(..., ROWS(x))` return 3 for a range and for an array alike, so they do not (reference-only checks such as `ISREF((A1:A3))` and `OFFSET((A1:A3),1,0)` are unprobed, T-1364). The ANCHORARRAY pair compares the form with and without `@(...)`; `ANCHORARRAY(@IF(TRUE,D1))` is unprobed.
-Status: VERIFIED (web), except the `)#` shape and the range/LET reference checks.
+Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-only, T-1364): `ISREF((A1:A3))`,
+`ISREF(LET(x,(A1:A3),x))` are TRUE like the plain forms; `OFFSET((A1:A3),1,0)` spills 2, 3, 0 like `OFFSET(A1:A3,1,0)`;
+`CELL("address",(A1))` is `$A$1` like `CELL("address",A1)`; `ANCHORARRAY(@IF(TRUE,D1))` and
+`ANCHORARRAY((INDEX(D1:D3,1)))` both spill 1, 2, 3 like `ANCHORARRAY(INDEX(D1:D3,1))`. Built as
+`ANCHORARRAY((INDEX(D1:D3,1)))`, Graph accepts the `)#` shape and FORMULATEXT prints `=(INDEX(D1:D3,1))#`
+(`ANCHORARRAY(@IF(TRUE,D1))` prints `=@IF(TRUE,D1)#`). So a written group is transparent for references in every probed cell; no
+non-transparent cell exists for SPEC-0007 (T-1340).
+Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups in the reference-only cells too (T-1340).
+Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
+Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
