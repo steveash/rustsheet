@@ -3,7 +3,7 @@ id: T-1268
 title: "Case format: workbook date_system and per-cell number formats; probe 1904 negatives (SPEC-0005 step 2)"
 milestone: M1
 lane: harness
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
