@@ -66,6 +66,21 @@ fn excel_weekday_index(serial: i64) -> usize {
     (serial - 1).rem_euclid(7) as usize
 }
 
+/// Elapsed `[h]`/`[m]`/`[s]` count for `units` (the value scaled to the token's unit): the floor,
+/// except that a negative amount of magnitude below one unit keeps its minus ("-0";
+/// probes/date-system-1900-negatives A18).
+fn elapsed_text(units: f64, padded: bool) -> String {
+    if units < 0.0 && units > -1.0 {
+        return if padded { "-00" } else { "-0" }.to_owned();
+    }
+    let n = units.floor() as i32;
+    if padded {
+        format!("{n:02}")
+    } else {
+        n.to_string()
+    }
+}
+
 fn invalid_date(value: f64) -> Formatted {
     Formatted {
         text: "#VALUE!".to_owned(),
@@ -425,28 +440,28 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = (value * 24.0).floor() as i32;
+                        let hour = elapsed_text(value * 24.0, false);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = (value * 24.0).floor() as i32;
-                        text = format!("{text}{hour:02}");
+                        let hour = elapsed_text(value * 24.0, true);
+                        text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        let minute = elapsed_text(value * 24.0 * 60.0, false);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
-                        text = format!("{text}{minute:02}");
+                        let minute = elapsed_text(value * 24.0 * 60.0, true);
+                        text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, false);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
-                        text = format!("{text}{second:02}");
+                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, true);
+                        text = format!("{text}{second}");
                     }
                 }
             }
