@@ -3,7 +3,7 @@ id: T-1260
 title: "INDEX lifts over an array row_num or column_num in a dynamic-array formula (#N/IMPL! today)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
