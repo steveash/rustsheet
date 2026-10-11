@@ -8,6 +8,7 @@ use crate::{
 
 use super::{
     binary_search::{binary_search, Sequence},
+    lookup_and_reference::lookup_table::SearchVector,
     lookup_and_reference::xmatch::{linear_scan, MatchMode as XmatchMode},
     util::array_node_to_calc_result,
 };
@@ -28,26 +29,22 @@ enum MatchMode {
     WildcardMatch = 2,
 }
 
-// lookup_value in array, match_mode search_mode
+/// The first match of `lookup_value` in `values` walking in `search_mode`'s direction. Only the
+/// candidates `SearchVector` names are tested: its virtual empty tail is one cell.
 fn linear_search(
     lookup_value: &CalcResult,
-    array: &[CalcResult],
-    search_mode: SearchMode,
-    match_mode: MatchMode,
+    values: &SearchVector,
+    search_mode: &SearchMode,
+    match_mode: &MatchMode,
 ) -> Option<usize> {
-    let length = array.len();
     let mode = match match_mode {
         MatchMode::ExactMatch => XmatchMode::Exact,
         MatchMode::ExactMatchSmaller => XmatchMode::ExactMatchSmaller,
         MatchMode::ExactMatchLarger => XmatchMode::ExactMatchLarger,
         MatchMode::WildcardMatch => XmatchMode::Wildcard,
     };
-    let get = |index: usize| &array[index];
-    if search_mode == SearchMode::StartAtFirstItem {
-        linear_scan(lookup_value, 0..length, get, mode)
-    } else {
-        linear_scan(lookup_value, (0..length).rev(), get, mode)
-    }
+    let candidates = values.linear_candidates(*search_mode == SearchMode::StartAtFirstItem);
+    linear_scan(lookup_value, candidates, |index| values.get(index), mode)
 }
 
 /// Where a binary-search XLOOKUP lands in `values`.
@@ -86,134 +83,291 @@ fn binary_hit<S: Sequence<CalcResult> + ?Sized>(
     }
 }
 
+/// XLOOKUP's lookup_array and return_array, evaluated and shape-checked once, so that a lifted
+/// lookup_value runs only the search and the pick for each element (T-1264).
+struct XlookupTable {
+    /// The lookup vector. A range is evaluated only up to the sheet's used area.
+    values: SearchVector,
+    /// The lookup vector runs down a column.
+    vertical: bool,
+    returns: XlookupReturns,
+}
+
+/// An XLOOKUP return_array.
+enum XlookupReturns {
+    Range(CellReferenceIndex, CellReferenceIndex),
+    Array(Vec<Vec<ArrayNode>>),
+}
+
+/// What one XLOOKUP search returns for its match.
+#[derive(Clone, Copy)]
+enum XlookupPick {
+    /// The whole matched row (column lookup vector) or column (row lookup vector) of the return
+    /// array, as a reference when `as_reference`.
+    Whole { as_reference: bool },
+    /// The first cell of the match only, as a value: the result of each element of a lifted
+    /// lookup_value. `XLOOKUP({2;3},A1:A4,C1:E4)` is 12; 13 in one column
+    /// (probes/xlookup-array-lookup-value A15, probes/xlookup-array-lookup-value-args A1, A33).
+    FirstCell,
+}
+
+/// XLOOKUP's match_mode and search_mode from their values.
+fn xlookup_modes(
+    model: &mut Model,
+    match_mode: &CalcResult,
+    search_mode: &CalcResult,
+    cell: CellReferenceIndex,
+) -> Result<(MatchMode, SearchMode), CalcResult> {
+    let unexpected = || CalcResult::new_error(Error::VALUE, cell, "Unexpected number".to_string());
+    let match_mode = match model.cast_to_number(match_mode.clone(), cell)?.floor() as i32 {
+        -1 => MatchMode::ExactMatchSmaller,
+        1 => MatchMode::ExactMatchLarger,
+        0 => MatchMode::ExactMatch,
+        2 => MatchMode::WildcardMatch,
+        _ => return Err(unexpected()),
+    };
+    // An unknown search_mode is #VALUE! (probes/xlookup-array-lookup-value-args A9, A67).
+    let search_mode = match model.cast_to_number(search_mode.clone(), cell)?.floor() as i32 {
+        1 => SearchMode::StartAtFirstItem,
+        -1 => SearchMode::StartAtLastItem,
+        -2 => SearchMode::BinarySearchDescending,
+        2 => SearchMode::BinarySearchAscending,
+        _ => return Err(unexpected()),
+    };
+    Ok((match_mode, search_mode))
+}
+
 /// The XLOOKUP result at `index` of an array `return_array`: the element, or for a column lookup
 /// vector over a wide array the whole matched row as a 1xN array (the range path's shape).
 fn xlookup_pick_array(
     returns: &[Vec<ArrayNode>],
     vertical: bool,
     index: usize,
+    pick: XlookupPick,
     cell: CellReferenceIndex,
 ) -> CalcResult {
-    if !vertical {
-        return returns.first().and_then(|row| row.get(index)).map_or(
-            CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Index out of range".to_string(),
-            },
-            |node| array_node_to_calc_result(node, cell),
-        );
-    }
-    match returns.get(index) {
-        Some(row) if row.len() == 1 => array_node_to_calc_result(&row[0], cell),
-        Some(row) => CalcResult::Array(vec![row.clone()]),
-        None => CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string()),
-    }
+    let out_of_range =
+        || CalcResult::new_error(Error::VALUE, cell, "Index out of range".to_string());
+    let node = if vertical {
+        match returns.get(index) {
+            Some(row) if row.len() > 1 && matches!(pick, XlookupPick::Whole { .. }) => {
+                return CalcResult::Array(vec![row.clone()])
+            }
+            Some(row) => row.first(),
+            None => None,
+        }
+    } else {
+        returns.first().and_then(|row| row.get(index))
+    };
+    node.map_or_else(out_of_range, |node| array_node_to_calc_result(node, cell))
 }
 
 impl Model {
-    /// The XLOOKUP result at (`row_offset`, `column_offset`) of the return range. A multi-column
-    /// return range (only accepted for a column lookup vector) yields the whole matched row as a
-    /// 1xN array; a single column keeps the scalar result.
+    /// The XLOOKUP result at (`row_offset`, `column_offset`) of the return range. A return range
+    /// wider than a column lookup vector yields the whole matched row as a 1xN array, and one
+    /// taller than a row lookup vector the whole matched column as an Nx1 array
+    /// (probes/xlookup-array-lookup-value-args C33); otherwise the result is the matched cell.
     fn xlookup_pick(
         &mut self,
-        result_left: CellReferenceIndex,
-        result_right: CellReferenceIndex,
+        (result_left, result_right): (CellReferenceIndex, CellReferenceIndex),
         column_lookup: bool,
-        row_offset: i32,
-        column_offset: i32,
-        as_reference: bool,
+        (row_offset, column_offset): (i32, i32),
+        pick: XlookupPick,
     ) -> CalcResult {
-        let row = result_left.row + row_offset;
-        if !column_lookup || result_right.column == result_left.column {
-            let picked = CellReferenceIndex {
-                sheet: result_left.sheet,
-                row,
-                column: result_left.column + column_offset,
-            };
-            if as_reference {
-                return CalcResult::Range {
-                    left: picked,
-                    right: picked,
-                };
+        let first = CellReferenceIndex {
+            sheet: result_left.sheet,
+            row: result_left.row + row_offset,
+            column: result_left.column + column_offset,
+        };
+        let last = if column_lookup {
+            CellReferenceIndex {
+                column: result_right.column,
+                ..first
             }
-            return self.evaluate_cell(picked);
-        }
+        } else {
+            CellReferenceIndex {
+                row: result_right.row,
+                ..first
+            }
+        };
+        let as_reference = match pick {
+            XlookupPick::Whole { as_reference } => as_reference,
+            XlookupPick::FirstCell => return self.evaluate_cell(first),
+        };
         if as_reference {
             return CalcResult::Range {
-                left: CellReferenceIndex { row, ..result_left },
-                right: CellReferenceIndex {
-                    row,
-                    ..result_right
-                },
+                left: first,
+                right: last,
             };
         }
-        let values = (result_left.column..=result_right.column)
-            .map(|column| {
-                let value = self.evaluate_cell(CellReferenceIndex {
-                    sheet: result_left.sheet,
-                    row,
-                    column,
-                });
-                crate::cast::calc_result_to_array_node(value)
-            })
-            .collect();
-        CalcResult::Array(vec![values])
+        if first == last {
+            return self.evaluate_cell(first);
+        }
+        let mut rows = Vec::new();
+        for row in first.row..=last.row {
+            let values = (first.column..=last.column)
+                .map(|column| {
+                    let value = self.evaluate_cell(CellReferenceIndex {
+                        sheet: first.sheet,
+                        row,
+                        column,
+                    });
+                    crate::cast::calc_result_to_array_node(value)
+                })
+                .collect();
+            rows.push(values);
+        }
+        CalcResult::Array(rows)
     }
 
-    /// XLOOKUP over an array `lookup_array` (`XLOOKUP(2,{1;2;3},B1:B3)`, probes/isref-reference-lookups
-    /// H10): the match position picks the cell of a range `return_array` (a reference when
-    /// `as_reference`) or the element of an array one. A 2-D lookup array, and a return_array
-    /// with a different row count (or, for a row lookup array, column count), are `#VALUE!`;
-    /// a wide return_array is accepted for a column lookup array only
-    /// (probes/xlookup-array-return E1-E24, docs/excel-semantics/lookup.md "Array lookup_array").
-    fn xlookup_array_lookup(
+    /// XLOOKUP's lookup_array and return_array. A range lookup_array must be a row or a column
+    /// (a 2-D range is `#VALUE!`); a column accepts a wider return range and a row a taller one.
+    /// Over an array lookup_array (`XLOOKUP(2,{1;2;3},B1:B3)`, probes/isref-reference-lookups
+    /// H10) a 2-D lookup array, and a return_array with a different row count (or, for a row
+    /// lookup array, column count), are `#VALUE!`; a wide return_array is accepted for a column
+    /// lookup array only (probes/xlookup-array-return E1-E24, docs/excel-semantics/lookup.md
+    /// "Array lookup_array").
+    fn xlookup_table(
         &mut self,
-        lookup_value: &CalcResult,
-        array: &[Vec<ArrayNode>],
+        lookup_node: &Node,
         return_node: &Node,
-        (search_mode, match_mode, if_not_found): (SearchMode, MatchMode, CalcResult),
         cell: CellReferenceIndex,
-        as_reference: bool,
-    ) -> CalcResult {
-        let rows = array.len();
-        let columns = array.first().map_or(0, Vec::len);
-        let vertical = columns == 1;
-        if rows != 1 && !vertical {
-            return CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Second argument must be a vector".to_string(),
-            );
-        }
-        let values: Vec<CalcResult> = array
-            .iter()
-            .flatten()
-            .map(|node| array_node_to_calc_result(node, cell))
-            .collect();
-        let returned = self.evaluate_node_in_context(return_node, cell);
-        let (return_rows, return_columns) = match &returned {
-            CalcResult::Range { left, right } => (
-                usize::try_from(right.row - left.row + 1).ok(),
-                usize::try_from(right.column - left.column + 1).ok(),
-            ),
-            CalcResult::Array(returns) => (Some(returns.len()), returns.first().map(Vec::len)),
-            error @ CalcResult::Error { .. } => return error.clone(),
-            _ => return CalcResult::new_error(Error::VALUE, cell, "Range expected".to_string()),
-        };
-        if return_rows != Some(rows) || (!vertical && return_columns != Some(columns)) {
-            return CalcResult::new_error(
+    ) -> Result<XlookupTable, CalcResult> {
+        let same_size = || {
+            CalcResult::new_error(
                 Error::VALUE,
                 cell,
                 "Arrays must be of the same size".to_string(),
-            );
+            )
+        };
+        match self.evaluate_node_in_context(lookup_node, cell) {
+            CalcResult::Range { left, right } => {
+                let vertical = if left.row == right.row {
+                    false
+                } else if left.column == right.column {
+                    true
+                } else {
+                    // probes/xlookup-array-lookup-value-args A15, A68.
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Second argument must be a vector".to_string(),
+                    ));
+                };
+                let (result_left, result_right) =
+                    match self.evaluate_node_in_context(return_node, cell) {
+                        CalcResult::Range { left, right } => (left, right),
+                        error @ CalcResult::Error { .. } => return Err(error),
+                        _ => {
+                            return Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Range expected".to_string(),
+                            ))
+                        }
+                    };
+                // A column lookup vector accepts a return range with any number of columns
+                // (poi/xlookup.xlsx Sheet1!C2), a row vector one with any number of rows
+                // (probes/xlookup-array-lookup-value-args C33).
+                let mismatch = if vertical {
+                    result_right.row - result_left.row != right.row - left.row
+                } else {
+                    result_right.column - result_left.column != right.column - left.column
+                };
+                if mismatch {
+                    return Err(same_size());
+                }
+                // Both searches walk the whole vector, blanks past the used area included (they
+                // are probed like any cell; T-1019), but only the used area is evaluated.
+                Ok(XlookupTable {
+                    values: self.range_search_vector(&left, &right, vertical),
+                    vertical,
+                    returns: XlookupReturns::Range(result_left, result_right),
+                })
+            }
+            CalcResult::Array(array) => {
+                let rows = array.len();
+                let columns = array.first().map_or(0, Vec::len);
+                let vertical = columns == 1;
+                if rows != 1 && !vertical {
+                    return Err(CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        "Second argument must be a vector".to_string(),
+                    ));
+                }
+                let values = array
+                    .iter()
+                    .flatten()
+                    .map(|node| array_node_to_calc_result(node, cell))
+                    .collect();
+                let (returns, return_rows, return_columns) =
+                    match self.evaluate_node_in_context(return_node, cell) {
+                        CalcResult::Range { left, right } => (
+                            XlookupReturns::Range(left, right),
+                            usize::try_from(right.row - left.row + 1).ok(),
+                            usize::try_from(right.column - left.column + 1).ok(),
+                        ),
+                        CalcResult::Array(returns) => {
+                            let shape = (Some(returns.len()), returns.first().map(Vec::len));
+                            (XlookupReturns::Array(returns), shape.0, shape.1)
+                        }
+                        error @ CalcResult::Error { .. } => return Err(error),
+                        _ => {
+                            return Err(CalcResult::new_error(
+                                Error::VALUE,
+                                cell,
+                                "Range expected".to_string(),
+                            ))
+                        }
+                    };
+                if return_rows != Some(rows) || (!vertical && return_columns != Some(columns)) {
+                    return Err(same_size());
+                }
+                Ok(XlookupTable {
+                    values: SearchVector::new(values),
+                    vertical,
+                    returns,
+                })
+            }
+            error @ CalcResult::Error { .. } => Err(error),
+            _ => Err(CalcResult::new_error(
+                Error::NA,
+                cell,
+                "Range expected".to_string(),
+            )),
         }
-        let index = match search_mode {
+    }
+
+    /// One XLOOKUP search: `values` are the lookup value, match_mode and search_mode. A lookup
+    /// value error comes first, then a mode error, then an error of the table; `if_not_found`
+    /// only when nothing matches (probes/xlookup-array-lookup-value-args A18, A61, A64).
+    fn xlookup_one(
+        &mut self,
+        values: &[CalcResult],
+        table: &Result<XlookupTable, CalcResult>,
+        if_not_found: &CalcResult,
+        pick: XlookupPick,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let lookup_value = &values[0];
+        if lookup_value.is_error() {
+            return lookup_value.clone();
+        }
+        let (match_mode, search_mode) = match xlookup_modes(self, &values[1], &values[2], cell) {
+            Ok(modes) => modes,
+            Err(error) => return error,
+        };
+        let table = match table {
+            Ok(table) => table,
+            Err(error) => return error.clone(),
+        };
+        let found = match search_mode {
             SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
-                linear_search(lookup_value, &values, search_mode, match_mode)
+                linear_search(lookup_value, &table.values, &search_mode, &match_mode)
             }
             SearchMode::BinarySearchAscending | SearchMode::BinarySearchDescending => {
-                match binary_hit(lookup_value, &values, &search_mode, &match_mode) {
+                match binary_hit(lookup_value, &table.values, &search_mode, &match_mode) {
                     BinaryHit::Found(index) => Some(index),
                     BinaryHit::NotFound => None,
                     BinaryHit::Wildcard => {
@@ -226,30 +380,22 @@ impl Model {
                 }
             }
         };
-        let Some(index) = index else {
-            return if_not_found;
+        let Some(index) = found else {
+            return if_not_found.clone();
         };
-        match returned {
-            CalcResult::Range {
-                left: result_left,
-                right: result_right,
-            } => {
-                let (row_offset, column_offset) = if vertical {
-                    (index as i32, 0)
+        match &table.returns {
+            XlookupReturns::Range(left, right) => {
+                let offset = i32::try_from(index).unwrap_or(i32::MAX);
+                let offsets = if table.vertical {
+                    (offset, 0)
                 } else {
-                    (0, index as i32)
+                    (0, offset)
                 };
-                self.xlookup_pick(
-                    result_left,
-                    result_right,
-                    vertical,
-                    row_offset,
-                    column_offset,
-                    as_reference,
-                )
+                self.xlookup_pick((*left, *right), table.vertical, offsets, pick)
             }
-            CalcResult::Array(returns) => xlookup_pick_array(&returns, vertical, index, cell),
-            other => other,
+            XlookupReturns::Array(returns) => {
+                xlookup_pick_array(returns, table.vertical, index, pick, cell)
+            }
         }
     }
 
@@ -285,6 +431,13 @@ impl Model {
     /// XLOOKUP; `as_reference` gives the picked cells of a return range as a reference, as an
     /// intersection operand sees them: `=A1:A3 XLOOKUP(2,A1:A3,A1:B3)` is 2
     /// (probes/intersection-function-operands H8; T-0165).
+    ///
+    /// An array or multi-cell lookup_value, match_mode or search_mode lifts: the result has
+    /// their broadcast shape, each element looked up by the scalar rules, an error argument
+    /// giving that error per element (probes/let-name-uncalled-picked-refs H21,
+    /// probes/xlookup-array-lookup-value, probes/xlookup-array-lookup-value-args; T-1264). The
+    /// table is evaluated once and each element costs one search of the lookup vector, bounded
+    /// by the shared cell-visit cap (DEVIATION, docs/excel-semantics/lookup.md).
     pub(crate) fn xlookup_impl(
         &mut self,
         args: &[Node],
@@ -298,205 +451,76 @@ impl Model {
         if lookup_value.is_error() {
             return lookup_value;
         }
-        // Get optional arguments
-        let if_not_found = if args.len() >= 4 {
-            // A range `if_not_found` stays a reference in the reference form:
-            // `ISREF(XLOOKUP(9,A1:A3,B1:B3,C1))` is TRUE (probes/intersection-lookup-operand-errors H10).
-            let v = if as_reference {
-                self.evaluate_node_with_reference(&args[3], cell)
-            } else {
-                self.evaluate_node_in_context(&args[3], cell)
-            };
-            match v {
-                CalcResult::EmptyArg => CalcResult::Error {
-                    error: Error::NA,
-                    origin: cell,
-                    message: "Not found".to_string(),
-                },
-                _ => v,
-            }
-        } else {
-            // default
-            CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not found".to_string(),
-            }
+        let match_mode = match args.get(4) {
+            Some(node) => self.evaluate_node_in_context(node, cell),
+            None => CalcResult::Number(0.0),
         };
-        let match_mode = if args.len() >= 5 {
-            match self.get_number(&args[4], cell) {
-                Ok(c) => match c.floor() as i32 {
-                    -1 => MatchMode::ExactMatchSmaller,
-                    1 => MatchMode::ExactMatchLarger,
-                    0 => MatchMode::ExactMatch,
-                    2 => MatchMode::WildcardMatch,
-                    _ => {
-                        return CalcResult::Error {
-                            error: Error::VALUE,
-                            origin: cell,
-                            message: "Unexpected number".to_string(),
-                        };
-                    }
-                },
-                Err(s) => return s,
-            }
-        } else {
-            // default
-            MatchMode::ExactMatch
+        let search_mode = match args.get(5) {
+            Some(node) => self.evaluate_node_in_context(node, cell),
+            None => CalcResult::Number(1.0),
         };
-        let search_mode = if args.len() == 6 {
-            match self.get_number(&args[5], cell) {
-                Ok(c) => match c.floor() as i32 {
-                    1 => SearchMode::StartAtFirstItem,
-                    -1 => SearchMode::StartAtLastItem,
-                    -2 => SearchMode::BinarySearchDescending,
-                    2 => SearchMode::BinarySearchAscending,
-                    _ => {
-                        return CalcResult::Error {
-                            error: Error::ERROR,
-                            origin: cell,
-                            message: "Unexpected number".to_string(),
-                        };
-                    }
-                },
-                Err(s) => return s,
-            }
+        let criteria = vec![lookup_value, match_mode, search_mode];
+        let lifts = criteria
+            .iter()
+            .any(|c| matches!(c, CalcResult::Range { .. } | CalcResult::Array(_)));
+        let if_not_found = self.xlookup_if_not_found(args.get(3), lifts, as_reference, cell);
+        let table = self.xlookup_table(&args[1], &args[2], cell);
+        // A lifted element is a value, never a reference, and keeps only the first cell of its
+        // match.
+        let pick = if lifts {
+            XlookupPick::FirstCell
         } else {
-            // default
-            SearchMode::StartAtFirstItem
+            XlookupPick::Whole { as_reference }
         };
-        // lookup_array
-        match self.evaluate_node_in_context(&args[1], cell) {
-            CalcResult::Range { left, right } => {
-                let is_row_vector = if left.row == right.row {
-                    false
-                } else if left.column == right.column {
-                    true
-                } else {
-                    // second argument must be a vector
-                    return CalcResult::Error {
-                        error: Error::ERROR,
-                        origin: cell,
-                        message: "Second argument must be a vector".to_string(),
-                    };
-                };
-                // return array
-                match self.evaluate_node_in_context(&args[2], cell) {
-                    CalcResult::Range {
-                        left: result_left,
-                        right: result_right,
-                    } => {
-                        // A column lookup vector accepts a return range with any number of columns
-                        // (poi/xlookup.xlsx Sheet1!C2); a row vector keeps the same-shape rule.
-                        let wide_columns_ok = is_row_vector;
-                        if result_right.row - result_left.row != right.row - left.row
-                            || (!wide_columns_ok
-                                && result_right.column - result_left.column
-                                    != right.column - left.column)
-                        {
-                            return CalcResult::Error {
-                                error: Error::VALUE,
-                                origin: cell,
-                                message: "Arrays must be of the same size".to_string(),
-                            };
-                        }
-                        // The binary search walks the whole vector, blanks past the used area
-                        // included (they are probed like any cell; T-1019).
-                        let full_right = right;
-                        let mut row2 = right.row;
-                        let row1 = left.row;
-                        let mut column2 = right.column;
-                        let column1 = left.column;
+        // Each element searches the evaluated cells of the lookup vector once; the table is
+        // never walked again. `lift_with_cost` charges the cost once per criterion, but only one
+        // search runs per element whatever the three criteria are, so it is split among them.
+        let criteria_count = u64::try_from(criteria.len()).unwrap_or(1);
+        let cost = table.as_ref().map_or(1, |table| {
+            u64::try_from(table.values.search_cost())
+                .unwrap_or(u64::MAX)
+                .div_ceil(criteria_count)
+                .max(1)
+        });
+        self.lift_with_cost(
+            criteria,
+            |_| cost,
+            cell,
+            |model, values| model.xlookup_one(values, &table, &if_not_found, pick, cell),
+        )
+    }
 
-                        match self.clip_to_used_area(left.sheet, row1, column1, row2, column2) {
-                            Ok((r, c)) => {
-                                row2 = r;
-                                column2 = c;
-                            }
-                            Err(message) => {
-                                return CalcResult::new_error(Error::ERROR, cell, message)
-                            }
-                        }
-                        let left = CellReferenceIndex {
-                            sheet: left.sheet,
-                            column: column1,
-                            row: row1,
-                        };
-                        let right = CellReferenceIndex {
-                            sheet: left.sheet,
-                            column: column2,
-                            row: row2,
-                        };
-                        match search_mode {
-                            SearchMode::StartAtFirstItem | SearchMode::StartAtLastItem => {
-                                let array = &self.prepare_array(&left, &right, is_row_vector);
-                                match linear_search(&lookup_value, array, search_mode, match_mode) {
-                                    Some(index) => {
-                                        let row_index =
-                                            if is_row_vector { index as i32 } else { 0 };
-                                        let column_index =
-                                            if is_row_vector { 0 } else { index as i32 };
-                                        self.xlookup_pick(
-                                            result_left,
-                                            result_right,
-                                            is_row_vector,
-                                            row_index,
-                                            column_index,
-                                            as_reference,
-                                        )
-                                    }
-                                    None => if_not_found,
-                                }
-                            }
-                            SearchMode::BinarySearchAscending
-                            | SearchMode::BinarySearchDescending => {
-                                let values =
-                                    self.range_search_vector(&left, &full_right, is_row_vector);
-                                match binary_hit(&lookup_value, &values, &search_mode, &match_mode)
-                                {
-                                    BinaryHit::NotFound => if_not_found,
-                                    BinaryHit::Wildcard => CalcResult::Error {
-                                        error: Error::VALUE,
-                                        origin: cell,
-                                        message: "Cannot use wildcard in binary search".to_string(),
-                                    },
-                                    BinaryHit::Found(l) => {
-                                        let l = l as i32;
-                                        self.xlookup_pick(
-                                            result_left,
-                                            result_right,
-                                            is_row_vector,
-                                            if is_row_vector { l } else { 0 },
-                                            if is_row_vector { 0 } else { l },
-                                            as_reference,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    error @ CalcResult::Error { .. } => error,
-                    _ => CalcResult::Error {
-                        error: Error::VALUE,
-                        origin: cell,
-                        message: "Range expected".to_string(),
-                    },
-                }
-            }
-            CalcResult::Array(array) => self.xlookup_array_lookup(
-                &lookup_value,
-                &array,
-                &args[2],
-                (search_mode, match_mode, if_not_found),
+    /// XLOOKUP's if_not_found (`#N/A` when omitted or empty). A range stays a reference in the
+    /// reference form: `ISREF(XLOOKUP(9,A1:A3,B1:B3,C1))` is TRUE
+    /// (probes/intersection-lookup-operand-errors H10). Under a lifted lookup_value an array
+    /// gives its first element and a reference, even a single cell, `#VALUE!`
+    /// (probes/xlookup-array-lookup-value-args A27-A31, A58).
+    fn xlookup_if_not_found(
+        &mut self,
+        node: Option<&Node>,
+        lifts: bool,
+        as_reference: bool,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let value = match node {
+            Some(node) if lifts || as_reference => self.evaluate_node_with_reference(node, cell),
+            Some(node) => self.evaluate_node_in_context(node, cell),
+            None => CalcResult::EmptyArg,
+        };
+        match value {
+            CalcResult::EmptyArg => CalcResult::new_error(Error::NA, cell, "Not found".to_string()),
+            CalcResult::Range { .. } if lifts => CalcResult::new_error(
+                Error::VALUE,
                 cell,
-                as_reference,
+                "Reference if_not_found with an array lookup_value".to_string(),
             ),
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Range expected".to_string(),
-            },
+            CalcResult::Array(rows) if lifts => {
+                rows.first().and_then(|row| row.first()).map_or_else(
+                    || CalcResult::new_error(Error::VALUE, cell, "Empty array".to_string()),
+                    |node| array_node_to_calc_result(node, cell),
+                )
+            }
+            other => other,
         }
     }
 }
