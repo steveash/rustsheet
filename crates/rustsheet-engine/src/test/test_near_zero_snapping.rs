@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used, reason = "tests")]
 
-//! Excel snaps a near-zero result of a cell formula's outermost `+`/`-` or SUM to 0, but not of
+//! Excel snaps a near-zero result of a cell formula's outermost `+`/`-` or a SUM call to 0, but not of
 //! a wholly parenthesized formula or of an inner operation (docs/excel-semantics/numbers.md
 //! "Near-zero snapping in addition and subtraction"; probes/literal-digits C4,
 //! probes-numeric/30bc5f8fab02d0a2).
@@ -41,14 +41,17 @@ fn only_opposite_signed_nonzero_addends_snap() {
 }
 
 #[test]
-fn outermost_sum_snaps_but_grouped_and_inner_do_not() {
+fn sum_snaps_everywhere_but_grouped_and_inner_arithmetic_do_not() {
     let mut model = new_empty_model();
     model._set("A1", "=0.1+0.2-0.3");
     model._set("A2", "=SUM(0.1,0.2,-0.3)");
     model._set("A3", "=(0.1+0.2-0.3)");
     model._set("A4", "=(0.1+0.2-0.3)*1");
     model._set("A5", "=0.1+0.2-0.3+0");
-    for row in 1..=5 {
+    model._set("A6", "=(SUM(0.1,0.2,-0.3))");
+    model._set("A7", "=SUM(0.1,0.2,-0.3)*1");
+    model._set("A8", "=SUM(0.1,0.2,-0.3,0)");
+    for row in 1..=8 {
         model._set(&format!("B{row}"), &format!("=A{row}=0"));
     }
     model.evaluate();
@@ -57,6 +60,10 @@ fn outermost_sum_snaps_but_grouped_and_inner_do_not() {
     assert_eq!(model._get_text("B3"), "FALSE");
     assert_eq!(model._get_text("B4"), "FALSE");
     assert_eq!(model._get_text("B5"), "FALSE");
+    // probes/near-zero-sum-forms: SUM snaps inside a group or an operation, but not after a zero addend.
+    assert_eq!(model._get_text("B6"), "TRUE");
+    assert_eq!(model._get_text("B7"), "TRUE");
+    assert_eq!(model._get_text("B8"), "FALSE");
 }
 
 /// Every written level of parentheses around a whole formula is kept, and the group still

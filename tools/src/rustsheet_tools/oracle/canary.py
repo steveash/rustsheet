@@ -85,8 +85,16 @@ CELLS = (
     CanaryCell("A4", "SQRT(2)", 0, repr(math.sqrt(2)), _number(lambda v: v == math.sqrt(2))),
     # The oracle must calculate as en-US (it follows the SharePoint site's regional settings):
     # month-first date text and a dot decimal separator. A day-first Excel reads "1/2/2001" as
-    # 1 Feb 2001 (36923); the ironcalc workbooks were saved by one (oracle-calibration.md).
-    CanaryCell("A5", 'DATEVALUE("1/2/2001")', -2, "36893 (2 Jan 2001)", _number(lambda v: v == 36893)),
+    # 1 Feb 2001, 31 days after 1/1/2001; the ironcalc workbooks were saved by one
+    # (oracle-calibration.md). A difference of two dates, not one serial, so that a 1904 workbook
+    # (whose serials are 1462 lower; T-1268) passes too.
+    CanaryCell(
+        "A5",
+        'DATEVALUE("1/2/2001")-DATEVALUE("1/1/2001")',
+        -2,
+        "1 (2 Jan 2001 is month-first)",
+        _number(lambda v: v == 1),
+    ),
     CanaryCell("A6", 'VALUE("1.5")', -3, "1.5", _number(lambda v: v == 1.5)),
 )
 

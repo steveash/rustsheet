@@ -351,3 +351,25 @@ Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`)
 are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
+
+## The 1904 date system: negative serials keep a minus; epoch at 1904-01-01
+Rule: in a 1904 workbook (`<workbookPr date1904="1"/>`), serial 0 is 1904-01-01 (`TEXT(0,"yyyy-mm-dd")` =
+"1904-01-01", `DATE(1904,1,1)` = 0, `YEAR(0)` = 1904, `DATEVALUE("1904-01-02")` = 1). A negative serial
+under any date or time format is formatted as its absolute value with a leading minus, for date tokens
+too: `TEXT(-1,"d")` = "-2", `TEXT(-1.5,"yyyy")` = "-1904", `TEXT(-0.5,"h:mm")` = "-12:00",
+`TEXT(-1.5,"[h] d")` = "-36 2", `TEXT(-1.5,"[h]:mm")` = "-36:00", `TEXT(-1.5,"[mm]:ss")` = "-2160:00",
+`TEXT(-1E-10,"[h]:mm")` = "-0:00". In the 1900 system each of these is `#VALUE!`, an explicit negative section
+included (`TEXT(-1.5,"[h]:mm;-[h]:mm")`), and so is `TEXT(B1,"[h]:mm")` for a cell B1 = -1.5 formatted
+`[h]:mm`, whose value stays -1.5 (`=B1`). `-0` is 0 in both systems (`TEXT(-0,"[h]:mm")` = "0:00").
+Quirk: a format whose only token is `[s]` prints negatives in the 1900 system too: `TEXT(-1.5,"[s]")` =
+"-129600" and `TEXT(-1E-10,"[s]")` = "-0" (a minus on a value that rounds to 0) in both systems, while
+`[s] yy` is `#VALUE!` (probes/text-negative-serial-elapsed-mixed A6).
+Not probeable through excel-graph: cell display (`#####` or text) of a negative under a date format; the oracle
+reads cached values, not displayed text.
+Evidence: probes/date-system-1900-negatives and probes/date-system-1904-negatives (same 18 questions, excel-graph,
+2026-10-11, T-1268).
+Ours: the 1900 case passes 12 of 18 (the elapsed-token negatives print a minus: T-1105; `TEXT(-1E-10,"[s]")` gives
+"-1": T-1329); the 1904 case passes 7 of 18 (no date-system awareness in the formatter or date functions yet:
+SPEC-0005 steps 3-4, T-1105 and T-1330).
+Status: VERIFIED (web)
+Tasks: T-1268, T-1105

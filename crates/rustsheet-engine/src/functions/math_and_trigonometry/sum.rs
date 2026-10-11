@@ -250,7 +250,7 @@ impl Model {
 }
 
 /// A running SUM: the total and the two addends of the latest addition, which
-/// [`snap_near_zero`] needs when SUM is a formula's outermost operation.
+/// [`snap_near_zero`] needs.
 #[derive(Default)]
 struct SumParts {
     total: f64,
@@ -279,25 +279,29 @@ impl Model {
     /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
     ///   referenced cell and errors are propagated.
     /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
+    ///
+    /// SUM's final addition snaps a near-zero result to 0 like `+`/`-` do, wherever the call sits
+    /// (`=SUM(0.1,0.2,-0.3)`, `=(SUM(...))`, `=SUM(...)+0` and `=SUM(...)*1` all give 0:
+    /// probes/near-zero-sum-forms; docs/excel-semantics/numbers.md "Near-zero snapping").
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
-            Err(error) => error,
-        }
-    }
-
-    /// SUM as a formula's outermost operation: its final addition snaps to 0 like `+`/`-` do
-    /// (`=SUM(0.1,0.2,-0.3)` is 0; docs/excel-semantics/numbers.md "Near-zero snapping").
-    pub(crate) fn fn_sum_outermost(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> CalcResult {
         match self.sum_with_last_addition(args, cell) {
             Ok(sum) => CalcResult::finite_number_or_num(
                 snap_near_zero(sum.before_last, sum.last, sum.total),
                 cell,
             ),
+            Err(error) => error,
+        }
+    }
+
+    /// SUM without the near-zero snap, for callers whose Excel behavior is not probed
+    /// (AGGREGATE(9, ...) and PERCENTOF; TODO(T-1336)).
+    pub(crate) fn fn_sum_unsnapped(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        match self.sum_with_last_addition(args, cell) {
+            Ok(sum) => CalcResult::finite_number_or_num(sum.total, cell),
             Err(error) => error,
         }
     }
@@ -312,11 +316,22 @@ impl Model {
             return Err(CalcResult::new_args_number_error(cell));
         }
         let mut sum = SumParts::default();
+        // Excel: an error in a referenced cell ranks below an error in a direct argument, whichever
+        // comes first, and the leftmost reference error wins (docs/excel-semantics/syntax.md,
+        // "Stored #BUSY! behaviors", probes/sum-error-precedence). So a reference error is held
+        // back until the direct arguments are known to be clean.
+        let mut reference_error = None;
         for arg in args {
             // A reference (also via IF/INDEX) is a one-cell range: text is skipped.
             match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
-                    self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))?;
+                    if reference_error.is_none() {
+                        if let Err(error) =
+                            self.for_each_number_in_areas(&areas, cell, |value| sum.add(value))
+                        {
+                            reference_error = Some(error);
+                        }
+                    }
                 }
                 RefArg::Value(CalcResult::Array(array)) => {
                     for value in array.into_iter().flatten() {
@@ -340,6 +355,9 @@ impl Model {
                 }
             };
         }
-        Ok(sum)
+        match reference_error {
+            Some(error) => Err(error),
+            None => Ok(sum),
+        }
     }
 }

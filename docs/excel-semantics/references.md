@@ -716,12 +716,21 @@ Status: VERIFIED for these cells. Implemented in: `Parser::function_call` (parse
 `Model::subtotal_reference_args` (functions/subtotal.rs), `fn_areas`, `not_a_reference_array`, spill shape in
 `subtotal_static_result` and `areas_static_result`, XLOOKUP/TAKE/DROP/TRIMRANGE as references in
 `Model::evaluate_picked_reference_arg` (SUBTOTAL, AREAS, SUM, COUNT and `for_each_value`). `for_each_value` is shared,
-so MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, VAR*/STDEV*, AVEDEV, DEVSQ and SUMSQ also read these results as references:
-implemented by the same rule, UNVERIFIED. MIN, MAX, COUNTA and AVERAGEA still evaluate those calls to values,
-UNVERIFIED. A computed array source (`TAKE(SEQUENCE(4),1)`) is sized as a scalar for SUBTOTAL/AREAS spill:
-UNVERIFIED. Typed entry is a desktop
+so MEDIAN, GEOMEAN, HARMEAN, SKEW, KURT, VAR*/STDEV*, AVEDEV, DEVSQ and SUMSQ also read these results as references.
+VERIFIED by T-1211 (probes/subtotal-reference-operands-d, excel-graph, 2026-10-09): with B1 = "x", B2 = TRUE, B3 blank
+and the numbers 5, 7 next to the picked cell, `XLOOKUP` of the text, boolean and blank cell all leave MEDIAN (6),
+STDEV.S, SUMSQ (74) and GEOMEAN (with 2, 8: 4) as if the cell were absent, and MIN (5) and MAX (7) ignore it too;
+COUNT is 2 and COUNTA 3, 3, 2 (the blank is not counted). AVERAGEA counts the cell as a reference does: text is 0
+(`AVERAGEA(XLOOKUP(1,..),5,7)` = 4), TRUE is 1 (13/3), a blank is skipped (6). MIN, MAX and AVERAGEA now read the call
+through `evaluate_picked_reference_arg`. A computed array source is an array, not a reference:
+`SUBTOTAL(9,TAKE(SEQUENCE(4),1))` and `AREAS(TAKE(SEQUENCE(4),1))`, and the DROP forms, are `#VALUE!`, and
+`SUBTOTAL(9,TAKE(SEQUENCE(4),2))` spills two `#VALUE!` (J4:J5); `SUBTOTAL(9,TAKE(A1:A4,1))` is 1. Sized by
+`is_read_reference` (static_analysis/aggregate.rs). Unrelated finding: `GEOMEAN(5,7)` is 5.916079783099616 in Excel (H28)
+and the engine gives ...615 (1 ulp, `NumericUlp`, a known failure for T-1284; the other GEOMEAN cells use 2, 8 to stay out
+of it). MIN, MAX and AVERAGEA over a TAKE/DROP result of one or two cells behave like the XLOOKUP cells (L1:L7).
+Typed entry is a desktop
 question (M14).
-Tasks: T-1063, T-1163, T-1174, T-1175, T-1206 (decision 0045)
+Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
@@ -974,3 +983,15 @@ Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never paren
 Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) except `=@A1^2^3` (T-1331) and the written group of `=(@-2)^2` (T-1244).
 Status: VERIFIED (excel-graph)
 Tasks: T-1320, T-1331
+
+## Implicit intersection of a one-row range by a cell in that row
+Rule: `@` (or a scalar context) over a one-row range intersects by column whenever the formula cell's column lies
+inside the range, including when the cell is also in the range's row number and on another sheet:
+`@XLOOKUP(2,Data!A1:A3,Data!B1:C3)` (the reference Data!B2:C2) is Data!B2 entered in another sheet's B2 and
+Data!C2 in C2. Column ranges intersect by row; a 2-D range never intersects (`#VALUE!`).
+Evidence: probes/xlookup-row-column-picks B2, C2, G3, E4, G15 (excel-graph, 2026-10-11, T-0962), through `@XLOOKUP`
+only; a plain `@Data!B2:C2` is unprobed (T-1333).
+Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_intersection.rs), shared by every
+implicit intersection.
+Status: VERIFIED (web)
+Tasks: T-0962, T-1333

@@ -65,3 +65,35 @@ fn array_lookup_array_with_a_mismatched_return_range_is_value_error() {
     assert_eq!(model._get_text("E1"), *"#VALUE!");
     assert_eq!(model._get_text("E2"), *"#VALUE!");
 }
+
+#[test]
+fn one_cell_lookup_vector_takes_its_orientation_from_the_return() {
+    // probes/xlookup-row-column-picks E9, E23 (T-0962).
+    let mut model = model();
+    model._set("E1", "=XLOOKUP(1,A1:A1,B1:C1)");
+    model._set("E3", "=XLOOKUP(1,A1:A1,B1:B3)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), *"a");
+    assert_eq!(model._get_text("F1"), *"x");
+    assert_eq!(model._get_text("E3"), *"a");
+    assert_eq!(model._get_text("E4"), *"b");
+    assert_eq!(model._get_text("E5"), *"c");
+}
+
+#[test]
+fn array_returns_give_the_matched_row_or_column_and_at_intersects() {
+    // probes/xlookup-row-column-picks E4, E13, E28, E31 (T-0962).
+    let mut model = model();
+    model._set(
+        "E1",
+        "=XLOOKUP(2,A1:A3,{\"p\",\"q\";\"r\",\"s\";\"t\",\"u\"})",
+    );
+    model._set("E3", "=XLOOKUP(\"b\",{\"a\",\"b\"},{1,2;3,4})");
+    model._set("E6", "=@XLOOKUP(2,A1:A3,B1:C3)");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), *"r");
+    assert_eq!(model._get_text("F1"), *"s");
+    assert_eq!(model._get_text("E3"), *"2");
+    assert_eq!(model._get_text("E4"), *"4");
+    assert_eq!(model._get_text("E6"), *"#VALUE!");
+}

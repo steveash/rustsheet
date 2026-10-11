@@ -4,6 +4,7 @@ use crate::{
     calc_result::CalcResult,
     cast::array_node_to_string,
     cast::number_text_too_long,
+    cast::MAX_TEXT_UNITS,
     expressions::{
         parser::{ArrayNode, Node},
         token::Error,
@@ -14,7 +15,7 @@ use crate::{
 };
 
 use super::text_arg::broadcast_text;
-use super::util::utf16_slice;
+use super::util::{near_integer_count, utf16_slice};
 
 fn format_thousands(n: u64) -> String {
     let s = n.to_string();
@@ -257,10 +258,18 @@ fn replace_element(
     // Every argument is coerced before the range checks: an error argument beats a start or length
     // failure (docs/excel-semantics/arrays.md, probes/error-arg-vs-range-check, T-1056).
     let old_text = array_node_to_string(old_text)?;
-    let start_num = start_num?.floor();
-    let num_chars = num_chars?.floor();
+    let start_num = start_num?;
+    let num_chars = num_chars?;
     let new_text = array_node_to_string(new_text)?;
-    if start_num < 1.0 || num_chars < 0.0 {
+    // Excel: both numbers count as whole like LEFT's (near an integer they round up, so
+    // `REPLACE(t,1-2E-7,1,"z")` starts at 1) and either one above 32,767 is #VALUE!, even
+    // past the end of a short text (probes/text-count-argument-bounds J, K, U, F22, F24).
+    let start_num = near_integer_count(start_num);
+    if num_chars < 0.0 || !(1.0..=MAX_TEXT_UNITS as f64).contains(&start_num) {
+        return Err(Error::VALUE);
+    }
+    let num_chars = near_integer_count(num_chars);
+    if num_chars > MAX_TEXT_UNITS as f64 {
         return Err(Error::VALUE);
     }
 

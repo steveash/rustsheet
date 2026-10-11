@@ -214,3 +214,5 @@ Tests: `test_equal_and_not_equal_use_15_digit_comparison`, `cmp_excel_precision_
 Status: UNVERIFIED (probe pending: T-1051)
 Implemented in: `ValueOperator::Equal`/`NotEqual` in `crates/rustsheet-engine/src/conditional_formatting.rs`, `cmp_excel_precision` in `number_format.rs`
 Tasks: T-1033
+
+Exception: an error-valued criterion that is a stored `#BUSY!` (e.g. `COUNTIF(A1:A2,A1)`) matches nothing, not even `#BUSY!` cells, unlike a `#N/A` criterion (probes/error-stored-busy-behaviors C15, T-1314). Only COUNTIF is probed; the code applies it to every criteria function.

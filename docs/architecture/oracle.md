@@ -36,7 +36,7 @@ CI: `.github/workflows/oracle.yml` (manual dispatch → PR with new sidecars).
 `RustSheetCanary` to *each* workbook. Its formulas (`=1+1`, `=RAND()`, `=ROUND(2.675,2)`,
 `=SQRT(2)`, plus the en-US locale checks `=DATEVALUE("1/2/2001")` and `=VALUE("1.5")`) carry
 deliberately wrong cached values. After the round trip the canary must hold Excel's answers (2,
-a value in [0, 1), 2.68, 1.4142135623730951 bit-exact, 36893, 1.5); if any planted value
+a value in [0, 1), 2.68, 1.4142135623730951 bit-exact, 1, 1.5); if any planted value
 survives, *that workbook* was not recalculated and its results are refused (`fill` writes no
 sidecar, `recalc` errors). The canary sheet is stripped before values reach a
 sidecar, and cached results in `eval/.cache/oracle/` are re-verified on every read. It rides in
@@ -134,7 +134,7 @@ matches the web unless desktop evidence already in the repo decides, and desktop
   in-scope catalog function is recognised (probes/catalog/availability-*). INFO and SHEETS have no
   web values at all: the canary refuses their workbooks (catalog `oracle: none`).
 - **Locale is a site setting.** The oracle calculates in the SharePoint site's regional
-  settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")` = 36893, `VALUE("1.5")` = 1.5);
+  settings. The canary pins it to en-US (`DATEVALUE("1/2/2001")-DATEVALUE("1/1/2001")` = 1, not 31; a date difference so that 1904 workbooks pass too, T-1268; `VALUE("1.5")` = 1.5);
   if the site is changed, every fill fails rather than returning another locale's answers.
 
 ## Owner setup — Microsoft Graph (one time, ~20 minutes)
