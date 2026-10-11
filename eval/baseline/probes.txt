@@ -446,9 +446,6 @@ F	probes/at-operand-nested-groups.case.json	Sheet1!F35
 F	probes/at-operand-nested-groups.case.json	Sheet1!F37
 F	probes/at-power-text.case.json	Sheet1!I26
 F	probes/at-power-text.case.json	Sheet1!I46
-F	probes/at-signed-operand.case.json	Sheet1!H71
-F	probes/at-signed-operand.case.json	Sheet1!H72
-F	probes/at-signed-operand.case.json	Sheet1!H73
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
