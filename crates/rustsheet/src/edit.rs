@@ -484,6 +484,35 @@ impl Txn<'_> {
         Ok(())
     }
 
+    /// Gives one cell the number format `format` (Excel format code, e.g. `"[h]:mm"`), keeping
+    /// its value and the rest of its style. It changes no value; the cell displays through it
+    /// (`Workbook::formatted`). Undone with the transaction like a `set`.
+    ///
+    /// # Errors
+    /// [`EditError::Ref`] for an unknown sheet, a target outside the sheet or a multi-cell
+    /// target; [`EditError::Engine`] if the engine rejects the style.
+    pub fn set_number_format<'t>(
+        &mut self,
+        r: impl Into<Target<'t>>,
+        format: &str,
+    ) -> Result<(), EditError> {
+        let range = resolve_range(self.model, r.into())?;
+        if range.top != range.bottom || range.left != range.right {
+            return Err(RefError::Unsupported.into());
+        }
+        let sheet = sheet_index(self.model, range.sheet)?;
+        let (row, col) = engine_rc(range.top, range.left).ok_or(RefError::OutOfBounds)?;
+        let cell = CellRef {
+            sheet: range.sheet,
+            row: range.top,
+            col: range.left,
+        };
+        self.log_cell(sheet, (range.sheet.get(), row, col), cell)?;
+        self.model
+            .set_cell_number_format(sheet, row, col, format)
+            .map_err(EditError::Engine)
+    }
+
     /// Adds a table (an Excel `ListObject`) over `range`. Its first row is the header row, whose
     /// cells (set them first) name the columns. With `filtered` the table carries an active
     /// filter, as an imported table whose autoFilter has a criterion does: on such a sheet every

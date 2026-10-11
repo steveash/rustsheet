@@ -3053,6 +3053,25 @@ impl Model {
         Ok(())
     }
 
+    /// Gives cell (`sheet`, `row`, `column`) the number format `num_fmt`, keeping the rest of
+    /// its style. An empty cell becomes an empty styled cell.
+    ///
+    /// # Errors
+    /// The engine message for an unknown sheet or style.
+    pub fn set_cell_number_format(
+        &mut self,
+        sheet: u32,
+        row: i32,
+        column: i32,
+        num_fmt: &str,
+    ) -> Result<(), String> {
+        let index = self.get_cell_style_index(sheet, row, column)?;
+        let style = self.workbook.styles.get_style_with_format(index, num_fmt)?;
+        self.workbook
+            .worksheet_mut(sheet)?
+            .set_cell_style(row, column, style)
+    }
+
     /// Returns the style index for cell (`sheet`, `row`, `column`)
     pub fn get_cell_style_index(&self, sheet: u32, row: i32, column: i32) -> Result<i32, String> {
         // First check the cell, then row, the column
