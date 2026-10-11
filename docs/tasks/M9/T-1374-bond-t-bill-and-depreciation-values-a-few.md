@@ -27,7 +27,6 @@ One probe point per function is not enough to fit a formulation: first add an or
 - [ ] A probes-numeric sweep for the bond and depreciation families is oracle-filled.
 - [ ] The base rows above pass, or the Outcome records which formulation was ruled out.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - FV, PMT, PPMT, NPV (T-0901); IRR, RATE, XIRR, MIRR (T-0916).

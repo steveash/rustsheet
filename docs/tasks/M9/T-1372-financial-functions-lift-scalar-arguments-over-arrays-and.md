@@ -27,7 +27,6 @@ ranges, so the helper needs a "lift literals only" variant, or an existing way t
 - [ ] The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
   still pass.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 - Base-value ulp misses (T-1374, T-0901, T-0916).

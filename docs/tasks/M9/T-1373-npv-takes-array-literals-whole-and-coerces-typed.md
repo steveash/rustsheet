@@ -26,7 +26,6 @@ statistical functions use (`aggregate` mode) already does this, and reuse it.
 ## Acceptance criteria
 - [ ] H368, H370, H371, H382, H383 and H384 of probes/fin-argument-modes pass. The ulp miss on H368's value, if any, is T-0901's.
 - [ ] `make check` green; reviewers approve.
-- [ ] `make check` green; reviewers approve.
 
 ## Out of scope
--
+- The ulp misses of NPV's value (T-0901).
