@@ -294,7 +294,7 @@ impl Model {
     }
 
     /// SUM without the near-zero snap, for callers whose Excel behavior is not probed
-    /// (AGGREGATE(9, ...) and PERCENTOF; TODO(T-1335)).
+    /// (AGGREGATE(9, ...) and PERCENTOF; TODO(T-1336)).
     pub(crate) fn fn_sum_unsnapped(
         &mut self,
         args: &[Node],
