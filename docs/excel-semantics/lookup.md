@@ -379,3 +379,12 @@ Evidence: probes/let-name-uncalled-picked-refs H21 (T-1252), probes/xlookup-arra
 Implemented in: `Model::xlookup_impl` (functions/xlookup.rs) through `Model::lift_with_cost`, evaluating the table once (`xlookup_table`).
 Status: VERIFIED (web)
 Tasks: T-1252, T-1264
+
+## TRIMRANGE with a fractional trim argument
+Rule (hypothesis): `TRIMRANGE(C10:E11,2.5,3)` is `#VALUE!`. In `UPPER(..)&REPLACE("abc",TRIMRANGE(Data!C10:E11,2.5,3),1,PROPER(""))`
+the result is `#VALUE!` while the left operand is "42"; either TRIMRANGE rejects trim_rows 2.5 or REPLACE rejects a 2x3
+reference start_num instead of lifting over it.
+Evidence: gen-m7/bcad709c30cfdf64 Calc!A20 (excel-graph, 2026-10-11, T-1275).
+Ours: trim_rows 2.5 reads as 2 and REPLACE lifts, so `#SPILL!`.
+Status: UNVERIFIED (probe pending)
+Tasks: T-1352
