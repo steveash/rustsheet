@@ -205,7 +205,8 @@ fn test_match_fractional_match_type() {
     // -0.5 floors to -1: descending search (gen-m2 A160/A241).
     model._set("A1", "=MATCH(5,{9,7,5,3},-0.5)");
     model._set("A2", "=MATCH(4,{9,7,5,3},-0.0001)");
-    // 0.5 is still exact, 1E+15 still ascending without overflow.
+    // Current engine behavior, not Excel evidence: 0.5 stays exact (positive fractions are
+    // unprobed, T-1391); 1E+15 stays ascending without overflow.
     model._set("A3", "=MATCH(4,{1,3,5},0.5)");
     model._set("A4", "=MATCH(4,{1,3,5},1E+15)");
     model.evaluate();
