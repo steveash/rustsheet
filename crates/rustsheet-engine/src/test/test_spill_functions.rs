@@ -524,3 +524,26 @@ fn anchorarray_of_at_if_picking_a_value_is_value_error() {
 
     assert_eq!(model._get_text("H1"), "#VALUE!");
 }
+
+// The `@` operand of a spill anchor is evaluated once, so nesting ANCHORARRAY(@IF(...)) and
+// ANCHORARRAY(@INDEX(...,0)) whose inner pick is a multi-cell range stays linear instead of
+// doubling per level (T-1321).
+#[test]
+fn nested_anchorarray_of_at_if_and_at_index_is_linear() {
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    let mut if_formula = "D1".to_string();
+    let mut index_formula = "D1".to_string();
+    for _ in 0..40 {
+        if_formula = format!("ANCHORARRAY(@IF(TRUE,{if_formula}))");
+        index_formula = format!("ANCHORARRAY(@INDEX({index_formula},0))");
+    }
+    model._set("H1", &format!("={if_formula}"));
+    model._set("J1", &format!("={index_formula}"));
+    model.evaluate();
+
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("H3"), "3");
+    assert_eq!(model._get_text("J1"), "1");
+    assert_eq!(model._get_text("J3"), "3");
+}
