@@ -1019,11 +1019,11 @@ Ours: the values and the root snap match; FORMULATEXT drops the redundant groups
 Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-only, T-1364): `ISREF((A1:A3))`,
 `ISREF(LET(x,(A1:A3),x))` are TRUE like the plain forms; `OFFSET((A1:A3),1,0)` spills 2, 3, 0 like `OFFSET(A1:A3,1,0)`;
 `CELL("address",(A1))` is `$A$1` like `CELL("address",A1)`; `ANCHORARRAY(@IF(TRUE,D1))` and
-`ANCHORARRAY((INDEX(D1:D3,1)))` both spill 1, 2, 3 like `ANCHORARRAY(INDEX(D1:D3,1))`. The earlier `)#` blocker
-was only the construction of the workbook: built as `ANCHORARRAY((INDEX(D1:D3,1)))` Graph accepts it and
-FORMULATEXT prints `=(INDEX(D1:D3,1))#`. So a written group is transparent for references in every probed cell; no
+`ANCHORARRAY((INDEX(D1:D3,1)))` both spill 1, 2, 3 like `ANCHORARRAY(INDEX(D1:D3,1))`. Built as
+`ANCHORARRAY((INDEX(D1:D3,1)))`, Graph accepts the `)#` shape and FORMULATEXT prints `=(INDEX(D1:D3,1))#`
+(`ANCHORARRAY(@IF(TRUE,D1))` prints `=@IF(TRUE,D1)#`). So a written group is transparent for references in every probed cell; no
 non-transparent cell exists for SPEC-0007 (T-1340).
-Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups (T-1340).
+Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups in the reference-only cells too (T-1340).
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
