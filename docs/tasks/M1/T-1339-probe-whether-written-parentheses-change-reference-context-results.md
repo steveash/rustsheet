@@ -3,7 +3,7 @@ id: T-1339
 title: "Probe whether written parentheses change reference-context results (SPEC-0007 step 0)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ SPEC-0007 "Excel behavior to match" lists the unknowns. All 18 values of probes/
 
 ## Out of scope
 -
+
+## Outcome
+probes/written-parens-reference-context (35 cells, excel-graph): groups are transparent in reference context; the root snap is the only value a group changes. `(INDEX(D1:D3,1))#` cannot be built through excel-graph (unsupported workbook), recorded as unevidenced. SPEC-0007 needs no amendment; findings in references.md. Six new known failures in the baseline (FORMULATEXT drops groups: H10, H11, H14, which T-1340 fixes; plain `ANCHORARRAY(IF(TRUE,D1))` gives TypeMismatch: E20:E22). Follow-up: T-1363 for the ANCHORARRAY gap.

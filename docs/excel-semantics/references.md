@@ -995,3 +995,19 @@ Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_in
 implicit intersection.
 Status: VERIFIED (web)
 Tasks: T-0962, T-1333
+
+## Written parentheses are transparent in reference context
+Excel for the web (excel-graph, 2026-10-11, probes/written-parens-reference-context, T-1339; plain formula
+against the same formula with written groups, each with FORMULATEXT): `ISREF(A1)` and `ISREF((A1))` are TRUE;
+`ROWS(A1:A3)` and `ROWS(((A1:A3)))` are 3; `SUM(A1,B1)` and `SUM(((A1,B1)))` are 11 (the union survives the
+group); `LET(x,A1:A3,ROWS(x))` and `LET(x,(A1:A3),ROWS(x))` are 3; `ANCHORARRAY(IF(TRUE,D1))` and
+`ANCHORARRAY(@(IF(TRUE,D1)))` spill the same values (D1 = SEQUENCE(3)). FORMULATEXT prints every written group
+back (`=ISREF((A1))`, `=ROWS(((A1:A3)))`, `=SUM(((A1,B1)))`, `=LET(x,(A1:A3),ROWS(x))`), and prints ANCHORARRAY(x) as
+`x#`: `=IF(TRUE,D1)#` and `=@(IF(TRUE,D1))#`. The one value a group changes is the root snap:
+`=0.1+0.2-0.3` is 0 but `=(0.1+0.2-0.3)` and `=((0.1+0.2-0.3))` are 5.551115123125783e-17 (already implemented,
+`GroupedRootKind`). Not probeable through excel-graph: `=(INDEX(D1:D3,1))#` (the Graph workbook is rejected as
+unsupported, `FileCorruptTryRepair`), so a group directly before `#` stays unevidenced.
+Ours: the values and the root snap match; FORMULATEXT drops the redundant groups (H10, H11, H14) and plain
+`ANCHORARRAY(IF(TRUE,D1))` gives TypeMismatch (E20:E22) while the grouped form passes.
+Status: VERIFIED (web), except the `)#` shape.
+Tasks: T-1339, T-1340

@@ -84,11 +84,13 @@ Non-goals:
   - `(A1)(2)` as a call (references.md "A parenthesized reference called");
   - `(1)` being a constant in an intersection (references.md);
   - the root snap (`GroupedRootKind`, arithmetic.rs).
-- Unknown: whether a group changes any reference-context result: `ISREF((A1))`,
-  `ROWS(((A1:A3)))`, `(INDEX(D1:D3,1))#`, `ANCHORARRAY(@(IF(TRUE,D1)))`, `SUM(((A1,B1)))`,
-  `LET(x,(A1:A3),ROWS(x))`, `=(0.1+0.2-0.3)` vs `=((0.1+0.2-0.3))` snap. Rollout step 0 probes these
-  before the evaluator sees a `Group`. Any cell where a group is not transparent becomes a rule in
-  references.md and a design amendment here.
+- Reference context (probes/written-parens-reference-context, excel-graph, 2026-10-11, T-1339):
+  groups are transparent in every probed cell. `ISREF((A1))`, `ROWS(((A1:A3)))`, `SUM(((A1,B1)))`,
+  `LET(x,(A1:A3),ROWS(x))` and `ANCHORARRAY(@(IF(TRUE,D1)))` equal their ungrouped forms, and
+  FORMULATEXT prints the groups. The only value a group changes is the root snap (`=(0.1+0.2-0.3)` and
+  `=((0.1+0.2-0.3))` are 5.55e-17, `=0.1+0.2-0.3` is 0), which is the parse-time effect listed above. No
+  design amendment is needed. Not evidenced: `(INDEX(D1:D3,1))#` (excel-graph rejects the workbook);
+  T-1340 keeps the existing parse-time handling of a group before `#` and does not change it.
 
 ## Design
 ### The node
