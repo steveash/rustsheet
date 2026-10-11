@@ -964,7 +964,7 @@ Implemented in: expressions/parser/operands.rs (`structured_reference_operand`)
 Tasks: T-1210, T-1234
 
 ## Signed and function operands of @
-Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a signed operand and the sign binds inside it. `=@-1` = -1; `=@+1` = 1 and prints `=@1` (unary plus dropped); `=@-B1:B3` = top-left of the negated range, -5 (formula on row 31, off the range rows, and not #VALUE!); `=@-B1 B1:C1` = -5; `=@-B1` = -5; `=@-B1:B3*2` = -10; `=@-1%` = -0.01; `=@-2^2` = 4, `(-2)^2`, and FORMULATEXT prints it as written `=@-2^2` (the engine prints `=(@-2)^2`: T-1320). `=ANCHORARRAY(@IF(TRUE,D1))` spills D1's array (engine #VALUE!: T-1321). `=@OFFSET(B1,0,0,3,1)` and `=@INDIRECT("B1:B3")` placed off-row are #VALUE! and print as written.
+Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a signed operand and the sign binds inside it. `=@-1` = -1; `=@+1` = 1 and prints `=@1` (unary plus dropped); `=@-B1:B3` = top-left of the negated range, -5 (formula on row 31, off the range rows, and not #VALUE!); `=@-B1 B1:C1` = -5; `=@-B1` = -5; `=@-B1:B3*2` = -10; `=@-1%` = -0.01; `=@-2^2` = 4, `(-2)^2`, and FORMULATEXT prints it as written `=@-2^2` (fixed in T-1320). `=ANCHORARRAY(@IF(TRUE,D1))` spills D1's array (engine #VALUE!: T-1321). `=@OFFSET(B1,0,0,3,1)` and `=@INDIRECT("B1:B3")` placed off-row are #VALUE! and print as written.
 Status: VERIFIED (excel-graph)
 Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` fixed (T-1320); `ANCHORARRAY(@IF(...))` not yet (T-1321)
 Tasks: T-1285, T-1320, T-1321
