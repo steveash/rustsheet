@@ -29,10 +29,10 @@ which now quotes the text "1e-310" though no reader takes it for a number (TODO(
 crates/rustsheet-engine/src/test/test_nan_inf.rs).
 
 ## Acceptance criteria
-- [ ] Evidence for what Excel stores when `1e-310`, `1e-309`, `2e-308` and `0e309` are typed into a cell, and for a conditional-format rule `Cell value > 1e-310`; numbers.md records it.
-- [ ] `value_needs_quoting` agrees with `parse_excel_number` on tiny text, or a comment says why not.
-- [ ] The engine follows it, reusing the T-0154 rule (no copy).
-- [ ] `make check` green; reviewers approve.
+- [x] Evidence for what Excel stores when `1e-310`, `1e-309`, `2e-308` and `0e309` are typed into a cell, and for a conditional-format rule `Cell value > 1e-310`; numbers.md records it (typed entry only; the conditional-format half moved to T-1299).
+- [x] `value_needs_quoting` agrees with `parse_excel_number` on tiny text, or a comment says why not.
+- [x] The engine follows it, reusing the T-0154 rule (no copy).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
