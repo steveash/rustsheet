@@ -92,7 +92,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
             add_implicit_intersection(child, false);
         }
-        Node::GroupedRootKind { child } => add_implicit_intersection(child, add),
+        Node::GroupedRootKind { child } | Node::Group { child, .. } => {
+            add_implicit_intersection(child, add);
+        }
         Node::RangeKind {
             row1,
             column1,
@@ -249,7 +251,9 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             // Meaningful operator: keep it, but still clean any nested ones.
             remove_redundant_implicit_intersection(child, false);
         }
-        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
+        Node::SpillRangeOperator { child }
+        | Node::GroupedRootKind { child }
+        | Node::Group { child, .. } => {
             remove_redundant_implicit_intersection(child, add);
         }
         Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
@@ -385,7 +389,9 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::NamedVariableKind { .. } | Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
-        Node::GroupedRootKind { child } => run_static_analysis_on_node(child),
+        Node::GroupedRootKind { child } | Node::Group { child, .. } => {
+            run_static_analysis_on_node(child)
+        }
         Node::LambdaDefKind { .. } | Node::LambdaCallKind { .. } => StaticResult::Unknown,
     }
 }

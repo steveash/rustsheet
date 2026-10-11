@@ -28,7 +28,7 @@ impl Model {
 
         for arg in args {
             // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
-            let arg = match arg {
+            let arg = match arg.ungrouped() {
                 Node::ReferenceKind {
                     column,
                     absolute_column,

@@ -20,7 +20,7 @@ impl Model {
                     result += 1.0;
                 }
                 RefArg::Value(CalcResult::Boolean(_))
-                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
                 {
                     result += 1.0;
                 }
@@ -31,7 +31,7 @@ impl Model {
                 // number-ness matters, so the 15-digit cut cannot change the answer
                 // (docs/excel-semantics/numbers.md "15-digit literal parsing").
                 RefArg::Value(CalcResult::String(s))
-                    if !matches!(arg, Node::ReferenceKind { .. })
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. })
                         && self.cast_number(&s).is_some_and(f64::is_finite) =>
                 {
                     result += 1.0;

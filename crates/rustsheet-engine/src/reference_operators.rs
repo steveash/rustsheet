@@ -339,7 +339,7 @@ impl Model {
     /// value (`=ANCHORARRAY(@1)`) is `#VALUE!` in Excel (probes/colon-hash-value-operands D3,
     /// T-1226).
     pub(crate) fn spill_anchor_error(child: &Node, cell: CellReferenceIndex) -> CalcResult {
-        let error = if matches!(child, Node::ImplicitIntersection { .. }) {
+        let error = if matches!(child.ungrouped(), Node::ImplicitIntersection { .. }) {
             Error::VALUE
         } else {
             Error::ERROR
@@ -375,6 +375,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::FunctionKind {
                 kind: Function::Index,
@@ -412,6 +413,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::ImplicitIntersection { child, .. }
                 if matches!(
@@ -442,6 +444,7 @@ impl Model {
     /// An operand of `:`. An INDEX operand is the cell it selects, not its value
     /// (probes/text-result-limit-errors-refs C2, D2).
     pub(crate) fn range_operand(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::FunctionKind {
                 kind: Function::Index,
@@ -603,6 +606,7 @@ impl Model {
     /// refer to each other cannot recurse here (they are bounded when evaluated, by
     /// [`Model::within_defined_name`]).
     fn may_be_multi_area(&self, node: &Node, look_through_names: bool) -> bool {
+        let node = node.ungrouped();
         match node {
             // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let
             // H2, multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
@@ -723,6 +727,7 @@ impl Model {
     ) -> Result<usize, CalcResult> {
         let mut count = 0;
         for node in [left, right] {
+            let node = node.ungrouped();
             count += match node {
                 Node::OpUnionKind { left, right, .. } => {
                     self.count_union_areas(left, right, cell, budget)?
@@ -745,6 +750,7 @@ impl Model {
         cell: CellReferenceIndex,
         budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
+        let node = node.ungrouped();
         match node {
             Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
             Node::OpIntersectKind { left, right, .. } => {
@@ -849,6 +855,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
+        let node = node.ungrouped();
         let reference_form = match node {
             Node::FunctionKind { kind, args } => self.evaluate_reference_form(kind, args, cell),
             _ => None,

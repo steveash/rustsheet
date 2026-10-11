@@ -137,6 +137,7 @@ impl Model {
 
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+        let node = node.ungrouped();
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
             // A range whose corners are on two sheets is `#VALUE!`, so not a reference:
@@ -371,8 +372,7 @@ impl Model {
             return CalcResult::Number(cell.sheet as f64 + 1.0);
         }
         // The arg could be a defined name or a table
-        // let  = &args[0];
-        match &args[0] {
+        match args[0].ungrouped() {
             Node::DefinedNameKind((name, scope, _)) => {
                 // Let's see if it is a defined name
                 if let Some(defined_name) = self

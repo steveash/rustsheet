@@ -80,18 +80,21 @@ impl Parser {
             (self.root_group.take()).filter(|&(_, start, end)| start == open + 1 && end == close);
         let levels = inner.map_or(0, |(levels, ..)| levels).saturating_add(1);
         self.root_group = Some((levels, open, self.lexer.get_position_index()));
-        if leading && self.lexer.peek_token() == TokenType::EOF {
+        let root = leading && self.lexer.peek_token() == TokenType::EOF;
+        if root {
             self.grouped_root = levels;
         }
         // Excel keeps every level of written parentheses around a union (`((A1,B2))`).
         if let Node::OpUnionKind { written, .. } = &mut t {
             *written = written.saturating_add(1);
+            return t;
         }
         // Excel also keeps them around a cut of a parenthesized union (`((A1,B1) B1)`, T-1176).
         if cuts_written_union(&t) {
             if let Node::OpIntersectKind { written, .. } = &mut t {
                 *written = written.saturating_add(1);
             }
+            return t;
         }
         // A parenthesized `@` expression that can be the operand of `#` or `ANCHORARRAY` (it
         // ends at a `#` or a `)`) remembers the levels (`ImplicitIntersection::grouped`).
@@ -115,8 +118,27 @@ impl Parser {
                 of_range: self.lexer.peek_token() == TokenType::Colon,
             };
             self.at_group = Some((group, self.lexer.get_position_index()));
+            return t;
         }
-        t
+        if root {
+            // The whole formula's levels are `grouped_root`'s (`parse_cell_formula`), so an inner
+            // run of them is not also a `Group`.
+            return t.into_ungrouped();
+        }
+        // Any other group is printed back as written (SPEC-0007), but an `@` keeps its own
+        // bookkeeping until the `@` fields fold into `Group` (T-1343).
+        match t {
+            Node::ImplicitIntersection { .. } => t,
+            // `((A1))`: one node per run of directly nested levels.
+            Node::Group { levels, child } if inner.is_some() => Node::Group {
+                levels: levels.saturating_add(1),
+                child,
+            },
+            child => Node::Group {
+                levels: 1,
+                child: Box::new(child),
+            },
+        }
     }
 
     /// `union => intersect (',' intersect)*`, left associative, outside every parenthesis and
@@ -436,7 +458,7 @@ impl Parser {
 /// is left over input).
 fn is_constant(node: &Node) -> bool {
     matches!(
-        node,
+        node.ungrouped(),
         Node::NumberKind(_) | Node::StringKind(_) | Node::BooleanKind(_) | Node::ArrayKind(_)
     )
 }
@@ -448,13 +470,13 @@ fn is_union_operand(node: &Node) -> bool {
     // `(-A1,B1)`, `(--A1,B1)`, `(---A1,B1)` and `(----A1,B1)` all load in Excel and are `#VALUE!`
     // (probes/union-operand-{double-minus,triple-minus,quad-minus}, T-1031), so any number of
     // minuses is accepted.
-    let mut operand = node;
+    let mut operand = node.ungrouped();
     while let Node::UnaryKind {
         kind: OpUnary::Minus,
         right,
     } = operand
     {
-        operand = right;
+        operand = right.ungrouped();
     }
     is_reference_operand(operand)
 }
@@ -464,10 +486,10 @@ fn is_union_operand(node: &Node) -> bool {
 /// `(--A1,B1) A1`, `(A1,-B1) A1`, `(-(A1,B2),C1) A1`, `((-A1,B1),C1) A1` and `A1 (-A1,B1)`
 /// (docs/excel-semantics/references.md "Union: parsing and evaluation", T-1024, T-1031).
 fn has_negated_operand(node: &Node) -> bool {
-    match node {
+    match node.ungrouped() {
         Node::OpUnionKind { left, right, .. } => {
-            matches!(**left, Node::UnaryKind { .. })
-                || matches!(**right, Node::UnaryKind { .. })
+            matches!(left.ungrouped(), Node::UnaryKind { .. })
+                || matches!(right.ungrouped(), Node::UnaryKind { .. })
                 || has_negated_operand(left)
                 || has_negated_operand(right)
         }
@@ -486,7 +508,7 @@ fn has_negated_operand(node: &Node) -> bool {
 /// SORT, UNIQUE and VSTACK are refused, even those that pass a range through; functions not
 /// probed are refused by inference.
 pub(super) fn is_reference_operand(node: &Node) -> bool {
-    match node {
+    match node.ungrouped() {
         Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::BooleanKind(_)
@@ -562,6 +584,7 @@ pub(crate) fn intersection_operand(text: String, node: &Node, is_left: bool) -> 
         | Node::DefinedNameKind(_)
         | Node::TableNameKind(_)
         | Node::NamedVariableKind { .. }
+        | Node::Group { .. }
         | Node::SpillRangeOperator { .. } => true,
         _ => false,
     };
@@ -699,7 +722,10 @@ pub(crate) fn at_text(
 /// (`LAMBDA(x,x)(1)`) and a union with its own parentheses (`union_text`); any other callee was
 /// written in parentheses, and bare, `A1(A2)`, it would not parse back (T-0149).
 pub(crate) fn callee_operand(text: String, node: &Node) -> String {
-    if matches!(node, Node::LambdaDefKind { .. } | Node::OpUnionKind { .. }) {
+    if matches!(
+        node,
+        Node::LambdaDefKind { .. } | Node::OpUnionKind { .. } | Node::Group { .. }
+    ) {
         text
     } else {
         format!("({text})")

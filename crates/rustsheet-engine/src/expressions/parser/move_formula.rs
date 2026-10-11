@@ -1,7 +1,9 @@
 use super::{
     left_chain,
     reference_operators::{at_text, intersection_operand, tight_operand, union_text},
-    stringify::{sheet_span_text, stringify_reference, to_localized_string, DisplaceData},
+    stringify::{
+        group_text, sheet_span_text, stringify_reference, to_localized_string, DisplaceData,
+    },
     value_operands, ArrayNode, Node, Reference,
 };
 use crate::{
@@ -515,6 +517,10 @@ fn to_string_moved(
             let text = to_string_moved(child, move_context, locale, language);
             format!("{}#", tight_operand(text, child))
         }
+        Group { levels, child } => group_text(
+            *levels,
+            &to_string_moved(child, move_context, locale, language),
+        ),
         GroupedRootKind { child } => {
             format!(
                 "({})",

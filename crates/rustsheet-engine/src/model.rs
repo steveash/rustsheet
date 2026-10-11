@@ -267,6 +267,8 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        // Written parentheses are transparent to references: `ROWS((A1:A3))` (SPEC-0007).
+        let node = node.ungrouped();
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -596,6 +598,8 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         use Node::*;
+        // A written group evaluates as its child; peeled in a loop, so it adds no frame.
+        let node = node.ungrouped();
         match node {
             OpSumKind { .. }
             | OpProductKind { .. }
@@ -769,6 +773,8 @@ impl Model {
             ),
             EmptyArgKind => CalcResult::EmptyArg,
             GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
+            // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
+            Group { .. } => CalcResult::new_error(Error::ERROR, cell, "Unpeeled group".to_string()),
             SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {

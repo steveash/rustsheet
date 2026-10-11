@@ -402,6 +402,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::SheetSpanKind {
                 first_index,
@@ -430,6 +431,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::FunctionKind {
                 kind: Function::Row,

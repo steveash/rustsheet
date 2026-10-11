@@ -433,6 +433,12 @@ fn format_function(
 // * =RC+R1C1
 // * =A1+B1
 
+/// `text` in the `levels` pairs of parentheses a [`Node::Group`] was written in.
+pub(crate) fn group_text(levels: u8, text: &str) -> String {
+    let levels = usize::from(levels);
+    format!("{}{text}{}", "(".repeat(levels), ")".repeat(levels))
+}
+
 fn stringify(
     node: &Node,
     context: Option<&CellReferenceRC>,
@@ -730,6 +736,7 @@ fn stringify(
                     | ImplicitIntersection { .. }
                     | SpillRangeOperator { .. }
                     | GroupedRootKind { .. }
+                    | Group { .. }
                     | ErrorKind(_)
                     | ParseErrorKind { .. }
                     | EmptyArgKind => false,
@@ -782,6 +789,7 @@ fn stringify(
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
         GroupedRootKind { child } => format!("({})", sub(child)),
+        Group { levels, child } => group_text(*levels, &sub(child)),
         SpillRangeOperator { child } => {
             if export_to_excel {
                 return format!(
@@ -942,12 +950,15 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
                         | TableNameKind(_)
                         | NamedVariableKind { .. }
                         | WrongRangeKind { .. }
+                        | Group { .. }
                         | ImplicitIntersection { .. } // never wrapped (probes/at-power-text)
                 )
             };
+            // `^` is left associative, so a `^` left operand prints bare: `=A1^2^3` stays as
+            // written, `=(A1^2)^3` keeps its `Group` (probes/power-chain-text, T-1331).
             let x = wrap(
                 left_text,
-                !(is_atom(left) || matches!(left, UnaryKind { .. })),
+                !(is_atom(left) || matches!(left, UnaryKind { .. } | OpPowerKind { .. })),
             );
             let y = paren_if(right, !is_atom(right));
             format!("{x}^{y}")
@@ -1040,7 +1051,9 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ImplicitIntersection { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
-        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
+        Node::SpillRangeOperator { child }
+        | Node::GroupedRootKind { child }
+        | Node::Group { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
 
@@ -1119,7 +1132,9 @@ pub(crate) fn rename_defined_name_in_node(
         Node::ImplicitIntersection { child, .. } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
+        Node::SpillRangeOperator { child }
+        | Node::GroupedRootKind { child }
+        | Node::Group { child, .. } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
         // Do nothing
