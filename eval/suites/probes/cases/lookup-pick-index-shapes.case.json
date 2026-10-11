@@ -1,0 +1,52 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "VLOOKUP/HLOOKUP pick as a reference operand of COUNT when the index argument is INDEX, IF, CHOOSE, OFFSET, a name or a multi-cell range (T-0299, follow-up of T-0295).",
+  "tags": [
+    "M2",
+    "references",
+    "lookup",
+    "probe"
+  ],
+  "names": {
+    "idxname": "=Sheet1!$G$5"
+  },
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "F5": 3.14159,
+        "G5": 2,
+        "F6": 5,
+        "G6": false,
+        "F7": "y",
+        "G7": "5",
+        "H1": 2,
+        "H2": 2,
+        "I1": 1,
+        "A1": "=COUNT(HLOOKUP(42,F5:G6,2))",
+        "A2": "=COUNT(HLOOKUP(42,F5:G6,INDEX(G5:G5,1)))",
+        "A3": "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,G5)))",
+        "A4": "=COUNT(HLOOKUP(42,F5:G6,CHOOSE(1,G5)))",
+        "A5": "=COUNT(HLOOKUP(42,F5:G6,OFFSET(G5,0,0)))",
+        "A6": "=COUNT(HLOOKUP(42,F5:G6,idxname))",
+        "A7": "=COUNT(HLOOKUP(42,F5:G6,H1:H2))",
+        "A8": "=COUNT(HLOOKUP(42,F5:G6,INDEX(G5:G6,1)))",
+        "A9": "=COUNT(HLOOKUP(42,F5:G6,IF(FALSE,1,G5)))",
+        "A10": "=COUNT(HLOOKUP(42,F5:G6,OFFSET(G5,0,0,1,1)))",
+        "B1": "=COUNT(VLOOKUP(9,F5:G7,INDEX(G5:G5,1)))",
+        "B2": "=COUNT(VLOOKUP(9,F5:G7,IF(TRUE,G5)))",
+        "B3": "=COUNT(VLOOKUP(9,F5:G7,CHOOSE(1,G5)))",
+        "B4": "=COUNT(VLOOKUP(9,F5:G7,OFFSET(G5,0,0)))",
+        "B5": "=COUNT(VLOOKUP(9,F5:G7,idxname))",
+        "B6": "=COUNT(VLOOKUP(9,F5:G7,H1:H2))",
+        "B7": "=COUNT(VLOOKUP(9,F5:G7,2))",
+        "C1": "=ISREF(INDEX(G5:G5,1))",
+        "C2": "=ISREF(IF(TRUE,G5))",
+        "C3": "=ISREF(CHOOSE(1,G5))",
+        "C4": "=ISREF(OFFSET(G5,0,0))",
+        "C5": "=ISREF(idxname)"
+      }
+    }
+  ],
+  "expected": {}
+}
