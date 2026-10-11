@@ -3,7 +3,7 @@ id: T-1335
 title: "Euro-sign text typed into a cell stays text in en-US (1€, €1, -1€ are General text)"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ Evidence: probes/typed-currency-percent-input B23:C26 (excel-graph 2026-10-11), 
 
 ## Out of scope
 -
+
+## Outcome
+`set_user_input` (model.rs) lists only `$` and the locale currency, so typed `1€`, `1.5€`, `-1€`, `€1` stay General text; cast.rs (VALUE/coercion) is unchanged. The IronCalc tests `test_currencies_eur_prefix`, `test_currencies_eur_suffix` and `test_sum_function_eur` encoded typed euro text as a number (not Excel en-US) and were replaced by `test_typed_euro_text_stays_text`; `test_sum_function` covers the `$` case. probes baseline 2388 -> 2380 (B23:B26, C23:C26 fixed); 3195 engine tests pass.
