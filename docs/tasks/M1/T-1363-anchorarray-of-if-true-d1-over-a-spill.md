@@ -3,7 +3,7 @@ id: T-1363
 title: "ANCHORARRAY of IF(TRUE,D1) over a spill anchor gives TypeMismatch"
 milestone: M1
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ probes/written-parens-reference-context E20:E22 (excel-graph, T-1339): Excel sto
 
 ## Out of scope
 -
+
+## Outcome
+An IF that picks one cell is the reference operand of `#`/ANCHORARRAY (`spill_anchor_operand`), so `ANCHORARRAY(IF(TRUE,D1))` spills as in Excel. probes/written-parens-reference-context E20:E22 now pass and left the baseline; no regressions.

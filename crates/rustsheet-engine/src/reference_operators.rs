@@ -423,6 +423,17 @@ impl Model {
                     .into_single_area(cell);
                 Self::intersect_reference(picked, cell)
             }
+            // A plain IF that picks one cell is that reference too: `IF(TRUE,D1)#` spills D1#
+            // (probes/written-parens-reference-context E20:E22, T-1363). Anything else it picks
+            // takes the generic path.
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(Ranges::One(Range { left, right })) if left == right => {
+                    CalcResult::Range { left, right }
+                }
+                _ => self.eval_ref_or_index(node, cell),
+            },
             _ => self.eval_ref_or_index(node, cell),
         }
     }
