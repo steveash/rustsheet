@@ -7,15 +7,15 @@ status: todo
 priority: P3
 size: M
 tier: opus
-depends_on: [T-1340]
+depends_on: [T-1340, T-1342]
 spec: docs/specs/SPEC-0007-written-parentheses.md
 ---
 
 ## Goal
-Cut/paste and move print the same text as FORMULATEXT: `to_string_moved` reuses `stringify`'s precedence rules through a reference-rewriting hook.
+Cut/paste and move print the same text as FORMULATEXT: `to_string_moved` reuses `stringify`'s precedence rules through a reference-rewriting hook, and the remaining duplicate precedence tables (`is_atom`, the per-operator wrap lists) give way to one "wrap only if the re-parse differs" rule.
 
 ## Context
-SPEC-0007 Rollout step 5. move_formula.rs has its own `moved_operator_text` (its Power, Sum, Concat and Compare arms never wrap) and unary table, ignores `OpIntersectKind.written`, and prints `SpillRangeOperator` and `LambdaCallKind` callees differently from stringify.
+SPEC-0007 Rollout step 5. move_formula.rs has its own `moved_operator_text` (its Power, Sum, Concat and Compare arms never wrap) and unary table, and prints `SpillRangeOperator` and `LambdaCallKind` callees differently from stringify.
 
 ## Acceptance criteria
 - [ ] move_formula.rs has no precedence table of its own.

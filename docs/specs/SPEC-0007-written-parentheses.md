@@ -1,8 +1,8 @@
 # SPEC-0007 — Written parentheses in the parsed formula
 
-- **Status:** draft (accepted on merge of T-1244)
+- **Status:** draft (accepted on merge of T-1244 once the architecture and performance reviewers approve)
 - **Milestone / lane:** M1 / engine
-- **Tasks:** T-1244 (this spec); T-1339 (step 0), T-1340 (1), T-1341 (2), T-1342 (3), T-1343 (4), T-1344 (5); T-1331 (blocked on T-1340)
+- **Tasks:** T-1244 (this spec); T-1339 (step 0), T-1340 (1), T-1341 (2), T-1342 (3), T-1343 (4), T-1344 (5); T-1331 (its probe case is on its branch; T-1340 merges it and fixes its cells, then T-1331 closes as done by T-1340)
 
 ## Problem
 Excel keeps every parenthesis a formula was written with. The engine's `Node` tree drops them
@@ -15,7 +15,7 @@ So the engine's formula text and FORMULATEXT differ from Excel even though every
 - probes/at-group-leftmost-shapes E34, E35 and probes/at-group-range-corner-whole E34
   (`=@((A1 B1) C1) D1`, `=@(A1):(B1) C1`, `=@(A1):(B1)`). `LeadGroup` records only one group, so these
   print wrong (T-1251).
-- probes/power-chain-text I11, I26, I41, I46 (T-1331). `=A1^2^3` and `=(A1^2)^3` parse to the same
+- probes/power-chain-text I11, I26, I41, I46 (T-1331; the case and its rule are on T-1331's branch, PR draft, and land with T-1340). `=A1^2^3` and `=(A1^2)^3` parse to the same
   `Node`, and Excel prints each as written. No printer-only rule can get both right.
 - The T-1167 unit test `at_operand_adds_no_level_for_a_nested_inner_group` (E40, E41, E43, E44) and
   the F50, F51 asserts of `at_operand_group_leftmost_shapes_match_the_probe` pin the engine's
@@ -60,7 +60,7 @@ Non-goals:
   Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178);
   syntax.md; references.md (union, cut and `@` group entries).
 - A `^` chain prints as written: `=A1^2^3` stays bare and `=(A1^2)^3` keeps its group.
-  Evidence: probes/power-chain-text (excel-graph, T-1331); references.md.
+  Evidence: probes/power-chain-text (excel-graph, T-1331; on T-1331's branch until T-1340 merges it).
 - **The stored xlsx text keeps them too.** Formulas entered through the Graph range API and
   saved by Excel for the web (excel-graph, 2026-10-11, T-1244) stored these `<f>` texts:
 
@@ -118,24 +118,54 @@ impl Node {
     pub(crate) fn ungrouped(&self) -> &Node;
 }
 ```
-Every place that matches on a node's *shape*, not its value, calls `ungrouped()` first:
+A group is transparent to evaluation. Every place that matches on an operand's or argument's
+*shape*, not its value, sees through it.
+
+**Peel where operands are dispatched, not per site.** `evaluate_node_in_context`,
+`evaluate_node_with_reference`, `evaluate_reference_arg`, `eval_ref_or_index`,
+`spill_anchor_operand` and `range_operand` start with `let node = node.ungrouped();`.
+- This is a loop, not a recursive arm, so a group adds no evaluator frame. `-(-(…))` and
+  `1*(1*(…))` keep today's stack depth.
+- Function code that tests argument shapes on `args[i]` gets the peeled node from one accessor
+  (for example `Node::arg_shape(&self) -> &Node`, an alias of `ungrouped`). It does not call
+  `ungrouped()` ad hoc.
+
+The checklist is **every match on any `Node` variant applied to an operand or argument**, not
+only the group-related variants. Step 1 greps `Node::[A-Z]\w*Kind` / `matches!(` over functions/,
+model.rs, reference_operators.rs, units.rs and the parser predicates, and lists every site in its
+PR with "peeled" or "not an operand". Known sites:
 - **Parser predicates:** `is_reference_operand`, `is_union_operand`, `has_negated_operand`,
-  `is_constant`, `chain_operands`, `cuts_written_union`, and `value_operands`/`left_chain` in chain.rs.
-- **Reference-context dispatch:** `evaluate_node_with_reference`, `evaluate_reference_arg`,
-  `eval_ref_or_index`, `spill_anchor_operand`, `range_operand`, `is_reference` (ISREF),
-  `variable_value`/LET binding (let.rs:77), the union and intersection matches (model.rs:634/641,
-  reference_operators.rs, util.rs:216, variance.rs:97, mode_functions.rs:37), `call_callee`,
-  `contains_function`, and `compute_node_units`.
+  `is_constant`, `chain_operands` and `cuts_written_union`.
+- **Reference-context dispatch:** the entry points above, plus:
+  - `is_reference` (ISREF, information/mod.rs:141-157);
+  - `variable_value` / the LET binding (let.rs:77-82);
+  - `call_callee`;
+  - `contains_function`;
+  - `compute_node_units` (units.rs:114, 136, 180-212).
+- **Union and intersection matches:** model.rs:634/641, reference_operators.rs, util.rs:216-224,
+  variance.rs:97, mode_functions.rs:37-50.
+- **`ReferenceKind` / `RangeKind` argument tests**, which today see `(A1)` as a reference only because
+  the parser drops the parentheses. Without peeling, `COUNT((A1))` or `AVERAGE((A1))` with text in
+  A1 would change value. The sites:
+  - count_and_average.rs:33, 38, 117, 262 and count.rs:23, 34;
+  - and_or_xor_not.rs:147, concatenate.rs:345, chisq.rs:355, aggregate.rs:172;
+  - product.rs:32 (single-cell fast path);
+  - model.rs:271, 300.
 
-The checklist is "every site that today special-cases `GroupedRootKind`, plus every
-`matches!(…, OpUnionKind | OpIntersectKind | FunctionKind {..} | ImplicitIntersection {..})`
-on an operand". Step 1 greps for them and lists them in its PR.
+**A `Group` ends a value-operator chain.** It is a chain operand (the first one, or a right
+operand), never part of the spine. `value_operands`, `value_operands_mut`, `left_chain`,
+`for_each_chain_operand_mut`, `ChainLeft::clone`'s `relink`, `grow_chain`, and the chain loops in
+`stringify` (stringify.rs:642) and `to_string_moved` (move_formula.rs:415) **never peel**.
+- Peeling there would print `(A1+B1)+C1` as `A1+B1+C1`, make `clone()` drop groups, and make the
+  mutable walkers (row insert, rename) see a different shape from eval and print.
+- Chain *evaluation* sees through a group operand through the dispatch peel above.
+- Test: `clone()` and print round-trip `=((A1+B1)+C1)*D1`.
 
-`evaluate_node_in_context` gets one arm: `Group { child, .. } => self.evaluate_node_in_context(child, cell)`.
-The one difference from today is in `evaluate_formula_root`: its root-snap test keeps working
-because it matches `OpSumKind` on the *unpeeled* root. A `Group` root therefore skips the snap,
-exactly as `GroupedRootKind` does. Static analysis (the three walkers in static_analysis.rs) and
-`prefix_bound_variables` recurse into the child.
+The root snap is the one place that reads the *unpeeled* node. `evaluate_formula_root` matches
+`OpSumKind` on the root as written, so a `Group` root skips the snap, exactly as `GroupedRootKind`
+does today. Static analysis (the three walkers in static_analysis.rs), `prefix_bound_variables`
+and the rename walkers recurse into the child. These walkers are not on the evaluation path, so
+one frame per group run is within the depth accounting below.
 
 ### Printing
 - `Group` prints `"(".repeat(levels) + child + ")".repeat(levels)` in `stringify` and in
@@ -185,9 +215,9 @@ only for formulas that differ in parentheses, which is the point.
 
 ## Alternatives considered
 - **A `written: u8` count on every variant.** This puts a byte on every node and touches every
-  constructor and pattern (~990 occurrences). Evaluation code would never see it, but neither
-  would shape matchers, so missed sites would fail silently in the printer instead of loudly in
-  `match` exhaustiveness. Rejected.
+  constructor and pattern (~990 occurrences). Neither design gets compiler help at the
+  `matches!(…, _)` shape sites; the `Group` node gets it at the exhaustive walkers and keeps
+  argument shape tests behind one peel point. Rejected.
 - **Keep the original text and re-print from it.** Structural edits (row insert, sheet rename,
   cut/paste) rewrite references, so text would need token-level patching, a second source of
   truth beside the tree. Rejected.
@@ -198,7 +228,7 @@ only for formulas that differ in parentheses, which is the point.
   spec is the replacement.
 
 ## Test plan
-- **Probes** (all already filled by excel-graph):
+- **Probes** (filled by excel-graph; power-chain-text arrives with T-1331's branch):
   - probes/at-operand-nested-groups: all 36 cells pass;
   - at-group-leftmost-shapes E34, E35;
   - at-group-range-corner-whole E34;
@@ -231,8 +261,13 @@ named in it.
 1. **T-1340: `Group` node for value expressions** (engine, opus, M).
    - Adds the variant, `ungrouped()`, the evaluator arm, every shape-matcher site, the walkers,
      the printer (stringify and `to_string_moved`), and the size assertion.
-   - The parser emits `Group` only where today it drops the group. The five special cases are
-     untouched.
+   - The parser emits `Group` only where today it drops the group *and records it nowhere*. A
+     run already counted by `grouped_root`, a union's or cut's `written`, or the `@` fields (`at_group`,
+     `written`, `grouped`) stays with that special case until its fold step. Otherwise it would print
+     twice, as `GroupedRootKind{Group{…}}` does. The five special cases are untouched.
+   - The T-1110 and T-1169 stack tests (`formulas_at_the_nesting_limit_evaluate_on_a_2_mib_stack`
+     and the 125/126/127 tests) stay green unchanged. They gain an alternating `SUM((SUM((…))))`
+     shape. The PR reports their debug-build times before and after.
    - Fixes the plain-operator cells of at-operand-nested-groups and the power-chain cells, which
      unblocks T-1331 (it becomes that task's implementation, or T-1331 closes as done by it).
 2. **T-1341: Fold `GroupedRootKind`** into a root `Group` (engine, sonnet, S). The root-snap behaviour is
@@ -245,7 +280,10 @@ named in it.
      assertions.
    - Exports `_xlfn.SINGLE((x))` as Excel stores it.
 5. **T-1344: One printer** (engine, opus, M). `to_string_moved` reuses `stringify`'s precedence through a
-   reference-rewriting hook instead of its own `moved_operator_text` table. Today a cut/paste can
+   reference-rewriting hook instead of its own `moved_operator_text` table. It also deletes the remaining duplicate
+   precedence tables (`is_atom` and the per-operator wrap lists in `operator_text` and the unary
+   table), leaving one "wrap only if the re-parse differs" rule. It lands after T-1342, so it
+   handles `Group` and no `written` fields. Today a cut/paste can
    print a different text from FORMULATEXT, for example a `^` operand. Covered by a moved-text
    round-trip test over the probe corpus.
 
