@@ -79,3 +79,19 @@ fn whole_formula_keeps_every_parenthesis_level() {
     assert_eq!(model._get_text("A1"), "5.55112E-17");
     assert_eq!(model._get_text("A2"), "5.55112E-17");
 }
+
+/// AGGREGATE(9) and SUBTOTAL(9/109) snap like SUM (probes/near-zero-aggregate-forms B1-B5).
+#[test]
+fn aggregate_and_subtotal_sum_snap() {
+    let mut model = new_empty_model();
+    model._set("A1", "0.1");
+    model._set("A2", "0.2");
+    model._set("A3", "-0.3");
+    model._set("B1", "=AGGREGATE(9,4,A1:A3)=0");
+    model._set("B2", "=SUBTOTAL(9,A1:A3)=0");
+    model._set("B3", "=SUBTOTAL(109,A1:A3)+0=0");
+    model.evaluate();
+    for cell in ["B1", "B2", "B3"] {
+        assert_eq!(model._get_text(cell), "TRUE", "{cell}");
+    }
+}
