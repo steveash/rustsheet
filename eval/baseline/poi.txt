@@ -686,7 +686,6 @@ F	poi/clone_sheet.xlsx	Arkusz1!M8
 F	poi/clone_sheet.xlsx	Arkusz1!M9
 F	poi/deep-data.xlsx	!InvalidCase
 F	poi/invalid_cell_reference.xlsx	!EngineError
-F	poi/link-external-workbook-b.xlsx	Sheet0!A1
 F	poi/poc-shared-strings.xlsx	!InvalidCase
 F	poi/poc-xmlbomb-empty.xlsx	!EngineError
 F	poi/poc-xmlbomb.xlsx	!EngineError

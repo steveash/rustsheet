@@ -143,6 +143,24 @@ fn single_sheet_lookup_functions_give_value_error() {
     assert_eq!(eval(&mut model, "=COUNTBLANK(Data1:Data1!A1:A5)"), "2");
 }
 
+// The error of a prefix that names no sheet: #REF! for a plain name, #NAME? for a span, and
+// #BLOCKED! for another workbook (probes/external-ref-no-link A1, A2, A3; T-0124).
+#[test]
+fn unknown_sheet_prefix_errors() {
+    let mut model = sample();
+    assert_eq!(eval(&mut model, "=SUM(Nope!A1:B1)"), "#REF!");
+    assert_eq!(eval(&mut model, "=SUM(Data1:Nope!A1)"), "#NAME?");
+    assert_eq!(
+        eval(&mut model, "=SUM('[other.xlsx]Sheet1'!A1:B1)"),
+        "#BLOCKED!"
+    );
+    assert_eq!(eval(&mut model, "='[other.xlsx]Sheet1'!A1"), "#BLOCKED!");
+    assert_eq!(
+        eval(&mut model, "=ERROR.TYPE('[other.xlsx]Sheet1'!A1)"),
+        "11"
+    );
+}
+
 // Span edge forms (T-1170; probes/3d-ref-span-edges A1, A2, B1-B3, C4, C5).
 #[test]
 fn span_edge_forms_match_excel() {
