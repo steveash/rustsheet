@@ -239,15 +239,15 @@ Rule: in Microsoft 365, AND, OR and XOR skip every text argument that is not "TR
 whether it is literal or computed, empty or not: `AND("1",TRUE)`, `AND("abc",TRUE)`, `AND(" ",TRUE)`,
 `AND("",TRUE)`, `AND(""&"1",TRUE)`, `AND(IFERROR("1",0),TRUE)`, `AND(T("1"),TRUE)`, `AND(("1"),TRUE)`
 and `AND("1",1)` are TRUE, and `AND("1",FALSE)` is FALSE. Text in an array literal (`{"1",TRUE}`) and in
-referenced cells (A1 = "x", A2 = "1") is skipped as well. Text "TRUE" counts as TRUE in any case
-(`OR("true",FALSE)` = TRUE; "FALSE" next to a logical is unprobed, while `AND("FALSE")` alone is FALSE in ironcalc E48), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
+referenced cells (A1 = "x", A2 = "1") is skipped as well. A literal "TRUE" argument counts as TRUE,
+case-insensitively (`OR("true",FALSE)` = TRUE; computed, array and cell "TRUE" text are unprobed; "FALSE" next to a logical is unprobed, while `AND("FALSE")` alone is FALSE in ironcalc E48), but numeric text does not count as a number (`OR("1",FALSE)` = FALSE).
 When nothing but skipped text is left, the result is `#VALUE!` (`AND("1")`, `AND("")`, `OR("","")`). An
 error argument wins (`AND("1",#N/A)` = `#N/A`). OR and XOR behave the same.
 CONFLICTING (decision 0030 2: Excel 15 is below AppVersion 16; decision 0039: the web value is the Phase 1-3
 target, and the desktop check is T-1075 item 7): poi/FormulaEvalTestData_Copy.xlsx
 EverythingTests!J136 caches `#VALUE!` for `AND("1",1)`, where current Excel for the web gives TRUE. The engine
 follows the web, and J136 stays a known failure until a 16.x desktop value decides (M14). I136 `AND(E14,E17,"1")`
-is not a conflict: E14 and E17 hold text, so every argument is skipped and both versions give `#VALUE!`.
+is not a conflict: E14 and E17 hold text or are empty, so every argument is skipped and both versions give `#VALUE!`.
 Evidence: probes/and-or-xor-text-arguments (84 cells, excel-graph, 2026-10-11, T-0258); ironcalc-calc
 LOGICAL/AND_OR_XOR.xlsx (Excel-cached) "AND XOR OR"!C46:E53; gen-m2/893302d6c5b99e2e Calc!A108 (excel-graph).
 Status: VERIFIED (web); CONFLICTING with the Excel 15 cached J136. The engine passes every probe cell.
