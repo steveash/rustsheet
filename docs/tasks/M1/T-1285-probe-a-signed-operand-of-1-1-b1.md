@@ -24,4 +24,4 @@ T-1247 made `@` take a signed operand (parse_implicit calls parse_power), so pla
 -
 
 ## Outcome
-Probe `probes/at-signed-operand` (excel-graph, 22 cells): the engine matches 18; deviations baselined with follow-ups T-1320 (FORMULATEXT of `=@-2^2`) and T-1321 (`ANCHORARRAY(@IF(TRUE,D1))`). Findings in docs/excel-semantics/references.md. Eval delta: probes known failures 935 -> 939 (new-coverage cells only).
+Probe `probes/at-signed-operand` (excel-graph, 24 cells): the engine matches 20; deviations baselined with follow-ups T-1320 (FORMULATEXT of `=@-2^2`) and T-1321 (`ANCHORARRAY(@IF(TRUE,D1))`). Findings in docs/excel-semantics/references.md. Eval delta: probes known failures 935 -> 939 (new-coverage cells only).
