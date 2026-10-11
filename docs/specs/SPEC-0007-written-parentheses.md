@@ -1,6 +1,6 @@
 # SPEC-0007 — Written parentheses in the parsed formula
 
-- **Status:** draft (accepted on merge of T-1244 once the architecture and performance reviewers approve)
+- **Status:** accepted (on merge of T-1244; architecture and performance reviewers approved)
 - **Milestone / lane:** M1 / engine
 - **Tasks:** T-1244 (this spec); T-1339 (step 0), T-1340 (1), T-1341 (2), T-1342 (3), T-1343 (4), T-1344 (5); T-1331 (its probe case is on its branch; T-1340 merges it and fixes its cells, then T-1331 closes as done by T-1340)
 
@@ -259,7 +259,8 @@ named in it.
    under "Unknown". Must land before step 1 merges. If a group is not transparent somewhere, amend
    this spec first.
 1. **T-1340: `Group` node for value expressions** (engine, opus, M).
-   - Adds the variant, `ungrouped()`, the evaluator arm, every shape-matcher site, the walkers,
+   - Adds the variant, `ungrouped()`, the dispatch peel (the exhaustive `Group` arm left in
+     `evaluate_node_in_context` re-peels and continues, never recursing and never panicking), every shape-matcher site, the walkers,
      the printer (stringify and `to_string_moved`), and the size assertion.
    - The parser emits `Group` only where today it drops the group *and records it nowhere*. A
      run already counted by `grouped_root`, a union's or cut's `written`, or the `@` fields (`at_group`,
