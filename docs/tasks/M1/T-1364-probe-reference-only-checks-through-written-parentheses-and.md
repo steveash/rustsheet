@@ -24,4 +24,4 @@ T-1339 (probes/written-parens-reference-context) could not tell a range from an 
 -
 
 ## Outcome
-Added probes/written-parens-reference-only (excel-graph, 35 cells). Written groups are transparent for ISREF, LET bindings, OFFSET, CELL and ANCHORARRAY, including the `)#` shape (built as `ANCHORARRAY((INDEX(D1:D3,1)))`, which Graph accepts). No non-transparent cell for SPEC-0007/T-1340. Recorded in references.md and SPEC-0007. Eval delta: probes known failures 2386 -> 2393 (7 new-coverage cells: `ISREF(LET(x,A1:A3,x))` is FALSE for us, covered by T-1106; five FORMULATEXT group drops, T-1340).
+Added probes/written-parens-reference-only (excel-graph, 35 cells). Written groups are transparent for ISREF, LET bindings, OFFSET, CELL and ANCHORARRAY, including the `)#` shape (built as `ANCHORARRAY((INDEX(D1:D3,1)))`, which Graph accepts). No non-transparent cell for SPEC-0007/T-1340. Recorded in references.md and SPEC-0007. Eval delta: probes known failures 2386 -> 2393 (7 new-coverage cells: two ISREF-of-LET cells, E40 and E45, are FALSE for us, covered by T-1106; five FORMULATEXT group drops, F30, F40, F50, F60, F75, T-1340).

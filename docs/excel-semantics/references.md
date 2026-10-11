@@ -1023,6 +1023,7 @@ Reference-only checks (excel-graph, 2026-10-11, probes/written-parens-reference-
 was only the construction of the workbook: built as `ANCHORARRAY((INDEX(D1:D3,1)))` Graph accepts it and
 FORMULATEXT prints `=(INDEX(D1:D3,1))#`. So a written group is transparent for references in every probed cell; no
 non-transparent cell exists for SPEC-0007 (T-1340).
+Ours: `ISREF(LET(x,A1:A3,x))` (grouped or not) is FALSE (T-1106); FORMULATEXT drops the groups (T-1340).
 Evidence strength: `ISREF((A1))`, `ISREF((A1:A3))` and the union in `SUM(((A1,B1)))` show a reference survives a group.
 Status: VERIFIED (web).
 Tasks: T-1339, T-1340, T-1363, T-1364
