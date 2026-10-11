@@ -35,19 +35,17 @@ pub(crate) fn implicit_intersection(
     }
     let row = cell_reference.row;
     let column = cell_reference.column;
-    if row >= left.row && row <= right.row {
-        if left.column != right.column {
-            return None;
-        }
+    // A column intersects the cell's row and a row its column. A cell in the row of a one-row
+    // range intersects it by column too: `@XLOOKUP(2,Data!A1:A3,Data!B1:C3)` in another sheet's
+    // B2 is Data!B2 (probes/xlookup-row-column-picks B2, C2).
+    if left.column == right.column && row >= left.row && row <= right.row {
         return Some(CellReferenceIndex {
             sheet,
             row,
             column: left.column,
         });
-    } else if column >= left.column && column <= right.column {
-        if left.row != right.row {
-            return None;
-        }
+    }
+    if left.row == right.row && column >= left.column && column <= right.column {
         return Some(CellReferenceIndex {
             sheet,
             row: left.row,
@@ -55,4 +53,36 @@ pub(crate) fn implicit_intersection(
         });
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn at(sheet: u32, row: i32, column: i32) -> CellReferenceIndex {
+        CellReferenceIndex { sheet, row, column }
+    }
+
+    #[test]
+    fn a_cell_in_a_one_row_range_row_intersects_by_column() {
+        // probes/xlookup-row-column-picks B2, C2: Data!B2:C2 seen from another sheet's B2 and C2.
+        let range = Range {
+            left: at(1, 2, 2),
+            right: at(1, 2, 3),
+        };
+        assert_eq!(
+            implicit_intersection(&at(0, 2, 2), &range),
+            Some(at(1, 2, 2))
+        );
+        assert_eq!(
+            implicit_intersection(&at(0, 2, 3), &range),
+            Some(at(1, 2, 3))
+        );
+        assert_eq!(implicit_intersection(&at(0, 2, 5), &range), None);
+        let block = Range {
+            left: at(1, 2, 2),
+            right: at(1, 3, 3),
+        };
+        assert_eq!(implicit_intersection(&at(0, 2, 2), &block), None);
+    }
 }

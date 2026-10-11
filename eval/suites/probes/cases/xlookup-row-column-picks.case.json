@@ -32,7 +32,13 @@
     "E35": "=XLOOKUP(2,Data!A1:A3,5)",
     "E36": "=XLOOKUP(2,Data!A1:A3,\"x\")",
     "E37": "=XLOOKUP(\"b\",Data!F1:H1,Data!F2:H4,,0,-1)",
-    "E41": "=SUM(XLOOKUP(\"b\",Data!F1:H1,Data!F2:H4))"
+    "E41": "=SUM(XLOOKUP(\"b\",Data!F1:H1,Data!F2:H4))",
+    "B2": "=@XLOOKUP(2,Data!A1:A3,Data!B1:C3)",
+    "C2": "=@XLOOKUP(2,Data!A1:A3,Data!B1:C3)",
+    "G3": "=@XLOOKUP(\"b\",Data!F1:H1,Data!F2:H4)",
+    "E43": "=XLOOKUP(1,Data!A1:A1,Data!B1:C3)",
+    "E44": "=XLOOKUP(1,{1},{5,6})",
+    "E46": "=XLOOKUP(1,{1},{5;6})"
    }
   },
   {

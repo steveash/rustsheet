@@ -275,10 +275,10 @@ column (`XLOOKUP("b",F1:H1,F2:H3)` spills 20; 200, probes/xlookup-array-lookup-v
 Evidence: poi/xlookup.xlsx (Excel-cached, Excel Online 16) Sheet1!C2:D2; probes/xlookup-row-column-picks (T-0962).
 Status: VERIFIED (Excel-cached)
 Probed (probes/xlookup-row-column-picks, excel-graph, 2026-10-11, T-0962): the picked row or column is a
-reference (`ISREF` TRUE, E3, F15); `@` intersects it with the formula cell, so `@XLOOKUP(2,A1:A3,B1:C3)` in E4 is
-`#VALUE!` (E4, G15), not its first value; a blank cell in it spills as 0 (F1, E16); `UPPER(...)` of it spills
+reference (`ISREF` TRUE, E3, F15); `@` intersects it with the formula cell: `@XLOOKUP(2,A1:A3,B1:C3)` is "two" in column B of row 2 and 0 (the blank C2)
+in column C (B2, C2; G3 likewise down a picked column), and `#VALUE!` outside the picked row (E4, G15), never its first value; a blank cell in it spills as 0 (F1, E16); `UPPER(...)` of it spills
 element-wise with a blank as "" (E7, E19). A one-cell lookup vector takes either orientation from the return:
-`XLOOKUP(1,A1:A1,B1:C1)` is the row (E9), `XLOOKUP("a",F1:F1,F2:F4)` the column (E23). A return range of
+`XLOOKUP(1,A1:A1,B1:C1)` is the row (E9), `XLOOKUP("a",F1:F1,F2:F4)` the column (E23); 1x1 arrays likewise (`XLOOKUP(1,{1},{5,6})` and `{5;6}`, E44, E46), and a 2-D return fits neither (`#VALUE!`, E43). A return range of
 another row count (column lookup) or column count (row lookup) is `#VALUE!` (E11, E27), as is a scalar
 return_array (E35, E36). Array return arguments follow the same rules over a range lookup vector
 (`XLOOKUP(2,A1:A3,{"p","q";"r","s";"t","u"})` is "r", "s", E13; a row lookup over a 2x3 array gives the
@@ -290,9 +290,11 @@ reference (`ISREF` is TRUE; probes/isref-reference-lookups H10, excel-graph). Al
 probes/xlookup-array-return (excel-graph): an array return_array gives its element (`XLOOKUP(2,{1;2;3},{4;5;6})` is 5, E1; row arrays E4),
 `if_not_found` and `#N/A` work as for ranges (E2, E3); the binary search modes 2 and -2 work over an array lookup_array with a range or
 array return_array, including match modes -1/1 (E9-E15); search modes 1 and -1 explicit (E22-E24). Shape rules: a 2-D lookup array is
-`#VALUE!` (E8); the return_array needs the lookup array's row count, so a column lookup array with a row return (E16), a row lookup array
-with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider return_array and gives the
-matched row (E7, E19, E20). Still unprobed: an error or scalar return_array, and wildcard match mode with a binary search mode. A 2-D *range* lookup_array is `#VALUE!` as well (probes/xlookup-array-lookup-value-args A15, per element).
+`#VALUE!` (E8); a column lookup array needs the return's row count and a row lookup array its column count, so a column lookup array with a row return
+(E16), a row lookup array with a column return (E18, E6) or a shorter return (E5, E21) is `#VALUE!`; a column lookup array accepts a wider
+return_array and gives the matched row (E7, E19, E20), a row lookup array a taller one and gives the matched column
+(probes/xlookup-row-column-picks E28). A scalar return_array is `#VALUE!` (same probe, E35, E36). Still unprobed: an error return_array, and
+wildcard match mode with a binary search mode. A 2-D *range* lookup_array is `#VALUE!` as well (probes/xlookup-array-lookup-value-args A15, per element).
 Tasks: T-0948
 
 ## XMATCH / XLOOKUP binary search over runs of equal values

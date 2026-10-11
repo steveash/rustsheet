@@ -32,10 +32,11 @@ and a wide return range with a different row count.
 - Binary-search/other XLOOKUP modes.
 
 ## Outcome
-New probe probes/xlookup-row-column-picks (22 formulas, 37 scored cells, excel-graph) answers every question here, and all of them now pass. Engine changes (functions/xlookup.rs):
+New probe probes/xlookup-row-column-picks (28 formulas, 45 scored cells, excel-graph) answers every question here, and all of them now pass. Engine changes (functions/xlookup.rs):
 - One shape rule for range and array lookup vectors (`xlookup_orientation`): a one-cell vector takes its orientation from the return's shape.
 - A range lookup accepts array return arguments.
 - An array row lookup accepts a taller array return and gives the matched column (`xlookup_pick_array`).
 - `@XLOOKUP(...)` intersects the picked row or column instead of taking its first value (`evaluate_at_operand_reference`).
+- The shared `implicit_intersection` now intersects a one-row range by column even when the cell lies in that row (it returned `None`), which the cross-sheet `@` cells B2 and C2 need.
 
-Recorded in lookup.md "XLOOKUP: return_array may be wider than the lookup vector". Eval delta: +1 case fully passing (37 cells), no regressions.
+Recorded in lookup.md "XLOOKUP: return_array may be wider than the lookup vector". Eval delta: +1 case fully passing (45 cells), no regressions.
