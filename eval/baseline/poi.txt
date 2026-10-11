@@ -237,7 +237,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A35
 F	poi/ElapsedFormatTests.xlsx	Tests!A36
 F	poi/ElapsedFormatTests.xlsx	Tests!A37
 F	poi/ElapsedFormatTests.xlsx	Tests!A4
-F	poi/ElapsedFormatTests.xlsx	Tests!A40
 F	poi/ElapsedFormatTests.xlsx	Tests!A41
 F	poi/ElapsedFormatTests.xlsx	Tests!A42
 F	poi/ElapsedFormatTests.xlsx	Tests!A43

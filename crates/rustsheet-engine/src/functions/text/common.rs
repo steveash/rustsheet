@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_text, format_text_value, Formatted},
+    formatter::format::{format_text, format_text_value, FormatContext, Formatted},
     functions::{
         text::{
             position::find_element,
@@ -21,7 +21,6 @@ use crate::{
         },
         util::array_node_to_calc_result,
     },
-    locale::Locale,
     model::Model,
     number_format::to_precision,
 };
@@ -155,8 +154,8 @@ fn formatted_node(d: Formatted) -> ArrayNode {
 }
 
 /// The TEXT array element for a number (`None`: a blank).
-fn text_node(value: Option<f64>, format: &str, locale: &Locale) -> ArrayNode {
-    formatted_node(format_text(value, format, locale))
+fn text_node(value: Option<f64>, format: &str, ctx: &FormatContext) -> ArrayNode {
+    formatted_node(format_text(value, format, ctx))
 }
 
 /// The TEXT array element for a text or boolean value: the format's text section applied to its
@@ -201,14 +200,14 @@ impl Model {
                     // An error in every element; error elements keep theirs.
                     Err(e) => return array_of_errors(&arr, e, own_error),
                 };
-                let locale = self.locale;
+                let ctx = self.format_context();
                 let mut output = Vec::with_capacity(arr.len());
                 for row in arr {
                     let mut data_row = Vec::with_capacity(row.len());
                     for node in row {
                         let out = match node {
-                            ArrayNode::Number(f) => text_node(Some(f), &format_code, locale),
-                            ArrayNode::Empty => text_node(None, &format_code, locale),
+                            ArrayNode::Number(f) => text_node(Some(f), &format_code, &ctx),
+                            ArrayNode::Empty => text_node(None, &format_code, &ctx),
                             text @ (ArrayNode::Boolean(_) | ArrayNode::String(_)) => {
                                 text_value_node(&text, &format_code)
                             }
@@ -247,7 +246,11 @@ impl Model {
                     error @ CalcResult::Error { .. } => return error,
                     CalcResult::Array(_) | CalcResult::Lambda(_) => unreachable!(),
                 };
-                let d = format_text((!is_blank).then_some(value), &format_code, self.locale);
+                let d = format_text(
+                    (!is_blank).then_some(value),
+                    &format_code,
+                    &self.format_context(),
+                );
                 if let Some(_e) = d.error {
                     return CalcResult::Error {
                         error: Error::VALUE,

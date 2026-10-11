@@ -35,7 +35,7 @@ anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKN
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
 type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
-Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). The engine still prints a leading "-" for A1, A3, A5 and A6 (A2 and A4 already give #VALUE! through their `yyyy`/`d` tokens) because the poi ElapsedFormatTests workbook (A40-A47, "-It was 2 [yes, 2] hours...") is a 1904-date-system workbook, where negative serials are valid, and the engine has no date-system awareness (TODO(T-1105)). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
+Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). Those cells used to print a leading "-" because the poi ElapsedFormatTests workbook (A40-A47) is a 1904 workbook, where negatives are valid; the formatter now reads the workbook's date system (T-1105, SPEC-0005; see "Negative serials under an explicit negative section" below for the exact 1900 rule). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
 `(serial - 1) mod 7` from Sunday, one formula for every non-negative serial; negatives are #VALUE!, see above). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED for months 0, 1, 2, 3, 12, 13, 14, 24 and 25, T-1052: `EDATE(0,2)` = 60, the fictitious 1900-02-29, `EDATE(0,3)` = 91, `EDATE(0,13)` = 397, `EDATE(0,14)` = 425, `EDATE(0,24)` = 731, `EDATE(0,25)` = 762, `EOMONTH(0,2)` = 91; negative months are #NUM! (tested: -1 and -12): `EDATE(0,-1)`, `EDATE(0,-12)`, `EOMONTH(0,-1)`; evidence probes/edate-serial-0-months A1-A12, excel-graph 2026-10-07).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
@@ -368,10 +368,34 @@ Not probeable through excel-graph: cell display (`#####` or text) of a negative 
 reads cached values, not displayed text.
 Evidence: probes/date-system-1900-negatives and probes/date-system-1904-negatives (same 18 questions, excel-graph,
 2026-10-11, T-1268).
-Ours: the 1900 case passes 12 of 18 (the elapsed-token negatives print a minus: T-1105); the 1904 case passes 7 of 18 (no date-system awareness in the formatter or date functions yet:
-SPEC-0005 steps 3-4, T-1105 and T-1330).
+Ours: the 1900 case passes 18 of 18 and the 1904 case passes the time-only cells (the formatter reads the date
+system since T-1105); the 1904 epoch in date functions and TEXT date tokens is T-1330 (SPEC-0005 step 4).
 Status: VERIFIED (web)
 Tasks: T-1268, T-1105
+
+## Negative serials under an explicit negative section; lone elapsed tokens
+Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
+In the 1900 system a date/time section is `#VALUE!` for a negative value even when it is the explicit negative
+section and so would format the magnitude: `TEXT(-1,"d;d")`, `TEXT(-1,"d;d;d")`, `TEXT(-1.5,"yyyy;yyyy")`,
+`TEXT(-0.5,"h:mm;h:mm")`, `TEXT(-1.5,"[h];d")` and `TEXT(-1.5,"0.0;d")` are all `#VALUE!`. The one exception is a
+section whose only date/time token is a single elapsed token, whatever literals, quoted text or color surround it:
+`TEXT(-1.5,"[h];[h]")` = "36", `TEXT(-1.5,"d;[h]")` = "36", `TEXT(-1.5,"0;[h]")` = "36" (the negative section prints
+the magnitude), and one section prints a leading minus in front of everything: `TEXT(-1.5,"[h]"" h""")` = "-36 h",
+`TEXT(-1.5,"[h]\h")` = "-36h", `TEXT(-1.5,"""x""[h]")` = "-x36", `TEXT(-1.5,"[Red][h]")` = "-36",
+`TEXT(-1.5,"[mm]")` = "-2160". Fractional seconds are a second token: `TEXT(-1.5,"[s].00")` is `#VALUE!` in 1900 and
+"-129600.00" in 1904. A number section is unaffected: `TEXT(-1.5,"[h];0")` = "2". In the 1904 system every negative
+formats: a negative section gets the magnitude (`TEXT(-1,"d;d")` = "2", `TEXT(-1.5,"[h];d")` = "2", 1904 epoch) and a
+single section a leading minus.
+Quirk: a format with two elapsed tokens is `#VALUE!` in both systems, also for a positive value:
+`TEXT(1.5,"[h]:[mm]")`, `TEXT(0.5,"[mm]:[ss]")` and `TEXT(-1.5,"[h]:[mm]")` (A9, A21, A22). `TEXT(-1.5,"[ss] AM/PM")`
+is `#VALUE!` in both systems too (A23; the positive value is unprobed).
+Evidence: probes/negative-date-sections-1900 and probes/negative-date-sections-1904 (same 23 questions, excel-graph,
+2026-10-11, T-1105).
+Ours: the sign rule is `formatter::dates::negative_serial_allowed`, applied in the `ParsePart::Date` arm of
+formatter/format.rs to the original value. Two elapsed tokens and `[ss] AM/PM` are not rejected yet (T-1366);
+the 1904 negative sections use the 1900 epoch until T-1330.
+Status: VERIFIED (web)
+Tasks: T-1105, T-1366, T-1330
 
 ## HOUR, MINUTE and SECOND past 9999-12-31
 Rule: HOUR and MINUTE of a serial far beyond the last date (2958465, 9999-12-31) are `#NUM!`: `HOUR(123456789.123)` and

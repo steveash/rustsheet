@@ -2742,7 +2742,7 @@ impl Model {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, self.locale).text
+                        format_number(value, &format, &self.format_context()).text
                     });
                 Ok(formatted_value)
             }
@@ -2805,7 +2805,8 @@ impl Model {
                     if is_likely_date_number_format(&style.num_fmt) {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let formatted =
+                                format_number(n, &style.num_fmt, &self.format_context());
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }
@@ -3396,40 +3397,6 @@ impl Model {
     /// Gets the locale of the model
     pub fn get_locale(&self) -> String {
         self.workbook.settings.locale.clone()
-    }
-
-    /// Gets the formatting settings based on the locale
-    pub fn get_fmt_settings(&self) -> FmtSettings {
-        let day_example = 46006.0; // December 15, 2025
-        let currency = self.locale.currency.iso.clone();
-        let currency_symbol = &self.locale.currency.symbol;
-        // "M/d/yy"
-        let short_date = &self.locale.dates.date_formats.short;
-        // "M/d/yyyy"
-        let long_date = &self.locale.dates.date_formats.long;
-        let short_date_example = format_number(day_example, short_date, self.locale).text;
-        let long_date_example = format_number(day_example, long_date, self.locale).text;
-        // Number format ("#,##0.###")
-        // The CLDR formats are a bit different than Excel's
-        // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
-        // "#,##0.00 ¤" Currency format might have weird spaces
-        let currency_format_template = &self.locale.numbers.currency_formats.standard;
-        let currency_format = currency_format_template
-            .replace("¤", &format!("\"{}\"", currency_symbol))
-            .replace(" ", " ");
-
-        let number_fmt = "#,##0.00".to_string();
-        let number_example = format_number(1234.567, &number_fmt, self.locale).text;
-        FmtSettings {
-            currency,
-            currency_format,
-            short_date: short_date.clone(),
-            long_date: long_date.clone(),
-            short_date_example,
-            long_date_example,
-            number_fmt,
-            number_example,
-        }
     }
 
     /// Cycles the references touched by the cursor through the four
