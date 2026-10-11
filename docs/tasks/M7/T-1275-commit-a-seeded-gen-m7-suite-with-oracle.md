@@ -3,7 +3,7 @@ id: T-1275
 title: "Commit a seeded gen-m7 suite with oracle values and file its gaps"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
