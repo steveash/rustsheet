@@ -24,4 +24,4 @@ T-0110 snaps the final addition of an outermost SUM (`fn_sum_outermost`, functio
 -
 
 ## Outcome
-Probe `probes/near-zero-sum-forms` (17 cells, excel-graph): a SUM call snaps its final addition wherever it sits (`=(SUM(...))`, `SUM(...)+0`, `SUM(...)*1` all give 0), unlike `+`/`-`; a trailing zero addend stops the snap; arrays and ranges (blanks/text between) behave like scalars; 2-D ranges add row-major. Engine: `fn_sum` always snaps (the root special case is gone); SUBTOTAL(9) and PERCENTOF use `fn_sum_unsnapped` (unprobed). numbers.md updated. Eval: probes +17 passing cells, 0 regressions.
+Probe `probes/near-zero-sum-forms` (17 cells, excel-graph): a SUM call snaps its final addition wherever it sits (`=(SUM(...))`, `SUM(...)+0`, `SUM(...)*1` all give 0), unlike `+`/`-`; a trailing zero addend stops the snap; arrays and ranges (blanks/text between) behave like scalars; 2-D ranges add row-major. Engine: `fn_sum` always snaps (the root special case is gone); AGGREGATE(9) and PERCENTOF use `fn_sum_unsnapped` (unprobed). numbers.md updated. Eval: probes +17 passing cells, 0 regressions.

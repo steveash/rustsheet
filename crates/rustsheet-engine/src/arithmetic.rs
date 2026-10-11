@@ -82,8 +82,8 @@ pub(crate) fn flush_subnormal(value: f64) -> f64 {
 /// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
 /// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
 /// Excel returns exactly 0. It applies when the cell formula's outermost operation is `+`/`-`
-/// (not when the whole formula is parenthesized) and to every SUM call (the callers decide that). Across the
-/// 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
+/// (not when the whole formula is parenthesized) and to every SUM call (the callers decide that).
+/// Across the 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
 /// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
 /// probes-numeric/30bc5f8fab02d0a2).
 pub(crate) fn snap_near_zero(x: f64, y: f64, total: f64) -> f64 {
