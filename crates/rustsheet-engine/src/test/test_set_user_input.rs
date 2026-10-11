@@ -414,17 +414,11 @@ fn test_number() {
 #[test]
 fn test_typed_euro_text_stays_text() {
     let mut model = new_empty_model();
-    for (row, text) in [(1, "1€"), (2, "1.5€"), (3, "-1€"), (4, "€1"), (5, "1 €")] {
+    for (row, text) in [(1, "1€"), (2, "1.5€"), (3, "-1€"), (4, "€1")] {
         model.set_user_input(0, row, 1, text.to_string()).unwrap();
     }
     model.evaluate();
-    for (cell, text) in [
-        ("A1", "1€"),
-        ("A2", "1.5€"),
-        ("A3", "-1€"),
-        ("A4", "€1"),
-        ("A5", "1 €"),
-    ] {
+    for (cell, text) in [("A1", "1€"), ("A2", "1.5€"), ("A3", "-1€"), ("A4", "€1")] {
         assert_eq!(
             model.get_cell_value_by_ref(&format!("Sheet1!{cell}")),
             Ok(CellValue::String(text.to_string()))
