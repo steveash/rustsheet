@@ -52,6 +52,26 @@ A7 (2.68), A8 (`ROUND(-2.5,0)` = -3). Oracle: excel-graph, 2026-10-04 and 2026-1
 Status: VERIFIED. Implementation: `crates/rustsheet-engine/src/functions/math_and_trigonometry/decimal_round.rs` (T-0106).
 ROUNDUP's stage 2 differs in its last ulp: see "ROUNDUP adds the unit in binary" below.
 
+## TRUNC is ROUNDDOWN
+Rule: `TRUNC(number, num_digits)` behaves like `ROUNDDOWN` on every probed cell, with `num_digits` optional (0).
+It cuts the binary value to 15 significant digits first, so binary noise below the 15th digit never
+drops a unit: `TRUNC(-(0.1+0.7),1)` = -0.8, `TRUNC(1-2^-53,0)` = 1, `TRUNC(0.29,2)` = 0.29 and
+`TRUNC(123456789.123,-5)` = 123400000 exactly. A 16th-digit tie goes away from zero:
+`TRUNC(999999999999957.5,0)` = 999999999999958 and `TRUNC(1E+15+9,0)` = 1000000000000010. A huge
+`num_digits` wraps like ROUNDDOWN's, as the magnitude modulo 65,536 with the sign kept:
+`TRUNC(123.456,65537)` = 123.4, `TRUNC(123.456,-65537)` = 120, `TRUNC(5,2147483647)` = 5,
+`TRUNC(123.456,-16)` = `TRUNC(123.456,-400)` = 0. The cut overflows at the largest double, so
+`TRUNC(2^1023*(2-2^-52),0)` is `#NUM!`, while
+`TRUNC(…,-300)` = 1.79769313E+308 stays finite. A zero result has no sign (`TRUNC(-0.5)&""` = "0").
+The upstream IronCalc examples from b93d4224 also hold:
+- `ROUND`, `ROUNDUP` and `ROUNDDOWN` of `1E+307*10` with 10 digits keep 1E+308.
+- `ROUND(123.456,-400)` = `ROUNDDOWN(…)` = 0 and `ROUNDUP(…)` = `#NUM!`.
+- `ROUNDUP(123.456,-16)` = 1E+16.
+- `ROUNDUP(-(0.1+0.7),1)` = -0.8, because the 15-digit cut leaves nothing to round.
+Evidence: probes/trunc-decimal-stages A1–A56 (excel-graph, 2026-10-11, T-0297).
+Status: VERIFIED
+Implemented in: `fn_trunc` in functions/math_and_trigonometry/mathematical.rs, via `round_decimal` (T-0297)
+
 ## ROUNDUP adds the unit in binary
 Rule: when ROUNDUP has to round up, it does not return the double nearest the rounded-up decimal.
 It takes the rounded-down decimal (stages 1 and 2 above, as ROUNDDOWN), converts it to the nearest
@@ -659,9 +679,37 @@ Evidence: probes-numeric/m9-fin-power.case.json (oracle: excel-graph, 2026-10-06
 Implemented in: `integer_power` in crates/rustsheet-engine/src/arithmetic.rs (T-1302), for finite integer
 exponents with |n| <= 2^53 whose result is finite and non-zero. Overflow and underflow beyond the
 oracle's exponents 1..360 are unverified, so a zero or non-finite result falls back to the libm
-`powf` path (and its #NUM! / #DIV/0! handling) unchanged. The rule also runs, unverified, for finite results with |n| > 360 (the oracle covers 1..360; squaring amplifies error, so huge n near x=1 may differ from Excel) and for a negative n whose intermediate result is subnormal (T-1311).
+`powf` path (and its #NUM! / #DIV/0! handling) unchanged. Exponents beyond 360, subnormal results and base 10 are in the next entry (T-1311).
 Status: VERIFIED (integer exponents)
 Tasks: T-0221, T-0901, T-1302
+
+### Integer exponents beyond 360, subnormal results, base 10 (T-1311)
+Rule: the square-and-multiply rule above holds for every integer exponent tried up to 2^53 and
+every base except 10 (about 280 cells across `1.0000001`, `0.9999999`, `1.5`, `2`, `3`, `5`, `7`,
+`13`, `20`, `50`, `100`, `1000`, `1E5`, `1E15`, `-10`, `-1.5`, negative n by `1/`). Four additions:
+1. A result below 2.2250738585072014E-308 (subnormal) is 0, not the subnormal: `0.1^310`,
+   `0.5^1074`, `(-0.5)^1073`, `2^-1074`, `10^-308`, `10^-4294967296` are all 0 (`=(x)=0` companion
+   cells are TRUE, so it is a flush and not a kept subnormal; decision 0042).
+2. A negative base with |n| >= 2^32 - 1 = 4294967295 is `#NUM!` for every such n, whatever the
+   result would be: `(-1)^4294967295`, `(-0.5)^4294967296` (an underflow), `(-1)^-4294967296`;
+   `(-1)^4294967294` is 1 and `(-0.9999999999)^3000000000` is 0.7408182005096358. The limit is probed up to 2^53 (larger exponents are treated the same, unverified).
+   A positive base has no such limit (`0.5^9007199254740992` = 0, `1^9007199254740992` = 1).
+3. Base exactly 10 with |n| >= 23 is the nearest double to the decimal `1En` (`10^33` = 1E+33,
+   `10^100`, `10^300`, `10^275` = 1E+275 where square-and-multiply drifts), and a negative n is
+   one over that double (`10^-23` = 1.0000000000000001E-23, `10^-289` = 9.999999999999999E-290,
+   `10^-300` = 1E-300). `10^23` equals both. Bases `100`, `1000`, `-10`, `0.1` and `20`
+   are plain square-and-multiply (`0.1^-33` = 9.999999999999965E+32, not 1E+33):
+   `(-10)^33` = -1.0000000000000001E+33, `100^100` = 1.0000000000000005E+200.
+4. Overflow is `#NUM!` as before (`100^200`, `1E15^23`, `10^309`).
+Not explained (T-1319): non-integer exponents of 10 differ from libm in the last digits (`10^33.5` =
+3.162277660168401E+33, libm 3.162277660168379E+33; `10^-33.5` = 3.1622776601683576E-34;
+`10^40.0000001` = 1.0000002302585496E+40).
+Evidence: probes-numeric/power-large-integer-exponents{,-2,-3,-4}.case.json (oracle: excel-graph,
+2026-10-11, T-1311; the non-integer cells are A54-A56 of -4).
+Implemented in: `power` and `integer_power` in crates/rustsheet-engine/src/arithmetic.rs.
+Status: VERIFIED (the 2^32 - 1 threshold is bracketed by 4294967294 and 4294967295 exactly; the base-10
+rule is sampled at about 20 exponents in 23..=308 and inferred between them)
+Tasks: T-1311
 
 ## ROUND family with huge num_digits
 Rule (inconsistent; Excel is right): with an enormous num_digits ROUND/ROUNDDOWN return the number

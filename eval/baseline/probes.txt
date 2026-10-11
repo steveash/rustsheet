@@ -366,6 +366,7 @@ C	probes/timevalue-component-limits.case.json	72
 C	probes/timevalue-fractional-seconds.case.json	46
 C	probes/timevalue-fractional-seconds2.case.json	64
 C	probes/tiny-vs-zero-criteria.case.json	75
+C	probes/trunc-decimal-stages.case.json	56
 C	probes/typed-paren-number-input.case.json	24
 C	probes/union-accepted.case.json	9
 C	probes/union-cut-precedence.case.json	15

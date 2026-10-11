@@ -36,6 +36,7 @@ pub use iso_date::iso8601_to_serial;
 pub use package::{ImportLimits, PartNames};
 pub use shared_strings::decode_xlsx_escapes;
 use shared_strings::read_shared_strings;
+pub use workbook::date_system_from_attribute;
 
 use metadata::load_metadata;
 use package::{resolve_target, Package};
@@ -114,7 +115,7 @@ fn load_package<R: Read + Seek>(
     tz: &str,
 ) -> Result<Workbook, XlsxError> {
     let mut shared_strings = read_shared_strings(archive)?;
-    let mut workbook = load_workbook(archive)?;
+    let (mut workbook, date_system) = load_workbook(archive)?;
     let rels = load_relationships(archive)?;
     let theme_path = resolve_theme_path(&rels);
     let theme = theme::load(archive, theme_path.as_deref());
@@ -172,6 +173,7 @@ fn load_package<R: Read + Seek>(
         settings: WorkbookSettings {
             tz: tz.to_string(),
             locale: locale.to_string(),
+            date_system,
         },
         metadata,
         tables,
