@@ -108,6 +108,8 @@ Typed coercion follows the ToolPak rule:
 - A boolean is `#VALUE!`: `BIN2DEC(TRUE)`, `DEC2BIN(TRUE)`, `IMABS(TRUE)` and `DELTA(TRUE,1)`.
 - A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
 - COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
+- Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
+  "1+1.33333333333333i").
 
 These set the generator modes in eval/catalog/functions.yaml. The scalars are `value`, and IMSUM's and
 IMPRODUCT's inumbers are `array`.
@@ -124,3 +126,25 @@ Ours:
 
 Status: VERIFIED (excel-graph)
 Tasks: T-1085, T-1383, T-1384, T-0907
+
+## Engineering edge cases seen in a generated sample (unprobed)
+Excel gave these values in a seeded engineering sample, which was not committed. They were read from
+nested generated formulas, so each one needs a one-question probe before it is implemented (T-1385).
+Seen directly as a whole cell value:
+- `HEX2OCT("FFFFFFFFFF",4)` is "7777777777". For a negative input `places` is ignored, where we give
+  `#NUM!`.
+- `IMPOWER("2i",-1)` is "3.06287113727155E-17-0.5i" and `IMPOWER("-i",4)` is "1+2.45029690981724E-16i".
+  A tiny part is written in E notation with 15 significant digits, and its value is not what
+  cos/sin of the exact angle gives (ours: "0.0000000000000000306161699786838-0.5i").
+Inferred from inside a larger formula:
+- CONVERT reads its number before its units. A text number with an unknown unit is `#VALUE!`, not
+  `#N/A`.
+- DELTA and GESTEP report the second argument's error before the first's. `DELTA(<#NUM!>,<#N/A>)` is
+  `#N/A`.
+- A boolean cell in BITAND, DELTA or GESTEP is `#VALUE!`, where we give `#NUM!`.
+- `IMSQRT("")` is `#NUM!`, where we give "0".
+- A negative fractional Bessel order is `#NUM!`: `BESSELK(5,-0.0001)`. We truncate the order to 0.
+Evidence: `rustsheet-gen --milestone M9 --count 20 --seed 17` run from a scratch catalog holding only
+the engineering signatures (excel-graph, 2026-10-11, T-1085; not committed).
+Status: UNVERIFIED (probe pending)
+Tasks: T-1385
