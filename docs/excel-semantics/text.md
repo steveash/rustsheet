@@ -175,3 +175,31 @@ Ours: matches except BAHTTEXT (T-1214), which is not implemented. DBCS returns i
 lift over ranges (T-1212). VALUETOTEXT's format (probes/valuetotext-format, excel-graph, T-1229): 1 quotes text and doubles embedded quotes (`"a""b"`; empty text is `""`), while a blank cell is empty, numbers, booleans and errors print as in format 0 (an error spells out, `#N/A`). The format is coerced to a number like any argument (`"1"`, TRUE and a blank cell work; other text is `#VALUE!`); a value in `[0, 2)` is truncated (`1.9` is 1, `1E-20` is 0), and anything else, `2`, `2.5`, `-0.5`, `-1`, is `#VALUE!`; an error format is returned as it is when the value is plain text; which error wins when the value is an error or the format is invalid as well, and a format given as a range reference, are UNVERIFIED (T-1288). The format lifts over arrays like the value (`VALUETOTEXT(A1:A2,{0,1})` is 2x2, `VALUETOTEXT(A1,{0,1})` 1x2). Ours: matches.
 Status: VERIFIED (excel-graph)
 Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248
+
+## TEXTSPLIT, TEXTBEFORE and TEXTAFTER delimiter ranges
+Rule: a multi-cell range of any shape is a delimiter list, like an array constant (arrays.md "Dynamic-array and LAMBDA
+function argument modes"); a blank cell in it is an empty delimiter and numbers and booleans are their text.
+`TEXTBEFORE("a*",C1:D11)` with blank cells in C1:D11 is "" (the empty delimiter matches at the start);
+`TEXTAFTER("TRUE",A5:D6)` (A5 = "TRUE") is "", so `INDIRECT(..)` of it is `#REF!`; `TEXTBEFORE("",C3:D3)` with C3:D3 = TRUE, 1E+15
+is `#N/A` (nothing found); `TEXTSPLIT("#N/A",B4,B11:B12)` with row delimiters 1E+15, TRUE is not an error.
+Evidence: gen-m7/8ed8a680e9794b77 Calc!A17, A26; gen-m7/0e40208f51c2454c Calc!A17; gen-m7/4629e931955aa4b8 Calc!A19 (excel-graph, 2026-10-11, T-1275).
+Ours: a one-row range of text delimiters works; a multi-row range, or one holding a blank or a boolean, is `#VALUE!`.
+Status: VERIFIED (web)
+Tasks: T-1346
+
+## TEXTSPLIT of empty text is #VALUE!
+Rule: `TEXTSPLIT("","a","TRUE")` is `#VALUE!`: in `B5>TEXTSPLIT("","a",CONCAT(D9))` with B5 blank the result is `#VALUE!`, which
+the comparison cannot produce from a blank and text. (TEXTBEFORE("",x) is `#N/A` instead, see the entry above.)
+Evidence: gen-m7/3a62e0950c1074fd Calc!A5 (excel-graph, 2026-10-11, T-1275).
+Ours: "" (so the comparison is FALSE).
+Status: VERIFIED (web) for this form; a blank cell as the text and `TEXTSPLIT("",",")` alone are UNVERIFIED
+Tasks: T-1347
+
+## ARRAYTOTEXT number text
+Rule: ARRAYTOTEXT writes a number as General text with 15 significant digits, like VALUETOTEXT and `&`:
+`ARRAYTOTEXT(YEARFRAC(1911,31142))` is "80.0277777777778".
+Evidence: gen-m7/d38b52bfa1a9f9e6 Calc!A2 (excel-graph, 2026-10-11, T-1275).
+Ours: Rust's shortest round-trip text ("80.02777777777777"; `ARRAYTOTEXT(1/3)` "0.3333333333333333", `ARRAYTOTEXT({1E+20})`
+"100000000000000000000").
+Status: VERIFIED (web)
+Tasks: T-1356

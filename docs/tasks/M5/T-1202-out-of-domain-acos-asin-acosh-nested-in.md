@@ -21,10 +21,15 @@ More cells (T-1239's gen-m6 suite, excel-graph, 2026-10-09): gen-m6/3ee7ffc8d6ab
 `ACOSH(-1)` reaches ADDRESS as NaN, which `as i32` turns into row 0 (`ADDRESS(ACOSH(-1),1)` is `#VALUE!`,
 `ADDRESS(SQRT(-1),1)` is `#NUM!`).
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/2bb922eef72e785e Calc!A30 `=CHOOSECOLS(((0/100)/(2.5+(-0.5))),ASIN(Data!D$9),Data!E4)` with D9 = 100: Excel `#NUM!`, engine `#VALUE!` (`CHOOSECOLS(0,ASIN(100))` is `#VALUE!`, `CHOOSECOLS(0,#NUM!)` is `#NUM!`: the NaN leaks).
+- gen-m7/93976dd9a3578ed9 Calc!A13 `=(Data!A10<ASIN(PI()))`: Excel `#NUM!`, engine FALSE.
+
 ## Acceptance criteria
 - [ ] gen-m5/cd883013bea3b305 A23 passes.
 - [ ] A unit/eval case for each domain-limited function nested in another function.
 - [ ] gen-m6/3ee7ffc8d6ab061f A26 passes.
+- [ ] gen-m7/2bb922eef72e785e A30 and gen-m7/93976dd9a3578ed9 A13 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

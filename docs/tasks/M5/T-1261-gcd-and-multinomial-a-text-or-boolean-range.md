@@ -26,10 +26,14 @@ if you change their path. Code: `fn_gcd`/`fn_lcm` (math_and_trigonometry/gcd_lcm
 Record the precedence in docs/excel-semantics/coercion.md "GCD / LCM / MULTINOMIAL range cells" (the gen-m6 evidence was
 added by T-1239's triage).
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/4629e931955aa4b8 Calc!A7 `=GCD(Data!A6:C11)` (B9 = -0.0001 comes before the text cells A10 "a*" and B10 "?b" and the boolean C11): Excel `#VALUE!`, engine `#NUM!`.
+
 ## Acceptance criteria
 - [ ] gen-m6/5cc04d6f42b23b51 A11 and gen-m6/2c1a6e93a1974f48 A35 pass in `./target/release/rustsheet-eval show <case>`,
       with no new failing gen-m6 cell and no new known failures in eval/baseline/.
 - [ ] Unit tests cover `GCD(-1, <range with a text cell>)` and `MULTINOMIAL(<range: -2.5 first, then a boolean>)`.
+- [ ] gen-m7/4629e931955aa4b8 A7 passes. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

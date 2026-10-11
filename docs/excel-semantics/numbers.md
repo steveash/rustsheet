@@ -944,14 +944,20 @@ out-of-domain `ACOS(1E+15)` is `#NUM!` and stays an error when nested (`SERIESSU
 `SIN(1E+15)` and `SEC(1E+13)` are `#NUM!` too, so the threshold is at most 1E+13.
 Evidence: gen-m5/c2ce66769f6cc566 Calc!A32; gen-m5/065c0542a4ce3d1c Calc!A26; gen-m5/cd883013bea3b305 Calc!A23 (excel-graph, 2026-10-09);
 gen-m6/9bd0bd18636e5f9b Calc!A4 (`SECH(CHOOSE(SIN(1E+15),..))`), gen-m6/3ee7ffc8d6ab061f Calc!A2 (`..-SEC(1E+13)`) (excel-graph, 2026-10-09, T-1239).
-Ours: COS, SIN and SEC compute a number; ACOS yields a NaN number that `powf(0)` turns into 1.
+More: `SIN(-2.5E+15)` and `CSC(1E+15)` are `#NUM!`, and a nested `ASIN(PI())` or `ASIN(100)` stays `#NUM!`
+(`A10<ASIN(PI())`, `CHOOSECOLS(0,ASIN(100))`): gen-m7/9ff3afcacd3bd0fc Calc!A24, gen-m7/f68fafa0ca2eba26 Calc!A37,
+gen-m7/93976dd9a3578ed9 Calc!A13, gen-m7/2bb922eef72e785e Calc!A30 (excel-graph, 2026-10-11, T-1275).
+Ours: COS, SIN, SEC and CSC compute a number; ACOS and ASIN yield a NaN number that `powf(0)` turns into 1 (and that
+comparisons read as FALSE).
 Status: VERIFIED for the observed cells; the exact threshold and TAN are UNVERIFIED.
 Tasks: T-1192, T-1201, T-1202
 
 ## ASIN of a small argument
 Rule: `ASIN(-0.0001)` is -0.00010000000016666668 in Excel; libm `asin` gives -0.00010000000016666667 (one ulp off),
 while `atan(x/sqrt(1-x*x))` reproduces Excel. Which formulation Excel uses over the whole domain is unknown.
-Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239).
+Evidence: gen-m6/2f6b96385ed3facd Calc!A38 (excel-graph, 2026-10-09, T-1239); gen-m7/0e40208f51c2454c Calc!A27 (same value)
+and gen-m7/cb748b6a9b81fbb7 Calc!A38 `ASIN(0.42)` = 0.4334453200698859 (excel-graph, 2026-10-11, T-1275), where libm `asin` and both `atan2(x,sqrt(1-x*x))`
+forms give 0.43344532006988595 and `atan(x/sqrt(1-x*x))` 0.433445320069886: no candidate fits both cells.
 Ours: libm `asin`, one ulp off.
 Status: VERIFIED for the cell; formulation UNVERIFIED
 Tasks: T-1259
@@ -1008,3 +1014,12 @@ rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill
 E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
 Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10 (T-1318; A6 is unchecked until
 then, because the engine's draw for it is random), B18, and the array lift F1:F9 (T-1316).
+
+## SERIESSUM with x = 0
+Rule (hypothesis): SERIESSUM with x = 0 is `#NUM!` only when a term has power 0 (0^0): `SERIESSUM(0,0,2,{1,2,3})` is `#NUM!`,
+but `SERIESSUM(<blank>,123456789.123,-0.5,123456789.123)` (one term, a positive power) is not, since the IFS around it in
+gen-m7 moves on to its next condition (`#VALUE!`) instead of returning `#NUM!`.
+Evidence: ironcalc-calc MATH_AND_TRIGONOMETRY/SERIESSUM.xlsx C1, H7 (Excel-cached); gen-m7/d38b52bfa1a9f9e6 Calc!A27 (excel-graph, 2026-10-11, T-1275).
+Ours: `#NUM!` for every x = 0.
+Status: UNVERIFIED (probe pending: negative powers, a blank x)
+Tasks: T-1359
