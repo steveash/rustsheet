@@ -3,7 +3,7 @@ id: T-1086
 title: "Add generator signatures for the M9 database catalog functions"
 milestone: M9
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
