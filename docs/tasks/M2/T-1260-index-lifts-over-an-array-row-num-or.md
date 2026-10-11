@@ -38,11 +38,12 @@ INDEX now lifts element-wise over a multi-cell range or array in row_num, column
 indices broadcast like arithmetic operands. Each element is the scalar INDEX, read as a value, and an element that
 selects a whole row, column or array keeps its top-left value.
 The INDEX code moved out of lookup_and_reference/mod.rs, which was 979 lines against the 1000-line limit, into
-lookup_and_reference/index.rs. That file has a shared `index_select` that borrows the reference evaluated once, so a
-lifted call never re-evaluates or clones its first argument per element. A single cell or a 1x1 array still takes
+lookup_and_reference/index.rs. That file has a shared `index_select` that borrows the reference evaluated once. A
+lifted element reads only its selection's top-left value (`IndexForm::TopLeft`), so it never copies a row, column
+or array. The broadcast is capped by the shared array bound (`check_array_size`, a DEVIATION in arrays.md). A single cell or a 1x1 array still takes
 the scalar path, so reference-returning INDEX is unchanged.
 The new probe probes/index-array-indices (60 cells, excel-graph) passes in full. gen-m6/2c1a6e93a1974f48 Calc!A25
 passes, with no new failing gen-m6 cell (972 to 973 of 1000). lookup.md "INDEX lifts over array and range indices"
 records the rule.
 Eval delta: gen-m2 fixed 1 (a6d4377c7b1b92cd Calc!A169); probes +1 case, all passing; regressions 0.
-Follow-ups: none.
+Follow-ups: T-1376 (probe the lifted edge cases implemented by analogy).

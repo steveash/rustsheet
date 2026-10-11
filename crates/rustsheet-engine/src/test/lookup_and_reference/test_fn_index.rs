@@ -255,3 +255,23 @@ fn lifted_index_elements_fail_on_their_own() {
     assert_eq!(model._get_text("D6"), "10");
     assert_eq!(model._get_text("E6"), "2");
 }
+
+#[test]
+fn lifted_index_over_a_large_array_reads_one_value_per_element() {
+    let mut model = new_empty_model();
+    // Every element selects the whole 100000-row array and keeps its first value. Copying the
+    // selection per element would be 1e10 node copies; reading the top-left one is linear.
+    model._set("A1", "=SUM(INDEX(SEQUENCE(100000),SEQUENCE(100000)*0))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), "100000");
+}
+
+#[test]
+fn lifted_index_broadcast_is_bounded() {
+    let mut model = new_empty_model();
+    model._set("A1", "1");
+    // 1048576 rows against 16384 columns would be 1.7e10 elements: past the shared array bound.
+    model._set("B1", "=INDEX(A1:A5,SEQUENCE(1048576)*0+1,SEQUENCE(1,16384)*0+1)");
+    model.evaluate();
+    assert_eq!(model._get_text("B1"), "#ERROR!");
+}

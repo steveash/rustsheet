@@ -379,7 +379,12 @@ element-wise. The indices broadcast like arithmetic operands, and each element i
   A1, A2; `SUM(INDEX(A1:B5,0,{1,2}))` = A1 + B1; `INDEX({1,2;3,4},{1,2})` is 1, 3 (the first value of each row).
 - The elements are values, not references: `ROWS(INDEX(A1:A5,{1,3}))` is 1, `COLUMNS` 2, and `ISREF` of it is a single
   FALSE. `SUM` of it is the sum of the values.
-Unprobed: the legacy, implicitly intersected form (T-0294); whether an empty selected cell spills as 0 or blank.
+Unprobed (T-1376): index arrays of mismatched lengths (the engine gives `#N/A` past the shorter, as the arithmetic
+broadcast does), negative and boolean elements other than `{0,FALSE}`, a scalar error index next to an array index
+(the engine broadcasts the error), and whether an empty selected cell spills as 0 or blank. The legacy, implicitly
+intersected form is T-0294.
+DEVIATION (decision 0014): a lifted INDEX whose broadcast indices exceed 1,048,576 elements is `#ERROR!`, the shared
+array bound (arrays.md, "Array results above 1,048,576 cells are #ERROR!").
 Evidence: probes/index-array-indices (60 cells, excel-graph, 2026-10-11, T-1260); gen-m6/2c1a6e93a1974f48 Calc!A25
 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED (excel-graph)

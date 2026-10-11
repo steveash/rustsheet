@@ -2,6 +2,7 @@
 //! array indices (docs/excel-semantics/lookup.md).
 
 use crate::cast::{calc_result_to_array_node, NumberOrArray};
+use crate::functions::math_and_trigonometry::array_size::check_array_size;
 use crate::functions::util::array_node_to_calc_result;
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
@@ -86,21 +87,19 @@ fn index_effective_indices(
 
 /// Extracts the requested cell, row, column or whole array from `arr`.
 /// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
-/// that resolves to a single cell is returned as a scalar; otherwise an array.
+/// that resolves to a single cell is returned as a scalar; otherwise an array, unless `top_left`
+/// asks for its first value only (a lifted element, which must not copy the selection).
 fn index_from_array(
     arr: &[Vec<ArrayNode>],
     row_eff: usize,
     col_eff: usize,
+    top_left: bool,
     cell: CellReferenceIndex,
 ) -> CalcResult {
     let num_rows = arr.len();
-    let num_cols = arr[0].len();
+    let num_cols = arr.first().map_or(0, Vec::len);
     if row_eff > num_rows || col_eff > num_cols {
-        return CalcResult::Error {
-            error: Error::REF,
-            origin: cell,
-            message: "Wrong reference".to_string(),
-        };
+        return wrong_reference(cell);
     }
     let (row_start, row_end) = if row_eff == 0 {
         (1, num_rows)
@@ -112,28 +111,42 @@ fn index_from_array(
     } else {
         (col_eff, col_eff)
     };
-    if row_start == row_end && col_start == col_end {
-        return array_node_to_calc_result(&arr[row_start - 1][col_start - 1], cell);
+    if top_left || (row_start == row_end && col_start == col_end) {
+        return match arr.get(row_start - 1).and_then(|r| r.get(col_start - 1)) {
+            Some(node) => array_node_to_calc_result(node, cell),
+            None => wrong_reference(cell),
+        };
     }
     let mut result = Vec::with_capacity(row_end - row_start + 1);
-    for r in row_start..=row_end {
-        let mut data_row = Vec::with_capacity(col_end - col_start + 1);
-        for c in col_start..=col_end {
-            data_row.push(arr[r - 1][c - 1].clone());
-        }
-        result.push(data_row);
+    for row in &arr[row_start - 1..row_end] {
+        result.push(row.get(col_start - 1..col_end).unwrap_or_default().to_vec());
     }
     CalcResult::Array(result)
+}
+
+fn wrong_reference(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::new_error(Error::REF, cell, "Wrong reference".into())
+}
+
+/// What INDEX returns for its selection.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum IndexForm {
+    /// A single selected cell is its value; a row, column or area stays a reference.
+    Value,
+    /// A single selected cell stays a 1x1 reference, as an aggregate argument sees it.
+    Reference,
+    /// The value of the selection's top-left cell (an element of a lifted INDEX).
+    TopLeft,
 }
 
 impl Model {
     // INDEX(array, row_num, [column_num])
     // INDEX(reference, row_num, [column_num], [area_num])
     pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.index_impl(args, cell, false)
+        self.index_impl(args, cell, IndexForm::Value)
     }
 
-    /// INDEX; `as_reference` keeps a single selected cell as a 1x1 range, as an
+    /// INDEX; [`IndexForm::Reference`] keeps a single selected cell as a 1x1 range, as an
     /// aggregate argument sees it (T-0216; docs/excel-semantics/references.md).
     ///
     /// A multi-cell range or array as row_num, column_num or area_num lifts INDEX: the indices
@@ -145,7 +158,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
-        as_reference: bool,
+        form: IndexForm,
     ) -> CalcResult {
         if !(2..=4).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
@@ -168,7 +181,7 @@ impl Model {
             Err(e) => return e,
         };
         let arg = self.evaluate_reference_arg(&args[0], cell);
-        self.index_select(&arg, numbers, two_arg, cell, as_reference)
+        self.index_select(&arg, numbers, two_arg, cell, form)
     }
 
     /// The lifted INDEX: one scalar INDEX per broadcast element of the indices, the reference
@@ -197,7 +210,16 @@ impl Model {
         ];
         let rows = operands.iter().map(|na| na.dims().0).max().unwrap_or(0);
         let cols = operands.iter().map(|na| na.dims().1).max().unwrap_or(0);
+        // The shared array bound (CLAUDE.md directive 5; DEVIATION, docs/excel-semantics/arrays.md).
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
         let arg = self.evaluate_reference_arg(reference, cell);
+        // An error first argument is every element's result.
+        let arg_error = match &arg {
+            RefArg::Value(CalcResult::Error { error, .. }) => Some(error.clone()),
+            _ => None,
+        };
         let mut result = Vec::with_capacity(rows);
         for i in 0..rows {
             let mut data_row = Vec::with_capacity(cols);
@@ -209,30 +231,21 @@ impl Model {
                     self.number_at(col, i, j),
                     || Error::VALUE,
                 );
-                data_row.push(match numbers {
-                    Err(e) => ArrayNode::Error(e),
-                    Ok(numbers) => {
-                        let selected = self.index_select(&arg, numbers, two_arg, cell, false);
-                        self.top_left_node(selected)
-                    }
+                data_row.push(match (numbers, &arg_error) {
+                    (Err(e), _) => ArrayNode::Error(e),
+                    (Ok(_), Some(error)) => ArrayNode::Error(error.clone()),
+                    (Ok(numbers), None) => calc_result_to_array_node(self.index_select(
+                        &arg,
+                        numbers,
+                        two_arg,
+                        cell,
+                        IndexForm::TopLeft,
+                    )),
                 });
             }
             result.push(data_row);
         }
         CalcResult::Array(result)
-    }
-
-    /// One element of a lifted INDEX: a selected row, column or array keeps its top-left value.
-    fn top_left_node(&mut self, selected: CalcResult) -> ArrayNode {
-        match selected {
-            CalcResult::Range { left, .. } => calc_result_to_array_node(self.evaluate_cell(left)),
-            CalcResult::Array(a) => a
-                .into_iter()
-                .next()
-                .and_then(|r| r.into_iter().next())
-                .unwrap_or(ArrayNode::Error(Error::REF)),
-            other => calc_result_to_array_node(other),
-        }
     }
 
     /// The scalar INDEX of validated `numbers` into the evaluated reference or array `arg`.
@@ -242,7 +255,7 @@ impl Model {
         numbers: IndexNumbers,
         two_arg: bool,
         cell: CellReferenceIndex,
-        as_reference: bool,
+        form: IndexForm,
     ) -> CalcResult {
         let IndexNumbers {
             row: row_num,
@@ -279,11 +292,7 @@ impl Model {
                     || col_eff > num_cols
                     || (two_arg && num_rows > 1 && num_cols > 1)
                 {
-                    return CalcResult::Error {
-                        error: Error::REF,
-                        origin: cell,
-                        message: "Wrong reference".to_string(),
-                    };
+                    return wrong_reference(cell);
                 }
                 let (row_start, row_end) = if row_eff == 0 {
                     (left.row, right.row)
@@ -297,7 +306,8 @@ impl Model {
                     let c = left.column + col_eff as i32 - 1;
                     (c, c)
                 };
-                if !as_reference && row_start == row_end && col_start == col_end {
+                let single = row_start == row_end && col_start == col_end;
+                if form == IndexForm::TopLeft || (form == IndexForm::Value && single) {
                     self.evaluate_cell(CellReferenceIndex {
                         sheet: left.sheet,
                         row: row_start,
@@ -328,7 +338,7 @@ impl Model {
                 }
                 let (row_eff, col_eff) =
                     index_effective_indices(arr.len(), row_num, col_num, two_arg);
-                index_from_array(arr, row_eff, col_eff, cell)
+                index_from_array(arr, row_eff, col_eff, form == IndexForm::TopLeft, cell)
             }
             error @ CalcResult::Error { .. } => error.clone(),
             _ => CalcResult::Error {
