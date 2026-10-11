@@ -968,3 +968,9 @@ Rule (probes/at-signed-operand, excel-graph, 2026-10-11, T-1285): `@` takes a si
 Status: VERIFIED (excel-graph)
 Implemented in: expressions/parser/operands.rs (signed operand, T-1247); FORMULATEXT of `=@-2^2` and `ANCHORARRAY(@IF(...))` not yet (T-1320, T-1321)
 Tasks: T-1285, T-1320, T-1321
+
+## FORMULATEXT of @ next to ^
+Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never parenthesised as an operand of `^`; written parentheses are kept. `=@A1^2`, `=2^@A1`, `=@-A1^2`, `=@2^2`, `=@(A1)^2`, `=@A1:A2^2` (#VALUE!), `=@-2^2+1`, `=2^@-2` (0.25), `=@SUM(A1)^2` and `=@-2%^2` (0.0004) print as written; `=@A1^2^3` (729, left-associative) prints bare; `=(@-2)^2` keeps its parentheses.
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) except `=@A1^2^3` (T-1331) and the written group of `=(@-2)^2` (T-1244).
+Status: VERIFIED (excel-graph)
+Tasks: T-1320, T-1331

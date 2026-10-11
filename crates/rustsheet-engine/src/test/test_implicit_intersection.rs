@@ -247,3 +247,26 @@ fn columns_of_at_range_intersects() {
 
     assert_eq!(model._get_text("B3"), "1".to_string());
 }
+
+// Excel never parenthesises `@` as a power operand (probes/at-power-text, T-1320).
+#[test]
+fn formulatext_of_at_next_to_power_is_bare() {
+    let mut model = new_empty_model();
+    model._set("A1", "3");
+    for (i, text) in ["=@A1^2", "=2^@A1", "=@-A1^2", "=@2^2", "=@-2^2", "=2^@-2"]
+        .iter()
+        .enumerate()
+    {
+        let row = i + 10;
+        model._set(&format!("H{row}"), text);
+        model._set(&format!("I{row}"), &format!("=FORMULATEXT(H{row})"));
+    }
+    model.evaluate();
+
+    for (i, text) in ["=@A1^2", "=2^@A1", "=@-A1^2", "=@2^2", "=@-2^2", "=2^@-2"]
+        .iter()
+        .enumerate()
+    {
+        assert_eq!(model._get_text(&format!("I{}", i + 10)), *text);
+    }
+}
