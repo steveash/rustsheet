@@ -3,7 +3,7 @@ id: T-1274
 title: "Case builder: store LAMBDA optional parameters ([y]) as Excel does"
 milestone: M7
 lane: harness
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
