@@ -1,0 +1,30 @@
+---
+id: T-1347
+title: "TEXTSPLIT of empty text is #VALUE! (gen-m7 3a62e0950c1074fd A5)"
+milestone: M7
+lane: functions-text
+status: todo
+priority: P2
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+TEXTSPLIT of empty text is `#VALUE!`, as in Excel, instead of returning "".
+
+## Context
+T-1275's gen-m7 suite (excel-graph sidecars, 2026-10-11): gen-m7/3a62e0950c1074fd Calc!A5 `=(Data!B5>TEXTSPLIT("","a",CONCAT(Data!D9)))` with B5 blank and D9 = "TRUE":
+Excel `#VALUE!`, engine FALSE (the engine's `TEXTSPLIT("","a")` is "", and blank > "" is FALSE). A comparison cannot make
+`#VALUE!` from a blank and text, so TEXTSPLIT itself is `#VALUE!` (docs/excel-semantics/text.md "TEXTSPLIT of empty text").
+Code: `fn_textsplit` in crates/rustsheet-engine/src/functions/text/textsplit.rs. Probe with the excel-probe skill whether a
+blank cell as text (`TEXTSPLIT(A1,",")`), `TEXTSPLIT("",",")` with no row delimiter and `TEXTSPLIT("","")` behave the same, and
+match those too.
+
+## Acceptance criteria
+- [ ] gen-m7/3a62e0950c1074fd A5 passes in `./target/release/rustsheet-eval show gen-m7/<case>.case.json`, with no new failing gen-m7 cell and no new known failures in eval/baseline/.
+- [ ] The probe cells pass; text.md's entry is VERIFIED.
+- [ ] `make check` green; reviewers approve.
+
+## Out of scope
+-

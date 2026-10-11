@@ -372,3 +372,27 @@ Ours: the 1900 case passes 12 of 18 (the elapsed-token negatives print a minus: 
 SPEC-0005 steps 3-4, T-1105 and T-1330).
 Status: VERIFIED (web)
 Tasks: T-1268, T-1105
+
+## HOUR, MINUTE and SECOND past 9999-12-31
+Rule: HOUR and MINUTE of a serial far beyond the last date (2958465, 9999-12-31) are `#NUM!`: `HOUR(123456789.123)` and
+`MINUTE(7+123456789.123)` are `#NUM!`, as DAY is.
+Evidence: gen-m7/bf889c3917eb54c5 Calc!A1, gen-m7/851eb2099ae3f805 Calc!A39 (excel-graph, 2026-10-11, T-1275).
+Ours: only negative serials are rejected (`HOUR(123456789.123)` = 2).
+Status: VERIFIED (web) for these values; SECOND and the exact bound (2958466 or above) are UNVERIFIED
+Tasks: T-1353
+
+## YEARFRAC swaps reversed dates for every basis
+Rule: YEARFRAC with a start date after the end date swaps them for basis 1 as for basis 0: `YEARFRAC(52874,24708,1)` =
+77.11295191295191 = `YEARFRAC(24708,52874,1)`.
+Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275).
+Ours: `#NUM!` for basis 1 (basis 0 already swaps); bases 2-4 unchecked.
+Status: VERIFIED (web)
+Tasks: T-1354
+
+## DATEDIF argument errors before date checks
+Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
+`#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
+Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
+Ours: `#NUM!`.
+Status: VERIFIED (web); an invalid unit text with a negative start date is UNVERIFIED
+Tasks: T-1355

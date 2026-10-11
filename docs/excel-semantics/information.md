@@ -82,9 +82,28 @@ element `#CONNECT!`; `FIELDVALUE(5,{"a","b"})` is 1x2 and `FIELDVALUE(Q1:R2,"Pri
 `FIELDVALUE({1},"Price")` is 1x1. A one-cell range `value` of FIELDVALUE is a scalar: `ROWS(FIELDVALUE(Q1:Q1,"Price"))` is `#FIELD!`. A number
 or boolean `stock` is `#CONNECT!` (ERROR.TYPE 10; an empty-cell `stock` is UNVERIFIED, the engine gives `#CONNECT!`); text, boolean and empty-cell `value` of FIELDVALUE are `#FIELD!`.
 `IMAGE("")`, `IMAGE(TRUE)` and `IMAGE` of non-URL text (`"a"`, `"b"`) are `#VALUE!` (ERROR.TYPE 3), not `#BLOCKED!`; only a
-URL-shaped source reaches the fetch (which exact strings count as a URL is not probed). `IMAGE(1/0,NA())` is `#DIV/0!` (a `source`
+URL-shaped source reaches the fetch (which strings count as a URL: the T-1189 bullets below). `IMAGE(1/0,NA())` is `#DIV/0!` (a `source`
 error wins over an `alt_text` error; other orders are not probed). The raw IMAGE cells (A10, B10, A13, A14, A16, A19) and the `ROWS`/`COLUMNS` of `IMAGE("")` and `IMAGE(TRUE)` came back with an undecodable rich error type and stay pending; the wrapped `ERROR.TYPE` cells carry the evidence. The VERIFIED rules above cover argument kinds; the DEVIATION status below covers only the missing fetch.
-The engine lifts over array and range `source`/`stock`/`value`/`field_name` and gives `#VALUE!` for non-URL IMAGE sources (URL-shaped = starts with http:// or https://, not probed further); `ERROR.TYPE` lifts over arrays too (probes/rich-errors-arg-kinds F10:G10, F13:G14, F40:G41; over a direct multi-cell range it follows the IS* lifting evidence). UNVERIFIED (engine guesses, probe task filed): FIELDVALUE with two array arguments of different shapes (the engine fills the larger shape with `#FIELD!`; the usual broadcast would pad `#N/A`), an error element inside an array `field_name` (engine: `#FIELD!`), an error element inside an array `source`/`stock` (engine: the element keeps its error), `ERROR.TYPE` over a direct multi-cell or one-cell range (engine: lifts like the IS* tests), an array first argument of IMAGE/STOCKHISTORY with an error in a later argument (engine: that scalar error), and which strings count as an IMAGE URL (engine: `http://`/`https://` prefix).
+The engine lifts over array and range `source`/`stock`/`value`/`field_name` and gives `#VALUE!` for non-URL IMAGE sources (the URL rule is in the T-1189 bullets below); `ERROR.TYPE` lifts over arrays too (probes/rich-errors-arg-kinds F10:G10, F13:G14, F40:G41; over a direct multi-cell range it follows the IS* lifting evidence). Shapes, error elements and URLs (probes/rich-errors-shapes-urls, excel-graph, 2026-10-11, T-1189):
+- FIELDVALUE with two array arguments of different shapes broadcasts to the larger shape, all `#FIELD!` (no `#N/A`
+  padding): `{1,2}` with `{"a","b","c"}` is 1x3, `{1;2}` with `{"a","b","c"}` 2x3, `{1,2,3}` with `{"a";"b"}` 2x3 (A2:C7). A `field_name`
+  shorter than the result along an axis wider than 1 (`FIELDVALUE({1,2,3},{"a","b"})`) is UNVERIFIED; the engine gives `#FIELD!` there.
+- An error element of an array `field_name` stays itself: `FIELDVALUE(5,{"a",#DIV/0!,#N/A})` is `#FIELD!`, `#DIV/0!`,
+  `#N/A`. An error element of an array `value` is `#FIELD!` like a scalar error `value` (A9:C10).
+- A later argument's error lifts over an array first argument: `IMAGE({url,url},1/0)` and `STOCKHISTORY({"A","B"},1/0)`
+  are 1x2 arrays of `#DIV/0!`, and the column forms have 2 rows (A12:B15).
+- An error element inside an array `source`/`stock` keeps its error; the other elements are `#BLOCKED!` / `#CONNECT!` (A18:C19).
+- `ERROR.TYPE` over a direct multi-cell range lifts (`ERROR.TYPE(E1:G1)` spills 2, 7, 2), and over a one-cell range it is
+  that cell's code, one row (A21:A23).
+- An IMAGE source is a URL (`#BLOCKED!`) when, after leading spaces, it starts with `http:` or `https:` in any case and has
+  something after the scheme other than slashes: `HTTPS://EXAMPLE.INVALID/A.PNG`, `https:example.invalid/a.png`,
+  ` https://example.invalid/a.png` and `https://example.invalid` are `#BLOCKED!`; `https://`, `ftp://...`, `www....`,
+  `data:image/png;base64,...`, `file:///c:/a.png` and `example.invalid/a.png` are `#VALUE!` (A25:A35). UNVERIFIED (the
+  engine's inference between `https://` and `https://example.invalid`): bare `http:`/`https:`, `https:/`, `https:///x`,
+  trailing whitespace, and leading whitespace other than a space (T-1345).
+- IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16); the engine does not validate
+  `sizing`, `height` or `width` yet (T-1345).
+The engine matches all of these except A16 since T-1189.
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
 `#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
@@ -95,7 +114,7 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/information/offline_errors.rs
 Unverified: the localized (de/es/fr/it) names of IMAGE, STOCKHISTORY and FIELDVALUE; the language
 tables use the English names.
-Tasks: T-1013, T-1141, T-1179
+Tasks: T-1013, T-1141, T-1179, T-1189, T-1345
 
 ## FIELDVALUE of a plain value is `#FIELD!`
 Rule: `FIELDVALUE(value, field_name)` is `#FIELD!` for a number `value` and for an error `value` (the
