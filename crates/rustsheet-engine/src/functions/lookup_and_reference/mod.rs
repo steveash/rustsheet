@@ -613,6 +613,13 @@ impl Model {
                 cell,
                 "Implicit intersection of a 3-D reference".to_string(),
             ),
+            // `@` intersects the row or column XLOOKUP picks, not its first value:
+            // `@XLOOKUP(2,A1:A3,B1:C3)` outside rows 2 and columns B:C is `#VALUE!`
+            // (probes/xlookup-row-column-picks E4, G15).
+            Node::FunctionKind {
+                kind: Function::Xlookup,
+                args,
+            } => self.xlookup_impl(args, cell, true),
             _ => self.evaluate_node_with_reference(node, cell),
         }
     }
