@@ -82,18 +82,27 @@ fn test_lambda_r_and_c_parameters() {
 fn test_let_names_are_case_insensitive() {
     let mut model = new_empty_model();
     model._set("A1", "=LET(x,2,X+1)");
-    model._set("A2", "=SUBTOTAL(9,TAKE(CHOOSE(1,SEQUENCE(4)),2))");
     model.evaluate();
     assert_eq!(model._get_text("A1"), "3");
-    // A computed array under CHOOSE spills two #VALUE! (probes/subtotal-reference-operands-f).
-    assert_eq!(model._get_text("A2"), "#VALUE!");
-    assert_eq!(model._get_text("A3"), "#VALUE!");
+}
+
+#[test]
+fn test_subtotal_of_take_over_a_selector_holding_a_computed_array_spills() {
+    let mut model = new_empty_model();
+    model._set("A1", "=SUBTOTAL(9,TAKE(CHOOSE(1,SEQUENCE(4)),2))");
+    model._set("C1", "=SUBTOTAL(9,TAKE(SWITCH(9,1,D1:D4,SEQUENCE(4)),2))");
+    model._set("E1", "=SUBTOTAL(9,TAKE(IFS(TRUE,SEQUENCE(4)),2))");
+    model.evaluate();
+    // probes/subtotal-reference-operands-f C46, C111 and C66: two #VALUE! each.
+    for cell in ["A1", "A2", "C1", "C2", "E1", "E2"] {
+        assert_eq!(model._get_text(cell), "#VALUE!", "{cell}");
+    }
 }
 
 #[test]
 fn test_lambda_parameter_names_are_case_insensitive() {
     let mut model = new_empty_model();
-    // probes/let-lambda-name-case A1, A2, A6, A10, A11, A15.
+    // probes/let-lambda-name-case A1, A2, A6, A10, A11 and A15, in that order.
     model._set("A1", "=LET(x,1,LAMBDA(X,x*10)(2))");
     model._set("A2", "=LAMBDA(x,X+1)(2)");
     model._set("A3", "=LET(X,1,LAMBDA(x,X*10)(2))");

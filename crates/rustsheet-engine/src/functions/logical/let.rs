@@ -17,10 +17,12 @@ use crate::{
 /// `LAMBDA(x,X+1)(2)` is 3 and `LET(x,1,LAMBDA(X,x*10)(2))` is 20, probes/let-lambda-name-case).
 pub(crate) fn same_variable(a: &str, b: &str) -> bool {
     // No allocation: this runs per node on every LAMBDA call and LET evaluation.
-    a == b
-        || a.chars()
-            .flat_map(char::to_lowercase)
-            .eq(b.chars().flat_map(char::to_lowercase))
+    if a.is_ascii() && b.is_ascii() {
+        return a.eq_ignore_ascii_case(b);
+    }
+    a.chars()
+        .flat_map(char::to_lowercase)
+        .eq(b.chars().flat_map(char::to_lowercase))
 }
 
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
