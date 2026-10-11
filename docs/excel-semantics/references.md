@@ -936,21 +936,22 @@ print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-grap
 More shapes (probes/at-group-leftmost-shapes, excel-graph, 2026-10-09, T-1245): Excel prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`,
 `=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1`, `=@(A1):OFFSET(B1,0,0) C1`, `=@((A1 B1) C1) D1`, `=@(A1):(B1) C1`, `=@(A1):B1`
 (`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches the first six, `=@(A1):B1` (T-1251: a
-group that is the left corner of a range is `lead` even when the range is the whole operand) and the last; it prints `=@((A1 B1) C1) D1` as
-`=@(A1 B1 C1) D1` and `=@(A1):(B1) C1` as `=@(A1):B1 C1`, dropping a group nested in or right of the leading one: the general
-written-parentheses gap (T-1244). With the range as the whole operand (probes/at-group-range-corner-whole, excel-graph, 2026-10-09,
+group that is the left corner of a range is `lead` even when the range is the whole operand), `=@(A1):(B1) C1` (a group right of the
+leading one is a `Node::Group`, T-1340) and the last; it prints `=@((A1 B1) C1) D1` as `=@(A1 B1 C1) D1`, dropping a group nested in the
+leading one (T-1343). With the range as the whole operand (probes/at-group-range-corner-whole, excel-graph, 2026-10-09,
 T-1251) Excel prints `=@(A1:B1):C1`, `=@((A1)):B1:C1`, `=@((A1)):B1`, `=@(A1):B1:C1` and `=@(A1):(B1)` as written (all `#VALUE!`);
-the engine matches the first four and prints the last as `=@(A1):B1` (T-1244).
+the engine matches all five (the last since T-1340).
 The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 (FORMULATEXT shows the displayed formula only), so whether the stored form keeps the parentheses is an M14
 desktop question (decision 0039).
-Groups nested inside the operand and not wrapping it (`@(A1+(B1))`, `@((A1) (B1))`, `@(((A1)) B1)`) add no
-level in the engine, which prints `=@(A1+B1)`, `=@(A1 B1)` and `=@(A1 B1)`; Excel keeps those inner parentheses as
+Groups nested inside the operand and not wrapping it add no level to the `@` operand. Excel keeps those inner parentheses as
 written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
-excel-graph 2026-10-09, T-1178; engine: T-1244).
+excel-graph 2026-10-09, T-1178). The engine prints a group that does not start the operand as written (`=@(A1+(B1))`, a
+`Node::Group`, T-1340) but drops one that starts it: `=@((A1) (B1))`, `=@(((A1)) B1)` and `=@((A1)+(B1))` print `=@(A1 (B1))`,
+`=@(A1 B1)` and `=@(A1+(B1))` (T-1343).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245); probes/at-group-range-corner-whole (excel-graph, T-1251).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
-Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251
+Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251, T-1340, T-1343
 
 ## Order statistics over unions
 Rule: LARGE, SMALL, RANK, RANK.AVG and FREQUENCY over a union `(a,b,...)` read every area's cells;
@@ -987,9 +988,11 @@ Tasks: T-1285, T-1320, T-1321, T-1337, T-1368
 
 ## FORMULATEXT of @ next to ^
 Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never parenthesised as an operand of `^`; written parentheses are kept. `=@A1^2`, `=2^@A1`, `=@-A1^2`, `=@2^2`, `=@(A1)^2`, `=@A1:A2^2` (#VALUE!), `=@-2^2+1`, `=2^@-2` (0.25), `=@SUM(A1)^2` and `=@-2%^2` (0.0004) print as written; `=@A1^2^3` (729, left-associative) prints bare; `=(@-2)^2` keeps its parentheses.
-Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) except `=@A1^2^3` (T-1331) and the written group of `=(@-2)^2` (T-1244).
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm; `=@A1^2^3` by T-1340) except the written group of `=(@-2)^2`, which stays with the `@` fields until T-1343.
+Rule (probes/power-chain-text, excel-graph, 2026-10-11, T-1331): FORMULATEXT of a `^` chain follows the written parentheses, not the operator's associativity. `=A1^2^3` (729) and `=2^3^2` (64) print bare; `=(A1^2)^3` (729), `=(2^3)^2`, `=A1^(2^3)` (6561), `=2^(3^2)` and `=(A1^2)^3^2` print as written; `=A1^2^3^2` prints bare. The two writings parse to different trees: a written group is a `Node::Group` (SPEC-0007), and the power arm prints a left `^` operand bare.
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) and the `Group` node (T-1340).
 Status: VERIFIED (excel-graph)
-Tasks: T-1320, T-1331
+Tasks: T-1320, T-1331, T-1340
 
 ## Implicit intersection of a one-row range by a cell in that row
 Rule: `@` (or a scalar context) over a one-row range intersects by column whenever the formula cell's column lies

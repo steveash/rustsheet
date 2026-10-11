@@ -139,8 +139,11 @@ fn intersections_round_trip_through_stringify() {
             "Data!C1:D7 Data!C1:C12 Data!A6:E6",
             "Data!C1:D7 Data!C1:C12 Data!A6:E6",
         ),
-        ("(Data!C2:C11 Data!C6:E6)+0.1", "Data!C2:C11 Data!C6:E6+0.1"),
-        ("(D:D 2:2)&\"\"", "D:D 2:2&\"\""),
+        (
+            "(Data!C2:C11 Data!C6:E6)+0.1",
+            "(Data!C2:C11 Data!C6:E6)+0.1",
+        ),
+        ("(D:D 2:2)&\"\"", "(D:D 2:2)&\"\""),
         ("Data!C8:B3 Data!B8", "Data!B3:C8 Data!B8"),
         ("'Q''1'!7:7 'Q''1'!E7", "'Q''1'!7:7 'Q''1'!E7"),
         ("$A$10:$D$12 A12", "$A$10:$D$12 A12"),

@@ -127,11 +127,12 @@ stays inside SINGLE's own parentheses:
 The Graph range API reads the formulas back exactly as entered.
 Evidence: formulas entered through the Graph range API and the file Excel for the web saved
 (excel-graph, 2026-10-11, T-1244).
-Ours: export prints from the parse tree, which drops most groups (syntax.md "FORMULATEXT keeps every
-written parenthesis"), so `=Z1+(Z2)` is stored `Z1+Z2` and `=@(Z1+(Z2))` is stored `_xlfn.SINGLE(Z1+Z2)`.
+Ours: export prints from the parse tree, which keeps a written group as a `Node::Group` (T-1340), so the plain
+shapes above are stored as written. The `@` form is not: `=@(Z1+(Z2))` is stored `_xlfn.SINGLE(Z1+(Z2))` until the
+`@` fields fold into `Group` (T-1343).
 Status: VERIFIED (web)
-Implemented in: not yet (SPEC-0007).
-Tasks: T-1244
+Implemented in: expressions/parser/stringify.rs (`Group`, T-1340) except `_xlfn.SINGLE((x))` (T-1343).
+Tasks: T-1244, T-1340, T-1343
 
 ## LAMBDA optional parameters are stored `_xlop.`
 Rule: Excel stores an optional LAMBDA parameter `[y]` as `_xlop.y`, brackets dropped, and every use of

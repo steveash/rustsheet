@@ -267,6 +267,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -276,14 +277,9 @@ impl Model {
                 row,
                 column,
             } => {
-                let mut row1 = *row;
-                let mut column1 = *column;
-                if !absolute_row {
-                    row1 += cell.row;
-                }
-                if !absolute_column {
-                    column1 += cell.column;
-                }
+                // Relative coordinates are offsets from the formula's cell.
+                let row1 = *row + if *absolute_row { 0 } else { cell.row };
+                let column1 = *column + if *absolute_column { 0 } else { cell.column };
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,
@@ -596,6 +592,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         use Node::*;
+        let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
         match node {
             OpSumKind { .. }
             | OpProductKind { .. }
@@ -613,14 +610,9 @@ impl Model {
                 row,
                 column,
             } => {
-                let mut row1 = *row;
-                let mut column1 = *column;
-                if !absolute_row {
-                    row1 += cell.row;
-                }
-                if !absolute_column {
-                    column1 += cell.column;
-                }
+                // Relative coordinates are offsets from the formula's cell.
+                let row1 = *row + if *absolute_row { 0 } else { cell.row };
+                let column1 = *column + if *absolute_column { 0 } else { cell.column };
                 self.evaluate_cell(CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,
@@ -769,6 +761,8 @@ impl Model {
             ),
             EmptyArgKind => CalcResult::EmptyArg,
             GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
+            // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
+            Group { .. } => CalcResult::new_error(Error::ERROR, cell, "Unpeeled group".to_string()),
             SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {

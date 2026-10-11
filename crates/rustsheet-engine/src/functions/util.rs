@@ -164,6 +164,7 @@ pub(crate) fn is_at_if(node: &Node) -> bool {
 /// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
 /// as a reference). Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
+    let node = node.ungrouped();
     match node {
         Node::SheetSpanKind {
             first_index,
@@ -187,6 +188,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::SheetSpanKind {
                 first_index,
@@ -221,6 +223,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
+        let node = node.ungrouped();
         let result = match node {
             Node::OpUnionKind { .. } | Node::OpIntersectKind { .. } if self.is_multi_area(node) => {
                 return match self.reference_ranges(node, cell) {
@@ -290,7 +293,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        if let Node::FunctionKind { kind, args } = node {
+        if let Node::FunctionKind { kind, args } = node.ungrouped() {
             if kind.picks_reference() {
                 if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
                     return RefArg::from(result);

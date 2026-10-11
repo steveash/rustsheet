@@ -1,0 +1,53 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "FORMULATEXT of left- and right-nested ^ chains with and without written parentheses (T-1331, follow-up of T-1320)",
+  "tags": [
+    "M1",
+    "formulatext",
+    "power",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": 3,
+        "H11": "=A1^2^3",
+        "I11": "=FORMULATEXT(H11)",
+        "H16": "=(A1^2)^3",
+        "I16": "=FORMULATEXT(H16)",
+        "H21": "=A1^(2^3)",
+        "I21": "=FORMULATEXT(H21)",
+        "H26": "=2^3^2",
+        "I26": "=FORMULATEXT(H26)",
+        "H31": "=(2^3)^2",
+        "I31": "=FORMULATEXT(H31)",
+        "H36": "=2^(3^2)",
+        "I36": "=FORMULATEXT(H36)",
+        "H41": "=(A1^2)^3^2",
+        "I41": "=FORMULATEXT(H41)",
+        "H46": "=A1^2^3^2",
+        "I46": "=FORMULATEXT(H46)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!H11",
+    "Sheet1!I11",
+    "Sheet1!H16",
+    "Sheet1!I16",
+    "Sheet1!H21",
+    "Sheet1!I21",
+    "Sheet1!H26",
+    "Sheet1!I26",
+    "Sheet1!H31",
+    "Sheet1!I31",
+    "Sheet1!H36",
+    "Sheet1!I36",
+    "Sheet1!H41",
+    "Sheet1!I41",
+    "Sheet1!H46",
+    "Sheet1!I46"
+  ]
+}
