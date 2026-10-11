@@ -153,6 +153,8 @@ def prefix_bound_names(formula: str) -> str:
     """
     out: list[str] = []
     scopes: list[tuple[int, set[str]]] = []  # (end index of the call, lower-cased names)
+    # `_words` yields `[`, the name and `]` as separate pieces, so the declaration is marked by
+    # position: the name is rewritten and the brackets (with any spaces) are skipped.
     optional: set[int] = set()  # start of each optional parameter's name
     dropped: set[int] = set()  # its brackets and the spaces around the name
     for is_name, word, i in _words(formula):
