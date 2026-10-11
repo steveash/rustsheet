@@ -52,7 +52,7 @@ reference.
 ## Outcome
 The probe probes/and-or-xor-text-arguments (84 cells: AND, OR and XOR x 28 argument shapes, excel-graph) settles the
 rule. Microsoft 365 skips every text argument that is not "TRUE"/"FALSE", literal or computed, empty or not, in arrays
-and in cells. Text "TRUE"/"FALSE" counts as the logical value, and a call left with only skipped text is `#VALUE!`. The
+and in cells. Text "TRUE" counts as TRUE, and a call left with only skipped text is `#VALUE!`. The
 engine already passes all 84 cells, so no code changed. The Excel 15 cached `#VALUE!` for `AND("1",1)` (poi J136)
 contradicts current Excel. Per decision 0030 2 (Excel 15 is below AppVersion 16) it is recorded as CONFLICTING in
 coercion.md and added to T-1075 for a desktop answer, and J136 stays a known failure, as the acceptance criteria allow.
