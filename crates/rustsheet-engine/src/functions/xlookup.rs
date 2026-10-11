@@ -118,32 +118,21 @@ fn xlookup_modes(
     search_mode: &CalcResult,
     cell: CellReferenceIndex,
 ) -> Result<(MatchMode, SearchMode), CalcResult> {
+    let unexpected = || CalcResult::new_error(Error::VALUE, cell, "Unexpected number".to_string());
     let match_mode = match model.cast_to_number(match_mode.clone(), cell)?.floor() as i32 {
         -1 => MatchMode::ExactMatchSmaller,
         1 => MatchMode::ExactMatchLarger,
         0 => MatchMode::ExactMatch,
         2 => MatchMode::WildcardMatch,
-        _ => {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Unexpected number".to_string(),
-            ))
-        }
+        _ => return Err(unexpected()),
     };
-    // An unknown search_mode is #VALUE! (probes/xlookup-array-lookup-value-args A9).
+    // An unknown search_mode is #VALUE! (probes/xlookup-array-lookup-value-args A9, A67).
     let search_mode = match model.cast_to_number(search_mode.clone(), cell)?.floor() as i32 {
         1 => SearchMode::StartAtFirstItem,
         -1 => SearchMode::StartAtLastItem,
         -2 => SearchMode::BinarySearchDescending,
         2 => SearchMode::BinarySearchAscending,
-        _ => {
-            return Err(CalcResult::new_error(
-                Error::VALUE,
-                cell,
-                "Unexpected number".to_string(),
-            ))
-        }
+        _ => return Err(unexpected()),
     };
     Ok((match_mode, search_mode))
 }
@@ -258,7 +247,7 @@ impl Model {
                 } else if left.column == right.column {
                     true
                 } else {
-                    // probes/xlookup-array-lookup-value-args A15.
+                    // probes/xlookup-array-lookup-value-args A15, A68.
                     return Err(CalcResult::new_error(
                         Error::VALUE,
                         cell,
@@ -484,10 +473,13 @@ impl Model {
             XlookupPick::Whole { as_reference }
         };
         // Each element searches the evaluated cells of the lookup vector once; the table is
-        // never walked again.
+        // never walked again. `lift_with_cost` charges the cost once per criterion, but only one
+        // search runs per element whatever the three criteria are, so it is split among them.
+        let criteria_count = u64::try_from(criteria.len()).unwrap_or(1);
         let cost = table.as_ref().map_or(1, |table| {
             u64::try_from(table.values.search_cost())
                 .unwrap_or(u64::MAX)
+                .div_ceil(criteria_count)
                 .max(1)
         });
         self.lift_with_cost(

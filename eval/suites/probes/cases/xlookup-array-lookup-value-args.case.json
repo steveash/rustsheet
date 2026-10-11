@@ -35,7 +35,14 @@
     "A55": "=XLOOKUP(9,Data!A1:A4,Data!B1:B4,Data!C1:C2)",
     "A58": "=XLOOKUP({9;2},Data!A1:A4,Data!B1:B4,Data!C1)",
     "A61": "=XLOOKUP({2;3},Data!A1:A4,Data!B1:B4,1/0,5)",
-    "A64": "=XLOOKUP({2;#N/A},Data!A1:A4,Data!B1:B4,,5)"
+    "A64": "=XLOOKUP({2;#N/A},Data!A1:A4,Data!B1:B4,,5)",
+    "A67": "=XLOOKUP(2,Data!A1:A4,Data!B1:B4,,0,3)",
+    "A68": "=XLOOKUP(2,Data!A1:B4,Data!B1:B4)",
+    "A69": "=COLUMNS(XLOOKUP(2,Data!A1:A4,Data!C1:E4,,{0;0}))",
+    "A70": "=COLUMNS(XLOOKUP({2},Data!A1:A4,Data!C1:E4))",
+    "A71": "=XLOOKUP(9,Data!A1:A4,Data!B1:B4,Data!C1,{0;0})",
+    "A74": "=XLOOKUP(Data!I1:I2,Data!A1:A4,Data!B1:B4,\"nf\")",
+    "A77": "=XLOOKUP(Data!I1:I2,Data!J1:J3,Data!K1:K3,\"nf\")"
    }
   },
   {
@@ -69,7 +76,13 @@
     "H2": 30,
     "F3": 100,
     "G3": 200,
-    "H3": 300
+    "H3": 300,
+    "I2": 2,
+    "J1": 5,
+    "K1": "five",
+    "K2": "blank",
+    "J3": 2,
+    "K3": "two"
    }
   }
  ],
