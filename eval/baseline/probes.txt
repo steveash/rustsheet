@@ -341,6 +341,7 @@ C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17
 C	probes/subtotal-reference-operands-d.case.json	42
 C	probes/subtotal-reference-operands.case.json	40
+C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
 C	probes/sumif-edge-single-cell.case.json	15
 C	probes/text-argument-modes.case.json	47
@@ -567,8 +568,6 @@ F	probes/date-system-1904-negatives.case.json	S!A6
 F	probes/date-system-1904-negatives.case.json	S!A7
 F	probes/date-system-1904-negatives.case.json	S!A8
 F	probes/date-system-1904-negatives.case.json	S!A9
-F	probes/error-stored-busy-behaviors.case.json	S!C11
-F	probes/error-stored-busy-behaviors.case.json	S!C15
 F	probes/fact-large-arguments.case.json	Sheet1!A1
 F	probes/fact-large-arguments.case.json	Sheet1!A11
 F	probes/fact-large-arguments.case.json	Sheet1!A12
