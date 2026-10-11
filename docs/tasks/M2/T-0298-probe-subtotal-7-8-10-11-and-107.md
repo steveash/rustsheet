@@ -3,7 +3,7 @@ id: T-0298
 title: "Probe SUBTOTAL 7/8/10/11 and 107-111 one-pass vs two-pass variance and overflow"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -25,9 +25,12 @@ docs/excel-semantics/statistics.md next to the database-variants paragraph (one-
 two-pass and overflow UNVERIFIED until this lands) and fix numbers.md if it overstates.
 
 ## Acceptance criteria
-- [ ] An oracle-filled probe runs SUBTOTAL 7/8/10/11 and 107-111 over offset, small-magnitude and 1E+200 data.
-- [ ] statistics.md records the SUBTOTAL rule; any engine mismatch has a filed task.
-- [ ] `make check` green; reviewers approve.
+- [x] An oracle-filled probe runs SUBTOTAL 7/8/10/11 and 107-111 over offset, small-magnitude and 1E+200 data.
+- [x] statistics.md records the SUBTOTAL rule; any engine mismatch has a filed task.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - AGGREGATE (already probed).
+
+## Outcome
+Added probes/subtotal-variance-one-vs-two-pass (64 cells, excel-graph). SUBTOTAL 7/8/10/11 and 107-111 use the same one-pass/two-pass switch and `#NUM!` overflow as DVAR; all 64 cells already pass. Recorded in statistics.md; no engine task needed.
