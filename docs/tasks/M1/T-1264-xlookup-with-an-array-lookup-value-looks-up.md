@@ -26,7 +26,7 @@ probes/let-name-uncalled-picked-refs Sheet1!H21: Excel gives 30, the engine `#N/
 ## Outcome
 XLOOKUP lifts an array or multi-cell `lookup_value` per element through `lift_with_cost` (functions/xlookup.rs); a wide return row keeps its first cell per element. New probe probes/xlookup-array-lookup-value (27 cells, all pass); let-name-uncalled-picked-refs H21 now passes. Shapes recorded in docs/excel-semantics/lookup.md.
 
-## Handoff
+## Handoff (resumed)
 Branch has a working implementation (XLOOKUP lifts an array/multi-cell `lookup_value` through `lift_with_cost`, wrapping the scalar path as `xlookup_scalar`), probe `probes/xlookup-array-lookup-value` (27 oracle cells) and the lookup.md entry; `make check` was green with the baseline updated. Reviews: architecture APPROVE; security, quality, performance REQUEST_CHANGES.
 - Security (MAJOR): `xlookup_walk_cost` charges 1 for a computed-array lookup_array and ignores return_array/if_not_found, so `=XLOOKUP(ROW(1:1000000),SEQUENCE(100000),SEQUENCE(100000))` is about 1e11 operations. Needs a DEVIATION entry (decision 0014) for the refusal and a test.
 - Quality (MAJOR): do not fork `Model::walk_cost` (if_ifs.rs); extend it (e.g. count computed arrays) instead.
