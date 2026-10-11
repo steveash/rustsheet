@@ -342,7 +342,7 @@ impl Model {
                 // A direct single-cell reference is read like a range cell (probes/text-result-limit-errors
                 // C3).
                 CalcResult::Error { .. }
-                    if matches!(arg, Node::ReferenceKind { .. })
+                    if matches!(arg.ungrouped(), Node::ReferenceKind { .. })
                         && (over_limit || size.exceeds_with_separator(&values)) =>
                 {
                     over_limit = true;

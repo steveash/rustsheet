@@ -74,7 +74,8 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         Node::UnaryKind { right, .. } => assign_variable_ids(right, target, id),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
-        | Node::GroupedRootKind { child } => {
+        | Node::GroupedRootKind { child }
+        | Node::Group { child, .. } => {
             assign_variable_ids(child, target, id);
         }
         Node::OpRangeKind { left, right }
@@ -193,6 +194,7 @@ impl Model {
     /// wherever it comes from: written out, another variable, IF, CHOOSE or LET
     /// (probes/multiarea-let H1, multiarea-letbind H1:H3 and H7).
     pub(crate) fn bind_argument(&mut self, node: &Node, cell: CellReferenceIndex) -> Binding {
+        let node = node.ungrouped();
         let is_index = matches!(
             node,
             Node::FunctionKind {
