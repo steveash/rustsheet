@@ -400,7 +400,7 @@ Oracle: excel-graph, 2026-10-05, 2026-10-06, 2026-10-07 and 2026-10-10.
 Status: VERIFIED (conditional-format rule values: UNVERIFIED, T-1299)
 Implemented in: `in_excel_range`, shared by `parse_excel_number` (`cast_number`, `VALUE`, the
 lexer, criteria operands, AVERAGE text, NUMBERVALUE) and `parse_finite_number` (format
-conditions, conditional formats, the criteria date guard, `value_needs_quoting`),
+conditions, conditional formats, the criteria date guard),
 in crates/rustsheet-engine/src/number_format.rs; the tiny side (T-0154) in `parse_excel_number`
 (`cast_number`, VALUE, the lexer, criteria operands, AVERAGE/AVERAGEA text arguments, formatted
 number text, NUMBERVALUE) and, for validity only, the TEXT format-condition lexer. Cell entry
