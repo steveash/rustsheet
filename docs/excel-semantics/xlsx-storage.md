@@ -116,7 +116,10 @@ it as `_xlpm.y` like any other parameter: `=LAMBDA(x,[y],ISOMITTED(y))(1)` is sa
 A file that stores `[_xlpm.y]` instead is refused by Excel for the web as corrupt
 (`FileCorruptTryRepair`, T-1083). FORMULATEXT shows the typed form `=LAMBDA(x,[y],ISOMITTED(y))(1)`.
 Evidence: formulas entered through the Graph range API and the file Excel for the web saved
-(excel-graph, 2026-10-11, T-1274); probes/lambda-optional-params B1 (FORMULATEXT).
+(excel-graph, 2026-10-11, T-1274), sheet1.xml:
+`<f t="array" ref="A1">_xlfn.LAMBDA(_xlpm.x,_xlop.y,_xlfn.ISOMITTED(_xlpm.y))(1)</f>` and
+`<f t="array" ref="A3">_xlfn.LAMBDA(_xlpm.x,_xlop.y,IF(_xlfn.ISOMITTED(_xlpm.y),_xlpm.x,_xlpm.x+_xlpm.y))(1)</f>`;
+probes/lambda-optional-params B1 (FORMULATEXT).
 Status: VERIFIED (web)
 Implemented in: engine import (expressions/parser/lambda.rs) and export (stringify.rs) already use
 `_xlop.`; the case builder writes it since T-1274 (spec2xlsx.py `prefix_bound_names`).
