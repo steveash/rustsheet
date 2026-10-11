@@ -159,7 +159,7 @@ struct Aggregate<'a> { rows: &'a [usize], relative: &'a [usize] }
      once and divide, so its total work is O(N).
    - A user LAMBDA with two parameters must receive the whole relative array on every call, so
      its work is O(G x N) (G output cells, N relative rows). It is charged against the shared
-     cell-visit cap (`MAX_LIFTED_CELL_VISITS`, if_ifs.rs) before any call. A refusal is a
+     cell-visit cap (`MAX_LIFTED_CELL_VISITS`, if_ifs.rs) before any call. The constant is private today: widen it, or a helper that charges visits against it, to `pub(crate)`; never copy it. A refusal is a
      directive-5 DEVIATION, which the implementing task (T-1325 / T-1327) records in arrays.md
      with a test.
 4. **Sorting by values** (sort_order 2.. / row_sort_order) sorts groups by their aggregate in
