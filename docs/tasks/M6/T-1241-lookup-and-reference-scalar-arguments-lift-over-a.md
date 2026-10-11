@@ -22,8 +22,14 @@ OFFSET, 22-23 and 25 XLOOKUP, 26-27 and 29 XMATCH, 34-35 TRIMRANGE, 38 FORMULATE
 T-1212/T-1218 lifts did). OFFSET and INDIRECT lifted over arrays return arrays of references; check how the engine
 represents that before choosing a design (references.md). Split per function family if it outgrows size M.
 
+More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/rustsheet-eval show gen-m7/<case>.case.json`):
+- gen-m7/2bb922eef72e785e Calc!A22 `=HYPERLINK("mailto:a@example.com",(DROP(Data!A5:A10,3,Data!A2)>0.2))` (friendly_name a 3x1 array): Excel `#SPILL!`, engine `#N/IMPL!`.
+- gen-m7/cb748b6a9b81fbb7 Calc!A28 `=OFFSET(Data!A9:C10,1,VLOOKUP(..),3,OFFSET(Data!D6:D9,3,(Data!D$4+7)))` (width a 4x1 reference, cols `#N/A`): Excel `#SPILL!` (the lift wins over the `#N/A` scalar argument), engine `#N/A`.
+- gen-m7/f68fafa0ca2eba26 Calc!A7 `=ADDRESS(15,..,3,((Data!$D$5*Data!B$12)>=FILTER(Data!D1:D12,..)))` (a1 an array): Excel `#SPILL!`, engine `#N/IMPL!`.
+
 ## Acceptance criteria
 - [ ] The listed probes/lookup-argument-modes cells pass (except those needing T-1242); baseline updated.
+- [ ] gen-m7/2bb922eef72e785e A22, gen-m7/cb748b6a9b81fbb7 A28 and gen-m7/f68fafa0ca2eba26 A7 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
