@@ -81,7 +81,13 @@ def test_excel_errors_are_values_not_exceptions(wb):
 
 @pytest.mark.parametrize(
     ("literal", "code"),
-    [("#GETTING_DATA", 8), ("#CONNECT!", 10), ("#BLOCKED!", 11), ("#FIELD!", 13)],
+    [
+        ("#GETTING_DATA", 8),
+        ("#CONNECT!", 10),
+        ("#BLOCKED!", 11),
+        ("#FIELD!", 13),
+        ("#BUSY!", 0),
+    ],
 )
 def test_newer_error_kinds(literal, code):
     # SPEC-0003: XlError accepts the stored names, including ones that are not formula literals.
@@ -93,7 +99,13 @@ def test_newer_error_kinds(literal, code):
 
 @pytest.mark.parametrize(
     ("literal", "code"),
-    [("#GETTING_DATA", 8), ("#CONNECT!", 10), ("#BLOCKED!", 11), ("#FIELD!", 13)],
+    [
+        ("#GETTING_DATA", 8),
+        ("#CONNECT!", 10),
+        ("#BLOCKED!", 11),
+        ("#FIELD!", 13),
+        ("#BUSY!", 0),
+    ],
 )
 def test_set_stores_typed_error_cells(wb, literal, code):
     # These are not typeable literals, so Workbook.set must not parse them as text (T-1145).

@@ -304,7 +304,9 @@ mod tests {
                 "A2":{"t":"e","v":"#GETTING_DATA","stored":true},
                 "A3":{"t":"e","v":"#BUSY!","stored":true},
                 "A4":{"t":"e","v":"#N/A"},
-                "B2":"=ERROR.TYPE(A2)"}}]}"##,
+                "A5":{"t":"e","v":"#UNKNOWN!","stored":true},
+                "B2":"=ERROR.TYPE(A2)",
+                "B3":"=ERROR.TYPE(A3)"}}]}"##,
         );
         let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
         let at = |row| evaluated.value("S", Addr { row, col: 1 });
@@ -314,9 +316,15 @@ mod tests {
             evaluated.value("S", Addr { row: 2, col: 2 }),
             Some(Value::Number(8.0))
         );
-        // Unknown to the stored-name table: `#ERROR!` (xlsx import's fallback), not the text "#BUSY!".
-        assert_eq!(at(3), Some(Value::Error("#ERROR!".into())));
+        // Its own kind with ERROR.TYPE 0 (SPEC-0003 "Stored `#BUSY!`", T-1222).
+        assert_eq!(at(3), Some(Value::Error("#BUSY!".into())));
+        assert_eq!(
+            evaluated.value("S", Addr { row: 3, col: 2 }),
+            Some(Value::Number(0.0))
+        );
         assert_eq!(at(4), Some(Value::Error("#N/A".into())));
+        // Unknown to the stored-name table: `#ERROR!` (xlsx import's fallback), not the text.
+        assert_eq!(at(5), Some(Value::Error("#ERROR!".into())));
     }
 
     #[test]
