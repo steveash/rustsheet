@@ -696,7 +696,7 @@ pub(super) fn read_sheet_data<R: BufRead>(
 /// the web refuses a workbook with a longer one (createSession 501 `FileCorruptTryRepair`): 8,192
 /// stored characters load and 8,193 do not (docs/excel-semantics/syntax.md "Formulas over 8,192
 /// characters refuse the workbook"; T-1060, T-1091, T-1093).
-pub(super) const MAX_FORMULA_CHARS: usize = 8_192;
+const MAX_FORMULA_CHARS: usize = 8_192;
 
 /// Refuses the workbook, as Excel does, when the formula stored at `context` is longer than
 /// [`MAX_FORMULA_CHARS`]. Characters are Unicode scalar values; whether Excel counts UTF-16 code
