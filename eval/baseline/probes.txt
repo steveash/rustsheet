@@ -150,6 +150,7 @@ C	probes/fact-large-arguments.case.json	18
 C	probes/filter-if-empty-array.case.json	12
 C	probes/fin-argument-modes.case.json	386
 C	probes/format-doubled-quotes.case.json	11
+C	probes/formulatext-written-groups-shapes.case.json	12
 C	probes/gcd-lcm-bounds.case.json	38
 C	probes/geomean-exponent-sum-2.case.json	34
 C	probes/geomean-exponent-sum.case.json	28
