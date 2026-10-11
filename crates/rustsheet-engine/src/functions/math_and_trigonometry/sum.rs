@@ -253,9 +253,9 @@ impl Model {
 /// [`snap_near_zero`] needs.
 #[derive(Default)]
 pub(crate) struct SumParts {
-    pub(crate) total: f64,
-    pub(crate) before_last: f64,
-    pub(crate) last: f64,
+    total: f64,
+    before_last: f64,
+    last: f64,
 }
 
 impl SumParts {
@@ -263,6 +263,11 @@ impl SumParts {
         self.before_last = self.total;
         self.last = value;
         self.total += value;
+    }
+
+    /// The total with its final addition snapped by [`snap_near_zero`].
+    pub(crate) fn snapped(&self) -> f64 {
+        snap_near_zero(self.before_last, self.last, self.total)
     }
 }
 
@@ -285,10 +290,7 @@ impl Model {
     /// probes/near-zero-sum-forms; docs/excel-semantics/numbers.md "Near-zero snapping").
     pub(crate) fn fn_sum(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         match self.sum_with_last_addition(args, cell) {
-            Ok(sum) => CalcResult::finite_number_or_num(
-                snap_near_zero(sum.before_last, sum.last, sum.total),
-                cell,
-            ),
+            Ok(sum) => CalcResult::finite_number_or_num(sum.snapped(), cell),
             Err(error) => error,
         }
     }

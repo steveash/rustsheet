@@ -22,7 +22,9 @@
         "B5": "=SUBTOTAL(9,A1:A3)+0",
         "B6": "=AGGREGATE(9,4,{0.1,0.2,-0.3})",
         "B9": "=SUM(A1:A3)",
-        "B10": "=AGGREGATE(9,6,A1:A3)"
+        "B10": "=AGGREGATE(9,6,A1:A3)",
+        "B11": "=SUBTOTAL(109,A1:A3)+0",
+        "B12": "=AGGREGATE(9,6,A1:A3)+0"
       }
     }
   ],

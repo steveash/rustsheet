@@ -1,9 +1,9 @@
-use crate::arithmetic::{flush_subnormal, snap_near_zero};
+use crate::arithmetic::flush_subnormal;
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{parser::Node, token::Error, types::CellReferenceIndex},
     functions::{
-        math_and_trigonometry::sum::SumParts,
+        math_and_trigonometry::SumParts,
         statistical::variance::{variance_result, VarianceKind},
         Function,
     },
@@ -426,7 +426,7 @@ impl Model {
         for value in values {
             sum.add(value);
         }
-        CalcResult::finite_number_or_num(snap_near_zero(sum.before_last, sum.last, sum.total), cell)
+        CalcResult::finite_number_or_num(sum.snapped(), cell)
     }
 
     fn subtotal_product(
