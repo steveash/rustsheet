@@ -12,8 +12,9 @@ use crate::{
     reference_operators::{Binding, Ranges, RefArg},
 };
 
-/// Whether two LET or LAMBDA variable names are the same variable: names are case-insensitive
-/// (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41).
+/// Whether two LET variable names are the same variable: LET names are case-insensitive
+/// (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41). LAMBDA parameter case
+/// handling is unprobed and stays case-sensitive (TODO(T-1387)).
 pub(crate) fn same_variable(a: &str, b: &str) -> bool {
     // No allocation: this runs per node on every LAMBDA call and LET evaluation.
     a == b
@@ -98,7 +99,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         }
         Node::LambdaDefKind { parameters, body } => {
             // If a LAMBDA parameter shadows `target`, don't recurse into the body.
-            let shadowed = parameters.iter().any(|p| same_variable(&p.name, target));
+            let shadowed = parameters.iter().any(|p| p.name == target);
             if !shadowed {
                 assign_variable_ids(body, target, id);
             }
