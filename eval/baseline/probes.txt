@@ -187,6 +187,7 @@ C	probes/isref-names-filter-if-empty.case.json	10
 C	probes/isref-range-operands.case.json	27
 C	probes/isref-reference-lookups.case.json	11
 C	probes/isref-union-operands.case.json	9
+C	probes/lambda-optional-params.case.json	9
 C	probes/lambda-param-call.case.json	6
 C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
@@ -446,9 +447,6 @@ F	probes/at-operand-nested-groups.case.json	Sheet1!F35
 F	probes/at-operand-nested-groups.case.json	Sheet1!F37
 F	probes/at-power-text.case.json	Sheet1!I26
 F	probes/at-power-text.case.json	Sheet1!I46
-F	probes/at-signed-operand.case.json	Sheet1!H71
-F	probes/at-signed-operand.case.json	Sheet1!H72
-F	probes/at-signed-operand.case.json	Sheet1!H73
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
