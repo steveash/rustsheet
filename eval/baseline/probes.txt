@@ -418,6 +418,7 @@ C	probes/weeknum-serial-0.case.json	57
 C	probes/weeknum-stale-return-type.case.json	13
 C	probes/whole-column-empty-walkers.case.json	16
 C	probes/written-parens-reference-context.case.json	35
+C	probes/written-parens-reference-only.case.json	35
 C	probes/xirr-early-dates.case.json	16
 C	probes/xirr-mismatched-empties.case.json	14
 C	probes/xirr-xnpv-whole-column-nogaps.case.json	8
@@ -2798,6 +2799,13 @@ F	probes/whole-column-empty-walkers.case.json	Sheet1!F9
 F	probes/written-parens-reference-context.case.json	Sheet1!H10
 F	probes/written-parens-reference-context.case.json	Sheet1!H11
 F	probes/written-parens-reference-context.case.json	Sheet1!H14
+F	probes/written-parens-reference-only.case.json	Sheet1!E40
+F	probes/written-parens-reference-only.case.json	Sheet1!E45
+F	probes/written-parens-reference-only.case.json	Sheet1!F30
+F	probes/written-parens-reference-only.case.json	Sheet1!F40
+F	probes/written-parens-reference-only.case.json	Sheet1!F50
+F	probes/written-parens-reference-only.case.json	Sheet1!F60
+F	probes/written-parens-reference-only.case.json	Sheet1!F75
 F	probes/xirr-early-dates.case.json	Sheet1!A10
 F	probes/xirr-early-dates.case.json	Sheet1!A11
 F	probes/xirr-early-dates.case.json	Sheet1!A12
