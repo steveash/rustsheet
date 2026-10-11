@@ -208,6 +208,33 @@ Evidence: probes-numeric cases `t1040-norm-s-dist-cdf-a`, `t1040-norm-s-dist-cdf
 excel-graph, 2026-10-08; errors measured against 60-digit mpmath).
 Status: VERIFIED (values); the formulation that reproduces the tail error is open in T-0968.
 
+## ERFC core factor: candidates that do not reproduce Excel (T-1187)
+Rule: none known. For x >= 1 on probes-numeric/t1040-erfc (205 non-zero points), Excel's `ERFC(x)` divided by
+`exp(-fl(x*x))` (glibc `exp`) gives an implied core factor erfc(x)*exp(x^2) that is between -3.6 and +3.1 ulp from
+the true core (median +0.1). The error drifts slowly with x: mostly positive from 6.5 to 9.9 and mostly negative
+from 10.75 to 12.5. That points to accumulated rounding in a summation or recurrence, not to a minimax rational.
+Exact-match counts of the candidates scored on all 205 points. None gets close to 95%:
+- Bottom-up continued fraction, depth 5 to 1000, in five forms: `x + (n/2)/t` in three spellings, the even
+  `2x^2+1+4n - (2n-1)(2n)/t` form, and the `x^2+1/2` Laplace form. Each was combined with six orders of
+  multiplying by `exp(-x*x)` and `1/sqrt(pi)` and seven orders of dividing by `exp(x*x)`. At most 58/205 (28%),
+  from depth 60 up.
+- Modified-Lentz top-down evaluation of the same fractions, with tolerances from 1e-14 to 1e-16 and the same
+  orders: at most 37/197 (19%).
+- Numerical Recipes' incomplete gamma, `erfc = Q(1/2, x^2)`: `gcf` with `exp(-x + a*log(x) - gln)`, and `gser`
+  below x^2 = 1.5. Tried with gln exact, NR2 or NR3 `gammln`, and EPS from 3e-7 to 1e-16: at most 4/205. Its error
+  is ±10 ulp at x = 1..2 and grows with x, because rounding the exp argument costs about ulp(x^2) relative.
+  Excel stays within 1E-15 up to x = 26, so its exponent is `-fl(x*x)` with nothing added.
+- The union of every configuration above matches 130/205 points. So no single formulation in this family
+  reaches 95%, even before a difference between MSVC's and glibc's `exp` is ruled in or out.
+Earlier negatives (T-1186): the engine's CF in 7 orders, Cody CALERF with and without its x*16 split, and the
+asymptotic series in five orders, all at most 22%.
+Not tried: fdlibm `erfc`. Its split `z` (x with the low 32 bits cleared) avoids the `fl(x*x)` error that A5 shows,
+so it does not fit. Also not tried: a Chebyshev fit such as NR3 `erfccheb`, which adds a term to the exp argument
+(same objection), and MSVC's own `exp` (not available here).
+Evidence: probes-numeric/t1040-erfc (excel-graph, 2026-10-08), scored against 50-digit mpmath and IEEE double
+re-implementations of each candidate (T-1187, 2026-10-11).
+Status: OPEN (no candidate found); T-1186 stays blocked.
+
 ## RANK of a non-reference array
 Rule: RANK, RANK.EQ and RANK.AVG need a reference as their second argument. An array that is not a reference
 (`IF(A1:C1>0,A1:C1)`, 1x3; `IF(A1:B2>0,A1:B2)`, 2x2) gives `#VALUE!` in every element of the array's own shape that is not an error (a spill), so
