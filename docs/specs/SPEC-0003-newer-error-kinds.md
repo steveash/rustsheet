@@ -78,8 +78,9 @@ Behavior shared by all five (for `#BUSY!`, only what the stored-constant probe s
   not formula grammar.
 - **Unknown, need evidence:**
   - what typing `#BLOCKED!` (or `#BUSY!`) as cell input gives (T-1016, desktop only).
-  - for stored `#BUSY!`: VALUETOTEXT/ARRAYTOTEXT, leftmost-error precedence, `IFERROR`, and COUNTIF
-    criteria naming it (T-1228). The design below assumes the answers and does not depend on them.
+  - (settled by T-1228, syntax.md "Stored `#BUSY!` behaviors": VALUETOTEXT is the text "#BUSY!", but
+    `ARRAYTOTEXT(A1)` of the cell alone is the error `#BUSY!`; the leftmost error wins for `+`, `=` and `*`, but in SUM a computed `1/0` beats the stored `#BUSY!` in
+    either order (not settled, T-1315); COUNTIF `"#BUSY!"` and the cell itself as criteria count 0 (unlike `#N/A`); `IFERROR` catches it; `UNIQUE` keeps it apart from `#NULL!`.)
 
 The functions that produce them, as Excel evaluates them (oracle: excel-graph):
 - **IMAGE** of an unreachable URL is `#BLOCKED!` (subType 12). It fetches the URL otherwise.

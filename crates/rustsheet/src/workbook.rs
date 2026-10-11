@@ -3,6 +3,7 @@
 use std::io::{Cursor, Read};
 use std::path::Path;
 
+use rustsheet_engine::types::DateSystem;
 use rustsheet_engine::{Model, LAST_COLUMN, LAST_ROW};
 use rustsheet_xlsx::error::XlsxError;
 use rustsheet_xlsx::import::ImportLimits;
@@ -25,6 +26,9 @@ pub struct WorkbookOptions {
     pub timezone: String,
     /// Engine language id for function names and error literals.
     pub language: String,
+    /// Date system of a new workbook ([`Workbook::new`]). A loaded workbook keeps the one its
+    /// xlsx stores (`workbookPr@date1904`), so this field does not apply to loading.
+    pub date_system: DateSystem,
 }
 
 impl Default for WorkbookOptions {
@@ -34,6 +38,7 @@ impl Default for WorkbookOptions {
             locale: "en".to_string(),
             timezone: "UTC".to_string(),
             language: "en".to_string(),
+            date_system: DateSystem::default(),
         }
     }
 }
@@ -160,9 +165,17 @@ impl Workbook {
     /// # Errors
     /// [`LoadError::Options`] when the locale, timezone or language is unknown.
     pub fn new(opts: &WorkbookOptions) -> Result<Self, LoadError> {
-        let model = Model::new_empty("workbook", &opts.locale, &opts.timezone, &opts.language)
+        let mut model = Model::new_empty("workbook", &opts.locale, &opts.timezone, &opts.language)
             .map_err(LoadError::Options)?;
+        model.workbook.settings.date_system = opts.date_system;
         Ok(Self::from_model(model, opts.max_read_cells))
+    }
+
+    /// The workbook's date system: the one chosen at [`Workbook::new`], or the one a loaded
+    /// xlsx stores.
+    #[must_use]
+    pub fn date_system(&self) -> DateSystem {
+        self.model.workbook.settings.date_system
     }
 
     fn from_model(model: Model, max_read_cells: u64) -> Self {
@@ -438,6 +451,21 @@ impl Workbook {
 mod tests {
     use super::*;
     use crate::value::{ErrorKind, XlError};
+
+    #[test]
+    fn date_system_is_chosen_at_new_and_survives_a_round_trip() {
+        let default = Workbook::new(&WorkbookOptions::default()).expect("new");
+        assert_eq!(default.date_system(), DateSystem::Excel1900);
+        let opts = WorkbookOptions {
+            date_system: DateSystem::Excel1904,
+            ..WorkbookOptions::default()
+        };
+        let wb = Workbook::new(&opts).expect("new");
+        assert_eq!(wb.date_system(), DateSystem::Excel1904);
+        let bytes = wb.to_xlsx_bytes(SaveOptions::default()).expect("save");
+        let loaded = Workbook::from_xlsx_bytes(&bytes, &LoadOptions::default()).expect("load");
+        assert_eq!(loaded.date_system(), DateSystem::Excel1904);
+    }
 
     /// A workbook built through the engine and round-tripped through xlsx.
     fn sample() -> Workbook {

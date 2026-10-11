@@ -3,7 +3,7 @@ id: T-0288
 title: "GEOMEAN in-range root: the 26 remaining one-ulp misses"
 milestone: M2
 lane: functions-stat
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -27,9 +27,21 @@ and probing two-value sets (a, b) with a*b fixed to map where Excel leaves r alo
 Code: crates/rustsheet-engine/src/functions/statistical/geomean.rs.
 
 ## Acceptance criteria
-- [ ] A model that fixes some of the misses with no regression over the 159 in-range cells, or a
+- [x] A model that fixes some of the misses with no regression over the 159 in-range cells, or a
       numbers.md note of the further models rejected.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 The over/underflow path (numbers.md "GEOMEAN root rounding").
+
+## Outcome
+No model fixes misses without breaking cells r matches, so the engine is unchanged and numbers.md "GEOMEAN in-range
+root" records the new rejected models. Scored on 167 cells (harness: the in-range probes plus ironcalc C23/G27), the
+current r with the snap gets 140. glibc `pow(P,1/n)` with the snap gets 157 but breaks C23, G27 and refinement A20.
+Nearest-power neighbour searches get 152 or 155, and the `exp(ln P*(1/n))`, log10 and log2 forms 104 to 149. The new
+probe probes/geomean-same-product (23 cells, excel-graph 2026-10-09) shows the root depends only on the double product P
+and n: every factor order and split of P = 3, 10.704 and 10 gives the same value. C23 (1,3) and refinement A36
+(6.69,1.6) have the same n, residual pattern and near-identical r position, yet Excel rounds them differently. So the last
+bit comes from Excel's own (non-glibc) root, which no double formula tried reproduces. Side lead for T-0221: Excel's
+`P^(1/n)` cells match `exp((1/n)*ln P)` on 32 of 35. Eval delta: probes +1 case, 23 cells, 15 pass, 8 new-coverage known
+failures (the existing A36/A29 one-ulp class); fixed 0, regressions 0.

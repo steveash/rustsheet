@@ -2,7 +2,7 @@ use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::token::get_error_by_name;
 use crate::expressions::types::CellReferenceIndex;
 use crate::language::Language;
-use crate::number_format::parse_finite_number;
+use crate::number_format::parse_excel_number;
 
 use crate::{
     expressions::{
@@ -328,7 +328,7 @@ fn parse_r1c1_number(
 ///  * an error (i.e "#VALUE!")
 pub(crate) fn value_needs_quoting(value: &str, language: &Language) -> bool {
     value.starts_with(['=', '+', '-'])
-        || parse_finite_number(value).is_some()
+        || parse_excel_number(value).is_some()
         || value.to_lowercase().parse::<bool>().is_ok()
         || get_error_by_name(&value.to_uppercase(), language).is_some()
 }
@@ -750,6 +750,14 @@ mod tests {
         assert!(value_needs_quoting("False", en_language));
 
         assert!(value_needs_quoting("=A1", en_language));
+
+        // Typed tiny text: 1e-309 up to the smallest normal double is stored as the number 0
+        // (needs quoting), below that it stays text (probes/typed-number-tiny, T-1100).
+        assert!(value_needs_quoting("1e-309", en_language));
+        assert!(value_needs_quoting("2e-308", en_language));
+        assert!(!value_needs_quoting("1e-310", en_language));
+        assert!(!value_needs_quoting("1e-400", en_language));
+        assert!(!value_needs_quoting("0e309", en_language));
 
         assert!(value_needs_quoting("#REF!", en_language));
         assert!(value_needs_quoting("#NAME?", en_language));

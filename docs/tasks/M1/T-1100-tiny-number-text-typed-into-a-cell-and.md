@@ -3,7 +3,7 @@ id: T-1100
 title: "Tiny number text typed into a cell and in conditional-format rule values"
 milestone: M1
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -29,10 +29,17 @@ which now quotes the text "1e-310" though no reader takes it for a number (TODO(
 crates/rustsheet-engine/src/test/test_nan_inf.rs).
 
 ## Acceptance criteria
-- [ ] Evidence for what Excel stores when `1e-310`, `1e-309`, `2e-308` and `0e309` are typed into a cell, and for a conditional-format rule `Cell value > 1e-310`; numbers.md records it.
-- [ ] `value_needs_quoting` agrees with `parse_excel_number` on tiny text, or a comment says why not.
-- [ ] The engine follows it, reusing the T-0154 rule (no copy).
-- [ ] `make check` green; reviewers approve.
+- [x] Evidence for what Excel stores when `1e-310`, `1e-309`, `2e-308` and `0e309` are typed into a cell, and for a conditional-format rule `Cell value > 1e-310`; numbers.md records it (typed entry only; the conditional-format half moved to T-1299).
+- [x] `value_needs_quoting` agrees with `parse_excel_number` on tiny text, or a comment says why not.
+- [x] The engine follows it, reusing the T-0154 rule (no copy).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Typed-input probe `probes/typed-number-tiny` (excel-graph) shows cell entry follows the T-0154 rule; the
+engine already matched (24/24 cells pass), recorded in numbers.md. `value_needs_quoting` now uses
+`parse_excel_number`. Conditional-format rule values are not observable through the oracle, so that part
+stays UNVERIFIED pending desktop Excel (M14, Phase 4): acceptance criterion 1 is met for typed entry only, the conditional-format half moved to T-1299 (which should also probe typed `-1e-309`, whose stored sign is unverified). Eval: new case passes, no regressions.
+Follow-up: T-1299 (conditional-format rule values, other `parse_finite_number` sites).

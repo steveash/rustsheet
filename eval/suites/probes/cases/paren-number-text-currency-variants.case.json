@@ -1,0 +1,27 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Plus after currency, spaced trailing currency and euro variants inside parenthesised number text, as text coercion via 0+ (T-1300).",
+ "tags": [
+  "M2",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": "=0+\"($+1)\"",
+    "A2": "=0+\"(1 $)\"",
+    "A3": "=0+\"(€-1)\"",
+    "A4": "=0+\"(1€)\""
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!A1",
+  "Sheet1!A2",
+  "Sheet1!A3",
+  "Sheet1!A4"
+ ]
+}

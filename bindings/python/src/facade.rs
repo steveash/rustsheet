@@ -15,8 +15,8 @@ use pyo3::types::{PyBool, PyDict, PyList};
 use pyo3::{create_exception, IntoPyObjectExt};
 
 use rustsheet::{
-    resolve_sheet_by_name, ChangeSet, EditError, ErrorKind, Input, LoadOptions, RefError,
-    SaveOptions, SheetChange, SheetId, Txn, Value, Workbook, WorkbookOptions, XlError,
+    resolve_sheet_by_name, ChangeSet, DateSystem, EditError, ErrorKind, Input, LoadOptions,
+    RefError, SaveOptions, SheetChange, SheetId, Txn, Value, Workbook, WorkbookOptions, XlError,
 };
 
 create_exception!(_rustsheet, RustSheetError, PyException);
@@ -271,12 +271,34 @@ fn sheet_names(wb: &Workbook) -> Vec<(SheetId, String)> {
 
 #[pymethods]
 impl PyWorkbook {
-    /// Creates an empty workbook with one sheet.
+    /// Creates an empty workbook with one sheet; `date_system` is `"1900"` (default) or `"1904"`.
     #[new]
-    fn py_new() -> PyResult<Self> {
-        let wb = Workbook::new(&WorkbookOptions::default())
-            .map_err(|e| PyLoadError::new_err(e.to_string()))?;
+    #[pyo3(signature = (date_system="1900"))]
+    fn py_new(date_system: &str) -> PyResult<Self> {
+        let date_system = match date_system {
+            "1900" => DateSystem::Excel1900,
+            "1904" => DateSystem::Excel1904,
+            other => {
+                return Err(PyTypeError::new_err(format!(
+                    "date_system must be \"1900\" or \"1904\", not {other:?}"
+                )))
+            }
+        };
+        let wb = Workbook::new(&WorkbookOptions {
+            date_system,
+            ..WorkbookOptions::default()
+        })
+        .map_err(|e| PyLoadError::new_err(e.to_string()))?;
         Ok(Self::wrap(wb))
+    }
+
+    /// The workbook's date system, `"1900"` or `"1904"`.
+    #[getter]
+    fn date_system(&self) -> &'static str {
+        match lock(&self.wb).date_system() {
+            DateSystem::Excel1900 => "1900",
+            DateSystem::Excel1904 => "1904",
+        }
     }
 
     /// Opens an xlsx file (the GIL is released while loading).

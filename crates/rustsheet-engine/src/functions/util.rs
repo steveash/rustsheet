@@ -71,6 +71,18 @@ fn text_order_key(c: char) -> u64 {
 
 // ..., -2, -1, 0, 1, 2, ..., A-Z, FALSE, TRUE;
 pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
+    // An empty value (`IFERROR(<blank>,1)`, `CalcResult::EmptyArg`) compares as a blank cell:
+    // `IFERROR(B1,1)=0`, `=""` and `=FALSE` are TRUE and SWITCH matches it to 0
+    // (probes/iferror-blank-value D2:D5, D18, D19; T-0291).
+    fn as_blank(value: &CalcResult) -> &CalcResult {
+        static BLANK: CalcResult = CalcResult::EmptyCell;
+        if matches!(value, CalcResult::EmptyArg) {
+            &BLANK
+        } else {
+            value
+        }
+    }
+    let (left, right) = (as_blank(left), as_blank(right));
     match (left, right) {
         (CalcResult::Number(value1), CalcResult::Number(value2)) => {
             // Equality is decided on the 15-digit values alone: an absolute tolerance would equate
@@ -259,19 +271,17 @@ impl Model {
     /// and AVERAGEA take (and a LET or LAMBDA binding, T-1232): XLOOKUP, TAKE, DROP and TRIMRANGE over a
     /// range are also the cells they pick (probes/subtotal-reference-operands-b H12, H15:H17, T-1175; -c
     /// H4:H14, T-1206; -d H1:H27, L1:L7, T-1211). The aggregates sharing `for_each_value` follow the
-    /// same rule. The call list is repeated in `is_read_reference` (static_analysis/aggregate.rs).
+    /// same rule. The call list is [`Function::picks_reference`].
     pub(crate) fn evaluate_picked_reference_arg(
         &mut self,
         node: &Node,
         cell: CellReferenceIndex,
     ) -> RefArg {
-        if let Node::FunctionKind {
-            kind: kind @ (Function::Xlookup | Function::Take | Function::Drop | Function::Trimrange),
-            args,
-        } = node
-        {
-            if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
-                return RefArg::from(result);
+        if let Node::FunctionKind { kind, args } = node {
+            if kind.picks_reference() {
+                if let Some(result) = self.evaluate_reference_form(kind, args, cell) {
+                    return RefArg::from(result);
+                }
             }
         }
         self.evaluate_reference_arg(node, cell)

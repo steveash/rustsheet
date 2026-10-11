@@ -1,4 +1,50 @@
+use std::borrow::Cow;
+
 use crate::cast::MAX_TEXT_UNITS;
+
+/// The characters of `text` that lie wholly within the UTF-16 code units `start..end`, the unit
+/// MID and REPLACE count positions in (docs/excel-semantics/text.md "Text positions count UTF-16
+/// code units"). A surrogate pair straddling either bound is dropped whole: Excel keeps its lone
+/// half, which a Rust `String` cannot hold (decision 0033).
+pub(crate) fn utf16_slice(text: &str, start: usize, end: usize) -> String {
+    let mut slice = String::new();
+    let mut unit = 0;
+    for ch in text.chars() {
+        if unit >= end {
+            break;
+        }
+        let next = unit + ch.len_utf16();
+        if unit >= start && next <= end {
+            slice.push(ch);
+        }
+        unit = next;
+    }
+    slice
+}
+
+/// `text` with each UTF-16 code unit as one `char`, so that `char` positions (and a regex `.`)
+/// are the code-unit positions FIND and SEARCH count in (`SEARCH("?b","😀b")` is 2,
+/// probes/text-surrogate-positions A22). A surrogate unit `u` becomes the private-use character
+/// `U+F0000 + (u - 0xD800)`; no other character of the result is outside the BMP, so these never
+/// collide with real text.
+pub(crate) fn one_char_per_utf16_unit(text: &str) -> Cow<'_, str> {
+    if text.chars().all(|ch| ch.len_utf16() == 1) {
+        return Cow::Borrowed(text);
+    }
+    Cow::Owned(
+        text.encode_utf16()
+            .map(|unit| {
+                let code = u32::from(unit);
+                let code = if (0xD800..=0xDFFF).contains(&code) {
+                    0xF0000 + (code - 0xD800)
+                } else {
+                    code
+                };
+                char::from_u32(code).unwrap_or(char::REPLACEMENT_CHARACTER)
+            })
+            .collect(),
+    )
+}
 
 pub(crate) enum Case {
     Sensitive,
