@@ -6,7 +6,7 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::{util::compare_values, Function},
+    functions::util::compare_values,
     model::Model,
 };
 
@@ -81,8 +81,8 @@ pub(crate) fn flush_subnormal(value: f64) -> f64 {
 
 /// Excel's near-zero snapping of a formula's final addition: `total` is `x + y`, and when the two
 /// addends have opposite signs and `total` is below 8 ULP of the smaller addend in magnitude,
-/// Excel returns exactly 0. It applies only when the cell formula's outermost operation is `+`/`-`
-/// or SUM, and not when the whole formula is parenthesized (the callers decide that). Across the
+/// Excel returns exactly 0. It applies when the cell formula's outermost operation is `+`/`-`
+/// (not when the whole formula is parenthesized) and to every SUM call (the callers decide that). Across the
 /// 1,296 probe cells, snapped results are at most 7 ULP of the smaller addend and kept ones at
 /// least 8 (docs/excel-semantics/numbers.md "Near-zero snapping in addition and subtraction",
 /// probes-numeric/30bc5f8fab02d0a2).
@@ -245,7 +245,7 @@ pub(crate) fn array_of_errors(
 
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
-    /// outermost `+`/`-` or SUM to 0, but not for a wholly parenthesized formula, which is a
+    /// outermost `+`/`-` to 0, but not for a wholly parenthesized formula, which is a
     /// `GroupedRootKind` root (docs/excel-semantics/numbers.md "Near-zero snapping in addition
     /// and subtraction"); every other node evaluates as usual.
     pub(crate) fn evaluate_formula_root(
@@ -258,10 +258,6 @@ impl Model {
                 let left = self.evaluate_node_in_context(left, cell);
                 self.handle_outermost_sum(left, right, cell, matches!(kind, OpSum::Minus))
             }
-            Node::FunctionKind {
-                kind: Function::Sum,
-                args,
-            } => self.fn_sum_outermost(args, cell),
             _ => self.evaluate_node_in_context(node, cell),
         }
     }
