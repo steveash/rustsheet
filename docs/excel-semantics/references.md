@@ -983,3 +983,15 @@ Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never paren
 Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) except `=@A1^2^3` (T-1331) and the written group of `=(@-2)^2` (T-1244).
 Status: VERIFIED (excel-graph)
 Tasks: T-1320, T-1331
+
+## Implicit intersection of a one-row range by a cell in that row
+Rule: `@` (or a scalar context) over a one-row range intersects by column whenever the formula cell's column lies
+inside the range, including when the cell is also in the range's row number and on another sheet:
+`@XLOOKUP(2,Data!A1:A3,Data!B1:C3)` (the reference Data!B2:C2) is Data!B2 entered in another sheet's B2 and
+Data!C2 in C2. Column ranges intersect by row; a 2-D range never intersects (`#VALUE!`).
+Evidence: probes/xlookup-row-column-picks B2, C2, G3, E4, G15 (excel-graph, 2026-10-11, T-0962), through `@XLOOKUP`
+only; a plain `@Data!B2:C2` is unprobed (T-1333).
+Implemented in: `implicit_intersection` (crates/rustsheet-engine/src/implicit_intersection.rs), shared by every
+implicit intersection.
+Status: VERIFIED (web)
+Tasks: T-0962, T-1333
