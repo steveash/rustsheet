@@ -14,7 +14,7 @@ depends_on: []
 `COUNT(HLOOKUP(42,F5:G6,IF(TRUE,G5)))` is 0 like the plain-cell index: an `IF` index that picks a cell leaves the lookup pick a reference.
 
 ## Context
-Probe `probes/lookup-pick-index-shapes` (T-0299), excel-graph: Sheet1!A3, A9 and B2 are 0, the engine gives 1 (the index `IF` evaluates to a value, so the pick is a plain value). INDEX, CHOOSE, OFFSET, a name and a multi-cell range already match. See `lookup_index_arg` (T-0295) and docs/excel-semantics/references.md.
+Probe `probes/lookup-pick-index-shapes` (T-0299), excel-graph: Sheet1!A3, A9 and B2 are 0, the engine gives 1 (the index `IF` evaluates to a value, so the pick is a plain value). INDEX, CHOOSE, OFFSET and a name already match. See `lookup_index_arg` (T-0295) and docs/excel-semantics/references.md.
 
 ## Acceptance criteria
 - [ ] `probes/lookup-pick-index-shapes` Sheet1!A3, A9, B2 pass; baseline updated.

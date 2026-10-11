@@ -24,4 +24,4 @@ T-0295 gates the reference pick on `LookupIndexArg::Reference`, i.e. any index t
 -
 
 ## Outcome
-Added `probes/lookup-pick-index-shapes` with excel-graph values; all reference-returning index shapes keep the pick a reference. Engine matches except `IF` indexes (3 cells, now known failures), filed as T-1377. references.md updated.
+Added `probes/lookup-pick-index-shapes` with excel-graph values; all probed reference-returning index shapes (a multi-cell range is left unprobed: its cells are 0 under any outcome) keep the pick a reference. Engine matches except `IF` indexes (3 cells, now known failures), filed as T-1377. references.md updated.
