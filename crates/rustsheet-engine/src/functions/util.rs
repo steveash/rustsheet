@@ -152,6 +152,15 @@ pub(crate) fn compare_values(left: &CalcResult, right: &CalcResult) -> i32 {
     }
 }
 
+/// Whether `node` is `@IF(...)`: the `@` of an IF keeps the reference the IF picks.
+pub(crate) fn is_at_if(node: &Node) -> bool {
+    matches!(
+        node,
+        Node::ImplicitIntersection { child, .. }
+            if matches!(**child, Node::FunctionKind { kind: Function::If, .. })
+    )
+}
+
 /// Whether `node` is a multi-sheet 3-D span, possibly as a branch of IF (which hands its branch on
 /// as a reference). Recursion is bounded by the parser's depth cap.
 pub(crate) fn is_span_or_if_of_span(node: &Node) -> bool {
