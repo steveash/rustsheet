@@ -921,3 +921,25 @@ Ours: the same; the bound is checked before padding, which also bounds the alloc
 Status: VERIFIED
 Implemented in: `fn_base` (crates/rustsheet-engine/src/functions/math_and_trigonometry/mathematical.rs)
 Tasks: T-1243
+
+## RANDBETWEEN and RANDARRAY argument checks
+Rule: RANDBETWEEN compares the raw `bottom` and `top` (`bottom > top` is `#NUM!`, even
+`RANDBETWEEN(5,4.5)`), then draws a whole number from `CEILING(bottom)` to `FLOOR(top)`, and gives
+`CEILING(bottom)` when `FLOOR(top)` is below it: `RANDBETWEEN(5.5,5.7)` and `RANDBETWEEN(5.5,6.2)`
+are always 6, `RANDBETWEEN(-5.5,-5.2)` always -5. It rejects booleans (`RANDBETWEEN(TRUE,TRUE)` is
+`#VALUE!`), reads number text (`"5"`), lifts over an array argument (one draw per element), and
+both arguments omitted (`RANDBETWEEN(,)`) is `#N/A`, not 0. RANDARRAY truncates `rows` and
+`columns` (`1.9` → 1), gives `#CALC!` for 0 rows and `#VALUE!` for a negative count, `min > max`
+or a non-boolean `whole_number` text; with `whole_number` TRUE a fractional `min` or `max` is
+`#VALUE!` (`RANDARRAY(1,1,1.5,2.5,TRUE)`, `RANDARRAY(1,1,1,2.5,TRUE)`), while without it `min = max` returns that value
+(`RANDARRAY(1,1,0.5,0.5)` = 0.5). Number text is read for every argument, including
+`whole_number` (`"TRUE"`) and the boolean-as-number `1`. `TYPE(RANDARRAY(2,2))` is 64,
+`ROWS(RANDARRAY())` is 1, and RAND, NOW and TODAY return numbers with TODAY a whole number and NOW
+within that day.
+Evidence: probes/volatile-invariant Calc!A1:A6, A8:A15, B1:B18, C1:C6, C8:C9, D1:E2, D4:D5,
+F1:F9, G1 (excel-graph, 2026-10-10). Every cell was filled twice with identical values (T-1283);
+F1:F9 take MIN/MAX/ROWS over 1000 draws in one cell, which is what shows the RANDBETWEEN range
+rule (F8:F9: `RANDBETWEEN(5.2,7.9)` spans 6 to 7, not ROUND's 5 to 8); the spill members D2, E1,
+E2 and D5 were not compared between fills, but their min equals their max; B15 and G1 have an occupied neighbour, so a 2-row or 2-column result would be `#SPILL!`.
+Status: VERIFIED. The engine misses A2, A6, A8, A12, A13, B9, B10 (T-1318; A6 is unchecked until
+then, because the engine's draw for it is random), B18, and the array lift F1:F9 (T-1316).

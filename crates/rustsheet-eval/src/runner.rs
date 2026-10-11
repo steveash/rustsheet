@@ -1,6 +1,6 @@
 //! Executes cases against an [`Engine`] and scores every checked cell.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -461,6 +461,28 @@ fn apply_cached_overrides(
     Ok(expectations)
 }
 
+/// The volatile cells of a spec case once its `invariant` cells are taken out. A listed cell that
+/// is not a volatile formula cell is an error, so a stale listing cannot linger unnoticed.
+fn spec_volatile_cells(
+    listed: &[String],
+    formulas: &[FormulaCell],
+) -> Result<HashSet<(String, Addr)>, String> {
+    let volatile = volatile_cells(formulas, &[], false, &HashSet::new());
+    if listed.is_empty() {
+        return Ok(volatile);
+    }
+    let mut invariant = HashSet::new();
+    for q in listed {
+        let (sheet, a1) = split_qualified(q).ok_or_else(|| format!("bad cell key {q}"))?;
+        let addr = Addr::parse(&a1).ok_or_else(|| format!("bad cell key {q}"))?;
+        if !volatile.contains(&(sheet.clone(), addr)) {
+            return Err(format!("invariant cell {q} is not a volatile formula cell"));
+        }
+        invariant.insert((sheet.to_lowercase(), addr));
+    }
+    Ok(volatile_cells(formulas, &[], false, &invariant))
+}
+
 fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
     let text = std::fs::read_to_string(&case.path).map_err(|e| e.to_string())?;
     let spec: CaseSpec = serde_json::from_str(&text).map_err(|e| e.to_string())?;
@@ -516,8 +538,9 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
             })
         })
         .collect();
-    // Spec workbooks have no METADATA sheet, so the clock is never pinned: NOW/TODAY stay skipped.
-    let volatile = volatile_cells(&formulas, &[], false);
+    // Spec workbooks have no METADATA sheet, so the clock is never pinned: NOW/TODAY stay skipped
+    // unless the case lists the cell as run-invariant.
+    let volatile = spec_volatile_cells(&spec.invariant, &formulas)?;
     let wanted: Vec<String> = if spec.check.is_empty() {
         expected.keys().cloned().collect()
     } else {
@@ -886,6 +909,42 @@ mod tests {
             .map(|e| e.addr.to_string())
             .collect();
         assert_eq!(cells, vec!["A2".to_string()]);
+    }
+
+    /// A spec's `invariant` cells are scored although they call a volatile function; other
+    /// volatile cells stay skipped, and listing a cell that is not volatile is an error (T-1283).
+    #[test]
+    fn invariant_volatile_cells_are_scored() {
+        let dir = std::env::temp_dir().join(format!("rs-runner-{}-invariant", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("mkdir");
+        let path = dir.join("a.case.json");
+        let case_with = |invariant: &str| {
+            format!(
+                r#"{{"format":"{CASE_FORMAT}","sheets":[{{"name":"S","cells":{{"A1":"=RANDBETWEEN(5,5)","A2":"=RAND()","A3":"=A1+1","A4":"=1"}}}}],
+                   "expected":{{"S!A1":{{"t":"n","v":5}},"S!A2":{{"t":"n","v":0.5}},"S!A3":{{"t":"n","v":6}},"S!A4":{{"t":"n","v":1}}}},
+                   "invariant":[{invariant}]}}"#
+            )
+        };
+        let file = CaseFile {
+            id: "t/a".into(),
+            path: path.clone(),
+            sidecar: oracle_sidecar(&path),
+        };
+        std::fs::write(&path, case_with(r#""S!A1""#)).expect("write case");
+        let listed = prepare_spec(&file);
+        std::fs::write(&path, case_with(r#""S!A4""#)).expect("write case");
+        let stale = prepare_spec(&file).err();
+        let _ = std::fs::remove_dir_all(&dir);
+        let listed = listed.expect("prepare");
+        let mut cells: Vec<String> = listed
+            .expectations
+            .iter()
+            .map(|e| e.addr.to_string())
+            .collect();
+        cells.sort();
+        assert_eq!(cells, ["A1", "A3", "A4"], "A3 reads only the listed A1");
+        assert_eq!(listed.skipped_volatile, 1);
+        assert!(stale.is_some_and(|e| e.contains("not a volatile formula cell")));
     }
 
     #[test]
