@@ -66,19 +66,29 @@ fn excel_weekday_index(serial: i64) -> usize {
     (serial - 1).rem_euclid(7) as usize
 }
 
-/// Elapsed `[h]`/`[m]`/`[s]` count for `units` (the value scaled to the token's unit). A
-/// non-negative amount floors. A negative amount keeps its minus on the magnitude, which `[s]`
-/// rounds to nearest and `[h]`/`[m]` truncate, so a magnitude below one unit gives "-0"
-/// (probes/elapsed-tiny-negatives-1900 and -1904, T-1338; date-system-1900-negatives A18).
-fn elapsed_text(units: f64, padded: bool, round: bool) -> String {
-    let (sign, n) = if units < 0.0 {
-        // Snap off binary noise first: -1.5/86400 days is 1.4999999999999998 s but Excel shows "-2"
-        // (probes/elapsed-tiny-negatives-1900 A9).
-        let mag = (-units * 1e10).round() / 1e10;
-        ("-", if round { mag.round() } else { mag.floor() } as i32)
-    } else {
-        ("", units.floor() as i32)
-    };
+/// The unit of an elapsed `[h]`/`[m]`/`[s]` token.
+#[derive(Clone, Copy)]
+enum ElapsedUnit {
+    Hour,
+    Minute,
+    Second,
+}
+
+/// Elapsed `[h]`/`[m]`/`[s]` count for a serial `value`. Excel works on the magnitude and keeps
+/// a minus for a negative value: `[s]` rounds it to nearest (1.7 s is "2", -0.9 s is "-1") and
+/// `[h]`/`[m]` truncate it (-1.7 min is "-1", -0.3 h is "-0"), in both date systems
+/// (probes/elapsed-tiny-negatives-1900, elapsed-fractions-1900, T-1338, T-1346). Noise is
+/// absorbed first: `[s]` snaps the seconds at 1e-12 (-1.5/86400 days is "-2" although it is
+/// 1.4999999999999998 s, yet -0.49999999999 s stays "-0"), `[h]`/`[m]` snap them to the
+/// millisecond (-(3-1E-7) h is "-3"). Those snaps are fitted to the probes, not documented.
+fn elapsed_text(value: f64, padded: bool, unit: ElapsedUnit) -> String {
+    let secs = value.abs() * 86400.0;
+    let n = match unit {
+        ElapsedUnit::Second => ((secs * 1e12).round() / 1e12).round(),
+        ElapsedUnit::Minute => ((secs * 1e3).round() / 1e3 / 60.0).floor(),
+        ElapsedUnit::Hour => ((secs * 1e3).round() / 1e3 / 3600.0).floor(),
+    } as i32;
+    let sign = if value < 0.0 { "-" } else { "" };
     if padded {
         format!("{sign}{n:02}")
     } else {
@@ -445,27 +455,27 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = elapsed_text(value * 24.0, false, false);
+                        let hour = elapsed_text(value, false, ElapsedUnit::Hour);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = elapsed_text(value * 24.0, true, false);
+                        let hour = elapsed_text(value, true, ElapsedUnit::Hour);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = elapsed_text(value * 24.0 * 60.0, false, false);
+                        let minute = elapsed_text(value, false, ElapsedUnit::Minute);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = elapsed_text(value * 24.0 * 60.0, true, false);
+                        let minute = elapsed_text(value, true, ElapsedUnit::Minute);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, false, true);
+                        let second = elapsed_text(value, false, ElapsedUnit::Second);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = elapsed_text(value * 24.0 * 60.0 * 60.0, true, true);
+                        let second = elapsed_text(value, true, ElapsedUnit::Second);
                         text = format!("{text}{second}");
                     }
                 }
