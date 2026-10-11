@@ -735,8 +735,8 @@ through IF and LET. `XLOOKUP(1,A1:A4,SEQUENCE(4))` is an array: `SUBTOTAL(9,..)`
 `XLOOKUP(1,A1:A4,LET(x,A1:A4,x))` and `XLOOKUP(1,A1:A4,IF(TRUE,A1:A4))` are references (SUBTOTAL 1, AREAS 1, ISREF TRUE;
 the ISREF of the LET-SEQUENCE form is FALSE). `TAKE(IF(TRUE,A1:A4),2)` and `TAKE(LET(x,A1:A4,x),2)` are references
 (SUBTOTAL 3, AREAS 1), while `TAKE`/`DROP` of `IF(TRUE,SEQUENCE(4))` or `LET(x,SEQUENCE(4),x)` are arrays: SUBTOTAL and
-AREAS spill two `#VALUE!`, ISREF FALSE. The engine returns a scalar for those TAKE/DROP cells (T-1365).
-Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211, T-1332 (decision 0045)
+AREAS spill two `#VALUE!`, ISREF FALSE. `is_read_reference` follows an IF branch or LET body (and a LET variable) to tell the two (T-1365).
+Tasks: T-1063, T-1163, T-1174, T-1175, T-1206, T-1211, T-1332, T-1365 (decision 0045)
 
 ## Range corners may both carry the sheet prefix
 Rule: `Data!B8:Data!E12` is the range `Data!B8:E12`: `Data!B8:Data!E12 Data!B12` = 1E-15
