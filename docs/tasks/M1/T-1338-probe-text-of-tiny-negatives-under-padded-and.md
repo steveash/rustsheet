@@ -3,7 +3,7 @@ id: T-1338
 title: "Probe TEXT of tiny negatives under padded and h/m elapsed tokens"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
