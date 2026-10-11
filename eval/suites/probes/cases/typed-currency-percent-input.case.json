@@ -1,0 +1,182 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Typed cell input of decimal, signed, scientific, grouped and euro currency/percent text: value (B) and ISNUMBER (C); the number format Excel picks is in the oracle's ENTERED log (T-0283).",
+ "tags": [
+  "M2",
+  "coercion",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A1": {
+     "entered": "$1.50"
+    },
+    "B1": "=A1",
+    "C1": "=ISNUMBER(A1)",
+    "A2": {
+     "entered": "1.5%"
+    },
+    "B2": "=A2",
+    "C2": "=ISNUMBER(A2)",
+    "A3": {
+     "entered": "(1.5%)"
+    },
+    "B3": "=A3",
+    "C3": "=ISNUMBER(A3)",
+    "A4": {
+     "entered": "($1.50)"
+    },
+    "B4": "=A4",
+    "C4": "=ISNUMBER(A4)",
+    "A5": {
+     "entered": "-$1"
+    },
+    "B5": "=A5",
+    "C5": "=ISNUMBER(A5)",
+    "A6": {
+     "entered": "-$1.50"
+    },
+    "B6": "=A6",
+    "C6": "=ISNUMBER(A6)",
+    "A7": {
+     "entered": "$-1"
+    },
+    "B7": "=A7",
+    "C7": "=ISNUMBER(A7)",
+    "A8": {
+     "entered": "1.50%"
+    },
+    "B8": "=A8",
+    "C8": "=ISNUMBER(A8)",
+    "A9": {
+     "entered": "0.5%"
+    },
+    "B9": "=A9",
+    "C9": "=ISNUMBER(A9)",
+    "A10": {
+     "entered": "12.345%"
+    },
+    "B10": "=A10",
+    "C10": "=ISNUMBER(A10)",
+    "A11": {
+     "entered": "$1,234.5"
+    },
+    "B11": "=A11",
+    "C11": "=ISNUMBER(A11)",
+    "A12": {
+     "entered": "$1e3"
+    },
+    "B12": "=A12",
+    "C12": "=ISNUMBER(A12)",
+    "A13": {
+     "entered": "1e3%"
+    },
+    "B13": "=A13",
+    "C13": "=ISNUMBER(A13)",
+    "A14": {
+     "entered": "1,000%"
+    },
+    "B14": "=A14",
+    "C14": "=ISNUMBER(A14)",
+    "A15": {
+     "entered": "(1,000.5)"
+    },
+    "B15": "=A15",
+    "C15": "=ISNUMBER(A15)",
+    "A16": {
+     "entered": "1,000.50"
+    },
+    "B16": "=A16",
+    "C16": "=ISNUMBER(A16)",
+    "A17": {
+     "entered": "1.5e3"
+    },
+    "B17": "=A17",
+    "C17": "=ISNUMBER(A17)",
+    "A18": {
+     "entered": "$0"
+    },
+    "B18": "=A18",
+    "C18": "=ISNUMBER(A18)",
+    "A19": {
+     "entered": "0%"
+    },
+    "B19": "=A19",
+    "C19": "=ISNUMBER(A19)",
+    "A20": {
+     "entered": "-1%"
+    },
+    "B20": "=A20",
+    "C20": "=ISNUMBER(A20)",
+    "A21": {
+     "entered": "-1.5%"
+    },
+    "B21": "=A21",
+    "C21": "=ISNUMBER(A21)",
+    "A22": {
+     "entered": "$1,000"
+    },
+    "B22": "=A22",
+    "C22": "=ISNUMBER(A22)",
+    "A23": {
+     "entered": "1\u20ac"
+    },
+    "B23": "=A23",
+    "C23": "=ISNUMBER(A23)",
+    "A24": {
+     "entered": "1.5\u20ac"
+    },
+    "B24": "=A24",
+    "C24": "=ISNUMBER(A24)",
+    "A25": {
+     "entered": "-1\u20ac"
+    },
+    "B25": "=A25",
+    "C25": "=ISNUMBER(A25)",
+    "A26": {
+     "entered": "\u20ac1"
+    },
+    "B26": "=A26",
+    "C26": "=ISNUMBER(A26)",
+    "A27": {
+     "entered": "1.0%"
+    },
+    "B27": "=A27",
+    "C27": "=ISNUMBER(A27)",
+    "A28": {
+     "entered": "$1.0"
+    },
+    "B28": "=A28",
+    "C28": "=ISNUMBER(A28)",
+    "A29": {
+     "entered": "-$1e3"
+    },
+    "B29": "=A29",
+    "C29": "=ISNUMBER(A29)",
+    "A30": {
+     "entered": "($1e3)"
+    },
+    "B30": "=A30",
+    "C30": "=ISNUMBER(A30)",
+    "A31": {
+     "entered": "-1e3%"
+    },
+    "B31": "=A31",
+    "C31": "=ISNUMBER(A31)",
+    "A32": {
+     "entered": "(1e3)"
+    },
+    "B32": "=A32",
+    "C32": "=ISNUMBER(A32)",
+    "A33": {
+     "entered": "$1,000.5e0"
+    },
+    "B33": "=A33",
+    "C33": "=ISNUMBER(A33)"
+   }
+  }
+ ],
+ "expected": {}
+}

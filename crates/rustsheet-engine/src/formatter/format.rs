@@ -764,41 +764,40 @@ fn parse_percent_or_currency(
     decimal_separator: char,
     group_separator: char,
 ) -> Result<Option<(f64, Option<String>)>, String> {
-    // Check if it is a percentage
+    // Check if it is a percentage. Excel types `1%` as `0%` and `1.5%` as `0.00%` (the decimals
+    // are not kept beyond two), scientific text as `0.00E+00`; the format ignores group
+    // separators (`1,000%` is `0%`). Probes: typed-currency-percent-input, typed-paren-number-input;
+    // docs/excel-semantics/coercion.md "Typed currency and percent formats".
     if let Some(p) = value.strip_suffix('%') {
         let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
             return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
         }
-        // We ignore the separator
-        if options.decimal_digits > 0 {
-            // Percentage format with decimals
-            return Ok(Some((f / 100.0, Some("#,##0.00%".to_string()))));
-        }
-        // Percentage format standard
-        return Ok(Some((f / 100.0, Some("#,##0%".to_string()))));
+        let format = if options.decimal_digits > 0 {
+            "0.00%"
+        } else {
+            "0%"
+        };
+        return Ok(Some((f / 100.0, Some(format.to_string()))));
     }
 
     // check if it is a currency in currencies
     for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
+        let prefixed = value
+            .strip_prefix(&format!("-{currency}"))
+            .map(|p| (p, -1.0))
+            .or_else(|| value.strip_prefix(currency).map(|p| (p, 1.0)));
+        if let Some((p, sign)) = prefixed {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            // Excel: `-$1e3` is -1000 like `$-1e3` (typed-currency-percent-input A29).
+            let f = sign * f;
             if options.is_scientific {
                 return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
             }
-            if options.decimal_digits > 0 {
-                return Ok(Some((-f, Some(format!("{currency}#,##0.00")))));
-            }
-            return Ok(Some((-f, Some(format!("{currency}#,##0")))));
-        } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
-            }
-            if options.decimal_digits > 0 {
-                return Ok(Some((f, Some(format!("{currency}#,##0.00")))));
-            }
-            return Ok(Some((f, Some(format!("{currency}#,##0")))));
+            return Ok(Some((
+                f,
+                Some(prefix_currency_format(currency, options.decimal_digits > 0)),
+            )));
         } else if let Some(p) = value.strip_suffix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
@@ -813,6 +812,18 @@ fn parse_percent_or_currency(
         }
     }
     Ok(None)
+}
+
+/// The format Excel gives text typed with a leading currency symbol. `$` gets the red-negative
+/// accounting-style format (`$1` -> `$#,##0_);[Red]($#,##0)`, `$1.5` -> `$#,##0.00_);[Red]($#,##0.00)`;
+/// typed-currency-percent-input). Other symbols are unprobed and keep the plain format.
+fn prefix_currency_format(currency: &str, decimals: bool) -> String {
+    let digits = if decimals { "#,##0.00" } else { "#,##0" };
+    if currency == "$" {
+        format!("${digits}_);[Red](${digits})")
+    } else {
+        format!("{currency}{digits}")
+    }
 }
 
 /// A plain number (optionally with group separators or an exponent) and its inferred format.
