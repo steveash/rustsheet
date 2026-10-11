@@ -87,7 +87,7 @@ error wins over an `alt_text` error; other orders are not probed). The raw IMAGE
 The engine lifts over array and range `source`/`stock`/`value`/`field_name` and gives `#VALUE!` for non-URL IMAGE sources (the URL rule is in the T-1189 bullets below); `ERROR.TYPE` lifts over arrays too (probes/rich-errors-arg-kinds F10:G10, F13:G14, F40:G41; over a direct multi-cell range it follows the IS* lifting evidence). Shapes, error elements and URLs (probes/rich-errors-shapes-urls, excel-graph, 2026-10-11, T-1189):
 - FIELDVALUE with two array arguments of different shapes broadcasts to the larger shape, all `#FIELD!` (no `#N/A`
   padding): `{1,2}` with `{"a","b","c"}` is 1x3, `{1;2}` with `{"a","b","c"}` 2x3, `{1,2,3}` with `{"a";"b"}` 2x3 (A2:C7). A `field_name`
-  shorter than the result along an axis wider than 1 (`FIELDVALUE({1,2,3},{"a","b"})`) is UNVERIFIED; the engine gives `#FIELD!` there.
+  shorter than the result along an axis wider than 1 pads with `#N/A` (below, T-1345).
 - An error element of an array `field_name` stays itself: `FIELDVALUE(5,{"a",#DIV/0!,#N/A})` is `#FIELD!`, `#DIV/0!`,
   `#N/A`. An error element of an array `value` is `#FIELD!` like a scalar error `value` (A9:C10).
 - A later argument's error lifts over an array first argument: `IMAGE({url,url},1/0)` and `STOCKHISTORY({"A","B"},1/0)`
@@ -95,15 +95,24 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
 - An error element inside an array `source`/`stock` keeps its error; the other elements are `#BLOCKED!` / `#CONNECT!` (A18:C19).
 - `ERROR.TYPE` over a direct multi-cell range lifts (`ERROR.TYPE(E1:G1)` spills 2, 7, 2), and over a one-cell range it is
   that cell's code, one row (A21:A23).
-- An IMAGE source is a URL (`#BLOCKED!`) when, after leading spaces, it starts with `http:` or `https:` in any case and has
+- An IMAGE source is a URL (`#BLOCKED!`) when, after leading spaces, tabs and no-break spaces, it starts with `http:` or `https:` in any case and has
   something after the scheme other than slashes: `HTTPS://EXAMPLE.INVALID/A.PNG`, `https:example.invalid/a.png`,
   ` https://example.invalid/a.png` and `https://example.invalid` are `#BLOCKED!`; `https://`, `ftp://...`, `www....`,
-  `data:image/png;base64,...`, `file:///c:/a.png` and `example.invalid/a.png` are `#VALUE!` (A25:A35). UNVERIFIED (the
-  engine's inference between `https://` and `https://example.invalid`): bare `http:`/`https:`, `https:/`, `https:///x`,
-  trailing whitespace, and leading whitespace other than a space (T-1345).
-- IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16); the engine does not validate
-  `sizing`, `height` or `width` yet (T-1345).
-The engine matches all of these except A16 since T-1189.
+  `data:image/png;base64,...`, `file:///c:/a.png` and `example.invalid/a.png` are `#VALUE!` (A25:A35). Also `#VALUE!`: bare
+  `http:`, `https:` and `https:/`. Also `#BLOCKED!`: `https:///x`, `http://x`, trailing whitespace, and a leading tab or no-break space
+  (probes/rich-errors-image-sizing, excel-graph, 2026-10-11, T-1345).
+- IMAGE option validation (probes/rich-errors-image-sizing, T-1345; every case wrapped in ERROR.TYPE, 11 = `#BLOCKED!`, 3 = `#VALUE!`):
+  `sizing` 0, 1, 2, 1.5 (truncated) and TRUE reach the fetch; -1, 4, 9, text, `""` and an omitted `IMAGE(url,"alt",)` are
+  `#VALUE!`. `sizing` 3 alone, or `IMAGE(url,,3)`, is `#VALUE!`; with a `height` (`3,10`), or `3,0,10`, `3,10,0` and `3,1.5,10.5`, it reaches the
+  fetch; `3,0,0`, a negative `height` or `width` and a text `height` are `#VALUE!`. `sizing` 0 or 1 with a `height` (`0,10`, `1,10,10`) is
+  `#VALUE!`. UNVERIFIED: `sizing` 2 with a `height`, `3,0` (height 0, no width), a fractional `sizing` near the limits (-0.5, 3.5), an
+  empty cell or numeric text as `sizing`/`height`, and an array-valued `sizing` (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`,
+  `#VALUE!` in Excel, the options lift with the source; the engine does not lift them, T-1370).
+- IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
+- A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
+  `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!` (probes/rich-errors-image-sizing). A
+  shorter `value` is not padded (above).
+The engine matches all of these (A16 since T-1345) except the array-valued `sizing`.
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
 `#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
@@ -114,7 +123,7 @@ Status: DEVIATION (decision 0014)
 Implemented in: functions/information/offline_errors.rs
 Unverified: the localized (de/es/fr/it) names of IMAGE, STOCKHISTORY and FIELDVALUE; the language
 tables use the English names.
-Tasks: T-1013, T-1141, T-1179, T-1189, T-1345
+Tasks: T-1013, T-1141, T-1179, T-1189, T-1345, T-1370
 
 ## FIELDVALUE of a plain value is `#FIELD!`
 Rule: `FIELDVALUE(value, field_name)` is `#FIELD!` for a number `value` and for an error `value` (the

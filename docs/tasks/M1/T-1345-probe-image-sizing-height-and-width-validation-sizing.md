@@ -3,7 +3,7 @@ id: T-1345
 title: "Probe IMAGE sizing, height and width validation (sizing 9 is #VALUE!)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -17,9 +17,12 @@ Oracle evidence for which IMAGE `sizing`, `height` and `width` values are `#VALU
 probes/rich-errors-shapes-urls A16:B16 (T-1189): `IMAGE({url,url},"alt",9)` is `#VALUE!` per element in Excel, `#BLOCKED!` in the engine, which does not validate `sizing`/`height`/`width` (functions/information/offline_errors.rs `offline_args`). Probe sizing 0..3, -1, 4, 1.5, text, sizing 3 with and without height/width, height/width 0 and negative, sizing 0 with height given, each scalar and over an array source, wrapped in ERROR.TYPE (raw IMAGE errors come back undecodable). Also probe the URL boundary the engine infers (bare `http:`/`https:`, `https:/`, `https:///x`, trailing whitespace, a leading tab or non-breaking space) and `FIELDVALUE({1,2,3},{"a","b"})` (a `field_name` shorter than the result).
 
 ## Acceptance criteria
-- [ ] A probes case covers those arguments with excel-graph values, recorded in information.md ("IMAGE and STOCKHISTORY never fetch").
-- [ ] The engine matches them; rich-errors-shapes-urls A16:B16 leave the baseline.
+- [x] A probes case covers those arguments with excel-graph values, recorded in information.md ("IMAGE and STOCKHISTORY never fetch").
+- [x] The engine matches them; rich-errors-shapes-urls A16:B16 leave the baseline.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+Added probes/rich-errors-image-sizing (48 formulas, excel-graph). The engine now validates IMAGE `sizing`/`height`/`width` (sizing 0..3, sizing 3 needs a height, no negatives, not both 0, sizing 0/1 refuse a height), treats a leading tab or no-break space like a space in the URL check, and pads a short FIELDVALUE `field_name` with #N/A. probes/rich-errors-shapes-urls A16:B16 left the baseline. One cell (B121, array-valued sizing) stays a known failure: T-1370. Docs: information.md.
