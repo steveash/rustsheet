@@ -3,7 +3,7 @@ id: T-1267
 title: "DateSystem in WorkbookSettings: import/export date1904, facade option (SPEC-0005 step 1)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
