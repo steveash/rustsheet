@@ -75,7 +75,7 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
-In the 1900 date system TEXT of a negative under any format containing an elapsed token is #VALUE! instead (dates.md, probes/text-negative-serial-elapsed-mixed, T-1079/T-1105); the minus above is the 1904-workbook behavior.
+In the 1900 date system TEXT of a negative under a format that mixes an elapsed token with a date/time token (`[h]:mm`, `[s] yy`) is #VALUE! instead; a format made of a single elapsed token still prints a minus (below) (dates.md, probes/text-negative-serial-elapsed-mixed, T-1079/T-1105); the minus above is the 1904-workbook behavior.
 A negative value under an elapsed token keeps its minus on the magnitude, in both date systems (VERIFIED, probes/elapsed-tiny-negatives-1900 and -1904, excel-graph, T-1338): `[s]`/`[ss]` round the magnitude to nearest (`TEXT(-0.9/86400,"[s]")` = "-1", -1.5 s = "-2", -1.7 s = "-2", `TEXT(-1E-10,"[s]")` = "-0"); `[m]`/`[mm]`/`[h]`/`[hh]` truncate it (-1.7 min = "-1", -0.3 h = "-0", `TEXT(-1E-10,"[h]")` = "-0"). Padding follows the sign: `[ss]` of -1E-10 = "-00", of -1.7 s = "-02". Binary noise is absorbed (-1.5/86400 days = "-2"); the 10-decimal snap that does this is an extrapolation. Non-negative amounts floor (unprobed at fractions). `TEXT(-1.5,"[s]")` = "-129600".
 Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
 workbook agree).
