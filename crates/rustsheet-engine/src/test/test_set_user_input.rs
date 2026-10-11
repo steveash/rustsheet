@@ -408,116 +408,28 @@ fn test_number() {
     );
 }
 
+/// Excel en-US: a euro sign is not a currency, so typed `1€`, `1.5€`, `-1€` and `€1` stay text
+/// (probes/typed-currency-percent-input B23:C26, T-1335). VALUE of the same text is a number
+/// (probes/paren-number-text-euro-suffix), a different path.
 #[test]
-fn test_currencies_eur_prefix() {
+fn test_typed_euro_text_stays_text() {
     let mut model = new_empty_model();
-    model
-        .set_user_input(0, 1, 1, "€100.348".to_string())
-        .unwrap();
-
+    for (row, text) in [(1, "1€"), (2, "1.5€"), (3, "-1€"), (4, "€1"), (5, "1 €")] {
+        model.set_user_input(0, row, 1, text.to_string()).unwrap();
+    }
     model.evaluate();
-
-    assert_eq!(model._get_text("A1"), "€100.35");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!A1"),
-        Ok(CellValue::Number(100.348))
-    );
-}
-
-#[test]
-fn test_currencies_eur_suffix() {
-    let mut model = new_empty_model();
-    model
-        .set_user_input(0, 1, 1, "100.348€".to_string())
-        .unwrap();
-    model.set_user_input(0, 2, 1, "25€".to_string()).unwrap();
-
-    // negatives
-    model
-        .set_user_input(0, 1, 2, "-123.348€".to_string())
-        .unwrap();
-    model.set_user_input(0, 2, 2, "-42€".to_string()).unwrap();
-
-    // with a space
-    model
-        .set_user_input(0, 1, 3, "101.348 €".to_string())
-        .unwrap();
-    model.set_user_input(0, 2, 3, "26 €".to_string()).unwrap();
-
-    model
-        .set_user_input(0, 1, 4, "-12.348 €".to_string())
-        .unwrap();
-    model.set_user_input(0, 2, 4, "-45 €".to_string()).unwrap();
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("A1"), "100.35€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!A1"),
-        Ok(CellValue::Number(100.348))
-    );
-    assert_eq!(model._get_text("A2"), "25€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!A2"),
-        Ok(CellValue::Number(25.0))
-    );
-
-    assert_eq!(model._get_text("B1"), "-123.35€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!B1"),
-        Ok(CellValue::Number(-123.348))
-    );
-    assert_eq!(model._get_text("B2"), "-42€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!B2"),
-        Ok(CellValue::Number(-42.0))
-    );
-
-    // with a space
-    assert_eq!(model._get_text("C1"), "101.35€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!C1"),
-        Ok(CellValue::Number(101.348))
-    );
-    assert_eq!(model._get_text("C2"), "26€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!C2"),
-        Ok(CellValue::Number(26.0))
-    );
-
-    assert_eq!(model._get_text("D1"), "-12.35€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!D1"),
-        Ok(CellValue::Number(-12.348))
-    );
-    assert_eq!(model._get_text("D2"), "-45€");
-    assert_eq!(
-        model.get_cell_value_by_ref("Sheet1!D2"),
-        Ok(CellValue::Number(-45.0))
-    );
-}
-
-#[test]
-fn test_sum_function_eur() {
-    let mut model = new_empty_model();
-    model._set("A1", "€100");
-    model._set("A2", "€300");
-
-    model
-        .set_user_input(0, 1, 2, "=SUM(A:A)".to_string())
-        .unwrap();
-    model
-        .set_user_input(0, 2, 2, "=SUM(A1:A2)".to_string())
-        .unwrap();
-    model
-        .set_user_input(0, 3, 2, "=SUM(A1, A2, A3)".to_string())
-        .unwrap();
-
-    model.evaluate();
-
-    assert_eq!(model._get_text("B1"), *"€400");
-    assert_eq!(model._get_text("B2"), *"€400");
-    assert_eq!(model._get_text("B3"), *"€400");
+    for (cell, text) in [
+        ("A1", "1€"),
+        ("A2", "1.5€"),
+        ("A3", "-1€"),
+        ("A4", "€1"),
+        ("A5", "1 €"),
+    ] {
+        assert_eq!(
+            model.get_cell_value_by_ref(&format!("Sheet1!{cell}")),
+            Ok(CellValue::String(text.to_string()))
+        );
+    }
 }
 
 #[test]
