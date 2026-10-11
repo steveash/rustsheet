@@ -498,3 +498,17 @@ fn anchorarray_of_at_negation_is_value_and_of_at_index_spills() {
     assert_eq!(model._get_text("H82"), "2");
     assert_eq!(model._get_text("H83"), "3");
 }
+
+// The `@` of an IF that picks one cell keeps the reference, so ANCHORARRAY spills it
+// (probes/at-signed-operand H71:H73, T-1321).
+#[test]
+fn anchorarray_of_at_if_spills_the_picked_cell() {
+    let mut model = new_empty_model();
+    model._set("D1", "=SEQUENCE(3)");
+    model._set("H1", "=ANCHORARRAY(@IF(TRUE,D1))");
+    model.evaluate();
+
+    assert_eq!(model._get_text("H1"), "1");
+    assert_eq!(model._get_text("H2"), "2");
+    assert_eq!(model._get_text("H3"), "3");
+}

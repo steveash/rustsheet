@@ -396,6 +396,25 @@ impl Model {
                     _ => self.evaluate_node_with_reference(node, cell),
                 }
             }
+            // `ANCHORARRAY(@IF(TRUE,D1))` spills D1# too: the `@` of an IF that picks one cell
+            // keeps the reference (probes/at-signed-operand H71:H73, T-1321).
+            Node::ImplicitIntersection { child, .. }
+                if matches!(
+                    **child,
+                    Node::FunctionKind {
+                        kind: Function::If,
+                        ..
+                    }
+                ) =>
+            {
+                match self
+                    .evaluate_reference_arg(child, cell)
+                    .into_single_area(cell)
+                {
+                    reference @ CalcResult::Range { left, right } if left == right => reference,
+                    _ => self.evaluate_node_with_reference(node, cell),
+                }
+            }
             _ => self.evaluate_node_with_reference(node, cell),
         }
     }
