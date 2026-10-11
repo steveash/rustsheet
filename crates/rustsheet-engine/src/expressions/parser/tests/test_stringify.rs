@@ -34,11 +34,15 @@ fn exp_order() {
         "(C5+3)^(R4*6)"
     );
 
+    // Written groups print back (SPEC-0007).
     let t = parser.parse("(C5)^(R4)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "C5^R4");
+    assert_eq!(
+        to_english_localized_string(&t, &cell_reference),
+        "(C5)^(R4)"
+    );
 
     let t = parser.parse("(5)^(4)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "5^4");
+    assert_eq!(to_english_localized_string(&t, &cell_reference), "(5)^(4)");
 }
 
 #[test]
@@ -65,7 +69,7 @@ fn correct_parenthesis() {
     );
 
     let t = parser.parse("1 + (3+5)", &cell_reference);
-    assert_eq!(to_english_localized_string(&t, &cell_reference), "1+3+5");
+    assert_eq!(to_english_localized_string(&t, &cell_reference), "1+(3+5)");
 
     let t = parser.parse("1 - (3+5)", &cell_reference);
     assert_eq!(to_english_localized_string(&t, &cell_reference), "1-(3+5)");
@@ -73,7 +77,7 @@ fn correct_parenthesis() {
     let t = parser.parse("(1 - 3) - (3+5)", &cell_reference);
     assert_eq!(
         to_english_localized_string(&t, &cell_reference),
-        "1-3-(3+5)"
+        "(1-3)-(3+5)"
     );
 
     let t = parser.parse("1 + (3<5)", &cell_reference);

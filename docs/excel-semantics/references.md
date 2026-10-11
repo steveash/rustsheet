@@ -987,10 +987,11 @@ Tasks: T-1285, T-1320, T-1321, T-1337, T-1368
 
 ## FORMULATEXT of @ next to ^
 Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never parenthesised as an operand of `^`; written parentheses are kept. `=@A1^2`, `=2^@A1`, `=@-A1^2`, `=@2^2`, `=@(A1)^2`, `=@A1:A2^2` (#VALUE!), `=@-2^2+1`, `=2^@-2` (0.25), `=@SUM(A1)^2` and `=@-2%^2` (0.0004) print as written; `=@A1^2^3` (729, left-associative) prints bare; `=(@-2)^2` keeps its parentheses.
-Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) except `=@A1^2^3` (T-1331) and the written group of `=(@-2)^2` (T-1244).
-Rule (probes/power-chain-text, excel-graph, 2026-10-11, T-1331): FORMULATEXT of a `^` chain follows the written parentheses, not the operator's associativity. `=A1^2^3` (729) and `=2^3^2` (64) print bare; `=(A1^2)^3` (729), `=(2^3)^2`, `=A1^(2^3)` (6561), `=2^(3^2)` and `=(A1^2)^3^2` print as written; `=A1^2^3^2` prints bare. The engine wraps every left `^` chain (`=(A1^2)^3` for `=A1^2^3`) and cannot tell the two writings apart, because the `Node` tree does not keep the group: the fix is T-1244, not a printer tweak (bare printing would break `=(A1^2)^3`).
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm; `=@A1^2^3` by T-1340) except the written group of `=(@-2)^2`, which stays with the `@` fields until T-1343.
+Rule (probes/power-chain-text, excel-graph, 2026-10-11, T-1331): FORMULATEXT of a `^` chain follows the written parentheses, not the operator's associativity. `=A1^2^3` (729) and `=2^3^2` (64) print bare; `=(A1^2)^3` (729), `=(2^3)^2`, `=A1^(2^3)` (6561), `=2^(3^2)` and `=(A1^2)^3^2` print as written; `=A1^2^3^2` prints bare. The two writings parse to different trees: a written group is a `Node::Group` (SPEC-0007), and the power arm prints a left `^` operand bare.
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) and the `Group` node (T-1340).
 Status: VERIFIED (excel-graph)
-Tasks: T-1320, T-1331
+Tasks: T-1320, T-1331, T-1340
 
 ## Implicit intersection of a one-row range by a cell in that row
 Rule: `@` (or a scalar context) over a one-row range intersects by column whenever the formula cell's column lies

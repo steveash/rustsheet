@@ -231,11 +231,12 @@ fn operator_chains_as_long_as_excel_allows_evaluate_and_print() {
             assert_eq!(model._get_text(cell), *expected, "{cell}");
             assert_eq!(model._get_formula(cell), format!("={formula}"), "{cell}");
         }
-        // A power chain prints each left operand in parentheses, `=(1^1)^1`.
-        model._set("A3", &format!("={}", chain("^", EXCEL_LONGEST_CHAIN)));
+        // A power chain prints as written, `=1^1^1` (probes/power-chain-text, T-1331).
+        let power = format!("={}", chain("^", EXCEL_LONGEST_CHAIN));
+        model._set("A3", &power);
         model.evaluate();
         assert_eq!(model._get_text("A3"), "1");
-        assert!(model._get_formula("A3").ends_with("1)^1)^1"));
+        assert_eq!(model._get_formula("A3"), power);
         // A chain of references evaluates, and moves with its cell.
         let references = vec!["A1"; EXCEL_LONGEST_CHAIN].join("+");
         model._set("B1", &format!("={references}"));

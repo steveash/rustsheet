@@ -10,7 +10,8 @@ use crate::expressions::parser::tests::utils::{new_parser, to_english_localized_
 #[test]
 fn precedence_ast() {
     // Verify the AST structure: (A1:A3="Finance") + (B1:B3="HR") should parse as
-    // OpSumKind(CompareKind(A1:A3, "Finance"), CompareKind(B1:B3, "HR"))
+    // OpSumKind(CompareKind(A1:A3, "Finance"), CompareKind(B1:B3, "HR")), each in its written
+    // group (SPEC-0007)
     let formula = r#"(A1:A3="Finance") + (B1:B3="HR")"#;
     let cell_reference = CellReferenceRC {
         sheet: "Sheet1".to_string(),
@@ -31,7 +32,7 @@ fn precedence_ast() {
             );
             assert!(
                 matches!(
-                    &**left,
+                    left.ungrouped(),
                     Node::CompareKind {
                         kind: OpCompare::Equal,
                         ..
@@ -42,7 +43,7 @@ fn precedence_ast() {
             );
             assert!(
                 matches!(
-                    right.as_ref(),
+                    right.ungrouped(),
                     Node::CompareKind {
                         kind: OpCompare::Equal,
                         ..

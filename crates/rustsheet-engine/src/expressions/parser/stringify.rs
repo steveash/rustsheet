@@ -746,43 +746,13 @@ fn stringify(
                     CompareKind { .. } => true,
                 };
                 if needs_parentheses {
-                    format!(
-                        "-({})",
-                        stringify(
-                            right,
-                            context,
-                            displace_data,
-                            export_to_excel,
-                            locale,
-                            language
-                        )
-                    )
+                    format!("-({})", sub(right))
                 } else {
-                    format!(
-                        "-{}",
-                        stringify(
-                            right,
-                            context,
-                            displace_data,
-                            export_to_excel,
-                            locale,
-                            language
-                        )
-                    )
+                    format!("-{}", sub(right))
                 }
             }
             OpUnary::Percentage => {
-                format!(
-                    "{}%",
-                    stringify(
-                        right,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                )
+                format!("{}%", sub(right))
             }
         },
         ErrorKind(kind) => format!("{kind}"),
@@ -792,17 +762,7 @@ fn stringify(
         Group { levels, child } => group_text(*levels, &sub(child)),
         SpillRangeOperator { child } => {
             if export_to_excel {
-                return format!(
-                    "_xlfn.ANCHORARRAY({})",
-                    stringify(
-                        child,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                );
+                return format!("_xlfn.ANCHORARRAY({})", sub(child));
             };
             format!("{}#", spill_operand(sub(child), child))
         }
@@ -829,19 +789,10 @@ fn stringify(
                     }
                 })
                 .collect();
-            parts.push(stringify(
-                body,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language,
-            ));
+            parts.push(sub(body));
             format!("{}({})", lambda_name, parts.join(arg_sep))
         }
         LambdaCallKind { lambda, args } => {
-            let sub =
-                |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
             // When the callee is a plain named variable (unknown identifier used as a function),
             // use lowercase to distinguish from real function calls in R1C1 format and
             // to match the display behaviour of InvalidFunctionKind.
@@ -867,17 +818,7 @@ fn stringify(
                 // Redundant operators have already been stripped by
                 // `remove_redundant_implicit_intersection`; whatever remains is
                 // meaningful and must be exported explicitly.
-                return format!(
-                    "_xlfn.SINGLE({})",
-                    stringify(
-                        child,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                );
+                return format!("_xlfn.SINGLE({})", sub(child));
             }
             // The space binds tighter than `@`, so `@A1:A3 A2:B2` is `@(A1:A3 A2:B2)`; Excel's
             // FORMULATEXT prints it without parentheses (T-1098).

@@ -3,7 +3,7 @@ id: T-1331
 title: "FORMULATEXT prints a left-associative ^ chain bare: =@A1^2^3 and =A1^2^3 (engine wraps =(@A1^2)^3; T-1320)"
 milestone: M1
 lane: engine
-status: blocked
+status: done
 priority: P2
 size: S
 tier: opus
@@ -31,3 +31,7 @@ Depends on T-1244 (spec: keep written parentheses in parsed formulas), which is 
 shows no printer-only fix is right: `=A1^2^3` and `=(A1^2)^3` parse to the same `Node` but Excel prints
 them differently. Unblock when T-1244's written-group node lands; the probe case and its 4 recorded
 cells (power-chain-text I11, I26, I41, I46) are on this branch.
+
+## Outcome
+Done by T-1340 (the `Group` node, SPEC-0007 step 1): its branch merged this task's probe case and rule, and
+probes/power-chain-text I11, I26, I41, I46 and probes/at-power-text I26 pass and left the baseline.

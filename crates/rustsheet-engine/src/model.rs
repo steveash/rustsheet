@@ -267,8 +267,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
-        // Written parentheses are transparent to references: `ROWS((A1:A3))` (SPEC-0007).
-        let node = node.ungrouped();
+        let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -278,14 +277,9 @@ impl Model {
                 row,
                 column,
             } => {
-                let mut row1 = *row;
-                let mut column1 = *column;
-                if !absolute_row {
-                    row1 += cell.row;
-                }
-                if !absolute_column {
-                    column1 += cell.column;
-                }
+                // Relative coordinates are offsets from the formula's cell.
+                let row1 = *row + if *absolute_row { 0 } else { cell.row };
+                let column1 = *column + if *absolute_column { 0 } else { cell.column };
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,
@@ -598,8 +592,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         use Node::*;
-        // A written group evaluates as its child; peeled in a loop, so it adds no frame.
-        let node = node.ungrouped();
+        let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
         match node {
             OpSumKind { .. }
             | OpProductKind { .. }
@@ -617,14 +610,9 @@ impl Model {
                 row,
                 column,
             } => {
-                let mut row1 = *row;
-                let mut column1 = *column;
-                if !absolute_row {
-                    row1 += cell.row;
-                }
-                if !absolute_column {
-                    column1 += cell.column;
-                }
+                // Relative coordinates are offsets from the formula's cell.
+                let row1 = *row + if *absolute_row { 0 } else { cell.row };
+                let column1 = *column + if *absolute_column { 0 } else { cell.column };
                 self.evaluate_cell(CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,

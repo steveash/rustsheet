@@ -158,7 +158,7 @@ fn intersection_formula_text_round_trips() {
     model.evaluate();
 
     assert_eq!(model._get_formula("A1"), "=Data!A1:C7 Data!C7:E12");
-    assert_eq!(model._get_formula("A2"), "=Data!C2:C11 Data!C6:E6+0.1");
+    assert_eq!(model._get_formula("A2"), "=(Data!C2:C11 Data!C6:E6)+0.1");
     assert_eq!(model._get_formula("A3"), "=B1:C3 (C1:C2 C2)");
 }
 
@@ -282,20 +282,22 @@ fn at_operand_group_leftmost_shapes_match_the_probe() {
     for (i, formula) in forms.iter().enumerate() {
         assert_eq!(model._get_formula(&format!("E{}", 50 + i)), *formula);
     }
-    // Engine output that differs from Excel, which prints each as written: both drop a group
-    // nested inside or right of the leading one, the general written-parentheses gap (T-1244).
+    // F50 differs from Excel, which prints it as written: a group nested in the leading one is
+    // dropped until the `@` fields fold into `Group` (T-1343). A group right of the leading one
+    // is a `Group` and prints as written (F51, F52; SPEC-0007).
     assert_eq!(model._get_formula("F50"), "=@(A1 B1 C1) D1");
-    assert_eq!(model._get_formula("F51"), "=@(A1):B1 C1");
+    assert_eq!(model._get_formula("F51"), "=@(A1):(B1) C1");
     // probes/at-group-range-corner-whole E34.
-    assert_eq!(model._get_formula("F52"), "=@(A1):B1");
+    assert_eq!(model._get_formula("F52"), "=@(A1):(B1)");
 }
 
 #[test]
 fn at_operand_adds_no_level_for_a_nested_inner_group() {
     // T-1167: an inner group that only ends right before the outer `)` adds no level to the `@`
-    // operand (only `@((A1))`, a group opening right after the `(`, does). E40, E41, E43 and E44
-    // characterize the engine, not Excel: it drops the inner groups, while Excel prints every
-    // written parenthesis back (probes/at-operand-nested-groups, T-1178; engine: T-1244).
+    // operand (only `@((A1))`, a group opening right after the `(`, does). E40 matches Excel
+    // (a `Group`, SPEC-0007); E41, E43 and E44 characterize the engine, not Excel: it drops an
+    // inner group that starts the operand, while Excel prints every written parenthesis back
+    // (probes/at-operand-nested-groups, T-1178; engine: T-1343).
     let mut model = model();
     model._set("A1", "1");
     model._set("B1", "2");
@@ -305,11 +307,11 @@ fn at_operand_adds_no_level_for_a_nested_inner_group() {
     model._set("E43", "=@(((A1)) B1)");
     model._set("E44", "=@((A1)+(B1))");
     model.evaluate();
-    assert_eq!(model._get_formula("E40"), "=@(A1+B1)");
-    assert_eq!(model._get_formula("E41"), "=@(A1 B1)");
+    assert_eq!(model._get_formula("E40"), "=@(A1+(B1))");
+    assert_eq!(model._get_formula("E41"), "=@(A1 (B1))");
     assert_eq!(model._get_formula("E42"), "=@((A1))");
     assert_eq!(model._get_formula("E43"), "=@(A1 B1)");
-    assert_eq!(model._get_formula("E44"), "=@(A1+B1)");
+    assert_eq!(model._get_formula("E44"), "=@(A1+(B1))");
 }
 
 #[test]

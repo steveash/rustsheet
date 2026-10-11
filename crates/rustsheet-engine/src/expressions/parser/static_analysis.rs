@@ -92,9 +92,6 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
             add_implicit_intersection(child, false);
         }
-        Node::GroupedRootKind { child } | Node::Group { child, .. } => {
-            add_implicit_intersection(child, add);
-        }
         Node::RangeKind {
             row1,
             column1,
@@ -129,7 +126,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         }
 
         // operations
-        Node::UnaryKind { right, .. } => add_implicit_intersection(right, add),
+        Node::UnaryKind { right: child, .. }
+        | Node::GroupedRootKind { child }
+        | Node::Group { child, .. } => add_implicit_intersection(child, add),
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
@@ -339,20 +338,18 @@ fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticRes
 //  * Unknown if we cannot guaranty either
 pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
+        // A parse error and a wrong reference could be Unknown too (or Array for a range).
         Node::BooleanKind(_)
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
-        Node::UnaryKind { right, .. } => run_static_analysis_on_node(right),
-        Node::ParseErrorKind { .. } => {
-            // StaticResult::Unknown is also valid
-            StaticResult::Scalar
-        }
-        Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
-            // StaticResult::Unknown (or Array for a range) is also valid
-            StaticResult::Scalar
-        }
+        Node::UnaryKind { right: child, .. }
+        | Node::GroupedRootKind { child }
+        | Node::Group { child, .. } => run_static_analysis_on_node(child),
         Node::NamedFunctionKind { .. } => {
             // A named-function call invokes a LAMBDA (defined-name or LET-bound) whose
             // result shape is unknown at parse time — it may well be an array that needs
@@ -389,9 +386,6 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::NamedVariableKind { .. } | Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
-        Node::GroupedRootKind { child } | Node::Group { child, .. } => {
-            run_static_analysis_on_node(child)
-        }
         Node::LambdaDefKind { .. } | Node::LambdaCallKind { .. } => StaticResult::Unknown,
     }
 }
