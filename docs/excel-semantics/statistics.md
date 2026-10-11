@@ -155,14 +155,15 @@ paths. Literals in these probes parse to the correctly rounded doubles (checked 
 decimal literals of variance-fit).
 Status: VERIFIED. The float form of each comparison (for example `V < 0.001*|m|` against
 `V/|m| < 0.001`) is UNVERIFIED at the exact boundary.
-SUBTOTAL 7, 8, 10, 11 and their 107-111 forms use the same switch and the same overflow (probes/subtotal-variance-one-vs-two-pass,
+Implemented in: `excel_variance` in crates/rustsheet-engine/src/functions/statistical/variance.rs
+(T-1037). DVAR/DVARP/DSTDEV/DSTDEVP are covered by the database-variants paragraph below (T-1054).
+
+SUBTOTAL 7, 8, 10, 11 and their 107, 108, 110 and 111 forms use the same switch and the same overflow (probes/subtotal-variance-one-vs-two-pass,
 excel-graph 2026-10-11, T-0298; 64 cells, data copied from probes/dvar-one-vs-two-pass). Over the offset set (1000000003, 1000000001, ...)
 SUBTOTAL(10) is the two-pass 8.966666666666669 (the small set {3,1,4,1,5,9} is the one-pass 8.966666666666665); the small-magnitude sets
 {0.001,0.002,0.004} (two-pass) and {1,2,4}, {11,12,14}, {101,102,104} give the same bits as DVAR/DVARP/DSTDEV/DSTDEVP on the same data (every cell
-of the DVAR probe equals the matching SUBTOTAL cell), and `SUBTOTAL(c, {1E+200 x3})` is `#NUM!` for all eight codes. The 107-111 forms equal 7-11
-on visible data. The engine already matches (64/64): SUBTOTAL calls `variance_result` (functions/subtotal.rs, T-1185). Status of this paragraph: VERIFIED.
-Implemented in: `excel_variance` in crates/rustsheet-engine/src/functions/statistical/variance.rs
-(T-1037). DVAR/DVARP/DSTDEV/DSTDEVP still use their own one-pass code and are unprobed (T-1054).
+of the DVAR probe equals the matching SUBTOTAL cell), and `SUBTOTAL(c, {1E+200 x3})` is `#NUM!` for all eight codes. The 107, 108, 110 and 111 forms equal 7, 8, 10 and 11
+here (no row is hidden in this probe). The engine already matches (64/64): SUBTOTAL calls `variance_result` (functions/subtotal.rs, T-1185). Status of this paragraph: VERIFIED.
 
 Database variants (T-1054, VERIFIED): DVAR, DVARP, DSTDEV and DSTDEVP follow the same switch with the same
 divisors (DVAR/DSTDEV like VAR.S/STDEV.S, DVARP/DSTDEVP like VAR.P/STDEV.P), and an overflowing Σx² is
