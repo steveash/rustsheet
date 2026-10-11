@@ -3,7 +3,7 @@ id: T-0297
 title: "Probe ROUND/ROUNDUP/ROUNDDOWN/TRUNC at 15 significant digits and huge digit counts (ironcalc b93d4224)"
 milestone: M2
 lane: functions-math
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
