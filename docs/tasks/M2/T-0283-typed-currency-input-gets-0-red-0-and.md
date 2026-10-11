@@ -3,7 +3,7 @@ id: T-0283
 title: "Typed currency input gets $#,##0_);[Red]($#,##0) and typed percent 0%"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
