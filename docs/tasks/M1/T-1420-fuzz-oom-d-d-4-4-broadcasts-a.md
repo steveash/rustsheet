@@ -3,7 +3,7 @@ id: T-1420
 title: "Fuzz OOM: D:D+4:4 broadcasts a whole column against a whole row into a 2^34-cell array"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P0
 size: M
 tier: opus
