@@ -111,7 +111,7 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   element is checked on its own (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`; `{9;0}` with a 1x2 source is 2x2;
   a scalar source with `{0;9;1}` is 3x1; a length-1 array repeats; a shorter array is `#N/A` past its end,
   `IMAGE({url,url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`, `#N/A`). A `sizing` of `{3,3}` with `height` `{5,-1}` is valid, then
-  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370). 
+  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370).
   An error element inside an option array is that error itself, per element, not `#VALUE!`: `IMAGE(url,"alt",{0,#DIV/0!})` is
   `#BLOCKED!`, `#DIV/0!`; `{#DIV/0!,0}` is `#DIV/0!`, `#BLOCKED!`; `{9,#DIV/0!}` is `#VALUE!`, `#DIV/0!`. With several options the first
   error in argument order (`sizing`, `height`, `width`) wins for that element (`{#DIV/0!,0}` with `{5,#N/A}` is `#DIV/0!`, `#N/A`;
