@@ -34,20 +34,20 @@ The probes known-failure jump (511 → 2,881 F lines in eval/baseline/probes.txt
 - eng-argument-modes: 119
 - db-argument-modes: 38
 
-All of it is M2+ scope (decision 0043).
+None of it is M1 scope. Under decision 0051 (#611, merged during this run), each probe case counts toward its own milestone, and M2 exit counts only 74 of the failing probe cells.
 
 Hygiene: lint-debt 99 allow entries · duplicated lines 6,751 (ratchet file still 7,158) · oversized files 15 (ratchet file 15).
 `quality/` is protected, so the next PR that touches it records the duplication drop.
 
-Since the 2026-10-10 snapshot (296c2097), 81 PRs merged to `main` through 79dbdad5: 80 tasks and decision 0050 (#609). None was reverted. No steward run happened on 2026-10-11.
+Since the 2026-10-10 snapshot (296c2097), 84 PRs merged to `main` through 448c0cee: 82 tasks and decisions 0050 (#609) and 0051 (#611). None was reverted. No steward run happened on 2026-10-11.
 - T-0124, T-0219, T-0222, T-0258, T-0283, T-0297, T-0299, T-0962
 - T-1080, T-1084, T-1085, T-1086, T-1093, T-1100, T-1105, T-1131, T-1169, T-1181, T-1187, T-1189
 - T-1211, T-1222, T-1228, T-1239, T-1244, T-1251, T-1256, T-1260, T-1264, T-1267–T-1269, T-1274–T-1276, T-1283, T-1285, T-1289
-- T-1294, T-1300, T-1302–T-1305, T-1309, T-1311–T-1314, T-1320, T-1321, T-1329, T-1332, T-1334–T-1346
-- T-1362–T-1365, T-1368–T-1370, T-1375, T-1378, T-1380, T-1386, T-1388, T-1398, T-1415
+- T-1294, T-1300, T-1302–T-1305, T-1309, T-1311–T-1314, T-1320, T-1321, T-1329, T-1330, T-1332, T-1334–T-1346
+- T-1362–T-1365, T-1368–T-1370, T-1375, T-1378, T-1380, T-1386, T-1388, T-1398, T-1414, T-1415
 
-Blocked (15): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp); the M14
-desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081, T-1174, and the new T-1310 and T-1367
+Blocked (18): the Phase 2 tasks T-0400/T-0401/T-0402 and T-1066 (decision 0027); T-1099 (GEOMEAN last ulp); the M14
+desktop-oracle tasks T-0171, T-0198, T-1016, T-1051, T-1074, T-1075, T-1081, T-1174, and the newly blocked T-1204, T-1277, T-1299 (T-1414), T-1310 and T-1367
 (decision 0039; `rustsheet-oracle status` still shows excel-desktop n/a, so none can be unblocked).
 
 **Nightly fuzz is red on two new findings, both filed as P0 and both reproduced on 1337fe2.**
