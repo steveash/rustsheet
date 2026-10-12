@@ -1,4 +1,6 @@
-use chrono::{Datelike, Months, NaiveDate};
+use chrono::{Datelike, NaiveDate};
+
+use crate::formatter::dates::shift_months;
 
 use crate::{
     calc_result::CalcResult,
@@ -106,12 +108,7 @@ fn is_last_day_of_month(d: NaiveDate) -> bool {
 // falls on a month end, every coupon date does too (so a 11/30 maturity yields
 // coupons on 5/31, not 5/30).
 fn change_month(date: NaiveDate, num_months: i32, return_last: bool) -> Result<NaiveDate, String> {
-    let shifted = if num_months >= 0 {
-        date.checked_add_months(Months::new(num_months as u32))
-    } else {
-        date.checked_sub_months(Months::new((-num_months) as u32))
-    }
-    .ok_or("Date arithmetic error")?;
+    let shifted = shift_months(date, num_months).ok_or("Date arithmetic error")?;
     if return_last {
         let last = last_day_of_month(shifted.year(), shifted.month());
         NaiveDate::from_ymd_opt(shifted.year(), shifted.month(), last)

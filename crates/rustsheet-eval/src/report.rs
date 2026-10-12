@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::catalog::Catalog;
 use crate::milestone_lists::{self, ListSummary};
+use crate::probe_milestones::{self, MilestoneRow};
 use crate::runner::{CaseResult, CaseStatus, CellResult};
 use crate::value::Verdict;
 
@@ -219,6 +220,10 @@ pub struct RunReport {
     /// which loads the lists.
     #[serde(default)]
     pub milestone_lists: Vec<ListSummary>,
+    /// How the `probes` cases assigned to each milestone scored (decision 0051); filled by the
+    /// caller, which loads the rules.
+    #[serde(default)]
+    pub probe_milestones: Vec<MilestoneRow>,
 }
 
 impl RunReport {
@@ -318,6 +323,7 @@ impl RunReport {
             needs_other_evidence: lists.needs_other_evidence,
             out_of_scope: lists.out_of_scope,
             milestone_lists: Vec::new(),
+            probe_milestones: Vec::new(),
         }
     }
 
@@ -476,6 +482,7 @@ impl RunReport {
         );
         self.write_suites_table(&mut md);
         milestone_lists::write_markdown(&self.milestone_lists, &mut md);
+        probe_milestones::write_markdown(&self.probe_milestones, &mut md);
         self.write_timing(&mut md);
         let broken: Vec<&CaseResult> = self
             .cases
@@ -620,6 +627,7 @@ mod tests {
             deviations: 0,
             skipped_volatile: 0,
             millis,
+            tags: Vec::new(),
             cells: Vec::new(),
         }
     }

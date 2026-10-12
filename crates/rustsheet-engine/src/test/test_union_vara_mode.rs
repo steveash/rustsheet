@@ -11,7 +11,7 @@ fn union_argument_to_the_a_variance_family_and_mode() {
         model._set(cell, value);
     }
     let cases = [
-        ("H1", "=VARA((A1,B2,C3,D4))", "11.666666667"),
+        ("H1", "=VARA((A1,B2,C3,D4))", "11.66666667"),
         ("H2", "=VARPA((A1,B2,C3,D4))", "8.75"),
         ("H3", "=STDEVA((A1,B2,C3,D4))", "3.415650255"),
         ("H4", "=STDEVPA((A1,B2,C3,D4))", "2.958039892"),

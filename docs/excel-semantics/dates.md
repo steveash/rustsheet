@@ -65,6 +65,23 @@ history), which RustSheet does not reproduce; probes/weeknum-stale-return-type U
 Mixed!A4, Type21!A1 and Type1!A1 stay known failures.
 Implemented in: `fn_weeknum`, `iso_week` (crates/rustsheet-engine/src/functions/date_and_time/weeknum.rs), `fn_isoweeknum`.
 
+## DATE month and day bounds
+Rule: DATE floors its month and day, then a month outside -32767..=32766 is `#NUM!` even when the
+date it names is in the calendar, and a day outside the 16-bit range -32768..=32767 counts as 32767
+(not `#NUM!`, and the sign does not matter). The month carry is range-checked before the day: a
+month that leaves 1900-01-01..9999-12-31 is `#NUM!` even if the day would come back in range.
+`DATE(2000,32766,1)` = 1033789 but `DATE(2000,32767,1)`, `DATE(1900,32767,1)`,
+`DATE(2024,45031,1)`, `DATE(2000,65537,1)` and `DATE(2000,1E+15,1)` are `#NUM!`;
+`DATE(9999,-32767,1)` = 1960745 but `DATE(9999,-32768,1)` is `#NUM!`. `DATE(2000,1,32767)` =
+`DATE(2000,1,32768)` = `DATE(2000,1,-32769)` = `DATE(2000,1,1E+15)` = `DATE(2000,1,-1E+15)` =
+`DATE(2000,1,4294967297)` = 69292, `DATE(2000,1,-32768)` = 3757, `DATE(2000,1,-32768.5)` = 69292
+(floored to -32769 first), `DATE(9999,-32767.5,1)` is `#NUM!` (the month is floored too) while
+`DATE(2000,32766.5,1)` = 1033789, `DATE(1900,1,2958466)` = 32767; `DATE(9999,13,-30)` is `#NUM!` (the month
+carry leaves the calendar) while `DATE(0,13,-1)` = 365.
+Evidence: probes/date-huge-month-day A1-A63 (excel-graph, 2026-10-12, T-1419).
+Status: VERIFIED. Implemented in `fn_date` (T-1419); the month carry uses checked chrono month
+arithmetic, so a month near `i32::MAX` no longer panics (fuzz crash T-1419).
+
 ## DATE adds 1900 to years below 1900
 Rule: `DATE(1899,12,31)` is 3799-12-31 (serial 693962), not an error.
 Evidence: probes/dates-and-blanks.case.json A4. Oracle: excel-graph, 2026-10-04.
@@ -350,14 +367,27 @@ counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 fo
 ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for the seven probed functions other
 than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells are all 0 and cannot tell coercion from
 a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
-the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237). A huge *day* is not `#NUM!`:
+the 9999 limit: the month argument is bounded (see "DATE month and day bounds"). A huge *day* is not `#NUM!`:
 `DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
-excel-graph 2026-10-09; ours `#NUM!`), as if the day were capped at 32767 (one cell; the bound is unprobed, T-1237).
+excel-graph 2026-10-09), the same 32767 cap (T-1419).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
-Ours: none of the twenty lifts over a range (`#VALUE!`) or an array (`#N/IMPL!`); WORKDAY.INTL and NETWORKDAYS.INTL
-are `#VALUE!` for a range or array weekend; `DATEDIF("45000",..)` is `#VALUE!`; `DATE(2024,45031.5,1)` is a number (1415864).
+Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
+DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
+a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC.
+In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
+1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330; unprobed in 1904, T-1416).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
+
+## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
+Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date argument's own error comes first
+(`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
+order: DATEDIF reports the dates' `#NUM!` (end before start, out of range) before the unit's error
+(`DATEDIF(10,5,NA())` is `#NUM!`), while DAYS360 reports the method's error before the dates' `#NUM!`
+(`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
+single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
+Status: UNVERIFIED (probe pending)
+Tasks: T-1430 (error order), T-1428 (3D ranges, unit/method over an array)
 
 ## The 1904 date system: negative serials keep a minus; epoch at 1904-01-01
 Rule: in a 1904 workbook (`<workbookPr date1904="1"/>`), serial 0 is 1904-01-01 (`TEXT(0,"yyyy-mm-dd")` =

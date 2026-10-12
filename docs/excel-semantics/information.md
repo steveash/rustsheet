@@ -111,8 +111,29 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   element is checked on its own (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`; `{9;0}` with a 1x2 source is 2x2;
   a scalar source with `{0;9;1}` is 3x1; a length-1 array repeats; a shorter array is `#N/A` past its end,
   `IMAGE({url,url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`, `#N/A`). A `sizing` of `{3,3}` with `height` `{5,-1}` is valid, then
-  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370). UNVERIFIED:
-  an error element inside an option array.
+  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370).
+  An error element inside an option array is that error itself, per element, not `#VALUE!`: `IMAGE(url,"alt",{0,#DIV/0!})` is
+  `#BLOCKED!`, `#DIV/0!`; `{#DIV/0!,0}` is `#DIV/0!`, `#BLOCKED!`; `{9,#DIV/0!}` is `#VALUE!`, `#DIV/0!`. With several options the first
+  error in argument order (`sizing`, `height`, `width`) wins for that element (`{#DIV/0!,0}` with `{5,#N/A}` is `#DIV/0!`, `#N/A`;
+  `{0,#N/A}` with `{5,5}` is `#VALUE!` for the invalid 0-with-height, then `#N/A`), and it holds for a scalar or array source. Two errors in one element: the earlier option wins (`{#DIV/0!,0}` with `{#N/A,5}`
+  is `#DIV/0!` first; `sizing` `{#N/A,..}`, `height` `{#DIV/0!,..}`, `width` `{#NUM!,..}` is `#N/A`). An error element beats an invalid option
+  (`{9,0}` with height `{#DIV/0!,5}` is `#DIV/0!`, `#VALUE!`), and a `source` error element beats an option error element
+  (`IMAGE({#N/A,url},"alt",{#DIV/0!,0})` is `#N/A`, `#BLOCKED!`; `IMAGE({url,#N/A},"alt",{0,#DIV/0!})` is `#BLOCKED!`, `#N/A`)
+  (probes/rich-errors-image-array-error-elements, 41 cells, excel-graph, 2026-10-12, T-1417; VERIFIED).
+  A scalar error option beside an array option also lifts: `IMAGE(url,"alt",#DIV/0!,{5,5})` and `IMAGE(url,"alt",{0,0},#DIV/0!)` are
+  1x2 of `#DIV/0!`, not one scalar error (`ERROR.TYPE` 2, 2), and `IMAGE({url,url},"alt",3,#N/A,{5,5})` is `#N/A`, `#N/A`. An option error
+  element beats a non-URL `source` element in the same column: `IMAGE({"x",url},"alt",{#DIV/0!,0})` is `#DIV/0!`, `#BLOCKED!`;
+  `{1,url}` with `{#N/A,0}` is `#N/A`, `#BLOCKED!`; `{"",url}` with `{#DIV/0!,9}` is `#DIV/0!`, `#VALUE!`. Without an option error the
+  non-URL element is `#VALUE!` (`{TRUE,url}` with `{0,#N/A}` is `#VALUE!`, `#N/A`) (T-1427; VERIFIED).
+  An error in `alt_text` lifts the same way: `IMAGE(url,#N/A,{0,0})` is `#N/A`, `#N/A`, and a scalar error option beside an array `alt_text`
+  gives the array's shape (`IMAGE(url,{"a","b"},#DIV/0!)` is `#DIV/0!`, `#DIV/0!`; `IMAGE(url,{"a","b"},3,#N/A)` is `#N/A`, `#N/A`). With
+  several errors the first in argument order wins: `IMAGE(url,"alt",#N/A,{#DIV/0!,0})`, `IMAGE(url,"alt",#N/A,{5,5},#DIV/0!)` and
+  `IMAGE(url,#N/A,{0,0},#DIV/0!)` are all `#N/A`, and `IMAGE(url,{#N/A,"b"},#DIV/0!)` is `#N/A`, `#DIV/0!` element by element
+  (probes/rich-errors-image-array-error-elements, T-1427; VERIFIED).
+  An array `alt_text` lifts and shapes the grid like any other IMAGE argument: `IMAGE(url,{"a","b"})` and `IMAGE(url,{"a","b"},0)` are
+  1x2 of `#BLOCKED!`, `IMAGE(url,{"a";"b"},{0,0})` is 2x2, `{"a","b","c"}` with `{0,0}` is `#BLOCKED!`, `#BLOCKED!`, `#N/A` (and `{"a","b"}`
+  with `{0,0,0}` the same), and an error element in `alt_text` propagates per element (`{#N/A,"b"}` with `{0,0}` is `#N/A`, `#BLOCKED!`;
+  `{"b",#N/A}` with `{0,0,0}` is `#BLOCKED!`, `#N/A`, `#N/A`) (95 cells, T-1427; VERIFIED).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A

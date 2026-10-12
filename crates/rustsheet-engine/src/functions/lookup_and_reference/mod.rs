@@ -108,9 +108,12 @@ impl Model {
         }
         let match_type = if args.len() == 3 {
             match self.match_type_arg(&args[2], cell) {
-                // floor, not truncation: -0.5 searches descending (docs/excel-semantics/lookup.md,
-                // gen-m2/f7e6d351c8538ef5 A160, gen-m2/96a0952412cefa6c A241).
-                Ok(v) => v.floor() as i32,
+                // Only the sign counts: -0.5 searches descending (gen-m2/f7e6d351c8538ef5 A160,
+                // gen-m2/96a0952412cefa6c A241) and 0.5 ascending (probes/match-fractional-match-type
+                // C1-C3), so neither is the exact search that 0 is (docs/excel-semantics/lookup.md).
+                Ok(v) if v < 0.0 => -1,
+                Ok(v) if v > 0.0 => 1,
+                Ok(_) => 0,
                 Err(s) => return s,
             }
         } else {

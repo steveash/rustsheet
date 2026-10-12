@@ -14,6 +14,8 @@ depends_on: []
 Every date reader in a 1904 workbook counts serials from 1904-01-01 as Excel does, with probe evidence for each.
 
 ## Context
+Found while porting T-1235 (#520): typing "1904-01-02" into a cell of a 1904 workbook stores 1463, a serial
+counted from 1900, instead of 1. Probe cell input along with the date-text coercion.
 Follow-up of T-1330 (SPEC-0005 step 4). T-1330 applies the 1904 epoch to TEXT/cell-format date tokens,
 DATE, DATEVALUE (and every reader of `Model::parse_datevalue_text`) and YEAR/MONTH/DAY, through
 `DateSystem::to_1900_serial`/`serial_from_1900_serial` (formatter/dates.rs), on the evidence of
