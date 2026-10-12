@@ -3,7 +3,7 @@ id: T-1279
 title: "Probe IFNA and ISFORMULA edge cases (evidence gap: 18 and 10 Excel cells)"
 milestone: M5
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
