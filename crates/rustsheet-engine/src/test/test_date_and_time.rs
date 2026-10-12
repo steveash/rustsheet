@@ -939,3 +939,30 @@ fn date_functions_count_from_the_1904_epoch() {
     assert_eq!(model._get_text("A3"), *"1");
     assert_eq!(model._get_text("A4"), *"1904-01-02");
 }
+
+// DATEDIF reads date text as DATEVALUE does, so in a 1904 workbook it counts from 1904-01-01
+// too (T-1330): text and the equivalent serials give the same result, scalar or lifted.
+#[test]
+fn datedif_date_text_counts_from_the_1904_epoch() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    model._set("A1", "=DATEDIF(\"1904-01-02\",60,\"D\")");
+    model._set("A2", "=DATEDIF(1,60,\"D\")");
+    model._set("A3", "=DATEDIF(1,\"1904-03-01\",\"D\")");
+    model._set(
+        "A4",
+        "=INDEX(DATEDIF({\"1904-01-02\",\"1904-01-11\"},60,\"D\"),2)",
+    );
+    model._set("A5", "=INDEX(DATEDIF({1,10},60,\"D\"),2)");
+    // Quoted, so the cells hold text rather than an entered date.
+    model._set("B1", "'1904-01-02");
+    model._set("B2", "'1904-01-11");
+    model._set("A6", "=INDEX(DATEDIF(B1:B2,60,\"D\"),2)");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"59");
+    assert_eq!(model._get_text("A2"), *"59");
+    assert_eq!(model._get_text("A3"), *"59");
+    assert_eq!(model._get_text("A4"), *"50");
+    assert_eq!(model._get_text("A5"), *"50");
+    assert_eq!(model._get_text("A6"), *"50");
+}
