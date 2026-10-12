@@ -27,7 +27,7 @@ CI on `main`: green on 9ad32ae (T-1269), the last completed run. The runs on 133
 
 **Frozen M1 probe list (`eval/milestones/m1-probes.txt`) is at 100%:** 89 cases, 1,858/1,858 cells bit-exact, since T-1222 (#528) landed.
 
-The probes known-failure jump (511 → 2,881 since the 2026-10-10 baseline) is new coverage, not regressions. It comes from 99 new probe cases, mostly the M9 argument-mode probes and GROUPBY/PIVOTBY:
+The probes known-failure jump (511 → 2,881 F lines in eval/baseline/probes.txt since 296c2097; the last snapshot's 552 counted failing cells in the report instead) is new coverage, not regressions. It comes from 99 new probe cases, mostly the M9 argument-mode probes and GROUPBY/PIVOTBY:
 - groupby-pivotby: 1,431
 - stat-argument-modes: 403
 - fin-argument-modes: 306

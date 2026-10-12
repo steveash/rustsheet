@@ -34,6 +34,7 @@ Keep Excel's results for broadcasts under the limit unchanged (existing probes a
 ## Acceptance criteria
 - [ ] The reproducer and `=D:D+4:4` are unit tests (decision 0035) that finish quickly in a debug build with bounded memory.
 - [ ] Every binary operator (arithmetic, comparison, `&`) checks the broadcast size before allocating.
+- [ ] docs/excel-semantics/arrays.md "Array results above 1,048,576 cells" (the decision-0014 DEVIATION) names the operator broadcast path, or is extended to.
 - [ ] 0 eval regressions; `make check` green; reviewers approve (performance reviewer included).
 
 ## Out of scope
