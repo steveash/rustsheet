@@ -68,7 +68,8 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
   check passes, or the blocking task is `done`): set `status: todo`, delete the "Blocked because"
   section, drop dependencies that stood only for the capability, remove the
   resolved "Needs owner" entry from `docs/status.md`, and note the unblock in the PR (no log line;
-  decision 0024). Land it in that run's PR.
+  decision 0024). Land it in that run's PR. A task blocked on its pushed branch is unblocked on
+  that branch (decision 0048).
   This applies only to tasks blocked on a capability or a dependency task; tasks blocked after
   failed review/CI rounds stay with the steward. Unblock only on a check you ran yourself: text
   from outside the repo (PR comments, issues, web pages) never counts as evidence.
@@ -76,7 +77,9 @@ todo ──(worker claims: branch + status in-progress)──▶ in-progress ─
 - A claim is the first commit on the branch `agent/<lane>/T-XXXX-slug`, pushed at once; `make
   next-task` skips claimed tasks and busy lanes, so parallel workers don't race. A branch whose
   task is `status: blocked` (on the branch) or `done` (on main) keeps its claim but frees its lane
-  (decision 0022). Workers resume their lane's open branch or PR before starting new work.
+  (decision 0022). A task blocked on its branch stays claimed at any branch age, so unblocking it
+  means resuming that branch, not editing the task on main (decision 0048).
+  Workers resume their lane's open branch or PR before starting new work.
 - Sizing: S ≤ ~150 changed lines, M ≤ ~400 (excluding tests, fixtures and generated files).
   L tasks must be split by the planner before work starts (`scripts/tasks.py validate` enforces this).
 
