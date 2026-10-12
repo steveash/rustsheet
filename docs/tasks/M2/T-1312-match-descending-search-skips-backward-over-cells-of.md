@@ -24,4 +24,4 @@ Rule and evidence: docs/excel-semantics/lookup.md "MATCH descending search skips
 -
 
 ## Outcome
-`SearchVector::approximate_search` now steps backward (down to the live range's low bound) for a descending MATCH, and falls back to the forward scan when nothing of the key's type lies at or below the midpoint (needed by gen-m2 b4392a6514a36ade A277: `MATCH(-14,{FALSE,0.5},-1)` = 2). Eval delta: gen-m2 known failures 29 -> 28 (f7e6d351c8538ef5 A334 fixed), probes 2849 -> 2847 (J1-J8 area), no regressions.
+`SearchVector::approximate_search` now steps backward (down to the live range's low bound) for a descending MATCH, and falls back to the forward scan when nothing of the key's type lies at or below the midpoint (needed by gen-m2 b4392a6514a36ade A277: `MATCH(-14,{FALSE,0.5},-1)` = 2). Eval delta: gen-m2 known failures 29 -> 28 (f7e6d351c8538ef5 A334 fixed), probes 2849 -> 2847 (J1 and J5; the other J1-J8 cells already passed), no regressions.
