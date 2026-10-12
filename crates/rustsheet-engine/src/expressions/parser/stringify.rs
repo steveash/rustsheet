@@ -857,12 +857,12 @@ fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) 
     let Some((left, right)) = value_operands(node) else {
         return left_text;
     };
-    let operator = match node {
-        OpConcatenateKind { .. } => "&".to_string(),
-        CompareKind { kind, .. } => kind.to_string(),
-        OpSumKind { kind, .. } => kind.to_string(),
-        OpProductKind { kind, .. } => kind.to_string(),
-        OpPowerKind { .. } => "^".to_string(),
+    let operator: &dyn std::fmt::Display = match node {
+        OpConcatenateKind { .. } => &"&",
+        CompareKind { kind, .. } => kind,
+        OpSumKind { kind, .. } => kind,
+        OpProductKind { kind, .. } => kind,
+        OpPowerKind { .. } => &"^",
         _ => return left_text,
     };
     let level = binding(node);
