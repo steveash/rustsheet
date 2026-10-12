@@ -41,6 +41,10 @@ one-liner.
   `M0-M2=74 M5=35 M6=175 M7=1547 M8=3 M9=994 M10=53 M11=0 total=2881`.
 
 ## Acceptance criteria
+- [ ] The mapping file accepts an optional per-cell form (`case id`, `Sheet!A1`, milestone, subject)
+      that overrides the case-level milestone for that cell only; move
+      `subtotal-reference-operands-d` Sheet1!H28 (`=GEOMEAN(5,7)`) to M9 with it (decision 0051,
+      "Known consequences"). Record the change in decision 0051 (governed path).
 - [ ] The harness parses `eval/milestones/probe-milestones.tsv` with a `thiserror` error type.
       Unit tests cover:
       - a comment line;

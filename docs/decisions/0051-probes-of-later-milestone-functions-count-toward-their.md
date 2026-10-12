@@ -29,13 +29,14 @@
      1. A case on the frozen list `eval/milestones/m1-probes.txt` is `M1`. The list is
         unchanged (decision 0043).
      2. A case listed in `eval/milestones/probe-milestones.tsv` takes the milestone given there.
-        The file holds tab-separated lines: case id, milestone, subject. It has 147 lines.
+        The file holds tab-separated lines: case id, milestone, subject. It has 142 lines.
      3. In `probes/catalog/*`, the milestone is set per checked cell. A cell takes the highest
         catalog milestone (`eval/catalog/scope.json`) of the functions its formula calls,
         written `NAME(` (an `_xlfn.` prefix does not change the name), apart from the observing
         wrappers `OR`, `IFERROR`, `ERROR.TYPE` and `INDEX`. A cell that calls no catalog
         function is `M2`. Each availability cell calls exactly one function, so the cell counts
-        toward that function's milestone.
+        toward that function's milestone; the one exception is `availability-13` A2, which tests
+        ERROR.TYPE itself, so dropping the wrapper leaves it `M2`.
      4. Any other case takes its milestone tag (`M0`, `M1`, `M2`, `M5`…`M11`) from its
         case.json `tags`. No case has two milestone tags today. If one ever has, the highest
         wins.
@@ -67,14 +68,14 @@
        - `subnormal-*` apart from `subnormal-function-boundaries`.
        A later-tagged case whose tag is wrong is overridden either way. For example,
        `filter-if-empty-array` (tagged `M9`) is `M7`.
-     - The 147 lines, by milestone:
-       - **M5 (22):** AGGREGATE `aggregate-args`, `-array-args`, `-grid`, `-range-args`;
-         `near-zero-aggregate-forms`; `subtotal-hidden-filtered`; `ceiling-xlfn-prefix`;
+     - The 142 lines, by milestone:
+       - **M5 (21):** AGGREGATE `aggregate-args`, `-array-args`, `-grid`, `-range-args`;
+         `subtotal-hidden-filtered`; `ceiling-xlfn-prefix`;
          `gcd-lcm-bounds`, `lcm-result-bound`, `lcm-result-edge`; `ifs-switch-array-values`,
          `ifs-switch-lift-edges`; `is-functions-array-lift`; `mod-*` (8);
          `text-b-functions-broadcast`.
-       - **M6 (26):** `subtotal-reference-operands`, `-b`, `-e`, `-f` (AREAS); `weeknum-*` (4);
-         `edate-serial-0-months`; `timevalue-*` (4); `lookup-2d-vector-wide`,
+       - **M6 (22):** `subtotal-reference-operands`, `-b`, `-e`, `-f` (AREAS); `weeknum-*` (4);
+         `edate-serial-0-months`; `lookup-2d-vector-wide`,
          `lookup-vector-edges`; `xlookup-*` and `xmatch-*` (8); `xlookup-row-column-picks`,
          `offset-negative-height-width` and `indirect-text-broadcast` (all three tagged `M9`,
          the first counted in `xlookup-*`); `rows-columns-args`.
@@ -130,7 +131,17 @@
     - `written-parens-reference-only` 2;
     - `rich-errors-image-sizing` 1, `subtotal-reference-operands-d` 1 (a GEOMEAN cell) and
       `text-order-nbsp-space` 1.
-  - Catalog cells: the 503 availability cells split M2 37, M5 132, M6 39, M7 32 and M9 263. Their
+  - Known consequences of the per-case rule (fidelity review):
+    - `timevalue-*` (4), `clock-text-*` and `near-zero-aggregate-forms` keep their M0/M1/M2 tags:
+      half their cells are operator coercion of time text (`0+A`) or near-zero snapping, which
+      are M1/M2 subjects.
+    - `subtotal-reference-operands-d` stays M2 for its SUBTOTAL reference-operand cells, so its
+      one F line, the M9 GEOMEAN cell H28 (`=GEOMEAN(5,7)`), still counts toward M2 exit. T-1416
+      adds per-cell overrides to the mapping file so that cell can move to M9.
+    - Deliberate keeps with no F line today: `name-body-length-*` (7, name-body limits that
+      agents and the xlsx reader share), `subnormal-sumsq-sumproduct-edges` and
+      `ifs-shape-mismatch` (the shared criteria engine). Revisit if they gain failures.
+  - Catalog cells: the 503 availability cells split M2 38, M5 131, M6 39, M7 32 and M9 263. Their
     6 F lines are:
     - `availability-03` A3, BAHTTEXT (M5);
     - `availability-14` A7, FILTERXML (M5);

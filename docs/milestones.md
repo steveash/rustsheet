@@ -83,8 +83,8 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 - The frozen M1 probe list is `eval/milestones/m1-probes.txt` (decision 0043): 89 `probes` cases
   in M1 scope, fixed at commit e5c7ae9. Its cases have no F line left in
   eval/baseline/probes.txt (61 at the freeze; `make eval` reports it once T-1146 lands). Probe
-  cases outside the list, including every probe added after the freeze, count toward M2 exit and
-  never toward M1, whatever their tag.
+  cases outside the list, including every probe added after the freeze, count toward the milestone
+  decision 0051 assigns them and never toward M1, whatever their tag.
 - Known parity bugs from the IronCalc assessment fixed: `ROUND(1.005,2)`, `CONCAT(0.1+0.2)`,
   `DATE(1900,2,29)`, and the parser accepting trailing garbage.
 - API v0 spec merged and implemented. Python `rustsheet.Workbook` passes binding tests.

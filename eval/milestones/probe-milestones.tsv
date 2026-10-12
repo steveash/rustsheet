@@ -97,7 +97,6 @@ probes/mod-quotient-threshold2.case.json	M5	MOD
 probes/mod-quotient-threshold3.case.json	M5	MOD
 probes/mod-quotient-threshold4.case.json	M5	MOD
 probes/mod-quotient-threshold5.case.json	M5	MOD
-probes/near-zero-aggregate-forms.case.json	M5	AGGREGATE and SUBTOTAL
 probes/negative-date-sections-1900.case.json	M10	number-format codes in TEXT
 probes/negative-date-sections-1904.case.json	M10	number-format codes in TEXT
 probes/offset-negative-height-width.case.json	M6	OFFSET
@@ -125,10 +124,6 @@ probes/text-format-length-limit-b.case.json	M10	number-format codes in TEXT
 probes/text-format-length-limit.case.json	M10	number-format codes in TEXT
 probes/text-general-exponent-boundary.case.json	M10	number-format codes in TEXT
 probes/text-negative-serial-elapsed-mixed.case.json	M10	number-format codes in TEXT
-probes/timevalue-ampm-limits.case.json	M6	TIMEVALUE
-probes/timevalue-component-limits.case.json	M6	TIMEVALUE
-probes/timevalue-fractional-seconds.case.json	M6	TIMEVALUE
-probes/timevalue-fractional-seconds2.case.json	M6	TIMEVALUE
 probes/variance-digits.case.json	M9	VAR, STDEV family
 probes/variance-fit.case.json	M9	VAR, STDEV family
 probes/variance-rel.case.json	M9	VAR, STDEV family
