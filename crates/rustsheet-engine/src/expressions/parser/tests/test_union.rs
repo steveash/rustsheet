@@ -27,7 +27,7 @@ fn parser() -> Parser {
 }
 
 fn is_union(node: &Node) -> bool {
-    matches!(node, Node::OpUnionKind { .. })
+    matches!(node.ungrouped(), Node::OpUnionKind { .. })
 }
 
 fn is_parse_error(node: &Node) -> bool {
@@ -38,7 +38,7 @@ fn is_parse_error(node: &Node) -> bool {
 fn comma_inside_parentheses_is_a_union() {
     let mut parser = parser();
     let node = parser.parse("(Data!B6,Data!E11)", &context());
-    let Node::OpUnionKind { left, right, .. } = &node else {
+    let Node::OpUnionKind { left, right, .. } = node.ungrouped() else {
         panic!("expected a union, got {node:?}");
     };
     assert!(matches!(**left, Node::ReferenceKind { .. }));
@@ -65,7 +65,7 @@ fn comma_in_a_call_still_separates_arguments() {
     assert!(is_union(&args[0]), "{:?}", args[0]);
     // A call inside the parenthesis takes its own arguments back.
     let node = parser.parse("(INDEX(A1:B2,1,1),C3)", &context());
-    let Node::OpUnionKind { left, .. } = &node else {
+    let Node::OpUnionKind { left, .. } = node.ungrouped() else {
         panic!("expected a union, got {node:?}");
     };
     assert!(matches!(&**left, Node::FunctionKind { args, .. } if args.len() == 3));
@@ -91,7 +91,7 @@ fn unions_nest_and_chain() {
     let mut parser = parser();
     // `((A2,E8),B6)` keeps the group; `(A2,E8,B6)` is the same tree without it.
     let nested = parser.parse("((Data!A2,Data!E8),Data!B6)", &context());
-    let Node::OpUnionKind { left, right, .. } = &nested else {
+    let Node::OpUnionKind { left, right, .. } = nested.ungrouped() else {
         panic!("expected a union, got {nested:?}");
     };
     assert!(is_union(left));
@@ -102,7 +102,7 @@ fn unions_nest_and_chain() {
     );
     // A right operand that is a union keeps its parentheses.
     let node = parser.parse("(A1,(B2,C3))", &context());
-    let Node::OpUnionKind { right, .. } = &node else {
+    let Node::OpUnionKind { right, .. } = node.ungrouped() else {
         panic!("expected a union, got {node:?}");
     };
     assert!(is_union(right));
@@ -113,7 +113,7 @@ fn union_binds_looser_than_intersection_and_tighter_than_the_rest() {
     let mut parser = parser();
     // `(A1:B2 B1,C1)` is `((A1:B2 B1),C1)`.
     let node = parser.parse("(A1:B2 B1,C1)", &context());
-    let Node::OpUnionKind { left, .. } = &node else {
+    let Node::OpUnionKind { left, .. } = node.ungrouped() else {
         panic!("expected a union, got {node:?}");
     };
     assert!(matches!(**left, Node::OpIntersectKind { .. }));
@@ -206,7 +206,7 @@ fn sheet_qualified_corner_pairs_are_union_operands() {
     // T-0130: `Data!B8:Data!E12` is one range; T-0188: it also survives the R1C1 storage form.
     let mut parser = parser();
     let node = parser.parse("(Data!B8:Data!E12,A1)", &context());
-    let Node::OpUnionKind { left, .. } = &node else {
+    let Node::OpUnionKind { left, .. } = node.ungrouped() else {
         panic!("expected a union, got {node:?}");
     };
     assert!(matches!(**left, Node::OpRangeKind { .. }), "{left:?}");
@@ -260,7 +260,7 @@ fn negated_reference_is_a_union_operand() {
     // reads it as a union of `-A1` and `B1`, not as `-(A1,B1)`.
     let mut parser = parser();
     let node = parser.parse("(-A1,B1)", &context());
-    let Node::OpUnionKind { left, .. } = &node else {
+    let Node::OpUnionKind { left, .. } = node.ungrouped() else {
         panic!("expected a union, got {node:?}");
     };
     assert!(matches!(**left, Node::UnaryKind { .. }));
@@ -340,5 +340,49 @@ fn parenthesized_cut_of_a_union_keeps_its_parentheses() {
         // Printing is a fixed point: a re-parse gains no level.
         let reparsed = parser.parse_cell_formula(&text, &context());
         assert_eq!(to_english_localized_string(&reparsed, &context()), expected);
+    }
+}
+
+/// The parentheses of a union, and of a cut of a parenthesized union, are `Group` nodes as
+/// written (SPEC-0007 step 3): `((A1,B1) B1)` is `Group{1, Intersect(Group{1, Union}, B1)}`,
+/// at the root as anywhere else.
+#[test]
+fn union_and_cut_parentheses_are_groups() {
+    let mut parser = parser();
+    let node = parser.parse_cell_formula("((A1,B1) B1)", &context());
+    let Node::Group { levels: 1, child } = &node else {
+        panic!("expected one group around the cut, got {node:?}");
+    };
+    let Node::OpIntersectKind { left, .. } = &**child else {
+        panic!("expected a cut, got {child:?}");
+    };
+    assert!(
+        matches!(&**left, Node::Group { levels: 1, child } if is_union(child)),
+        "{left:?}"
+    );
+    let node = parser.parse("((A1,B2))", &context());
+    assert!(
+        matches!(&node, Node::Group { levels: 2, child } if is_union(child)),
+        "{node:?}"
+    );
+}
+
+/// SUBTOTAL and AREAS read a parenthesized union (or a cut of one) as a reference, so the call
+/// is a scalar, not a dynamic formula, through the union's `Group` (T-1342).
+#[test]
+fn subtotal_and_areas_of_a_grouped_union_are_scalar() {
+    use crate::expressions::parser::static_analysis::{run_static_analysis_on_node, StaticResult};
+    let mut parser = parser();
+    for formula in [
+        "AREAS((A1,B1))",
+        "SUBTOTAL(9,(A1,B1))",
+        "SUBTOTAL(9,((A1,B1) B1))",
+        "AREAS(((A1,B1)))",
+    ] {
+        let node = parser.parse_cell_formula(formula, &context());
+        assert!(
+            matches!(run_static_analysis_on_node(&node), StaticResult::Scalar),
+            "{formula}"
+        );
     }
 }

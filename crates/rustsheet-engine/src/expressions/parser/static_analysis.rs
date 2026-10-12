@@ -1,3 +1,4 @@
+use super::reference_operators::at_outside;
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 mod aggregate;
@@ -119,6 +120,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 });
             }
         }
+        Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
                 *node = Node::automatic_at(node.clone())

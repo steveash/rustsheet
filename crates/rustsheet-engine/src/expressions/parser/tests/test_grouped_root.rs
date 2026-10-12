@@ -111,8 +111,11 @@ fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
 #[test]
 fn a_union_keeps_its_own_parentheses_and_is_not_wrapped() {
     let mut parser = parser();
+    // Its parentheses are its own one-level `Group`, not a root group around it.
     let node = parser.parse_cell_formula("(A1,B2)", &context());
-    assert!(matches!(node, Node::OpUnionKind { .. }));
+    assert!(
+        matches!(&node, Node::Group { levels: 1, child } if matches!(**child, Node::OpUnionKind { .. }))
+    );
     assert_eq!(to_english_localized_string(&node, &context()), "(A1,B2)");
 }
 
