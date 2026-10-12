@@ -1,6 +1,5 @@
 use crate::tz::Tz;
 use chrono::Datelike;
-use chrono::Months;
 use std::collections::HashMap;
 
 pub(crate) mod time_text;
@@ -20,17 +19,6 @@ fn last_day_of_feb(year: i32) -> u32 {
         29
     } else {
         28
-    }
-}
-
-/// `date` moved by `months` calendar months (EDATE/EOMONTH), `None` past chrono's range so a huge
-/// offset (`EDATE(40000,2000000000)`) is #NUM! instead of a panic.
-fn shift_months(date: chrono::NaiveDate, months: i32) -> Option<chrono::NaiveDate> {
-    let shift = Months::new(months.unsigned_abs());
-    if months > 0 {
-        date.checked_add_months(shift)
-    } else {
-        date.checked_sub_months(shift)
     }
 }
 
@@ -174,7 +162,9 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::date_text::parse_date;
+use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
+use crate::formatter::dates::shift_months;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
 use crate::functions::text::text_arg::broadcast_text;
 use crate::functions::util::array_node_to_calc_result;
@@ -364,13 +354,16 @@ impl Model {
                 if year < 0 {
                     return Err(Error::NUM);
                 }
+                let Some((month, day)) = date_month_and_day(month, day) else {
+                    return Err(Error::NUM);
+                };
                 // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
                 if year < 1900 {
                     year += 1900;
                 }
                 // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
                 // An earlier day is #NUM! here; Excel is unprobed for it (T-1416).
-                permissive_date_to_serial_number(day.floor() as i32, month.floor() as i32, year)
+                permissive_date_to_serial_number(day, month, year)
                     .ok()
                     .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
                     .map(|serial| serial as f64)
@@ -982,10 +975,10 @@ impl Model {
                 if end.day() < start.day() {
                     months -= 1;
                 }
-                let start_shifted = if months >= 0 {
-                    start + Months::new(months as u32)
-                } else {
-                    start - Months::new((-months) as u32)
+                // Both dates are in Excel's calendar, so the shift cannot leave chrono's range;
+                // the checked form keeps a panic off this path all the same (T-1419).
+                let Some(start_shifted) = shift_months(start, months) else {
+                    return Err(Error::NUM);
                 };
                 Ok((end - start_shifted).num_days() as f64)
             }

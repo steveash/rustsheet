@@ -1,6 +1,6 @@
 ---
 id: T-1237
-title: "DATE with a huge month argument is #NUM!; DATEDIF reads numeric text"
+title: "DATEDIF reads numeric text"
 milestone: M6
 lane: functions-date
 status: todo
@@ -11,7 +11,8 @@ depends_on: []
 ---
 
 ## Goal
-DATE is `#NUM!` for the month (and day) arguments Excel rejects, and DATEDIF reads numeric text dates, as Excel does.
+DATEDIF reads numeric text dates, as Excel does. (The DATE month/day bounds this task first covered were
+probed and implemented by T-1419: probes/date-huge-month-day, dates.md "DATE month and day bounds".)
 
 ## Context
 probes/date-argument-modes (excel-graph, 2026-10-09, T-1090): `INDEX(DATE(2024,A1:A3,1),2)` (month 45031.5) is
@@ -28,8 +29,7 @@ bounds found by the probe keep this cell; add `DATE(2042,8,32768)`, `(2042,8,1E+
 (dates.md "Date function argument modes").
 
 ## Acceptance criteria
-- [ ] probes/date-argument-modes G3 (once T-1235 lifts DATE, G4) and F89 pass; baseline updated.
-- [ ] gen-m6/5cc04d6f42b23b51 A4 passes (`./target/release/rustsheet-eval show gen-m6/5cc04d6f42b23b51.case.json`).
+- [ ] probes/date-argument-modes F89 passes; baseline updated. (G3/G4 and gen-m6/5cc04d6f42b23b51 A4 are T-1419's.)
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
