@@ -435,6 +435,7 @@ Before the epoch:
 - They do not accept such a serial back: `EDATE(-31,1)` and `EOMONTH(-1,0)` are #NUM!.
 - WORKDAY and WORKDAY.INTL are #NUM! for a result before the epoch: `WORKDAY(0,-1)`, `WORKDAY.INTL(1,-2)`.
 - A negative serial is #NUM! in ISOWEEKNUM, WEEKNUM, DAYS360, DATEDIF and NETWORKDAYS too: `ISOWEEKNUM(-1)`, `WEEKNUM(-1)`, `DAYS360(-1,0)`, `DATEDIF(-1,0,"d")`, `NETWORKDAYS(-5,0)`.
+- Date text naming a day before 1904-01-01 is no date: `"1903-12-31"+0`, `VALUE("1903-12-31")`, `--"12/31/1903"` and `DATEVALUE("1903-12-31")` are #VALUE! (ERROR.TYPE 3), while `"1904-01-01"+0` is 0. Typing `1903-12-31` or `12/31/1903` stays text. Over `DATE(2024,3,15)`, `DATE(1904,1,1)` and `DATE(1904,1,5)`, `COUNTIF(..,"<1903-12-31")`, `">1903-12-31"` and `"1903-12-31"` all count 0 (the criterion is plain text, matching no number) and `"<=1904-01-01"` counts 1 (probes/date-system-1904-pre-epoch-text, excel-graph 2026-10-12, T-1435).
 
 The upper bound matches the 1900 system's 9999-12-31:
 - `TEXT(2957003,"yyyy-mm-dd")` = "9999-12-31", `YEAR(2957003)` = 9999 and `DATEVALUE("12/31/9999")` = 2957003.
@@ -442,9 +443,7 @@ The upper bound matches the 1900 system's 9999-12-31:
 - This confirms the hand-derived bounds in formatter/test/test_dates.rs.
 
 Evidence: probes/date-system-1904-readers A1-A52 (excel-graph, 2026-10-12, T-1416).
-Ours: every cell matches except these, which still count from 1900:
-- the text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 (T-1435);
-- COUPDAYS A18 (T-1436).
+Ours: every cell matches except COUPDAYS A18, which still counts from 1900 (T-1436). The text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 read the 1904 serial since T-1435. Date-clock text such as `"1904-01-02 10:00"+0` still counts from 1900 (unprobed; the `parse_date_clock_serial` path in `parse_time_serial`, T-1441).
 
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436

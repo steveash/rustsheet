@@ -350,9 +350,12 @@ impl Model {
             return CalcResult::new_error(Error::VALUE, cell, TOO_LONG.to_string());
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion, self.locale, &|| {
-                self.current_year()
-            }));
+            fn_criteria.push(build_criteria(
+                criterion,
+                self.locale,
+                &|| self.current_year(),
+                self.workbook.settings.date_system,
+            ));
         }
 
         let mut total = 0.0;
@@ -539,9 +542,12 @@ impl Model {
             ));
         }
         for criterion in criteria.iter() {
-            fn_criteria.push(build_criteria(criterion, self.locale, &|| {
-                self.current_year()
-            }));
+            fn_criteria.push(build_criteria(
+                criterion,
+                self.locale,
+                &|| self.current_year(),
+                self.workbook.settings.date_system,
+            ));
         }
 
         self.run_ifs(&sum_range, ranges.as_slice(), &fn_criteria, cell, apply)
