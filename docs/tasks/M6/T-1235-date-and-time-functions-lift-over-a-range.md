@@ -35,11 +35,14 @@ Check that cell once this lands.
 
 ## Outcome
 DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift over ranges and arrays
-(`lift_numbers` / a text lifting helper), and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL lifts. DATEDIF with
-numeric text now works (F89). probes: 65 cells fixed, known failures 2867 -> 2802. The port was resolved against
-T-1330's 1904 epoch: DATEDIF's date text (scalar or lifted) is read by DATEVALUE's `parse_datevalue_text`, so a 1904
-workbook counts it from 1904-01-01. Remaining probe cells are the date arguments of EDATE, EOMONTH, WEEKNUM,
-WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC over an array (T-1236) and G3/G4 (T-1237).
+(`lift_numbers`; TIMEVALUE and DATEVALUE reuse the text functions' `text_arg` + `broadcast_text`), and the `weekend`
+of WORKDAY.INTL and NETWORKDAYS.INTL lifts. DATEDIF with numeric text now works (F89). probes: 65 cells fixed, known
+failures 2867 -> 2802. The port was resolved against T-1330's 1904 epoch: DATEDIF's date text (scalar or lifted) is
+read by DATEVALUE's `parse_datevalue_text`, so a 1904 workbook counts it from 1904-01-01, and only plain number text
+falls back to a number (pre-epoch date text stays `#VALUE!`). DATEDIF keeps its pre-lift error order (the dates' #NUM!
+before the unit's error); the inferred order is UNVERIFIED (T-1427). Remaining probe cells are the date arguments of
+EDATE, EOMONTH, WEEKNUM, WORKDAY(.INTL), NETWORKDAYS(.INTL), YEARFRAC over an array (T-1236) and G3/G4 (T-1237).
 Review notes: a single-cell range `weekend` (`NETWORKDAYS.INTL(1,30,C1:C1)`) and a 3D range in the lifted text/weekend
-arguments are unprobed and keep the old behavior (`#VALUE!` / first sheet); probe them before changing. Follow-up
-T-1295 (WORKDAY.INTL week stepping).
+arguments are unprobed and keep the old behavior (`#VALUE!` / first sheet); probe them before changing. Follow-ups:
+T-1295 (WORKDAY.INTL week stepping), T-1428 (3D ranges in the lifted arguments, DATEDIF's unit and DAYS360's method
+over an array, now `#N/IMPL!`).

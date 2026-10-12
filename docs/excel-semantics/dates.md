@@ -357,12 +357,20 @@ Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
 a date argument: EDATE, EOMONTH, WEEKNUM, WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL, YEARFRAC;
-`DATE(2024,45031.5,1)` is a number (1415864).
-Unprobed (inferred from the leftmost-error rule in arrays.md, T-1235): `DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are
-`#DIV/0!`, a unit/method error counts after the dates' own, `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and
-a single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
+`DATE(2024,45031.5,1)` is a number (1415864). In a 1904 workbook DATEDIF reads date text as DATEVALUE does (from
+1904-01-01; text before it is `#VALUE!`), and only plain number text is cast as a number (T-1235 on top of T-1330).
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
+
+## DATEDIF and DAYS360 error order with a bad unit or method (inferred)
+Rule (inferred from the leftmost-error rule in arrays.md, not probed): a date argument's own error comes first
+(`DATEDIF(1/0,5,NA())` and `DAYS360(1/0,5,NA())` are `#DIV/0!`). After that ours keeps each function's pre-lift
+order: DATEDIF reports the dates' `#NUM!` (end before start, out of range) before the unit's error
+(`DATEDIF(10,5,NA())` is `#NUM!`), while DAYS360 reports the method's error before the dates' `#NUM!`
+(`DAYS360(-5,5,NA())` is `#N/A`). Also unprobed: `TIMEVALUE(B3:B3)` of a single cell is that cell's value, and a
+single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
+Status: UNVERIFIED (probe pending)
+Tasks: T-1427 (error order), T-1428 (3D ranges, unit/method over an array)
 
 ## The 1904 date system: negative serials keep a minus; epoch at 1904-01-01
 Rule: in a 1904 workbook (`<workbookPr date1904="1"/>`), serial 0 is 1904-01-01 (`TEXT(0,"yyyy-mm-dd")` =

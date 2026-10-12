@@ -966,3 +966,43 @@ fn datedif_date_text_counts_from_the_1904_epoch() {
     assert_eq!(model._get_text("A5"), *"50");
     assert_eq!(model._get_text("A6"), *"50");
 }
+
+// Date text before the 1904 epoch is no date of a 1904 workbook: DATEDIF reads it as #VALUE!,
+// as DATEVALUE does, rather than casting it from the 1900 epoch (T-1330). Plain number text is
+// still its number (probes/date-argument-modes F89).
+#[test]
+fn datedif_pre_epoch_date_text_is_a_value_error_in_1904() {
+    let mut model = new_empty_model();
+    model.workbook.settings.date_system = crate::types::DateSystem::Excel1904;
+    model._set("A1", "=DATEDIF(\"1903-06-01\",5000,\"D\")");
+    model._set(
+        "A2",
+        "=INDEX(DATEDIF({\"1903-06-01\",\"1904-01-02\"},60,\"D\"),1)",
+    );
+    model._set(
+        "A3",
+        "=INDEX(DATEDIF({\"1903-06-01\",\"1904-01-02\"},60,\"D\"),2)",
+    );
+    model._set("A4", "=DATEDIF(\"10\",60,\"D\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#VALUE!");
+    assert_eq!(model._get_text("A2"), *"#VALUE!");
+    assert_eq!(model._get_text("A3"), *"59");
+    assert_eq!(model._get_text("A4"), *"50");
+}
+
+// DATEDIF's errors keep their pre-lift order: the dates' own errors, then the dates' #NUM!, then
+// the unit's error (UNVERIFIED against Excel, dates.md "DATEDIF and DAYS360 error order", T-1427).
+#[test]
+fn datedif_date_errors_come_before_the_unit_error() {
+    let mut model = new_empty_model();
+    model._set("A1", "=DATEDIF(10,5,NA())");
+    model._set("A2", "=DATEDIF(1/0,5,NA())");
+    model._set("A3", "=DATEDIF(5,10,NA())");
+    model._set("A4", "=DATEDIF(10,5,\"X\")");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#NUM!");
+    assert_eq!(model._get_text("A2"), *"#DIV/0!");
+    assert_eq!(model._get_text("A3"), *"#N/A");
+    assert_eq!(model._get_text("A4"), *"#NUM!");
+}
