@@ -114,6 +114,10 @@ impl Model {
     /// probes/rich-errors-args). A later argument's error lifts over an array or range first
     /// argument: `IMAGE({url,url},1/0)` is a 1x2 array of `#DIV/0!` (probes/rich-errors-shapes-urls
     /// A12:B15, T-1189).
+    ///
+    /// With `lift_option_errors` (IMAGE) a scalar option error beside a scalar `source` is held back
+    /// while an array option exists, so `image_grid` can lift it over that option; without one it is
+    /// the result. STOCKHISTORY passes `false` and keeps the first-error rule.
     fn offline_args(
         &mut self,
         args: &[Node],

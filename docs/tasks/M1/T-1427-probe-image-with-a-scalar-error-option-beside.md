@@ -19,7 +19,6 @@ T-1417 reviewer follow-up. `Model::image_grid` (functions/information/offline_er
 ## Acceptance criteria
 - [x] Probe cells for (a) and (b) with oracle filled; information.md records them VERIFIED and the engine passes.
 - [x] `make check` green; reviewers approve.
-- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
