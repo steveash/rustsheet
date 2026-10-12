@@ -14,7 +14,7 @@ depends_on: []
 `ISFORMULA(INDEX(Data!D1:D3,1))` is TRUE (a reference-returning INDEX is accepted wherever a reference argument is), as Excel computes it.
 
 ## Context
-Excel (excel-graph) gives TRUE for probes/ifna-isformula-edges Calc!B12; the engine gives #VALUE! ("Expected reference") because `get_reference` (crates/rustsheet-engine/src/cast.rs) uses `evaluate_node_with_reference` (model.rs), which does not yield a Range for an INDEX call. OFFSET and INDIRECT already work (B10, B11 pass). Check other reference-taking functions (ROWS, COLUMNS, ISREF, SHEET) for the same gap; COUNTA already treats INDEX as a picked reference (T-1395).
+Excel (excel-graph) gives TRUE for probes/ifna-isformula-edges Calc!B12; the engine gives #VALUE! ("Expected reference") because `get_reference` (crates/rustsheet-engine/src/cast.rs) uses `evaluate_node_with_reference` (model.rs), which does not yield a Range for an INDEX call. OFFSET and INDIRECT already work (B10, B11 pass). Check other reference-taking functions (ROWS, COLUMNS, SHEET) for the same gap; ISREF(INDEX(..)) already works (T-0216) and COUNTA treats INDEX as a picked reference (T-1395).
 
 ## Acceptance criteria
 - [ ] Calc!B12 of probes/ifna-isformula-edges passes and leaves the probes baseline.
