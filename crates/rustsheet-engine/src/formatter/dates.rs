@@ -57,8 +57,8 @@ impl DateSystem {
     }
 
     /// Like `serial_from_1900_serial`, but a day before the 1904 epoch keeps its negative serial:
-    /// EDATE and EOMONTH return such days (WORKDAY does not) (`EDATE(0,-1)` is -31 and `EOMONTH(0,-1)` is -1
-    /// in a 1904 workbook; probes/date-system-1904-readers A8, A9).
+    /// EDATE and EOMONTH return such days (`EDATE(0,-1)` is -31 and `EOMONTH(0,-1)` is -1 in a 1904
+    /// workbook; probes/date-system-1904-readers A8, A9). WORKDAY gives #NUM! there instead (A43).
     pub(crate) fn signed_serial_from_1900_serial(self, serial: i64) -> i64 {
         match self {
             Self::Excel1900 => serial,

@@ -25,7 +25,7 @@ Code paths, which are all 1900-only today:
 - `parse_date_criterion` (functions/criteria.rs).
 - `time_text::parse_date_clock_serial`, for date-time text.
 
-Shift the 1900 serial these return with `DateSystem::serial_from_1900_serial` (formatter/dates.rs), as `Model::parse_datevalue_text` does since T-1330. Text naming a day before 1904-01-01 is unprobed: probe it (`="1903-12-31"+0`) before deciding.
+Shift the 1900 serial these return with `DateSystem::serial_from_1900_serial` (formatter/dates.rs), as `Model::parse_datevalue_text` does since T-1330. Two cases are unprobed. A negative 1904 holiday serial (`=WORKDAY(DATE(2024,3,15),1,-1)`) is #NUM! in ours, which needs a check. Text naming a day before 1904-01-01 is also unprobed: probe it (`="1903-12-31"+0`) before deciding.
 
 ## Acceptance criteria
 - [ ] probes/date-system-1904-readers A20-A25, A38, A39 and A51 pass, and the baseline is updated.

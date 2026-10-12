@@ -1,5 +1,4 @@
-//! WORKDAY and WORKDAY.INTL, with the holiday and weekend helpers they share with NETWORKDAYS
-//! (moved out of date_and_time.rs by T-1416 to keep that file under its size ratchet).
+//! WORKDAY and WORKDAY.INTL: step a date over working days, skipping weekends and holidays.
 
 use chrono::Datelike;
 
