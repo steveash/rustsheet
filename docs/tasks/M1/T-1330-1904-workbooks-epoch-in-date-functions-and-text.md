@@ -3,7 +3,7 @@ id: T-1330
 title: "1904 workbooks: epoch in date functions and TEXT date tokens, negatives as minus (SPEC-0005 step 4)"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
