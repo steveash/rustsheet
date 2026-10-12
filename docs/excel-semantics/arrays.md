@@ -324,6 +324,23 @@ Ours: `#VALUE!` ("all arrays must have the same dimensions").
 Status: VERIFIED that the result is an array (web); its size and values are UNVERIFIED
 Tasks: T-1349
 
+## BYROW, BYCOL, MAP, SCAN and REDUCE hand a range's slices to the LAMBDA as references
+Rule: over a range (written, or picked by TAKE and the like), BYROW and BYCOL give the LAMBDA each row or column as a
+reference and MAP, SCAN and REDUCE each cell as a reference. With A1 x, A3 z, B3 y (A2:B2, B1 blank):
+`BYCOL(A1:B3,LAMBDA(c,COUNTA(c)))` is 2, 1 (blank cells are skipped, as for any reference), `BYROW(..,COUNTA(r))` 1, 0, 2,
+`BYROW(..,COUNTBLANK(r))` 1, 2, 0, `BYROW(A1:B3,LAMBDA(r,ROW(r)))` 1, 2, 3, `ISREF` of the slice is TRUE in all five
+helpers, `BYCOL(TAKE(A1:B3,2),LAMBDA(c,COUNTA(c)))` 1, 0 and `LET(x,A1:B3,BYCOL(x,..))` 2, 1. Over an array the slices are
+arrays and every element counts: `BYCOL(IFERROR(A1:B3,1),LAMBDA(c,COUNTA(c)))` is 3, 3. An eta-reduced COUNTA,
+`BYCOL(A1:B3,COUNTA)`, is `#VALUE!`. A whole column or row keeps its full size, not the used area:
+`ROWS(BYROW(H:H,LAMBDA(r,1)))` and `BYCOL(H:H,LAMBDA(c,ROWS(c)))` are 1048576, `COLUMNS(BYCOL(60:60,LAMBDA(c,1)))` and
+`BYROW(60:60,LAMBDA(r,COLUMNS(r)))` 16384 (G1:G4).
+Evidence: probes/lambda-helper-range-slices (excel-graph, 2026-10-12, T-1395).
+Ours: BYROW and BYCOL pass references since T-1395 (`by_slices_source`, bycol_byrow.rs); a range keeps its full size
+(a whole column gives 1,048,576 calls and full-column slices) under the 2^20-cell array bound of "Array results above
+1,048,576 cells". MAP, SCAN and REDUCE pass values (ISREF FALSE) and the eta-reduced COUNTA is `#NAME?` (T-1442).
+Status: VERIFIED (excel-graph)
+Tasks: T-1395, T-1442
+
 ## BYROW and BYCOL of a single value
 Rule: BYROW and BYCOL take a single value as a 1x1 array and call the LAMBDA once: `"ü"&BYROW(COUNT(..),LAMBDA(z,z))` with
 the COUNT 7 is "ü7", and `BYROW("",_xleta.PRODUCT)` is 0 (PRODUCT of the row {""}).
@@ -339,3 +356,14 @@ Evidence: gen-m7/c5d278a8662ef4b2 Calc!A39 (by_col `HLOOKUP(ADDRESS(19,19),Data!
 Ours: `#VALUE!` (sort_index 0 is rejected before by_col is looked at).
 Status: VERIFIED (web) for this cell; SORTBY and the order among several error arguments are UNVERIFIED
 Tasks: T-1351
+
+## SORT: omitted sort_index / sort_order take their defaults
+
+An omitted (empty) `sort_index` or `sort_order` is the same as leaving it off: `SORT({3;1;2},,)`
+is ascending by column 1 (3 values; `INDEX(...,1)` = 1) and `SORT({3;1;2},,-1)` is descending
+(`INDEX(...,1)` = 3). Evidence: probes/counta-empty-value D22-D24 (excel-graph, T-1294); the engine
+treats the empty argument as the default (T-1394). Omitted combinations beyond these three cells
+are not yet probed (SORTBY's omitted arguments and `SORT(arr,,,)`'s by_col in particular).
+
+Status: VERIFIED (excel-graph) for D22-D24; other omitted combinations UNVERIFIED.
+Tasks: T-1394, T-1446.

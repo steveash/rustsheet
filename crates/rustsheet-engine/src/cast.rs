@@ -29,7 +29,7 @@ impl NumberOrArray {
     }
 }
 
-/// A scalar CalcResult or a 2-D array, used for element-wise comparison.
+/// A scalar `CalcResult` or a 2-D array, used for element-wise comparison.
 pub(crate) enum ValueOrArray {
     Value(CalcResult),
     Array(Vec<Vec<ArrayNode>>),
@@ -169,7 +169,12 @@ impl Model {
         ) {
             return Some(crate::arithmetic::flush_subnormal(v));
         }
-        crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
+        crate::functions::date_and_time::time_text::parse_time_serial(
+            text,
+            self.locale,
+            year,
+            self.workbook.settings.date_system,
+        )
     }
     /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
     /// operator that works on it element by element (or a formula that spills it).
@@ -272,7 +277,7 @@ impl Model {
         for na in operands {
             match na {
                 Err(CalcResult::Error { error, .. }) if any_array => {
-                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]))
+                    lifted.push(NumberOrArray::Array(vec![vec![ArrayNode::Error(error)]]));
                 }
                 Ok(na) => lifted.push(na),
                 Err(e) => return e,
@@ -389,7 +394,7 @@ impl Model {
         }
     }
 
-    /// Like `get_number_or_array` but preserves the full CalcResult type (no coercion to f64).
+    /// Like `get_number_or_array` but preserves the full `CalcResult` type (no coercion to f64).
     /// Used for element-wise comparison operators.
     pub(crate) fn get_value_or_array(
         &mut self,
@@ -445,7 +450,7 @@ impl Model {
 
     /// Evaluates a unary `-` or `%` node. A chain such as `B:B%%%` or `---B:B` is applied
     /// in one element-wise pass, so a whole column is lifted once rather than once per
-    /// operator (the formula_eval fuzz timeout, T-1078). The operators commute (negation is
+    /// operator (the `formula_eval` fuzz timeout, T-1078). The operators commute (negation is
     /// exact and the subnormal flush is sign-symmetric), so only the minus parity and the
     /// `%` count matter, and the walk allocates nothing.
     pub(crate) fn apply_unary_chain(

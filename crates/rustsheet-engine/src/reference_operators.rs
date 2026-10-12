@@ -385,7 +385,7 @@ impl Model {
 
     /// A reference-context operand: a reference, or an INDEX that selects one cell, which stays
     /// a reference: the anchor of `INDEX(D1:D2,1)#` (probes/at-operand-formulatext K30, T-1109),
-    /// a lookup index argument and LOOKUP's result_vector (probes/lookup-vector-edges A9, A12).
+    /// a lookup index argument and LOOKUP's `result_vector` (probes/lookup-vector-edges A9, A12).
     pub(crate) fn eval_ref_or_index(
         &mut self,
         node: &Node,
@@ -422,7 +422,7 @@ impl Model {
 
     /// The operand of `#` and ANCHORARRAY: [`Model::eval_ref_or_index`], and the `@` of an IF
     /// that picks one cell keeps the reference, so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#
-    /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's result_vector, for `@IF`
+    /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's `result_vector`, for `@IF`
     /// only (probes/at-if-spill-anchor-operand H50, T-1368); the other lookup callers of
     /// `eval_ref_or_index` have no evidence for `@IF`.
     pub(crate) fn spill_anchor_operand(

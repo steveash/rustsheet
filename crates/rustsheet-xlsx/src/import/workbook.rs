@@ -87,7 +87,7 @@ pub(super) fn load_workbook<R: Read + std::io::Seek>(
             name,
             formula,
             sheet_id,
-        })
+        });
     }
     // read the relationships file
     Ok((

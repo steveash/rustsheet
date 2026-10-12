@@ -43,7 +43,7 @@ fn is_valid_sheet_name(name: &str) -> bool {
 }
 
 impl Model {
-    /// Creates a new worksheet. Note that it does not check if the name or the sheet_id exists
+    /// Creates a new worksheet. Note that it does not check if the name or the `sheet_id` exists
     fn new_empty_worksheet(name: &str, sheet_id: u32, view_ids: &[&u32]) -> Worksheet {
         let mut views = HashMap::new();
         for id in view_ids {
@@ -592,8 +592,8 @@ impl Model {
         }
     }
 
-    /// Deletes a sheet by sheet_id. Fails if:
-    ///   * The sheet by sheet_id does not exists
+    /// Deletes a sheet by `sheet_id`. Fails if:
+    ///   * The sheet by `sheet_id` does not exists
     ///   * It is the last sheet
     pub fn delete_sheet_by_sheet_id(&mut self, sheet_id: u32) -> Result<(), String> {
         if let Some(sheet_index) = self.get_sheet_index_by_sheet_id(sheet_id) {

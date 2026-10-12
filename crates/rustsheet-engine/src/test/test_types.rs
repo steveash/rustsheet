@@ -20,5 +20,5 @@ fn alignment_default() {
 
     let a: Alignment = serde_json::from_str("{}").unwrap();
 
-    assert_eq!(a, alignment)
+    assert_eq!(a, alignment);
 }

@@ -3,7 +3,7 @@ use crate::{
     number_format::to_excel_precision_str, types::*,
 };
 
-/// A CellValue is the representation of the cell content.
+/// A `CellValue` is the representation of the cell content.
 #[derive(Debug, PartialEq)]
 pub enum CellValue {
     None,

@@ -155,7 +155,7 @@ impl Model {
     }
 
     /// [`Model::lift_criteria`] with the cells one element visits given by `walk_cost` (called
-    /// only when something lifts). AGGREGATE lifts its function_num, options and k this way.
+    /// only when something lifts). AGGREGATE lifts its `function_num`, options and k this way.
     pub(crate) fn lift_with_cost(
         &mut self,
         criteria: Vec<CalcResult>,
@@ -285,8 +285,8 @@ impl Model {
         }
     }
 
-    /// AVERAGEIF(criteria_range, criteria, [average_range])
-    /// if average_rage is missing then criteria_range will be used
+    /// `AVERAGEIF(criteria_range`, criteria, [`average_range`])
+    /// if `average_rage` is missing then `criteria_range` will be used
     pub(crate) fn fn_averageif(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         let arguments = match args.len() {
             2 => vec![args[0].clone(), args[0].clone(), args[1].clone()],

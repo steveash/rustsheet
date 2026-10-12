@@ -246,7 +246,7 @@ impl Model {
         )
     }
 
-    /// IMAGE(source, [alt_text], [sizing], [height], [width]) is `#BLOCKED!` for a URL: no fetch
+    /// IMAGE(source, [`alt_text`], [sizing], [height], [width]) is `#BLOCKED!` for a URL: no fetch
     /// happens. Any other `source` is `#VALUE!` (probes/rich-errors-arg-kinds), and an array or
     /// range `source` gives an array of the same shape.
     pub(crate) fn fn_image(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -277,7 +277,7 @@ impl Model {
         }
     }
 
-    /// STOCKHISTORY(stock, start_date, [end_date], [interval], [headers], [property0..5]) is
+    /// STOCKHISTORY(stock, `start_date`, [`end_date`], [interval], [headers], [property0..5]) is
     /// `#CONNECT!`: no quotes are fetched. An array or range `stock` gives an array of the same
     /// shape (probes/rich-errors-arg-kinds).
     pub(crate) fn fn_stockhistory(
@@ -299,7 +299,7 @@ impl Model {
         }
     }
 
-    /// FIELDVALUE(value, field_name) is `#FIELD!`: values are never linked data types
+    /// FIELDVALUE(value, `field_name`) is `#FIELD!`: values are never linked data types
     /// (decision 0027). An error in a scalar `field_name` wins, and an error element of an array
     /// `field_name` stays in its place; an error in `value` does not. An array or range in either
     /// argument gives an array of `#FIELD!`, the larger of the two shapes (probes/rich-errors-args,

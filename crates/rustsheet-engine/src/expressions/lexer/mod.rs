@@ -16,7 +16,7 @@
 //!
 //! Formulas look different in different locales:
 //!
-//! =IF(A1, B1, NA()) versus =IF(A1; B1; NA())
+//! =IF(A1, B1, `NA()`) versus =IF(A1; B1; `NA()`)
 //!
 //! Also numbers are different:
 //!
@@ -186,7 +186,7 @@ impl Lexer {
     }
 
     /// Checks the next token without advancing position
-    /// See also [advance_token](Self::advance_token)
+    /// See also [`advance_token`](Self::advance_token)
     pub fn peek_token(&mut self) -> TokenType {
         let position = self.position;
         let tk = self.next_token();
@@ -230,7 +230,7 @@ impl Lexer {
     }
 
     /// Advances position. This is used in conjunction with [`peek_token`](Self::peek_token)
-    /// It is a noop if the has not been a previous peek_token
+    /// It is a noop if the has not been a previous `peek_token`
     pub fn advance_token(&mut self) {
         if let Some(position) = self.next_token_position {
             self.position = position;
@@ -564,14 +564,14 @@ impl Lexer {
         let position = self.position;
         if position >= self.len {
             return Err(self.set_error(
-                &format!("Error, expected {} found EOF", ch_expected),
+                &format!("Error, expected {ch_expected} found EOF"),
                 self.position,
             ));
         } else {
             let ch = self.chars[position];
             if ch_expected != ch {
                 return Err(self.set_error(
-                    &format!("Error, expected {} found {}", ch_expected, ch),
+                    &format!("Error, expected {ch_expected} found {ch}"),
                     self.position,
                 ));
             }

@@ -751,7 +751,7 @@ fn test_move_row_height() {
 
 /// Moving a row down by two positions should shift formulas on intermediate
 /// rows by only one (the row that gets skipped), not by the full delta ‒ this
-/// guards against the regression fixed in the RowMove displacement logic.
+/// guards against the regression fixed in the `RowMove` displacement logic.
 #[test]
 fn test_row_move_down_two_updates_intermediate_refs_by_one() {
     let mut model = new_empty_model();
@@ -773,7 +773,7 @@ fn test_row_move_down_two_updates_intermediate_refs_by_one() {
 }
 
 /// Moving a column right by two positions should shift formulas on
-/// intermediate columns by only one, ensuring the ColumnMove displacement
+/// intermediate columns by only one, ensuring the `ColumnMove` displacement
 /// logic handles multi-position moves correctly.
 #[test]
 fn test_column_move_right_two_updates_intermediate_refs_by_one() {

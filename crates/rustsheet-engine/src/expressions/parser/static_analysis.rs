@@ -86,7 +86,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             let mut new_node = child.as_ref().clone();
             add_implicit_intersection(&mut new_node, add);
             if matches!(&new_node, Node::ImplicitIntersection { .. }) {
-                *node = new_node
+                *node = new_node;
             }
         }
         Node::SpillRangeOperator { child } => {
@@ -123,13 +123,13 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
-                *node = Node::automatic_at(node.clone())
+                *node = Node::automatic_at(node.clone());
             }
         }
 
         // operations
         Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
-            add_implicit_intersection(child, add)
+            add_implicit_intersection(child, add);
         }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
@@ -144,7 +144,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 // Not all defined names deserve the II operator
                 // For instance =Sheet1!A1 doesn't need to be intersected
                 if is_range_reference(&v.2) {
-                    *node = Node::automatic_at(Node::DefinedNameKind(v.to_owned()))
+                    *node = Node::automatic_at(Node::DefinedNameKind(v.to_owned()));
                 }
             }
         }
@@ -153,7 +153,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 *node = Node::automatic_at(Node::NamedVariableKind {
                     name: name.clone(),
                     id: *id,
-                })
+                });
             }
         }
         Node::TableNameKind(_) => {
@@ -185,7 +185,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                     StaticResult::Range(_, _) | StaticResult::Unknown
                 )
             {
-                *node = Node::automatic_at(node.clone())
+                *node = Node::automatic_at(node.clone());
             }
         }
     };
@@ -262,7 +262,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
         | Node::OpPowerKind { .. }
         | Node::CompareKind { .. } => {
             for_each_chain_operand_mut(node, |operand| {
-                remove_redundant_implicit_intersection(operand, add)
+                remove_redundant_implicit_intersection(operand, add);
             });
         }
         Node::FunctionKind { kind, .. } if is_array_context(kind) => {}
@@ -498,7 +498,7 @@ fn args_signature_scalars(
     }
 }
 
-/// FIELDVALUE(value, field_name): `value` may be an array (the result then has its shape).
+/// FIELDVALUE(value, `field_name)`: `value` may be an array (the result then has its shape).
 fn args_signature_fieldvalue(arg_count: usize) -> Vec<Signature> {
     if arg_count == 2 {
         vec![Signature::Vector, Signature::Scalar]
@@ -576,7 +576,7 @@ fn args_signature_ifs(arg_count: usize, first_criterion: usize) -> Vec<Signature
     signature
 }
 
-/// CELL(info_type, [reference]): a legacy formula does not intersect `reference` (C3 and C8 both
+/// `CELL(info_type`, [reference]): a legacy formula does not intersect `reference` (C3 and C8 both
 /// read A1 for `A1:A5`; probes/info-cell-contents-range D3, D8, excel-graph, T-1230).
 fn args_signature_cell(arg_count: usize) -> Vec<Signature> {
     match arg_count {

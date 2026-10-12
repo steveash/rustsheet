@@ -15,7 +15,7 @@ use crate::{
 pub(crate) const THEME_COLOR_HYPERLINK: i32 = 10;
 
 /// Returns the link target if `value` should be automatically converted into a
-/// link when entered in a cell: an URL ("https://calc.com", "www.calc.com"), a
+/// link when entered in a cell: an URL ("<https://calc.com>", "www.calc.com"), a
 /// mailto: URI or a plain email address ("daniel@calc.com" -> "mailto:daniel@calc.com").
 pub(crate) fn detect_link_target(value: &str) -> Option<String> {
     let value = value.trim();

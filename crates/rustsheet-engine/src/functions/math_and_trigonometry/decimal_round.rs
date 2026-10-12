@@ -36,7 +36,7 @@ const MAX_NUM_DIGITS: i64 = 10_000;
 
 /// The integer `num_digits` Excel actually rounds at, for a value whose 15-digit decimal form
 /// has decimal exponent `exponent` (docs/excel-semantics/numbers.md, "ROUND family: huge
-/// num_digits wrap"; probes/round-huge-digits, -wrap and -negative, oracle excel-graph):
+/// `num_digits` wrap"; probes/round-huge-digits, -wrap and -negative, oracle excel-graph):
 /// - ROUNDUP and ROUNDDOWN keep the sign of the truncated `num_digits` and take its magnitude,
 ///   capped at 2^32 - 1, modulo 65,536: `ROUNDDOWN(123.456,65537)` = 123.4,
 ///   `ROUNDUP(123.456,-65537)` = 130, `ROUNDDOWN(0.5,2^31)` = 0, but 2^32 and beyond act as 65,535.

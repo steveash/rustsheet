@@ -901,7 +901,7 @@ impl UserModel {
         Ok(())
     }
 
-    /// We extend the selection to cell (target_row, target_column)
+    /// We extend the selection to cell (`target_row`, `target_column`)
     pub fn on_area_selecting(&mut self, target_row: i32, target_column: i32) -> Result<(), String> {
         let (sheet, window_width, window_height) =
             if let Some(view) = self.model.workbook.views.get(&self.model.view_id) {
