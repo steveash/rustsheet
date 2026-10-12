@@ -108,7 +108,8 @@ Status: VERIFIED
 Implemented in: `Function::to_xlsx_string` (functions/xlsx_names.rs; test `newer_functions_export_with_xlfn_prefix`, T-0411). The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
 Comparison (T-0412): the exporter's arm list was checked against XlsxWriter 3.2.9's future-function list and the
-catalog. Only PERCENTOF was missing (added). XlsxWriter also prefixes ANCHORARRAY (the `#` operator),
+catalog. No XlsxWriter name with an engine function was missing. PERCENTOF, which XlsxWriter does not list, was
+also written bare; the oracle evidence above (function-name-forms A1) makes it `#NAME?`, so it was added. XlsxWriter also prefixes ANCHORARRAY (the `#` operator),
 SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine has no
 Function variant for the last three or for GROUPBY/PIVOTBY, so there is nothing to export yet.
 Tasks: T-0040, T-0412, T-1089
