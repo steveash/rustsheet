@@ -23,7 +23,7 @@ T-1218 keys on the sheet (other sheet = `#VALUE!`, same sheet = top-left) becaus
 ## Out of scope
 -
 
-## Handoff
+## Handoff (resumed)
 - Done: probe `eval/suites/probes/cases/info-cell-contents-range.case.json` + excel-graph sidecar, finding recorded in docs/excel-semantics/information.md ("CELL(\"contents\", ref) on excel-graph").
 - Finding: excel-graph reads `CELL("contents", Data!A2)` from the formula's own sheet (Calc!A2), even for a single cell, with no implicit intersection, legacy or dynamic. This is probably a web bug; the engine matches desktop-like behavior for single cells (many gen-* cases pass on it).
 - Why stopped: matching it changes `cell_info` for every cross-sheet CONTENTS, and the new case has 32 failing cells that `make check` rejects (no baseline hand-edit allowed). Whether to follow the web (decision 0039: excel-graph is the oracle of record) or split the probe so the cross-sheet cells go to M14 is a design call. The same-sheet cells (D3 legacy twin intersects: we give 13.5, Excel 11.5) are a plain fix.
