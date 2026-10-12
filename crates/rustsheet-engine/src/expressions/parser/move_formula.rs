@@ -503,13 +503,10 @@ fn to_string_moved(
         ImplicitIntersection {
             automatic: _,
             child,
-            written,
-            lead,
-            grouped: _,
         } => {
             let sub = |n: &Node| to_string_moved(n, move_context, locale, language);
             // Same text as `stringify`: the space binds tighter than `@` (T-1098).
-            at_text(child, *written, *lead, &sub)
+            at_text(child, &sub)
         }
         SpillRangeOperator { child } => {
             let text = to_string_moved(child, move_context, locale, language);
