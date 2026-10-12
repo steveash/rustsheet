@@ -352,6 +352,7 @@ mod tests {
                 .count(),
             skipped_volatile: 0,
             millis: 0,
+            tags: Vec::new(),
             cells,
         }
     }

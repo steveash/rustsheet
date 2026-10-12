@@ -86,6 +86,10 @@ pub struct CaseResult {
     pub deviations: usize,
     pub skipped_volatile: usize,
     pub millis: u64,
+    /// The spec case's `tags` (none for xlsx cases or unreadable ones); the probe milestone
+    /// report reads a case's milestone tag from them (decision 0051).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
     /// Every scored cell (reports may drop passing cells when serializing).
     pub cells: Vec<CellResult>,
 }
@@ -145,6 +149,7 @@ struct PreparedCase {
     expectations: Vec<Expectation>,
     expected_source: String,
     skipped_volatile: usize,
+    tags: Vec<String>,
 }
 
 /// Runs all cases of the given suites in parallel.
@@ -188,6 +193,7 @@ fn invalid(suite: &Suite, case: &CaseFile, message: String) -> CaseResult {
         deviations: 0,
         skipped_volatile: 0,
         millis: 0,
+        tags: Vec::new(),
         cells: Vec::new(),
     }
 }
@@ -215,6 +221,7 @@ pub fn run_case(
         deviations: 0,
         skipped_volatile: prepared.skipped_volatile,
         millis: 0,
+        tags: prepared.tags.clone(),
         cells: Vec::new(),
     };
     // Cases without expectations still run: a panic, timeout or load error is a crash we can
@@ -405,6 +412,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
             expectations: Vec::new(),
             expected_source: "none".into(),
             skipped_volatile: 0,
+            tags: Vec::new(),
         });
     };
     let (scorable, skipped_volatile) = scorable_cells(
@@ -432,6 +440,7 @@ fn prepare_xlsx(suite: &Suite, case: &CaseFile) -> Result<PreparedCase, String> 
         expectations,
         expected_source: source,
         skipped_volatile,
+        tags: Vec::new(),
     })
 }
 
@@ -585,6 +594,7 @@ fn prepare_spec(case: &CaseFile) -> Result<PreparedCase, String> {
         });
     }
     Ok(PreparedCase {
+        tags: spec.tags.clone(),
         input: Prepared::Spec {
             spec: Box::new(spec),
         },
