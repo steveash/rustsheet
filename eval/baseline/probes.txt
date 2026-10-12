@@ -100,6 +100,7 @@ C	probes/clock-text-oddities7.case.json	12
 C	probes/colon-hash-value-operands.case.json	6
 C	probes/concatenate-limit-spill.case.json	68
 C	probes/count-direct-text.case.json	13
+C	probes/counta-empty-value.case.json	26
 C	probes/countblank-choose-errors.case.json	8
 C	probes/countblank-error-cell-refs.case.json	9
 C	probes/countblank-error-forms-b.case.json	8
@@ -502,6 +503,10 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
+F	probes/counta-empty-value.case.json	Sheet1!D18
+F	probes/counta-empty-value.case.json	Sheet1!D22
+F	probes/counta-empty-value.case.json	Sheet1!D23
+F	probes/counta-empty-value.case.json	Sheet1!D24
 F	probes/date-argument-modes.case.json	Sheet1!F10
 F	probes/date-argument-modes.case.json	Sheet1!F11
 F	probes/date-argument-modes.case.json	Sheet1!F12
@@ -2602,7 +2607,6 @@ F	probes/groupby-pivotby.case.json	P!Z78
 F	probes/groupby-pivotby.case.json	P!Z97
 F	probes/groupby-pivotby.case.json	P!Z98
 F	probes/groupby-pivotby.case.json	P!Z99
-F	probes/iferror-blank-value.case.json	Sheet1!D8
 F	probes/info-logic-argument-modes-2.case.json	Calc!A1
 F	probes/info-logic-argument-modes-2.case.json	Calc!A2
 F	probes/info-logic-argument-modes-2.case.json	Calc!A3

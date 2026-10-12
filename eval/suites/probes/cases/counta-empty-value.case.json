@@ -1,0 +1,45 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1294: COUNTA/COUNT with omitted arguments and the empty value (IFERROR of a blank cell) in unprobed consumers.",
+ "tags": [
+  "M2",
+  "probe",
+  "stat",
+  "T-1294"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "B2": "x",
+    "D1": "=COUNTA(,)",
+    "D2": "=COUNTA(1,)",
+    "D3": "=COUNTA(,1)",
+    "D4": "=COUNTA(,,)",
+    "D5": "=COUNT(,)",
+    "D6": "=COUNT(1,)",
+    "D7": "=COUNTA(B1,)",
+    "D8": "=COUNTA(B1:B2,)",
+    "D9": "=NOT(IFERROR(B1,1))",
+    "D10": "=IF(IFERROR(B1,1),\"t\",\"f\")",
+    "D11": "=-IFERROR(B1,1)",
+    "D12": "=SUM(IFERROR(B1,1))",
+    "D13": "=AVERAGE(IFERROR(B1,1))",
+    "D14": "=LEN(IFERROR(B1,1))",
+    "D15": "=ISLOGICAL(IFERROR(B1,1))",
+    "D16": "=LET(x,IFERROR(B1,1),COUNTA(x))",
+    "D17": "=LET(x,IFERROR(B1,1),ISBLANK(x))",
+    "D18": "=COUNTA(IFERROR(B1:B2,1))",
+    "D19": "=COUNTA(IFERROR(B1,1),IFERROR(B1,1))",
+    "D20": "=XMATCH(1,{1,2,3},)",
+    "D21": "=XMATCH(,{0,1,2})",
+    "D22": "=COUNTA(SORT({3;1;2},,))",
+    "D23": "=INDEX(SORT({3;1;2},,),1)",
+    "D24": "=SORT({3;1;2},,-1)",
+    "D25": "=MAX(IFERROR(B1,1))",
+    "D26": "=PRODUCT(IFERROR(B1,1))"
+   }
+  }
+ ],
+ "expected": {}
+}

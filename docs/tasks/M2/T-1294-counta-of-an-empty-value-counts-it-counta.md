@@ -3,7 +3,7 @@ id: T-1294
 title: "COUNTA of an empty value counts it: COUNTA(IFERROR(<blank>,1)) is 1; probe COUNTA with omitted arguments"
 milestone: M2
 lane: functions-stat
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,8 +22,11 @@ only as far as the evidence goes. While probing, also cover the empty value's un
 key, since `compare_values` now reads every `EmptyArg` as a blank (T-0291 review). See docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is an empty value".
 
 ## Acceptance criteria
-- [ ] probes/iferror-blank-value D8 passes, and the omitted-argument probe's cells pass or have follow-ups.
-- [ ] `make check` green; reviewers approve.
+- [x] probes/iferror-blank-value D8 passes, and the omitted-argument probe cells pass or have follow-ups (T-1394, T-1395).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
+
+## Outcome
+`fn_counta` now counts `EmptyArg` (an omitted argument and IFERROR/IFNA's empty value); COUNT already did. New probe probes/counta-empty-value (excel-graph) covers omitted arguments and consumers of the empty value; D8 of iferror-blank-value passes. Eval: fixed 1, new-coverage failures 4 recorded in the baseline (D18 -> T-1395, D22-D24 -> T-1394), regressions 0.
