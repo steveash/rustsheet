@@ -26,7 +26,8 @@ use rustsheet_eval::catalog::Catalog;
 use rustsheet_eval::deviations;
 use rustsheet_eval::engine::{Engine, RustSheetEngine};
 use rustsheet_eval::fetch::fetch_suite;
-use rustsheet_eval::milestone_lists::{self, ListSummary, MilestoneList};
+use rustsheet_eval::milestone_lists::{self, MilestoneList};
+use rustsheet_eval::probe_milestones::{self, Mapping, Rules};
 use rustsheet_eval::report::RunReport;
 use rustsheet_eval::runner::{run_suites, CaseResult, RunOptions};
 use rustsheet_eval::suite::{BaselineMode, FetchState, Suite, SuiteKind};
@@ -228,34 +229,50 @@ fn check_deviations(root: &Path, suites: &[Suite]) -> Result<()> {
     Ok(())
 }
 
-/// Loads the frozen milestone probe lists and fails when a line names a case that no suite
-/// discovers (decision 0044).
-fn load_milestone_lists(root: &Path) -> Result<Vec<MilestoneList>> {
-    let lists = milestone_lists::load_all(root)?;
-    if lists.is_empty() {
-        return Ok(lists);
-    }
-    let mut known = BTreeSet::new();
-    for suite in Suite::load_all(&root.join("eval/suites"))? {
-        known.extend(suite.cases()?.into_iter().map(|c| c.id));
-    }
-    milestone_lists::check_known(&lists, &known)?;
-    Ok(lists)
+/// The frozen milestone probe lists (decision 0044) and the probe-milestone rules (decision 0051).
+struct Milestones {
+    lists: Vec<MilestoneList>,
+    rules: Rules,
 }
 
-fn score_milestone_lists(
-    lists: &[MilestoneList],
+/// Loads the frozen lists and the probe-milestone mapping, and fails when a line of either names
+/// a case that no suite discovers.
+fn load_milestones(root: &Path, catalog: &Catalog) -> Result<Milestones> {
+    let lists = milestone_lists::load_all(root)?;
+    let mapping = Mapping::load(root)?;
+    if !lists.is_empty() || mapping != Mapping::default() {
+        let mut known = BTreeSet::new();
+        for suite in Suite::load_all(&root.join("eval/suites"))? {
+            known.extend(suite.cases()?.into_iter().map(|c| c.id));
+        }
+        milestone_lists::check_known(&lists, &known)?;
+        mapping.check_known(&known)?;
+    }
+    let rules = Rules::new(&lists, mapping, catalog);
+    Ok(Milestones { lists, rules })
+}
+
+/// Fills the report's milestone sections from the run's `results`.
+fn score_milestones(
+    milestones: &Milestones,
     suites: &[Suite],
     results: &[CaseResult],
-) -> Vec<ListSummary> {
+    report: &mut RunReport,
+) {
     let modes: BTreeMap<String, BaselineMode> = suites
         .iter()
         .map(|s| (s.manifest.name.clone(), s.manifest.baseline))
         .collect();
-    lists
+    report.milestone_lists = milestones
+        .lists
         .iter()
         .map(|l| milestone_lists::summarize(l, results, &modes))
-        .collect()
+        .collect();
+    let probes_mode = modes
+        .get(probe_milestones::SUITE)
+        .copied()
+        .unwrap_or(BaselineMode::Cells);
+    report.probe_milestones = probe_milestones::summarize(&milestones.rules, results, probes_mode);
 }
 
 fn print_summary(report: &RunReport) {
@@ -296,6 +313,12 @@ fn print_summary(report: &RunReport) {
             l.failing_cases.len()
         );
     }
+    if let Some(r) = report.probe_milestones.first() {
+        println!(
+            "probe milestone {} (decision 0051): {} cases, {} cells, {} bit-exact, {} deviations, {} known failures",
+            r.milestone, r.cases, r.cells, r.bit_exact, r.deviations, r.known_failures
+        );
+    }
 }
 
 fn baseline_path(root: &Path, suite: &str) -> PathBuf {
@@ -310,15 +333,16 @@ fn cmd_check(root: &Path, sel: &Selection, update: Option<bool>) -> Result<ExitC
     }
     let suites = select(root, sel, true)?;
     check_deviations(root, &suites)?;
-    let lists = load_milestone_lists(root)?;
+    let catalog = Catalog::load(root)?;
+    let milestones = load_milestones(root, &catalog)?;
     let results = execute(&suites, sel);
     let mut report = RunReport::build(
         RustSheetEngine.name(),
         &results,
         &RustSheetEngine.implemented_functions(),
-        &Catalog::load(root)?,
+        &catalog,
     );
-    report.milestone_lists = score_milestone_lists(&lists, &suites, &results);
+    score_milestones(&milestones, &suites, &results, &mut report);
     print_summary(&report);
     let mut failed = false;
     for suite in &suites {
@@ -466,15 +490,16 @@ fn run() -> Result<ExitCode> {
         Cmd::Run { sel, out, examples } => {
             let suites = select(&root, &sel, false)?;
             check_deviations(&root, &suites)?;
-            let lists = load_milestone_lists(&root)?;
+            let catalog = Catalog::load(&root)?;
+            let milestones = load_milestones(&root, &catalog)?;
             let results = execute(&suites, &sel);
             let mut report = RunReport::build(
                 RustSheetEngine.name(),
                 &results,
                 &RustSheetEngine.implemented_functions(),
-                &Catalog::load(&root)?,
+                &catalog,
             );
-            report.milestone_lists = score_milestone_lists(&lists, &suites, &results);
+            score_milestones(&milestones, &suites, &results, &mut report);
             let out = out.unwrap_or_else(|| root.join("eval/runs/latest"));
             std::fs::create_dir_all(&out)?;
             std::fs::write(
