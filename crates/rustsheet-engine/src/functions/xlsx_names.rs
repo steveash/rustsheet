@@ -96,6 +96,7 @@ impl Function {
             Function::FloorMath => "_xlfn.FLOOR.MATH".to_string(),
             Function::FloorPrecise => "_xlfn.FLOOR.PRECISE".to_string(),
             Function::IsoCeiling => "_xlfn.ISO.CEILING".to_string(),
+            Function::EcmaCeiling => "_xlfn.ECMA.CEILING".to_string(),
             Function::Base => "_xlfn.BASE".to_string(),
             Function::Decimal => "_xlfn.DECIMAL".to_string(),
             Function::Arabic => "_xlfn.ARABIC".to_string(),
