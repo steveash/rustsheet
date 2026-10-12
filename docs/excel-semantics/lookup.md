@@ -380,15 +380,35 @@ Rule: when lookup_value is a one-cell reference returned by a function or writte
 `OFFSET(J1,0,0)`, `INDIRECT("J1")`, `J1:J1`), VLOOKUP, HLOOKUP, MATCH, XMATCH, XLOOKUP and LOOKUP use the
 referenced cell's value, exactly as for `IF(TRUE,J1)`: found, between-values, above-all and not-found text all give
 the same results across the five shapes, in exact and approximate modes. `HLOOKUP(CHOOSE(1,Data!D7),Data!A8:A10,
-AVERAGE(..),..)` finds it and fails on the row index with `#VALUE!`. Side finding: `XMATCH("x",{10..50},-1)`
-(exact or next smaller) is 5 and the XLOOKUP equivalent returns the last row, because text sorts above every
-number, while `MATCH("x",..,1)` and LOOKUP give `#N/A`.
+AVERAGE(..),..)` finds it and fails on the row index with `#VALUE!`. (The XMATCH text-vs-number order seen in
+the same probe has its own entry below.)
 Evidence: probes/lookup-reference-lookup-value (220 cells: 5 shapes x 4 values x 11 lookups; excel-graph,
 2026-10-11, T-1256); gen-m6/963a217976538d5d Calc!A32 (excel-graph, 2026-10-09, T-1239).
 Status: VERIFIED
 Implemented in: VLOOKUP, HLOOKUP and XLOOKUP lift the lookup_value, so a 1x1 range lifts to its value
 (`lookup_each`, xlookup.rs); MATCH, XMATCH and LOOKUP read it through `Model::lookup_value_arg`
 (functions/lookup_and_reference/mod.rs). A multi-cell lookup_value in MATCH, XMATCH or LOOKUP is T-0270.
+Tasks: T-1256
+
+## A reference-valued lookup_value pointing at a blank or error cell
+Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,
+MATCH, XMATCH, XLOOKUP and LOOKUP.
+- An error cell (`#DIV/0!`, `#N/A`) is returned as that error by all eleven forms (exact and approximate, every shape).
+- A blank cell is a lookup value that matches nothing: `#N/A` in every exact and approximate form (VLOOKUP, HLOOKUP, MATCH 0/1,
+  XMATCH, XLOOKUP, LOOKUP), except the next-smaller modes of XMATCH and XLOOKUP, which take the last row: `XMATCH(J5,A1:A5,-1)` is 5
+  and `XLOOKUP(J5,A1:A5,B1:B5,"nf",-1)` is "e" (the blank sorts with text, above every number; same order as the entry below).
+Evidence: probes/lookup-reference-lookup-value-blank-error (165 cells: 5 shapes x {blank, #DIV/0!, #N/A} x 11 lookups;
+excel-graph, 2026-10-12, T-1371). The engine already matches every cell.
+Status: VERIFIED
+Tasks: T-1371
+
+## XMATCH and XLOOKUP next-smaller mode: text sorts above every number
+Rule: with match_mode -1 (exact or next smaller), a text lookup_value that is not found among numbers takes the last number:
+`XMATCH("x",{10;20;30;40;50},-1)` is 5 and `XLOOKUP("x",A1:A5,B1:B5,"nf",-1)` returns the last row's value, because text
+sorts above every number. Exact mode gives `#N/A`, and the approximate `MATCH("x",A1:A5,1)` and `LOOKUP("x",..)` also give `#N/A`
+(they do not extend the number-before-text order across types).
+Evidence: probes/lookup-reference-lookup-value rows 13/17/21/25/29, the J4 "x" rows (S and U columns: 5, "e"; excel-graph, 2026-10-11, T-1256).
+Status: VERIFIED
 Tasks: T-1256
 
 ## INDEX lifts over array and range indices
