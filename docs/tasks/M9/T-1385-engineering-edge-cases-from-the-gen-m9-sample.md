@@ -37,10 +37,14 @@ Each one is a hypothesis drawn from a generated formula, so probe it before you 
   computation.** `IMPOWER("2i",-1)` is "3.06287113727155E-17-0.5i", where we give
   "0.0000000000000000306161699786838-0.5i". `IMPOWER("-i",4)` is "1+2.45029690981724E-16i".
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/3462856259a37891 Calc!A25 `=(..&IMPOWER("3+4i",1e-15))`: Excel "1+9.27295218001614E-16i", engine "1+0.000000000000000927295218001614i" (the IMPOWER E-notation item).
+
 ## Acceptance criteria
 - [ ] A probe case answers each item above, and its findings are in docs/excel-semantics/engineering.md.
 - [ ] The items with clear evidence are fixed, with no eval regressions. Any item left open is filed as
       its own task.
+- [ ] gen-m9/3462856259a37891 A25 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

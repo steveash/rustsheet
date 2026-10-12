@@ -26,10 +26,15 @@ The exact values are not in eval/: probe them first (excel-probe skill): `NETWOR
 and the .INTL forms. Serial 0 is Saturday 0 January 1900 (dates.md). Code: crates/rustsheet-engine/src/functions/date_and_time.rs.
 Record the result in docs/excel-semantics/dates.md (a note was added by T-1239's triage under "WEEKDAY of serial 0 and return_type 0").
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/50f10c4062fb2e98 Calc!A12 `=AVERAGE((NETWORKDAYS.INTL(44900,0.2)/(Data!$B3-Data!B8)),Data!E10:E12)` (the divisor is 42-"abc", `#VALUE!`): Excel `#VALUE!`, engine `#NUM!` from `NETWORKDAYS.INTL(44900,0.2)`; so an end date of 0.2 is accepted.
+- gen-m9/288b99797f58f149 Calc!A10 `=(COLUMNS(Data!B8:E10)%+WORKDAY(33393,(Data!$A10/1.005),Data!A3:D3))` (0 days, holidays "a", 0.3, 0.3, 0.5): Excel 33393.04, engine `#VALUE!` (the text holiday; `#NUM!` without it). Add `WORKDAY(33393,0,{"a",0.3})`, `WORKDAY(33393,1,A3:D3)` and `NETWORKDAYS(33393,33400,A3:D3)` to the probe: a text cell in holidays may only be skipped when days is 0.
+
 ## Acceptance criteria
 - [ ] An excel-graph probe case with the cells above, plus `XLOOKUP(NA(),A1:A4,B1:B5)` (does an error lookup_value beat the size mismatch?), passes; dates.md records the rule (VERIFIED).
 - [ ] gen-m6/63012866a9d8b7db A39 and gen-m6/6b2aa08e3b916da5 A35 pass in `./target/release/rustsheet-eval show <case>`,
       with no new failing gen-m6 cell and no new known failures in eval/baseline/.
+- [ ] gen-m9/50f10c4062fb2e98 A12 and gen-m9/288b99797f58f149 A10 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

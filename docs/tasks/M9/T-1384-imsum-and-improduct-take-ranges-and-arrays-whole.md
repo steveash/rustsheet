@@ -31,9 +31,13 @@ Today we give `#ERROR!` for any range or array, `#VALUE!` where the result shoul
 `#NUM!` for booleans. Look for an existing helper that walks array arguments before you write one
 (`rg -n "fn .*array" crates/rustsheet-engine/src/functions/engineering`).
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/b5352ebdb9c5f1a1 Calc!A3 `=SEARCH(PROPER(RIGHT(Data!E8,1)),(IMPRODUCT(Data!C7)&..),7)` (IMPRODUCT of one cell, -0.0001): Excel `#VALUE!` (SEARCH finds no "D"), engine `#ERROR!` from IMPRODUCT.
+
 ## Acceptance criteria
 - [ ] probes/eng-argument-modes A60:A83 and A89, E42 and E50 leave eval/baseline/probes.txt with no new F
       lines.
+- [ ] gen-m9/b5352ebdb9c5f1a1 A3 passes, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

@@ -25,6 +25,10 @@ The sweep has landed (691 cells, oracle-filled). Its observations are in
 last digits depend on the guess and on the flow scale and sign, XIRR stops at about 1e-8 to 1e-7 relative and is
 scale-invariant, and some guesses give `#NUM!`. RATE's guess argument is unreachable today (T-1050).
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/675763979c1defb6 Calc!A39 `=(42+MIRR(Data!A2:C11,0.5,STDEV.S(Data!C11:C12,Data!D7)))` (reinvest rate 5.8E+14): Excel 636207158862729.4, engine 636207158862728.5.
+- gen-m9/eefcc3989f31de76 Calc!A5 `=IFERROR((RATE(199,-805,61378)/Data!E3),..)` (E3 = -1): Excel -0.011859926889590918, engine -0.011859926889595479.
+
 ## Acceptance criteria
 - [ ] At least 100 of the ~170 listed F lines for IRR, RATE, XIRR, MIRR leave eval/baseline/ironcalc-calc.txt with no new ones; the Outcome note lists the remainder.
 - [ ] Algorithm parameters (guess, tolerance, iteration cap) documented in docs/excel-semantics/numbers.md with evidence cell ids.
