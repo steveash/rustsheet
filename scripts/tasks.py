@@ -273,7 +273,8 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
                 continue
             lane, tid = m.group(1), m.group(2)
             age = now - int(stamp) if stamp.isdigit() else float("inf")
-            # Stale branches (abandoned or merged-but-undeleted) are not claims; handoffs are, at any age.
+            # Stale branches (abandoned or merged-but-undeleted) are not claims; handoffs and tasks
+            # blocked on the branch are, at any age (decision 0048).
             if age < CLAIM_TTL_SECONDS:
                 claimed.add(tid)
             if age < BUSY_SECONDS:
