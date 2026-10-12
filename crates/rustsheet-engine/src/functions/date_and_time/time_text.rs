@@ -9,6 +9,7 @@ use crate::{
     cast::number_text_too_long,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
+    types::DateSystem,
 };
 
 /// Time of day for TIMEVALUE text: the fractional part of the serial the text denotes, so clock
@@ -79,6 +80,7 @@ pub(crate) fn parse_time_serial(
     text: &str,
     locale: &Locale,
     current_year: CurrentYear,
+    date_system: DateSystem,
 ) -> Option<f64> {
     if text.starts_with(' ') {
         return None;
@@ -88,7 +90,15 @@ pub(crate) fn parse_time_serial(
     if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial);
     }
-    parse_hour_only_am_pm(text).or_else(|| parse_date_clock_serial(text, locale, current_year))
+    parse_hour_only_am_pm(text).or_else(|| {
+        // The date part counts from the workbook's epoch, a day before the 1904 epoch is no date
+        // (`"1904-01-02 10:00"+0` is 1.4166666666666667, `"1903-12-31 10:00"+0` is #VALUE!;
+        // probes/date-system-1904-clock-text A1, A7).
+        // The clock is added after the shift: summing in the 1900 system first loses low bits.
+        let (days, clock) = parse_date_clock_parts(text, locale, current_year)?;
+        let days = date_system.serial_from_1900_serial(i64::from(days))?;
+        Some(days as f64 + clock)
+    })
 }
 
 /// Hour-only "N AM" / "N PM" text (hour 0-12, no minutes) as a time-of-day serial: `"0 PM"` is
@@ -111,6 +121,16 @@ pub(crate) fn parse_date_clock_serial(
     locale: &Locale,
     current_year: CurrentYear,
 ) -> Option<f64> {
+    let (days, clock) = parse_date_clock_parts(text, locale, current_year)?;
+    Some(f64::from(days) + clock)
+}
+
+/// The 1900-system date serial and the clock fraction of "date clock" text.
+fn parse_date_clock_parts(
+    text: &str,
+    locale: &Locale,
+    current_year: CurrentYear,
+) -> Option<(i32, f64)> {
     let mut date_end = text.len();
     for _ in 0..2 {
         date_end = text[..date_end].trim_end().rfind(char::is_whitespace)?;
@@ -120,7 +140,7 @@ pub(crate) fn parse_date_clock_serial(
             clock,
             parse_date(text[..date_end].trim_end(), locale, current_year),
         ) {
-            return Some(f64::from(days) + clock);
+            return Some((days, clock));
         }
     }
     None

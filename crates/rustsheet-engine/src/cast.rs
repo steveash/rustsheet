@@ -169,7 +169,12 @@ impl Model {
         ) {
             return Some(crate::arithmetic::flush_subnormal(v));
         }
-        crate::functions::date_and_time::time_text::parse_time_serial(text, self.locale, year)
+        crate::functions::date_and_time::time_text::parse_time_serial(
+            text,
+            self.locale,
+            year,
+            self.workbook.settings.date_system,
+        )
     }
     /// Lifts the range `left:right` into a 2-D array of its cell values, for a function or
     /// operator that works on it element by element (or a formula that spills it).

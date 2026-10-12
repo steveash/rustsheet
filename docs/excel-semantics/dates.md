@@ -415,9 +415,9 @@ Since T-1416 the date functions read 1904 serials the same way:
 - WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, NETWORKDAYS(.INTL) and WORKDAY(.INTL) (with their holidays) use `DateSystem::date_of_serial` or `to_1900_serial`.
 - YEARFRAC and the financial functions read every date one day late, through `DateSystem::financial_1900_serial` (T-1436, the entry after next).
 - EDATE and EOMONTH return their result through `signed_serial_from_1900_serial`. WORKDAY(.INTL) uses the checked `serial_from_1900_serial`.
-- Date text coerced to a number, typed date input and criteria date text read 1904 serials since T-1435 (date-clock text not yet, T-1441).
+- Date text coerced to a number, typed date input and criteria date text read 1904 serials since T-1435 and date-clock text since T-1441.
 Status: VERIFIED (web)
-Tasks: T-1268, T-1105, T-1330, T-1416, T-1435, T-1436
+Tasks: T-1268, T-1105, T-1330, T-1416, T-1435, T-1436, T-1441
 
 ## The 1904 date system: date readers, the epoch's edges and EDATE/EOMONTH before it
 Rule: in a 1904 workbook every date reader counts serials from 1904-01-01, not only TEXT, DATE, DATEVALUE and YEAR/MONTH/DAY:
@@ -444,7 +444,7 @@ The upper bound matches the 1900 system's 9999-12-31:
 - This confirms the hand-derived bounds in formatter/test/test_dates.rs.
 
 Evidence: probes/date-system-1904-readers A1-A52 (excel-graph, 2026-10-12, T-1416).
-Ours: every cell matches. The text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 read the 1904 serial since T-1435, and COUPDAYS A18 since T-1436. Date-clock text such as `"1904-01-02 10:00"+0` still counts from 1900 (unprobed; the `parse_date_clock_serial` path in `parse_time_serial`, T-1441).
+Ours: every cell matches. The text coercion, typed input and criteria cells A20-A25, A38, A39 and A51 read the 1904 serial since T-1435, and COUPDAYS A18 since T-1436. Date-clock text counts from 1904-01-01 too (T-1441, probes/date-system-1904-clock-text, excel-graph 2026-10-12): `"1904-01-02 10:00"+0` = 1.4166666666666667, `"2024-03-15 18:00"+0` = `"3/15/2024 6:00 PM"+0` = 43904.75, `VALUE("2024-03-15 12:00")` = 43904.5, `DATEVALUE` of it = 43904 and `TIMEVALUE` = 0.5. A clock on a day before the epoch is #VALUE! (`"1903-12-31 10:00"+0`, ERROR.TYPE 3), like plain date text. A negative holiday serial is #NUM! (ERROR.TYPE 6) in WORKDAY, WORKDAY.INTL and NETWORKDAYS: `WORKDAY(DATE(2024,3,15),1,-1)`, `WORKDAY(..,1,-5)`, `NETWORKDAYS(..,..,-1)` and `WORKDAY.INTL(..,1,1,-1)` (A8-A11). Ours already matched.
 
 Status: VERIFIED (web)
 Tasks: T-1416, T-1435, T-1436
