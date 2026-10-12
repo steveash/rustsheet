@@ -64,7 +64,7 @@ def parse_part(part: str, data: bytes) -> ElementTree.Element:
     try:
         check.Parse(data, True)
         # The checking pass proved there is no DTD, so the tree parse cannot expand entities.
-        return ElementTree.fromstring(data)  # noqa: S314
+        return ElementTree.fromstring(data)  # noqa: S314 - DTD refused by the pass above
     except (expat.ExpatError, ElementTree.ParseError, ValueError) as e:  # ValueError: _refuse_dtd
         raise PackageError(f"unreadable {part} ({e})") from e
 
