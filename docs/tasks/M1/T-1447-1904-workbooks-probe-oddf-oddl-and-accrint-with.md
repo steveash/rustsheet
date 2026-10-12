@@ -3,7 +3,7 @@ id: T-1447
 title: "1904 workbooks: probe ODDF*/ODDL* and ACCRINT with a maturity from 9995-12-31 on (the coupon schedule break)"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
