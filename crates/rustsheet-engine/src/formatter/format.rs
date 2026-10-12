@@ -1,12 +1,14 @@
+use super::elapsed::{elapsed_text, ElapsedUnit};
 use super::general::format_general;
 use crate::{
     locale::Locale,
     number_format::{parse_excel_number, to_precision},
+    types::DateSystem,
 };
 
 use super::{
     date_text::{parse_date, CurrentYear},
-    dates::excel_serial_to_ymd,
+    dates::{excel_serial_to_ymd, negative_serial_allowed},
     parser::{ParsePart, Parser, TextToken},
 };
 
@@ -14,6 +16,23 @@ pub struct Formatted {
     pub color: Option<i32>,
     pub text: String,
     pub error: Option<String>,
+}
+
+/// The workbook inputs of number formatting: the locale and the date system (SPEC-0005).
+#[derive(Clone, Copy)]
+pub struct FormatContext<'a> {
+    pub locale: &'a Locale,
+    pub date_system: DateSystem,
+}
+
+impl<'a> FormatContext<'a> {
+    /// A context in the default (1900) date system, for formatting outside any workbook.
+    pub fn new(locale: &'a Locale) -> Self {
+        FormatContext {
+            locale,
+            date_system: DateSystem::default(),
+        }
+    }
 }
 
 /// Returns the vector of chars of the fractional part of a *positive* number:
@@ -77,7 +96,7 @@ fn invalid_date(value: f64) -> Formatted {
 /// Formats a TEXT value, `None` being a blank. A blank with an empty format gives "" and any other
 /// blank formats as 0 (see "An empty format string returns empty text" in
 /// docs/excel-semantics/number-formats.md).
-pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatted {
+pub fn format_text(value: Option<f64>, format: &str, ctx: &FormatContext) -> Formatted {
     if value.is_none() && format.is_empty() {
         return Formatted {
             color: None,
@@ -85,7 +104,7 @@ pub fn format_text(value: Option<f64>, format: &str, locale: &Locale) -> Formatt
             error: None,
         };
     }
-    format_number(value.unwrap_or(0.0), format, locale)
+    format_number(value.unwrap_or(0.0), format, ctx)
 }
 
 /// Formats a text value (a boolean's "TRUE"/"FALSE" included) the way `TEXT` does: only the
@@ -175,7 +194,8 @@ fn section_tokens(part: &ParsePart) -> Option<&Vec<TextToken>> {
     }
 }
 
-pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Formatted {
+pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> Formatted {
+    let locale = ctx.locale;
     let mut parser = Parser::new(format);
     parser.parse();
     let parts = parser.parts;
@@ -252,28 +272,20 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
             }
         }
         ParsePart::Date(p) => {
-            // Excel: a negative serial is #VALUE! under a date/time format, even a fraction that
-            // truncates to serial 0 (probes/text-ddd-negative-fraction A1-A9, T-1035). Elapsed
-            // sections ([h], [mm], ...) keep their own sign handling (poi ElapsedFormatTests
-            // A40-A47, docs/excel-semantics/number-formats.md "Elapsed-time tokens").
-            // TODO(T-1105): that workbook is 1904-system; in the 1900 system Excel gives #VALUE!
-            // here too (probes/text-negative-serial-elapsed-mixed A1, A3, A5, A6).
-            let has_elapsed = p.tokens.iter().any(|t| {
-                matches!(
-                    t,
-                    TextToken::ElapsedHour
-                        | TextToken::ElapsedHourPadded
-                        | TextToken::ElapsedMinute
-                        | TextToken::ElapsedMinutePadded
-                        | TextToken::ElapsedSecond
-                        | TextToken::ElapsedSecondPadded
-                )
-            });
-            if value < 0.0 && !has_elapsed {
-                return invalid_date(value);
+            // Excel: whether a negative serial formats or is #VALUE! depends on the value's own
+            // sign, also when a negative section already dropped it (`TEXT(-1,"d;d")` is #VALUE!
+            // in the 1900 system), and on the date system (`negative_serial_allowed`;
+            // docs/excel-semantics/dates.md "The 1904 date system" and "Negative serials under
+            // an explicit negative section").
+            if value_original < 0.0 && !negative_serial_allowed(&p.tokens, ctx.date_system) {
+                return invalid_date(value_original);
             }
+            // A negative that gets here (a one-section format) is formatted as its magnitude after
+            // one leading minus, in front of any literal (`TEXT(-1.5,"""x""[h]")` is "-x36",
+            // probes/negative-date-sections-1900 A18; poi ElapsedFormatTests A40).
+            let mut text = if value < 0.0 { "-" } else { "" }.to_string();
+            let value = value.abs();
             let tokens = &p.tokens;
-            let mut text = "".to_string();
             let time_fract = value.fract();
             let hours = (time_fract * 24.0).floor();
             let minutes = ((time_fract * 24.0 - hours) * 60.0).floor();
@@ -425,30 +437,35 @@ pub fn format_number(value_original: f64, format: &str, locale: &Locale) -> Form
                         text = format!("{text}{minute:02}");
                     }
                     TextToken::ElapsedHour => {
-                        let hour = (value * 24.0).floor() as i32;
+                        let hour = elapsed_text(value, false, ElapsedUnit::Hour);
                         text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedHourPadded => {
-                        let hour = (value * 24.0).floor() as i32;
-                        text = format!("{text}{hour:02}");
+                        let hour = elapsed_text(value, true, ElapsedUnit::Hour);
+                        text = format!("{text}{hour}");
                     }
                     TextToken::ElapsedMinute => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
+                        let minute = elapsed_text(value, false, ElapsedUnit::Minute);
                         text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedMinutePadded => {
-                        let minute = (value * 24.0 * 60.0).floor() as i32;
-                        text = format!("{text}{minute:02}");
+                        let minute = elapsed_text(value, true, ElapsedUnit::Minute);
+                        text = format!("{text}{minute}");
                     }
                     TextToken::ElapsedSecond => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
+                        let second = elapsed_text(value, false, ElapsedUnit::Second);
                         text = format!("{text}{second}");
                     }
                     TextToken::ElapsedSecondPadded => {
-                        let second = (value * 24.0 * 60.0 * 60.0).floor() as i32;
-                        text = format!("{text}{second:02}");
+                        let second = elapsed_text(value, true, ElapsedUnit::Second);
+                        text = format!("{text}{second}");
                     }
                 }
+            }
+            // Excel: an elapsed-token result over 255 characters is #VALUE! (probes/elapsed-huge-g-1900);
+            // applying it to every date/time section is an assumption, unprobed for other tokens.
+            if text.chars().count() > MAX_TEXT_FORMAT_CHARS {
+                return text_too_long();
             }
             Formatted {
                 text,
@@ -730,9 +747,11 @@ pub(crate) fn parse_formatted_number(
     if let Some(inner) = value.strip_prefix('(').and_then(|v| v.strip_suffix(')')) {
         let inner = inner.trim();
         // Inside parentheses a currency symbol is only valid directly before unsigned digits:
-        // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms).
+        // `($-1)`, `($ -1)` and `(1$)` are #VALUE! (probes/paren-number-text-forms), as are `($+1)`,
+        // `(1 $)` and `(€-1)`; only a trailing euro sign is valid: `(1€)` = -1
+        // (probes/paren-number-text-currency-variants).
         let bad_currency = currencies.iter().any(|c| {
-            (!c.is_empty() && inner.strip_suffix(c).is_some())
+            (!c.is_empty() && *c != "€" && inner.strip_suffix(c).is_some())
                 || inner
                     .strip_prefix(c)
                     .is_some_and(|rest| rest.trim_start().starts_with(['-', '+']))
@@ -762,41 +781,40 @@ fn parse_percent_or_currency(
     decimal_separator: char,
     group_separator: char,
 ) -> Result<Option<(f64, Option<String>)>, String> {
-    // Check if it is a percentage
+    // Check if it is a percentage. Excel types `1%` as `0%` and `1.5%` as `0.00%` (the decimals
+    // are not kept beyond two), scientific text as `0.00E+00`; the format ignores group
+    // separators (`1,000%` is `0%`). Probes: typed-currency-percent-input, typed-paren-number-input;
+    // docs/excel-semantics/coercion.md "Typed currency and percent formats".
     if let Some(p) = value.strip_suffix('%') {
         let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
         if options.is_scientific {
             return Ok(Some((f / 100.0, Some(SCIENTIFIC_FORMAT.to_string()))));
         }
-        // We ignore the separator
-        if options.decimal_digits > 0 {
-            // Percentage format with decimals
-            return Ok(Some((f / 100.0, Some("#,##0.00%".to_string()))));
-        }
-        // Percentage format standard
-        return Ok(Some((f / 100.0, Some("#,##0%".to_string()))));
+        let format = if options.decimal_digits > 0 {
+            "0.00%"
+        } else {
+            "0%"
+        };
+        return Ok(Some((f / 100.0, Some(format.to_string()))));
     }
 
     // check if it is a currency in currencies
     for currency in currencies {
-        if let Some(p) = value.strip_prefix(&format!("-{currency}")) {
+        let prefixed = value
+            .strip_prefix(&format!("-{currency}"))
+            .map(|p| (p, -1.0))
+            .or_else(|| value.strip_prefix(currency).map(|p| (p, 1.0)));
+        if let Some((p, sign)) = prefixed {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
+            // Excel: `-$1e3` is -1000 like `$-1e3` (typed-currency-percent-input A29).
+            let f = sign * f;
             if options.is_scientific {
                 return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
             }
-            if options.decimal_digits > 0 {
-                return Ok(Some((-f, Some(format!("{currency}#,##0.00")))));
-            }
-            return Ok(Some((-f, Some(format!("{currency}#,##0")))));
-        } else if let Some(p) = value.strip_prefix(currency) {
-            let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
-            if options.is_scientific {
-                return Ok(Some((f, Some(SCIENTIFIC_FORMAT.to_string()))));
-            }
-            if options.decimal_digits > 0 {
-                return Ok(Some((f, Some(format!("{currency}#,##0.00")))));
-            }
-            return Ok(Some((f, Some(format!("{currency}#,##0")))));
+            return Ok(Some((
+                f,
+                Some(prefix_currency_format(currency, options.decimal_digits > 0)),
+            )));
         } else if let Some(p) = value.strip_suffix(currency) {
             let (f, options) = parse_number(p.trim(), decimal_separator, group_separator)?;
             if options.is_scientific {
@@ -811,6 +829,18 @@ fn parse_percent_or_currency(
         }
     }
     Ok(None)
+}
+
+/// The format Excel gives text typed with a leading currency symbol. `$` gets the red-negative
+/// accounting-style format (`$1` -> `$#,##0_);[Red]($#,##0)`, `$1.5` -> `$#,##0.00_);[Red]($#,##0.00)`;
+/// typed-currency-percent-input). Other symbols are unprobed and keep the plain format.
+fn prefix_currency_format(currency: &str, decimals: bool) -> String {
+    let digits = if decimals { "#,##0.00" } else { "#,##0" };
+    if currency == "$" {
+        format!("${digits}_);[Red](${digits})")
+    } else {
+        format!("{currency}{digits}")
+    }
 }
 
 /// A plain number (optionally with group separators or an exponent) and its inferred format.

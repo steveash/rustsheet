@@ -21,8 +21,13 @@ engine gives `#N/IMPL!` (F20, F22, F24, F26, F36, F38, F40, F54, F56, F58, F60, 
 Holidays stay read whole (dates.md "WORKDAY holidays take the whole range"); the weekend argument is T-1235's.
 Semantics: docs/excel-semantics/dates.md "Date function argument modes".
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/4df1b22d3ed63f58 Calc!A24 `=EOMONTH((IF(Data!E11,Data!$E1)+WRAPROWS(Data!D3:D7,1,Data!$E9)),-14)`: Excel `#SPILL!`, engine `#N/IMPL!` (an array start date lifts).
+- gen-m9/b58b6d7cd39d195f Calc!A9 `=EOMONTH((1*HYPGEOMDIST(0,3,1,13)),TAKE(Data!B9:E12,-2,-1))`: Excel `#VALUE!`, engine `#N/IMPL!`. TAKE of a range is a reference (references.md, ISREF of it is TRUE), so this is the range form (`#VALUE!`), not an array lift: keep TAKE/DROP results on the range path when lifting.
+
 ## Acceptance criteria
 - [ ] The listed probes/date-argument-modes cells pass, and the range forms stay `#VALUE!`; baseline updated.
+- [ ] gen-m9/4df1b22d3ed63f58 A24 and b58b6d7cd39d195f A9 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

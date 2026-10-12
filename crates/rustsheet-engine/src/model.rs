@@ -267,6 +267,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped(); // `ROWS((A1:A3))` is `ROWS(A1:A3)` (SPEC-0007)
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -276,14 +277,9 @@ impl Model {
                 row,
                 column,
             } => {
-                let mut row1 = *row;
-                let mut column1 = *column;
-                if !absolute_row {
-                    row1 += cell.row;
-                }
-                if !absolute_column {
-                    column1 += cell.column;
-                }
+                // Relative coordinates are offsets from the formula's cell.
+                let row1 = *row + if *absolute_row { 0 } else { cell.row };
+                let column1 = *column + if *absolute_column { 0 } else { cell.column };
                 CalcResult::Range {
                     left: CellReferenceIndex {
                         sheet: *sheet_index,
@@ -340,20 +336,8 @@ impl Model {
                 }
             }
             Node::ImplicitIntersection { child, .. } => {
-                match self.evaluate_at_operand_reference(child, cell) {
-                    CalcResult::Range { left, right } => {
-                        match implicit_intersection(&cell, &Range { left, right }) {
-                            Some(r) => CalcResult::Range { left: r, right: r },
-                            None => CalcResult::new_error(
-                                Error::VALUE,
-                                cell,
-                                format!("Error with Implicit Intersection in cell {cell:?}"),
-                            ),
-                        }
-                    }
-                    // The implicit intersection of a scalar is the scalar itself.
-                    other => other,
-                }
+                let operand = self.evaluate_at_operand_reference(child, cell);
+                Self::intersect_reference(operand, cell)
             }
             Node::SheetSpanKind {
                 first_index,
@@ -383,6 +367,25 @@ impl Model {
                 }
             }
             _ => self.evaluate_node_in_context(node, cell),
+        }
+    }
+
+    /// The `@` of a reference-context result, kept as a reference: a range is the one cell it
+    /// implicitly intersects at `cell` (`#VALUE!` if none); a scalar is itself.
+    pub(crate) fn intersect_reference(result: CalcResult, cell: CellReferenceIndex) -> CalcResult {
+        match result {
+            CalcResult::Range { left, right } => {
+                match implicit_intersection(&cell, &Range { left, right }) {
+                    Some(r) => CalcResult::Range { left: r, right: r },
+                    None => CalcResult::new_error(
+                        Error::VALUE,
+                        cell,
+                        format!("Error with Implicit Intersection in cell {cell:?}"),
+                    ),
+                }
+            }
+            // The implicit intersection of a scalar is the scalar itself.
+            other => other,
         }
     }
 
@@ -589,6 +592,7 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         use Node::*;
+        let node = node.ungrouped(); // A written group is its child; a loop adds no frame.
         match node {
             OpSumKind { .. }
             | OpProductKind { .. }
@@ -606,14 +610,9 @@ impl Model {
                 row,
                 column,
             } => {
-                let mut row1 = *row;
-                let mut column1 = *column;
-                if !absolute_row {
-                    row1 += cell.row;
-                }
-                if !absolute_column {
-                    column1 += cell.column;
-                }
+                // Relative coordinates are offsets from the formula's cell.
+                let row1 = *row + if *absolute_row { 0 } else { cell.row };
+                let column1 = *column + if *absolute_column { 0 } else { cell.column };
                 self.evaluate_cell(CellReferenceIndex {
                     sheet: *sheet_index,
                     row: row1,
@@ -761,15 +760,12 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
-            GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
-            SpillRangeOperator { child } => match self.eval_ref_or_index(child, cell) {
+            // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
+            Group { .. } => CalcResult::new_error(Error::ERROR, cell, "Unpeeled group".to_string()),
+            SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {
                 CalcResult::Range { left, right } => {
                     if left != right {
-                        return CalcResult::new_error(
-                            Error::ERROR,
-                            cell,
-                            format!("Error with Spill Range Operator in cell {cell:?}"),
-                        );
+                        return Self::spill_anchor_range_error(cell);
                     }
                     // The spill range depends on the *shape* of the anchor, which is
                     // only known once the anchor has been evaluated. Evaluating it here
@@ -816,7 +812,7 @@ impl Model {
                 // An `@` that finds no cell is `#VALUE!`, and ANCHORARRAY passes it on
                 // (`=ANCHORARRAY((@A1:B2))` in D20, probes/anchorarray-at-operand, T-1115).
                 error @ CalcResult::Error { .. }
-                    if matches!(**child, ImplicitIntersection { .. }) =>
+                    if matches!(child.ungrouped(), ImplicitIntersection { .. }) =>
                 {
                     error
                 }
@@ -2265,8 +2261,10 @@ impl Model {
                     self.set_cell_style(sheet, row, column, &style)?;
                 }
             } else {
-                // The list of currencies is '$', '€' and the local currency
-                let mut currencies = vec!["$", "€"];
+                // The list of currencies is '$' and the local currency. A euro sign is not
+                // one in en-US: typed `1€` stays text (probes/typed-currency-percent-input
+                // B23:C26, T-1335); VALUE() still reads it (cast.rs).
+                let mut currencies = vec!["$"];
                 let currency = &self.locale.currency.symbol;
                 if !currencies.iter().any(|e| e == currency) {
                     currencies.push(currency);
@@ -2733,7 +2731,7 @@ impl Model {
                 let format = self.get_style_for_cell(sheet_index, row, column)?.num_fmt;
                 let formatted_value =
                     cell.formatted_value(&self.workbook.shared_strings, self.language, |value| {
-                        format_number(value, &format, self.locale).text
+                        format_number(value, &format, &self.format_context()).text
                     });
                 Ok(formatted_value)
             }
@@ -2796,7 +2794,8 @@ impl Model {
                     if is_likely_date_number_format(&style.num_fmt) {
                         let value = cell.value(&self.workbook.shared_strings, self.language);
                         if let CellValue::Number(n) = value {
-                            let formatted = format_number(n, &style.num_fmt, self.locale);
+                            let formatted =
+                                format_number(n, &style.num_fmt, &self.format_context());
                             if formatted.error.is_none() {
                                 return Ok(formatted.text);
                             }
@@ -3387,40 +3386,6 @@ impl Model {
     /// Gets the locale of the model
     pub fn get_locale(&self) -> String {
         self.workbook.settings.locale.clone()
-    }
-
-    /// Gets the formatting settings based on the locale
-    pub fn get_fmt_settings(&self) -> FmtSettings {
-        let day_example = 46006.0; // December 15, 2025
-        let currency = self.locale.currency.iso.clone();
-        let currency_symbol = &self.locale.currency.symbol;
-        // "M/d/yy"
-        let short_date = &self.locale.dates.date_formats.short;
-        // "M/d/yyyy"
-        let long_date = &self.locale.dates.date_formats.long;
-        let short_date_example = format_number(day_example, short_date, self.locale).text;
-        let long_date_example = format_number(day_example, long_date, self.locale).text;
-        // Number format ("#,##0.###")
-        // The CLDR formats are a bit different than Excel's
-        // let number_fmt = self.locale.numbers.decimal_formats.standard.clone();
-        // "#,##0.00 ¤" Currency format might have weird spaces
-        let currency_format_template = &self.locale.numbers.currency_formats.standard;
-        let currency_format = currency_format_template
-            .replace("¤", &format!("\"{}\"", currency_symbol))
-            .replace(" ", " ");
-
-        let number_fmt = "#,##0.00".to_string();
-        let number_example = format_number(1234.567, &number_fmt, self.locale).text;
-        FmtSettings {
-            currency,
-            currency_format,
-            short_date: short_date.clone(),
-            long_date: long_date.clone(),
-            short_date_example,
-            long_date_example,
-            number_fmt,
-            number_example,
-        }
     }
 
     /// Cycles the references touched by the cursor through the four

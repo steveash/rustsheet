@@ -15,6 +15,19 @@ Status: VERIFIED
 Implemented in: `format_text` (formatter/format.rs) used by `fn_text` (functions/text/common.rs), blank value only; other values with `""` stay unprobed.
 Tasks: T-0933
 
+## Bare letters and digits in a number format
+Rule: on a number, unquoted letters and the digits 1-9 in a format print as literal characters instead of making the
+format invalid: `TEXT(PI(),"ü")` = "ü". With a decimal point but no digit placeholder the integer part seems to print
+right before the point: `TEXT(1.005, TEXT(-1,"2.5"))` = "-211.5", consistent with `TEXT(-1,"2.5")` = "-21.5" and
+`TEXT(1.005,"-21.5")` = "-2" & "1" & "1.5" (inferred from the one composite cell). An empty format on a number is not an
+error: `INDIRECT(TEXT(-0.0001,""),..)` is `#REF!`, not `#VALUE!`. Not every letter is a literal: `TEXT(100,"ABC")` =
+"A43C", so `B` prints "43", which fits a two-digit Buddhist-era year (serial 100 is 1900-04-09; 1900 + 543 = 2443).
+Evidence: gen-m6/2c1a6e93a1974f48 Calc!A15, gen-m6/63012866a9d8b7db Calc!A3, gen-m6/17223361bef5b5cb Calc!A12
+(excel-graph, 2026-10-09, T-1239); gen-m7/6db767d720c5b55a Calc!A30 `TEXT(Data!A3,"ABC")` with A3 = 100 (excel-graph, 2026-10-11, T-1275).
+Ours: `#VALUE!` for all four (the lexer rejects these formats).
+Status: UNVERIFIED (probe pending: which letters are tokens, the integer-before-point rule, the value of `TEXT(x,"")`)
+Tasks: T-1262
+
 ## Text and booleans use the format's text section
 Rule: for a text or boolean value, `TEXT` applies the 4th (text) section; `@` stands for the
 value's text and booleans become "TRUE"/"FALSE". `;;;"hi"` → "hi" (A3), `;;;\@@\@` → "@jello@"
@@ -63,7 +76,10 @@ Rule (observed, ElapsedFormatTests, a 1904-date-system workbook):
   "It was 75 [yes, 75] hours and 23:53" (A10), "271433 [yes, 271433] seconds" (A11).
 - A negative value prints one leading "-" before any literal text:
   "-It was 2 [yes, 2] hours and 03:04" (A40).
-In the 1900 date system TEXT of a negative under any format containing an elapsed token is #VALUE! instead (dates.md, probes/text-negative-serial-elapsed-mixed, T-1079/T-1105); the minus above is the 1904-workbook behavior.
+In the 1900 date system TEXT of a negative under a format that mixes an elapsed token with a date/time token (`[h]:mm`, `[s] yy`, `[s].00`) is #VALUE! instead; a format whose only date/time token is one elapsed token still prints a minus, with any literals (below; dates.md "Negative serials under an explicit negative section", probes/text-negative-serial-elapsed-mixed, probes/negative-date-sections-1900, T-1079/T-1105); the minus above is the 1904-workbook behavior. Two elapsed tokens in one section (`[h]:[mm]`) are #VALUE! in both systems, for positive values too (same evidence).
+An elapsed token works on the magnitude of the value and keeps a minus for a negative one, in both date systems (VERIFIED, probes/elapsed-tiny-negatives-1900/-1904 and elapsed-fractions-1900/-1904, excel-graph, T-1338, T-1346): `[s]`/`[ss]` round it to nearest (1.7 s = "2", 1.2 s = "1", 1.5 s = "2", -0.9 s = "-1", -1.7 s = "-2", `TEXT(-1E-10,"[s]")` = "-0"); `[m]`/`[mm]`/`[h]`/`[hh]` truncate it (1.7 min = "1", 1.7 h = "1", -1.7 min = "-1", -0.3 h = "-0"). Padding follows the sign (`[ss]` of -1E-10 = "-00", of -1.7 s = "-02", of 1.7 s = "02"). Binary noise is absorbed: -1.5/86400 days is "-2", `TEXT(-(3-1E-7)/24,"[h]")` = "-3", `TEXT(-(2-1E-9)/1440,"[m]")` = "-2", yet `TEXT(-0.49999999999/86400,"[s]")` = "-0" and `TEXT(-(5-1E-6)/86400,"[s]")` = "-5". The engine models that as a 1e-12 snap of the seconds for `[s]` and a millisecond snap for `[h]`/`[m]`: fitted to these cells, not known (the true threshold is unprobed). The positive near-integers behave the same (VERIFIED, probes/elapsed-positive-large-1900/-1904, excel-graph, T-1362): `TEXT((3-1E-7)/24,"[h]")` = "3", `TEXT((5-1E-6)/86400,"[s]")` = "5", `TEXT(0.49999999999/86400,"[s]")` = "0". The count is plain arithmetic with no 32-bit limit in either date system: `TEXT(30000,"[s]")` = "2592000000", `TEXT(24856,"[s]")` = "2147558400", `TEXT(2958465,"[s]")` = "255611376000", `TEXT(1E9,"[h]")` = "24000000000". `TEXT(-1.5,"[s]")` = "-129600".
+
+**Elapsed tokens beyond the i64 range** (VERIFIED, probes/elapsed-huge-a/b0/b1/b2/c/d/e/f/g/h/i-1900, excel-graph, T-1375): the count is printed in full, never in scientific notation, but only its first 15 significant digits are kept and the rest are zeros, from 1e15 up (`TEXT(1E15,"[s]")` = "86400000000000000000", `TEXT(1.234567890123456E16,"[s]")` = "1066666657066660000000", `TEXT(1E100,"[h]")` = 1 followed by 99 zeros times 24; the same at `[m]`/`[ss]`; negatives keep the minus). Below 1e15 it is the exact integer. The result is `#VALUE!` once it is over 255 characters (`TEXT(1E253,"[h]")` is 255 digits and works, `TEXT(1E254,"[h]")` is #VALUE!; `TEXT(1E250,"[s]")` works, `TEXT(-1E250,"[s]")` is #VALUE! because of the minus; `TEXT(1E300,"[s]")` is #VALUE!). When the count itself overflows a double the result is "0" ("-0" for a negative): `[s]` once days*86400 overflows (`TEXT(2.0807E303,"[s]")` = "0" while `TEXT(2.0806E303,"[s]")` is #VALUE!), `[m]`/`[h]` once days*1440 / days*24 does (`TEXT(1.5E307,"[h]")` = "0", `TEXT(1E305,"[m]")` is still #VALUE!). A literal 1.7E308 in a formula made excel-graph reject the whole workbook, so serials that high are unprobed. The 255-character `#VALUE!` is probed for elapsed tokens only; the engine applies the 255-character cap to every date/time section as an assumption. Corrected (T-1388): a far lower limit on the format code itself decides first (see "TEXT format code complexity limit" below), so a date/time TEXT cannot reach 255 characters through repeated tokens; whether any can exceed 255 is unprobed.
 Evidence: poi/ElapsedFormatTests.xlsx A2, A10, A11, A40 (web and the desktop Excel that saved the
 workbook agree).
 Status: VERIFIED
@@ -199,3 +215,12 @@ Evidence: poi/DateFormatTests.xlsx Tests!A12, A13, A17, A18, A31, A32, A36, A37,
 values, Microsoft Macintosh Excel 16.0; the 1904 date system does not change the time of day).
 Status: VERIFIED
 Tasks: T-0981
+
+## TEXT format code complexity limit
+Rule: `TEXT` is `#VALUE!` when the format code is too long in a way that is not simply its character count (VERIFIED, probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b, excel-graph, T-1388; excel-desktop unprobed). Every first-pass cell `TEXT(1,REPT("d ",n))` for the probed n = 20, 30, 50, 80, 100, 126, 127, 200 and 250, and `REPT("yyyy ",n)` / `REPT("dddd ",n)` for n >= 20, is `#VALUE!`, though for the smaller n the result is well under 255 characters (n = 20 is a 40-character result). Observed boundaries (the result has the same length as the format when it works):
+- Unquoted literal padding: `"d"&REPT(" ",k)` works up to a format of 82 characters (k=81) and is `#VALUE!` from 84 (k=83); `REPT("-",n)&"d"` and `&"0"` work at n=80 and fail at n=90.
+- Placeholder/literal pairs: `REPT("0 ",n)`, `REPT("d ",n)`, `REPT("d-",n)`, `REPT("0-",n)` and, for a text value, `REPT("@ ",n)` work to n=16 (32 characters) and fail at n=17. `REPT("0 ",17)&"d"` and a 17-pair numeric format on 1.5 fail too.
+- More than four sections: `"d"&REPT(";",n)` is `#VALUE!` for every n probed (49, 99, 199, 249, 253, 254, 255; text-date-255-char-limit A11, A13, A15, A17, A19, A21, A23), while the same code padded with spaces works at 50 characters (A10), so the cause is the section count, not the length; the smallest failing n is unprobed.
+- No limit seen for: a run of one placeholder (`REPT("0",200)` works; `REPT("d",40)` = "Sunday"), quoted literals (`REPT("""a"" ",17)` and `REPT("\a",30)` work), `REPT("0,",17)`.
+Reading: not a plain length cap. A cap on the number of parsed format elements fits roughly, but the pair limit (16 ok, 17 fail) and the padding limit (about 82 literal characters) are inconsistent with a uniform weight, so the model is unknown. Not implemented: the engine only applies a 255-character result cap. Cell display with a long date format could not be probed: excel-graph rejects workbooks whose number format code is that long (createSession 501 unsupportedWorkbook).
+Status: PARTIAL (boundaries measured, model unknown)

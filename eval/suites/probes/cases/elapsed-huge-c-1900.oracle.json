@@ -1,0 +1,26 @@
+{
+ "format": "rustsheet-oracle/v1",
+ "sheets": {
+  "S": {
+   "A25": {
+    "t": "s",
+    "v": "-86400000000000000000"
+   },
+   "A26": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A27": {
+    "t": "s",
+    "v": "86400000000000000000"
+   }
+  }
+ },
+ "source": {
+  "application": "Excel for the web (Graph)",
+  "input_sha256": "3caacdb72ab95782096d7698a35eb36d5708648bd2c4af03766b7e37527fe8c4",
+  "kind": "excel-graph",
+  "produced_at": "2026-10-11T21:49:16+00:00",
+  "version": null
+ }
+}

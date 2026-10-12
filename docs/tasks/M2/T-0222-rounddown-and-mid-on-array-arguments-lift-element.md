@@ -3,7 +3,7 @@ id: T-0222
 title: "ROUNDDOWN and MID on array arguments: lift element-wise instead of #N/IMPL! (2 gen-m2 known failures)"
 milestone: M2
 lane: functions-math
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -38,3 +38,8 @@ over an array lookup_value, which is why this depends on T-0270.
 
 ## Out of scope
 - Other functions that still return `#N/IMPL!` on arrays (file follow-ups).
+
+## Outcome
+- ROUND/ROUNDUP/ROUNDDOWN/TRUNC now go through the shared `lift_numbers` helper (as MOD does), so array arguments lift element-wise and an error argument next to an array broadcasts. MID already lifted on main (T-0257).
+- The remaining `#N/IMPL!` for A246 was CONCAT with an array argument: it now joins the elements row by row.
+- Eval delta: gen-m2 known failures 28 -> 26 (Calc!A313 of 893302d6c5b99e2e and Calc!A246 of d0c29dd5c530e28c). No regressions.

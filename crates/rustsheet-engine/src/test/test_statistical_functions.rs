@@ -392,3 +392,54 @@ fn test_maxa_mina_single_cell_references() {
     assert_eq!(model._get_text("B3"), "0");
     assert_eq!(model._get_text("B4"), "0");
 }
+
+// ── RANK with a ref of unknown static shape ─────────────────────────────────
+
+#[test]
+fn rank_of_an_unknown_shape_ref_spills_or_ranks() {
+    // The formula_eval fuzz reproducer (T-1303): `A1:<undefined name>` has no static shape, so
+    // static analysis took the RANK call for a scalar while it returned a 1x3 array (a debug
+    // assertion). Excel: probes/rank-unknown-shape-ref.
+    let mut model = new_empty_model();
+    model._set("C3", "=RANK(5,IF(A1:C1>0,A1:CWWWWWWWWWWWWWWWWWWWWWWWWW1))");
+    model._set("A6", "7");
+    model._set("B6", "1");
+    model._set("C6", "5");
+    model._set("F6", "=RANK(5,IF(A6:C6>0,A6:CWWWW6))");
+    model._set("F8", "=RANK(5,A6:B6:C6)");
+    model._set("F10", "=RANK(5,INDEX(IF(A6:C6>6,NA(),A6:C6),1,0))");
+    model.evaluate();
+
+    for cell in ["C3", "D3", "E3"] {
+        assert_eq!(model._get_text(cell), *"#VALUE!");
+    }
+    for cell in ["F6", "G6", "H6"] {
+        assert_eq!(model._get_text(cell), *"#NAME?");
+    }
+    assert_eq!(model._get_text("F8"), *"2");
+    assert_eq!(model._get_text("G8"), *"");
+    // An error element keeps its error; every other element is #VALUE!
+    // (probes/rank-nonref-error-elements).
+    assert_eq!(model._get_text("F10"), *"#N/A");
+    assert_eq!(model._get_text("G10"), *"#VALUE!");
+    assert_eq!(model._get_text("H10"), *"#VALUE!");
+}
+
+// ── COUNTBLANK of an error ──────────────────────────────────────────────────
+
+#[test]
+fn nested_countblank_of_an_error_reads_each_argument_once() {
+    // T-1181: an error argument is the result, and deciding that must not evaluate the argument
+    // a second time, or 40 nested calls cost 2^40 evaluations (directive 5).
+    let mut model = new_empty_model();
+    let mut formula = "NA()".to_string();
+    for _ in 0..40 {
+        formula = format!("COUNTBLANK(IF(TRUE,{formula}))");
+    }
+    model._set("A1", &format!("={formula}"));
+    model._set("B1", "=NA()");
+    model._set("B2", "=COUNTBLANK(CHOOSE(1,B1))");
+    model.evaluate();
+    assert_eq!(model._get_text("A1"), *"#N/A");
+    assert_eq!(model._get_text("B2"), *"0");
+}

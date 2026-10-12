@@ -1,3 +1,4 @@
+use super::reference_operators::at_outside;
 use super::{for_each_chain_operand_mut, left_chain, value_operands, Node};
 use crate::functions::Function;
 mod aggregate;
@@ -92,7 +93,6 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
             // A spill anchor is never intersected: `INDEX(D1:D2,1)#` (T-1109, probes K1).
             add_implicit_intersection(child, false);
         }
-        Node::GroupedRootKind { child } => add_implicit_intersection(child, add),
         Node::RangeKind {
             row1,
             column1,
@@ -120,6 +120,7 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
                 });
             }
         }
+        Node::Group { .. } if add && at_outside(node) => *node = Node::automatic_at(node.clone()),
         Node::OpRangeKind { .. } | Node::OpIntersectKind { .. } => {
             if add {
                 *node = Node::automatic_at(node.clone())
@@ -127,7 +128,9 @@ pub fn add_implicit_intersection(node: &mut Node, add: bool) {
         }
 
         // operations
-        Node::UnaryKind { right, .. } => add_implicit_intersection(right, add),
+        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+            add_implicit_intersection(child, add)
+        }
         Node::OpConcatenateKind { .. }
         | Node::OpSumKind { .. }
         | Node::OpProductKind { .. }
@@ -249,7 +252,7 @@ pub fn remove_redundant_implicit_intersection(node: &mut Node, add: bool) {
             // Meaningful operator: keep it, but still clean any nested ones.
             remove_redundant_implicit_intersection(child, false);
         }
-        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
+        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
             remove_redundant_implicit_intersection(child, add);
         }
         Node::UnaryKind { right, .. } => remove_redundant_implicit_intersection(right, add),
@@ -288,7 +291,7 @@ pub enum StaticResult {
     Scalar,
     // The result of the evaluation is an array with dimensions (rows, columns)
     Array(i32, i32),
-    // The result of the evaluation is a range with dimensions (rows, columns)
+    // The result is a range of (rows - 1, columns - 1): a single cell is Range(0, 0) (Array holds counts)
     Range(i32, i32),
     // The result of the evaluation is unknown, we cannot guaranty it is a scalar, an array or a range
     Unknown,
@@ -335,19 +338,17 @@ fn static_analysis_op_results(lhs: StaticResult, rhs: StaticResult) -> StaticRes
 //  * Unknown if we cannot guaranty either
 pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
     match node {
+        // A parse error and a wrong reference could be Unknown too (or Array for a range).
         Node::BooleanKind(_)
         | Node::NumberKind(_)
         | Node::StringKind(_)
         | Node::ErrorKind(_)
+        | Node::ParseErrorKind { .. }
+        | Node::WrongReferenceKind { .. }
+        | Node::WrongRangeKind { .. }
         | Node::EmptyArgKind => StaticResult::Scalar,
-        Node::UnaryKind { right, .. } => run_static_analysis_on_node(right),
-        Node::ParseErrorKind { .. } => {
-            // StaticResult::Unknown is also valid
-            StaticResult::Scalar
-        }
-        Node::WrongReferenceKind { .. } | Node::WrongRangeKind { .. } => {
-            // StaticResult::Unknown (or Array for a range) is also valid
-            StaticResult::Scalar
+        Node::UnaryKind { right: child, .. } | Node::Group { child, .. } => {
+            run_static_analysis_on_node(child)
         }
         Node::NamedFunctionKind { .. } => {
             // A named-function call invokes a LAMBDA (defined-name or LET-bound) whose
@@ -385,7 +386,6 @@ pub(crate) fn run_static_analysis_on_node(node: &Node) -> StaticResult {
         Node::NamedVariableKind { .. } | Node::ImplicitIntersection { .. } => StaticResult::Scalar,
         Node::FunctionKind { kind, args } => static_analysis_on_function(kind, args),
         Node::SpillRangeOperator { .. } => StaticResult::Unknown,
-        Node::GroupedRootKind { child } => run_static_analysis_on_node(child),
         Node::LambdaDefKind { .. } | Node::LambdaCallKind { .. } => StaticResult::Unknown,
     }
 }
@@ -469,11 +469,12 @@ fn static_analysis_index(_args: &[Node]) -> StaticResult {
 
 /// RANK's `ref` must be a reference: an array that is not one (`IF(A1:C1>0,A1:C1)`) makes the
 /// result a `#VALUE!` array of that array's shape, which spills (docs/excel-semantics/statistics.md,
-/// "RANK of a non-reference array"). References, including those INDEX, CHOOSE and OFFSET return
-/// (static `Unknown`), rank to a scalar.
+/// "RANK of a non-reference array"). A `ref` whose shape is `Unknown` (INDEX, CHOOSE, OFFSET, a
+/// defined name, `A1:<name>`) may still evaluate to such an array, so the result is `Unknown` too:
+/// a reference ranks to a 1x1 result, an array spills (probes/rank-unknown-shape-ref).
 fn static_analysis_rank(args: &[Node]) -> StaticResult {
     match args.get(1).map(run_static_analysis_on_node) {
-        Some(array @ StaticResult::Array(..)) => array,
+        Some(shape @ (StaticResult::Array(..) | StaticResult::Unknown)) => shape,
         _ => StaticResult::Scalar,
     }
 }
@@ -1707,7 +1708,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Choosecols => StaticResult::Unknown,
         Function::Chooserows => StaticResult::Unknown,
         Function::Expand => StaticResult::Unknown,
-        Function::Hlookup => not_implemented(args),
+        Function::Hlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Hstack => StaticResult::Unknown,
         Function::Hyperlink => StaticResult::Scalar,
         Function::Index => static_analysis_index(args),
@@ -1717,7 +1718,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Offset => static_analysis_offset(args),
         Function::Row => row_column::static_analysis_row_column(args, true),
         Function::Rows => not_implemented(args),
-        Function::Vlookup => not_implemented(args),
+        Function::Vlookup => aggregate::lookup_static_result(args), // T-0270, T-1269
         Function::Vstack => StaticResult::Unknown,
         Function::Wrapcols => StaticResult::Unknown,
         Function::Wraprows => StaticResult::Unknown,
@@ -1798,8 +1799,7 @@ fn static_analysis_on_function(kind: &Function, args: &[Node]) -> StaticResult {
         Function::Searchb => scalar_arguments(args),
         Function::Upper => scalar_arguments(args),
         Function::Value => not_implemented(args),
-        // Only the value lifts; the format is read as a scalar.
-        Function::Valuetotext => scalar_arguments(&args[..args.len().min(1)]),
+        Function::Valuetotext => scalar_arguments(args),
         Function::Average => not_implemented(args),
         Function::Averagea => not_implemented(args),
         Function::Avedev => not_implemented(args),

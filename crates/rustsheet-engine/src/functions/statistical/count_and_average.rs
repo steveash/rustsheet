@@ -30,12 +30,12 @@ impl Model {
                 // (probes/average-value-args F2, F6, F9, F15, F17).
                 RefArg::Value(CalcResult::EmptyArg) => f(0.0),
                 RefArg::Value(CalcResult::Boolean(value))
-                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
                 {
                     f(if value { 1.0 } else { 0.0 });
                 }
                 RefArg::Value(CalcResult::String(value))
-                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
                 {
                     f(self.cast_aggregate_arg_to_number(CalcResult::String(value), cell)?);
                 }
@@ -114,7 +114,7 @@ impl Model {
                     f(if value { 1.0 } else { 0.0 });
                 }
                 RefArg::Value(CalcResult::String(_))
-                    if matches!(arg, Node::ReferenceKind { .. }) =>
+                    if matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
                 {
                     f(0.0);
                 }
@@ -218,7 +218,7 @@ impl Model {
         let mut count = 0.0;
         let mut sum = 0.0;
         for arg in args {
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if let Err(error) =
                         self.for_each_cell_in_areas(&areas, cell, |_, value| match value {
@@ -259,7 +259,7 @@ impl Model {
                     sum += value;
                 }
                 RefArg::Value(CalcResult::String(s)) => {
-                    if let Node::ReferenceKind { .. } = arg {
+                    if let Node::ReferenceKind { .. } = arg.ungrouped() {
                         // Do nothing
                         count += 1.0;
                     } else if let Some(error) = Self::aggregate_text_too_long(&s, cell) {

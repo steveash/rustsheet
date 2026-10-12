@@ -172,7 +172,7 @@ impl Model {
             return CalcResult::new_args_number_error(cell);
         }
 
-        let lookup_value = self.evaluate_node_in_context(&args[0], cell);
+        let lookup_value = self.lookup_value_arg(&args[0], cell);
         if lookup_value.is_error() {
             return lookup_value;
         }

@@ -163,7 +163,10 @@ fn nested_unions_at_the_limit_parse_evaluate_and_print() {
     on_small_stack(|| {
         // T-0134: the union is one more parser and evaluator frame per level.
         let formula = nested("(", "A1", ",A1)", MAX_UNION_NESTING);
-        assert!(matches!(parse(&formula), Node::OpUnionKind { .. }));
+        assert!(matches!(
+            parse(&formula).ungrouped(),
+            Node::OpUnionKind { .. }
+        ));
         assert!(is_too_deep(&parse(&nested(
             "(",
             "A1",
@@ -171,7 +174,10 @@ fn nested_unions_at_the_limit_parse_evaluate_and_print() {
             MAX_UNION_NESTING + 1
         ))));
         let right = nested("(A1,", "A1", ")", MAX_UNION_NESTING);
-        assert!(matches!(parse(&right), Node::OpUnionKind { .. }));
+        assert!(matches!(
+            parse(&right).ungrouped(),
+            Node::OpUnionKind { .. }
+        ));
         let mut model = crate::test::util::new_empty_model();
         model._set("B1", &format!("={formula}"));
         model._set("B2", &format!("={right} A1"));
@@ -231,11 +237,12 @@ fn operator_chains_as_long_as_excel_allows_evaluate_and_print() {
             assert_eq!(model._get_text(cell), *expected, "{cell}");
             assert_eq!(model._get_formula(cell), format!("={formula}"), "{cell}");
         }
-        // A power chain prints each left operand in parentheses, `=(1^1)^1`.
-        model._set("A3", &format!("={}", chain("^", EXCEL_LONGEST_CHAIN)));
+        // A power chain prints as written, `=1^1^1` (probes/power-chain-text, T-1331).
+        let power = format!("={}", chain("^", EXCEL_LONGEST_CHAIN));
+        model._set("A3", &power);
         model.evaluate();
         assert_eq!(model._get_text("A3"), "1");
-        assert!(model._get_formula("A3").ends_with("1)^1)^1"));
+        assert_eq!(model._get_formula("A3"), power);
         // A chain of references evaluates, and moves with its cell.
         let references = vec!["A1"; EXCEL_LONGEST_CHAIN].join("+");
         model._set("B1", &format!("={references}"));

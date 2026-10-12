@@ -29,7 +29,9 @@ fn convert_temperature(
         Temperature::Celsius => value + 273.15,
         Temperature::Rankine => 5.0 * value / 9.0,
         Temperature::Reaumur => 5.0 * value / 4.0 + 273.15,
-        Temperature::Fahrenheit => 5.0 / 9.0 * (value + 459.67),
+        // Excel: ironcalc-calc ENGINEERING/CONVERT.xlsx Temperature!C4 `CONVERT(1,"F","K")` is
+        // 255.92777777777775, which only this order gives.
+        Temperature::Fahrenheit => (value - 32.0) * 5.0 / 9.0 + 273.15,
     };
 
     match to_temperature {
@@ -97,7 +99,7 @@ impl Model {
 
         let weight = HashMap::from([
             ("g", 1.0),
-            ("sg", 14593.9029372064),
+            ("sg", 14593.902937206363),
             ("lbm", 453.59237),
             ("u", 1.660538782E-24),
             ("ozm", 28.349523125),
@@ -125,12 +127,12 @@ impl Model {
             ("ang", 0.0000000001),
             ("ell", 1.143),
             ("ly", 9460730472580800.0),
-            ("parsec", 30856775812815500.0),
-            ("pc", 30856775812815500.0),
-            ("Picapt", 0.000352777777777778),
-            ("Pica", 0.000352777777777778),
-            ("pica", 0.00423333333333333),
-            ("survey_mi", 1609.34721869444),
+            ("parsec", 3.0856775812815532e+16),
+            ("pc", 3.0856775812815532e+16),
+            ("Picapt", 0.0003527777777777778),
+            ("Pica", 0.0003527777777777778),
+            ("pica", 0.004233333333333334),
+            ("survey_mi", 1609.3472186944373),
         ]);
         units.insert("distance", distance);
         let time = HashMap::from([
@@ -152,39 +154,43 @@ impl Model {
             ("atm", 101325.0),
             ("at", 101325.0),
             ("mmHg", 133.322),
-            ("psi", 6894.75729316836),
-            ("Torr", 133.322368421053),
+            ("psi", 6894.757293168362),
+            ("Torr", 133.32236842105263),
         ]);
         units.insert("pressure", pressure);
+        // Force factors are in dynes (N = 1e5): Excel's internal base, the only one that reproduces
+        // every cached cell (docs/excel-semantics/engineering.md "CONVERT constants and evaluation
+        // order"). Every factor here and below is the double fitted to CONVERT.xlsx (T-0922).
         let force = HashMap::from([
-            ("N", 1.0),
-            ("dyn", 0.00001),
-            ("dy", 0.00001),
-            ("lbf", 4.4482216152605),
-            ("pond", 0.00980665),
+            ("N", 100000.0),
+            ("dyn", 1.0),
+            ("dy", 1.0),
+            ("lbf", 444822.16152605007),
+            ("pond", 980.665),
         ]);
         units.insert("force", force);
 
+        // Energy factors are in ergs (J = 1e7), Excel's internal base (see `force`).
         let energy = HashMap::from([
-            ("J", 1.0),
-            ("e", 0.0000001),
-            ("c", 4.184),
-            ("cal", 4.1868),
-            ("eV", 1.602176487E-19),
-            ("ev", 1.602176487E-19),
-            ("HPh", 2684519.53769617),
-            ("hh", 2684519.53769617),
-            ("Wh", 3600.0),
-            ("wh", 3600.0),
-            ("flb", 1.3558179483314),
-            ("BTU", 1055.05585262),
-            ("btu", 1055.05585262),
+            ("J", 10000000.0),
+            ("e", 1.0),
+            ("c", 41840000.0),
+            ("cal", 41868000.0),
+            ("eV", 1.602176487e-12),
+            ("ev", 1.602176487e-12),
+            ("HPh", 26845195376961.73),
+            ("hh", 26845195376961.73),
+            ("Wh", 36000000000.0),
+            ("wh", 36000000000.0),
+            ("flb", 13558179.483314004),
+            ("BTU", 10550558526.2),
+            ("btu", 10550558526.2),
         ]);
         units.insert("energy", energy);
 
         let power = HashMap::from([
-            ("HP", 745.69987158227),
-            ("h", 745.69987158227),
+            ("HP", 745.6998715822702),
+            ("h", 745.6998715822702),
             ("PS", 735.49875),
             ("W", 1.0),
             ("w", 1.0),
@@ -194,76 +200,78 @@ impl Model {
         let magnetism = HashMap::from([("T", 1.0), ("ga", 0.0001)]);
         units.insert("magnetism", magnetism);
 
+        // Volume factors are in litres (m3 = 1000), Excel's internal base (see `force`).
         let volume = HashMap::from([
-            ("tsp", 0.00000492892159375),
-            ("tspm", 0.000005),
-            ("tbs", 0.00001478676478125),
-            ("oz", 0.0000295735295625),
-            ("cup", 0.0002365882365),
-            ("pt", 0.000473176473),
-            ("us_pt", 0.000473176473),
-            ("uk_pt", 0.00056826125),
-            ("qt", 0.000946352946),
-            ("uk_qt", 0.0011365225),
-            ("gal", 0.003785411784),
-            ("uk_gal", 0.00454609),
-            ("l", 0.001),
-            ("L", 0.001),
-            ("lt", 0.001),
-            ("ang3", 1E-30),
-            ("ang^3", 1E-30),
-            ("barrel", 0.158987294928),
-            ("bushel", 0.03523907016688),
-            ("ft3", 0.028316846592),
-            ("ft^3", 0.028316846592),
-            ("in3", 0.000016387064),
-            ("in^3", 0.000016387064),
-            ("ly3", 8.46786664623715E+47),
-            ("ly^3", 8.46786664623715E+47),
-            ("m3", 1.0),
-            ("m^3", 1.0),
-            ("mi3", 4168181825.44058),
-            ("mi^3", 4168181825.44058),
-            ("yd3", 0.764554857984),
-            ("yd^3", 0.764554857984),
-            ("Nmi3", 6352182208.0),
-            ("Nmi^3", 6352182208.0),
-            ("Picapt3", 4.39039566186557E-11),
-            ("Picapt^3", 4.39039566186557E-11),
-            ("Pica3", 4.39039566186557E-11),
-            ("Pica^3", 4.39039566186557E-11),
-            ("GRT", 2.8316846592),
-            ("regton", 2.8316846592),
-            ("MTON", 1.13267386368),
+            ("tsp", 0.00492892159375),
+            ("tspm", 0.005),
+            ("tbs", 0.01478676478125),
+            ("oz", 0.0295735295625),
+            ("cup", 0.2365882365),
+            ("pt", 0.473176473),
+            ("us_pt", 0.473176473),
+            ("uk_pt", 0.56826125),
+            ("qt", 0.946352946),
+            ("uk_qt", 1.1365225),
+            ("gal", 3.785411784),
+            ("uk_gal", 4.54609),
+            ("l", 1.0),
+            ("L", 1.0),
+            ("lt", 1.0),
+            ("ang3", 1e-27),
+            ("ang^3", 1e-27),
+            ("barrel", 158.987294928),
+            ("bushel", 35.23907016688),
+            ("ft3", 28.316846592),
+            ("ft^3", 28.316846592),
+            ("in3", 0.016387064),
+            ("in^3", 0.016387064),
+            ("ly3", 8.467866646237152e+50),
+            ("ly^3", 8.467866646237152e+50),
+            ("m3", 1000.0),
+            ("m^3", 1000.0),
+            ("mi3", 4168181825440.5796),
+            ("mi^3", 4168181825440.5796),
+            ("yd3", 764.554857984),
+            ("yd^3", 764.554857984),
+            ("Nmi3", 6352182208000.0),
+            ("Nmi^3", 6352182208000.0),
+            ("Picapt3", 4.39039566186557e-08),
+            ("Picapt^3", 4.39039566186557e-08),
+            ("Pica3", 4.39039566186557e-08),
+            ("Pica^3", 4.39039566186557e-08),
+            ("GRT", 2831.6846592),
+            ("regton", 2831.6846592),
+            ("MTON", 1132.67386368),
         ]);
         units.insert("volume", volume);
 
+        // Area factors are in square angstroms (m2 = 1e20), Excel's internal base (see `force`).
         let area = HashMap::from([
-            ("uk_acre", 4046.8564224),
-            ("us_acre", 4046.87260987425),
-            ("ang2", 1E-20),
-            ("ang^2", 1E-20),
-            ("ar", 100.0),
-            ("ft2", 0.09290304),
-            ("ft^2", 0.09290304),
-            ("ha", 10000.0),
-            ("in2", 0.00064516),
-            ("in^2", 0.00064516),
-            ("ly2", 8.95054210748189E+31),
-            ("ly^2", 8.95054210748189E+31),
-            ("m2", 1.0),
-            ("m^2", 1.0),
-            ("Morgen", 2500.0),
-            ("mi2", 2589988.110336),
-            ("mi^2", 2589988.110336),
-            ("Nmi2", 3429904.0),
-            ("Nmi^2", 3429904.0),
-            ("Picapt2", 0.000000124452160493827),
-            ("Pica2", 0.000000124452160493827),
-            ("Pica^2", 0.000000124452160493827),
-            ("Picapt^2", 0.000000124452160493827),
-            ("yd2", 0.83612736),
-            ("yd^2", 0.83612736),
+            ("uk_acre", 4.0468564224e+23),
+            ("us_acre", 4.046872609874252e+23),
+            ("ang2", 1.0),
+            ("ang^2", 1.0),
+            ("ar", 1e+22),
+            ("ft2", 9.290304e+18),
+            ("ft^2", 9.290304e+18),
+            ("ha", 1e+24),
+            ("in2", 6.4516e+16),
+            ("in^2", 6.4516e+16),
+            ("ly2", 8.950542107481889e+51),
+            ("ly^2", 8.950542107481889e+51),
+            ("m2", 1e+20),
+            ("m^2", 1e+20),
+            ("Morgen", 2.5e+23),
+            ("mi2", 2.589988110336e+26),
+            ("mi^2", 2.589988110336e+26),
+            ("Nmi2", 3.429904e+26),
+            ("Nmi^2", 3.429904e+26),
+            ("Picapt2", 12445216049382.715),
+            ("Pica2", 12445216049382.715),
+            ("Pica^2", 12445216049382.715),
+            ("Picapt^2", 12445216049382.715),
+            ("yd2", 8.3612736e+19),
+            ("yd^2", 8.3612736e+19),
         ]);
         units.insert("area", area);
 
@@ -271,10 +279,10 @@ impl Model {
         units.insert("information", information);
 
         let speed = HashMap::from([
-            ("admkn", 0.514773333333333),
-            ("kn", 0.514444444444444),
-            ("m/h", 0.000277777777777778),
-            ("m/hr", 0.000277777777777778),
+            ("admkn", 0.5147733333333333),
+            ("kn", 0.5144444444444445),
+            ("m/h", 0.0002777777777777778),
+            ("m/hr", 0.0002777777777777778),
             ("m/s", 1.0),
             ("m/sec", 1.0),
             ("mph", 0.44704),
@@ -311,8 +319,12 @@ impl Model {
             }
         }
 
-        let mut to_unit_prefix = 1.0;
-        let mut from_unit_prefix = 1.0;
+        // A unit's factor (in its class's internal base) and its prefix scale are kept apart:
+        // Excel applies the prefix last (see the end of this function).
+        let mut to_unit_factor = 1.0;
+        let mut from_unit_factor = 1.0;
+        let mut to_unit_scale = 1.0;
+        let mut from_unit_scale = 1.0;
 
         // kind of units (weight, distance, time, ...)
         let mut to_unit_kind = "";
@@ -326,7 +338,7 @@ impl Model {
                 if let Some(pk) = from_unit.strip_suffix(unit_name) {
                     if pk.is_empty() {
                         from_unit_kind = name;
-                        from_unit_prefix = 1.0 * unit_value;
+                        from_unit_factor = *unit_value;
                         from_unit_name = unit_name;
                     } else if let Some(modifier) = prefix.get(pk) {
                         if mks.contains(&unit_name) && !all_units.contains(&from_unit.as_str()) {
@@ -343,7 +355,8 @@ impl Model {
                                 *modifier
                             };
                             from_unit_kind = name;
-                            from_unit_prefix = scale * unit_value;
+                            from_unit_factor = *unit_value;
+                            from_unit_scale = scale;
                             from_unit_name = unit_name;
                         }
                     }
@@ -351,7 +364,7 @@ impl Model {
                 if let Some(pk) = to_unit.strip_suffix(unit_name) {
                     if pk.is_empty() {
                         to_unit_kind = name;
-                        to_unit_prefix = 1.0 * unit_value;
+                        to_unit_factor = *unit_value;
                         to_unit_name = unit_name;
                     } else if let Some(modifier) = prefix.get(pk) {
                         if mks.contains(&unit_name) && !all_units.contains(&to_unit.as_str()) {
@@ -363,7 +376,8 @@ impl Model {
                                 *modifier
                             };
                             to_unit_kind = name;
-                            to_unit_prefix = scale * unit_value;
+                            to_unit_factor = *unit_value;
+                            to_unit_scale = scale;
                             to_unit_name = unit_name;
                         }
                     }
@@ -408,10 +422,19 @@ impl Model {
                     return CalcResult::new_error(Error::ERROR, cell, "Internal error".to_string());
                 }
             };
-            let t = convert_temperature(value * from_unit_prefix, from_temperature, to_temperature)
-                / to_unit_prefix;
+            let t = convert_temperature(
+                value * (from_unit_scale * from_unit_factor),
+                from_temperature,
+                to_temperature,
+            ) / (to_unit_scale * to_unit_factor);
             return CalcResult::Number(t);
         }
-        CalcResult::Number(value * from_unit_prefix / to_unit_prefix)
+        // Excel: the value is multiplied by the from-factor, divided by the to-factor, and only then
+        // scaled by the prefixes, in that order (docs/excel-semantics/engineering.md "CONVERT
+        // constants and evaluation order"; ironcalc-calc ENGINEERING/CONVERT.xlsx, e.g. Volume!J17
+        // `CONVERT(0.0002,"Mang3","m3")` = 2.0000000000000002E-16).
+        CalcResult::Number(
+            value * from_unit_factor / to_unit_factor * from_unit_scale / to_unit_scale,
+        )
     }
 }

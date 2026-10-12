@@ -15,8 +15,10 @@ use serde::{Deserialize, Serialize};
 use crate::cellref::{parse_range, Addr};
 use crate::value::Value;
 use rustsheet_engine::expressions::utils::shift::shift_formula_text;
+use rustsheet_engine::types::DateSystem;
 use rustsheet_xlsx::import::{
-    decode_xlsx_escapes, iso8601_to_serial, rich_errors, ImportLimits, PartNames,
+    date_system_from_attribute, decode_xlsx_escapes, iso8601_to_serial, rich_errors, ImportLimits,
+    PartNames,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -409,7 +411,8 @@ fn parse_workbook(xml: &str) -> Result<(Vec<SheetRef>, bool, Vec<RawName>), Snap
                     }
                 }
                 "workbookPr" => {
-                    date1904 = matches!(attr(&e, "date1904").as_deref(), Some("1" | "true"));
+                    date1904 = date_system_from_attribute(attr(&e, "date1904").as_deref())
+                        == DateSystem::Excel1904;
                 }
                 _ => {}
             },

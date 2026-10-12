@@ -20,7 +20,7 @@ impl Model {
                     result += 1.0;
                 }
                 RefArg::Value(CalcResult::Boolean(_))
-                    if !matches!(arg, Node::ReferenceKind { .. }) =>
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) =>
                 {
                     result += 1.0;
                 }
@@ -31,7 +31,7 @@ impl Model {
                 // number-ness matters, so the 15-digit cut cannot change the answer
                 // (docs/excel-semantics/numbers.md "15-digit literal parsing").
                 RefArg::Value(CalcResult::String(s))
-                    if !matches!(arg, Node::ReferenceKind { .. })
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. })
                         && self.cast_number(&s).is_some_and(f64::is_finite) =>
                 {
                     result += 1.0;
@@ -71,7 +71,11 @@ impl Model {
         for arg in args {
             // A reference, 3-D ones included, arrives as a Range: its non-empty cells count.
             match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Value(CalcResult::EmptyCell | CalcResult::EmptyArg) => {}
+                RefArg::Value(CalcResult::EmptyCell) => {}
+                // Excel: an omitted argument and the empty value IFERROR/IFNA give for a blank
+                // cell both count (COUNTA(,) = 2, COUNTA(IFERROR(B1,1)) = 1), unlike a blank
+                // reference; see docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is an empty value".
+                RefArg::Value(CalcResult::EmptyArg) => result += 1.0,
                 RefArg::Ranges(areas) => {
                     if let Err(error) =
                         self.for_each_cell_or_error_in_areas(&areas, cell, |_, value| {
@@ -113,8 +117,15 @@ impl Model {
                 // by LET (probes/3d-ref-let-bound-span-readers C11); one area is a range.
                 self.evaluate_reference_arg(arg, cell)
                     .into_single_sheet_area(cell)
-            } else {
+            } else if is_span_or_if_of_span(arg) {
                 self.evaluate_single_sheet_arg(arg, cell)
+            } else {
+                // Read once in reference context, so a reference to one error cell (also through
+                // CHOOSE, INDEX, OFFSET, XLOOKUP or TAKE) is a range that counts 0, while an error
+                // value is the result (probes/countblank-error-cell-refs, countblank-error-forms-b,
+                // countblank-choose-errors).
+                self.evaluate_picked_reference_arg(arg, cell)
+                    .into_single_sheet_area(cell)
             };
             // A name that is not a reference is an error, never a count: an error literal or a
             // formula body gives its own error, any other formula value `#VALUE!`, `=""`
@@ -179,16 +190,10 @@ impl Model {
                     let side = |first: i32, last: i32| f64::from(last - first + 1);
                     result += side(left.row, right.row) * side(left.column, right.column) - filled;
                 }
-                // Only the 3-D reference and union errors; other errors count nothing, as before.
-                error @ CalcResult::Error {
-                    error: Error::VALUE,
-                    ..
-                } if is_span_or_if_of_span(arg)
-                    || matches!(arg, Node::SheetSpanKind { .. })
-                    || self.is_multi_area(arg) =>
-                {
-                    return error;
-                }
+                // An argument that is an error gives that error: a span with a missing end
+                // (`#NAME?`), `CHOOSE(1,NA())`, an empty intersection (`#NULL!`), a 3-D or union
+                // `#VALUE!` (probes/countblank-choose-errors, excel-graph 2026-10-10, T-1181).
+                error @ CalcResult::Error { .. } => return error,
                 _ => {}
             };
         }

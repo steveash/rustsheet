@@ -10,7 +10,7 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    functions::Function,
+    functions::{util::is_at_if, Function},
     model::Model,
 };
 
@@ -269,6 +269,23 @@ pub(crate) fn three_d_needs_one_sheet(cell: CellReferenceIndex) -> CalcResult {
     )
 }
 
+/// The smallest range holding every area of a union (all on one sheet, corners in order).
+fn bounding_area(areas: &[Range]) -> CalcResult {
+    let mut bounds = areas.iter();
+    // Callers pass at least one area (a union has two or more); the empty arm is never taken.
+    let Some(first) = bounds.next() else {
+        return CalcResult::EmptyCell;
+    };
+    let (mut left, mut right) = (first.left, first.right);
+    for area in bounds {
+        left.row = left.row.min(area.left.row);
+        left.column = left.column.min(area.left.column);
+        right.row = right.row.max(area.right.row);
+        right.column = right.column.max(area.right.column);
+    }
+    CalcResult::Range { left, right }
+}
+
 /// `#VALUE!` for a reference of several areas where one area is needed.
 fn several_areas(cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::VALUE, cell, "Reference of several areas".to_string())
@@ -322,7 +339,7 @@ impl Model {
     /// value (`=ANCHORARRAY(@1)`) is `#VALUE!` in Excel (probes/colon-hash-value-operands D3,
     /// T-1226).
     pub(crate) fn spill_anchor_error(child: &Node, cell: CellReferenceIndex) -> CalcResult {
-        let error = if matches!(child, Node::ImplicitIntersection { .. }) {
+        let error = if matches!(child.ungrouped(), Node::ImplicitIntersection { .. }) {
             Error::VALUE
         } else {
             Error::ERROR
@@ -334,15 +351,31 @@ impl Model {
         )
     }
 
+    /// The error of a spill range operator whose anchor is a multi-cell range: `#REF!`, plain or
+    /// picked by an IF (`ANCHORARRAY(D1:D3)`, `ANCHORARRAY(IF(TRUE,A1:B2))`,
+    /// probes/anchorarray-if-operands G1, P1, S1, T1; T-1369).
+    pub(crate) fn spill_anchor_range_error(cell: CellReferenceIndex) -> CalcResult {
+        CalcResult::new_error(
+            Error::REF,
+            cell,
+            format!("Error with Spill Range Operator in cell {cell:?}"),
+        )
+    }
+
     /// The error of a reference on a sheet that does not exist: `#REF!`, but `#NAME?` when the prefix
     /// is a 3-D span `First:Last` (a `:` cannot occur in a sheet name) whose end is not a sheet:
     /// `=SUM(Data1:Nope!A1)` and `=SUM(Nope:Data3!A1)` (probes/3d-ref-span-edges A1, A2; T-1170).
+    /// A prefix with a `[` (which a sheet name cannot hold) names another workbook, which is never
+    /// opened (directive 5): `#BLOCKED!`, as Excel gives one it holds no cached data for
+    /// (docs/excel-semantics/references.md "External reference with no cached data"; T-0124).
     pub(crate) fn wrong_sheet_error(
         sheet_name: Option<&str>,
         cell: CellReferenceIndex,
         message: &str,
     ) -> CalcResult {
-        let error = if sheet_name.is_some_and(|name| name.contains(':')) {
+        let error = if sheet_name.is_some_and(|name| name.contains('[')) {
+            Error::BLOCKED
+        } else if sheet_name.is_some_and(|name| name.contains(':')) {
             Error::NAME
         } else {
             Error::REF
@@ -358,35 +391,91 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(args, cell, true),
+            } => self.index_impl(
+                args,
+                cell,
+                crate::functions::lookup_and_reference::IndexForm::Reference,
+            ),
+            // `ANCHORARRAY(@INDEX(D1:D2,1))` spills D1#: the `@` of a one-cell reference keeps
+            // the reference (probes/anchorarray-at-operand-kinds H81, T-1247). The operand is
+            // evaluated once and intersected, so nested `@INDEX` stays linear (T-1321).
+            Node::ImplicitIntersection { child, .. }
+                if matches!(
+                    child.ungrouped(),
+                    Node::FunctionKind {
+                        kind: Function::Index,
+                        ..
+                    }
+                ) =>
+            {
+                let picked = self.eval_ref_or_index(child, cell);
+                Self::intersect_reference(picked, cell)
+            }
             _ => self.evaluate_node_with_reference(node, cell),
+        }
+    }
+
+    /// The operand of `#` and ANCHORARRAY: [`Model::eval_ref_or_index`], and the `@` of an IF
+    /// that picks one cell keeps the reference, so `ANCHORARRAY(@IF(TRUE,D1))` spills D1#
+    /// (probes/at-signed-operand H71:H73, T-1321). Also LOOKUP's result_vector, for `@IF`
+    /// only (probes/at-if-spill-anchor-operand H50, T-1368); the other lookup callers of
+    /// `eval_ref_or_index` have no evidence for `@IF`.
+    pub(crate) fn spill_anchor_operand(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+    ) -> CalcResult {
+        let node = node.ungrouped();
+        match node {
+            Node::ImplicitIntersection { child, .. } if is_at_if(node) => {
+                let picked = self
+                    .evaluate_reference_arg(child, cell)
+                    .into_single_area(cell);
+                Self::intersect_reference(picked, cell)
+            }
+            // A plain IF is the reference it picks: `IF(TRUE,D1)#` spills D1#
+            // (probes/written-parens-reference-context E20:E22, T-1363). Evaluated once, so
+            // nested IFs stay linear.
+            Node::FunctionKind {
+                kind: Function::If, ..
+            } => self
+                .evaluate_reference_arg(node, cell)
+                .into_single_area(cell),
+            _ => self.eval_ref_or_index(node, cell),
         }
     }
 
     /// An operand of `:`. An INDEX operand is the cell it selects, not its value
     /// (probes/text-result-limit-errors-refs C2, D2).
     pub(crate) fn range_operand(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::FunctionKind {
                 kind: Function::Index,
                 args,
-            } => self.index_impl(args, cell, true),
+            } => self.index_impl(
+                args,
+                cell,
+                crate::functions::lookup_and_reference::IndexForm::Reference,
+            ),
             // An IF corner is the reference it picks, on either side: `A1:IF(TRUE,B2)` is A1:B2
             // and `IF(TRUE,B2):A1` too; a picked value is `#VALUE!` (probes/isref-range-operands
-            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is `#VALUE!` (unprobed,
+            // D3, D7, D10, D11, E3, E7, E10-E13; T-1177). A picked union is its bounding box
+            // (`SUM(A1:IF(TRUE,(B3,B1)))` = A1:B3, probes/isref-if-range-corners D1, D2, D15-D18;
             // T-1227).
             Node::FunctionKind {
                 kind: Function::If, ..
-            } => self
-                .evaluate_reference_arg(node, cell)
-                .into_single_area(cell),
+            } => match self.evaluate_reference_arg(node, cell) {
+                RefArg::Ranges(ranges @ Ranges::Areas(_)) => bounding_area(&ranges),
+                other => other.into_single_area(cell),
+            },
             // A name whose body is a formula, parenthesized or not, joins as what the body is
             // in reference context (`ig:B3`, probes/defined-name-grouped-reference A10, T-1173).
-            Node::GroupedRootKind { child } => self.range_operand(child, cell),
             Node::DefinedNameKind(..) if self.defined_name_formula(node).is_some() => {
                 self.defined_name_range_operand(node, cell)
             }
@@ -425,26 +514,16 @@ impl Model {
                 // too: with `rg` = `(Sheet1!$B$1:$B$2)`, `rg:B3` is B1:B3 and `ig:B3` (ig =
                 // `(INDEX(Sheet1!$B$1:$B$2,2))`) is B2:B3 (probes/defined-name-grouped-reference
                 // A10, A11, T-1173). Corner order: see references.md "Sheet-qualified range corners".
-                CalcResult::Range {
-                    left: CellReferenceIndex {
-                        sheet: left1.sheet,
-                        row: left1.row.min(right1.row).min(left2.row).min(right2.row),
-                        column: left1
-                            .column
-                            .min(right1.column)
-                            .min(left2.column)
-                            .min(right2.column),
+                bounding_area(&[
+                    Range {
+                        left: left1,
+                        right: right1,
                     },
-                    right: CellReferenceIndex {
-                        sheet: right2.sheet,
-                        row: left1.row.max(right1.row).max(left2.row).max(right2.row),
-                        column: left1
-                            .column
-                            .max(right1.column)
-                            .max(left2.column)
-                            .max(right2.column),
+                    Range {
+                        left: left2,
+                        right: right2,
                     },
-                }
+                ])
             }
             // An error operand's own error comes before the `#VALUE!`: `=(@(A1 B1)):C3` is
             // `#NULL!` (probes/at-operand-formulatext H12, T-1109). Excel passes the right
@@ -535,6 +614,7 @@ impl Model {
     /// refer to each other cannot recurse here (they are bounded when evaluated, by
     /// [`Model::within_defined_name`]).
     fn may_be_multi_area(&self, node: &Node, look_through_names: bool) -> bool {
+        let node = node.ungrouped();
         match node {
             // A LET variable, IF, CHOOSE and LET may stand for a union (probes/multiarea-let
             // H2, multiarea-ifchoose H1, multiarea-letbind H13:H14 and H16).
@@ -655,6 +735,7 @@ impl Model {
     ) -> Result<usize, CalcResult> {
         let mut count = 0;
         for node in [left, right] {
+            let node = node.ungrouped();
             count += match node {
                 Node::OpUnionKind { left, right, .. } => {
                     self.count_union_areas(left, right, cell, budget)?
@@ -677,6 +758,7 @@ impl Model {
         cell: CellReferenceIndex,
         budget: &mut usize,
     ) -> Result<Vec<Range>, CalcResult> {
+        let node = node.ungrouped();
         match node {
             Node::OpUnionKind { left, right, .. } => self.union_areas(left, right, cell, budget),
             Node::OpIntersectKind { left, right, .. } => {
@@ -781,6 +863,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> Result<Range, CalcResult> {
+        let node = node.ungrouped();
         let reference_form = match node {
             Node::FunctionKind { kind, args } => self.evaluate_reference_form(kind, args, cell),
             _ => None,

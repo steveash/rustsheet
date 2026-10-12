@@ -102,6 +102,10 @@ pub struct SheetSpec {
     /// Tables (`ListObject`s) on the sheet, header row first (T-1036).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tables: Vec<TableSpec>,
+    /// A1 address → number format code (`"[h]:mm"`), applied to that cell whatever it holds
+    /// (T-1268). spec2xlsx writes it as the cell's `numFmt`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub number_formats: BTreeMap<String, String>,
 }
 
 /// A table in a spec sheet. spec2xlsx gives a filtered table a values filter that keeps exactly
@@ -125,6 +129,10 @@ pub struct CaseSpec {
     #[serde(default)]
     pub tags: Vec<String>,
     pub sheets: Vec<SheetSpec>,
+    /// The workbook's date system, `1900` (the default) or `1904` (`<workbookPr date1904="1"/>`;
+    /// SPEC-0005, T-1268). Any other value is refused when the case is built.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub date_system: Option<u16>,
     /// Workbook-scoped defined names: name → formula (e.g. `"=Sheet1!$A$1:$B$2"`).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub names: BTreeMap<String, String>,
@@ -138,6 +146,11 @@ pub struct CaseSpec {
     /// If set, only these cells are scored (otherwise every key in `expected`).
     #[serde(default)]
     pub check: Vec<String>,
+    /// Cells (`Sheet!A1`) that call a volatile function, or read a volatile cell, yet cannot
+    /// change value between runs (`RANDBETWEEN(5,5)`, `ISNUMBER(NOW())`). They are scored instead
+    /// of skipped as volatile (T-1283); every listed cell must be a volatile formula cell.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub invariant: Vec<String>,
 }
 
 /// Provenance of oracle values.

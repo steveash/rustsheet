@@ -110,6 +110,8 @@ impl Model {
         node: &Node,
         cell: &CellReferenceIndex,
     ) -> Option<Units> {
+        // Written parentheses do not change a formula's units: `=(A1)*2` (SPEC-0007).
+        let node = node.ungrouped();
         match node {
             Node::ReferenceKind {
                 sheet_name: _,
@@ -205,7 +207,8 @@ impl Model {
             Node::OpPowerKind { .. } => None,
             Node::ImplicitIntersection { .. } => None,
             Node::SpillRangeOperator { .. } => None,
-            Node::GroupedRootKind { child } => self.compute_node_units(child, cell),
+            // Unreachable: peeled above.
+            Node::Group { .. } => None,
             Node::LambdaDefKind { .. } => None,
             Node::LambdaCallKind { .. } => None,
         }

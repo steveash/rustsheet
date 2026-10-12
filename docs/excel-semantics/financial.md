@@ -126,3 +126,56 @@ and later-date rules since T-1124. Its values still miss in the last digits (the
 The zero-first-value result and the date-0-first root (the engine does not converge there, `#NUM!`)
 are open (T-1155).
 Tasks: T-1114, T-1124
+
+## Financial function argument modes
+Rule: every scalar argument of the M9 financial functions lifts elementwise over an array literal: all 256
+`ROWS(F(..{v;v}..))` cells are 2, the dates, frequency, basis, type and guess arguments included. Over a two-cell
+range the core worksheet functions lift as well (DB, DDB, FV, IPMT, ISPMT, MIRR, NPER, NPV's rate, PDURATION, PMT,
+PPMT, PV, RATE, RRI, SLN, SYD, VDB and IRR's guess: `ROWS(F(G1:G2,..))` is 2). The Analysis ToolPak functions do not:
+ACCRINT, ACCRINTM, AMORDEGRC, AMORLINC, the COUP* family, CUMIPMT, CUMPRINC, DISC, DOLLARDE, DOLLARFR, DURATION,
+EFFECT, FVSCHEDULE's principal, INTRATE, MDURATION, NOMINAL, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD, PRICE,
+PRICEDISC, PRICEMAT, RECEIVED, TBILLEQ, TBILLPRICE, TBILLYIELD, XIRR's guess, XNPV's rate, YIELD, YIELDDISC and YIELDMAT
+are `#VALUE!` when their first scalar argument is a multi-cell range. Only the first scalar was probed over a range (XIRR's guess
+and XNPV's rate are the first scalars there). How the later scalars behave over a range is unverified.
+NPV's values work like an aggregate. A range skips text, booleans and blanks: `NPV(0.1,L1:L8)` over
+-10000, "2750", TRUE, 4250, "x", blank, 3250, 2750 is -1258.4522915101434, the NPV of -10000, 4250, 3250, 2750.
+Typed arguments are coerced: `NPV(0.1,-10000,"2750",TRUE,4250)` = -3914.6233180793665, the NPV of
+-10000, 2750, 1, 4250. Typed non-numeric text is `#VALUE!` (`NPV(0.1,-10000,"x",4250)`). An array literal is taken
+whole (`NPV(0.1,{-10000,2750,4250,3250,2750})` = 302.233453999042, as for the range), and so is a values array,
+which does not lift: `ROWS(NPV(0.1,{1;2}))` is 1.
+IRR and MIRR skip text, booleans and blanks in a range, and IRR skips text inside an array literal too:
+`IRR({-10000,"2750",4250,3250,2750})` = `IRR(L1:L8)` = 0.013442343703144344, the IRR of -10000, 4250, 3250, 2750.
+With text and a boolean in the values, XNPV is `#NUM!` and XIRR is `#VALUE!`: `XNPV(0.09,L1:L5,M1:M5)` vs
+`XIRR(L1:L5,M1:M5)`. FVSCHEDULE's schedule is `#VALUE!` with a text cell (`FVSCHEDULE(1000,N1:N2)` over 0.09, "0.11")
+or text in an array literal (`{0.09,"0.11"}`). A plain number is a one-rate schedule: `FVSCHEDULE(1000,0.09)` = 1090.
+These set the generator modes in eval/catalog/functions.yaml. Scalars are `value`, NPV's values are `aggregate`,
+and IRR's and MIRR's values, XNPV's and XIRR's values and dates, and FVSCHEDULE's schedule are `array`.
+Evidence: probes/fin-argument-modes (386 cells, excel-graph, 2026-10-11, T-1084). The cash flow is K1:K5 and its
+dates are M1:M5. L1:L8 is the same flow with typed text, a boolean, text and a blank mixed in, and N1:N5 is a
+schedule containing text.
+Ours: no scalar argument lifts (`#N/IMPL!` for an array literal, `#VALUE!` for a range; T-1372). NPV of an array
+literal is 0, and typed text and booleans are not coerced (T-1373). FVSCHEDULE ignores text in the schedule (T-1373).
+The base values of CUMIPMT, DB, DDB, DURATION, INTRATE, MDURATION, ODDFPRICE, PRICE and YIELDDISC are 1 to a few
+ulps off, CUMPRINC and EFFECT about 30-40 ulps, and those of ODDFYIELD, TBILLEQ and YIELD are off at 1e-10 to 1e-12 relative (T-1374). The
+annuity, NPV and solver misses are T-0901's and T-0916's.
+Status: VERIFIED (excel-graph)
+Tasks: T-1084, T-1372, T-1373, T-1374
+
+## PMT when (1+rate)^nper overflows
+Rule: `PMT(100,184,439103)` is not an error, although 101^184 overflows a double: `FLOOR(PMT(100,184,439103),<#DIV/0!>)`
+is `#DIV/0!` (inferred: FLOOR returns its first argument's error first). The value is unprobed (the limit is -pv*rate =
+-43910300).
+Evidence: gen-m9/3b8e9078261b5bd2 Calc!A34 (excel-graph, 2026-10-12, T-1289).
+Ours: `#NUM!`.
+Status: UNVERIFIED (inferred from one cell; T-1405 probes the value and the FLOOR error order)
+Tasks: T-1405
+
+## Analysis ToolPak securities functions check frequency and dates first
+Rule: COUPDAYSNC with an invalid frequency is `#NUM!` even when its basis argument is an error:
+`COUPDAYSNC(37342,46362,-0.0001,<#DIV/0!>)` is `#NUM!`. TBILLEQ with a negative maturity serial is `#NUM!` even when the
+discount is a TEXTSPLIT result (text or an error): `TBILLEQ(38887,1e-15-2,TEXTSPLIT("a*",A1:D2))` is `#NUM!`
+(gen-m9/4df1b22d3ed63f58 Calc!A20); that dates come before the discount is inferred from this one cell. The general order (which argument errors still win) is unprobed.
+Evidence: gen-m9/0c7fc447bc2eebfd Calc!A24, gen-m9/4df1b22d3ed63f58 Calc!A20 (excel-graph, 2026-10-12, T-1289).
+Ours: the basis error (`#DIV/0!`) and `#VALUE!` for the text discount.
+Status: VERIFIED (web) for these two shapes; the general order UNVERIFIED
+Tasks: T-1406

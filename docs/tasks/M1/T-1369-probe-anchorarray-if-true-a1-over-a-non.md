@@ -1,0 +1,27 @@
+---
+id: T-1369
+title: "probe ANCHORARRAY(IF(TRUE,A1)) over a non-spill cell and ANCHORARRAY(@IF(TRUE,D1))"
+milestone: M1
+lane: functions-lookup
+status: done
+priority: P3
+size: S
+tier: sonnet
+depends_on: []
+---
+
+## Goal
+Excel's result for `=ANCHORARRAY(IF(TRUE,A1))` with a plain-value A1, and for `=ANCHORARRAY(IF(TRUE,D1:D3))`, is recorded as oracle evidence and the engine matches it.
+
+## Context
+T-1363 made a plain IF that picks a reference the operand of `#`/ANCHORARRAY (`spill_anchor_operand`). Only the one-cell IF over a real spill anchor is evidenced (probes/written-parens-reference-context E20:E22); these variants are unprobed. Use the excel-probe skill.
+
+## Acceptance criteria
+- [x] A probe case with oracle values for both variants (and `@IF(TRUE,D1)#` over a spill anchor) lands; engine mismatches are fixed or filed.
+- [x] `make check` green; reviewers approve.
+
+## Out of scope
+-
+
+## Outcome
+Probe probes/anchorarray-if-operands (21 cells, excel-graph). One mismatch class fixed: a multi-cell range anchor of `#`/ANCHORARRAY is `#REF!` (was `#ERROR!`, model.rs). The written `IF(TRUE,D1)#` forms are refused by excel-graph (desktop question, M14). Probes: +1 case, 0 new known failures.

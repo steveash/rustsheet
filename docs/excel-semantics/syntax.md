@@ -62,12 +62,33 @@ T-0147) for the accepted forms; each rejected form was sent as a single-cell wor
 RustSheet today: all of these forms are rejected (`parse_array_item` takes one sign directly attached to a number token; T-0156).
 Status: VERIFIED
 
+## Formulas over 8,192 characters refuse the workbook
+Rule: Excel for the web refuses a whole workbook holding a formula of more than 8,192 stored characters (ASCII; non-BMP text below; the
+`<f>` text without the leading `=`; createSession 501 `FileCorruptTryRepair`). A formula of 8,192 characters loads.
+RustSheet's xlsx importer refuses the same ASCII workbooks with `XlsxError::Workbook` (decision 0047).
+Evidence: T-1091, probe `operator-chain-limit` (T-1060), probes `formula-length-nonbmp-33pieces` and `name-body-length-*` (T-1386; two more inputs were dropped after the run because Excel cannot load them, so no sidecar can exist: LEN of 34 `&`-joined 120-emoji literals, and an 8,192-character `1+1+...+11` name body), all excel-graph; see "Formula nesting depth cap" below.
+Non-BMP text: a formula holding 33 concatenated 120-emoji literals loads (4,063 Unicode scalars, 8,023 UTF-16 code
+units) and one holding 34 is refused (4,186 scalars, 8,266 UTF-16 units; createSession 501), so, assuming the refusal is the length limit, Excel does not count
+Unicode scalars: it counts UTF-16 code units or something else above them (a formula of 8,024 to 8,265 UTF-16
+units is unprobed). The importer counts scalars and so accepts workbooks Excel refuses (T-1397).
+Defined names: a name body of 8,191 characters (`=1+1+...` stored without `=`) loads and one of 8,192 is refused, so
+the body limit is one below the 8,192 of a cell formula (bodies of 255, 256, 1,000, 4,000, 6,000 and 8,000 characters
+all load and evaluate). The importer has no name-body limit yet (T-1397).
+Unprobed: how the name-body limit counts non-BMP text (only ASCII bodies were probed), a name defined through the API, typed (API) formulas (the oracle builds workbooks from files; a manual Graph `range.formulas` call or desktop
+Excel is needed, deferred to M14 item 8 of T-1075, decision 0039), desktop Excel, and `_xHHHH_` escapes inside `<f>` text (the spec-to-xlsx
+writer cannot emit them raw; T-1075 item 8).
+Notes: the first attempts (a single string literal of 4,090 or 4,100 emoji) were refused as well; a string-literal length limit (unprobed; 255 characters is the published figure) is the likely cause for the literals, which is why the cases split them.
+Status: VERIFIED (excel-graph, file load)
+Implemented in: rustsheet-xlsx `import::sheet_data::check_formula_length`
+Tasks: T-1091, T-1093, T-1386, T-1397
+
 ## Formula nesting depth cap
 Rule: RustSheet rejects a formula whose tree is deeper than `MAX_FORMULA_DEPTH` (256) as a parse
 error ("Formula is nested too deeply"); typed into a cell through the API it is refused
 (`EditError::InvalidInput`), and a workbook formula that deep loads as a parse error. Each operand
 (number, reference, parenthesis, function call, array) costs two levels and each reference operator
-one, so up to 127 nested parentheses or function calls are accepted; union operand lists too
+one, so up to 127 nested parentheses or function calls are accepted (126 around the operator chain
+`0.1+0.2-0.3+B1`, which costs a level of its own; T-1169); union operand lists too
 (T-0134). Each unary minus is a node (T-0132), so a run of more than about 250 minus signs
 (`=----...1`) is also a parse error; plus signs add no node. Excel caps function nesting at 64
 levels (Microsoft, "Excel specifications and limits": "Nested levels of functions: 64") and formula
@@ -94,10 +115,10 @@ the leading `=`, so the file text was 8,192 characters for the longest formula t
 8,193 including `=`) and 8,193 for the first refused: Excel enforces exactly the published 8,192
 characters on file load. At
 most 4,096 single-digit terms fit, within `MAX_VALUE_OPERATORS`, so the operator cap never refuses a
-chain Excel accepts. RustSheet today has no formula text length limit: it loads and evaluates
-chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the operator
-cap, where Excel refuses the workbook (an engine extension; follow-up task to decide whether to
-refuse formulas over 8,192 stored characters on load).
+chain Excel accepts. The engine itself has no formula text length limit: through the API it accepts
+and evaluates chains of 8,194 and 8,195 characters (4,096 operators) and any longer formula under the
+operator cap. The xlsx importer refuses a workbook holding one, as Excel does (see "Formulas over
+8,192 characters refuse the workbook" above).
 Before T-0128 chains were capped at 255 terms.
 These bounds keep the recursive parser, evaluator, printer and tree copy/drop from overflowing the
 stack on untrusted formulas (CLAUDE.md directive 5); before T-0931, 200 nested parentheses crashed
@@ -139,7 +160,7 @@ formula grammar there (they only arise as results, arrays.md).
 fallback, but `IFNA(#GETTING_DATA,"y")` passes it through, `VALUETOTEXT` is the text
 "#GETTING_DATA", `TYPE` is 16, and any comparison or `&` with it is the error (`#N/A` reported).
 Wrapped in `ERROR.TYPE` (T-0195) the winner is visible: `#GETTING_DATA` is 8 and `#N/A` is 7, and
-**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` (the general rule is in arrays.md), whichever error it is:
+**the leftmost error operand wins** for `=`, `+`, `-`, `*` and `SUM` of direct arguments (SUM ranks a referenced cell's error below a direct argument's error, see "Stored `#BUSY!` behaviors"; the general rule is in arrays.md), whichever error it is:
 `#N/A=#GETTING_DATA` is 7 but `#GETTING_DATA=#N/A` is 8; `#GETTING_DATA+#DIV/0!` is 8 but
 `#DIV/0!+#GETTING_DATA` is 2 (same for `*`, `-`, `SUM(a,b)`); `#N/A+#GETTING_DATA` is 7 and
 `#GETTING_DATA+#N/A` is 8; `#GETTING_DATA&"a"` and `#GETTING_DATA=#GETTING_DATA` are 8. No
@@ -161,14 +182,40 @@ today's input table plus `#GETTING_DATA` (implemented in T-1010: typed `#GETTING
 typed `#BLOCKED!` is text); T-1016 probes it on desktop; UNVERIFIED. The COUNTIF criterion question
 is settled by T-1012 (information.md): `"#BLOCKED!"` does not match the error.
 Stored `#BUSY!` design: SPEC-0003 "Stored `#BUSY!`" (T-1020). It gets its own kind with ERROR.TYPE 0,
-stays out of the formula, input and criteria tables, and is exported as is (T-1222). Its VALUETOTEXT,
-precedence and COUNTIF criteria are UNVERIFIED (T-1228).
+stays out of the formula, input and criteria tables, and is exported as is (T-1222).
+Stored `#BUSY!` behaviors (probes/error-stored-busy-behaviors, excel-graph 2026-10-10, T-1228; A1 and A4 are
+the stored error, A2 = 1): `VALUETOTEXT(A1)` and `VALUETOTEXT(A1,1)` are the text "#BUSY!" (C1, C3);
+`ARRAYTOTEXT(A1)` is the *error* `#BUSY!`, not text (C2; the same for stored `#N/A`, C17: a single cell that
+only propagates the error, see arrays.md), while `ARRAYTOTEXT(A1:A2,1)` is "{#BUSY!;1}" (C4).
+For the operators the leftmost error wins and `#BUSY!` has no special rank: `ERROR.TYPE(A1+#DIV/0!)` 0, `ERROR.TYPE(#DIV/0!+A1)` 2 (C5, C6),
+likewise for `=` (C7 0, C8 2) and `*` with `#N/A` (C9 0, C10 7). SUM differs: `SUM(A1,1/0)` and `SUM(1/0,A1)` are both
+ERROR.TYPE 2 (C11, C12). Rule (probes/sum-error-precedence, excel-graph 2026-10-11, T-1315/T-1314): in SUM an error in a
+*direct* argument (literal `#DIV/0!` or computed `1/0`; `SUM(#N/A,A1)` and `SUM(A1,#N/A)` are both 7) beats an error in a
+referenced cell whichever comes first, for any referenced error kind (`#BUSY!`, `#N/A`, `#VALUE!`), and among referenced
+cells the leftmost wins (`SUM(A1,A2)` 0, `SUM(A2,A1)` 7, `SUM(A3,A4)` 3, `SUM(A4,A3)` 5; `SUM(A1:A2)` is the same as `SUM(A1,A2)`),
+so `#BUSY!` has no special rank. COUNTIF: `"#BUSY!"` and the cell itself as criteria count 0 (unlike an `#N/A` criterion, criteria.md, which counts `#N/A` cells), `"<>#BUSY!"` counts both
+cells (C13-C15). `IFERROR(A1,"y")` is "y" (C16). `ERROR.TYPE(A1:A2)` spills 0 then `#N/A` (E1:E2).
+`UNIQUE` keeps a stored `#BUSY!` and a stored `#NULL!` as distinct rows and merges equal `#BUSY!`s
+(C18-C20: 2, 3, 3 rows).
+Aggregate error precedence (probes/aggregate-error-precedence, excel-graph 2026-10-11, T-1334; A1 #BUSY!, A2 #N/A, A3 #VALUE!):
+PRODUCT, MIN, MAX and AVERAGE share SUM's rule: a *scalar* direct error (literal `#DIV/0!` or computed `1/0`) beats a
+referenced-cell error whichever comes first (`PRODUCT(A2,#DIV/0!)`, `MIN(A2,1/0)`, `AVERAGE(A1,#DIV/0!)`, `MAX(A2,#DIV/0!)` all
+ERROR.TYPE 2, C1-C32), and between two referenced errors the leftmost wins (`MIN(A2,A3)` 7, `MIN(A3,A2)` 3). COUNT ignores errors
+(0) and COUNTA counts them (the argument count). SUM only: an error *inside an array* (`{1,#N/A}` or `A2:A3*1`) is not a scalar direct
+error: a scalar direct error beats it either way (`SUM({1,#N/A},#DIV/0!)` 2, `SUM(#DIV/0!,{1,#N/A})` 2, `SUM(A2:A3*1,#DIV/0!)` 2),
+but against a referenced error the leftmost wins (`SUM({1,#N/A},A3)` 7, `SUM(A3,{1,#N/A})` 3), and between arrays the leftmost wins
+(C54, C55); a scalar computed from a reference (`A2*1`) is a direct error (`SUM(A3,A2*1)` 7). Uncoercible direct text `"x"` is `#VALUE!`
+in the argument's position among the direct arguments (`SUM("x",#DIV/0!)` 3, `SUM(#DIV/0!,"x")` 2) and, being direct, beats a referenced
+error (`SUM(A2,"x")` 3); text in a referenced cell is ignored (`SUM(A5)` 0, `SUM(A5:A6)` 2). A direct `#REF!` behaves like any scalar direct
+error: it beats referenced errors and `{1,#N/A}` (`SUM(A2,#REF!)` 4, `SUM(#REF!,{1,#N/A})` 4, `SUM({1,#N/A},#REF!)` 4, C77) and ties by position (`SUM(#REF!,#DIV/0!)` 4,
+`SUM(#DIV/0!,#REF!)` 2).
 Evidence: probes/error-literals-new2 (S!A1:A15) and probes/error-literals-new (S!A1:A18), both excel-graph 2026-10-06; the eight single-cell
 rejections were run as throw-away one-cell cases (not committed; no value to record);
 probes/error-stored-constants (S!A1:I3, excel-graph 2026-10-06) for the loading stored names, the five
 stored rejections as throw-away one-cell cases (same); the three engine-only stored rejections (`#CIRC!`, `#ERROR!`, `#N/IMPL`) likewise (excel-graph 2026-10-08, T-1133).
 Status: VERIFIED
-Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228
+Tasks: T-0175, T-0177, T-0195, T-0999, T-1010, T-1012, T-1016, T-1020, T-1133, T-1014, T-1222, T-1228, T-1314, T-1315, T-1334
+Implemented in: math_and_trigonometry/sum.rs (`sum_with_last_addition`, reference errors held back), functions/criteria.rs (`build_criteria_with`, `#BUSY!` criterion matches nothing); expressions/token.rs (`Error::GETTINGDATA`/`CONNECT`/`BLOCKED`/`FIELD`/`BUSY`, `Error::error_type_code`, `Error::stored_literal`, `get_error_by_english_name`, `get_error_by_name`); rustsheet value.rs (`ErrorKind`); rustsheet-xlsx export/worksheets.rs (`exported_error_literal`)
 
 ## FORMULATEXT keeps every written parenthesis
 Rule: Excel keeps redundant parentheses as written in the stored formula; FORMULATEXT prints every level back in every
@@ -178,8 +225,18 @@ probed shape (plain operators, unary minus, intersection, function arguments and
 kept the same way is UNVERIFIED (excel-graph loads file text; an M14 desktop question, decision 0039). The values are unaffected
 (`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
 Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
-Ours: the parsed formula keeps no groups except the levels around a whole `@` operand, a whole parenthesized formula
-(`GroupedRootKind`) and a few cut/union shapes, so the printer re-derives parentheses from precedence: `=A1+(B1)` prints
-`=A1+B1`, `=-(A1)` prints `=-A1`, `=@(A1+(B1))` prints `=@(A1+B1)`. All 18 values match; 14 FORMULATEXT cells differ.
+More shapes (probes/formulatext-written-groups-shapes, excel-graph 2026-10-11, T-1380; A1 = 4; desktop UNVERIFIED as above), all printed as written: a group before a postfix `%` `=(A1)%` (value 0.04), a group as a LAMBDA callee `=(LAMBDA(x,x))(1)` (1), a left-grouped operand `=(1/2)/3`, a right-grouped operand `=1+(3+5)` (9), a group around an intersection `=(D:D 2:2)&""` (empty text) and a group around a negated base `=(-A1)^2` (16). The engine's FORMULATEXT matches in all six (12 cells).
+The converse holds too: Excel adds no parentheses where none were written (probes/operand-wrap-text, excel-graph
+2026-10-12, T-1344; A1 = 3, A2 = 50): `=SUM(A1)^2` (9), `=2^SUM(A1)` (8), `=2^-A1` (0.125), `=2^A2%` (1.4142135623730951),
+`=SUM({1,2}^2)`, `=SUM(2^{1,2})`, `=IFERROR(#N/A^2,7)`, `=-A1%` (-0.03), `=2*-A1`, `=LAMBDA(x,x)(A1)^2`,
+`=2^LAMBDA(x,x)(A1)`, `=-SUM(A1)^2` (9), `=A1^2%`, `=2^-A1^2` (0.015625, so `(2^-A1)^2`) and `=2^--A1` all print as
+written. The engine printed a call, array, error or LAMBDA call operand of `^` and a unary right operand of `^` in
+added parentheses (`=(SUM(A1))^2`, `=2^(-A1)`) until T-1344 replaced its per-operator tables with one rule: an
+operand is parenthesized only where the bare text would parse back to a different tree.
+Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, around
+and inside `@` operands too (T-1343). All 36 cells of the T-1178 probe match. The T-1380 shapes above are separate from that count.
+A cut and paste prints the same text (`to_string_moved` is `stringify` with moved references, T-1344).
 Status: VERIFIED
-Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand)
+The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
+Design: SPEC-0007 (a `Group` node).
+Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand), T-1340 (the `Group` node), T-1343 (the `@` groups), T-1380 (more shapes), T-1344 (no added parentheses; one printer)

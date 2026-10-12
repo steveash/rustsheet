@@ -34,7 +34,7 @@ impl Model {
     ) -> CalcResult {
         let mut result = f64::NAN;
         for arg in args {
-            match self.evaluate_reference_arg(arg, cell) {
+            match self.evaluate_picked_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
                     if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
                         result = pick(value, result);
@@ -182,76 +182,6 @@ impl Model {
         CalcResult::finite_number_or_num(flush_subnormal(result), cell)
     }
 
-    /// PRODUCT(number1, [number2], ...)
-    ///
-    /// The PRODUCT function multiplies values. You can add individual values, cell references or ranges or a mix of all
-    /// three.
-    ///
-    /// # Details
-    /// Generally each argument is evaluated and the result is converted to a number. However there are some special
-    /// cases:
-    /// - **Args evaluating to CalcResult::Range**: The product of all the numbers in the range is calculated. No
-    ///   conversions are performed, non-numeric values are ignored and errors are propagated.
-    /// - **Node::ReferenceKind args**: Similar to ranges, conversions are not performed on the evaluated value of the
-    ///   referenced cell and errors are propagated.
-    /// - **Args evaluating to CalcResult::Error**: Errors are propagated.
-    pub(crate) fn fn_product(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if args.is_empty() {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let mut result = 1.0;
-        let mut seen_value = false;
-
-        for arg in args {
-            // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
-            let arg = match arg {
-                Node::ReferenceKind {
-                    column,
-                    absolute_column,
-                    row,
-                    absolute_row,
-                    sheet_index,
-                    sheet_name,
-                } => &Node::RangeKind {
-                    sheet_name: sheet_name.clone(),
-                    sheet_index: *sheet_index,
-                    absolute_row1: *absolute_row,
-                    absolute_column1: *absolute_column,
-                    row1: *row,
-                    column1: *column,
-                    absolute_row2: *absolute_row,
-                    absolute_column2: *absolute_column,
-                    row2: *row,
-                    column2: *column,
-                },
-                _ => arg,
-            };
-            match self.evaluate_reference_arg(arg, cell) {
-                RefArg::Ranges(areas) => {
-                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                        seen_value = true;
-                        result = flush_subnormal(result * value);
-                    }) {
-                        return error;
-                    }
-                }
-                RefArg::Value(error @ CalcResult::Error { .. }) => return error,
-                RefArg::Value(calc_result) => {
-                    seen_value = true;
-                    let cast_result = self.cast_aggregate_arg_to_number(calc_result, cell);
-                    match cast_result {
-                        Ok(f) => result = flush_subnormal(result * f),
-                        Err(s) => return s,
-                    }
-                }
-            };
-        }
-        if !seen_value {
-            return CalcResult::Number(0.0);
-        }
-        CalcResult::finite_number_or_num(flush_subnormal(result), cell)
-    }
-
     /// SUMIF(criteria_range, criteria, [sum_range])
     /// if sum_range is missing then criteria_range will be used.
     ///
@@ -272,41 +202,50 @@ impl Model {
         self.sum_ifs(args, cell, true)
     }
 
-    /// ROUND, ROUNDUP and ROUNDDOWN: `(number, num_digits)`, rounded in decimal
-    /// (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
+    /// ROUND, ROUNDUP, ROUNDDOWN and TRUNC: `(number, num_digits)`, rounded in
+    /// decimal (see [`round_decimal`]); a result beyond the double range is `#NUM!`.
+    /// TRUNC alone may omit `num_digits` (0).
     fn round_family(
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
         mode: RoundMode,
+        num_digits_optional: bool,
     ) -> CalcResult {
-        if args.len() != 2 {
+        let min_args = if num_digits_optional { 1 } else { 2 };
+        if !(min_args..=2).contains(&args.len()) {
             return CalcResult::new_args_number_error(cell);
         }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let number_of_digits = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        match round_decimal(value, number_of_digits, mode) {
-            Some(result) => CalcResult::Number(result),
-            None => CalcResult::new_error(Error::NUM, cell, "Result is too large".to_string()),
+        // Lifts element-wise over arrays and ranges (gen-m2/893302d6c5b99e2e Calc!A313).
+        let round = |value: f64, digits: f64| round_decimal(value, digits, mode).ok_or(Error::NUM);
+        if args.len() == 1 {
+            self.lift_numbers(args, cell, "Result is too large", |[value]| {
+                round(value, 0.0)
+            })
+        } else {
+            self.lift_numbers(args, cell, "Result is too large", |[value, digits]| {
+                round(value, digits)
+            })
         }
     }
 
     pub(crate) fn fn_round(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::HalfAwayFromZero)
+        self.round_family(args, cell, RoundMode::HalfAwayFromZero, false)
     }
 
     pub(crate) fn fn_roundup(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Up)
+        self.round_family(args, cell, RoundMode::Up, false)
     }
 
     pub(crate) fn fn_rounddown(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.round_family(args, cell, RoundMode::Down)
+        self.round_family(args, cell, RoundMode::Down, false)
+    }
+
+    /// TRUNC is ROUNDDOWN with an optional `num_digits`: Excel cuts to 15 digits
+    /// first and wraps huge digit counts the same way (docs/excel-semantics/numbers.md
+    /// "TRUNC is ROUNDDOWN", probes/trunc-decimal-stages).
+    pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.round_family(args, cell, RoundMode::Down, true)
     }
 
     // (number, divisor); lifts element-wise over arrays and ranges (probes/geomean-overflow-cut-3 E4)
@@ -619,42 +558,6 @@ impl Model {
         CalcResult::Number(result)
     }
 
-    pub(crate) fn fn_trunc(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        if !(1..=2).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        let value = match self.get_number(&args[0], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        let num_digits = if args.len() == 2 {
-            match self.get_number(&args[1], cell) {
-                Ok(f) => {
-                    if f > 0.0 {
-                        f.floor()
-                    } else {
-                        f.ceil()
-                    }
-                }
-                Err(s) => return s,
-            }
-        } else {
-            0.0
-        };
-        if !(-15.0..=15.0).contains(&num_digits) {
-            return CalcResult::Number(value);
-        }
-        let v = if value >= 0.0 {
-            f64::floor(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        } else {
-            f64::ceil(value * 10f64.powf(num_digits)) / 10f64.powf(num_digits)
-        };
-        if value.is_finite() && v.is_infinite() {
-            return CalcResult::Number(value);
-        }
-        CalcResult::Number(v)
-    }
-
     single_number_fn!(fn_log10, |f| if f <= 0.0 {
         Err(Error::NUM)
     } else {
@@ -927,11 +830,11 @@ impl Model {
         if args.len() != 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let part = match self.fn_sum(&args[0..1], cell) {
+        let part = match self.fn_sum_unsnapped(&args[0..1], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };
-        let total = match self.fn_sum(&args[1..2], cell) {
+        let total = match self.fn_sum_unsnapped(&args[1..2], cell) {
             CalcResult::Number(v) => v,
             other => return other,
         };

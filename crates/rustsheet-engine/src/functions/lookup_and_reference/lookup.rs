@@ -3,7 +3,7 @@
 use crate::cast::calc_result_to_array_node;
 use crate::constants::{LAST_COLUMN, LAST_ROW};
 use crate::expressions::types::CellReferenceIndex;
-use crate::functions::util::array_node_to_calc_result;
+use crate::functions::util::{array_node_to_calc_result, is_at_if};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
 };
@@ -68,7 +68,7 @@ impl Model {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let target = self.evaluate_node_in_context(&args[0], cell);
+        let target = self.lookup_value_arg(&args[0], cell);
         if target.is_error() {
             return target;
         }
@@ -135,7 +135,16 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         // A single cell is read as a reference, so that it can be read past (`LOOKUP(99,A1:B2,F1)`).
-        let value = match self.eval_ref_or_index(node, cell) {
+        // The `@` of an IF that picks one cell keeps the reference
+        // (`LOOKUP(99,A1:A3,@IF(TRUE,F1))` = `LOOKUP(99,A1:A3,F1)`;
+        // probes/at-if-spill-anchor-operand H50, T-1368). Gated to `@IF`: a plain `IF` has no
+        // evidence here, and a scalar result_vector stays `#N/A` (H70).
+        let picked = if is_at_if(node) {
+            self.spill_anchor_operand(node, cell)
+        } else {
+            self.eval_ref_or_index(node, cell)
+        };
+        let value = match picked {
             // A scalar is a one-element array: `LOOKUP(2,A1:A2,5)` is 5, and 5 is not read past
             // (probes/lookup-vector-edges A5-A8).
             scalar @ (CalcResult::Number(_)

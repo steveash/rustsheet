@@ -3,7 +3,7 @@ id: T-0258
 title: "AND/OR/XOR: a non-empty text literal argument is #VALUE! (poi J136); probe computed text"
 milestone: M2
 lane: functions-logic
-status: todo
+status: done
 priority: P3
 size: S
 tier: opus
@@ -37,14 +37,24 @@ Code: `logical_nary` in `crates/rustsheet-engine/src/functions/logical/and_or_xo
 reference.
 
 ## Acceptance criteria
-- [ ] A probe case under eval/suites/probes pins the questions above (oracle-filled); the coercion.md
+- [x] A probe case under eval/suites/probes pins the questions above (oracle-filled); the coercion.md
       entry is rewritten from it with Status VERIFIED.
-- [ ] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136` disappears from eval/baseline/poi.txt
+- [x] `F	poi/FormulaEvalTestData_Copy.xlsx	EverythingTests!J136` disappears from eval/baseline/poi.txt
       (`make eval-baseline`), unless the probe shows Microsoft 365 differs from the Excel 15 cached
       value (then record it CONFLICTING per decision 0030 and leave the cell); no new F lines in any
       baseline, and the probe's cells pass.
-- [ ] `make check` green; reviewers approve.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 - Error precedence across AND/OR/XOR arguments (T-0229).
 - Array lifting of NOT (T-0225).
+
+## Outcome
+The probe probes/and-or-xor-text-arguments (84 cells: AND, OR and XOR x 28 argument shapes, excel-graph) settles the
+rule. Microsoft 365 skips every text argument that is not "TRUE"/"FALSE", literal or computed, empty or not, in arrays
+and in cells. Text "TRUE" counts as TRUE, and a call left with only skipped text is `#VALUE!`. The
+engine already passes all 84 cells, so no code changed. The Excel 15 cached `#VALUE!` for `AND("1",1)` (poi J136)
+contradicts current Excel. Per decision 0030 2 (Excel 15 is below AppVersion 16) it is recorded as CONFLICTING in
+coercion.md and added to T-1075 for a desktop answer, and J136 stays a known failure, as the acceptance criteria allow.
+Eval delta: probes +1 case, 84 cells all passing; no other change; regressions 0.
+Follow-ups: T-1075 item 7.

@@ -1,5 +1,6 @@
 pub(crate) mod date_text;
 pub mod dates;
+mod elapsed;
 pub mod format;
 mod general;
 pub mod lexer;

@@ -12,8 +12,9 @@ use crate::{
 
 impl Model {
     /// NOT lifts over ranges and arrays, one result per element (T-0225,
-    /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument
-    /// (ASSUMED, probe T-0260).
+    /// docs/excel-semantics/arrays.md). Each element is cast like a scalar argument:
+    /// NOT of text "TRUE" is FALSE, of other text `#VALUE!` and of an empty cell TRUE
+    /// (probes/not-array-cast, T-0260).
     pub(crate) fn fn_not(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 1 {
             return CalcResult::new_args_number_error(cell);
@@ -143,7 +144,7 @@ impl Model {
                 // Strings are ignored unless they are "TRUE" or "FALSE" (case insensitive). EXCEPT if the string value
                 // comes from a reference, in which case it is always ignored regardless of its value.
                 CalcResult::String(..) => {
-                    if !matches!(arg, Node::ReferenceKind { .. }) {
+                    if !matches!(arg.ungrouped(), Node::ReferenceKind { .. }) {
                         if let Ok(f) = self.get_boolean(arg, cell) {
                             result = Some(fold_fn(result, f));
                         }

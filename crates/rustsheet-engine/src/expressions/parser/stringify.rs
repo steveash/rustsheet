@@ -1,15 +1,17 @@
 mod bound_variables;
 use super::reference_operators::{
-    at_text, callee_operand, intersection_operand, spill_operand, tight_operand, union_text,
+    at_text, callee_operand, group_text, intersection_operand, spill_operand, tight_operand,
+    union_text,
 };
 use super::{
     super::utils::{name_needs_quoting, quote_name},
-    for_each_chain_operand_mut, left_chain, value_operands, Node, Reference,
+    for_each_chain_operand_mut, left_chain,
+    move_formula::{moved_reference_text, MoveContext},
+    value_operands, ArrayNode, Node, Reference,
 };
 use crate::constants::{LAST_COLUMN, LAST_ROW};
-use crate::expressions::parser::move_formula::to_string_array_node;
 use crate::expressions::parser::static_analysis::remove_redundant_implicit_intersection;
-use crate::expressions::token::{OpSum, OpUnary};
+use crate::expressions::token::OpUnary;
 use crate::language::{get_language, Language};
 use crate::locale::{get_locale, Locale};
 use crate::{expressions::types::CellReferenceRC, number_format::to_excel_precision_str};
@@ -51,6 +53,16 @@ pub enum DisplaceData {
     None,
 }
 
+/// How the printer rewrites the references of a formula: displaced by a structural edit, or
+/// moved by a cut and paste. Everything else prints the same either way, so a moved formula
+/// has the text FORMULATEXT shows (SPEC-0007 step 5).
+enum Rewrite<'a> {
+    Displace(&'a DisplaceData),
+    Move(&'a MoveContext<'a>),
+}
+
+const NO_REWRITE: Rewrite<'static> = Rewrite::Displace(&DisplaceData::None);
+
 /// This is the internal mode in IronCalc
 /// Formulas internally are stored in R1C1 format, the locale and language are always "en"
 pub fn to_rc_format(node: &Node) -> String {
@@ -58,7 +70,7 @@ pub fn to_rc_format(node: &Node) -> String {
     let locale = get_locale("en").expect("");
     #[allow(clippy::expect_used)]
     let language = get_language("en").expect("");
-    stringify(node, None, &DisplaceData::None, false, locale, language)
+    stringify(node, None, &NO_REWRITE, false, locale, language)
 }
 
 pub fn to_english_string(node: &Node, context: &CellReferenceRC) -> String {
@@ -66,14 +78,7 @@ pub fn to_english_string(node: &Node, context: &CellReferenceRC) -> String {
     let locale = get_locale("en").expect("");
     #[allow(clippy::expect_used)]
     let language = get_language("en").expect("");
-    stringify(
-        node,
-        Some(context),
-        &DisplaceData::None,
-        false,
-        locale,
-        language,
-    )
+    stringify(node, Some(context), &NO_REWRITE, false, locale, language)
 }
 
 /// This is the mode used to display the formula in the UI
@@ -83,14 +88,7 @@ pub fn to_localized_string(
     locale: &Locale,
     language: &Language,
 ) -> String {
-    stringify(
-        node,
-        Some(context),
-        &DisplaceData::None,
-        false,
-        locale,
-        language,
-    )
+    stringify(node, Some(context), &NO_REWRITE, false, locale, language)
 }
 
 /// This is the mode used to export the formula to Excel
@@ -122,14 +120,7 @@ fn excel_string(node: &Node, context: &CellReferenceRC, is_array_formula: bool) 
         remove_redundant_implicit_intersection(&mut node, true);
     }
     prefix_bound_variables(&mut node, &mut Vec::new());
-    stringify(
-        &node,
-        Some(context),
-        &DisplaceData::None,
-        true,
-        locale,
-        language,
-    )
+    stringify(&node, Some(context), &NO_REWRITE, true, locale, language)
 }
 
 pub fn to_string_displaced(
@@ -139,7 +130,25 @@ pub fn to_string_displaced(
     locale: &Locale,
     language: &Language,
 ) -> String {
-    stringify(node, Some(context), displace_data, false, locale, language)
+    let rewrite = Rewrite::Displace(displace_data);
+    stringify(node, Some(context), &rewrite, false, locale, language)
+}
+
+/// The text of `node` cut from the cell `move_context` names and pasted by its deltas: the
+/// references into the moved area follow it (see [`super::move_formula::move_formula`]).
+pub(crate) fn to_string_moved(
+    node: &Node,
+    move_context: &MoveContext,
+    locale: &Locale,
+    language: &Language,
+) -> String {
+    let context = CellReferenceRC {
+        sheet: move_context.source_sheet_name.to_string(),
+        column: move_context.column,
+        row: move_context.row,
+    };
+    let rewrite = Rewrite::Move(move_context);
+    stringify(node, Some(&context), &rewrite, false, locale, language)
 }
 
 /// The sheet prefix of a 3-D reference, `First:Last`, quoted as one name when either sheet
@@ -366,11 +375,39 @@ pub(crate) fn argument_separator(locale: &Locale) -> &'static str {
     }
 }
 
+/// `number` as a formula prints it, with the decimal separator of `locale`.
+fn format_number_locale(number: f64, locale: &Locale) -> String {
+    let s = to_excel_precision_str(number);
+    let decimal = &locale.numbers.symbols.decimal;
+    if decimal == "." {
+        s
+    } else {
+        s.replace('.', decimal)
+    }
+}
+
+/// The printed element `node` of an array constant.
+fn to_string_array_node(node: &ArrayNode, locale: &Locale, language: &Language) -> String {
+    match node {
+        ArrayNode::Boolean(value) => {
+            if *value {
+                language.booleans.r#true.to_uppercase()
+            } else {
+                language.booleans.r#false.to_uppercase()
+            }
+        }
+        ArrayNode::Number(number) => format_number_locale(*number, locale),
+        ArrayNode::String(value) => format!("\"{value}\""),
+        ArrayNode::Error(kind) => format!("{kind}"),
+        ArrayNode::Empty => "0".to_string(),
+    }
+}
+
 fn format_function(
     name: &str,
     args: &Vec<Node>,
     context: Option<&CellReferenceRC>,
-    displace_data: &DisplaceData,
+    rewrite: &Rewrite,
     export_to_excel: bool,
     locale: &Locale,
     language: &Language,
@@ -384,25 +421,11 @@ fn format_function(
                 "{}{}{}",
                 arguments,
                 arg_separator,
-                stringify(
-                    el,
-                    context,
-                    displace_data,
-                    export_to_excel,
-                    locale,
-                    language
-                )
+                stringify(el, context, rewrite, export_to_excel, locale, language)
             );
         } else {
             first = false;
-            arguments = stringify(
-                el,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language,
-            );
+            arguments = stringify(el, context, rewrite, export_to_excel, locale, language);
         }
     }
     format!("{name}({arguments})")
@@ -436,13 +459,22 @@ fn format_function(
 fn stringify(
     node: &Node,
     context: Option<&CellReferenceRC>,
-    displace_data: &DisplaceData,
+    rewrite: &Rewrite,
     export_to_excel: bool,
     locale: &Locale,
     language: &Language,
 ) -> String {
     use self::Node::*;
-    let sub = |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
+    let displace_data = match rewrite {
+        Rewrite::Displace(displace_data) => displace_data,
+        Rewrite::Move(move_context) => {
+            if let Some(text) = moved_reference_text(node, move_context) {
+                return text;
+            }
+            &DisplaceData::None
+        }
+    };
+    let sub = |n: &Node| stringify(n, context, rewrite, export_to_excel, locale, language);
     match node {
         BooleanKind(value) => {
             if *value {
@@ -451,14 +483,7 @@ fn stringify(
                 language.booleans.r#false.to_string()
             }
         }
-        NumberKind(number) => {
-            let s = to_excel_precision_str(*number);
-            if locale.numbers.symbols.decimal == "." {
-                s
-            } else {
-                s.replace(".", &locale.numbers.symbols.decimal)
-            }
-        }
+        NumberKind(number) => format_number_locale(*number, locale),
         StringKind(value) => format!("\"{value}\""),
         WrongReferenceKind {
             sheet_name,
@@ -564,7 +589,7 @@ fn stringify(
             stringify(
                 reference,
                 context,
-                &DisplaceData::None,
+                &NO_REWRITE,
                 export_to_excel,
                 locale,
                 language
@@ -623,16 +648,11 @@ fn stringify(
             let operand = |n: &Node| tight_operand(sub(n), n);
             format!("{}:{}", operand(left), operand(right))
         }
-        OpIntersectKind {
-            left,
-            right,
-            written,
-        } => {
+        OpIntersectKind { left, right } => {
             let operand = |n: &Node, is_left| intersection_operand(sub(n), n, is_left);
-            let cut = format!("{} {}", operand(left, true), operand(right, false));
-            format!("{}{cut}{}", "(".repeat(*written), ")".repeat(*written))
+            format!("{} {}", operand(left, true), operand(right, false))
         }
-        OpUnionKind { left, right, .. } => union_text(node, &sub(left), &sub(right), locale),
+        OpUnionKind { left, right, .. } => union_text(&sub(left), &sub(right), locale),
         OpConcatenateKind { .. }
         | CompareKind { .. }
         | OpSumKind { .. }
@@ -650,7 +670,7 @@ fn stringify(
             &name.to_lowercase(),
             args,
             context,
-            displace_data,
+            rewrite,
             export_to_excel,
             locale,
             language,
@@ -665,7 +685,7 @@ fn stringify(
                 &name,
                 args,
                 context,
-                displace_data,
+                rewrite,
                 export_to_excel,
                 locale,
                 language,
@@ -704,97 +724,20 @@ fn stringify(
         TableNameKind(value) => value.to_string(),
         DefinedNameKind((name, ..)) => name.to_string(),
         NamedVariableKind { name, id: _ } => name.to_string(),
-        UnaryKind { kind, right } => match kind {
-            OpUnary::Minus => {
-                let needs_parentheses = match **right {
-                    BooleanKind(_)
-                    | NumberKind(_)
-                    | StringKind(_)
-                    | ReferenceKind { .. }
-                    | RangeKind { .. }
-                    | SheetSpanKind { .. }
-                    | WrongReferenceKind { .. }
-                    | WrongRangeKind { .. }
-                    | OpRangeKind { .. }
-                    | OpIntersectKind { .. }
-                    | OpUnionKind { .. }
-                    | OpProductKind { .. }
-                    | FunctionKind { .. }
-                    | NamedFunctionKind { .. }
-                    | LambdaDefKind { .. }
-                    | LambdaCallKind { .. }
-                    | ArrayKind(_)
-                    | DefinedNameKind(_)
-                    | TableNameKind(_)
-                    | NamedVariableKind { .. }
-                    | ImplicitIntersection { .. }
-                    | SpillRangeOperator { .. }
-                    | GroupedRootKind { .. }
-                    | ErrorKind(_)
-                    | ParseErrorKind { .. }
-                    | EmptyArgKind => false,
-                    // Looser than the minus: `-(A1=B1)` is not `-A1=B1`; `--x` needs none.
-                    UnaryKind { ref kind, .. } => *kind == OpUnary::Percentage,
-                    OpPowerKind { .. } | OpSumKind { .. } | OpConcatenateKind { .. } => true,
-                    CompareKind { .. } => true,
-                };
-                if needs_parentheses {
-                    format!(
-                        "-({})",
-                        stringify(
-                            right,
-                            context,
-                            displace_data,
-                            export_to_excel,
-                            locale,
-                            language
-                        )
-                    )
-                } else {
-                    format!(
-                        "-{}",
-                        stringify(
-                            right,
-                            context,
-                            displace_data,
-                            export_to_excel,
-                            locale,
-                            language
-                        )
-                    )
-                }
+        UnaryKind { kind, right } => {
+            let operand = wrap(sub(right), binding(right) < binding(node));
+            match kind {
+                OpUnary::Minus => format!("-{operand}"),
+                OpUnary::Percentage => format!("{operand}%"),
             }
-            OpUnary::Percentage => {
-                format!(
-                    "{}%",
-                    stringify(
-                        right,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                )
-            }
-        },
+        }
         ErrorKind(kind) => format!("{kind}"),
         ParseErrorKind { formula, .. } => formula.to_string(),
         EmptyArgKind => "".to_string(),
-        GroupedRootKind { child } => format!("({})", sub(child)),
+        Group { levels, child } => group_text(*levels, &sub(child)),
         SpillRangeOperator { child } => {
             if export_to_excel {
-                return format!(
-                    "_xlfn.ANCHORARRAY({})",
-                    stringify(
-                        child,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                );
+                return format!("_xlfn.ANCHORARRAY({})", sub(child));
             };
             format!("{}#", spill_operand(sub(child), child))
         }
@@ -821,19 +764,10 @@ fn stringify(
                     }
                 })
                 .collect();
-            parts.push(stringify(
-                body,
-                context,
-                displace_data,
-                export_to_excel,
-                locale,
-                language,
-            ));
+            parts.push(sub(body));
             format!("{}({})", lambda_name, parts.join(arg_sep))
         }
         LambdaCallKind { lambda, args } => {
-            let sub =
-                |n: &Node| stringify(n, context, displace_data, export_to_excel, locale, language);
             // When the callee is a plain named variable (unknown identifier used as a function),
             // use lowercase to distinguish from real function calls in R1C1 format and
             // to match the display behaviour of InvalidFunctionKind.
@@ -851,109 +785,92 @@ fn stringify(
         ImplicitIntersection {
             automatic: _,
             child,
-            written,
-            lead,
-            grouped: _,
         } => {
             if export_to_excel {
                 // Redundant operators have already been stripped by
                 // `remove_redundant_implicit_intersection`; whatever remains is
-                // meaningful and must be exported explicitly.
-                return format!(
-                    "_xlfn.SINGLE({})",
-                    stringify(
-                        child,
-                        context,
-                        displace_data,
-                        export_to_excel,
-                        locale,
-                        language
-                    )
-                );
+                // meaningful and must be exported explicitly. A written group prints inside
+                // SINGLE's own parentheses, `_xlfn.SINGLE((Z1+(Z2)))`, as Excel stores `=@(Z1+(Z2))`
+                // (docs/excel-semantics/xlsx-storage.md, SPEC-0007).
+                return format!("_xlfn.SINGLE({})", sub(child));
             }
             // The space binds tighter than `@`, so `@A1:A3 A2:B2` is `@(A1:A3 A2:B2)`; Excel's
             // FORMULATEXT prints it without parentheses (T-1098).
-            at_text(child, *written, *lead, &sub)
+            at_text(child, &sub)
         }
     }
 }
 
+/// How tightly the printed `node` binds as an operand of a value operator, loosest first: the
+/// parser's chain levels (`ChainLevel`), then `%`, then `-` (`-A1%` is `(-A1)%`, `-A1^2` is
+/// `(-A1)^2`), then everything else (constants, references, reference operators, `@`, calls,
+/// written groups), which never needs parentheses.
+#[derive(PartialEq, PartialOrd)]
+enum Binding {
+    Compare,
+    Concat,
+    Sum,
+    Product,
+    Power,
+    Percent,
+    Minus,
+    Operand,
+}
+
+fn binding(node: &Node) -> Binding {
+    match node {
+        Node::CompareKind { .. } => Binding::Compare,
+        Node::OpConcatenateKind { .. } => Binding::Concat,
+        Node::OpSumKind { .. } => Binding::Sum,
+        Node::OpProductKind { .. } => Binding::Product,
+        Node::OpPowerKind { .. } => Binding::Power,
+        Node::UnaryKind {
+            kind: OpUnary::Percentage,
+            ..
+        } => Binding::Percent,
+        Node::UnaryKind {
+            kind: OpUnary::Minus,
+            ..
+        } => Binding::Minus,
+        _ => Binding::Operand,
+    }
+}
+
+/// `text` in parentheses when `parens`.
+fn wrap(text: String, parens: bool) -> String {
+    if parens {
+        format!("({text})")
+    } else {
+        text
+    }
+}
+
 /// The text of value operator `node` (`+ - * / ^ &` or a comparison) whose left operand prints
-/// as `left_text`: the operator and its right operand appended, with the parentheses either
-/// operand needs to re-parse to the same tree. One link of the loop that prints a chain
-/// (T-0128).
+/// as `left_text`: the operator and its right operand appended. The one precedence rule: an
+/// operand gets parentheses only where the bare text would parse back to a different tree, a
+/// looser left operand, or a right operand no tighter than `node` (the operators are left
+/// associative). A parsed tree carries its written parentheses as [`Node::Group`]s, so it
+/// prints as written: `=SUM(A1)^2`, `=2^-A1`, `=A1^2^3` (probes/operand-wrap-text,
+/// probes/power-chain-text). One link of the loop that prints a chain (T-0128).
 fn operator_text(node: &Node, left_text: String, sub: &dyn Fn(&Node) -> String) -> String {
     use self::Node::*;
-    let wrap = |text: String, wrap: bool| if wrap { format!("({text})") } else { text };
-    let paren_if = |n: &Node, parens: bool| wrap(sub(n), parens);
-    // `&` and the comparisons bind looser than `+ - * /`, so as operands of those they need
-    // parentheses to re-parse to the same tree (T-0157).
-    let is_loose = |n: &Node| matches!(n, CompareKind { .. } | OpConcatenateKind { .. });
-    let is_compare = |n: &Node| matches!(n, CompareKind { .. });
-    let compare_in_parens = |n: &Node| paren_if(n, is_compare(n));
-    let Some((left, _)) = value_operands(node) else {
+    let Some((left, right)) = value_operands(node) else {
         return left_text;
     };
-    match node {
-        OpConcatenateKind { right, .. } => {
-            // `&` binds tighter than the comparisons: `"a"&(2<3)` printed bare re-parses as
-            // `("a"&2)<3` (T-0151).
-            format!(
-                "{}&{}",
-                wrap(left_text, is_compare(left)),
-                compare_in_parens(right)
-            )
-        }
-        CompareKind { kind, right, .. } => {
-            // Comparisons chain left to right, so only a comparison on the right needs parentheses.
-            format!("{left_text}{kind}{}", compare_in_parens(right))
-        }
-        OpSumKind { kind, right, .. } => {
-            // CompareKind and `&` have lower precedence than +/-, so wrap them to preserve semantics;
-            // `a-(b+c)` additionally needs its parentheses.
-            let left_str = wrap(left_text, is_loose(left));
-            let right_wrap = is_loose(right)
-                || (matches!(kind, OpSum::Minus) && matches!(**right, OpSumKind { .. }));
-            format!("{left_str}{kind}{}", paren_if(right, right_wrap))
-        }
-        OpProductKind { kind, right, .. } => {
-            let x = wrap(
-                left_text,
-                is_loose(left) || matches!(left, OpSumKind { .. }),
-            );
-            let right_wrap =
-                is_loose(right) || matches!(**right, OpSumKind { .. } | OpProductKind { .. });
-            format!("{x}{kind}{}", paren_if(right, right_wrap))
-        }
-        OpPowerKind { right, .. } => {
-            // Only these operands print bare; everything else gets parentheses. A unary operand
-            // is bare on the left and parenthesised on the right (unchanged by the T-0190 fold).
-            let is_atom = |n: &Node| {
-                matches!(
-                    n,
-                    BooleanKind(_)
-                        | NumberKind(_)
-                        | StringKind(_)
-                        | ReferenceKind { .. }
-                        | RangeKind { .. }
-                        | OpIntersectKind { .. }
-                        | OpUnionKind { .. }
-                        | WrongReferenceKind { .. }
-                        | DefinedNameKind(_)
-                        | TableNameKind(_)
-                        | NamedVariableKind { .. }
-                        | WrongRangeKind { .. }
-                )
-            };
-            let x = wrap(
-                left_text,
-                !(is_atom(left) || matches!(left, UnaryKind { .. })),
-            );
-            let y = paren_if(right, !is_atom(right));
-            format!("{x}^{y}")
-        }
-        _ => left_text,
-    }
+    let operator: &dyn std::fmt::Display = match node {
+        OpConcatenateKind { .. } => &"&",
+        CompareKind { kind, .. } => kind,
+        OpSumKind { kind, .. } => kind,
+        OpProductKind { kind, .. } => kind,
+        OpPowerKind { .. } => &"^",
+        _ => return left_text,
+    };
+    let level = binding(node);
+    format!(
+        "{}{operator}{}",
+        wrap(left_text, binding(left) < level),
+        wrap(sub(right), binding(right) <= level)
+    )
 }
 
 pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: &str) {
@@ -1040,7 +957,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::ImplicitIntersection { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
-        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
+        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
             rename_sheet_in_node(child, sheet_index, new_name);
         }
 
@@ -1119,7 +1036,7 @@ pub(crate) fn rename_defined_name_in_node(
         Node::ImplicitIntersection { child, .. } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
-        Node::SpillRangeOperator { child } | Node::GroupedRootKind { child } => {
+        Node::SpillRangeOperator { child } | Node::Group { child, .. } => {
             rename_defined_name_in_node(child, name, scope, new_name);
         }
         // Do nothing

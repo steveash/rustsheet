@@ -156,19 +156,6 @@ pub struct CompletionContext {
     pub replace_from: usize,
 }
 
-/// The parenthesized group an `@` operand begins with when the group is only its leftmost part
-/// (`@(A1) B1`, `@(A1 B1) C1`, `@(A1):B1 C1`): Excel's FORMULATEXT prints it back (T-1134,
-/// T-1200). `levels == 0` means none.
-#[derive(PartialEq, Clone, Copy, Debug, Default)]
-pub struct LeadGroup {
-    /// Levels of parentheses written around the group.
-    pub levels: u8,
-    /// Operands of the intersection chain inside the group, `(A1 B1)` is 2.
-    pub operands: u8,
-    /// The group is the left operand of a `:` range, `(A1):B1`, not a chain operand itself.
-    pub of_range: bool,
-}
-
 /// A parsed formula. A value operator's left operand is a [`ChainLeft`] (see `chain.rs`).
 #[derive(PartialEq, Clone, Debug)]
 pub enum Node {
@@ -232,17 +219,11 @@ pub enum Node {
     OpIntersectKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// Parentheses levels written around a cut whose leftmost operand is a parenthesized
-        /// union, `((A1,B1) B1)`; FORMULATEXT keeps them (T-1176). Plain cuts drop theirs.
-        written: usize,
     },
     /// `(left,right)`: the areas of both references (Excel's union operator).
     OpUnionKind {
         left: Box<Node>,
         right: Box<Node>,
-        /// Parentheses levels written around the union: 0 for the left link of a plain chain
-        /// `(A1,B2,C3)`, 1 for `(A1,B2)`, 2 for `((A1,B2))`; FORMULATEXT keeps them (T-1024).
-        written: usize,
         /// Written outside any parentheses or argument list, where the comma is a reference
         /// operator binding tighter than arithmetic: `=A1,B2`, `=1+A1,B2` (T-1073).
         bare: bool,
@@ -291,26 +272,22 @@ pub enum Node {
         name: String,
         id: Option<u32>,
     },
+    /// `@child`. The parentheses written around its operand, around part of it or around the
+    /// whole `@` are [`Node::Group`]s where they were written (`@(A1)`, `@(A1) B1`, `(@1)#`;
+    /// SPEC-0007); the automatic `@` of an xlsx import has none.
     ImplicitIntersection {
         automatic: bool,
         child: Box<Node>,
-        /// Levels of parentheses written around the whole operand, `@((A1 B1))` is 2. Excel's
-        /// FORMULATEXT prints them back (`@(A1)`, `@(A1:B1)`, `@((A1 B1))`; probes/at-paren-operands,
-        /// T-1116); the automatic `@` of an xlsx import has none.
-        written: u8,
-        lead: LeadGroup,
-        /// Levels of parentheses written around the whole `@` expression, `(@1)` is 1. Only
-        /// the operand of `#` or `ANCHORARRAY` prints them back (`=(@1)#`, but `=@A1:B2#` when
-        /// none were written; probes/anchorarray-at-operand-kinds, T-1246).
-        grouped: u8,
     },
     SpillRangeOperator {
         child: Box<Node>,
     },
-    /// A whole formula written in parentheses, `=(A1-1)`: only ever the root. Excel tells it
-    /// apart from `=A1-1` (it skips near-zero snapping, docs/excel-semantics/numbers.md) and keeps
-    /// the parentheses in the formula text, so it prints them back. It evaluates as `child`.
-    GroupedRootKind {
+    /// Parentheses written around `child`: `levels` directly nested pairs, `((x))` is 2.
+    /// Transparent to evaluation (see [`Node::ungrouped`]); printed back as written, as Excel's
+    /// FORMULATEXT and stored formula text keep every written parenthesis
+    /// (docs/excel-semantics/syntax.md, SPEC-0007).
+    Group {
+        levels: u8,
         child: Box<Node>,
     },
     CompareKind {
@@ -333,18 +310,41 @@ pub enum Node {
     EmptyArgKind,
 }
 
+// A `Group` must not grow the node: `Box<Node>` + `u8` fits in the largest variant (SPEC-0007).
+const _: () = assert!(std::mem::size_of::<Node>() <= NODE_SIZE);
+
+/// `size_of::<Node>()` before the `Group` variant; pinned so later variants cannot grow it unnoticed.
+const NODE_SIZE: usize = 80;
+
 impl Node {
+    /// The node under any written parentheses: `((A1))` is `A1`. Loops, never recurses, so a
+    /// group adds no evaluator frame (SPEC-0007 "Seeing through groups").
+    pub(crate) fn ungrouped(&self) -> &Node {
+        let mut node = self;
+        while let Node::Group { child, .. } = node {
+            node = child;
+        }
+        node
+    }
+
+    /// [`Node::ungrouped`], by value.
+    pub(super) fn into_ungrouped(self) -> Node {
+        let mut node = self;
+        while let Node::Group { child, .. } = node {
+            node = *child;
+        }
+        node
+    }
+
     /// The `@` an xlsx import adds around a range-valued operand.
     pub(crate) fn automatic_at(child: Node) -> Node {
         Node::at(child, true)
     }
-    fn at(child: Node, automatic: bool) -> Node {
+    /// `@child`, typed (`automatic` false) or added by an xlsx import.
+    pub(super) fn at(child: Node, automatic: bool) -> Node {
         Node::ImplicitIntersection {
             automatic,
             child: Box::new(child),
-            written: 0,
-            lead: LeadGroup::default(),
-            grouped: 0,
         }
     }
 }
@@ -367,12 +367,6 @@ pub struct Parser {
     /// function/name completion even when the surrounding parse succeeds (`SU`,
     /// `A1+F`) or fails for an unrelated reason (`IF(VLOOK`). See that method.
     trailing_name: Option<(String, usize)>,
-    /// The `@` being parsed is followed by a `(`; the group it opens takes this flag (T-1109).
-    at_paren: bool,
-    /// The parenthesized group an `@` operand was just parsed from: its shape and the lexer
-    /// position after its last `)`, so `@(A1) B1` (whose group is only part of the operand) is not
-    /// counted.
-    at_group: Option<(LeadGroup, usize)>,
     /// The formula starts with `(` and that group has not been parsed yet.
     leading_paren: bool,
     /// The group opened by the formula's first `(` closes at the end of the formula: the whole
@@ -429,8 +423,6 @@ impl Parser {
             language,
             expecting_here: vec![ExpectedTokens::Other],
             trailing_name: None,
-            at_paren: false,
-            at_group: None,
             leading_paren: false,
             grouped_root: 0,
             root_group: None,

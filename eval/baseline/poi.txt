@@ -237,7 +237,6 @@ F	poi/ElapsedFormatTests.xlsx	Tests!A35
 F	poi/ElapsedFormatTests.xlsx	Tests!A36
 F	poi/ElapsedFormatTests.xlsx	Tests!A37
 F	poi/ElapsedFormatTests.xlsx	Tests!A4
-F	poi/ElapsedFormatTests.xlsx	Tests!A40
 F	poi/ElapsedFormatTests.xlsx	Tests!A41
 F	poi/ElapsedFormatTests.xlsx	Tests!A42
 F	poi/ElapsedFormatTests.xlsx	Tests!A43
@@ -674,7 +673,6 @@ F	poi/clone_sheet.xlsx	Arkusz1!M8
 F	poi/clone_sheet.xlsx	Arkusz1!M9
 F	poi/deep-data.xlsx	!InvalidCase
 F	poi/invalid_cell_reference.xlsx	!EngineError
-F	poi/link-external-workbook-b.xlsx	Sheet0!A1
 F	poi/poc-shared-strings.xlsx	!InvalidCase
 F	poi/poc-xmlbomb-empty.xlsx	!EngineError
 F	poi/poc-xmlbomb.xlsx	!EngineError

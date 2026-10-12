@@ -1,0 +1,40 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-0291: omitted arguments in comparisons and SWITCH (twins of probes/iferror-blank-value), and OR of a blank cell given directly.",
+ "tags": [
+  "M2",
+  "logic",
+  "omitted",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "D1": "=SWITCH(0,,\"a\",\"b\")",
+    "D2": "=SWITCH(,0,\"a\",\"b\")",
+    "D3": "=CHOOSE(1,)=0",
+    "D4": "=CHOOSE(1,)=FALSE",
+    "D5": "=CHOOSE(1,)<1",
+    "D6": "=IF(TRUE,)=\"\"",
+    "D7": "=IF(TRUE,)=0",
+    "D8": "=CHOOSE(1,)=\"\"",
+    "D9": "=OR(B1)",
+    "D10": "=OR(B1,FALSE)"
+   }
+  }
+ ],
+ "expected": {},
+ "check": [
+  "Sheet1!D1",
+  "Sheet1!D2",
+  "Sheet1!D3",
+  "Sheet1!D4",
+  "Sheet1!D5",
+  "Sheet1!D6",
+  "Sheet1!D7",
+  "Sheet1!D8",
+  "Sheet1!D9",
+  "Sheet1!D10"
+ ]
+}
