@@ -136,7 +136,8 @@ Ours: export prints from the parse tree, which keeps a written group as a `Node:
 above is stored as written; the `@` operand's group is the `@` node's `Group` child, printed inside SINGLE's own
 parentheses (T-1343). Import of `_xlfn.SINGLE((x))` prints `@(x)` back. A `@` with a written group is never dropped as redundant, even in a scalar context (`=SIN(@(A1:A3))`);
 only the group-less `@A1:A3` loses its `@`. The engine does the same (test_implicit_intersection_export.rs).
-Evidence for the `A1:A3` rows: same method, excel-graph, 2026-10-12, T-1398, sheet1.xml `C1`..`C5`.
+Evidence for the `A1:A3` rows: same method, excel-graph, 2026-10-12, T-1398, sheet1.xml C1 `=@(A1:A3)`, C2 `=@((A1:A3))`,
+C3 `=SIN(@(A1:A3))`, C4 `=@A1:A3`, C5 `=SIN(@((A1:A3)))`.
 Status: VERIFIED (web)
 Implemented in: expressions/parser/stringify.rs (`Group`, T-1340; `_xlfn.SINGLE((x))`, T-1343).
 Tasks: T-1244, T-1340, T-1343, T-1398
