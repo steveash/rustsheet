@@ -165,7 +165,7 @@ fn load_package<R: Read + Seek>(
         },
     );
     Ok(Workbook {
-        shared_strings,
+        shared_strings: shared_strings.into_strings(),
         defined_names: workbook.defined_names,
         worksheets,
         styles,
