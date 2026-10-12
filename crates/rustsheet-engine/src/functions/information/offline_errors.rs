@@ -80,6 +80,25 @@ fn image_options_valid(options: &[CalcResult]) -> bool {
     }
 }
 
+/// Whether any of IMAGE's `sizing`, `height`, `width` (`options` is `alt_text` onward) is an
+/// array.
+fn has_array_option(options: &[CalcResult]) -> bool {
+    options
+        .get(1..)
+        .unwrap_or_default()
+        .iter()
+        .any(|option| matches!(option, CalcResult::Array(_)))
+}
+
+/// Whether IMAGE's `alt_text`-onward `options` are lifted element by element by
+/// [`Model::image_grid`]: an array `sizing`, `height` or `width`, or an error beside an array
+/// `alt_text` (probes/rich-errors-image-array-error-elements, T-1427).
+fn image_options_lift(options: &[CalcResult]) -> bool {
+    has_array_option(options)
+        || (options.iter().any(CalcResult::is_error)
+            && options.iter().any(|o| matches!(o, CalcResult::Array(_))))
+}
+
 /// The error IMAGE gives for one `source` value: an error stays, a URL is `#BLOCKED!` (no fetch)
 /// unless the options are invalid (`valid`), and everything else (empty, number, boolean,
 /// non-URL text) is `#VALUE!` (probes/rich-errors-arg-kinds).
@@ -115,8 +134,8 @@ impl Model {
     /// argument: `IMAGE({url,url},1/0)` is a 1x2 array of `#DIV/0!` (probes/rich-errors-shapes-urls
     /// A12:B15, T-1189).
     ///
-    /// With `lift_option_errors` (IMAGE) a scalar option error beside a scalar `source` is held back
-    /// while an array option exists, so `image_grid` can lift it over that option; without one it is
+    /// With `lift_option_errors` (IMAGE) a scalar argument error beside a scalar `source` is held back
+    /// while an array argument exists, so `image_grid` can lift it over that array; without one it is
     /// the result. STOCKHISTORY passes `false` and keeps the first-error rule.
     fn offline_args(
         &mut self,
@@ -170,7 +189,8 @@ impl Model {
     /// IMAGE with an array `sizing`, `height` or `width`: the source and those options broadcast
     /// against each other like any arrays (a length-1 axis repeats, a shorter array is `#N/A`
     /// beyond its end) and each element is checked on its own (probes/rich-errors-image-array-options,
-    /// T-1370). `options` is `sizing`, `height`, `width` as given. An error element propagates as
+    /// T-1370). `options` is `alt_text`, `sizing`, `height`, `width` as given; only an array `sizing`/`height`/`width`
+    /// sets the shape, unless an error lifts over an array `alt_text` alone. An error element propagates as
     /// itself (T-1417).
     fn image_grid(
         &mut self,
@@ -179,7 +199,12 @@ impl Model {
         cell: CellReferenceIndex,
     ) -> CalcResult {
         let (mut rows, mut cols) = source.dims();
-        for option in options {
+        let shaping = if has_array_option(options) {
+            options.get(1..).unwrap_or_default()
+        } else {
+            options
+        };
+        for option in shaping {
             if let CalcResult::Array(values) = option {
                 rows = rows.max(values.len());
                 cols = cols.max(values.iter().map(Vec::len).max().unwrap_or(0));
@@ -204,10 +229,12 @@ impl Model {
                                 }
                             };
                             let mut picked = Vec::with_capacity(options.len());
-                            for option in options {
+                            for (index, option) in options.iter().enumerate() {
                                 picked.push(match option {
                                     CalcResult::Array(values) => element(values, row, col)
-                                        .map(|node| array_node_to_calc_result(&node, cell)),
+                                        .map(|node| array_node_to_calc_result(&node, cell))
+                                        // `alt_text` does not shape the grid: past its end it is no error.
+                                        .or_else(|| (index == 0).then_some(CalcResult::EmptyCell)),
                                     other => Some(other.clone()),
                                 });
                             }
@@ -228,7 +255,10 @@ impl Model {
                             {
                                 return ArrayNode::Error(error.clone());
                             }
-                            ArrayNode::Error(image_error(&source, image_options_valid(&picked)))
+                            ArrayNode::Error(image_error(
+                                &source,
+                                image_options_valid(picked.get(1..).unwrap_or_default()),
+                            ))
                         })
                         .collect()
                 })
@@ -245,14 +275,8 @@ impl Model {
         }
         match self.offline_args(args, cell, true) {
             Err(error) => error,
-            Ok((source, options))
-                if options
-                    .get(1..)
-                    .unwrap_or_default()
-                    .iter()
-                    .any(|option| matches!(option, CalcResult::Array(_))) =>
-            {
-                self.image_grid(&source, options.get(1..).unwrap_or_default(), cell)
+            Ok((source, options)) if image_options_lift(&options) => {
+                self.image_grid(&source, &options, cell)
             }
             Ok((Lifted::Array(values), options)) => {
                 let valid = image_options_valid(options.get(1..).unwrap_or_default());

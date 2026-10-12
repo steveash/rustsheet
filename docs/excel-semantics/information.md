@@ -124,7 +124,12 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   1x2 of `#DIV/0!`, not one scalar error (`ERROR.TYPE` 2, 2), and `IMAGE({url,url},"alt",3,#N/A,{5,5})` is `#N/A`, `#N/A`. An option error
   element beats a non-URL `source` element in the same column: `IMAGE({"x",url},"alt",{#DIV/0!,0})` is `#DIV/0!`, `#BLOCKED!`;
   `{1,url}` with `{#N/A,0}` is `#N/A`, `#BLOCKED!`; `{"",url}` with `{#DIV/0!,9}` is `#DIV/0!`, `#VALUE!`. Without an option error the
-  non-URL element is `#VALUE!` (`{TRUE,url}` with `{0,#N/A}` is `#VALUE!`, `#N/A`) (T-1427, 59 cells in all; VERIFIED).
+  non-URL element is `#VALUE!` (`{TRUE,url}` with `{0,#N/A}` is `#VALUE!`, `#N/A`) (T-1427; VERIFIED).
+  An error in `alt_text` lifts the same way: `IMAGE(url,#N/A,{0,0})` is `#N/A`, `#N/A`, and a scalar error option beside an array `alt_text`
+  gives the array's shape (`IMAGE(url,{"a","b"},#DIV/0!)` is `#DIV/0!`, `#DIV/0!`; `IMAGE(url,{"a","b"},3,#N/A)` is `#N/A`, `#N/A`). With
+  several errors the first in argument order wins: `IMAGE(url,"alt",#N/A,{#DIV/0!,0})`, `IMAGE(url,"alt",#N/A,{5,5},#DIV/0!)` and
+  `IMAGE(url,#N/A,{0,0},#DIV/0!)` are all `#N/A` (probes/rich-errors-image-array-error-elements, 71 cells in all, T-1427).
+  UNVERIFIED: an error element inside an array `alt_text` beside array options (the engine lifts it).
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A

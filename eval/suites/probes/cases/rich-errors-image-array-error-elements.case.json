@@ -41,7 +41,13 @@
     "A113": "=ERROR.TYPE(IMAGE({TRUE,\"https://a.invalid/x.png\"},\"alt\",{0,#N/A}))",
     "A117": "=ERROR.TYPE(IMAGE({\"x\",\"https://a.invalid/x.png\"},\"alt\",{#DIV/0!,0}))",
     "A121": "=ERROR.TYPE(IMAGE({1,\"https://a.invalid/x.png\"},\"alt\",{#N/A,0}))",
-    "A125": "=ERROR.TYPE(IMAGE({\"\",\"https://a.invalid/x.png\"},\"alt\",{#DIV/0!,9}))"
+    "A125": "=ERROR.TYPE(IMAGE({\"\",\"https://a.invalid/x.png\"},\"alt\",{#DIV/0!,9}))",
+    "A129": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",#N/A,{0,0}))",
+    "A133": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"},#DIV/0!))",
+    "A137": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",{\"a\",\"b\"},3,#N/A))",
+    "A141": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",#N/A,{#DIV/0!,0}))",
+    "A145": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",\"alt\",#N/A,{5,5},#DIV/0!))",
+    "A149": "=ERROR.TYPE(IMAGE(\"https://a.invalid/x.png\",#N/A,{0,0},#DIV/0!))"
    }
   }
  ],
