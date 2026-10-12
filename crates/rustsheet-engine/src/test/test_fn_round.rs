@@ -50,9 +50,9 @@ fn round_family_lifts_over_array_arguments() {
 
 #[test]
 fn round_of_a_column_against_a_row_is_bounded() {
-    // Resource limit (DEVIATION, decision 0014): the lifted result is capped, not allocated.
+    // Resource limit (DEVIATION, arrays.md): the lifted result is capped, not allocated.
     let mut model = new_empty_model();
     model._set("B2", "=ROUND(A1:A1048576,C1:XFD1)");
     model.evaluate();
-    assert_eq!(model._get_text("B2"), *"#VALUE!");
+    assert_eq!(model._get_text("B2"), *"#ERROR!");
 }

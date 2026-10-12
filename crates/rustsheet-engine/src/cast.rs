@@ -1,7 +1,7 @@
 use crate::arithmetic::{bcast_idx, flush_subnormal};
 use crate::formatter::date_text::CurrentYear;
 use crate::number_format::{number_to_text, parse_excel_number};
-use crate::reference_operators::{Ranges, RefArg, MAX_AREA_CELLS, TOO_MANY_AREA_CELLS};
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
     expressions::{
@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    functions::math_and_trigonometry::array_size::check_range_size,
+    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
     model::Model,
 };
 
@@ -275,11 +275,10 @@ impl Model {
         }
         let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
         let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
-        // A column against a row would build rows x cols nodes (`ROUND(A:A, 1:1)` is 1.7e10):
-        // bound the result like a multi-area argument (DEVIATION, decision 0014: references.md
-        // "Union area cap"; resource limit, CLAUDE.md directive 5).
-        if (rows as u64).saturating_mul(cols as u64) > MAX_AREA_CELLS {
-            return CalcResult::new_error(Error::VALUE, cell, TOO_MANY_AREA_CELLS.to_string());
+        // Bounds the broadcast result (`ROUND(A:A, 1:1)`): DEVIATION, arrays.md "Array results
+        // above 1,048,576 cells".
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
         }
         let result = (0..rows)
             .map(|i| {
