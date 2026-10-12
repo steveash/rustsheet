@@ -10,7 +10,10 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::format::{format_text, format_text_value, FormatContext, Formatted},
+    formatter::{
+        exceeds_complexity_limit,
+        format::{format_text, format_text_value, FormatContext, Formatted},
+    },
     functions::{
         text::{
             position::find_element,
@@ -179,6 +182,15 @@ fn text_value_result(value: &ArrayNode, format: &str, cell: CellReferenceIndex) 
     }
 }
 
+/// TEXT's `#VALUE!` for a format code over Excel's complexity limit (T-1393).
+fn too_complex(cell: CellReferenceIndex) -> CalcResult {
+    CalcResult::Error {
+        error: Error::VALUE,
+        origin: cell,
+        message: "Format code too complex".to_string(),
+    }
+}
+
 impl Model {
     pub(crate) fn fn_text(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         if args.len() != 2 {
@@ -200,6 +212,9 @@ impl Model {
                     // An error in every element; error elements keep theirs.
                     Err(e) => return array_of_errors(&arr, e, own_error),
                 };
+                if exceeds_complexity_limit(&format_code) {
+                    return array_of_errors(&arr, too_complex(cell), own_error);
+                }
                 let ctx = self.format_context();
                 let mut output = Vec::with_capacity(arr.len());
                 for row in arr {
@@ -226,6 +241,9 @@ impl Model {
                     Ok(s) => s,
                     Err(s) => return s,
                 };
+                if exceeds_complexity_limit(&format_code) {
+                    return too_complex(cell);
+                }
                 let is_blank = matches!(other, CalcResult::EmptyCell);
                 let value = match other {
                     CalcResult::Number(f) => f,
