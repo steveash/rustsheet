@@ -3,7 +3,7 @@ id: T-1423
 title: "Report probe known failures per assigned milestone (decision 0051)"
 milestone: M2
 lane: harness
-status: in-progress
+status: done
 priority: P1
 size: M
 tier: opus
@@ -41,29 +41,29 @@ one-liner.
   `M0-M2=74 M5=35 M6=175 M7=1547 M8=3 M9=994 M10=53 M11=0 total=2881`.
 
 ## Acceptance criteria
-- [ ] The mapping file accepts an optional per-cell form (`case id`, `Sheet!A1`, milestone, subject)
+- [x] The mapping file accepts an optional per-cell form (`case id`, `Sheet!A1`, milestone, subject)
       that overrides the case-level milestone for that cell only; move
       `subtotal-reference-operands-d` Sheet1!H28 (`=GEOMEAN(5,7)`) to M9 with it (decision 0051,
       "Known consequences"). Record the change in decision 0051 (governed path).
-- [ ] The harness parses `eval/milestones/probe-milestones.tsv` with a `thiserror` error type.
+- [x] The harness parses `eval/milestones/probe-milestones.tsv` with a `thiserror` error type.
       Unit tests cover:
       - a comment line;
       - a duplicate case;
       - a milestone that is not `M\d+`;
       - an unknown case id. `run` and `check` fail on it, naming the line, as for the lists.
-- [ ] Unit tests cover each of rules 1–5: a frozen-list case that is also tagged later stays M1;
+- [x] Unit tests cover each of rules 1–5: a frozen-list case that is also tagged later stays M1;
       an override line beats the tag; a catalog cell wrapped in OR/IFERROR/ERROR.TYPE counts at
       its function's milestone; a catalog cell that calls no catalog function is M2; a case with
       no tag is M2.
-- [ ] report.md gets a "Probe milestones (decision 0051)" section, and report.json gets the same
+- [x] report.md gets a "Probe milestones (decision 0051)" section, and report.json gets the same
       data. The section has one row each for M0–M2, M5, M6, M7, M8, M9, M10 and M11, with these
       columns: cases, scored cells, bit-exact, deviations and known failures (cells). The console
       summary prints the M0–M2 row. On the commit the PR branches from, the known-failure column
       equals the decision 0051 one-liner's output. The PR description quotes both.
-- [ ] docs/architecture/eval-harness.md describes the section and the rules (citing decision
+- [x] docs/architecture/eval-harness.md describes the section and the rules (citing decision
       0051). The steward skill's "Probe milestones" bullet points to the report section, not the
       one-liner.
-- [ ] `make check` green; reviewers approve (architecture and security, for `.claude/`).
+- [x] `make check` green; reviewers approve (architecture and security, for `.claude/`).
 
 ## Out of scope
 - Changing `probe-milestones.tsv`, `m1-probes.txt`, any case file or tag, or `eval/baseline/`.
@@ -71,3 +71,17 @@ one-liner.
 - Gating CI on a milestone's pass rate. The rows are exit measures; `eval-check` already catches
   regressions.
 - Per-milestone rows for suites other than `probes`.
+
+## Outcome
+- New `crates/rustsheet-eval/src/probe_milestones.rs` applies decision 0051's rules 1–5
+  (frozen M1 list, mapping-file cell and case lines, catalog cells per function, the case's
+  milestone tag, else M2). report.md has a new "Probe milestones (decision 0051)" section, and
+  report.json carries the same data as `probe_milestones`. The console summary prints the M0–M2
+  row. `CaseResult` now carries the case's `tags`.
+- `eval/milestones/probe-milestones.tsv` accepts cell lines. `subtotal-reference-operands-d`
+  Sheet1!H28 (GEOMEAN) moves to M9. Decision 0051, eval-harness.md and the steward skill are
+  updated to match.
+- At base 6a44e7c9 the report matched the decision one-liner exactly:
+  `M0-M2=75 M5=35 M6=175 M7=1547 M8=3 M9=994 M10=48 M11=0 total=2877`. After this change the
+  report gives M0-M2 74 and M9 995.
+- Eval delta: none (no baseline change).
