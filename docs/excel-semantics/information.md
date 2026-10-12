@@ -186,3 +186,9 @@ Ours: matches since T-1218 (SHEET/N of a range, CELL's array info_type, ISFORMUL
 UNVERIFIED: ironcalc-calc CELL.xlsx B14 (excel-cached, a legacy CSE array formula) shows `CELL("contents",A10:A14)` on the formula's own sheet giving the top-left cell (3.4, not the intersection with row 14), while probes/info-logic-argument-modes A18 (a dynamic-array formula) is `#VALUE!` for an other-sheet row range. We key on the sheet, but the evidence does not separate that from "the formula cell is not inside the range" or "CSE reads the top-left, dynamic arrays give `#VALUE!`". Also unprobed: a non-string element in an array `info_type` (we give `#VALUE!`) and `N(range)` whose top-left cell is an error (we pass the error through).
 `CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
 Tasks: T-1088, T-1218
+
+## Oracle refusal: XLM GET.WORKBOOK (precaution, not Excel evidence)
+The oracle appends a canary sheet to every workbook it recalculates, which changes `SHEETS()`, `INFO()`
+and the XLM `GET.WORKBOOK(...)` sheet list. Workbooks that use `GET.WORKBOOK(` (defined names or macro
+sheets) are refused by `embed_canary` for that reason only; this says nothing about what Excel returns
+(T-0014, tools/src/rustsheet_tools/oracle/canary.py).
