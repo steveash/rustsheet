@@ -705,16 +705,8 @@ impl Model {
                 "rate and yld must be >= 0".to_string(),
             );
         }
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            );
-        }
-
-        if self.coupon_schedule_breaks(maturity) {
-            return broken_schedule_error(cell);
+        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
+            return e;
         }
         let n = match coupon_count(settlement, maturity, frequency) {
             Ok(v) => v as f64,
@@ -824,16 +816,8 @@ impl Model {
                 "rate and yld must be >= 0; redemption must be > 0".to_string(),
             );
         }
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            );
-        }
-
-        if self.coupon_schedule_breaks(maturity) {
-            return broken_schedule_error(cell);
+        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
+            return e;
         }
         match compute_price(
             settlement, maturity, rate, yld, redemption, frequency, basis,
@@ -891,16 +875,8 @@ impl Model {
                 "pr and redemption must be > 0".to_string(),
             );
         }
-        if settlement >= maturity {
-            return CalcResult::new_error(
-                Error::NUM,
-                cell,
-                "settlement must be before maturity".to_string(),
-            );
-        }
-
-        if self.coupon_schedule_breaks(maturity) {
-            return broken_schedule_error(cell);
+        if let Err(e) = self.check_bond_dates(settlement, maturity, cell) {
+            return e;
         }
         match compute_yield_from_price(pr, settlement, maturity, rate, redemption, frequency, basis)
         {

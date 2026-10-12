@@ -6,7 +6,7 @@
   "crates/rustsheet-engine/src/expressions/parser/static_analysis.rs": 2147,
   "crates/rustsheet-engine/src/expressions/parser/stringify.rs": 1070,
   "crates/rustsheet-engine/src/functions/date_and_time.rs": 1134,
-  "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1334,
+  "crates/rustsheet-engine/src/functions/financial/financial_bonds.rs": 1310,
   "crates/rustsheet-engine/src/functions/financial/mod.rs": 2303,
   "crates/rustsheet-engine/src/functions/mod.rs": 2182,
   "crates/rustsheet-engine/src/model.rs": 3499,

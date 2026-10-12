@@ -6,7 +6,7 @@ use crate::{
         token::{Error, OpCompare, OpProduct, OpSum},
         types::CellReferenceIndex,
     },
-    functions::util::compare_values,
+    functions::{math_and_trigonometry::array_size::check_array_size, util::compare_values},
     model::Model,
 };
 
@@ -267,6 +267,46 @@ pub(crate) fn array_of_errors(
     )
 }
 
+/// Combines two arrays element by element, as a binary operator does: the result has the larger
+/// of the two heights and widths, a size-1 dimension repeats its only element and a position past
+/// the end of the shorter array is [`MISSING`]. A result above the engine's array limit is the
+/// limit's error before anything is allocated: a whole column against a whole row (`=D:D+4:4`)
+/// would be 2^34 cells (DEVIATION, docs/excel-semantics/arrays.md "Array results above 1,048,576
+/// cells").
+pub(crate) fn broadcast_arrays(
+    a1: &[Vec<ArrayNode>],
+    a2: &[Vec<ArrayNode>],
+    cell: CellReferenceIndex,
+    mut combine: impl FnMut(&ArrayNode, &ArrayNode) -> ArrayNode,
+) -> CalcResult {
+    let n1 = a1.len();
+    let m1 = a1.first().map_or(0, Vec::len);
+    let n2 = a2.len();
+    let m2 = a2.first().map_or(0, Vec::len);
+    let rows = n1.max(n2);
+    let cols = m1.max(m2);
+    if let Some((error, message)) = check_array_size(rows, cols) {
+        return CalcResult::new_error(error, cell, message);
+    }
+    let mut array = Vec::with_capacity(rows);
+    for i in 0..rows {
+        let row1 = bcast_idx(n1, i).and_then(|ri| a1.get(ri));
+        let row2 = bcast_idx(n2, i).and_then(|ri| a2.get(ri));
+        let mut data_row = Vec::with_capacity(cols);
+        for j in 0..cols {
+            let v1 = row1
+                .and_then(|r| bcast_idx(m1, j).and_then(|cj| r.get(cj)))
+                .unwrap_or(&MISSING);
+            let v2 = row2
+                .and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)))
+                .unwrap_or(&MISSING);
+            data_row.push(combine(v1, v2));
+        }
+        array.push(data_row);
+    }
+    CalcResult::Array(array)
+}
+
 impl Model {
     /// Evaluates a cell formula's outermost node. Excel snaps a near-zero result of the formula's
     /// outermost `+`/`-` to 0, but not for a wholly parenthesized formula, which is a
@@ -467,38 +507,15 @@ impl Model {
             // Case 4: Both are arrays
             // -----------------------------------------------------
             (NumberOrArray::Array(a1), NumberOrArray::Array(a2)) => {
-                let n1 = a1.len();
-                let m1 = a1.first().map(|r| r.len()).unwrap_or(0);
-                let n2 = a2.len();
-                let m2 = a2.first().map(|r| r.len()).unwrap_or(0);
-                let n = n1.max(n2);
-                let m = m1.max(m2);
-
-                let mut array = Vec::new();
-                for i in 0..n {
-                    let row1 = bcast_idx(n1, i).and_then(|ri| a1.get(ri));
-                    let row2 = bcast_idx(n2, i).and_then(|ri| a2.get(ri));
-
-                    let mut data_row = Vec::new();
-                    for j in 0..m {
-                        let v1 = row1
-                            .and_then(|r| bcast_idx(m1, j).and_then(|cj| r.get(cj)))
-                            .unwrap_or(&MISSING);
-                        let v2 = row2
-                            .and_then(|r| bcast_idx(m2, j).and_then(|cj| r.get(cj)))
-                            .unwrap_or(&MISSING);
-
-                        match (self.array_node_to_number(v1), self.array_node_to_number(v2)) {
-                            (Ok(f1), Ok(f2)) => match op(f1, f2) {
-                                Ok(x) => data_row.push(ArrayNode::Number(x)),
-                                Err(e) => data_row.push(ArrayNode::Error(e)),
-                            },
-                            (Err(e), _) | (_, Err(e)) => data_row.push(ArrayNode::Error(e)),
-                        }
+                broadcast_arrays(&a1, &a2, cell, |v1, v2| {
+                    match (self.array_node_to_number(v1), self.array_node_to_number(v2)) {
+                        (Ok(f1), Ok(f2)) => match op(f1, f2) {
+                            Ok(x) => ArrayNode::Number(x),
+                            Err(e) => ArrayNode::Error(e),
+                        },
+                        (Err(e), _) | (_, Err(e)) => ArrayNode::Error(e),
                     }
-                    array.push(data_row);
-                }
-                CalcResult::Array(array)
+                })
             }
         }
     }
@@ -556,29 +573,7 @@ impl Model {
                     .collect(),
             ),
             (StringOrArray::Array(a1), StringOrArray::Array(a2)) => {
-                let n1 = a1.len();
-                let m1 = a1.first().map(|r| r.len()).unwrap_or(0);
-                let n2 = a2.len();
-                let m2 = a2.first().map(|r| r.len()).unwrap_or(0);
-                let rows = n1.max(n2);
-                let cols = m1.max(m2);
-                let mut array = Vec::with_capacity(rows);
-                for ri in 0..rows {
-                    let row1 = bcast_idx(n1, ri).and_then(|i| a1.get(i));
-                    let row2 = bcast_idx(n2, ri).and_then(|i| a2.get(i));
-                    let mut data_row = Vec::with_capacity(cols);
-                    for ci in 0..cols {
-                        let v1 = row1
-                            .and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
-                            .unwrap_or(&MISSING);
-                        let v2 = row2
-                            .and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
-                            .unwrap_or(&MISSING);
-                        data_row.push(concat_nodes(v1, v2));
-                    }
-                    array.push(data_row);
-                }
-                CalcResult::Array(array)
+                broadcast_arrays(&a1, &a2, cell, concat_nodes)
             }
         }
     }
@@ -667,31 +662,9 @@ impl Model {
                     .collect(),
             ),
             (ValueOrArray::Array(la), ValueOrArray::Array(ra)) => {
-                let n1 = la.len();
-                let m1 = la.first().map(|r| r.len()).unwrap_or(0);
-                let n2 = ra.len();
-                let m2 = ra.first().map(|r| r.len()).unwrap_or(0);
-                let rows = n1.max(n2);
-                let cols = m1.max(m2);
-                let mut array = Vec::with_capacity(rows);
-                for ri in 0..rows {
-                    let lrow = bcast_idx(n1, ri).and_then(|i| la.get(i));
-                    let rrow = bcast_idx(n2, ri).and_then(|i| ra.get(i));
-                    let mut data_row = Vec::with_capacity(cols);
-                    for ci in 0..cols {
-                        let lv = node_to_calc(
-                            lrow.and_then(|r| bcast_idx(m1, ci).and_then(|j| r.get(j)))
-                                .unwrap_or(&MISSING),
-                        );
-                        let rv = node_to_calc(
-                            rrow.and_then(|r| bcast_idx(m2, ci).and_then(|j| r.get(j)))
-                                .unwrap_or(&MISSING),
-                        );
-                        data_row.push(apply_to_elements(&lv, &rv));
-                    }
-                    array.push(data_row);
-                }
-                CalcResult::Array(array)
+                broadcast_arrays(&la, &ra, cell, |l, r| {
+                    apply_to_elements(&node_to_calc(l), &node_to_calc(r))
+                })
             }
         }
     }

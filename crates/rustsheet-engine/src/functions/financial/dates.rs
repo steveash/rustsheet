@@ -86,6 +86,27 @@ impl Model {
             .coupon_schedule_breaks(maturity)
     }
 
+    /// The date checks PRICE, YIELD and DURATION make before computing: settlement before maturity
+    /// and a coupon schedule that does not break (`coupon_schedule_breaks`); #NUM! otherwise.
+    pub(super) fn check_bond_dates(
+        &self,
+        settlement: i64,
+        maturity: i64,
+        cell: CellReferenceIndex,
+    ) -> Result<(), CalcResult> {
+        if settlement >= maturity {
+            return Err(CalcResult::new_error(
+                Error::NUM,
+                cell,
+                "settlement must be before maturity".to_string(),
+            ));
+        }
+        if self.coupon_schedule_breaks(maturity) {
+            return Err(broken_schedule_error(cell));
+        }
+        Ok(())
+    }
+
     /// A date a financial function computed in the `financial_date` space (COUPNCD, COUPPCD), as
     /// this workbook's serial: a day early in a 1904 workbook.
     pub(super) fn financial_date_result(&self, serial: i64) -> CalcResult {
