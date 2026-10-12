@@ -3,7 +3,7 @@ id: T-1440
 title: "1904 workbooks: COUPNCD with a 9999-12-31 maturity returns the maturity (probes/date-system-1904-financial A43)"
 milestone: M1
 lane: functions-financial
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
