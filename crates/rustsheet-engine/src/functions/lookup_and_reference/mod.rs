@@ -107,7 +107,7 @@ impl Model {
             return target;
         }
         let match_type = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
+            match self.match_type_arg(&args[2], cell) {
                 // floor, not truncation: -0.5 searches descending (docs/excel-semantics/lookup.md,
                 // gen-m2/f7e6d351c8538ef5 A160, gen-m2/96a0952412cefa6c A241).
                 Ok(v) => v.floor() as i32,
@@ -141,6 +141,27 @@ impl Model {
                 message: "Not found".to_string(),
             },
         }
+    }
+
+    /// MATCH's match_type as a number. Text that comes from a cell (a reference) and is not a
+    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
+    fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let value = self.eval_ref_or_index(node, cell);
+        let from_cell = matches!(value, CalcResult::Range { .. });
+        self.cast_to_number(value, cell)
+            .map_err(|error| match error {
+                CalcResult::Error {
+                    error: Error::VALUE,
+                    origin,
+                    ..
+                } if from_cell => CalcResult::Error {
+                    error: Error::REF,
+                    origin,
+                    message: "Invalid reference".to_string(),
+                },
+                other => other,
+            })
     }
 
     /// HLOOKUP(lookup_value, table_array, row_index, [is_sorted])
