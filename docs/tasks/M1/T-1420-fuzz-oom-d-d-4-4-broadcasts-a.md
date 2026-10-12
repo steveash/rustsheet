@@ -45,5 +45,5 @@ The three array-by-array operator broadcasts (arithmetic, `&`, comparisons) beca
 `broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs, which checks the result shape with
 `check_array_size` before allocating: the fuzz reproducer, `=D:D+4:4`, `=SUM(D:D>4:4)` and the other
 forms are `#ERROR!` (DEVIATION, decision 0014) in ~0.5 s of a debug test; without the fix the test
-aborts on allocation under `ulimit -v 4000000`. Duplicated lines 6647 → 6617. Eval delta: none
+aborts on allocation under `ulimit -v 4000000`. Duplicated lines 6647 → 6598. Eval delta: none
 (0 fixed, 0 regressions). Follow-up: T-1445 (IF and IFERROR/IFNA broadcast the same way, unbounded).
