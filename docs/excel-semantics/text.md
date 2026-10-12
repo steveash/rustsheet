@@ -189,7 +189,7 @@ Status: VERIFIED (excel-graph)
 Tasks: T-1087, T-1212, T-1213, T-1214, T-1229, T-1248, T-1410, T-1411
 
 ## BAHTTEXT
-Rule: the number is cut to 15 significant digits (as ROUND does), then rounded half away from zero to two decimals
+Rule: the number is rounded to 15 significant digits (as ROUND does), then rounded half away from zero to two decimals
 (satang): `BAHTTEXT(0.995)` = "หนึ่งบาทถ้วน", `BAHTTEXT(2.675)` = "สองบาทหกสิบแปดสตางค์" and 1.005 gives one satang, so the
 rounding is decimal, not binary. Digits past the 15th are zeros: 123456789012345.67 reads ...สี่สิบหกบาทถ้วน, 1e15+0.5 is
 หนึ่งพันล้านล้านบาทถ้วน and 1.797e308 reads in full. Zero baht prints "ศูนย์บาทถ้วน", whole baht end in "บาทถ้วน", satang alone
@@ -199,7 +199,8 @@ rounds to zero (-0.001 is "ลบศูนย์บาทถ้วน"; -0.005 i
 group (10^12 is หนึ่งล้านล้าน, 1e100 is หนึ่งหมื่น plus sixteen ล้าน). The argument coerces like a number: "5", " 5 " and
 "1e2" work, TRUE is 1, an empty cell is 0, "abc", "" and "1,5" are `#VALUE!`, an error
 passes through; a range or array argument lifts (`BAHTTEXT({1,2.5})` spills "หนึ่งบาทถ้วน", "สองบาทห้าสิบสตางค์").
-Unprobed: the argument count (0 or 2 arguments).
+Unprobed (T-1270): the argument count (0 or 2 arguments), a satang carry through 9s (9.995, 999999.999), and
+an inner six-digit group ending in 1 (1000001000000).
 Evidence: probes/text-modes-bahttext, text-bahttext-wide, -wide2, -form1 to -form8, -text1 to -text3 (excel-graph,
 2026-10-09, T-1214).
 Ours: matches (`fn_bahttext`, functions/text/bahttext.rs).
