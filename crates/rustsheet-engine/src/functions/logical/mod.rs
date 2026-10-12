@@ -357,6 +357,17 @@ impl Model {
     /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
     /// `SUM(IFS(TRUE,A1:B2))` is 10.
     pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
+        self.ifs_impl(args, cell, false)
+    }
+
+    /// IFS; `as_reference` hands the chosen value back as the reference it is, for an argument
+    /// that reads one (MATCH's `match_type`: probes/match-type-text-passthrough K1, T-1399).
+    pub(crate) fn ifs_impl(
+        &mut self,
+        args: &[Node],
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
         let args_count = args.len();
         if args_count < 2 {
             return CalcResult::new_args_number_error(cell);
@@ -384,7 +395,13 @@ impl Model {
                 );
             }
             match self.cast_to_bool(condition, cell) {
-                Ok(true) => return self.evaluate_node_in_context(&args[2 * case_index + 1], cell),
+                Ok(true) => {
+                    return if as_reference {
+                        self.evaluate_node_with_reference(&args[2 * case_index + 1], cell)
+                    } else {
+                        self.evaluate_node_in_context(&args[2 * case_index + 1], cell)
+                    };
+                }
                 Ok(false) => {}
                 Err(error) => return error,
             }

@@ -204,6 +204,10 @@ lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and 
 `INDEX` returns that `#REF!` (`INDEX(A5:B7,MATCH(1,A5:A6,D1),3)` and `,1`), while a literal-text
 match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
 out-of-range column, which alone is `#REF!`).
+Rule 3: the cell stays a reference through IF, IFS, CHOOSE, SWITCH and LET, so `MATCH(2,A5:A7,IFS(TRUE,D1))`
+with D1 = "x" is `#REF!` too (as are the same with IF, CHOOSE, SWITCH, `LET(a,D1,a)`); D2 = 1
+gives 2. IFERROR returns the value, so `IFERROR(D1,0)` is `#VALUE!`, like literal text
+(probes/match-type-text-passthrough K1:K9, excel-graph, T-1399).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
 2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
 Implemented in: `fn_match` / `match_type_arg` in `crates/rustsheet-engine/src/functions/lookup_and_reference/mod.rs` (Rule 2: non-numeric text from a cell only; numeric text and booleans in the cell are unprobed).

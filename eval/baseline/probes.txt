@@ -274,6 +274,7 @@ C	probes/lookup-whole-column-blank-tail.case.json	60
 C	probes/m7-argument-modes.case.json	174
 C	probes/match-descending-argcheck.case.json	20
 C	probes/match-fractional-match-type.case.json	8
+C	probes/match-type-text-passthrough.case.json	9
 C	probes/math-argument-modes.case.json	56
 C	probes/min-max-reference-forms.case.json	25
 C	probes/min-max-value-args.case.json	16
