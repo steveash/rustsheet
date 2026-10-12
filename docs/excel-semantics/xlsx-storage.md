@@ -84,7 +84,7 @@ Evidence: probes/ceiling-xlfn-prefix A1:A4, all 4 (oracle: excel-graph, 2026-10-
 recalculated workbook's `<f>` text was `CEILING(2.5,2)` for both A1 and A2 and `_xlfn.CEILING.MATH(...)`
 for A3 and A4.
 Status: VERIFIED
-Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/mod.rs); test
+Implemented in: `Function::to_xlsx_string` (crates/rustsheet-engine/src/functions/xlsx_names.rs); test
 `test_export_ceiling_has_no_xlfn_prefix`.
 Tasks: T-0172
 
