@@ -3,7 +3,7 @@ id: T-1386
 title: "Probe Excel's formula length limit for typed formulas and defined names (8,192 characters)"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
