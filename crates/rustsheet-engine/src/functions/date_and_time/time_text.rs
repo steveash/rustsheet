@@ -9,16 +9,30 @@ use crate::{
     cast::number_text_too_long,
     formatter::date_text::{parse_date, CurrentYear},
     locale::Locale,
+    model::Model,
     types::DateSystem,
 };
 
+impl Model {
+    /// [`parse_time_string`] with the model's locale, year and date system.
+    pub(super) fn parse_time_text(&self, text: &str) -> Option<f64> {
+        parse_time_string(
+            text,
+            self.locale,
+            &|| self.current_year(),
+            self.workbook.settings.date_system,
+        )
+    }
+}
+
 /// Time of day for TIMEVALUE text: the fractional part of the serial the text denotes, so clock
 /// text past 24 hours wraps (`TIMEVALUE("25:00")` is 1.0416666666666667 - 1) and "date time" text
-/// keeps the subtraction's float error. Excel: see docs/excel-semantics/dates.md#time-text.
+/// keeps the subtraction's float error; the date part is read in `date_system`, a pre-epoch 1904 day being no date (probes/date-system-1904-timevalue). Excel: see docs/excel-semantics/dates.md#time-text.
 pub(super) fn parse_time_string(
     text: &str,
     locale: &Locale,
     current_year: CurrentYear,
+    date_system: DateSystem,
 ) -> Option<f64> {
     let raw = text;
     let text = trim_spaces(text);
@@ -55,13 +69,13 @@ pub(super) fn parse_time_string(
     ];
     for p in patterns_dt {
         if let Ok(dt) = NaiveDateTime::parse_from_str(text, p) {
-            return Some(crate::utils::time_of_day_from_datetime(dt));
+            return crate::utils::time_of_day_from_datetime(dt, date_system);
         }
     }
     // "date clock" text the patterns above do not cover (fractional seconds, hours past 23,
     // M:S.f): date serial plus clock serial, then the fractional part (probe
     // timevalue-ampm-limits: TIMEVALUE("1/2/2020 25:00") is 0.04166666666424135).
-    if let Some(serial) = parse_date_clock_serial(text, locale, current_year) {
+    if let Some(serial) = parse_date_clock_serial_in(text, locale, current_year, date_system) {
         return Some(serial - serial.floor());
     }
     if let Ok(dt) = DateTime::parse_from_rfc3339(text) {
@@ -90,15 +104,23 @@ pub(crate) fn parse_time_serial(
     if let Some(serial) = parse_limited_clock_text(raw, text) {
         return Some(serial);
     }
-    parse_hour_only_am_pm(text).or_else(|| {
-        // The date part counts from the workbook's epoch. A day before the 1904 epoch is no date
-        // (`"1904-01-02 10:00"+0` is 1.4166666666666667, `"1903-12-31 10:00"+0` is #VALUE!;
-        // probes/date-system-1904-clock-text A1, A7).
-        // The clock is added after the shift: summing in the 1900 system first loses low bits.
-        let (days, clock) = parse_date_clock_parts(text, locale, current_year)?;
-        let days = date_system.serial_from_1900_serial(i64::from(days))?;
-        Some(days as f64 + clock)
-    })
+    parse_hour_only_am_pm(text)
+        .or_else(|| parse_date_clock_serial_in(text, locale, current_year, date_system))
+}
+
+/// [`parse_date_clock_serial`] in the workbook's date system. The date part counts from the
+/// workbook's epoch, and a day before the 1904 epoch is no date (`"1904-01-02 10:00"+0` is
+/// 1.4166666666666667, `"1903-12-31 10:00"+0` is #VALUE!; probes/date-system-1904-clock-text A1,
+/// A7). The clock is added after the shift: summing in the 1900 system first loses low bits.
+fn parse_date_clock_serial_in(
+    text: &str,
+    locale: &Locale,
+    current_year: CurrentYear,
+    date_system: DateSystem,
+) -> Option<f64> {
+    let (days, clock) = parse_date_clock_parts(text, locale, current_year)?;
+    let days = date_system.serial_from_1900_serial(i64::from(days))?;
+    Some(days as f64 + clock)
 }
 
 /// Hour-only "N AM" / "N PM" text (hour 0-12, no minutes) as a time-of-day serial: `"0 PM"` is
@@ -116,7 +138,7 @@ fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
 /// "Date clock" text (`"1/2/2020 10:11:12.5"`, `"July 1, 2026 6 PM"`) as the unwrapped serial:
 /// date serial plus clock serial. The clock is the last word, or the last two when they end in
 /// AM/PM, since date text has spaces of its own (probes/date-text-grammar C30, C31, C55).
-/// The sum is a 1900-system serial; a 1904 reader goes through [`parse_time_serial`] instead.
+/// The sum is a 1900-system serial; a 1904 reader uses [`parse_date_clock_serial_in`] (via [`parse_time_serial`] or TIMEVALUE) instead.
 pub(crate) fn parse_date_clock_serial(
     text: &str,
     locale: &Locale,
