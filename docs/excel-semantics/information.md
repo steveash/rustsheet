@@ -205,6 +205,13 @@ Settled by T-1230 (next entry): ironcalc-calc CELL.xlsx B14 (top-left of a same-
 `CELL("address")` across sheets depends on the file name, which the engine does not know (T-1218 leaves it unimplemented).
 Tasks: T-1088, T-1218
 
+## ISFORMULA over reference kinds (excel-graph)
+Rule: ISFORMULA is TRUE for a cell holding a formula, whatever it returns (`=1+1`, `=""`, `=1/0`), and FALSE for a constant number, a constant text and a blank cell. A spill anchor (`=SEQUENCE(3)`) is TRUE and a spilled child (the cell below it) is FALSE. A cell on another sheet works the same, and the reference may come from INDIRECT, OFFSET or INDEX; `ISFORMULA(Data!D1:D3)` lifts.
+Evidence: probes/ifna-isformula-edges Calc!B1:B13 (oracle: excel-graph, 2026-10-12, T-1279).
+Status: VERIFIED (excel-graph)
+Ours: matches except `ISFORMULA(INDEX(range,1))`, which Excel gives as TRUE and we give as #VALUE! (Calc!B12; T-1453).
+Tasks: T-1279, T-1453
+
 ## CELL("contents", ref) reads the formula's own sheet (excel-graph)
 Rule (excel-graph): `CELL("contents", ref)` reads the top-left cell of `ref` taken **on the formula's own sheet**, whatever sheet `ref` names; a multi-cell range is never implicitly intersected, and a legacy (non-array) formula gives the same value as a dynamic one. `=CELL("contents",Data!A2)` on Calc is Calc!A2 (12.5), not Data!A2 (2.5); `Data!A7:C7` is Calc!A7 (21.5); `Data!E1:F1` is Calc!E1 (blank, 0). The earlier "other sheet = `#VALUE!`" reading (probes/info-logic-argument-modes A18) was this: Calc!A2 there is `=XOR(Data!B1)` = `#VALUE!`. Same-sheet ranges give the top-left cell (`A1:A5` in C1, C3, C8 all 11.5), legacy twins included. Only `"contents"` has legacy-twin evidence; the vector signature for CELL's `reference` covers every info_type (other info_types: T-1433).
 Evidence: probes/info-cell-contents-range Calc!C1:F8, S2:S7, T1:T6, V1:V5 (oracle: excel-graph, 2026-10-12, T-1230).

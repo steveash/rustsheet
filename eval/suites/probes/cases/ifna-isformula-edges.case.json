@@ -1,0 +1,63 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1279 probe: IFNA scalar/array/reference edges and ISFORMULA over reference kinds (formula, constant, blank, spill anchor and child, other sheet, INDIRECT/OFFSET/INDEX). Data!D7 spills SEQUENCE(3) into D7:D9.",
+ "tags": [
+  "M5",
+  "probe",
+  "logical",
+  "information"
+ ],
+ "sheets": [
+  {
+   "name": "Data",
+   "cells": {
+    "A1": 1,
+    "A2": "=NA()",
+    "A3": 3,
+    "B1": 10,
+    "B2": 20,
+    "B3": 30,
+    "D1": "=1+1",
+    "D2": 5,
+    "D3": "txt",
+    "D5": "=\"\"",
+    "D6": "=1/0",
+    "D7": "=SEQUENCE(3)"
+   }
+  },
+  {
+   "name": "Calc",
+   "cells": {
+    "A1": "=IFNA(#N/A,1)",
+    "A2": "=IFNA(NA(),\"x\")",
+    "A3": "=IFNA(#DIV/0!,1)",
+    "A4": "=IFNA(#VALUE!,1)",
+    "A5": "=IFNA(5,1)",
+    "A6": "=IFNA(\"\",1)",
+    "A7": "=IFNA(#N/A,)",
+    "A8": "=IFNA(#N/A,#DIV/0!)",
+    "A9": "=IFNA(VLOOKUP(9,Data!A1:B3,2,FALSE),\"none\")",
+    "A10": "=IFNA(MATCH(\"z\",Data!A1:A3,0),0)",
+    "A11": "=SUM(IFNA({1,#N/A,3},10))",
+    "A12": "=IFNA(Data!A1:A3,0)",
+    "C1": "=IFNA({1,#N/A,3},0)",
+    "C3": "=IFNA(#N/A,{1,2})",
+    "A13": "=IFNA(Data!F1,1)",
+    "B1": "=ISFORMULA(Data!D1)",
+    "B2": "=ISFORMULA(Data!D2)",
+    "B3": "=ISFORMULA(Data!D3)",
+    "B4": "=ISFORMULA(Data!D4)",
+    "B5": "=ISFORMULA(Data!D5)",
+    "B6": "=ISFORMULA(Data!D6)",
+    "B7": "=ISFORMULA(Data!D7)",
+    "B8": "=ISFORMULA(Data!D8)",
+    "B9": "=ISFORMULA(Calc!A1)",
+    "B10": "=ISFORMULA(INDIRECT(\"Data!D1\"))",
+    "B11": "=ISFORMULA(OFFSET(Data!D1,0,0))",
+    "B12": "=ISFORMULA(INDEX(Data!D1:D3,1))",
+    "B13": "=ISFORMULA(Data!D1:D3)"
+   }
+  }
+ ],
+ "expected": {}
+}
