@@ -38,5 +38,8 @@
   T-1214: functions/mod.rs 2363 → 2183 lines (records T-1425's move of `to_xlsx_string`, less BAHTTEXT's 4
   registration lines); stringify.rs, date_and_time.rs and model.rs already shrunk on main
   (`check_file_size.py --update`).
+  T-1235: duplicated lines 7158 → 6672 (lifting reuses `lift_numbers` and `text_arg`/`broadcast_text`; TODAY/NOW share
+  `now_in_timezone_arg`, NETWORKDAYS(.INTL) share `networkdays_bounds`/`networkdays_holidays`)
+  (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
