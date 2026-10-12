@@ -272,6 +272,7 @@ fn written_parentheses_are_exported_as_excel_stores_them() {
         ("@(Z1:Z3)", "_xlfn.SINGLE((Z1:Z3))"),
         ("@((Z1:Z3))", "_xlfn.SINGLE(((Z1:Z3)))"),
         ("SIN(@(Z1:Z3))", "SIN(_xlfn.SINGLE((Z1:Z3)))"),
+        ("SIN(@((Z1:Z3)))", "SIN(_xlfn.SINGLE(((Z1:Z3))))"),
     ];
     for (typed, stored) in cases {
         let t = parser.parse_cell_formula(typed, &cell_reference);
