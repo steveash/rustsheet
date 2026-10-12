@@ -84,8 +84,9 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 - **Probe milestones** (decision 0051): every other probe case counts toward the milestone that
   decision 0051 assigns it, and only M0–M2 cases count toward M2 exit. When you choose the
   Critical lane and report probe failures in docs/status.md, use the M0–M2 count, not the whole
-  suite's. Until T-1423 adds that count to the report, get it from the one-liner in decision
-  0051, "Measurement".
+  suite's. Read it from the "Probe milestones (decision 0051)" section of
+  `eval/runs/latest/report.md` after `make eval` (report.json: `probe_milestones`; the M0–M2 row
+  is also printed by `make eval-check`); the other rows are M5–M11's probe criteria.
 - **Governance failures**: protected paths (CI, .claude/, CLAUDE.md, lint policy, scripts/,
   quality/, docs/process/, eval/milestones/) changed — add a decision record in docs/decisions/
   explaining why, and make sure `reviewer-architecture` and `reviewer-security` approved that part explicitly.
