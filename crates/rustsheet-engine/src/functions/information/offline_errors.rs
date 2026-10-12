@@ -118,6 +118,7 @@ impl Model {
         &mut self,
         args: &[Node],
         cell: CellReferenceIndex,
+        lift_option_errors: bool,
     ) -> Result<(Lifted, Vec<CalcResult>), CalcResult> {
         // The callers check arity first; an empty list is an argument-count error, not a panic.
         let Some((head, rest)) = args.split_first() else {
@@ -130,17 +131,34 @@ impl Model {
             }
         }
         let mut rest_values = Vec::with_capacity(rest.len());
+        let mut pending = None;
         for arg in rest {
             let value = self.offline_arg(arg, cell);
             if let CalcResult::Error { error, .. } = &value {
-                return Err(match &first {
+                match &first {
                     Lifted::Array(values) => {
-                        CalcResult::Array(map_elements(values, |_| ArrayNode::Error(error.clone())))
+                        return Err(CalcResult::Array(map_elements(values, |_| {
+                            ArrayNode::Error(error.clone())
+                        })));
                     }
-                    Lifted::Scalar(_) => value,
-                });
+                    // A scalar error option beside an array option lifts over it
+                    // (probes/rich-errors-image-array-error-elements, T-1427): keep it for
+                    // `image_grid`; with no array option it is the result.
+                    Lifted::Scalar(_) if lift_option_errors => {
+                        pending.get_or_insert_with(|| value.clone());
+                    }
+                    Lifted::Scalar(_) => return Err(value),
+                }
             }
             rest_values.push(value);
+        }
+        if let Some(error) = pending {
+            if !rest_values
+                .iter()
+                .any(|v| matches!(v, CalcResult::Array(_)))
+            {
+                return Err(error);
+            }
         }
         Ok((first, rest_values))
     }
@@ -221,7 +239,7 @@ impl Model {
         if args.is_empty() || args.len() > 5 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.offline_args(args, cell) {
+        match self.offline_args(args, cell, true) {
             Err(error) => error,
             Ok((source, options))
                 if options
@@ -262,7 +280,7 @@ impl Model {
         if args.len() < 2 || args.len() > 11 {
             return CalcResult::new_args_number_error(cell);
         }
-        match self.offline_args(args, cell) {
+        match self.offline_args(args, cell, false) {
             Err(error) => error,
             Ok((Lifted::Array(values), _)) => error_array(&values, &Error::CONNECT),
             Ok((Lifted::Scalar(_), _)) => CalcResult::new_error(
