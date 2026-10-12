@@ -2,7 +2,11 @@
 
 use crate::{
     calc_result::CalcResult,
-    expressions::{token::Error, types::CellReferenceIndex},
+    cast::calc_result_to_array_node,
+    expressions::{parser::ArrayNode, token::Error, types::CellReferenceIndex},
+    functions::{
+        math_and_trigonometry::array_size::check_array_size, util::array_node_to_calc_result,
+    },
     model::Model,
 };
 
@@ -14,7 +18,8 @@ pub(super) struct LookupSearch<'a> {
     pub(super) search_vector: &'a SearchVector,
     pub(super) index: LookupIndexArg,
     pub(super) size: i32,
-    pub(super) is_sorted: bool,
+    /// The range_lookup argument: a boolean, or an array that lifts with the lookup value.
+    pub(super) is_sorted: CalcResult,
 }
 
 impl Model {
@@ -34,13 +39,21 @@ impl Model {
         pick: impl Fn(&mut Self, usize, i32, bool) -> CalcResult,
     ) -> CalcResult {
         // A lifted element is a value: only a scalar lookup may hand its cell on as a reference.
-        let lifts = matches!(
-            lookup_value,
-            CalcResult::Range { .. } | CalcResult::Array(_)
-        );
+        let is_array =
+            |value: &CalcResult| matches!(value, CalcResult::Range { .. } | CalcResult::Array(_));
+        let lifts = is_array(&lookup_value) || is_array(&search.is_sorted);
         let as_reference = as_reference && !lifts;
+        // Only an array range_lookup is lifted; a boolean one adds no criterion, so it does not
+        // multiply the cell-visit estimate.
+        let mut criteria = vec![lookup_value];
+        if is_array(&search.is_sorted) {
+            criteria.push(search.is_sorted.clone());
+        }
+        // A lifted lookup or range_lookup reads only the first element of an index array.
+        let narrowed = lifts.then(|| search.index.first_element(cell));
+        let index = narrowed.as_ref().unwrap_or(&search.index);
         self.lift_with_cost(
-            vec![lookup_value],
+            criteria,
             // Each element scans the evaluated cells of the first column (or row) once, however
             // the table was given: a computed array table counts too, not just a range.
             |_| {
@@ -54,20 +67,67 @@ impl Model {
                 if value.is_error() {
                     return value.clone();
                 }
-                match lookup_index(value, search.search_vector, search.is_sorted) {
-                    Some(found) => {
-                        match model.resolve_lookup_index(search.index.clone(), search.size, cell) {
-                            Ok(index) => pick(model, found, index, as_reference),
-                            Err(error) => error,
-                        }
-                    }
-                    None => CalcResult::Error {
+                let is_sorted = match model
+                    .cast_to_bool(values.get(1).unwrap_or(&search.is_sorted).clone(), cell)
+                {
+                    Ok(is_sorted) => is_sorted,
+                    Err(error) => return error,
+                };
+                let Some(found) = lookup_index(value, search.search_vector, is_sorted) else {
+                    return CalcResult::Error {
                         error: Error::NA,
                         origin: cell,
                         message: "Not found".to_string(),
-                    },
+                    };
+                };
+                if let (false, LookupIndexArg::Array(grid)) = (lifts, &search.index) {
+                    return model.pick_each(grid, found, search.size, cell, &pick);
+                }
+                match model.resolve_lookup_index(index.clone(), search.size, cell) {
+                    Ok(index) => pick(model, found, index, as_reference),
+                    Err(error) => error,
                 }
             },
+        )
+    }
+
+    /// A scalar lookup with an index array: the index elements are all validated in reading
+    /// order, the first bad one giving the error for the whole call, and then each picks its
+    /// cell into a same-shaped array (probes/vlookup-array-index-range-lookup, T-1269).
+    fn pick_each(
+        &mut self,
+        grid: &[Vec<ArrayNode>],
+        found: usize,
+        size: i32,
+        cell: CellReferenceIndex,
+        pick: &impl Fn(&mut Self, usize, i32, bool) -> CalcResult,
+    ) -> CalcResult {
+        let rows = grid.len();
+        let columns = grid.first().map_or(0, Vec::len);
+        if let Some((error, message)) = check_array_size(rows, columns) {
+            return CalcResult::new_error(error, cell, message);
+        }
+        let mut indexes = Vec::with_capacity(rows);
+        for row in grid {
+            let mut resolved = Vec::with_capacity(columns);
+            for node in row {
+                let element = LookupIndexArg::Reference(array_node_to_calc_result(node, cell));
+                match self.resolve_lookup_index(element, size, cell) {
+                    Ok(index) => resolved.push(index),
+                    Err(error) => return error,
+                }
+            }
+            indexes.push(resolved);
+        }
+        CalcResult::Array(
+            indexes
+                .into_iter()
+                .map(|row| {
+                    row.into_iter()
+                        .map(|index| calc_result_to_array_node(pick(self, found, index, false)))
+                        .collect()
+                })
+                .collect(),
         )
     }
 }

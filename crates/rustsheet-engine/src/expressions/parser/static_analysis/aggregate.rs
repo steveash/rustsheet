@@ -131,3 +131,14 @@ fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
         _ => is_reference_operand(node),
     }
 }
+
+/// VLOOKUP/HLOOKUP spill by lookup_value, the index and range_lookup, broadcast; the table is
+/// consumed (probes/vlookup-array-index-range-lookup, T-1269).
+pub(super) fn lookup_static_result(args: &[Node]) -> StaticResult {
+    broadcast_static_result(
+        args.iter()
+            .enumerate()
+            .filter(|(i, _)| *i != 1)
+            .map(|(_, arg)| arg),
+    )
+}

@@ -3,6 +3,8 @@
 Every gate is automated and runs in CI (`.github/workflows/ci.yml`). `make check` runs the same
 gates locally, except `cargo deny` and `cargo machete` (`make ci`). Gates are **ratchets**: a number that may only improve. Lowering a bar requires a
 decision record in `docs/decisions/` (enforced by `scripts/check_governance.py`).
+On docs-only PRs (decision 0049) CI skips the rust, eval and python jobs; hygiene always runs, and
+`docs/excel-semantics/` counts as code because the eval harness reads it.
 
 | Gate | Command | Rule |
 |---|---|---|
