@@ -3,7 +3,7 @@ id: T-0412
 title: "Compare the exporter's _xlfn. list with the function catalog"
 milestone: M11
 lane: engine
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-0411 added five missing arms (DAYS, GAUSS, IMSECH, GAMMA.DIST, FORECAST.LINEAR
 
 ## Out of scope
 -
+
+## Outcome
+Compared the arm list with XlsxWriter 3.2.9 and the catalog: only PERCENTOF was unprefixed; added it with a unit test. The other XlsxWriter names (FILTERXML, QUERYSTRING, WEBSERVICE, GROUPBY, PIVOTBY) have no engine function yet. Recorded in docs/excel-semantics/xlsx-storage.md. Eval delta: none.

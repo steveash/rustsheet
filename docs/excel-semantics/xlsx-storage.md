@@ -107,7 +107,11 @@ prefixed: normsdist-stored-form A1-A2 and availability-27 A8-A9 (refilled bare) 
 Status: VERIFIED
 Implemented in: `Function::to_xlsx_string` (functions/xlsx_names.rs; test `newer_functions_export_with_xlfn_prefix`, T-0411). The engine parser resolves a bare newer name read from a file, and the
 exporter never writes `_xleta.` (T-1089).
-Tasks: T-0040, T-1089
+Comparison (T-0412): the exporter's arm list was checked against XlsxWriter 3.2.9's future-function list and the
+catalog. Only PERCENTOF was missing (added). XlsxWriter also prefixes ANCHORARRAY (the `#` operator),
+SINGLE (the `@` operator, handled by the parser), FILTERXML, QUERYSTRING and WEBSERVICE; the engine has no
+Function variant for the last three or for GROUPBY/PIVOTBY, so there is nothing to export yet.
+Tasks: T-0040, T-0412, T-1089
 
 ## Written parentheses are stored as written; `@(x)` is `_xlfn.SINGLE((x))`
 Rule: the stored `<f>` text keeps every redundant parenthesis as written. A group directly after `@`
