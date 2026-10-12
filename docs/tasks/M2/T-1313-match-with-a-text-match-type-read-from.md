@@ -3,7 +3,7 @@ id: T-1313
 title: "MATCH with a text match_type read from a cell is #REF! (gen-m2 04cfd82f54dbc2b2 A81, f9d4df4efdfbcbd5 A14)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
