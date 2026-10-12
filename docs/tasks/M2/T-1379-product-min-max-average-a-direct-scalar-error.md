@@ -3,7 +3,7 @@ id: T-1379
 title: "PRODUCT/MIN/MAX/AVERAGE: a direct scalar error beats a referenced error; SUM: scalar direct error beats array error and array vs reference is leftmost"
 milestone: M2
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
