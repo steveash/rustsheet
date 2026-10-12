@@ -416,24 +416,26 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260
 
-## INDEX truncates a tiny negative index to 0
-Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: a tiny negative index counts as 0.
-`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
+## INDEX rounds an index up near an integer; a tiny negative index is 0
+Rule: INDEX reads a row or column index as LEFT/RIGHT/REPLACE read a count (text.md "LEFT, RIGHT and REPLACE round
+counts up near an integer"): truncated, except that a value within 2^-22 + 2^-33 (about 2.38535E-7) below an integer
+counts as that integer, an absolute bound. A negative index no further below 0 than half that bound,
+2^-23 + 2^-34 (about 1.192675E-7), counts as 0 (the whole row or column); anything further below is `#VALUE!`.
+`INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`, and
+`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, the density at A3 = 0.5, the first cell of
 A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor).
-Probed (probes/index-tiny-negative, excel-graph, 2026-10-12, T-1407), row and column index alike:
-- Negative fractions: -1E-15 and -1E-7 give the whole row or column (index 0), but -1.5E-7, -2E-7, -2.5E-7, -3E-7,
-  -5E-7, -1E-6, -1E-4, -0.01, -0.1, -0.4, -0.5, -0.999, -1, -1.5 and -2147483648.5 are `#VALUE!`. `-0.0000009999` too.
-- A positive index just below an integer is rounded up to it: `COLUMNS(INDEX(A1:C3,3,0.9999998))` is 1 (column 1),
-  `0.99999985`, `0.9999999`, `0.99999999999` the same, while `0.99999975`, `0.9999997`, `0.999999` and `0.5` are 3 (index
-  floored to 0, the whole row). The cut is between 0.99999976 (3) and 0.9999997615 (1): a distance of about 2.39E-7
-  from the integer, and `0.99999977` snaps while `0.99999976` does not. Row index likewise:
-  `INDEX(A1:C3,2.9999998,1)` is 0.5 (row 3) but `2.99999975,1` is 4 (row 2), so the tolerance does not grow with the index.
-- The negative side does not follow the same tolerance: -1E-7 snaps to 0, -1.5E-7 does not. Excel's rule is not
-  fitted; it may be a different compare for the sign test than for the floor.
-- area_num -0.5 is `#VALUE!` as well; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
-Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-1E-15)` too), and positives are floored exactly
-(`0.9999998` is 0).
-Status: VERIFIED (web) for the probed values; the exact tolerance rule is UNFITTED
+Probed (excel-graph, 2026-10-12, T-1407), row and column index alike:
+- Negatives: -1E-15, -1E-7, -1.19E-7, -2^-23 and -1.19209289551E-7 to -1.1920929E-7 are index 0; -1.193E-7, -1.2E-7,
+  -1.5E-7, -1E-6, -0.5, -0.999, -0.9999999, -1 and -2147483648.5 are `#VALUE!`.
+- Positives: `COLUMNS(INDEX(A1:C3,3,1-2.3853E-7))` is 1 (column 1) and `1-2.3854E-7` is 3 (index 0, the whole row);
+  `ROW(INDEX(A1:A100000,500-2.3853E-7,1))` is 500 and `500-2.3855E-7` is 499; at 100000, 2.38E-7 below snaps and
+  2.39E-7 does not. Both cuts bracket the text functions' bound, which is known to 2^-36.
+- area_num -0.5 is `#VALUE!`; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
+  Whether area_num shares the rounding is unprobed.
+Evidence: probes/index-tiny-negative and probes/index-snap-tolerance.
+Implemented in: `index_number` (functions/lookup_and_reference/index.rs) with `near_integer_count` and
+`NEAR_INTEGER_TOLERANCE` (functions/util.rs). The negative bound is taken as exactly half the positive one.
+Status: VERIFIED (web)
 Tasks: T-1407
 
 ## XLOOKUP with an array lookup_value looks up each element

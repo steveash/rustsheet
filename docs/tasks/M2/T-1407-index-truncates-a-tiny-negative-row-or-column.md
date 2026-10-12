@@ -3,7 +3,7 @@ id: T-1407
 title: "INDEX truncates a tiny negative row or column index (-1E-15) to 0 instead of #VALUE!"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: opus
@@ -27,9 +27,9 @@ Probe with the excel-probe skill `INDEX(A1:C3,3,-1E-15)`, `INDEX(A1:C3,3,-0.5)`,
 Code: `Model::index_impl` (crates/rustsheet-engine/src/functions/lookup_and_reference/index.rs).
 
 ## Acceptance criteria
-- [ ] The INDEX probe cells pass; lookup.md's entry is VERIFIED.
-- [ ] `INDEX(Data!A1:C3,3,-1e-15)` in gen-m9/1466c66c61189a83's data is the row A3:C3 (a unit test); gen-m9/1466c66c61189a83 A1 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json` once T-1290 has also landed, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
-- [ ] `make check` green; reviewers approve.
+- [x] The INDEX probe cells pass; lookup.md's entry is VERIFIED.
+- [x] `INDEX(Data!A1:C3,3,-1e-15)` in gen-m9/1466c66c61189a83's data is the row A3:C3 (a unit test); gen-m9/1466c66c61189a83 A1 passes in `./target/release/rustsheet-eval show gen-m9/<case>.case.json` once T-1290 has also landed, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 -
@@ -44,3 +44,13 @@ cell or two); the boundary cells are 0.99999976 / 0.9999997615 / 0.99999977 on t
 Next: probe a few cells between -1E-7 and -1.5E-7 and between 0.99999976 and 0.9999997615, fit the rule (try a relative 1e-15
 compare after a 15-digit decimal round, float32 casts, and `x + 2.4E-7` for positives), implement it in `index_numbers`
 (index.rs), and make the probe cells pass; gen-m9/1466c66c61189a83 A1 also needs T-1290.
+
+## Outcome
+A second probe, probes/index-snap-tolerance (63 cells, excel-graph), fitted the rule. INDEX reads a row or column
+index with the text functions' `near_integer_count`: an index within 2^-22 + 2^-33 below an integer counts as that
+integer, at 1, 500 and 100000 alike. A negative index within half that bound (2^-23 + 2^-34) counts as 0, and
+anything further below 0 is `#VALUE!`. `near_integer_count` and its constant (now `NEAR_INTEGER_TOLERANCE`) moved
+from functions/text/util.rs to functions/util.rs so INDEX shares them; `index_number` in index.rs applies the rule.
+Eval delta: probes 51 known failures fixed (all of index-tiny-negative), plus the new case at 63 of 63;
+0 regressions. gen-m9/1466c66c61189a83 A1 still needs T-1290 (EXPONDIST lift); the unit test covers the
+`INDEX(..,3,-1e-15)` row. Whether area_num shares the rounding is unprobed and noted in lookup.md.
