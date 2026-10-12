@@ -5,7 +5,7 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
 # PR stewardship conventions (RustSheet)
 
 - **Merge policy**: no human approval is required. A PR may be squash-merged by the agent that
-  opened it when (a) all required CI jobs are green on the latest head, (b) the `review` skill
+  opened it, or by the steward under "Orphaned agent PRs" below (decision 0050), when (a) all required CI jobs are green on the latest head, (b) the `review` skill
   table shows APPROVE from every applicable reviewer, (c) the branch is up to date with `main`.
   Check (c) mechanically right before every merge call (decision 0028): `git fetch origin main
   <branch>`, then `git merge-base --is-ancestor origin/main origin/<branch>`, and pass that same
@@ -14,6 +14,23 @@ description: Repo-specific conventions for driving RustSheet PRs to merge autono
   clean` only means "no textual conflict", and two PRs that each add `T-0129` (or decision `0026`)
   never conflict textually. Merge `origin/main` in, run `make check`, push, and merge only after
   CI is green on that new head.
+- **Orphaned agent PRs** (decision 0050): the steward may merge a task PR (branch
+  `agent/<lane>/T-XXXX-*`) opened by another session only when ALL of these hold:
+  - it has been open 24 h or more, and its head has had no commit for 2 h or more (your own
+    merges of `main` and bookkeeping commits do not reset this clock);
+  - it is not a draft, and its task is not `status: blocked`;
+  - CI is green on the latest head;
+  - the branch passes the up-to-date check above (decision 0028); you may merge `main` in first;
+  - the PR body's agent-review table shows APPROVE from every applicable reviewer on the current
+    code, and no review thread or comment asks for changes without a later resolution. If you
+    resolved conflicts yourself while merging `main` in, re-run the `review` skill's reviewers on
+    the merged diff first. A clean, conflict-free merge of `main` needs no re-review;
+  - the task file on the branch is `status: done` with an Outcome. If not, finish that
+    bookkeeping (then wait for CI on the new head) or leave the PR alone.
+  Duplicates: when two open PRs implement the same task id, keep the more complete one (green and
+  reviewed; if that does not decide it, the newer one), close the other with a comment linking the
+  survivor, and delete nothing else. When a condition fails, do what you did before: fix CI,
+  comment the blocker, or mark the task blocked with reasons.
 - **Merge style**: squash merge; title `T-XXXX: <task title>`; keep the Co-Authored-By trailer.
   Exception: the daily steward PR uses branch `agent/steward/<YYYY-MM-DD>` and title
   `steward: <YYYY-MM-DD> health` (docs/process/routines.md).
