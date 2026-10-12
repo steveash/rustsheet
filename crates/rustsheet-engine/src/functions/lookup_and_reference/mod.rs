@@ -5,7 +5,7 @@ use crate::expressions::types::CellReferenceIndex;
 use crate::functions::logical::IfBranchMode;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{Ranges, RefArg};
+use crate::reference_operators::{external_area, Ranges, RefArg};
 use crate::{
     calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
@@ -411,31 +411,43 @@ impl Model {
         if args.is_empty() {
             return CalcResult::Number(if by_row { cell.row } else { cell.column } as f64);
         }
-        match self.reference_ranges(&args[0], cell) {
-            // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
-            // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
-            Ok(Ranges::Areas(_)) => {
-                CalcResult::new_error(Error::REF, cell, "Reference of several areas".to_string())
+        let (first, last) = if let Some(area) = external_area(&args[0], cell) {
+            if by_row {
+                (area.first_row, area.last_row)
+            } else {
+                (area.first_column, area.last_column)
             }
-            Ok(Ranges::One(range)) => {
-                let (a, b) = if by_row {
-                    (range.left.row, range.right.row)
-                } else {
-                    (range.left.column, range.right.column)
-                };
-                let (first, last) = (a.min(b), a.max(b));
-                if first == last || first_only {
-                    return CalcResult::Number(first as f64);
+        } else {
+            match self.reference_ranges(&args[0], cell) {
+                // ROW and COLUMN of a union are #REF!, not the #VALUE! of a value context
+                // (probes/multiarea-cellfn H3, multiarea-cellfn-types H9; SPEC-0004 row 18).
+                Ok(Ranges::Areas(_)) => {
+                    return CalcResult::new_error(
+                        Error::REF,
+                        cell,
+                        "Reference of several areas".to_string(),
+                    )
                 }
-                let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
-                CalcResult::Array(if by_row {
-                    numbers.map(|n| vec![n]).collect()
-                } else {
-                    vec![numbers.collect()]
-                })
+                Ok(Ranges::One(range)) => {
+                    let (a, b) = if by_row {
+                        (range.left.row, range.right.row)
+                    } else {
+                        (range.left.column, range.right.column)
+                    };
+                    (a.min(b), a.max(b))
+                }
+                Err(s) => return s,
             }
-            Err(s) => s,
+        };
+        if first == last || first_only {
+            return CalcResult::Number(first as f64);
         }
+        let numbers = (first..=last).map(|n| ArrayNode::Number(n as f64));
+        CalcResult::Array(if by_row {
+            numbers.map(|n| vec![n]).collect()
+        } else {
+            vec![numbers.collect()]
+        })
     }
 
     /// The reference an explicit `@` reads. `@` of a span over several sheets is `#REF!`, not

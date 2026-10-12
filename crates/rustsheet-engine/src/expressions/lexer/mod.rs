@@ -255,7 +255,9 @@ impl Lexer {
                     '=' => TokenType::Compare(OpCompare::Equal),
                     '{' => TokenType::LeftBrace,
                     '}' => TokenType::RightBrace,
-                    '[' => TokenType::LeftBracket,
+                    '[' => self
+                        .consume_external_sheet_reference()
+                        .unwrap_or(TokenType::LeftBracket),
                     ']' => TokenType::RightBracket,
                     ':' => TokenType::Colon,
                     ';' => TokenType::Semicolon,
@@ -880,6 +882,29 @@ impl Lexer {
             return TokenType::Illegal(self.set_error("Expected '!'", self.position));
         }
         self.consume_range(Some(sheet_name))
+    }
+
+    /// An unquoted prefix naming a sheet of another workbook, `[book]Sheet!ref`, read as its
+    /// quoted spelling `'[book]Sheet'!ref` is: `=SUM([other.xlsx]Sheet1!A1:B1)` parses and is
+    /// `#BLOCKED!` (probes/external-ref-no-link A7; docs/excel-semantics/references.md "External
+    /// reference with no cached data"). Called with the `[` consumed; `None`, with the position
+    /// left after the `[`, when no `book]Sheet!` follows (a LAMBDA's optional `[x]`).
+    fn consume_external_sheet_reference(&mut self) -> Option<TokenType> {
+        let start = self.position;
+        let rest = &self.chars[start..];
+        let book_len = rest.iter().position(|&c| c == ']' || c == '[')?;
+        if book_len == 0 || rest[book_len] != ']' {
+            return None;
+        }
+        let book: String = rest[..book_len].iter().collect();
+        self.position = start + book_len + 1;
+        let sheet = self.consume_identifier();
+        if sheet.is_empty() || self.peek_char() != Some('!') {
+            self.position = start;
+            return None;
+        }
+        self.position += 1;
+        Some(self.consume_range(Some(format!("[{book}]{sheet}"))))
     }
 
     fn consume_range(&mut self, sheet: Option<String>) -> TokenType {

@@ -119,12 +119,24 @@ IFERROR takes the fallback, `COUNT(…!A1:B1)` is 0 and `ROWS(…!A1:B3)` is 3. 
 Evidence: probes/external-ref-no-link Calc!A1:A10 (excel-graph, 2026-10-11, T-0124).
 With a cache (`[1]Sheet!ref` and an externalBook `sheetDataSet`), Excel reads the cached value:
 `=[1]Uses!$A$1` → "Hello!", `=[1]!NR_Global_B2` → 142 (poi/ref-56737.xlsx Refs!E3, I3, Excel-cached).
-Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`.
-ISREF/ROWS on it, the unquoted prefix (T-1381) and cached `[n]` values (T-1382) are not yet
-implemented. Unprobed: a 3-D prefix naming another workbook (`'[b.xlsx]S1:S2'!A1`; the engine gives
-`#BLOCKED!`, UNVERIFIED), and a `[n]` index with no externalLink part.
+The shape functions read it as a reference too: `COLUMNS(…!A1:C2)` is 3, `AREAS(…!A1:C2)` 1,
+`ROW(…!B5)` 5, `COLUMN(…!B5)` 2, `ROWS(…!A:A)` 1048576, `ISREF(…!A1:B3)` TRUE, and the unquoted
+`ROWS([other.xlsx]Sheet1!A1:B3)` 3. INDEX keeps it a reference (`ROWS(INDEX(…!A1:C4,2,0))` 1,
+`ISREF(INDEX(…!A1:C4,2,2))` TRUE), but the cell INDEX picks is not an error value:
+`ERROR.TYPE(INDEX(…!A1:C4,2,2))` is `#N/A`, where `ERROR.TYPE(…!A1)` is 11. OFFSET on it is
+`#VALUE!`; a union of two is 2 areas, the intersection `…!A1:B3 …!A2:B5` has 2 rows, `ISBLANK(…!A1)`
+is FALSE and `COUNTA(…!A1:B2)` 0 (it counts no `#BLOCKED!`). `='[other.xlsx]Sheet1'!A1:B2` spills
+(`#SPILL!` with the spill area occupied). A 3-D prefix naming another workbook is no reference:
+`SUM('[other.xlsx]S1:S2'!A1)` is `#BLOCKED!` and `ISREF('[other.xlsx]S1:S2'!A1)` FALSE; a range
+whose corners are in two workbooks (`ISREF('[other.xlsx]Sheet1'!A1:Calc!B2)`) is FALSE.
+Evidence: probes/external-ref-no-link-shapes Calc!A1:A20 (excel-graph, 2026-10-12, T-1381).
+Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` instead of `#REF!`, and
+`reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
+shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). INDEX, OFFSET, unions,
+intersections, COUNTA and the spill (T-1454) and cached `[n]` values (T-1382) are not yet
+implemented. Unprobed: a `[n]` index with no externalLink part.
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
-Tasks: T-0124, T-1381, T-1382
+Tasks: T-0124, T-1381, T-1382, T-1454
 
 ## IF and INDEX return references to aggregates; IFERROR returns values
 Rule: inside SUM/AVERAGE/MIN/MAX, `IF(…,ref)` and `INDEX(…)` pass a reference, so text and blanks in
