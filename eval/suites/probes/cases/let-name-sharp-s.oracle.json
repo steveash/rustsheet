@@ -14,9 +14,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "8d86e1a7945988be20f7331c8e5d7763e7ccf7be8a07260371e017e51105c9d7",
+  "input_sha256": "87a977f167cb4c4d653d5ac4aadab243cdf475103befcf7aa3dbc10691c34ef9",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T08:41:44+00:00",
+  "produced_at": "2026-10-12T08:54:41+00:00",
   "version": null
  }
 }

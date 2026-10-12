@@ -30,6 +30,10 @@ make the engine match it.
   Write one probe case. If Excel refuses a form, send it as a single-cell workbook with
   `rustsheet-oracle recalc -b excel-graph` and record the refusal, as T-1387 did. The
   `same_variable` folding is in functions/logical/let.rs.
+- spec2xlsx decides which body names are bound with Python `str.lower()`. For a form where Python's
+  fold and Excel's may differ (Turkish İ/ı, circled letters), write the uses as `_xlpm.<name>`
+  in the case, or the probe tests the tool and not Excel. probes/let-name-sharp-s A2 shows how:
+  `LET(ß,1,_xlpm.SS+1)`.
 
 ## Acceptance criteria
 - [ ] A probe case (tag M8 for the defined names, M7 for LET) with excel-graph values for the forms
