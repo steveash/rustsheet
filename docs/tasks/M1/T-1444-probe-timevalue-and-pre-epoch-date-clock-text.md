@@ -3,7 +3,7 @@ id: T-1444
 title: "Probe TIMEVALUE and pre-epoch date-clock text with an inexact clock in a 1904 workbook"
 milestone: M1
 lane: functions-date
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
