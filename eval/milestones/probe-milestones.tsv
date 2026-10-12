@@ -1,0 +1,150 @@
+# Probe cases whose milestone is not their case.json tag (decision 0051). One case per line,
+# tab-separated: case id (as in eval/baseline/probes.txt), milestone, subject. The rule, in
+# order: a case on eval/milestones/m1-probes.txt is M1; a case listed here takes this milestone;
+# each checked cell of probes/catalog/* takes the highest catalog milestone of the functions its
+# formula calls, apart from the OR, IFERROR, ERROR.TYPE and INDEX wrappers (M2 when none); any
+# other case takes its milestone tag (M0, M1, M2, M5-M11), and M2 when it has none.
+# Case files are never edited to fix a tag (oracle input hashes). Change this file only by a
+# decision record (decision 0044 protects eval/milestones/).
+probes/3d-ref-aggregates.case.json	M8	3-D references
+probes/3d-ref-choose-let.case.json	M8	3-D references
+probes/3d-ref-functions.case.json	M8	3-D references
+probes/3d-ref-let-bound-span-readers.case.json	M8	3-D references
+probes/3d-ref-let-bound-span.case.json	M8	3-D references
+probes/3d-ref-let-values.case.json	M8	3-D references
+probes/3d-ref-span-edges.case.json	M8	3-D references
+probes/3d-ref-span-missing-ends.case.json	M8	3-D references
+probes/3d-ref-values.case.json	M8	3-D references
+probes/aggregate-args.case.json	M5	AGGREGATE
+probes/aggregate-array-args.case.json	M5	AGGREGATE
+probes/aggregate-grid.case.json	M5	AGGREGATE
+probes/aggregate-range-args.case.json	M5	AGGREGATE
+probes/ceiling-xlfn-prefix.case.json	M5	CEILING, CEILING.MATH
+probes/countblank-choose-errors.case.json	M9	COUNTBLANK
+probes/countblank-error-cell-refs.case.json	M9	COUNTBLANK
+probes/countblank-error-forms-b.case.json	M9	COUNTBLANK
+probes/countblank-formula-names-b.case.json	M9	COUNTBLANK
+probes/countblank-formula-names.case.json	M9	COUNTBLANK
+probes/dates-early-1900-edges.case.json	M10	WEEKNUM, EDATE, EOMONTH (M6) and ddd/dddd format codes (M10)
+probes/defined-name-formula-bodies.case.json	M8	defined-name bodies
+probes/dvar-one-vs-two-pass.case.json	M9	DVAR, DSTDEV family
+probes/edate-serial-0-months.case.json	M6	EDATE, EOMONTH
+probes/elapsed-fractions-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-fractions-1904.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-a-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-b0-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-b1-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-b2-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-c-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-d-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-e-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-f-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-g-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-h-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-huge-i-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-positive-large-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-positive-large-1904.case.json	M10	number-format codes in TEXT
+probes/elapsed-tiny-negatives-1900.case.json	M10	number-format codes in TEXT
+probes/elapsed-tiny-negatives-1904.case.json	M10	number-format codes in TEXT
+probes/external-ref-no-link.case.json	M8	external workbook references
+probes/filter-if-empty-array.case.json	M7	FILTER
+probes/gcd-lcm-bounds.case.json	M5	GCD, LCM
+probes/geomean-exponent-sum-2.case.json	M9	GEOMEAN
+probes/geomean-exponent-sum.case.json	M9	GEOMEAN
+probes/geomean-in-range-many.case.json	M9	GEOMEAN
+probes/geomean-mixed-magnitude.case.json	M9	GEOMEAN
+probes/geomean-overflow-count.case.json	M9	GEOMEAN
+probes/geomean-overflow-cut-2.case.json	M9	GEOMEAN
+probes/geomean-overflow-cut-3.case.json	M9	GEOMEAN
+probes/geomean-overflow-cut.case.json	M9	GEOMEAN
+probes/geomean-overflow-many-values.case.json	M9	GEOMEAN
+probes/geomean-pow2-count.case.json	M9	GEOMEAN
+probes/geomean-product-order.case.json	M9	GEOMEAN
+probes/geomean-root-models.case.json	M9	GEOMEAN
+probes/geomean-root-refinement.case.json	M9	GEOMEAN
+probes/geomean-same-product.case.json	M9	GEOMEAN
+probes/geomean-single-and-copies.case.json	M9	GEOMEAN
+probes/geomean-stored-3ulps-low.case.json	M9	GEOMEAN
+probes/ifs-switch-array-values.case.json	M5	IFS, SWITCH
+probes/ifs-switch-lift-edges.case.json	M5	IFS, SWITCH
+probes/indirect-text-broadcast.case.json	M6	INDIRECT and the M5 text functions
+probes/is-functions-array-lift.case.json	M5	IS* information functions
+probes/isref-names-filter-if-empty.case.json	M8	defined-name bodies
+probes/lambda-param-call.case.json	M7	LET, LAMBDA
+probes/large-small-k.case.json	M9	LARGE, SMALL
+probes/lcm-result-bound.case.json	M5	GCD, LCM
+probes/lcm-result-edge.case.json	M5	GCD, LCM
+probes/let-bind-reference-forms.case.json	M7	LET, LAMBDA
+probes/let-lambda-name-case.case.json	M7	LET, LAMBDA
+probes/let-name-call-arrays.case.json	M7	LET, LAMBDA
+probes/let-name-call-bool.case.json	M7	LET, LAMBDA
+probes/let-name-call-forms.case.json	M7	LET, LAMBDA
+probes/let-name-call-refs.case.json	M7	LET, LAMBDA
+probes/let-name-call-text-abc.case.json	M7	LET, LAMBDA
+probes/let-name-call-text-digit.case.json	M7	LET, LAMBDA
+probes/let-name-call-text-noargs.case.json	M7	LET, LAMBDA
+probes/let-name-call-text-plus.case.json	M7	LET, LAMBDA
+probes/let-name-call-text-type.case.json	M7	LET, LAMBDA
+probes/let-name-call.case.json	M7	LET, LAMBDA
+probes/let-name-uncalled-picked-refs.case.json	M7	LET, LAMBDA
+probes/lookup-2d-vector-wide.case.json	M6	LOOKUP
+probes/lookup-vector-edges.case.json	M6	LOOKUP
+probes/mod-array-lift.case.json	M5	MOD
+probes/mod-huge-quotient.case.json	M5	MOD
+probes/mod-quotient-boundary.case.json	M5	MOD
+probes/mod-quotient-threshold.case.json	M5	MOD
+probes/mod-quotient-threshold2.case.json	M5	MOD
+probes/mod-quotient-threshold3.case.json	M5	MOD
+probes/mod-quotient-threshold4.case.json	M5	MOD
+probes/mod-quotient-threshold5.case.json	M5	MOD
+probes/negative-date-sections-1900.case.json	M10	number-format codes in TEXT
+probes/negative-date-sections-1904.case.json	M10	number-format codes in TEXT
+probes/offset-negative-height-width.case.json	M6	OFFSET
+probes/rank-absent-number.case.json	M9	RANK family
+probes/rank-nonref-06.case.json	M9	RANK family
+probes/rank-nonref-07.case.json	M9	RANK family
+probes/rank-nonref-08.case.json	M9	RANK family
+probes/rank-nonref-12.case.json	M9	RANK family
+probes/rank-nonref-13.case.json	M9	RANK family
+probes/rank-nonref-14.case.json	M9	RANK family
+probes/rank-nonref-error-elements.case.json	M9	RANK family
+probes/rank-nonref-errors.case.json	M9	RANK family
+probes/rank-unknown-shape-ref.case.json	M9	RANK family
+probes/rows-columns-args.case.json	M6	ROWS, COLUMNS
+probes/subnormal-function-boundaries.case.json	M9	CSCH (M5), ERFC and the normal distribution (M9)
+probes/subtotal-hidden-filtered.case.json	M5	AGGREGATE and SUBTOTAL
+probes/subtotal-reference-operands-b.case.json	M6	SUBTOTAL (M5) and AREAS (M6)
+probes/subtotal-reference-operands-e.case.json	M6	SUBTOTAL (M5) and AREAS (M6)
+probes/subtotal-reference-operands-f.case.json	M6	SUBTOTAL (M5) and AREAS (M6)
+probes/subtotal-reference-operands.case.json	M6	SUBTOTAL (M5) and AREAS (M6)
+probes/text-b-functions-broadcast.case.json	M5	the *B text functions
+probes/text-date-255-char-limit.case.json	M10	number-format codes in TEXT
+probes/text-ddd-negative-fraction.case.json	M10	number-format codes in TEXT
+probes/text-format-length-limit-b.case.json	M10	number-format codes in TEXT
+probes/text-format-length-limit.case.json	M10	number-format codes in TEXT
+probes/text-general-exponent-boundary.case.json	M10	number-format codes in TEXT
+probes/text-negative-serial-elapsed-mixed.case.json	M10	number-format codes in TEXT
+probes/variance-digits.case.json	M9	VAR, STDEV family
+probes/variance-fit.case.json	M9	VAR, STDEV family
+probes/variance-rel.case.json	M9	VAR, STDEV family
+probes/variance-rule.case.json	M9	VAR, STDEV family
+probes/variance-scale.case.json	M9	VAR, STDEV family
+probes/variance-switch.case.json	M9	VAR, STDEV family
+probes/variance-underflow.case.json	M9	VAR, STDEV family
+probes/weeknum-1900-later.case.json	M6	WEEKNUM, ISOWEEKNUM
+probes/weeknum-invalid-type.case.json	M6	WEEKNUM, ISOWEEKNUM
+probes/weeknum-serial-0.case.json	M6	WEEKNUM, ISOWEEKNUM
+probes/weeknum-stale-return-type.case.json	M6	WEEKNUM, ISOWEEKNUM
+probes/whole-column-empty-walkers.case.json	M9	XIRR, XNPV
+probes/xirr-early-dates.case.json	M9	XIRR, XNPV
+probes/xirr-mismatched-empties.case.json	M9	XIRR, XNPV
+probes/xirr-xnpv-whole-column-nogaps.case.json	M9	XIRR, XNPV
+probes/xlookup-array-lookup-value-args.case.json	M6	XLOOKUP, XMATCH
+probes/xlookup-array-lookup-value.case.json	M6	XLOOKUP, XMATCH
+probes/xlookup-array-return.case.json	M6	XLOOKUP, XMATCH
+probes/xlookup-omitted-lookup-value.case.json	M6	XLOOKUP, XMATCH
+probes/xlookup-row-column-picks.case.json	M6	XLOOKUP, XMATCH
+probes/xmatch-blank-extensions.case.json	M6	XLOOKUP, XMATCH
+probes/xmatch-text-bool-equal-runs.case.json	M6	XLOOKUP, XMATCH
+probes/xmatch-xlookup-blanks.case.json	M6	XLOOKUP, XMATCH
+probes/xnpv-argument-count.case.json	M9	XIRR, XNPV
