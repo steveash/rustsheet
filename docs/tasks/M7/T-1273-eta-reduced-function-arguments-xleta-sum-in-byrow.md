@@ -25,10 +25,20 @@ and A29 (`MAKEARRAY(3,3,_xleta.AVERAGE)` in REGEXREPLACE, `#SPILL!`, also T-1360
 c263b43217a5898b A17 (`..&REDUCE(N(-0.0001),(..="Hello World"),_xleta.AVERAGE)` "3.14159265358979-0.00005") and d38b52bfa1a9f9e6 A39
 (`REDUCE((0.3-0.1)*(Data!D$1-Data!C2),Data!D6:D12,_xleta.PRODUCT)` 392.69875).
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/1466c66c61189a83 Calc!A34 `=BYCOL(AVERAGE(Data!D7:D12),_xleta.MAX)`: Excel -0.04999999999999975, engine `#NAME?`.
+- gen-m9/50f10c4062fb2e98 Calc!A32 `=(Data!$B9-SCAN(PERCENTILE.INC(Data!D9:D10,100),(2.5-Data!E3),_xleta.MIN))`: Excel `#NUM!`, engine `#NAME?`.
+- gen-m9/7db7ae6cbab32f22 Calc!A3 `=GAMMA.DIST(SCAN("a",(Data!E3<>"TRUE"),_xleta.SUM),..)`: Excel `#VALUE!`, engine `#NAME?`.
+- gen-m9/a2e51f48717af2a1 Calc!A3 `=(Data!$E$5&REDUCE((Data!A4^Data!D11),Data!B7,_xleta.MIN))`: Excel "420.999539589003088", engine `#NAME?`.
+- gen-m9/b58b6d7cd39d195f Calc!A3 `=(HYPERLINK(..)&LET(acc,Data!$E6,v,SCAN((-0.5),acc,_xleta.AVERAGE),CONCAT(acc,v,acc)))`: Excel "020.752", engine `#NAME?`.
+- gen-m9/bc0901ce6193d576 Calc!A8 `=(Data!A12+(BYROW(Data!B8:C10,_xleta.PRODUCT)-..))`: Excel `#SPILL!`, engine `#NAME?`.
+- BYROW whose LAMBDA returns a row (row 45's `#CALC!`): gen-m9/4df1b22d3ed63f58 Calc!A35 `=T((BYROW(Data!C6:E11,LAMBDA(x,x))<>COUNTIF(..)))`: Excel `#CALC!`, engine ""; gen-m9/95efb37a9874f82e Calc!A19 `=BYROW(Data!B6:D11,LAMBDA(acc,FISHERINV(RADIANS(acc))))`: Excel `#CALC!`, engine `#SPILL!`.
+
 ## Acceptance criteria
 - [ ] Probe rows 28, 48, 50 and 51 pass; baseline updated.
 - [ ] Rows 44-45 pass or have their own task.
 - [ ] gen-m7/44ef4f5638e25bcd A7, 8ed8a680e9794b77 A19, A23, A30, 9ff3afcacd3bd0fc A19, c263b43217a5898b A17 and d38b52bfa1a9f9e6 A39 pass (the other gen-m7 cells listed under Context once their other tasks land). (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [ ] gen-m9/1466c66c61189a83 A34, 50f10c4062fb2e98 A32, 7db7ae6cbab32f22 A3, a2e51f48717af2a1 A3, b58b6d7cd39d195f A3, bc0901ce6193d576 A8, 4df1b22d3ed63f58 A35 and 95efb37a9874f82e A19 pass (the T-1289 gen-m9 cells under Context), with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

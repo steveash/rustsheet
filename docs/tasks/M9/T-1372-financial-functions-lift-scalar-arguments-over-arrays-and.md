@@ -23,9 +23,14 @@ an array (256) and `#VALUE!` for a range (18). Reuse the lifting the math, date 
 before adding a helper; T-1290 does the same for the statistical functions). The ATP functions lift arrays but not
 ranges, so the helper needs a "lift literals only" variant, or an existing way to say that. Split by family if larger than M.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/675763979c1defb6 Calc!A13 `=PRICEDISC(42,(-7/Data!E2),(FILTER(Data!B1:E12,..)+RADIANS(42)),(Data!B$1^7)%)`: Excel `#SPILL!`, engine `#N/IMPL!`.
+- gen-m9/b58b6d7cd39d195f Calc!A21 `=PPMT(MUNIT(3),1,359,117633,154)`: Excel `#SPILL!`, engine `#N/IMPL!`.
+
 ## Acceptance criteria
 - [ ] The lift cells of probes/fin-argument-modes pass (their baseline lines removed), and the 37 range `#VALUE!` cells
   still pass.
+- [ ] gen-m9/675763979c1defb6 A13 and b58b6d7cd39d195f A21 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

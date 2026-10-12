@@ -416,6 +416,15 @@ Status: VERIFIED (excel-graph)
 Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_reference/index.rs).
 Tasks: T-1260
 
+## INDEX truncates a tiny negative index to 0
+Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: the column index is truncated toward zero.
+`EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
+A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor). Indexes from -0.5 to -1 are unprobed.
+Evidence: gen-m9/1466c66c61189a83 Calc!A1 (excel-graph, 2026-10-12, T-1289).
+Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-0.5)` too).
+Status: VERIFIED (web) for -1E-15; other negative fractions UNVERIFIED
+Tasks: T-1407
+
 ## XLOOKUP with an array lookup_value looks up each element
 `SUM(XLOOKUP({1;2},A1:A3,B1:B3))` is 30 with A1:A3 = 1,2,3 and B1:B3 = 10,20,30: an array `lookup_value` gives one result per element (10, 20).
 The result has the shape of `lookup_value` (column, row or 2-D array, or a multi-cell range such as `Data!D1:D3`; a whole column gives a 1048576-row result), each element looked up by the scalar rules: an element not found is `#N/A` (or `if_not_found`), an error element is itself (`{2;#DIV/0!;"x"}` is two, `#DIV/0!`, `#N/A`), and `match_mode` applies per element. An element is a value, never a reference (`ISREF` is FALSE). With a return range wider than the lookup column, each element keeps only the first cell of its matched row: `XLOOKUP({2;3},A1:A4,C1:E4)` is 12, 13 in one column (`COLUMNS` is 1, against 3 for the scalar `XLOOKUP(2,...)`); likewise a row lookup over a taller return range keeps the first row (`XLOOKUP({"b";"c"},F1:H1,F2:H3)` is 20, 30).
