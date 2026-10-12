@@ -94,7 +94,7 @@ fn test_correct_quoting() {
     let r = model.rename_sheet("Sheet2", "New Sheet");
     assert!(r.is_ok());
     assert_eq!(model._get_text("A1"), "800");
-    assert_eq!(model._get_formula("A1"), "='New Sheet'!B3*2")
+    assert_eq!(model._get_formula("A1"), "='New Sheet'!B3*2");
 }
 
 #[test]

@@ -28,7 +28,7 @@ impl<T: Ord> Sequence<T> for Vec<T> {
     }
 }
 
-/// Excel's binary search (XMATCH/XLOOKUP search_mode 2/-2) over `array`, sorted ascending (or
+/// Excel's binary search (XMATCH/XLOOKUP `search_mode` 2/-2) over `array`, sorted ascending (or
 /// `descending`). `mode` is the match mode: `Equal` (0) only takes an equal element, `Less` (-1)
 /// else the next smaller one and `Greater` (1) else the next larger one.
 ///

@@ -55,7 +55,7 @@ fn right_element(text: &ArrayNode, num: Result<f64, Error>) -> Result<ArrayNode,
     Ok(ArrayNode::String(s.chars().skip(skip).collect()))
 }
 
-/// MID's start_num and num_chars must be below 2^31 (they are read as 32-bit integers).
+/// MID's `start_num` and `num_chars` must be below 2^31 (they are read as 32-bit integers).
 const MID_ARGUMENT_LIMIT: f64 = 2_147_483_648.0;
 
 /// Computes a single MID result from one element of each argument.
@@ -276,13 +276,13 @@ impl Model {
         }
     }
 
-    /// FIND(find_text, within_text, [start_num])
+    /// `FIND(find_text`, `within_text`, [`start_num`])
     ///  * FIND and FINDB are case sensitive and don't allow wildcard characters.
-    ///  * If find_text is "" (empty text), FIND matches the first character in the search string (that is, the character numbered start_num or 1).
-    ///  * Find_text cannot contain any wildcard characters.
-    ///  * If find_text does not appear in within_text, FIND and FINDB return the #VALUE! error value.
-    ///  * If start_num is not greater than zero, FIND and FINDB return the #VALUE! error value.
-    ///  * If start_num is greater than the length of within_text, FIND and FINDB return the #VALUE! error value.
+    ///  * If `find_text` is "" (empty text), FIND matches the first character in the search string (that is, the character numbered `start_num` or 1).
+    ///  * `Find_text` cannot contain any wildcard characters.
+    ///  * If `find_text` does not appear in `within_text`, FIND and FINDB return the #VALUE! error value.
+    ///  * If `start_num` is not greater than zero, FIND and FINDB return the #VALUE! error value.
+    ///  * If `start_num` is greater than the length of `within_text`, FIND and FINDB return the #VALUE! error value.
     ///    NB: FINDB is not implemented. It is the same as FIND function unless locale is a DBCS (Double Byte Character Set)
     ///  * If any of the arguments is an array it works element by element.
     pub(crate) fn fn_find(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
@@ -292,7 +292,7 @@ impl Model {
     /// Same API as FIND but:
     ///  * Allows wildcards
     ///  * It is case insensitive
-    ///    SEARCH(find_text, within_text, [start_num])
+    ///    `SEARCH(find_text`, `within_text`, [`start_num`])
     pub(crate) fn fn_search(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.find_or_search(args, cell, true)
     }

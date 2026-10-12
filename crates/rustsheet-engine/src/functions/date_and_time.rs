@@ -748,7 +748,7 @@ impl Model {
             Err(_) => Err(CalcResult::Error {
                 error: Error::VALUE,
                 origin: cell,
-                message: format!("Invalid timezone: {}", tz_str),
+                message: format!("Invalid timezone: {tz_str}"),
             }),
         }
     }

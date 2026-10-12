@@ -506,7 +506,7 @@ pub(super) fn load_conditional_formatting(
                         .unwrap_or("")
                         .to_string();
                     CfRule::Formula {
-                        formula: format!("={}", formula),
+                        formula: format!("={formula}"),
                         dxf_id,
                         stop_if_true,
                     }

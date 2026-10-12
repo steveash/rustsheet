@@ -27,8 +27,8 @@ pub const LAST_ROW: i32 = 1_048_576;
 /// Excel uses 15 significant digits of precision for all numeric calculations.
 pub(crate) const EXCEL_PRECISION: usize = 15;
 
-/// 693_594 is computed as:
-/// NaiveDate::from_ymd(1900, 1, 1).num_days_from_ce() - 2
+/// `693_594` is computed as:
+/// `NaiveDate::from_ymd(1900`, 1, `1).num_days_from_ce()` - 2
 /// The 2 days offset is because of Excel 1900 bug
 pub(crate) const EXCEL_DATE_BASE: i32 = 693_594;
 

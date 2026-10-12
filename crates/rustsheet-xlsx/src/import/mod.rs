@@ -195,7 +195,7 @@ fn load_from_excel(file_name: &str, locale: &str, tz: &str) -> Result<Workbook, 
     load_xlsx_from_reader(name, reader, locale, tz, &ImportLimits::default())
 }
 
-/// Loads a [Workbook] from the bytes of an xlsx file, under the default [ImportLimits].
+/// Loads a [Workbook] from the bytes of an xlsx file, under the default [`ImportLimits`].
 /// This is useful, for instance, when bytes are transferred over the network
 pub fn load_from_xlsx_bytes(
     bytes: &[u8],
@@ -207,7 +207,7 @@ pub fn load_from_xlsx_bytes(
 }
 
 /// Loads a [Workbook] from the bytes of an xlsx file, rejecting it with
-/// [XlsxError::Limit] if it exceeds `limits`.
+/// [`XlsxError::Limit`] if it exceeds `limits`.
 pub fn load_from_xlsx_bytes_with_limits(
     bytes: &[u8],
     name: &str,

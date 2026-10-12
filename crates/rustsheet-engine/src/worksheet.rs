@@ -691,7 +691,7 @@ impl Worksheet {
     /// `dimension` (a row that exists without cells counts), which leaves the
     /// result unchanged for walkers that ignore empty cells: the cells past the
     /// true used area are empty. Walkers that act on empty cells (TEXTJOIN with
-    /// ignore_empty FALSE, XIRR, XNPV) already depend on where the clip ends;
+    /// `ignore_empty` FALSE, XIRR, XNPV) already depend on where the clip ends;
     /// TODO(T-1114) tracks matching Excel there. An empty sheet
     /// gives `(1, 1)`, as `dimension` does. Unlike `dimension` it does not
     /// visit every cell, so it is cheap enough to call on every lift.

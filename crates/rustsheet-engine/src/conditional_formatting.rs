@@ -118,7 +118,7 @@ fn parse_cf_date_bound(value: &str, model: &Model) -> Option<f64> {
     crate::number_format::parse_finite_number(trimmed).map(f64::floor)
 }
 
-/// Stable string key for a CellValue, used for duplicate detection.
+/// Stable string key for a `CellValue`, used for duplicate detection.
 fn cell_value_key(v: &crate::cell::CellValue) -> Option<String> {
     use crate::cell::CellValue;
     match v {
@@ -1124,7 +1124,7 @@ impl Model {
     // -----------------------------------------------------------------------
 
     /// Returns the extended cell style for (`sheet`, `row`, `column`), including
-    /// any conditional-formatting overlay computed by the last evaluate() call.
+    /// any conditional-formatting overlay computed by the last `evaluate()` call.
     pub fn get_extended_style_for_cell(
         &self,
         sheet: u32,
@@ -1557,7 +1557,7 @@ impl Model {
     }
 
     /// Returns the differential format (Dxf) for the CF rule at `index` on `sheet`,
-    /// or `None` if the rule type has no dxf (e.g. ColorScale, DataBar, IconSet).
+    /// or `None` if the rule type has no dxf (e.g. `ColorScale`, `DataBar`, `IconSet`).
     pub fn get_dxf_for_conditional_formatting(
         &self,
         sheet: u32,

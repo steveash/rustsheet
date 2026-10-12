@@ -67,7 +67,7 @@ fn get_range_str(row: i32, column: i32, width: i32, height: i32) -> Option<Strin
     let column1 = number_to_column(column)?;
     let column2 = number_to_column(column + width - 1)?;
     let row2 = row + height - 1;
-    Some(format!("{}{}:{}{}", column1, row, column2, row2))
+    Some(format!("{column1}{row}:{column2}{row2}"))
 }
 
 fn get_cell_style_attribute(s: i32) -> String {
@@ -560,7 +560,7 @@ pub(crate) fn get_worksheet_xml(
         sheet_data_str.push(format!(
             "<row r=\"{row_index}\"{row_style_str}>{}</row>",
             row_data_str.join("")
-        ))
+        ));
     }
     let sheet_data = sheet_data_str.join("");
 
@@ -571,7 +571,7 @@ pub(crate) fn get_worksheet_xml(
             "<mergeCell ref=\"{first_column}{}:{last_column}{}\"/>",
             merged_cell.row,
             merged_cell.last_row()
-        ))
+        ));
     }
     let merged_cells_count = merged_cells_str.len();
 
