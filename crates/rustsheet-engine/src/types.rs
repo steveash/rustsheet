@@ -103,7 +103,8 @@ pub struct Metadata {
 }
 
 /// The workbook's date system (`<workbookPr date1904>` in xlsx): serial 0 is 1900-01-00 or
-/// 1904-01-01. SPEC-0005. The formatter reads it (T-1105); date functions do not yet (T-1330).
+/// 1904-01-01. SPEC-0005. The formatter reads it (T-1105), and so do TEXT date tokens, DATE,
+/// DATEVALUE and YEAR/MONTH/DAY (T-1330); the other date functions do not yet (T-1415).
 #[derive(Encode, Decode, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DateSystem {
     /// The 1900 system, the project's target and the default.
@@ -111,6 +112,35 @@ pub enum DateSystem {
     Excel1900,
     /// The 1904 system (`date1904="1"`), used by some Mac workbooks.
     Excel1904,
+}
+
+/// Days from 1900-01-00 (1900-system serial 0) to 1904-01-01 (1904-system serial 0), counting
+/// Excel's fictitious 1900-02-29: 1904 serial 0 is 1900 serial 1462 (probes/date-system-1904-negatives
+/// A8-A12, docs/excel-semantics/dates.md "The 1904 date system").
+const EPOCH_1904_IN_1900_SERIALS: i64 = 1462;
+
+impl DateSystem {
+    /// The 1900-system serial of this system's day `serial`, the form the calendar helpers
+    /// (`excel_serial_to_ymd`) read. `None` for a 1904 serial before the epoch, which is no date
+    /// (DATE gives no serial below 0 there). Checked, since serials come from untrusted input.
+    pub fn to_1900_serial(self, serial: i64) -> Option<i64> {
+        match self {
+            Self::Excel1900 => Some(serial),
+            Self::Excel1904 if serial < 0 => None,
+            Self::Excel1904 => serial.checked_add(EPOCH_1904_IN_1900_SERIALS),
+        }
+    }
+
+    /// This system's serial for the 1900-system serial `serial` that the calendar helpers produce
+    /// (`DATE`, date text); `None` for a day before the 1904 epoch, which has no 1904 serial.
+    pub fn from_1900_serial(self, serial: i64) -> Option<i64> {
+        match self {
+            Self::Excel1900 => Some(serial),
+            Self::Excel1904 => serial
+                .checked_sub(EPOCH_1904_IN_1900_SERIALS)
+                .filter(|s| *s >= 0),
+        }
+    }
 }
 
 #[derive(Encode, Decode, Debug, PartialEq, Eq, Clone)]

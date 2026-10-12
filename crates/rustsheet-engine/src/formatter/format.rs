@@ -293,7 +293,12 @@ pub fn format_number(value_original: f64, format: &str, ctx: &FormatContext) -> 
             // Day/month/year tokens show Excel's exact components (including the fictitious
             // 1900-02-29) and "1900-01-00" (serial 0). The fallback is never read: `ymd` is
             // `None` exactly when `date_valid` is false.
-            let ymd = excel_serial_to_ymd(value as i64);
+            // In a 1904 workbook the day/month/year tokens read the 1904 epoch (`TEXT(0,"yyyy-mm-dd")`
+            // is "1904-01-01"; dates.md "The 1904 date system").
+            let ymd = ctx
+                .date_system
+                .to_1900_serial(value as i64)
+                .and_then(excel_serial_to_ymd);
             let date_valid = ymd.is_some();
             let (ymd_year, ymd_month, ymd_day) = ymd.unwrap_or((0, 1, 0));
             for token in tokens {

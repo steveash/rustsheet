@@ -68,6 +68,14 @@ fn negative_serials_1904() {
         (-1.5, "[h]:mm;-[h]:mm", "-36:00"),
         (-1.5, "\"x\"[h]", "-x36"),
         (-1.5, "[h];[h]", "36"),
+        // Date tokens read the 1904 epoch (T-1330).
+        (-1.5, "[h] d", "-36 2"),
+        (-1.5, "yyyy", "-1904"),
+        (-1.0, "d", "-2"),
+        (-1.0, "d;d", "2"),
+        (0.0, "yyyy-mm-dd", "1904-01-01"),
+        (1.0, "yyyy-mm-dd", "1904-01-02"),
+        (59.0, "yyyy-mm-dd", "1904-02-29"),
     ];
     for (value, format, expected) in cases {
         assert_eq!(
@@ -76,4 +84,24 @@ fn negative_serials_1904() {
             "{value} {format}"
         );
     }
+}
+
+// The 1904 epoch shift is checked: no serial overflows, and no 1904 day precedes 1904-01-01.
+#[test]
+fn date_system_serial_conversion() {
+    use DateSystem::{Excel1900, Excel1904};
+    assert_eq!(Excel1904.to_1900_serial(0), Some(1462));
+    assert_eq!(Excel1904.to_1900_serial(-1), None);
+    assert_eq!(Excel1904.to_1900_serial(i64::MAX), None);
+    assert_eq!(Excel1904.from_1900_serial(1462), Some(0));
+    assert_eq!(Excel1904.from_1900_serial(1461), None);
+    assert_eq!(Excel1904.from_1900_serial(i64::MIN), None);
+    assert_eq!(Excel1900.to_1900_serial(-5), Some(-5));
+    assert_eq!(Excel1900.from_1900_serial(-5), Some(-5));
+    // The last day Excel accepts, 9999-12-31, is 1900 serial 2958465 and 1904 serial 2957003.
+    assert_eq!(
+        format_in(2_957_003.0, "yyyy-mm-dd", Excel1904),
+        "9999-12-31"
+    );
+    assert_eq!(format_in(2_957_004.0, "yyyy-mm-dd", Excel1904), "#VALUE!");
 }
