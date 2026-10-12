@@ -35,7 +35,7 @@ anchor gives 9 (A11); type 21 agrees with the real calendar at serial 61 (`WEEKN
 and 1901 is back on the real calendar (`WEEKNUM(367,2)` = 1). Rule: week = floor((serial - first)/7) + 1 with first the last serial <= 1 on the
 start weekday (serial 1 = Sunday), for serials 0-366 and return types 1, 2, 11-17 (VERIFIED;
 type 21, ISOWEEKNUM and invalid types: "WEEKNUM return_type edge cases" below).
-Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). The engine still prints a leading "-" for A1, A3, A5 and A6 (A2 and A4 already give #VALUE! through their `yyyy`/`d` tokens) because the poi ElapsedFormatTests workbook (A40-A47, "-It was 2 [yes, 2] hours...") is a 1904-date-system workbook, where negative serials are valid, and the engine has no date-system awareness (TODO(T-1105)). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
+Negative serials under a date/time format (T-1035, VERIFIED, probes/text-ddd-negative-fraction, excel-graph 2026-10-07): `TEXT(-0.5,"dddd")`, `TEXT(-0.5,"d")`, `TEXT(-0.0001,"ddd")`, `TEXT(-0.0001,"d")`, `TEXT(-0.5,"yyyy-mm-dd")`, `TEXT(-0.5,"h:mm")` and `TEXT(-1,"dddd")` are all #VALUE!: a negative value never truncates toward serial 0 (A1-A9). Elapsed-time sections are NOT exempt in the 1900 date system (T-1079, VERIFIED, probes/text-negative-serial-elapsed-mixed, excel-graph 2026-10-07): `TEXT(-0.5,"[h] dddd")`, `TEXT(-1.5,"[h]:mm yyyy")`, `TEXT(-0.5,"[h]:mm")`, `TEXT(-1.5,"[h] d")`, `TEXT(-0.5,"[mm] mmm")` and `TEXT(-0.5,"[s] yy")` are all #VALUE! (A1-A6); non-negative values with the same formats work (`TEXT(0.5,"[h] dddd")` = "12 Saturday", A8). Those cells used to print a leading "-" because the poi ElapsedFormatTests workbook (A40-A47) is a 1904 workbook, where negatives are valid; the formatter now reads the workbook's date system (T-1105, SPEC-0005; see "Negative serials under an explicit negative section" below for the exact 1900 rule). Implemented in the `ParsePart::Date` arm of formatter/format.rs, which also serves cell number-format rendering (cell display of negatives is unprobed).
 Implemented in: `fn_weeknum` (T-0995); TEXT ddd/dddd via `excel_weekday_index` (formatter/format.rs, T-0996,
 `(serial - 1) mod 7` from Sunday, one formula for every non-negative serial; negatives are #VALUE!, see above). EDATE/EOMONTH of serial 0 via `month_arithmetic_date` (T-0997); EDATE of serial 0 returns one serial before the shifted month's first day (VERIFIED for months 0, 1, 2, 3, 12, 13, 14, 24 and 25, T-1052: `EDATE(0,2)` = 60, the fictitious 1900-02-29, `EDATE(0,3)` = 91, `EDATE(0,13)` = 397, `EDATE(0,14)` = 425, `EDATE(0,24)` = 731, `EDATE(0,25)` = 762, `EOMONTH(0,2)` = 91; negative months are #NUM! (tested: -1 and -12): `EDATE(0,-1)`, `EDATE(0,-12)`, `EOMONTH(0,-1)`; evidence probes/edate-serial-0-months A1-A12, excel-graph 2026-10-07).
 The same holds for any serial in [0, 1) and for FALSE: `YEAR(0.2)` = 1900, `MONTH(0)` = 1,
@@ -313,6 +313,29 @@ Status: VERIFIED (Excel-cached; Excel oracle for WORKDAY.INTL and NETWORKDAYS.IN
 Implemented in: `args_signature_with_holidays` in `crates/rustsheet-engine/src/expressions/parser/static_analysis.rs` (WORKDAY, WORKDAY.INTL, NETWORKDAYS, NETWORKDAYS.INTL)
 Tasks: T-0983, T-1053
 
+## WEEKDAY of serial 0 and return_type 0
+Rule: WEEKDAY of a serial in [0, 1) is 7 (serial 0 is Saturday 0 January 1900, as in `TEXT(0,"dddd")`):
+`WEEKDAY(SIN(SECH(2.5)))` (0.1623) = 7. A return_type of -0.0001 (0 or -1 after conversion) is `#NUM!`:
+`WEEKDAY(31330,-0.0001)` is the column index of `VLOOKUP(FALSE,C7:D9,WEEKDAY(31330,-0.0001),INDEX(B1:E7,4))&REPLACE(NA(),..)`,
+whose lookup value is *not* in the table and whose range_lookup is `#REF!`; the cell is `#NUM!`, and nothing else in
+the formula can give `#NUM!` (a value index's error wins over not-found and over range_lookup, lookup.md).
+WORKDAY and NETWORKDAYS take serial 0 too (inferred, values unprobed): `XLOOKUP(NETWORKDAYS(<blank>,7872),E8:E11,A1:B5,..)`
+is `#VALUE!` (XLOOKUP's size mismatch, so NETWORKDAYS(0,7872) is a number, assuming an error lookup_value would beat
+the size-mismatch `#VALUE!`, which is unprobed) and
+`VLOOKUP(WORKDAY(28131,-16,<blank>*1),C2:D5,1,XLOOKUP(..))` is `#VALUE!` (so a holiday of 0 is accepted).
+Evidence: gen-m6/ec7b2cc2fb9f0354 Calc!A33, gen-m6/5cc04d6f42b23b51 Calc!A27, gen-m6/63012866a9d8b7db Calc!A39,
+gen-m6/6b2aa08e3b916da5 Calc!A35 (excel-graph, 2026-10-09, T-1239).
+Ours: `WEEKDAY(0.16)`, `NETWORKDAYS(0,7872)` and `WORKDAY(28131,-16,0)` are `#NUM!`; `WEEKDAY(31330,0)` is `#VALUE!`.
+More serial-0 cells (gen-m9, excel-graph, 2026-10-12, T-1289): `YEARFRAC(33752,0)` is 92.41111111111 (from
+`(0.3+YEARFRAC(33752,Data!$C12))^SUM(-0.0001)` = 0.9995471537332011 with C12 = 0), which is basis 0 counted from
+1900-01-00: (92*360 + 4*30 + 28)/360 (gen-m9/a2e51f48717af2a1 Calc!A32; ours `#NUM!`, T-1409).
+`NETWORKDAYS.INTL(44900,0.2)` is a number (`AVERAGE(NETWORKDAYS.INTL(44900,0.2)/<#VALUE!>,..)` is `#VALUE!`,
+gen-m9/50f10c4062fb2e98 Calc!A12; ours `#NUM!`). `WORKDAY(33393,0,A3:D3)` with holidays "a", 0.3, 0.3, 0.5 is 33393
+(`COLUMNS(B8:E10)%+WORKDAY(..)` = 33393.04, gen-m9/288b99797f58f149 Calc!A10): neither the fractional holidays below 1
+nor the text cell are an error, at least with 0 days (ours `#VALUE!` for the text, `#NUM!` for 0.3).
+Status: VERIFIED for WEEKDAY (excel-graph); UNVERIFIED for the WORKDAY/NETWORKDAYS values (probe pending, T-1254)
+Tasks: T-1253, T-1254, T-1409
+
 ## Date function argument modes
 Rule: DATE, DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, ISOWEEKNUM, TIME, TIMEVALUE and WEEKDAY lift
 over a multi-cell range and over an array in every probed argument (`ROWS(HOUR(A1:A3))` = 3,
@@ -327,7 +350,9 @@ counts as serial 1 for DAYS (`DAYS(TRUE,1)` = 0), WEEKDAY (1), DATEDIF (45999 fo
 ISOWEEKNUM (52). Numeric text ("45000") and date text ("1/15/2024") are dates for the seven probed functions other
 than HOUR, DATEDIF included (`DATEDIF("45000",46000,"d")` = 1000); HOUR's cells are all 0 and cannot tell coercion from
 a whole-day serial. `DATE(2024,45031.5,1)` is `#NUM!` although that date would fall around year 5776, well inside
-the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237).
+the 9999 limit; the cause (a bound on the month argument?) is unprobed (T-1237). A huge *day* is not `#NUM!`:
+`DATE(2042,8,1E+15)` = 84845 = `DATE(2042,8,32767)` (gen-m6/5cc04d6f42b23b51 Calc!A4, `DATE(..)%*88` = 74663.6;
+excel-graph 2026-10-09; ours `#NUM!`), as if the day were capped at 32767 (one cell; the bound is unprobed, T-1237).
 Evidence: probes/date-argument-modes (excel-graph, 2026-10-09, T-1090).
 Ours: DATEDIF, DATEVALUE, DAYS, DAYS360, HOUR, MINUTE, SECOND, TIME, TIMEVALUE and WEEKDAY lift (T-1235), as do
 DATE and ISOWEEKNUM, and the `weekend` of WORKDAY.INTL and NETWORKDAYS.INTL. Still `#N/IMPL!` (T-1236) for an array literal in
@@ -338,3 +363,83 @@ Unprobed (inferred from the leftmost-error rule in arrays.md, T-1235): `DATEDIF(
 a single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
 Status: VERIFIED
 Tasks: T-1090 (generator modes: every date parameter is `value`, holidays `array`), follow-ups below
+
+## The 1904 date system: negative serials keep a minus; epoch at 1904-01-01
+Rule: in a 1904 workbook (`<workbookPr date1904="1"/>`), serial 0 is 1904-01-01 (`TEXT(0,"yyyy-mm-dd")` =
+"1904-01-01", `DATE(1904,1,1)` = 0, `YEAR(0)` = 1904, `DATEVALUE("1904-01-02")` = 1). A negative serial
+under any date or time format is formatted as its absolute value with a leading minus, for date tokens
+too: `TEXT(-1,"d")` = "-2", `TEXT(-1.5,"yyyy")` = "-1904", `TEXT(-0.5,"h:mm")` = "-12:00",
+`TEXT(-1.5,"[h] d")` = "-36 2", `TEXT(-1.5,"[h]:mm")` = "-36:00", `TEXT(-1.5,"[mm]:ss")` = "-2160:00",
+`TEXT(-1E-10,"[h]:mm")` = "-0:00". In the 1900 system each of these is `#VALUE!`, an explicit negative section
+included (`TEXT(-1.5,"[h]:mm;-[h]:mm")`), and so is `TEXT(B1,"[h]:mm")` for a cell B1 = -1.5 formatted
+`[h]:mm`, whose value stays -1.5 (`=B1`). `-0` is 0 in both systems (`TEXT(-0,"[h]:mm")` = "0:00").
+Quirk: a format whose only token is one elapsed token (`[h]`, `[hh]`, `[m]`, `[mm]`, `[s]`, `[ss]`; probes/elapsed-tiny-negatives-1900, T-1338) prints negatives in the 1900 system too: `TEXT(-1.5,"[s]")` =
+"-129600" and `TEXT(-1E-10,"[s]")` = "-0" (the minus stays on a magnitude that rounds or truncates to 0; see number-formats.md "Elapsed-time tokens") in both systems, while
+`[s] yy` is `#VALUE!` (probes/text-negative-serial-elapsed-mixed A6).
+Not probeable through excel-graph: cell display (`#####` or text) of a negative under a date format; the oracle
+reads cached values, not displayed text.
+Evidence: probes/date-system-1900-negatives and probes/date-system-1904-negatives (same 18 questions, excel-graph,
+2026-10-11, T-1268).
+Ours: the 1900 case passes 18 of 18 and the 1904 case passes the time-only cells (the formatter reads the date
+system since T-1105); the 1904 epoch in date functions and TEXT date tokens is T-1330 (SPEC-0005 step 4).
+Status: VERIFIED (web)
+Tasks: T-1268, T-1105
+
+## Negative serials under an explicit negative section; lone elapsed tokens
+Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
+In the 1900 system a date/time section is `#VALUE!` for a negative value even when it is the explicit negative
+section and so would format the magnitude: `TEXT(-1,"d;d")`, `TEXT(-1,"d;d;d")`, `TEXT(-1.5,"yyyy;yyyy")`,
+`TEXT(-0.5,"h:mm;h:mm")`, `TEXT(-1.5,"[h];d")` and `TEXT(-1.5,"0.0;d")` are all `#VALUE!`. The one exception is a
+section whose only date/time token is a single elapsed token, whatever literals, quoted text or color surround it:
+`TEXT(-1.5,"[h];[h]")` = "36", `TEXT(-1.5,"d;[h]")` = "36", `TEXT(-1.5,"0;[h]")` = "36" (the negative section prints
+the magnitude), and one section prints a leading minus in front of everything: `TEXT(-1.5,"[h]"" h""")` = "-36 h",
+`TEXT(-1.5,"[h]\h")` = "-36h", `TEXT(-1.5,"""x""[h]")` = "-x36", `TEXT(-1.5,"[Red][h]")` = "-36",
+`TEXT(-1.5,"[mm]")` = "-2160". Fractional seconds are a second token: `TEXT(-1.5,"[s].00")` is `#VALUE!` in 1900 and
+"-129600.00" in 1904. A number section is unaffected: `TEXT(-1.5,"[h];0")` = "2". In the 1904 system every negative
+formats: a negative section gets the magnitude (`TEXT(-1,"d;d")` = "2", `TEXT(-1.5,"[h];d")` = "2", 1904 epoch) and a
+single section a leading minus.
+Quirk: a format with two elapsed tokens is `#VALUE!` in both systems, also for a positive value:
+`TEXT(1.5,"[h]:[mm]")`, `TEXT(0.5,"[mm]:[ss]")` and `TEXT(-1.5,"[h]:[mm]")` (A9, A21, A22). `TEXT(-1.5,"[ss] AM/PM")`
+is `#VALUE!` in both systems too (A23; the positive value is unprobed).
+Evidence: probes/negative-date-sections-1900 and probes/negative-date-sections-1904 (same 23 questions, excel-graph,
+2026-10-11, T-1105).
+Ours: the sign rule is `formatter::dates::negative_serial_allowed`, applied in the `ParsePart::Date` arm of
+formatter/format.rs to the original value. Two elapsed tokens and `[ss] AM/PM` are not rejected yet (T-1366);
+the 1904 negative sections use the 1900 epoch until T-1330.
+Status: VERIFIED (web)
+Tasks: T-1105, T-1366, T-1330
+
+## HOUR, MINUTE and SECOND past 9999-12-31
+Rule: HOUR and MINUTE of a serial far beyond the last date (2958465, 9999-12-31) are `#NUM!`: `HOUR(123456789.123)` and
+`MINUTE(7+123456789.123)` are `#NUM!`, as DAY is.
+Evidence: gen-m7/bf889c3917eb54c5 Calc!A1, gen-m7/851eb2099ae3f805 Calc!A39 (excel-graph, 2026-10-11, T-1275).
+Ours: only negative serials are rejected (`HOUR(123456789.123)` = 2).
+Status: VERIFIED (web) for these values; SECOND and the exact bound (2958466 or above) are UNVERIFIED
+Tasks: T-1353
+
+## HOUR, MINUTE and SECOND round to the nearest second
+Rule: SECOND of a time of day 22:24:01.729 is 2: `SECOND(DDB(81074,518,21,6,1))`, where DDB is 3024.9333533459067 (a
+last-digit difference in DDB cannot move it by 0.27 s). So the seconds are rounded, not truncated. Yet
+`SECOND("10:11.5")` is 11 (probes/clock-text-oddities F43), so an exact half does not round up there (tie rule or the
+serial's binary noise). The tie rule and whether the carry reaches MINUTE and HOUR (x:59:59.6, 23:59:59.6) are unprobed.
+Evidence: gen-m9/55fc8c4ffbd7c7cc Calc!A40 (excel-graph, 2026-10-12, T-1289); probes/clock-text-oddities F43 (excel-graph,
+2026-10-06, T-0153).
+Ours: the time is rounded to the millisecond and the seconds truncated (`SECOND(0.5+1.7/86400)` = 1).
+Status: VERIFIED (web) for these two cells; ties and carries UNVERIFIED
+Tasks: T-1408
+
+## YEARFRAC swaps reversed dates for every basis
+Rule: YEARFRAC with a start date after the end date swaps them for basis 1 as for basis 0: `YEARFRAC(52874,24708,1)` =
+77.11295191295191 = `YEARFRAC(24708,52874,1)`.
+Evidence: gen-m7/c263b43217a5898b Calc!A38 (excel-graph, 2026-10-11, T-1275).
+Ours: `#NUM!` for basis 1 (basis 0 already swaps); bases 2-4 unchecked.
+Status: VERIFIED (web)
+Tasks: T-1354
+
+## DATEDIF argument errors before date checks
+Rule: an error in DATEDIF's unit argument wins over an invalid start date: `DATEDIF(-1,38627,CHOOSE(3,x))` (the unit is
+`#VALUE!`) is `#VALUE!`, not the `#NUM!` of a negative date.
+Evidence: gen-m7/f68fafa0ca2eba26 Calc!A1 (`Data!D10^DATEDIF((Data!E$5+(-1)),38627,CHOOSE(3,Data!B12))`, E5 blank) (excel-graph, 2026-10-11, T-1275).
+Ours: `#NUM!`.
+Status: VERIFIED (web); an invalid unit text with a negative start date is UNVERIFIED
+Tasks: T-1355

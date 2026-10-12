@@ -1,6 +1,7 @@
 //! Export-time renaming of LAMBDA/LET bound names to Excel's `_xlpm.` form.
 
 use super::super::{for_each_chain_operand_mut, Node};
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 /// Excel stores LAMBDA parameters and LET variables with an `_xlpm.` prefix,
@@ -9,18 +10,18 @@ use crate::functions::Function;
 /// Internally IronCalc keeps the bare names, so before exporting we walk the
 /// tree tracking which names are bound by an enclosing LAMBDA/LET and rename
 /// those occurrences. Unbound names (e.g. a defined name that only resolves at
-/// evaluation time) are left alone. Matching is case-sensitive, mirroring
-/// evaluation (see `assign_variable_ids`).
+/// evaluation time) are left alone. Matching is case-insensitive, mirroring
+/// evaluation (see `same_variable`).
 pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
     match node {
         Node::NamedVariableKind { name, .. } => {
-            if bound.iter().any(|n| n == name) {
+            if bound.iter().any(|n| same_variable(n, name)) {
                 *name = format!("_xlpm.{name}");
             }
         }
         // A bound lambda used as a function: `LET(f,LAMBDA(a,a*a),f(2))`
         Node::NamedFunctionKind { name, args, .. } => {
-            if bound.iter().any(|n| n == name) {
+            if bound.iter().any(|n| same_variable(n, name)) {
                 *name = format!("_xlpm.{name}");
             }
             for arg in args {
@@ -80,7 +81,7 @@ pub(super) fn prefix_bound_variables(node: &mut Node, bound: &mut Vec<String>) {
         Node::UnaryKind { right, .. } => prefix_bound_variables(right, bound),
         Node::ImplicitIntersection { child, .. }
         | Node::SpillRangeOperator { child }
-        | Node::GroupedRootKind { child } => prefix_bound_variables(child, bound),
+        | Node::Group { child, .. } => prefix_bound_variables(child, bound),
         Node::BooleanKind(_)
         | Node::NumberKind(_)
         | Node::StringKind(_)

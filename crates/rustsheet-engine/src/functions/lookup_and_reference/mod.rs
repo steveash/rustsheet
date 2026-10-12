@@ -4,17 +4,15 @@ use crate::expressions::parser::ArrayNode;
 use crate::expressions::types::CellReferenceIndex;
 use crate::functions::util::array_node_to_calc_result;
 use crate::functions::Function;
-use crate::reference_operators::{three_d_needs_one_sheet, Ranges, RefArg};
+use crate::reference_operators::{Ranges, RefArg};
 use crate::{
-    calc_result::{CalcResult, Range},
-    expressions::parser::Node,
-    expressions::token::Error,
-    model::Model,
+    calc_result::CalcResult, expressions::parser::Node, expressions::token::Error, model::Model,
     utils::ParsedReference,
 };
 
 use super::criteria::wildcard_text_matcher;
 use index_arg::LookupIndexArg;
+use lookup_each::LookupSearch;
 use lookup_table::{LookupTable, SearchVector};
 
 mod address_areas;
@@ -22,8 +20,11 @@ mod choosecols_chooserows;
 mod drop_take;
 mod expand;
 mod hstack_vstack;
+mod index;
+pub(crate) use index::IndexForm;
 mod index_arg;
 mod lookup;
+mod lookup_each;
 pub(crate) mod lookup_table;
 mod tocol_torow;
 mod transpose;
@@ -51,72 +52,6 @@ fn lookup_index(
     }
 }
 
-/// Resolves the effective (row, column) indices for INDEX, where `0` means "the
-/// whole row/column" (used to spill an entire row, column or array).
-///
-/// In the two-argument form `INDEX(array, num)` the single index is interpreted
-/// based on the shape of the source: for a single-row source it is a column
-/// index (all rows), otherwise it is a row index (all columns — i.e. a whole row
-/// for a 2-D source, or a single element for a column vector).
-fn index_effective_indices(
-    num_rows: usize,
-    row_num: usize,
-    col_num: usize,
-    two_arg: bool,
-) -> (usize, usize) {
-    if two_arg {
-        if num_rows == 1 {
-            (0, row_num)
-        } else {
-            (row_num, 0)
-        }
-    } else {
-        (row_num, col_num)
-    }
-}
-
-/// Extracts the requested cell, row, column or whole array from `arr`.
-/// `row_eff`/`col_eff` of `0` select every row/column respectively. A selection
-/// that resolves to a single cell is returned as a scalar; otherwise an array.
-fn index_from_array(
-    arr: &[Vec<ArrayNode>],
-    row_eff: usize,
-    col_eff: usize,
-    cell: CellReferenceIndex,
-) -> CalcResult {
-    let num_rows = arr.len();
-    let num_cols = arr[0].len();
-    if row_eff > num_rows || col_eff > num_cols {
-        return CalcResult::Error {
-            error: Error::REF,
-            origin: cell,
-            message: "Wrong reference".to_string(),
-        };
-    }
-    let (row_start, row_end) = if row_eff == 0 {
-        (1, num_rows)
-    } else {
-        (row_eff, row_eff)
-    };
-    let (col_start, col_end) = if col_eff == 0 {
-        (1, num_cols)
-    } else {
-        (col_eff, col_eff)
-    };
-    if row_start == row_end && col_start == col_end {
-        return array_node_to_calc_result(&arr[row_start - 1][col_start - 1], cell);
-    }
-    let mut result = Vec::with_capacity(row_end - row_start + 1);
-    for r in row_start..=row_end {
-        let mut data_row = Vec::with_capacity(col_end - col_start + 1);
-        for c in col_start..=col_end {
-            data_row.push(arr[r - 1][c - 1].clone());
-        }
-        result.push(data_row);
-    }
-    CalcResult::Array(result)
-}
-
 impl Model {
     /// A call to a function whose result is a reference when its source argument is one,
     /// evaluated as that reference: INDEX, XLOOKUP, TAKE, DROP and TRIMRANGE, which are otherwise
@@ -130,7 +65,7 @@ impl Model {
     ) -> Option<CalcResult> {
         Some(match kind {
             // `INDEX(A1:A2,2) A1:A2` intersects the cell INDEX picks (T-0235).
-            Function::Index => self.index_impl(args, cell, true),
+            Function::Index => self.index_impl(args, cell, IndexForm::Reference),
             Function::Xlookup => self.xlookup_impl(args, cell, true),
             Function::Take => self.take_drop_impl(args, cell, drop_take::Edge::Take, true),
             Function::Drop => self.take_drop_impl(args, cell, drop_take::Edge::Drop, true),
@@ -139,151 +74,17 @@ impl Model {
         })
     }
 
-    // INDEX(array, row_num, [column_num])
-    // INDEX(range, row_num, [column_num], [area_num])
-    // At the moment IronCalc does not support references with multiple areas,
-    // so area_num = 1 (or missing).
-    pub(crate) fn fn_index(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
-        self.index_impl(args, cell, false)
-    }
-
-    /// INDEX; `as_reference` keeps a single selected cell as a 1x1 range, as an
-    /// aggregate argument sees it (T-0216; docs/excel-semantics/references.md).
-    pub(crate) fn index_impl(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-        as_reference: bool,
-    ) -> CalcResult {
-        if !(2..=4).contains(&args.len()) {
-            return CalcResult::new_args_number_error(cell);
-        }
-        // area_num (4th argument), read as a float and range-checked before any integer
-        // conversion: below 1 is #VALUE!, past the last area (or NaN) is #REF! (SPEC-0004).
-        let area_num = if args.len() == 4 {
-            let n = match self.get_number(&args[3], cell) {
-                Ok(f) => f.floor(),
-                Err(s) => return s,
-            };
-            if n < 1.0 {
-                return CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 1".into());
+    /// The lookup_value of MATCH, XMATCH or LOOKUP. A function that returns a one-cell reference
+    /// (`CHOOSE(1,A1)`, `OFFSET(A1,0,0)`, `INDIRECT("A1")`, `A1:A1`) gives that cell's value: Excel
+    /// finds 30 for `MATCH(CHOOSE(1,J1),A1:A5,0)` with J1 = 30 (docs/excel-semantics/lookup.md,
+    /// probes/lookup-reference-lookup-value). VLOOKUP, HLOOKUP and XLOOKUP get there by lifting.
+    /// A multi-cell lookup_value is left as it is (T-0270).
+    pub(super) fn lookup_value_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> CalcResult {
+        match self.evaluate_node_in_context(node, cell) {
+            range @ CalcResult::Range { left, right } if left == right => {
+                self.dereference(range, cell)
             }
-            n
-        } else {
-            1.0
-        };
-        let negative_index =
-            || CalcResult::new_error(Error::VALUE, cell, "Argument must be >= 0".to_string());
-        // A missing or empty argument evaluates to 0, which means "the whole
-        // row/column". A negative index is an error.
-        let row_num = match self.get_number(&args[1], cell) {
-            Ok(f) => f,
-            Err(s) => return s,
-        };
-        if row_num < 0.0 {
-            return negative_index();
-        }
-        let two_arg = args.len() == 2;
-        let col_num = if two_arg {
-            0.0
-        } else {
-            match self.get_number(&args[2], cell) {
-                Ok(f) => f,
-                Err(s) => return s,
-            }
-        };
-        if col_num < 0.0 {
-            return negative_index();
-        }
-        let row_num = row_num.floor() as usize;
-        let col_num = col_num.floor() as usize;
-
-        let arg = self.evaluate_reference_arg(&args[0], cell);
-        let reference = if let Some(areas) = arg.single_sheet_areas() {
-            // NaN is out of range too; in range the conversion below is exact.
-            if area_num.is_nan() || area_num > areas.len() as f64 {
-                return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
-            }
-            let Range { left, right } = areas[area_num as usize - 1];
-            CalcResult::Range { left, right }
-        } else {
-            match arg {
-                RefArg::Ranges(_) => return three_d_needs_one_sheet(cell),
-                RefArg::Value(_) if area_num != 1.0 => {
-                    return CalcResult::new_error(Error::REF, cell, "Area out of range".into());
-                }
-                RefArg::Value(value) => value,
-            }
-        };
-        match reference {
-            CalcResult::Range { left, right } => {
-                let num_rows = (right.row - left.row + 1) as usize;
-                let (row_eff, col_eff) =
-                    index_effective_indices(num_rows, row_num, col_num, two_arg);
-                let num_cols = (right.column - left.column + 1) as usize;
-                // Excel: one index into a 2-D range is #REF!, while an array
-                // gives the row (docs/excel-semantics/lookup.md).
-                if row_eff > num_rows
-                    || col_eff > num_cols
-                    || (two_arg && num_rows > 1 && num_cols > 1)
-                {
-                    return CalcResult::Error {
-                        error: Error::REF,
-                        origin: cell,
-                        message: "Wrong reference".to_string(),
-                    };
-                }
-                let (row_start, row_end) = if row_eff == 0 {
-                    (left.row, right.row)
-                } else {
-                    let r = left.row + row_eff as i32 - 1;
-                    (r, r)
-                };
-                let (col_start, col_end) = if col_eff == 0 {
-                    (left.column, right.column)
-                } else {
-                    let c = left.column + col_eff as i32 - 1;
-                    (c, c)
-                };
-                if !as_reference && row_start == row_end && col_start == col_end {
-                    self.evaluate_cell(CellReferenceIndex {
-                        sheet: left.sheet,
-                        row: row_start,
-                        column: col_start,
-                    })
-                } else {
-                    CalcResult::Range {
-                        left: CellReferenceIndex {
-                            sheet: left.sheet,
-                            row: row_start,
-                            column: col_start,
-                        },
-                        right: CellReferenceIndex {
-                            sheet: left.sheet,
-                            row: row_end,
-                            column: col_end,
-                        },
-                    }
-                }
-            }
-            CalcResult::Array(arr) => {
-                if arr.is_empty() || arr[0].is_empty() {
-                    return CalcResult::Error {
-                        error: Error::REF,
-                        origin: cell,
-                        message: "Empty array".to_string(),
-                    };
-                }
-                let (row_eff, col_eff) =
-                    index_effective_indices(arr.len(), row_num, col_num, two_arg);
-                index_from_array(&arr, row_eff, col_eff, cell)
-            }
-            error @ CalcResult::Error { .. } => error,
-            _ => CalcResult::Error {
-                error: Error::VALUE,
-                origin: cell,
-                message: "Expecting a Range".to_string(),
-            },
+            other => other,
         }
     }
 
@@ -301,13 +102,15 @@ impl Model {
         if args.len() > 3 || args.len() < 2 {
             return CalcResult::new_args_number_error(cell);
         }
-        let target = self.evaluate_node_in_context(&args[0], cell);
+        let target = self.lookup_value_arg(&args[0], cell);
         if target.is_error() {
             return target;
         }
         let match_type = if args.len() == 3 {
-            match self.get_number(&args[2], cell) {
-                Ok(v) => v as i32,
+            match self.match_type_arg(&args[2], cell) {
+                // floor, not truncation: -0.5 searches descending (docs/excel-semantics/lookup.md,
+                // gen-m2/f7e6d351c8538ef5 A160, gen-m2/96a0952412cefa6c A241).
+                Ok(v) => v.floor() as i32,
                 Err(s) => return s,
             }
         } else {
@@ -340,6 +143,29 @@ impl Model {
         }
     }
 
+    /// MATCH's match_type as a number. Text that comes from a cell (a reference) and is not a
+    /// number is `#REF!`, while literal text is `#VALUE!` (docs/excel-semantics/lookup.md "MATCH
+    /// descending search skips backward", probes/match-descending-argcheck J9-J20; T-1313).
+    fn match_type_arg(&mut self, node: &Node, cell: CellReferenceIndex) -> Result<f64, CalcResult> {
+        let value = self.eval_ref_or_index(node, cell);
+        let from_cell = matches!(value, CalcResult::Range { .. });
+        let value = self.dereference(value, cell);
+        // Only non-numeric text is remapped: an error in the cell, or a failed implicit
+        // intersection, propagates unchanged (no oracle evidence for remapping those).
+        if from_cell {
+            if let CalcResult::String(text) = &value {
+                if self.cast_number(text).is_none() {
+                    return Err(CalcResult::Error {
+                        error: Error::REF,
+                        origin: cell,
+                        message: "Invalid reference".to_string(),
+                    });
+                }
+            }
+        }
+        self.cast_to_number(value, cell)
+    }
+
     /// HLOOKUP(lookup_value, table_array, row_index, [is_sorted])
     /// We look for `lookup_value` in the first row of table array
     /// We return the value in row `row_index` of the same column in `table_array`
@@ -369,13 +195,9 @@ impl Model {
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(row_index, LookupIndexArg::Reference(_));
-        let is_sorted = if args.len() == 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(v) => v,
-                Err(s) => return s,
-            }
-        } else {
-            true
+        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
+            Ok(is_sorted) => is_sorted,
+            Err(error) => return error,
         };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
@@ -399,18 +221,21 @@ impl Model {
         };
         // We look for `lookup_value` in the first row of the table
         let search_vector = table.first_row(self, cell);
-        // Excel searches first: a value that is not found is #N/A whatever the index is.
-        match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(column) => match self.resolve_lookup_index(row_index, table.rows(), cell) {
-                Ok(row_index) => table.pick(self, row_index, column as i32, cell, as_reference),
-                Err(error) => error,
+        let search = LookupSearch {
+            search_vector: &search_vector,
+            index: row_index,
+            size: table.rows(),
+            is_sorted,
+        };
+        self.lookup_each(
+            lookup_value,
+            &search,
+            as_reference,
+            cell,
+            |model, column, row, as_reference| {
+                table.pick(model, row, column as i32, cell, as_reference)
             },
-            None => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not found".to_string(),
-            },
-        }
+        )
     }
 
     /// VLOOKUP(lookup_value, table_array, row_index, [is_sorted])
@@ -442,13 +267,9 @@ impl Model {
             Err(error) => return error,
         };
         let as_reference = as_reference && matches!(column_index, LookupIndexArg::Reference(_));
-        let is_sorted = if args.len() == 4 {
-            match self.get_boolean(&args[3], cell) {
-                Ok(v) => v,
-                Err(s) => return s,
-            }
-        } else {
-            true
+        let is_sorted = match self.lookup_sorted_arg(args.get(3), cell) {
+            Ok(is_sorted) => is_sorted,
+            Err(error) => return error,
         };
         let range = self.evaluate_single_sheet_arg(&args[1], cell);
         let table = match range {
@@ -472,18 +293,21 @@ impl Model {
         };
         // We look for `lookup_value` in the first column of the table
         let search_vector = table.first_column(self, cell);
-        // Excel searches first: a value that is not found is #N/A whatever the index is.
-        match lookup_index(&lookup_value, &search_vector, is_sorted) {
-            Some(row) => match self.resolve_lookup_index(column_index, table.columns(), cell) {
-                Ok(column_index) => table.pick(self, row as i32, column_index, cell, as_reference),
-                Err(error) => error,
+        let search = LookupSearch {
+            search_vector: &search_vector,
+            index: column_index,
+            size: table.columns(),
+            is_sorted,
+        };
+        self.lookup_each(
+            lookup_value,
+            &search,
+            as_reference,
+            cell,
+            |model, row, column, as_reference| {
+                table.pick(model, row as i32, column, cell, as_reference)
             },
-            None => CalcResult::Error {
-                error: Error::NA,
-                origin: cell,
-                message: "Not found".to_string(),
-            },
-        }
+        )
     }
 
     // HYPERLINK(link_location, [friendly_name])
@@ -595,6 +419,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::SheetSpanKind {
                 first_index,
@@ -605,6 +430,13 @@ impl Model {
                 cell,
                 "Implicit intersection of a 3-D reference".to_string(),
             ),
+            // `@` intersects the row or column XLOOKUP picks, not its first value:
+            // `@XLOOKUP(2,A1:A3,B1:C3)` outside rows 2 and columns B:C is `#VALUE!`
+            // (probes/xlookup-row-column-picks E4, G15).
+            Node::FunctionKind {
+                kind: Function::Xlookup,
+                args,
+            } => self.xlookup_impl(args, cell, true),
             _ => self.evaluate_node_with_reference(node, cell),
         }
     }
@@ -616,6 +448,7 @@ impl Model {
         node: &Node,
         cell: CellReferenceIndex,
     ) -> CalcResult {
+        let node = node.ungrouped();
         match node {
             Node::FunctionKind {
                 kind: Function::Row,

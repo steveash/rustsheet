@@ -7,7 +7,7 @@ status: todo
 priority: P1
 size: M
 tier: opus
-depends_on: []
+depends_on: [T-1302]
 ---
 
 ## Goal
@@ -45,12 +45,25 @@ Phases 1–3 (decision 0039). The desktop confirmation of the fit is item 2 of T
 Code: `arithmetic::power` (POWER and `^`).
 
 M1 exit blocker: 8 of its cells are in gen-m1 (`gen-m1/6462bf910ef9f28f`, `57fe331cb7611dbf`),
-and M1 needs gen-m1 at 100%. Take it before other M2 work, or split out the gen-m1 part.
+and M1 needs gen-m1 at 100%. Split on 2026-10-10: T-1302 (M1, sonnet) implements the verified
+integer-exponent rule. On the planner's check, that rule alone clears 6 of the 8 cells (A33, A48,
+A57, A86, A54, A104) and the m9-fin-power `^`/POWER cells. After T-1302, this task owns the
+non-integer exponents. Two of their cells still block M1: 6462bf910ef9f28f A41 `3^-0.5` and
+A207 `0.5^-0.5`. Take those first.
+Lead to fit (a hypothesis, not verified): for a negative exponent, Excel's value equals
+`1/(x^|y|)`. That gives `1/(3^0.5)` = 0.5773502691896258, `1/(0.5^0.5)` = 1.414213562373095 and,
+for gen-m2 1b6ceed7489e0800 A62, `1/(2^0.5)` = 0.7071067811865475. All three are Excel's values,
+and correctly rounded `powf` misses all three. Positive non-integer exponents, such as A155
+`100^0.3`, are not explained by this lead.
+
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/b5352ebdb9c5f1a1 Calc!A1 `=DROP(((Data!$C$10/Data!D3)+(Data!B3^Data!B3)),..)` (3.14159^3.14159): Excel 36.46195209318106, engine 36.461952093181075.
+- gen-m9/b5352ebdb9c5f1a1 Calc!A16 `=(AVERAGE(WEEKNUM(46206,1))^Data!C4)` (27^-2.5): Excel 0.0002639918926335737, engine 0.00026399189263357376.
 
 ## Acceptance criteria
 - [ ] A probe sweep pins the formulation. docs/excel-semantics/numbers.md entry updated with evidence.
-- [ ] The 15 gen-m2 cells above disappear from eval/baseline/gen-m2.txt and the 8 gen-m1 cells from eval/baseline/gen-m1.txt, with no new F lines in any suite.
+- [ ] The gen-m2 cells above that T-1302 did not clear disappear from eval/baseline/gen-m2.txt, and gen-m1 A41 and A207 disappear from eval/baseline/gen-m1.txt, with no new F lines in any suite.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
-- -
+- Integer exponents: T-1302.

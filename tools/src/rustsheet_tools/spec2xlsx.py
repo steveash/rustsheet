@@ -28,6 +28,10 @@ Conventions (normative; mirrored by the Rust engine adapter in crates/rustsheet-
     gets a values filter on its first column that keeps exactly the visible data rows, so the hidden rows
     inside the table are the rows the filter hides; that column's data cells must be literal numbers or
     text, and no value may be both kept and hidden. The engine adapter loads both.
+  * `"date_system": 1904` at the top level writes `<workbookPr date1904="1"/>` (1900, the default,
+    writes nothing), and a sheet's `"number_formats": {"A1": "[h]:mm"}` gives those cells that number
+    format, blank cells included; an `entered` cell cannot have one (T-1268). The engine adapter
+    applies both.
   * Future functions get their `_xlfn.` prefixes from the builder's own table (the engine exporter's
     list plus `_BUILDER_ONLY_PREFIXES`), never from XlsxWriter's `use_future_functions`, which skips a
     whole formula once any call in it is prefixed (T-0052); LET/LAMBDA names are written as `_xlpm.x`.
@@ -136,19 +140,46 @@ def _words(formula: str) -> Iterator[tuple[bool, str, int]]:
         i = m.end()
 
 
+_OPTIONAL_PARAM = re.compile(r"\s*(\[)\s*([A-Za-z_][\w.]*)\s*(\])\s*")
+
+
 def prefix_bound_names(formula: str) -> str:
-    """Writes LET variables and LAMBDA parameters as `_xlpm.x`, as Excel stores them (T-0166)."""
+    """Writes LET variables and LAMBDA parameters as `_xlpm.x`, as Excel stores them (T-0166).
+
+    An optional LAMBDA parameter `[y]` is declared as `_xlop.y`, brackets dropped, and used as
+    `_xlpm.y`: Excel for the web stores `=LAMBDA(x,[y],ISOMITTED(y))(1)` as
+    `_xlfn.LAMBDA(_xlpm.x,_xlop.y,_xlfn.ISOMITTED(_xlpm.y))(1)`, and refuses `[_xlpm.y]` as a
+    corrupt file (T-1274; docs/excel-semantics/xlsx-storage.md).
+    """
     out: list[str] = []
     scopes: list[tuple[int, set[str]]] = []  # (end index of the call, lower-cased names)
+    # `_words` yields `[`, the name and `]` as separate pieces, so the declaration is marked by
+    # position: the name is rewritten and the brackets (with any spaces) are skipped.
+    optional: set[int] = set()  # start of each optional parameter's name
+    dropped: set[int] = set()  # its brackets and the spaces around the name
     for is_name, word, i in _words(formula):
         end = i + len(word)
         scopes = [sc for sc in scopes if sc[0] > i]
         upper = word.upper()
+        if i in dropped:
+            continue
+        if is_name and i in optional:
+            out.append(f"_xlop.{word}")
+            continue
         if is_name and formula[end : end + 1] == "(" and upper in ("LET", "LAMBDA"):
             args, close = _call_args(formula, end)
             decl = args[0:-1:2] if upper == "LET" else args[:-1]
-            names = {a.strip().strip("[]").lower() for a in decl}
+            names = {a.strip().strip("[]").strip().lower() for a in decl}
             scopes.append((close, {n for n in names if _IDENT.fullmatch(n)}))
+            if upper == "LAMBDA":
+                start = end + 1
+                for arg in args[:-1]:
+                    m = _OPTIONAL_PARAM.fullmatch(arg)
+                    if m:
+                        optional.add(start + m.start(2))
+                        dropped.update(range(start + m.end(2), start + len(arg)))
+                        dropped.update(range(start, start + m.start(2)))
+                    start += len(arg) + 1
         elif is_name and formula[end : end + 1] != "!" and any(word.lower() in names for _, names in scopes):
             out.append(f"_xlpm.{word}")
             continue
@@ -227,6 +258,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             "strings_to_numbers": False,
             "strings_to_formulas": False,
             "strings_to_urls": False,
+            "date_1904": _date_1904(spec),
         },
     )
     wb.set_properties({"created": _FIXED_CREATED})
@@ -242,6 +274,7 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
             ws.set_row(row - 1, None, None, {"hidden": True})
         for table in sheet.get("tables", ()):
             filters.append(_add_table(ws, sheet, table, hidden))
+        formats = _number_formats(wb, sheet)
         legacy = set(sheet.get("legacy_formulas", ()))
         if unknown := legacy - sheet["cells"].keys():
             msg = f"legacy_formulas names cells not in the sheet: {sorted(unknown)}"
@@ -252,20 +285,28 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
                 if not (isinstance(raw, str) and raw.startswith("=")):
                     msg = f"legacy_formulas cell {a1} is not a formula"
                     raise ValueError(msg)
-                ws.write_formula(row, col, _formula_text(raw))
+                ws.write_formula(row, col, _formula_text(raw), formats.get(a1))
                 continue
             if isinstance(raw, dict) and raw.get("t") == "e" and raw.get("stored"):
                 # A placeholder formula cell with an error result; `_store_errors` swaps it for the constant.
-                ws.write_formula(row, col, "=0", None, "#N/A")
+                ws.write_formula(row, col, "=0", formats.get(a1), "#N/A")
                 stored.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["v"])))
                 continue
             if isinstance(raw, dict) and "entered" in raw:
+                if a1 in formats:
+                    msg = f"entered cell {a1} cannot have a number format (Excel picks it)"
+                    raise ValueError(msg)
                 entered.append(
                     (sheet["name"], xlsxwriter.utility.xl_rowcol_to_cell(row, col), str(raw["entered"]))
                 )
                 continue
-            if (cell_number := _write(ws, row, col, raw)) is not None and _is_lossy(cell_number):
+            if (cell_number := _write(ws, row, col, raw, formats.get(a1))) is not None and _is_lossy(
+                cell_number
+            ):
                 lossy.append((number, xlsxwriter.utility.xl_rowcol_to_cell(row, col), cell_number))
+        for a1, fmt in formats.items():
+            if a1 not in sheet["cells"]:
+                ws.write_blank(*parse_a1(a1), None, fmt)
     for name, formula in spec.get("names", {}).items():
         wb.define_name(name, _formula_text(formula))
     for n, entry in enumerate(entered, start=1):
@@ -278,6 +319,30 @@ def build_xlsx(spec: dict[str, Any]) -> bytes:
     xlsx = _store_errors(buf.getvalue(), stored) if stored else buf.getvalue()
     xlsx = _filter_tables(xlsx, filters) if any(el for _, el in filters) else xlsx
     return _store_numbers(xlsx, lossy) if lossy else xlsx
+
+
+def _date_1904(spec: dict[str, Any]) -> bool:
+    """Whether the spec asks for the 1904 date system (`"date_system": 1904`; 1900 is the default)."""
+    system = spec.get("date_system", 1900)
+    if system not in (1900, 1904) or isinstance(system, bool):
+        msg = f"date_system must be 1900 or 1904: {system!r}"
+        raise ValueError(msg)
+    return bool(system == 1904)
+
+
+def _number_formats(wb: Any, sheet: dict[str, Any]) -> dict[str, Any]:
+    """The sheet's `number_formats` (A1 → format code) as XlsxWriter formats, one per code."""
+    by_code: dict[str, Any] = {}
+    formats: dict[str, Any] = {}
+    for a1, code in sheet.get("number_formats", {}).items():
+        parse_a1(a1)
+        if not isinstance(code, str) or not code:
+            msg = f"number format of {a1} must be a non-empty string: {code!r}"
+            raise ValueError(msg)
+        if code not in by_code:
+            by_code[code] = wb.add_format({"num_format": code})
+        formats[a1] = by_code[code]
+    return formats
 
 
 def _hidden_rows(sheet: dict[str, Any]) -> set[int]:
@@ -451,35 +516,37 @@ def _formula_text(raw: str) -> str:
     return prefix_future_functions(prefix_bound_names(anchor_spill_refs(raw)))
 
 
-def _write(ws: Any, row: int, col: int, raw: Any) -> float | None:
-    """Writes one spec cell; returns the number when it went through `write_number`, else None."""
+def _write(ws: Any, row: int, col: int, raw: Any, fmt: Any = None) -> float | None:
+    """Writes one spec cell (with number format `fmt`, if any); returns the number when it went
+    through `write_number`, else None."""
     if isinstance(raw, bool):
-        ws.write_boolean(row, col, raw)
+        ws.write_boolean(row, col, raw, fmt)
     elif isinstance(raw, int | float):
-        ws.write_number(row, col, float(raw))
+        ws.write_number(row, col, float(raw), fmt)
         return float(raw)
     elif isinstance(raw, str):
         if raw.startswith("="):
-            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw))
+            ws.write_dynamic_array_formula(row, col, row, col, _formula_text(raw), fmt)
         elif raw == "":
-            ws.write_formula(row, col, '=""')
+            ws.write_formula(row, col, '=""', fmt)
         else:
-            ws.write_string(row, col, raw)
+            ws.write_string(row, col, raw, fmt)
     elif isinstance(raw, dict):
         tag, value = raw.get("t"), raw.get("v")
         if tag == "s" and value == "":
-            ws.write_formula(row, col, '=""')
+            ws.write_formula(row, col, '=""', fmt)
         elif tag == "s":
-            ws.write_string(row, col, str(value))
+            ws.write_string(row, col, str(value), fmt)
         elif tag == "n":
-            ws.write_number(row, col, float(value))  # type: ignore[arg-type]
+            ws.write_number(row, col, float(value), fmt)  # type: ignore[arg-type]
             return float(value)  # type: ignore[arg-type]
         elif tag == "b":
-            ws.write_boolean(row, col, bool(value))
+            ws.write_boolean(row, col, bool(value), fmt)
         elif tag == "e":
-            ws.write_formula(row, col, f"={value}")
+            ws.write_formula(row, col, f"={value}", fmt)
         elif tag == "empty":
-            pass
+            if fmt is not None:
+                ws.write_blank(row, col, None, fmt)
         else:
             msg = f"unknown typed cell {raw!r}"
             raise ValueError(msg)

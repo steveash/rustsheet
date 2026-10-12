@@ -18,8 +18,54 @@ env:
   RUSTFLAGS: "-D warnings"
 
 jobs:
+  # Decision 0049: a PR that touches only docs skips the rust, eval and python jobs. A skipped job
+  # reports success to required checks, so this job decides safely: anything it cannot classify,
+  # and every push to main, runs everything. docs/excel-semantics/ is code-relevant (the eval
+  # harness reads its DEVIATION anchors), so it never counts as docs-only.
+  changes:
+    name: changes (docs-only?)
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ] || [ -z "$BASE" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # --no-renames lists both sides of a rename, so moving code into docs/ still counts as
+          # code; -z keeps unusual file names intact.
+          if ! git diff -z --no-renames --name-only "$BASE" HEAD > "$RUNNER_TEMP/changed"; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          code=false
+          n=0
+          while IFS= read -r -d '' f; do
+            n=$((n + 1))
+            case "$f" in
+              # Paths read at build or test time count as code (decision 0049): add new ones here.
+              docs/excel-semantics/*) code=true ;;
+              docs/*|.claude/*) ;;
+              */*) code=true ;;
+              *.md) ;;
+              *) code=true ;;
+            esac
+          done < "$RUNNER_TEMP/changed"
+          if [ "$n" -eq 0 ]; then code=true; fi
+          # File names are attacker-controlled: never echo them raw (workflow-command injection).
+          echo "changed files: $n, code=$code"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   rust:
     name: rust (fmt, clippy, test)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +79,8 @@ jobs:
 
   eval:
     name: eval (Excel-compatibility gate)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +98,8 @@ jobs:
 
   python:
     name: python (tools + bindings)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

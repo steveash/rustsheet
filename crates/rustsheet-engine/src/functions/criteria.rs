@@ -7,8 +7,9 @@ use regex_lite as regex;
 
 use crate::{
     calc_result::CalcResult,
-    expressions::token::is_english_error_string,
+    expressions::token::{is_english_error_string, Error},
     formatter::date_text::{parse_date, CurrentYear},
+    functions::util::cmp_text_excel,
     locale::Locale,
     number_format::{cmp_excel_precision, parse_excel_number, parse_finite_number},
 };
@@ -184,7 +185,7 @@ fn result_is_not_equal_to_string(calc_result: &CalcResult, target: &str) -> bool
 
 fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => target.cmp(&s.to_lowercase()) == std::cmp::Ordering::Greater,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_lt(),
         _ => false,
     }
 }
@@ -193,21 +194,21 @@ fn result_is_less_than_string(calc_result: &CalcResult, target: &str) -> bool {
 // E10-E13: "10.1.2026" and "10.3.2026" are `<="10.3.2026"`, not `<="1.3.2026"`).
 fn result_is_less_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => s.to_lowercase().as_str() <= target,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_le(),
         _ => false,
     }
 }
 
 fn result_is_greater_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => target.cmp(&s.to_lowercase()) == std::cmp::Ordering::Less,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_gt(),
         _ => false,
     }
 }
 
 fn result_is_greater_or_equal_than_string(calc_result: &CalcResult, target: &str) -> bool {
     match calc_result {
-        CalcResult::String(s) => s.to_lowercase().as_str() >= target,
+        CalcResult::String(s) => cmp_text_excel(&s.to_lowercase(), target).is_ge(),
         _ => false,
     }
 }
@@ -421,7 +422,12 @@ pub(crate) fn build_criteria_with<'a>(
         CalcResult::Number(target) => Box::new(move |x| result_is_equal_to_number(x, *target)),
         CalcResult::Boolean(b) => Box::new(move |x| result_is_equal_to_bool(x, *b)),
         CalcResult::Error { error, .. } => {
-            // An error will match an error (never a string that is an error)
+            // An error will match an error (never a string that is an error). Excel: except a stored
+            // #BUSY!, which matches nothing, not even its own cell (probes/error-stored-busy-behaviors
+            // C15; a #N/A criterion does match #N/A cells).
+            if *error == Error::BUSY {
+                return Box::new(|_| false);
+            }
             Box::new(move |x| result_is_equal_to_error(x, &error.to_string()))
         }
         CalcResult::Range { left: _, right: _ } => Box::new(move |_x| false),

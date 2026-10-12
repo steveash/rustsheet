@@ -1,0 +1,62 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1388: where TEXT's #VALUE! sets in for long date/time format codes and results (format length vs result length).",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "T-1388"
+ ],
+ "date_system": 1900,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(1,REPT(\"d \",20))",
+    "A2": "=TEXT(1,REPT(\"d \",30))",
+    "A3": "=TEXT(1,REPT(\"d \",50))",
+    "A4": "=TEXT(1,REPT(\"d \",80))",
+    "A5": "=TEXT(1,REPT(\"d \",100))",
+    "A6": "=TEXT(1,REPT(\"d \",126))",
+    "A7": "=TEXT(1,REPT(\"d \",127))",
+    "A8": "=TEXT(1,REPT(\"d \",200))",
+    "A9": "=TEXT(1,REPT(\"d \",250))",
+    "A10": "=TEXT(1,\"d\"&REPT(\" \",49))",
+    "A11": "=TEXT(1,\"d\"&REPT(\";\",49))",
+    "A12": "=TEXT(1,\"d\"&REPT(\" \",99))",
+    "A13": "=TEXT(1,\"d\"&REPT(\";\",99))",
+    "A14": "=TEXT(1,\"d\"&REPT(\" \",199))",
+    "A15": "=TEXT(1,\"d\"&REPT(\";\",199))",
+    "A16": "=TEXT(1,\"d\"&REPT(\" \",249))",
+    "A17": "=TEXT(1,\"d\"&REPT(\";\",249))",
+    "A18": "=TEXT(1,\"d\"&REPT(\" \",253))",
+    "A19": "=TEXT(1,\"d\"&REPT(\";\",253))",
+    "A20": "=TEXT(1,\"d\"&REPT(\" \",254))",
+    "A21": "=TEXT(1,\"d\"&REPT(\";\",254))",
+    "A22": "=TEXT(1,\"d\"&REPT(\" \",255))",
+    "A23": "=TEXT(1,\"d\"&REPT(\";\",255))",
+    "A24": "=TEXT(1,REPT(\"dddd \",10))",
+    "A25": "=TEXT(1,REPT(\"yyyy \",10))",
+    "A26": "=TEXT(1,REPT(\"0 \",10))",
+    "A27": "=TEXT(1,REPT(\"0\",10))",
+    "A28": "=TEXT(1,REPT(\"dddd \",20))",
+    "A29": "=TEXT(1,REPT(\"yyyy \",20))",
+    "A30": "=TEXT(1,REPT(\"0 \",20))",
+    "A31": "=TEXT(1,REPT(\"0\",20))",
+    "A32": "=TEXT(1,REPT(\"dddd \",30))",
+    "A33": "=TEXT(1,REPT(\"yyyy \",30))",
+    "A34": "=TEXT(1,REPT(\"0 \",30))",
+    "A35": "=TEXT(1,REPT(\"0\",30))",
+    "A36": "=TEXT(1,REPT(\"dddd \",40))",
+    "A37": "=TEXT(1,REPT(\"yyyy \",40))",
+    "A38": "=TEXT(1,REPT(\"0 \",40))",
+    "A39": "=TEXT(1,REPT(\"0\",40))",
+    "A40": "=TEXT(1,REPT(\"dddd \",50))",
+    "A41": "=TEXT(1,REPT(\"yyyy \",50))",
+    "A42": "=TEXT(1,REPT(\"0 \",50))",
+    "A43": "=TEXT(1,REPT(\"0\",50))"
+   }
+  }
+ ],
+ "expected": {}
+}

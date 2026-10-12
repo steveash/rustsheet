@@ -1,6 +1,6 @@
 #![allow(clippy::panic)]
 
-use crate::expressions::parser::{ChainLeft, LeadGroup, Node};
+use crate::expressions::parser::{ChainLeft, Node};
 use crate::expressions::types::CellReferenceRC;
 use std::collections::HashMap;
 
@@ -34,10 +34,7 @@ fn simple() {
         t,
         Node::ImplicitIntersection {
             automatic: false,
-            child: Box::new(child),
-            written: 0,
-            lead: LeadGroup::default(),
-            grouped: 0
+            child: Box::new(child)
         }
     )
 }
@@ -72,10 +69,7 @@ fn simple_add() {
             kind: crate::expressions::token::OpSum::Add,
             left: ChainLeft::new(Node::ImplicitIntersection {
                 automatic: false,
-                child: Box::new(child),
-                written: 0,
-                lead: LeadGroup::default(),
-                grouped: 0
+                child: Box::new(child)
             }),
             right: Box::new(Node::NumberKind(12.0))
         }

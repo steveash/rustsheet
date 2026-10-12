@@ -10,7 +10,7 @@ use crate::{
         types::CellReferenceIndex,
     },
     formatter::format::parse_formatted_number,
-    functions::math_and_trigonometry::array_size::check_range_size,
+    functions::math_and_trigonometry::array_size::{check_array_size, check_range_size},
     model::Model,
 };
 
@@ -21,7 +21,7 @@ pub(crate) enum NumberOrArray {
 
 impl NumberOrArray {
     /// Rows and columns; a number is 1x1.
-    fn dims(&self) -> (usize, usize) {
+    pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             NumberOrArray::Number(_) => (1, 1),
             NumberOrArray::Array(a) => (a.len(), a.first().map_or(0, Vec::len)),
@@ -275,6 +275,11 @@ impl Model {
         }
         let rows = lifted.iter().map(|na| na.dims().0).max().unwrap_or(0);
         let cols = lifted.iter().map(|na| na.dims().1).max().unwrap_or(0);
+        // Bounds the broadcast result (`ROUND(A:A, 1:1)`): DEVIATION, arrays.md "Array results
+        // above 1,048,576 cells".
+        if let Some((error, message)) = check_array_size(rows, cols) {
+            return CalcResult::new_error(error, cell, message);
+        }
         let result = (0..rows)
             .map(|i| {
                 (0..cols)
@@ -303,7 +308,7 @@ impl Model {
 
     /// The number at (`i`, `j`) of `na`, a size-1 dimension repeating; text is cast like a scalar
     /// argument, a position past a shorter array is `#N/A`.
-    fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
+    pub(crate) fn number_at(&self, na: &NumberOrArray, i: usize, j: usize) -> Result<f64, Error> {
         match na {
             NumberOrArray::Number(f) => Ok(*f),
             NumberOrArray::Array(a) => {

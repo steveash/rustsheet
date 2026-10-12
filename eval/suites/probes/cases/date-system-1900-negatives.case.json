@@ -1,0 +1,41 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "SPEC-0005 unknowns in a 1900 workbook: TEXT of negatives and -0 under elapsed and date tokens, date functions at the epoch, a negative cell formatted [h]:mm (T-1268).",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "T-1268"
+ ],
+ "date_system": 1900,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(-1.5,\"[h] d\")",
+    "A2": "=TEXT(-1E-10,\"[h]:mm\")",
+    "A3": "=TEXT(-0,\"[h]:mm\")",
+    "A4": "=TEXT(-1.5,\"[h]:mm\")",
+    "A5": "=TEXT(-1.5,\"[mm]:ss\")",
+    "A6": "=TEXT(-1.5,\"yyyy\")",
+    "A7": "=TEXT(-0.5,\"h:mm\")",
+    "A8": "=TEXT(0,\"yyyy-mm-dd\")",
+    "A9": "=TEXT(1,\"yyyy-mm-dd\")",
+    "A10": "=DATE(1904,1,1)",
+    "A11": "=YEAR(0)",
+    "A12": "=DATEVALUE(\"1904-01-02\")",
+    "A13": "=TEXT(-1.5,\"[h]:mm;-[h]:mm\")",
+    "A14": "=TEXT(-1,\"d\")",
+    "A15": "=TEXT(B1,\"[h]:mm\")",
+    "A16": "=B1",
+    "A17": "=TEXT(-1.5,\"[s]\")",
+    "A18": "=TEXT(-1E-10,\"[s]\")",
+    "B1": -1.5
+   },
+   "number_formats": {
+    "B1": "[h]:mm"
+   }
+  }
+ ],
+ "expected": {}
+}

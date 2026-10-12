@@ -1,0 +1,42 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "Negative serials in a 1900 workbook: explicit negative date/elapsed sections, a lone elapsed token with literals, colors or a second elapsed token (T-1105).",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "T-1105"
+ ],
+ "date_system": 1900,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(-1,\"d;d\")",
+    "A2": "=TEXT(-1.5,\"yyyy;yyyy\")",
+    "A3": "=TEXT(-0.5,\"h:mm;h:mm\")",
+    "A4": "=TEXT(-1.5,\"[h];[h]\")",
+    "A5": "=TEXT(-1.5,\"[h]\"\" h\"\"\")",
+    "A6": "=TEXT(-1.5,\"[h] \")",
+    "A7": "=TEXT(-1.5,\"[h]\\h\")",
+    "A8": "=TEXT(-1.5,\"[mm]\")",
+    "A9": "=TEXT(-1.5,\"[h]:[mm]\")",
+    "A10": "=TEXT(-1.5,\"[s].00\")",
+    "A11": "=TEXT(-1.5,\"d;[h]\")",
+    "A12": "=TEXT(-1.5,\"[h];d\")",
+    "A13": "=TEXT(-1.5,\"0;[h]\")",
+    "A14": "=TEXT(-1.5,\"[h];0\")",
+    "A15": "=TEXT(-1.5,\"[Red][h]\")",
+    "A16": "=TEXT(-1.5,\"[h];[h];[h]\")",
+    "A17": "=TEXT(-1,\"d;d;d\")",
+    "A18": "=TEXT(-1.5,\"\"\"x\"\"[h]\")",
+    "A19": "=TEXT(-1.5,\"[hh]\")",
+    "A20": "=TEXT(-1.5,\"0.0;d\")",
+    "A21": "=TEXT(1.5,\"[h]:[mm]\")",
+    "A22": "=TEXT(0.5,\"[mm]:[ss]\")",
+    "A23": "=TEXT(-1.5,\"[ss] AM/PM\")"
+   }
+  }
+ ],
+ "expected": {}
+}

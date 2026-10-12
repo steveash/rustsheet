@@ -177,5 +177,6 @@ mod test_today;
 mod test_trigonometric_reciprocals;
 mod test_types;
 mod test_unary_operators;
+mod test_written_groups;
 mod text_functions;
 mod user_model;

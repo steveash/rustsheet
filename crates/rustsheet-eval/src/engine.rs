@@ -3,8 +3,8 @@
 //! can be plugged in and compared side by side.
 
 use rustsheet::{
-    CellRef, ErrorKind, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue, Workbook,
-    WorkbookOptions, XlError,
+    CellRef, DateSystem, ErrorKind, Input, LoadOptions, RangeRef, SheetId, Value as ApiValue,
+    Workbook, WorkbookOptions, XlError,
 };
 
 use crate::case::{split_qualified, CaseSpec, CellInput};
@@ -83,7 +83,16 @@ impl Engine for RustSheetEngine {
     }
 
     fn evaluate_spec(&self, spec: &CaseSpec) -> Result<Box<dyn Evaluated>, String> {
-        let mut workbook = Workbook::new(&WorkbookOptions::default()).map_err(|e| e.to_string())?;
+        let date_system = match spec.date_system {
+            None | Some(1900) => DateSystem::Excel1900,
+            Some(1904) => DateSystem::Excel1904,
+            Some(other) => return Err(format!("date_system must be 1900 or 1904, not {other}")),
+        };
+        let mut workbook = Workbook::new(&WorkbookOptions {
+            date_system,
+            ..WorkbookOptions::default()
+        })
+        .map_err(|e| e.to_string())?;
         // The harness only reads final values: skip the per-edit value diff.
         workbook.set_track_changes(false);
         workbook
@@ -156,6 +165,15 @@ impl Engine for RustSheetEngine {
                     }
                 }
                 for (sheet, &id) in spec.sheets.iter().zip(&ids) {
+                    for (a1, format) in &sheet.number_formats {
+                        let addr = Addr::parse(a1).ok_or_else(|| {
+                            rustsheet::EditError::Engine(format!("bad address {a1}"))
+                        })?;
+                        tx.set_number_format(
+                            CellRef::new(id, addr.row - 1, addr.col - 1)?,
+                            format,
+                        )?;
+                    }
                     for &row in &sheet.hidden_rows {
                         let row = row.checked_sub(1).ok_or(rustsheet::RefError::OutOfBounds)?;
                         tx.set_row_hidden(id, row, true)?;
@@ -304,7 +322,9 @@ mod tests {
                 "A2":{"t":"e","v":"#GETTING_DATA","stored":true},
                 "A3":{"t":"e","v":"#BUSY!","stored":true},
                 "A4":{"t":"e","v":"#N/A"},
-                "B2":"=ERROR.TYPE(A2)"}}]}"##,
+                "A5":{"t":"e","v":"#UNKNOWN!","stored":true},
+                "B2":"=ERROR.TYPE(A2)",
+                "B3":"=ERROR.TYPE(A3)"}}]}"##,
         );
         let evaluated = RustSheetEngine.evaluate_spec(&spec).expect("evaluates");
         let at = |row| evaluated.value("S", Addr { row, col: 1 });
@@ -314,9 +334,15 @@ mod tests {
             evaluated.value("S", Addr { row: 2, col: 2 }),
             Some(Value::Number(8.0))
         );
-        // Unknown to the stored-name table: `#ERROR!` (xlsx import's fallback), not the text "#BUSY!".
-        assert_eq!(at(3), Some(Value::Error("#ERROR!".into())));
+        // Its own kind with ERROR.TYPE 0 (SPEC-0003 "Stored `#BUSY!`", T-1222).
+        assert_eq!(at(3), Some(Value::Error("#BUSY!".into())));
+        assert_eq!(
+            evaluated.value("S", Addr { row: 3, col: 2 }),
+            Some(Value::Number(0.0))
+        );
         assert_eq!(at(4), Some(Value::Error("#N/A".into())));
+        // Unknown to the stored-name table: `#ERROR!` (xlsx import's fallback), not the text.
+        assert_eq!(at(5), Some(Value::Error("#ERROR!".into())));
     }
 
     #[test]
@@ -326,6 +352,29 @@ mod tests {
                 "sheets":[{"name":"Sheet1","cells":{}}]}"#,
         );
         assert!(RustSheetEngine.evaluate_spec(&spec).is_err());
+    }
+
+    #[test]
+    fn spec_date_system_and_number_formats_build() {
+        // No value reads either yet (SPEC-0005 step 3); the facade test covers the format.
+        let ok = spec(
+            r#"{"format":"rustsheet-case/v1","date_system":1904,"sheets":[{"name":"S",
+                "cells":{"A1":-1.5,"B1":"=A1*2"},"number_formats":{"A1":"[h]:mm","C3":"0.0"}}]}"#,
+        );
+        let evaluated = RustSheetEngine.evaluate_spec(&ok).expect("evaluates");
+        assert_eq!(
+            evaluated.value("S", Addr { row: 1, col: 2 }),
+            Some(Value::Number(-3.0))
+        );
+        let bad_system = spec(
+            r#"{"format":"rustsheet-case/v1","date_system":1901,"sheets":[{"name":"S","cells":{}}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&bad_system).is_err());
+        let bad_cell = spec(
+            r#"{"format":"rustsheet-case/v1","sheets":[{"name":"S","cells":{},
+                "number_formats":{"nope":"0"}}]}"#,
+        );
+        assert!(RustSheetEngine.evaluate_spec(&bad_cell).is_err());
     }
 
     #[test]

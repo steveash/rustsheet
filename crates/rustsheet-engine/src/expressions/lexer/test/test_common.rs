@@ -303,8 +303,8 @@ fn test_error_getting_data_any_case() {
 
 #[test]
 fn test_newer_rich_errors_are_not_literals() {
-    // Excel refuses `=#BLOCKED!`, `=#CONNECT!` and `=#FIELD!` (T-0175).
-    for formula in ["#BLOCKED!", "#CONNECT!", "#FIELD!"] {
+    // Excel refuses `=#BLOCKED!`, `=#CONNECT!`, `=#FIELD!` (T-0175) and `=#BUSY!` (syntax.md).
+    for formula in ["#BLOCKED!", "#CONNECT!", "#FIELD!", "#BUSY!"] {
         let mut lx = new_lexer(formula, true);
         assert!(!matches!(lx.next_token(), Error(_)), "{formula}");
     }

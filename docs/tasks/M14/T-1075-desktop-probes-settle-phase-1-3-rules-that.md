@@ -38,6 +38,13 @@ Items (add one in the PR that implements a rule on web-only evidence, or that fi
    Excel 2008 (12.0).
 6. **`CELL("width")`** (decision 0019; docs/architecture/oracle.md). poi/47804.xlsx: desktop cached
    10 and 11; Excel for the web returns `#VALUE!`, so the fill refuses the workbook.
+7. **AND/OR/XOR text next to a logical value** (T-0258; coercion.md "AND/OR/XOR text arguments").
+   poi/FormulaEvalTestData_Copy.xlsx EverythingTests!J136 `AND("1",1)`: Excel 15 cached `#VALUE!`, excel-graph gives TRUE
+   (probes/and-or-xor-text-arguments). The engine follows the web; J136 stays a known failure.
+8. **Formula and defined-name length** (T-1386; syntax.md "Formulas over 8,192 characters refuse the workbook").
+   Desktop Excel's limit for a formula typed into a cell and for a defined-name body, whether the web file-load
+   limit (8,192 characters, ASCII; non-BMP counting unsettled, see T-1397; name bodies 8,191 ASCII characters) holds on desktop, and how `_xHHHH_` escapes inside `<f>` text count
+   (the spec-to-xlsx writer cannot emit them raw, so this also needs a raw-XML fixture).
 
 ## Acceptance criteria
 - [ ] Each item above has its desktop value(s) in docs/excel-semantics/ with the probe or workbook

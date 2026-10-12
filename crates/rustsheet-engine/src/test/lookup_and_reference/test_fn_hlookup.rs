@@ -220,3 +220,37 @@ fn test_hlookup_index_function_index_is_a_reference() {
     assert_eq!(model._get_text("H3"), "#N/A");
     assert_eq!(model._get_text("H4"), "#N/A");
 }
+
+#[test]
+fn test_lookup_array_index_and_range_lookup() {
+    // probes/vlookup-array-index-range-lookup (T-1269, excel-graph): a scalar lookup lifts over an
+    // index array after validating every element; a lifted lookup or range_lookup reads only the
+    // first element of the index, and range_lookup lifts with the lookup value.
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("A1", "10"),
+        ("B1", "20"),
+        ("C1", "30"),
+        ("A2", "a"),
+        ("B2", "b"),
+        ("C2", "c"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("E1", "=HLOOKUP(20,A1:C2,{2,1})");
+    model._set("E4", "=HLOOKUP(20,A1:C2,{2,0})");
+    model._set("E5", "=HLOOKUP(20,A1:C2,{9,0})");
+    model._set("E6", "=HLOOKUP(99,A1:C2,{9,0},FALSE)");
+    model._set("G1", "=HLOOKUP({20;30},A1:C2,{2;1})");
+    model._set("J1", "=HLOOKUP(25,A1:C2,2,{FALSE;TRUE})");
+    model.evaluate();
+    assert_eq!(model._get_text("E1"), "b");
+    assert_eq!(model._get_text("F1"), "20");
+    assert_eq!(model._get_text("E4"), "#VALUE!");
+    assert_eq!(model._get_text("E5"), "#REF!");
+    assert_eq!(model._get_text("E6"), "#N/A");
+    assert_eq!(model._get_text("G1"), "b");
+    assert_eq!(model._get_text("G2"), "c");
+    assert_eq!(model._get_text("J1"), "#N/A");
+    assert_eq!(model._get_text("J2"), "b");
+}

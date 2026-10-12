@@ -3,7 +3,7 @@ id: T-0283
 title: "Typed currency input gets $#,##0_);[Red]($#,##0) and typed percent 0%"
 milestone: M2
 lane: engine
-status: todo
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -24,9 +24,12 @@ case first and run `rustsheet-oracle fill` (its stderr `ENTERED` lines carry the
 match them too.
 
 ## Acceptance criteria
-- [ ] A probe case with the decimal and sign forms as `entered` cells has an oracle sidecar; the formats are recorded in coercion.md.
-- [ ] `set_user_input` gives Excel's format for every probed form (unit tests in test_set_user_input.rs).
-- [ ] `make check` green; reviewers approve.
+- [x] A probe case with the decimal and sign forms as `entered` cells has an oracle sidecar; the formats are recorded in coercion.md.
+- [x] `set_user_input` gives Excel's format for every probed form (unit tests in test_set_user_input.rs).
+- [x] `make check` green; reviewers approve.
 
 ## Out of scope
 Non-en-US locales.
+
+## Outcome
+Probed the decimal, sign, grouped, scientific and euro forms (probes/typed-currency-percent-input, 33 inputs). `parse_percent_or_currency` now gives `$` text `$#,##0_);[Red]($#,##0)` (`.00` with decimals) and percent text `0%`/`0.00%`; `-$1e3` is now -1000 (it was +1000). Unit tests in test_parse_formatted_number.rs; test_set_user_input.rs expectations moved to the displayed accounting format (`$100.35 `, `($100)`). Euro text is text in Excel en-US: filed T-1335 (probe cells B23:C26 are known failures until then).

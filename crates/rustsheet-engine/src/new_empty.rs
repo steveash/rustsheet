@@ -665,10 +665,7 @@ impl Model {
             worksheets: vec![Model::new_empty_worksheet(&sheet_name, 1, &[&0])],
             styles: Default::default(),
             name: name.to_string(),
-            settings: WorkbookSettings {
-                tz: timezone.to_string(),
-                locale: locale_id.to_string(),
-            },
+            settings: WorkbookSettings::new(timezone, locale_id),
             metadata: Metadata {
                 application: APPLICATION.to_string(),
                 app_version: APP_VERSION.to_string(),

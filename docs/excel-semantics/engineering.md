@@ -52,3 +52,107 @@ Ours: matches.
 Status: VERIFIED.
 Not probed: form feed and other control characters at the start; an error radix with over-long text; an empty-cell reference or an array as the text; blanks after radix-16 leading zeros.
 Tasks: T-1198
+
+## CONVERT constants and evaluation order
+Rule: CONVERT computes `value * F_from / F_to` and only then applies the prefixes
+(`* P_from / P_to`). Each unit's factor `F` is a full-precision double in its class's internal
+base unit, which is not always the SI unit: force is in dynes (N = 1e5), energy in ergs
+(J = 1e7), volume in litres (m3 = 1000), area in square angstroms (m2 = 1e20). Everything else is
+in the SI unit (g, m, Pa, W, s, m/s, T, bit, K). The base and the order are visible in the last
+digit: `CONVERT(5,"cal","J")` is 20.934, but 5 × 4.1868 is 20.933999999999997;
+`CONVERT(5,"eV","J")` is 8.010882434999999E-19 (5 × 1.602176487E-12 / 1E7);
+`CONVERT(0.0002,"Mang3","m3")` is 2.0000000000000002E-16 (prefix last; prefix first gives 2E-16);
+`CONVERT(0.05,"Mdyn","N")` is 0.5. The factors are not the rounded 15-digit decimals published in
+Excel's help: `CONVERT(1,"sg","g")` is 14593.902937206363 (not 14593.9029372064),
+`CONVERT(1,"parsec","m")` is 3.0856775812815532E+16. `CONVERT(1,"F","K")` is
+255.92777777777775, which is `(1-32)*5/9+273.15` (`5/9*(1+459.67)` is …778).
+Evidence: ironcalc-calc ENGINEERING/CONVERT.xlsx, 509 cells (Microsoft Macintosh Excel cached
+values, T-0922). Each unit has 2–3 cells (1 → base unit, n → base unit, prefixed), so each factor
+is the double that fits all of that unit's cells under the rule. No other base per class (powers
+of ten from 1E-32 to 1E+32) and no other order fits every class: reciprocal tables
+(`value / K_from * K_to`, ATP/LibreOffice style) fit 143–156 of 159 units, and the SI base with
+prefix first fits 150.
+Open: conversions to a non-base unit are evidenced only for time (to `yr`), and conversions to a
+prefixed unit not at all. The Celsius output branch subtracts 273.5, not 273.15, and no cached
+cell converts to C (T-1297).
+The internal bases make `value * F_from` overflow sooner than the SI result would:
+`CONVERT(1E290,"m2","m2")` and `CONVERT(1E300,"ha","m2")` are now `#NUM!` (previously the value).
+Excel likely does the same, but this is unprobed (T-1297).
+Backend: excel-desktop cached values only.
+Status: VERIFIED (for the evidenced conversions)
+Implemented in: `fn_convert` in functions/engineering/convert.rs (T-0922)
+Tasks: T-0922, T-1297
+
+## Engineering function argument modes
+Rule: every argument of the M9 engineering functions lifts elementwise over an array literal. All
+`ROWS(F(..{v;v}..))` cells are 2, including the `places`, `suffix`, unit, order and shift arguments.
+IMSUM and IMPRODUCT are the exception.
+
+Over a two-cell range only BITAND, BITOR, BITXOR, BITLSHIFT and BITRSHIFT lift
+(`ROWS(BITAND(K15:K16,25))` is 2). Every other function is `#VALUE!` when its first argument is a
+multi-cell range. That covers the Bessel functions, the base conversions, COMPLEX, CONVERT, DELTA,
+GESTEP, ERF, ERFC and their .PRECISE forms, and IM* (`ROWS(BESSELI(K1:K2,1))`). This is the Analysis
+ToolPak split seen in the financial functions. Only the first argument was probed over a range.
+
+IMSUM and IMPRODUCT take their arguments whole:
+- A range or array literal is folded into the result, not lifted: `IMSUM({"1+2i","3"})` and
+  `IMSUM(M1:M2)` are "4+2i", and `ROWS(IMSUM({"1+2i";"3"}))` is 1.
+- A blank cell is 0. `IMPRODUCT(M1:M3)` with M3 blank is "0".
+- A boolean cell or a typed TRUE is `#VALUE!`.
+- Non-complex text is `#NUM!`.
+- A range holding both a boolean and text is `#VALUE!`.
+
+Typed coercion follows the ToolPak rule:
+- Numeric text is read: `BIN2DEC("101")` is 5, `DEC2BIN("9")` is "1001", and `BITAND("13",25)`,
+  `CONVERT("2.5","m","ft")`, `ERF("0.5")` and `BESSELJ("2.5",1)` all work.
+- A boolean is `#VALUE!`: `BIN2DEC(TRUE)`, `DEC2BIN(TRUE)`, `IMABS(TRUE)` and `DELTA(TRUE,1)`.
+- A number is read as its digits: `IMABS(3)` is 3, and `HEX2DEC(255)` is 597 (0x255).
+- COMPLEX's suffix is case-sensitive: `COMPLEX(3,4,"I")` is `#VALUE!`.
+- Non-complex text is `#NUM!` (`IMSUB("x","1")`), and a number cell is a real number (`IMDIV("3+4i",M2)` with M2 = 3 is
+  "1+1.33333333333333i").
+
+These set the generator modes in eval/catalog/functions.yaml. The scalars are `value`, and IMSUM's and
+IMPRODUCT's inumbers are `array`.
+
+Evidence: probes/eng-argument-modes (231 cells, excel-graph, 2026-10-11, T-1085). The test data is
+M1 "1+2i", M2 3, M3 blank, M4 TRUE, M5 "x" and M6 "2-i".
+
+Ours:
+- No scalar argument lifts over an array (`#N/IMPL!`), and BIT* is `#VALUE!` over a range (T-1383).
+- BESSELI intersects a range instead of giving `#VALUE!` (T-1383).
+- IMSUM and IMPRODUCT are `#ERROR!` on any range or array. Booleans give `#NUM!`, and some text cases
+  that should be `#NUM!` give `#VALUE!` (T-1384).
+- IMCOT, IMSECH and IMTAN of "3+4i" are off in the last printed digit (T-0907).
+
+Status: VERIFIED (excel-graph)
+Tasks: T-1085, T-1383, T-1384, T-0907
+
+## OCT2BIN of a blank cell is 0
+Rule: `OCT2BIN(E5,2)` with E5 blank is "00": a blank cell is the number 0. The other X2Y conversions of a blank cell,
+and of typed empty text, are unprobed.
+Evidence: gen-m9/d244411dd90f7fbd Calc!A15 (`VLOOKUP(..)&UPPER(OCT2BIN(Data!E5,2))` = "-0.000100", excel-graph, 2026-10-12, T-1289).
+Ours: `#NUM!` for OCT2BIN, OCT2DEC and HEX2BIN of a blank cell; BIN2DEC gives 0 and DEC2BIN "0".
+Status: VERIFIED (web) for OCT2BIN; the rest UNVERIFIED
+Tasks: T-1413
+
+## Engineering edge cases seen in a generated sample (unprobed)
+Excel gave these values in a seeded engineering sample, which was not committed. They were read from
+nested generated formulas, so each one needs a one-question probe before it is implemented (T-1385).
+Seen directly as a whole cell value:
+- `HEX2OCT("FFFFFFFFFF",4)` is "7777777777". For a negative input `places` is ignored, where we give
+  `#NUM!`.
+- `IMPOWER("2i",-1)` is "3.06287113727155E-17-0.5i" and `IMPOWER("-i",4)` is "1+2.45029690981724E-16i".
+  A tiny part is written in E notation with 15 significant digits, and its value is not what
+  cos/sin of the exact angle gives (ours: "0.0000000000000000306161699786838-0.5i").
+Inferred from inside a larger formula:
+- CONVERT reads its number before its units. A text number with an unknown unit is `#VALUE!`, not
+  `#N/A`.
+- DELTA and GESTEP report the second argument's error before the first's. `DELTA(<#NUM!>,<#N/A>)` is
+  `#N/A`.
+- A boolean cell in BITAND, DELTA or GESTEP is `#VALUE!`, where we give `#NUM!`.
+- `IMSQRT("")` is `#NUM!`, where we give "0".
+- A negative fractional Bessel order is `#NUM!`: `BESSELK(5,-0.0001)`. We truncate the order to 0.
+Evidence: `rustsheet-gen --milestone M9 --count 20 --seed 17` run from a scratch catalog holding only
+the engineering signatures (excel-graph, 2026-10-11, T-1085; not committed).
+Status: UNVERIFIED (probe pending)
+Tasks: T-1385

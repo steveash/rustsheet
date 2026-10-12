@@ -137,6 +137,7 @@ impl Model {
 
     /// Whether `node` stands for a reference (ISREF).
     fn is_reference(&mut self, node: &Node, cell: CellReferenceIndex) -> bool {
+        let node = node.ungrouped();
         match node {
             Node::ReferenceKind { .. } | Node::RangeKind { .. } => true,
             // A range whose corners are on two sheets is `#VALUE!`, so not a reference:
@@ -144,8 +145,6 @@ impl Model {
             Node::OpRangeKind { left, right } => {
                 matches!(self.get_range(left, right, cell), CalcResult::Range { .. })
             }
-            // Parentheses around a whole defined-name body (kept for near-zero snapping, T-1164).
-            Node::GroupedRootKind { child } => self.is_reference(child, cell),
             // An intersection with no shared cell is `#NULL!`, not a reference: `ISREF(A1 B2)` is
             // FALSE and `ISREF(A1 A1)` TRUE (probes/isref-union-operands H3, H7; excel-graph).
             // A union with an error operand is that error, not a reference: `ISREF((A1,#REF!))`
@@ -351,11 +350,8 @@ impl Model {
             CalcResult::Boolean(_) => CalcResult::Number(4.0),
             CalcResult::Error { .. } => CalcResult::Number(16.0),
             CalcResult::Range { .. } => CalcResult::Number(64.0),
-            CalcResult::EmptyCell => CalcResult::Number(1.0),
-            CalcResult::EmptyArg => {
-                // This cannot happen
-                CalcResult::Number(1.0)
-            }
+            // `TYPE(IFERROR(<blank>,1))` is 1 (probes/iferror-blank-value D14, T-0291).
+            CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(1.0),
             CalcResult::Array(_) => CalcResult::Number(64.0),
             CalcResult::Lambda(_) => CalcResult::Error {
                 error: Error::NIMPL,
@@ -374,8 +370,7 @@ impl Model {
             return CalcResult::Number(cell.sheet as f64 + 1.0);
         }
         // The arg could be a defined name or a table
-        // let  = &args[0];
-        match &args[0] {
+        match args[0].ungrouped() {
             Node::DefinedNameKind((name, scope, _)) => {
                 // Let's see if it is a defined name
                 if let Some(defined_name) = self

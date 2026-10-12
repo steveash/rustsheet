@@ -61,6 +61,13 @@ TEXT_POOL: list[str] = [
     "x~*",
 ]
 CRITERIA_POOL: list[Any] = [">0", "<5", ">=2", "<>1", "=a", "a*", "*c", "?b?", 1, "abc", "", "<>"]
+# LET variables and LAMBDA parameters: none is a cell reference (`x1` is one), a function name (`N`) or `r`/`c`.
+NAME_POOL: list[str] = ["x", "y", "z", "w", "v", "acc"]
+# Functions passed by name as a LAMBDA (eta-reduced, `BYROW(A1:B3,SUM)`); Excel stores them `_xleta.SUM`
+# and a bare `SUM` read from a file is #NAME? (docs/excel-semantics/xlsx-storage.md). They take 1 to 255
+# arguments, so any arity fits (probes/m7-argument-modes: `MAKEARRAY(2,2,SUM)` is SUM(row,col)).
+ETA_POOL: list[str] = ["SUM", "MAX", "MIN", "AVERAGE", "COUNT", "PRODUCT"]
+MASK_OPS: list[str] = [">", "<", "=", "<>"]
 
 
 def col_letter(index: int) -> str:
@@ -118,6 +125,10 @@ class Gen:
     data_cols: int
     max_depth: int
     used: set[str] = field(default_factory=set)
+    # LET variables and LAMBDA parameters an expression here may use; `pending` are declared but not yet
+    # visible (a LET variable is visible after its value, a LAMBDA parameter in the body).
+    scope: list[str] = field(default_factory=list)
+    pending: list[str] = field(default_factory=list)
 
     # -- references into the data sheet --------------------------------------------------
     def cell_ref(self) -> str:
@@ -127,10 +138,13 @@ class Gen:
         dollar_r = "$" if self.rng.random() < 0.2 else ""
         return f"Data!{dollar_c}{col}{dollar_r}{row}"
 
-    def range_ref(self, width: int = 1) -> str:
+    def range_ref(self, width: int = 1, *, full: bool = False) -> str:
+        """A `width`-column range of data rows; `full` spans every row, so two full ranges are the same height."""
         c0 = self.rng.randrange(self.data_cols - width + 1)
-        r0 = self.rng.randrange(1, self.data_rows)
-        r1 = self.rng.randrange(r0, self.data_rows + 1)
+        r0, r1 = 1, self.data_rows
+        if not full:
+            r0 = self.rng.randrange(1, self.data_rows)
+            r1 = self.rng.randrange(r0, self.data_rows + 1)
         a = col_letter(c0)
         b = col_letter(c0 + width - 1)
         return f"Data!{a}{r0}:{b}{r1}"
@@ -149,6 +163,8 @@ class Gen:
     def expr(self, typ: str, depth: int) -> str:
         roll = self.rng.random()
         if depth >= self.max_depth or roll < 0.25:
+            if self.scope and self.rng.random() < 0.5:
+                return self.rng.choice(self.scope)
             return self.literal(typ) if self.rng.random() < 0.4 else self.cell_ref()
         if roll < 0.55 and self.catalog.operators:
             return self.operator(typ, depth)
@@ -173,6 +189,10 @@ class Gen:
         self.used.add(fn["name"])
         args: list[str] = []
         params: list[dict[str, Any]] = fn["params"]
+        outer, outer_pending = len(self.scope), self.pending
+        self.pending = []
+        declared = 0  # names this call declares (LET variables, LAMBDA parameters)
+        repeated = 1  # how many arguments the last repeating param got (MAP's arrays fix its LAMBDA's arity)
         i = 0
         while i < len(params):
             p = params[i]
@@ -194,20 +214,79 @@ class Gen:
                 i += len(members)
                 continue
             count = self.rng.randint(1, 3) if p.get("repeat") else 1
-            args.extend(self.argument(p, depth) for _ in range(count))
+            if p.get("repeat"):
+                repeated = count
+            if p.get("body"):
+                # LAMBDA's calculation sees all its parameters.
+                self.scope += self.pending
+                self.pending = []
+            args.extend(self.argument(p, depth, arity=repeated) for _ in range(count))
+            if p.get("mode") == "name":
+                declared += count
             i += 1
-        return f"{fn['name']}({','.join(args)})"
+        del self.scope[outer:]
+        self.pending = outer_pending
+        invoked = ""
+        if fn.get("invoke"):
+            # A LAMBDA left uncalled is #CALC!, so the generator calls it with one value per parameter.
+            invoked = "(" + ",".join(self.expr("any", depth + 1) for _ in range(declared)) + ")"
+        return f"{fn.get('spelled', fn['name'])}({','.join(args)}){invoked}"
 
-    def argument(self, p: dict[str, Any], depth: int) -> str:
+    def fresh_name(self) -> str:
+        taken = set(self.scope) | set(self.pending)
+        free = [n for n in NAME_POOL if n not in taken]
+        return self.rng.choice(free) if free else f"v_{len(taken)}"
+
+    def lambda_arg(self, arity: int, depth: int) -> str:
+        """A LAMBDA of `arity` parameters, or (30%) a function passed by name."""
+        if self.rng.random() < 0.3:
+            return "_xleta." + self.rng.choice(ETA_POOL)
+        outer = len(self.scope)
+        names = []
+        for _ in range(arity):
+            names.append(self.fresh_name())
+            self.scope.append(names[-1])
+        body = self.expr("any", depth + 1)
+        del self.scope[outer:]
+        return f"LAMBDA({','.join(names)},{body})"
+
+    def argument(self, p: dict[str, Any], depth: int, arity: int = 1) -> str:
         mode = p.get("mode", "value")
+        if mode == "name":
+            name = self.fresh_name()
+            self.pending.append(name)
+            return name
+        if mode == "lambda":
+            n = p.get("arity", 1)
+            return self.lambda_arg(arity if n == "repeat" else int(n), depth)
+        if mode == "array" and p.get("mask"):
+            # FILTER's include: one TRUE/FALSE per data row, so it fits a `full` array.
+            text = f"({self.range_ref(full=True)}{self.rng.choice(MASK_OPS)}{self.literal('number')})"
+        elif mode in ("array", "aggregate", "aggregate_a") and self.scope and self.rng.random() < 0.5:
+            # A LAMBDA parameter or LET variable often holds the row, column or array (BYROW's SUM(x)).
+            text = self.rng.choice(self.scope)
+        else:
+            text = self.argument_text(p, mode, depth)
+        # A LET variable is visible from the argument after its value on.
+        self.scope += self.pending
+        self.pending = []
+        return text
+
+    def argument_text(self, p: dict[str, Any], mode: str, depth: int) -> str:
         if mode == "range" and p.get("cell"):
             # ISFORMULA lifts over a range; one cell keeps the result from spilling into the next formula.
             return self.cell_ref()
-        if mode == "range" and p.get("vector"):
-            # LOOKUP/XLOOKUP/XMATCH search one column here; a 2-D lookup vector only gives an error.
-            return self.range_ref(width=1)
-        if mode == "range" or (mode == "array" and self.rng.random() < 0.5):
-            return self.range_ref(width=self.rng.randint(1, min(4, self.data_cols)))
+        if p.get("vector") and (mode == "range" or self.rng.random() < 0.5):
+            # LOOKUP/XLOOKUP/XMATCH search one column here and WRAPROWS/WRAPCOLS wrap one; 2-D only gives an error.
+            return self.range_ref(width=1, full=p.get("full", False))
+        # An `array` vector that is not a range is an expression. `full` arrays (GROUPBY, SORTBY, FILTER) are
+        # always ranges of every row: their heights must agree.
+        if not p.get("vector") and (
+            mode == "range" or (mode == "array" and (p.get("full") or self.rng.random() < 0.5))
+        ):
+            return self.range_ref(
+                width=self.rng.randint(1, min(4, self.data_cols)), full=p.get("full", False)
+            )
         if mode == "criteria":
             c = self.rng.choice(CRITERIA_POOL)
             return repr(c) if isinstance(c, int) else '"' + str(c) + '"'
@@ -223,7 +302,9 @@ class Gen:
             return None
         if dom.get("int"):
             return str(self.rng.randint(dom.get("min", 0), dom.get("max", 10)))
-        return '"' + str(self.rng.choice(dom["enum"])) + '"'
+        v = self.rng.choice(dom["enum"])
+        # A number enum (a bond's frequency 1, 2 or 4) is a number literal; text would be coerced, not the same call.
+        return str(v) if isinstance(v, int | float) and not isinstance(v, bool) else '"' + str(v) + '"'
 
     def weighted(self, items: list[dict[str, Any]]) -> dict[str, Any]:
         # sqrt-tempered prior so rare functions still get coverage

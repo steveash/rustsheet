@@ -57,6 +57,7 @@ Input conventions:
   legacy `<f>` formulas (no dynamic-array `cm`), to probe what Excel shows for a non-array formula
   (T-1077). The engine adapter enters them as `Input::LegacyFormula`, which adds the implicit
   intersections xlsx import adds to a plain `<f>` (`=A1:A2` reads as `=@A1:A2`; T-1096).
+- Optional top-level `"invariant": ["Sheet1!A1"]` lists run-invariant volatile cells to score (see Scoring).
 - Optional per-sheet `"hidden_rows": [2, 5]` (1-based rows written `hidden="1"`) and
   `"tables": [{"name": "Data", "ref": "A1:B9", "filter": true}]` (T-1036). A table's header row is
   the first row of `ref` and must hold literal text. With `"filter": true` spec2xlsx gives the table's
@@ -64,6 +65,12 @@ Input conventions:
   cells must be literal text or whole numbers, and no value may be both kept and hidden), so Excel
   reads the hidden rows as filtered. The engine adapter loads both through `Txn::add_table` and
   `Txn::set_row_hidden`.
+- Optional top-level `"date_system": 1904` (default 1900) writes `<workbookPr date1904="1"/>`, and
+  optional per-sheet `"number_formats": {"B1": "[h]:mm"}` gives cells (blank ones included) a number
+  format (T-1268; an `entered` cell cannot have one, Excel picks its format). The engine adapter
+  creates the workbook with `WorkbookOptions::date_system` and applies formats with
+  `Txn::set_number_format`. Number formats change only what a cell displays, which excel-graph
+  cannot report (it reads cached values), so they are for cases that formulas read through.
 - Optional `"names": {"rate": "=Sheet1!$B$1"}` declares workbook-scoped defined names (any
   formula Excel accepts as a name body, e.g. an intersection; sheet-scoped names are not supported).
 
@@ -88,7 +95,17 @@ sidecar path, formula-cell count and whether the suite trusts its cached values.
 
 ## Scoring
 Every formula cell (including array-formula members) that has an expectation is checked.
-Formulas calling NOW/TODAY/RAND/RANDBETWEEN/RANDARRAY are skipped (counted as `skipped_volatile`).
+Formulas calling NOW/TODAY/RAND/RANDBETWEEN/RANDARRAY are skipped (counted as `skipped_volatile`),
+and so is every formula that reads one through a static reference or a defined name. A spec case
+opts cells back in with `"invariant": ["Sheet!A1", ...]` (T-1283): cells whose formula calls a
+volatile function, or reads a volatile cell, but whose value cannot change between runs
+(`RANDBETWEEN(5,5)`, `ROWS(RANDARRAY(3,2))`, `ISNUMBER(NOW())`). A listed cell is scored, and taint
+does not flow through it to its dependents. Rules:
+- every listed cell must be a volatile formula cell, otherwise the case fails to load (a stale listing);
+- a listed value must not depend on the actual time either, because the engine adapter runs on a
+  fixed mock clock (`NOW()>45000` is not invariant here);
+- `rustsheet-oracle fill` recalculates a case with `invariant` cells a second time without the
+  cache and leaves pending (prints `VARIES ...`) every listed cell whose two values differ.
 
 | Verdict | Meaning |
 |---|---|

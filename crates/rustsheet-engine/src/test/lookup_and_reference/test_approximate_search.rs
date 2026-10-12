@@ -191,3 +191,29 @@ fn exact_match_blank_key_is_zero_and_numbers_are_exact() {
     );
     assert_eq!(results, ["3", "#N/A", "#N/A", "#N/A"]);
 }
+
+#[test]
+fn descending_match_skips_backward_over_other_types() {
+    // docs/excel-semantics/lookup.md "MATCH descending search skips backward"
+    // (probes/match-descending-argcheck J1-J8): Excel's values.
+    assert_eq!(
+        eval_over('A', &["0.1", "TRUE", "3.14159"], &["=MATCH(0.5,A1:A3,-1)"]),
+        ["#N/A"]
+    );
+    assert_eq!(
+        eval_over('B', &["3", "TRUE", "0.1"], &["=MATCH(0.5,B1:B3,-1)"]),
+        ["1"]
+    );
+    assert_eq!(
+        eval_over('C', &["5", "x", "3", "1"], &["=MATCH(2,C1:C4,-1)"]),
+        ["3"]
+    );
+    // Nothing of the key's type at or below the midpoint: the search goes on
+    // forward (gen-m2 b4392a6514a36ade Calc!A277).
+    assert_eq!(
+        eval_over('D', &["FALSE", "0.5"], &["=MATCH(-14,D1:D2,-1)"]),
+        ["2"]
+    );
+    // An all-blank column has no cell of the key's type.
+    assert_eq!(eval_over('E', &["", ""], &["=MATCH(1,E1:E2,-1)"]), ["#N/A"]);
+}

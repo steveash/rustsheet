@@ -81,7 +81,13 @@ def test_excel_errors_are_values_not_exceptions(wb):
 
 @pytest.mark.parametrize(
     ("literal", "code"),
-    [("#GETTING_DATA", 8), ("#CONNECT!", 10), ("#BLOCKED!", 11), ("#FIELD!", 13)],
+    [
+        ("#GETTING_DATA", 8),
+        ("#CONNECT!", 10),
+        ("#BLOCKED!", 11),
+        ("#FIELD!", 13),
+        ("#BUSY!", 0),
+    ],
 )
 def test_newer_error_kinds(literal, code):
     # SPEC-0003: XlError accepts the stored names, including ones that are not formula literals.
@@ -93,7 +99,13 @@ def test_newer_error_kinds(literal, code):
 
 @pytest.mark.parametrize(
     ("literal", "code"),
-    [("#GETTING_DATA", 8), ("#CONNECT!", 10), ("#BLOCKED!", 11), ("#FIELD!", 13)],
+    [
+        ("#GETTING_DATA", 8),
+        ("#CONNECT!", 10),
+        ("#BLOCKED!", 11),
+        ("#FIELD!", 13),
+        ("#BUSY!", 0),
+    ],
 )
 def test_set_stores_typed_error_cells(wb, literal, code):
     # These are not typeable literals, so Workbook.set must not parse them as text (T-1145).
@@ -299,3 +311,12 @@ def test_reads_do_not_deadlock_with_concurrent_recalc_and_save(wb, tmp_path):
 def test_huge_int_is_type_error(wb):
     with pytest.raises(TypeError):
         wb.set("A1", 10**400)
+
+
+def test_date_system_defaults_to_1900_and_round_trips_1904():
+    assert rs.Workbook().date_system == "1900"
+    wb = rs.Workbook(date_system="1904")
+    assert wb.date_system == "1904"
+    assert rs.Workbook.from_bytes(wb.to_xlsx_bytes()).date_system == "1904"
+    with pytest.raises(TypeError):
+        rs.Workbook(date_system="1999")

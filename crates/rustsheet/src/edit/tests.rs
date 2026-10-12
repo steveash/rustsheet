@@ -338,6 +338,7 @@ fn typed_error_values_store_every_kind() {
         ErrorKind::Connect,
         ErrorKind::Blocked,
         ErrorKind::Field,
+        ErrorKind::Busy,
     ];
     let mut wb = book();
     for (i, kind) in kinds.into_iter().enumerate() {
@@ -776,4 +777,28 @@ fn legacy_formulas_store_their_implicit_intersections() {
         );
     }
     assert!(wb.set("C1", Input::LegacyFormula("A1".into())).is_err());
+}
+
+#[test]
+fn set_number_format_formats_a_cell_and_rolls_back() {
+    let mut wb = book();
+    wb.edit(|tx| tx.set("A1", 1.5)).unwrap();
+    wb.edit(|tx| tx.set_number_format("A1", "0.00%")).unwrap();
+    assert_eq!(wb.formatted(cell(&wb, "A1")).unwrap(), "150.00%");
+    assert_eq!(wb.value(cell(&wb, "A1")).unwrap(), Value::Number(1.5));
+
+    // An empty cell keeps the format for a later value.
+    wb.edit(|tx| tx.set_number_format("B1", "0.0")).unwrap();
+    wb.edit(|tx| tx.set("B1", 2.0)).unwrap();
+    assert_eq!(wb.formatted(cell(&wb, "B1")).unwrap(), "2.0");
+
+    let failed: Result<((), ChangeSet), _> = wb.edit(|tx| {
+        tx.set_number_format("A1", "0")?;
+        tx.set_number_format("A1:A2", "0")
+    });
+    assert!(matches!(
+        failed.unwrap_err(),
+        EditError::Ref(RefError::Unsupported)
+    ));
+    assert_eq!(wb.formatted(cell(&wb, "A1")).unwrap(), "150.00%");
 }
