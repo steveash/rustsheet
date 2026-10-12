@@ -281,7 +281,7 @@ fn remove_separator_spaces(value: &str) -> String {
 ///
 /// Surrounding spaces make the text invalid: VALUE, DATEVALUE and criteria trim it first, but
 /// number coercion does not (`MROUND(" 2024-01-10 ",7)` is #VALUE!; ironcalc-calc
-/// MROUND_TRUNC_INT.xlsx MROUND!C32, agreed by the oracle in docs/research/oracle-calibration.md).
+/// `MROUND_TRUNC_INT.xlsx` MROUND!C32, agreed by the oracle in docs/research/oracle-calibration.md).
 ///
 /// The grammar (repeated inner spaces count as one; probes/date-text-grammar A54):
 /// - one word with a separator, see [`parse_separated`];

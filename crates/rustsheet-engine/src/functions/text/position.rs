@@ -74,7 +74,7 @@ fn fold_case(text: &str) -> String {
         .collect()
 }
 
-/// Finds the first instance of 'search_for' in text starting at char index start
+/// Finds the first instance of '`search_for`' in text starting at char index start
 fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     let ch = text.chars();
     let mut byte_index = 0;
@@ -87,7 +87,7 @@ fn find(search_for: &str, text: &str, start: usize) -> Option<i32> {
     None
 }
 
-/// You can use the wildcard characters — the question mark (?) and asterisk (*) — in the find_text argument.
+/// You can use the wildcard characters — the question mark (?) and asterisk (*) — in the `find_text` argument.
 /// * A question mark matches any single character.
 /// * An asterisk matches any sequence of characters.
 /// * If you want to find an actual question mark or asterisk, type a tilde (~) before the character.

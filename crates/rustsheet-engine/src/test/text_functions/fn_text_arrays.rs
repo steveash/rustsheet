@@ -350,7 +350,7 @@ fn replace_error_argument_beats_range_check() {
 }
 
 /// The *B functions delegate to their non-B counterparts, so they spill over ranges like them
-/// (T-0271: `=LENB(A21:A24)` hit the scalar-context debug_assert from the fuzz target).
+/// (T-0271: `=LENB(A21:A24)` hit the scalar-context `debug_assert` from the fuzz target).
 #[test]
 fn byte_functions_spill_like_the_non_byte_functions() {
     let mut model = model_with_texts();

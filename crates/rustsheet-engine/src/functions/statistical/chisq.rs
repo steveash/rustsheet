@@ -387,7 +387,7 @@ impl Model {
                     .map_err(|e| CalcResult::Error {
                         error: Error::VALUE,
                         origin: cell,
-                        message: format!("Unsupported array argument: {}", e),
+                        message: format!("Unsupported array argument: {e}"),
                     })
             }
             CalcResult::Range { left, right } => self.values_from_range(left, right),

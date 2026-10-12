@@ -93,7 +93,7 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
             if *n == n.floor() && n.abs() < 1e15 {
                 format!("{}", *n as i64)
             } else {
-                format!("{}", n)
+                format!("{n}")
             }
         }
         ArrayNode::Boolean(b) => {
@@ -110,7 +110,7 @@ fn format_array_value(node: &ArrayNode, strict: bool) -> String {
                 s.clone()
             }
         }
-        ArrayNode::Error(e) => format!("{}", e),
+        ArrayNode::Error(e) => format!("{e}"),
         ArrayNode::Empty => String::new(),
     }
 }

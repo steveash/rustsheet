@@ -156,13 +156,13 @@ impl Model {
     ///
     /// Returns the relative position (1-based) of an item in a row or column array.
     ///
-    /// match_mode:
+    /// `match_mode`:
     ///   *  0 – exact match (default)
     ///   * -1 – exact match or next smaller
     ///   *  1 – exact match or next larger
     ///   *  2 – wildcard match (* ? ~)
     ///
-    /// search_mode:
+    /// `search_mode`:
     ///   *  1 – first to last (default)
     ///   * -1 – last to first
     ///   *  2 – binary search ascending

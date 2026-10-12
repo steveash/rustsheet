@@ -1,4 +1,4 @@
-//! # IronCalcBase engine API
+//! # `IronCalcBase` engine API
 //!
 //! This is the documentation for the base engine API.
 //!

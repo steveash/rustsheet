@@ -71,7 +71,7 @@ impl Lexer {
                         });
                     }
                     // skip next char
-                    position += 1
+                    position += 1;
                 }
             } else {
                 break;
@@ -91,23 +91,23 @@ impl Lexer {
     }
 
     /// Possibilities:
-    ///  1. MyTable[#Totals] or MyTable[#This Row]
-    ///  2. MyTable[MyColumn]
-    ///  3. MyTable[[My Column]]
-    ///  4. MyTable[[#This Row], [My Column]]
-    ///  5. MyTable[[#Totals], [MyColumn]]
-    ///  6. MyTable[[#This Row], [Jan]:[Dec]]
-    ///  7. MyTable[]
+    ///  1. `MyTable`[#Totals] or `MyTable`[#This Row]
+    ///  2. `MyTable`[`MyColumn`]
+    ///  3. `MyTable`[[My Column]]
+    ///  4. `MyTable`[[#This Row], [My Column]]
+    ///  5. `MyTable`[[#Totals], [`MyColumn`]]
+    ///  6. `MyTable`[[#This Row], [Jan]:[Dec]]
+    ///  7. `MyTable`[]
     ///
     /// Multiple specifiers are not supported yet:
-    ///  1. MyTable[[#Data], [#Totals], [MyColumn]]
+    ///  1. `MyTable`[[#Data], [#Totals], [`MyColumn`]]
     ///
     /// In particular note that names of columns are escaped only when they are in the first argument
     /// We use '[' and ']'
     /// When there is only a specifier but not a reference the specifier is not in brackets
     ///
     /// Invalid:
-    /// * MyTable[#Totals, [Jan]:[March]] => MyTable[[#Totals], [Jan]:[March]]
+    /// * `MyTable`[#Totals, [Jan]:[March]] => `MyTable`[[#Totals], [Jan]:[March]]
     //
     // NOTES:
     // * MyTable[[#Totals]] is translated into MyTable[#Totals]

@@ -4,7 +4,7 @@
 //! web rejects these kinds as stored literals (T-0999, docs/excel-semantics/syntax.md).
 //!
 //! The layout copies Excel's (docs/excel-semantics/arrays.md "Cached rich errors";
-//! tests/calc_tests/LOOKUP_AND_REFERENCE/DROP_TAKE.xlsx holds `XLDAPR` and `XLRICHVALUE` together):
+//! `tests/calc_tests/LOOKUP_AND_REFERENCE/DROP_TAKE.xlsx` holds `XLDAPR` and `XLRICHVALUE` together):
 //! one `_error` value per kind, whatever the number of cells, in a fixed order, so `vm="k"` is
 //! the same kind in every exported workbook. `subType` (the reason) is 0: it does not change the
 //! error, and Excel itself writes 0 for `#SPILL!` and `#CALC!` (ERROR.TYPE.xlsx).

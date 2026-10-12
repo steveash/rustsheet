@@ -164,8 +164,8 @@ pub(crate) fn sheet_span_text(first: &str, last: &str) -> String {
 
 /// Converts a local reference to a string applying some displacement if needed.
 /// It uses A1 style if context is not None. If context is None it uses R1C1 style
-/// If full_row is true then the row details will be omitted in the A1 case
-/// If full_column is true then column details will be omitted.
+/// If `full_row` is true then the row details will be omitted in the A1 case
+/// If `full_column` is true then column details will be omitted.
 pub(crate) fn stringify_reference(
     context: Option<&CellReferenceRC>,
     displace_data: &DisplaceData,
@@ -328,10 +328,10 @@ pub(crate) fn stringify_reference(
                 column
             };
             if full_row {
-                row_abs = "".to_string()
+                row_abs = "".to_string();
             }
             if full_column {
-                col_abs = "".to_string()
+                col_abs = "".to_string();
             }
             match &sheet_name {
                 Some(name) => {
@@ -911,7 +911,7 @@ pub(crate) fn rename_sheet_in_node(node: &mut Node, sheet_index: u32, new_name: 
         Node::WrongReferenceKind { sheet_name, .. } => {
             if let Some(name) = sheet_name {
                 if name.to_uppercase() == new_name.to_uppercase() {
-                    *sheet_name = Some(name.to_owned())
+                    *sheet_name = Some(name.to_owned());
                 }
             }
         }
