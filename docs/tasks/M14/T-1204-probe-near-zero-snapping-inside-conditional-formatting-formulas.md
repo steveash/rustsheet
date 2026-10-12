@@ -3,12 +3,17 @@ id: T-1204
 title: "Probe near-zero snapping inside conditional-formatting formulas on desktop Excel"
 milestone: M14
 lane: research
-status: todo
+status: blocked
 priority: P3
 size: S
 tier: opus
 depends_on: []
 ---
+
+## Blocked because
+Phase 4 (decision 0039): not a "Needs owner" item, and it blocks no milestone or phase exit. Conditional-format rendering is not observable through excel-graph, which returns values only (T-1171).
+The evidence needs desktop Excel. Unblock when `cd tools && uv run rustsheet-oracle status` shows
+`excel-desktop OK` (2026-10-12: `n/a`).
 
 ## Goal
 Desktop Excel evidence says whether a conditional-formatting rule formula snaps near-zero results, and whether a formula wholly in parentheses is exempt as in a cell.
