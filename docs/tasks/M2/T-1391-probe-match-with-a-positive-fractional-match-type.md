@@ -3,7 +3,7 @@ id: T-1391
 title: "Probe MATCH with a positive fractional match_type (0 < m < 1): exact or ascending? (follow-up of T-1304)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
