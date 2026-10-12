@@ -1,6 +1,6 @@
 {
  "format": "rustsheet-case/v1",
- "description": "T-1416: date readers in a 1904 workbook (WEEKDAY/WEEKNUM, EDATE/EOMONTH, DATEDIF/DAYS360/YEARFRAC/NETWORKDAYS/WORKDAY, coupon dates, date-text coercion, criteria, TODAY/NOW, DATE with a year below 1904, the 9999-12-31 bound, typed date input).",
+ "description": "T-1416: date readers in a 1904 workbook (WEEKDAY/WEEKNUM, EDATE/EOMONTH, DATEDIF/DAYS360/YEARFRAC/NETWORKDAYS/WORKDAY, coupon dates, date-text coercion, criteria, TODAY/NOW, DATE with a year below 1904, the 9999-12-31 bound, typed date input). A43-A52: pre-epoch inputs and results, a criterion that tells the systems apart.",
  "tags": [
   "M1",
   "probe",
@@ -65,7 +65,18 @@
     },
     "D2": {
      "entered": "3/15/2024"
-    }
+    },
+    "A43": "=WORKDAY(0,-1)",
+    "A44": "=WORKDAY.INTL(1,-2)",
+    "A45": "=EDATE(-31,1)",
+    "A46": "=EOMONTH(-1,0)",
+    "A47": "=ISOWEEKNUM(-1)",
+    "A48": "=DAYS360(-1,0)",
+    "A49": "=DATEDIF(-1,0,\"d\")",
+    "A50": "=NETWORKDAYS(-5,0)",
+    "A51": "=COUNTIF(E1,\"<=1/1/1908\")",
+    "A52": "=WEEKNUM(-1)",
+    "E1": 2000
    }
   }
  ],

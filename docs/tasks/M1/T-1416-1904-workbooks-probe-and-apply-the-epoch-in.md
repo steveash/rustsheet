@@ -39,8 +39,9 @@ evidence.
 - Cell display of negatives (not observable through excel-graph; M14).
 
 ## Outcome
-- **Probe:** probes/date-system-1904-readers (42 questions, excel-graph) covers every reader in this task. It is recorded in dates.md, "The 1904 date system: date readers, the epoch's edges and EDATE/EOMONTH before it".
-- **Quirk found:** EDATE and EOMONTH return a negative serial for a day before 1904-01-01. DATE, YEAR and WEEKDAY are #NUM! there.
-- **Implemented:** WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, YEARFRAC, NETWORKDAYS(.INTL) and WORKDAY(.INTL), with their holidays, read 1904 serials through the new `DateSystem::date_of_serial` or `to_1900_serial`. Results go back through `signed_serial_from_1900_serial`.
-- **Split off:** date text coercion, typed input and criteria (8 cells) went to T-1435 (sonnet). The financial date arguments (COUPDAYS cell) went to T-1436 (opus).
-- **Eval:** probes known failures 2797 → 2806. That is 9 new-coverage cells, all owned by T-1435 and T-1436; 0 fixed, 0 regressions. The 35 other cells of the new case pass. poi has 0 regressions.
+- **Probe:** probes/date-system-1904-readers (52 questions, excel-graph) covers every reader in this task. It is recorded in dates.md, "The 1904 date system: date readers, the epoch's edges and EDATE/EOMONTH before it".
+- **Quirk found:** EDATE and EOMONTH return a negative serial for a day before 1904-01-01. DATE, YEAR, WEEKDAY and WORKDAY are #NUM! there, and every reader is #NUM! for a negative input.
+- **Implemented:** WEEKDAY, WEEKNUM, ISOWEEKNUM, EDATE, EOMONTH, DATEDIF, DAYS360, YEARFRAC, NETWORKDAYS(.INTL) and WORKDAY(.INTL), with their holidays, read 1904 serials through the new `DateSystem::date_of_serial` or `to_1900_serial`. EDATE and EOMONTH return results through `signed_serial_from_1900_serial`. WORKDAY returns results through the checked `serial_from_1900_serial`.
+- **Split off:** date text coercion, typed input and criteria (9 cells) went to T-1435 (sonnet). The financial date arguments (COUPDAYS cell) went to T-1436 (opus).
+- **Ratchet:** WORKDAY and WORKDAY.INTL moved to `date_and_time/workday.rs`, so date_and_time.rs went from 1371 to 1243 lines. Recorded under decision 0010.
+- **Eval:** probes known failures 2797 → 2807. That is 10 new-coverage cells, all owned by T-1435 and T-1436; 0 fixed, 0 regressions. The 44 other cells of the new case pass. poi has 0 regressions.
