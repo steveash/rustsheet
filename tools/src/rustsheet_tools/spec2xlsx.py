@@ -199,13 +199,8 @@ _BUILDER_ONLY_PREFIXES = {
     name: f"_xlfn.{name}"
     for name in (
         "ANCHORARRAY",
-        "DAYS",
         "FILTERXML",
-        "FORECAST.LINEAR",
-        "GAMMA.DIST",
-        "GAUSS",
         "IMAGE",
-        "IMSECH",
         "QUERYSTRING",
         "SINGLE",
         "WEBSERVICE",
