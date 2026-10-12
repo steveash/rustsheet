@@ -3,7 +3,7 @@ id: T-1342
 title: "Fold union and cut written counts into Group nodes (SPEC-0007 step 3)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
