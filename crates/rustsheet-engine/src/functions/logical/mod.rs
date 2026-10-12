@@ -356,6 +356,20 @@ impl Model {
     /// operators do: `IFS(A1:B2>1,5)` is `{#N/A,5;5,5}` (probes/ifs-switch-array-values M1, M3;
     /// docs/excel-semantics/logic.md). A scalar condition keeps a range value a reference:
     /// `SUM(IFS(TRUE,A1:B2))` is 10.
+    /// A chosen branch as the reference it is (`as_reference`) or as a value.
+    pub(crate) fn evaluate_node_as(
+        &mut self,
+        node: &Node,
+        cell: CellReferenceIndex,
+        as_reference: bool,
+    ) -> CalcResult {
+        if as_reference {
+            self.evaluate_node_with_reference(node, cell)
+        } else {
+            self.evaluate_node_in_context(node, cell)
+        }
+    }
+
     pub(crate) fn fn_ifs(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
         self.ifs_impl(args, cell, false)
     }
@@ -396,11 +410,7 @@ impl Model {
             }
             match self.cast_to_bool(condition, cell) {
                 Ok(true) => {
-                    return if as_reference {
-                        self.evaluate_node_with_reference(&args[2 * case_index + 1], cell)
-                    } else {
-                        self.evaluate_node_in_context(&args[2 * case_index + 1], cell)
-                    };
+                    return self.evaluate_node_as(&args[2 * case_index + 1], cell, as_reference)
                 }
                 Ok(false) => {}
                 Err(error) => return error,

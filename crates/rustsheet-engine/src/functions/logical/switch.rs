@@ -53,28 +53,15 @@ impl Model {
                 return case;
             }
             if compare_values(&expr, &case) == 0 {
-                return self.switch_result(&args[2 * case_index + 2], cell, as_reference);
+                return self.evaluate_node_as(&args[2 * case_index + 2], cell, as_reference);
             }
         }
         // None of the cases matched so we return the default
         // If there is an even number of args is the last one otherwise is #N/A
         if args_count.is_multiple_of(2) {
-            return self.switch_result(&args[args_count - 1], cell, as_reference);
+            return self.evaluate_node_as(&args[args_count - 1], cell, as_reference);
         }
         no_match(cell)
-    }
-
-    fn switch_result(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-        as_reference: bool,
-    ) -> CalcResult {
-        if as_reference {
-            self.evaluate_node_with_reference(node, cell)
-        } else {
-            self.evaluate_node_in_context(node, cell)
-        }
     }
 }
 
