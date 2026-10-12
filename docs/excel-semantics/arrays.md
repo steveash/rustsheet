@@ -363,4 +363,7 @@ An omitted (empty) `sort_index` or `sort_order` is the same as leaving it off: `
 is ascending by column 1 (3 values; `INDEX(...,1)` = 1) and `SORT({3;1;2},,-1)` is descending
 (`INDEX(...,1)` = 3). Evidence: probes/counta-empty-value D22-D24 (excel-graph, T-1294); the engine
 treats the empty argument as the default (T-1394). Omitted combinations beyond these three cells
-are not yet probed (SORTBY's omitted arguments in particular).
+are not yet probed (SORTBY's omitted arguments and `SORT(arr,,,)`'s by_col in particular).
+
+Status: VERIFIED (excel-graph) for D22-D24; other omitted combinations UNVERIFIED.
+Tasks: T-1394, T-1446.
