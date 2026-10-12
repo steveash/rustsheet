@@ -227,6 +227,15 @@ values, Microsoft Macintosh Excel 16.0; the 1904 date system does not change the
 Status: VERIFIED
 Tasks: T-0981
 
+## Unquoted ASCII letters in a number format
+Rule: a format letter that is not a token prints as a literal without quotes, in a number section (`0`) and in a date section (`d`) alike. Letters that are tokens or reserved (`b d e g h m n s y`, either case) are never literals. The rest print as themselves: `a c f i j k l o p q r t u v w x z` and `A C F I J K L O P Q R T U V W X Z`. (VERIFIED, probes/format-unquoted-letters A1:A104, excel-graph, T-1450.)
+- **After a `0` placeholder** the token letters give `#VALUE!` (`TEXT(1,"0b")`, `"0d"`, `"0e"`, `"0g"`, `"0h"`, `"0m"`, `"0n"`, `"0s"`, `"0y"`, and the uppercase forms), and every other letter gives "1" + the letter (`TEXT(1,"0a")` = "1a", `"0A"` = "1A").
+- **After a `d` day token** the tokens work as date tokens on serial 1: `"dd"` = "01", `"dh"` = "10", `"dm"` = "11", `"ds"` = "10", `"dy"` = "100", `"de"` = "11900" (era year), `"db"` = "143" (Buddhist two-digit year), `"dg"` = "1" (nothing printed for `g`), uppercase `D H M S Y` behave like lowercase. `"dn"`, `"dN"`, `"dB"` and `"dE"` are `#VALUE!`.
+- **Colons** (A105:A108): `TEXT(1,"0\:\:")` = "1::" (escaped colons are not a run), `"0::"` = "1:" (a run collapses, as in T-1434), `TEXT(0.5,"h::mm")` = "12:00" (a two-colon run inside a clock format collapses too), `"0:a:"` = "1:a:".
+Ours: the lexer (`formatter/lexer.rs` `next_token`) treats every letter outside its token set as illegal, so all the literal letters above are `#VALUE!`; the fix is T-1456.
+Status: VERIFIED (excel-graph)
+Tasks: T-1450, T-1456
+
 ## TEXT format code complexity limit
 Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens long before 255 characters. The model below is fitted to the probed boundaries of probes c to i (481 cells; VERIFIED, excel-graph; excel-desktop unprobed). Its weights look like the size in bytes of a compiled code, a quoted character being one UTF-16 unit (2) and an unquoted one 3.
 - **Sections:** more than four is `#VALUE!`, even when the fifth is empty (`"0;;;;"`, `"0;0;0;@;"`); `"0;;;"` works.

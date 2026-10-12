@@ -3,7 +3,7 @@ id: T-1450
 title: "Probe which unquoted letters a number format prints as literals (follow-up of T-1434)"
 milestone: M1
 lane: research
-status: in-progress
+status: done
 priority: P2
 size: S
 tier: sonnet
@@ -24,3 +24,6 @@ Excel accepts `TEXT(1,"0:a:")` = "1:a:", `"0::a"` = "1:a" (probes/text-format-le
 
 ## Out of scope
 - Non-ASCII letters.
+
+## Outcome
+Probed all 52 ASCII letters after `0` and after `d` (probes/format-unquoted-letters, excel-graph) plus the colon runs; findings in number-formats.md ("Unquoted ASCII letters in a number format"). Lexer change filed as T-1456. No engine change.
