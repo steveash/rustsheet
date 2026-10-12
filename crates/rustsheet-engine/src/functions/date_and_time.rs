@@ -276,7 +276,7 @@ impl Model {
             .workbook
             .settings
             .date_system
-            .from_1900_serial(i64::from(serial))?;
+            .serial_from_1900_serial(i64::from(serial))?;
         i32::try_from(serial).ok()
     }
 
@@ -414,7 +414,7 @@ impl Model {
                 // and an earlier day has none.
                 permissive_date_to_serial_number(day.floor() as i32, month.floor() as i32, year)
                     .ok()
-                    .and_then(|serial| date_system.from_1900_serial(i64::from(serial)))
+                    .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
                     .map(|serial| serial as f64)
                     .ok_or(Error::NUM)
             },

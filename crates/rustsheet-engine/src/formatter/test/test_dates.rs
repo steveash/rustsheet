@@ -93,11 +93,11 @@ fn date_system_serial_conversion() {
     assert_eq!(Excel1904.to_1900_serial(0), Some(1462));
     assert_eq!(Excel1904.to_1900_serial(-1), None);
     assert_eq!(Excel1904.to_1900_serial(i64::MAX), None);
-    assert_eq!(Excel1904.from_1900_serial(1462), Some(0));
-    assert_eq!(Excel1904.from_1900_serial(1461), None);
-    assert_eq!(Excel1904.from_1900_serial(i64::MIN), None);
+    assert_eq!(Excel1904.serial_from_1900_serial(1462), Some(0));
+    assert_eq!(Excel1904.serial_from_1900_serial(1461), None);
+    assert_eq!(Excel1904.serial_from_1900_serial(i64::MIN), None);
     assert_eq!(Excel1900.to_1900_serial(-5), Some(-5));
-    assert_eq!(Excel1900.from_1900_serial(-5), Some(-5));
+    assert_eq!(Excel1900.serial_from_1900_serial(-5), Some(-5));
     // The last day Excel accepts, 9999-12-31, is 1900 serial 2958465 and 1904 serial 2957003.
     assert_eq!(
         format_in(2_957_003.0, "yyyy-mm-dd", Excel1904),

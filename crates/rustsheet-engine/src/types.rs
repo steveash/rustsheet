@@ -133,7 +133,7 @@ impl DateSystem {
 
     /// This system's serial for the 1900-system serial `serial` that the calendar helpers produce
     /// (`DATE`, date text); `None` for a day before the 1904 epoch, which has no 1904 serial.
-    pub(crate) fn from_1900_serial(self, serial: i64) -> Option<i64> {
+    pub(crate) fn serial_from_1900_serial(self, serial: i64) -> Option<i64> {
         match self {
             Self::Excel1900 => Some(serial),
             Self::Excel1904 => serial
