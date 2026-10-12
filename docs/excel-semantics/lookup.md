@@ -172,7 +172,10 @@ pseudo-code above. `MATCH(0.5,{0.1,TRUE,3.14159},-1)` is `#N/A` (backward skip r
 below the key, so nothing qualifies; a forward skip would reach 3.14159 and give 3), while
 `MATCH(0.5,{3,TRUE,0.1},-1)` = 1, `MATCH(2,{5,"x",3,1},-1)` = 3 and `MATCH(2,{5,TRUE,TRUE,1},-1)` = 1
 (the range forms agree). One backward-skip reading fits all four; the evidence does not exclude
-other rules for a skip that passes the low bound.
+other rules for a skip that passes the low bound. When the backward skip finds no cell of the key's
+type between the live range's low bound and the midpoint, the search continues forward from the
+midpoint: `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277; a backward-only skip
+gives #N/A). Whether the forward continuation is the exact rule is only evidenced by that cell.
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
@@ -181,7 +184,7 @@ lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and 
 match_type inside it is `#VALUE!` and `INDEX(A5:B7,NA(),3)` is `#N/A` (the row error wins over the
 out-of-range column, which alone is `#REF!`).
 Evidence: eval/suites/probes/cases/match-descending-argcheck.case.json J1–J20 (oracle: excel-graph,
-2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
+2026-10-10, T-1305); gen-m2/f7e6d351c8538ef5 Calc!A334, b4392a6514a36ade Calc!A277, 04cfd82f54dbc2b2 Calc!A81, f9d4df4efdfbcbd5 Calc!A14.
 Status: VERIFIED
 Tasks: T-1305, T-1312, T-1313
 
