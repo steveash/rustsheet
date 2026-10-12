@@ -69,7 +69,8 @@ _SPILL_REF = re.compile(r"(?<![\w.$!'])((?:(?:'(?:[^']|'')+'|[A-Za-z_][\w.]*)!)?
 _STRING_LITERAL = re.compile(r'"(?:[^"]|"")*"')
 
 
-_IDENT = re.compile(r"[A-Za-z_][\w.]*")
+# A name starts with a letter of any script or `_` (`LET(é,1,é+1)` is `_xlpm.é`, T-1387).
+_IDENT = re.compile(r"[^\W\d][\w.]*")
 _ENGINE_FUNCTIONS = (
     Path(__file__).resolve().parents[3] / "crates/rustsheet-engine/src/functions/xlsx_names.rs"
 )
@@ -142,7 +143,7 @@ def _words(formula: str) -> Iterator[tuple[bool, str, int]]:
         i = m.end()
 
 
-_OPTIONAL_PARAM = re.compile(r"\s*(\[)\s*([A-Za-z_][\w.]*)\s*(\])\s*")
+_OPTIONAL_PARAM = re.compile(r"\s*(\[)\s*([^\W\d][\w.]*)\s*(\])\s*")
 
 
 def prefix_bound_names(formula: str) -> str:

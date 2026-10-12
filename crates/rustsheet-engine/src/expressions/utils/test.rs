@@ -205,6 +205,10 @@ fn test_names() {
     assert!(is_valid_identifier("_1"));
     assert!(is_valid_identifier("\\."));
     assert!(is_valid_identifier("truñe"));
+    // A first letter of any script (T-1387).
+    for name in ["é", "Ärger", "ß"] {
+        assert!(is_valid_identifier(name), "{name}");
+    }
 
     // invalid
     assert!(!is_valid_identifier("true"));
