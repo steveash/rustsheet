@@ -178,10 +178,12 @@ impl SearchVector {
     /// Excel's approximate-match search (VLOOKUP/HLOOKUP with range_lookup
     /// TRUE, LOOKUP, MATCH with a positive or negative match_type; T-0212).
     /// A binary search that only ever compares values of `target`'s own type:
-    /// from each midpoint it skips upwards past blanks, errors and other types,
-    /// and a midpoint with none left in the live range narrows the search below
-    /// it. An equal value ends the search at the edge of its run of adjacent
-    /// equal values: the last one, or the first when `descending` (MATCH -1).
+    /// from each midpoint it skips past blanks, errors and other types (upwards;
+    /// when `descending`, downwards to the live range's low bound and then
+    /// upwards if nothing is there), and a midpoint with none left in the live
+    /// range narrows the search below it. An equal value ends the search at the
+    /// edge of its run of adjacent equal values: the last one, or the first when
+    /// `descending` (MATCH -1).
     /// Otherwise the result is the last value probed that is smaller than
     /// `target` (larger when `descending`), `None` if there is none.
     /// Excel: see docs/excel-semantics/lookup.md "Approximate match".
@@ -206,11 +208,31 @@ impl SearchVector {
         // of the inclusive bounds' mean (the lower of two middles).
         while lo < hi {
             let mid = lo + (hi - 1 - lo) / 2;
-            // Each scan stays inside the live range, which at least halves
-            // whenever a scan finds nothing, so all scans total O(n).
-            let Some(m) = (mid..hi.min(evaluated))
-                .find(|&index| value_kind(&self.values[index]) == Some(kind))
-            else {
+            // Every scan stays inside the live range, so a round costs O(n) and
+            // the O(log n) rounds total O(n log n): a hit far below `mid` may
+            // shrink the range by one while the next round rescans the cells
+            // between (bounded by the range, never quadratic).
+            let of_kind = |index: usize| {
+                self.values
+                    .get(index)
+                    .is_some_and(|value| value_kind(value) == Some(kind))
+            };
+            let forward = || (mid..hi.min(evaluated)).find(|&index| of_kind(index));
+            // A descending search steps backward from the midpoint, an
+            // ascending one forward (docs/excel-semantics/lookup.md "MATCH
+            // descending search skips backward"; probes/match-descending-argcheck
+            // J1-J8). With nothing of the key's type at or below the midpoint it
+            // continues forward (gen-m2 b4392a6514a36ade A277:
+            // MATCH(-14,{FALSE,0.5},-1) = 2).
+            let found = if descending {
+                (lo..=mid)
+                    .rev()
+                    .find(|&index| of_kind(index))
+                    .or_else(forward)
+            } else {
+                forward()
+            };
+            let Some(m) = found else {
                 hi = mid;
                 continue;
             };
