@@ -3,7 +3,7 @@ id: T-1312
 title: "MATCH descending search skips backward over cells of another type (gen-m2 f7e6d351c8538ef5 A334)"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
