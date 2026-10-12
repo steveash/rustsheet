@@ -42,6 +42,17 @@ fn written_groups_print_back_and_round_trip() {
         "A1^(2^3)",
         "-A1^2",
         "(-A1)^2",
+        // Operands print bare where no parentheses were written (probes/operand-wrap-text).
+        "SUM(A1)^2",
+        "2^SUM(A1)",
+        "2^-A1",
+        "2^A2%",
+        "SUM({1,2}^2)",
+        "-A1%",
+        "2*-A1",
+        "-SUM(A1)^2",
+        "2^-A1^2",
+        "2^--A1",
     ] {
         let node = parser.parse_cell_formula(formula, &context());
         assert_eq!(to_english_localized_string(&node, &context()), formula);

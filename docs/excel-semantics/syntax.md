@@ -226,9 +226,17 @@ kept the same way is UNVERIFIED (excel-graph loads file text; an M14 desktop que
 (`=@(A1+(B1))` = 3, `=@((A1) (B1))` = `#NULL!` with A1 = 1, B1 = 2).
 Evidence: probes/at-operand-nested-groups (36 cells, excel-graph, 2026-10-09, T-1178).
 More shapes (probes/formulatext-written-groups-shapes, excel-graph 2026-10-11, T-1380; A1 = 4; desktop UNVERIFIED as above), all printed as written: a group before a postfix `%` `=(A1)%` (value 0.04), a group as a LAMBDA callee `=(LAMBDA(x,x))(1)` (1), a left-grouped operand `=(1/2)/3`, a right-grouped operand `=1+(3+5)` (9), a group around an intersection `=(D:D 2:2)&""` (empty text) and a group around a negated base `=(-A1)^2` (16). The engine's FORMULATEXT matches in all six (12 cells).
+The converse holds too: Excel adds no parentheses where none were written (probes/operand-wrap-text, excel-graph
+2026-10-12, T-1344; A1 = 3, A2 = 50): `=SUM(A1)^2` (9), `=2^SUM(A1)` (8), `=2^-A1` (0.125), `=2^A2%` (1.4142135623730951),
+`=SUM({1,2}^2)`, `=SUM(2^{1,2})`, `=IFERROR(#N/A^2,7)`, `=-A1%` (-0.03), `=2*-A1`, `=LAMBDA(x,x)(A1)^2`,
+`=2^LAMBDA(x,x)(A1)`, `=-SUM(A1)^2` (9), `=A1^2%`, `=2^-A1^2` (0.015625, so `(2^-A1)^2`) and `=2^--A1` all print as
+written. The engine printed a call, array, error or LAMBDA call operand of `^` and a unary right operand of `^` in
+added parentheses (`=(SUM(A1))^2`, `=2^(-A1)`) until T-1344 replaced its per-operator tables with one rule: an
+operand is parenthesized only where the bare text would parse back to a different tree.
 Ours: a written group is a `Node::Group` (SPEC-0007, T-1340), transparent to evaluation and printed as written, around
 and inside `@` operands too (T-1343). All 36 cells of the T-1178 probe match. The T-1380 shapes above are separate from that count.
+A cut and paste prints the same text (`to_string_moved` is `stringify` with moved references, T-1344).
 Status: VERIFIED
 The stored file text keeps them as well (xlsx-storage.md "Written parentheses are stored as written").
 Design: SPEC-0007 (a `Group` node).
-Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand), T-1340 (the `Group` node), T-1343 (the `@` groups), T-1380 (more shapes)
+Tasks: T-1178, T-1244 (spec for keeping groups in the parse tree), T-1200 (the `@` group that is not the whole operand), T-1340 (the `Group` node), T-1343 (the `@` groups), T-1380 (more shapes), T-1344 (no added parentheses; one printer)
