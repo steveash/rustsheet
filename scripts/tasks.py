@@ -244,7 +244,8 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
     """(claimed, handed_off, active) from pushed `agent/<lane>/T-XXXX-*` branches.
 
     A pushed branch with a commit in the last 24 h is a claim: another worker must not start the
-    same task (work-loop step 2).
+    same task (work-loop step 2). A branch whose task is `status: blocked` on the branch is a claim
+    at any age: main still says `todo`, and the blocker is recorded only on the branch (decision 0048).
     A branch whose task file has a `## Handoff` section was escalated to opus (step 5b); main
     still shows `tier: sonnet` until it merges (decision 0018).
     `active` holds (lane, task id) for branches with a commit in the last 2 h that are not
@@ -289,7 +290,7 @@ def branch_claims(fetch: bool = True) -> tuple[set[str], set[str], set[tuple[str
                 except ValueError:  # malformed front matter on a branch: not known to be blocked
                     pass
         active = {(lane, tid) for tid, lane in recent.items() if tid not in handed | blocked}
-        return claimed, handed, active
+        return claimed | blocked, handed, active
     except (OSError, subprocess.CalledProcessError) as e:
         print(f"warning: could not read agent branches ({e}); claims and handoffs on branches not seen",
               file=sys.stderr)
