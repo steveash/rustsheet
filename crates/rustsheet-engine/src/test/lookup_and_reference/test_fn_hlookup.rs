@@ -254,3 +254,28 @@ fn test_lookup_array_index_and_range_lookup() {
     assert_eq!(model._get_text("J1"), "#N/A");
     assert_eq!(model._get_text("J2"), "b");
 }
+
+#[test]
+fn test_lookup_pick_stays_a_reference_for_an_if_index() {
+    // probes/lookup-pick-index-shapes A3, A9, B2 (T-1377, excel-graph): an `IF` index that picks a
+    // cell keeps the lookup pick a reference, so COUNT skips the picked FALSE like a plain cell.
+    let mut model = new_empty_model();
+    for (cell, value) in [
+        ("F5", "42"),
+        ("G5", "2"),
+        ("F6", "FALSE"),
+        ("A1", "1"),
+        ("B1", "FALSE"),
+        ("A2", "1"),
+        ("B2", "5"),
+    ] {
+        model._set(cell, value);
+    }
+    model._set("H1", "=COUNT(HLOOKUP(42,F5:G6,G5))");
+    model._set("H2", "=COUNT(HLOOKUP(42,F5:G6,IF(TRUE,G5)))");
+    model._set("H3", "=COUNT(HLOOKUP(42,F5:G6,2))");
+    model.evaluate();
+    assert_eq!(model._get_text("H1"), "0");
+    assert_eq!(model._get_text("H2"), "0");
+    assert_eq!(model._get_text("H3"), "1");
+}
