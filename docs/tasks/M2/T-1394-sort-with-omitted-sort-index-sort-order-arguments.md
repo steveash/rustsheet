@@ -3,7 +3,7 @@ id: T-1394
 title: "SORT with omitted sort_index/sort_order arguments: SORT(arr,,) sorts ascending"
 milestone: M2
 lane: functions-lookup
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
