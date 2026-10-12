@@ -432,7 +432,7 @@ Edge cases (probes/index-lifted-edge-cases, T-1376):
   column element); `{1,2}` against `{1,2,3}` is the same; `{1;2;3}` against `{1,2}` is a 3x2 grid (first row 10, 1);
   `{1;2}` against `{1;2;3}` is a 3x1 column 10, 2, `#N/A`.
 - A negative element is `#VALUE!` in its own slot (`{1,-1}` is 10, `#VALUE!`; `{-1,-2}` is two `#VALUE!`). A boolean element
-  is its number: `{TRUE,2}` is A1, A2, `{FALSE,2}` is A1 (0 selects the whole column, top-left kept), A2, and `{TRUE,FALSE}` is A1, A1.
+  is its number: `{TRUE,2}` is A1, A2, `{FALSE,2}` is A1 (as `{0,FALSE}` in probes/index-array-indices), A2, and `{TRUE,FALSE}` is A1, A1.
 - A scalar error index next to an array index spreads over the whole result: `INDEX(A1:A5,{1,3},#N/A)` is `#N/A`, `#N/A`;
   `1/0` gives `#DIV/0!`, `#DIV/0!`; the error in row_num (`INDEX(A1:A5,#N/A,{1,3})`), in either position of a 2-D range, or
   in area_num spreads the same.
