@@ -3,7 +3,7 @@ id: T-1422
 title: "TEXT General: round fixed values to the 11-character limit"
 milestone: M2
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: sonnet
