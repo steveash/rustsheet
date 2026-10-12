@@ -285,3 +285,33 @@ fn fieldvalue_field_name_shorter_than_value_is_na_past_its_end() {
     assert_eq!(model._get_text("B1"), *"#FIELD!");
     assert_eq!(model._get_text("C1"), *"#N/A");
 }
+
+/// probes/rich-errors-image-array-options (T-1370): array options broadcast with the source and are
+/// checked per element; 11 is `#BLOCKED!`, 3 `#VALUE!`, 7 `#N/A`.
+#[test]
+fn image_array_options_lift_with_the_source() {
+    let mut model = new_empty_model();
+    let url = r#""https://a.invalid/x.png""#;
+    model._set(
+        "A1",
+        &format!(r#"=ERROR.TYPE(IMAGE({{{url},{url}}},"alt",{{0,9}}))"#),
+    );
+    model._set(
+        "A5",
+        &format!(r#"=ERROR.TYPE(IMAGE({{{url},{url},{url}}},"alt",{{0,9}}))"#),
+    );
+    model._set(
+        "A9",
+        &format!(r#"=ERROR.TYPE(IMAGE({url},"alt",{{0;9;1}}))"#),
+    );
+    model._set(
+        "A13",
+        &format!(r#"=ERROR.TYPE(IMAGE({url},"alt",{{3,3}},{{5,-1}}))"#),
+    );
+    model.evaluate();
+    let row = |cells: [&str; 3]| cells.map(|c| model._get_text(c));
+    assert_eq!(row(["A1", "B1", "C1"]), ["11", "3", ""]);
+    assert_eq!(row(["A5", "B5", "C5"]), ["11", "3", "7"]);
+    assert_eq!(row(["A9", "A10", "A11"]), ["11", "3", "11"]);
+    assert_eq!(row(["A13", "B13", "C13"]), ["11", "3", ""]);
+}
