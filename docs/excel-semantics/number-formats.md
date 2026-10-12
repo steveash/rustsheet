@@ -160,13 +160,13 @@ and the value is rounded to fit, so decimals are cut to `11 - integer digits - 1
 `12345.123456789` → "12345.12346", `1234.5678901234` → "1234.56789". Integers of 11 digits round
 half up to the integer: `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
 `99999999999.6` rounds up to 1E+11 and prints "1E+11" (the engine's 9-decimal form is wrong for
-all of these; T-1417).
+all of these; T-1422).
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
 Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07); probes/text-general-ties-wide-fixed
 A1-A17 (excel-graph, 2026-10-12).
 Status: VERIFIED
 Implemented in: `format_general` (formatter/format.rs).
-Tasks: T-0938, T-1225, T-1417
+Tasks: T-0938, T-1225, T-1422
 
 ## A comma between digit placeholders turns on thousands grouping
 Rule: a `,` anywhere between digit placeholders (not only in `#,##0`) means "group the integer
