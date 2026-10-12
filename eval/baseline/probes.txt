@@ -535,9 +535,6 @@ F	probes/concatenate-limit-spill.case.json	Sheet1!E10
 F	probes/concatenate-limit-spill.case.json	Sheet1!E11
 F	probes/concatenate-limit-spill.case.json	Sheet1!E8
 F	probes/concatenate-limit-spill.case.json	Sheet1!E9
-F	probes/counta-empty-value.case.json	Sheet1!D22
-F	probes/counta-empty-value.case.json	Sheet1!D23
-F	probes/counta-empty-value.case.json	Sheet1!D24
 F	probes/date-argument-modes.case.json	Sheet1!F20
 F	probes/date-argument-modes.case.json	Sheet1!F22
 F	probes/date-argument-modes.case.json	Sheet1!F24
