@@ -55,6 +55,23 @@ impl DateSystem {
                 .filter(|s| *s >= 0),
         }
     }
+
+    /// Like `serial_from_1900_serial`, but a day before the 1904 epoch keeps its negative serial:
+    /// EDATE and EOMONTH return such days (`EDATE(0,-1)` is -31 and `EOMONTH(0,-1)` is -1 in a 1904
+    /// workbook; probes/date-system-1904-readers A8, A9). WORKDAY gives #NUM! there instead (A43).
+    pub(crate) fn signed_serial_from_1900_serial(self, serial: i64) -> i64 {
+        match self {
+            Self::Excel1900 => serial,
+            Self::Excel1904 => serial - EPOCH_1904_IN_1900_SERIALS,
+        }
+    }
+
+    /// The weekday-faithful calendar date (`from_excel_date`) of this system's day `serial`, the
+    /// date WEEKDAY, WORKDAY, NETWORKDAYS, YEARFRAC and DATEDIF read; `None` where they are #NUM!.
+    /// A 1904 serial below 0 is no date: `WEEKDAY(-1)` is #NUM! (probes/date-system-1904-readers A41).
+    pub(crate) fn date_of_serial(self, serial: i64) -> Option<NaiveDate> {
+        from_excel_date(self.to_1900_serial(serial)?).ok()
+    }
 }
 
 /// Whether a negative serial is formatted under a date/time section with these tokens rather than
