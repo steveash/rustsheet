@@ -1,0 +1,23 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "ECMA.CEILING (T-1301): FORMULATEXT of the stored formula.",
+  "tags": [
+    "M2",
+    "probe",
+    "math"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=_xlfn.ECMA.CEILING(2.5,2)",
+        "A12": "=_xlfn.FORMULATEXT(A1)"
+      }
+    }
+  ],
+  "expected": {},
+  "check": [
+    "Sheet1!A1",
+    "Sheet1!A12"
+  ]
+}
