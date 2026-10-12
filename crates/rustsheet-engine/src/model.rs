@@ -760,7 +760,6 @@ impl Model {
                 format!("Error parsing {formula}: {message}"),
             ),
             EmptyArgKind => CalcResult::EmptyArg,
-            GroupedRootKind { child } => self.evaluate_node_in_context(child, cell),
             // Unreachable: peeled above. Answered without recursing so no input can deepen the stack.
             Group { .. } => CalcResult::new_error(Error::ERROR, cell, "Unpeeled group".to_string()),
             SpillRangeOperator { child } => match self.spill_anchor_operand(child, cell) {

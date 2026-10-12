@@ -208,6 +208,20 @@ def test_generator_emits_every_m9_engineering_function() -> None:
     assert not sorted(m9_eng - seen)
 
 
+def test_generator_emits_every_m9_database_function() -> None:
+    # T-1086: every in-scope M9 database entry is generator-ready; modes from probes/db-argument-modes.
+    m9_db = {
+        f["name"]
+        for f in catalog().functions
+        if "params" in f and f["milestone"] == "M9" and f["category"] == "database"
+    }
+    assert len(m9_db) == 12
+    seen: set[str] = set()
+    for seed in range(120):
+        seen.update(generate_case(catalog(), seed, milestone="M9", formulas=80)["tags"])
+    assert not sorted(m9_db - seen)
+
+
 def test_number_enums_are_number_literals() -> None:
     # T-1084: a bond's frequency enum is 1, 2 or 4 written as a number; "2" would be a coerced text argument.
     freqs: list[str] = []
