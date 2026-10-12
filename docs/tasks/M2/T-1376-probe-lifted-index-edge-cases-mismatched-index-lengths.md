@@ -3,7 +3,7 @@ id: T-1376
 title: "Probe lifted INDEX edge cases: mismatched index lengths, negative and boolean elements, scalar error next to an array, empty cells"
 milestone: M2
 lane: research
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
