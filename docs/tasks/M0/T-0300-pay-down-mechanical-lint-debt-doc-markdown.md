@@ -3,7 +3,7 @@ id: T-0300
 title: "Pay down mechanical lint debt (doc_markdown, uninlined_format_args, semicolon_if_nothing_returned)"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
