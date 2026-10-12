@@ -3,7 +3,7 @@ id: T-1396
 title: "Probe MATCH descending forward continuation when nothing of the key type lies at or below the midpoint"
 milestone: M2
 lane: research
-status: in-progress
+status: done
 priority: P3
 size: S
 tier: sonnet
@@ -22,3 +22,6 @@ T-1312 continues the search forward from the midpoint in that case, evidenced by
 
 ## Out of scope
 -
+
+## Outcome
+Probe case `eval/suites/probes/cases/match-descending-forward.case.json` (84 cells, excel-graph oracle) shows Excel returns the exact descending answer in every forward-continuation shape; the engine already matches all 84 cells (probes 84/84 bit-exact, no baseline change). Rule recorded in docs/excel-semantics/lookup.md.

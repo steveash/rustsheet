@@ -196,7 +196,13 @@ below the key, so nothing qualifies; a forward skip would reach 3.14159 and give
 other rules for a skip that passes the low bound. When the backward skip finds no cell of the key's
 type between the live range's low bound and the midpoint, the search continues forward from the
 midpoint: `MATCH(-14,{FALSE,0.5},-1)` = 2 (gen-m2 b4392a6514a36ade Calc!A277; a backward-only skip
-gives #N/A). Whether the forward continuation is the exact rule is only evidenced by that cell.
+gives #N/A). Verified on more shapes (probes/match-descending-forward, 84 cells, literal and range
+forms agree): with only other-typed cells (booleans, text) at or below the midpoint and the key's
+type above it, the descending search still returns the exact descending answer, as if the other-typed
+cells were absent: `MATCH(7,{TRUE,"a","b","c",FALSE,9,7,5,3},-1)` = 7, `MATCH(6,..)` = 7, `MATCH(10,..)`
+is #N/A; the same holds for text keys (`MATCH("yy",{TRUE,FALSE,1,"z","y","x"},-1)` = 4), for a 15-cell
+vector, and with other-typed cells interleaved (`MATCH(8,{"a","b",FALSE,9,"c",7,5},-1)` = 4).
+The engine already matches all of them; no mismatch.
 Rule 2: a literal text match_type is `#VALUE!` (`MATCH(1,A5:A7,"x")`, and also on a 2-D range:
 `MATCH(1,A5:B7,"x")`), but a text match_type that comes from a *cell* is `#REF!`, for a 1-D and a 2-D
 lookup_array alike (`MATCH(1,A5:A7,D1)` with D1 = "a", `MATCH(1,A5:B7,D1)`, and D2 = " x "). The 2-D
