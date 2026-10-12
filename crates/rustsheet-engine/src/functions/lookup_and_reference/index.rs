@@ -3,7 +3,9 @@
 
 use crate::cast::{calc_result_to_array_node, NumberOrArray};
 use crate::functions::math_and_trigonometry::array_size::check_array_size;
-use crate::functions::util::array_node_to_calc_result;
+use crate::functions::util::{
+    array_node_to_calc_result, near_integer_count, NEAR_INTEGER_TOLERANCE,
+};
 use crate::reference_operators::{three_d_needs_one_sheet, RefArg};
 use crate::{
     calc_result::{CalcResult, Range},
@@ -13,8 +15,8 @@ use crate::{
     model::Model,
 };
 
-/// INDEX's validated numeric arguments: row_num and column_num floored (`0` = the whole row or
-/// column), area_num floored and at least 1.
+/// INDEX's validated numeric arguments: row_num and column_num read by [`index_number`] (`0` = the
+/// whole row or column), area_num floored and at least 1.
 #[derive(Clone, Copy)]
 struct IndexNumbers {
     row: usize,
@@ -24,7 +26,8 @@ struct IndexNumbers {
 
 /// Validates INDEX's numbers, each cast already tried, in Excel's order: area_num's cast error,
 /// then area_num below 1 (`#VALUE!`; past the last area, or NaN, is `#REF!` later, SPEC-0004), then
-/// row_num's cast error and a negative row_num (`#VALUE!`), then the same for column_num.
+/// row_num's cast error and a negative row_num (`#VALUE!`, see [`index_number`]), then the same
+/// for column_num.
 fn index_numbers<E>(
     area: Result<f64, E>,
     row: Result<f64, E>,
@@ -35,20 +38,23 @@ fn index_numbers<E>(
     if area < 1.0 {
         return Err(out_of_range());
     }
-    let row = row?;
-    if row < 0.0 {
-        return Err(out_of_range());
+    let row = index_number(row?).ok_or_else(&out_of_range)?;
+    let col = index_number(col?).ok_or_else(&out_of_range)?;
+    Ok(IndexNumbers { row, col, area })
+}
+
+/// A row or column index as INDEX reads it, `None` for a negative one (`#VALUE!`). A fraction
+/// within [`NEAR_INTEGER_TOLERANCE`] below an integer counts as that integer
+/// (`INDEX(A1:C3,3,1-2.3853E-7)` is column 1), and a negative index no further below 0 than half
+/// that bound counts as 0 (`INDEX(A1:C3,3,-1E-7)` is the whole row 3; `-1.193E-7` is `#VALUE!`).
+/// Excel: docs/excel-semantics/lookup.md "INDEX rounds an index up near an integer"
+/// (probes/index-tiny-negative, probes/index-snap-tolerance).
+fn index_number(x: f64) -> Option<usize> {
+    if x < -NEAR_INTEGER_TOLERANCE / 2.0 {
+        return None;
     }
-    let col = col?;
-    if col < 0.0 {
-        return Err(out_of_range());
-    }
-    // A huge index saturates and is out of range later.
-    Ok(IndexNumbers {
-        row: row.floor() as usize,
-        col: col.floor() as usize,
-        area,
-    })
+    // A huge index saturates and is out of range later; NaN is 0, as before.
+    Some(near_integer_count(x.max(0.0)) as usize)
 }
 
 /// Whether an evaluated index makes INDEX lift: a multi-cell range or a multi-element array.
