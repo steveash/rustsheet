@@ -3,7 +3,7 @@ id: T-1427
 title: "Probe IMAGE with a scalar error option beside an array option, and a non-URL source beside an option error element"
 milestone: M1
 lane: research
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: sonnet
