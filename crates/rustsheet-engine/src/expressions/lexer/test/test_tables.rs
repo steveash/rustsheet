@@ -71,3 +71,26 @@ fn table_totals_no_reference() {
     );
     assert_eq!(lx.next_token(), EOF);
 }
+
+// The unquoted `[book]Sheet!` prefix is a reference prefix (T-1381); a `[` that no `book]Sheet!`
+// follows stays a bracket, so structured references and a LAMBDA's `[x]` lex as before.
+#[test]
+fn external_book_prefix_and_plain_brackets() {
+    let mut lx = new_lexer("[other.xlsx]Sheet1!B5");
+    assert_eq!(
+        lx.next_token(),
+        Reference {
+            sheet: Some("[other.xlsx]Sheet1".to_string()),
+            row: 5,
+            column: 2,
+            absolute_row: false,
+            absolute_column: false,
+        }
+    );
+    assert_eq!(lx.next_token(), EOF);
+    let mut lx = new_lexer("[x],1");
+    assert_eq!(lx.next_token(), LeftBracket);
+    assert_eq!(lx.next_token(), Ident("x".to_string()));
+    let mut lx = new_lexer("tbInfo[Jan]");
+    assert!(matches!(lx.next_token(), StructuredReference { .. }));
+}

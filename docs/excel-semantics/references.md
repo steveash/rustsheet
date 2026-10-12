@@ -134,7 +134,8 @@ Engine: a sheet prefix holding `[` (a sheet name cannot) gives `#BLOCKED!` inste
 `reference_operators::external_area` gives ISREF, ROWS, COLUMNS, ROW, COLUMN and AREAS the written
 shape; the lexer reads the unquoted `[book]Sheet!` prefix (T-1381). INDEX, OFFSET, unions,
 intersections, COUNTA and the spill (T-1454) and cached `[n]` values (T-1382) are not yet
-implemented. Unprobed: a `[n]` index with no externalLink part.
+implemented. Unprobed: a `[n]` index with no externalLink part, and ROW/COLUMN of a multi-cell
+external area (the engine spills the row or column numbers as for a sheet reference, UNVERIFIED).
 Status: VERIFIED (Excel for the web; error name inferred from errorType 10 and ERROR.TYPE 11)
 Tasks: T-0124, T-1381, T-1382, T-1454
 

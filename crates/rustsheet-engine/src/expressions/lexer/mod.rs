@@ -896,7 +896,6 @@ impl Lexer {
         if book_len == 0 || rest[book_len] != ']' {
             return None;
         }
-        let book: String = rest[..book_len].iter().collect();
         self.position = start + book_len + 1;
         let sheet = self.consume_identifier();
         if sheet.is_empty() || self.peek_char() != Some('!') {
@@ -904,6 +903,7 @@ impl Lexer {
             return None;
         }
         self.position += 1;
+        let book: String = self.chars[start..start + book_len].iter().collect();
         Some(self.consume_range(Some(format!("[{book}]{sheet}"))))
     }
 
