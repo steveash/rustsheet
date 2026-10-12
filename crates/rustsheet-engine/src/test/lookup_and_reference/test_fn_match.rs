@@ -202,7 +202,7 @@ fn whole_column_blank_tail_matches_excel() {
 #[test]
 fn test_match_fractional_match_type() {
     let mut model = new_empty_model();
-    // -0.5 floors to -1: descending search (gen-m2 A160/A241).
+    // A negative fraction searches descending, sign only (gen-m2 A160/A241).
     model._set("A1", "=MATCH(5,{9,7,5,3},-0.5)");
     model._set("A2", "=MATCH(4,{9,7,5,3},-0.0001)");
     // 0.5 searches ascending (probes/match-fractional-match-type C1); 1E+15 stays ascending
