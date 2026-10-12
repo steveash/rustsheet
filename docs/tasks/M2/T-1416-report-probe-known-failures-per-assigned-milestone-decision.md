@@ -1,6 +1,6 @@
 ---
 id: T-1416
-title: "Report probe known failures per assigned milestone (decision 0050)"
+title: "Report probe known failures per assigned milestone (decision 0051)"
 milestone: M2
 lane: harness
 status: todo
@@ -11,14 +11,14 @@ depends_on: []
 ---
 
 ## Goal
-`make eval` reports, for each milestone that decision 0050 assigns probe cases to, how many cases
+`make eval` reports, for each milestone that decision 0051 assigns probe cases to, how many cases
 and scored cells it has, how many pass bit-exact, how many are deviations and how many are known
 failures. Rows: M0–M2 combined, then M5, M6, M7, M8, M9, M10 and M11. The steward then reads M2's
 probe criterion, and each later milestone's, from the report rather than from the decision's
 one-liner.
 
 ## Context
-- Decision 0050 gives every `probes` case one milestone. For `probes/catalog/*`, it gives one
+- Decision 0051 gives every `probes` case one milestone. For `probes/catalog/*`, it gives one
   milestone per checked cell instead. The first rule that applies decides:
   1. A case on `eval/milestones/m1-probes.txt` is M1.
   2. A case listed in `eval/milestones/probe-milestones.tsv` takes the milestone given there.
@@ -37,7 +37,7 @@ one-liner.
 - The milestone of each catalog function is already loaded from `eval/catalog/scope.json`
   (decision 0040). Search for the existing loader with `rg scope.json crates/rustsheet-eval`, and
   reuse it.
-- Numbers at origin/main 9ad32ae1, from the one-liner in decision 0050:
+- Numbers at origin/main 9ad32ae1, from the one-liner in decision 0051:
   `M0-M2=74 M5=35 M6=175 M7=1547 M8=3 M9=994 M10=53 M11=0 total=2881`.
 
 ## Acceptance criteria
@@ -51,19 +51,19 @@ one-liner.
       an override line beats the tag; a catalog cell wrapped in OR/IFERROR/ERROR.TYPE counts at
       its function's milestone; a catalog cell that calls no catalog function is M2; a case with
       no tag is M2.
-- [ ] report.md gets a "Probe milestones (decision 0050)" section, and report.json gets the same
+- [ ] report.md gets a "Probe milestones (decision 0051)" section, and report.json gets the same
       data. The section has one row each for M0–M2, M5, M6, M7, M8, M9, M10 and M11, with these
       columns: cases, scored cells, bit-exact, deviations and known failures (cells). The console
       summary prints the M0–M2 row. On the commit the PR branches from, the known-failure column
-      equals the decision 0050 one-liner's output. The PR description quotes both.
+      equals the decision 0051 one-liner's output. The PR description quotes both.
 - [ ] docs/architecture/eval-harness.md describes the section and the rules (citing decision
-      0050). The steward skill's "Probe milestones" bullet points to the report section, not the
+      0051). The steward skill's "Probe milestones" bullet points to the report section, not the
       one-liner.
 - [ ] `make check` green; reviewers approve (architecture and security, for `.claude/`).
 
 ## Out of scope
 - Changing `probe-milestones.tsv`, `m1-probes.txt`, any case file or tag, or `eval/baseline/`.
-  Any of these needs a decision record (decisions 0043, 0044 and 0050).
+  Any of these needs a decision record (decisions 0043, 0044 and 0051).
 - Gating CI on a milestone's pass rate. The rows are exit measures; `eval-check` already catches
   regressions.
 - Per-milestone rows for suites other than `probes`.

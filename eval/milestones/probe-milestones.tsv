@@ -1,4 +1,4 @@
-# Probe cases whose milestone is not their case.json tag (decision 0050). One case per line,
+# Probe cases whose milestone is not their case.json tag (decision 0051). One case per line,
 # tab-separated: case id (as in eval/baseline/probes.txt), milestone, subject. The rule, in
 # order: a case on eval/milestones/m1-probes.txt is M1; a case listed here takes this milestone;
 # each checked cell of probes/catalog/* takes the highest catalog milestone of the functions its

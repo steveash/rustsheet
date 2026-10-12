@@ -103,7 +103,7 @@ Scoring: *bit-exact cell rate* = cells identical to Excel ÷ cells checked (stri
 **Exit criteria:**
 - `gen-m2` (≥ 10,000 oracle cells across those functions, with edge pools) at 100%.
 - Every `probes` case assigned M0, M1 or M2 at 100% bit-exact, excluding accepted deviations
-  (decision 0036). Decision 0050 assigns each case one milestone. The frozen M1 list is M1. A
+  (decision 0036). Decision 0051 assigns each case one milestone. The frozen M1 list is M1. A
   case listed in `eval/milestones/probe-milestones.tsv` takes the milestone given there. Each
   `probes/catalog/*` cell takes the milestone of the function it calls. Any other case takes its
   case.json milestone tag, or M2 if it has none. Probes of later-milestone functions and
@@ -153,7 +153,7 @@ the IS* functions, TYPE, N, ERROR.TYPE, SWITCH, IFS, XOR, CHOOSE.
 
 **Exit criteria:** catalog coverage 100% for these categories; bit-exact ≥ 99.9% on generated
 suites (≥ 20k cells); 100% on ironcalc-calc for these categories;
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M6 — Lookup & reference, date & time
 
@@ -164,7 +164,7 @@ its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviati
   DATEDIF, YEARFRAC (all bases), WEEKNUM/ISOWEEKNUM, DAYS360.
 
 **Exit criteria:** same as M5 for these categories, and
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M7 — Dynamic arrays & modern Excel
 
@@ -177,7 +177,7 @@ its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** generated dynamic-array suite (≥ 10k cells, spill shapes included) at ≥ 99.9%;
 spill extents identical to Excel;
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M8 — Names, tables, structured references, multi-sheet
 
@@ -189,7 +189,7 @@ its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviati
 - Sheet add, rename and move with reference rewriting.
 
 **Exit criteria:** oracle suites for each feature at 100%; POI corpus subset ≥ 99.5%;
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M9 — Numerical parity: statistical, financial, engineering, database
 
@@ -202,7 +202,7 @@ its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** ironcalc-calc at ≥ 99.95% bit-exact overall (from 97.33%); dense oracle sweeps
 per numeric function at ≥ 99.9% bit-exact and 100% within 4 ULP;
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M10 — Formatting & display
 
@@ -215,7 +215,7 @@ its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviati
 - Locale plumbing (en-US first).
 
 **Exit criteria:** formatted-text oracle suite (≥ 10k cells) at 100%;
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M11 — Real-world fidelity
 
@@ -227,7 +227,7 @@ its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviati
 
 **Exit criteria:** formula-cell match on xlsx-corpus-bench ≥ 99.8%, matching or beating the best
 published engine;
-its `probes` cases (decision 0050) at 100% bit-exact, excluding accepted deviations.
+its `probes` cases (decision 0051) at 100% bit-exact, excluding accepted deviations.
 
 ## M12 — API v1, bindings & release
 

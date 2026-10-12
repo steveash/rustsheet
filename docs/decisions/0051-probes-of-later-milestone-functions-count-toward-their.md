@@ -1,4 +1,4 @@
-# 0050 — Probes of later-milestone functions count toward their own milestone, not M2
+# 0051 — Probes of later-milestone functions count toward their own milestone, not M2
 
 - **Status:** accepted (2026-10-12, owner answer to decision 0043's open question; measurement in
   T-1416). Amends decision 0043, item 2.
