@@ -394,9 +394,12 @@ Tasks: T-1256
 Rule: `CHOOSE(1,J5)`, `OFFSET(J5,0,0)`, `INDIRECT("J5")`, `J5:J5` and the direct `J5` behave identically in VLOOKUP, HLOOKUP,
 MATCH, XMATCH, XLOOKUP and LOOKUP.
 - An error cell (`#DIV/0!`, `#N/A`) is returned as that error by all eleven forms (exact and approximate, every shape).
-- A blank cell is a lookup value that matches nothing: `#N/A` in every exact and approximate form (VLOOKUP, HLOOKUP, MATCH 0/1,
-  XMATCH, XLOOKUP, LOOKUP), except the next-smaller modes of XMATCH and XLOOKUP, which take the last row: `XMATCH(J5,A1:A5,-1)` is 5
-  and `XLOOKUP(J5,A1:A5,B1:B5,"nf",-1)` is "e" (the blank sorts with text, above every number; same order as the entry below).
+- A blank cell as the key, against an all-number table (10..50, no 0, no blanks), gives `#N/A` in every exact and approximate form
+  (VLOOKUP, HLOOKUP, MATCH 0/1, XMATCH, XLOOKUP, LOOKUP), except the next-smaller modes of XMATCH and XLOOKUP, which take the last
+  row: `XMATCH(J5,A1:A5,-1)` is 5 and `XLOOKUP(J5,A1:A5,B1:B5,"nf",-1)` is "e". That is the existing blank-key behavior, not a new
+  rule: the blank is the number 0 in the approximate lookups (below 10, so `#N/A`; see "Approximate-match lookups") and larger than
+  every number in XMATCH/XLOOKUP (so -1 takes the last row; see "XMATCH / XLOOKUP linear search over blanks"). The probe has no 0,
+  `""` or blank candidates, so it does not test those against a reference-shaped key.
 Evidence: probes/lookup-reference-lookup-value-blank-error (165 cells: 5 shapes x {blank, #DIV/0!, #N/A} x 11 lookups;
 excel-graph, 2026-10-12, T-1371). The engine already matches every cell.
 Status: VERIFIED

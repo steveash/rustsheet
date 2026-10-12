@@ -34,6 +34,6 @@ search for XMATCH ordering would miss it.
 
 ## Outcome
 Added probes/lookup-reference-lookup-value-blank-error (165 formula cells, excel-graph). Excel: an error cell's error
-comes back from all eleven forms; a blank cell finds nothing (`#N/A`) except XMATCH/XLOOKUP next-smaller mode, which take
+comes back from all eleven forms; a blank key against an all-number table gives `#N/A` (the existing blank-key rules) except XMATCH/XLOOKUP next-smaller mode, which take
 the last row. The engine already matched every cell, so no engine task. lookup.md gained the blank/error entry and a
-separate XMATCH/XLOOKUP text-vs-number entry. Eval delta: +165 passing cells (probes), 0 failures.
+separate XMATCH/XLOOKUP text-vs-number entry. Eval delta: +167 checked, passing cells (165 formulas + 2 error source cells; probes), 0 failures.
