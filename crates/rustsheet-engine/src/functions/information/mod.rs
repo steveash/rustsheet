@@ -353,11 +353,8 @@ impl Model {
             // `TYPE(IFERROR(<blank>,1))` is 1 (probes/iferror-blank-value D14, T-0291).
             CalcResult::EmptyCell | CalcResult::EmptyArg => CalcResult::Number(1.0),
             CalcResult::Array(_) => CalcResult::Number(64.0),
-            CalcResult::Lambda(_) => CalcResult::Error {
-                error: Error::NIMPL,
-                origin: cell,
-                message: "Lambdas not supported yet".to_string(),
-            },
+            // `TYPE(LAMBDA(x,x))` is 128 (probes/is-functions-scalar-kinds Calc!F24).
+            CalcResult::Lambda(_) => CalcResult::Number(128.0),
         }
     }
     pub(crate) fn fn_sheet(&mut self, args: &[Node], cell: CellReferenceIndex) -> CalcResult {
