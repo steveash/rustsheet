@@ -156,7 +156,8 @@ fn intersections_round_trip_through_stringify() {
         ("A1 @A1", "A1 @A1"),
         ("A1 @A1 @A1", "A1 @A1 @A1"),
         ("(A1 @A1) B1", "(A1 @A1) B1"),
-        ("A1 (@A1 B1)", "A1 @A1 B1"),
+        // Written parentheses around an `@` are kept too (SPEC-0007, T-1343).
+        ("A1 (@A1 B1)", "A1 (@A1 B1)"),
         ("(@A1) B1", "(@A1) B1"),
         // An `@` operand of `:` or `@` is parenthesized so the text re-parses (T-1102).
         ("A1:(@B1)", "A1:(@B1)"),

@@ -893,8 +893,8 @@ web refuses a workbook holding `=A1:(1/0)`, `=(1/0):(A1 B1)`, `=(1/0):(A1 A2)` o
 Evidence: probes/at-operand-formulatext H12, H13, H17, J1, J30, K1, K30; probes/at-paren-operands
 D30:E32; probes/range-right-operand-errors D11, E11, D14, E14; probes/anchorarray-at-operand (excel-graph).
 Status: VERIFIED for these cells (refusals: excel-graph only; typed entry on desktop is an M14
-question). Implemented in: `ImplicitIntersection::written` (parser/mod.rs), printed by `at_operand`
-(parser/reference_operators.rs; T-1116); the refusals in `Parser::parse_range`, `Parser::parse_implicit`
+question). Implemented in: the written group is a `Node::Group` child of the `@` (parser/mod.rs), printed by `at_text`
+(parser/reference_operators.rs; T-1116, T-1343); the refusals in `Parser::parse_range`, `Parser::parse_implicit`
 and the ANCHORARRAY call in parser/operands.rs (T-1117).
 Deeper levels, `@((A1,B2))` and `@(A1) B1` are probed in the entry "`@` operand parentheses: every level is kept" below (T-1132).
 Engine rule (T-1117): the parser takes for each operand of `:`, for the argument of ANCHORARRAY and for
@@ -904,7 +904,7 @@ as a syntax error, so the four refused forms are no longer evaluated (they used 
 printed as `=A1:1/0`, which does not re-parse to the same formula). T-1216 (excel-graph, 2026-10-09; one scratch workbook per formula, a control `=SUM(A1:B1)` in the same shape loaded) verified the inferred refusals: Excel refuses (`FileCorruptTryRepair`)
 `=A1:"a"`, `=A1:#N/A`, `=#N/A:A1`, `=A1:SUM(B1)`, `=A1:IFERROR(B1:B2,0)`, `=ANCHORARRAY(SEQUENCE(3))`, `=ANCHORARRAY(A1+0)` and the negated
 references `=(-A1):B1`, `=A1:(-B1)` and `=(-A1)#` (unlike the union, which accepts `(-A1,B1)`). It loads, as `#VALUE!`, `=A1:LAMBDA(x,x)`, `=A1:(@1)` and
-`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these (`=ANCHORARRAY(@1)` evaluates to `#VALUE!` and prints bare as `=@1#`; T-1226). Resolved by T-1240 (below): the print follows the written parentheses. Since T-1246 the engine prints the parentheses that were written around the `@` (`ImplicitIntersection::grouped`, set for a group ending at `#` or `)`) and no others. The `#VALUE!` for the `@` of a non-number value is probed for `@"a"` and `@SUM(A1)` (T-1240); `@TRUE` is still inferred. The printed `=@1#` re-parses as `@(1#)`, which the engine refuses; move and paste print `(@1)#`, which round-trips. So the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (`@TRUE` is inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
+`=ANCHORARRAY(@1)` (printed `=@1#`) (probes/colon-hash-value-operands). The engine matches all of these (`=ANCHORARRAY(@1)` evaluates to `#VALUE!` and prints bare as `=@1#`; T-1226). Resolved by T-1240 (below): the print follows the written parentheses. Since T-1246 the engine prints the parentheses that were written around the `@` and no others (since T-1343 they are a `Node::Group` around it). The `#VALUE!` for the `@` of a non-number value is probed for `@"a"` and `@SUM(A1)` (T-1240); `@TRUE` is still inferred. The printed `=@1#` re-parses as `@(1#)`, which the engine refuses; move and paste print `(@1)#`, which round-trips. So the intersection's reference operands are not the whole rule: `@1` (the `@` of a value) is also accepted, by `:` and by `#` (`@TRUE` is inferred). Still UNVERIFIED: a value operand of a typed `#` (`(1/0)#`).
 Stored `ANCHORARRAY` of an `@` operand (probes/anchorarray-at-operand-kinds, excel-graph, T-1240): FORMULATEXT follows the **written parentheses**, not the operand kind. Written without parentheses, every operand prints bare: `=@A1:B2#`, `=@"a"#`, `=@SUM(A1)#`, `=@INDEX(D1:D2,1)#`, `=@LAMBDA(x,x)#`, `=@-1#`; `ANCHORARRAY((@1))` prints `=(@1)#`. Values: `@A1:B2`, `@1`-in-parentheses, `@"a"`, `@SUM(A1)`, `@LAMBDA(x,x)` and `@-1` are `#VALUE!`; `ANCHORARRAY(@INDEX(D1:D2,1))` spills the spill range of D1 (the `@` of a reference keeps the reference). `ANCHORARRAY(@1/0)` is refused by Excel for the web (`FileCorruptTryRepair`, one scratch workbook). The engine matches the prints since T-1246 (`spill_operand`, parser/reference_operators.rs); move and paste still print `(@1)#`, which round-trips (the bare `@1#` re-parses as `@(1#)`). The engine matches the values of `@-1` (parsed as the `@` of a negation, a value) and `@INDEX(..)` (kept as the reference) since T-1247. UNVERIFIED (T-1285): the signed operand now also parses at top level (`=@-1`, previously a parse error); the engine takes the sign, a bare union/intersection and `%` inside the `@` but not `^` (`@-2^2` is `(@-2)^2`), and `@-B1:B3` off-row gives the top-left element of the negated array. UNVERIFIED (extends the written-parentheses rule): an `@` of a space intersection (`ANCHORARRAY(@(A1:B2 B1))` prints `=@A1:B2 B1#`) and more than one written level (`ANCHORARRAY(((@1)))` prints `=((@1))#`).
 Tasks: T-1109, T-1111, T-1115, T-1116, T-1117, T-1216, T-1226, T-1240, T-1246, T-1247
 
@@ -943,16 +943,14 @@ Rule: FORMULATEXT prints every parenthesis level the user wrote around an `@` op
 `=@(((A1)))` print as written (value 1), `=@((A1:B1))`, `=@((A1,B2))` and `=@(A1:B2)` print as written (value
 `#VALUE!`), `=@(((A1 B1)))` and `=@(A1:A2 B1:B2)` print as written (value `#NULL!`). When the group is
 only part of the operand, `=@(A1) B1` and `=@((A1)) B1` print as written, with the parentheses, and are `#NULL!`
-(`@(A1)` intersects with `B1`). The engine prints `=@A1 B1` for both (it dropped the group) until T-1134 (`ImplicitIntersection::lead`). Excel keeps the group for every shape where it is
+(`@(A1)` intersects with `B1`). The engine printed `=@A1 B1` for both (it dropped the group) until T-1134. Excel keeps the group for every shape where it is
 not the whole operand, too: `=@(A1 B1) C1`, `=@((A1 B1)) C1`, `=@(A1):B1 C1`, `=@(A1) B1 C1` and `=@(A1) B1:C1`
 print as written and are `#NULL!` (probes/at-group-not-whole-operand, excel-graph, 2026-10-09, T-1147). The engine matches all five
-(`ImplicitIntersection::lead` records the group's levels, the operands of the intersection inside it and whether a `:` follows it; T-1200).
+(T-1200; since T-1343 the group is a `Node::Group` where it was written).
 More shapes (probes/at-group-leftmost-shapes, excel-graph, 2026-10-09, T-1245): Excel prints `=@((A1)):B1 C1`, `=@(A1):B1:C1 D1`,
 `=@(A1:B1):C1 D1`, `=@(A1 B1) C1 D1`, `=@(A1 B1 C1) D1`, `=@(A1):OFFSET(B1,0,0) C1`, `=@((A1 B1) C1) D1`, `=@(A1):(B1) C1`, `=@(A1):B1`
-(`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches the first six, `=@(A1):B1` (T-1251: a
-group that is the left corner of a range is `lead` even when the range is the whole operand), `=@(A1):(B1) C1` (a group right of the
-leading one is a `Node::Group`, T-1340) and the last; it prints `=@((A1 B1) C1) D1` as `=@(A1 B1 C1) D1`, dropping a group nested in the
-leading one (T-1343). With the range as the whole operand (probes/at-group-range-corner-whole, excel-graph, 2026-10-09,
+(`#VALUE!`; the other nine are `#NULL!`) and `=@(A1 B1):C1` all as written. The engine matches all ten: every
+group is a `Node::Group` where it was written (T-1340, T-1343; `=@((A1 B1) C1) D1` and `=@(A1):(B1) C1` since T-1343). With the range as the whole operand (probes/at-group-range-corner-whole, excel-graph, 2026-10-09,
 T-1251) Excel prints `=@(A1:B1):C1`, `=@((A1)):B1:C1`, `=@((A1)):B1`, `=@(A1):B1:C1` and `=@(A1):(B1)` as written (all `#VALUE!`);
 the engine matches all five (the last since T-1340).
 The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
@@ -960,9 +958,8 @@ The stored `_xlfn.SINGLE(...)` form cannot be read through excel-graph
 desktop question (decision 0039).
 Groups nested inside the operand and not wrapping it add no level to the `@` operand. Excel keeps those inner parentheses as
 written, as it does in every probed shape (syntax.md "FORMULATEXT keeps every written parenthesis"; probes/at-operand-nested-groups,
-excel-graph 2026-10-09, T-1178). The engine prints a group that does not start the operand as written (`=@(A1+(B1))`, a
-`Node::Group`, T-1340) but drops one that starts it: `=@((A1) (B1))`, `=@(((A1)) B1)` and `=@((A1)+(B1))` print `=@(A1 (B1))`,
-`=@(A1 B1)` and `=@(A1+(B1))` (T-1343).
+excel-graph 2026-10-09, T-1178). The engine prints them all as written (`=@(A1+(B1))`,
+`=@((A1) (B1))`, `=@(((A1)) B1)`, `=@((A1)+(B1))`): each group is a `Node::Group` (T-1340, T-1343).
 Evidence: probes/at-paren-operands-levels D30:E39 (excel-graph, T-1132); probes/at-group-not-whole-operand (T-1147); probes/at-group-leftmost-shapes (excel-graph, T-1245); probes/at-group-range-corner-whole (excel-graph, T-1251).
 Status: VERIFIED (excel-graph); stored form UNVERIFIED
 Tasks: T-1132, T-1134, T-1178, T-1200, T-1244, T-1245, T-1251, T-1340, T-1343
@@ -1002,7 +999,7 @@ Tasks: T-1285, T-1320, T-1321, T-1337, T-1368
 
 ## FORMULATEXT of @ next to ^
 Rule (probes/at-power-text, excel-graph, 2026-10-11, T-1320): `@` is never parenthesised as an operand of `^`; written parentheses are kept. `=@A1^2`, `=2^@A1`, `=@-A1^2`, `=@2^2`, `=@(A1)^2`, `=@A1:A2^2` (#VALUE!), `=@-2^2+1`, `=2^@-2` (0.25), `=@SUM(A1)^2` and `=@-2%^2` (0.0004) print as written; `=@A1^2^3` (729, left-associative) prints bare; `=(@-2)^2` keeps its parentheses.
-Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm; `=@A1^2^3` by T-1340) except the written group of `=(@-2)^2`, which stays with the `@` fields until T-1343.
+Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm; `=@A1^2^3` by T-1340; the written group of `=(@-2)^2` is a `Node::Group` since T-1343).
 Rule (probes/power-chain-text, excel-graph, 2026-10-11, T-1331): FORMULATEXT of a `^` chain follows the written parentheses, not the operator's associativity. `=A1^2^3` (729) and `=2^3^2` (64) print bare; `=(A1^2)^3` (729), `=(2^3)^2`, `=A1^(2^3)` (6561), `=2^(3^2)` and `=(A1^2)^3^2` print as written; `=A1^2^3^2` prints bare. The two writings parse to different trees: a written group is a `Node::Group` (SPEC-0007), and the power arm prints a left `^` operand bare.
 Implemented in: expressions/parser/stringify.rs (`operator_text`, power arm) and the `Group` node (T-1340).
 Status: VERIFIED (excel-graph)

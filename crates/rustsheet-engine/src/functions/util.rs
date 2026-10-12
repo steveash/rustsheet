@@ -157,7 +157,7 @@ pub(crate) fn is_at_if(node: &Node) -> bool {
     matches!(
         node,
         Node::ImplicitIntersection { child, .. }
-            if matches!(**child, Node::FunctionKind { kind: Function::If, .. })
+            if matches!(child.ungrouped(), Node::FunctionKind { kind: Function::If, .. })
     )
 }
 

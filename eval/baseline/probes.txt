@@ -489,11 +489,6 @@ F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!S10
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T1
 F	probes/array-context-legacy-sumproduct.case.json	Sheet1!T10
-F	probes/at-group-leftmost-shapes.case.json	Sheet1!E34
-F	probes/at-operand-nested-groups.case.json	Sheet1!F11
-F	probes/at-operand-nested-groups.case.json	Sheet1!F13
-F	probes/at-operand-nested-groups.case.json	Sheet1!F14
-F	probes/at-power-text.case.json	Sheet1!I46
 F	probes/catalog/availability-03.case.json	Sheet1!A3
 F	probes/catalog/availability-14.case.json	Sheet1!A7
 F	probes/catalog/availability-17.case.json	Sheet1!A3
