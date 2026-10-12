@@ -201,6 +201,7 @@ C	probes/ifs-switch-lift-edges.case.json	26
 C	probes/index-array-indices.case.json	60
 C	probes/index-single-index.case.json	6
 C	probes/indirect-text-broadcast.case.json	58
+C	probes/info-cell-contents-range.case.json	50
 C	probes/info-logic-argument-modes-2.case.json	11
 C	probes/info-logic-argument-modes.case.json	42
 C	probes/info-modes-isref-value-op.case.json	1
@@ -370,7 +371,7 @@ C	probes/rich-errors-arg-kinds.case.json	70
 C	probes/rich-errors-args.case.json	54
 C	probes/rich-errors-calc.case.json	10
 C	probes/rich-errors-field.case.json	5
-C	probes/rich-errors-image-array-error-elements.case.json	95
+C	probes/rich-errors-image-array-error-elements.case.json	99
 C	probes/rich-errors-image-array-options.case.json	61
 C	probes/rich-errors-image-sizing.case.json	58
 C	probes/rich-errors-image.case.json	15
