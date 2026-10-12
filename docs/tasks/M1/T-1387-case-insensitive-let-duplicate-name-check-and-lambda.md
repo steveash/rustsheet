@@ -36,5 +36,9 @@ T-1378 made LET names and LAMBDA parameters case-insensitive (`same_variable`, f
 - The engine rejected a name whose first letter is non-ASCII (`is_valid_a1_identifier` was
   ASCII-only, apart from letters such as `ß`, which uppercases to `SS`); it now accepts a letter
   of any script.
-- docs/excel-semantics/references.md is updated.
-- Eval delta: +1 probe case (10 cells, all passing); known failures unchanged (2874).
+- The xlsx-import path (`fn_lambda`, for a stored `FunctionKind::Lambda`) shares the parser's
+  check, `has_duplicate_parameter`. More probes: `LAMBDA(x,[X],x)(1)` is refused as well, and
+  probes/let-name-sharp-s (2 cells) shows `ß` is `ẞ` but not `SS` (`#NAME?`).
+- docs/excel-semantics/references.md is updated. Follow-up T-1428: CJK, Turkish İ and non-ASCII
+  defined names.
+- Eval delta: +2 probe cases (12 cells, all passing); known failures unchanged (2874).
