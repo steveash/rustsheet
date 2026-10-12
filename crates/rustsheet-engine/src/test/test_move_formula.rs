@@ -267,3 +267,34 @@ fn test_move_sign_prefixed_formulas() {
     assert!(t.is_ok());
     assert_eq!(t.unwrap(), "=-J11+3");
 }
+
+#[test]
+fn test_move_formula_keeps_the_parentheses_of_a_cut_union() {
+    // The moved text keeps every written level around a union and a cut of one (T-1342).
+    let mut model = new_empty_model();
+    let source = &CellReferenceIndex {
+        sheet: 0,
+        column: 1,
+        row: 1,
+    };
+    let target = &CellReferenceIndex {
+        sheet: 0,
+        column: 10,
+        row: 10,
+    };
+    let area = &Area {
+        sheet: 0,
+        row: 1,
+        column: 1,
+        width: 2,
+        height: 2,
+    };
+    for (value, moved) in [
+        ("=SUM(((A1,B1) B1))", "=SUM(((J10,K10) K10))"),
+        ("=((A1,B1) B1)", "=((J10,K10) K10)"),
+        ("=SUM(((A1,B1)))", "=SUM(((J10,K10)))"),
+    ] {
+        let t = model.move_cell_value_to_area(value, source, target, area);
+        assert_eq!(t.unwrap(), moved, "{value}");
+    }
+}

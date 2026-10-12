@@ -679,7 +679,8 @@ the union is the loosest operator instead (`(A1+B1,C1)` is refused, "Union: pars
 evaluation"). Desktop typed entry is unprobed (M14).
 Evidence: probes/multiarea-bare H1, probes/multiarea-bare-precedence H1:J10 (excel-graph).
 Status: VERIFIED. Implemented in: `Parser::parse_bare_union` (parser/reference_operators.rs), printed
-by `union_text` (`OpUnionKind::bare`). A defined-name body parses the same way, so
+by `union_text` without parentheses (`OpUnionKind::bare`; a union in parentheses gets them from its
+`Group`, T-1342). A defined-name body parses the same way, so
 `Sheet1!$A$1,Sheet1!$B$2` is now a union name body; evaluating such names is T-1065.
 Tasks: T-1061, T-1073, T-1065
 
