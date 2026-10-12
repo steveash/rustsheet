@@ -106,13 +106,18 @@ The engine lifts over array and range `source`/`stock`/`value`/`field_name` and 
   `#VALUE!`. `sizing` 3 alone, or `IMAGE(url,,3)`, is `#VALUE!`; with a `height` (`3,10`), or `3,0,10`, `3,10,0` and `3,1.5,10.5`, it reaches the
   fetch; `3,0,0`, a negative `height` or `width` and a text `height` are `#VALUE!`. `sizing` 0 or 1 with a `height` (`0,10`, `1,10,10`) is
   `#VALUE!`. UNVERIFIED: a `width` without a `height` (`0,,10`, `3,,10`; the engine is `#VALUE!` for both), a negative `height` under `sizing` 2, `sizing` 2 with a `height`, `3,0` (height 0, no width), a fractional `sizing` near the limits (-0.5, 3.5), an
-  empty cell or numeric text as `sizing`/`height`, and an array-valued `sizing` (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`,
-  `#VALUE!` in Excel, the options lift with the source; the engine does not lift them, T-1370).
+  empty cell or numeric text as `sizing`/`height`.
+- IMAGE with an array `sizing`, `height` or `width` lifts: the source and those options broadcast against each other and each
+  element is checked on its own (`IMAGE({url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`; `{9;0}` with a 1x2 source is 2x2;
+  a scalar source with `{0;9;1}` is 3x1; a length-1 array repeats; a shorter array is `#N/A` past its end,
+  `IMAGE({url,url,url},"alt",{0,9})` is `#BLOCKED!`, `#VALUE!`, `#N/A`). A `sizing` of `{3,3}` with `height` `{5,-1}` is valid, then
+  invalid, and so on per element (probes/rich-errors-image-array-options, 61 cells, excel-graph, 2026-10-12, T-1370). UNVERIFIED:
+  an error element inside an option array.
 - IMAGE with an invalid `sizing` (`IMAGE({url,url},"alt",9)`) is `#VALUE!` per element (A16).
 - A `field_name` array shorter than the `FIELDVALUE` result along an axis wider than 1 is `#N/A` past its end:
   `FIELDVALUE({1,2,3},{"a","b"})` is `#FIELD!`, `#FIELD!`, `#N/A`; `{1,2,3}` with `{"a";"b"}` is 2x3 of `#FIELD!`, and `{1;2;3}` with `{"a","b"}` is 3x2 of `#FIELD!`; the row-axis form (`{1;2;3}` with `{"a";"b"}`) is UNVERIFIED (probes/rich-errors-image-sizing). A
   shorter `value` is not padded (above).
-The engine matches all of these (A16 since T-1345) except the array-valued `sizing`.
+The engine matches all of these (A16 since T-1345; the option lift since T-1370; `Model::image_grid`).
 Excel fetches the image or the quotes; formulas here do no I/O (CLAUDE.md directive 5).
 Excel returns the same errors only when the fetch fails: `IMAGE("https://example.invalid/none.png")` is
 `#BLOCKED!` and `STOCKHISTORY("QZXQZXQ",DATE(2020,1,2))` is `#CONNECT!`. A reachable URL or a real ticker
