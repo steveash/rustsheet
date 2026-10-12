@@ -212,13 +212,18 @@ impl SearchVector {
             // (docs/excel-semantics/lookup.md "MATCH descending search skips
             // backward", probes/match-descending-argcheck J1-J8).
             let of_kind = |index: &usize| value_kind(&self.values[*index]) == Some(kind);
+            let forward = || (mid..hi.min(evaluated)).find(of_kind);
+            // When nothing of the key's type lies at or below the midpoint, the
+            // search continues forward (gen-m2 b4392a6514a36ade A277:
+            // MATCH(-14,{FALSE,0.5},-1) = 2).
             let found = if descending {
                 (lo..=mid.min(evaluated.saturating_sub(1)))
                     .rev()
                     .filter(|_| evaluated > 0)
                     .find(of_kind)
+                    .or_else(forward)
             } else {
-                (mid..hi.min(evaluated)).find(of_kind)
+                forward()
             };
             let Some(m) = found else {
                 hi = mid;
