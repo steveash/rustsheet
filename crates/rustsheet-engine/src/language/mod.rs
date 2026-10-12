@@ -304,6 +304,7 @@ pub struct Functions {
     pub floormath: String,
     pub floorprecise: String,
     pub isoceiling: String,
+    pub ecmaceiling: String,
     pub r#mod: String,
     pub quotient: String,
     pub mround: String,
