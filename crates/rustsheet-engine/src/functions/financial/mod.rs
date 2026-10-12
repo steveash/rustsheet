@@ -1,5 +1,3 @@
-use chrono::Datelike;
-
 use crate::{
     calc_result::{CalcResult, Range},
     constants::{LAST_COLUMN, LAST_ROW, MAXIMUM_DATE_SERIAL_NUMBER, MINIMUM_DATE_SERIAL_NUMBER},
@@ -8,47 +6,20 @@ use crate::{
         token::Error,
         types::CellReferenceIndex,
     },
-    formatter::dates::from_excel_date,
     model::Model,
 };
 
 mod accrint;
+mod dates;
 mod financial_bonds;
 mod financial_depreciation;
 mod financial_util;
 
+use dates::is_less_than_one_year;
 use financial_util::{compute_irr, compute_npv, compute_rate, compute_xirr, compute_xnpv};
 
 // See:
 // https://github.com/apache/openoffice/blob/c014b5f2b55cff8d4b0c952d5c16d62ecde09ca1/main/scaddins/source/analysis/financial.cxx
-
-fn is_less_than_one_year(start_date: i64, end_date: i64) -> Result<bool, String> {
-    let end = from_excel_date(end_date)?;
-    let start = from_excel_date(start_date)?;
-    if end_date - start_date < 365 {
-        return Ok(true);
-    }
-    let end_year = end.year();
-    let start_year = start.year();
-    if end_year == start_year {
-        return Ok(true);
-    }
-    if end_year != start_year + 1 {
-        return Ok(false);
-    }
-    let start_month = start.month();
-    let end_month = end.month();
-    if end_month < start_month {
-        return Ok(true);
-    }
-    if end_month > start_month {
-        return Ok(false);
-    }
-    // we are one year later same month
-    let start_day = start.day();
-    let end_day = end.day();
-    Ok(end_day <= start_day)
-}
 
 fn compute_payment(
     rate: f64,
@@ -201,47 +172,6 @@ fn compute_ppmt(
 // In these formulas the payment (pmt) is normally negative
 
 impl Model {
-    /// The floored 1900 serial a financial function's day counts read for the date argument
-    /// `serial`: a day late in a 1904 workbook (`DateSystem::financial_1900_serial`).
-    fn financial_date(&self, serial: f64) -> i64 {
-        self.workbook
-            .settings
-            .date_system
-            .financial_1900_serial(serial)
-            .floor() as i64
-    }
-
-    /// A date argument of a financial function, as `financial_date` reads it. Booleans are
-    /// rejected; ACCRINT, ACCRINTM and AMORLINC accept them, so they call `get_number` and
-    /// `financial_date` themselves.
-    fn get_financial_date(
-        &mut self,
-        node: &Node,
-        cell: CellReferenceIndex,
-    ) -> Result<i64, CalcResult> {
-        let serial = self.get_number_no_bools(node, cell)?;
-        Ok(self.financial_date(serial))
-    }
-
-    /// The first two arguments, settlement and maturity, as `get_financial_date` reads them.
-    fn get_settlement_and_maturity(
-        &mut self,
-        args: &[Node],
-        cell: CellReferenceIndex,
-    ) -> Result<(i64, i64), CalcResult> {
-        Ok((
-            self.get_financial_date(&args[0], cell)?,
-            self.get_financial_date(&args[1], cell)?,
-        ))
-    }
-
-    /// A date a financial function computed in the `financial_date` space (COUPNCD, COUPPCD), as
-    /// this workbook's serial: a day early in a 1904 workbook.
-    fn financial_date_result(&self, serial: i64) -> CalcResult {
-        let date_system = self.workbook.settings.date_system;
-        CalcResult::Number(date_system.serial_from_financial_1900_serial(serial) as f64)
-    }
-
     fn get_array_of_numbers_generic(
         &mut self,
         arg: &Node,

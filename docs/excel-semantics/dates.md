@@ -465,7 +465,7 @@ actual/actual counts all run on the shifted dates.
 - PRICE, YIELD, DURATION, MDURATION, ODDFPRICE, ODDFYIELD, ODDLPRICE and ODDLYIELD change too.
   `ODDFPRICE(DATE(2024,1,31),DATE(2030,2,28),DATE(2023,12,1),DATE(2024,2,29),0.05,0.06,100,2,0)` = 94.9666 (1900: 94.9546).
 - TBILLPRICE, TBILLYIELD and TBILLEQ apply their one-year limit to the shifted dates.
-  `TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` = 90.85 (3/1 to 3/1 is one year); on the true dates it would be #NUM!.
+  `TBILLPRICE(DATE(2023,2,28),DATE(2024,2,29),0.09)` = 90.85 (3/1 to 3/1 is one year; the 1900 twin of this cell is unprobed).
 - Unaffected: DAYS360 (`DAYS360(DATE(2023,8,31),DATE(2024,2,29))` = 179 in both systems) and the other date
   readers of the previous entry.
 
@@ -480,8 +480,9 @@ Probes: date-system-1904-financial, date-system-1904-financial-shift, and the tw
 and date-system-1904-financial-daycount (the same 40 cells in each system). All excel-graph, 2026-10-12, T-1436.
 Ours: `DateSystem::financial_1900_serial` / `serial_from_financial_1900_serial` (formatter/dates.rs), applied by
 YEARFRAC and the financial date readers. Every shift cell matches except COUPNCD at 9999-12-31 (A43, T-1440).
-A few other cells are one last digit off, in both systems: XIRR, YIELD, INTRATE, DISC, PRICEMAT, YIELDMAT, TBILL*.
-Those belong to T-1374 and T-0916.
+The other failing cells are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMAT, YIELDDISC, YIELDMAT, TBILL*; T-1374)
+or iteration stopping points (XIRR, YIELD, ODDFYIELD; T-0916). Most fail in the 1900 twin too; PRICEDISC
+daycount A20 is 1 ulp off in 1904 only.
 Status: VERIFIED (web)
 Tasks: T-1436, T-1440
 

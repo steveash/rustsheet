@@ -40,6 +40,5 @@ system: financial day counts read every date one day late". The probes include a
 - probes/date-system-1904-readers A18 passes, and every shift-sensitive cell of the new cases passes.
 - One exception, split to T-1440: COUPNCD with a 9999-12-31 maturity (A43).
 - Eval: probes known failures 2807 -> 2829 (fixed 1, new-coverage 23, regressions 0). The 22 other new-coverage cells
-  are last-digit or iteration misses that the 1900 twin shares (XIRR, YIELD, INTRATE, DISC, PRICEMAT, YIELDMAT, TBILL*).
-  They are owned by T-1374 and T-0916.
-
+  are last-digit misses (DISC, INTRATE, PRICEDISC, PRICEMAT, YIELDDISC, YIELDMAT, TBILL*; T-1374) or iteration stopping
+  points (XIRR, YIELD, ODDFYIELD; T-0916). Most of them fail in the 1900 twin too.
