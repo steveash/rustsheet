@@ -27,7 +27,7 @@ impl Model {
 
 /// Time of day for TIMEVALUE text: the fractional part of the serial the text denotes, so clock
 /// text past 24 hours wraps (`TIMEVALUE("25:00")` is 1.0416666666666667 - 1) and "date time" text
-/// keeps the subtraction's float error. Excel: see docs/excel-semantics/dates.md#time-text.
+/// keeps the subtraction's float error; the date part is read in `date_system`, a pre-epoch 1904 day being no date (probes/date-system-1904-timevalue). Excel: see docs/excel-semantics/dates.md#time-text.
 pub(super) fn parse_time_string(
     text: &str,
     locale: &Locale,
@@ -138,7 +138,7 @@ fn parse_hour_only_am_pm(text: &str) -> Option<f64> {
 /// "Date clock" text (`"1/2/2020 10:11:12.5"`, `"July 1, 2026 6 PM"`) as the unwrapped serial:
 /// date serial plus clock serial. The clock is the last word, or the last two when they end in
 /// AM/PM, since date text has spaces of its own (probes/date-text-grammar C30, C31, C55).
-/// The sum is a 1900-system serial; a 1904 reader goes through [`parse_time_serial`] instead.
+/// The sum is a 1900-system serial; a 1904 reader uses [`parse_date_clock_serial_in`] (via [`parse_time_serial`] or TIMEVALUE) instead.
 pub(crate) fn parse_date_clock_serial(
     text: &str,
     locale: &Locale,
