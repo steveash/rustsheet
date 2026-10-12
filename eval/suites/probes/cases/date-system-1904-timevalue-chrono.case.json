@@ -1,0 +1,18 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1445: TIMEVALUE of chrono-pattern date-time text with an inexact clock in a 1904 workbook (low bits of the fraction).",
+ "tags": ["M1", "probe", "dates", "T-1445"],
+ "date_system": 1904,
+ "expected": {},
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TIMEVALUE(\"7/7/2026 4:35 PM\")",
+    "A2": "=TIMEVALUE(\"2024-03-15 16:35\")",
+    "A3": "=\"7/7/2026 4:35 PM\"+0",
+    "A4": "=\"2024-03-15 16:35\"+0"
+   }
+  }
+ ]
+}

@@ -389,6 +389,13 @@ single-cell-range or 3D-range `weekend` is `#VALUE!`/first-sheet in ours.
 Status: UNVERIFIED (probe pending)
 Tasks: T-1430 (error order), T-1428 (3D ranges, unit/method over an array)
 
+## TIMEVALUE of chrono-pattern date-time text in a 1904 workbook (T-1445)
+In a 1904 workbook `TIMEVALUE("7/7/2026 4:35 PM")` and `TIMEVALUE("2024-03-15 16:35")` both give
+0.6909722222189885, the same bits as the 1900 system's 0.69097222221898846 (the fraction comes from the
+shifted 1904 sum, `"7/7/2026 4:35 PM"+0` = 44748.69097222222 and `"2024-03-15 16:35"+0` = 43904.69097222222).
+Evidence: probes/date-system-1904-timevalue-chrono A1-A4 (VERIFIED, excel-graph 2026-10-12); the engine
+already matches.
+
 ## The 1904 date system: negative serials keep a minus; epoch at 1904-01-01
 Rule: in a 1904 workbook (`<workbookPr date1904="1"/>`), serial 0 is 1904-01-01 (`TEXT(0,"yyyy-mm-dd")` =
 "1904-01-01", `DATE(1904,1,1)` = 0, `YEAR(0)` = 1904, `DATEVALUE("1904-01-02")` = 1). A negative serial
