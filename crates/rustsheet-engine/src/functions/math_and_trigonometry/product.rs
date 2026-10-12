@@ -25,6 +25,9 @@ impl Model {
         }
         let mut result = 1.0;
         let mut seen_value = false;
+        // A referenced-cell error ranks below a direct scalar error; the leftmost wins
+        // (probes/aggregate-error-precedence C1-C8).
+        let mut reference_error = None;
 
         for arg in args {
             // Handle reference special case. Behaviour of a reference is equivalent to a range of one cell.
@@ -52,11 +55,13 @@ impl Model {
             };
             match self.evaluate_reference_arg(arg, cell) {
                 RefArg::Ranges(areas) => {
-                    if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
-                        seen_value = true;
-                        result = flush_subnormal(result * value);
-                    }) {
-                        return error;
+                    if reference_error.is_none() {
+                        if let Err(error) = self.for_each_number_in_areas(&areas, cell, |value| {
+                            seen_value = true;
+                            result = flush_subnormal(result * value);
+                        }) {
+                            reference_error = Some(error);
+                        }
                     }
                 }
                 RefArg::Value(error @ CalcResult::Error { .. }) => return error,
@@ -83,6 +88,9 @@ impl Model {
                     }
                 }
             };
+        }
+        if let Some(error) = reference_error {
+            return error;
         }
         if !seen_value {
             return CalcResult::Number(0.0);
