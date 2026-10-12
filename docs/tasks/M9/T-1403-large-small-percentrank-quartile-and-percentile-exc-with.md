@@ -23,7 +23,9 @@ T-1289's gen-m9 suite (excel-graph sidecars, 2026-10-12; `./target/release/rusts
 - gen-m9/b5352ebdb9c5f1a1 Calc!A24 `=PERCENTRANK((VLOOKUP(..)+NETWORKDAYS(..)),100)` (the data argument is `#N/A`): Excel
   `#N/A`, engine `#VALUE!`.
 - gen-m9/288b99797f58f149 Calc!A3 `=(BETAINV(Data!$B$7,QUARTILE(Data!$D6,Data!D5),Data!B5)+..)` (D6 = " x ", quart 7):
-  Excel `#NUM!`, engine `#VALUE!` (`QUARTILE(Data!$D6,1)` is `#VALUE!` too: a single text cell is rejected).
+  Excel `#NUM!`, engine `#VALUE!` (`QUARTILE(Data!$D6,1)` is `#VALUE!` too: a single text cell is rejected). This cell does
+  not pin QUARTILE down: BETAINV's probability B7 = 123456789.123 is invalid and can give `#NUM!` by itself. Probe
+  `QUARTILE(<cell " x ">,7)` and `QUARTILE(<cell " x ">,1)` with the excel-probe skill before changing QUARTILE.
 - gen-m9/d5bd4272655c5211 Calc!A31 `=PERCENTILE.EXC(Data!A8:B8,((Data!C4-Data!B4)^123456789.123%))` (A8:B8 = FALSE, "ü";
   k is `#VALUE!`): Excel `#VALUE!`, engine `#NUM!` (empty data checked before k).
 - gen-m9/65faaeb48419087d Calc!A17 `=IMSIN(VLOOKUP(PERCENTRANK.EXC(1.005,Data!B$11,1),Data!A4:B9,Data!B4,(Data!D3=Data!B7)))`
