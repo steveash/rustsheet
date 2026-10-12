@@ -1,0 +1,58 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "T-1388: bisect the length limit of TEXT format codes.",
+ "tags": [
+  "M1",
+  "probe",
+  "dates",
+  "T-1388"
+ ],
+ "date_system": 1900,
+ "sheets": [
+  {
+   "name": "S",
+   "cells": {
+    "A1": "=TEXT(1,REPT(\"0 \",11))",
+    "A2": "=TEXT(1,REPT(\"0 \",12))",
+    "A3": "=TEXT(1,REPT(\"0 \",13))",
+    "A4": "=TEXT(1,REPT(\"0 \",14))",
+    "A5": "=TEXT(1,REPT(\"0 \",15))",
+    "A6": "=TEXT(1,REPT(\"0 \",16))",
+    "A7": "=TEXT(1,REPT(\"0 \",17))",
+    "A8": "=TEXT(1,REPT(\"0 \",18))",
+    "A9": "=TEXT(1,REPT(\"0 \",19))",
+    "A10": "=TEXT(1,REPT(\"d \",11))",
+    "A11": "=TEXT(1,REPT(\"d \",12))",
+    "A12": "=TEXT(1,REPT(\"d \",13))",
+    "A13": "=TEXT(1,REPT(\"d \",14))",
+    "A14": "=TEXT(1,REPT(\"d \",15))",
+    "A15": "=TEXT(1,REPT(\"d \",16))",
+    "A16": "=TEXT(1,REPT(\"d \",17))",
+    "A17": "=TEXT(1,REPT(\"d \",18))",
+    "A18": "=TEXT(1,REPT(\"d \",19))",
+    "A19": "=TEXT(1,\"d\"&REPT(\" \",59))",
+    "A20": "=TEXT(1,\"d\"&REPT(\" \",69))",
+    "A21": "=TEXT(1,\"d\"&REPT(\" \",79))",
+    "A22": "=TEXT(1,\"d\"&REPT(\" \",89))",
+    "A23": "=TEXT(1,\"0\"&REPT(\" \",59))",
+    "A24": "=TEXT(1,\"0\"&REPT(\" \",69))",
+    "A25": "=TEXT(1,\"0\"&REPT(\" \",79))",
+    "A26": "=TEXT(1,\"0\"&REPT(\" \",89))",
+    "A27": "=TEXT(1,REPT(\"0\",60))",
+    "A28": "=TEXT(1,REPT(\"0\",100))",
+    "A29": "=TEXT(1,REPT(\"0\",200))",
+    "A30": "=TEXT(1,REPT(\"-\",20)&\"d\")",
+    "A31": "=TEXT(1,REPT(\"-\",40)&\"d\")",
+    "A32": "=TEXT(1,REPT(\"-\",60)&\"d\")",
+    "A33": "=TEXT(1,REPT(\"-\",100)&\"d\")",
+    "A34": "=TEXT(1,REPT(\"\"\"a\"\"\",10))",
+    "A35": "=TEXT(1,REPT(\"\"\"a\"\"\",20))",
+    "A36": "=TEXT(1,REPT(\"\"\"a\"\"\",30))",
+    "A37": "=TEXT(1,REPT(\"\\a\",10))",
+    "A38": "=TEXT(1,REPT(\"\\a\",20))",
+    "A39": "=TEXT(1,REPT(\"\\a\",30))"
+   }
+  }
+ ],
+ "expected": {}
+}
