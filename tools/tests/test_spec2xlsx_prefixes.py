@@ -23,6 +23,12 @@ def test_let_names_are_prefixed() -> None:
     assert prefix_bound_names("=A1:A3 LET(x,A2:B2,x)") == "=A1:A3 LET(_xlpm.x,A2:B2,_xlpm.x)"
 
 
+def test_non_ascii_names_are_prefixed() -> None:
+    # Unprefixed, Excel for the web refused `=LET(é,1,é+1)` as a corrupt file (T-1387).
+    assert prefix_bound_names("=LET(é,1,É+1)") == "=LET(_xlpm.é,1,_xlpm.É+1)"
+    assert prefix_bound_names("=LAMBDA(ß,[ü],ß+ü)(1)") == "=LAMBDA(_xlpm.ß,_xlop.ü,_xlpm.ß+_xlpm.ü)(1)"
+
+
 def test_lambda_parameters_and_calls_are_prefixed() -> None:
     assert prefix_bound_names("=LAMBDA(a,b,a+b)(1,2)") == "=LAMBDA(_xlpm.a,_xlpm.b,_xlpm.a+_xlpm.b)(1,2)"
     assert prefix_bound_names("=LET(f,LAMBDA(a,a*a),f(2))") == (

@@ -1,0 +1,19 @@
+{
+  "format": "rustsheet-case/v1",
+  "description": "T-1387: case folding of LET names stops at one-to-one letter pairs: ß and capital ẞ are the same name, but ß is not SS (whose lower case is ss). A2 writes the use as _xlpm.SS so the workbook binds it the way Excel itself would decide, not by spec2xlsx's Python lower(); Excel then finds no binding (#NAME?).",
+  "tags": [
+    "M7",
+    "let",
+    "probe"
+  ],
+  "sheets": [
+    {
+      "name": "Sheet1",
+      "cells": {
+        "A1": "=LET(ß,1,ẞ+1)",
+        "A2": "=LET(ß,1,_xlpm.SS+1)"
+      }
+    }
+  ],
+  "expected": {}
+}
