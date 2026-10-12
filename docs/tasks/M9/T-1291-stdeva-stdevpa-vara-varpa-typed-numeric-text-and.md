@@ -19,9 +19,13 @@ probes/stat-argument-modes (excel-graph, 2026-10-09, T-1080; legend in docs/exce
 MODE.SNGL and MODE.MULT are `#N/A` in Excel (ours `#VALUE!`), although STDEV/VAR coerce the same typed TRUE to 1: probe
 whether MODE skips typed text and booleans (e.g. `MODE(1,"1",TRUE,1)`) before implementing.
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/288b99797f58f149 Calc!A7 `=((Data!$C2/STDEVPA("Hello World",Data!C4:C9,Data!C5:C5))>..)`: Excel `#VALUE!` (typed non-numeric text), engine TRUE (STDEVPA 0.8048 ignores the typed "Hello World").
+
 ## Acceptance criteria
 - [ ] The H24, H27, H30, H69, H72, H75 and H78 cells of probes/stat-argument-modes pass.
 - [ ] Any new rule is recorded in docs/excel-semantics/statistics.md with probe evidence.
+- [ ] gen-m9/288b99797f58f149 A7 passes (typed non-numeric text in STDEVPA is `#VALUE!`), with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope

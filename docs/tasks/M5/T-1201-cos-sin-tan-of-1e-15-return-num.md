@@ -25,12 +25,18 @@ More cells (T-1275's gen-m7 suite, excel-graph, 2026-10-11; `./target/release/ru
 - gen-m7/9ff3afcacd3bd0fc Calc!A24 `=((Data!E7-((-0.0001)*123456789.123))+SIN((Data!$A8*Data!B4)))` (SIN(-2.5E+15)): Excel `#NUM!`, engine 12346.33.
 - gen-m7/f68fafa0ca2eba26 Calc!A37 `=OFFSET(Data!B4:E7,1,-1,(Data!D10*CSC(1000000000000000.0)))`: Excel `#NUM!` (so `CSC(1E+15)` is `#NUM!`), engine TRUE (`CSC(1E+15)` = 1.165).
 
+More cells (T-1289's gen-m9 suite, excel-graph, 2026-10-12; `./target/release/rustsheet-eval show gen-m9/<case>.case.json`):
+- gen-m9/675763979c1defb6 Calc!A35 `=ISERROR(N(SIN(Data!C12)))` (C12 = 1E+15): Excel TRUE, engine FALSE.
+- gen-m9/adb3fd63c7368166 Calc!A11 `=T.DIST.2T(COUPNUM(CSC(Data!E9),46324,1,Data!$E5),7)` (E9 = 1E+15): Excel `#NUM!`, engine 4.949374243778948e-13 (`CSC(1E+15)` = 1.165).
+- gen-m9/eefcc3989f31de76 Calc!A2 `=COS(Data!A2)` (A2 = 1E+15): Excel `#NUM!`, engine -0.5131937377869703.
+
 ## Acceptance criteria
 - [ ] A probe case with oracle values for the threshold and the sibling trig functions.
 - [ ] gen-m5 c2ce66769f6cc566 A32 and 065c0542a4ce3d1c A26 pass; baseline updated if the suite gains one.
 - [ ] In `(A-COS(1E+15))=INDEX(B11:D11,6,2)` the left operand's `#NUM!` wins over INDEX's `#REF!` (error precedence).
 - [ ] gen-m6/3ee7ffc8d6ab061f A2 and gen-m6/9bd0bd18636e5f9b A4 pass.
 - [ ] gen-m7/9ff3afcacd3bd0fc A24 and gen-m7/f68fafa0ca2eba26 A37 pass. (T-1275's gen-m7 cells listed under Context, `rustsheet-eval show`.)
+- [ ] gen-m9/675763979c1defb6 A35, adb3fd63c7368166 A11 and eefcc3989f31de76 A2 pass, with no new failing gen-m9 cell and no new known failures in eval/baseline/.
 - [ ] `make check` green; reviewers approve.
 
 ## Out of scope
