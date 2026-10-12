@@ -2,6 +2,11 @@ use chrono::{Datelike, NaiveDate};
 
 use crate::formatter::dates::shift_months;
 
+use super::dates::{
+    actual_days, basis_days, broken_schedule_days, broken_schedule_error, days_30_360_us,
+    last_day_of_feb, BROKEN_SCHEDULE_PCD,
+};
+
 use crate::{
     calc_result::CalcResult,
     constants::EXCEL_DATE_BASE,
@@ -16,72 +21,6 @@ use crate::{
 
 fn naivedate_to_serial(d: NaiveDate) -> i64 {
     (d.num_days_from_ce() - EXCEL_DATE_BASE) as i64
-}
-
-fn last_day_of_feb(year: i32) -> u32 {
-    if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
-        29
-    } else {
-        28
-    }
-}
-
-// Days d1→d2 via the US (NASD) 30/360 convention (basis 0).
-//
-// Port of `dateDiff360Us` with the `ModifyStartDate` method from
-// ExcelFinancialFunctions (the variant used by `DaysBetween` in the
-// Numerator position). The order matters: the `day == 31 → 30` adjustment for
-// the end date tests the *original* start day, before the start day is itself
-// normalised.
-fn days_30_360_us(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let mut day1 = d1.day() as i32;
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let mut day2 = d2.day() as i32;
-
-    let start_is_feb_last = m1 == 2 && d1.day() == last_day_of_feb(y1);
-    let end_is_feb_last = m2 == 2 && d2.day() == last_day_of_feb(y2);
-
-    if end_is_feb_last && start_is_feb_last {
-        day2 = 30;
-    }
-    if day2 == 31 && day1 >= 30 {
-        day2 = 30;
-    }
-    if day1 == 31 {
-        day1 = 30;
-    }
-    if start_is_feb_last {
-        day1 = 30;
-    }
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
-}
-
-// Days d1→d2 via the EU 30/360 convention (basis 4).
-fn days_30_360_eu(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    let y1 = d1.year();
-    let m1 = d1.month() as i32;
-    let day1 = (d1.day() as i32).min(30);
-    let y2 = d2.year();
-    let m2 = d2.month() as i32;
-    let day2 = (d2.day() as i32).min(30);
-    (360 * (y2 - y1) + 30 * (m2 - m1) + (day2 - day1)) as f64
-}
-
-fn actual_days(d1: NaiveDate, d2: NaiveDate) -> f64 {
-    (d2 - d1).num_days() as f64
-}
-
-// Basis-aware days from d1 to d2.
-fn basis_days(d1: NaiveDate, d2: NaiveDate, basis: u32) -> f64 {
-    match basis {
-        0 => days_30_360_us(d1, d2),
-        1..=3 => actual_days(d1, d2),
-        4 => days_30_360_eu(d1, d2),
-        _ => 0.0,
-    }
 }
 
 // ============================================================
@@ -222,27 +161,6 @@ fn validate_basis(basis: u32, cell: CellReferenceIndex) -> Result<(), CalcResult
 
 fn map_date_err(e: String, cell: CellReferenceIndex) -> CalcResult {
     CalcResult::new_error(Error::NUM, cell, e)
-}
-
-/// The previous coupon date (a 1900 serial) Excel takes when the coupon schedule breaks
-/// (`Model::coupon_schedule_breaks`); the next one is then the maturity itself.
-const BROKEN_SCHEDULE_PCD: i64 = 1;
-
-/// Days between two serials of a broken coupon schedule: their difference on the actual bases
-/// 1-3 (`COUPDAYS(DATE(9999,1,1),DATE(9999,12,31),2,1)` is 2958465 in a 1904 workbook), #NUM! on
-/// the 30/360 bases 0 and 4 (probes/date-system-1904-coupon-bound A4-A6, K1-L8).
-fn broken_schedule_days(from: i64, to: i64, basis: u32, cell: CellReferenceIndex) -> CalcResult {
-    if (1..=3).contains(&basis) {
-        CalcResult::Number(to.saturating_sub(from) as f64)
-    } else {
-        broken_schedule_error(cell)
-    }
-}
-
-/// COUPNUM, PRICE, YIELD, DURATION and MDURATION are #NUM! when the coupon schedule breaks
-/// (probes/date-system-1904-coupon-bound A3, A7, A19, A20, H3, I3, M1).
-fn broken_schedule_error(cell: CellReferenceIndex) -> CalcResult {
-    CalcResult::new_error(Error::NUM, cell, "no coupon schedule".to_string())
 }
 
 // ============================================================

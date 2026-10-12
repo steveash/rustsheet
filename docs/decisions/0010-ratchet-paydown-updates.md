@@ -50,6 +50,8 @@
   T-1436: functions/date_and_time.rs 1243 → 1134 lines (YEARFRAC moved to `date_and_time/yearfrac.rs`),
   functions/financial/mod.rs 2323 → 2303 (the financial date helpers and `is_less_than_one_year` moved to
   `financial/dates.rs`) and financial_bonds.rs 1402 → 1367 (shared settlement/maturity read).
-  T-1440: duplicated lines 6647 → 6641, already shrunk on main (`check_duplication.py --update`).
+  T-1440: duplicated lines 6647 → 6641, already shrunk on main (`check_duplication.py --update`);
+  financial_bonds.rs 1367 → 1334 lines (the coupon day counts and the 1904 broken-schedule helpers moved to
+  `financial/dates.rs`) (`check_file_size.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
