@@ -31,4 +31,4 @@ SPEC-0005 rollout step 4 (docs/specs/SPEC-0005-workbook-date-system.md); evidenc
 and probes/date-system-1900-negatives stays at 18 of 18.
 Eval delta: probes 2881 -> 2868 known failures (13 fixed: 8 in date-system-1904-negatives, 5 in
 negative-date-sections-1904); poi 566 -> 548 (18 fixed in DateFormatTests.xlsx and DateFormatNumberTests.xlsx,
-both 1904 workbooks); 0 regressions. Follow-up T-1415 (probe, then apply the epoch to the remaining date readers).
+both 1904 workbooks); 0 regressions. Follow-up T-1416 (probe, then apply the epoch to the remaining date readers).

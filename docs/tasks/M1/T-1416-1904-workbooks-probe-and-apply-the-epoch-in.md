@@ -1,5 +1,5 @@
 ---
-id: T-1415
+id: T-1416
 title: "1904 workbooks: probe and apply the epoch in the remaining date readers (WEEKDAY, EDATE/EOMONTH, DATEDIF, date-text coercion, criteria, TODAY)"
 milestone: M1
 lane: functions-date

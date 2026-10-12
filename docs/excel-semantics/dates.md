@@ -381,9 +381,9 @@ TEXT and cell-format date tokens, DATE, DATEVALUE (and every reader of date text
 `serial_from_1900_serial` (types.rs), checked, with no 1904 serial below 0. This also passes 18 cells of poi
 DateFormatTests.xlsx and DateFormatNumberTests.xlsx (1904 workbooks). The other date readers (WEEKDAY,
 EDATE/EOMONTH, DATEDIF, date-text coercion, criteria, TODAY, DATE with a year below 1904) are unprobed in 1904
-and still count from 1900 (T-1415).
+and still count from 1900 (T-1416).
 Status: VERIFIED (web)
-Tasks: T-1268, T-1105, T-1330, T-1415
+Tasks: T-1268, T-1105, T-1330, T-1416
 
 ## Negative serials under an explicit negative section; lone elapsed tokens
 Rule: Excel decides whether a negative serial formats from the value's own sign, before a negative section drops it.
