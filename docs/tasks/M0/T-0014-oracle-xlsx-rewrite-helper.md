@@ -3,7 +3,7 @@ id: T-0014
 title: "Oracle tooling: one xlsx part-rewrite helper; rels-based formula-part scan"
 milestone: M0
 lane: quality
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
