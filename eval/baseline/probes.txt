@@ -114,6 +114,7 @@ C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
 C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
+C	probes/date-huge-month-day.case.json	63
 C	probes/date-system-1900-negatives.case.json	18
 C	probes/date-system-1904-negatives.case.json	18
 C	probes/date-text-dotted-criteria.case.json	16
@@ -553,10 +554,8 @@ F	probes/date-argument-modes.case.json	Sheet1!G20
 F	probes/date-argument-modes.case.json	Sheet1!G22
 F	probes/date-argument-modes.case.json	Sheet1!G24
 F	probes/date-argument-modes.case.json	Sheet1!G26
-F	probes/date-argument-modes.case.json	Sheet1!G3
 F	probes/date-argument-modes.case.json	Sheet1!G36
 F	probes/date-argument-modes.case.json	Sheet1!G38
-F	probes/date-argument-modes.case.json	Sheet1!G4
 F	probes/date-argument-modes.case.json	Sheet1!G40
 F	probes/date-argument-modes.case.json	Sheet1!G54
 F	probes/date-argument-modes.case.json	Sheet1!G56
