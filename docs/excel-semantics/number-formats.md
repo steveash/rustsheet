@@ -251,12 +251,14 @@ Rule: `TEXT` is `#VALUE!` when the format code is too complex, which happens lon
   - After `d`, two adjacent quoted strings of 62 characters each work and 63 + 63 fail; the merged run stops at 125 characters in total.
   - `"d"` plus a 50-character quoted string plus 48 spaces works; with 50 spaces it fails. That needs about 1.3 per quoted character if `d` costs 2.
   - A quoted string of 20, 40, 60 or 80 characters padded with (166 − n)/2 spaces fails.
+  - Mixed with unquoted spaces (round h): `"d"` + 20 quoted + 68 spaces works and 70 fails; `"d"` + 80 quoted + 28 spaces works and 30 fails; `"d"` + 100 quoted + 15 spaces works and 18 fails; 50 spaces + 50 quoted works and 52 spaces fails; 100 quoted + 15 dashes works and 18 fails. These alone fit about 4/3 per quoted character.
+  - The quoted string's limit depends on what comes before it: `"0"` + 122 quoted works and 123 fails, `"[Red]"` + 124 works and 125 fails, while a quoted string alone or after `"d"` stops at 125. With `0` costing 2 this contradicts any fixed per-character cost.
   - Two conditions plus `0` plus 73 spaces fail (`"[>5][<9]0"`); one condition plus `0` plus 79 spaces works and 80 fails, so a condition costs 5 or 6 there, unlike a color.
 - **Fourth section:** a fourth section holding a number or date token is `#VALUE!` whatever the value: `TEXT(1,"0;0;0;0")`, `"0;0;0;d"`, `"d;0;0;0"`, `"0;d;0;0"`, `"0;0;d;0"`, `TEXT(-1,"d;d;d;d")`, `TEXT(0,..)`, `TEXT("x",..)`. `"d;d"` and `"d;d;d"` give "1". This explains `"d;d;d;d"`.
 - **Error precedence:** an error value wins over a too-complex code: `TEXT(NA(),REPT("dm",17))` is `#N/A`, `TEXT(1/0,"0;;;;")` `#DIV/0!`. Over an array, each element is `#VALUE!` except an error element, which keeps its error (`TEXT({1,#N/A},REPT("dm",17))` is `#VALUE!`, `#N/A`). An error inside an array of formats is that element's result (`TEXT(1,{"0",#N/A})` is "1", `#N/A`).
 - **Colon runs:** consecutive colons print as one, whatever the run's length: `TEXT(1,"d"&REPT(":",n))` is "1:" for n from 2 to 85, and `"0"&REPT(":",n)` is "1:" for n from 2 to 84. A colon run broken by anything else prints in full: `"0:a:"` gives "1:a:", `"0::a"` "1:a", `"0: :"` "1: :", `d:"":` "1::". This is a formatter rule, not a cost rule.
 
-Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g (T-1434), all excel-graph.
+Evidence: probes/text-date-255-char-limit, text-format-length-limit, text-format-length-limit-b (T-1388), text-format-length-limit-c, -d, -e (T-1393), -f, -g, -h (T-1434), all excel-graph.
 Not explained (known failures):
 - `TEXT(1,"d;d;d;d")` is `#VALUE!`: a number or date token in the fourth section (see "Fourth section"; not yet implemented, T-1434).
 - `TEXT(1,"d"&REPT(":",84))` is "1:": colon runs collapse (see "Colon runs"; not yet implemented, T-1434).

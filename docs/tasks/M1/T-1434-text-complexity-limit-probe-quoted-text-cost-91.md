@@ -39,5 +39,10 @@ docs/excel-semantics/number-formats.md "TEXT format code complexity limit"; code
   quoted alone) but `d`+50 quoted+50 spaces fails. Next: probe whether a long literal run has its own limit
   (125 quoted characters, or a byte budget where unquoted characters count double). Bisect `d`+n quoted+k spaces
   for several n, and quoted text after `0` and after `[Red]`, before changing `complexity.rs`.
+- Round h (mixed quoted/unquoted runs, quoted after `0` and `[Red]`) fits about 4/3 per quoted character on its own,
+  but `0`+122 quoted works / 123 fails while `d`+125 works. So the quoted cost depends on what precedes it (a
+  placeholder vs a date token vs a color). Next hypothesis to test: the code is rebuilt into a normalized string
+  (quoted text re-escaped, a placeholder followed by a literal getting a separator), with a byte budget.
+  Probe the same quoted string after `#`, `?`, `@`, `%`, `m` and `h`.
 - Not done yet: the code changes (fourth-section `#VALUE!`, colon collapse, condition cost, error precedence over
-  arrays if it differs), and `make eval-baseline` for cases f and g.
+  arrays if it differs), and `make eval-baseline` for cases f, g and h.
