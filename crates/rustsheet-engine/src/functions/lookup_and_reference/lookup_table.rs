@@ -181,8 +181,9 @@ impl SearchVector {
     /// from each midpoint it skips past blanks, errors and other types (upwards;
     /// when `descending`, downwards to the live range's low bound and then
     /// upwards if nothing is there), and a midpoint with none left in the live
-    /// range narrows the search below it. An equal value ends the search at the edge of its run of adjacent
-    /// equal values: the last one, or the first when `descending` (MATCH -1).
+    /// range narrows the search below it. An equal value ends the search at the
+    /// edge of its run of adjacent equal values: the last one, or the first when
+    /// `descending` (MATCH -1).
     /// Otherwise the result is the last value probed that is smaller than
     /// `target` (larger when `descending`), `None` if there is none.
     /// Excel: see docs/excel-semantics/lookup.md "Approximate match".
