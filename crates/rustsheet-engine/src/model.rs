@@ -448,7 +448,7 @@ impl Model {
         body: &str,
         ctx: &CellReferenceRC,
     ) -> Node {
-        self.parse_internal_with(|parser| parser.parse_cell_formula(body, ctx))
+        self.parse_internal_with(|parser| parser.parse(body, ctx))
     }
 
     fn parse_internal_with(&mut self, parse: impl FnOnce(&mut Parser) -> Node) -> Node {
@@ -478,7 +478,7 @@ impl Model {
         let trimmed = formula.trim();
         let had_equals = trimmed.starts_with('=');
         let body = trimmed.strip_prefix('=').unwrap_or(trimmed);
-        let mut node = self.parser.parse_cell_formula(body, context);
+        let mut node = self.parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             // The user's language could not parse it: it might already be in the
             // internal English form.
@@ -548,7 +548,7 @@ impl Model {
         let defined_names = self.workbook.get_defined_names_with_scope();
         let mut parser =
             new_parser_english(worksheet_names, defined_names, self.workbook.tables.clone());
-        let node = parser.parse_cell_formula(body, context);
+        let node = parser.parse(body, context);
         if let Node::ParseErrorKind { .. } = node {
             return formula.to_string();
         }
@@ -1706,7 +1706,7 @@ impl Model {
                 column: source.column,
             };
             let formula_str = move_formula(
-                &self.parser.parse_cell_formula(formula, &cell_reference),
+                &self.parser.parse(formula, &cell_reference),
                 &MoveContext {
                     source_sheet_name: &source_sheet_name,
                     row: source.row,
@@ -1825,7 +1825,7 @@ impl Model {
                 row: source.row,
                 column: source.column,
             };
-            let formula = &self.parser.parse_cell_formula(formula_str, &cell_reference);
+            let formula = &self.parser.parse(formula_str, &cell_reference);
             let cell_reference = CellReferenceRC {
                 sheet: target_sheet_name,
                 row: target.row,
@@ -2510,10 +2510,10 @@ impl Model {
     ) -> Result<Node, String> {
         let sheet = self.workbook.worksheet(sheet)?.get_name();
         let cell_reference = &CellReferenceRC { sheet, row, column };
-        let mut node = self.parser.parse_cell_formula(formula, cell_reference);
+        let mut node = self.parser.parse(formula, cell_reference);
         if matches!(&node, Node::ParseErrorKind { message, .. } if !is_limit_error(message)) {
             let closed = format!("{formula})");
-            let retry = self.parser.parse_cell_formula(&closed, cell_reference);
+            let retry = self.parser.parse(&closed, cell_reference);
             if !matches!(retry, Node::ParseErrorKind { .. }) {
                 node = retry;
             }
