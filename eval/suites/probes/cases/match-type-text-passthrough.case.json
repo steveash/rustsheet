@@ -1,0 +1,31 @@
+{
+ "format": "rustsheet-case/v1",
+ "description": "MATCH match_type text read from a cell through IFS, IF, CHOOSE, SWITCH, IFERROR, LET (T-1399).",
+ "tags": [
+  "M2",
+  "lookup",
+  "probe"
+ ],
+ "sheets": [
+  {
+   "name": "Sheet1",
+   "cells": {
+    "A5": 1,
+    "A6": 2,
+    "A7": 3,
+    "D1": "x",
+    "D2": 1,
+    "K1": "=MATCH(2,A5:A7,IFS(TRUE,D1))",
+    "K2": "=MATCH(2,A5:A7,IF(TRUE,D1))",
+    "K3": "=MATCH(2,A5:A7,CHOOSE(1,D1))",
+    "K4": "=MATCH(2,A5:A7,SWITCH(1,1,D1))",
+    "K5": "=MATCH(2,A5:A7,IFS(TRUE,D2))",
+    "K6": "=MATCH(2,A5:A7,IFS(TRUE,\"x\"))",
+    "K7": "=MATCH(2,A5:A7,IFS(FALSE,D2,TRUE,D1))",
+    "K8": "=MATCH(2,A5:A7,IFERROR(D1,0))",
+    "K9": "=MATCH(2,A5:A7,LET(a,D1,a))"
+   }
+  }
+ ],
+ "expected": {}
+}
