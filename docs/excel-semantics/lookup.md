@@ -417,12 +417,23 @@ Implemented in: `Model::index_impl` / `index_lifted` (functions/lookup_and_refer
 Tasks: T-1260
 
 ## INDEX truncates a tiny negative index to 0
-Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: the column index is truncated toward zero.
+Rule: `INDEX(A1:C3,3,-1E-15)` is the whole row 3, as `INDEX(A1:C3,3,0)`: a tiny negative index counts as 0.
 `EXPONDIST(INDEX(A1:C3,3,-1e-15),12.14649,FALSE)` is 0.027981694209681673, which is the density at A3 = 0.5, the first cell of
-A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor). Indexes from -0.5 to -1 are unprobed.
-Evidence: gen-m9/1466c66c61189a83 Calc!A1 (excel-graph, 2026-10-12, T-1289).
-Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-0.5)` too).
-Status: VERIFIED (web) for -1E-15; other negative fractions UNVERIFIED
+A3:C3 (EXPONDIST lifts over the row; the cell holds the spill's anchor).
+Probed (probes/index-tiny-negative, excel-graph, 2026-10-12, T-1407), row and column index alike:
+- Negative fractions: -1E-15 and -1E-7 give the whole row or column (index 0), but -1.5E-7, -2E-7, -2.5E-7, -3E-7,
+  -5E-7, -1E-6, -1E-4, -0.01, -0.1, -0.4, -0.5, -0.999, -1, -1.5 and -2147483648.5 are `#VALUE!`. `-0.0000009999` too.
+- A positive index just below an integer is rounded up to it: `COLUMNS(INDEX(A1:C3,3,0.9999998))` is 1 (column 1),
+  `0.99999985`, `0.9999999`, `0.99999999999` the same, while `0.99999975`, `0.9999997`, `0.999999` and `0.5` are 3 (index
+  floored to 0, the whole row). The cut is between 0.99999976 (3) and 0.9999997615 (1): a distance of about 2.39E-7
+  from the integer, and `0.99999977` snaps while `0.99999976` does not. Row index likewise:
+  `INDEX(A1:C3,2.9999998,1)` is 0.5 (row 3) but `2.99999975,1` is 4 (row 2), so the tolerance does not grow with the index.
+- The negative side does not follow the same tolerance: -1E-7 snaps to 0, -1.5E-7 does not. Excel's rule is not
+  fitted; it may be a different compare for the sign test than for the floor.
+- area_num -0.5 is `#VALUE!` as well; `INDEX((A1:C3,E1:G3),3,-1E-15,2)` is the third row of the second area (16, 17, 18).
+Ours: `#VALUE!` for any negative index (`INDEX(A1:C3,3,-1E-15)` too), and positives are floored exactly
+(`0.9999998` is 0).
+Status: VERIFIED (web) for the probed values; the exact tolerance rule is UNFITTED
 Tasks: T-1407
 
 ## XLOOKUP with an array lookup_value looks up each element

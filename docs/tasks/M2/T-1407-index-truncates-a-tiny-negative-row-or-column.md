@@ -3,10 +3,10 @@ id: T-1407
 title: "INDEX truncates a tiny negative row or column index (-1E-15) to 0 instead of #VALUE!"
 milestone: M2
 lane: functions-lookup
-status: in-progress
+status: todo
 priority: P2
 size: S
-tier: sonnet
+tier: opus
 depends_on: []
 ---
 
@@ -33,3 +33,14 @@ Code: `Model::index_impl` (crates/rustsheet-engine/src/functions/lookup_and_refe
 
 ## Out of scope
 -
+
+## Handoff
+Tier sonnet; no engine change made. Probe `probes/index-tiny-negative` (excel-graph, about 170 cells) is filled and recorded in lookup.md.
+What it shows: Excel does not simply truncate. An index within about 2.39E-7 below an integer is rounded up to it
+(`COLUMNS(INDEX(A1:C3,3,0.9999998))` is 1, `0.99999976` is 3, `0.99999977` is 1; the same for the row index at 3, so the
+tolerance is absolute). Negatives: -1E-15 and -1E-7 are index 0 (whole row or column), but -1.5E-7 and everything down to -1 and past is `#VALUE!`.
+So the two sides do not share one tolerance. I could not fit one rule (additive epsilon, float32 rounding and 2^-22 all fail on a
+cell or two); the boundary cells are 0.99999976 / 0.9999997615 / 0.99999977 on the positive side and (-1E-7, -1.5E-7) on the negative one.
+Next: probe a few cells between -1E-7 and -1.5E-7 and between 0.99999976 and 0.9999997615, fit the rule (try a relative 1e-15
+compare after a 15-digit decimal round, float32 casts, and `x + 2.4E-7` for positives), implement it in `index_numbers`
+(index.rs), and make the probe cells pass; gen-m9/1466c66c61189a83 A1 also needs T-1290.
