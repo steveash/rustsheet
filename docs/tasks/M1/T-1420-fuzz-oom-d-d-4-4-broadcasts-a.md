@@ -3,7 +3,7 @@ id: T-1420
 title: "Fuzz OOM: D:D+4:4 broadcasts a whole column against a whole row into a 2^34-cell array"
 milestone: M1
 lane: engine
-status: in-progress
+status: done
 priority: P0
 size: M
 tier: opus
@@ -32,10 +32,18 @@ materialising both ranges where possible) and return the same error the limit gi
 Keep Excel's results for broadcasts under the limit unchanged (existing probes and eval).
 
 ## Acceptance criteria
-- [ ] The reproducer and `=D:D+4:4` are unit tests (decision 0035) that finish quickly in a debug build with bounded memory.
-- [ ] Every binary operator (arithmetic, comparison, `&`) checks the broadcast size before allocating.
-- [ ] docs/excel-semantics/arrays.md "Array results above 1,048,576 cells" (the decision-0014 DEVIATION) names the operator broadcast path, or is extended to.
-- [ ] 0 eval regressions; `make check` green; reviewers approve (performance reviewer included).
+- [x] The reproducer and `=D:D+4:4` are unit tests (decision 0035) that finish quickly in a debug build with bounded memory.
+- [x] Every binary operator (arithmetic, comparison, `&`) checks the broadcast size before allocating.
+- [x] docs/excel-semantics/arrays.md "Array results above 1,048,576 cells" (the decision-0014 DEVIATION) names the operator broadcast path, or is extended to.
+- [x] 0 eval regressions; `make check` green; reviewers approve (performance reviewer included).
 
 ## Out of scope
 - Raising or changing the 2^20-cell limit itself.
+
+## Outcome
+The three array-by-array operator broadcasts (arithmetic, `&`, comparisons) became one
+`broadcast_arrays` in crates/rustsheet-engine/src/arithmetic.rs, which checks the result shape with
+`check_array_size` before allocating: the fuzz reproducer, `=D:D+4:4`, `=SUM(D:D>4:4)` and the other
+forms are `#ERROR!` (DEVIATION, decision 0014) in ~0.5 s of a debug test; without the fix the test
+aborts on allocation under `ulimit -v 4000000`. Duplicated lines 6647 → 6617. Eval delta: none
+(0 fixed, 0 regressions). Follow-up: T-1445 (IF and IFERROR/IFNA broadcast the same way, unbounded).

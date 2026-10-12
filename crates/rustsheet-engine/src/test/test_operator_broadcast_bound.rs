@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, reason = "tests")]
 
 //! A binary operator over two arrays checks the size of its broadcast result before building it
 //! (T-1420, CLAUDE.md directive 5). DEVIATION (decision 0014): Excel tries to build the array; we
@@ -11,7 +11,8 @@ use crate::test::util::new_empty_model;
 fn whole_column_against_whole_row_is_bounded() {
     let mut model = new_empty_model();
     model.add_sheet("Data").unwrap();
-    // The formula_eval fuzz reproducer (nightly run 38109900859): 2^20 x 2^14 cells.
+    // The formula_eval fuzz reproducer (nightly run 38109900859), verbatim: the space before `>`
+    // and the row range `$4:44` are the fuzzer's. 2^20 x 2^14 cells.
     model._set("C3", "=Data!$D:$D >Data!$4:44");
     // The smaller forms, out of column D and row 4 (where they would be circular).
     model._set("G1", "=D:D+4:4");
