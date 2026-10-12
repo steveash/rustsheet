@@ -167,6 +167,7 @@ use crate::constants::MAXIMUM_DATE_SERIAL_NUMBER;
 use crate::constants::MINIMUM_DATE_SERIAL_NUMBER;
 use crate::expressions::types::CellReferenceIndex;
 use crate::formatter::date_text::parse_date;
+use crate::formatter::dates::date_month_and_day;
 use crate::formatter::dates::permissive_date_to_serial_number;
 use crate::formatter::dates::shift_months;
 use crate::formatter::dates::DATE_OUT_OF_RANGE_MESSAGE;
@@ -335,20 +336,8 @@ impl Model {
                 if year < 0 {
                     return Err(Error::NUM);
                 }
-                // Excel: a month outside -32767..=32766 is #NUM! even when the date it names is in
-                // the calendar (`DATE(2000,32767,1)`, `DATE(9999,-32768,1)`), and a day outside the
-                // 16-bit range -32768..=32767 counts as 32767 (`DATE(2000,1,-1E+15)` =
-                // `DATE(2000,1,32767)`). Evidence: probes/date-huge-month-day, see
-                // docs/excel-semantics/dates.md "DATE month and day bounds".
-                let month = month.floor();
-                if !(-32767.0..=32766.0).contains(&month) {
+                let Some((month, day)) = date_month_and_day(month, day) else {
                     return Err(Error::NUM);
-                }
-                let day = day.floor();
-                let day = if (-32768.0..=32767.0).contains(&day) {
-                    day as i32
-                } else {
-                    32767
                 };
                 // Excel: a year in 0..=1899 is an offset from 1900: DATE(100, 1, 1) is 2000-01-01
                 if year < 1900 {
@@ -356,7 +345,7 @@ impl Model {
                 }
                 // In a 1904 workbook the serial counts from 1904-01-01 (`DATE(1904,1,1)` is 0).
                 // An earlier day is #NUM! here; Excel is unprobed for it (T-1416).
-                permissive_date_to_serial_number(day, month as i32, year)
+                permissive_date_to_serial_number(day, month, year)
                     .ok()
                     .and_then(|serial| date_system.serial_from_1900_serial(i64::from(serial)))
                     .map(|serial| serial as f64)

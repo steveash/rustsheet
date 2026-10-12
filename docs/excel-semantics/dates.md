@@ -75,9 +75,10 @@ month that leaves 1900-01-01..9999-12-31 is `#NUM!` even if the day would come b
 `DATE(9999,-32767,1)` = 1960745 but `DATE(9999,-32768,1)` is `#NUM!`. `DATE(2000,1,32767)` =
 `DATE(2000,1,32768)` = `DATE(2000,1,-32769)` = `DATE(2000,1,1E+15)` = `DATE(2000,1,-1E+15)` =
 `DATE(2000,1,4294967297)` = 69292, `DATE(2000,1,-32768)` = 3757, `DATE(2000,1,-32768.5)` = 69292
-(floored to -32769 first), `DATE(1900,1,2958466)` = 32767; `DATE(9999,13,-30)` is `#NUM!` (the month
+(floored to -32769 first), `DATE(9999,-32767.5,1)` is `#NUM!` (the month is floored too) while
+`DATE(2000,32766.5,1)` = 1033789, `DATE(1900,1,2958466)` = 32767; `DATE(9999,13,-30)` is `#NUM!` (the month
 carry leaves the calendar) while `DATE(0,13,-1)` = 365.
-Evidence: probes/date-huge-month-day A1-A61 (excel-graph, 2026-10-12, T-1419).
+Evidence: probes/date-huge-month-day A1-A63 (excel-graph, 2026-10-12, T-1419).
 Status: VERIFIED. Implemented in `fn_date` (T-1419); the month carry uses checked chrono month
 arithmetic, so a month near `i32::MAX` no longer panics (fuzz crash T-1419).
 

@@ -234,6 +234,14 @@
     "t": "e",
     "v": "#NUM!"
    },
+   "A62": {
+    "t": "e",
+    "v": "#NUM!"
+   },
+   "A63": {
+    "t": "n",
+    "v": 1033789.0
+   },
    "A7": {
     "t": "e",
     "v": "#NUM!"
@@ -250,9 +258,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "bac994d290a9f85ebd7966b6c93b0e65ba6806127be5af6228f207080cd1d329",
+  "input_sha256": "3fca180d6678cd4b41517acd1a067019c4dfdcf635efb784a706bbb6643812af",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T09:24:26+00:00",
+  "produced_at": "2026-10-12T09:52:35+00:00",
   "version": null
  }
 }

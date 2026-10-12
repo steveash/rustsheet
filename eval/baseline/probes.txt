@@ -114,7 +114,7 @@ C	probes/criteria-padded-operand.case.json	18
 C	probes/criteria-padded-text.case.json	14
 C	probes/date-argument-modes.case.json	168
 C	probes/date-clock-text-length-limit.case.json	36
-C	probes/date-huge-month-day.case.json	61
+C	probes/date-huge-month-day.case.json	63
 C	probes/date-system-1900-negatives.case.json	18
 C	probes/date-system-1904-negatives.case.json	18
 C	probes/date-text-dotted-criteria.case.json	16
