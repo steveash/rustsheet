@@ -40,6 +40,6 @@ T-1378 made LET names and LAMBDA parameters case-insensitive (`same_variable`, f
   check, `has_duplicate_parameter`. More probes: `LAMBDA(x,[X],x)(1)` is refused as well, and
   probes/let-name-sharp-s (2 cells) shows `ß` is `ẞ` but not `SS` (`#NAME?`, with the use
   written as `_xlpm.SS` so spec2xlsx's Python fold does not decide it).
-- docs/excel-semantics/references.md is updated. Follow-up T-1428: CJK, Turkish İ and non-ASCII
+- docs/excel-semantics/references.md is updated. Follow-up T-1431: CJK, Turkish İ and non-ASCII
   defined names.
 - Eval delta: +2 probe cases (12 cells, all passing); known failures unchanged (2874).
