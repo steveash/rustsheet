@@ -717,7 +717,7 @@ pub(super) fn check_stored_length(
     // A UTF-16 unit count never exceeds the byte length, so counting is only needed above the limit.
     if text.len() > limit && text.encode_utf16().count() > limit {
         return Err(XlsxError::Workbook(format!(
-            "{subject} is longer than {limit} characters"
+            "{subject} is longer than {limit} UTF-16 code units"
         )));
     }
     Ok(())

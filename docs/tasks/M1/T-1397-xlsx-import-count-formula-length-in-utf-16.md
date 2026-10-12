@@ -24,4 +24,4 @@ T-1386 probes (excel-graph): formula-length-nonbmp-33pieces loads (4,063 scalars
 -
 
 ## Outcome
-Probed (excel-graph): formula limit is 8,192 UTF-16 units (8,192 loads, 8,193/8,194 refused); non-BMP name body 8,191 units loads, 8,192 refused. `check_stored_length` now counts UTF-16 units for formulas and refuses defined-name bodies over 8,191 units. Tests in `malformed_import.rs`; findings in syntax.md. No eval delta (probe cases added, no baseline change).
+Probed (excel-graph): formula limit is 8,192 UTF-16 units (8,192 loads, 8,193/8,194 refused); non-BMP name body 8,191 units loads, 8,192 refused. `check_stored_length` now counts UTF-16 units for formulas and refuses defined-name bodies over 8,191 units. Tests in `malformed_import.rs`; findings in syntax.md. Eval: two new probe cases pass against their oracle sidecars; baseline regenerated (2 new passing cases, no regressions).

@@ -381,7 +381,7 @@ fn formula_longer_than_8192_characters_refuses_the_workbook() -> TestResult {
     assert_imports(&sheet_with_formula_chars(8_192)?)?;
     assert_import_error(
         &sheet_with_formula_chars(8_193)?,
-        "Formula in Sheet1!A100 is longer than 8192 characters",
+        "Formula in Sheet1!A100 is longer than 8192 UTF-16 code units",
     );
     Ok(())
 }
@@ -420,7 +420,7 @@ fn name_body_longer_than_8191_characters_refuses_the_workbook() -> TestResult {
     assert_imports(&workbook_with_name_body(&ascii)?)?;
     assert_import_error(
         &workbook_with_name_body(&format!("{ascii}1"))?,
-        "definedName nm body is longer than 8191 characters",
+        "definedName nm body is longer than 8191 UTF-16 code units",
     );
     Ok(())
 }
@@ -434,13 +434,13 @@ fn non_bmp_text_counts_two_utf16_units_toward_the_limits() -> TestResult {
     assert_imports(&workbook_with_name_body(&format!("\"{emoji}\"&amp;1"))?)?;
     assert_import_error(
         &workbook_with_name_body(&format!("\"{emoji}\"&amp;1&amp;1"))?,
-        "definedName nm body is longer than 8191 characters",
+        "definedName nm body is longer than 8191 UTF-16 code units",
     );
     // 4,092 emoji + 8 = 8,192 units loads; one more emoji is 8,194 and is refused.
     assert_imports(&sheet_with_emoji_formula(4_092)?)?;
     assert_import_error(
         &sheet_with_emoji_formula(4_093)?,
-        "Formula in Sheet1!A100 is longer than 8192 characters",
+        "Formula in Sheet1!A100 is longer than 8192 UTF-16 code units",
     );
     Ok(())
 }
