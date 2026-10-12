@@ -3,7 +3,7 @@ id: T-1434
 title: "TEXT complexity limit: probe quoted-text cost (91-149 chars), the three unexplained cells, and error precedence (follow-up of T-1393)"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P2
 size: S
 tier: opus
