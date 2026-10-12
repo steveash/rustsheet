@@ -3,7 +3,7 @@ id: T-1393
 title: "TEXT returns #VALUE! for format codes over Excel's complexity limit"
 milestone: M1
 lane: functions-text
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: opus
