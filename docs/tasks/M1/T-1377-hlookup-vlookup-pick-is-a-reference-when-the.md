@@ -3,7 +3,7 @@ id: T-1377
 title: "HLOOKUP/VLOOKUP pick is a reference when the index argument is IF(..) picking a cell (follow-up of T-0299)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: S
 tier: sonnet
