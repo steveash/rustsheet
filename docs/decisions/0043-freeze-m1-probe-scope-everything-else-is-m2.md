@@ -1,6 +1,9 @@
 # 0043 — Freeze M1 probe scope; everything else is M2 exit scope
 
 - **Status:** accepted (2026-10-08, owner request; measurement in T-1146)
+- **Amended by:** decision 0051 (2026-10-12). The owner answered the open question in item 2.
+  Probes of later-milestone functions count toward their own milestone, not M2. M2 exit covers
+  only the probe cases assigned M0, M1 or M2.
 - **Context:**
   - The owner (2026-10-08): "Sure let's freeze m1 scope but we need all of these in m2."
   - M1 exit asked for the whole `probes` suite at 100% bit-exact, apart from accepted deviations
@@ -94,6 +97,8 @@
      - This includes probes of functions whose own milestone is later than M2, such as the
        catalog availability probes for GROUPBY, PIVOTBY and other unimplemented functions. The
        owner asked for "all of these in m2", so they count for M2 by default.
+     - *Amended by decision 0051: answered. They count toward their own milestone, and M2 exit
+       covers only the probe cases that decision 0051 assigns M0, M1 or M2.*
      - **Open owner question:** should probes of M5+ functions (the catalog availability cases
        and function-specific probes such as RATE, XIRR, GEOMEAN, WEEKNUM) count toward each
        function's own milestone instead of M2? The decision does not settle it. Until the owner
