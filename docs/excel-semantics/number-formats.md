@@ -157,16 +157,17 @@ The 11-character limit also applies from 1 on: the sign does not count, the deci
 and the value is rounded to fit, so decimals are cut to `11 - integer digits - 1`:
 `123456.123456789` → "123456.1235", `-123456.123456789` → "-123456.1235", `22.712470704` →
 "22.7124707", `1234567.891234` → "1234567.891", `100000.123456789` → "100000.1235",
-`12345.123456789` → "12345.12346", `1234.5678901234` → "1234.56789". Values whose rounded integer part has
-11 digits round to the integer (half-up versus half-even is unprobed: both .5 cases land on an even
-result; TODO(T-1422) probe `12345678902.5`): `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
-`99999999999.6` rounds up to 1E+11 and prints "1E+11" (the engine's 9-decimal form is wrong for
-all of these; T-1422).
+`12345.123456789` → "12345.12346", `1234.5678901234` → "1234.56789". Rounding is half away from zero on the 15-significant-digit decimal, not on the binary value (the ROUND
+family's rule, `numbers.md`): `12345678902.5` → "12345678903", `12345678903.5` → "12345678904",
+`1234567890.5` → "1234567891", `123456789.25` → "123456789.3", `123456789.75` → "123456789.8",
+`123456.12345` → "123456.1235", `1234567.8915` → "1234567.892" (A18-A24). Values whose integer part has
+10 or 11 digits round to the integer: `9999999999.5` → "10000000000", `12345678901.5` → "12345678902", and
+`99999999999.6` rounds up to 1E+11 and prints "1E+11".
 Evidence: poi/GeneralFormatTests.xlsx A13, A17, A18, A26-A28, A61; probes/number-text-exponent-digits
 Calc!D8 (excel-graph); probes/text-general-exponent-boundary A9, A10 (excel-graph, 2026-10-07); probes/text-general-ties-wide-fixed
-A1-A17 (excel-graph, 2026-10-12).
+A1-A24 (excel-graph, 2026-10-12).
 Status: VERIFIED
-Implemented in: `format_general` (formatter/format.rs).
+Implemented in: `format_general` (formatter/general.rs).
 Tasks: T-0938, T-1225, T-1422
 
 ## A comma between digit placeholders turns on thousands grouping
