@@ -53,5 +53,7 @@
   T-0300: lint debt shrinks by `clippy::doc_markdown`, `clippy::semicolon_if_nothing_returned` (engine,
   xlsx, python bindings) and `clippy::uninlined_format_args` (engine, xlsx); 8 entries removed
   (`check_lint_debt.py --update`).
+  T-1420: duplicated lines 6647 → 6598 (the three array-by-array operator broadcasts became
+  `broadcast_arrays`; the rest already shrunk on main by T-0300) (`check_duplication.py --update`).
 - **Consequences:** Ratchets only tighten. Reviewers (architecture, security) confirm the diff in
   `quality/` is a decrease.
