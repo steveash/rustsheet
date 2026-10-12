@@ -85,3 +85,15 @@ fn shadowed_variables_are_prefixed_in_both_scopes() {
         "_xlfn.LAMBDA(_xlpm.x,_xlfn.LET(_xlpm.x,_xlpm.x+1,_xlpm.x*2))"
     );
 }
+
+#[test]
+fn bound_names_of_another_case_are_prefixed() {
+    // Excel matches LET and LAMBDA names case-insensitively (probes/let-lambda-name-case), so a
+    // use in another case is the bound variable, not a defined name.
+    let mut p = parser();
+    let t = p.parse("LET(x,1,LAMBDA(Y,X+y)(2))", &cell());
+    assert_eq!(
+        to_excel_string(&t, &cell()),
+        "_xlfn.LET(_xlpm.x,1,_xlfn.LAMBDA(_xlpm.Y,_xlpm.X+_xlpm.y)(2))"
+    );
+}
