@@ -99,6 +99,10 @@ a referenced cell, so text and errors are `#REF!`); valid indexes give a same-sh
 (`VLOOKUP(2,A1:B4,{2,1},FALSE)` is "two", 2; a fractional element truncates). When lookup_value or
 range_lookup lifts, the index uses only its first element (`VLOOKUP({2;3},A1:B4,{1;2},FALSE)` is 2, 3,
 `{2;"a"}` is "two", "three", `{#DIV/0!;2}` is `#REF!` twice, a 2-D index likewise).
+Unprobed: a valid multi-cell *range* index or range_lookup with a scalar lookup_value (the engine
+intersects it implicitly, yet static analysis marks the formula as spilling), which error wins when a
+lookup_value element and a range_lookup element are both errors (the engine gives the lookup error),
+and blank elements of a computed index array (read as 0, `#VALUE!`).
 Evidence: probes/vlookup-array-index-range-lookup (155 cells, excel-graph, 2026-10-12, T-1269); the
 first-fill reading that an array range_lookup "looks unlifted" (T-0270) does not hold: each probe here has its own rows, so no spill collides.
 Implemented in: `Model::lookup_each` and `Model::pick_each` (lookup_each.rs), `LookupIndexArg::Array`
