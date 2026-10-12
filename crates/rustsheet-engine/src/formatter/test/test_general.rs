@@ -292,6 +292,18 @@ fn test_german_locale() {
     assert_eq!(format_number(1234.56, "General", &ctx).text, "1234,56");
 }
 
+// Excel evidence: poi/NumberFormatTests.xlsx Tests!A5, A18, A22, A107 (docs/excel-semantics/number-formats.md).
+#[test]
+fn pound_yen_and_pipe_are_unquoted_literals() {
+    let ctx = FormatContext::new(get_default_locale());
+    assert_eq!(format_number(12.3, "£000.00", &ctx).text, "£012.30");
+    assert_eq!(
+        format_number(-12.3, "\"before \"¥#.00", &ctx).text,
+        "-before ¥12.30"
+    );
+    assert_eq!(format_number(1.1, "|?.?|", &ctx).text, "|1.1|");
+}
+
 #[test]
 fn general_fixed_versus_scientific() {
     // T-0938: probes/number-text-exponent-digits D8, poi/GeneralFormatTests (A13, A17, A18, A26-A28,

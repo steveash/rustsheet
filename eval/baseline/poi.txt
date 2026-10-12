@@ -393,14 +393,6 @@ F	poi/NumberFormatApproxTests.xlsx	Tests!A40
 F	poi/NumberFormatApproxTests.xlsx	Tests!A41
 F	poi/NumberFormatApproxTests.xlsx	Tests!A96
 F	poi/NumberFormatApproxTests.xlsx	Tests!A97
-F	poi/NumberFormatTests.xlsx	Tests!A107
-F	poi/NumberFormatTests.xlsx	Tests!A108
-F	poi/NumberFormatTests.xlsx	Tests!A109
-F	poi/NumberFormatTests.xlsx	Tests!A110
-F	poi/NumberFormatTests.xlsx	Tests!A113
-F	poi/NumberFormatTests.xlsx	Tests!A114
-F	poi/NumberFormatTests.xlsx	Tests!A115
-F	poi/NumberFormatTests.xlsx	Tests!A116
 F	poi/NumberFormatTests.xlsx	Tests!A120
 F	poi/NumberFormatTests.xlsx	Tests!A121
 F	poi/NumberFormatTests.xlsx	Tests!A122
@@ -460,7 +452,6 @@ F	poi/NumberFormatTests.xlsx	Tests!A176
 F	poi/NumberFormatTests.xlsx	Tests!A177
 F	poi/NumberFormatTests.xlsx	Tests!A178
 F	poi/NumberFormatTests.xlsx	Tests!A179
-F	poi/NumberFormatTests.xlsx	Tests!A18
 F	poi/NumberFormatTests.xlsx	Tests!A180
 F	poi/NumberFormatTests.xlsx	Tests!A181
 F	poi/NumberFormatTests.xlsx	Tests!A182
@@ -471,7 +462,6 @@ F	poi/NumberFormatTests.xlsx	Tests!A186
 F	poi/NumberFormatTests.xlsx	Tests!A187
 F	poi/NumberFormatTests.xlsx	Tests!A188
 F	poi/NumberFormatTests.xlsx	Tests!A189
-F	poi/NumberFormatTests.xlsx	Tests!A19
 F	poi/NumberFormatTests.xlsx	Tests!A190
 F	poi/NumberFormatTests.xlsx	Tests!A191
 F	poi/NumberFormatTests.xlsx	Tests!A192
@@ -491,7 +481,6 @@ F	poi/NumberFormatTests.xlsx	Tests!A206
 F	poi/NumberFormatTests.xlsx	Tests!A207
 F	poi/NumberFormatTests.xlsx	Tests!A208
 F	poi/NumberFormatTests.xlsx	Tests!A209
-F	poi/NumberFormatTests.xlsx	Tests!A21
 F	poi/NumberFormatTests.xlsx	Tests!A210
 F	poi/NumberFormatTests.xlsx	Tests!A211
 F	poi/NumberFormatTests.xlsx	Tests!A212
@@ -502,7 +491,6 @@ F	poi/NumberFormatTests.xlsx	Tests!A216
 F	poi/NumberFormatTests.xlsx	Tests!A217
 F	poi/NumberFormatTests.xlsx	Tests!A218
 F	poi/NumberFormatTests.xlsx	Tests!A219
-F	poi/NumberFormatTests.xlsx	Tests!A22
 F	poi/NumberFormatTests.xlsx	Tests!A220
 F	poi/NumberFormatTests.xlsx	Tests!A221
 F	poi/NumberFormatTests.xlsx	Tests!A222
@@ -616,7 +604,6 @@ F	poi/NumberFormatTests.xlsx	Tests!A329
 F	poi/NumberFormatTests.xlsx	Tests!A330
 F	poi/NumberFormatTests.xlsx	Tests!A331
 F	poi/NumberFormatTests.xlsx	Tests!A332
-F	poi/NumberFormatTests.xlsx	Tests!A5
 F	poi/clone_sheet.xlsx	Arkusz1!H10
 F	poi/clone_sheet.xlsx	Arkusz1!H11
 F	poi/clone_sheet.xlsx	Arkusz1!H13
