@@ -24,4 +24,4 @@ From the T-1444 fidelity review. `utils::time_of_day_from_datetime` now takes th
 -
 
 ## Outcome
-Probe probes/date-system-1904-timevalue-chrono added with excel-graph values (A1-A4); the engine already matches, so no engine change and no baseline change. Recorded in dates.md.
+Probe probes/date-system-1904-timevalue-chrono added with excel-graph values (A1-A4); the engine already matches, so there is no engine change; the baseline records the new case and no known failures. Recorded in dates.md.
