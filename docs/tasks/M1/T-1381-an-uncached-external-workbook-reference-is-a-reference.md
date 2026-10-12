@@ -3,7 +3,7 @@ id: T-1381
 title: "An uncached external-workbook reference is a reference: ISREF, ROWS, unquoted [book]Sheet! prefix"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P3
 size: M
 tier: opus
