@@ -123,6 +123,7 @@ pub struct Functions {
     pub code: String,
     pub asc: String,
     pub dbcs: String,
+    pub bahttext: String,
     pub phonetic: String,
     pub arraytotext: String,
     pub dollar: String,
