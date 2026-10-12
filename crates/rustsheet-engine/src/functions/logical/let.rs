@@ -12,6 +12,20 @@ use crate::{
     reference_operators::{Binding, Ranges, RefArg},
 };
 
+/// Whether two LET variable or LAMBDA parameter names are the same variable: Excel compares them
+/// case-insensitively (`LET(x,A1:A4,X)` reads `x`, probes/subtotal-reference-operands-f C41;
+/// `LAMBDA(x,X+1)(2)` is 3 and `LET(x,1,LAMBDA(X,x*10)(2))` is 20, probes/let-lambda-name-case).
+/// Folding non-ASCII names with Unicode lowercase is unprobed (TODO(T-1387)).
+pub(crate) fn same_variable(a: &str, b: &str) -> bool {
+    // No allocation: this runs per node on every LAMBDA call and LET evaluation.
+    if a.is_ascii() && b.is_ascii() {
+        return a.eq_ignore_ascii_case(b);
+    }
+    a.chars()
+        .flat_map(char::to_lowercase)
+        .eq(b.chars().flat_map(char::to_lowercase))
+}
+
 /// Recursively walks `node`, replacing every `NamedVariableKind { name, id: None }` whose
 /// name matches `target` with `id: Some(id)`.
 ///
@@ -19,7 +33,9 @@ use crate::{
 /// pair's value expression — the inner LET will assign its own id for subsequent uses.
 pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
     match node {
-        Node::NamedVariableKind { name, id: var_id } if name == target && var_id.is_none() => {
+        Node::NamedVariableKind { name, id: var_id }
+            if var_id.is_none() && same_variable(name, target) =>
+        {
             *var_id = Some(id);
         }
         Node::NamedFunctionKind {
@@ -27,7 +43,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
             id: var_id,
             args,
         } => {
-            if name == target && var_id.is_none() {
+            if var_id.is_none() && same_variable(name, target) {
                 *var_id = Some(id);
             }
             for arg in args.iter_mut() {
@@ -39,7 +55,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
                 let n_pairs = (args.len().saturating_sub(1)) / 2;
                 // Find the first pair index where the inner LET shadows `target`.
                 let shadow_pair = (0..n_pairs).find(|&k| {
-                    matches!(&args[2 * k], Node::NamedVariableKind { name, .. } if name == target)
+                    matches!(&args[2 * k], Node::NamedVariableKind { name, .. } if same_variable(name, target))
                 });
                 for i in 0..args.len() {
                     // Odd indices are value expressions; the last (even) index is the body.
@@ -85,7 +101,7 @@ pub(super) fn assign_variable_ids(node: &mut Node, target: &str, id: u32) {
         }
         Node::LambdaDefKind { parameters, body } => {
             // If a LAMBDA parameter shadows `target`, don't recurse into the body.
-            let shadowed = parameters.iter().any(|p| p.name == target);
+            let shadowed = parameters.iter().any(|p| same_variable(&p.name, target));
             if !shadowed {
                 assign_variable_ids(body, target, id);
             }

@@ -1,4 +1,5 @@
 use crate::expressions::parser::reference_operators::is_reference_operand;
+use crate::functions::logical::same_variable;
 use crate::functions::Function;
 
 use super::{broadcast_static_result, run_static_analysis_on_node, Node, StaticResult};
@@ -80,6 +81,32 @@ fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
             .iter()
             .skip(1)
             .all(|branch| yields_cells(branch, bound)),
+        // CHOOSE, SWITCH and IFS pass on the arm they select just as IF does, so a computed array
+        // in any arm makes the call spill (`SUBTOTAL(9,TAKE(CHOOSE(1,SEQUENCE(4)),2))` is two
+        // `#VALUE!`, probes/subtotal-reference-operands-f, T-1378).
+        Node::FunctionKind {
+            kind: Function::Choose,
+            args,
+        } => args.iter().skip(1).all(|arm| yields_cells(arm, bound)),
+        Node::FunctionKind {
+            kind: Function::Switch,
+            args,
+        } => args
+            .iter()
+            .skip(1)
+            .enumerate()
+            // After the value, results sit at the odd positions of the (case, result) pairs; a
+            // trailing unpaired argument is the default.
+            .filter(|(index, _)| index % 2 == 1 || *index == args.len().saturating_sub(2))
+            .all(|(_, arm)| yields_cells(arm, bound)),
+        Node::FunctionKind {
+            kind: Function::Ifs,
+            args,
+        } => args
+            .iter()
+            .skip(1)
+            .step_by(2)
+            .all(|arm| yields_cells(arm, bound)),
         Node::FunctionKind {
             kind: Function::Let,
             args,
@@ -98,7 +125,7 @@ fn yields_cells<'a>(node: &'a Node, bound: &mut Vec<(&'a str, bool)>) -> bool {
         }
         Node::NamedVariableKind { name, .. } => bound
             .iter()
-            .rfind(|(bound_name, _)| bound_name == name)
+            .rfind(|(bound_name, _)| same_variable(bound_name, name))
             .is_none_or(|(_, cells)| *cells),
         _ => is_reference_operand(node),
     }

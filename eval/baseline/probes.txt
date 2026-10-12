@@ -220,6 +220,7 @@ C	probes/large-small-k.case.json	35
 C	probes/lcm-result-bound.case.json	28
 C	probes/lcm-result-edge.case.json	6
 C	probes/let-bind-reference-forms.case.json	11
+C	probes/let-lambda-name-case.case.json	14
 C	probes/let-name-call-arrays.case.json	4
 C	probes/let-name-call-bool.case.json	2
 C	probes/let-name-call-forms.case.json	17
@@ -378,6 +379,7 @@ C	probes/subtotal-reference-operands-b.case.json	23
 C	probes/subtotal-reference-operands-c.case.json	17
 C	probes/subtotal-reference-operands-d.case.json	42
 C	probes/subtotal-reference-operands-e.case.json	36
+C	probes/subtotal-reference-operands-f.case.json	97
 C	probes/subtotal-reference-operands.case.json	40
 C	probes/sum-error-precedence.case.json	24
 C	probes/sum-long-text-args.case.json	11
