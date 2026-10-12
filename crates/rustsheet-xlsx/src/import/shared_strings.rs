@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Read;
 
 use super::package::{ImportLimits, Package};
@@ -5,17 +6,56 @@ use super::xml::XmlNode;
 
 use crate::error::XlsxError;
 
+/// The workbook's shared strings plus a string -> first-index map, so interning an inline or
+/// formula string during import is O(1) instead of a linear scan (untrusted sheets can hold
+/// many distinct inline strings). The first occurrence of a duplicate still wins, so indices
+/// match the linear search this replaces.
+#[derive(Debug, Default)]
+pub(crate) struct SharedStringTable {
+    strings: Vec<String>,
+    first_index: HashMap<String, usize>,
+}
+
+impl SharedStringTable {
+    fn from_strings(strings: Vec<String>) -> Self {
+        let mut first_index = HashMap::with_capacity(strings.len());
+        for (i, s) in strings.iter().enumerate() {
+            first_index.entry(s.clone()).or_insert(i);
+        }
+        SharedStringTable {
+            strings,
+            first_index,
+        }
+    }
+
+    /// Index of `s`, appending it when it is not in the table yet.
+    pub(crate) fn intern(&mut self, s: &str) -> usize {
+        if let Some(&i) = self.first_index.get(s) {
+            return i;
+        }
+        let i = self.strings.len();
+        self.strings.push(s.to_string());
+        self.first_index.insert(s.to_string(), i);
+        i
+    }
+
+    pub(crate) fn into_strings(self) -> Vec<String> {
+        self.strings
+    }
+}
+
 /// Reads the list of shared strings in an Excel workbook
 /// Note than in IronCalc we lose _internal_ styling of a string
 /// See Section 18.4
 pub(crate) fn read_shared_strings<R: Read + std::io::Seek>(
     archive: &mut Package<R>,
-) -> Result<Vec<String>, XlsxError> {
+) -> Result<SharedStringTable, XlsxError> {
     let limits = *archive.limits();
-    match archive.open_optional("xl/sharedStrings.xml")? {
-        Some(file) => read_shared_strings_from_xml(XmlNode::parse(file)?, &limits),
-        None => Ok(Vec::new()),
-    }
+    let strings = match archive.open_optional("xl/sharedStrings.xml")? {
+        Some(file) => read_shared_strings_from_xml(XmlNode::parse(file)?, &limits)?,
+        None => Vec::new(),
+    };
+    Ok(SharedStringTable::from_strings(strings))
 }
 
 #[cfg(test)]
@@ -92,6 +132,26 @@ pub fn decode_xlsx_escapes(s: &str) -> String {
 mod tests {
     #![allow(clippy::unwrap_used)]
     use super::*;
+
+    #[test]
+    fn intern_keeps_first_index_and_appends_new_strings() {
+        let mut table = SharedStringTable::from_strings(vec!["a".into(), "b".into(), "a".into()]);
+        assert_eq!(table.intern("a"), 0);
+        assert_eq!(table.intern("b"), 1);
+        assert_eq!(table.intern("c"), 3);
+        assert_eq!(table.intern("c"), 3);
+        assert_eq!(table.into_strings(), ["a", "b", "a", "c"]);
+    }
+
+    #[test]
+    fn intern_many_distinct_strings_is_not_quadratic() {
+        let mut table = SharedStringTable::default();
+        let n = 200_000;
+        for i in 0..n {
+            assert_eq!(table.intern(&format!("inline-{i}")), i);
+        }
+        assert_eq!(table.into_strings().len(), n);
+    }
 
     #[test]
     fn test_shared_strings() {

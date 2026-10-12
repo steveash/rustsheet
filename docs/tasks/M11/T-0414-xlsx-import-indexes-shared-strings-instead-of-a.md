@@ -3,7 +3,7 @@ id: T-0414
 title: "xlsx import indexes shared strings instead of a linear search per inline string (port ironcalc 31b0c731)"
 milestone: M11
 lane: engine
-status: todo
+status: done
 priority: P1
 size: S
 tier: sonnet
@@ -29,3 +29,11 @@ existing hasher (`KeyHasher`, T-0932) if it fits instead of adding a new one.
 
 ## Out of scope
 - Other import performance work.
+
+## Outcome
+Added `SharedStringTable` (strings plus a first-index `HashMap`) in `import/shared_strings.rs`; the
+`t="str"` and `inlineStr` paths call `intern` instead of a linear `position` search. Indices are
+unchanged (first occurrence wins). Std `HashMap` (SipHash) kept because untrusted keys; `KeyHasher`
+is a u64 integer hasher and does not fit strings. Eval delta: none.
+
+Ported-From: ironcalc@31b0c731c8e27c9e8ed2751a7fbc572c13b0c14a
