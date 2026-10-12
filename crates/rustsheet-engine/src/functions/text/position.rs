@@ -60,6 +60,11 @@ pub(super) fn find_element(
 fn fold_case(text: &str) -> String {
     text.chars()
         .map(|c| {
+            // Final sigma matches sigma in either case (`SEARCH("ς","ΟΣ")` is 2), while the other
+            // simple-fold pairs do not: ſ/s, µ/μ and ϐ/β are #VALUE! (A14-A24).
+            if c == 'ς' {
+                return 'σ';
+            }
             let mut lower = c.to_lowercase();
             match (lower.next(), lower.next()) {
                 (Some(single), None) => single,

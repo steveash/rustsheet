@@ -22,7 +22,51 @@
     "t": "n",
     "v": 3.0
    },
+   "A14": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A15": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A16": {
+    "t": "n",
+    "v": 3.0
+   },
+   "A17": {
+    "t": "n",
+    "v": 2.0
+   },
+   "A18": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A19": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
    "A2": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A20": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A21": {
+    "t": "n",
+    "v": 1.0
+   },
+   "A22": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A23": {
+    "t": "e",
+    "v": "#VALUE!"
+   },
+   "A24": {
     "t": "e",
     "v": "#VALUE!"
    },
@@ -58,9 +102,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "4776bdfe91075eda586bf9bf7458ca9e8e4a27d0ea946bd145bb48acaa6f9bc2",
+  "input_sha256": "6e34ea3f8447193b2742ec93e67770275487e49fde4264282a48ea7bd60f1aca",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T09:41:46+00:00",
+  "produced_at": "2026-10-12T09:58:48+00:00",
   "version": null
  }
 }
