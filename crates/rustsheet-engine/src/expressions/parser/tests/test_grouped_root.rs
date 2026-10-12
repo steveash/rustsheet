@@ -32,8 +32,8 @@ fn is_grouped(node: &Node) -> bool {
 #[test]
 fn whole_formula_in_parentheses_is_a_root_group() {
     let mut parser = parser();
-    let grouped = parser.parse_cell_formula("(A1-1)", &context());
-    let bare = parser.parse_cell_formula("A1-1", &context());
+    let grouped = parser.parse("(A1-1)", &context());
+    let bare = parser.parse("A1-1", &context());
     assert!(is_grouped(&grouped));
     assert!(!is_grouped(&bare));
     assert_ne!(grouped, bare);
@@ -52,12 +52,12 @@ fn printing_round_trips_through_rc_format() {
         "(-A1)",
         "(A1 B1)",
     ] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         assert!(is_grouped(&node), "{formula}");
         assert_eq!(to_english_localized_string(&node, &context()), formula);
         let rc = to_rc_format(&node);
         parser.set_lexer_mode(LexerMode::R1C1);
-        let reparsed = parser.parse_cell_formula(&rc, &context());
+        let reparsed = parser.parse(&rc, &context());
         parser.set_lexer_mode(LexerMode::A1);
         assert_eq!(reparsed, node, "{formula}");
     }
@@ -69,7 +69,7 @@ fn nested_outer_parentheses_keep_every_level() {
     // docs/excel-semantics/numbers.md), one root `Group` with a level per pair (T-1161).
     let mut parser = parser();
     for formula in ["((A1-1))", "(((A1-1)))"] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         let Node::Group { levels, .. } = &node else {
             panic!("{formula} is not grouped");
         };
@@ -82,7 +82,7 @@ fn nested_outer_parentheses_keep_every_level() {
 fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
     let mut parser = parser();
     for formula in ["((A1)+(B1))", "(1+(B1))", "((A1)+B1)", "((A1-1)*2)"] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         let Node::Group { levels: 1, child } = &node else {
             panic!("{formula} is not grouped");
         };
@@ -91,7 +91,7 @@ fn inner_groups_that_are_only_part_of_the_content_add_no_level() {
 }
 
 #[test]
-fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
+fn parentheses_that_do_not_span_the_formula_are_not_a_root_group() {
     let mut parser = parser();
     for (formula, printed) in [
         // Every other group is printed back as written (SPEC-0007).
@@ -102,7 +102,7 @@ fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
         ("SUM((A1-1))", "SUM((A1-1))"),
         ("(LAMBDA(x,x))(1)", "(LAMBDA(x,x))(1)"),
     ] {
-        let node = parser.parse_cell_formula(formula, &context());
+        let node = parser.parse(formula, &context());
         assert!(!is_grouped(&node), "{formula}");
         assert_eq!(to_english_localized_string(&node, &context()), printed);
     }
@@ -112,7 +112,7 @@ fn parentheses_that_do_not_span_the_formula_are_not_a_grouped_root() {
 fn a_union_keeps_its_own_parentheses_and_is_not_wrapped() {
     let mut parser = parser();
     // Its parentheses are its own one-level `Group`, not a root group around it.
-    let node = parser.parse_cell_formula("(A1,B2)", &context());
+    let node = parser.parse("(A1,B2)", &context());
     assert!(
         matches!(&node, Node::Group { levels: 1, child } if matches!(**child, Node::OpUnionKind { .. }))
     );
@@ -120,10 +120,17 @@ fn a_union_keeps_its_own_parentheses_and_is_not_wrapped() {
 }
 
 #[test]
-fn plain_parse_does_not_wrap() {
-    // Defined-name bodies and other non-cell formulas use `parse`, whose root shape is relied on
-    // (a name that is a reference).
+fn plain_parse_keeps_the_root_group() {
+    // Defined-name bodies parse with the same rule as cell formulas (T-1392).
     let mut parser = parser();
     let node = parser.parse("(A1-1)", &context());
-    assert!(!is_grouped(&node));
+    assert!(is_grouped(&node));
+}
+
+#[test]
+fn spaces_between_nested_parentheses_still_nest() {
+    let mut parser = parser();
+    let node = parser.parse("( (A1) )", &context());
+    assert!(matches!(node, Node::Group { levels: 2, .. }));
+    assert_eq!(to_english_localized_string(&node, &context()), "((A1))");
 }

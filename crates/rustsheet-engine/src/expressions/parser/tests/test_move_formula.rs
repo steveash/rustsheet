@@ -763,7 +763,7 @@ fn moving_by_nothing_prints_the_formula_text_over_the_probe_corpus() {
             column: cell.column,
         };
         let mut parser = new_parser(sheets, vec![], HashMap::new());
-        let node = parser.parse_cell_formula(&formula, &context);
+        let node = parser.parse(&formula, &context);
         let area = Area {
             sheet: 0,
             row: cell.row,

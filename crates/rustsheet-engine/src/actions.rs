@@ -239,7 +239,7 @@ fn displace_cf_formula_str(
     let trimmed = formula.trim();
     let has_eq = trimmed.starts_with('=');
     let body = if has_eq { &trimmed[1..] } else { trimmed };
-    let node = parser.parse_cell_formula(body, context);
+    let node = parser.parse(body, context);
     let displaced = to_string_displaced(
         &node,
         context,
