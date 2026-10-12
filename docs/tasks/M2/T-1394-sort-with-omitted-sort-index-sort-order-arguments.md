@@ -24,4 +24,4 @@ probes/counta-empty-value D22-D24 (excel-graph, T-1294): `COUNTA(SORT({3;1;2},,)
 -
 
 ## Outcome
-SORT treats an `EmptyArgKind` sort_index/sort_order as the default. probes/counta-empty-value D22-D24 fixed (3 known failures removed); unit test added. Further omitted-argument SORT/SORTBY probes remain unprobed (documented in arrays.md).
+SORT treats an `EmptyArgKind` sort_index/sort_order as the default. probes/counta-empty-value D22-D24 fixed (3 known failures removed); unit test added. Further omitted-argument SORT/SORTBY probes are follow-up T-1446.
