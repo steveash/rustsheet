@@ -11,7 +11,7 @@ use crate::{
 /// EXACT, FIND, ...): a single scalar value or a 2-D array of values.
 /// When any argument is an array (e.g. a SEQUENCE or a multi-cell range) the
 /// scalar arguments are broadcast across it and the result is an array.
-pub(super) enum TextArg {
+pub(crate) enum TextArg {
     Scalar(ArrayNode),
     Array(Vec<Vec<ArrayNode>>),
     /// An argument that is an error: broadcast like a scalar (an array of errors next to an
@@ -21,7 +21,7 @@ pub(super) enum TextArg {
 
 impl TextArg {
     /// The (rows, columns) shape of this argument.
-    pub(super) fn dims(&self) -> (usize, usize) {
+    pub(crate) fn dims(&self) -> (usize, usize) {
         match self {
             TextArg::Scalar(_) | TextArg::Error(..) => (1, 1),
             TextArg::Array(a) => (a.len(), a.first().map(|r| r.len()).unwrap_or(0)),
@@ -33,7 +33,7 @@ impl TextArg {
     /// Where the array is too short for that position the element is `#N/A`,
     /// as in Excel. It is an error like any other: if an earlier argument of
     /// the function is an error too, that one comes first.
-    pub(super) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
+    pub(crate) fn elem(&self, i: usize, j: usize) -> &ArrayNode {
         match self {
             TextArg::Scalar(n) | TextArg::Error(n, _) => n,
             TextArg::Array(a) => bcast_idx(a.len(), i)
@@ -47,7 +47,7 @@ impl TextArg {
 /// Broadcasts `compute` over the (possibly array) `operands`. When every operand
 /// is a scalar the result is a single value; otherwise it is an array whose shape
 /// is the element-wise maximum of the operand shapes.
-pub(super) fn broadcast_text(
+pub(crate) fn broadcast_text(
     cell: CellReferenceIndex,
     operands: &[&TextArg],
     compute: impl Fn(usize, usize) -> Result<ArrayNode, Error>,

@@ -247,6 +247,19 @@ impl Model {
             .take(N)
             .map(|arg| self.get_number_or_array(arg, cell))
             .collect();
+        self.lift_number_operands(operands, cell, message, op)
+    }
+
+    /// [`Model::lift_numbers`] of already evaluated operands (`N` of them), for a caller that
+    /// reads some text its own way first (DATEDIF's date text in the workbook's date system).
+    pub(crate) fn lift_number_operands<const N: usize>(
+        &mut self,
+        operands: Vec<Result<NumberOrArray, CalcResult>>,
+        cell: CellReferenceIndex,
+        message: &str,
+        op: impl Fn([f64; N]) -> Result<f64, Error>,
+    ) -> CalcResult {
+        debug_assert!(operands.len() == N, "one operand per number");
         let any_array = operands
             .iter()
             .any(|na| matches!(na, Ok(NumberOrArray::Array(_))));
