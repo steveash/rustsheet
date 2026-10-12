@@ -67,8 +67,8 @@
     "v": 1.0
    },
    "D24": {
-    "t": "e",
-    "v": "#SPILL!"
+    "t": "n",
+    "v": 3.0
    },
    "D25": {
     "t": "n",
@@ -110,9 +110,9 @@
  },
  "source": {
   "application": "Excel for the web (Graph)",
-  "input_sha256": "ddb3d8c158750753e6dcbf4f5e2dbaa7010f1e9370d194db70e0619542012ad5",
+  "input_sha256": "2ea7d2c0989b4ebdfebe58223fba28e111ab36969724f5118523521632d88b35",
   "kind": "excel-graph",
-  "produced_at": "2026-10-12T00:28:21+00:00",
+  "produced_at": "2026-10-12T00:52:20+00:00",
   "version": null
  }
 }

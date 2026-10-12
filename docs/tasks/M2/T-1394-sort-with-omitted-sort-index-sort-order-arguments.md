@@ -1,6 +1,6 @@
 ---
 id: T-1394
-title: "SORT with omitted sort_index/sort_order arguments: SORT(arr,,) sorts, SORT(arr,,-1) is #SPILL!"
+title: "SORT with omitted sort_index/sort_order arguments: SORT(arr,,) sorts ascending"
 milestone: M2
 lane: functions-lookup
 status: todo
@@ -11,10 +11,10 @@ depends_on: []
 ---
 
 ## Goal
-SORT with an omitted sort_index or sort_order matches Excel: `SORT({3;1;2},,)` sorts ascending and `SORT({3;1;2},,-1)` is #SPILL!.
+SORT with an omitted sort_index or sort_order matches Excel: `SORT({3;1;2},,)` sorts ascending and `SORT({3;1;2},,-1)` sorts descending.
 
 ## Context
-probes/counta-empty-value D22-D24 (excel-graph, T-1294): `COUNTA(SORT({3;1;2},,))` = 3, `INDEX(SORT({3;1;2},,),1)` = 1, `SORT({3;1;2},,-1)` = #SPILL! (the engine gives 1, #VALUE!, #VALUE!). Probe further omitted-argument combinations first.
+probes/counta-empty-value D22-D24 (excel-graph, T-1294): `COUNTA(SORT({3;1;2},,))` = 3, `INDEX(SORT({3;1;2},,),1)` = 1, `INDEX(SORT({3;1;2},,-1),1)` = 3 (the engine gives 1, #VALUE! for the first two). Probe further omitted-argument combinations first.
 
 ## Acceptance criteria
 - [ ] probes/counta-empty-value D22, D23, D24 pass; further omitted-argument SORT/SORTBY combinations are probed and recorded in docs/excel-semantics.

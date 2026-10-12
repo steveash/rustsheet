@@ -29,4 +29,4 @@ key, since `compare_values` now reads every `EmptyArg` as a blank (T-0291 review
 -
 
 ## Outcome
-`fn_counta` now counts `EmptyArg` (an omitted argument and IFERROR/IFNA's empty value); COUNT already did. New probe probes/counta-empty-value (excel-graph) covers omitted arguments and consumers of the empty value; D8 of iferror-blank-value passes. Eval: fixed 1, new-coverage failures 4 recorded in the baseline (D18 -> T-1395, D22-D24 -> T-1394), regressions 0.
+`fn_counta` now counts `EmptyArg` (an omitted argument and IFERROR/IFNA's empty value); COUNT already did. New probe probes/counta-empty-value (excel-graph) covers omitted arguments and consumers of the empty value; D8 of iferror-blank-value passes. Eval: fixed 1, new-coverage failures 4 recorded in the baseline (D18 -> T-1395, D22-D23 -> T-1394), regressions 0.

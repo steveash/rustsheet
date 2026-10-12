@@ -35,7 +35,7 @@
     "D21": "=XMATCH(,{0,1,2})",
     "D22": "=COUNTA(SORT({3;1;2},,))",
     "D23": "=INDEX(SORT({3;1;2},,),1)",
-    "D24": "=SORT({3;1;2},,-1)",
+    "D24": "=INDEX(SORT({3;1;2},,-1),1)",
     "D25": "=MAX(IFERROR(B1,1))",
     "D26": "=PRODUCT(IFERROR(B1,1))"
    }

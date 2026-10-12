@@ -413,6 +413,6 @@ Status: UNVERIFIED (probe pending)
 Tasks: T-1352
 
 ## XMATCH with an omitted argument; SORT with omitted sort arguments
-`XMATCH(1,{1,2,3},)` (omitted match_mode) is 1 and `XMATCH(,{0,1,2})` (omitted lookup_value) is #N/A in this array (VERIFIED, probes/counta-empty-value D20-D21, excel-graph, T-1294). `SORT({3;1;2},,)` sorts ascending (`INDEX(...,1)` = 1, three elements), yet `SORT({3;1;2},,-1)` is #SPILL! (D22-D24); the engine differs, see T-1394. The #SPILL! with an omitted sort_index and a descending order is unexplained.
+`XMATCH(1,{1,2,3},)` (omitted match_mode) is 1 and `XMATCH(,{0,1,2})` (omitted lookup_value) is #N/A in this array (VERIFIED, probes/counta-empty-value D20-D21, excel-graph, T-1294). `SORT({3;1;2},,)` sorts ascending (`INDEX(...,1)` = 1, three elements) and `INDEX(SORT({3;1;2},,-1),1)` = 3 (D22-D24); the engine differs on the omitted-argument forms, see T-1394. (A bare `=SORT({3;1;2},,-1)` in D24 first read #SPILL! only because D25 and D26 were occupied; the probe was changed to INDEX.)
 Status: VERIFIED (excel-graph; excel-desktop unprobed)
 Tasks: T-1394

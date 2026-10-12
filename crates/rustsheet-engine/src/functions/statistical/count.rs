@@ -74,7 +74,7 @@ impl Model {
                 RefArg::Value(CalcResult::EmptyCell) => {}
                 // Excel: an omitted argument and the empty value IFERROR/IFNA give for a blank
                 // cell both count (COUNTA(,) = 2, COUNTA(IFERROR(B1,1)) = 1), unlike a blank
-                // reference; see docs/excel-semantics/logic.md "COUNTA counts the empty value".
+                // reference; see docs/excel-semantics/logic.md "IFERROR / IFNA of a blank cell is an empty value".
                 RefArg::Value(CalcResult::EmptyArg) => result += 1.0,
                 RefArg::Ranges(areas) => {
                     if let Err(error) =
