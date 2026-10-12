@@ -3,7 +3,7 @@ id: T-1343
 title: "Fold the @ group cases (written, LeadGroup, grouped) into Group nodes; export SINGLE((x)) (SPEC-0007 step 4)"
 milestone: M1
 lane: engine
-status: todo
+status: in-progress
 priority: P2
 size: M
 tier: opus
